@@ -4,6 +4,16 @@ body {
   background: #f5f5f5;
 }
 
+/* CSS grid/flex items default to min-width: auto, so a wide Table inside a Card
+   inside a grid page wrapper forces the whole page to overflow horizontally
+   instead of the Table's own horizontal scrollbar (scroll.x) kicking in.
+   Letting these shrink lets each table scroll within its own Card. */
+.ant-layout-content,
+.ant-card,
+.ant-card-body {
+  min-width: 0;
+}
+
 .gate-row-passed td {
   background: #f6ffed !important;
 }

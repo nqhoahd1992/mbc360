@@ -15,9 +15,13 @@ export default function ProjectIdentificationCard({ identity }: { identity: Proj
         <Descriptions.Item label="Target Launch">{identity.targetLaunchDate}</Descriptions.Item>
         <Descriptions.Item label="Owner / Department">{identity.ownerDepartment}</Descriptions.Item>
         <Descriptions.Item label="Countries / Markets" span={3}>
-          {identity.markets.map((m) => (
-            <Tag key={m}>{m}</Tag>
-          ))}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {identity.markets.map((m) => (
+              <Tag key={m} style={{ marginInlineEnd: 0 }}>
+                {m}
+              </Tag>
+            ))}
+          </div>
         </Descriptions.Item>
       </Descriptions>
     </Card>

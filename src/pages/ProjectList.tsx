@@ -77,7 +77,15 @@ export default function ProjectList() {
           {
             title: 'Markets',
             width: 200,
-            render: (_, p) => p.identity.markets.map((m) => <Tag key={m}>{m}</Tag>),
+            render: (_, p) => (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {p.identity.markets.map((m) => (
+                  <Tag key={m} style={{ marginInlineEnd: 0 }}>
+                    {m}
+                  </Tag>
+                ))}
+              </div>
+            ),
           },
           {
             title: 'Progress',

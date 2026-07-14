@@ -90,7 +90,15 @@ export default function Dashboard() {
             { title: 'Target launch', width: 120, render: (_, p) => p.identity.targetLaunchDate },
             {
               title: 'Markets',
-              render: (_, p) => p.identity.markets.map((m) => <Tag key={m}>{m}</Tag>),
+              render: (_, p) => (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {p.identity.markets.map((m) => (
+                    <Tag key={m} style={{ marginInlineEnd: 0 }}>
+                      {m}
+                    </Tag>
+                  ))}
+                </div>
+              ),
             },
           ]}
         />
