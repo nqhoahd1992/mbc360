@@ -101,6 +101,22 @@ export interface BomLine {
   notes?: string;
 }
 
+export interface PackagingBomLine {
+  line: number;
+  component: string;
+  componentType: string;
+  supplier: string;
+  unitsPerFinishedUnit: number;
+  unitCost: number;
+  wastagePercent: number;
+  leadTime?: string;
+  moq?: string;
+  evidenceLink?: string;
+  methodRef?: string;
+  notes?: string;
+  approval?: string;
+}
+
 export interface CostingInputs {
   batchSizeKg: number;
   fillSizeG: number;
@@ -182,6 +198,11 @@ export interface ProjectIdentity {
   markets: string[];
 }
 
+// Generic evidence-register row (Supplier_RM_Evidence, Prohibited_Ingredients,
+// Test_Report_Index, PIF_Checklist_ASEAN, ...). Shape varies per register, so it's a
+// free-form record; RegisterConfig (config/registers.ts) declares the real columns.
+export type RegisterRow = Record<string, string | number | boolean | undefined>;
+
 export interface ProjectData {
   identity: ProjectIdentity;
   gates: GateRecord[];
@@ -190,8 +211,10 @@ export interface ProjectData {
   gateChecks: GateCheck[];
   phaseClosures: Record<number, PhaseClosure>; // keyed by phase 1..4
   bom: BomLine[];
+  packagingBom: PackagingBomLine[];
   costing: CostingInputs;
   evidence: EvidenceItem[];
   capa: CapaRecord[];
   feedback: FeedbackEntry[];
+  registers: Record<string, RegisterRow[]>; // keyed by RegisterConfig.key
 }

@@ -12,12 +12,14 @@ import type {
   FeedbackEntry,
   GateCheck,
   GateRecord,
+  PackagingBomLine,
   ProjectData,
   ProjectIdentity,
+  RegisterRow,
   RequirementItem,
   SignOff,
 } from '../types';
-import { createEmptyProject } from './factory';
+import { createEmptyProject, createEmptyRegisterRow } from './factory';
 import { seedChanges, seedProjects } from '../data/seed';
 import { gateIndex, isGateUnlocked, isLastGateOfPhase } from '../utils/gateProgress';
 import { GATES } from '../config/gates';
@@ -43,6 +45,20 @@ interface AppState {
   addBomLine: (id: string) => void;
   removeBomLine: (id: string, index: number) => void;
   setCosting: (id: string, patch: Partial<CostingInputs>) => void;
+
+  setPackagingBomLine: (id: string, index: number, patch: Partial<PackagingBomLine>) => void;
+  addPackagingBomLine: (id: string) => void;
+  removePackagingBomLine: (id: string, index: number) => void;
+
+  setRegisterRow: (
+    id: string,
+    registerKey: string,
+    index: number,
+    key: string,
+    value: string | number | boolean | undefined,
+  ) => void;
+  addRegisterRow: (id: string, registerKey: string) => void;
+  removeRegisterRow: (id: string, registerKey: string, index: number) => void;
 
   setEvidenceItem: (id: string, index: number, patch: Partial<EvidenceItem>) => void;
   addCapa: (id: string, record: CapaRecord) => void;
@@ -190,6 +206,57 @@ export const useAppStore = create<AppState>()(
         setCosting: (id, patch) =>
           updateProject(id, (p) => ({ ...p, costing: { ...p.costing, ...patch } })),
 
+        setPackagingBomLine: (id, index, patch) =>
+          updateProject(id, (p) => ({ ...p, packagingBom: patchArray(p.packagingBom, index, patch) })),
+        addPackagingBomLine: (id) =>
+          updateProject(id, (p) => ({
+            ...p,
+            packagingBom: [
+              ...p.packagingBom,
+              {
+                line: p.packagingBom.length + 1,
+                component: '',
+                componentType: '',
+                supplier: '',
+                unitsPerFinishedUnit: 1,
+                unitCost: 0,
+                wastagePercent: 0,
+              },
+            ],
+          })),
+        removePackagingBomLine: (id, index) =>
+          updateProject(id, (p) => ({
+            ...p,
+            packagingBom: p.packagingBom.filter((_, i) => i !== index).map((l, i) => ({ ...l, line: i + 1 })),
+          })),
+
+        setRegisterRow: (id, registerKey, index, key, value) =>
+          updateProject(id, (p) => ({
+            ...p,
+            registers: {
+              ...p.registers,
+              [registerKey]: (p.registers[registerKey] ?? []).map((row: RegisterRow, i: number) =>
+                i === index ? { ...row, [key]: value } : row,
+              ),
+            },
+          })),
+        addRegisterRow: (id, registerKey) =>
+          updateProject(id, (p) => ({
+            ...p,
+            registers: {
+              ...p.registers,
+              [registerKey]: [...(p.registers[registerKey] ?? []), createEmptyRegisterRow(registerKey)],
+            },
+          })),
+        removeRegisterRow: (id, registerKey, index) =>
+          updateProject(id, (p) => ({
+            ...p,
+            registers: {
+              ...p.registers,
+              [registerKey]: (p.registers[registerKey] ?? []).filter((_: RegisterRow, i: number) => i !== index),
+            },
+          })),
+
         setEvidenceItem: (id, index, patch) =>
           updateProject(id, (p) => ({ ...p, evidence: patchArray(p.evidence, index, patch) })),
         addCapa: (id, record) =>
@@ -210,10 +277,11 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: 'mbc360-demo-store',
-      version: 2,
+      version: 3,
       // v1 -> v2 changed Stage status / Gate decision values to match the real
-      // MBc360 workbook (Complete/Proceed instead of Completed/Go). Old persisted
-      // demo data doesn't fit the new schema, so re-seed instead of migrating it.
+      // MBc360 workbook (Complete/Proceed instead of Completed/Go).
+      // v2 -> v3 added packagingBom and the generic evidence `registers` map.
+      // Old persisted demo data doesn't fit the new schema, so re-seed instead of migrating it.
       migrate: () => ({ projects: seedProjects(), changes: seedChanges() }),
     },
   ),

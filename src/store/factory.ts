@@ -5,11 +5,44 @@ import type {
   PhaseClosure,
   ProjectData,
   ProjectIdentity,
+  RegisterRow,
   RequirementItem,
 } from '../types';
 import { EIGHT_ANGLES, GATES } from '../config/gates';
 import { PHASE_CONFIGS } from '../config/phases';
 import { EVIDENCE_AREAS } from '../config/evidence';
+import { REGISTER_CONFIGS, getRegisterConfig } from '../config/registers';
+
+export function createEmptyRegisterRow(registerKey: string): RegisterRow {
+  const config = getRegisterConfig(registerKey);
+  const row: RegisterRow = {};
+  if (!config) return row;
+  for (const col of config.columns) {
+    if (col.type === 'checkbox') row[col.key] = false;
+    else if (col.key === 'status') row[col.key] = 'Not Started';
+  }
+  return row;
+}
+
+function seedRegisters(): Record<string, RegisterRow[]> {
+  const registers: Record<string, RegisterRow[]> = {};
+  for (const config of REGISTER_CONFIGS) {
+    if (config.mode !== 'fixed') {
+      registers[config.key] = [];
+      continue;
+    }
+    registers[config.key] = (config.fixedRows ?? []).map((row) => {
+      const seeded: RegisterRow = { ...row };
+      for (const col of config.columns) {
+        if (seeded[col.key] !== undefined) continue;
+        if (col.type === 'checkbox') seeded[col.key] = false;
+        else if (col.key === 'status') seeded[col.key] = 'Not Started';
+      }
+      return seeded;
+    });
+  }
+  return registers;
+}
 
 function emptyAngles(): AngleRow[] {
   return EIGHT_ANGLES.map((angle) => ({ angle, ynna: 'NA', covered: false }));
@@ -67,6 +100,7 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     gateChecks,
     phaseClosures,
     bom: [],
+    packagingBom: [],
     costing: {
       batchSizeKg: 100,
       fillSizeG: 100,
@@ -79,5 +113,6 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     evidence: EVIDENCE_AREAS.map((e) => ({ ...e, status: 'Not Started' })),
     capa: [],
     feedback: [],
+    registers: seedRegisters(),
   };
 }

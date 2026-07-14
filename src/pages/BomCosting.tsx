@@ -2,7 +2,7 @@ import { Alert, Button, Card, Col, Descriptions, Empty, Input, InputNumber, Popc
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import type { BomLine, CostingInputs } from '../types';
+import type { BomLine, CostingInputs, PackagingBomLine } from '../types';
 import PhaseDependencyAlert from '../components/PhaseDependencyAlert';
 import { hasReachedPhase, positionSentence } from '../utils/gateProgress';
 
@@ -17,10 +17,13 @@ export default function BomCosting() {
   const addBomLine = useAppStore((s) => s.addBomLine);
   const removeBomLine = useAppStore((s) => s.removeBomLine);
   const setCosting = useAppStore((s) => s.setCosting);
+  const setPackagingBomLine = useAppStore((s) => s.setPackagingBomLine);
+  const addPackagingBomLine = useAppStore((s) => s.addPackagingBomLine);
+  const removePackagingBomLine = useAppStore((s) => s.removePackagingBomLine);
 
   if (!project) return <Empty description="Project not found" />;
 
-  const { bom, costing } = project;
+  const { bom, packagingBom, costing } = project;
   const id = project.identity.id;
 
   const totalPercent = bom.reduce((sum, l) => sum + (l.percentWw || 0), 0);
@@ -32,6 +35,10 @@ export default function BomCosting() {
     const costPerUnit = unitsPerBatch > 0 ? costPerBatch / unitsPerBatch : 0;
     return { kgNeeded, costPerBatch, costPerUnit };
   };
+
+  const packagingDerived = (l: PackagingBomLine) =>
+    l.unitCost * l.unitsPerFinishedUnit * (1 + (l.wastagePercent || 0) / 100);
+  const packagingCostTotal = packagingBom.reduce((sum, l) => sum + packagingDerived(l), 0);
 
   const formulaCostPerUnit = bom.reduce((sum, l) => sum + derived(l).costPerUnit, 0);
   const cogs =
@@ -172,6 +179,137 @@ export default function BomCosting() {
         />
       </Card>
 
+      <Card
+        size="small"
+        title="Packaging BOM"
+        extra={
+          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => addPackagingBomLine(id)}>
+            Add component
+          </Button>
+        }
+      >
+        <Table
+          size="small"
+          rowKey={(l) => l.line}
+          dataSource={packagingBom}
+          pagination={false}
+          scroll={{ x: 1300 }}
+          columns={[
+            { title: '#', width: 40, dataIndex: 'line' },
+            {
+              title: 'Component',
+              width: 160,
+              render: (_, l, i) => (
+                <Input size="small" value={l.component} onChange={(e) => setPackagingBomLine(id, i, { component: e.target.value })} />
+              ),
+            },
+            {
+              title: 'Component type',
+              width: 140,
+              render: (_, l, i) => (
+                <Input size="small" value={l.componentType} onChange={(e) => setPackagingBomLine(id, i, { componentType: e.target.value })} />
+              ),
+            },
+            {
+              title: 'Supplier',
+              width: 140,
+              render: (_, l, i) => (
+                <Input size="small" value={l.supplier} onChange={(e) => setPackagingBomLine(id, i, { supplier: e.target.value })} />
+              ),
+            },
+            {
+              title: 'Units / finished unit',
+              width: 110,
+              render: (_, l, i) => (
+                <InputNumber
+                  size="small"
+                  min={0}
+                  step={1}
+                  value={l.unitsPerFinishedUnit}
+                  onChange={(v) => setPackagingBomLine(id, i, { unitsPerFinishedUnit: v ?? 0 })}
+                />
+              ),
+            },
+            {
+              title: 'Unit cost',
+              width: 100,
+              render: (_, l, i) => (
+                <InputNumber
+                  size="small"
+                  min={0}
+                  step={0.01}
+                  value={l.unitCost}
+                  onChange={(v) => setPackagingBomLine(id, i, { unitCost: v ?? 0 })}
+                />
+              ),
+            },
+            {
+              title: 'Wastage %',
+              width: 100,
+              render: (_, l, i) => (
+                <InputNumber
+                  size="small"
+                  min={0}
+                  step={0.5}
+                  value={l.wastagePercent}
+                  onChange={(v) => setPackagingBomLine(id, i, { wastagePercent: v ?? 0 })}
+                />
+              ),
+            },
+            { title: 'Cost / unit', width: 100, render: (_, l) => money(packagingDerived(l)) },
+            {
+              title: 'Lead time',
+              width: 100,
+              render: (_, l, i) => (
+                <Input size="small" value={l.leadTime} onChange={(e) => setPackagingBomLine(id, i, { leadTime: e.target.value })} />
+              ),
+            },
+            {
+              title: 'MOQ',
+              width: 90,
+              render: (_, l, i) => (
+                <Input size="small" value={l.moq} onChange={(e) => setPackagingBomLine(id, i, { moq: e.target.value })} />
+              ),
+            },
+            {
+              title: 'Evidence link',
+              width: 130,
+              render: (_, l, i) => (
+                <Input size="small" value={l.evidenceLink} onChange={(e) => setPackagingBomLine(id, i, { evidenceLink: e.target.value })} />
+              ),
+            },
+            {
+              title: 'Approval',
+              width: 110,
+              render: (_, l, i) => (
+                <Input size="small" value={l.approval} onChange={(e) => setPackagingBomLine(id, i, { approval: e.target.value })} />
+              ),
+            },
+            {
+              title: '',
+              width: 50,
+              render: (_, __, i) => (
+                <Popconfirm title="Remove component?" onConfirm={() => removePackagingBomLine(id, i)}>
+                  <Button size="small" danger type="text" icon={<DeleteOutlined />} />
+                </Popconfirm>
+              ),
+            },
+          ]}
+          summary={() =>
+            packagingBom.length > 0 ? (
+              <Table.Summary.Row>
+                <Table.Summary.Cell index={0} colSpan={6}>
+                  <b>Total packaging cost / unit</b>
+                </Table.Summary.Cell>
+                <Table.Summary.Cell index={1}>
+                  <b>{money(packagingCostTotal)}</b>
+                </Table.Summary.Cell>
+              </Table.Summary.Row>
+            ) : null
+          }
+        />
+      </Card>
+
       <Row gutter={16}>
         <Col xs={24} md={12}>
           <Card size="small" title="Costing inputs">
@@ -179,7 +317,20 @@ export default function BomCosting() {
               {numberInput('batchSizeKg', 'Batch size (kg)', 1)}
               {numberInput('fillSizeG', 'Fill size (g or mL)', 1)}
               {numberInput('targetUnits', 'Target units', 100)}
-              {numberInput('packagingCostPerUnit', 'Packaging cost / unit')}
+              <Descriptions.Item label="Packaging cost / unit">
+                <InputNumber
+                  size="small"
+                  min={0}
+                  step={0.01}
+                  value={costing.packagingCostPerUnit}
+                  onChange={(v) => setCosting(id, { packagingCostPerUnit: v ?? 0 })}
+                />
+                {packagingBom.length > 0 && (
+                  <span style={{ marginLeft: 8, fontSize: 12, color: '#999' }}>
+                    Packaging BOM total: {money(packagingCostTotal)}
+                  </span>
+                )}
+              </Descriptions.Item>
               {numberInput('labourOverheadPerUnit', 'Labour / overhead / unit')}
               {numberInput('freightOtherPerUnit', 'Freight / other / unit')}
               {numberInput('targetSellPrice', 'Target sell price / unit')}

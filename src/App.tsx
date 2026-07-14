@@ -20,7 +20,10 @@ import ChangeControl from './pages/ChangeControl';
 import EvidenceSummary from './pages/EvidenceSummary';
 import PostMarketCapa from './pages/PostMarketCapa';
 import ProductFeedback from './pages/ProductFeedback';
+import RegisterHubPage from './pages/RegisterHubPage';
+import FormulationSafety from './pages/FormulationSafety';
 import { PHASES } from './config/gates';
+import { REGISTER_CATEGORIES } from './config/registers';
 import { phaseProgress } from './utils/gateProgress';
 
 const { Sider, Header, Content } = Layout;
@@ -107,9 +110,19 @@ function SideMenu() {
         };
       }),
       { key: `/projects/${projectId}/bom`, label: <Link to={`/projects/${projectId}/bom`}>BOM & Costing</Link> },
+      { key: `/projects/${projectId}/formulation-safety`, label: <Link to={`/projects/${projectId}/formulation-safety`}>Formulation Safety</Link> },
       { key: `/projects/${projectId}/evidence`, label: <Link to={`/projects/${projectId}/evidence`}>Evidence Summary</Link> },
       { key: `/projects/${projectId}/feedback`, label: <Link to={`/projects/${projectId}/feedback`}>Panel Feedback</Link> },
       { key: `/projects/${projectId}/post-market`, label: <Link to={`/projects/${projectId}/post-market`}>Post-Market / CAPA</Link> },
+      {
+        key: 'registers',
+        type: 'group',
+        label: 'EVIDENCE REGISTERS',
+        children: REGISTER_CATEGORIES.map((cat) => ({
+          key: `/projects/${projectId}/registers/${cat.key}`,
+          label: <Link to={`/projects/${projectId}/registers/${cat.key}`}>{cat.title}</Link>,
+        })),
+      },
     ];
   }, [projectId, activeProject]);
 
@@ -202,6 +215,8 @@ function Shell() {
             <Route path="/projects/:projectId" element={<ProjectOverview />} />
             <Route path="/projects/:projectId/phase/:phaseNo" element={<PhasePage />} />
             <Route path="/projects/:projectId/bom" element={<BomCosting />} />
+            <Route path="/projects/:projectId/formulation-safety" element={<FormulationSafety />} />
+            <Route path="/projects/:projectId/registers/:categoryKey" element={<RegisterHubPage />} />
             <Route path="/projects/:projectId/evidence" element={<EvidenceSummary />} />
             <Route path="/projects/:projectId/feedback" element={<ProductFeedback />} />
             <Route path="/projects/:projectId/post-market" element={<PostMarketCapa />} />
