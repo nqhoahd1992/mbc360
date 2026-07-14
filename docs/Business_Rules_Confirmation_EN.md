@@ -202,6 +202,21 @@
 
 ---
 
+### C6. Does `PIF_Evidence_Closure` actually hard-block external use of claims/information?
+
+**Context:** The `PIF_Evidence_Closure` sheet lists triggers (new claim, new public information, formula change, distributor/HCP question, etc.) with a **"Blocks external use until closed?"** column — every row is marked **Y**. For example: a new claim must be added to `SKU_Claims_PIF_Register` with evidence attached before use; new public information must go through `Published_Info_Approval` before publication.
+
+**Current demo assumption:** Not implemented — these two sheets (`SKU_Claims_PIF_Register`, `Published_Info_Approval`) have no screens yet, and the app has no mechanism that blocks "external use".
+
+**Needs clarification:**
+1. What does "blocks external use" concretely block within the system — does it prevent Gate 10/11 from turning Complete, or is it purely a procedural rule (enforced by people, since "external use" — sending an email, posting on social media — happens outside the system and can't literally be blocked by software)?
+2. If a claim/public information item is not yet closed (no PIF link attached) but Gate 10 is already Complete — is that considered a violation/conflict worth flagging, or are the two entirely independent?
+3. Is an attestation/confirmation step needed before content is published externally, so the system at least records that the user checked the PIF closure condition before publishing?
+
+**Subject-matter team decision:** ______________________________________________
+
+---
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later.
