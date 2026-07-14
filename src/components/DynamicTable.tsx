@@ -127,7 +127,10 @@ export default function DynamicTable({
       }
     >
       {config.description && (
-        <p style={{ color: '#888', fontSize: 12, marginTop: -4, marginBottom: 12 }}>{config.description}</p>
+        <p style={{ color: '#888', fontSize: 12, marginTop: -4, marginBottom: config.reviewOwner ? 4 : 12 }}>{config.description}</p>
+      )}
+      {config.reviewOwner && (
+        <p style={{ color: '#999', fontSize: 12, marginTop: 0, marginBottom: 12 }}>Review owner: {config.reviewOwner}</p>
       )}
       <Table
         size="small"

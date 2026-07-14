@@ -1,6 +1,6 @@
 # MBc360 – Kế hoạch xây dựng ứng dụng Product Development & Quality System
 
-> Nguồn: `MBc360 Master Product Development System File.xlsx` (54 sheets)
+> Nguồn: `MBc360 Master Product Development System File.xlsx` (55 sheets, bản "V18" — tên tab có tiền tố người phụ trách, thêm Extended User-Safety Compartments ở Phase 3, register Released Label Control và các sheet tham chiếu Template_Index/Requirements/MBC360 FEEDBACK)
 > Giai đoạn 1: **Demo UI thuần ReactJS** (màn hình + form cơ bản, mock data). Backend & database phát triển sau.
 
 ---

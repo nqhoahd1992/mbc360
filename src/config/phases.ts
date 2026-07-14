@@ -31,10 +31,16 @@ export interface PhaseConfig {
   checklistSections: ChecklistSectionConfig[];
   requirementSections: RequirementSectionConfig[];
   keyGateChecks: KeyGateCheckConfig[];
+  reviewOwner?: string;
 }
+
+// Review owner transcribed from the source workbook's "REVIEW OWNER" header row.
+// All four phase sheets share the same owner.
+const PHASE_REVIEW_OWNER = 'Kaukab (Facility / PM Operations) · Co-sign: Chris (Project Manager)';
 
 export const PHASE_1: PhaseConfig = {
   phase: 1,
+  reviewOwner: PHASE_REVIEW_OWNER,
   gateIds: ['SG01', 'SG02', 'SG03'],
   checklistSections: [
     {
@@ -133,6 +139,7 @@ export const PHASE_1: PhaseConfig = {
 
 export const PHASE_2: PhaseConfig = {
   phase: 2,
+  reviewOwner: PHASE_REVIEW_OWNER,
   gateIds: ['SG04', 'SG05', 'SG06'],
   checklistSections: [
     {
@@ -234,6 +241,7 @@ export const PHASE_2: PhaseConfig = {
 
 export const PHASE_3: PhaseConfig = {
   phase: 3,
+  reviewOwner: PHASE_REVIEW_OWNER,
   gateIds: ['SG07', 'SG08', 'SG09'],
   checklistSections: [
     {
@@ -289,6 +297,67 @@ export const PHASE_3: PhaseConfig = {
         { gate: '09', requirement: 'Retest or CAPA pathway defined', minimum: 'Retest, deviation or CAPA actions assigned where required', rationale: 'Makes failures visible and traceable', owner: 'Quality' },
       ],
     },
+    {
+      key: 'pregnancySafety',
+      title: 'Compartment 1 - Pregnancy Safety & Characteristics',
+      rows: [
+        { gate: '07', requirement: 'PRG-01 Pregnancy suitability decision', minimum: 'State whether product is suitable / cautioned / not recommended during pregnancy', rationale: 'Defined vulnerable-use context; must not be assumed safe', owner: 'Safety' },
+        { gate: '07', requirement: 'PRG-02 Ingredient caution-limit check (pregnancy)', minimum: 'Each active/retinoid/salicylate/essential-oil checked vs pregnancy caution limits', rationale: 'Concentration-based validation for maternal use', owner: 'Safety / Regulatory' },
+        { gate: '07', requirement: 'PRG-03 Prohibited / restricted actives', minimum: 'Confirm absence of pregnancy-contraindicated actives (e.g. retinoids, high-dose salicylic)', rationale: 'Proves absence of high-risk substances', owner: 'Regulatory' },
+        { gate: '07', requirement: 'PRG-04 Dermal exposure / MOS (pregnancy)', minimum: 'Route, body area, frequency, concentration and MOS conclusion recorded', rationale: 'HCP/distributor confidence for maternal claim', owner: 'Safety' },
+        { gate: '07', requirement: 'PRG-05 Fragrance / allergen review', minimum: 'IFRA + allergen review appropriate for pregnancy sensitivity', rationale: 'Heightened sensory sensitivity in pregnancy', owner: 'R&I / Regulatory' },
+        { gate: '07', requirement: 'PRG-06 Claim wording control (pregnancy)', minimum: 'Approved maternal wording; no implied medical/therapeutic claim', rationale: 'Prevents unsupported maternal claims', owner: 'Claims / Regulatory' },
+        { gate: '07', requirement: 'PRG-07 Label / PIF statement', minimum: 'Pregnancy usage statement matches released label and PIF', rationale: 'Consistency between label, PIF and evidence', owner: 'Regulatory' },
+        { gate: '07', requirement: 'PRG-08 Sign-off (pregnancy compartment)', minimum: 'Prepared / reviewed / independent sign-off recorded', rationale: 'Controlled approval trail', owner: 'Safety / HOD' },
+      ],
+    },
+    {
+      key: 'breastfeedingSafety',
+      title: 'Compartment 2 - Breastfeeding Safety & Characteristics',
+      rows: [
+        { gate: '07', requirement: 'BF-01 Breastfeeding suitability decision', minimum: 'State suitable / cautioned / not recommended while breastfeeding', rationale: 'Maternal use with infant proximity', owner: 'Safety' },
+        { gate: '07', requirement: 'BF-02 Nipple / breast-contact exposure', minimum: 'Assess residue transfer and indirect infant ingestion risk if applied near breast', rationale: 'Infant indirect exposure control', owner: 'Safety' },
+        { gate: '07', requirement: 'BF-03 Ingredient caution-limit check (lactation)', minimum: 'Actives checked vs breastfeeding caution limits', rationale: 'Concentration-based validation', owner: 'Safety / Regulatory' },
+        { gate: '07', requirement: 'BF-04 Skin-to-skin / residue transfer', minimum: 'Residue transfer to infant skin during feeding/holding assessed', rationale: 'Baby contact considered from the start', owner: 'Safety' },
+        { gate: '07', requirement: 'BF-05 Fragrance / essential-oil review', minimum: 'Confirm no essential oils/fragrance contraindicated near infant', rationale: 'Infant respiratory/skin sensitivity', owner: 'R&I / Regulatory' },
+        { gate: '07', requirement: 'BF-06 Claim wording control (breastfeeding)', minimum: 'Approved wording; no medical lactation claim', rationale: 'Prevents unsupported claims', owner: 'Claims / Regulatory' },
+        { gate: '07', requirement: 'BF-07 Label / PIF statement (breastfeeding)', minimum: 'Breastfeeding usage statement matches label and PIF', rationale: 'Consistency control', owner: 'Regulatory' },
+      ],
+    },
+    {
+      key: 'infantSafety',
+      title: 'Compartment 3 - Infant / Baby-Contact Safety & Characteristics',
+      rows: [
+        { gate: '07', requirement: 'INF-01 Infant-contact use context', minimum: 'State whether infant skin contact is intended, incidental or to be avoided', rationale: 'Skincare-for-Two mandatory baby-contact consideration', owner: 'Safety' },
+        { gate: '07', requirement: 'INF-02 Infant dermal exposure / MOS', minimum: 'Body area, frequency, occlusion and infant-adjusted MOS recorded', rationale: 'Infant skin more permeable; needs own margin', owner: 'Safety' },
+        { gate: '07', requirement: 'INF-03 Ingestion / hand-to-mouth risk', minimum: 'Assess incidental ingestion if product on hands/skin infant may mouth', rationale: 'Realistic infant behaviour control', owner: 'Safety' },
+        { gate: '07', requirement: 'INF-04 Sensitiser / allergen screen (infant)', minimum: 'Confirm actives/fragrance appropriate for infant-adjacent contact', rationale: 'Infant sensitisation prevention', owner: 'Safety / R&I' },
+        { gate: '07', requirement: 'INF-05 pH / barrier compatibility', minimum: 'Product pH and barrier impact suitable for infant skin contact', rationale: 'Infant barrier protection', owner: 'Quality / R&I' },
+        { gate: '07', requirement: 'INF-06 Eye / mucous-membrane safety (infant)', minimum: 'Eye-safe zone confirmed for infant-contact scenario', rationale: 'Infant eye protection', owner: 'Safety / Quality' },
+        { gate: '07', requirement: 'INF-07 Claim wording control (infant)', minimum: 'Approved wording; no infant medical claim', rationale: 'Prevents unsupported infant claims', owner: 'Claims / Regulatory' },
+        { gate: '07', requirement: 'INF-08 Label / PIF statement (infant)', minimum: 'Infant-contact statement matches label and PIF', rationale: 'Consistency control', owner: 'Regulatory' },
+      ],
+    },
+    {
+      key: 'swimmerSafety',
+      title: 'Compartment 4 - Swimmer Safety & Characteristics',
+      rows: [
+        { gate: '07', requirement: 'SWM-01 Water resistance', minimum: 'Water-resistance duration tested and stated (e.g. 40/80 min per method)', rationale: 'Substantiates water-resistant performance claim', owner: 'Quality / R&I' },
+        { gate: '07', requirement: 'SWM-02 Sweat resistance', minimum: 'Sweat/perspiration resistance assessed under exertion conditions', rationale: 'Real swimmer/athlete use context', owner: 'Quality / R&I' },
+        { gate: '07', requirement: 'SWM-03 Chlorine (pool) exposure', minimum: 'Formula stability and skin safety after chlorinated-water exposure', rationale: 'Pool-water interaction control', owner: 'Quality / Safety' },
+        { gate: '07', requirement: 'SWM-04 Salt-water (ocean) exposure', minimum: 'Formula stability and skin safety after salt-water exposure', rationale: 'Ocean use context control', owner: 'Quality / Safety' },
+        { gate: '07', requirement: 'SWM-05 UV / SPF interaction', minimum: 'SPF value, broad-spectrum and photostability tested per method', rationale: 'Sun-exposure performance and safety', owner: 'Quality / Regulatory' },
+        { gate: '07', requirement: 'SWM-06 Photostability', minimum: 'Actives remain stable and safe under UV after water exposure', rationale: 'Prevents degradation to unsafe/inactive state', owner: 'Quality / R&I' },
+        { gate: '07', requirement: 'SWM-07 Eye-sting / eye-safe zone (swimmer)', minimum: 'Confirm no eye-sting and eye-safe zone under wet/run-off conditions', rationale: 'Swimmer eye exposure from run-off', owner: 'Safety / Quality' },
+        { gate: '07', requirement: 'SWM-08 Wash-off / re-apply guidance', minimum: 'Re-application interval after towelling/water defined on label', rationale: 'Correct swimmer usage control', owner: 'Regulatory / Claims' },
+        { gate: '07', requirement: 'SWM-09 Reef-safe / environmental claim', minimum: 'Substantiate any reef-safe / oxybenzone-free / environmental claim', rationale: 'No greenwashing; substantiated eco claim', owner: 'Regulatory / Claims' },
+        { gate: '07', requirement: 'SWM-10 Marine / aquatic tolerance', minimum: 'Skin tolerance confirmed after combined water+UV+abrasion exposure', rationale: 'Combined real-world swimmer stress', owner: 'Safety' },
+        { gate: '07', requirement: 'SWM-11 Pack / dispenser water ingress', minimum: 'Pack integrity and dispensing after wet/sandy handling', rationale: 'Swimmer pack performance', owner: 'Packaging / Quality' },
+        { gate: '07', requirement: 'SWM-12 Claim wording control (swimmer)', minimum: 'All swimmer performance claims mapped to evidence and approved wording', rationale: 'Prevents unsupported performance claims', owner: 'Claims / Regulatory' },
+        { gate: '07', requirement: 'SWM-13 Label / PIF statement (swimmer)', minimum: 'Swimmer usage + water-resistance statement matches label and PIF', rationale: 'Consistency control', owner: 'Regulatory' },
+        { gate: '07', requirement: 'SWM-14 Sign-off (swimmer compartment)', minimum: 'Prepared / reviewed / independent sign-off recorded', rationale: 'Controlled approval trail', owner: 'Safety / HOD' },
+      ],
+    },
   ],
   keyGateChecks: [
     { gate: '07', check: 'Safety/tolerance questions defined and vulnerable-user risks reviewed' },
@@ -305,6 +374,7 @@ export const PHASE_3: PhaseConfig = {
 
 export const PHASE_4: PhaseConfig = {
   phase: 4,
+  reviewOwner: PHASE_REVIEW_OWNER,
   gateIds: ['SG10', 'SG11', 'SG12'],
   checklistSections: [
     {

@@ -61,6 +61,12 @@ export default function PhasePage() {
         <Typography.Text type="secondary">
           Responsible department: {meta.department}
         </Typography.Text>
+        {config.reviewOwner && (
+          <>
+            <br />
+            <Typography.Text type="secondary">Review owner: {config.reviewOwner}</Typography.Text>
+          </>
+        )}
       </div>
 
       {progress.state === 'locked' && (

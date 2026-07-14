@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-MBc360 is a **demo UI** (no backend) for a Product Development & Quality "Phase-Gate" system, modeled 1:1 on a 54-sheet Excel workbook (`MBc360 Master Product Development System File.xlsx`). See `docs/APP_PLAN.md` (Vietnamese) for the full source-of-truth spec — business rules, data model, screen list — and `docs/Business_Rules_Confirmation_{EN,VN}.md` for confirmed business-rule decisions.
+MBc360 is a **demo UI** (no backend) for a Product Development & Quality "Phase-Gate" system, modeled 1:1 on a 55-sheet Excel workbook (`MBc360 Master Product Development System File.xlsx`, version "V18"). Workbook tabs are owner-prefixed (e.g. `ChiChu-Prohibited_Ingred`); each sheet carries a "REVIEW OWNER" header surfaced in the app via `reviewOwner` on phase/register configs. V18 added Phase 3 "Extended User-Safety Compartments" (Pregnancy/Breastfeeding/Infant/Swimmer), the Released Label Control register (3 blocks) and system-reference sheets (Template_Index, Requirements, MBC360 FEEDBACK). See `docs/APP_PLAN.md` (Vietnamese) for the full source-of-truth spec — business rules, data model, screen list — and `docs/Business_Rules_Confirmation_{EN,VN}.md` for confirmed business-rule decisions.
 
 ## Commands
 

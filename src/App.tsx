@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConfigProvider, Layout, Menu, Popconfirm, Button, Select, Typography } from 'antd';
 import {
   AppstoreOutlined,
+  BookOutlined,
   CheckCircleFilled,
   FolderOpenOutlined,
   LockOutlined,
@@ -22,6 +23,7 @@ import PostMarketCapa from './pages/PostMarketCapa';
 import ProductFeedback from './pages/ProductFeedback';
 import RegisterHubPage from './pages/RegisterHubPage';
 import FormulationSafety from './pages/FormulationSafety';
+import SystemGuide from './pages/SystemGuide';
 import { PHASES } from './config/gates';
 import { REGISTER_CATEGORIES } from './config/registers';
 import { phaseProgress } from './utils/gateProgress';
@@ -76,6 +78,7 @@ function SideMenu() {
       { key: '/', icon: <AppstoreOutlined />, label: <Link to="/">Dashboard</Link> },
       { key: '/projects', icon: <FolderOpenOutlined />, label: <Link to="/projects">All Projects</Link> },
       { key: '/change-control', icon: <SwapOutlined />, label: <Link to="/change-control">Change Control</Link> },
+      { key: '/system-guide', icon: <BookOutlined />, label: <Link to="/system-guide">System Guide</Link> },
     ],
     [],
   );
@@ -172,18 +175,53 @@ function SideMenu() {
   );
 }
 
+// Keeps the sidebar visible while the (window-level) page scrolls.
+// - Sidebar shorter than the viewport → sticks to the top (top: 0).
+// - Sidebar taller than the viewport → scrolls with the page until its bottom
+//   is reached, then pins bottom-aligned (top: viewportHeight - sidebarHeight),
+//   letting the main content keep scrolling.
+function StickySidebar({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [top, setTop] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      const overflow = el.offsetHeight - window.innerHeight;
+      setTop(overflow > 0 ? -overflow : 0);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: 'sticky', top }}>
+      {children}
+    </div>
+  );
+}
+
 function Shell() {
   const resetDemoData = useAppStore((s) => s.resetDemoData);
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider breakpoint="lg" collapsedWidth={0} width={250}>
-        <div style={{ color: '#fff', padding: 16, fontWeight: 700, fontSize: 16 }}>
-          MBc360
-          <div style={{ fontWeight: 400, fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>
-            Development & Quality System
+        <StickySidebar>
+          <div style={{ color: '#fff', padding: 16, fontWeight: 700, fontSize: 16 }}>
+            MBc360
+            <div style={{ fontWeight: 400, fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>
+              Development & Quality System
+            </div>
           </div>
-        </div>
-        <SideMenu />
+          <SideMenu />
+        </StickySidebar>
       </Sider>
       <Layout>
         <Header
@@ -208,7 +246,7 @@ function Shell() {
             </Button>
           </Popconfirm>
         </Header>
-        <Content style={{ padding: 16, overflow: 'auto' }}>
+        <Content style={{ padding: 16 }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/projects" element={<ProjectList />} />
@@ -221,6 +259,7 @@ function Shell() {
             <Route path="/projects/:projectId/feedback" element={<ProductFeedback />} />
             <Route path="/projects/:projectId/post-market" element={<PostMarketCapa />} />
             <Route path="/change-control" element={<ChangeControl />} />
+            <Route path="/system-guide" element={<SystemGuide />} />
           </Routes>
         </Content>
       </Layout>

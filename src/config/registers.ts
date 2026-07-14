@@ -20,6 +20,7 @@ export interface RegisterConfig {
   gate?: string;
   columns: RegisterColumn[];
   fixedRows?: RegisterRow[];
+  reviewOwner?: string; // "REVIEW OWNER" header transcribed from the source workbook
 }
 
 export interface RegisterCategory {
@@ -1189,6 +1190,210 @@ export const formulationSafetyFinalSignOff: RegisterConfig = {
 };
 
 // ---------------------------------------------------------------------------
+// Released Label Control (new in V18) — sheet Lily-Released_Label_Ctrl.
+// Three blocks share one sheet, mirroring the Formulation_Safety composite.
+// ---------------------------------------------------------------------------
+
+const RELEASED_LABEL_OWNER = 'Lily (Packaging) · Anki (Digital / Platforms) · Co-sign: Chris (Project Manager)';
+
+const releasedLabelRegister: RegisterConfig = {
+  key: 'releasedLabelRegister',
+  title: 'Released Label vs Current Artwork',
+  sheetName: 'Lily-Released_Label_Ctrl',
+  description: 'What changed / will change, current vs new label, market-release status and 3D asset status. No silent label changes — use Artwork_Change_Control for the formal record.',
+  mode: 'register',
+  gate: '06/11',
+  reviewOwner: RELEASED_LABEL_OWNER,
+  columns: [
+    { key: 'recordId', label: 'Record ID', type: 'text', width: 100 },
+    { key: 'productSku', label: 'Product / SKU', type: 'text', width: 150 },
+    { key: 'productCode', label: 'Product code', type: 'text', width: 110 },
+    { key: 'changeType', label: 'Change type', type: 'text', width: 130 },
+    { key: 'whatChanged', label: 'What has changed / will change', type: 'textarea', width: 220 },
+    { key: 'currentLabelVersion', label: 'Current label version', type: 'text', width: 130 },
+    { key: 'currentArtworkFile', label: 'Current artwork file', type: 'text', width: 150 },
+    { key: 'newLabelVersion', label: 'New label version', type: 'text', width: 130 },
+    { key: 'newArtworkFile', label: 'New artwork file', type: 'text', width: 150 },
+    { key: 'newLabelReleased', label: 'New label released to market?', type: 'select', width: 120, options: YNNA },
+    { key: 'marketReleaseDate', label: 'Market release date', type: 'date', width: 130 },
+    { key: 'marketsAffected', label: 'Markets affected', type: 'text', width: 150 },
+    { key: 'assetExists', label: '3D asset exists?', type: 'select', width: 110, options: YNNA },
+    { key: 'assetLink', label: '3D asset link', type: 'text', width: 130 },
+    { key: 'artworkChangeRef', label: 'Artwork_Change_Control ref', type: 'text', width: 160 },
+    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'notes', label: 'Notes / action', type: 'textarea', width: 200 },
+  ],
+};
+
+const labelPlatformRollout: RegisterConfig = {
+  key: 'labelPlatformRollout',
+  title: 'Platform Rollout & Stock Confirmation',
+  sheetName: 'Lily-Released_Label_Ctrl',
+  description: 'Update every platform only when correct new-label stock is available (Anki).',
+  mode: 'register',
+  gate: '06/11',
+  reviewOwner: RELEASED_LABEL_OWNER,
+  columns: [
+    { key: 'rolloutId', label: 'Rollout ID', type: 'text', width: 100 },
+    { key: 'linkedRecordId', label: 'Linked Record ID (Block A)', type: 'text', width: 150 },
+    { key: 'productSku', label: 'Product / SKU', type: 'text', width: 150 },
+    { key: 'platform', label: 'Platform / channel', type: 'text', width: 140 },
+    { key: 'platformUrl', label: 'Platform URL / location', type: 'text', width: 160 },
+    { key: 'currentImage', label: 'Current image on platform', type: 'text', width: 160 },
+    { key: 'correctArtwork', label: 'Correct new artwork file', type: 'text', width: 160 },
+    { key: 'stockAvailable', label: 'New-label stock available?', type: 'select', width: 120, options: YNNA },
+    { key: 'stockConfirmedBy', label: 'Stock confirmed by', type: 'text', width: 140 },
+    { key: 'oldImageRemoved', label: 'Old image removed?', type: 'select', width: 110, options: YNNA },
+    { key: 'imageUpdated', label: 'Image updated on platform?', type: 'select', width: 120, options: YNNA },
+    { key: 'dateUpdated', label: 'Date updated', type: 'date', width: 120 },
+    { key: 'verifiedBy', label: 'Verified by', type: 'text', width: 130 },
+    { key: 'screenshotLink', label: 'Screenshot / evidence link', type: 'text', width: 160 },
+    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
+    { key: 'followUpDate', label: 'Follow-up date', type: 'date', width: 120 },
+  ],
+};
+
+const labelShipmentVerification: RegisterConfig = {
+  key: 'labelShipmentVerification',
+  title: 'Shipment Label & Batch Verification',
+  sheetName: 'Lily-Released_Label_Ctrl',
+  description: 'Every shipment out must record exact batch details and the exact label artwork version.',
+  mode: 'register',
+  gate: '06/11',
+  reviewOwner: RELEASED_LABEL_OWNER,
+  columns: [
+    { key: 'shipmentId', label: 'Shipment ID', type: 'text', width: 100 },
+    { key: 'linkedRecordId', label: 'Linked Record ID (Block A)', type: 'text', width: 150 },
+    { key: 'productSku', label: 'Product / SKU', type: 'text', width: 150 },
+    { key: 'destination', label: 'Destination / customer / market', type: 'text', width: 180 },
+    { key: 'shipDate', label: 'Ship date', type: 'date', width: 120 },
+    { key: 'batchNo', label: 'Batch / lot no.', type: 'text', width: 120 },
+    { key: 'batchRecordLink', label: 'Batch record link', type: 'text', width: 140 },
+    { key: 'labelVersionShipped', label: 'Label artwork version shipped', type: 'text', width: 160 },
+    { key: 'labelFileLink', label: 'Label artwork file / proof link', type: 'text', width: 170 },
+    { key: 'artworkMatches', label: 'Artwork matches current released label?', type: 'select', width: 130, options: YNNA },
+    { key: 'batchMatches', label: 'Batch details match physical stock?', type: 'select', width: 130, options: YNNA },
+    { key: 'verifiedBy', label: 'Verified by', type: 'text', width: 130 },
+    { key: 'batchTraceRef', label: 'Batch_Formula_Trace ref', type: 'text', width: 160 },
+    { key: 'photoLink', label: 'Photo / evidence link', type: 'text', width: 150 },
+    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'holdRelease', label: 'Hold / release', type: 'text', width: 120 },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// System reference sheets (front-matter + feedback) — new in V18.
+// ---------------------------------------------------------------------------
+
+const templateIndex: RegisterConfig = {
+  key: 'templateIndex',
+  title: 'Evidence Template Index',
+  sheetName: 'Template_Index',
+  description: 'Map of every evidence template: concept, tab, what it captures, when, gate and owner.',
+  mode: 'fixed',
+  reviewOwner: 'MBc360 Development & Quality System',
+  columns: [
+    { key: 'concept', label: 'Evidence concept', type: 'text', width: 160, editable: false },
+    { key: 'templateTab', label: 'Template tab', type: 'text', width: 180, editable: false },
+    { key: 'captured', label: 'Evidence captured', type: 'text', width: 240, editable: false },
+    { key: 'whenToComplete', label: 'When to complete', type: 'text', width: 180, editable: false },
+    { key: 'gate', label: 'Gate', type: 'text', width: 90, editable: false },
+    { key: 'owner', label: 'Owner', type: 'text', width: 160, editable: false },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 220, editable: false },
+  ],
+  fixedRows: [
+    { concept: '1. Commercial costing', templateTab: 'Formula_BOM', captured: 'Formula composition, ingredient cost, evidence links', whenToComplete: 'Complete once per formula version', gate: '05', owner: 'R&I / Finance', notes: 'Feeds Costing_Calc and Formulation_Safety' },
+    { concept: '1. Commercial costing', templateTab: 'Packaging_BOM', captured: 'Packaging components, pack cost, spec/artwork links', whenToComplete: 'Complete once per SKU/pack', gate: '06', owner: 'Packaging / Finance', notes: 'Feeds Costing_Calc' },
+    { concept: '1. Commercial costing', templateTab: 'Costing_Calc', captured: 'COGS, margin and forecast assumptions', whenToComplete: 'Complete once per SKU scenario', gate: '05', owner: 'Finance / Project owner', notes: 'Inputs only; formulas calculate outputs' },
+    { concept: '2. Ingredient evidence', templateTab: 'Supplier_RM_Evidence', captured: 'SDS, CoA, TDS, allergens, origin, impurities', whenToComplete: 'Complete per raw material', gate: '04', owner: 'Procurement / R&I / Quality', notes: 'Links into safety and PIF' },
+    { concept: '2. Ingredient evidence', templateTab: 'Prohibited_Ingredients', captured: 'Absence/review evidence for prohibited watch-list', whenToComplete: 'Complete per formula', gate: '07', owner: 'Regulatory', notes: 'Formula match formulas flag possible matches' },
+    { concept: '2. Ingredient evidence', templateTab: 'PB_Caution_Limits', captured: 'Pregnancy/breastfeeding caution-limit logic', whenToComplete: 'Complete per formula', gate: '07', owner: 'Safety / Regulatory', notes: 'Use for maternal positioning' },
+    { concept: '2. Ingredient evidence', templateTab: 'Ingredient_Substitution', captured: 'Substitution decision and evidence when a material is changed', whenToComplete: 'Use when triggered', gate: '04/07', owner: 'R&I', notes: 'Avoids repeating change-control details' },
+    { concept: '3. Product safety', templateTab: 'Formulation_Safety', captured: 'Full formula-level safety matrix and final sign-off', whenToComplete: 'Complete per formula version', gate: '07/10', owner: 'Safety / Regulatory', notes: 'Primary safety evidence tab' },
+    { concept: '3. Product safety', templateTab: 'Fragrance_Safety', captured: 'IFRA, allergen, PBW caution and fragrance evidence', whenToComplete: 'Complete where fragranced', gate: '07', owner: 'R&I / Regulatory', notes: 'Feeds artwork and PIF' },
+    { concept: '4. Packaging / artwork', templateTab: 'Packaging_Specs_Artwork', captured: 'Component specs, label checks and artwork approval evidence', whenToComplete: 'Complete per SKU/market', gate: '06/10/11', owner: 'Packaging / Regulatory', notes: 'Development evidence, not change log' },
+    { concept: '5. Quality testing', templateTab: 'Micro_PET_Evidence', captured: 'Micro, PET/challenge and preservative rationale', whenToComplete: 'Complete where relevant', gate: '08', owner: 'Quality', notes: 'Feeds PIF and release' },
+    { concept: '5. Quality testing', templateTab: 'Stability_Release', captured: 'Stability, compatibility and release decision evidence', whenToComplete: 'Complete per formula/pack', gate: '09/11', owner: 'Quality', notes: 'Report links only' },
+    { concept: '5. Quality testing', templateTab: 'Eye_Safety_Evidence', captured: 'Eye irritation/safe-zone evidence', whenToComplete: 'Complete where eye-contact risk or claim', gate: '07/08', owner: 'Safety / Quality', notes: 'Separate from broader formulation safety' },
+    { concept: '6. Efficacy / claims', templateTab: 'Mechanism_Claims_Map', captured: 'Claim, mechanism, ingredient and evidence mapping', whenToComplete: 'Complete before claim approval', gate: '03/10', owner: 'R&I / Claims', notes: 'Source of approved claim logic' },
+    { concept: '6. Efficacy / claims', templateTab: 'Efficacy_Assurance', captured: 'Checks whether efficacy is controlled by formula/process/testing', whenToComplete: 'Complete where efficacy claim', gate: '05/08', owner: 'R&I / Quality', notes: 'Prevents unsupported claim drift' },
+    { concept: '6. Efficacy / claims', templateTab: 'Functional_Efficacy', captured: 'Functional assay evidence and claim result', whenToComplete: 'Complete where assay-based claim', gate: '08/10', owner: 'R&I / Quality', notes: 'Links reports in Test_Report_Index' },
+    { concept: '6. Efficacy / claims', templateTab: 'Clinical_Human_Evidence', captured: 'Human/consumer/clinical proof', whenToComplete: 'Complete where human support is needed', gate: '08/10', owner: 'Clinical / R&I', notes: 'Study_Protocol holds participant details' },
+    { concept: '7. Regulatory / PIF', templateTab: 'ASEAN_PIF_Map', captured: 'High-level dossier map', whenToComplete: 'Complete per market', gate: '10', owner: 'Regulatory', notes: 'Overview only' },
+    { concept: '7. Regulatory / PIF', templateTab: 'PIF_Checklist_ASEAN', captured: 'Detailed PIF checklist', whenToComplete: 'Complete per SKU/market', gate: '10', owner: 'Regulatory', notes: 'Full closure checklist' },
+    { concept: '7. Regulatory / PIF', templateTab: 'PIF_Evidence_Export', captured: 'Evidence pack for PIF/Product Master File', whenToComplete: 'Use at PIF export', gate: '10/11', owner: 'Regulatory', notes: 'No duplicate reports; link source files' },
+    { concept: '8. Change / launch', templateTab: 'Change_Control_Comm', captured: 'Master change log, communication and closure', whenToComplete: 'Use when anything changes', gate: 'ALL', owner: 'Project owner / QA', notes: 'RACI/closure folded in here' },
+    { concept: '8. Change / launch', templateTab: 'GMP_Links', captured: 'Controlled GMP file links', whenToComplete: 'Complete at launch/release', gate: '11', owner: 'Quality / Manufacturing', notes: 'Links only, does not replace GMP system' },
+    { concept: '9. Post-market', templateTab: 'PostMarket_CAPA', captured: 'Complaints, adverse events, CAPA and trend evidence', whenToComplete: 'Use after launch', gate: '12', owner: 'Quality / PV-PMS', notes: 'Feeds improvement cycle' },
+    { concept: '7. Change control', templateTab: 'Product_Family_Register', captured: 'Family name/code linking all versions of one consumer product', whenToComplete: 'Complete per product family', gate: '05/06', owner: 'R&I / NP / Marketing', notes: 'Anki/NP request - see all formula versions of a product together' },
+    { concept: '7. Change control', templateTab: 'Formulation_Change_Register', captured: 'NP-controlled log of every formulation change, reasons, actions and closure', whenToComplete: 'Per formulation change', gate: '05/07/10', owner: 'NPD / NP / Reg', notes: 'CEO-mandated. VN needs ~6 months re-registration for formula changes' },
+    { concept: '8. Marketing outputs', templateTab: 'Campaigns_Social_Media', captured: 'Social media & marketing campaign declaration with links', whenToComplete: 'Per campaign/post', gate: '03/11', owner: 'Marketing / Sales', notes: 'Links approved messaging to Change IDs' },
+    { concept: '9. Development records', templateTab: 'Product_Feedback_Form', captured: 'Staff/panel feedback on development samples (texture, fragrance, oiliness/slipperiness safety)', whenToComplete: 'Per sample evaluation round', gate: '07/08', owner: 'R&I / NPD / Panel', notes: 'Feeds Product_Development_Report; slip-risk safety flag for marketing' },
+    { concept: '9. Development records', templateTab: 'Product_Development_Report', captured: 'Iterative formula development record: each improved version, driving feedback and competitor benchmarking', whenToComplete: 'Per SKU under development', gate: '04/05/08', owner: 'NPD (Tuan) / Project owner', notes: 'Answers "is development being recorded?"; links Change Register + Feedback Form' },
+  ],
+};
+
+const systemRequirements: RegisterConfig = {
+  key: 'systemRequirements',
+  title: 'System Requirements',
+  sheetName: 'Requirements',
+  description: 'Controlled system requirements for the MBc360 workbook.',
+  mode: 'fixed',
+  reviewOwner: 'MBc360 Development & Quality System',
+  columns: [
+    { key: 'metric', label: 'Metric', type: 'text', width: 220, editable: false },
+    { key: 'value', label: 'Value', type: 'text', width: 200, editable: false },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 360, editable: false },
+  ],
+  fixedRows: [
+    { metric: 'Controlled gates', value: '12', notes: 'Renamed for non-technical navigation; Gate IDs retained in Stage_Map' },
+    { metric: 'Skincare for Two checks', value: 'Mandatory', notes: 'Maternal products must include baby-contact/infant exposure assessment' },
+    { metric: 'Study approval trail', value: 'Required', notes: 'Proposal + Head sign-off + independent reviewer + saved records' },
+    { metric: 'Participant evidence', value: 'Required when claims need human support', notes: 'Sample size target, consent, recruitment log and final report' },
+    { metric: 'PIF / dossier mapping', value: 'Required', notes: 'ASEAN_PIF_Map before dossier export' },
+    { metric: 'Prohibited ingredient proof', value: 'Required', notes: 'Prohibited_Ingredients formula check and evidence link' },
+    { metric: 'Pregnancy/BF caution limits', value: 'Required', notes: 'PB_Caution_Limits concentration/status check' },
+    { metric: 'HCP/distributor pack', value: 'Required for partner questions', notes: 'Medical_Summary output' },
+    { metric: 'Twinkle 5 claim mapping', value: 'Required where used', notes: 'Twinkle5_Claims_Map and evidence links' },
+    { metric: 'Post-market learning', value: 'Required', notes: 'Gate 12/PostMarket feedback and CAPA' },
+    { metric: 'Topical efficacy assurance', value: 'Required', notes: 'Problem -> mechanism -> potency/source -> formula/process -> evidence -> claim wording' },
+    { metric: 'Mechanism of action map', value: 'Required for benefit claims', notes: 'Use Mechanism_Claims_Map before HCP/distributor use' },
+    { metric: 'Potency/process controls', value: 'Required', notes: 'Use Potency_Process_Control for heat-sensitive ingredients, active markers, pH, processing and GMP controls' },
+    { metric: 'Efficacy study plan', value: 'Required when claims need proof', notes: 'Use Efficacy_Study_Plan and Study_Protocol with participant number rationale' },
+    { metric: 'HCP efficacy answer', value: 'Required for pharmacy/distributor questions', notes: 'Use HCP_Efficacy_Answer and Medical_Summary' },
+    { metric: 'Post-market efficacy feedback', value: 'Required', notes: 'Capture real-world benefit feedback, complaints, CAPA and improvements' },
+    { metric: 'No silent artwork/formula corrections', value: 'Mandatory', notes: 'Use Change_Control_Comm for any artwork, label, formula, claim, supplier, process, packaging or market change' },
+    { metric: 'Artwork change sign-off', value: 'Mandatory', notes: 'Redline, proof approval, regulatory/QA sign-off, final approved PDF and obsolete version control' },
+    { metric: 'Formula change comparison', value: 'Mandatory', notes: 'Old vs new formula, impact assessment and Sales/Marketing-ready summary' },
+    { metric: 'Sales/Marketing notification', value: 'Required when customer-facing', notes: 'Notify and record acknowledgement where label/formula/claims/story/sensory/customer answers change' },
+    { metric: 'Closure evidence', value: 'Required', notes: 'Approvals, evidence links, communications, implementation status and closure notes saved' },
+    { metric: 'Product evidence summary', value: 'Required', notes: 'Product_Evidence_Summary shows safety, efficacy, PIF and HCP evidence output status.' },
+    { metric: 'Test report index', value: 'Required', notes: 'Test_Report_Index records method, score, acceptance limit, conclusion and final report link.' },
+    { metric: 'PIF checklist', value: 'Required', notes: 'PIF_Checklist_ASEAN imports the PIF List into the project file.' },
+  ],
+};
+
+const systemFeedback: RegisterConfig = {
+  key: 'systemFeedback',
+  title: 'MBc360 Feedback',
+  sheetName: 'MBC360 FEEDBACK',
+  description: 'Feedback from users on the MBc360 system itself.',
+  mode: 'register',
+  columns: [
+    { key: 'user', label: 'User', type: 'text', width: 160 },
+    { key: 'date', label: 'Date', type: 'date', width: 120 },
+    { key: 'department', label: 'Department', type: 'text', width: 160 },
+    { key: 'comments', label: 'Comments', type: 'textarea', width: 360 },
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // Registry + categories
 // ---------------------------------------------------------------------------
 
@@ -1237,7 +1442,65 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   productDevelopmentProfile,
   productDevelopmentIterations,
   productDevelopmentFeedback,
+  releasedLabelRegister,
+  labelPlatformRollout,
+  labelShipmentVerification,
+  templateIndex,
+  systemRequirements,
+  systemFeedback,
 ];
+
+// Owner-prefixed tab names + "REVIEW OWNER" strings transcribed from the V18
+// workbook, keyed by the historical (unprefixed) sheetName. The app does not
+// read the workbook at runtime, so sheetName is only a display/reference label.
+// `key` is unchanged to keep persisted localStorage data valid.
+const SHEET_METADATA: Record<string, { sheetName: string; reviewOwner: string }> = {
+  Supplier_RM_Evidence: { sheetName: 'Chidkamon-Supplier_RM', reviewOwner: 'Chidkamon (Raw Material Operations) · Co-sign: Chris (Project Manager)' },
+  Ingredient_Substitution: { sheetName: 'Chidkamon-Ingred_Substit', reviewOwner: 'Chidkamon (Raw Material Operations) · Co-sign: Chris (Project Manager)' },
+  Product_Family_Register: { sheetName: 'Chidkamon-Prod_Family_Reg', reviewOwner: 'Chidkamon (Raw Material Operations) · Co-sign: Chris (Project Manager)' },
+  Prohibited_Ingredients: { sheetName: 'ChiChu-Prohibited_Ingred', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: George (R&I), Chris (Project Manager)' },
+  PB_Caution_Limits: { sheetName: 'ChiChu-PB_Caution_Limits', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
+  Fragrance_Safety: { sheetName: 'ChiChu-Fragrance_Safety', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
+  ASEAN_PIF_Map: { sheetName: 'ChiChu-ASEAN_PIF_Map', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
+  PIF_Checklist_ASEAN: { sheetName: 'ChiChu-PIF_Checklist', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
+  PIF_Evidence_Export: { sheetName: 'ChiChu-PIF_Evid_Export', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
+  SKU_Claims_PIF_Register: { sheetName: 'ChiChu-SKU_Claims_PIF', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
+  PIF_Evidence_Closure: { sheetName: 'ChiChu-PIF_Evid_Closure', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
+  Published_Info_Approval: { sheetName: 'ChiChu-Published_Info_Ap', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
+  Formulation_Safety: { sheetName: 'Tuan-Formulation_Safety', reviewOwner: 'Tuan (Formulation) · Co-sign: Chris (Project Manager)' },
+  Formula_Change_Control: { sheetName: 'Tuan-Formula_Chg_Control', reviewOwner: 'Tuan (Formulation) · Co-sign: Chris (Project Manager)' },
+  Formulation_Change_Register: { sheetName: 'Tuan-Formulation_Chg_Reg', reviewOwner: 'Tuan (Formulation) · Co-sign: Chris (Project Manager)' },
+  Batch_Formula_Trace: { sheetName: 'Tuan-Batch_Formula_Trace', reviewOwner: 'Tuan (Formulation) · Co-sign: Chris (Project Manager)' },
+  Product_Development_Report: { sheetName: 'Tuan-Product_Dev_Report', reviewOwner: 'Tuan (Formulation – Product Development Reporting) · Co-sign: Chris (Project Manager)' },
+  Test_Report_Index: { sheetName: 'Sankar-Test_Report_Index', reviewOwner: 'Sankar (Quality) · Co-sign: Lani (HR/Quality), Chris (Project Manager)' },
+  Eye_Safety_Evidence: { sheetName: 'Sankar-Eye_Safety_Evid', reviewOwner: 'Sankar (Quality) · Co-sign: Lani (HR/Quality), Chris (Project Manager)' },
+  Micro_PET_Evidence: { sheetName: 'Sekar-Micro_PET_Evidence', reviewOwner: 'Sekar (Quality & GMP) · Co-sign: Tuan (Formulation – PET), Chris (Project Manager)' },
+  Stability_Release: { sheetName: 'Sekar-Stability_Release', reviewOwner: 'Sekar (Quality & GMP) · Co-sign: Tuan (Formulation – Stability), Chris (Project Manager)' },
+  GMP_Links: { sheetName: 'Sekar-GMP_Links', reviewOwner: 'Sekar (Quality & GMP) · Co-sign: Chris (Project Manager)' },
+  Mechanism_Claims_Map: { sheetName: 'George-Mechanism_Claims', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
+  Twinkle5_Claims_Map: { sheetName: 'George-Twinkle5_Claims', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
+  Efficacy_Assurance: { sheetName: 'George-Efficacy_Assur', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
+  Functional_Efficacy: { sheetName: 'George-Functional_Effic', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
+  Clinical_Human_Evidence: { sheetName: 'George-Clinical_Human_Ev', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
+  Study_Protocol: { sheetName: 'George-Study_Protocol', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
+  Efficacy_Study_Plan: { sheetName: 'George-Efficacy_Std_Plan', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
+  Potency_Process_Control: { sheetName: 'George-Potency_Proc_Ctrl', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
+  Medical_Summary: { sheetName: 'George-Medical_Summary', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
+  Packaging_Specs_Artwork: { sheetName: 'Lily-Packaging_Specs_Art', reviewOwner: 'Lily (Packaging) · Co-sign: Chris (Project Manager)' },
+  Artwork_Change_Control: { sheetName: 'Lily-Artwork_Chg_Control', reviewOwner: 'Lily (Packaging) · Co-sign: Chris (Project Manager)' },
+  HCP_Efficacy_Answer: { sheetName: 'Nguyen-HCP_Efficacy_Ans', reviewOwner: 'Nguyen (Sales & Marketing) · Co-sign: Chris (Project Manager)' },
+  HCP_Test_Report_Pack: { sheetName: 'Nguyen-HCP_Test_Rpt_Pack', reviewOwner: 'Nguyen (Sales & Marketing) · Co-sign: Chris (Project Manager)' },
+  Change_Templates: { sheetName: 'Nguyen-Change_Templates', reviewOwner: 'Nguyen (Sales & Marketing) · Co-sign: Chris (Project Manager)' },
+  Campaigns_Social_Media: { sheetName: 'Nguyen-Campaigns_Social', reviewOwner: 'Nguyen (Sales & Marketing) · Co-sign: Chris (Project Manager)' },
+};
+
+for (const config of REGISTER_CONFIGS) {
+  const meta = SHEET_METADATA[config.sheetName];
+  if (meta) {
+    config.sheetName = meta.sheetName;
+    config.reviewOwner = meta.reviewOwner;
+  }
+}
 
 export const REGISTER_CATEGORIES: RegisterCategory[] = [
   {
@@ -1271,8 +1534,8 @@ export const REGISTER_CATEGORIES: RegisterCategory[] = [
   {
     key: 'packaging-artwork',
     title: 'Packaging, Artwork & Change Triggers',
-    description: 'Packaging/artwork evidence and the change-trigger reference tables (Gate 05/06/10/11).',
-    registerKeys: ['packagingSpecsArtwork', 'artworkChangeControl', 'formulaChangeControl'],
+    description: 'Packaging/artwork evidence, released-label control and the change-trigger reference tables (Gate 05/06/10/11).',
+    registerKeys: ['packagingSpecsArtwork', 'artworkChangeControl', 'formulaChangeControl', 'releasedLabelRegister', 'labelPlatformRollout', 'labelShipmentVerification'],
   },
   {
     key: 'regulatory-pif',
@@ -1308,6 +1571,12 @@ export const REGISTER_CATEGORIES: RegisterCategory[] = [
     title: 'Marketing & Development Records',
     description: 'Campaign declarations and the iterative product development report.',
     registerKeys: ['campaignsSocialMedia', 'productDevelopmentProfile', 'productDevelopmentIterations', 'productDevelopmentFeedback'],
+  },
+  {
+    key: 'system-reference',
+    title: 'System Reference & Feedback',
+    description: 'Evidence template index, controlled system requirements and feedback on the MBc360 system.',
+    registerKeys: ['templateIndex', 'systemRequirements', 'systemFeedback'],
   },
 ];
 

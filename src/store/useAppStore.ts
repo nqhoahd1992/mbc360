@@ -277,10 +277,12 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: 'mbc360-demo-store',
-      version: 3,
+      version: 4,
       // v1 -> v2 changed Stage status / Gate decision values to match the real
       // MBc360 workbook (Complete/Proceed instead of Completed/Go).
       // v2 -> v3 added packagingBom and the generic evidence `registers` map.
+      // v3 -> v4 (workbook V18): added Phase 3 extended user-safety compartments,
+      // the Released Label Control registers and the system-reference sheets.
       // Old persisted demo data doesn't fit the new schema, so re-seed instead of migrating it.
       migrate: () => ({ projects: seedProjects(), changes: seedChanges() }),
     },
