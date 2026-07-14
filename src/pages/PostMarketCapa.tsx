@@ -1,0 +1,134 @@
+import { useState } from 'react';
+import { Button, Card, Empty, Form, Input, Modal, Select, Table, message } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { useParams } from 'react-router-dom';
+import { useAppStore } from '../store/useAppStore';
+import type { RiskLevel, WorkStatus } from '../types';
+import { WORK_STATUSES } from '../config/gates';
+import StatusBadge from '../components/StatusBadge';
+import PhaseDependencyAlert from '../components/PhaseDependencyAlert';
+import { isGatePassed, positionSentence } from '../utils/gateProgress';
+
+const EVENT_TYPES = [
+  'Consumer feedback', 'HCP feedback', 'Distributor feedback', 'Retailer feedback',
+  'Sales feedback', 'Social media feedback', 'Complaint', 'Adverse event / PV signal',
+  'PMS trend', 'Claim question', 'Packaging issue', 'Formula issue', 'Quality issue',
+  'FAQ update', 'CAPA', 'Product optimisation',
+];
+
+interface CapaForm {
+  market: string;
+  eventType: string;
+  summary: string;
+  severity: RiskLevel;
+  owner: string;
+  notes?: string;
+}
+
+export default function PostMarketCapa() {
+  const { projectId } = useParams();
+  const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
+  const addCapa = useAppStore((s) => s.addCapa);
+  const setCapa = useAppStore((s) => s.setCapa);
+  const [open, setOpen] = useState(false);
+  const [form] = Form.useForm<CapaForm>();
+
+  if (!project) return <Empty description="Project not found" />;
+  const id = project.identity.id;
+
+  const onCreate = async () => {
+    const values = await form.validateFields();
+    const record = {
+      ...values,
+      id: `PM-${String(project.capa.length + 1).padStart(3, '0')}`,
+      status: 'Not Started' as WorkStatus,
+    };
+    addCapa(id, record);
+    message.success(`Record ${record.id} added`);
+    setOpen(false);
+    form.resetFields();
+  };
+
+  return (
+    <div style={{ display: 'grid', gap: 16 }}>
+      <PhaseDependencyAlert
+        reached={isGatePassed(project.gates, 'SG11')}
+        message="Post-launch activity (Gate 12)"
+        description={`Post-market / CAPA applies after the product is on market — that is, once Gate 11 (launch sign-off) has passed. ${positionSentence(project)} You can pre-fill records, but they normally start after launch.`}
+      />
+      <Card
+        size="small"
+        title={`Post-Market / Complaint & CAPA Log — ${project.identity.productSku}`}
+        extra={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+            New record
+          </Button>
+        }
+      >
+      {project.capa.length === 0 ? (
+        <Empty description="No post-market records yet" />
+      ) : (
+        <Table
+          size="small"
+          rowKey={(r) => r.id}
+          dataSource={project.capa}
+          scroll={{ x: 1000 }}
+          columns={[
+            { title: 'Record ID', width: 100, dataIndex: 'id', render: (v) => <b>{v}</b> },
+            { title: 'Market', width: 110, dataIndex: 'market' },
+            { title: 'Event type', width: 180, dataIndex: 'eventType' },
+            { title: 'Summary', width: 280, dataIndex: 'summary' },
+            { title: 'Severity', width: 100, dataIndex: 'severity', render: (v) => <StatusBadge value={v} /> },
+            {
+              title: 'Status',
+              width: 150,
+              render: (_, r, i) => (
+                <Select
+                  size="small"
+                  style={{ width: 140 }}
+                  value={r.status}
+                  options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
+                  onChange={(v: WorkStatus) => setCapa(id, i, { status: v })}
+                />
+              ),
+            },
+            { title: 'Owner', width: 130, dataIndex: 'owner' },
+            {
+              title: 'Notes',
+              width: 200,
+              render: (_, r, i) => (
+                <Input size="small" value={r.notes} onChange={(e) => setCapa(id, i, { notes: e.target.value })} />
+              ),
+            },
+          ]}
+        />
+      )}
+
+      <Modal title="New Post-Market Record" open={open} onOk={onCreate} onCancel={() => setOpen(false)} okText="Add">
+        <Form form={form} layout="vertical" initialValues={{ severity: 'Low' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <Form.Item name="market" label="Market" rules={[{ required: true }]}>
+              <Select options={project.identity.markets.map((m) => ({ value: m, label: m }))} />
+            </Form.Item>
+            <Form.Item name="eventType" label="Event type" rules={[{ required: true }]}>
+              <Select options={EVENT_TYPES.map((t) => ({ value: t, label: t }))} showSearch />
+            </Form.Item>
+            <Form.Item name="severity" label="Severity / risk" rules={[{ required: true }]}>
+              <Select options={['Low', 'Medium', 'High'].map((r) => ({ value: r, label: r }))} />
+            </Form.Item>
+            <Form.Item name="owner" label="Owner" rules={[{ required: true }]}>
+              <Input />
+            </Form.Item>
+          </div>
+          <Form.Item name="summary" label="Complaint / AE summary" rules={[{ required: true }]}>
+            <Input.TextArea rows={2} />
+          </Form.Item>
+          <Form.Item name="notes" label="Notes">
+            <Input.TextArea rows={2} />
+          </Form.Item>
+        </Form>
+      </Modal>
+      </Card>
+    </div>
+  );
+}
