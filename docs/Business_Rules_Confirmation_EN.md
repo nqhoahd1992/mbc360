@@ -46,7 +46,12 @@
 - Should ingredients/suppliers be shared master data (entered once, referenced by every project) or kept independent per project?
 - If shared, who is authorized to create/edit this master data?
 
-**Subject-matter team decision:** ______________________________________________
+**Subject-matter team decision:** Raw Materials master data already exists in the **Cosmetri** software and will be sourced via its **API** — no re-entry/duplication inside MBc360.
+
+**Still needs confirmation (not yet answered):**
+- Does **Supplier** master data also live in Cosmetri, or is it tracked in a separate system?
+- Do the evidence documents referenced by `Supplier_RM_Evidence` (SDS/CoA/TDS/allergen statements, etc.) also live in Cosmetri, or does MBc360 still need to store/link them separately?
+- Who is authorized to create/edit data in Cosmetri — is MBc360 read-only via the API, or does it also write back?
 
 ---
 

@@ -46,7 +46,12 @@
 - Nguyên liệu/nhà cung cấp có nên là master data dùng chung (nhập một lần, mọi project tham chiếu tới) hay mỗi project độc lập?
 - Nếu dùng chung, ai có quyền tạo/sửa master data này?
 
-**Quyết định của bộ phận chuyên môn:** ______________________________________________
+**Quyết định của bộ phận chuyên môn:** Đã có master data Raw Materials trong phần mềm **Cosmetri**, sẽ lấy dữ liệu qua **API** — không nhập lại/nhân bản trong MBc360.
+
+**Còn cần xác nhận thêm (chưa trả lời):**
+- Master data **Supplier** (nhà cung cấp) có cũng nằm trong Cosmetri không, hay quản lý ở hệ thống khác?
+- Các tài liệu bằng chứng của `Supplier_RM_Evidence` (SDS/CoA/TDS/Allergen statement...) có lưu trong Cosmetri luôn không, hay MBc360 vẫn cần lưu/link riêng?
+- Ai có quyền tạo/sửa dữ liệu trong Cosmetri — MBc360 chỉ đọc (read-only qua API) hay có ghi ngược lại không?
 
 ---
 
