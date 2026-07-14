@@ -206,12 +206,27 @@
 
 **Context:** The `PIF_Evidence_Closure` sheet lists triggers (new claim, new public information, formula change, distributor/HCP question, etc.) with a **"Blocks external use until closed?"** column — every row is marked **Y**. For example: a new claim must be added to `SKU_Claims_PIF_Register` with evidence attached before use; new public information must go through `Published_Info_Approval` before publication.
 
-**Current demo assumption:** Not implemented — these two sheets (`SKU_Claims_PIF_Register`, `Published_Info_Approval`) have no screens yet, and the app has no mechanism that blocks "external use".
+**Current demo assumption:** These two sheets (`SKU_Claims_PIF_Register`, `Published_Info_Approval`) now have data-entry screens (register-style), but they only **record** information — the app has no mechanism that actually blocks "external use".
 
 **Needs clarification:**
 1. What does "blocks external use" concretely block within the system — does it prevent Gate 10/11 from turning Complete, or is it purely a procedural rule (enforced by people, since "external use" — sending an email, posting on social media — happens outside the system and can't literally be blocked by software)?
 2. If a claim/public information item is not yet closed (no PIF link attached) but Gate 10 is already Complete — is that considered a violation/conflict worth flagging, or are the two entirely independent?
 3. Is an attestation/confirmation step needed before content is published externally, so the system at least records that the user checked the PIF closure condition before publishing?
+
+**Subject-matter team decision:** ______________________________________________
+
+---
+
+### C7. Should safety/PIF evidence registers be a mandatory condition to pass a gate?
+
+**Context:** The app now has ~37 evidence registers (Formulation_Safety, Prohibited_Ingredients, PB_Caution_Limits, PIF_Checklist_ASEAN, ...), each tagged with a "Gate 0X" label for reference. That tag is **purely cosmetic** — the gate-pass mechanism (see B1) only reads Stage status + Gate decision from the Phase Gate Flow table, and never reads data inside these evidence registers.
+
+**Current demo assumption:** It's possible for Gate 07 to already be Complete + Proceed while `Prohibited_Ingredients` still has a row marked "REVIEW - possible formula match" unresolved, or while `Formulation_Safety`'s "Final safety release" is still "Not Started" — the system does not warn or block in that case.
+
+**Needs clarification:**
+1. Are there specific evidence registers (e.g. Formulation_Safety's Final Safety Sign-off, or Prohibited_Ingredients having no remaining "REVIEW"/"Prohibited - remove" rows) that should become a **mandatory condition** for Gate 07/10 to be allowed to reach Complete?
+2. If so, should it hard-block (disallow selecting a Proceed decision) or only soft-warn (allow Proceed but show a banner flagging unresolved evidence)?
+3. Should this apply to all 37 registers, or only a subset of "safety-critical" ones?
 
 **Subject-matter team decision:** ______________________________________________
 

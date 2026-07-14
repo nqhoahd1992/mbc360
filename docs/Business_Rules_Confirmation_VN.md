@@ -206,12 +206,27 @@
 
 **Bối cảnh:** Sheet `PIF_Evidence_Closure` liệt kê các "trigger" (claim mới, thông tin công khai mới, thay đổi công thức, câu hỏi từ distributor/HCP...) kèm cột **"Blocks external use until closed?"** — tất cả đều đánh dấu **Y**. Ví dụ: claim mới phải được thêm vào `SKU_Claims_PIF_Register` và đính bằng chứng trước khi được dùng; thông tin công khai mới phải qua `Published_Info_Approval` trước khi xuất bản.
 
-**Giả định hiện tại trong demo:** Chưa triển khai — hai sheet này (`SKU_Claims_PIF_Register`, `Published_Info_Approval`) chưa có màn hình, và app chưa có cơ chế nào chặn "external use".
+**Giả định hiện tại trong demo:** Hai sheet này (`SKU_Claims_PIF_Register`, `Published_Info_Approval`) nay đã có màn hình nhập liệu (dạng register), nhưng chỉ là **ghi nhận thông tin** — app chưa có cơ chế nào thực sự chặn "external use".
 
 **Cần làm rõ:**
 1. "Blocks external use" ở đây nghĩa là chặn thao tác gì cụ thể trong hệ thống — không cho Gate 10/11 chuyển sang Complete, hay chỉ là quy tắc thủ tục (con người tự kiểm soát, vì "external use" như gửi email/đăng bài xảy ra ngoài hệ thống nên phần mềm không thể chặn trực tiếp)?
 2. Nếu một claim/thông tin công khai chưa đóng (chưa attach PIF link) mà Gate 10 vẫn đã Complete — điều đó có được coi là vi phạm/mâu thuẫn cần cảnh báo không, hay hai việc hoàn toàn độc lập?
 3. Có cần thêm một bước xác nhận/cam kết (attestation) trước khi phát hành nội dung ra ngoài, để hệ thống ít nhất ghi nhận được rằng người dùng đã kiểm tra điều kiện đóng PIF trước khi công bố?
+
+**Quyết định của bộ phận chuyên môn:** ______________________________________________
+
+---
+
+### C7. Các register an toàn/PIF có nên là điều kiện bắt buộc để pass gate không?
+
+**Bối cảnh:** App hiện có ~37 bảng bằng chứng (Formulation_Safety, Prohibited_Ingredients, PB_Caution_Limits, PIF_Checklist_ASEAN...), mỗi bảng đều gắn nhãn "Gate 0X" để tham chiếu. Nhưng nhãn này **thuần hiển thị** — cơ chế pass gate (xem B1) chỉ đọc Stage status + Gate decision trong bảng Phase Gate Flow, hoàn toàn không đọc dữ liệu trong các bảng bằng chứng này.
+
+**Giả định hiện tại trong demo:** Có thể xảy ra trường hợp Gate 07 đã Complete + Proceed trong khi `Prohibited_Ingredients` vẫn còn dòng "REVIEW - possible formula match" chưa xử lý, hoặc `Formulation_Safety`'s "Final safety release" vẫn "Not Started" — hệ thống không cảnh báo hay chặn gì.
+
+**Cần làm rõ:**
+1. Có bảng bằng chứng cụ thể nào (ví dụ Formulation_Safety's Final Safety Sign-off, hoặc Prohibited_Ingredients không còn dòng "REVIEW"/"Prohibited - remove") cần trở thành **điều kiện bắt buộc** để Gate 07/10 được phép Complete không?
+2. Nếu có, nên chặn cứng (không cho chọn decision Proceed) hay chỉ cảnh báo mềm (cho phép Proceed nhưng hiện banner nhắc còn bằng chứng chưa đóng)?
+3. Toàn bộ 37 bảng, hay chỉ một số bảng "an toàn tới hạn" (safety-critical) mới cần ràng buộc này?
 
 **Quyết định của bộ phận chuyên môn:** ______________________________________________
 
