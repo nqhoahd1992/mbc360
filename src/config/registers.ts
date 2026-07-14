@@ -240,6 +240,26 @@ const fragranceSafety: RegisterConfig = {
   ],
 };
 
+const fragranceAllergenLog: RegisterConfig = {
+  key: 'fragranceAllergenLog',
+  title: 'Fragrance / Allergen Log',
+  sheetName: 'Fragrance_Safety',
+  description: 'One row per fragrance used — IFRA category, allergen statement and PB caution review.',
+  mode: 'register',
+  gate: '07',
+  columns: [
+    { key: 'fragranceCode', label: 'Fragrance code', type: 'text', width: 130 },
+    { key: 'supplier', label: 'Supplier', type: 'text', width: 140 },
+    { key: 'useLevelPercent', label: 'Use level %', type: 'number', width: 100 },
+    { key: 'ifraCategory', label: 'IFRA category', type: 'text', width: 130 },
+    { key: 'ifraLink', label: 'IFRA link', type: 'text', width: 120 },
+    { key: 'allergenStatementLink', label: 'Allergen statement link', type: 'text', width: 160 },
+    { key: 'pbCautionReview', label: 'PB caution review', type: 'text', width: 150 },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 170 },
+  ],
+};
+
 const microPetEvidence: RegisterConfig = {
   key: 'microPetEvidence',
   title: 'Microbiology & PET Evidence',
@@ -643,6 +663,14 @@ const aseanPifMap: RegisterConfig = {
     { requirement: 'Ownership confirmation', requiredDocument: 'Brand/product ownership confirmation', owner: 'Regulatory / Legal', linkedGate: '10_Dossier_Claims', notes: 'Attach signed ownership/authority file' },
     { requirement: 'Formula / composition', requiredDocument: 'Full formula, INCI, % range, function and supplier', owner: 'R&I', linkedGate: '05_Formula_BOM_Costing', notes: 'Formula_BOM must be current' },
     { requirement: 'Manufacturing method', requiredDocument: 'Process flow, manufacturing instruction, batch record link', owner: 'Manufacturing / Quality', linkedGate: '11_Launch_SignOff', notes: 'Controlled manufacturing version' },
+    { requirement: 'GMP evidence', requiredDocument: 'GMP certificate, site evidence, manufacturer qualification', owner: 'Quality', linkedGate: '11_Launch_SignOff', notes: 'Link site qualification' },
+    { requirement: 'Safety assessment / CPSR', requiredDocument: 'Safety assessment and toxicological review', owner: 'Safety / Regulatory', linkedGate: '07_Maternal_Baby_Safety', notes: 'Use Formulation_Safety' },
+    { requirement: 'Raw material documentation', requiredDocument: 'SDS, CoA, TDS/spec, allergens, impurities, heavy metals', owner: 'R&I / Procurement', linkedGate: '04_Ingredient_Screening', notes: 'Use Supplier_RM_Evidence' },
+    { requirement: 'Stability and compatibility', requiredDocument: 'Accelerated/real-time stability, pack compatibility', owner: 'Quality / R&I', linkedGate: '09_Stability_Release', notes: 'Attach protocol and report' },
+    { requirement: 'Micro / PET / preservative efficacy', requiredDocument: 'Micro specs, PET/challenge, preservation rationale', owner: 'Quality', linkedGate: '08_Testing_Validation', notes: 'Required for aqueous/preserved products' },
+    { requirement: 'Packaging and artwork', requiredDocument: 'Label, carton, component specs and artwork approval', owner: 'Packaging / Regulatory', linkedGate: '06_Packaging_Artwork', notes: 'Country-specific label checks' },
+    { requirement: 'Claim substantiation', requiredDocument: 'Claim matrix, clinical/literature/internal evidence', owner: 'Marketing / Regulatory / R&I', linkedGate: '03_Concept_Claims', notes: 'Do not approve unsupported claims' },
+    { requirement: 'Adverse event / post-market system', requiredDocument: 'Complaint, AE, PV/PMS and CAPA pathway', owner: 'Quality / PV-PMS', linkedGate: '12_PostMarket_Improve', notes: 'Must be live after launch' },
   ],
 };
 
@@ -750,6 +778,24 @@ const pifEvidenceClosure: RegisterConfig = {
     { trigger: 'Formula/supplier/fragrance/pH/process/artwork change', requiredAction: 'Assess evidence validity and update linked PIF records', personInCharge: 'R&I / Regulatory / QA', supportingTemplate: 'Change_Control_Comm', linkedGate: 'ALL', blocksExternalUse: 'Y' },
     { trigger: 'Distributor/pharmacy/HCP question', requiredAction: 'Answer only from approved PMF/PIF evidence and wording', personInCharge: 'Regulatory / Scientific Review', supportingTemplate: 'HCP_Test_Report_Pack', linkedGate: '10/11', blocksExternalUse: 'Y' },
     { trigger: 'Updated public information', requiredAction: 'Check publication approval and attach final record', personInCharge: 'Content owner / Regulatory', supportingTemplate: 'Published_Info_Approval', linkedGate: '10/11', blocksExternalUse: 'Y' },
+  ],
+};
+
+const publicationRules: RegisterConfig = {
+  key: 'publicationRules',
+  title: 'Publication Rules',
+  sheetName: 'Published_Info_Approval',
+  description: 'Reference rules applied by the register below.',
+  mode: 'fixed',
+  gate: '10/11',
+  columns: [
+    { key: 'rule', label: 'Publication rule', type: 'text', width: 200, editable: false },
+    { key: 'requirement', label: 'Requirement', type: 'text', width: 500, editable: false },
+  ],
+  fixedRows: [
+    { rule: 'What may be published', requirement: 'Only approved wording, terminology, claim category, evidence level, limitation, applicable SKU/market/version and final public link.' },
+    { rule: 'What must not be published', requirement: 'Draft data, unsupported superlatives, unreviewed translations, therapeutic implications, raw report excerpts without approved interpretation, confidential formula details or claims without PMF/PIF support.' },
+    { rule: 'Minimum sign-off', requirement: 'Content owner, technical/safety reviewer where technical claims are made, regulatory/claims reviewer, quality where safety/release/PIF is affected, brand owner and final approver where required.' },
   ],
 };
 
@@ -1001,6 +1047,24 @@ const campaignsSocialMedia: RegisterConfig = {
   ],
 };
 
+const productDevelopmentProfile: RegisterConfig = {
+  key: 'productDevelopmentProfile',
+  title: 'Product / Project Identification',
+  sheetName: 'Product_Development_Report',
+  description: 'NPD-specific identification fields (most other identity fields already live on Project Identification).',
+  mode: 'fixed',
+  gate: '04/05/08',
+  columns: [
+    { key: 'field', label: 'Field', type: 'text', width: 200, editable: false },
+    { key: 'value', label: 'Value', type: 'text', width: 260 },
+  ],
+  fixedRows: [
+    { field: 'NPD lead (formulator)' },
+    { field: 'Competitor benchmarks', value: 'e.g. Massata, Kangaroo Mommy' },
+    { field: 'Overall status' },
+  ],
+};
+
 const productDevelopmentIterations: RegisterConfig = {
   key: 'productDevelopmentIterations',
   title: 'Development Iteration Log',
@@ -1138,6 +1202,7 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   ingredientSubstitution,
   eyeSafetyEvidence,
   fragranceSafety,
+  fragranceAllergenLog,
   microPetEvidence,
   stabilityRelease,
   potencyProcessControl,
@@ -1158,6 +1223,7 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   pifEvidenceExport,
   skuClaimsPifRegister,
   pifEvidenceClosure,
+  publicationRules,
   publishedInfoApproval,
   medicalSummary,
   hcpEfficacyAnswer,
@@ -1168,6 +1234,7 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   changeTemplates,
   gmpLinks,
   campaignsSocialMedia,
+  productDevelopmentProfile,
   productDevelopmentIterations,
   productDevelopmentFeedback,
 ];
@@ -1183,7 +1250,7 @@ export const REGISTER_CATEGORIES: RegisterCategory[] = [
     key: 'formulation-quality',
     title: 'Formulation Quality & Stability',
     description: 'Eye safety, fragrance, microbiology, stability and potency/process control evidence (Gate 07-09).',
-    registerKeys: ['eyeSafetyEvidence', 'fragranceSafety', 'microPetEvidence', 'stabilityRelease', 'potencyProcessControl'],
+    registerKeys: ['eyeSafetyEvidence', 'fragranceSafety', 'fragranceAllergenLog', 'microPetEvidence', 'stabilityRelease', 'potencyProcessControl'],
   },
   {
     key: 'efficacy-claims',
@@ -1217,6 +1284,7 @@ export const REGISTER_CATEGORIES: RegisterCategory[] = [
       'pifEvidenceExport',
       'skuClaimsPifRegister',
       'pifEvidenceClosure',
+      'publicationRules',
       'publishedInfoApproval',
       'medicalSummary',
       'hcpEfficacyAnswer',
@@ -1239,7 +1307,7 @@ export const REGISTER_CATEGORIES: RegisterCategory[] = [
     key: 'marketing-development',
     title: 'Marketing & Development Records',
     description: 'Campaign declarations and the iterative product development report.',
-    registerKeys: ['campaignsSocialMedia', 'productDevelopmentIterations', 'productDevelopmentFeedback'],
+    registerKeys: ['campaignsSocialMedia', 'productDevelopmentProfile', 'productDevelopmentIterations', 'productDevelopmentFeedback'],
   },
 ];
 
