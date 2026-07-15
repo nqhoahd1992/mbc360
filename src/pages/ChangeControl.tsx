@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { Alert, Button, Card, DatePicker, Form, Input, Modal, Select, Space, Switch, Table, Tag, message } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
 import type { ChangeRecord, RiskLevel, WorkStatus } from '../types';
 import { WORK_STATUSES } from '../config/gates';
 import {
+  CHANGE_RACI,
   CHANGE_TRIGGERS,
   getChangeTrigger,
   phaseShortLabel,
   triggerPhases,
   type ChangeTriggerCategory,
+  type RaciRole,
 } from '../config/changeTriggers';
 import StatusBadge from '../components/StatusBadge';
 
@@ -20,6 +22,13 @@ const AFFECTED_AREAS = [
 ];
 
 const TRIGGER_CATEGORIES: ChangeTriggerCategory[] = ['Formula', 'Artwork / Label', 'PIF / Evidence'];
+
+const RACI_ROLE_COLOR: Record<RaciRole, string> = {
+  Accountable: 'red',
+  Responsible: 'blue',
+  Approver: 'green',
+  'Informed / acknowledgement': 'default',
+};
 
 const triggerSelectOptions = TRIGGER_CATEGORIES.map((cat) => ({
   label: cat,
@@ -73,9 +82,12 @@ export default function ChangeControl() {
   const addChange = useAppStore((s) => s.addChange);
   const setChange = useAppStore((s) => s.setChange);
   const [open, setOpen] = useState(false);
+  const [refOpen, setRefOpen] = useState(false);
   const [form] = Form.useForm<ChangeForm>();
   const selectedTriggerId = Form.useWatch('triggerId', form);
   const selectedTrigger = getChangeTrigger(selectedTriggerId);
+  // Default is Yes (see initialValues); only hide the message when explicitly No.
+  const commRequired = Form.useWatch('communicationRequired', form) !== false;
 
   const onCreate = async () => {
     const values = await form.validateFields();
@@ -107,9 +119,14 @@ export default function ChangeControl() {
         size="small"
         title="Change Control & Communication Log"
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
-            Open Change Request
-          </Button>
+          <Space>
+            <Button icon={<SearchOutlined />} onClick={() => setRefOpen(true)}>
+              Trigger reference
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+              Open Change Request
+            </Button>
+          </Space>
         }
       >
         <Table
@@ -173,7 +190,13 @@ export default function ChangeControl() {
         />
       </Card>
 
-      <Card size="small" title="Change trigger reference — affected gates & phases">
+      <Modal
+        title="Change trigger reference — affected gates & phases"
+        open={refOpen}
+        onCancel={() => setRefOpen(false)}
+        footer={null}
+        width={1040}
+      >
         <Table
           size="small"
           rowKey={(t) => t.id}
@@ -194,6 +217,30 @@ export default function ChangeControl() {
             { title: 'Affected gates / phases', width: 280, render: (_, t) => <AffectedTags gates={t.gates} /> },
             { title: 'Owner', width: 150, dataIndex: 'owner' },
             { title: 'Required sign-offs', width: 200, dataIndex: 'signOffs', render: (v) => v ?? '—' },
+          ]}
+        />
+      </Modal>
+
+      <Card
+        size="small"
+        title="RACI / Closure control — who must contribute before a change can close"
+      >
+        <Table
+          size="small"
+          rowKey={(r) => r.functionName}
+          dataSource={CHANGE_RACI}
+          pagination={false}
+          scroll={{ x: 900 }}
+          columns={[
+            { title: 'Function', width: 160, dataIndex: 'functionName', render: (v) => <b>{v}</b> },
+            {
+              title: 'Role',
+              width: 190,
+              dataIndex: 'role',
+              render: (v: RaciRole) => <Tag color={RACI_ROLE_COLOR[v]}>{v}</Tag>,
+            },
+            { title: 'Required contribution', width: 300, dataIndex: 'contribution' },
+            { title: 'Linked evidence / sheet', width: 260, dataIndex: 'linkedEvidence' },
           ]}
         />
       </Card>
@@ -275,9 +322,11 @@ export default function ChangeControl() {
           >
             <Switch />
           </Form.Item>
-          <Form.Item name="salesMarketingMessage" label="Sales / Marketing message">
-            <Input.TextArea rows={2} placeholder="Customer-facing explanation if applicable" />
-          </Form.Item>
+          {commRequired && (
+            <Form.Item name="salesMarketingMessage" label="Sales / Marketing message" preserve={false}>
+              <Input.TextArea rows={2} placeholder="Customer-facing explanation if applicable" />
+            </Form.Item>
+          )}
           <Form.Item name="notes" label="Notes">
             <Input.TextArea rows={2} />
           </Form.Item>

@@ -21,6 +21,7 @@ interface NewProjectForm {
 
 export default function ProjectList() {
   const projects = useAppStore((s) => s.projects);
+  const changes = useAppStore((s) => s.changes);
   const createProject = useAppStore((s) => s.createProject);
   const deleteProject = useAppStore((s) => s.deleteProject);
   const [open, setOpen] = useState(false);
@@ -62,7 +63,7 @@ export default function ProjectList() {
         size="small"
         rowKey={(p) => p.identity.id}
         dataSource={projects}
-        scroll={{ x: 900 }}
+        scroll={{ x: 1060 }}
         columns={[
           {
             title: 'Project ID',
@@ -86,6 +87,25 @@ export default function ProjectList() {
                 ))}
               </div>
             ),
+          },
+          {
+            title: 'Change requests',
+            width: 150,
+            render: (_, p) => {
+              const list = changes.filter((c) => c.projectId === p.identity.id);
+              if (list.length === 0) return <span style={{ color: '#bbb' }}>0</span>;
+              const openCount = list.filter((c) => c.status !== 'Completed').length;
+              return (
+                <Link to="/change-control">
+                  <b>{list.length}</b>
+                  {openCount > 0 && (
+                    <Tag color="orange" style={{ marginInlineStart: 6, marginInlineEnd: 0 }}>
+                      {openCount} open
+                    </Tag>
+                  )}
+                </Link>
+              );
+            },
           },
           {
             title: 'Progress',

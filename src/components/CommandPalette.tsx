@@ -39,7 +39,6 @@ export default function CommandPalette({
   const navigate = useNavigate();
   const location = useLocation();
   const projects = useAppStore((s) => s.projects);
-  const registerGrouping = useAppStore((s) => s.registerGrouping);
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<InputRef>(null);
@@ -105,28 +104,23 @@ export default function CommandPalette({
           keywords: ph.title,
         });
       }
-      list.push({ id: `ws-bom-${id}`, title: 'BOM & Costing', group: ws, path: `/projects/${id}/bom` });
-      list.push({ id: `ws-safety-${id}`, title: 'Formulation Safety', group: ws, path: `/projects/${id}/formulation-safety` });
-      list.push({ id: `ws-evidence-${id}`, title: 'Evidence Summary', group: ws, path: `/projects/${id}/evidence` });
-      list.push({ id: `ws-feedback-${id}`, title: 'Panel Feedback', group: ws, path: `/projects/${id}/feedback` });
-      list.push({ id: `ws-postmarket-${id}`, title: 'Post-Market / CAPA', group: ws, path: `/projects/${id}/post-market` });
-
-      const reg = `${id} · Registers`;
-      for (const grp of getNavGroups(registerGrouping)) {
+      // Everything else is categorised by RESPONSIBILITY (department), covering
+      // both registers and the department's dedicated pages (BOM, Change Control…).
+      for (const grp of getNavGroups('department')) {
+        const g = `${id} · ${grp.title}`;
         list.push({
           id: `reg-cat-${grp.key}-${id}`,
-          title: grp.title,
-          group: reg,
+          title: `${grp.title} — Overview`,
+          group: g,
           path: `/projects/${id}/registers/cat/${grp.key}`,
           keywords: 'overview',
         });
         for (const item of grp.items) {
-          // Page-backed sheets are already reachable from the Workspace group.
-          if (!item.registerKey) continue;
+          const itemKey = item.registerKey ?? item.page ?? item.href ?? item.title;
           list.push({
-            id: `reg-${item.registerKey}-${id}`,
+            id: `reg-${grp.key}-${itemKey}-${id}`,
             title: item.title,
-            group: reg,
+            group: g,
             path: navItemHref(item, id),
             keywords: `${grp.title} ${item.sheetName ?? ''}`,
           });
@@ -135,7 +129,7 @@ export default function CommandPalette({
     }
 
     return list;
-  }, [projects, activeProject, registerGrouping]);
+  }, [projects, activeProject]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();

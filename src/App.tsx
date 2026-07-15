@@ -9,7 +9,6 @@ import {
   ReloadOutlined,
   RightCircleFilled,
   SearchOutlined,
-  SwapOutlined,
 } from '@ant-design/icons';
 import { HashRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from './store/useAppStore';
@@ -81,7 +80,6 @@ function SideMenu() {
     () => [
       { key: '/', icon: <AppstoreOutlined />, label: <Link to="/">Dashboard</Link> },
       { key: '/projects', icon: <FolderOpenOutlined />, label: <Link to="/projects">All Projects</Link> },
-      { key: '/change-control', icon: <SwapOutlined />, label: <Link to="/change-control">Change Control</Link> },
       { key: '/system-guide', icon: <BookOutlined />, label: <Link to="/system-guide">System Guide</Link> },
     ],
     [],
@@ -183,11 +181,21 @@ function SideMenu() {
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   const catInPath = location.pathname.match(/\/registers\/cat\/([^/]+)/)?.[1];
   const regInPath = location.pathname.match(/\/registers\/reg\/([^/]+)/)?.[1];
+  // A department can also link to a dedicated page (BOM, Change Control, …); when
+  // the current route matches one of those, open its submenu too.
+  const pageGroup =
+    !catInPath && !regInPath && projectId
+      ? getNavGroups(registerGrouping).find((g) =>
+          g.items.some((it) => navItemHref(it, projectId) === location.pathname),
+        )
+      : undefined;
   const activeSubKey = catInPath
     ? `registers-sub-${catInPath}`
     : regInPath
       ? `registers-sub-${findNavGroupForRegister(regInPath, registerGrouping)?.key}`
-      : undefined;
+      : pageGroup
+        ? `registers-sub-${pageGroup.key}`
+        : undefined;
   useEffect(() => {
     if (activeSubKey) {
       setOpenKeys((prev) => (prev.includes(activeSubKey) ? prev : [...prev, activeSubKey]));

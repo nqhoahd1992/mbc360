@@ -170,6 +170,50 @@ export const CHANGE_TRIGGERS: ChangeTrigger[] = [
   },
 ];
 
+// RACI / Closure Control — the standard responsibility matrix that gates closure
+// of every change (transcribed from the Change_Ctrl_Comm sheet's second block).
+export type RaciRole = 'Accountable' | 'Responsible' | 'Approver' | 'Informed / acknowledgement';
+
+export interface ChangeRaciRow {
+  functionName: string;
+  role: RaciRole;
+  contribution: string;
+  linkedEvidence: string;
+}
+
+export const CHANGE_RACI: ChangeRaciRow[] = [
+  {
+    functionName: 'Project owner',
+    role: 'Accountable',
+    contribution: 'Opens change, coordinates owners and closure',
+    linkedEvidence: 'Change_Control_Comm',
+  },
+  {
+    functionName: 'R&I / Formulation',
+    role: 'Responsible',
+    contribution: 'Assesses formula/process/ingredient impact',
+    linkedEvidence: 'Formula_Change_Control',
+  },
+  {
+    functionName: 'Regulatory',
+    role: 'Approver',
+    contribution: 'Assesses label, claims, market and PIF impact',
+    linkedEvidence: 'Artwork_Change_Control; PIF_Evidence_Closure',
+  },
+  {
+    functionName: 'Quality',
+    role: 'Approver',
+    contribution: 'Assesses release, GMP, stability, deviation/CAPA impact',
+    linkedEvidence: 'GMP_Links; Stability_Release',
+  },
+  {
+    functionName: 'Sales/Marketing',
+    role: 'Informed / acknowledgement',
+    contribution: 'Receives approved external/customer-facing explanation',
+    linkedEvidence: 'Change_Templates',
+  },
+];
+
 export function getChangeTrigger(id: string | undefined): ChangeTrigger | undefined {
   if (!id) return undefined;
   return CHANGE_TRIGGERS.find((t) => t.id === id);
