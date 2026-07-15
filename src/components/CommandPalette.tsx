@@ -5,7 +5,7 @@ import { SearchOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { PHASES } from '../config/gates';
-import { getRegisterCategories, getRegisterConfig } from '../config/registers';
+import { getNavGroups, navItemHref } from '../config/registers';
 
 interface Command {
   id: string;
@@ -112,23 +112,23 @@ export default function CommandPalette({
       list.push({ id: `ws-postmarket-${id}`, title: 'Post-Market / CAPA', group: ws, path: `/projects/${id}/post-market` });
 
       const reg = `${id} · Registers`;
-      for (const cat of getRegisterCategories(registerGrouping)) {
+      for (const grp of getNavGroups(registerGrouping)) {
         list.push({
-          id: `reg-cat-${cat.key}-${id}`,
-          title: cat.title,
+          id: `reg-cat-${grp.key}-${id}`,
+          title: grp.title,
           group: reg,
-          path: `/projects/${id}/registers/cat/${cat.key}`,
+          path: `/projects/${id}/registers/cat/${grp.key}`,
           keywords: 'overview',
         });
-        for (const rk of cat.registerKeys) {
-          const config = getRegisterConfig(rk);
-          if (!config) continue;
+        for (const item of grp.items) {
+          // Page-backed sheets are already reachable from the Workspace group.
+          if (!item.registerKey) continue;
           list.push({
-            id: `reg-${rk}-${id}`,
-            title: config.title,
+            id: `reg-${item.registerKey}-${id}`,
+            title: item.title,
             group: reg,
-            path: `/projects/${id}/registers/reg/${rk}`,
-            keywords: `${cat.title} ${config.sheetName}`,
+            path: navItemHref(item, id),
+            keywords: `${grp.title} ${item.sheetName ?? ''}`,
           });
         }
       }

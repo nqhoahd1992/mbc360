@@ -2,7 +2,14 @@ import { Card, Empty, Progress, Tag, Typography } from 'antd';
 import { RightOutlined } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { findCategoryForRegister, getRegisterCategory, getRegisterConfig, type RegisterConfig } from '../config/registers';
+import {
+  findNavGroupForRegister,
+  getNavGroup,
+  getRegisterConfig,
+  navItemHref,
+  type NavItem,
+  type RegisterConfig,
+} from '../config/registers';
 import type { RegisterRow } from '../types';
 import DynamicTable from '../components/DynamicTable';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
@@ -33,8 +40,8 @@ export default function RegisterHubPage() {
   if (registerKey) {
     const config = getRegisterConfig(registerKey);
     if (!config) return <Empty description="Register not found" />;
-    // Breadcrumb parent = this register's category in the ACTIVE grouping view.
-    const parent = findCategoryForRegister(registerKey, registerGrouping);
+    // Breadcrumb parent = this register's group in the ACTIVE grouping view.
+    const parent = findNavGroupForRegister(registerKey, registerGrouping);
     return (
       <div style={{ display: 'grid', gap: 16 }}>
         <div>
@@ -59,22 +66,75 @@ export default function RegisterHubPage() {
     );
   }
 
-  // --- Category overview ----------------------------------------------------
-  const category = getRegisterCategory(categoryKey);
-  if (!category) return <Empty description="Not found" />;
+  // --- Group overview -------------------------------------------------------
+  const group = getNavGroup(categoryKey);
+  if (!group) return <Empty description="Not found" />;
+
+  const renderCard = (item: NavItem) => {
+    const config = item.registerKey ? getRegisterConfig(item.registerKey) : undefined;
+    const rows = item.registerKey ? project.registers[item.registerKey] ?? [] : [];
+    const progress = config ? registerProgress(config, rows) : null;
+    return (
+      <Link key={item.registerKey ?? item.title} to={navItemHref(item, id)} style={{ display: 'block' }}>
+        <Card size="small" hoverable style={{ height: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 600 }}>{item.title}</div>
+              {item.sheetName && (
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {item.sheetName}
+                </Typography.Text>
+              )}
+            </div>
+            <RightOutlined style={{ color: '#bbb', marginTop: 4 }} />
+          </div>
+          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {config?.gate && <Tag>Gate {config.gate}</Tag>}
+            {config ? (
+              <Tag color={config.mode === 'register' ? 'blue' : 'default'}>
+                {config.mode === 'register' ? 'Register' : 'Reference'}
+              </Tag>
+            ) : (
+              <Tag color="purple">Page</Tag>
+            )}
+            {config && (
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                {rows.length} {rows.length === 1 ? 'row' : 'rows'}
+              </Typography.Text>
+            )}
+          </div>
+          {progress && (
+            <Progress
+              size="small"
+              percent={progress.percent}
+              style={{ marginTop: 8 }}
+              format={() => `${progress.completed}/${progress.total}`}
+            />
+          )}
+        </Card>
+      </Link>
+    );
+  };
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div>
         <Typography.Title level={4} style={{ margin: 0 }}>
-          {category.title}
+          {group.title}
         </Typography.Title>
-        <Typography.Text type="secondary">{category.description}</Typography.Text>
+        <Typography.Text type="secondary">{group.description}</Typography.Text>
+        {group.reviewOwner && (
+          <div style={{ marginTop: 4 }}>
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              Review owner: {group.reviewOwner}
+            </Typography.Text>
+          </div>
+        )}
       </div>
 
       <ProjectIdentificationCard identity={project.identity} />
 
-      <Card size="small" title={`Registers in this section (${category.registerKeys.length})`}>
+      <Card size="small" title={`Sheets in this section (${group.items.length})`}>
         <div
           style={{
             display: 'grid',
@@ -82,44 +142,7 @@ export default function RegisterHubPage() {
             gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
           }}
         >
-          {category.registerKeys.map((key) => {
-            const config = getRegisterConfig(key);
-            if (!config) return null;
-            const rows = project.registers[key] ?? [];
-            const progress = registerProgress(config, rows);
-            return (
-              <Link key={key} to={`/projects/${id}/registers/reg/${key}`} style={{ display: 'block' }}>
-                <Card size="small" hoverable style={{ height: '100%' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 600 }}>{config.title}</div>
-                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                        {config.sheetName}
-                      </Typography.Text>
-                    </div>
-                    <RightOutlined style={{ color: '#bbb', marginTop: 4 }} />
-                  </div>
-                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    {config.gate && <Tag>Gate {config.gate}</Tag>}
-                    <Tag color={config.mode === 'register' ? 'blue' : 'default'}>
-                      {config.mode === 'register' ? 'Register' : 'Reference'}
-                    </Tag>
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      {rows.length} {rows.length === 1 ? 'row' : 'rows'}
-                    </Typography.Text>
-                  </div>
-                  {progress && (
-                    <Progress
-                      size="small"
-                      percent={progress.percent}
-                      style={{ marginTop: 8 }}
-                      format={() => `${progress.completed}/${progress.total}`}
-                    />
-                  )}
-                </Card>
-              </Link>
-            );
-          })}
+          {group.items.map(renderCard)}
         </div>
       </Card>
     </div>

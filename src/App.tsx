@@ -27,7 +27,7 @@ import CommandPalette from './components/CommandPalette';
 import FormulationSafety from './pages/FormulationSafety';
 import SystemGuide from './pages/SystemGuide';
 import { PHASES } from './config/gates';
-import { getRegisterCategories, getRegisterConfig, findCategoryForRegister } from './config/registers';
+import { getNavGroups, findNavGroupForRegister, navItemHref, formatGate } from './config/registers';
 import { phaseProgress } from './utils/gateProgress';
 
 const { Sider, Header, Content } = Layout;
@@ -91,7 +91,7 @@ function SideMenu() {
 
   const workspaceItems = useMemo(() => {
     if (!projectId || !activeProject) return [];
-    return [
+    const items = [
       { key: `/projects/${projectId}`, label: <Link to={`/projects/${projectId}`}>Overview</Link> },
       ...PHASES.map((ph) => {
         const progress = phaseProgress(activeProject, ph.phase);
@@ -116,32 +116,44 @@ function SideMenu() {
           ),
         };
       }),
-      { key: `/projects/${projectId}/bom`, label: <Link to={`/projects/${projectId}/bom`}>BOM & Costing</Link> },
-      { key: `/projects/${projectId}/formulation-safety`, label: <Link to={`/projects/${projectId}/formulation-safety`}>Formulation Safety</Link> },
-      { key: `/projects/${projectId}/evidence`, label: <Link to={`/projects/${projectId}/evidence`}>Evidence Summary</Link> },
-      { key: `/projects/${projectId}/feedback`, label: <Link to={`/projects/${projectId}/feedback`}>Panel Feedback</Link> },
-      { key: `/projects/${projectId}/post-market`, label: <Link to={`/projects/${projectId}/post-market`}>Post-Market / CAPA</Link> },
     ];
-  }, [projectId, activeProject]);
+    // These pages are also listed inside the department submenus below, so only
+    // surface them here in the "By type" view to avoid duplicating them.
+    if (registerGrouping === 'function') {
+      items.push(
+        { key: `/projects/${projectId}/bom`, label: <Link to={`/projects/${projectId}/bom`}>BOM & Costing</Link> },
+        { key: `/projects/${projectId}/formulation-safety`, label: <Link to={`/projects/${projectId}/formulation-safety`}>Formulation Safety</Link> },
+        { key: `/projects/${projectId}/evidence`, label: <Link to={`/projects/${projectId}/evidence`}>Evidence Summary</Link> },
+        { key: `/projects/${projectId}/feedback`, label: <Link to={`/projects/${projectId}/feedback`}>Panel Feedback</Link> },
+        { key: `/projects/${projectId}/post-market`, label: <Link to={`/projects/${projectId}/post-market`}>Post-Market / CAPA</Link> },
+      );
+    }
+    return items;
+  }, [projectId, activeProject, registerGrouping]);
 
-  // Evidence-register submenus, grouped by the active view (responsibility vs topic).
+  // Evidence-register submenus, grouped by the active view (responsibility vs
+  // topic). Leaf keys are synthetic (a page can appear under several departments,
+  // so keys can't just be the route); selection is computed by path match below.
   const registerItems = useMemo(() => {
     if (!projectId) return [];
-    return getRegisterCategories(registerGrouping).map((cat) => ({
-      key: `registers-sub-${cat.key}`,
-      label: cat.title,
+    return getNavGroups(registerGrouping).map((group) => ({
+      key: `registers-sub-${group.key}`,
+      label: group.title,
       children: [
         {
-          key: `/projects/${projectId}/registers/cat/${cat.key}`,
-          label: <Link to={`/projects/${projectId}/registers/cat/${cat.key}`}>Overview</Link>,
+          key: `cat:${group.key}`,
+          label: <Link to={`/projects/${projectId}/registers/cat/${group.key}`}>Overview</Link>,
         },
-        ...cat.registerKeys.map((rk) => {
-          const config = getRegisterConfig(rk);
+        ...group.items.map((item, idx) => {
+          const gate = formatGate(item.gate);
           return {
-            key: `/projects/${projectId}/registers/reg/${rk}`,
+            key: `${group.key}:${idx}`,
             label: (
-              <Link to={`/projects/${projectId}/registers/reg/${rk}`}>
-                {config?.title ?? rk}
+              <Link to={navItemHref(item, projectId)}>
+                {item.title}
+                {gate && (
+                  <span style={{ marginLeft: 6, opacity: 0.55, fontSize: 11 }}>{gate}</span>
+                )}
               </Link>
             ),
           };
@@ -149,6 +161,21 @@ function SideMenu() {
       ],
     }));
   }, [projectId, registerGrouping]);
+
+  // Highlight every leaf whose route matches the current path.
+  const registerSelectedKeys = useMemo(() => {
+    if (!projectId) return [];
+    const keys: string[] = [];
+    for (const group of getNavGroups(registerGrouping)) {
+      if (location.pathname === `/projects/${projectId}/registers/cat/${group.key}`) {
+        keys.push(`cat:${group.key}`);
+      }
+      group.items.forEach((item, idx) => {
+        if (navItemHref(item, projectId) === location.pathname) keys.push(`${group.key}:${idx}`);
+      });
+    }
+    return keys;
+  }, [projectId, registerGrouping, location.pathname]);
 
   // Keep the register submenu for the current route expanded. Register deep-links
   // are category-agnostic, so resolve the parent submenu from the register + the
@@ -159,7 +186,7 @@ function SideMenu() {
   const activeSubKey = catInPath
     ? `registers-sub-${catInPath}`
     : regInPath
-      ? `registers-sub-${findCategoryForRegister(regInPath, registerGrouping)?.key}`
+      ? `registers-sub-${findNavGroupForRegister(regInPath, registerGrouping)?.key}`
       : undefined;
   useEffect(() => {
     if (activeSubKey) {
@@ -218,7 +245,7 @@ function SideMenu() {
               letterSpacing: 0.5,
             }}
           >
-            EVIDENCE REGISTERS
+            {registerGrouping === 'department' ? 'WORKBOOK BY DEPARTMENT' : 'EVIDENCE REGISTERS'}
           </div>
           <div style={{ padding: '0 12px 8px' }}>
             <Segmented
@@ -235,7 +262,7 @@ function SideMenu() {
           <Menu
             theme="dark"
             mode="inline"
-            selectedKeys={[location.pathname]}
+            selectedKeys={registerSelectedKeys}
             openKeys={openKeys}
             onOpenChange={(keys) => setOpenKeys(keys as string[])}
             items={registerItems as never}
@@ -357,6 +384,7 @@ function Shell() {
             <Route path="/projects/:projectId" element={<ProjectOverview />} />
             <Route path="/projects/:projectId/phase/:phaseNo" element={<PhasePage />} />
             <Route path="/projects/:projectId/bom" element={<BomCosting />} />
+            <Route path="/projects/:projectId/bom/:section" element={<BomCosting />} />
             <Route path="/projects/:projectId/formulation-safety" element={<FormulationSafety />} />
             <Route path="/projects/:projectId/registers/cat/:categoryKey" element={<RegisterHubPage />} />
             <Route path="/projects/:projectId/registers/reg/:registerKey" element={<RegisterHubPage />} />

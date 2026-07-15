@@ -1580,23 +1580,142 @@ export const REGISTER_CATEGORIES: RegisterCategory[] = [
   },
 ];
 
-// Alternative grouping of the SAME registers by RESPONSIBLE DEPARTMENT / role
-// (owner-neutral: no person names, so staff turnover / handover does not change
-// the navigation). Mirrors how the source workbook prefixes each tab by owner,
-// but titled by the department the owner sits in. Every register key appears in
-// exactly one department, and the union equals REGISTER_CATEGORIES' union.
-export const REGISTER_DEPARTMENTS: RegisterCategory[] = [
+export function getRegisterConfig(key: string): RegisterConfig | undefined {
+  return REGISTER_CONFIGS.find((r) => r.key === key);
+}
+
+// ---------------------------------------------------------------------------
+// Navigation groupings
+// ---------------------------------------------------------------------------
+// The Evidence-register section of the sidebar can be grouped two ways, chosen
+// by a toggle: by TYPE (topic/gate — the register-only categories above) or by
+// RESPONSIBILITY (department/role). The department view is owner-neutral (no
+// person names, so staff turnover / handover doesn't change the navigation) and
+// covers EVERY workbook sheet of that department — including ones the app hosts
+// on a dedicated page (BOM & Costing, Formulation Safety, Evidence Summary,
+// Panel Feedback, Change Control, Post-Market) rather than as an evidence register.
+
+export type RegisterGrouping = 'function' | 'department';
+
+// A single navigable workbook sheet inside a group.
+//  - registerKey set  -> opens the register hub (`registers/reg/:registerKey`)
+//  - page set         -> opens a project-scoped page (`/projects/:id/:page`)
+//  - href set         -> opens an absolute route (e.g. the global Change Control)
+export interface NavItem {
+  title: string;
+  sheetName?: string;
+  registerKey?: string;
+  page?: string;
+  href?: string;
+  gate?: string; // '04', '04/07', or 'ALL'
+}
+
+// Short gate label for a sheet: 'All' when it spans every gate, 'G04/07' for
+// one or more specific gates, null when it isn't tied to a gate.
+export function formatGate(gate?: string): string | null {
+  if (!gate) return null;
+  if (gate.toUpperCase() === 'ALL') return 'All';
+  return `G${gate}`;
+}
+
+export interface NavGroup {
+  key: string;
+  title: string;
+  description?: string;
+  reviewOwner?: string; // department head + co-sign (department view only)
+  items: NavItem[];
+}
+
+// Resolve a NavItem to a concrete route for the given project.
+export function navItemHref(item: NavItem, projectId: string): string {
+  if (item.registerKey) return `/projects/${projectId}/registers/reg/${item.registerKey}`;
+  if (item.href) return item.href;
+  if (item.page) return `/projects/${projectId}/${item.page}`;
+  return `/projects/${projectId}`;
+}
+
+function registerNavItem(registerKey: string): NavItem | null {
+  const config = getRegisterConfig(registerKey);
+  if (!config) return null;
+  return { title: config.title, sheetName: config.sheetName, registerKey, gate: config.gate };
+}
+
+// "By type" groups reuse the register-only categories above.
+function functionNavGroups(): NavGroup[] {
+  return REGISTER_CATEGORIES.map((cat) => ({
+    key: cat.key,
+    title: cat.title,
+    description: cat.description,
+    items: cat.registerKeys.map(registerNavItem).filter((i): i is NavItem => i !== null),
+  }));
+}
+
+// A department item is either a register (its key) or a dedicated page.
+type RawDeptItem =
+  | string
+  | { title: string; sheetName: string; page?: string; href?: string; gate?: string };
+
+interface RawDept {
+  key: string;
+  title: string;
+  description?: string;
+  reviewOwner?: string;
+  items: RawDeptItem[];
+}
+
+// Full workbook, grouped by responsible department (see the source workbook's
+// owner-prefixed tabs). Dedicated-page sheets link to the page that hosts them.
+const DEPARTMENTS: RawDept[] = [
   {
-    key: 'dept-raw-material',
-    title: 'Raw Material Operations',
-    description: 'Supplier/raw-material documents, substitutions and product-family versioning.',
-    registerKeys: ['supplierRmEvidence', 'ingredientSubstitution', 'productFamilyRegister'],
+    key: 'dept-formulation',
+    title: 'Formulation',
+    description: 'Formula BOM, change control/registers, batch traceability and the product development report.',
+    reviewOwner: 'Tuan (Formulation) · Co-sign: Chris (Project Manager)',
+    items: [
+      { title: 'Formula BOM', sheetName: 'Formula_BOM', page: 'bom/formula', gate: '05' },
+      'batchFormulaTrace',
+      'formulationChangeRegister',
+      'formulaChangeControl',
+      'productDevelopmentProfile',
+      'productDevelopmentIterations',
+      'productDevelopmentFeedback',
+    ],
+  },
+  {
+    key: 'dept-quality-gmp',
+    title: 'Quality & GMP',
+    description: 'GMP manufacturing links, microbiology/PET and stability & release evidence.',
+    reviewOwner: 'Sekar (Quality & GMP) · Co-sign: Tuan (Formulation – PET), Chris (Project Manager)',
+    items: ['gmpLinks', 'microPetEvidence', 'stabilityRelease'],
+  },
+  {
+    key: 'dept-quality',
+    title: 'Quality',
+    description: 'Test-report index, eye safety, evidence summary, formulation safety and R&I efficacy/claims evidence.',
+    reviewOwner: 'Sankar (Quality) · Co-sign: Lani (HR/Quality), Chris (Project Manager)',
+    items: [
+      'testReportIndex',
+      'eyeSafetyEvidence',
+      { title: 'Product Evidence Summary', sheetName: 'Product_Evid_Summ', page: 'evidence', gate: 'ALL' },
+      { title: 'Formulation Safety', sheetName: 'Formulation_Safety', page: 'formulation-safety', gate: '07/10' },
+      'mechanismClaimsMap',
+      'twinkle5ClaimsMap',
+      'efficacyAssurance',
+      'functionalEfficacy',
+      'clinicalHumanEvidence',
+      'studyProtocolSetup',
+      'studyParticipantLog',
+      'efficacyStudyPlan',
+      'potencyProcessControl',
+      'medicalSummary',
+    ],
   },
   {
     key: 'dept-regulatory',
     title: 'Regulatory',
     description: 'Prohibited/caution watch-lists, fragrance, ASEAN PIF closure, claims and publication approval.',
-    registerKeys: [
+    reviewOwner: 'Chi Chu (Regulatory) · Co-sign: George (R&I), Chris (Project Manager)',
+    items: [
       'prohibitedIngredients',
       'pbCautionLimits',
       'fragranceSafety',
@@ -1611,98 +1730,93 @@ export const REGISTER_DEPARTMENTS: RegisterCategory[] = [
     ],
   },
   {
-    key: 'dept-formulation',
-    title: 'Formulation',
-    description: 'Formula change control/registers, batch traceability and the product development report.',
-    registerKeys: [
-      'formulaChangeControl',
-      'formulationChangeRegister',
-      'batchFormulaTrace',
-      'productDevelopmentProfile',
-      'productDevelopmentIterations',
-      'productDevelopmentFeedback',
-    ],
-  },
-  {
-    key: 'dept-quality',
-    title: 'Quality',
-    description: 'Controlled test-report index and eye-safety evidence.',
-    registerKeys: ['testReportIndex', 'eyeSafetyEvidence'],
-  },
-  {
-    key: 'dept-quality-gmp',
-    title: 'Quality & GMP',
-    description: 'Microbiology/PET, stability & release and GMP manufacturing links.',
-    registerKeys: ['microPetEvidence', 'stabilityRelease', 'gmpLinks'],
-  },
-  {
-    key: 'dept-rni',
-    title: 'R&I',
-    description: 'Mechanism/claims mapping, functional/clinical efficacy, study protocol, potency and medical summary.',
-    registerKeys: [
-      'mechanismClaimsMap',
-      'twinkle5ClaimsMap',
-      'efficacyAssurance',
-      'functionalEfficacy',
-      'clinicalHumanEvidence',
-      'studyProtocolSetup',
-      'studyParticipantLog',
-      'efficacyStudyPlan',
-      'potencyProcessControl',
-      'medicalSummary',
-    ],
-  },
-  {
     key: 'dept-packaging',
     title: 'Packaging',
-    description: 'Released-label control, packaging specs/artwork evidence and artwork change control.',
-    registerKeys: [
+    description: 'Released-label control, packaging BOM, packaging specs/artwork evidence and artwork change control.',
+    reviewOwner: 'Lily (Packaging) · Co-sign: Chris (Project Manager)',
+    items: [
       'releasedLabelRegister',
       'labelPlatformRollout',
       'labelShipmentVerification',
+      { title: 'Packaging BOM', sheetName: 'Packaging_BOM', page: 'bom/packaging', gate: '06' },
       'packagingSpecsArtwork',
       'artworkChangeControl',
     ],
   },
   {
+    key: 'dept-raw-material',
+    title: 'Raw Material Operations',
+    description: 'Supplier/raw-material documents, substitutions and product-family versioning.',
+    reviewOwner: 'Chidkamon (Raw Material Operations) · Co-sign: Chris (Project Manager)',
+    items: ['supplierRmEvidence', 'ingredientSubstitution', 'productFamilyRegister'],
+  },
+  {
     key: 'dept-sales-marketing',
     title: 'Sales & Marketing',
-    description: 'Campaign declarations, HCP/distributor answer packs and change templates/forms.',
-    registerKeys: ['campaignsSocialMedia', 'hcpEfficacyAnswer', 'hcpTestReportPack', 'changeTemplates'],
+    description: 'Campaign declarations, HCP/distributor answer packs, panel feedback, change control and templates.',
+    reviewOwner: 'Nguyen (Sales & Marketing) · Co-sign: Chris (Project Manager)',
+    items: [
+      'campaignsSocialMedia',
+      'hcpEfficacyAnswer',
+      'hcpTestReportPack',
+      { title: 'Product / Sample Feedback', sheetName: 'Product_Feedback', page: 'feedback', gate: '07/08' },
+      { title: 'Change Control & Communication', sheetName: 'Change_Ctrl_Comm', href: '/change-control', gate: 'ALL' },
+      'changeTemplates',
+    ],
+  },
+  {
+    key: 'dept-supply-chain',
+    title: 'Supply Chain',
+    description: 'Costing calculator and post-market / complaint / CAPA evidence.',
+    reviewOwner: 'Hannah (Supply Chain) · Co-sign: Chris (Project Manager)',
+    items: [
+      { title: 'Costing Calculator', sheetName: 'Costing_Calc', page: 'bom/costing', gate: '05' },
+      { title: 'Post-Market / CAPA', sheetName: 'PostMarket_CAPA', page: 'post-market', gate: '12' },
+    ],
   },
   {
     key: 'dept-system',
     title: 'System Reference',
     description: 'Evidence template index, controlled system requirements and feedback on the MBc360 system.',
-    registerKeys: ['templateIndex', 'systemRequirements', 'systemFeedback'],
+    items: ['templateIndex', 'systemRequirements', 'systemFeedback'],
   },
 ];
 
-export type RegisterGrouping = 'function' | 'department';
-
-// Categories for a grouping mode: 'function' = topic/gate, 'department' = responsibility.
-export function getRegisterCategories(grouping: RegisterGrouping): RegisterCategory[] {
-  return grouping === 'department' ? REGISTER_DEPARTMENTS : REGISTER_CATEGORIES;
+function departmentNavGroups(): NavGroup[] {
+  return DEPARTMENTS.map((dept) => ({
+    key: dept.key,
+    title: dept.title,
+    description: dept.description,
+    reviewOwner: dept.reviewOwner,
+    items: dept.items
+      .map((it): NavItem | null =>
+        typeof it === 'string'
+          ? registerNavItem(it)
+          : { title: it.title, sheetName: it.sheetName, page: it.page, href: it.href, gate: it.gate },
+      )
+      .filter((i): i is NavItem => i !== null),
+  }));
 }
 
-// Look a category up by key across BOTH groupings, so a category-overview URL
-// keeps working after the user flips the view toggle.
-export function getRegisterCategory(key: string | undefined): RegisterCategory | undefined {
+// Groups for the active view.
+export function getNavGroups(grouping: RegisterGrouping): NavGroup[] {
+  return grouping === 'department' ? departmentNavGroups() : functionNavGroups();
+}
+
+// Find a group by key across BOTH views, so a category-overview URL keeps
+// working after the user flips the toggle.
+export function getNavGroup(key: string | undefined): NavGroup | undefined {
   if (!key) return undefined;
-  return [...REGISTER_CATEGORIES, ...REGISTER_DEPARTMENTS].find((c) => c.key === key);
+  return [...functionNavGroups(), ...departmentNavGroups()].find((g) => g.key === key);
 }
 
-// Which category holds a register in a given grouping. Register deep-links are
-// category-agnostic (`.../registers/reg/:registerKey`), so the sidebar resolves
-// the parent submenu to open/highlight from the register + the ACTIVE grouping.
-export function findCategoryForRegister(
+// Which group holds a register in a given view. Register deep-links are
+// category-agnostic, so the sidebar resolves the parent submenu to open/
+// highlight from the register + the ACTIVE grouping.
+export function findNavGroupForRegister(
   registerKey: string | undefined,
   grouping: RegisterGrouping,
-): RegisterCategory | undefined {
+): NavGroup | undefined {
   if (!registerKey) return undefined;
-  return getRegisterCategories(grouping).find((c) => c.registerKeys.includes(registerKey));
-}
-
-export function getRegisterConfig(key: string): RegisterConfig | undefined {
-  return REGISTER_CONFIGS.find((r) => r.key === key);
+  return getNavGroups(grouping).find((g) => g.items.some((i) => i.registerKey === registerKey));
 }

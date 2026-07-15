@@ -11,7 +11,7 @@ function money(v: number) {
 }
 
 export default function BomCosting() {
-  const { projectId } = useParams();
+  const { projectId, section } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const setBomLine = useAppStore((s) => s.setBomLine);
   const addBomLine = useAppStore((s) => s.addBomLine);
@@ -25,6 +25,12 @@ export default function BomCosting() {
 
   const { bom, packagingBom, costing } = project;
   const id = project.identity.id;
+
+  // Each of the three BOM/Costing sheets belongs to a different department, so the
+  // page can render just one section (via /bom/:section) or all of them (/bom).
+  const showFormula = !section || section === 'formula';
+  const showPackaging = !section || section === 'packaging';
+  const showCosting = !section || section === 'costing';
 
   const totalPercent = bom.reduce((sum, l) => sum + (l.percentWw || 0), 0);
   const unitsPerBatch = costing.fillSizeG > 0 ? (costing.batchSizeKg * 1000) / costing.fillSizeG : 0;
@@ -68,7 +74,7 @@ export default function BomCosting() {
         description={`Formula BOM & Costing is normally completed once the formula and packaging route is confirmed in Phase 2. ${positionSentence(project)} You can enter data now — it stays provisional until then.`}
       />
 
-      {Math.round(totalPercent * 100) / 100 !== 100 && bom.length > 0 && (
+      {showFormula && Math.round(totalPercent * 100) / 100 !== 100 && bom.length > 0 && (
         <Alert
           type="warning"
           showIcon
@@ -76,6 +82,7 @@ export default function BomCosting() {
         />
       )}
 
+      {showFormula && (
       <Card
         size="small"
         title={`Formula BOM — ${project.identity.productSku}`}
@@ -178,7 +185,9 @@ export default function BomCosting() {
           )}
         />
       </Card>
+      )}
 
+      {showPackaging && (
       <Card
         size="small"
         title="Packaging BOM"
@@ -309,7 +318,85 @@ export default function BomCosting() {
           }
         />
       </Card>
+      )}
 
+      {showCosting && (
+      <>
+      {section === 'costing' && (
+        <>
+          <Card size="small" title="Formula BOM (read-only reference)">
+            <Table
+              size="small"
+              rowKey={(l) => l.line}
+              dataSource={bom}
+              pagination={false}
+              scroll={{ x: 1000 }}
+              locale={{ emptyText: 'No formula lines entered yet' }}
+              columns={[
+                { title: '#', width: 40, dataIndex: 'line' },
+                { title: 'RM Code', width: 110, dataIndex: 'rmCode' },
+                { title: 'Ingredient / INCI', width: 240, dataIndex: 'inciName' },
+                { title: 'Function', width: 160, dataIndex: 'functionRole' },
+                { title: 'Supplier', width: 150, dataIndex: 'supplier' },
+                { title: '% w/w', width: 90, render: (_, l) => money(l.percentWw) },
+                { title: 'Cost / kg', width: 100, render: (_, l) => money(l.costPerKg || 0) },
+                { title: 'kg needed', width: 100, render: (_, l) => money(derived(l).kgNeeded) },
+                { title: 'Cost / batch', width: 110, render: (_, l) => money(derived(l).costPerBatch) },
+                { title: 'Cost / unit', width: 100, render: (_, l) => money(derived(l).costPerUnit) },
+              ]}
+              summary={() =>
+                bom.length > 0 ? (
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0} colSpan={5}>
+                      <b>Total</b>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={1}>
+                      <b>{money(totalPercent)}%</b>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={2} colSpan={3} />
+                    <Table.Summary.Cell index={3}>
+                      <b>{money(formulaCostPerUnit)}</b>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                ) : null
+              }
+            />
+          </Card>
+
+          <Card size="small" title="Packaging BOM (read-only reference)">
+            <Table
+              size="small"
+              rowKey={(l) => l.line}
+              dataSource={packagingBom}
+              pagination={false}
+              scroll={{ x: 900 }}
+              locale={{ emptyText: 'No packaging components entered yet' }}
+              columns={[
+                { title: '#', width: 40, dataIndex: 'line' },
+                { title: 'Component', width: 160, dataIndex: 'component' },
+                { title: 'Component type', width: 140, dataIndex: 'componentType' },
+                { title: 'Supplier', width: 140, dataIndex: 'supplier' },
+                { title: 'Units / finished unit', width: 110, dataIndex: 'unitsPerFinishedUnit' },
+                { title: 'Unit cost', width: 100, render: (_, l) => money(l.unitCost || 0) },
+                { title: 'Wastage %', width: 90, dataIndex: 'wastagePercent' },
+                { title: 'Cost / unit', width: 100, render: (_, l) => money(packagingDerived(l)) },
+              ]}
+              summary={() =>
+                packagingBom.length > 0 ? (
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0} colSpan={7}>
+                      <b>Total packaging cost / unit</b>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={1}>
+                      <b>{money(packagingCostTotal)}</b>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                ) : null
+              }
+            />
+          </Card>
+        </>
+      )}
       <Row gutter={16}>
         <Col xs={24} md={12}>
           <Card size="small" title="Costing inputs">
@@ -370,6 +457,8 @@ export default function BomCosting() {
           </Card>
         </Col>
       </Row>
+      </>
+      )}
     </div>
   );
 }
