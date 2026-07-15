@@ -168,6 +168,7 @@ export interface FeedbackEntry {
 export interface ChangeRecord {
   changeId: string;
   projectId?: string;
+  triggerId?: string; // links to a CHANGE_TRIGGERS entry (affected gates/phases)
   trigger: string;
   productSku: string;
   affectedArea: string;
@@ -180,6 +181,7 @@ export interface ChangeRecord {
   salesMarketingMessage?: string;
   dueDate?: string;
   status: WorkStatus;
+  closureEvidence?: string;
   closedDate?: string;
   owner: string;
   notes?: string;
