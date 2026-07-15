@@ -14,6 +14,25 @@ body {
   min-width: 0;
 }
 
+/* Long register/phase labels in the sidebar should wrap to multiple lines
+   instead of truncating with an ellipsis that collides with the expand arrow. */
+.ant-layout-sider .ant-menu-title-content {
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.35;
+}
+.ant-layout-sider .ant-menu-inline .ant-menu-item,
+.ant-layout-sider .ant-menu-inline .ant-menu-submenu-title {
+  height: auto;
+  min-height: 40px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+/* Keep wrapped submenu text clear of the absolutely-positioned arrow. */
+.ant-layout-sider .ant-menu-submenu-title {
+  padding-right: 34px !important;
+}
+
 .gate-row-passed td {
   background: #f6ffed !important;
 }

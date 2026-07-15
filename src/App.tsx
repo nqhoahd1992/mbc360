@@ -25,7 +25,7 @@ import RegisterHubPage from './pages/RegisterHubPage';
 import FormulationSafety from './pages/FormulationSafety';
 import SystemGuide from './pages/SystemGuide';
 import { PHASES } from './config/gates';
-import { REGISTER_CATEGORIES } from './config/registers';
+import { REGISTER_CATEGORIES, getRegisterConfig } from './config/registers';
 import { phaseProgress } from './utils/gateProgress';
 
 const { Sider, Header, Content } = Layout;
@@ -95,7 +95,7 @@ function SideMenu() {
           progress.state === 'completed' ? (
             <CheckCircleFilled style={{ color: '#52c41a' }} />
           ) : progress.state === 'current' ? (
-            <RightCircleFilled style={{ color: '#1677ff' }} />
+            <RightCircleFilled style={{ color: '#faad14' }} />
           ) : (
             <LockOutlined style={{ color: 'rgba(255,255,255,0.35)' }} />
           );
@@ -122,12 +122,39 @@ function SideMenu() {
         type: 'group',
         label: 'EVIDENCE REGISTERS',
         children: REGISTER_CATEGORIES.map((cat) => ({
-          key: `/projects/${projectId}/registers/${cat.key}`,
-          label: <Link to={`/projects/${projectId}/registers/${cat.key}`}>{cat.title}</Link>,
+          key: `registers-sub-${cat.key}`,
+          label: cat.title,
+          children: [
+            {
+              key: `/projects/${projectId}/registers/${cat.key}`,
+              label: <Link to={`/projects/${projectId}/registers/${cat.key}`}>Overview</Link>,
+            },
+            ...cat.registerKeys.map((rk) => {
+              const config = getRegisterConfig(rk);
+              return {
+                key: `/projects/${projectId}/registers/${cat.key}/${rk}`,
+                label: (
+                  <Link to={`/projects/${projectId}/registers/${cat.key}/${rk}`}>
+                    {config?.title ?? rk}
+                  </Link>
+                ),
+              };
+            }),
+          ],
         })),
       },
     ];
   }, [projectId, activeProject]);
+
+  // Keep the register submenu for the current route expanded.
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
+  const activeCategoryKey = location.pathname.match(/\/registers\/([^/]+)/)?.[1];
+  useEffect(() => {
+    if (activeCategoryKey) {
+      const subKey = `registers-sub-${activeCategoryKey}`;
+      setOpenKeys((prev) => (prev.includes(subKey) ? prev : [...prev, subKey]));
+    }
+  }, [activeCategoryKey]);
 
   return (
     <>
@@ -152,9 +179,11 @@ function SideMenu() {
           <div style={{ padding: '0 12px 8px' }}>
             <Select
               style={{ width: '100%' }}
+              popupMatchSelectWidth={false}
               placeholder="Select project"
               value={projectId}
               onChange={onSwitchProject}
+              optionRender={(opt) => <span style={{ whiteSpace: 'normal' }}>{opt.label}</span>}
               options={projects.map((p) => ({
                 value: p.identity.id,
                 label: `${p.identity.id} — ${p.identity.productSku}`,
@@ -167,6 +196,8 @@ function SideMenu() {
             theme="dark"
             mode="inline"
             selectedKeys={[location.pathname]}
+            openKeys={openKeys}
+            onOpenChange={(keys) => setOpenKeys(keys as string[])}
             items={workspaceItems as never}
           />
         </>
@@ -234,14 +265,24 @@ function Shell() {
             borderBottom: '1px solid #f0f0f0',
           }}
         >
-          <Typography.Text strong>
+          <Typography.Text
+            strong
+            style={{
+              flex: '1 1 auto',
+              minWidth: 0,
+              marginRight: 12,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
             <ProjectContextTitle />
           </Typography.Text>
           <Popconfirm
             title="Reset all demo data to the seeded samples?"
             onConfirm={() => resetDemoData()}
           >
-            <Button size="small" icon={<ReloadOutlined />}>
+            <Button size="small" icon={<ReloadOutlined />} style={{ flexShrink: 0 }}>
               Reset demo data
             </Button>
           </Popconfirm>
@@ -255,6 +296,7 @@ function Shell() {
             <Route path="/projects/:projectId/bom" element={<BomCosting />} />
             <Route path="/projects/:projectId/formulation-safety" element={<FormulationSafety />} />
             <Route path="/projects/:projectId/registers/:categoryKey" element={<RegisterHubPage />} />
+            <Route path="/projects/:projectId/registers/:categoryKey/:registerKey" element={<RegisterHubPage />} />
             <Route path="/projects/:projectId/evidence" element={<EvidenceSummary />} />
             <Route path="/projects/:projectId/feedback" element={<ProductFeedback />} />
             <Route path="/projects/:projectId/post-market" element={<PostMarketCapa />} />
