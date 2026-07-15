@@ -2,7 +2,7 @@ import { Card, Empty, Progress, Tag, Typography } from 'antd';
 import { RightOutlined } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { REGISTER_CATEGORIES, getRegisterConfig, type RegisterConfig } from '../config/registers';
+import { findCategoryForRegister, getRegisterCategory, getRegisterConfig, type RegisterConfig } from '../config/registers';
 import type { RegisterRow } from '../types';
 import DynamicTable from '../components/DynamicTable';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
@@ -21,25 +21,28 @@ function registerProgress(config: RegisterConfig, rows: RegisterRow[]) {
 export default function RegisterHubPage() {
   const { projectId, categoryKey, registerKey } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
+  const registerGrouping = useAppStore((s) => s.registerGrouping);
   const setRegisterRow = useAppStore((s) => s.setRegisterRow);
   const addRegisterRow = useAppStore((s) => s.addRegisterRow);
   const removeRegisterRow = useAppStore((s) => s.removeRegisterRow);
 
-  const category = REGISTER_CATEGORIES.find((c) => c.key === categoryKey);
-
-  if (!project || !category) return <Empty description="Not found" />;
+  if (!project) return <Empty description="Not found" />;
   const id = project.identity.id;
 
-  // --- Single-register view -------------------------------------------------
+  // --- Single-register view (category-agnostic route) -----------------------
   if (registerKey) {
-    const config = category.registerKeys.includes(registerKey) ? getRegisterConfig(registerKey) : undefined;
+    const config = getRegisterConfig(registerKey);
     if (!config) return <Empty description="Register not found" />;
+    // Breadcrumb parent = this register's category in the ACTIVE grouping view.
+    const parent = findCategoryForRegister(registerKey, registerGrouping);
     return (
       <div style={{ display: 'grid', gap: 16 }}>
         <div>
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            <Link to={`/projects/${id}/registers/${category.key}`}>{category.title}</Link>
-          </Typography.Text>
+          {parent && (
+            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              <Link to={`/projects/${id}/registers/cat/${parent.key}`}>{parent.title}</Link>
+            </Typography.Text>
+          )}
           <Typography.Title level={4} style={{ margin: 0 }}>
             {config.title}
           </Typography.Title>
@@ -57,6 +60,9 @@ export default function RegisterHubPage() {
   }
 
   // --- Category overview ----------------------------------------------------
+  const category = getRegisterCategory(categoryKey);
+  if (!category) return <Empty description="Not found" />;
+
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <div>
@@ -82,7 +88,7 @@ export default function RegisterHubPage() {
             const rows = project.registers[key] ?? [];
             const progress = registerProgress(config, rows);
             return (
-              <Link key={key} to={`/projects/${id}/registers/${category.key}/${key}`} style={{ display: 'block' }}>
+              <Link key={key} to={`/projects/${id}/registers/reg/${key}`} style={{ display: 'block' }}>
                 <Card size="small" hoverable style={{ height: '100%' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                     <div style={{ minWidth: 0 }}>

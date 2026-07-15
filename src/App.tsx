@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ConfigProvider, Layout, Menu, Popconfirm, Button, Select, Typography } from 'antd';
+import { ConfigProvider, Layout, Menu, Popconfirm, Button, Segmented, Select, Typography } from 'antd';
 import {
   AppstoreOutlined,
   BookOutlined,
@@ -8,6 +8,7 @@ import {
   LockOutlined,
   ReloadOutlined,
   RightCircleFilled,
+  SearchOutlined,
   SwapOutlined,
 } from '@ant-design/icons';
 import { HashRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -22,10 +23,11 @@ import EvidenceSummary from './pages/EvidenceSummary';
 import PostMarketCapa from './pages/PostMarketCapa';
 import ProductFeedback from './pages/ProductFeedback';
 import RegisterHubPage from './pages/RegisterHubPage';
+import CommandPalette from './components/CommandPalette';
 import FormulationSafety from './pages/FormulationSafety';
 import SystemGuide from './pages/SystemGuide';
 import { PHASES } from './config/gates';
-import { REGISTER_CATEGORIES, getRegisterConfig } from './config/registers';
+import { getRegisterCategories, getRegisterConfig, findCategoryForRegister } from './config/registers';
 import { phaseProgress } from './utils/gateProgress';
 
 const { Sider, Header, Content } = Layout;
@@ -50,6 +52,8 @@ function SideMenu() {
   const location = useLocation();
   const navigate = useNavigate();
   const projects = useAppStore((s) => s.projects);
+  const registerGrouping = useAppStore((s) => s.registerGrouping);
+  const setRegisterGrouping = useAppStore((s) => s.setRegisterGrouping);
 
   const urlProjectId = location.pathname.match(/\/projects\/([^/]+)/)?.[1];
   const [activeProjectId, setActiveProjectId] = useState<string | undefined>(urlProjectId);
@@ -117,44 +121,51 @@ function SideMenu() {
       { key: `/projects/${projectId}/evidence`, label: <Link to={`/projects/${projectId}/evidence`}>Evidence Summary</Link> },
       { key: `/projects/${projectId}/feedback`, label: <Link to={`/projects/${projectId}/feedback`}>Panel Feedback</Link> },
       { key: `/projects/${projectId}/post-market`, label: <Link to={`/projects/${projectId}/post-market`}>Post-Market / CAPA</Link> },
-      {
-        key: 'registers',
-        type: 'group',
-        label: 'EVIDENCE REGISTERS',
-        children: REGISTER_CATEGORIES.map((cat) => ({
-          key: `registers-sub-${cat.key}`,
-          label: cat.title,
-          children: [
-            {
-              key: `/projects/${projectId}/registers/${cat.key}`,
-              label: <Link to={`/projects/${projectId}/registers/${cat.key}`}>Overview</Link>,
-            },
-            ...cat.registerKeys.map((rk) => {
-              const config = getRegisterConfig(rk);
-              return {
-                key: `/projects/${projectId}/registers/${cat.key}/${rk}`,
-                label: (
-                  <Link to={`/projects/${projectId}/registers/${cat.key}/${rk}`}>
-                    {config?.title ?? rk}
-                  </Link>
-                ),
-              };
-            }),
-          ],
-        })),
-      },
     ];
   }, [projectId, activeProject]);
 
-  // Keep the register submenu for the current route expanded.
+  // Evidence-register submenus, grouped by the active view (responsibility vs topic).
+  const registerItems = useMemo(() => {
+    if (!projectId) return [];
+    return getRegisterCategories(registerGrouping).map((cat) => ({
+      key: `registers-sub-${cat.key}`,
+      label: cat.title,
+      children: [
+        {
+          key: `/projects/${projectId}/registers/cat/${cat.key}`,
+          label: <Link to={`/projects/${projectId}/registers/cat/${cat.key}`}>Overview</Link>,
+        },
+        ...cat.registerKeys.map((rk) => {
+          const config = getRegisterConfig(rk);
+          return {
+            key: `/projects/${projectId}/registers/reg/${rk}`,
+            label: (
+              <Link to={`/projects/${projectId}/registers/reg/${rk}`}>
+                {config?.title ?? rk}
+              </Link>
+            ),
+          };
+        }),
+      ],
+    }));
+  }, [projectId, registerGrouping]);
+
+  // Keep the register submenu for the current route expanded. Register deep-links
+  // are category-agnostic, so resolve the parent submenu from the register + the
+  // active grouping — that way it opens correctly in BOTH views.
   const [openKeys, setOpenKeys] = useState<string[]>([]);
-  const activeCategoryKey = location.pathname.match(/\/registers\/([^/]+)/)?.[1];
+  const catInPath = location.pathname.match(/\/registers\/cat\/([^/]+)/)?.[1];
+  const regInPath = location.pathname.match(/\/registers\/reg\/([^/]+)/)?.[1];
+  const activeSubKey = catInPath
+    ? `registers-sub-${catInPath}`
+    : regInPath
+      ? `registers-sub-${findCategoryForRegister(regInPath, registerGrouping)?.key}`
+      : undefined;
   useEffect(() => {
-    if (activeCategoryKey) {
-      const subKey = `registers-sub-${activeCategoryKey}`;
-      setOpenKeys((prev) => (prev.includes(subKey) ? prev : [...prev, subKey]));
+    if (activeSubKey) {
+      setOpenKeys((prev) => (prev.includes(activeSubKey) ? prev : [...prev, activeSubKey]));
     }
-  }, [activeCategoryKey]);
+  }, [activeSubKey]);
 
   return (
     <>
@@ -196,9 +207,38 @@ function SideMenu() {
             theme="dark"
             mode="inline"
             selectedKeys={[location.pathname]}
+            items={workspaceItems as never}
+          />
+
+          <div
+            style={{
+              padding: '16px 16px 8px',
+              color: 'rgba(255,255,255,0.45)',
+              fontSize: 12,
+              letterSpacing: 0.5,
+            }}
+          >
+            EVIDENCE REGISTERS
+          </div>
+          <div style={{ padding: '0 12px 8px' }}>
+            <Segmented
+              size="small"
+              block
+              value={registerGrouping}
+              onChange={(v) => setRegisterGrouping(v as 'function' | 'department')}
+              options={[
+                { label: 'By responsibility', value: 'department' },
+                { label: 'By type', value: 'function' },
+              ]}
+            />
+          </div>
+          <Menu
+            theme="dark"
+            mode="inline"
+            selectedKeys={[location.pathname]}
             openKeys={openKeys}
             onOpenChange={(keys) => setOpenKeys(keys as string[])}
-            items={workspaceItems as never}
+            items={registerItems as never}
           />
         </>
       )}
@@ -241,6 +281,8 @@ function StickySidebar({ children }: { children: React.ReactNode }) {
 
 function Shell() {
   const resetDemoData = useAppStore((s) => s.resetDemoData);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider breakpoint="lg" collapsedWidth={0} width={250}>
@@ -278,14 +320,35 @@ function Shell() {
           >
             <ProjectContextTitle />
           </Typography.Text>
-          <Popconfirm
-            title="Reset all demo data to the seeded samples?"
-            onConfirm={() => resetDemoData()}
-          >
-            <Button size="small" icon={<ReloadOutlined />} style={{ flexShrink: 0 }}>
-              Reset demo data
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <Button
+              icon={<SearchOutlined />}
+              onClick={() => setPaletteOpen(true)}
+              style={{ color: '#888' }}
+            >
+              <span style={{ marginRight: 8 }}>Search</span>
+              <kbd
+                style={{
+                  fontSize: 11,
+                  padding: '1px 6px',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: 4,
+                  background: '#fafafa',
+                  color: '#888',
+                }}
+              >
+                {isMac ? '⌘' : 'Ctrl'} K
+              </kbd>
             </Button>
-          </Popconfirm>
+            <Popconfirm
+              title="Reset all demo data to the seeded samples?"
+              onConfirm={() => resetDemoData()}
+            >
+              <Button size="small" icon={<ReloadOutlined />}>
+                Reset demo data
+              </Button>
+            </Popconfirm>
+          </div>
         </Header>
         <Content style={{ padding: 16 }}>
           <Routes>
@@ -295,8 +358,8 @@ function Shell() {
             <Route path="/projects/:projectId/phase/:phaseNo" element={<PhasePage />} />
             <Route path="/projects/:projectId/bom" element={<BomCosting />} />
             <Route path="/projects/:projectId/formulation-safety" element={<FormulationSafety />} />
-            <Route path="/projects/:projectId/registers/:categoryKey" element={<RegisterHubPage />} />
-            <Route path="/projects/:projectId/registers/:categoryKey/:registerKey" element={<RegisterHubPage />} />
+            <Route path="/projects/:projectId/registers/cat/:categoryKey" element={<RegisterHubPage />} />
+            <Route path="/projects/:projectId/registers/reg/:registerKey" element={<RegisterHubPage />} />
             <Route path="/projects/:projectId/evidence" element={<EvidenceSummary />} />
             <Route path="/projects/:projectId/feedback" element={<ProductFeedback />} />
             <Route path="/projects/:projectId/post-market" element={<PostMarketCapa />} />
@@ -305,6 +368,7 @@ function Shell() {
           </Routes>
         </Content>
       </Layout>
+      <CommandPalette open={paletteOpen} setOpen={setPaletteOpen} />
     </Layout>
   );
 }

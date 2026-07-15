@@ -24,9 +24,15 @@ import { seedChanges, seedProjects } from '../data/seed';
 import { gateIndex, isGateUnlocked, isLastGateOfPhase } from '../utils/gateProgress';
 import { GATES } from '../config/gates';
 
+type RegisterGrouping = 'function' | 'department';
+
 interface AppState {
   projects: ProjectData[];
   changes: ChangeRecord[];
+
+  // UI preference: how the Evidence Registers menu is grouped.
+  registerGrouping: RegisterGrouping;
+  setRegisterGrouping: (grouping: RegisterGrouping) => void;
 
   createProject: (identity: ProjectIdentity) => void;
   deleteProject: (id: string) => void;
@@ -86,6 +92,9 @@ export const useAppStore = create<AppState>()(
       return {
         projects: seedProjects(),
         changes: seedChanges(),
+
+        registerGrouping: 'department',
+        setRegisterGrouping: (grouping) => set({ registerGrouping: grouping }),
 
         createProject: (identity) =>
           set((s) => ({ projects: [...s.projects, createEmptyProject(identity)] })),

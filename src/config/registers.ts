@@ -1580,6 +1580,129 @@ export const REGISTER_CATEGORIES: RegisterCategory[] = [
   },
 ];
 
+// Alternative grouping of the SAME registers by RESPONSIBLE DEPARTMENT / role
+// (owner-neutral: no person names, so staff turnover / handover does not change
+// the navigation). Mirrors how the source workbook prefixes each tab by owner,
+// but titled by the department the owner sits in. Every register key appears in
+// exactly one department, and the union equals REGISTER_CATEGORIES' union.
+export const REGISTER_DEPARTMENTS: RegisterCategory[] = [
+  {
+    key: 'dept-raw-material',
+    title: 'Raw Material Operations',
+    description: 'Supplier/raw-material documents, substitutions and product-family versioning.',
+    registerKeys: ['supplierRmEvidence', 'ingredientSubstitution', 'productFamilyRegister'],
+  },
+  {
+    key: 'dept-regulatory',
+    title: 'Regulatory',
+    description: 'Prohibited/caution watch-lists, fragrance, ASEAN PIF closure, claims and publication approval.',
+    registerKeys: [
+      'prohibitedIngredients',
+      'pbCautionLimits',
+      'fragranceSafety',
+      'fragranceAllergenLog',
+      'aseanPifMap',
+      'pifChecklistAsean',
+      'pifEvidenceExport',
+      'skuClaimsPifRegister',
+      'pifEvidenceClosure',
+      'publicationRules',
+      'publishedInfoApproval',
+    ],
+  },
+  {
+    key: 'dept-formulation',
+    title: 'Formulation',
+    description: 'Formula change control/registers, batch traceability and the product development report.',
+    registerKeys: [
+      'formulaChangeControl',
+      'formulationChangeRegister',
+      'batchFormulaTrace',
+      'productDevelopmentProfile',
+      'productDevelopmentIterations',
+      'productDevelopmentFeedback',
+    ],
+  },
+  {
+    key: 'dept-quality',
+    title: 'Quality',
+    description: 'Controlled test-report index and eye-safety evidence.',
+    registerKeys: ['testReportIndex', 'eyeSafetyEvidence'],
+  },
+  {
+    key: 'dept-quality-gmp',
+    title: 'Quality & GMP',
+    description: 'Microbiology/PET, stability & release and GMP manufacturing links.',
+    registerKeys: ['microPetEvidence', 'stabilityRelease', 'gmpLinks'],
+  },
+  {
+    key: 'dept-rni',
+    title: 'R&I',
+    description: 'Mechanism/claims mapping, functional/clinical efficacy, study protocol, potency and medical summary.',
+    registerKeys: [
+      'mechanismClaimsMap',
+      'twinkle5ClaimsMap',
+      'efficacyAssurance',
+      'functionalEfficacy',
+      'clinicalHumanEvidence',
+      'studyProtocolSetup',
+      'studyParticipantLog',
+      'efficacyStudyPlan',
+      'potencyProcessControl',
+      'medicalSummary',
+    ],
+  },
+  {
+    key: 'dept-packaging',
+    title: 'Packaging',
+    description: 'Released-label control, packaging specs/artwork evidence and artwork change control.',
+    registerKeys: [
+      'releasedLabelRegister',
+      'labelPlatformRollout',
+      'labelShipmentVerification',
+      'packagingSpecsArtwork',
+      'artworkChangeControl',
+    ],
+  },
+  {
+    key: 'dept-sales-marketing',
+    title: 'Sales & Marketing',
+    description: 'Campaign declarations, HCP/distributor answer packs and change templates/forms.',
+    registerKeys: ['campaignsSocialMedia', 'hcpEfficacyAnswer', 'hcpTestReportPack', 'changeTemplates'],
+  },
+  {
+    key: 'dept-system',
+    title: 'System Reference',
+    description: 'Evidence template index, controlled system requirements and feedback on the MBc360 system.',
+    registerKeys: ['templateIndex', 'systemRequirements', 'systemFeedback'],
+  },
+];
+
+export type RegisterGrouping = 'function' | 'department';
+
+// Categories for a grouping mode: 'function' = topic/gate, 'department' = responsibility.
+export function getRegisterCategories(grouping: RegisterGrouping): RegisterCategory[] {
+  return grouping === 'department' ? REGISTER_DEPARTMENTS : REGISTER_CATEGORIES;
+}
+
+// Look a category up by key across BOTH groupings, so a category-overview URL
+// keeps working after the user flips the view toggle.
+export function getRegisterCategory(key: string | undefined): RegisterCategory | undefined {
+  if (!key) return undefined;
+  return [...REGISTER_CATEGORIES, ...REGISTER_DEPARTMENTS].find((c) => c.key === key);
+}
+
+// Which category holds a register in a given grouping. Register deep-links are
+// category-agnostic (`.../registers/reg/:registerKey`), so the sidebar resolves
+// the parent submenu to open/highlight from the register + the ACTIVE grouping.
+export function findCategoryForRegister(
+  registerKey: string | undefined,
+  grouping: RegisterGrouping,
+): RegisterCategory | undefined {
+  if (!registerKey) return undefined;
+  return getRegisterCategories(grouping).find((c) => c.registerKeys.includes(registerKey));
+}
+
 export function getRegisterConfig(key: string): RegisterConfig | undefined {
   return REGISTER_CONFIGS.find((r) => r.key === key);
 }
