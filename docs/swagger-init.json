@@ -1,0 +1,2336 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Cosmetri",
+        "description": "The API documentation helps you to identify API endpoints, Request payload and Response object that <b>Cosmetri V1</b> exposes for authorised users.",
+        "termsOfService": "https://www.cosmetri.com/terms/",
+        "contact": {
+            "name": "Cosmetri API Team",
+            "url": "https://www.cosmetri.com/",
+            "email": "support@cosmetri.com"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "https://app1-env.cosmetri.com/api/v1",
+            "description": "Cosmetri"
+        }
+    ],
+    "paths": {
+        "/oauth/token": {
+            "put": {
+                "tags": [
+                    "API Authentication"
+                ],
+                "summary": "To regenerate access_token if it gets expired",
+                "description": "This endpoint revokes associated access_token with provided refresh_token and generates new bearer type access token for the user that must include in all subsequent API headers with <b>Authorization</b> key.<br/><br/><b>Notes:</b> refresh_token will be valid till one week after expiration of the access_token.",
+                "operationId": "refreshAPIAccessToken",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/refreshTokenRequestPayload"
+                            }
+                        },
+                        "multipart/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/refreshTokenRequestPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "access_token": {
+                                                    "description": "Pass in header of further API calls with Authorization key",
+                                                    "type": "string",
+                                                    "example": "f2700c3d57f256761317d7c4..."
+                                                },
+                                                "refresh_token": {
+                                                    "description": "Use this token in oauth/token API with grant_type=refresh_token to re-generate access_token once it get expired after certain time span",
+                                                    "type": "string",
+                                                    "example": "9885884e3df591ac4ce0c205d..."
+                                                },
+                                                "created_at": {
+                                                    "description": "Date time when the token is generated",
+                                                    "type": "string",
+                                                    "example": "2023-10-11 11:33:26"
+                                                },
+                                                "access_token_expires_at": {
+                                                    "description": "Date time when the access token will expire",
+                                                    "type": "string",
+                                                    "example": "2023-10-11 12:33:26"
+                                                },
+                                                "refresh_token_expires_at": {
+                                                    "description": "Date time when the refresh token will expire",
+                                                    "type": "string",
+                                                    "example": "2023-10-11 13:33:26"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid request payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/invalidRequestPayload"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "API Authentication"
+                ],
+                "summary": "Get bearer type access token for Cosmetri APIs authentication",
+                "description": "This endpoint generates an access token for the user that must include in all subsequent API headers with <b>Authorization</b> key. <br/><br/><b>Notes:</b> <ul><li>access_token will be expired after 1 hour. By using associated refresh_token, you can refresh the access_token.</li><li>Only admin level user of professional account is allowed to generate the access token.</li></ul>",
+                "operationId": "getAPIAccessToken",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/getAccessTokenRequestPayload"
+                            }
+                        },
+                        "multipart/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/getAccessTokenRequestPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "access_token": {
+                                                    "description": "Pass in header of further API calls with Authorization key",
+                                                    "type": "string",
+                                                    "example": "f2700c3d57f256761317d7c4..."
+                                                },
+                                                "refresh_token": {
+                                                    "description": "Use this token in oauth/token API with grant_type=refresh_token to re-generate access_token once it get expired after certain time span",
+                                                    "type": "string",
+                                                    "example": "9885884e3df591ac4ce0c205d..."
+                                                },
+                                                "created_at": {
+                                                    "description": "Date time when the token is generated",
+                                                    "type": "string",
+                                                    "example": "2023-10-11 11:33:26"
+                                                },
+                                                "access_token_expires_at": {
+                                                    "description": "Date time when the access token will expire",
+                                                    "type": "string",
+                                                    "example": "2023-10-11 12:33:26"
+                                                },
+                                                "refresh_token_expires_at": {
+                                                    "description": "Date time when the refresh token will expire",
+                                                    "type": "string",
+                                                    "example": "2023-10-11 13:33:26"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid request payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/invalidRequestPayload"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/raw-material/{id}": {
+            "post": {
+                "tags": [
+                    "Raw Material"
+                ],
+                "summary": "Get Raw Material by ID",
+                "description": "A request to this endpoint will return raw material details based on the ID provided. Groups of values can be requested by including the ‘Tab’ parameter in the request. Currently, values from the ‘Info’ and ‘Cost’ tabs can be requested. If the ‘Tabs’ value is not provided in the request, it will only return the default values <br><br>For more information on the default values and fields under each tab, please check the ‘Schema’ below.<br><br> Field mappings:\n         <table id='tablecls'>\n            <tr>\n                <td>'inf_id': '2511',</td>\n                <td>Raw material ID</td>\n            </tr>\n            <tr>\n                <td>'inf_clone_parent_id': '2511',</td>\n                <td>Raw material Parent ID</td>\n            </tr>\n            <tr>\n                <td>'inf_updated_date': '2023-04-14 12:27:11',</td>\n                <td>Updated date</td>\n            </tr>\n            <tr>\n                <td>'inf_updated_id': '246',</td>\n                <td>Updated user ID</td>\n            </tr>\n            <tr>\n                <td>'inf_created_date': '2015-03-16 10:59:28',</td>\n                <td>Created Date</td>\n            </tr>\n            <tr>\n                <td>'inf_created_id': '246',</td>\n                <td>Created User ID</td>\n            </tr>\n            <tr>\n                <td>'inf_trade_name': 'AQUA',</td>\n                <td>Trade Name</td>\n            </tr>\n            <tr>\n                <td>'inf_cat_id': '44',</td>\n                <td>Category ID</td>\n            </tr>\n            <tr>\n                <td>'inf_qua_status_id': '2',</td>\n                <td>Quality Status ID</td>\n            </tr>\n            <tr>\n                <td> 'inf_sup_id': '127',</td>\n                <td>Supplier ID</td>\n            </tr>\n            <tr>\n                <td>'inf_moq': 'blank',</td>\n                <td>Minimum order quantity</td>\n            </tr>\n            <tr>\n                <td>'inf_customer_group': '0',</td>\n                <td>Customer Group ID</td>\n            </tr>\n            <tr>\n                <td>'inf_lead_time': 'blank',</td>\n                <td>Lead Time</td>\n            </tr>\n            <tr>\n                <td>'inf_code': '7732-18-5',</td>\n                <td>Batch No.</td>\n            </tr>\n            <tr>\n                <td>'inf_weight_of_liter': '1.000',</td>\n                <td>Density in g/ml</td>\n            </tr>\n            <tr>\n                <td>'inf_current_stock': '999.950',</td>\n                <td>Inventory level</td>\n            </tr>\n            <tr>\n                <td> 'inf_loc_id': '45',</td>\n                <td>Location ID</td>\n            </tr>\n            <tr>\n                <td>'loc_title': 'Test Location1',</td>\n                <td>Location name</td>\n            </tr>\n            <tr>\n                <td>'status_label': 'Approved',</td>\n                <td>Quality Status Label</td>\n            </tr>\n            <tr>\n                <td>'category_label': 'Thickeners',</td>\n                <td>Category label</td>\n            </tr>\n            <tr>\n                <td>'customer_group_label': 'blank',</td>\n                <td>Customer Group label</td>\n            </tr>\n            <tr>\n                <td>'supplier_name': 'Test Supplier',</td>\n                <td>Supplier Name</td>\n            </tr>\n            <tr>\n                <td>'inf_shipping_cost_per_kg': ' '</td>\n                <td>Shipping cost/kg</td>\n            </tr>\n            <tr>\n                <td>'cos_cost': ' '</td>\n                <td>Cost/kg or /L'</td>\n            </tr>\n         </table> ",
+                "operationId": "getRawMaterialByID",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the raw material",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/getRawMaterialByIDRequestPayload"
+                            }
+                        },
+                        "multipart/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/getRawMaterialByIDRequestPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "inf_id": {
+                                                    "description": "Default field",
+                                                    "type": "string",
+                                                    "example": "2511"
+                                                },
+                                                "inf_clone_parent_id": {
+                                                    "description": "Default field",
+                                                    "type": "string",
+                                                    "example": "2511"
+                                                },
+                                                "inf_updated_date": {
+                                                    "description": "Default field",
+                                                    "type": "string",
+                                                    "example": "2023-04-14 12:27:11"
+                                                },
+                                                "inf_updated_id": {
+                                                    "description": "Default field",
+                                                    "type": "string",
+                                                    "example": "246"
+                                                },
+                                                "inf_created_date": {
+                                                    "description": "Default field",
+                                                    "type": "string",
+                                                    "example": "2015-03-16 10:59:28"
+                                                },
+                                                "inf_created_id": {
+                                                    "description": "Default field",
+                                                    "type": "string",
+                                                    "example": "246"
+                                                },
+                                                "inf_trade_name": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "AQUA"
+                                                },
+                                                "inf_cat_id": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "44"
+                                                },
+                                                "inf_qua_status_id": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "2"
+                                                },
+                                                "inf_sup_id": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "127"
+                                                },
+                                                "inf_moq": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "blank"
+                                                },
+                                                "inf_customer_group": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "0"
+                                                },
+                                                "inf_lead_time": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "blank"
+                                                },
+                                                "inf_code": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "7732-18-5"
+                                                },
+                                                "inf_weight_of_liter": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "1.000"
+                                                },
+                                                "inf_current_stock": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "999.950"
+                                                },
+                                                "inf_loc_id": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "45"
+                                                },
+                                                "loc_title": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "Test Location1"
+                                                },
+                                                "status_label": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "Approved"
+                                                },
+                                                "category_label": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "Thickeners"
+                                                },
+                                                "customer_group_label": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "blank"
+                                                },
+                                                "supplier_name": {
+                                                    "description": "While tabs=['info']",
+                                                    "type": "string",
+                                                    "example": "Test Supplier"
+                                                },
+                                                "inf_shipping_cost_per_kg": {
+                                                    "description": "While tabs=['cost']",
+                                                    "type": "string",
+                                                    "example": ""
+                                                },
+                                                "cos_cost": {
+                                                    "description": "While tabs=['cost']",
+                                                    "type": "string",
+                                                    "example": ""
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/raw-material/list": {
+            "post": {
+                "tags": [
+                    "Raw Material"
+                ],
+                "summary": "To list all raw materials",
+                "description": "<b>Notes:</b><ul><li>There is a max limit of 100 records per request</li><li><b>since_updated_at</b> is an optional filter, to fetch records that are created or updated on the requested date or later</li><li>To fetch all records, 3 values in the API response can help you to identify, how many times the API is required to be called to fetch all records. For Ex. page= 1, limit= 100, count= 3010 (Means 3010/100 = 30.1 so the last page would be 31)</li></ul>",
+                "operationId": "getRawMaterialList",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/paginationProperties"
+                            }
+                        },
+                        "multipart/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/paginationProperties"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "inf_id": {
+                                                        "description": "Default field",
+                                                        "type": "string",
+                                                        "example": "2511"
+                                                    },
+                                                    "inf_clone_parent_id": {
+                                                        "description": "Default field",
+                                                        "type": "string",
+                                                        "example": "2511"
+                                                    },
+                                                    "inf_updated_date": {
+                                                        "description": "Default field",
+                                                        "type": "string",
+                                                        "example": "2023-04-14 12:27:11"
+                                                    },
+                                                    "inf_updated_id": {
+                                                        "description": "Default field",
+                                                        "type": "string",
+                                                        "example": "246"
+                                                    },
+                                                    "inf_created_date": {
+                                                        "description": "Default field",
+                                                        "type": "string",
+                                                        "example": "2015-03-16 10:59:28"
+                                                    },
+                                                    "inf_created_id": {
+                                                        "description": "Default field",
+                                                        "type": "string",
+                                                        "example": "246"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "page": {
+                                            "type": "string",
+                                            "example": 1
+                                        },
+                                        "limit": {
+                                            "type": "string",
+                                            "example": 10
+                                        },
+                                        "count": {
+                                            "type": "string",
+                                            "example": "3010"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/raw-material/update": {
+            "put": {
+                "tags": [
+                    "Raw Material"
+                ],
+                "summary": "To update raw materials cost, moq and inventory data",
+                "description": "This endpoint will update the cost,moq and available inventory in the raw material.",
+                "operationId": "updateRMData",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/updateCost"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "rm_id": {
+                                                    "description": "Use this id to fetch raw materials data",
+                                                    "type": "integer",
+                                                    "example": "1"
+                                                },
+                                                "cost": {
+                                                    "description": "Updated cost in parent RM",
+                                                    "type": "string",
+                                                    "example": "5.0000000"
+                                                },
+                                                "inf_moq": {
+                                                    "description": "Updated moq in RM",
+                                                    "type": "string",
+                                                    "example": "5"
+                                                },
+                                                "inf_current_stock": {
+                                                    "description": "Updated available inventory in RM",
+                                                    "type": "number",
+                                                    "example": "100"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Invalid request payload",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/invalidRequestPayload"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/raw-material/details": {
+            "post": {
+                "tags": [
+                    "Raw Material"
+                ],
+                "summary": "Get Raw Materials by IDs",
+                "description": "A request to this endpoint will return raw material details for one or more IDs. Pass an array of IDs (max 100). Groups of values can be requested by including the 'Tab' parameter in the request. Currently, values from the 'Info' and 'Cost' tabs can be requested. If the 'Tabs' value is not provided in the request, it will only return the default values <br><br>For more information on the default values and fields under each tab, please check the 'Schema' below.<br><br> Field mappings:\n        <table id='tablecls'>\n           <tr>\n               <td>'inf_id': '2511',</td>\n               <td>Raw material ID</td>\n           </tr>\n           <tr>\n               <td>'inf_clone_parent_id': '2511',</td>\n               <td>Raw material Parent ID</td>\n           </tr>\n           <tr>\n               <td>'inf_updated_date': '2023-04-14 12:27:11',</td>\n               <td>Updated date</td>\n           </tr>\n           <tr>\n               <td>'inf_updated_id': '246',</td>\n               <td>Updated user ID</td>\n           </tr>\n           <tr>\n               <td>'inf_created_date': '2015-03-16 10:59:28',</td>\n               <td>Created Date</td>\n           </tr>\n           <tr>\n               <td>'inf_created_id': '246',</td>\n               <td>Created User ID</td>\n           </tr>\n           <tr>\n               <td>'inf_trade_name': 'AQUA',</td>\n               <td>Trade Name</td>\n           </tr>\n           <tr>\n               <td>'inf_cat_id': '44',</td>\n               <td>Category ID</td>\n           </tr>\n           <tr>\n               <td>'inf_qua_status_id': '2',</td>\n               <td>Quality Status ID</td>\n           </tr>\n           <tr>\n               <td> 'inf_sup_id': '127',</td>\n               <td>Supplier ID</td>\n           </tr>\n           <tr>\n               <td>'inf_moq': 'blank',</td>\n               <td>Minimum order quantity</td>\n           </tr>\n           <tr>\n               <td>'inf_customer_group': '0',</td>\n               <td>Customer Group ID</td>\n           </tr>\n           <tr>\n               <td>'inf_lead_time': 'blank',</td>\n               <td>Lead Time</td>\n           </tr>\n           <tr>\n               <td>'inf_code': '7732-18-5',</td>\n               <td>Batch No.</td>\n           </tr>\n           <tr>\n               <td>'inf_weight_of_liter': '1.000',</td>\n               <td>Density in g/ml</td>\n           </tr>\n           <tr>\n               <td>'inf_current_stock': '999.950',</td>\n               <td>Inventory level</td>\n           </tr>\n           <tr>\n               <td> 'inf_loc_id': '45',</td>\n               <td>Location ID</td>\n           </tr>\n           <tr>\n               <td>'loc_title': 'Test Location1',</td>\n               <td>Location name</td>\n           </tr>\n           <tr>\n               <td>'status_label': 'Approved',</td>\n               <td>Quality Status Label</td>\n           </tr>\n           <tr>\n               <td>'category_label': 'Thickeners',</td>\n               <td>Category label</td>\n           </tr>\n           <tr>\n               <td>'customer_group_label': 'blank',</td>\n               <td>Customer Group label</td>\n           </tr>\n           <tr>\n               <td>'supplier_name': 'Test Supplier',</td>\n               <td>Supplier Name</td>\n           </tr>\n           <tr>\n               <td>'inf_shipping_cost_per_kg': ' '</td>\n               <td>Shipping cost/kg</td>\n           </tr>\n           <tr>\n               <td>'cos_cost': ' '</td>\n               <td>Cost/kg or /L'</td>\n           </tr>\n        </table> ",
+                "operationId": "getRawMaterialByIDs",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/getRawMaterialByIDsRequestPayload"
+                            }
+                        },
+                        "multipart/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/getRawMaterialByIDsRequestPayload"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "inf_id": {
+                                                        "description": "Default field",
+                                                        "type": "string",
+                                                        "example": "2511"
+                                                    },
+                                                    "inf_clone_parent_id": {
+                                                        "description": "Default field",
+                                                        "type": "string",
+                                                        "example": "2511"
+                                                    },
+                                                    "inf_updated_date": {
+                                                        "description": "Default field",
+                                                        "type": "string",
+                                                        "example": "2023-04-14 12:27:11"
+                                                    },
+                                                    "inf_updated_id": {
+                                                        "description": "Default field",
+                                                        "type": "string",
+                                                        "example": "246"
+                                                    },
+                                                    "inf_created_date": {
+                                                        "description": "Default field",
+                                                        "type": "string",
+                                                        "example": "2015-03-16 10:59:28"
+                                                    },
+                                                    "inf_created_id": {
+                                                        "description": "Default field",
+                                                        "type": "string",
+                                                        "example": "246"
+                                                    },
+                                                    "inf_trade_name": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "AQUA"
+                                                    },
+                                                    "inf_cat_id": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "44"
+                                                    },
+                                                    "inf_qua_status_id": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "2"
+                                                    },
+                                                    "inf_sup_id": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "127"
+                                                    },
+                                                    "inf_moq": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "blank"
+                                                    },
+                                                    "inf_customer_group": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "0"
+                                                    },
+                                                    "inf_lead_time": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "blank"
+                                                    },
+                                                    "inf_code": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "7732-18-5"
+                                                    },
+                                                    "inf_weight_of_liter": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "1.000"
+                                                    },
+                                                    "inf_current_stock": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "999.950"
+                                                    },
+                                                    "inf_loc_id": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "45"
+                                                    },
+                                                    "loc_title": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "Test Location1"
+                                                    },
+                                                    "status_label": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "Approved"
+                                                    },
+                                                    "category_label": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "Thickeners"
+                                                    },
+                                                    "customer_group_label": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "blank"
+                                                    },
+                                                    "supplier_name": {
+                                                        "description": "While tabs=['info']",
+                                                        "type": "string",
+                                                        "example": "Test Supplier"
+                                                    },
+                                                    "inf_shipping_cost_per_kg": {
+                                                        "description": "While tabs=['cost']",
+                                                        "type": "string",
+                                                        "example": ""
+                                                    },
+                                                    "cos_cost": {
+                                                        "description": "While tabs=['cost']",
+                                                        "type": "string",
+                                                        "example": ""
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/product/{id}": {
+            "post": {
+                "tags": [
+                    "Product"
+                ],
+                "summary": "Get Product by ID",
+                "description": "This endpoint will give product details based on the provided ID.",
+                "operationId": "getProductById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the product",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "inf_id": {
+                                                    "type": "string",
+                                                    "example": "212"
+                                                },
+                                                "inf_title": {
+                                                    "type": "string",
+                                                    "example": "Product Name"
+                                                },
+                                                "inf_reference": {
+                                                    "type": "string",
+                                                    "example": "Product Reference"
+                                                },
+                                                "inf_cat_id": {
+                                                    "type": "string",
+                                                    "example": "1"
+                                                },
+                                                "inf_updated_date": {
+                                                    "type": "string",
+                                                    "example": "2015-03-16 10:55:04"
+                                                },
+                                                "inf_updated_id": {
+                                                    "type": "string",
+                                                    "example": "1"
+                                                },
+                                                "inf_created_id": {
+                                                    "type": "string",
+                                                    "example": "2"
+                                                },
+                                                "inf_created_date": {
+                                                    "type": "string",
+                                                    "example": "2023-03-16 10:55:04"
+                                                },
+                                                "product_project_id": {
+                                                    "type": "string",
+                                                    "example": "1"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/product/list": {
+            "post": {
+                "tags": [
+                    "Product"
+                ],
+                "summary": "To list all products",
+                "description": "<b>Notes:</b><ul><li>There is a max limit of 100 records per request</li><li><b>since_updated_at</b> is an optional filter, to fetch records that are created or updated on the requested date or later</li><li>To fetch all records, 3 values in the API response can help you to identify, how many times the API is required to be called to fetch all records. For Ex. page= 1, limit= 100, count= 3010 (Means 3010/100 = 30.1 so the last page would be 31)</li></ul>",
+                "operationId": "getProductList",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/paginationProperties"
+                            }
+                        },
+                        "multipart/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/paginationProperties"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "inf_id": {
+                                                        "type": "string",
+                                                        "example": "2511"
+                                                    },
+                                                    "inf_title": {
+                                                        "type": "string",
+                                                        "example": "Nailpaint Removal"
+                                                    },
+                                                    "inf_reference": {
+                                                        "type": "string",
+                                                        "example": "NAR01"
+                                                    },
+                                                    "inf_cat_id": {
+                                                        "type": "string",
+                                                        "example": "2511"
+                                                    },
+                                                    "inf_created_id": {
+                                                        "type": "string",
+                                                        "example": "246"
+                                                    },
+                                                    "inf_created_date": {
+                                                        "type": "string",
+                                                        "example": "2015-03-16 10:59:28"
+                                                    },
+                                                    "inf_updated_id": {
+                                                        "type": "string",
+                                                        "example": "246"
+                                                    },
+                                                    "inf_updated_date": {
+                                                        "type": "string",
+                                                        "example": "2023-04-14 12:27:11"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "page": {
+                                            "type": "string",
+                                            "example": 1
+                                        },
+                                        "limit": {
+                                            "type": "string",
+                                            "example": 10
+                                        },
+                                        "count": {
+                                            "type": "string",
+                                            "example": "3010"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/product/details": {
+            "post": {
+                "tags": [
+                    "Product"
+                ],
+                "summary": "Get Products by IDs",
+                "description": "This endpoint will give product details based on the provided IDs.",
+                "operationId": "getProductByIds",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "id"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "description": "Array of product IDs to fetch. Maximum 100 IDs per request.",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        },
+                                        "example": [
+                                            1,
+                                            2,
+                                            3
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        },
+                        "multipart/x-www-form-urlencoded": {
+                            "schema": {
+                                "required": [
+                                    "id"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "description": "Array of product IDs to fetch. Maximum 100 IDs per request.",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        },
+                                        "example": [
+                                            1,
+                                            2,
+                                            3
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "inf_id": {
+                                                        "type": "string",
+                                                        "example": "212"
+                                                    },
+                                                    "inf_title": {
+                                                        "type": "string",
+                                                        "example": "Product Name"
+                                                    },
+                                                    "inf_reference": {
+                                                        "type": "string",
+                                                        "example": "Product Reference"
+                                                    },
+                                                    "inf_cat_id": {
+                                                        "type": "string",
+                                                        "example": "1"
+                                                    },
+                                                    "inf_updated_date": {
+                                                        "type": "string",
+                                                        "example": "2015-03-16 10:55:04"
+                                                    },
+                                                    "inf_updated_id": {
+                                                        "type": "string",
+                                                        "example": "1"
+                                                    },
+                                                    "inf_created_id": {
+                                                        "type": "string",
+                                                        "example": "2"
+                                                    },
+                                                    "inf_created_date": {
+                                                        "type": "string",
+                                                        "example": "2023-03-16 10:55:04"
+                                                    },
+                                                    "product_project_id": {
+                                                        "type": "string",
+                                                        "example": "1"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/formula/{id}": {
+            "post": {
+                "tags": [
+                    "Formula"
+                ],
+                "summary": "Get formula by ID",
+                "description": "This endpoint will give formula details based on the provided ID.",
+                "operationId": "getFormulaById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the formula",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "inf_id": {
+                                                    "type": "string",
+                                                    "example": "212"
+                                                },
+                                                "inf_product_id": {
+                                                    "type": "string",
+                                                    "example": "2"
+                                                },
+                                                "inf_created_id": {
+                                                    "type": "string",
+                                                    "example": "12"
+                                                },
+                                                "inf_created_date": {
+                                                    "type": "string",
+                                                    "example": "2015-03-16 10:55:04"
+                                                },
+                                                "inf_updated_id": {
+                                                    "type": "string",
+                                                    "example": "12"
+                                                },
+                                                "inf_updated_date": {
+                                                    "type": "string",
+                                                    "example": "2015-03-16 10:55:04"
+                                                },
+                                                "inf_reference": {
+                                                    "type": "string",
+                                                    "example": "Formula reference"
+                                                },
+                                                "inf_qua_status": {
+                                                    "type": "string",
+                                                    "example": "2"
+                                                },
+                                                "customer_group": {
+                                                    "type": "string",
+                                                    "example": "3"
+                                                },
+                                                "customer_group_label": {
+                                                    "type": "string",
+                                                    "example": "Quarantined"
+                                                },
+                                                "formula_composition": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "inf_id": {
+                                                                "type": "string",
+                                                                "example": "321"
+                                                            },
+                                                            "inf_trade_name": {
+                                                                "type": "string",
+                                                                "example": "RM-Name"
+                                                            },
+                                                            "inf_code": {
+                                                                "type": "string",
+                                                                "example": "part-code"
+                                                            },
+                                                            "com_stage_rm_order": {
+                                                                "type": "string",
+                                                                "example": "1"
+                                                            },
+                                                            "com_percentage": {
+                                                                "type": "string",
+                                                                "example": "100.0000000"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/formula/list": {
+            "post": {
+                "tags": [
+                    "Formula"
+                ],
+                "summary": "To list all formulas",
+                "description": "<b>Notes:</b><ul><li>There is a max limit of 100 records per request</li><li><b>since_updated_at</b> is an optional filter, to fetch records that are created or updated on the requested date or later</li><li>To fetch all records, 3 values in the API response can help you to identify, how many times the API is required to be called to fetch all records. For Ex. page= 1, limit= 100, count= 3010 (Means 3010/100 = 30.1 so the last page would be 31)</li></ul>",
+                "operationId": "getFormulaList",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/paginationProperties"
+                            }
+                        },
+                        "multipart/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/paginationProperties"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "inf_id": {
+                                                        "type": "string",
+                                                        "example": "2511"
+                                                    },
+                                                    "inf_product_id": {
+                                                        "type": "string",
+                                                        "example": "2511"
+                                                    },
+                                                    "inf_created_id": {
+                                                        "type": "string",
+                                                        "example": "246"
+                                                    },
+                                                    "inf_created_date": {
+                                                        "type": "string",
+                                                        "example": "2015-03-16 10:59:28"
+                                                    },
+                                                    "inf_updated_id": {
+                                                        "type": "string",
+                                                        "example": "246"
+                                                    },
+                                                    "inf_updated_date": {
+                                                        "type": "string",
+                                                        "example": "2023-04-14 12:27:11"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "page": {
+                                            "type": "string",
+                                            "example": 1
+                                        },
+                                        "limit": {
+                                            "type": "string",
+                                            "example": 10
+                                        },
+                                        "count": {
+                                            "type": "string",
+                                            "example": "3010"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/formula/details": {
+            "post": {
+                "tags": [
+                    "Formula"
+                ],
+                "summary": "Get formulas by IDs",
+                "description": "This endpoint will give formula details based on the provided IDs.",
+                "operationId": "getFormulaByIds",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "id"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "description": "Array of formula IDs to fetch. Maximum 100 IDs per request.",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        },
+                                        "example": [
+                                            1,
+                                            2,
+                                            3
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "inf_id": {
+                                                        "type": "string",
+                                                        "example": "212"
+                                                    },
+                                                    "inf_product_id": {
+                                                        "type": "string",
+                                                        "example": "2"
+                                                    },
+                                                    "inf_created_id": {
+                                                        "type": "string",
+                                                        "example": "12"
+                                                    },
+                                                    "inf_created_date": {
+                                                        "type": "string",
+                                                        "example": "2015-03-16 10:55:04"
+                                                    },
+                                                    "inf_updated_id": {
+                                                        "type": "string",
+                                                        "example": "12"
+                                                    },
+                                                    "inf_updated_date": {
+                                                        "type": "string",
+                                                        "example": "2015-03-16 10:55:04"
+                                                    },
+                                                    "inf_reference": {
+                                                        "type": "string",
+                                                        "example": "Formula reference"
+                                                    },
+                                                    "inf_qua_status": {
+                                                        "type": "string",
+                                                        "example": "2"
+                                                    },
+                                                    "customer_group": {
+                                                        "type": "string",
+                                                        "example": "3"
+                                                    },
+                                                    "customer_group_label": {
+                                                        "type": "string",
+                                                        "example": "Quarantined"
+                                                    },
+                                                    "formula_composition": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "com_inf_id": {
+                                                                    "type": "string",
+                                                                    "example": "212"
+                                                                },
+                                                                "inf_id": {
+                                                                    "type": "string",
+                                                                    "example": "321"
+                                                                },
+                                                                "inf_trade_name": {
+                                                                    "type": "string",
+                                                                    "example": "RM-Name"
+                                                                },
+                                                                "inf_code": {
+                                                                    "type": "string",
+                                                                    "example": "part-code"
+                                                                },
+                                                                "com_stage_id": {
+                                                                    "type": "string",
+                                                                    "example": "1"
+                                                                },
+                                                                "com_percentage": {
+                                                                    "type": "string",
+                                                                    "example": "100.0000000"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/compliance/{id}": {
+            "get": {
+                "tags": [
+                    "Compliance"
+                ],
+                "summary": "Get Compliance by formula ID",
+                "description": "This endpoint will give compliance details based on the provided Formula ID.",
+                "operationId": "getComplianceById",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "ID of the formula",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "product": {
+                                                    "properties": {
+                                                        "title": {
+                                                            "type": "string",
+                                                            "example": "Restoring Night Cream"
+                                                        },
+                                                        "reference": {
+                                                            "type": "string",
+                                                            "example": "PRD-99801"
+                                                        },
+                                                        "product_type": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            },
+                                                            "example": [
+                                                                "Cream",
+                                                                "Face Cream"
+                                                            ]
+                                                        },
+                                                        "type_of_exposure": {
+                                                            "type": "string",
+                                                            "example": "Leave-on"
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "formula": {
+                                                    "properties": {
+                                                        "version": {
+                                                            "type": "string",
+                                                            "example": "2.1.0"
+                                                        },
+                                                        "reference": {
+                                                            "type": "string",
+                                                            "example": "FRM-XYZ-04"
+                                                        },
+                                                        "status": {
+                                                            "type": "string",
+                                                            "example": "active"
+                                                        },
+                                                        "is_production_mode": {
+                                                            "type": "boolean",
+                                                            "example": true
+                                                        },
+                                                        "selected_compliance_zones": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            },
+                                                            "example": [
+                                                                "EU",
+                                                                "UK",
+                                                                "US"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "type": "object"
+                                                },
+                                                "chemical_composition": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "inci_name": {
+                                                                "type": "string",
+                                                                "example": "Aqua"
+                                                            },
+                                                            "cas_no": {
+                                                                "type": "string",
+                                                                "example": "7732-18-5"
+                                                            },
+                                                            "ec_no": {
+                                                                "type": "string",
+                                                                "example": "231-791-2"
+                                                            },
+                                                            "percentage_w_w_in_formula": {
+                                                                "type": "number",
+                                                                "format": "float",
+                                                                "example": 65.5
+                                                            },
+                                                            "INCI_source_raw_materials": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "properties": {
+                                                                        "raw_title": {
+                                                                            "type": "string",
+                                                                            "example": "Purified Water USP"
+                                                                        },
+                                                                        "percentage_w_w_inci_in_raw": {
+                                                                            "type": "number",
+                                                                            "format": "float",
+                                                                            "example": 100
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                }
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/manufacturing-order/list": {
+            "post": {
+                "tags": [
+                    "Manufacturing Order"
+                ],
+                "summary": "To list all manufacturing orders",
+                "description": "<b>Notes:</b><ul><li>There is a max limit of 100 records per request</li><li><b>since_updated_at</b> is an optional filter, to fetch records that are created or updated on the requested date or later</li><li>To fetch all records, 3 values in the API response can help you to identify, how many times the API is required to be called to fetch all records. For Ex. page= 1, limit= 100, count= 3010 (Means 3010/100 = 30.1 so the last page would be 31)</li></ul>",
+                "operationId": "getManufacturingOrderList",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/paginationProperties"
+                            }
+                        },
+                        "multipart/x-www-form-urlencoded": {
+                            "schema": {
+                                "$ref": "#/components/schemas/paginationProperties"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "mf_ord_id": {
+                                                        "type": "string",
+                                                        "example": "2511"
+                                                    },
+                                                    "mf_ord_no": {
+                                                        "type": "string",
+                                                        "example": "M00131"
+                                                    },
+                                                    "mf_ord_batch_no": {
+                                                        "type": "string",
+                                                        "example": "ABC0006"
+                                                    },
+                                                    "mf_ord_created_id": {
+                                                        "type": "string",
+                                                        "example": "246"
+                                                    },
+                                                    "mf_ord_created_date": {
+                                                        "type": "string",
+                                                        "example": "2015-03-16 10:59:28"
+                                                    },
+                                                    "mf_ord_updated_id": {
+                                                        "type": "string",
+                                                        "example": "246"
+                                                    },
+                                                    "mf_ord_updated_date": {
+                                                        "type": "string",
+                                                        "example": "2023-04-14 12:27:11"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        },
+                                        "page": {
+                                            "type": "string",
+                                            "example": 1
+                                        },
+                                        "limit": {
+                                            "type": "string",
+                                            "example": 10
+                                        },
+                                        "count": {
+                                            "type": "string",
+                                            "example": "3010"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/manufacturing-order/details": {
+            "post": {
+                "tags": [
+                    "Manufacturing Order"
+                ],
+                "summary": "Get Manufacturing Order by IDs",
+                "description": "This endpoint will give manufacturing order details based on the provided IDs.",
+                "operationId": "getManufacturingOrderByIds",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "id"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "description": "Array of manufacturing order IDs to fetch. Maximum 100 IDs per request.",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        },
+                                        "example": [
+                                            1,
+                                            2,
+                                            3
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        },
+                        "multipart/x-www-form-urlencoded": {
+                            "schema": {
+                                "required": [
+                                    "id"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "description": "Array of manufacturing order IDs to fetch. Maximum 100 IDs per request.",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer"
+                                        },
+                                        "example": [
+                                            1,
+                                            2,
+                                            3
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful API execution",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API has been performed successfully."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "mf_ord_id": {
+                                                        "type": "string",
+                                                        "example": "810"
+                                                    },
+                                                    "manufacturing_order_id": {
+                                                        "type": "string",
+                                                        "example": "M00225"
+                                                    },
+                                                    "due_date": {
+                                                        "type": "string",
+                                                        "example": "2026-04-01"
+                                                    },
+                                                    "product_name": {
+                                                        "type": "string",
+                                                        "example": "Red Lips"
+                                                    },
+                                                    "formula_version": {
+                                                        "type": "string",
+                                                        "example": "1.02"
+                                                    },
+                                                    "formula_reference": {
+                                                        "type": "string",
+                                                        "example": "testref"
+                                                    },
+                                                    "bulk_amount_required": {
+                                                        "type": "string",
+                                                        "example": "1.000 kg"
+                                                    },
+                                                    "raw_materials": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "inf_id": {
+                                                                    "type": "string",
+                                                                    "example": "2645"
+                                                                },
+                                                                "trade_name": {
+                                                                    "type": "string",
+                                                                    "example": "IMWITOR 375 | TBD 144"
+                                                                },
+                                                                "stage_id": {
+                                                                    "type": "string",
+                                                                    "example": "1 | 1. Water Phase"
+                                                                },
+                                                                "supplier_batch_no": {
+                                                                    "type": "string",
+                                                                    "example": "220325015596"
+                                                                },
+                                                                "dispensed_amount": {
+                                                                    "type": "string",
+                                                                    "example": "0.7191812 kg"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/bearerTokenAuthFailResponse"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "If total number of API calls exceeds than configured throttle limit",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/throttleLimitByUser"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "bearerTokenAuthFailResponse": {
+                "description": "When bearer token in the header is either invalid, missing or get expired",
+                "properties": {
+                    "success": {
+                        "description": "// Define API documentation details",
+                        "type": "boolean",
+                        "example": "false"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "The API token authorization is failed."
+                    },
+                    "data": {
+                        "type": "null",
+                        "example": "null"
+                    }
+                },
+                "type": "object"
+            },
+            "invalidRequestPayload": {
+                "description": "If any property of request payload is invalid",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": "false"
+                    },
+                    "message": {
+                        "description": "Validation error message",
+                        "type": "string",
+                        "example": "name is invalid"
+                    },
+                    "data": {
+                        "type": "null",
+                        "example": "null"
+                    }
+                },
+                "type": "object"
+            },
+            "paginationProperties": {
+                "properties": {
+                    "page": {
+                        "description": "Page number",
+                        "type": "integer",
+                        "format": "int64",
+                        "default": 1,
+                        "example": 1
+                    },
+                    "limit": {
+                        "description": "Maximum limit of records to fetch",
+                        "type": "integer",
+                        "format": "int64",
+                        "default": 10,
+                        "maximum": 100,
+                        "example": 10
+                    },
+                    "since_updated_at": {
+                        "description": "To fetch records that are created or updated on the requested date or later",
+                        "type": "string",
+                        "format": "date",
+                        "example": "2024-12-31"
+                    }
+                },
+                "type": "object"
+            },
+            "throttleLimitByUser": {
+                "description": "Default there is limit of 60 API calls per minute for each user",
+                "properties": {
+                    "success": {
+                        "type": "boolean",
+                        "example": "false"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Rate limit exceeded. Please try again later."
+                    },
+                    "data": {
+                        "type": "null",
+                        "example": "null"
+                    }
+                },
+                "type": "object"
+            },
+            "getAccessTokenRequestPayload": {
+                "required": [
+                    "grant_type",
+                    "username",
+                    "password"
+                ],
+                "properties": {
+                    "grant_type": {
+                        "description": "grant_type: <b>password</b> will give you access_token and refresh_token in exchange of valid credentials",
+                        "type": "string",
+                        "enum": [
+                            "password",
+                            "refresh_token",
+                            "revoke_token"
+                        ],
+                        "example": "password"
+                    },
+                    "username": {
+                        "description": "<b>username</b> of cosmetri user",
+                        "type": "string",
+                        "example": "foo-bar"
+                    },
+                    "password": {
+                        "description": "<b>password</b> of cosmetri user",
+                        "type": "string",
+                        "example": "******"
+                    }
+                },
+                "type": "object"
+            },
+            "refreshTokenRequestPayload": {
+                "required": [
+                    "grant_type",
+                    "refresh_token"
+                ],
+                "properties": {
+                    "grant_type": {
+                        "description": "grant_type: <b>refresh_token</b> will generate a new bearer type access_token and the associated access_token will be revoked",
+                        "type": "string",
+                        "enum": [
+                            "password",
+                            "refresh_token",
+                            "revoke_token"
+                        ],
+                        "example": "refresh_token"
+                    },
+                    "refresh_token": {
+                        "type": "string",
+                        "example": "9885884e3df591ac4ce0c205d..."
+                    }
+                },
+                "type": "object"
+            },
+            "getRawMaterialByIDRequestPayload": {
+                "properties": {
+                    "tabs": {
+                        "description": "<ul><li><b>Default properties:</b> inf_id, inf_updated_date, inf_updated_id, inf_created_date, inf_created_id</li><li><b>info:</b> inf_trade_name, inf_cat_id, inf_qua_status_id, inf_sup_id, inf_moq, inf_customer_group, inf_lead_time, inf_code, inf_weight_of_liter, inf_current_stock, inf_loc_id, loc_title, inf_clone_parent_id, inf_qua_status_id</li><li><b>cost:</b> inf_shipping_cost_per_kg</li></ul>",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "info",
+                                "cost"
+                            ]
+                        },
+                        "example": [
+                            "info",
+                            "cost"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "getRawMaterialByIDsRequestPayload": {
+                "required": [
+                    "id"
+                ],
+                "properties": {
+                    "id": {
+                        "description": "Array of raw material IDs to fetch (max 100)",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "example": [
+                            1,
+                            2,
+                            3
+                        ]
+                    },
+                    "tabs": {
+                        "description": "<ul><li><b>Default properties:</b> inf_id, inf_updated_date, inf_updated_id, inf_created_date, inf_created_id</li><li><b>info:</b> inf_trade_name, inf_cat_id, inf_qua_status_id, inf_sup_id, inf_moq, inf_customer_group, inf_lead_time, inf_code, inf_weight_of_liter, inf_current_stock, inf_loc_id, loc_title, inf_clone_parent_id</li><li><b>cost:</b> inf_shipping_cost_per_kg, cos_cost</li></ul>",
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "info",
+                                "cost"
+                            ]
+                        },
+                        "example": [
+                            "info",
+                            "cost"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "updateCost": {
+                "required": [
+                    "rm_id"
+                ],
+                "properties": {
+                    "rm_id": {
+                        "type": "integer",
+                        "example": "1"
+                    },
+                    "cost": {
+                        "type": "string",
+                        "example": "5"
+                    },
+                    "inf_moq": {
+                        "type": "string",
+                        "example": "5"
+                    },
+                    "inf_current_stock": {
+                        "type": "string",
+                        "example": "100"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Provide an access token that can fetched via <b>/oauth/token</b> API. <br/>It will set <b>Authorization=&quot;Bearer &#60;token value&#62;&quot;</b> in the header",
+                "name": "bearerAuth",
+                "in": "header",
+                "bearerFormat": "JWT",
+                "scheme": "Bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "API Authentication",
+            "description": "API to obtain an access token and validate it before making any subsequent calls"
+        },
+        {
+            "name": "Raw Material",
+            "description": "APIs for raw material"
+        },
+        {
+            "name": "Product",
+            "description": "APIs for product"
+        },
+        {
+            "name": "Formula",
+            "description": "APIs for formula"
+        },
+        {
+            "name": "Compliance",
+            "description": "APIs for formula compliance"
+        },
+        {
+            "name": "Manufacturing Order",
+            "description": "APIs for manufacturing order"
+        }
+    ]
+}
