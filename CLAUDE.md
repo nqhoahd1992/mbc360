@@ -42,6 +42,32 @@ When changing gate/phase logic, `gateProgress.ts` is the single place that encod
 - **Integrations (A3):** `/integrations` page + `src/integrations/cosmetri.ts`, a **mock** Cosmetri client mirroring `docs/swagger-init.json` (OAuth2 password grant → access/refresh tokens; formulas, raw materials incl. `supplier_name`, compliance with INCI/CAS). Cosmetri is strictly read-only; the Formula BOM can be imported from it (`CosmetriImportModal`). Data the API doesn't provide (supplier details beyond the name, SDS/CoA/TDS links) is entered manually. New raw materials go through the Power Apps "Create new raw material" change request (URL configurable on the Integrations page — currently a placeholder).
 - **Ingredient screening (C3):** `src/utils/ingredientWatch.ts` auto-checks every Formula BOM line against the prohibited / PB-caution watch-lists — by **CAS number first** (exact; from the Cosmetri import), then INCI-name keywords. The per-group CAS mapping is a demo stand-in (follow-up F3).
 
+### Status & pending work (as of 2026-07-16)
+
+All decisions confirmed by the subject-matter team are implemented (rules A1–A4, B1–B4, C1–C6; C7 unanswered). What remains is blocked on the open follow-up questions **F1–F12** in `docs/Business_Rules_Confirmation_{EN,VN}.md` — that document is the decision record; when a rule changes, update BOTH the code and that document (and keep its follow-up table free of code jargon: it is read by the research team).
+
+Where each follow-up answer lands when it arrives:
+
+| Follow-up | Wire the answer into |
+|---|---|
+| F1 — per-gate mandatory sign-offs/evidence (blocks B1/C7) | add conditions in `gateBlockers()` (`src/utils/gateProgress.ts`) |
+| F2 — does "Infant 0+" trigger Skincare for Two | `SKINCARE_FOR_TWO_TRIGGERS` in `gateProgress.ts` |
+| F3 — real CAS mapping + market restriction lists | replace the demo tables in `src/utils/ingredientWatch.ts` |
+| F4 — Major version × launched markets, concurrent versions | `createFormulaVersion` in the store + the `marketTracks` model |
+| F5 — Major vs Minor criteria | auto-classification in `FormulaVersionModal` / `createFormulaVersion` |
+| F6 — real role matrix / SSO / e-signature | replace `src/utils/roles.ts` (the whole "View as" simulation) |
+| F7 — does Gap also block Proceed with Conditions | decision-option disabling in `GateFlowTable` + the `setGate` guard |
+| F8 — who may close a Next Action; priority list | `NextActionsCard` + `NextAction` types |
+| F9 — change soft-lock semantics ("open" statuses, acknowledgement) | `openChangesForGate` in `GateFlowTable` |
+| F10 — non-ASEAN market checklists (EU CPSR, AU, US) | new `RegisterConfig` entries in `src/config/registers.ts` |
+| F11 — published-info workflow states/roles per content type | `publishedInfoApproval` config + the violation warning in `RegisterHubPage` |
+| F12(c) — Cosmetri compliance coverage of ASEAN/VN | informational (affects C5 checklist choice per market) |
+
+Deferred until the production phase (not answerable by config):
+- Swap the mock Cosmetri client (`src/integrations/cosmetri.ts`) for real calls **through a backend proxy** (CORS + credentials; keep Cosmetri strictly read-only — never call its `PUT /raw-material/update`).
+- Replace the Power Apps placeholder URL on the Integrations page when the real "Create new raw material" app link is available (stored in the settings, no code change needed).
+- Real authentication/users (prerequisite for F6) and the backend per `docs/APP_PLAN.md` section 7.
+
 ### Config-driven pages, not hardcoded per-phase UI
 
 Every phase sheet in the source Excel shares the same layout, so the app builds each phase page from **config + ~6 shared components** rather than one bespoke component per phase:
