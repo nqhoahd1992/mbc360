@@ -1,7 +1,8 @@
-import { Card, Empty, Progress, Tag, Typography } from 'antd';
+import { Alert, Card, Empty, Progress, Tag, Typography } from 'antd';
 import { RightOutlined } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
+import StudyApprovalCard from '../components/StudyApprovalCard';
 import {
   findNavGroupForRegister,
   getNavGroup,
@@ -42,6 +43,20 @@ export default function RegisterHubPage() {
     if (!config) return <Empty description="Register not found" />;
     // Breadcrumb parent = this register's group in the ACTIVE grouping view.
     const parent = findNavGroupForRegister(registerKey, registerGrouping);
+
+    // C6: flag rows already published (final link filled) without a completed
+    // approval workflow — "no public information until the workflow is done".
+    const C6_STEPS = ['terminologyChecked', 'evidenceVerified', 'technicalReview', 'regulatoryReview', 'finalApproval'];
+    const publishViolations =
+      registerKey === 'publishedInfoApproval'
+        ? (project.registers[registerKey] ?? []).filter(
+            (row) =>
+              typeof row.finalPublishedLink === 'string' &&
+              row.finalPublishedLink.trim() !== '' &&
+              C6_STEPS.some((step) => row[step] !== 'Y'),
+          )
+        : [];
+
     return (
       <div style={{ display: 'grid', gap: 16 }}>
         <div>
@@ -55,6 +70,19 @@ export default function RegisterHubPage() {
           </Typography.Title>
         </div>
         <ProjectIdentificationCard identity={project.identity} />
+        {registerKey === 'studyProtocolSetup' && (
+          <StudyApprovalCard projectId={id} approvals={project.studyApprovals} />
+        )}
+        {publishViolations.length > 0 && (
+          <Alert
+            type="error"
+            showIcon
+            message={`${publishViolations.length} item${publishViolations.length > 1 ? 's' : ''} published without a completed approval workflow`}
+            description={`No public information may be released until all five workflow steps are Y (rule C6). Review: ${publishViolations
+              .map((r) => String(r.recordId || r.publishedItem || 'unnamed item'))
+              .join(', ')}.`}
+          />
+        )}
         <DynamicTable
           config={config}
           rows={project.registers[registerKey] ?? []}

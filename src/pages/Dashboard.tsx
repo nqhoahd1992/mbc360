@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { GATES, PHASES } from '../config/gates';
 import StatusBadge from '../components/StatusBadge';
-import { currentGateIndex, isGatePassed } from '../utils/gateProgress';
+import { currentGateIndex, gateBlockers, isGatePassed } from '../utils/gateProgress';
 
 export default function Dashboard() {
   const projects = useAppStore((s) => s.projects);
@@ -13,14 +13,20 @@ export default function Dashboard() {
     p.gates.filter((g) => g.status === 'In Progress').map((g) => ({ project: p, gate: g })),
   );
   const openChanges = changes.filter((c) => c.status !== 'Completed');
+  const today = new Date().toISOString().slice(0, 10);
   const overdue = projects.flatMap((p) =>
-    p.gates.filter(
-      (g) =>
-        g.dueDate &&
-        !isGatePassed(p.gates, g.gateId) &&
-        g.dueDate < new Date().toISOString().slice(0, 10),
-    ),
+    p.gates.filter((g) => g.dueDate && !isGatePassed(p, g.gateId) && g.dueDate < today),
   );
+
+  // Confirmed-rules signals: open next actions (B2), gates with active
+  // blockers (B1/C1), and per-market launch readiness (A1/C5).
+  const openActions = projects.flatMap((p) => p.nextActions.filter((a) => a.status !== 'Done'));
+  const overdueActions = openActions.filter((a) => a.dueDate && a.dueDate < today);
+  const blockedGates = projects.flatMap((p) =>
+    p.gates.filter((g) => g.status !== 'Not Started' && gateBlockers(p, g.gateId).length > 0),
+  );
+  const allMarkets = projects.flatMap((p) => p.marketTracks);
+  const launchReady = allMarkets.filter((t) => t.launchApproval === 'Approved').length;
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -43,6 +49,46 @@ export default function Dashboard() {
         <Col xs={12} md={6}>
           <Card size="small">
             <Statistic title="Overdue gates" value={overdue.length} valueStyle={{ color: overdue.length ? '#cf1322' : undefined }} />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={16}>
+        <Col xs={12} md={6}>
+          <Card size="small">
+            <Statistic
+              title="Open next actions"
+              value={openActions.length}
+              suffix={overdueActions.length ? ` (${overdueActions.length} overdue)` : undefined}
+              valueStyle={{ color: overdueActions.length ? '#cf1322' : '#1677ff' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} md={6}>
+          <Card size="small">
+            <Statistic
+              title="Gates blocked (actions / safety)"
+              value={blockedGates.length}
+              valueStyle={{ color: blockedGates.length ? '#cf1322' : undefined }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} md={6}>
+          <Card size="small">
+            <Statistic
+              title="Markets launch-approved"
+              value={launchReady}
+              suffix={`/ ${allMarkets.length}`}
+              valueStyle={{ color: '#3f8600' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} md={6}>
+          <Card size="small">
+            <Statistic
+              title="Backtrack events (audit)"
+              value={projects.reduce((sum, p) => sum + p.backtrackEvents.length, 0)}
+            />
           </Card>
         </Col>
       </Row>
@@ -83,7 +129,7 @@ export default function Dashboard() {
               title: 'Progress (12 gates)',
               width: 220,
               render: (_, p) => {
-                const done = p.gates.filter((g) => isGatePassed(p.gates, g.gateId)).length;
+                const done = p.gates.filter((g) => isGatePassed(p, g.gateId)).length;
                 return <Progress percent={Math.round((done / 12) * 100)} size="small" />;
               },
             },

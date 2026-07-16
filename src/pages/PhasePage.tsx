@@ -1,7 +1,12 @@
 import { Alert, Empty, Tag, Typography } from 'antd';
 import { CheckCircleFilled, ClockCircleFilled, LockOutlined, RightCircleFilled } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
-import { phaseProgress } from '../utils/gateProgress';
+import {
+  phaseCompletionChecklist,
+  phaseProgress,
+  skincareForTwoIncompleteSections,
+  skincareForTwoTriggers,
+} from '../utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { PHASES } from '../config/gates';
 import { PHASE_CONFIGS } from '../config/phases';
@@ -12,6 +17,8 @@ import RequirementTable from '../components/RequirementTable';
 import GateChecksTable from '../components/GateChecksTable';
 import EightAnglesTable from '../components/EightAnglesTable';
 import SignOffBlock from '../components/SignOffBlock';
+import NextActionsCard from '../components/NextActionsCard';
+import MarketTrackingCard from '../components/MarketTrackingCard';
 
 const PHASE_NOTES: Record<number, string> = {
   2: 'Do not re-enter Phase 1 target user/product/market/claim selections here.',
@@ -29,6 +36,9 @@ export default function PhasePage() {
   if (!project || !config || !meta) return <Empty description="Not found" />;
 
   const progress = phaseProgress(project, phase);
+  const checklist = phaseCompletionChecklist(project, phase);
+  const s42Triggers = skincareForTwoTriggers(project);
+  const s42Incomplete = skincareForTwoIncompleteSections(project);
   const phaseGateNumbers = config.gateIds.map((id) => id.replace('SG', ''));
   const keyChecks = project.gateChecks
     .map((check, index) => ({ check, index }))
@@ -91,6 +101,19 @@ export default function PhasePage() {
 
       {PHASE_NOTES[phase] && <Alert type="info" showIcon message={PHASE_NOTES[phase]} />}
 
+      {phase === 3 && s42Triggers.length > 0 && (
+        <Alert
+          type={s42Incomplete.length > 0 ? 'error' : 'success'}
+          showIcon
+          message={`Skincare for Two active (triggered by: ${s42Triggers.join(', ')})`}
+          description={
+            s42Incomplete.length > 0
+              ? `Gate 07 is hard-blocked until the mandatory maternal and infant-contact safety sections are fully completed. Outstanding: ${s42Incomplete.join('; ')}.`
+              : 'All mandatory maternal and infant-contact safety sections are complete — Gate 07 is no longer blocked by this screen.'
+          }
+        />
+      )}
+
       <ProjectIdentificationCard identity={project.identity} />
 
       <GateFlowTable project={project} gateIds={config.gateIds} />
@@ -122,6 +145,16 @@ export default function PhasePage() {
         checks={keyChecks}
       />
 
+      <NextActionsCard
+        projectId={project.identity.id}
+        gateIds={config.gateIds}
+        actions={project.nextActions}
+      />
+
+      {phase === 4 && (
+        <MarketTrackingCard projectId={project.identity.id} tracks={project.marketTracks} />
+      )}
+
       <EightAnglesTable
         projectId={project.identity.id}
         phase={phase}
@@ -132,6 +165,7 @@ export default function PhasePage() {
         projectId={project.identity.id}
         phase={phase}
         closure={project.phaseClosures[phase]}
+        checklist={checklist}
       />
     </div>
   );

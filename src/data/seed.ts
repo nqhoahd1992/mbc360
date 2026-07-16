@@ -54,12 +54,45 @@ function buildSampleProjectA(): ProjectData {
       { role: 'Reviewed by', name: 'George Pham', initials: 'GP', date: '2026-05-21', decision: 'Proceed', comments: '' },
       { role: 'Approved by', name: 'Sekar N.', initials: 'SN', date: '2026-05-22', decision: 'Proceed', comments: 'Proceed to NPD' },
     ],
+    // B3: every angle must be covered or justified N/A before the phase can close.
     angles: p.phaseClosures[1].angles.map((a) =>
       ['Consumer need', 'Use context & life stage', 'Claims evidence'].includes(a.angle)
         ? { ...a, ynna: 'Y', covered: true, date: '2026-05-20', initials: 'AT' }
-        : a,
+        : { ...a, ynna: 'NA', comments: 'Not assessable at concept stage — first reviewed in Phase 2/3.' },
     ),
   };
+
+  // B2: next actions are controlled per-gate records. SG04's action is closed;
+  // SG05 carries an open action, so SG05 cannot pass on a plain Proceed until
+  // it is done (or the decision is Proceed with Conditions).
+  p.nextActions = [
+    {
+      id: 'NA-SEED-1',
+      gateId: 'SG04',
+      description: 'Collect missing allergen statement for RM-005 (calendula extract)',
+      owner: 'Chidkamon',
+      dueDate: '2026-06-30',
+      status: 'Done',
+      priority: 'High',
+      dateCompleted: '2026-06-24',
+    },
+    {
+      id: 'NA-SEED-2',
+      gateId: 'SG05',
+      description: 'Confirm pilot batch pH range with manufacturing before locking formula',
+      owner: 'Tuan Le',
+      dueDate: '2026-08-10',
+      status: 'Open',
+      priority: 'Medium',
+    },
+  ];
+
+  // A1: per-market Gate 10-12 tracking (regulatory work differs by country).
+  p.marketTracks = p.marketTracks.map((t) =>
+    t.market === 'Vietnam'
+      ? { ...t, pifStatus: 'In Progress', regulatoryStatus: 'In Progress', regulatoryNotes: 'PIF compilation started early — VN re-registration lead time ~6 months.' }
+      : t,
+  );
 
   p.bom = [
     { line: 1, rmCode: 'RM-001', inciName: 'Lanolin', functionRole: 'Emollient / base', supplier: 'NZ Lanolin Co', percentWw: 60, costPerKg: 18.5 },

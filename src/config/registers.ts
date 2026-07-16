@@ -804,7 +804,8 @@ const publishedInfoApproval: RegisterConfig = {
   key: 'publishedInfoApproval',
   title: 'Published Information Approval',
   sheetName: 'Published_Info_Approval',
-  description: 'Approve any product information, technical statement or claim before it is published on any channel (social, distributor, HCP, website...).',
+  description:
+    'Mandatory approval workflow (confirmed rule C6) for ANY information intended for public release — websites, brochures, technical documents, distributor materials, presentations, HCP materials, AI-generated content, social media and product claims. No public information may be released until every workflow step below is completed.',
   mode: 'register',
   gate: '10/11',
   columns: [
@@ -819,6 +820,12 @@ const publishedInfoApproval: RegisterConfig = {
     { key: 'exactWording', label: 'Exact wording / technical statement', type: 'textarea', width: 220 },
     { key: 'evidenceTypeRequired', label: 'Evidence type required', type: 'text', width: 150 },
     { key: 'evidenceLink', label: 'Evidence / PMF / PIF link', type: 'text', width: 150 },
+    // C6 workflow steps — all must be Y before final approval / release.
+    { key: 'terminologyChecked', label: '1. Terminology / claims guidance checked', type: 'select', width: 130, options: YNNA },
+    { key: 'evidenceVerified', label: '2. Evidence linked & verified', type: 'select', width: 120, options: YNNA },
+    { key: 'technicalReview', label: '3. Technical review', type: 'select', width: 110, options: YNNA },
+    { key: 'regulatoryReview', label: '4. Regulatory review (where applicable)', type: 'select', width: 130, options: YNNA },
+    { key: 'finalApproval', label: '5. Final approval before publication', type: 'select', width: 120, options: YNNA },
     { key: 'allowed', label: 'Allowed?', type: 'select', width: 90, options: YNNA },
     { key: 'requiredReviewers', label: 'Required reviewers / functions', type: 'text', width: 160 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },

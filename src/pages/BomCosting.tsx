@@ -1,10 +1,14 @@
-import { Alert, Button, Card, Col, Descriptions, Empty, Input, InputNumber, Popconfirm, Row, Statistic, Table } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import { useParams } from 'react-router-dom';
+import { useState } from 'react';
+import { Alert, Button, Card, Col, Descriptions, Empty, Input, InputNumber, Popconfirm, Row, Statistic, Table, Tag, Tooltip } from 'antd';
+import { PlusOutlined, DeleteOutlined, CloudDownloadOutlined } from '@ant-design/icons';
+import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import type { BomLine, CostingInputs, PackagingBomLine } from '../types';
 import PhaseDependencyAlert from '../components/PhaseDependencyAlert';
+import CosmetriImportModal from '../components/CosmetriImportModal';
+import FormulaVersionModal from '../components/FormulaVersionModal';
 import { hasReachedPhase, positionSentence } from '../utils/gateProgress';
+import { bomWatchMatches } from '../utils/ingredientWatch';
 
 function money(v: number) {
   return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
@@ -20,6 +24,9 @@ export default function BomCosting() {
   const setPackagingBomLine = useAppStore((s) => s.setPackagingBomLine);
   const addPackagingBomLine = useAppStore((s) => s.addPackagingBomLine);
   const removePackagingBomLine = useAppStore((s) => s.removePackagingBomLine);
+  const cosmetriConnected = useAppStore((s) => s.integrations.cosmetri.connected);
+  const [importOpen, setImportOpen] = useState(false);
+  const [versionOpen, setVersionOpen] = useState(false);
 
   if (!project) return <Empty description="Project not found" />;
 
@@ -33,6 +40,7 @@ export default function BomCosting() {
   const showCosting = !section || section === 'costing';
 
   const totalPercent = bom.reduce((sum, l) => sum + (l.percentWw || 0), 0);
+  const watchMatches = bomWatchMatches(project);
   const unitsPerBatch = costing.fillSizeG > 0 ? (costing.batchSizeKg * 1000) / costing.fillSizeG : 0;
 
   const derived = (l: BomLine) => {
@@ -82,14 +90,75 @@ export default function BomCosting() {
         />
       )}
 
+      {/* C3: automatic watch-list cross-check on every BOM ingredient. */}
+      {showFormula && watchMatches.length > 0 && (
+        <Alert
+          type="error"
+          showIcon
+          message={`Automatic ingredient screen: ${watchMatches.length} formula line${watchMatches.length > 1 ? 's' : ''} matched a watch-list — review required`}
+          description={
+            <div style={{ display: 'grid', gap: 4 }}>
+              {watchMatches.map((m) => (
+                <div key={m.line}>
+                  Line {m.line} — <b>{m.inciName}</b>:{' '}
+                  {m.hits.map((h) => (
+                    <Tag key={`${h.kind}-${h.group}`} color={h.kind === 'prohibited' ? 'red' : 'orange'}>
+                      {h.kind === 'prohibited' ? 'Prohibited list' : 'PB caution'} · {h.group}
+                      {h.matchedBy === 'cas' ? ` (CAS ${h.matchedValue})` : ''}
+                    </Tag>
+                  ))}
+                </div>
+              ))}
+              <div style={{ marginTop: 4 }}>
+                Record the review conclusion in{' '}
+                <Link to={`/projects/${id}/registers/reg/prohibitedIngredients`}>
+                  Prohibited Ingredient Watch-list
+                </Link>{' '}
+                and{' '}
+                <Link to={`/projects/${id}/registers/reg/pbCautionLimits`}>
+                  Pregnancy / Breastfeeding Caution Limits
+                </Link>
+                .
+              </div>
+            </div>
+          }
+        />
+      )}
+
       {showFormula && (
       <Card
         size="small"
-        title={`Formula BOM — ${project.identity.productSku}`}
+        title={
+          <span>
+            Formula BOM — {project.identity.productSku}{' '}
+            <Tag color="blue">{project.formulaVersion}</Tag>
+          </span>
+        }
         extra={
-          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => addBomLine(id)}>
-            Add line
-          </Button>
+          <span style={{ display: 'inline-flex', gap: 8 }}>
+            <Button size="small" onClick={() => setVersionOpen(true)}>
+              New formula version
+            </Button>
+            <Tooltip
+              title={
+                cosmetriConnected
+                  ? 'Import composition, INCI/CAS and supplier names read-only from Cosmetri'
+                  : 'Connect Cosmetri in Integrations first'
+              }
+            >
+              <Button
+                size="small"
+                icon={<CloudDownloadOutlined />}
+                disabled={!cosmetriConnected}
+                onClick={() => setImportOpen(true)}
+              >
+                Import from Cosmetri
+              </Button>
+            </Tooltip>
+            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => addBomLine(id)}>
+              Add line
+            </Button>
+          </span>
         }
       >
         <Table
@@ -97,7 +166,7 @@ export default function BomCosting() {
           rowKey={(l) => l.line}
           dataSource={bom}
           pagination={false}
-          scroll={{ x: 1200 }}
+          scroll={{ x: 1320 }}
           columns={[
             { title: '#', width: 40, dataIndex: 'line' },
             {
@@ -112,6 +181,18 @@ export default function BomCosting() {
               width: 240,
               render: (_, l, i) => (
                 <Input size="small" value={l.inciName} onChange={(e) => setBomLine(id, i, { inciName: e.target.value })} />
+              ),
+            },
+            {
+              title: 'CAS no.',
+              width: 120,
+              render: (_, l, i) => (
+                <Input
+                  size="small"
+                  value={l.casNo}
+                  placeholder="from Cosmetri"
+                  onChange={(e) => setBomLine(id, i, { casNo: e.target.value })}
+                />
               ),
             },
             {
@@ -170,7 +251,7 @@ export default function BomCosting() {
           ]}
           summary={() => (
             <Table.Summary.Row>
-              <Table.Summary.Cell index={0} colSpan={5}>
+              <Table.Summary.Cell index={0} colSpan={6}>
                 <b>Total</b>
               </Table.Summary.Cell>
               <Table.Summary.Cell index={1}>
@@ -186,6 +267,52 @@ export default function BomCosting() {
         />
       </Card>
       )}
+
+      {showFormula && project.formulaVersionHistory.length > 0 && (
+        <Card size="small" title="Formula version history (audit)">
+          <Table
+            size="small"
+            rowKey={(r) => `${r.version}-${r.date}`}
+            dataSource={[...project.formulaVersionHistory].reverse()}
+            pagination={false}
+            scroll={{ x: 800 }}
+            columns={[
+              { title: 'Date', width: 110, dataIndex: 'date' },
+              {
+                title: 'Version',
+                width: 160,
+                render: (_, r) => (
+                  <span>
+                    {r.previousVersion} → <b>{r.version}</b>
+                  </span>
+                ),
+              },
+              {
+                title: 'Type',
+                width: 90,
+                render: (_, r) => (
+                  <Tag color={r.changeType === 'Major' ? 'red' : 'default'}>{r.changeType}</Tag>
+                ),
+              },
+              { title: 'Initiated by', width: 140, render: (_, r) => r.initiatedBy ?? '—' },
+              { title: 'Reason', render: (_, r) => r.reason ?? '—' },
+            ]}
+          />
+        </Card>
+      )}
+
+      <CosmetriImportModal
+        projectId={id}
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        hasExistingBom={bom.length > 0}
+      />
+      <FormulaVersionModal
+        projectId={id}
+        currentVersion={project.formulaVersion}
+        open={versionOpen}
+        onClose={() => setVersionOpen(false)}
+      />
 
       {showPackaging && (
       <Card

@@ -52,7 +52,7 @@ export default function PostMarketCapa() {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <PhaseDependencyAlert
-        reached={isGatePassed(project.gates, 'SG11')}
+        reached={isGatePassed(project, 'SG11')}
         message="Post-launch activity (Gate 12)"
         description={`Post-market / CAPA applies after the product is on market — that is, once Gate 11 (launch sign-off) has passed. ${positionSentence(project)} You can pre-fill records, but they normally start after launch.`}
       />

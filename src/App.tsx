@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConfigProvider, Layout, Menu, Popconfirm, Button, Segmented, Select, Typography } from 'antd';
 import {
+  ApiOutlined,
   AppstoreOutlined,
   BookOutlined,
   CheckCircleFilled,
@@ -12,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { HashRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from './store/useAppStore';
+import { VIEW_ROLES } from './utils/roles';
 import Dashboard from './pages/Dashboard';
 import ProjectList from './pages/ProjectList';
 import ProjectOverview from './pages/ProjectOverview';
@@ -25,6 +27,7 @@ import RegisterHubPage from './pages/RegisterHubPage';
 import CommandPalette from './components/CommandPalette';
 import FormulationSafety from './pages/FormulationSafety';
 import SystemGuide from './pages/SystemGuide';
+import IntegrationsPage from './pages/IntegrationsPage';
 import { PHASES } from './config/gates';
 import { getNavGroups, findNavGroupForRegister, navItemHref, formatGate } from './config/registers';
 import { phaseProgress } from './utils/gateProgress';
@@ -81,6 +84,7 @@ function SideMenu() {
       { key: '/', icon: <AppstoreOutlined />, label: <Link to="/">Dashboard</Link> },
       { key: '/projects', icon: <FolderOpenOutlined />, label: <Link to="/projects">All Projects</Link> },
       { key: '/system-guide', icon: <BookOutlined />, label: <Link to="/system-guide">System Guide</Link> },
+      { key: '/integrations', icon: <ApiOutlined />, label: <Link to="/integrations">Integrations</Link> },
     ],
     [],
   );
@@ -316,6 +320,8 @@ function StickySidebar({ children }: { children: React.ReactNode }) {
 
 function Shell() {
   const resetDemoData = useAppStore((s) => s.resetDemoData);
+  const viewRole = useAppStore((s) => s.viewRole);
+  const setViewRole = useAppStore((s) => s.setViewRole);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   return (
@@ -356,6 +362,15 @@ function Shell() {
             <ProjectContextTitle />
           </Typography.Text>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {/* A4 demo simulation: stands in for the logged-in user's role until F6. */}
+            <Select
+              size="small"
+              style={{ width: 220 }}
+              value={viewRole}
+              onChange={setViewRole}
+              options={VIEW_ROLES.map((r) => ({ value: r.key, label: `View as: ${r.label}` }))}
+              popupMatchSelectWidth={false}
+            />
             <Button
               icon={<SearchOutlined />}
               onClick={() => setPaletteOpen(true)}
@@ -401,6 +416,7 @@ function Shell() {
             <Route path="/projects/:projectId/post-market" element={<PostMarketCapa />} />
             <Route path="/change-control" element={<ChangeControl />} />
             <Route path="/system-guide" element={<SystemGuide />} />
+            <Route path="/integrations" element={<IntegrationsPage />} />
           </Routes>
         </Content>
       </Layout>

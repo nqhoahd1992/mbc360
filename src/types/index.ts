@@ -93,6 +93,7 @@ export interface BomLine {
   line: number;
   rmCode: string;
   inciName: string;
+  casNo?: string; // CAS number — filled by the Cosmetri import; used for exact watch-list matching (C3)
   functionRole: string;
   supplier: string;
   percentWw: number;
@@ -165,6 +166,117 @@ export interface FeedbackEntry {
   concerns?: string;
 }
 
+// Dedicated Study / Human Trial approval workflow (confirmed rule C2) —
+// separate from the generic phase sign-off. Roles, not named individuals; the
+// Independent Reviewer must not belong to the Study Author's department.
+export type StudyApprovalRole = 'Study Author' | 'Department Reviewer' | 'Independent Reviewer';
+
+export interface StudyApproval {
+  role: StudyApprovalRole;
+  name?: string;
+  department?: string;
+  date?: string;
+  decision?: string;
+  comments?: string;
+}
+
+// Formula version record (confirmed rule A2): a major formulation change
+// creates a new version and reopens Gates 4-9; previous versions are preserved
+// for audit history.
+export interface FormulaVersionRecord {
+  version: string;
+  previousVersion: string;
+  date: string;
+  changeType: 'Major' | 'Minor';
+  reason?: string;
+  initiatedBy?: string;
+}
+
+// Controlled follow-up action attached to a gate (confirmed rule B2). Open
+// actions block a plain "Proceed" pass — they may stay open only under a
+// "Proceed with Conditions" decision.
+export type NextActionStatus = 'Open' | 'In Progress' | 'Done';
+export type NextActionPriority = 'Low' | 'Medium' | 'High';
+
+export interface NextAction {
+  id: string;
+  gateId: string; // SG01..SG12
+  description: string;
+  owner?: string;
+  dueDate?: string;
+  status: NextActionStatus;
+  priority: NextActionPriority;
+  dateCompleted?: string;
+}
+
+// Immutable audit record of a backtrack (confirmed rule B4 — "no silent
+// corrections"): approvals/decisions are invalidated on the live records but
+// their pre-backtrack values are preserved here, never deleted.
+export interface BacktrackEvent {
+  id: string;
+  date: string;
+  initiatedBy?: string;
+  reason?: string;
+  fromGateId: string;
+  toGateId: string;
+  reopenedGateIds: string[];
+  previousGates: GateRecord[]; // snapshot of the affected gates before reset
+  previousSignOffs: Record<number, SignOff[]>; // snapshot of un-approved phase sign-offs
+}
+
+// Per-market regulatory/launch tracking for Gates 10-12 (confirmed rule A1).
+// Launch approval is hard-blocked until the market's PIF status is Approved
+// (confirmed rule C5).
+export type MarketApprovalStatus = 'Not Started' | 'In Progress' | 'Approved' | 'Blocked' | 'N/A';
+
+export interface MarketTrack {
+  market: string;
+  pifStatus: MarketApprovalStatus;
+  regulatoryStatus: MarketApprovalStatus;
+  claimsApproval: MarketApprovalStatus;
+  launchApproval: MarketApprovalStatus;
+  regulatoryNotes?: string;
+  pifApprovedDate?: string;
+  launchApprovedDate?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Integrations (decision A3): MBc360 integrates with specialist systems rather
+// than replacing them. Cosmetri is read-only master data via its API; the demo
+// simulates the connection — a production build must exchange credentials
+// through a backend proxy, never from the browser.
+// ---------------------------------------------------------------------------
+
+export interface CosmetriConnection {
+  baseUrl: string;
+  username?: string; // password is never persisted — only used to request tokens
+  connected: boolean;
+  accessToken?: string;
+  accessTokenExpiresAt?: string;
+  refreshToken?: string;
+  refreshTokenExpiresAt?: string;
+  lastSyncAt?: string;
+}
+
+export interface PowerAppsSettings {
+  // "Create new raw material" change-request app: request -> approval ->
+  // entered in Cosmetri -> available via the API (decision F12/d).
+  newRawMaterialUrl: string;
+}
+
+export interface GraphSettings {
+  tenantId?: string;
+  clientId?: string;
+  sharepointSiteUrl?: string;
+  rawMaterialListName?: string;
+}
+
+export interface IntegrationSettings {
+  cosmetri: CosmetriConnection;
+  powerApps: PowerAppsSettings;
+  graph: GraphSettings;
+}
+
 export interface ChangeRecord {
   changeId: string;
   projectId?: string;
@@ -219,4 +331,10 @@ export interface ProjectData {
   capa: CapaRecord[];
   feedback: FeedbackEntry[];
   registers: Record<string, RegisterRow[]>; // keyed by RegisterConfig.key
+  nextActions: NextAction[]; // controlled per-gate follow-up actions (rule B2)
+  backtrackEvents: BacktrackEvent[]; // immutable backtrack audit log (rule B4)
+  marketTracks: MarketTrack[]; // per-market Gate 10-12 tracking (rules A1/C5)
+  studyApprovals: StudyApproval[]; // dedicated study approval workflow (rule C2)
+  formulaVersion: string; // current formula version, e.g. "F1.0" (rule A2)
+  formulaVersionHistory: FormulaVersionRecord[]; // prior versions, audit history (rule A2)
 }

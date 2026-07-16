@@ -111,7 +111,7 @@ export default function ProjectList() {
             title: 'Progress',
             width: 160,
             render: (_, p) => {
-              const done = p.gates.filter((g) => isGatePassed(p.gates, g.gateId)).length;
+              const done = p.gates.filter((g) => isGatePassed(p, g.gateId)).length;
               return <Progress percent={Math.round((done / 12) * 100)} size="small" />;
             },
           },

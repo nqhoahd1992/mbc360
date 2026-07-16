@@ -1,14 +1,15 @@
-import { Button, Card, Col, Empty, Progress, Row, Space, Tag } from 'antd';
+import { Button, Card, Col, Empty, Progress, Row, Space, Table, Tag } from 'antd';
 import {
   CheckCircleFilled,
   ClockCircleFilled,
+  HistoryOutlined,
   LockOutlined,
   RightCircleFilled,
   WarningFilled,
 } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { PHASES } from '../config/gates';
+import { GATES, PHASES } from '../config/gates';
 import { isGatePassed, phaseProgress } from '../utils/gateProgress';
 import PhaseStepper from '../components/PhaseStepper';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
@@ -20,7 +21,7 @@ export default function ProjectOverview() {
 
   if (!project) return <Empty description="Project not found" />;
 
-  const done = project.gates.filter((g) => isGatePassed(project.gates, g.gateId)).length;
+  const done = project.gates.filter((g) => isGatePassed(project, g.gateId)).length;
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -102,6 +103,90 @@ export default function ProjectOverview() {
           );
         })}
       </Row>
+
+      {project.backtrackEvents.length > 0 && (
+        <Card
+          size="small"
+          title={
+            <span>
+              <HistoryOutlined style={{ marginRight: 6 }} />
+              Backtrack audit log{' '}
+              <span style={{ fontWeight: 400, color: '#999', fontSize: 12 }}>
+                — nothing is deleted; previous decisions and sign-offs are preserved here
+              </span>
+            </span>
+          }
+        >
+          <Table
+            size="small"
+            rowKey={(e) => e.id}
+            dataSource={[...project.backtrackEvents].reverse()}
+            pagination={false}
+            scroll={{ x: 950 }}
+            columns={[
+              { title: 'Date', width: 110, dataIndex: 'date' },
+              {
+                title: 'From → To',
+                width: 150,
+                render: (_, e) => {
+                  const from = GATES.find((g) => g.id === e.fromGateId);
+                  const to = GATES.find((g) => g.id === e.toGateId);
+                  return (
+                    <span>
+                      Gate {from?.number ?? e.fromGateId} → Gate {to?.number ?? e.toGateId}
+                    </span>
+                  );
+                },
+              },
+              {
+                title: 'Initiated by',
+                width: 130,
+                render: (_, e) => e.initiatedBy ?? '—',
+              },
+              {
+                title: 'Reason',
+                width: 240,
+                render: (_, e) => e.reason ?? '—',
+              },
+              {
+                title: 'Previous decisions (snapshot)',
+                width: 260,
+                render: (_, e) => (
+                  <span style={{ fontSize: 12, color: '#666' }}>
+                    {e.previousGates
+                      .map((g) => {
+                        const meta = GATES.find((m) => m.id === g.gateId);
+                        return `G${meta?.number ?? g.gateId}: ${g.status}${g.decision ? ` / ${g.decision}` : ''}`;
+                      })
+                      .join(' · ')}
+                  </span>
+                ),
+              },
+              {
+                title: 'Invalidated sign-offs',
+                width: 220,
+                render: (_, e) => {
+                  const phases = Object.keys(e.previousSignOffs);
+                  if (phases.length === 0) return <span style={{ color: '#999' }}>None</span>;
+                  return (
+                    <span style={{ fontSize: 12, color: '#666' }}>
+                      {phases
+                        .map((ph) => {
+                          const approved = e.previousSignOffs[Number(ph)].find(
+                            (s) => s.role === 'Approved by',
+                          );
+                          const who = approved?.name || approved?.initials || 'unsigned';
+                          return `Phase ${ph} (was: ${who})`;
+                        })
+                        .join(' · ')}
+                    </span>
+                  );
+                },
+              },
+            ]}
+          />
+        </Card>
+      )}
 
       <Card size="small" title="Project workspaces">
         <Space wrap>

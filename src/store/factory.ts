@@ -92,6 +92,14 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     phaseClosures[config.phase] = emptyClosure();
   }
 
+  const marketTracks = identity.markets.map((market) => ({
+    market,
+    pifStatus: 'Not Started' as const,
+    regulatoryStatus: 'Not Started' as const,
+    claimsApproval: 'Not Started' as const,
+    launchApproval: 'Not Started' as const,
+  }));
+
   return {
     identity,
     gates: GATES.map((g) => ({ gateId: g.id, status: 'Not Started' })),
@@ -114,5 +122,15 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     capa: [],
     feedback: [],
     registers: seedRegisters(),
+    nextActions: [],
+    backtrackEvents: [],
+    marketTracks,
+    studyApprovals: [
+      { role: 'Study Author' },
+      { role: 'Department Reviewer' },
+      { role: 'Independent Reviewer' },
+    ],
+    formulaVersion: 'F1.0',
+    formulaVersionHistory: [],
   };
 }
