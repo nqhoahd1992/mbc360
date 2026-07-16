@@ -1,0 +1,11 @@
+.git
+node_modules
+**/node_modules
+**/dist
+docs
+*.md
+.env
+.env.*
+.DS_Store
+.vscode
+.claude

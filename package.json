@@ -1,29 +1,19 @@
 {
-  "name": "mbc360-app",
+  "name": "mbc360",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "npm run build -w @mbc360/shared && concurrently -k -n shared,api,web -c blue,magenta,green \"npm run dev -w @mbc360/shared\" \"npm run dev -w @mbc360/api\" \"npm run dev -w @mbc360/web\"",
+    "build": "npm run build -w @mbc360/shared && npm run build -w @mbc360/api && npm run build -w @mbc360/web",
     "lint": "oxlint",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "antd": "^6.5.1",
-    "dayjs": "^1.11.21",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-router-dom": "^7.18.1",
-    "zustand": "^5.0.14"
+    "preview": "npm run preview -w @mbc360/web"
   },
   "devDependencies": {
-    "@types/node": "^24.13.2",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.3",
-    "oxlint": "^1.71.0",
-    "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "concurrently": "^9.2.1",
+    "oxlint": "^1.71.0"
   }
 }

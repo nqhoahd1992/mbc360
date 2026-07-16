@@ -1,0 +1,53 @@
+# Production stack, fronted by the HOST nginx (TLS termination + routing):
+#   /     -> 127.0.0.1:8080  (web container)
+#   /api  -> 127.0.0.1:3000  (api container)
+# See deploy/nginx.host.example.conf for the host server block.
+#
+# Secrets live in an untracked .env file next to this compose file:
+#   POSTGRES_PASSWORD=...   (required)
+#   WEB_IMAGE / API_IMAGE   (optional registry image refs; defaults build locally)
+services:
+  web:
+    image: ${WEB_IMAGE:-mbc360-web:latest}
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:8080:80'
+    depends_on:
+      - api
+
+  api:
+    image: ${API_IMAGE:-mbc360-api:latest}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:3000:3000'
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DATABASE_URL: postgresql://mbc360:${POSTGRES_PASSWORD}@postgres:5432/mbc360
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mbc360
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: mbc360
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U mbc360 -d mbc360']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:

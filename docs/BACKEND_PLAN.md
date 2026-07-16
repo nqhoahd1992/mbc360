@@ -1,0 +1,163 @@
+# MBc360 – Kế hoạch xây dựng Backend (Production)
+
+> **Trạng thái đầu vào (2026-07-16):** Toàn bộ Group A (kiến trúc dữ liệu) và các rule B1–B4, C1–C6 đã được đội chuyên gia xác nhận trong `docs/Business_Rules_Confirmation_{EN,VN}.md`. Còn treo: **C7** và các follow-up **F1–F12**. Kế hoạch này được thiết kế để **không bị các câu F chặn**: mọi câu trả lời đến sau sẽ rơi vào *dữ liệu cấu hình* (seed data), không phải thay đổi schema — trừ hai điểm rủi ro F4/F6 được xử lý phòng thủ ngay từ đầu (xem mục 4).
+
+---
+
+## 1. Mục tiêu & phạm vi
+
+- Chuyển MBc360 từ **demo UI (localStorage)** thành hệ thống thật: backend + database + đăng nhập + phân quyền + audit trail.
+- Frontend hiện tại được giữ lại làm client: thay tầng persist của Zustand bằng API client, **giữ nguyên chữ ký các store action** (`setGate`, `setRegisterRow`, `backtrackGate`, …) để UI gần như không đổi.
+- Backend trở thành **nơi thực thi luật** (source of truth): mọi rule trong `src/utils/gateProgress.ts` phải được enforce ở server, không chỉ ở UI.
+- Tôn trọng định hướng hệ thống đã chốt: *"MBc360 là nền tảng evidence & governance duy nhất, **tích hợp** với hệ thống chuyên biệt (Cosmetri, GMP Manufacturing) chứ **không thay thế**"*.
+
+Ngoài phạm vi: sinh/quản lý tài liệu GMP (chỉ lưu link — theo yêu cầu bổ sung của team), ghi dữ liệu vào Cosmetri (read-only tuyệt đối).
+
+## 2. Công nghệ đề xuất
+
+| Hạng mục | Đề xuất | Lý do |
+|---|---|---|
+| Runtime/API | **Node.js + NestJS** (REST) | Cùng ngôn ngữ TypeScript với frontend → tái sử dụng nguyên vẹn `src/types/index.ts` và **port trực tiếp `gateProgress.ts`** sang server (rule engine chỉ viết một lần, chạy hai nơi). APP_PLAN mục 7 đã đề xuất NestJS hoặc .NET — chọn NestJS vì lợi thế chia sẻ code; .NET vẫn là phương án thay thế nếu hạ tầng công ty yêu cầu. |
+| ORM/Migration | **Prisma** | Schema khai báo, migration có kiểm soát, map tốt sang PostgreSQL JSONB (cần cho register rows). |
+| Database | **PostgreSQL** | Đã chốt trong APP_PLAN mục 7. JSONB cho register động, kiểu mạnh cho bảng nghiệp vụ. |
+| Đăng nhập | **Microsoft Entra ID (SSO/OIDC)** | Công ty đã dùng hệ sinh thái Microsoft (Power Apps, SharePoint/Graph settings có sẵn trong demo). User + department lấy từ AD — đúng nguồn mà F6 đang hỏi. SSO qua OIDC hoạt động bình thường với app tự host (chỉ cần đăng ký redirect URI của domain nội bộ). |
+| File bằng chứng | **SharePoint/Graph API** (link + upload) | Demo đã có `GraphSettings`; evidence thật nằm trong hệ sinh thái sẵn có, MBc360 lưu reference. |
+| Cấu trúc repo | **Monorepo** (`apps/web`, `apps/api`, `packages/shared`) | `packages/shared` chứa types + rule engine (`gateProgress`, `ingredientWatch`) + config (`gates.ts`, `phases.ts`, `registers.ts`) dùng chung cho cả web và api — tránh hai bản luật lệch nhau. |
+| Hạ tầng | **Tự host, đóng gói bằng Docker cho production** (đã chốt) | Mỗi thành phần một image: `api` (NestJS), `web` (static build), `postgres`; điều phối bằng **docker-compose** trên server tự quản, reverse proxy **nginx** (sẵn có trên server) lo TLS. **Dev không chạy app trong container** — chỉ Postgres chạy Docker, frontend/backend chạy `npm run dev` để có hot-reload (chi tiết mục 6.1). |
+
+## 3. Nguyên tắc kiến trúc (bắt buộc, suy ra từ các quyết định đã confirm)
+
+1. **Append-only / "no silent corrections" (B4, A4).** Không bao giờ ghi đè lịch sử phê duyệt. Mọi mutation nghiệp vụ ghi một dòng vào `audit_events`; approval/sign-off là bản ghi bất biến — "hủy hiệu lực" là **một sự kiện mới** (`invalidated_by_event_id`), không phải xóa/sửa. Tài liệu confirmation ghi rõ: *"invalidation is a new recorded event, never an overwrite"* — backend phải làm đúng ngay từ đầu, **không copy cách demo clear field tại chỗ**.
+2. **Rule engine data-driven (đón F1/F2/F3/F7/F8/F9).** Điều kiện pass gate (B1: status + decision + required sign-offs + mandatory evidence) đọc từ bảng cấu hình `gate_requirements`, không hard-code. Engine build ngay; khi F1 trả lời thì chỉ seed thêm rows.
+3. **Formula version là entity riêng (phòng thủ F4).** Không dùng một field `formulaVersion` trên project như demo. `formula_versions` là bảng riêng; BOM và market track **tham chiếu tới version**. Dù F4 trả lời theo hướng nào (2 version song song hay không), schema đều khớp.
+4. **Gates 1–9 chung, Gates 10–12 per-market (A1/C5).** `market_tracks` per (project, market), mang PIF/Regulatory/Claims/Launch status + dates; launch approval hard-block khi PIF chưa Approved — enforce ở API, không chỉ UI.
+5. **Cosmetri read-only qua proxy (A3).** Browser không bao giờ giữ credential Cosmetri. Backend giữ token, đồng bộ polling (`since_updated_at`), cache local, và **không có code path nào gọi `PUT /raw-material/update`**.
+6. **Register config-driven như frontend.** ~37 evidence register dùng chung một bảng `register_rows` (JSONB) + định nghĩa cột từ `packages/shared/config/registers.ts`. Thêm register mới (vd. F10 — checklist EU CPSR/AU/US) = thêm config, không migration.
+
+## 4. Thiết kế database (bản phác)
+
+### 4.1. Danh tính & phân quyền
+- `users` (từ SSO: oid, email, display_name, department_id, active)
+- `departments`
+- `roles`, `user_roles`
+- `permissions` / `role_permissions` — **ma trận role × resource × hành động (contribute / decide / approve / sign)**. Chờ F6: seed ban đầu tái tạo đúng logic keyword-match của `src/utils/roles.ts` (demo-parity), thay bằng ma trận thật khi có — chỉ đổi data.
+
+### 4.2. Project & gate flow
+- `projects` (các field `ProjectIdentity`; `markets` chuyển thành bảng con `project_markets`)
+- `gate_records` (project_id, gate_id SG01–SG12, status, decision, owner, due_date, evidence_link, notes) — trạng thái hiện tại; mọi thay đổi ghi kèm `audit_events`
+- `next_actions` (B2: description, owner, due_date, status, priority, date_completed, closed_by)
+- `phase_closures` + `sign_offs` (role Prepared/Reviewed/Approved, ký bởi user thật, `signed_at`, `invalidated_by_event_id`)
+- `angle_rows`, `gate_checks`, `checklist_items`, `requirement_items`
+- `study_approvals` (C2: 3 role riêng; **constraint: Independent Reviewer.department ≠ Study Author.department** — check ở API vì department lấy từ users)
+- `backtrack_events` (B4: initiated_by, reason, from/to gate, reopened_gate_ids, snapshot JSONB của gates + sign-offs trước khi reset)
+
+### 4.3. Formula & thị trường
+- `formula_versions` (project_id, version, previous_version_id, change_type Major/Minor, reason, initiated_by, status) — *entity riêng, xem nguyên tắc 3*
+- `bom_lines` (formula_version_id, line, rm_code, inci_name, cas_no, percent_ww, cost, supplier, …), `packaging_bom_lines`, `costing_inputs`
+- `market_tracks` (project_id, market, formula_version_id, pif/regulatory/claims/launch status, notes, dates)
+
+### 4.4. Register & evidence
+- `register_rows` (project_id, register_key, row_order, data JSONB, updated_by/at)
+- `evidence_items` (Evidence Summary board)
+- `attachments` (evidence file thật: SharePoint drive item id / URL, uploaded_by, linked_to)
+
+### 4.5. Cross-cutting
+- `change_records` (Change Control; `trigger_id` liên kết gate bị ảnh hưởng → soft-lock C4/F9)
+- `capa_records`, `feedback_entries`
+- `audit_events` — **bảng xương sống**: (id, actor_id, project_id?, entity_type, entity_id, action, before JSONB, after JSONB, occurred_at). Đây là "electronic approval history" mà A4 yêu cầu.
+
+### 4.6. Cấu hình luật (data, không phải code)
+- `gate_requirements` (gate_id, requirement_type: sign_off | evidence_register_state | register_no_flagged_rows, params JSONB, enforcement: hard | soft) — **chờ F1 điền nội dung**
+- `safety_triggers` (Skincare-for-Two: Pregnancy/Breastfeeding/Postpartum; thêm "Infant 0+" nếu F2 = yes)
+- `watchlist_entries` (group_name, cas_no[], inci_keywords[], list_type: prohibited | pb_caution | market_restriction, market?) — **chờ F3** thay bảng demo trong `ingredientWatch.ts`
+
+### 4.7. Cache tích hợp Cosmetri
+- `cosmetri_raw_materials`, `cosmetri_formulas`, `cosmetri_compliance` (snapshot đồng bộ) + `cosmetri_sync_state` (cursor `since_updated_at`, last_sync_at, lỗi gần nhất)
+
+## 5. API surface (REST, phác thảo)
+
+- `POST /auth/callback` (OIDC), `GET /me` (user + department + permissions)
+- `GET/POST /projects`, `GET /projects/:id` (aggregate như `ProjectData` hiện tại để frontend chuyển đổi nhẹ nhàng)
+- Mutation 1:1 với store action hiện có, mỗi endpoint **tự enforce rule** trước khi ghi:
+  - `PUT /projects/:id/gates/:gateId` — chặn Gap→Proceed (B1), kiểm tra `gate_requirements`, kiểm tra quyền decide (A4), kiểm tra soft-lock Change Control (C4)
+  - `POST /projects/:id/backtrack` — tạo `backtrack_events` + snapshot + invalidate approvals (B4)
+  - `POST /projects/:id/formula-versions` — Major: reopen SG04–SG09, invalidate Phase 2–3 approvals (A2)
+  - `PUT /projects/:id/market-tracks/:market` — hard-block launch khi PIF ≠ Approved (C5), chỉ Regulatory (A4)
+  - `PUT /projects/:id/phases/:phase/sign-offs` — chỉ mở khi `phaseCompletionChecklist` đạt (B3), đúng role
+  - `POST/PUT /projects/:id/next-actions`, `.../registers/:key/rows`, `.../checklists`, `.../study-approvals` (check khác department), …
+- `GET /projects/:id/gate-state` — trả kết quả rule engine (blockers, checklist, current gate) để UI hiển thị đúng như `gateProgress.ts` đang tính
+- Tích hợp: `POST /integrations/cosmetri/connect|sync`, `GET /integrations/cosmetri/raw-materials|formulas/:id/compliance`, `POST /projects/:id/bom/import-cosmetri`
+- Screening: `POST /projects/:id/bom/screen` (chạy `ingredientWatch` server-side trên watchlist DB)
+- Admin: CRUD `gate_requirements`, `watchlist_entries`, role matrix (chuẩn bị sẵn chỗ cho F1/F3/F6)
+- Audit: `GET /projects/:id/audit-events`, `GET /projects/:id/approval-history`
+
+## 6. Lộ trình thực hiện
+
+> Ước lượng cho 1–2 dev, đã tính làm song song. Các mốc M2–M4 có thể chạy chồng lấn một phần.
+
+| Mốc | Nội dung | Ước lượng | Phụ thuộc |
+|---|---|---|---|
+| **M0 — Nền móng** ✅ *(hoàn thành 2026-07-16)* | Chuyển repo thành monorepo (`apps/web` = code hiện tại, `apps/api` = NestJS mới, `packages/shared` = types + config + `gateProgress` + `ingredientWatch`); CI (lint, tsc, build, build Docker image); Dockerfile production cho `api`/`web`; dev env: `docker-compose.dev.yml` chỉ chứa Postgres, app chạy `npm run dev` (mục 6.1). | ~1 tuần | — |
+| **M1 — Schema & seed** | Prisma schema theo mục 4; migration đầu; port `store/factory.ts` thành seeder (project mới sinh từ config — giữ nguyên tắc "config là source of truth"); bảng `audit_events` + middleware ghi event. | ~2 tuần | M0 |
+| **M2 — Auth & RBAC** | OIDC Entra ID; đồng bộ user/department; bảng role/permission với **seed demo-parity** (logic `roles.ts`); guard NestJS cho decide/approve/sign. | ~2 tuần | M1. *Ma trận thật chờ F6 — chỉ đổi seed.* |
+| **M3 — Core API + rule engine server-side** | Toàn bộ endpoint mục 5 cho project/gate/checklist/register/next-action/sign-off; rule engine dùng chung từ `packages/shared` + đọc `gate_requirements`; **chuyển frontend sang API** (thay persist middleware bằng API client, giữ chữ ký store action). | ~3–4 tuần | M1 (song song M2) |
+| **M4 — Tích hợp Cosmetri** | Proxy + token management + polling sync + cache; import BOM từ formula/compliance; screening CAS/INCI server-side; link-out Power Apps khi thiếu nguyên liệu. | ~2 tuần | M1 (song song M3) |
+| **M5 — Workflow nâng cao** | Backtrack event model đầy đủ (B4); formula versioning + reopen SG04–SG09 (A2); market tracks + hard-block PIF (A1/C5); study approvals (C2); Published Information Approval + violation flag (C6); Change Control soft-lock (C4). | ~2–3 tuần | M3 |
+| **M6 — Hoàn thiện & UAT** | Upload evidence (SharePoint), notification phê duyệt (email/Teams), import/export Excel, hoàn thiện vận hành tự host (mục 6.1: backup, monitoring, rate-limit), migration dữ liệu demo (nếu cần), UAT với đội chuyên gia. | ~2–3 tuần | M3–M5 |
+
+**Tổng: ~12–15 tuần.** Sau M3 là có bản chạy được end-to-end (login → project → gate flow trên DB thật) để demo sớm cho team nghiệp vụ.
+
+### 6.1. Môi trường dev & triển khai tự host bằng Docker (đã chốt)
+
+**Dev environment — không container hóa app, để giữ hot-reload:**
+- Chỉ hạ tầng chạy Docker: `docker-compose.dev.yml` gồm `postgres` (+ `redis` nếu dùng) — thứ ít thay đổi và không cần rebuild.
+- `apps/api`: `npm run dev` (NestJS watch mode / SWC — restart tự động khi đổi code).
+- `apps/web`: `npm run dev` (Vite HMR như hiện tại). **Vite dev server proxy** `/api` → `http://localhost:3000` (cấu hình `server.proxy` trong `vite.config.ts`) để dev không gặp CORS và frontend gọi cùng đường dẫn tương đối như production.
+- Prisma migration ở dev chạy trực tiếp (`prisma migrate dev`) từ máy dev vào Postgres container.
+- Một lệnh khởi động chung ở root (vd. `npm run dev` dùng turborepo/concurrently) bật cả hai app song song.
+- Docker image chỉ được build ở CI và khi test production-build cục bộ (`docker compose -f docker-compose.prod.yml up`) — không nằm trong vòng lặp code hằng ngày.
+
+**Đóng gói (production):**
+- `apps/api` → image NestJS (multi-stage build: `node:lts` build → runtime slim, chạy non-root, `HEALTHCHECK` trỏ `GET /health`).
+- `apps/web` → multi-stage build Vite → image nginx serve static; API URL cấu hình lúc runtime (env → file config), không nướng cứng vào build.
+- Prisma migration chạy như bước riêng khi deploy (`migrate deploy`), không tự chạy lúc container khởi động nhiều replica.
+
+**Điều phối (docker-compose trên server tự quản):**
+- Reverse proxy dùng **nginx sẵn có trên server** (host-level): TLS termination (HTTPS bắt buộc vì có OIDC), route `/` → container `web`, `/api` → container `api`. Không cần thêm service proxy trong compose.
+- Services trong compose: `web`, `api`, `postgres` (volume riêng), tùy chọn `redis` nếu cần queue cho sync Cosmetri/notification — expose port ra localhost cho nginx host proxy vào.
+- Secrets (chuỗi kết nối DB, client secret OIDC, credential Cosmetri) qua env file/Docker secrets **ngoài repo**; không commit.
+- Registry: GHCR hoặc registry nội bộ; CI build + tag image theo commit, deploy bằng `docker compose pull && up -d`.
+
+**Trách nhiệm vận hành đi kèm tự host (đưa vào M6):**
+- **Backup PostgreSQL** — `pg_dump` định kỳ (cron container hoặc trên host) + lưu ngoài server + **kiểm tra restore định kỳ**. Đây là hệ thống evidence/audit cho quality & regulatory — mất dữ liệu audit trail là mất tính tuân thủ, backup là hạng mục bắt buộc, không phải tùy chọn.
+- Log tập trung (ít nhất `docker logs` + logrotate; tốt hơn: Loki/Grafana), uptime check nội bộ, cảnh báo khi sync Cosmetri lỗi liên tục.
+- Máy chủ cần truy cập ra ngoài tới Cosmetri API và Microsoft (OIDC/Graph); nếu mạng nội bộ có firewall egress thì mở trước.
+
+## 7. Bản đồ follow-up F1–F12 → backend
+
+| F | Khi có câu trả lời, đổ vào đâu | Chặn mốc nào? |
+|---|---|---|
+| F1 (evidence/sign-off bắt buộc per-gate) | Seed rows `gate_requirements` | **Không chặn** — engine làm ở M3, nội dung đến sau |
+| F2 (Infant 0+) | Seed `safety_triggers` | Không chặn |
+| F3 (CAS mapping, market lists) | Seed `watchlist_entries` + quy trình cập nhật (ai maintain → cần admin UI ở M6) | Không chặn |
+| **F4 (version song song × market)** | Đã phòng thủ bằng `formula_versions` là entity + market track trỏ version. Câu trả lời quyết định *behavior* của `POST /formula-versions` (có reopen market track không) | **Nên có trước M5**; ưu tiên hỏi sớm nhất |
+| F5 (Major/Minor) | Logic phân loại trong endpoint tạo version (auto-classify theo trigger catalogue nếu confirm) | Trước M5, có default (user tự chọn) |
+| **F6 (ma trận role, e-signature)** | Seed `role_permissions`; nếu yêu cầu chuẩn 21 CFR Part 11 → bổ sung meaning-of-signature + re-auth khi ký (ảnh hưởng M2/M6) | M2 chạy được với seed demo-parity; **chuẩn e-signature nên chốt trước M6** |
+| F7 (Gap × PwC) | Một điều kiện trong rule engine (flag config) | Không chặn |
+| F8 (ai đóng Next Action) | Guard trên `PUT /next-actions/:id` | Không chặn |
+| F9 (ngữ nghĩa soft-lock) | Behavior của gate endpoint (banner vs required acknowledgement — nếu acknowledgement thì thêm bảng `change_acknowledgements`, nhỏ) | Trước M5 |
+| F10 (checklist non-ASEAN) | Config register mới trong `packages/shared` | Không chặn |
+| F11 (workflow published info) | Config workflow states/roles cho register Published_Info_Approval | Trước M5 (có default 5 bước như demo) |
+| F12(c) (Cosmetri coverage ASEAN/VN) | Thông tin — quyết định checklist per-market ở C5 | Không chặn |
+
+## 8. Rủi ro & quyết định cần chốt sớm
+
+1. **F4** — rủi ro schema duy nhất còn lại; đã giảm thiểu bằng thiết kế version-entity nhưng cần câu trả lời trước M5. → *Thúc team nghiệp vụ trả lời F4 đầu tiên (cùng F1).*
+2. **Chuẩn e-signature (trong F6)** — mức 21 CFR Part 11 sẽ thêm yêu cầu re-authentication khi ký và ràng buộc audit sâu hơn; chốt trước M6 để không rework màn hình ký.
+3. **Hạ tầng deploy** — ✅ đã chốt: **tự host, đóng gói Docker** (chi tiết mục 6.1). Rủi ro còn lại của phương án này: backup/restore và bảo mật server là trách nhiệm nội bộ — cần phân công người vận hành cụ thể trước khi go-live.
+4. **Tài khoản Cosmetri môi trường thật** — cần credential và xác nhận rate-limit thực tế trước M4; hiện mới có tài liệu swagger.
+5. **Đồng bộ hai bản luật trong giai đoạn chuyển tiếp** — từ M3, `gateProgress.ts` chuyển vào `packages/shared`; tuyệt đối không để `apps/web` giữ bản sao riêng.
+
+---
+
+*Tài liệu liên quan: `docs/APP_PLAN.md` (spec gốc, mục 3 & 7), `docs/Business_Rules_Confirmation_{EN,VN}.md` (hồ sơ quyết định — khi một rule thay đổi phải cập nhật cả code lẫn tài liệu đó), `docs/swagger-init.json` (Cosmetri API).*

@@ -1,32 +1,41 @@
-# React + TypeScript + Vite
+# MBc360
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Product Development & Quality "Phase-Gate" system (4 phases / 12 gates), modeled on the MBc360 Master Product Development System workbook.
 
-Currently, two official plugins are available:
+## Repository layout (npm workspaces monorepo)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Path | Package | What it is |
+|---|---|---|
+| `apps/web` | `@mbc360/web` | React + Vite frontend (originally the demo UI) |
+| `apps/api` | `@mbc360/api` | NestJS backend API |
+| `packages/shared` | `@mbc360/shared` | Canonical types, workbook-derived config, and the phase-gate rule engine — the single rule source used by both web and api |
 
-## React Compiler
+## Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Apps run natively in dev (hot reload); only infrastructure runs in Docker.
 
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+docker compose -f docker-compose.dev.yml up -d   # Postgres
+npm install
+npm run dev        # shared (tsc watch) + api (nest watch, :3000) + web (vite HMR, :5173)
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The Vite dev server proxies `/api` to `localhost:3000`, mirroring the production nginx routing.
+
+Other commands:
+
+```bash
+npm run build      # build shared -> api -> web
+npm run lint       # oxlint across the whole repo
+```
+
+## Production (self-hosted, Docker)
+
+Images are built from the repo root (`apps/api/Dockerfile`, `apps/web/Dockerfile`) and orchestrated with `docker-compose.prod.yml`. The host nginx terminates TLS and routes `/` to the web container (127.0.0.1:8080) and `/api` to the api container (127.0.0.1:3000) — see `deploy/nginx.host.example.conf`. Secrets live in an untracked `.env` file.
+
+## Documentation
+
+- `docs/APP_PLAN.md` — source-of-truth spec (Vietnamese)
+- `docs/Business_Rules_Confirmation_{EN,VN}.md` — confirmed business-rule decisions + open follow-ups (F1–F12)
+- `docs/BACKEND_PLAN.md` — backend build plan (Vietnamese)
+- `CLAUDE.md` — architecture guide for AI-assisted development
