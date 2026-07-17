@@ -78,6 +78,7 @@ Where each follow-up answer lands when it arrives:
 | F10 — non-ASEAN market checklists (EU CPSR, AU, US) | new `RegisterConfig` entries in `packages/shared/src/config/registers.ts` |
 | F11 — published-info workflow states/roles per content type | `publishedInfoApproval` config + the violation warning in `RegisterHubPage` |
 | F12(c) — Cosmetri compliance coverage of ASEAN/VN | informational (affects C5 checklist choice per market) |
+| F13 — should a locked phase block ALL form input, or only gate decisions/sign-off (current: only those two) | the `locked`/`disabled` checks in `GateFlowTable`/`SignOffBlock` (`apps/web/src/components/`) — extend to the other section components in `PhasePage.tsx` if the answer is "block everything" |
 
 Deferred until the production phase (not answerable by config):
 - Swap the mock Cosmetri client (`apps/web/src/integrations/cosmetri.ts`) for real calls **through a backend proxy** (CORS + credentials; keep Cosmetri strictly read-only — never call its `PUT /raw-material/update`).

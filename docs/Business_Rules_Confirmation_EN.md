@@ -217,6 +217,20 @@ However, **nothing is ever deleted**. Instead:
 
 ---
 
+### B5. Should a locked (not-yet-reached) phase block all form input, or only gate decisions/sign-off?
+
+**Main question:** When a phase is "locked" because its preceding gates/phases have not fully passed, should every data-entry control on that phase's page be disabled, or only the controls that drive formal progression?
+
+**Current demo assumption:** Only the Gate Flow decision controls and the phase Sign-Off block are disabled while a phase is locked. Every other form on the page (checklist selections, requirement rows, key gate checks, next actions, 8-angles coverage) stays fully editable, so a team can start entering evidence ahead of time. The page shows a banner explaining this: *"You can still review the forms below, but the gate flow stays read-only."*
+
+**Needs clarification:**
+1. Is early/pre-work data entry on a not-yet-reached phase actually desired, or should the whole page stay read-only until the phase is reached in order?
+2. If pre-work is allowed, does data entered "early" need any visual/procedural distinction from data entered during the phase's normal window (e.g. a flag noting it was entered before the phase formally opened)?
+
+**Subject-matter team decision:** ❌ **NOT YET ANSWERED.**
+
+---
+
 ## Group C — Specific Business Rules
 
 ### C1. Does "Skincare for Two" actually block the gate?
@@ -392,6 +406,7 @@ Instead, MBc360 contains a **"GMP Links"** section which stores references/hyper
 | **F10** | C5 | For non-ASEAN markets (EU, Australia, US, ...): which checklist replaces `PIF_Checklist_ASEAN` as the per-market "PIF complete" definition (e.g. EU CPSR)? |
 | **F11** | C6 | Published Information Approval workflow details: states, required reviewer roles per content type, and the source/maintenance of the acceptable-terminology and required-evidence-per-claim guidance. *Demo working assumption: five Y/N/N.A. workflow steps on the register (terminology check → evidence verified → technical review → regulatory review → final approval) plus a released-without-approval violation flag.* |
 | **F12** | A3 | Cosmetri connection — *mostly resolved by the API documentation received*: the login/token mechanism is confirmed, raw materials include the **supplier name**, and the raw-material "code" field is a **batch number** — so ingredient identity for cross-checking (INCI/CAS) comes from Cosmetri's compliance data. Decided (2026-07-16): data that the **Cosmetri API does not provide** is **entered manually** in MBc360 — note this is a limitation of the current API version, not a gap in the Cosmetri application itself: supplier details and SDS/CoA/TDS documents **are stored inside Cosmetri**, the API just does not yet expose them to external systems; new raw materials follow the **Power Apps change request → approval → Cosmetri entry** flow, with MBc360 linking to the Power Apps app when an ingredient is not yet selectable. **Only remaining question: does Cosmetri's compliance coverage include ASEAN/Vietnam (the documentation shows EU/UK/US examples only)?** |
+| **F13** | B5 | On a locked (not-yet-reached) phase page, should ALL data-entry forms be disabled, or only the gate-decision and sign-off controls (as the demo currently does, to allow early/pre-work data entry)? *Demo working assumption: only gate decisions and phase sign-off are disabled while locked; every other form (checklists, requirements, gate checks, next actions, 8 angles) stays editable.* |
 
 ---
 

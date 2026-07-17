@@ -217,6 +217,20 @@ Tuy nhiên, **không bao giờ được xóa bất kỳ dữ liệu nào**. Thay
 
 ---
 
+### B5. Phase đang khóa (chưa tới lượt) thì có nên chặn toàn bộ input, hay chỉ chặn gate decision/sign-off?
+
+**Câu hỏi chính:** Khi một phase bị "khóa" vì các gate/phase trước đó chưa hoàn thành, có nên vô hiệu hóa **toàn bộ** control nhập liệu trên trang phase đó, hay chỉ vô hiệu hóa những control quyết định tiến trình chính thức (quyết định gate, ký sign-off phase)?
+
+**Giả định hiện tại trong demo:** Chỉ vô hiệu hóa control quyết định ở **Gate Flow** và khối **Sign-Off** của phase khi phase đang khóa. Mọi form khác trên trang (chọn checklist, các dòng requirement, key gate checks, next actions, 8 angles coverage) vẫn **mở để nhập liệu bình thường**, để các phòng ban có thể chuẩn bị/nhập bằng chứng sớm. Trang hiện banner giải thích điều này: *"You can still review the forms below, but the gate flow stays read-only."*
+
+**Cần làm rõ:**
+1. Việc cho phép nhập liệu chuẩn bị trước (pre-work) trên một phase chưa tới lượt có thực sự mong muốn không, hay toàn bộ trang phải ở chế độ chỉ xem (read-only) cho tới khi phase được mở đúng thứ tự?
+2. Nếu cho phép nhập trước, dữ liệu nhập "sớm" có cần đánh dấu phân biệt (hiển thị/quy trình) so với dữ liệu nhập trong đúng giai đoạn của phase không (ví dụ gắn cờ ghi nhận là nhập trước khi phase chính thức mở)?
+
+**Quyết định của bộ phận chuyên môn:** ❌ **CHƯA ĐƯỢC TRẢ LỜI.**
+
+---
+
 ## Nhóm C — Quy tắc nghiệp vụ đặc thù
 
 ### C1. "Skincare for Two" có thực sự chặn gate không?
@@ -392,6 +406,7 @@ Thay vào đó, MBc360 có mục **"GMP Links"** lưu tham chiếu/hyperlink t�
 | **F10** | C5 | Với thị trường ngoài ASEAN (EU, Úc, Mỹ...): checklist nào thay thế `PIF_Checklist_ASEAN` làm định nghĩa "PIF complete" theo thị trường (ví dụ EU CPSR)? |
 | **F11** | C6 | Chi tiết workflow Published Information Approval: các trạng thái, vai trò reviewer bắt buộc theo từng loại nội dung, nguồn/cách duy trì bộ hướng dẫn thuật ngữ chấp nhận được và bằng chứng bắt buộc theo claim. *Giả định tạm của demo: 5 bước Y/N/N.A. trên register (kiểm tra thuật ngữ → xác minh bằng chứng → technical review → regulatory review → phê duyệt cuối) + cờ cảnh báo "đã publish khi chưa duyệt đủ".* |
 | **F12** | A3 | Kết nối Cosmetri — *gần như đã giải quyết xong nhờ tài liệu API nhận được*: cơ chế đăng nhập/cấp token đã rõ, nguyên liệu có kèm **tên nhà cung cấp**, và trường "code" của nguyên liệu là **số lô (Batch No.)** — nên danh tính nguyên liệu để đối chiếu (INCI/CAS) lấy từ dữ liệu compliance của Cosmetri. Đã chốt (16/07/2026): những dữ liệu mà **API của Cosmetri không cung cấp** thì **nhập tay** trong MBc360 — lưu ý đây là giới hạn của phiên bản API, không phải ứng dụng Cosmetri thiếu phần đó: chi tiết nhà cung cấp và tài liệu SDS/CoA/TDS **vẫn được lưu bên trong Cosmetri**, chỉ là API hiện tại chưa mở ra cho hệ thống ngoài truy cập; nguyên liệu mới theo quy trình **change request trên Power Apps → phê duyệt → nhập vào Cosmetri**, MBc360 gắn link tới ứng dụng Power Apps khi nguyên liệu chưa có để chọn. **Câu hỏi duy nhất còn lại: phạm vi compliance của Cosmetri có bao phủ ASEAN/Việt Nam không (tài liệu chỉ thấy ví dụ EU/UK/US)?** |
+| **F13** | B5 | Trên trang phase đang khóa (chưa tới lượt), có nên vô hiệu hóa TOÀN BỘ form nhập liệu, hay chỉ vô hiệu hóa control quyết định gate và sign-off (như demo đang làm, để cho phép nhập liệu chuẩn bị trước)? *Giả định tạm của demo: chỉ khóa quyết định gate và sign-off phase khi đang locked; mọi form khác (checklist, requirement, gate checks, next actions, 8 angles) vẫn mở để nhập.* |
 
 ---
 
