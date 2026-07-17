@@ -1,11 +1,15 @@
 // Auth configuration from environment (see apps/api/.env.example).
 //
-// Two modes:
-//  - OIDC (production): AUTH_TENANT_ID + AUTH_CLIENT_ID + AUTH_CLIENT_SECRET
-//    set -> Microsoft Entra ID sign-in via the authorization-code + PKCE flow.
-//  - Dev mode (no tenant credentials yet): POST /api/auth/dev-login issues a
-//    session for a seeded demo user. Never enabled when NODE_ENV=production
-//    unless AUTH_DEV_MODE=true is set explicitly.
+// Two modes, independent of each other (both can be on at once in dev — real
+// SSO and quick demo-persona logins side by side):
+//  - OIDC: AUTH_TENANT_ID + AUTH_CLIENT_ID + AUTH_CLIENT_SECRET set ->
+//    Microsoft Entra ID sign-in via the authorization-code + PKCE flow.
+//  - Dev mode: POST /api/auth/dev-login issues a session for a seeded demo
+//    user (…@demo.mbc360.local, one per role) without going through Microsoft
+//    — useful for exercising every role locally. On by default outside
+//    production; set AUTH_DEV_MODE=false to turn it off in a non-prod
+//    environment. Hard-disabled in production with no override — a login
+//    backdoor must never exist there.
 
 export interface AuthConfig {
   oidcEnabled: boolean;
@@ -26,8 +30,7 @@ export function loadAuthConfig(): AuthConfig {
   const oidcEnabled = Boolean(tenantId && clientId && clientSecret);
   const isProduction = process.env.NODE_ENV === 'production';
 
-  const devMode =
-    process.env.AUTH_DEV_MODE === 'true' || (!oidcEnabled && !isProduction);
+  const devMode = !isProduction && process.env.AUTH_DEV_MODE !== 'false';
 
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret && isProduction) {

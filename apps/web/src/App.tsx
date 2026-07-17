@@ -10,10 +10,14 @@ import {
   ReloadOutlined,
   RightCircleFilled,
   SearchOutlined,
+  TeamOutlined,
 } from '@ant-design/icons';
 import { HashRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from './store/useAppStore';
 import { VIEW_ROLES } from './utils/roles';
+import { useSession } from './auth/useSession';
+import AuthStatus from './components/AuthStatus';
+import AdminUsers from './pages/AdminUsers';
 import Dashboard from './pages/Dashboard';
 import ProjectList from './pages/ProjectList';
 import ProjectOverview from './pages/ProjectOverview';
@@ -50,7 +54,7 @@ function ProjectContextTitle() {
   );
 }
 
-function SideMenu() {
+function SideMenu({ isAdmin }: { isAdmin: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
   const projects = useAppStore((s) => s.projects);
@@ -85,8 +89,11 @@ function SideMenu() {
       { key: '/projects', icon: <FolderOpenOutlined />, label: <Link to="/projects">All Projects</Link> },
       { key: '/system-guide', icon: <BookOutlined />, label: <Link to="/system-guide">System Guide</Link> },
       { key: '/integrations', icon: <ApiOutlined />, label: <Link to="/integrations">Integrations</Link> },
+      ...(isAdmin
+        ? [{ key: '/admin/users', icon: <TeamOutlined />, label: <Link to="/admin/users">Users & Roles</Link> }]
+        : []),
     ],
-    [],
+    [isAdmin],
   );
 
   const activeProject = projects.find((p) => p.identity.id === projectId);
@@ -324,6 +331,7 @@ function Shell() {
   const setViewRole = useAppStore((s) => s.setViewRole);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
+  const session = useSession();
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider breakpoint="lg" collapsedWidth={0} width={250}>
@@ -334,7 +342,7 @@ function Shell() {
               Development & Quality System
             </div>
           </div>
-          <SideMenu />
+          <SideMenu isAdmin={session.isAdmin} />
         </StickySidebar>
       </Sider>
       <Layout>
@@ -362,6 +370,7 @@ function Shell() {
             <ProjectContextTitle />
           </Typography.Text>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <AuthStatus user={session.user} loading={session.loading} onLogout={session.logout} />
             {/* A4 demo simulation: stands in for the logged-in user's role until F6. */}
             <Select
               size="small"
@@ -417,6 +426,7 @@ function Shell() {
             <Route path="/change-control" element={<ChangeControl />} />
             <Route path="/system-guide" element={<SystemGuide />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
           </Routes>
         </Content>
       </Layout>
