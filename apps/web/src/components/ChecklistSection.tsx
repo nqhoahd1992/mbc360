@@ -76,27 +76,31 @@ export default function ChecklistSection({
           {
             title: 'Evidence / internal link',
             width: 200,
-            render: (_, r, i) => (
-              <Input
-                size="small"
-                value={r.evidenceLink}
-                placeholder="link"
-                disabled={!r.selected}
-                onChange={(e) => setItem(projectId, sectionKey, i, { evidenceLink: e.target.value })}
-              />
-            ),
+            render: (_, r, i) =>
+              r.selected ? (
+                <Input
+                  size="small"
+                  value={r.evidenceLink}
+                  placeholder="link"
+                  onChange={(e) => setItem(projectId, sectionKey, i, { evidenceLink: e.target.value })}
+                />
+              ) : (
+                <span style={{ color: '#d9d9d9' }}>—</span>
+              ),
           },
           {
             title: 'Notes / rationale',
             width: 240,
-            render: (_, r, i) => (
-              <Input
-                size="small"
-                value={r.notes}
-                disabled={!r.selected}
-                onChange={(e) => setItem(projectId, sectionKey, i, { notes: e.target.value })}
-              />
-            ),
+            render: (_, r, i) =>
+              r.selected ? (
+                <Input
+                  size="small"
+                  value={r.notes}
+                  onChange={(e) => setItem(projectId, sectionKey, i, { notes: e.target.value })}
+                />
+              ) : (
+                <span style={{ color: '#d9d9d9' }}>—</span>
+              ),
           },
         ]}
       />

@@ -85,35 +85,44 @@ export default function GateChecksTable({
           {
             title: 'Evidence / reference',
             width: 160,
-            render: (_, r) => (
-              <Input
-                size="small"
-                value={r.check.evidenceRef}
-                onChange={(e) => setCheck(projectId, r.index, { evidenceRef: e.target.value })}
-              />
-            ),
+            render: (_, r) =>
+              r.check.done ? (
+                <Input
+                  size="small"
+                  value={r.check.evidenceRef}
+                  onChange={(e) => setCheck(projectId, r.index, { evidenceRef: e.target.value })}
+                />
+              ) : (
+                <span style={{ color: '#d9d9d9' }}>—</span>
+              ),
           },
           {
             title: 'Method ref',
             width: 120,
-            render: (_, r) => (
-              <Input
-                size="small"
-                value={r.check.methodRef}
-                onChange={(e) => setCheck(projectId, r.index, { methodRef: e.target.value })}
-              />
-            ),
+            render: (_, r) =>
+              r.check.done ? (
+                <Input
+                  size="small"
+                  value={r.check.methodRef}
+                  onChange={(e) => setCheck(projectId, r.index, { methodRef: e.target.value })}
+                />
+              ) : (
+                <span style={{ color: '#d9d9d9' }}>—</span>
+              ),
           },
           {
             title: 'Initials',
             width: 90,
-            render: (_, r) => (
-              <Input
-                size="small"
-                value={r.check.initials}
-                onChange={(e) => setCheck(projectId, r.index, { initials: e.target.value })}
-              />
-            ),
+            render: (_, r) =>
+              r.check.done ? (
+                <Input
+                  size="small"
+                  value={r.check.initials}
+                  onChange={(e) => setCheck(projectId, r.index, { initials: e.target.value })}
+                />
+              ) : (
+                <span style={{ color: '#d9d9d9' }}>—</span>
+              ),
           },
           {
             title: 'Notes / action',
