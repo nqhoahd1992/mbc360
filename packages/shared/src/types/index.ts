@@ -80,13 +80,13 @@ export interface SignOff {
   comments?: string;
 }
 
+// A single free-text "next action" field used to live here, but rule B2
+// (confirmed) overturned that assumption: next actions are their own
+// controlled, multi-record list per gate — see NextAction / ProjectData.nextActions.
 export interface PhaseClosure {
   evidenceSummary?: string;
   signOffs: SignOff[];
   angles: AngleRow[];
-  nextAction?: string;
-  nextDueDate?: string;
-  nextOwner?: string;
 }
 
 export interface BomLine {

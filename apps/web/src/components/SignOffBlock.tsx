@@ -6,7 +6,6 @@ import type { PhaseCompletionChecklist } from '@mbc360/shared/utils/gateProgress
 import { GATE_DECISIONS, PHASES } from '@mbc360/shared/config/gates';
 import { useAppStore } from '../store/useAppStore';
 import { canApprovePhase, roleLabel } from '../utils/roles';
-import LabeledInput from './LabeledInput';
 
 export default function SignOffBlock({
   projectId,
@@ -20,7 +19,7 @@ export default function SignOffBlock({
   checklist: PhaseCompletionChecklist;
 }) {
   const setSignOff = useAppStore((s) => s.setSignOff);
-  const setClosureField = useAppStore((s) => s.setClosureField);
+  const setEvidenceSummary = useAppStore((s) => s.setEvidenceSummary);
   const viewRole = useAppStore((s) => s.viewRole);
 
   // B3: sign-off only becomes available once the phase's other closure
@@ -67,7 +66,7 @@ export default function SignOffBlock({
         <Input.TextArea
           rows={3}
           value={closure.evidenceSummary}
-          onChange={(e) => setClosureField(projectId, phase, 'evidenceSummary', e.target.value)}
+          onChange={(e) => setEvidenceSummary(projectId, phase, e.target.value)}
         />
       </div>
       <Table
@@ -143,27 +142,6 @@ export default function SignOffBlock({
           },
         ]}
       />
-      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-        <LabeledInput
-          style={{ flex: 2, minWidth: 220 }}
-          label="Next action"
-          value={closure.nextAction}
-          onChange={(e) => setClosureField(projectId, phase, 'nextAction', e.target.value)}
-        />
-        <DatePicker
-          placeholder="Next due date"
-          value={closure.nextDueDate ? dayjs(closure.nextDueDate) : null}
-          onChange={(d) =>
-            setClosureField(projectId, phase, 'nextDueDate', d ? d.format('YYYY-MM-DD') : '')
-          }
-        />
-        <LabeledInput
-          style={{ flex: 1, minWidth: 160 }}
-          label="Owner"
-          value={closure.nextOwner}
-          onChange={(e) => setClosureField(projectId, phase, 'nextOwner', e.target.value)}
-        />
-      </div>
     </Card>
   );
 }

@@ -195,15 +195,15 @@ model NextAction {
   @@map("next_actions")
 }
 
+// A single free-text "next action" field used to live here, but rule B2
+// (confirmed) overturned that assumption: next actions are their own
+// controlled, multi-record list per gate — see the NextAction model above.
 model PhaseClosure {
-  id              String    @id @default(cuid())
-  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id              String  @id @default(cuid())
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId       String
   phase           Int // 1..4
   evidenceSummary String?
-  nextAction      String?
-  nextDueDate     DateTime? @db.Date
-  nextOwner       String?
 
   signOffs SignOff[]
   angles   AngleRow[]

@@ -78,7 +78,7 @@ interface AppState {
   setGateCheck: (id: string, index: number, patch: Partial<GateCheck>) => void;
   setAngle: (id: string, phase: number, index: number, patch: Partial<AngleRow>) => void;
   setSignOff: (id: string, phase: number, index: number, patch: Partial<SignOff>) => void;
-  setClosureField: (id: string, phase: number, field: 'evidenceSummary' | 'nextAction' | 'nextDueDate' | 'nextOwner', value: string) => void;
+  setEvidenceSummary: (id: string, phase: number, value: string) => void;
 
   setBomLine: (id: string, index: number, patch: Partial<BomLine>) => void;
   addBomLine: (id: string) => void;
@@ -434,12 +434,12 @@ export const useAppStore = create<AppState>()(
               [phase]: { ...p.phaseClosures[phase], signOffs: patchArray(p.phaseClosures[phase].signOffs, index, patch) },
             },
           })),
-        setClosureField: (id, phase, field, value) =>
+        setEvidenceSummary: (id, phase, value) =>
           updateProject(id, (p) => ({
             ...p,
             phaseClosures: {
               ...p.phaseClosures,
-              [phase]: { ...p.phaseClosures[phase], [field]: value },
+              [phase]: { ...p.phaseClosures[phase], evidenceSummary: value },
             },
           })),
 
