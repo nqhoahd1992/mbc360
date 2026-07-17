@@ -3,10 +3,12 @@
 // overrides values that are already set.
 import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.use(cookieParser());
   // All routes live under /api — the same prefix the Vite dev proxy and the
   // production nginx reverse proxy route to this service.
   app.setGlobalPrefix('api');

@@ -1,8 +1,11 @@
 import { Controller, Get } from '@nestjs/common';
 import { GATES, PHASES } from '@mbc360/shared/config/gates';
 
+import { Public } from '../auth/public.decorator';
+
 // Read-only phase/gate metadata, served from the same @mbc360/shared config
 // the frontend renders from — proves web and api run off one rule source.
+@Public()
 @Controller('meta')
 export class MetaController {
   @Get('phases')
