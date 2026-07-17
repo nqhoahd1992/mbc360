@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ConfigProvider, Divider, Layout, Menu, Popconfirm, Button, Select, Tooltip, Typography } from 'antd';
+import { ConfigProvider, Divider, Layout, Menu, Popconfirm, Button, Select, Spin, Tooltip, Typography } from 'antd';
 import {
   ApiOutlined,
   AppstoreOutlined,
@@ -31,6 +31,7 @@ import RegisterHubPage from './pages/RegisterHubPage';
 import CommandPalette from './components/CommandPalette';
 import FormulationSafety from './pages/FormulationSafety';
 import IntegrationsPage from './pages/IntegrationsPage';
+import Login from './pages/Login';
 import { PHASES } from '@mbc360/shared/config/gates';
 import { getNavGroups, findNavGroupForRegister, navItemHref, formatGate } from '@mbc360/shared/config/registers';
 import { phaseProgress } from '@mbc360/shared/utils/gateProgress';
@@ -304,6 +305,21 @@ function Shell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   const session = useSession();
+
+  // Microsoft 365 SSO is the only sign-in method — no session (never signed
+  // in, signed out, or the session expired) means the Login screen, full
+  // stop; nothing in the app is reachable while unauthenticated.
+  if (session.loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+  if (!session.user) {
+    return <Login />;
+  }
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider breakpoint="lg" collapsedWidth={0} width={250}>
@@ -394,7 +410,7 @@ function Shell() {
 
             <Divider orientation="vertical" style={{ margin: 0, height: 22 }} />
 
-            <AuthStatus user={session.user} loading={session.loading} onLogout={session.logout} />
+            <AuthStatus user={session.user} onLogout={session.logout} />
           </div>
         </Header>
         <Content style={{ padding: 16 }}>

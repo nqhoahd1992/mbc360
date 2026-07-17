@@ -3,9 +3,21 @@
 #   /api  -> 127.0.0.1:3000  (api container)
 # See deploy/nginx.host.example.conf for the host server block.
 #
-# Secrets live in an untracked .env file next to this compose file:
-#   POSTGRES_PASSWORD=...   (required)
-#   WEB_IMAGE / API_IMAGE   (optional registry image refs; defaults build locally)
+# Secrets live in an untracked .env file next to this compose file (NOT
+# apps/api/.env, which only local `npm run dev` reads — the container only
+# gets what's listed in the `environment:` block below):
+#   POSTGRES_PASSWORD=...     (required)
+#   SESSION_SECRET=...        (required — signs session cookies; api refuses
+#                              to start in production without it)
+#   AUTH_TENANT_ID=...        (required for real Entra sign-in)
+#   AUTH_CLIENT_ID=...        (required for real Entra sign-in)
+#   AUTH_CLIENT_SECRET=...    (required for real Entra sign-in)
+#   APP_BASE_URL=...          (e.g. https://mbc360.example.com — where the
+#                              browser lands after sign-in/sign-out)
+#   AUTH_REDIRECT_URI=...     (must exactly match the Entra app registration's
+#                              redirect URI; defaults to
+#                              ${APP_BASE_URL}/api/auth/callback if unset)
+#   WEB_IMAGE / API_IMAGE     (optional registry image refs; defaults build locally)
 services:
   web:
     image: ${WEB_IMAGE:-mbc360-web:latest}
@@ -30,6 +42,12 @@ services:
       NODE_ENV: production
       PORT: '3000'
       DATABASE_URL: postgresql://mbc360:${POSTGRES_PASSWORD}@postgres:5432/mbc360
+      SESSION_SECRET: ${SESSION_SECRET}
+      AUTH_TENANT_ID: ${AUTH_TENANT_ID}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
+      APP_BASE_URL: ${APP_BASE_URL}
+      AUTH_REDIRECT_URI: ${AUTH_REDIRECT_URI}
     depends_on:
       postgres:
         condition: service_healthy

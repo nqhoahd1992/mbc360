@@ -117,7 +117,7 @@ export class AuthService {
       after: { method: 'entra-id', email: user.email },
     });
 
-    return this.issueSession(user.id);
+    return this.issueSession(user.id, tokens.id_token);
   }
 
   private async fetchDepartment(accessToken: string): Promise<string | undefined> {
@@ -200,8 +200,45 @@ export class AuthService {
     return this.issueSession(user.id);
   }
 
-  private issueSession(userId: string): Promise<string> {
-    return this.jwt.signAsync({ sub: userId }, { expiresIn: this.config.sessionTtlSeconds });
+  // `idt` (the Entra ID token) is carried in the session JWT purely so
+  // `logout()` can hand it back to Entra as `id_token_hint` later — it is
+  // never used for API calls (the Graph access token is fetched once during
+  // callback and discarded, per the existing design).
+  private issueSession(userId: string, idToken?: string): Promise<string> {
+    return this.jwt.signAsync({ sub: userId, idt: idToken }, { expiresIn: this.config.sessionTtlSeconds });
+  }
+
+  // Clears the local session (done by the controller) and, when the session
+  // came from a real Entra sign-in, returns the RP-Initiated Logout URL so
+  // the browser also ends the Microsoft session — otherwise "Sign out"
+  // followed by "Sign in with Microsoft" would silently re-authenticate
+  // without a credential prompt. Falls back to just the app's own base URL
+  // (local-only logout) for dev-login sessions, expired/invalid session
+  // tokens, or if Entra doesn't advertise an end-session endpoint.
+  async logout(sessionToken?: string): Promise<string> {
+    let idToken: string | undefined;
+    if (sessionToken) {
+      try {
+        const payload = await this.jwt.verifyAsync<{ sub?: string; idt?: string }>(sessionToken);
+        idToken = payload.idt;
+      } catch {
+        // Expired/invalid session — nothing to hint, still log out cleanly.
+      }
+    }
+    if (!this.config.oidcEnabled) return this.config.appBaseUrl;
+
+    try {
+      const config = await this.getOidcConfig();
+      const endSessionEndpoint = config.serverMetadata().end_session_endpoint;
+      if (!endSessionEndpoint) return this.config.appBaseUrl;
+
+      const params: Record<string, string> = { post_logout_redirect_uri: this.config.appBaseUrl };
+      if (idToken) params.id_token_hint = idToken;
+      return oidc.buildEndSessionUrl(config, params).href;
+    } catch (err) {
+      this.logger.warn(`Could not build Entra logout URL (${String(err)}) — falling back to local-only logout`);
+      return this.config.appBaseUrl;
+    }
   }
 
   // Shape returned by GET /api/auth/me — what the frontend needs to replace

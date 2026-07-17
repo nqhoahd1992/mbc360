@@ -1,30 +1,21 @@
 import { Avatar, Button, Dropdown, Typography } from 'antd';
-import { LoginOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons';
+import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import type { SessionUser } from '../auth/useSession';
 
 interface AuthStatusProps {
-  user: SessionUser | null;
-  loading: boolean;
+  user: SessionUser;
   onLogout: () => void;
 }
 
 // The real signed-in identity (M2 Entra ID SSO) — a single chip (avatar +
-// name) that opens a dropdown with the full identity and sign-out, rather
-// than loose text next to a button. This is what decides whether the
-// Admin > Users screen is reachable. It sits next to, not instead of, the
-// "View as" simulator: gate/phase decisions in this demo UI still run off
-// the simulated role until the frontend is switched to the API (M3).
-export default function AuthStatus({ user, loading, onLogout }: AuthStatusProps) {
-  if (loading) return <div style={{ width: 32 }} />; // reserve space, avoid header jump
-
-  if (!user) {
-    return (
-      <Button size="small" icon={<LoginOutlined />} href="/api/auth/login">
-        Sign in with Microsoft
-      </Button>
-    );
-  }
-
+// name) that opens a dropdown with the full identity and sign-out. `user` is
+// always present: App.tsx's Shell only renders this (and the rest of the
+// app) once a session exists — see pages/Login.tsx for the signed-out state.
+// This is what decides whether the Admin > Users screen is reachable. It
+// sits next to, not instead of, the "View as" simulator: gate/phase
+// decisions in this demo UI still run off the simulated role until the
+// frontend is switched to the API (M3).
+export default function AuthStatus({ user, onLogout }: AuthStatusProps) {
   return (
     <Dropdown
       trigger={['click']}

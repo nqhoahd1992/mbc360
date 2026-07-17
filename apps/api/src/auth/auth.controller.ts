@@ -71,10 +71,16 @@ export class AuthController {
     return { ok: true };
   }
 
+  // Clears the local session and, for a real Entra sign-in, also returns the
+  // Microsoft RP-Initiated Logout URL so the frontend can send the browser
+  // there — otherwise the Entra SSO session stays alive and a subsequent
+  // "Sign in with Microsoft" click re-authenticates silently.
   @Post('logout')
-  logout(@Res({ passthrough: true }) res: Response) {
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const token = (req.cookies as Record<string, string> | undefined)?.[SESSION_COOKIE];
     res.clearCookie(SESSION_COOKIE, { path: '/' });
-    return { ok: true };
+    const redirectUrl = await this.auth.logout(token);
+    return { ok: true, redirectUrl };
   }
 
   @Get('me')

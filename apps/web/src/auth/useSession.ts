@@ -32,9 +32,15 @@ export function useSession() {
     void refresh();
   }, [refresh]);
 
+  // Ends the local session, then (for a real Entra sign-in) sends the
+  // browser to Microsoft's RP-Initiated Logout so the SSO session ends too —
+  // otherwise signing back in would silently re-authenticate with no
+  // credential prompt. Entra redirects back to the app's base URL after.
   const logout = useCallback(async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
     setUser(null);
+    const res = await fetch('/api/auth/logout', { method: 'POST' });
+    const body = res.ok ? ((await res.json()) as { redirectUrl?: string }) : undefined;
+    if (body?.redirectUrl) window.location.href = body.redirectUrl;
   }, []);
 
   return {
