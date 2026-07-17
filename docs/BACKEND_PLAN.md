@@ -1,6 +1,6 @@
 # MBc360 – Kế hoạch xây dựng Backend (Production)
 
-> **Trạng thái đầu vào (2026-07-16):** Toàn bộ Group A (kiến trúc dữ liệu) và các rule B1–B4, C1–C6 đã được đội chuyên gia xác nhận trong `docs/Business_Rules_Confirmation_{EN,VN}.md`. Còn treo: **C7** và các follow-up **F1–F12**. Kế hoạch này được thiết kế để **không bị các câu F chặn**: mọi câu trả lời đến sau sẽ rơi vào *dữ liệu cấu hình* (seed data), không phải thay đổi schema — trừ hai điểm rủi ro F4/F6 được xử lý phòng thủ ngay từ đầu (xem mục 4).
+> **Trạng thái đầu vào (2026-07-16, cập nhật 2026-07-17):** Phần lớn Group A (kiến trúc dữ liệu) và các rule B1–B4, C1–C6 đã được đội chuyên gia xác nhận trong `docs/Business_Rules_Confirmation_{EN,VN}.md`. Còn treo: **A5, B5, C7** và các follow-up **F1–F14**. Kế hoạch này được thiết kế để **không bị các câu F chặn**: mọi câu trả lời đến sau sẽ rơi vào *dữ liệu cấu hình* (seed data), không phải thay đổi schema — trừ hai điểm rủi ro F4/F6 được xử lý phòng thủ ngay từ đầu (xem mục 4).
 
 ---
 
@@ -133,7 +133,7 @@ Ngoài phạm vi: sinh/quản lý tài liệu GMP (chỉ lưu link — theo yêu
 - Log tập trung (ít nhất `docker logs` + logrotate; tốt hơn: Loki/Grafana), uptime check nội bộ, cảnh báo khi sync Cosmetri lỗi liên tục.
 - Máy chủ cần truy cập ra ngoài tới Cosmetri API và Microsoft (OIDC/Graph); nếu mạng nội bộ có firewall egress thì mở trước.
 
-## 7. Bản đồ follow-up F1–F12 → backend
+## 7. Bản đồ follow-up F1–F14 → backend
 
 | F | Khi có câu trả lời, đổ vào đâu | Chặn mốc nào? |
 |---|---|---|
@@ -149,6 +149,8 @@ Ngoài phạm vi: sinh/quản lý tài liệu GMP (chỉ lưu link — theo yêu
 | F10 (checklist non-ASEAN) | Config register mới trong `packages/shared` | Không chặn |
 | F11 (workflow published info) | Config workflow states/roles cho register Published_Info_Approval | Trước M5 (có default 5 bước như demo) |
 | F12(c) (Cosmetri coverage ASEAN/VN) | Thông tin — quyết định checklist per-market ở C5 | Không chặn |
+| F13 (locked phase chặn toàn bộ input hay chỉ gate decision/sign-off) | Quyết định UI/rule-engine config (danh sách section bị disable) — không đổi schema | Không chặn |
+| F14 (Formula BOM: bắt buộc import từ Cosmetri hay vẫn cho nhập tay) | Nếu bắt buộc import-only: thêm validation ở endpoint tạo/sửa BOM line (chặn tạo dòng không gắn `fromCosmetri`) — không đổi schema | Không chặn |
 
 ## 8. Rủi ro & quyết định cần chốt sớm
 

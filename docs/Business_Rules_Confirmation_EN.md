@@ -108,6 +108,21 @@
 
 ---
 
+### A5. Must the Formula BOM always come from importing an existing Cosmetri formula, or can it also be created manually in MBc360?
+
+**Main question:** Since A3 confirmed Cosmetri as the read-only master-data source for raw materials and formulas, should a project's Formula BOM in MBc360 be populated **only** by importing an already-existing formula record from Cosmetri — or is entering BOM lines manually inside MBc360 (with no Cosmetri record behind them) also an accepted workflow, e.g. while a formula is still in early development and not yet finalized in Cosmetri?
+
+**Current demo assumption:** Both paths are available. "Import from Cosmetri" pulls composition, INCI/CAS identity and supplier name for an existing formula and locks those fields as read-only on the imported lines. A separate "Add line" action lets a user type in a BOM line from scratch with no Cosmetri record at all — those lines stay fully editable, and nothing requires that a project's formula ever exist in Cosmetri.
+
+**Needs clarification:**
+1. Should Formula BOM entry require importing from an existing Cosmetri formula (Cosmetri as the mandatory system of record even during early development), with manual entry disallowed?
+2. Or is manual entry an accepted step for formulas not yet registered in Cosmetri, to be later replaced/reconciled by a Cosmetri import once the formula is finalized there?
+3. If manual entry stays allowed, does it need to be flagged/reconciled against Cosmetri before a specific gate (e.g. 07/10), or is that out of scope?
+
+**Subject-matter team decision:** ❌ **NOT YET ANSWERED.**
+
+---
+
 ## Group B — Gate / Phase Lifecycle Rules
 
 ### B1. What determines a Gate has passed?
@@ -407,12 +422,13 @@ Instead, MBc360 contains a **"GMP Links"** section which stores references/hyper
 | **F11** | C6 | Published Information Approval workflow details: states, required reviewer roles per content type, and the source/maintenance of the acceptable-terminology and required-evidence-per-claim guidance. *Demo working assumption: five Y/N/N.A. workflow steps on the register (terminology check → evidence verified → technical review → regulatory review → final approval) plus a released-without-approval violation flag.* |
 | **F12** | A3 | Cosmetri connection — *mostly resolved by the API documentation received*: the login/token mechanism is confirmed, raw materials include the **supplier name**, and the raw-material "code" field is a **batch number** — so ingredient identity for cross-checking (INCI/CAS) comes from Cosmetri's compliance data. Decided (2026-07-16): data that the **Cosmetri API does not provide** is **entered manually** in MBc360 — note this is a limitation of the current API version, not a gap in the Cosmetri application itself: supplier details and SDS/CoA/TDS documents **are stored inside Cosmetri**, the API just does not yet expose them to external systems; new raw materials follow the **Power Apps change request → approval → Cosmetri entry** flow, with MBc360 linking to the Power Apps app when an ingredient is not yet selectable. **Only remaining question: does Cosmetri's compliance coverage include ASEAN/Vietnam (the documentation shows EU/UK/US examples only)?** |
 | **F13** | B5 | On a locked (not-yet-reached) phase page, should ALL data-entry forms be disabled, or only the gate-decision and sign-off controls (as the demo currently does, to allow early/pre-work data entry)? *Demo working assumption: only gate decisions and phase sign-off are disabled while locked; every other form (checklists, requirements, gate checks, next actions, 8 angles) stays editable.* |
+| **F14** | A5 | Must Formula BOM entry require importing an existing Cosmetri formula, or is manual entry in MBc360 acceptable for formulas not yet in Cosmetri? *Demo working assumption: both are allowed — Import from Cosmetri locks composition/INCI/CAS/supplier as read-only on those lines; manually-added lines stay fully editable with no Cosmetri record required.* |
 
 ---
 
 ## Notes
 
-- Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(Now answered — remaining Group A follow-ups: F4, F5, F6, F12.)*
+- Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(Now answered — remaining Group A follow-ups: F4, F5, F6, F12, F14.)*
 - Groups B and C are business rules that can be refined progressively during development without necessarily breaking the architecture, but early confirmation is still recommended to avoid reworking UI/logic already built.
 - The 2026-07-16 answers **overturn three core demo assumptions**: (1) gate passing must also read sign-offs, Next Actions and evidence registers — not just Stage status + Gate decision; (2) backtrack must never delete — event-log/snapshot model required; (3) Gates 10–12 become per-market instead of a single shared flow.
 - Reference materials: `MBc360 Master Product Development System File.xlsx` (55 sheets) and the current ReactJS demo (`mbc360-app/`).

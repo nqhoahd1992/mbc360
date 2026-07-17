@@ -108,6 +108,21 @@
 
 ---
 
+### A5. Formula BOM có bắt buộc phải import từ một formula có sẵn trên Cosmetri, hay vẫn cho phép tự tạo dữ liệu trong MBc360?
+
+**Câu hỏi chính:** Vì A3 đã chốt Cosmetri là nguồn dữ liệu gốc (chỉ đọc) cho nguyên liệu và formula, vậy Formula BOM của một project trong MBc360 có nên **chỉ** được tạo bằng cách import từ một formula đã có sẵn trên Cosmetri — hay việc tự nhập tay các dòng BOM ngay trong MBc360 (không gắn với bản ghi nào trên Cosmetri) vẫn là quy trình được chấp nhận, ví dụ khi formula còn đang phát triển sớm và chưa được chốt trên Cosmetri?
+
+**Giả định hiện tại trong demo:** Cả 2 cách đều được hỗ trợ. "Import from Cosmetri" kéo về composition, định danh INCI/CAS và tên nhà cung cấp của một formula có sẵn, các field đó khóa read-only trên dòng vừa import. Riêng nút "Add line" cho phép người dùng tự gõ một dòng BOM hoàn toàn mới, không gắn với bản ghi nào trên Cosmetri — các dòng này vẫn sửa được bình thường, và không có ràng buộc nào yêu cầu formula của project phải tồn tại trên Cosmetri.
+
+**Cần làm rõ:**
+1. Formula BOM có bắt buộc phải import từ formula có sẵn trên Cosmetri (Cosmetri là hệ thống ghi nhận bắt buộc ngay từ giai đoạn phát triển sớm), không cho nhập tay không?
+2. Hay việc nhập tay vẫn được chấp nhận cho các formula chưa đăng ký trên Cosmetri, sau đó thay thế/đối chiếu lại bằng import từ Cosmetri khi formula được chốt chính thức?
+3. Nếu vẫn cho nhập tay, có cần đánh dấu/đối chiếu lại với Cosmetri trước một gate cụ thể nào đó (ví dụ 07/10) không, hay việc này nằm ngoài phạm vi?
+
+**Quyết định của bộ phận chuyên môn:** ❌ **CHƯA ĐƯỢC TRẢ LỜI.**
+
+---
+
 ## Nhóm B — Vòng đời Gate / Phase
 
 ### B1. Cơ chế xác định một Gate đã hoàn thành (Pass)
@@ -407,12 +422,13 @@ Thay vào đó, MBc360 có mục **"GMP Links"** lưu tham chiếu/hyperlink t�
 | **F11** | C6 | Chi tiết workflow Published Information Approval: các trạng thái, vai trò reviewer bắt buộc theo từng loại nội dung, nguồn/cách duy trì bộ hướng dẫn thuật ngữ chấp nhận được và bằng chứng bắt buộc theo claim. *Giả định tạm của demo: 5 bước Y/N/N.A. trên register (kiểm tra thuật ngữ → xác minh bằng chứng → technical review → regulatory review → phê duyệt cuối) + cờ cảnh báo "đã publish khi chưa duyệt đủ".* |
 | **F12** | A3 | Kết nối Cosmetri — *gần như đã giải quyết xong nhờ tài liệu API nhận được*: cơ chế đăng nhập/cấp token đã rõ, nguyên liệu có kèm **tên nhà cung cấp**, và trường "code" của nguyên liệu là **số lô (Batch No.)** — nên danh tính nguyên liệu để đối chiếu (INCI/CAS) lấy từ dữ liệu compliance của Cosmetri. Đã chốt (16/07/2026): những dữ liệu mà **API của Cosmetri không cung cấp** thì **nhập tay** trong MBc360 — lưu ý đây là giới hạn của phiên bản API, không phải ứng dụng Cosmetri thiếu phần đó: chi tiết nhà cung cấp và tài liệu SDS/CoA/TDS **vẫn được lưu bên trong Cosmetri**, chỉ là API hiện tại chưa mở ra cho hệ thống ngoài truy cập; nguyên liệu mới theo quy trình **change request trên Power Apps → phê duyệt → nhập vào Cosmetri**, MBc360 gắn link tới ứng dụng Power Apps khi nguyên liệu chưa có để chọn. **Câu hỏi duy nhất còn lại: phạm vi compliance của Cosmetri có bao phủ ASEAN/Việt Nam không (tài liệu chỉ thấy ví dụ EU/UK/US)?** |
 | **F13** | B5 | Trên trang phase đang khóa (chưa tới lượt), có nên vô hiệu hóa TOÀN BỘ form nhập liệu, hay chỉ vô hiệu hóa control quyết định gate và sign-off (như demo đang làm, để cho phép nhập liệu chuẩn bị trước)? *Giả định tạm của demo: chỉ khóa quyết định gate và sign-off phase khi đang locked; mọi form khác (checklist, requirement, gate checks, next actions, 8 angles) vẫn mở để nhập.* |
+| **F14** | A5 | Formula BOM có bắt buộc phải import từ formula có sẵn trên Cosmetri không, hay vẫn chấp nhận nhập tay trong MBc360 cho formula chưa có trên Cosmetri? *Giả định tạm của demo: cho phép cả 2 — Import from Cosmetri khóa read-only composition/INCI/CAS/supplier trên dòng đã import; dòng nhập tay vẫn sửa được bình thường, không bắt buộc phải có bản ghi trên Cosmetri.* |
 
 ---
 
 ## Ghi chú
 
-- Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Đã trả lời — các follow-up còn lại của nhóm A: F4, F5, F6, F12.)*
+- Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Đã trả lời — các follow-up còn lại của nhóm A: F4, F5, F6, F12, F14.)*
 - Nhóm B và C là quy tắc nghiệp vụ có thể tinh chỉnh dần trong quá trình phát triển mà không nhất thiết phá vỡ kiến trúc, nhưng vẫn cần xác nhận sớm để tránh phải làm lại UI/logic đã xây.
 - Đợt trả lời 16/07/2026 **đảo ngược 3 giả định nền của demo**: (1) pass gate phải đọc thêm sign-off, Next Actions và evidence registers — không chỉ Stage status + Gate decision; (2) backtrack không bao giờ được xóa dữ liệu — cần mô hình event-log/snapshot; (3) Gate 10–12 chuyển thành theo từng thị trường thay vì một luồng chung.
 - Tài liệu tham chiếu: `MBc360 Master Product Development System File.xlsx` (55 sheets) và bản demo ReactJS hiện tại (`mbc360-app/`).
