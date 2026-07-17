@@ -1,12 +1,19 @@
 # Production stack, fronted by the HOST nginx (TLS termination + routing):
-#   /     -> 127.0.0.1:8080  (web container)
-#   /api  -> 127.0.0.1:3000  (api container)
-# See deploy/nginx.host.example.conf for the host server block.
+#   /     -> 127.0.0.1:${WEB_HOST_PORT:-8080}  (web container)
+#   /api  -> 127.0.0.1:${API_HOST_PORT:-3000}  (api container)
+# See deploy/nginx.host.example.conf for the host server block (generic,
+# assumes the default ports below) — deploy/nginx.mbcstaging.conf is the
+# actual config for the shared mbcstaging.com VPS, which uses different
+# ports because 8080/3000 already collide with other projects there.
 #
-# Secrets live in an untracked .env file next to this compose file (NOT
-# apps/api/.env, which only local `npm run dev` reads — the container only
-# gets what's listed in the `environment:` block below):
+# Secrets/overrides live in an untracked .env file next to this compose file
+# (NOT apps/api/.env, which only local `npm run dev` reads — the container
+# only gets what's listed in the `environment:` block below):
 #   POSTGRES_PASSWORD=...     (required)
+#   WEB_HOST_PORT / API_HOST_PORT (optional, default 8080 / 3000 — change
+#                              only if those ports are already taken on the
+#                              host, e.g. by another project's stack; must
+#                              match whatever the host nginx proxies to)
 #   SESSION_SECRET=...        (required — signs session cookies; api refuses
 #                              to start in production without it)
 #   AUTH_TENANT_ID=...        (required for real Entra sign-in)
@@ -17,6 +24,11 @@
 #   AUTH_REDIRECT_URI=...     (must exactly match the Entra app registration's
 #                              redirect URI; defaults to
 #                              ${APP_BASE_URL}/api/auth/callback if unset)
+#   AUTH_AUTO_ADMIN_ROLE=...  (optional, default off — TEMPORARY dev-phase
+#                              flag; "true" auto-grants admin to every
+#                              zero-role Microsoft 365 sign-in, with NO
+#                              production lockout. Leave unset/false once
+#                              real users are on this deployment.)
 #   WEB_IMAGE / API_IMAGE     (optional registry image refs; defaults build locally)
 services:
   web:
@@ -26,7 +38,7 @@ services:
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
     ports:
-      - '127.0.0.1:8080:80'
+      - '127.0.0.1:${WEB_HOST_PORT:-8080}:80'
     depends_on:
       - api
 
@@ -37,7 +49,7 @@ services:
       dockerfile: apps/api/Dockerfile
     restart: unless-stopped
     ports:
-      - '127.0.0.1:3000:3000'
+      - '127.0.0.1:${API_HOST_PORT:-3000}:3000'
     environment:
       NODE_ENV: production
       PORT: '3000'
@@ -48,6 +60,7 @@ services:
       AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
       APP_BASE_URL: ${APP_BASE_URL}
       AUTH_REDIRECT_URI: ${AUTH_REDIRECT_URI}
+      AUTH_AUTO_ADMIN_ROLE: ${AUTH_AUTO_ADMIN_ROLE:-false}
     depends_on:
       postgres:
         condition: service_healthy
