@@ -1,7 +1,6 @@
 // Auth configuration from environment (see apps/api/.env.example).
 //
-// Two modes, independent of each other (both can be on at once in dev — real
-// SSO and quick demo-persona logins side by side):
+// Modes, independent of each other (all can be on at once in dev):
 //  - OIDC: AUTH_TENANT_ID + AUTH_CLIENT_ID + AUTH_CLIENT_SECRET set ->
 //    Microsoft Entra ID sign-in via the authorization-code + PKCE flow.
 //  - Dev mode: POST /api/auth/dev-login issues a session for a seeded demo
@@ -10,6 +9,19 @@
 //    production; set AUTH_DEV_MODE=false to turn it off in a non-prod
 //    environment. Hard-disabled in production with no override — a login
 //    backdoor must never exist there.
+//  - Auto-admin (TEMPORARY, dev-phase only): every SSO login with zero roles
+//    (new user, or an existing one nobody has assigned a role to yet) is
+//    granted the admin role automatically, so testers get full access
+//    without a chicken-and-egg "who assigns the first admin" problem. Purely
+//    env-controlled, in EVERY environment including production, by explicit
+//    request (2026-07-17) — set AUTH_AUTO_ADMIN_ROLE=true to turn it on;
+//    off by default everywhere otherwise.
+//    ⚠️ Unlike AUTH_DEV_MODE, this has NO automatic production lockout — if
+//    this var is ever true on a real deployment with real company SSO,
+//    every first-time signed-in user gets full admin. Unset it (or set to
+//    anything other than "true") once real per-user role assignment is
+//    wanted, and remove this whole mechanism + CLAUDE.md's note about it
+//    once it's no longer needed at all.
 
 export interface AuthConfig {
   oidcEnabled: boolean;
@@ -21,6 +33,7 @@ export interface AuthConfig {
   sessionSecret: string;
   sessionTtlSeconds: number;
   devMode: boolean;
+  autoAdminRole: boolean;
 }
 
 export function loadAuthConfig(): AuthConfig {
@@ -31,6 +44,9 @@ export function loadAuthConfig(): AuthConfig {
   const isProduction = process.env.NODE_ENV === 'production';
 
   const devMode = !isProduction && process.env.AUTH_DEV_MODE !== 'false';
+  // Deliberately NOT gated on isProduction — env-controlled in every
+  // environment by explicit request, see the doc comment above.
+  const autoAdminRole = process.env.AUTH_AUTO_ADMIN_ROLE === 'true';
 
   const sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret && isProduction) {
@@ -52,6 +68,7 @@ export function loadAuthConfig(): AuthConfig {
     sessionSecret: sessionSecret ?? 'dev-only-insecure-session-secret',
     sessionTtlSeconds: Number(process.env.SESSION_TTL_SECONDS ?? 8 * 60 * 60),
     devMode,
+    autoAdminRole,
   };
 }
 

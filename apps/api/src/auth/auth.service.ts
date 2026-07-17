@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as oidc from 'openid-client';
+import { ADMIN_ROLE } from '@mbc360/shared/config/roles';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthConfig, loadAuthConfig } from './auth-config';
@@ -140,7 +141,10 @@ export class AuthService {
   // Match by Entra object id first, then by email (links pre-provisioned
   // users to their SSO identity on first login), else create. New SSO users
   // start with no roles: they can contribute evidence but cannot decide,
-  // approve or sign until an admin assigns a role (A4; real matrix = F6).
+  // approve or sign until an admin assigns a role (A4; real matrix = F6) —
+  // unless config.autoAdminRole is on (temporary dev-phase behavior, see
+  // auth-config.ts), in which case a user with zero roles is granted admin
+  // right here so testers get full access immediately.
   private async upsertSsoUser(input: {
     oid: string;
     email: string;
@@ -157,28 +161,53 @@ export class AuthService {
       : undefined;
 
     const existing =
-      (await this.prisma.user.findUnique({ where: { oid: input.oid } })) ??
-      (await this.prisma.user.findUnique({ where: { email: input.email } }));
+      (await this.prisma.user.findUnique({ where: { oid: input.oid }, include: { roles: true } })) ??
+      (await this.prisma.user.findUnique({ where: { email: input.email }, include: { roles: true } }));
 
-    if (existing) {
-      return this.prisma.user.update({
-        where: { id: existing.id },
-        data: {
-          oid: input.oid,
-          email: input.email,
-          displayName: input.displayName,
-          ...(departmentRef ? { department: departmentRef } : {}),
-        },
-      });
+    const user = existing
+      ? await this.prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            oid: input.oid,
+            email: input.email,
+            displayName: input.displayName,
+            ...(departmentRef ? { department: departmentRef } : {}),
+          },
+        })
+      : await this.prisma.user.create({
+          data: {
+            oid: input.oid,
+            email: input.email,
+            displayName: input.displayName,
+            ...(departmentRef ? { department: departmentRef } : {}),
+          },
+        });
+
+    if (this.config.autoAdminRole && (existing?.roles.length ?? 0) === 0) {
+      await this.grantAutoAdminRole(user.id);
     }
-    return this.prisma.user.create({
-      data: {
-        oid: input.oid,
-        email: input.email,
-        displayName: input.displayName,
-        ...(departmentRef ? { department: departmentRef } : {}),
-      },
+
+    return user;
+  }
+
+  // TEMPORARY dev-phase mechanism — see the autoAdminRole doc comment in
+  // auth-config.ts. Only ever runs when config.autoAdminRole is on, which is
+  // hard-disabled in production.
+  private async grantAutoAdminRole(userId: string): Promise<void> {
+    const adminRole = await this.prisma.role.findUnique({ where: { key: ADMIN_ROLE } });
+    if (!adminRole) {
+      this.logger.warn(`AUTH_AUTO_ADMIN_ROLE is on but no "${ADMIN_ROLE}" role exists — skipping`);
+      return;
+    }
+    await this.prisma.userRole.create({ data: { userId, roleId: adminRole.id } });
+    await this.audit.record({
+      actorId: userId,
+      entityType: 'user',
+      entityId: userId,
+      action: 'user.auto_admin_dev',
+      after: { roles: [ADMIN_ROLE] },
     });
+    this.logger.warn(`AUTH_AUTO_ADMIN_ROLE granted admin to user ${userId} — turn this off before production`);
   }
 
   // Dev-mode stand-in while the Entra app registration is pending: issues a
