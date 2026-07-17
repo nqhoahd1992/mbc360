@@ -6,6 +6,7 @@ import type { PhaseCompletionChecklist } from '@mbc360/shared/utils/gateProgress
 import { GATE_DECISIONS, PHASES } from '@mbc360/shared/config/gates';
 import { useAppStore } from '../store/useAppStore';
 import { canApprovePhase, roleLabel } from '../utils/roles';
+import LabeledInput from './LabeledInput';
 
 export default function SignOffBlock({
   projectId,
@@ -46,7 +47,7 @@ export default function SignOffBlock({
           showIcon
           icon={<LockOutlined />}
           style={{ marginBottom: 12 }}
-          message="Sign-off locked — closure conditions not yet met"
+          title="Sign-off locked — closure conditions not yet met"
           description={`Still required before sign-off: ${missing.join('; ')}.`}
         />
       )}
@@ -55,7 +56,7 @@ export default function SignOffBlock({
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          message={`"Approved by" is restricted to ${phaseDept} — you are viewing as ${roleLabel(viewRole)}`}
+          title={`"Approved by" is restricted to ${phaseDept} — you are viewing as ${roleLabel(viewRole)}`}
           description="Prepared / Reviewed rows stay open to contributors. RBAC demo simulation — the real role matrix is pending confirmation (F6)."
         />
       )}
@@ -143,9 +144,9 @@ export default function SignOffBlock({
         ]}
       />
       <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-        <Input
+        <LabeledInput
           style={{ flex: 2, minWidth: 220 }}
-          addonBefore="Next action"
+          label="Next action"
           value={closure.nextAction}
           onChange={(e) => setClosureField(projectId, phase, 'nextAction', e.target.value)}
         />
@@ -156,9 +157,9 @@ export default function SignOffBlock({
             setClosureField(projectId, phase, 'nextDueDate', d ? d.format('YYYY-MM-DD') : '')
           }
         />
-        <Input
+        <LabeledInput
           style={{ flex: 1, minWidth: 160 }}
-          addonBefore="Owner"
+          label="Owner"
           value={closure.nextOwner}
           onChange={(e) => setClosureField(projectId, phase, 'nextOwner', e.target.value)}
         />

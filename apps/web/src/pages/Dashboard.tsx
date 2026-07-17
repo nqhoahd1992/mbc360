@@ -38,17 +38,17 @@ export default function Dashboard() {
         </Col>
         <Col xs={12} md={6}>
           <Card size="small">
-            <Statistic title="Gates in progress" value={activeGates.length} valueStyle={{ color: '#1677ff' }} />
+            <Statistic title="Gates in progress" value={activeGates.length} styles={{ content: { color: '#1677ff' } }} />
           </Card>
         </Col>
         <Col xs={12} md={6}>
           <Card size="small">
-            <Statistic title="Open change controls" value={openChanges.length} valueStyle={{ color: '#fa8c16' }} />
+            <Statistic title="Open change controls" value={openChanges.length} styles={{ content: { color: '#fa8c16' } }} />
           </Card>
         </Col>
         <Col xs={12} md={6}>
           <Card size="small">
-            <Statistic title="Overdue gates" value={overdue.length} valueStyle={{ color: overdue.length ? '#cf1322' : undefined }} />
+            <Statistic title="Overdue gates" value={overdue.length} styles={{ content: { color: overdue.length ? '#cf1322' : undefined } }} />
           </Card>
         </Col>
       </Row>
@@ -60,7 +60,7 @@ export default function Dashboard() {
               title="Open next actions"
               value={openActions.length}
               suffix={overdueActions.length ? ` (${overdueActions.length} overdue)` : undefined}
-              valueStyle={{ color: overdueActions.length ? '#cf1322' : '#1677ff' }}
+              styles={{ content: { color: overdueActions.length ? '#cf1322' : '#1677ff' } }}
             />
           </Card>
         </Col>
@@ -69,7 +69,7 @@ export default function Dashboard() {
             <Statistic
               title="Gates blocked (actions / safety)"
               value={blockedGates.length}
-              valueStyle={{ color: blockedGates.length ? '#cf1322' : undefined }}
+              styles={{ content: { color: blockedGates.length ? '#cf1322' : undefined } }}
             />
           </Card>
         </Col>
@@ -79,7 +79,7 @@ export default function Dashboard() {
               title="Markets launch-approved"
               value={launchReady}
               suffix={`/ ${allMarkets.length}`}
-              valueStyle={{ color: '#3f8600' }}
+              styles={{ content: { color: '#3f8600' } }}
             />
           </Card>
         </Col>

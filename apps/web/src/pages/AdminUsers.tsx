@@ -82,7 +82,7 @@ export default function AdminUsers() {
       <Alert
         type="warning"
         showIcon
-        message="Admin access required"
+        title="Admin access required"
         description="Sign in with an account that holds the admin role to manage users and roles."
       />
     );

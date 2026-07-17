@@ -77,7 +77,7 @@ export default function RegisterHubPage() {
           <Alert
             type="error"
             showIcon
-            message={`${publishViolations.length} item${publishViolations.length > 1 ? 's' : ''} published without a completed approval workflow`}
+            title={`${publishViolations.length} item${publishViolations.length > 1 ? 's' : ''} published without a completed approval workflow`}
             description={`No public information may be released until all five workflow steps are Y (rule C6). Review: ${publishViolations
               .map((r) => String(r.recordId || r.publishedItem || 'unnamed item'))
               .join(', ')}.`}

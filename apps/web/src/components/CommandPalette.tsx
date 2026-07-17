@@ -180,7 +180,7 @@ export default function CommandPalette({
       styles={{ body: { padding: 0 } }}
       width={640}
       style={{ top: 96 }}
-      destroyOnClose
+      destroyOnHidden
     >
       <div style={{ padding: '12px 16px', borderBottom: '1px solid #f0f0f0' }}>
         <Input

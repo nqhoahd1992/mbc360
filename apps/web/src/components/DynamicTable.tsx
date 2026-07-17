@@ -134,7 +134,11 @@ export default function DynamicTable({
       )}
       <Table
         size="small"
-        rowKey={(_, index) => index ?? 0}
+        // RegisterRow has no natural id, so key by array position. antd
+        // deprecated the (record, index) two-arg rowKey signature, so derive
+        // the position from the row's identity in `rows` instead (`rows` is
+        // exactly what's passed as `dataSource`, so reference equality holds).
+        rowKey={(row) => rows.indexOf(row)}
         dataSource={rows}
         columns={columns}
         pagination={false}

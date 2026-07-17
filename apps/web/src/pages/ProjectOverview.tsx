@@ -75,7 +75,7 @@ export default function ProjectOverview() {
                 }
                 extra={<Link to={`/projects/${project.identity.id}/phase/${phase.phase}`}>Open</Link>}
               >
-                <Space direction="vertical" size={4}>
+                <Space orientation="vertical" size={4}>
                   <span style={{ color: '#888' }}>{phase.subtitle}</span>
                   <span>
                     Gates passed: {progress.passedGates}/{progress.totalGates}

@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import { useAppStore } from '../store/useAppStore';
 import { cosmetriAuthenticate } from '../integrations/cosmetri';
+import LabeledInput from '../components/LabeledInput';
 
 function maskToken(token?: string): string {
   if (!token) return '—';
@@ -94,7 +95,7 @@ export default function IntegrationsPage() {
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          message="Read-only integration (confirmed decision A3)"
+          title="Read-only integration (confirmed decision A3)"
           description={
             <span>
               Authentication follows the Cosmetri API password grant: <code>POST /oauth/token</code>{' '}
@@ -109,16 +110,17 @@ export default function IntegrationsPage() {
         />
 
         {!cosmetri.connected ? (
-          <Space direction="vertical" style={{ width: '100%', maxWidth: 520 }}>
-            <Input addonBefore="Base URL" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
-            <Input
-              addonBefore="Username"
+          <Space orientation="vertical" style={{ width: '100%', maxWidth: 520 }}>
+            <LabeledInput label="Base URL" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
+            <LabeledInput
+              label="Username"
               placeholder="Cosmetri user"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
-            <Input.Password
-              addonBefore="Password"
+            <LabeledInput
+              password
+              label="Password"
               placeholder="Used once to request tokens — not stored"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -180,12 +182,12 @@ export default function IntegrationsPage() {
             type="warning"
             showIcon
             style={{ marginBottom: 12 }}
-            message="Placeholder URL — replace with the real Power Apps link when available."
+            title="Placeholder URL — replace with the real Power Apps link when available."
           />
         )}
         <Space.Compact style={{ width: '100%', maxWidth: 640 }}>
+          <Input disabled value="App URL" style={{ width: 90, flexShrink: 0 }} />
           <Input
-            addonBefore="App URL"
             value={powerAppsUrl}
             onChange={(e) => setPowerAppsUrlLocal(e.target.value)}
           />
@@ -233,15 +235,15 @@ export default function IntegrationsPage() {
           <code>apps/api/.env</code>, extended with a Graph scope) rather than a separate app —
           so there is no tenant/client ID to enter here, only which site and list to read.
         </Typography.Paragraph>
-        <Space direction="vertical" style={{ width: '100%', maxWidth: 520 }}>
-          <Input
-            addonBefore="Site URL"
+        <Space orientation="vertical" style={{ width: '100%', maxWidth: 520 }}>
+          <LabeledInput
+            label="Site URL"
             placeholder="https://yourtenant.sharepoint.com/sites/..."
             value={graph.sharepointSiteUrl}
             onChange={(e) => setGraphConfig({ sharepointSiteUrl: e.target.value })}
           />
-          <Input
-            addonBefore="List name"
+          <LabeledInput
+            label="List name"
             placeholder="Raw Materials"
             value={graph.rawMaterialListName}
             onChange={(e) => setGraphConfig({ rawMaterialListName: e.target.value })}

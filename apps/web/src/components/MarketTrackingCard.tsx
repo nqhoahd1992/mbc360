@@ -78,7 +78,7 @@ export default function MarketTrackingCard({
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          message={`Market approvals are restricted to Regulatory — you are viewing as ${roleLabel(viewRole)}`}
+          title={`Market approvals are restricted to Regulatory — you are viewing as ${roleLabel(viewRole)}`}
           description="Notes stay open to contributors. RBAC demo simulation — the real role matrix is pending confirmation (F6)."
         />
       )}

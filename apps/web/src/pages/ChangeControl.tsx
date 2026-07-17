@@ -111,7 +111,7 @@ export default function ChangeControl() {
       <Alert
         type="warning"
         showIcon
-        message="No silent corrections"
+        title="No silent corrections"
         description="Artwork, formula, label, claim, supplier, process and market changes must be recorded here with a trigger, owner, impact assessment, approval, communication and closure evidence."
       />
 

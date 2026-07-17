@@ -61,7 +61,7 @@ export default function StudyApprovalCard({
         type="info"
         showIcon
         style={{ marginBottom: 12 }}
-        message="Roles, not named individuals"
+        title="Roles, not named individuals"
         description="The Independent Reviewer must belong to a different department than the Study Author (conflict-of-interest control) — the author's department is not selectable for the independent review."
       />
       <Table

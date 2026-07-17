@@ -4,13 +4,13 @@ import { Alert } from 'antd';
 // reached the phase/gate this activity belongs to, we show a non-blocking reminder.
 export default function PhaseDependencyAlert({
   reached,
-  message,
+  title,
   description,
 }: {
   reached: boolean;
-  message: string;
+  title: string;
   description: string;
 }) {
   if (reached) return null;
-  return <Alert type="warning" showIcon message={message} description={description} />;
+  return <Alert type="warning" showIcon title={title} description={description} />;
 }

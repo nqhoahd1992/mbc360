@@ -108,7 +108,7 @@ export default function CosmetriImportModal({
           type="warning"
           showIcon
           style={{ marginBottom: 12 }}
-          message="Importing replaces the current Formula BOM lines of this project."
+          title="Importing replaces the current Formula BOM lines of this project."
         />
       )}
 

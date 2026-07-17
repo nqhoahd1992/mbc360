@@ -55,13 +55,13 @@ export default function ProductFeedback() {
     <div style={{ display: 'grid', gap: 16 }}>
       <PhaseDependencyAlert
         reached={hasReachedPhase(project, 3)}
-        message="Phase 3 activity (Gate 07-08)"
+        title="Phase 3 activity (Gate 07-08)"
         description={`Panel feedback is collected on development samples during validation in Phase 3 — this is internal pre-launch testing, not post-market consumer feedback (see Post-Market / CAPA for that). ${positionSentence(project)}`}
       />
       <Alert
         type="info"
         showIcon
-        message="Scoring guide: 1 = Poor / unacceptable, 3 = Acceptable, 5 = Excellent. The oily/slippery question is a SAFETY flag (slip risk)."
+        title="Scoring guide: 1 = Poor / unacceptable, 3 = Acceptable, 5 = Excellent. The oily/slippery question is a SAFETY flag (slip risk)."
       />
 
       <Row gutter={16}>
@@ -75,7 +75,7 @@ export default function ProductFeedback() {
               title="Slippery / oily SAFETY flags"
               value={slipperyFlags}
               prefix={slipperyFlags > 0 ? <WarningOutlined /> : undefined}
-              valueStyle={{ color: slipperyFlags > 0 ? '#cf1322' : '#3f8600' }}
+              styles={{ content: { color: slipperyFlags > 0 ? '#cf1322' : '#3f8600' } }}
             />
           </Card>
         </Col>

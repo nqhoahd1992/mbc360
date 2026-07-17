@@ -30,7 +30,7 @@ export default function FormulationSafety() {
       <Alert
         type="info"
         showIcon
-        message="Primary safety evidence tab"
+        title="Primary safety evidence tab"
         description="This is the main evidence used to close Gate 07 (Maternal & Baby-Contact Safety), and is reused again at Gate 10 (PIF-03 Safety assessment)."
       />
 

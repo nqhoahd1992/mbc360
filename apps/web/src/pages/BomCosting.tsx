@@ -78,7 +78,7 @@ export default function BomCosting() {
     <div style={{ display: 'grid', gap: 16 }}>
       <PhaseDependencyAlert
         reached={hasReachedPhase(project, 2)}
-        message="Phase 2 activity (Gate 05-06)"
+        title="Phase 2 activity (Gate 05-06)"
         description={`Formula BOM & Costing is normally completed once the formula and packaging route is confirmed in Phase 2. ${positionSentence(project)} You can enter data now — it stays provisional until then.`}
       />
 
@@ -86,7 +86,7 @@ export default function BomCosting() {
         <Alert
           type="warning"
           showIcon
-          message={`Formula total is ${money(totalPercent)} % w/w — a complete formula should total 100%.`}
+          title={`Formula total is ${money(totalPercent)} % w/w — a complete formula should total 100%.`}
         />
       )}
 
@@ -95,7 +95,7 @@ export default function BomCosting() {
         <Alert
           type="error"
           showIcon
-          message={`Automatic ingredient screen: ${watchMatches.length} formula line${watchMatches.length > 1 ? 's' : ''} matched a watch-list — review required`}
+          title={`Automatic ingredient screen: ${watchMatches.length} formula line${watchMatches.length > 1 ? 's' : ''} matched a watch-list — review required`}
           description={
             <div style={{ display: 'grid', gap: 4 }}>
               {watchMatches.map((m) => (
@@ -568,7 +568,7 @@ export default function BomCosting() {
                   title="Gross margin"
                   value={money(margin)}
                   suffix="%"
-                  valueStyle={{ color: margin >= 50 ? '#3f8600' : margin > 0 ? '#fa8c16' : '#cf1322' }}
+                  styles={{ content: { color: margin >= 50 ? '#3f8600' : margin > 0 ? '#fa8c16' : '#cf1322' } }}
                 />
               </Col>
               <Col span={12}>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Input, Modal, Radio, Typography, message } from 'antd';
 import { useAppStore } from '../store/useAppStore';
+import LabeledInput from './LabeledInput';
 
 // Suggest the next version label: "F1.0" -> Major "F2.0" / Minor "F1.1".
 function suggestVersion(current: string, changeType: 'Major' | 'Minor'): string {
@@ -89,7 +90,7 @@ export default function FormulaVersionModal({
               : 'Records the new version in the history and the Formulation Change Register without touching the gate flow. Classification criteria for Major vs Minor are pending confirmation (F5).'}
           </Typography.Paragraph>
         </div>
-        <Input addonBefore="New version" value={version} onChange={(e) => setVersion(e.target.value)} />
+        <LabeledInput label="New version" value={version} onChange={(e) => setVersion(e.target.value)} />
         <div>
           <div style={{ marginBottom: 4, fontWeight: 600 }}>Reason</div>
           <Input.TextArea
@@ -99,8 +100,8 @@ export default function FormulaVersionModal({
             placeholder="What changed and why? (required — recorded in the Formulation Change Register)"
           />
         </div>
-        <Input
-          addonBefore="Initiated by"
+        <LabeledInput
+          label="Initiated by"
           value={initiatedBy}
           onChange={(e) => setInitiatedBy(e.target.value)}
           placeholder="Recorded in the audit trail"
@@ -109,7 +110,7 @@ export default function FormulaVersionModal({
           <Alert
             type="warning"
             showIcon
-            message="Gates 4-9 will be reopened and Phase 2-3 approvals invalidated. Nothing is deleted — previous decisions and sign-offs stay in the backtrack audit log."
+            title="Gates 4-9 will be reopened and Phase 2-3 approvals invalidated. Nothing is deleted — previous decisions and sign-offs stay in the backtrack audit log."
           />
         )}
       </div>

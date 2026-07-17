@@ -84,7 +84,7 @@ export default function PhasePage() {
           type="warning"
           showIcon
           icon={<LockOutlined />}
-          message="This phase is locked"
+          title="This phase is locked"
           description="Gates must be completed in order. Complete all gates of the previous phases to unlock this phase. You can still review the forms below, but the gate flow stays read-only."
         />
       )}
@@ -94,18 +94,18 @@ export default function PhasePage() {
           type="warning"
           showIcon
           icon={<ClockCircleFilled />}
-          message="All gates passed — phase sign-off required"
+          title="All gates passed — phase sign-off required"
           description="Every gate in this phase has passed. Record the 'Approved by' sign-off in the Evidence Summary, Decision and Sign-Off section below to complete the phase and unlock the next one."
         />
       )}
 
-      {PHASE_NOTES[phase] && <Alert type="info" showIcon message={PHASE_NOTES[phase]} />}
+      {PHASE_NOTES[phase] && <Alert type="info" showIcon title={PHASE_NOTES[phase]} />}
 
       {phase === 3 && s42Triggers.length > 0 && (
         <Alert
           type={s42Incomplete.length > 0 ? 'error' : 'success'}
           showIcon
-          message={`Skincare for Two active (triggered by: ${s42Triggers.join(', ')})`}
+          title={`Skincare for Two active (triggered by: ${s42Triggers.join(', ')})`}
           description={
             s42Incomplete.length > 0
               ? `Gate 07 is hard-blocked until the mandatory maternal and infant-contact safety sections are fully completed. Outstanding: ${s42Incomplete.join('; ')}.`
