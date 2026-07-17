@@ -373,7 +373,7 @@ function Shell() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
             <AuthStatus user={session.user} loading={session.loading} onLogout={session.logout} />
 
-            <Divider type="vertical" style={{ margin: 0, height: 22 }} />
+            <Divider orientation="vertical" style={{ margin: 0, height: 22 }} />
 
             <Tooltip title="Demo simulation: previews screens as if signed in with this role's permissions, until every screen reads permissions from your real signed-in account instead (rule A4).">
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -389,7 +389,7 @@ function Shell() {
               </span>
             </Tooltip>
 
-            <Divider type="vertical" style={{ margin: 0, height: 22 }} />
+            <Divider orientation="vertical" style={{ margin: 0, height: 22 }} />
 
             <Button
               icon={<SearchOutlined />}
