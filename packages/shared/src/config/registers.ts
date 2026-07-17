@@ -1593,13 +1593,6 @@ const DEPARTMENTS: RawDept[] = [
     ],
   },
   {
-    key: 'dept-quality-gmp',
-    title: 'Quality & GMP',
-    description: 'GMP manufacturing links, microbiology/PET and stability & release evidence.',
-    reviewOwner: 'Sekar (Quality & GMP) · Co-sign: Tuan (Formulation – PET), Chris (Project Manager)',
-    items: ['gmpLinks', 'microPetEvidence', 'stabilityRelease'],
-  },
-  {
     key: 'dept-quality',
     title: 'Quality',
     description: 'Test-report index, eye safety, evidence summary, formulation safety and R&I efficacy/claims evidence.',
@@ -1620,6 +1613,13 @@ const DEPARTMENTS: RawDept[] = [
       'potencyProcessControl',
       'medicalSummary',
     ],
+  },
+  {
+    key: 'dept-quality-gmp',
+    title: 'Quality & GMP',
+    description: 'GMP manufacturing links, microbiology/PET and stability & release evidence.',
+    reviewOwner: 'Sekar (Quality & GMP) · Co-sign: Tuan (Formulation – PET), Chris (Project Manager)',
+    items: ['gmpLinks', 'microPetEvidence', 'stabilityRelease'],
   },
   {
     key: 'dept-regulatory',
@@ -1687,9 +1687,9 @@ const DEPARTMENTS: RawDept[] = [
   },
   {
     key: 'dept-system',
-    title: 'System Reference',
-    description: 'Evidence template index, controlled system requirements and feedback on the MBc360 system.',
-    items: ['templateIndex', 'systemRequirements', 'systemFeedback'],
+    title: 'System Guide & Reference',
+    description: 'How to use MBc360, the evidence template index, controlled system requirements and feedback on the system itself.',
+    items: ['systemRequirements', 'templateIndex', 'systemFeedback'],
   },
 ];
 

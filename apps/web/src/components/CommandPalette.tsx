@@ -75,7 +75,6 @@ export default function CommandPalette({
       { id: 'dashboard', title: 'Dashboard', group: 'Pages', path: '/' },
       { id: 'all-projects', title: 'All Projects', group: 'Pages', path: '/projects' },
       { id: 'change-control', title: 'Change Control', group: 'Pages', path: '/change-control' },
-      { id: 'system-guide', title: 'System Guide', group: 'Pages', path: '/system-guide' },
     ];
 
     // Jump straight to any project's overview.

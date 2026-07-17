@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "dev": "npm run build -w @mbc360/shared && concurrently -k -n shared,api,web -c blue,magenta,green \"npm run dev -w @mbc360/shared\" \"npm run dev -w @mbc360/api\" \"npm run dev -w @mbc360/web\"",
+    "dev:clean": "node -e \"require('fs').rmSync('apps/web/node_modules/.vite',{recursive:true,force:true})\" && npm run dev",
     "build": "npm run build -w @mbc360/shared && npm run build -w @mbc360/api && npm run build -w @mbc360/web",
     "lint": "oxlint",
     "preview": "npm run preview -w @mbc360/web"

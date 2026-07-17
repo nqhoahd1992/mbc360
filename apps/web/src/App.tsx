@@ -3,7 +3,6 @@ import { ConfigProvider, Divider, Layout, Menu, Popconfirm, Button, Select, Tool
 import {
   ApiOutlined,
   AppstoreOutlined,
-  BookOutlined,
   CheckCircleFilled,
   EyeOutlined,
   FolderOpenOutlined,
@@ -31,7 +30,6 @@ import ProductFeedback from './pages/ProductFeedback';
 import RegisterHubPage from './pages/RegisterHubPage';
 import CommandPalette from './components/CommandPalette';
 import FormulationSafety from './pages/FormulationSafety';
-import SystemGuide from './pages/SystemGuide';
 import IntegrationsPage from './pages/IntegrationsPage';
 import { PHASES } from '@mbc360/shared/config/gates';
 import { getNavGroups, findNavGroupForRegister, navItemHref, formatGate } from '@mbc360/shared/config/registers';
@@ -86,7 +84,6 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
     () => [
       { key: '/', icon: <AppstoreOutlined />, label: <Link to="/">Dashboard</Link> },
       { key: '/projects', icon: <FolderOpenOutlined />, label: <Link to="/projects">All Projects</Link> },
-      { key: '/system-guide', icon: <BookOutlined />, label: <Link to="/system-guide">System Guide</Link> },
       { key: '/integrations', icon: <ApiOutlined />, label: <Link to="/integrations">Integrations</Link> },
       ...(isAdmin
         ? [{ key: '/admin/users', icon: <TeamOutlined />, label: <Link to="/admin/users">Users & Roles</Link> }]
@@ -128,9 +125,10 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
     return items;
   }, [projectId, activeProject]);
 
-  // Evidence-register submenus, grouped by department. Leaf keys are
-  // synthetic (a page can appear under several departments, so keys can't
-  // just be the route); selection is computed by path match below.
+  // Evidence-register submenus, grouped by responsibility (the DEPARTMENTS
+  // config). Leaf keys are synthetic (a page can appear under several
+  // groups, so keys can't just be the route); selection is computed by path
+  // match below.
   const registerItems = useMemo(() => {
     if (!projectId) return [];
     return getNavGroups().map((group) => ({
@@ -250,7 +248,7 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
               letterSpacing: 0.5,
             }}
           >
-            WORKBOOK BY DEPARTMENT
+            WORKBOOK BY RESPONSIBILITY
           </div>
           <Menu
             theme="dark"
@@ -414,7 +412,6 @@ function Shell() {
             <Route path="/projects/:projectId/feedback" element={<ProductFeedback />} />
             <Route path="/projects/:projectId/post-market" element={<PostMarketCapa />} />
             <Route path="/change-control" element={<ChangeControl />} />
-            <Route path="/system-guide" element={<SystemGuide />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
             <Route path="/admin/users" element={<AdminUsers />} />
           </Routes>
