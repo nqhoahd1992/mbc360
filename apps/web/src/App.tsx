@@ -328,6 +328,9 @@ function Shell() {
             alignItems: 'center',
             justifyContent: 'space-between',
             borderBottom: '1px solid #f0f0f0',
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
           }}
         >
           <Typography.Text
@@ -344,7 +347,14 @@ function Shell() {
             <ProjectContextTitle />
           </Typography.Text>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-            <AuthStatus user={session.user} loading={session.loading} onLogout={session.logout} />
+            <Popconfirm
+              title="Reset all demo data to the seeded samples?"
+              onConfirm={() => resetDemoData()}
+            >
+              <Button size="small" icon={<ReloadOutlined />}>
+                Reset demo data
+              </Button>
+            </Popconfirm>
 
             <Divider orientation="vertical" style={{ margin: 0, height: 22 }} />
 
@@ -383,14 +393,10 @@ function Shell() {
                 {isMac ? '⌘' : 'Ctrl'} K
               </kbd>
             </Button>
-            <Popconfirm
-              title="Reset all demo data to the seeded samples?"
-              onConfirm={() => resetDemoData()}
-            >
-              <Button size="small" icon={<ReloadOutlined />}>
-                Reset demo data
-              </Button>
-            </Popconfirm>
+
+            <Divider orientation="vertical" style={{ margin: 0, height: 22 }} />
+
+            <AuthStatus user={session.user} loading={session.loading} onLogout={session.logout} />
           </div>
         </Header>
         <Content style={{ padding: 16 }}>
