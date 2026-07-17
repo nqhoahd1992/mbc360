@@ -228,8 +228,10 @@ export default function IntegrationsPage() {
       >
         <Typography.Paragraph type="secondary" style={{ fontSize: 13 }}>
           Planned integration for reading SharePoint lists (e.g. the Raw Material list) via the
-          Microsoft Graph API. Connection settings can be recorded now; the sync itself is not part
-          of this demo.
+          Microsoft Graph API. It reuses the Entra ID app registration already configured
+          server-side for sign-in (<code>AUTH_TENANT_ID</code> / <code>AUTH_CLIENT_ID</code> in{' '}
+          <code>apps/api/.env</code>, extended with a Graph scope) rather than a separate app —
+          so there is no tenant/client ID to enter here, only which site and list to read.
         </Typography.Paragraph>
         <Space direction="vertical" style={{ width: '100%', maxWidth: 520 }}>
           <Input
@@ -243,16 +245,6 @@ export default function IntegrationsPage() {
             placeholder="Raw Materials"
             value={graph.rawMaterialListName}
             onChange={(e) => setGraphConfig({ rawMaterialListName: e.target.value })}
-          />
-          <Input
-            addonBefore="Tenant ID"
-            value={graph.tenantId}
-            onChange={(e) => setGraphConfig({ tenantId: e.target.value })}
-          />
-          <Input
-            addonBefore="Client ID"
-            value={graph.clientId}
-            onChange={(e) => setGraphConfig({ clientId: e.target.value })}
           />
         </Space>
       </Card>
