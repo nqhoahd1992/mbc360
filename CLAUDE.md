@@ -90,10 +90,10 @@ Deferred until the production phase (not answerable by config):
 Every phase sheet in the source Excel shares the same layout, so the app builds each phase page from **config + ~6 shared components** rather than one bespoke component per phase:
 
 - `packages/shared/src/config/phases.ts` — `PHASE_CONFIGS` (keyed by phase 1-4): checklist sections, requirement-table rows, and key-gate-checks per phase, with option lists transcribed verbatim from the Excel.
-- `packages/shared/src/config/registers.ts` — `REGISTER_CONFIGS` / `REGISTER_CATEGORIES`: ~30+ "evidence register" sheets (Supplier_RM_Evidence, Prohibited_Ingredients, PIF_Checklist_ASEAN, Formula_Change_Control, ...), each declared as a `RegisterConfig` (columns + `mode: 'register' | 'fixed'` + optional `fixedRows`). `mode: 'fixed'` = predefined reference rows the user annotates (status/evidence/notes editable, everything else `editable: false`); `mode: 'register'` = free-form rows the user adds/removes.
+- `packages/shared/src/config/registers.ts` — `REGISTER_CONFIGS`: ~30+ "evidence register" sheets (Supplier_RM_Evidence, Prohibited_Ingredients, PIF_Checklist_ASEAN, Formula_Change_Control, ...), each declared as a `RegisterConfig` (columns + `mode: 'register' | 'fixed'` + optional `fixedRows`). `mode: 'fixed'` = predefined reference rows the user annotates (status/evidence/notes editable, everything else `editable: false`); `mode: 'register'` = free-form rows the user adds/removes. Sidebar/command-palette navigation groups these (plus a few dedicated pages) by **department/responsibility only** — the `DEPARTMENTS` array + `getNavGroups()`/`getNavGroup()`/`findNavGroupForRegister()`; there used to be a second "by type" grouping (`REGISTER_CATEGORIES`) behind a sidebar toggle, removed 2026-07-17 in favor of a single authoritative axis.
 - `packages/shared/src/config/evidence.ts` — `EVIDENCE_AREAS` for the Evidence Summary status board.
 - `apps/web/src/pages/PhasePage.tsx` renders one phase entirely from `PHASE_CONFIGS[phase]` using the shared components below.
-- `apps/web/src/pages/RegisterHubPage.tsx` renders a register category entirely from `REGISTER_CATEGORIES` + `DynamicTable`.
+- `apps/web/src/pages/RegisterHubPage.tsx` renders a register category entirely from the department nav groups (`getNavGroup`) + `DynamicTable`.
 
 **When adding a new phase section or evidence register, add/edit a config entry — do not hand-write a new page/table component** unless the shape genuinely doesn't fit the existing 6 shared blocks.
 

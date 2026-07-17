@@ -29,7 +29,6 @@ function registerProgress(config: RegisterConfig, rows: RegisterRow[]) {
 export default function RegisterHubPage() {
   const { projectId, categoryKey, registerKey } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
-  const registerGrouping = useAppStore((s) => s.registerGrouping);
   const setRegisterRow = useAppStore((s) => s.setRegisterRow);
   const addRegisterRow = useAppStore((s) => s.addRegisterRow);
   const removeRegisterRow = useAppStore((s) => s.removeRegisterRow);
@@ -41,8 +40,8 @@ export default function RegisterHubPage() {
   if (registerKey) {
     const config = getRegisterConfig(registerKey);
     if (!config) return <Empty description="Register not found" />;
-    // Breadcrumb parent = this register's group in the ACTIVE grouping view.
-    const parent = findNavGroupForRegister(registerKey, registerGrouping);
+    // Breadcrumb parent = this register's department group.
+    const parent = findNavGroupForRegister(registerKey);
 
     // C6: flag rows already published (final link filled) without a completed
     // approval workflow — "no public information until the workflow is done".

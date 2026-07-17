@@ -106,7 +106,7 @@ export default function CommandPalette({
       }
       // Everything else is categorised by RESPONSIBILITY (department), covering
       // both registers and the department's dedicated pages (BOM, Change Control…).
-      for (const grp of getNavGroups('department')) {
+      for (const grp of getNavGroups()) {
         const g = `${id} · ${grp.title}`;
         list.push({
           id: `reg-cat-${grp.key}-${id}`,

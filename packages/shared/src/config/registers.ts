@@ -23,13 +23,6 @@ export interface RegisterConfig {
   reviewOwner?: string; // "REVIEW OWNER" header transcribed from the source workbook
 }
 
-export interface RegisterCategory {
-  key: string;
-  title: string;
-  description: string;
-  registerKeys: string[];
-}
-
 const WORK_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Backtracked'] as const;
 const YNNA = ['Y', 'N', 'N/A'] as const;
 
@@ -1509,84 +1502,6 @@ for (const config of REGISTER_CONFIGS) {
   }
 }
 
-export const REGISTER_CATEGORIES: RegisterCategory[] = [
-  {
-    key: 'ingredient-safety',
-    title: 'Ingredient & Supplier Safety',
-    description: 'Raw material evidence and the prohibited/caution ingredient watch-lists (Gate 04/07).',
-    registerKeys: ['supplierRmEvidence', 'prohibitedIngredients', 'pbCautionLimits', 'ingredientSubstitution'],
-  },
-  {
-    key: 'formulation-quality',
-    title: 'Formulation Quality & Stability',
-    description: 'Eye safety, fragrance, microbiology, stability and potency/process control evidence (Gate 07-09).',
-    registerKeys: ['eyeSafetyEvidence', 'fragranceSafety', 'fragranceAllergenLog', 'microPetEvidence', 'stabilityRelease', 'potencyProcessControl'],
-  },
-  {
-    key: 'efficacy-claims',
-    title: 'Efficacy & Claims Evidence',
-    description: 'Mechanism mapping, functional/clinical evidence and study protocol (Gate 03/08/10).',
-    registerKeys: [
-      'mechanismClaimsMap',
-      'twinkle5ClaimsMap',
-      'efficacyAssurance',
-      'functionalEfficacy',
-      'clinicalHumanEvidence',
-      'studyProtocolSetup',
-      'studyParticipantLog',
-      'efficacyStudyPlan',
-      'testReportIndex',
-    ],
-  },
-  {
-    key: 'packaging-artwork',
-    title: 'Packaging, Artwork & Change Triggers',
-    description: 'Packaging/artwork evidence, released-label control and the change-trigger reference tables (Gate 05/06/10/11).',
-    registerKeys: ['packagingSpecsArtwork', 'artworkChangeControl', 'formulaChangeControl', 'releasedLabelRegister', 'labelPlatformRollout', 'labelShipmentVerification'],
-  },
-  {
-    key: 'regulatory-pif',
-    title: 'Regulatory / PIF',
-    description: 'ASEAN PIF mapping, closure checklist, claims register and HCP answer packs (Gate 10).',
-    registerKeys: [
-      'aseanPifMap',
-      'pifChecklistAsean',
-      'pifEvidenceExport',
-      'skuClaimsPifRegister',
-      'pifEvidenceClosure',
-      'publicationRules',
-      'publishedInfoApproval',
-      'medicalSummary',
-      'hcpEfficacyAnswer',
-      'hcpTestReportPack',
-    ],
-  },
-  {
-    key: 'change-production',
-    title: 'Change Control Extras & Production',
-    description: 'Batch traceability, product family/version and formulation change registers, GMP links.',
-    registerKeys: [
-      'batchFormulaTrace',
-      'productFamilyRegister',
-      'formulationChangeRegister',
-      'changeTemplates',
-      'gmpLinks',
-    ],
-  },
-  {
-    key: 'marketing-development',
-    title: 'Marketing & Development Records',
-    description: 'Campaign declarations and the iterative product development report.',
-    registerKeys: ['campaignsSocialMedia', 'productDevelopmentProfile', 'productDevelopmentIterations', 'productDevelopmentFeedback'],
-  },
-  {
-    key: 'system-reference',
-    title: 'System Reference & Feedback',
-    description: 'Evidence template index, controlled system requirements and feedback on the MBc360 system.',
-    registerKeys: ['templateIndex', 'systemRequirements', 'systemFeedback'],
-  },
-];
-
 export function getRegisterConfig(key: string): RegisterConfig | undefined {
   return REGISTER_CONFIGS.find((r) => r.key === key);
 }
@@ -1594,15 +1509,14 @@ export function getRegisterConfig(key: string): RegisterConfig | undefined {
 // ---------------------------------------------------------------------------
 // Navigation groupings
 // ---------------------------------------------------------------------------
-// The Evidence-register section of the sidebar can be grouped two ways, chosen
-// by a toggle: by TYPE (topic/gate — the register-only categories above) or by
-// RESPONSIBILITY (department/role). The department view is owner-neutral (no
-// person names, so staff turnover / handover doesn't change the navigation) and
-// covers EVERY workbook sheet of that department — including ones the app hosts
-// on a dedicated page (BOM & Costing, Formulation Safety, Evidence Summary,
-// Panel Feedback, Change Control, Post-Market) rather than as an evidence register.
-
-export type RegisterGrouping = 'function' | 'department';
+// The Evidence-register section of the sidebar groups by RESPONSIBILITY
+// (department/role) — owner-neutral (no person names, so staff turnover /
+// handover doesn't change the navigation) and covers EVERY workbook sheet of
+// that department, including ones the app hosts on a dedicated page (BOM &
+// Costing, Formulation Safety, Evidence Summary, Panel Feedback, Change
+// Control, Post-Market) rather than as an evidence register.
+// (A "by type/topic" alternative grouping existed earlier but was removed —
+// department is the one authoritative axis.)
 
 // A single navigable workbook sheet inside a group.
 //  - registerKey set  -> opens the register hub (`registers/reg/:registerKey`)
@@ -1629,7 +1543,7 @@ export interface NavGroup {
   key: string;
   title: string;
   description?: string;
-  reviewOwner?: string; // department head + co-sign (department view only)
+  reviewOwner?: string; // department head + co-sign
   items: NavItem[];
 }
 
@@ -1645,16 +1559,6 @@ function registerNavItem(registerKey: string): NavItem | null {
   const config = getRegisterConfig(registerKey);
   if (!config) return null;
   return { title: config.title, sheetName: config.sheetName, registerKey, gate: config.gate };
-}
-
-// "By type" groups reuse the register-only categories above.
-function functionNavGroups(): NavGroup[] {
-  return REGISTER_CATEGORIES.map((cat) => ({
-    key: cat.key,
-    title: cat.title,
-    description: cat.description,
-    items: cat.registerKeys.map(registerNavItem).filter((i): i is NavItem => i !== null),
-  }));
 }
 
 // A department item is either a register (its key) or a dedicated page.
@@ -1789,7 +1693,7 @@ const DEPARTMENTS: RawDept[] = [
   },
 ];
 
-function departmentNavGroups(): NavGroup[] {
+export function getNavGroups(): NavGroup[] {
   return DEPARTMENTS.map((dept) => ({
     key: dept.key,
     title: dept.title,
@@ -1805,25 +1709,15 @@ function departmentNavGroups(): NavGroup[] {
   }));
 }
 
-// Groups for the active view.
-export function getNavGroups(grouping: RegisterGrouping): NavGroup[] {
-  return grouping === 'department' ? departmentNavGroups() : functionNavGroups();
-}
-
-// Find a group by key across BOTH views, so a category-overview URL keeps
-// working after the user flips the toggle.
 export function getNavGroup(key: string | undefined): NavGroup | undefined {
   if (!key) return undefined;
-  return [...functionNavGroups(), ...departmentNavGroups()].find((g) => g.key === key);
+  return getNavGroups().find((g) => g.key === key);
 }
 
-// Which group holds a register in a given view. Register deep-links are
-// category-agnostic, so the sidebar resolves the parent submenu to open/
-// highlight from the register + the ACTIVE grouping.
-export function findNavGroupForRegister(
-  registerKey: string | undefined,
-  grouping: RegisterGrouping,
-): NavGroup | undefined {
+// Which group holds a register — used by the sidebar to resolve the parent
+// submenu to open/highlight from a register deep-link (register deep-links
+// are category-agnostic: `registers/reg/:key`).
+export function findNavGroupForRegister(registerKey: string | undefined): NavGroup | undefined {
   if (!registerKey) return undefined;
-  return getNavGroups(grouping).find((g) => g.items.some((i) => i.registerKey === registerKey));
+  return getNavGroups().find((g) => g.items.some((i) => i.registerKey === registerKey));
 }

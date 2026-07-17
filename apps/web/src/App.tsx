@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ConfigProvider, Divider, Layout, Menu, Popconfirm, Button, Segmented, Select, Tooltip, Typography } from 'antd';
+import { ConfigProvider, Divider, Layout, Menu, Popconfirm, Button, Select, Tooltip, Typography } from 'antd';
 import {
   ApiOutlined,
   AppstoreOutlined,
@@ -59,8 +59,6 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
   const projects = useAppStore((s) => s.projects);
-  const registerGrouping = useAppStore((s) => s.registerGrouping);
-  const setRegisterGrouping = useAppStore((s) => s.setRegisterGrouping);
 
   const urlProjectId = location.pathname.match(/\/projects\/([^/]+)/)?.[1];
   const [activeProjectId, setActiveProjectId] = useState<string | undefined>(urlProjectId);
@@ -127,26 +125,15 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
         };
       }),
     ];
-    // These pages are also listed inside the department submenus below, so only
-    // surface them here in the "By type" view to avoid duplicating them.
-    if (registerGrouping === 'function') {
-      items.push(
-        { key: `/projects/${projectId}/bom`, label: <Link to={`/projects/${projectId}/bom`}>BOM & Costing</Link> },
-        { key: `/projects/${projectId}/formulation-safety`, label: <Link to={`/projects/${projectId}/formulation-safety`}>Formulation Safety</Link> },
-        { key: `/projects/${projectId}/evidence`, label: <Link to={`/projects/${projectId}/evidence`}>Evidence Summary</Link> },
-        { key: `/projects/${projectId}/feedback`, label: <Link to={`/projects/${projectId}/feedback`}>Panel Feedback</Link> },
-        { key: `/projects/${projectId}/post-market`, label: <Link to={`/projects/${projectId}/post-market`}>Post-Market / CAPA</Link> },
-      );
-    }
     return items;
-  }, [projectId, activeProject, registerGrouping]);
+  }, [projectId, activeProject]);
 
-  // Evidence-register submenus, grouped by the active view (responsibility vs
-  // topic). Leaf keys are synthetic (a page can appear under several departments,
-  // so keys can't just be the route); selection is computed by path match below.
+  // Evidence-register submenus, grouped by department. Leaf keys are
+  // synthetic (a page can appear under several departments, so keys can't
+  // just be the route); selection is computed by path match below.
   const registerItems = useMemo(() => {
     if (!projectId) return [];
-    return getNavGroups(registerGrouping).map((group) => ({
+    return getNavGroups().map((group) => ({
       key: `registers-sub-${group.key}`,
       label: group.title,
       children: [
@@ -170,13 +157,13 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
         }),
       ],
     }));
-  }, [projectId, registerGrouping]);
+  }, [projectId]);
 
   // Highlight every leaf whose route matches the current path.
   const registerSelectedKeys = useMemo(() => {
     if (!projectId) return [];
     const keys: string[] = [];
-    for (const group of getNavGroups(registerGrouping)) {
+    for (const group of getNavGroups()) {
       if (location.pathname === `/projects/${projectId}/registers/cat/${group.key}`) {
         keys.push(`cat:${group.key}`);
       }
@@ -185,11 +172,11 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
       });
     }
     return keys;
-  }, [projectId, registerGrouping, location.pathname]);
+  }, [projectId, location.pathname]);
 
-  // Keep the register submenu for the current route expanded. Register deep-links
-  // are category-agnostic, so resolve the parent submenu from the register + the
-  // active grouping — that way it opens correctly in BOTH views.
+  // Keep the register submenu for the current route expanded. Register
+  // deep-links are category-agnostic, so resolve the parent submenu from the
+  // register key.
   const [openKeys, setOpenKeys] = useState<string[]>([]);
   const catInPath = location.pathname.match(/\/registers\/cat\/([^/]+)/)?.[1];
   const regInPath = location.pathname.match(/\/registers\/reg\/([^/]+)/)?.[1];
@@ -197,14 +184,12 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
   // the current route matches one of those, open its submenu too.
   const pageGroup =
     !catInPath && !regInPath && projectId
-      ? getNavGroups(registerGrouping).find((g) =>
-          g.items.some((it) => navItemHref(it, projectId) === location.pathname),
-        )
+      ? getNavGroups().find((g) => g.items.some((it) => navItemHref(it, projectId) === location.pathname))
       : undefined;
   const activeSubKey = catInPath
     ? `registers-sub-${catInPath}`
     : regInPath
-      ? `registers-sub-${findNavGroupForRegister(regInPath, registerGrouping)?.key}`
+      ? `registers-sub-${findNavGroupForRegister(regInPath)?.key}`
       : pageGroup
         ? `registers-sub-${pageGroup.key}`
         : undefined;
@@ -265,19 +250,7 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
               letterSpacing: 0.5,
             }}
           >
-            {registerGrouping === 'department' ? 'WORKBOOK BY DEPARTMENT' : 'EVIDENCE REGISTERS'}
-          </div>
-          <div style={{ padding: '0 12px 8px' }}>
-            <Segmented
-              size="small"
-              block
-              value={registerGrouping}
-              onChange={(v) => setRegisterGrouping(v as 'function' | 'department')}
-              options={[
-                { label: 'By responsibility', value: 'department' },
-                { label: 'By type', value: 'function' },
-              ]}
-            />
+            WORKBOOK BY DEPARTMENT
           </div>
           <Menu
             theme="dark"

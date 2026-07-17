@@ -29,15 +29,9 @@ import { seedChanges, seedProjects } from '../data/seed';
 import { gateIndex, isGateUnlocked, isLastGateOfPhase } from '@mbc360/shared/utils/gateProgress';
 import { GATES } from '@mbc360/shared/config/gates';
 
-type RegisterGrouping = 'function' | 'department';
-
 interface AppState {
   projects: ProjectData[];
   changes: ChangeRecord[];
-
-  // UI preference: how the Evidence Registers menu is grouped.
-  registerGrouping: RegisterGrouping;
-  setRegisterGrouping: (grouping: RegisterGrouping) => void;
 
   // A4 (RBAC demo simulation): the role the user is currently "viewing as" —
   // stands in for the authenticated user's role until F6 (real role matrix/SSO).
@@ -143,9 +137,6 @@ export const useAppStore = create<AppState>()(
       return {
         projects: seedProjects(),
         changes: seedChanges(),
-
-        registerGrouping: 'department',
-        setRegisterGrouping: (grouping) => set({ registerGrouping: grouping }),
 
         viewRole: 'admin',
         setViewRole: (role) => set({ viewRole: role }),
