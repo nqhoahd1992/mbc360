@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Alert, Card, DatePicker, Input, Select, Table } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -6,6 +7,13 @@ import type { PhaseCompletionChecklist } from '@mbc360/shared/utils/gateProgress
 import { GATE_DECISIONS, PHASES } from '@mbc360/shared/config/gates';
 import { useAppStore } from '../store/useAppStore';
 import { canApprovePhase, roleLabel } from '../utils/roles';
+import { patchArray, useDraft } from '../hooks/useDraft';
+import SaveBar from './SaveBar';
+
+interface ClosureDraft {
+  evidenceSummary: string;
+  signOffs: SignOff[];
+}
 
 export default function SignOffBlock({
   projectId,
@@ -18,9 +26,18 @@ export default function SignOffBlock({
   closure: PhaseClosure;
   checklist: PhaseCompletionChecklist;
 }) {
-  const setSignOff = useAppStore((s) => s.setSignOff);
   const setEvidenceSummary = useAppStore((s) => s.setEvidenceSummary);
+  const setSignOffsBulk = useAppStore((s) => s.setSignOffsBulk);
   const viewRole = useAppStore((s) => s.viewRole);
+
+  // useDraft compares the committed value by reference, so this composite
+  // must stay referentially stable across renders that don't actually change
+  // evidenceSummary/signOffs.
+  const committed = useMemo<ClosureDraft>(
+    () => ({ evidenceSummary: closure.evidenceSummary ?? '', signOffs: closure.signOffs }),
+    [closure.evidenceSummary, closure.signOffs],
+  );
+  const { draft, dirty, update, markSaved, discard } = useDraft(committed);
 
   // B3: sign-off only becomes available once the phase's other closure
   // conditions are met. N/A items count only when justified.
@@ -37,6 +54,14 @@ export default function SignOffBlock({
   const canApprove = canApprovePhase(viewRole, phase);
   const rowDisabled = (r: SignOff) => locked || (r.role === 'Approved by' && !canApprove);
   const phaseDept = PHASES.find((p) => p.phase === phase)?.department;
+
+  const patchSignOff = (index: number, p: Partial<SignOff>) =>
+    update((prev) => ({ ...prev, signOffs: patchArray(prev.signOffs, index, p) }));
+  const save = () => {
+    setEvidenceSummary(projectId, phase, draft.evidenceSummary);
+    setSignOffsBulk(projectId, phase, draft.signOffs);
+    markSaved();
+  };
 
   return (
     <Card size="small" title="Evidence Summary, Decision and Sign-Off">
@@ -65,14 +90,14 @@ export default function SignOffBlock({
         </div>
         <Input.TextArea
           rows={3}
-          value={closure.evidenceSummary}
-          onChange={(e) => setEvidenceSummary(projectId, phase, e.target.value)}
+          value={draft.evidenceSummary}
+          onChange={(e) => update((prev) => ({ ...prev, evidenceSummary: e.target.value }))}
         />
       </div>
       <Table
         size="small"
         rowKey={(r) => r.role}
-        dataSource={closure.signOffs}
+        dataSource={draft.signOffs}
         pagination={false}
         scroll={{ x: 900 }}
         columns={[
@@ -85,7 +110,7 @@ export default function SignOffBlock({
                 size="small"
                 value={r.name}
                 disabled={rowDisabled(r)}
-                onChange={(e) => setSignOff(projectId, phase, i, { name: e.target.value })}
+                onChange={(e) => patchSignOff(i, { name: e.target.value })}
               />
             ),
           },
@@ -97,7 +122,7 @@ export default function SignOffBlock({
                 size="small"
                 value={r.initials}
                 disabled={rowDisabled(r)}
-                onChange={(e) => setSignOff(projectId, phase, i, { initials: e.target.value })}
+                onChange={(e) => patchSignOff(i, { initials: e.target.value })}
               />
             ),
           },
@@ -109,7 +134,7 @@ export default function SignOffBlock({
                 size="small"
                 value={r.date ? dayjs(r.date) : null}
                 disabled={rowDisabled(r)}
-                onChange={(d) => setSignOff(projectId, phase, i, { date: d ? d.format('YYYY-MM-DD') : undefined })}
+                onChange={(d) => patchSignOff(i, { date: d ? d.format('YYYY-MM-DD') : undefined })}
               />
             ),
           },
@@ -124,7 +149,7 @@ export default function SignOffBlock({
                 value={r.decision}
                 disabled={rowDisabled(r)}
                 options={GATE_DECISIONS.map((d) => ({ value: d, label: d }))}
-                onChange={(v) => setSignOff(projectId, phase, i, { decision: v })}
+                onChange={(v) => patchSignOff(i, { decision: v })}
               />
             ),
           },
@@ -136,12 +161,13 @@ export default function SignOffBlock({
                 size="small"
                 value={r.comments}
                 disabled={rowDisabled(r)}
-                onChange={(e) => setSignOff(projectId, phase, i, { comments: e.target.value })}
+                onChange={(e) => patchSignOff(i, { comments: e.target.value })}
               />
             ),
           },
         ]}
       />
+      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
     </Card>
   );
 }

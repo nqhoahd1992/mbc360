@@ -2,6 +2,8 @@ import { Card, Checkbox, DatePicker, Input, Select, Table } from 'antd';
 import dayjs from 'dayjs';
 import type { AngleRow, YNNA } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
+import { patchArray, useDraft } from '../hooks/useDraft';
+import SaveBar from './SaveBar';
 
 const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v }));
 
@@ -14,8 +16,15 @@ export default function EightAnglesTable({
   phase: number;
   angles: AngleRow[];
 }) {
-  const setAngle = useAppStore((s) => s.setAngle);
-  const covered = angles.filter((a) => a.covered).length;
+  const setAnglesBulk = useAppStore((s) => s.setAnglesBulk);
+  const { draft, dirty, update, markSaved, discard } = useDraft(angles);
+  const covered = draft.filter((a) => a.covered).length;
+
+  const patch = (index: number, p: Partial<AngleRow>) => update((prev) => patchArray(prev, index, p));
+  const save = () => {
+    setAnglesBulk(projectId, phase, draft);
+    markSaved();
+  };
 
   return (
     <Card
@@ -30,7 +39,7 @@ export default function EightAnglesTable({
       <Table
         size="small"
         rowKey={(r) => r.angle}
-        dataSource={angles}
+        dataSource={draft}
         pagination={false}
         scroll={{ x: 900 }}
         columns={[
@@ -44,7 +53,7 @@ export default function EightAnglesTable({
                 style={{ width: 70 }}
                 value={r.ynna}
                 options={YNNA_OPTIONS}
-                onChange={(v: YNNA) => setAngle(projectId, phase, i, { ynna: v })}
+                onChange={(v: YNNA) => patch(i, { ynna: v })}
               />
             ),
           },
@@ -55,7 +64,7 @@ export default function EightAnglesTable({
               <Checkbox
                 checked={r.covered}
                 onChange={(e) =>
-                  setAngle(projectId, phase, i, {
+                  patch(i, {
                     covered: e.target.checked,
                     ynna: e.target.checked ? 'Y' : r.ynna,
                     date: e.target.checked ? dayjs().format('YYYY-MM-DD') : undefined,
@@ -71,7 +80,7 @@ export default function EightAnglesTable({
               <DatePicker
                 size="small"
                 value={r.date ? dayjs(r.date) : null}
-                onChange={(d) => setAngle(projectId, phase, i, { date: d ? d.format('YYYY-MM-DD') : undefined })}
+                onChange={(d) => patch(i, { date: d ? d.format('YYYY-MM-DD') : undefined })}
               />
             ),
           },
@@ -79,37 +88,26 @@ export default function EightAnglesTable({
             title: 'Evidence / reference',
             width: 180,
             render: (_, r, i) => (
-              <Input
-                size="small"
-                value={r.evidenceRef}
-                onChange={(e) => setAngle(projectId, phase, i, { evidenceRef: e.target.value })}
-              />
+              <Input size="small" value={r.evidenceRef} onChange={(e) => patch(i, { evidenceRef: e.target.value })} />
             ),
           },
           {
             title: 'Initials',
             width: 90,
             render: (_, r, i) => (
-              <Input
-                size="small"
-                value={r.initials}
-                onChange={(e) => setAngle(projectId, phase, i, { initials: e.target.value })}
-              />
+              <Input size="small" value={r.initials} onChange={(e) => patch(i, { initials: e.target.value })} />
             ),
           },
           {
             title: 'Comments',
             width: 220,
             render: (_, r, i) => (
-              <Input
-                size="small"
-                value={r.comments}
-                onChange={(e) => setAngle(projectId, phase, i, { comments: e.target.value })}
-              />
+              <Input size="small" value={r.comments} onChange={(e) => patch(i, { comments: e.target.value })} />
             ),
           },
         ]}
       />
+      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
     </Card>
   );
 }

@@ -2,6 +2,8 @@ import { Card, Input, Select, Table, Tag } from 'antd';
 import type { RequirementItem, WorkStatus } from '@mbc360/shared/types';
 import { WORK_STATUSES } from '@mbc360/shared/config/gates';
 import { useAppStore } from '../store/useAppStore';
+import { patchArray, useDraft } from '../hooks/useDraft';
+import SaveBar from './SaveBar';
 
 export default function RequirementTable({
   projectId,
@@ -14,13 +16,21 @@ export default function RequirementTable({
   title: string;
   items: RequirementItem[];
 }) {
-  const setItem = useAppStore((s) => s.setRequirementItem);
+  const setSection = useAppStore((s) => s.setRequirementSection);
+  const { draft, dirty, update, markSaved, discard } = useDraft(items);
+
+  const patch = (index: number, p: Partial<RequirementItem>) => update((prev) => patchArray(prev, index, p));
+  const save = () => {
+    setSection(projectId, sectionKey, draft);
+    markSaved();
+  };
+
   return (
     <Card size="small" title={title}>
       <Table
         size="small"
         rowKey={(r) => r.requirement}
-        dataSource={items}
+        dataSource={draft}
         pagination={false}
         scroll={{ x: 1100 }}
         columns={[
@@ -43,7 +53,7 @@ export default function RequirementTable({
                 style={{ width: 130 }}
                 value={r.status}
                 options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
-                onChange={(v: WorkStatus) => setItem(projectId, sectionKey, i, { status: v })}
+                onChange={(v: WorkStatus) => patch(i, { status: v })}
               />
             ),
           },
@@ -55,7 +65,7 @@ export default function RequirementTable({
                 size="small"
                 value={r.evidenceLink}
                 placeholder="link"
-                onChange={(e) => setItem(projectId, sectionKey, i, { evidenceLink: e.target.value })}
+                onChange={(e) => patch(i, { evidenceLink: e.target.value })}
               />
             ),
           },
@@ -63,15 +73,12 @@ export default function RequirementTable({
             title: 'Notes / action',
             width: 200,
             render: (_, r, i) => (
-              <Input
-                size="small"
-                value={r.notes}
-                onChange={(e) => setItem(projectId, sectionKey, i, { notes: e.target.value })}
-              />
+              <Input size="small" value={r.notes} onChange={(e) => patch(i, { notes: e.target.value })} />
             ),
           },
         ]}
       />
+      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
     </Card>
   );
 }

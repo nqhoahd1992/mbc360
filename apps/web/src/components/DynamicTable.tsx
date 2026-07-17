@@ -3,21 +3,30 @@ import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
+import { patchArray, useDraft } from '../hooks/useDraft';
+import { createEmptyRegisterRow } from '../store/factory';
+import SaveBar from './SaveBar';
 
 export default function DynamicTable({
   config,
   rows,
-  onChangeCell,
-  onAddRow,
-  onRemoveRow,
+  onSave,
 }: {
   config: RegisterConfig;
   rows: RegisterRow[];
-  onChangeCell: (index: number, key: string, value: string | number | boolean | undefined) => void;
-  onAddRow?: () => void;
-  onRemoveRow?: (index: number) => void;
+  onSave: (rows: RegisterRow[]) => void;
 }) {
   const isRegister = config.mode === 'register';
+  const { draft, dirty, update, markSaved, discard } = useDraft(rows);
+
+  const patch = (index: number, key: string, value: string | number | boolean | undefined) =>
+    update((prev) => patchArray(prev, index, { [key]: value } as Partial<RegisterRow>));
+  const addRow = () => update((prev) => [...prev, createEmptyRegisterRow(config.key)]);
+  const removeRow = (index: number) => update((prev) => prev.filter((_, i) => i !== index));
+  const save = () => {
+    onSave(draft);
+    markSaved();
+  };
 
   const renderCell = (column: RegisterColumn, row: RegisterRow, index: number) => {
     const editable = column.editable !== false;
@@ -30,10 +39,7 @@ export default function DynamicTable({
     switch (column.type) {
       case 'checkbox':
         return (
-          <Checkbox
-            checked={!!value}
-            onChange={(e) => onChangeCell(index, column.key, e.target.checked)}
-          />
+          <Checkbox checked={!!value} onChange={(e) => patch(index, column.key, e.target.checked)} />
         );
       case 'select':
         return (
@@ -43,7 +49,7 @@ export default function DynamicTable({
             style={{ width: '100%', minWidth: 110 }}
             value={value as string | undefined}
             options={(column.options ?? []).map((o) => ({ value: o, label: o }))}
-            onChange={(v) => onChangeCell(index, column.key, v)}
+            onChange={(v) => patch(index, column.key, v)}
           />
         );
       case 'date':
@@ -52,7 +58,7 @@ export default function DynamicTable({
             size="small"
             style={{ width: '100%' }}
             value={value ? dayjs(String(value)) : null}
-            onChange={(d) => onChangeCell(index, column.key, d ? d.format('YYYY-MM-DD') : undefined)}
+            onChange={(d) => patch(index, column.key, d ? d.format('YYYY-MM-DD') : undefined)}
           />
         );
       case 'number':
@@ -61,7 +67,7 @@ export default function DynamicTable({
             size="small"
             style={{ width: '100%' }}
             value={value as number | undefined}
-            onChange={(v) => onChangeCell(index, column.key, v ?? 0)}
+            onChange={(v) => patch(index, column.key, v ?? 0)}
           />
         );
       case 'textarea':
@@ -70,17 +76,13 @@ export default function DynamicTable({
             autoSize={{ minRows: 1, maxRows: 4 }}
             size="small"
             value={value as string | undefined}
-            onChange={(e) => onChangeCell(index, column.key, e.target.value)}
+            onChange={(e) => patch(index, column.key, e.target.value)}
           />
         );
       case 'text':
       default:
         return (
-          <Input
-            size="small"
-            value={value as string | undefined}
-            onChange={(e) => onChangeCell(index, column.key, e.target.value)}
-          />
+          <Input size="small" value={value as string | undefined} onChange={(e) => patch(index, column.key, e.target.value)} />
         );
     }
   };
@@ -97,7 +99,7 @@ export default function DynamicTable({
             title: '',
             width: 44,
             render: (_: unknown, __: RegisterRow, index: number) => (
-              <Popconfirm title="Remove this row?" onConfirm={() => onRemoveRow?.(index)}>
+              <Popconfirm title="Remove this row?" onConfirm={() => removeRow(index)}>
                 <Button size="small" danger type="text" icon={<DeleteOutlined />} />
               </Popconfirm>
             ),
@@ -118,11 +120,11 @@ export default function DynamicTable({
       }
       extra={
         isRegister ? (
-          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={onAddRow}>
+          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addRow}>
             Add row
           </Button>
         ) : (
-          <span style={{ color: '#999', fontSize: 12 }}>{rows.length} items</span>
+          <span style={{ color: '#999', fontSize: 12 }}>{draft.length} items</span>
         )
       }
     >
@@ -136,14 +138,15 @@ export default function DynamicTable({
         size="small"
         // RegisterRow has no natural id, so key by array position. antd
         // deprecated the (record, index) two-arg rowKey signature, so derive
-        // the position from the row's identity in `rows` instead (`rows` is
+        // the position from the row's identity in `draft` instead (`draft` is
         // exactly what's passed as `dataSource`, so reference equality holds).
-        rowKey={(row) => rows.indexOf(row)}
-        dataSource={rows}
+        rowKey={(row) => draft.indexOf(row)}
+        dataSource={draft}
         columns={columns}
         pagination={false}
         scroll={{ x: totalWidth }}
       />
+      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
     </Card>
   );
 }

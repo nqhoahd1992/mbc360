@@ -29,9 +29,7 @@ function registerProgress(config: RegisterConfig, rows: RegisterRow[]) {
 export default function RegisterHubPage() {
   const { projectId, categoryKey, registerKey } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
-  const setRegisterRow = useAppStore((s) => s.setRegisterRow);
-  const addRegisterRow = useAppStore((s) => s.addRegisterRow);
-  const removeRegisterRow = useAppStore((s) => s.removeRegisterRow);
+  const setRegisterRowsBulk = useAppStore((s) => s.setRegisterRowsBulk);
 
   if (!project) return <Empty description="Not found" />;
   const id = project.identity.id;
@@ -85,9 +83,7 @@ export default function RegisterHubPage() {
         <DynamicTable
           config={config}
           rows={project.registers[registerKey] ?? []}
-          onChangeCell={(index, colKey, value) => setRegisterRow(id, registerKey, index, colKey, value)}
-          onAddRow={() => addRegisterRow(id, registerKey)}
-          onRemoveRow={(index) => removeRegisterRow(id, registerKey, index)}
+          onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
         />
       </div>
     );

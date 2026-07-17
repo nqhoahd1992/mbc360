@@ -3,16 +3,24 @@ import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import type { WorkStatus } from '@mbc360/shared/types';
 import { WORK_STATUSES } from '@mbc360/shared/config/gates';
+import { patchArray, useDraft } from '../hooks/useDraft';
+import SaveBar from '../components/SaveBar';
 
 export default function EvidenceSummary() {
   const { projectId } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
-  const setEvidenceItem = useAppStore((s) => s.setEvidenceItem);
+  const setEvidenceItemsBulk = useAppStore((s) => s.setEvidenceItemsBulk);
+  const { draft, dirty, update, markSaved, discard } = useDraft(project?.evidence ?? []);
 
   if (!project) return <Empty description="Project not found" />;
   const id = project.identity.id;
 
-  const completed = project.evidence.filter((e) => e.status === 'Completed').length;
+  const completed = draft.filter((e) => e.status === 'Completed').length;
+  const patch = (index: number, p: Partial<(typeof draft)[number]>) => update((prev) => patchArray(prev, index, p));
+  const save = () => {
+    setEvidenceItemsBulk(id, draft);
+    markSaved();
+  };
 
   return (
     <Card
@@ -22,14 +30,14 @@ export default function EvidenceSummary() {
         <Progress
           size="small"
           style={{ width: 200 }}
-          percent={Math.round((completed / project.evidence.length) * 100)}
+          percent={Math.round((completed / draft.length) * 100)}
         />
       }
     >
       <Table
         size="small"
         rowKey={(e) => e.area}
-        dataSource={project.evidence}
+        dataSource={draft}
         pagination={false}
         scroll={{ x: 1200 }}
         columns={[
@@ -53,7 +61,7 @@ export default function EvidenceSummary() {
                 style={{ width: 140 }}
                 value={e.status}
                 options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
-                onChange={(v: WorkStatus) => setEvidenceItem(id, i, { status: v })}
+                onChange={(v: WorkStatus) => patch(i, { status: v })}
               />
             ),
           },
@@ -61,27 +69,19 @@ export default function EvidenceSummary() {
             title: 'Evidence link / folder',
             width: 200,
             render: (_, e, i) => (
-              <Input
-                size="small"
-                value={e.evidenceLink}
-                placeholder="link"
-                onChange={(ev) => setEvidenceItem(id, i, { evidenceLink: ev.target.value })}
-              />
+              <Input size="small" value={e.evidenceLink} placeholder="link" onChange={(ev) => patch(i, { evidenceLink: ev.target.value })} />
             ),
           },
           {
             title: 'Notes',
             width: 200,
             render: (_, e, i) => (
-              <Input
-                size="small"
-                value={e.notes}
-                onChange={(ev) => setEvidenceItem(id, i, { notes: ev.target.value })}
-              />
+              <Input size="small" value={e.notes} onChange={(ev) => patch(i, { notes: ev.target.value })} />
             ),
           },
         ]}
       />
+      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
     </Card>
   );
 }

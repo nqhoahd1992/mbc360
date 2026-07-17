@@ -10,6 +10,8 @@ import FormulaVersionModal from '../components/FormulaVersionModal';
 import { hasReachedPhase, positionSentence } from '@mbc360/shared/utils/gateProgress';
 import { bomWatchMatches } from '@mbc360/shared/utils/ingredientWatch';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
+import { patchArray, useDraft } from '../hooks/useDraft';
+import SaveBar from '../components/SaveBar';
 
 function money(v: number) {
   return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
@@ -18,21 +20,36 @@ function money(v: number) {
 export default function BomCosting() {
   const { projectId, section } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
-  const setBomLine = useAppStore((s) => s.setBomLine);
-  const addBomLine = useAppStore((s) => s.addBomLine);
-  const removeBomLine = useAppStore((s) => s.removeBomLine);
+  const setBom = useAppStore((s) => s.setBom);
+  const setPackagingBomBulk = useAppStore((s) => s.setPackagingBomBulk);
   const setCosting = useAppStore((s) => s.setCosting);
-  const setPackagingBomLine = useAppStore((s) => s.setPackagingBomLine);
-  const addPackagingBomLine = useAppStore((s) => s.addPackagingBomLine);
-  const removePackagingBomLine = useAppStore((s) => s.removePackagingBomLine);
   const cosmetriConnected = useCosmetriStatus().status.connected;
   const [importOpen, setImportOpen] = useState(false);
   const [versionOpen, setVersionOpen] = useState(false);
 
+  // Hooks must run unconditionally, so seed drafts from empty defaults when
+  // there's no project yet — the early return below happens after.
+  const bomDraft = useDraft<BomLine[]>(project?.bom ?? []);
+  const packagingDraft = useDraft<PackagingBomLine[]>(project?.packagingBom ?? []);
+  const costingDraft = useDraft<CostingInputs>(
+    project?.costing ?? {
+      batchSizeKg: 0,
+      fillSizeG: 0,
+      targetUnits: 0,
+      packagingCostPerUnit: 0,
+      labourOverheadPerUnit: 0,
+      freightOtherPerUnit: 0,
+      targetSellPrice: 0,
+    },
+  );
+
   if (!project) return <Empty description="Project not found" />;
 
-  const { bom, packagingBom, costing } = project;
+  const { bom, packagingBom } = project;
   const id = project.identity.id;
+  const draftBom = bomDraft.draft;
+  const draftPackaging = packagingDraft.draft;
+  const costing = costingDraft.draft;
 
   // Each of the three BOM/Costing sheets belongs to a different department, so the
   // page can render just one section (via /bom/:section) or all of them (/bom).
@@ -40,7 +57,7 @@ export default function BomCosting() {
   const showPackaging = !section || section === 'packaging';
   const showCosting = !section || section === 'costing';
 
-  const totalPercent = bom.reduce((sum, l) => sum + (l.percentWw || 0), 0);
+  const totalPercent = draftBom.reduce((sum, l) => sum + (l.percentWw || 0), 0);
   const watchMatches = bomWatchMatches(project);
   const unitsPerBatch = costing.fillSizeG > 0 ? (costing.batchSizeKg * 1000) / costing.fillSizeG : 0;
 
@@ -53,15 +70,56 @@ export default function BomCosting() {
 
   const packagingDerived = (l: PackagingBomLine) =>
     l.unitCost * l.unitsPerFinishedUnit * (1 + (l.wastagePercent || 0) / 100);
-  const packagingCostTotal = packagingBom.reduce((sum, l) => sum + packagingDerived(l), 0);
+  const packagingCostTotal = draftPackaging.reduce((sum, l) => sum + packagingDerived(l), 0);
 
-  const formulaCostPerUnit = bom.reduce((sum, l) => sum + derived(l).costPerUnit, 0);
+  const formulaCostPerUnit = draftBom.reduce((sum, l) => sum + derived(l).costPerUnit, 0);
   const cogs =
     formulaCostPerUnit +
     costing.packagingCostPerUnit +
     costing.labourOverheadPerUnit +
     costing.freightOtherPerUnit;
   const margin = costing.targetSellPrice > 0 ? ((costing.targetSellPrice - cogs) / costing.targetSellPrice) * 100 : 0;
+
+  const patchBomLine = (index: number, patch: Partial<BomLine>) =>
+    bomDraft.update((prev) => patchArray(prev, index, patch));
+  const addBomLine = () =>
+    bomDraft.update((prev) => [
+      ...prev,
+      { line: prev.length + 1, rmCode: '', inciName: '', functionRole: '', supplier: '', percentWw: 0, costPerKg: 0 },
+    ]);
+  const removeBomLine = (index: number) =>
+    bomDraft.update((prev) => prev.filter((_, i) => i !== index).map((l, i) => ({ ...l, line: i + 1 })));
+  const saveBom = () => {
+    setBom(id, draftBom);
+    bomDraft.markSaved();
+  };
+
+  const patchPackagingLine = (index: number, patch: Partial<PackagingBomLine>) =>
+    packagingDraft.update((prev) => patchArray(prev, index, patch));
+  const addPackagingLine = () =>
+    packagingDraft.update((prev) => [
+      ...prev,
+      {
+        line: prev.length + 1,
+        component: '',
+        componentType: '',
+        supplier: '',
+        unitsPerFinishedUnit: 1,
+        unitCost: 0,
+        wastagePercent: 0,
+      },
+    ]);
+  const removePackagingLine = (index: number) =>
+    packagingDraft.update((prev) => prev.filter((_, i) => i !== index).map((l, i) => ({ ...l, line: i + 1 })));
+  const savePackaging = () => {
+    setPackagingBomBulk(id, draftPackaging);
+    packagingDraft.markSaved();
+  };
+
+  const saveCosting = () => {
+    setCosting(id, costing);
+    costingDraft.markSaved();
+  };
 
   const numberInput = (field: keyof CostingInputs, label: string, step = 0.01) => (
     <Descriptions.Item label={label}>
@@ -70,7 +128,7 @@ export default function BomCosting() {
         min={0}
         step={step}
         value={costing[field]}
-        onChange={(v) => setCosting(id, { [field]: v ?? 0 })}
+        onChange={(v) => costingDraft.update((prev) => ({ ...prev, [field]: v ?? 0 }))}
       />
     </Descriptions.Item>
   );
@@ -83,7 +141,7 @@ export default function BomCosting() {
         description={`Formula BOM & Costing is normally completed once the formula and packaging route is confirmed in Phase 2. ${positionSentence(project)} You can enter data now — it stays provisional until then.`}
       />
 
-      {showFormula && Math.round(totalPercent * 100) / 100 !== 100 && bom.length > 0 && (
+      {showFormula && Math.round(totalPercent * 100) / 100 !== 100 && draftBom.length > 0 && (
         <Alert
           type="warning"
           showIcon
@@ -156,7 +214,7 @@ export default function BomCosting() {
                 Import from Cosmetri
               </Button>
             </Tooltip>
-            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => addBomLine(id)}>
+            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addBomLine}>
               Add line
             </Button>
           </span>
@@ -165,7 +223,7 @@ export default function BomCosting() {
         <Table
           size="small"
           rowKey={(l) => l.line}
-          dataSource={bom}
+          dataSource={draftBom}
           pagination={false}
           scroll={{ x: 1320 }}
           columns={[
@@ -174,14 +232,14 @@ export default function BomCosting() {
               title: 'RM Code',
               width: 110,
               render: (_, l, i) => (
-                <Input size="small" value={l.rmCode} onChange={(e) => setBomLine(id, i, { rmCode: e.target.value })} />
+                <Input size="small" value={l.rmCode} onChange={(e) => patchBomLine(i, { rmCode: e.target.value })} />
               ),
             },
             {
               title: 'Ingredient / INCI',
               width: 240,
               render: (_, l, i) => (
-                <Input size="small" value={l.inciName} onChange={(e) => setBomLine(id, i, { inciName: e.target.value })} />
+                <Input size="small" value={l.inciName} onChange={(e) => patchBomLine(i, { inciName: e.target.value })} />
               ),
             },
             {
@@ -192,7 +250,7 @@ export default function BomCosting() {
                   size="small"
                   value={l.casNo}
                   placeholder="from Cosmetri"
-                  onChange={(e) => setBomLine(id, i, { casNo: e.target.value })}
+                  onChange={(e) => patchBomLine(i, { casNo: e.target.value })}
                 />
               ),
             },
@@ -200,14 +258,14 @@ export default function BomCosting() {
               title: 'Function',
               width: 160,
               render: (_, l, i) => (
-                <Input size="small" value={l.functionRole} onChange={(e) => setBomLine(id, i, { functionRole: e.target.value })} />
+                <Input size="small" value={l.functionRole} onChange={(e) => patchBomLine(i, { functionRole: e.target.value })} />
               ),
             },
             {
               title: 'Supplier',
               width: 150,
               render: (_, l, i) => (
-                <Input size="small" value={l.supplier} onChange={(e) => setBomLine(id, i, { supplier: e.target.value })} />
+                <Input size="small" value={l.supplier} onChange={(e) => patchBomLine(i, { supplier: e.target.value })} />
               ),
             },
             {
@@ -220,7 +278,7 @@ export default function BomCosting() {
                   max={100}
                   step={0.1}
                   value={l.percentWw}
-                  onChange={(v) => setBomLine(id, i, { percentWw: v ?? 0 })}
+                  onChange={(v) => patchBomLine(i, { percentWw: v ?? 0 })}
                 />
               ),
             },
@@ -233,7 +291,7 @@ export default function BomCosting() {
                   min={0}
                   step={0.1}
                   value={l.costPerKg}
-                  onChange={(v) => setBomLine(id, i, { costPerKg: v ?? 0 })}
+                  onChange={(v) => patchBomLine(i, { costPerKg: v ?? 0 })}
                 />
               ),
             },
@@ -244,7 +302,7 @@ export default function BomCosting() {
               title: '',
               width: 50,
               render: (_, __, i) => (
-                <Popconfirm title="Remove line?" onConfirm={() => removeBomLine(id, i)}>
+                <Popconfirm title="Remove line?" onConfirm={() => removeBomLine(i)}>
                   <Button size="small" danger type="text" icon={<DeleteOutlined />} />
                 </Popconfirm>
               ),
@@ -266,6 +324,7 @@ export default function BomCosting() {
             </Table.Summary.Row>
           )}
         />
+        <SaveBar dirty={bomDraft.dirty} onSave={saveBom} onDiscard={bomDraft.discard} />
       </Card>
       )}
 
@@ -320,7 +379,7 @@ export default function BomCosting() {
         size="small"
         title="Packaging BOM"
         extra={
-          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => addPackagingBomLine(id)}>
+          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addPackagingLine}>
             Add component
           </Button>
         }
@@ -328,7 +387,7 @@ export default function BomCosting() {
         <Table
           size="small"
           rowKey={(l) => l.line}
-          dataSource={packagingBom}
+          dataSource={draftPackaging}
           pagination={false}
           scroll={{ x: 1300 }}
           columns={[
@@ -337,21 +396,21 @@ export default function BomCosting() {
               title: 'Component',
               width: 160,
               render: (_, l, i) => (
-                <Input size="small" value={l.component} onChange={(e) => setPackagingBomLine(id, i, { component: e.target.value })} />
+                <Input size="small" value={l.component} onChange={(e) => patchPackagingLine(i, { component: e.target.value })} />
               ),
             },
             {
               title: 'Component type',
               width: 140,
               render: (_, l, i) => (
-                <Input size="small" value={l.componentType} onChange={(e) => setPackagingBomLine(id, i, { componentType: e.target.value })} />
+                <Input size="small" value={l.componentType} onChange={(e) => patchPackagingLine(i, { componentType: e.target.value })} />
               ),
             },
             {
               title: 'Supplier',
               width: 140,
               render: (_, l, i) => (
-                <Input size="small" value={l.supplier} onChange={(e) => setPackagingBomLine(id, i, { supplier: e.target.value })} />
+                <Input size="small" value={l.supplier} onChange={(e) => patchPackagingLine(i, { supplier: e.target.value })} />
               ),
             },
             {
@@ -363,7 +422,7 @@ export default function BomCosting() {
                   min={0}
                   step={1}
                   value={l.unitsPerFinishedUnit}
-                  onChange={(v) => setPackagingBomLine(id, i, { unitsPerFinishedUnit: v ?? 0 })}
+                  onChange={(v) => patchPackagingLine(i, { unitsPerFinishedUnit: v ?? 0 })}
                 />
               ),
             },
@@ -376,7 +435,7 @@ export default function BomCosting() {
                   min={0}
                   step={0.01}
                   value={l.unitCost}
-                  onChange={(v) => setPackagingBomLine(id, i, { unitCost: v ?? 0 })}
+                  onChange={(v) => patchPackagingLine(i, { unitCost: v ?? 0 })}
                 />
               ),
             },
@@ -389,7 +448,7 @@ export default function BomCosting() {
                   min={0}
                   step={0.5}
                   value={l.wastagePercent}
-                  onChange={(v) => setPackagingBomLine(id, i, { wastagePercent: v ?? 0 })}
+                  onChange={(v) => patchPackagingLine(i, { wastagePercent: v ?? 0 })}
                 />
               ),
             },
@@ -398,42 +457,42 @@ export default function BomCosting() {
               title: 'Lead time',
               width: 100,
               render: (_, l, i) => (
-                <Input size="small" value={l.leadTime} onChange={(e) => setPackagingBomLine(id, i, { leadTime: e.target.value })} />
+                <Input size="small" value={l.leadTime} onChange={(e) => patchPackagingLine(i, { leadTime: e.target.value })} />
               ),
             },
             {
               title: 'MOQ',
               width: 90,
               render: (_, l, i) => (
-                <Input size="small" value={l.moq} onChange={(e) => setPackagingBomLine(id, i, { moq: e.target.value })} />
+                <Input size="small" value={l.moq} onChange={(e) => patchPackagingLine(i, { moq: e.target.value })} />
               ),
             },
             {
               title: 'Evidence link',
               width: 130,
               render: (_, l, i) => (
-                <Input size="small" value={l.evidenceLink} onChange={(e) => setPackagingBomLine(id, i, { evidenceLink: e.target.value })} />
+                <Input size="small" value={l.evidenceLink} onChange={(e) => patchPackagingLine(i, { evidenceLink: e.target.value })} />
               ),
             },
             {
               title: 'Approval',
               width: 110,
               render: (_, l, i) => (
-                <Input size="small" value={l.approval} onChange={(e) => setPackagingBomLine(id, i, { approval: e.target.value })} />
+                <Input size="small" value={l.approval} onChange={(e) => patchPackagingLine(i, { approval: e.target.value })} />
               ),
             },
             {
               title: '',
               width: 50,
               render: (_, __, i) => (
-                <Popconfirm title="Remove component?" onConfirm={() => removePackagingBomLine(id, i)}>
+                <Popconfirm title="Remove component?" onConfirm={() => removePackagingLine(i)}>
                   <Button size="small" danger type="text" icon={<DeleteOutlined />} />
                 </Popconfirm>
               ),
             },
           ]}
           summary={() =>
-            packagingBom.length > 0 ? (
+            draftPackaging.length > 0 ? (
               <Table.Summary.Row>
                 <Table.Summary.Cell index={0} colSpan={6}>
                   <b>Total packaging cost / unit</b>
@@ -445,6 +504,7 @@ export default function BomCosting() {
             ) : null
           }
         />
+        <SaveBar dirty={packagingDraft.dirty} onSave={savePackaging} onDiscard={packagingDraft.discard} />
       </Card>
       )}
 
@@ -538,9 +598,9 @@ export default function BomCosting() {
                   min={0}
                   step={0.01}
                   value={costing.packagingCostPerUnit}
-                  onChange={(v) => setCosting(id, { packagingCostPerUnit: v ?? 0 })}
+                  onChange={(v) => costingDraft.update((prev) => ({ ...prev, packagingCostPerUnit: v ?? 0 }))}
                 />
-                {packagingBom.length > 0 && (
+                {draftPackaging.length > 0 && (
                   <span style={{ marginLeft: 8, fontSize: 12, color: '#999' }}>
                     Packaging BOM total: {money(packagingCostTotal)}
                   </span>
@@ -550,6 +610,7 @@ export default function BomCosting() {
               {numberInput('freightOtherPerUnit', 'Freight / other / unit')}
               {numberInput('targetSellPrice', 'Target sell price / unit')}
             </Descriptions>
+            <SaveBar dirty={costingDraft.dirty} onSave={saveCosting} onDiscard={costingDraft.discard} />
           </Card>
         </Col>
         <Col xs={24} md={12}>

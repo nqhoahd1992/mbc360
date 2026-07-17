@@ -3,6 +3,8 @@ import { CheckCircleFilled, SafetyCertificateOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs';
 import type { StudyApproval } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
+import { patchArray, useDraft } from '../hooks/useDraft';
+import SaveBar from './SaveBar';
 
 const DEPARTMENTS = [
   'NPD / Formulation',
@@ -30,14 +32,20 @@ export default function StudyApprovalCard({
   projectId: string;
   approvals: StudyApproval[];
 }) {
-  const setStudyApproval = useAppStore((s) => s.setStudyApproval);
+  const setApprovalsBulk = useAppStore((s) => s.setStudyApprovalsBulk);
+  const { draft, dirty, update, markSaved, discard } = useDraft(approvals);
 
-  const author = approvals.find((a) => a.role === 'Study Author');
+  const author = draft.find((a) => a.role === 'Study Author');
   const authorDept = author?.department?.trim().toLowerCase();
 
   const complete =
-    approvals.length === 3 &&
-    approvals.every((a) => !!a.name?.trim() && !!a.department?.trim() && !!a.date);
+    draft.length === 3 && draft.every((a) => !!a.name?.trim() && !!a.department?.trim() && !!a.date);
+
+  const patch = (index: number, p: Partial<StudyApproval>) => update((prev) => patchArray(prev, index, p));
+  const save = () => {
+    setApprovalsBulk(projectId, draft);
+    markSaved();
+  };
 
   return (
     <Card
@@ -67,7 +75,7 @@ export default function StudyApprovalCard({
       <Table
         size="small"
         rowKey={(a) => a.role}
-        dataSource={approvals}
+        dataSource={draft}
         pagination={false}
         scroll={{ x: 950 }}
         columns={[
@@ -76,11 +84,7 @@ export default function StudyApprovalCard({
             title: 'Name',
             width: 170,
             render: (_, a, i) => (
-              <Input
-                size="small"
-                value={a.name}
-                onChange={(e) => setStudyApproval(projectId, i, { name: e.target.value })}
-              />
+              <Input size="small" value={a.name} onChange={(e) => patch(i, { name: e.target.value })} />
             ),
           },
           {
@@ -103,7 +107,7 @@ export default function StudyApprovalCard({
                     !!authorDept &&
                     d.toLowerCase() === authorDept,
                 }))}
-                onChange={(v) => setStudyApproval(projectId, i, { department: v })}
+                onChange={(v) => patch(i, { department: v })}
               />
             ),
           },
@@ -114,9 +118,7 @@ export default function StudyApprovalCard({
               <DatePicker
                 size="small"
                 value={a.date ? dayjs(a.date) : null}
-                onChange={(d) =>
-                  setStudyApproval(projectId, i, { date: d ? d.format('YYYY-MM-DD') : undefined })
-                }
+                onChange={(d) => patch(i, { date: d ? d.format('YYYY-MM-DD') : undefined })}
               />
             ),
           },
@@ -130,7 +132,7 @@ export default function StudyApprovalCard({
                 style={{ width: 180 }}
                 value={a.decision}
                 options={DECISIONS.map((d) => ({ value: d, label: d }))}
-                onChange={(v) => setStudyApproval(projectId, i, { decision: v })}
+                onChange={(v) => patch(i, { decision: v })}
               />
             ),
           },
@@ -138,15 +140,12 @@ export default function StudyApprovalCard({
             title: 'Comments',
             width: 240,
             render: (_, a, i) => (
-              <Input
-                size="small"
-                value={a.comments}
-                onChange={(e) => setStudyApproval(projectId, i, { comments: e.target.value })}
-              />
+              <Input size="small" value={a.comments} onChange={(e) => patch(i, { comments: e.target.value })} />
             ),
           },
         ]}
       />
+      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
     </Card>
   );
 }

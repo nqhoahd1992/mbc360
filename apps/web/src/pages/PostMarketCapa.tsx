@@ -8,6 +8,8 @@ import { WORK_STATUSES } from '@mbc360/shared/config/gates';
 import StatusBadge from '../components/StatusBadge';
 import PhaseDependencyAlert from '../components/PhaseDependencyAlert';
 import { isGatePassed, positionSentence } from '@mbc360/shared/utils/gateProgress';
+import { patchArray, useDraft } from '../hooks/useDraft';
+import SaveBar from '../components/SaveBar';
 
 const EVENT_TYPES = [
   'Consumer feedback', 'HCP feedback', 'Distributor feedback', 'Retailer feedback',
@@ -29,12 +31,19 @@ export default function PostMarketCapa() {
   const { projectId } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const addCapa = useAppStore((s) => s.addCapa);
-  const setCapa = useAppStore((s) => s.setCapa);
+  const setCapaBulk = useAppStore((s) => s.setCapaBulk);
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<CapaForm>();
+  const { draft, dirty, update, markSaved, discard } = useDraft(project?.capa ?? []);
 
   if (!project) return <Empty description="Project not found" />;
   const id = project.identity.id;
+
+  const patch = (index: number, p: Partial<(typeof draft)[number]>) => update((prev) => patchArray(prev, index, p));
+  const save = () => {
+    setCapaBulk(id, draft);
+    markSaved();
+  };
 
   const onCreate = async () => {
     const values = await form.validateFields();
@@ -65,13 +74,13 @@ export default function PostMarketCapa() {
           </Button>
         }
       >
-      {project.capa.length === 0 ? (
+      {draft.length === 0 ? (
         <Empty description="No post-market records yet" />
       ) : (
         <Table
           size="small"
           rowKey={(r) => r.id}
-          dataSource={project.capa}
+          dataSource={draft}
           scroll={{ x: 1000 }}
           columns={[
             { title: 'Record ID', width: 100, dataIndex: 'id', render: (v) => <b>{v}</b> },
@@ -88,7 +97,7 @@ export default function PostMarketCapa() {
                   style={{ width: 140 }}
                   value={r.status}
                   options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
-                  onChange={(v: WorkStatus) => setCapa(id, i, { status: v })}
+                  onChange={(v: WorkStatus) => patch(i, { status: v })}
                 />
               ),
             },
@@ -97,12 +106,13 @@ export default function PostMarketCapa() {
               title: 'Notes',
               width: 200,
               render: (_, r, i) => (
-                <Input size="small" value={r.notes} onChange={(e) => setCapa(id, i, { notes: e.target.value })} />
+                <Input size="small" value={r.notes} onChange={(e) => patch(i, { notes: e.target.value })} />
               ),
             },
           ]}
         />
       )}
+      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
 
       <Modal title="New Post-Market Record" open={open} onOk={onCreate} onCancel={() => setOpen(false)} okText="Add">
         <Form form={form} layout="vertical" initialValues={{ severity: 'Low' }}>

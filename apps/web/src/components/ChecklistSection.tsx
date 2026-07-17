@@ -1,6 +1,8 @@
 import { Card, Checkbox, Input, Select, Table, Tag } from 'antd';
 import type { ChecklistItem, YNNA } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
+import { patchArray, useDraft } from '../hooks/useDraft';
+import SaveBar from './SaveBar';
 
 const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v }));
 
@@ -17,8 +19,15 @@ export default function ChecklistSection({
   gate: string;
   items: ChecklistItem[];
 }) {
-  const setItem = useAppStore((s) => s.setChecklistItem);
-  const selectedCount = items.filter((i) => i.selected).length;
+  const setSection = useAppStore((s) => s.setChecklistSection);
+  const { draft, dirty, update, markSaved, discard } = useDraft(items);
+  const selectedCount = draft.filter((i) => i.selected).length;
+
+  const patch = (index: number, p: Partial<ChecklistItem>) => update((prev) => patchArray(prev, index, p));
+  const save = () => {
+    setSection(projectId, sectionKey, draft);
+    markSaved();
+  };
 
   return (
     <Card
@@ -33,7 +42,7 @@ export default function ChecklistSection({
       <Table
         size="small"
         rowKey={(r) => r.label}
-        dataSource={items}
+        dataSource={draft}
         pagination={false}
         scroll={{ x: 900 }}
         columns={[
@@ -43,12 +52,7 @@ export default function ChecklistSection({
             render: (_, r, i) => (
               <Checkbox
                 checked={r.selected}
-                onChange={(e) =>
-                  setItem(projectId, sectionKey, i, {
-                    selected: e.target.checked,
-                    status: e.target.checked ? 'Y' : 'NA',
-                  })
-                }
+                onChange={(e) => patch(i, { selected: e.target.checked, status: e.target.checked ? 'Y' : 'NA' })}
               />
             ),
           },
@@ -69,7 +73,7 @@ export default function ChecklistSection({
                 style={{ width: 70 }}
                 value={r.status}
                 options={YNNA_OPTIONS}
-                onChange={(v: YNNA) => setItem(projectId, sectionKey, i, { status: v })}
+                onChange={(v: YNNA) => patch(i, { status: v })}
               />
             ),
           },
@@ -82,7 +86,7 @@ export default function ChecklistSection({
                   size="small"
                   value={r.evidenceLink}
                   placeholder="link"
-                  onChange={(e) => setItem(projectId, sectionKey, i, { evidenceLink: e.target.value })}
+                  onChange={(e) => patch(i, { evidenceLink: e.target.value })}
                 />
               ) : (
                 <span style={{ color: '#d9d9d9' }}>—</span>
@@ -93,17 +97,14 @@ export default function ChecklistSection({
             width: 240,
             render: (_, r, i) =>
               r.selected ? (
-                <Input
-                  size="small"
-                  value={r.notes}
-                  onChange={(e) => setItem(projectId, sectionKey, i, { notes: e.target.value })}
-                />
+                <Input size="small" value={r.notes} onChange={(e) => patch(i, { notes: e.target.value })} />
               ) : (
                 <span style={{ color: '#d9d9d9' }}>—</span>
               ),
           },
         ]}
       />
+      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
     </Card>
   );
 }

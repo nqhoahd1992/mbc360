@@ -4,6 +4,8 @@ import dayjs from 'dayjs';
 import type { MarketApprovalStatus, MarketTrack } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
 import { canEditMarketTrack, roleLabel } from '../utils/roles';
+import { patchArray, useDraft } from '../hooks/useDraft';
+import SaveBar from './SaveBar';
 
 const STATUS_OPTIONS: MarketApprovalStatus[] = [
   'Not Started',
@@ -33,13 +35,21 @@ export default function MarketTrackingCard({
   projectId: string;
   tracks: MarketTrack[];
 }) {
-  const setMarketTrack = useAppStore((s) => s.setMarketTrack);
+  const setTracksBulk = useAppStore((s) => s.setMarketTracksBulk);
   const viewRole = useAppStore((s) => s.viewRole);
+  const { draft, dirty, update, markSaved, discard } = useDraft(tracks);
   // A4 example ruling: "only Regulatory can approve regulatory decisions".
   const canEdit = canEditMarketTrack(viewRole);
 
+  const patch = (index: number, p: Partial<MarketTrack>) => update((prev) => patchArray(prev, index, p));
+  const save = () => {
+    setTracksBulk(projectId, draft);
+    markSaved();
+  };
+
   const statusSelect = (
     track: MarketTrack,
+    index: number,
     field: 'pifStatus' | 'regulatoryStatus' | 'claimsApproval',
   ) => (
     <Select
@@ -52,11 +62,11 @@ export default function MarketTrackingCard({
         label: <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
       }))}
       onChange={(v: MarketApprovalStatus) => {
-        const patch: Partial<MarketTrack> = { [field]: v };
+        const p: Partial<MarketTrack> = { [field]: v };
         if (field === 'pifStatus') {
-          patch.pifApprovedDate = v === 'Approved' ? dayjs().format('YYYY-MM-DD') : undefined;
+          p.pifApprovedDate = v === 'Approved' ? dayjs().format('YYYY-MM-DD') : undefined;
         }
-        setMarketTrack(projectId, track.market, patch);
+        patch(index, p);
       }}
     />
   );
@@ -85,19 +95,19 @@ export default function MarketTrackingCard({
       <Table
         size="small"
         rowKey={(t) => t.market}
-        dataSource={tracks}
+        dataSource={draft}
         pagination={false}
         scroll={{ x: 1100 }}
         locale={{ emptyText: 'No target markets recorded in the project identity' }}
         columns={[
           { title: 'Market', width: 120, render: (_, t) => <b>{t.market}</b> },
-          { title: 'PIF status', width: 140, render: (_, t) => statusSelect(t, 'pifStatus') },
-          { title: 'Regulatory status', width: 140, render: (_, t) => statusSelect(t, 'regulatoryStatus') },
-          { title: 'Claims approval', width: 140, render: (_, t) => statusSelect(t, 'claimsApproval') },
+          { title: 'PIF status', width: 140, render: (_, t, i) => statusSelect(t, i, 'pifStatus') },
+          { title: 'Regulatory status', width: 140, render: (_, t, i) => statusSelect(t, i, 'regulatoryStatus') },
+          { title: 'Claims approval', width: 140, render: (_, t, i) => statusSelect(t, i, 'claimsApproval') },
           {
             title: 'Launch approval',
             width: 170,
-            render: (_, t) => {
+            render: (_, t, i) => {
               const pifApproved = t.pifStatus === 'Approved';
               return (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -111,7 +121,7 @@ export default function MarketTrackingCard({
                       label: <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
                     }))}
                     onChange={(v: MarketApprovalStatus) =>
-                      setMarketTrack(projectId, t.market, {
+                      patch(i, {
                         launchApproval: v,
                         launchApprovedDate: v === 'Approved' ? dayjs().format('YYYY-MM-DD') : undefined,
                       })
@@ -139,19 +149,18 @@ export default function MarketTrackingCard({
           {
             title: 'Regulatory notes',
             width: 240,
-            render: (_, t) => (
+            render: (_, t, i) => (
               <Input.TextArea
                 size="small"
                 autoSize={{ minRows: 1, maxRows: 3 }}
                 value={t.regulatoryNotes}
-                onChange={(e) =>
-                  setMarketTrack(projectId, t.market, { regulatoryNotes: e.target.value })
-                }
+                onChange={(e) => patch(i, { regulatoryNotes: e.target.value })}
               />
             ),
           },
         ]}
       />
+      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
     </Card>
   );
 }

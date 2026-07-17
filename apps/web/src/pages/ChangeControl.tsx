@@ -15,6 +15,8 @@ import {
   type RaciRole,
 } from '@mbc360/shared/config/changeTriggers';
 import StatusBadge from '../components/StatusBadge';
+import { useDraft } from '../hooks/useDraft';
+import SaveBar from '../components/SaveBar';
 
 const AFFECTED_AREAS = [
   'Artwork', 'Formula', 'Label', 'Claim', 'Supplier', 'Process', 'Packaging', 'Market',
@@ -80,7 +82,8 @@ export default function ChangeControl() {
   const changes = useAppStore((s) => s.changes);
   const projects = useAppStore((s) => s.projects);
   const addChange = useAppStore((s) => s.addChange);
-  const setChange = useAppStore((s) => s.setChange);
+  const setChangesBulk = useAppStore((s) => s.setChangesBulk);
+  const { draft, dirty, update, markSaved, discard } = useDraft(changes);
   const [open, setOpen] = useState(false);
   const [refOpen, setRefOpen] = useState(false);
   const [form] = Form.useForm<ChangeForm>();
@@ -104,6 +107,13 @@ export default function ChangeControl() {
     message.success(`Change ${record.changeId} opened`);
     setOpen(false);
     form.resetFields();
+  };
+
+  const patchChange = (changeId: string, patch: Partial<ChangeRecord>) =>
+    update((prev) => prev.map((c) => (c.changeId === changeId ? { ...c, ...patch } : c)));
+  const saveChanges = () => {
+    setChangesBulk(draft);
+    markSaved();
   };
 
   return (
@@ -132,7 +142,7 @@ export default function ChangeControl() {
         <Table
           size="small"
           rowKey={(c) => c.changeId}
-          dataSource={changes}
+          dataSource={draft}
           scroll={{ x: 2260 }}
           columns={[
             { title: 'Change ID', width: 100, dataIndex: 'changeId', render: (v) => <b>{v}</b> },
@@ -174,7 +184,7 @@ export default function ChangeControl() {
                   value={c.status}
                   options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
                   onChange={(v: WorkStatus) =>
-                    setChange(c.changeId, {
+                    patchChange(c.changeId, {
                       status: v,
                       closedDate: v === 'Completed' ? dayjs().format('YYYY-MM-DD') : undefined,
                     })
@@ -188,6 +198,7 @@ export default function ChangeControl() {
             { title: 'Notes', width: 200, dataIndex: 'notes', ellipsis: true, render: (v) => v || '—' },
           ]}
         />
+        <SaveBar dirty={dirty} onSave={saveChanges} onDiscard={discard} />
       </Card>
 
       <Modal

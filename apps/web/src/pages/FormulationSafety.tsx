@@ -8,9 +8,7 @@ import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
 export default function FormulationSafety() {
   const { projectId } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
-  const setRegisterRow = useAppStore((s) => s.setRegisterRow);
-  const addRegisterRow = useAppStore((s) => s.addRegisterRow);
-  const removeRegisterRow = useAppStore((s) => s.removeRegisterRow);
+  const setRegisterRowsBulk = useAppStore((s) => s.setRegisterRowsBulk);
 
   if (!project) return <Empty description="Project not found" />;
   const id = project.identity.id;
@@ -39,21 +37,19 @@ export default function FormulationSafety() {
       <DynamicTable
         config={formulationSafetyProfile}
         rows={project.registers[formulationSafetyProfile.key] ?? []}
-        onChangeCell={(index, key, value) => setRegisterRow(id, formulationSafetyProfile.key, index, key, value)}
+        onSave={(rows) => setRegisterRowsBulk(id, formulationSafetyProfile.key, rows)}
       />
 
       <DynamicTable
         config={formulationSafetyMatrix}
         rows={project.registers[formulationSafetyMatrix.key] ?? []}
-        onChangeCell={(index, key, value) => setRegisterRow(id, formulationSafetyMatrix.key, index, key, value)}
-        onAddRow={() => addRegisterRow(id, formulationSafetyMatrix.key)}
-        onRemoveRow={(index) => removeRegisterRow(id, formulationSafetyMatrix.key, index)}
+        onSave={(rows) => setRegisterRowsBulk(id, formulationSafetyMatrix.key, rows)}
       />
 
       <DynamicTable
         config={formulationSafetyFinalSignOff}
         rows={project.registers[formulationSafetyFinalSignOff.key] ?? []}
-        onChangeCell={(index, key, value) => setRegisterRow(id, formulationSafetyFinalSignOff.key, index, key, value)}
+        onSave={(rows) => setRegisterRowsBulk(id, formulationSafetyFinalSignOff.key, rows)}
       />
     </div>
   );

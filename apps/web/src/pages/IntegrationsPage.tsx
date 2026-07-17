@@ -14,6 +14,8 @@ import { COSMETRI_DEFAULT_BASE_URL } from '../integrations/cosmetri';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
 import { useSession } from '../auth/useSession';
 import LabeledInput from '../components/LabeledInput';
+import { useDraft } from '../hooks/useDraft';
+import SaveBar from '../components/SaveBar';
 
 function fmt(iso?: string | null): string {
   return iso ? iso.slice(0, 16).replace('T', ' ') : '—';
@@ -31,6 +33,7 @@ export default function IntegrationsPage() {
   const { status: cosmetri, loading: cosmetriLoading, refresh: refreshCosmetriStatus } = useCosmetriStatus();
 
   const { powerApps, graph } = integrations;
+  const graphDraft = useDraft(graph);
 
   const [baseUrl, setBaseUrl] = useState(COSMETRI_DEFAULT_BASE_URL);
   const [accessToken, setAccessToken] = useState('');
@@ -300,16 +303,24 @@ export default function IntegrationsPage() {
           <LabeledInput
             label="Site URL"
             placeholder="https://yourtenant.sharepoint.com/sites/..."
-            value={graph.sharepointSiteUrl}
-            onChange={(e) => setGraphConfig({ sharepointSiteUrl: e.target.value })}
+            value={graphDraft.draft.sharepointSiteUrl}
+            onChange={(e) => graphDraft.update((prev) => ({ ...prev, sharepointSiteUrl: e.target.value }))}
           />
           <LabeledInput
             label="List name"
             placeholder="Raw Materials"
-            value={graph.rawMaterialListName}
-            onChange={(e) => setGraphConfig({ rawMaterialListName: e.target.value })}
+            value={graphDraft.draft.rawMaterialListName}
+            onChange={(e) => graphDraft.update((prev) => ({ ...prev, rawMaterialListName: e.target.value }))}
           />
         </Space>
+        <SaveBar
+          dirty={graphDraft.dirty}
+          onSave={() => {
+            setGraphConfig(graphDraft.draft);
+            graphDraft.markSaved();
+          }}
+          onDiscard={graphDraft.discard}
+        />
       </Card>
     </div>
   );

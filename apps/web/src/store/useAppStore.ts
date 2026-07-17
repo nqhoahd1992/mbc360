@@ -51,15 +51,17 @@ interface AppState {
     initiatedBy?: string,
   ) => void;
 
-  addNextAction: (id: string, gateId: string) => void;
-  setNextAction: (id: string, actionId: string, patch: Partial<NextAction>) => void;
-  removeNextAction: (id: string, actionId: string) => void;
+  // Bulk-commit the actions in scope for `gateIds` (NextActionsCard shows a
+  // per-phase FILTERED subset of the full list) — replaces that whole subset
+  // (additions/edits/removals) while leaving other gates' actions untouched.
+  // Pairs with useDraft so the whole card can be freely edited and saved once.
+  setNextActionsBulk: (id: string, gateIds: string[], updated: NextAction[]) => void;
 
-  setMarketTrack: (id: string, market: string, patch: Partial<MarketTrack>) => void;
+  setMarketTracksBulk: (id: string, tracks: MarketTrack[]) => void;
 
   // C2: dedicated study approval workflow (Study Author / Department Reviewer /
   // Independent Reviewer).
-  setStudyApproval: (id: string, index: number, patch: Partial<StudyApproval>) => void;
+  setStudyApprovalsBulk: (id: string, approvals: StudyApproval[]) => void;
 
   // A2: create a new formula version; Major changes reopen Gates 4-9.
   createFormulaVersion: (
@@ -67,18 +69,16 @@ interface AppState {
     input: { version: string; changeType: 'Major' | 'Minor'; reason?: string; initiatedBy?: string },
   ) => void;
 
-  setChecklistItem: (id: string, section: string, index: number, patch: Partial<ChecklistItem>) => void;
-  setRequirementItem: (id: string, section: string, index: number, patch: Partial<RequirementItem>) => void;
-  setGateCheck: (id: string, index: number, patch: Partial<GateCheck>) => void;
-  setAngle: (id: string, phase: number, index: number, patch: Partial<AngleRow>) => void;
-  setSignOff: (id: string, phase: number, index: number, patch: Partial<SignOff>) => void;
+  setChecklistSection: (id: string, section: string, items: ChecklistItem[]) => void;
+  setRequirementSection: (id: string, section: string, items: RequirementItem[]) => void;
+  setGateChecksBulk: (id: string, updates: { index: number; patch: Partial<GateCheck> }[]) => void;
+  setAnglesBulk: (id: string, phase: number, angles: AngleRow[]) => void;
+  setSignOffsBulk: (id: string, phase: number, signOffs: SignOff[]) => void;
   setEvidenceSummary: (id: string, phase: number, value: string) => void;
 
-  setBomLine: (id: string, index: number, patch: Partial<BomLine>) => void;
-  addBomLine: (id: string) => void;
-  removeBomLine: (id: string, index: number) => void;
   setBom: (id: string, lines: BomLine[]) => void;
   setCosting: (id: string, patch: Partial<CostingInputs>) => void;
+  setPackagingBomBulk: (id: string, lines: PackagingBomLine[]) => void;
 
   // Integrations (decision A3): Power Apps hosts the "create new raw
   // material" change request; Graph/SharePoint is planned. Cosmetri itself is
@@ -88,33 +88,28 @@ interface AppState {
   setPowerAppsUrl: (url: string) => void;
   setGraphConfig: (patch: Partial<GraphSettings>) => void;
 
-  setPackagingBomLine: (id: string, index: number, patch: Partial<PackagingBomLine>) => void;
-  addPackagingBomLine: (id: string) => void;
-  removePackagingBomLine: (id: string, index: number) => void;
+  setRegisterRowsBulk: (id: string, registerKey: string, rows: RegisterRow[]) => void;
 
-  setRegisterRow: (
-    id: string,
-    registerKey: string,
-    index: number,
-    key: string,
-    value: string | number | boolean | undefined,
-  ) => void;
-  addRegisterRow: (id: string, registerKey: string) => void;
-  removeRegisterRow: (id: string, registerKey: string, index: number) => void;
-
-  setEvidenceItem: (id: string, index: number, patch: Partial<EvidenceItem>) => void;
+  setEvidenceItemsBulk: (id: string, items: EvidenceItem[]) => void;
   addCapa: (id: string, record: CapaRecord) => void;
-  setCapa: (id: string, index: number, patch: Partial<CapaRecord>) => void;
+  setCapaBulk: (id: string, records: CapaRecord[]) => void;
   addFeedback: (id: string, entry: FeedbackEntry) => void;
 
   addChange: (record: ChangeRecord) => void;
-  setChange: (changeId: string, patch: Partial<ChangeRecord>) => void;
+  setChangesBulk: (records: ChangeRecord[]) => void;
 
   resetDemoData: () => void;
 }
 
-function patchArray<T>(arr: T[], index: number, patch: Partial<T>): T[] {
-  return arr.map((item, i) => (i === index ? { ...item, ...patch } : item));
+// C2: the Independent Reviewer must not belong to the Study Author's department.
+function studyApprovalConflict(approvals: StudyApproval[]): boolean {
+  const author = approvals.find((a) => a.role === 'Study Author');
+  const independent = approvals.find((a) => a.role === 'Independent Reviewer');
+  return (
+    !!author?.department?.trim() &&
+    !!independent?.department?.trim() &&
+    author.department.trim().toLowerCase() === independent.department.trim().toLowerCase()
+  );
 }
 
 const DEFAULT_INTEGRATIONS: IntegrationSettings = {
@@ -239,41 +234,23 @@ export const useAppStore = create<AppState>()(
             return { ...p, gates, phaseClosures, backtrackEvents: [...p.backtrackEvents, event] };
           }),
 
-        addNextAction: (id, gateId) =>
+        setNextActionsBulk: (id, gateIds, updated) =>
           updateProject(id, (p) => ({
             ...p,
-            nextActions: [
-              ...p.nextActions,
-              {
-                id: `NA-${Date.now()}`,
-                gateId,
-                description: '',
-                status: 'Open' as const,
-                priority: 'Medium' as const,
-              },
-            ],
-          })),
-        setNextAction: (id, actionId, patch) =>
-          updateProject(id, (p) => ({
-            ...p,
-            nextActions: p.nextActions.map((a) => (a.id === actionId ? { ...a, ...patch } : a)),
-          })),
-        removeNextAction: (id, actionId) =>
-          updateProject(id, (p) => ({
-            ...p,
-            nextActions: p.nextActions.filter((a) => a.id !== actionId),
+            nextActions: [...p.nextActions.filter((a) => !gateIds.includes(a.gateId)), ...updated],
           })),
 
         // C5: launch approval for a market is hard-blocked until that market's
         // PIF status is Approved.
-        setMarketTrack: (id, market, patch) =>
+        setMarketTracksBulk: (id, tracks) =>
           updateProject(id, (p) => ({
             ...p,
-            marketTracks: p.marketTracks.map((t) => {
-              if (t.market !== market) return t;
-              const next = { ...t, ...patch };
-              if (patch.launchApproval === 'Approved' && next.pifStatus !== 'Approved') {
-                next.launchApproval = t.launchApproval;
+            marketTracks: tracks.map((next) => {
+              const prev = p.marketTracks.find((t) => t.market === next.market);
+              // Re-enforce C5 even if the draft tried to slip a launch
+              // approval through without an Approved PIF.
+              if (next.launchApproval === 'Approved' && next.pifStatus !== 'Approved') {
+                return { ...next, launchApproval: prev?.launchApproval ?? 'Not Started' };
               }
               return next;
             }),
@@ -282,18 +259,8 @@ export const useAppStore = create<AppState>()(
         // C2: the Independent Reviewer must not belong to the same department
         // as the Study Author — such a patch is rejected here (and prevented in
         // the UI).
-        setStudyApproval: (id, index, patch) =>
-          updateProject(id, (p) => {
-            const next = patchArray(p.studyApprovals, index, patch);
-            const author = next.find((a) => a.role === 'Study Author');
-            const independent = next.find((a) => a.role === 'Independent Reviewer');
-            const conflict =
-              !!author?.department?.trim() &&
-              !!independent?.department?.trim() &&
-              author.department.trim().toLowerCase() === independent.department.trim().toLowerCase();
-            if (conflict) return p;
-            return { ...p, studyApprovals: next };
-          }),
+        setStudyApprovalsBulk: (id, approvals) =>
+          updateProject(id, (p) => (studyApprovalConflict(approvals) ? p : { ...p, studyApprovals: approvals })),
 
         // A2: a new formula version is recorded in the version history and the
         // Formulation Change Register. A MAJOR change also reopens Gates 4-9
@@ -397,33 +364,27 @@ export const useAppStore = create<AppState>()(
               },
             };
           }),
-        setChecklistItem: (id, section, index, patch) =>
+        setChecklistSection: (id, section, items) =>
+          updateProject(id, (p) => ({ ...p, checklists: { ...p.checklists, [section]: items } })),
+        setRequirementSection: (id, section, items) =>
+          updateProject(id, (p) => ({ ...p, requirements: { ...p.requirements, [section]: items } })),
+        setGateChecksBulk: (id, updates) =>
+          updateProject(id, (p) => {
+            const gateChecks = [...p.gateChecks];
+            for (const { index, patch } of updates) {
+              gateChecks[index] = { ...gateChecks[index], ...patch };
+            }
+            return { ...p, gateChecks };
+          }),
+        setAnglesBulk: (id, phase, angles) =>
           updateProject(id, (p) => ({
             ...p,
-            checklists: { ...p.checklists, [section]: patchArray(p.checklists[section], index, patch) },
+            phaseClosures: { ...p.phaseClosures, [phase]: { ...p.phaseClosures[phase], angles } },
           })),
-        setRequirementItem: (id, section, index, patch) =>
+        setSignOffsBulk: (id, phase, signOffs) =>
           updateProject(id, (p) => ({
             ...p,
-            requirements: { ...p.requirements, [section]: patchArray(p.requirements[section], index, patch) },
-          })),
-        setGateCheck: (id, index, patch) =>
-          updateProject(id, (p) => ({ ...p, gateChecks: patchArray(p.gateChecks, index, patch) })),
-        setAngle: (id, phase, index, patch) =>
-          updateProject(id, (p) => ({
-            ...p,
-            phaseClosures: {
-              ...p.phaseClosures,
-              [phase]: { ...p.phaseClosures[phase], angles: patchArray(p.phaseClosures[phase].angles, index, patch) },
-            },
-          })),
-        setSignOff: (id, phase, index, patch) =>
-          updateProject(id, (p) => ({
-            ...p,
-            phaseClosures: {
-              ...p.phaseClosures,
-              [phase]: { ...p.phaseClosures[phase], signOffs: patchArray(p.phaseClosures[phase].signOffs, index, patch) },
-            },
+            phaseClosures: { ...p.phaseClosures, [phase]: { ...p.phaseClosures[phase], signOffs } },
           })),
         setEvidenceSummary: (id, phase, value) =>
           updateProject(id, (p) => ({
@@ -434,22 +395,8 @@ export const useAppStore = create<AppState>()(
             },
           })),
 
-        setBomLine: (id, index, patch) =>
-          updateProject(id, (p) => ({ ...p, bom: patchArray(p.bom, index, patch) })),
-        addBomLine: (id) =>
-          updateProject(id, (p) => ({
-            ...p,
-            bom: [
-              ...p.bom,
-              { line: p.bom.length + 1, rmCode: '', inciName: '', functionRole: '', supplier: '', percentWw: 0, costPerKg: 0 },
-            ],
-          })),
-        removeBomLine: (id, index) =>
-          updateProject(id, (p) => ({
-            ...p,
-            bom: p.bom.filter((_, i) => i !== index).map((l, i) => ({ ...l, line: i + 1 })),
-          })),
-        // Replaces the whole Formula BOM (used by the Cosmetri import).
+        // Replaces the whole Formula BOM (used by the Cosmetri import and the
+        // Formula BOM section's save button).
         setBom: (id, lines) =>
           updateProject(id, (p) => ({
             ...p,
@@ -468,71 +415,24 @@ export const useAppStore = create<AppState>()(
             integrations: { ...s.integrations, graph: { ...s.integrations.graph, ...patch } },
           })),
 
-        setPackagingBomLine: (id, index, patch) =>
-          updateProject(id, (p) => ({ ...p, packagingBom: patchArray(p.packagingBom, index, patch) })),
-        addPackagingBomLine: (id) =>
+        setPackagingBomBulk: (id, lines) =>
+          updateProject(id, (p) => ({ ...p, packagingBom: lines.map((l, i) => ({ ...l, line: i + 1 })) })),
+
+        setRegisterRowsBulk: (id, registerKey, rows) =>
           updateProject(id, (p) => ({
             ...p,
-            packagingBom: [
-              ...p.packagingBom,
-              {
-                line: p.packagingBom.length + 1,
-                component: '',
-                componentType: '',
-                supplier: '',
-                unitsPerFinishedUnit: 1,
-                unitCost: 0,
-                wastagePercent: 0,
-              },
-            ],
-          })),
-        removePackagingBomLine: (id, index) =>
-          updateProject(id, (p) => ({
-            ...p,
-            packagingBom: p.packagingBom.filter((_, i) => i !== index).map((l, i) => ({ ...l, line: i + 1 })),
+            registers: { ...p.registers, [registerKey]: rows },
           })),
 
-        setRegisterRow: (id, registerKey, index, key, value) =>
-          updateProject(id, (p) => ({
-            ...p,
-            registers: {
-              ...p.registers,
-              [registerKey]: (p.registers[registerKey] ?? []).map((row: RegisterRow, i: number) =>
-                i === index ? { ...row, [key]: value } : row,
-              ),
-            },
-          })),
-        addRegisterRow: (id, registerKey) =>
-          updateProject(id, (p) => ({
-            ...p,
-            registers: {
-              ...p.registers,
-              [registerKey]: [...(p.registers[registerKey] ?? []), createEmptyRegisterRow(registerKey)],
-            },
-          })),
-        removeRegisterRow: (id, registerKey, index) =>
-          updateProject(id, (p) => ({
-            ...p,
-            registers: {
-              ...p.registers,
-              [registerKey]: (p.registers[registerKey] ?? []).filter((_: RegisterRow, i: number) => i !== index),
-            },
-          })),
-
-        setEvidenceItem: (id, index, patch) =>
-          updateProject(id, (p) => ({ ...p, evidence: patchArray(p.evidence, index, patch) })),
+        setEvidenceItemsBulk: (id, items) => updateProject(id, (p) => ({ ...p, evidence: items })),
         addCapa: (id, record) =>
           updateProject(id, (p) => ({ ...p, capa: [...p.capa, record] })),
-        setCapa: (id, index, patch) =>
-          updateProject(id, (p) => ({ ...p, capa: patchArray(p.capa, index, patch) })),
+        setCapaBulk: (id, records) => updateProject(id, (p) => ({ ...p, capa: records })),
         addFeedback: (id, entry) =>
           updateProject(id, (p) => ({ ...p, feedback: [...p.feedback, entry] })),
 
         addChange: (record) => set((s) => ({ changes: [...s.changes, record] })),
-        setChange: (changeId, patch) =>
-          set((s) => ({
-            changes: s.changes.map((c) => (c.changeId === changeId ? { ...c, ...patch } : c)),
-          })),
+        setChangesBulk: (records) => set({ changes: records }),
 
         resetDemoData: () => set({ projects: seedProjects(), changes: seedChanges() }),
       };
