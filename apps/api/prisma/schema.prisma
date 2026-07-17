@@ -1,0 +1,689 @@
+// MBc360 database schema — implements docs/BACKEND_PLAN.md section 4.
+//
+// Design principles (BACKEND_PLAN section 3):
+//   1. Append-only history: business mutations write an AuditEvent row; approvals
+//      are never overwritten — invalidation is a new event (invalidatedByEventId).
+//   2. Rule config is data, not code: GateRequirement / SafetyTrigger /
+//      WatchlistEntry hold the answers to follow-ups F1/F2/F3 as seed rows.
+//   3. FormulaVersion is its own entity (defensive vs F4); BOM lines and market
+//      tracks reference a version, never a scalar field on the project.
+//   4. Dropdown-valued columns (status, decision, ...) are plain strings holding
+//      the exact workbook values ('Not Started', 'Proceed with Conditions', ...).
+//      The canonical value lists live in @mbc360/shared and are enforced by the
+//      API layer — DB enums would fork a second copy of those lists.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  // The api package compiles to CommonJS (tsconfig module nodenext, no
+  // "type": "module") — without this the generated code is ESM (import.meta)
+  // and crashes at runtime under require().
+  moduleFormat = "cjs"
+}
+
+// Connection URL lives in prisma.config.ts (CLI) and PrismaService (runtime).
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// 4.1 Identity & RBAC (real matrix arrives with follow-up F6 — data change only)
+// ---------------------------------------------------------------------------
+
+model Department {
+  id    String @id @default(cuid())
+  name  String @unique
+  users User[]
+
+  @@map("departments")
+}
+
+model User {
+  id           String      @id @default(cuid())
+  oid          String?     @unique // Entra ID object id (filled by SSO at M2)
+  email        String      @unique
+  displayName  String
+  department   Department? @relation(fields: [departmentId], references: [id])
+  departmentId String?
+  active       Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  roles        UserRole[]
+  auditEvents  AuditEvent[]
+  registerRows RegisterRow[] @relation("RegisterRowUpdatedBy")
+  attachments  Attachment[]  @relation("AttachmentUploadedBy")
+  signOffs     SignOff[]     @relation("SignOffSignedBy")
+
+  @@map("users")
+}
+
+model Role {
+  id          String  @id @default(cuid())
+  key         String  @unique // machine key, e.g. "regulatory"
+  name        String
+  description String?
+
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId String
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+// Matrix role x resource x action (contribute / decide / approve / sign).
+// Seeded at M2 with demo-parity rows reproducing apps/web/src/utils/roles.ts;
+// replaced by the real matrix when F6 is answered — data change only.
+model Permission {
+  id          String  @id @default(cuid())
+  resource    String // e.g. "gate:SG07", "phase:3", "market-track", "next-action"
+  action      String // contribute | decide | approve | sign
+  description String?
+
+  roles RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  roleId       String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permissionId String
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ---------------------------------------------------------------------------
+// 4.2 Project & gate flow
+// ---------------------------------------------------------------------------
+
+model Project {
+  id               String   @id @default(cuid())
+  productCode      String   @unique
+  projectLead      String
+  productGroup     String
+  brandCustomer    String
+  dateOpened       DateTime @db.Date
+  targetLaunchDate DateTime @db.Date
+  productSku       String
+  ownerDepartment  String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  markets          ProjectMarket[]
+  gates            GateRecord[]
+  nextActions      NextAction[]
+  phaseClosures    PhaseClosure[]
+  gateChecks       GateCheck[]
+  checklistItems   ChecklistItem[]
+  requirementItems RequirementItem[]
+  studyApprovals   StudyApproval[]
+  backtrackEvents  BacktrackEvent[]
+  formulaVersions  FormulaVersion[]
+  packagingBom     PackagingBomLine[]
+  costing          CostingInputs?
+  marketTracks     MarketTrack[]
+  registerRows     RegisterRow[]
+  evidenceItems    EvidenceItem[]
+  attachments      Attachment[]
+  changeRecords    ChangeRecord[]
+  capaRecords      CapaRecord[]
+  feedbackEntries  FeedbackEntry[]
+  auditEvents      AuditEvent[]
+
+  @@map("projects")
+}
+
+model ProjectMarket {
+  id        String  @id @default(cuid())
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  market    String
+
+  @@unique([projectId, market])
+  @@map("project_markets")
+}
+
+// Current state of one gate (SG01..SG12). History lives in audit_events.
+model GateRecord {
+  id           String    @id @default(cuid())
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId    String
+  gateId       String // SG01..SG12
+  status       String    @default("Not Started") // StageStatus values
+  decision     String? // GateDecision values
+  owner        String?
+  dueDate      DateTime? @db.Date
+  evidenceLink String?
+  notes        String?
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([projectId, gateId])
+  @@map("gate_records")
+}
+
+// Controlled follow-up action attached to a gate (rule B2). Open actions block
+// a plain Proceed; they may stay open only under Proceed with Conditions.
+model NextAction {
+  id            String    @id @default(cuid())
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String
+  gateId        String // SG01..SG12
+  description   String
+  owner         String?
+  dueDate       DateTime? @db.Date
+  status        String    @default("Open") // Open | In Progress | Done
+  priority      String    @default("Medium") // Low | Medium | High
+  dateCompleted DateTime? @db.Date
+  closedBy      String? // who may close is follow-up F8
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([projectId, gateId])
+  @@map("next_actions")
+}
+
+model PhaseClosure {
+  id              String    @id @default(cuid())
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId       String
+  phase           Int // 1..4
+  evidenceSummary String?
+  nextAction      String?
+  nextDueDate     DateTime? @db.Date
+  nextOwner       String?
+
+  signOffs SignOff[]
+  angles   AngleRow[]
+
+  @@unique([projectId, phase])
+  @@map("phase_closures")
+}
+
+// Phase sign-off (Prepared / Reviewed / Approved by). Immutable once signed:
+// invalidation (backtrack B4, Major formula change A2) sets invalidatedByEventId
+// pointing at the AuditEvent that voided it — the row itself is never cleared.
+model SignOff {
+  id                   String        @id @default(cuid())
+  phaseClosure         PhaseClosure  @relation(fields: [phaseClosureId], references: [id], onDelete: Cascade)
+  phaseClosureId       String
+  role                 String // Prepared by | Reviewed by | Approved by
+  name                 String?
+  initials             String?
+  date                 DateTime?     @db.Date
+  decision             String?
+  comments             String?
+  signedBy             User?         @relation("SignOffSignedBy", fields: [signedByUserId], references: [id])
+  signedByUserId       String?
+  signedAt             DateTime?
+  invalidatedByEvent   AuditEvent?   @relation("SignOffInvalidatedBy", fields: [invalidatedByEventId], references: [id])
+  invalidatedByEventId String?
+
+  @@index([phaseClosureId])
+  @@map("sign_offs")
+}
+
+model AngleRow {
+  id             String       @id @default(cuid())
+  phaseClosure   PhaseClosure @relation(fields: [phaseClosureId], references: [id], onDelete: Cascade)
+  phaseClosureId String
+  angle          String // one of EIGHT_ANGLES
+  ynna           String       @default("NA") // Y | N | NA
+  covered        Boolean      @default(false)
+  date           DateTime?    @db.Date
+  evidenceRef    String?
+  internalLink   String?
+  initials       String?
+  comments       String?
+
+  @@unique([phaseClosureId, angle])
+  @@map("angle_rows")
+}
+
+model GateCheck {
+  id           String    @id @default(cuid())
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId    String
+  gate         String
+  check        String
+  done         Boolean   @default(false)
+  ynna         String    @default("NA")
+  date         DateTime? @db.Date
+  evidenceRef  String?
+  methodRef    String?
+  internalLink String?
+  initials     String?
+  notes        String?
+
+  @@index([projectId, gate])
+  @@map("gate_checks")
+}
+
+model ChecklistItem {
+  id            String  @id @default(cuid())
+  project       Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String
+  sectionKey    String // PhaseConfig.checklistSections[].key
+  itemOrder     Int
+  label         String
+  gate          String
+  selected      Boolean @default(false)
+  ownerFunction String
+  status        String  @default("NA") // Y | N | NA
+  evidenceLink  String?
+  notes         String?
+
+  @@unique([projectId, sectionKey, itemOrder])
+  @@map("checklist_items")
+}
+
+model RequirementItem {
+  id                 String  @id @default(cuid())
+  project            Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId          String
+  sectionKey         String // PhaseConfig.requirementSections[].key
+  itemOrder          Int
+  gate               String
+  requirement        String
+  minimumRequirement String
+  rationale          String
+  owner              String
+  status             String  @default("Not Started") // WorkStatus values
+  evidenceLink       String?
+  notes              String?
+
+  @@unique([projectId, sectionKey, itemOrder])
+  @@map("requirement_items")
+}
+
+// Study / Human Trial approval trail (rule C2): 3 dedicated roles; the
+// Independent Reviewer must not share the Study Author's department — checked
+// at the API layer because department comes from users.
+model StudyApproval {
+  id         String    @id @default(cuid())
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId  String
+  role       String // Study Author | Department Reviewer | Independent Reviewer
+  name       String?
+  department String?
+  date       DateTime? @db.Date
+  decision   String?
+  comments   String?
+
+  @@unique([projectId, role])
+  @@map("study_approvals")
+}
+
+// Immutable backtrack audit record (rule B4 — "no silent corrections").
+model BacktrackEvent {
+  id              String   @id @default(cuid())
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId       String
+  occurredAt      DateTime @default(now())
+  initiatedBy     String?
+  reason          String?
+  fromGateId      String
+  toGateId        String
+  reopenedGateIds String[]
+  previousGates   Json // snapshot of affected GateRecords before reset
+  previousSignOffs Json // snapshot of voided phase sign-offs
+
+  @@index([projectId])
+  @@map("backtrack_events")
+}
+
+// ---------------------------------------------------------------------------
+// 4.3 Formula & markets
+// ---------------------------------------------------------------------------
+
+// Own entity, not a scalar on Project (defensive vs follow-up F4): BOM lines
+// and market tracks reference a version, so any answer on concurrent versions
+// per market fits without schema change.
+model FormulaVersion {
+  id                String   @id @default(cuid())
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId         String
+  version           String // e.g. "F1.0"
+  previousVersion   FormulaVersion?  @relation("FormulaVersionLineage", fields: [previousVersionId], references: [id])
+  previousVersionId String?
+  nextVersions      FormulaVersion[] @relation("FormulaVersionLineage")
+  changeType        String? // Major | Minor (null for the initial version)
+  reason            String?
+  initiatedBy       String?
+  status            String   @default("Active") // Active | Superseded
+  createdAt         DateTime @default(now())
+
+  bomLines     BomLine[]
+  marketTracks MarketTrack[]
+
+  @@unique([projectId, version])
+  @@map("formula_versions")
+}
+
+model BomLine {
+  id               String         @id @default(cuid())
+  formulaVersion   FormulaVersion @relation(fields: [formulaVersionId], references: [id], onDelete: Cascade)
+  formulaVersionId String
+  line             Int
+  rmCode           String
+  inciName         String
+  casNo            String? // from the Cosmetri import; exact watch-list matching (C3)
+  functionRole     String
+  supplier         String
+  percentWw        Float
+  costPerKg        Float
+  evidenceLink     String?
+  notes            String?
+
+  @@unique([formulaVersionId, line])
+  @@map("bom_lines")
+}
+
+model PackagingBomLine {
+  id                   String  @id @default(cuid())
+  project              Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId            String
+  line                 Int
+  component            String
+  componentType        String
+  supplier             String
+  unitsPerFinishedUnit Float
+  unitCost             Float
+  wastagePercent       Float
+  leadTime             String?
+  moq                  String?
+  evidenceLink         String?
+  methodRef            String?
+  notes                String?
+  approval             String?
+
+  @@unique([projectId, line])
+  @@map("packaging_bom_lines")
+}
+
+model CostingInputs {
+  id                    String  @id @default(cuid())
+  project               Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId             String  @unique
+  batchSizeKg           Float
+  fillSizeG             Float
+  targetUnits           Int
+  packagingCostPerUnit  Float
+  labourOverheadPerUnit Float
+  freightOtherPerUnit   Float
+  targetSellPrice       Float
+
+  @@map("costing_inputs")
+}
+
+// Per-market Gate 10-12 tracking (rule A1). Launch approval is hard-blocked
+// until pifStatus is Approved (rule C5) — enforced at the API layer.
+model MarketTrack {
+  id               String          @id @default(cuid())
+  project          Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId        String
+  market           String
+  formulaVersion   FormulaVersion? @relation(fields: [formulaVersionId], references: [id])
+  formulaVersionId String?
+  pifStatus        String          @default("Not Started") // MarketApprovalStatus values
+  regulatoryStatus String          @default("Not Started")
+  claimsApproval   String          @default("Not Started")
+  launchApproval   String          @default("Not Started")
+  regulatoryNotes  String?
+  pifApprovedDate  DateTime?       @db.Date
+  launchApprovedDate DateTime?     @db.Date
+  updatedAt        DateTime        @updatedAt
+
+  @@unique([projectId, market])
+  @@map("market_tracks")
+}
+
+// ---------------------------------------------------------------------------
+// 4.4 Registers & evidence
+// ---------------------------------------------------------------------------
+
+// One table for all ~37 evidence registers: column definitions come from
+// packages/shared/src/config/registers.ts, row payload is JSONB. Adding a new
+// register (e.g. F10 — EU CPSR / AU / US checklists) is a config change only.
+model RegisterRow {
+  id            String   @id @default(cuid())
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String
+  registerKey   String // RegisterConfig.key
+  rowOrder      Int
+  data          Json
+  updatedBy     User?    @relation("RegisterRowUpdatedBy", fields: [updatedById], references: [id])
+  updatedById   String?
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+
+  @@unique([projectId, registerKey, rowOrder])
+  @@map("register_rows")
+}
+
+model EvidenceItem {
+  id              String  @id @default(cuid())
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId       String
+  area            String
+  required        String // Y | Conditional
+  trigger         String
+  primaryTemplate String
+  owner           String
+  status          String  @default("Not Started") // WorkStatus values
+  gate            String
+  evidenceLink    String?
+  notes           String?
+
+  @@unique([projectId, area])
+  @@map("evidence_items")
+}
+
+// Real evidence files live in SharePoint (A3 / APP_PLAN); MBc360 stores the
+// reference, never the binary.
+model Attachment {
+  id           String   @id @default(cuid())
+  project      Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId    String?
+  driveItemId  String? // SharePoint/Graph drive item id
+  url          String
+  fileName     String?
+  uploadedBy   User?    @relation("AttachmentUploadedBy", fields: [uploadedById], references: [id])
+  uploadedById String?
+  uploadedAt   DateTime @default(now())
+  linkedToType String? // entity type the file evidences (gate, register row, ...)
+  linkedToId   String?
+
+  @@index([projectId])
+  @@map("attachments")
+}
+
+// ---------------------------------------------------------------------------
+// 4.5 Cross-cutting
+// ---------------------------------------------------------------------------
+
+model ChangeRecord {
+  id                    String    @id @default(cuid())
+  changeId              String    @unique // human-readable, e.g. "CHG-001"
+  project               Project?  @relation(fields: [projectId], references: [id])
+  projectId             String?
+  triggerId             String? // CHANGE_TRIGGERS entry -> affected gates (soft-lock C4/F9)
+  trigger               String
+  productSku            String
+  affectedArea          String
+  oldVersion            String?
+  riskLevel             String // Low | Medium | High
+  requiredAction        String?
+  evidenceLink          String?
+  requiredSignOffs      String?
+  communicationRequired Boolean   @default(false)
+  salesMarketingMessage String?
+  dueDate               DateTime? @db.Date
+  status                String    @default("Not Started") // WorkStatus values
+  closureEvidence       String?
+  closedDate            DateTime? @db.Date
+  owner                 String
+  notes                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("change_records")
+}
+
+model CapaRecord {
+  id        String  @id @default(cuid())
+  code      String  @unique // human-readable, e.g. "CAPA-001"
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  market    String
+  eventType String
+  summary   String
+  severity  String // Low | Medium | High
+  status    String @default("Not Started") // WorkStatus values
+  owner     String
+  notes     String?
+
+  @@map("capa_records")
+}
+
+model FeedbackEntry {
+  id              String   @id @default(cuid())
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId       String
+  testerName      String
+  gender          String // M | F
+  dept            String
+  dateTested      DateTime @db.Date
+  texture         Int // 1-5
+  fragrance       Int // 1-5
+  overall         Int // 1-5
+  tooOilySlippery Boolean  @default(false) // SAFETY flag
+  wouldRecommend  Boolean  @default(false)
+  bestLiked       String?
+  concerns        String?
+
+  @@map("feedback_entries")
+}
+
+// Backbone table (A4 "electronic approval history"): every business mutation
+// appends one row. Never updated, never deleted.
+model AuditEvent {
+  id         String   @id @default(cuid())
+  actor      User?    @relation(fields: [actorId], references: [id])
+  actorId    String?
+  project    Project? @relation(fields: [projectId], references: [id])
+  projectId  String?
+  entityType String // e.g. "gate_record", "sign_off", "register_row"
+  entityId   String
+  action     String // e.g. "gate.decision", "signoff.signed", "signoff.invalidated"
+  before     Json?
+  after      Json?
+  occurredAt DateTime @default(now())
+
+  invalidatedSignOffs SignOff[] @relation("SignOffInvalidatedBy")
+
+  @@index([projectId, occurredAt])
+  @@index([entityType, entityId])
+  @@map("audit_events")
+}
+
+// ---------------------------------------------------------------------------
+// 4.6 Rule configuration (data, not code)
+// ---------------------------------------------------------------------------
+
+// Per-gate pass requirements (rule B1 extension). Engine ships at M3; content
+// rows are seeded when follow-up F1 is answered.
+model GateRequirement {
+  id              String  @id @default(cuid())
+  gateId          String // SG01..SG12
+  requirementType String // sign_off | evidence_register_state | register_no_flagged_rows
+  params          Json
+  enforcement     String  @default("hard") // hard | soft
+  active          Boolean @default(true)
+
+  @@index([gateId])
+  @@map("gate_requirements")
+}
+
+// Skincare-for-Two triggers (rule C1). Seeded with Pregnancy / Breastfeeding /
+// Postpartum; "Infant 0+" is added if follow-up F2 says yes.
+model SafetyTrigger {
+  id      String  @id @default(cuid())
+  keyword String  @unique
+  active  Boolean @default(true)
+
+  @@map("safety_triggers")
+}
+
+// Ingredient watch-lists (rule C3). Replaces the demo tables in
+// packages/shared/src/utils/ingredientWatch.ts when follow-up F3 delivers the
+// real CAS mapping and market restriction lists.
+model WatchlistEntry {
+  id           String   @id @default(cuid())
+  groupName    String
+  casNumbers   String[]
+  inciKeywords String[]
+  listType     String // prohibited | pb_caution | market_restriction
+  market       String? // only for market_restriction
+  active       Boolean  @default(true)
+
+  @@index([listType])
+  @@map("watchlist_entries")
+}
+
+// ---------------------------------------------------------------------------
+// 4.7 Cosmetri integration cache (read-only mirror, synced by polling at M4)
+// ---------------------------------------------------------------------------
+
+model CosmetriRawMaterial {
+  id              String    @id // Cosmetri raw material id
+  data            Json
+  updatedAtRemote DateTime?
+  syncedAt        DateTime  @default(now())
+
+  @@map("cosmetri_raw_materials")
+}
+
+model CosmetriFormula {
+  id              String    @id // Cosmetri formula id
+  data            Json
+  updatedAtRemote DateTime?
+  syncedAt        DateTime  @default(now())
+
+  compliance CosmetriCompliance[]
+
+  @@map("cosmetri_formulas")
+}
+
+model CosmetriCompliance {
+  id        String          @id @default(cuid())
+  formula   CosmetriFormula @relation(fields: [formulaId], references: [id], onDelete: Cascade)
+  formulaId String
+  market    String?
+  data      Json
+  syncedAt  DateTime        @default(now())
+
+  @@unique([formulaId, market])
+  @@map("cosmetri_compliance")
+}
+
+model CosmetriSyncState {
+  id             Int       @id @default(1)
+  sinceUpdatedAt DateTime?
+  lastSyncAt     DateTime?
+  lastError      String?
+
+  @@map("cosmetri_sync_state")
+}

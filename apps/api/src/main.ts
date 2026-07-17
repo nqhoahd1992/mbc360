@@ -1,3 +1,7 @@
+// Load apps/api/.env before anything reads process.env (PrismaService needs
+// DATABASE_URL). In production the container gets real env vars; dotenv never
+// overrides values that are already set.
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 

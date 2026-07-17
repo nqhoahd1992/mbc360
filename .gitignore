@@ -29,3 +29,6 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+
+# Generated Prisma client (recreated by `prisma generate` during dev/build)
+apps/api/src/generated/

@@ -15,13 +15,16 @@ import type { ProjectData } from '../types';
 
 export type WatchListKind = 'prohibited' | 'pbCaution';
 
-interface WatchGroup {
+export interface WatchGroup {
   group: string; // ingredientGroup label as it appears in the register
   keywords: string[]; // lower-case tokens matched against the INCI name
   cas?: string[]; // CAS numbers for exact matching
 }
 
-const PROHIBITED_GROUPS: WatchGroup[] = [
+// Exported so the backend seeder can load these demo tables into the
+// watchlist_entries table — the DB rows are replaced wholesale when follow-up
+// F3 delivers the real CAS mapping and market restriction lists.
+export const PROHIBITED_GROUPS: WatchGroup[] = [
   { group: 'Parabens', keywords: ['paraben'], cas: ['99-76-3', '94-13-3', '120-47-8', '94-26-8'] },
   { group: 'Phthalates', keywords: ['phthalate', 'dehp', 'dibp'], cas: ['117-81-7', '84-74-2', '84-69-5', '85-68-7'] },
   { group: 'Cyclomethicone D4/D5/D6', keywords: ['cyclomethicone', 'cyclotetrasiloxane', 'cyclopentasiloxane', 'cyclohexasiloxane'], cas: ['556-67-2', '541-02-6', '540-97-6'] },
@@ -36,7 +39,7 @@ const PROHIBITED_GROUPS: WatchGroup[] = [
   { group: 'Bisphenol S', keywords: ['bisphenol'], cas: ['80-09-1'] },
 ];
 
-const PB_CAUTION_GROUPS: WatchGroup[] = [
+export const PB_CAUTION_GROUPS: WatchGroup[] = [
   { group: 'Oxybenzone (Benzophenone-3)', keywords: ['oxybenzone', 'benzophenone-3'], cas: ['131-57-7'] },
   { group: 'Homosalate', keywords: ['homosalate'], cas: ['118-56-9'] },
   { group: 'Hydroquinone', keywords: ['hydroquinone'], cas: ['123-31-9'] },
