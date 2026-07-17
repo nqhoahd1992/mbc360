@@ -7,7 +7,7 @@
 ## 1. Mục tiêu & phạm vi
 
 - Chuyển MBc360 từ **demo UI (localStorage)** thành hệ thống thật: backend + database + đăng nhập + phân quyền + audit trail.
-- Frontend hiện tại được giữ lại làm client: thay tầng persist của Zustand bằng API client, **giữ nguyên chữ ký các store action** (`setGate`, `setRegisterRow`, `backtrackGate`, …) để UI gần như không đổi.
+- Frontend hiện tại được giữ lại làm client: thay tầng persist của Zustand bằng API client, **giữ nguyên chữ ký các store action** (`setGate`, `setRegisterRowsBulk`, `backtrackGate`, …) để UI gần như không đổi. *(Từ 2026-07-17, các bảng nhập liệu inline đã chuyển sang cơ chế draft cục bộ + nút Save tường minh — xem `CLAUDE.md` mục "Editable tables" — nên các store action giờ là **bulk** theo bảng/section, không còn setter theo từng ô; khi build API ở M3, mỗi action bulk này ánh xạ tự nhiên thành một endpoint `PUT` ghi cả mảng/section trong một request.)*
 - Backend trở thành **nơi thực thi luật** (source of truth): mọi rule trong `src/utils/gateProgress.ts` phải được enforce ở server, không chỉ ở UI.
 - Tôn trọng định hướng hệ thống đã chốt: *"MBc360 là nền tảng evidence & governance duy nhất, **tích hợp** với hệ thống chuyên biệt (Cosmetri, GMP Manufacturing) chứ **không thay thế**"*.
 
