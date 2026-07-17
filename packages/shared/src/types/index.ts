@@ -99,6 +99,7 @@ export interface BomLine {
   percentWw: number;
   costPerKg: number;
   evidenceLink?: string;
+  methodRef?: string;
   notes?: string;
   // Set by the Cosmetri import (never by manual entry) — Cosmetri's own
   // composition/supplier/identity fields become read-only on this line, since

@@ -231,7 +231,7 @@ export default function BomCosting() {
           rowKey={(l) => l.line}
           dataSource={draftBom}
           pagination={false}
-          scroll={{ x: 1320 }}
+          scroll={{ x: 1900 }}
           columns={[
             { title: '#', width: 40, dataIndex: 'line' },
             {
@@ -314,6 +314,16 @@ export default function BomCosting() {
                 ),
             },
             {
+              title: 'Batch kg',
+              width: 90,
+              render: () => (
+                <Tooltip title="Set on the Costing tab (batch size), shared by every line">
+                  <span style={{ color: '#666' }}>{money(costing.batchSizeKg)}</span>
+                </Tooltip>
+              ),
+            },
+            { title: 'kg needed', width: 100, render: (_, l) => money(derived(l).kgNeeded) },
+            {
               title: 'Cost / kg',
               width: 110,
               render: (_, l, i) => (
@@ -326,9 +336,33 @@ export default function BomCosting() {
                 />
               ),
             },
-            { title: 'kg needed', width: 100, render: (_, l) => money(derived(l).kgNeeded) },
             { title: 'Cost / batch', width: 110, render: (_, l) => money(derived(l).costPerBatch) },
             { title: 'Cost / unit', width: 100, render: (_, l) => money(derived(l).costPerUnit) },
+            {
+              title: 'Evidence link',
+              width: 140,
+              render: (_, l, i) => (
+                <Input
+                  size="small"
+                  value={l.evidenceLink}
+                  onChange={(e) => patchBomLine(i, { evidenceLink: e.target.value })}
+                />
+              ),
+            },
+            {
+              title: 'Method ref',
+              width: 120,
+              render: (_, l, i) => (
+                <Input size="small" value={l.methodRef} onChange={(e) => patchBomLine(i, { methodRef: e.target.value })} />
+              ),
+            },
+            {
+              title: 'Notes',
+              width: 160,
+              render: (_, l, i) => (
+                <Input size="small" value={l.notes} onChange={(e) => patchBomLine(i, { notes: e.target.value })} />
+              ),
+            },
             {
               title: '',
               width: 50,
@@ -347,11 +381,11 @@ export default function BomCosting() {
               <Table.Summary.Cell index={1}>
                 <b>{money(totalPercent)}%</b>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={2} colSpan={3} />
+              <Table.Summary.Cell index={2} colSpan={4} />
               <Table.Summary.Cell index={3}>
                 <b>{money(formulaCostPerUnit)}</b>
               </Table.Summary.Cell>
-              <Table.Summary.Cell index={4} />
+              <Table.Summary.Cell index={4} colSpan={4} />
             </Table.Summary.Row>
           )}
         />
