@@ -191,8 +191,9 @@ export class AuthService {
   }
 
   // TEMPORARY dev-phase mechanism — see the autoAdminRole doc comment in
-  // auth-config.ts. Only ever runs when config.autoAdminRole is on, which is
-  // hard-disabled in production.
+  // auth-config.ts. Only ever runs when config.autoAdminRole is on. Unlike
+  // devMode, that flag is purely env-controlled in EVERY environment,
+  // production included — there is no automatic lockout.
   private async grantAutoAdminRole(userId: string): Promise<void> {
     const adminRole = await this.prisma.role.findUnique({ where: { key: ADMIN_ROLE } });
     if (!adminRole) {
