@@ -24,7 +24,6 @@ import type {
   SignOff,
   StudyApproval,
 } from '@mbc360/shared/types';
-import { COSMETRI_DEFAULT_BASE_URL, type CosmetriTokenSet } from '../integrations/cosmetri';
 import { createEmptyProject, createEmptyRegisterRow } from './factory';
 import { seedChanges, seedProjects } from '../data/seed';
 import { gateIndex, isGateUnlocked, isLastGateOfPhase } from '@mbc360/shared/utils/gateProgress';
@@ -87,11 +86,11 @@ interface AppState {
   setBom: (id: string, lines: BomLine[]) => void;
   setCosting: (id: string, patch: Partial<CostingInputs>) => void;
 
-  // Integrations (decision A3): Cosmetri read-only via API; Power Apps hosts
-  // the "create new raw material" change request; Graph/SharePoint is planned.
+  // Integrations (decision A3): Power Apps hosts the "create new raw
+  // material" change request; Graph/SharePoint is planned. Cosmetri itself is
+  // NOT here — it's a server-held connection (apps/api/src/cosmetri/), read
+  // via GET /api/integrations/cosmetri/status (see useCosmetriStatus).
   integrations: IntegrationSettings;
-  connectCosmetri: (baseUrl: string, username: string, tokens: CosmetriTokenSet) => void;
-  disconnectCosmetri: () => void;
   setPowerAppsUrl: (url: string) => void;
   setGraphConfig: (patch: Partial<GraphSettings>) => void;
 
@@ -125,10 +124,6 @@ function patchArray<T>(arr: T[], index: number, patch: Partial<T>): T[] {
 }
 
 const DEFAULT_INTEGRATIONS: IntegrationSettings = {
-  cosmetri: {
-    baseUrl: COSMETRI_DEFAULT_BASE_URL,
-    connected: false,
-  },
   powerApps: {
     // PLACEHOLDER — replace with the real "Create new raw material" Power Apps
     // link once available.
@@ -473,29 +468,6 @@ export const useAppStore = create<AppState>()(
           updateProject(id, (p) => ({ ...p, costing: { ...p.costing, ...patch } })),
 
         integrations: DEFAULT_INTEGRATIONS,
-        connectCosmetri: (baseUrl, username, tokens) =>
-          set((s) => ({
-            integrations: {
-              ...s.integrations,
-              cosmetri: {
-                baseUrl,
-                username,
-                connected: true,
-                accessToken: tokens.accessToken,
-                accessTokenExpiresAt: tokens.accessTokenExpiresAt,
-                refreshToken: tokens.refreshToken,
-                refreshTokenExpiresAt: tokens.refreshTokenExpiresAt,
-                lastSyncAt: dayjs().format('YYYY-MM-DD HH:mm'),
-              },
-            },
-          })),
-        disconnectCosmetri: () =>
-          set((s) => ({
-            integrations: {
-              ...s.integrations,
-              cosmetri: { baseUrl: s.integrations.cosmetri.baseUrl, connected: false },
-            },
-          })),
         setPowerAppsUrl: (url) =>
           set((s) => ({
             integrations: { ...s.integrations, powerApps: { newRawMaterialUrl: url } },

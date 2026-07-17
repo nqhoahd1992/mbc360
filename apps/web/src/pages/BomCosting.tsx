@@ -9,6 +9,7 @@ import CosmetriImportModal from '../components/CosmetriImportModal';
 import FormulaVersionModal from '../components/FormulaVersionModal';
 import { hasReachedPhase, positionSentence } from '@mbc360/shared/utils/gateProgress';
 import { bomWatchMatches } from '@mbc360/shared/utils/ingredientWatch';
+import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
 
 function money(v: number) {
   return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
@@ -24,7 +25,7 @@ export default function BomCosting() {
   const setPackagingBomLine = useAppStore((s) => s.setPackagingBomLine);
   const addPackagingBomLine = useAppStore((s) => s.addPackagingBomLine);
   const removePackagingBomLine = useAppStore((s) => s.removePackagingBomLine);
-  const cosmetriConnected = useAppStore((s) => s.integrations.cosmetri.connected);
+  const cosmetriConnected = useCosmetriStatus().status.connected;
   const [importOpen, setImportOpen] = useState(false);
   const [versionOpen, setVersionOpen] = useState(false);
 

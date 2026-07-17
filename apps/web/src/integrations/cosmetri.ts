@@ -1,26 +1,20 @@
-// Cosmetri API client — DEMO MOCK.
+// Cosmetri API client — DEMO MOCK for the BOM-import data endpoints only.
+//
+// The OAuth connection itself (access/refresh tokens) is NOT handled here —
+// it's a server-held, org-wide credential managed by
+// apps/api/src/cosmetri/ (connect once, refreshed automatically), never the
+// browser's business (A3). See useCosmetriStatus for reading its status.
 //
 // Shapes follow docs/swagger-init.json (OpenAPI 3.0, base
 // https://app1-env.cosmetri.com/api/v1):
-//  - POST /oauth/token  grant_type=password  -> access_token + refresh_token
-//  - PUT  /oauth/token  grant_type=refresh_token
 //  - POST /formula/list, POST /formula/{id}   (formula_composition rows)
 //  - POST /raw-material/details               (supplier_name, status_label, ...)
 //  - GET  /compliance/{formulaId}             (inci_name, cas_no, ec_no, % w/w)
 //
-// This demo has no backend, so every call is simulated against the mock data
-// below. A production build must proxy these calls through the MBc360 backend
-// (CORS + credential handling) and keep Cosmetri strictly READ-ONLY per the
-// confirmed A3 decision (the API's PUT /raw-material/update is not used).
+// This demo has no backend proxy for these data endpoints yet (M4), so every
+// call below is simulated against the mock data below.
 
 export const COSMETRI_DEFAULT_BASE_URL = 'https://app1-env.cosmetri.com/api/v1';
-
-export interface CosmetriTokenSet {
-  accessToken: string;
-  refreshToken: string;
-  accessTokenExpiresAt: string;
-  refreshTokenExpiresAt: string;
-}
 
 export interface CosmetriFormulaSummary {
   id: number;
@@ -44,30 +38,6 @@ export interface CosmetriImportRow {
 }
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-function fakeToken(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
-}
-
-// POST /oauth/token (grant_type=password). Any non-empty credentials succeed
-// in the demo; a real call returns 401 handling and throttling (429).
-export async function cosmetriAuthenticate(
-  _baseUrl: string,
-  username: string,
-  password: string,
-): Promise<CosmetriTokenSet> {
-  await delay(600);
-  if (!username.trim() || !password.trim()) {
-    throw new Error('Username and password are required for the password grant.');
-  }
-  const now = Date.now();
-  return {
-    accessToken: fakeToken('at'),
-    refreshToken: fakeToken('rt'),
-    accessTokenExpiresAt: new Date(now + 60 * 60 * 1000).toISOString(), // 1 hour
-    refreshTokenExpiresAt: new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
-  };
-}
 
 // --- Mock master data -------------------------------------------------------
 

@@ -7,14 +7,16 @@ import {
   DisconnectOutlined,
   ExportOutlined,
   LinkOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { useAppStore } from '../store/useAppStore';
-import { cosmetriAuthenticate } from '../integrations/cosmetri';
+import { COSMETRI_DEFAULT_BASE_URL } from '../integrations/cosmetri';
+import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
+import { useSession } from '../auth/useSession';
 import LabeledInput from '../components/LabeledInput';
 
-function maskToken(token?: string): string {
-  if (!token) return '—';
-  return `${token.slice(0, 8)}…${token.slice(-4)}`;
+function fmt(iso?: string | null): string {
+  return iso ? iso.slice(0, 16).replace('T', ' ') : '—';
 }
 
 // Integrations hub (decision A3): MBc360 is the single evidence & governance
@@ -23,30 +25,71 @@ function maskToken(token?: string): string {
 // via the Power Apps change-request app; Graph/SharePoint is planned.
 export default function IntegrationsPage() {
   const integrations = useAppStore((s) => s.integrations);
-  const connectCosmetri = useAppStore((s) => s.connectCosmetri);
-  const disconnectCosmetri = useAppStore((s) => s.disconnectCosmetri);
   const setPowerAppsUrl = useAppStore((s) => s.setPowerAppsUrl);
   const setGraphConfig = useAppStore((s) => s.setGraphConfig);
+  const { isAdmin } = useSession();
+  const { status: cosmetri, loading: cosmetriLoading, refresh: refreshCosmetriStatus } = useCosmetriStatus();
 
-  const { cosmetri, powerApps, graph } = integrations;
+  const { powerApps, graph } = integrations;
 
-  const [baseUrl, setBaseUrl] = useState(cosmetri.baseUrl);
-  const [username, setUsername] = useState(cosmetri.username ?? '');
-  const [password, setPassword] = useState(''); // transient — never persisted
+  const [baseUrl, setBaseUrl] = useState(COSMETRI_DEFAULT_BASE_URL);
+  const [accessToken, setAccessToken] = useState('');
+  const [refreshToken, setRefreshToken] = useState('');
   const [connecting, setConnecting] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [refreshingNow, setRefreshingNow] = useState(false);
   const [powerAppsUrl, setPowerAppsUrlLocal] = useState(powerApps.newRawMaterialUrl);
 
   const onConnect = async () => {
     setConnecting(true);
     try {
-      const tokens = await cosmetriAuthenticate(baseUrl, username, password);
-      connectCosmetri(baseUrl, username, tokens);
-      setPassword('');
-      message.success('Connected to Cosmetri — access and refresh tokens stored.');
+      const res = await fetch('/api/integrations/cosmetri/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ baseUrl, accessToken, refreshToken }),
+      });
+      const body = await res.json().catch(() => undefined);
+      if (!res.ok) throw new Error(body?.message ?? `Connection failed (HTTP ${res.status})`);
+      setAccessToken('');
+      setRefreshToken('');
+      await refreshCosmetriStatus();
+      message.success('Connected to Cosmetri — the backend now keeps the access token refreshed automatically.');
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Connection failed.');
     } finally {
       setConnecting(false);
+    }
+  };
+
+  const onDisconnect = async () => {
+    setDisconnecting(true);
+    try {
+      const res = await fetch('/api/integrations/cosmetri/disconnect', { method: 'POST' });
+      if (!res.ok) throw new Error('Disconnect failed.');
+      await refreshCosmetriStatus();
+      message.success('Disconnected from Cosmetri.');
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Disconnect failed.');
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  // Manual fallback for the scheduled refresh job (e.g. the API was down past
+  // the access token's expiry) — forces an immediate token exchange instead
+  // of waiting for the next cron tick.
+  const onRefreshNow = async () => {
+    setRefreshingNow(true);
+    try {
+      const res = await fetch('/api/integrations/cosmetri/refresh-now', { method: 'POST' });
+      const body = await res.json().catch(() => undefined);
+      if (!res.ok) throw new Error(body?.message ?? 'Refresh failed.');
+      await refreshCosmetriStatus();
+      message.success('Access token refreshed.');
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Refresh failed.');
+    } finally {
+      setRefreshingNow(false);
     }
   };
 
@@ -68,6 +111,7 @@ export default function IntegrationsPage() {
       {/* --- Cosmetri ---------------------------------------------------- */}
       <Card
         size="small"
+        loading={cosmetriLoading}
         title={
           <span>
             <CloudOutlined style={{ marginRight: 8 }} />
@@ -82,12 +126,18 @@ export default function IntegrationsPage() {
           </span>
         }
         extra={
-          cosmetri.connected && (
-            <Popconfirm title="Disconnect and discard the stored tokens?" onConfirm={disconnectCosmetri}>
-              <Button size="small" danger icon={<DisconnectOutlined />}>
-                Disconnect
+          cosmetri.connected &&
+          isAdmin && (
+            <Space size={8}>
+              <Button size="small" icon={<ReloadOutlined />} loading={refreshingNow} onClick={onRefreshNow}>
+                Refresh now
               </Button>
-            </Popconfirm>
+              <Popconfirm title="Disconnect and discard the stored tokens?" onConfirm={onDisconnect}>
+                <Button size="small" danger icon={<DisconnectOutlined />} loading={disconnecting}>
+                  Disconnect
+                </Button>
+              </Popconfirm>
+            </Space>
           )
         }
       >
@@ -98,65 +148,76 @@ export default function IntegrationsPage() {
           title="Read-only integration (confirmed decision A3)"
           description={
             <span>
-              Authentication follows the Cosmetri API password grant: <code>POST /oauth/token</code>{' '}
-              with your Cosmetri username/password returns an <b>access_token</b> (short-lived) and a{' '}
-              <b>refresh_token</b>; expired access tokens are renewed via{' '}
-              <code>PUT /oauth/token</code> (grant_type=refresh_token). Master data editing stays in
-              Cosmetri — MBc360 never writes back. <b>Demo note:</b> this build simulates the
-              connection locally; production must exchange credentials through the MBc360 backend,
-              never from the browser, and the password is never persisted.
+              The connection is held entirely by the MBc360 backend, never the browser: paste in an{' '}
+              <b>access_token</b> and <b>refresh_token</b> obtained out-of-band (e.g. from Cosmetri's
+              own admin console), and the backend validates them immediately by exchanging the
+              refresh token (<code>PUT /oauth/token</code>, grant_type=refresh_token) — which also
+              returns a freshly-rotated pair, so you don't need to type expiry dates by hand. From
+              then on a scheduled job keeps the access token refreshed automatically, well before its
+              1-hour expiry, so the Cosmetri account password is never needed again unless the
+              refresh chain lapses entirely. Master data editing stays in Cosmetri — MBc360 never
+              writes back.
             </span>
           }
         />
 
         {!cosmetri.connected ? (
-          <Space orientation="vertical" style={{ width: '100%', maxWidth: 520 }}>
-            <LabeledInput label="Base URL" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
-            <LabeledInput
-              label="Username"
-              placeholder="Cosmetri user"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+          isAdmin ? (
+            <Space orientation="vertical" style={{ width: '100%', maxWidth: 520 }}>
+              <LabeledInput label="Base URL" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} />
+              <LabeledInput
+                label="Access token"
+                placeholder="Paste the current access_token"
+                value={accessToken}
+                onChange={(e) => setAccessToken(e.target.value)}
+              />
+              <LabeledInput
+                label="Refresh token"
+                placeholder="Paste the current refresh_token"
+                value={refreshToken}
+                onChange={(e) => setRefreshToken(e.target.value)}
+              />
+              <Button
+                type="primary"
+                loading={connecting}
+                disabled={!baseUrl.trim() || !accessToken.trim() || !refreshToken.trim()}
+                onClick={onConnect}
+              >
+                Connect
+              </Button>
+            </Space>
+          ) : (
+            <Alert
+              type="warning"
+              showIcon
+              title="Admin access required"
+              description="Sign in with an account that holds the admin role to connect Cosmetri."
             />
-            <LabeledInput
-              password
-              label="Password"
-              placeholder="Used once to request tokens — not stored"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <Button
-              type="primary"
-              loading={connecting}
-              disabled={!username.trim() || !password.trim()}
-              onClick={onConnect}
-            >
-              Connect &amp; generate tokens
-            </Button>
-          </Space>
+          )
         ) : (
-          <Descriptions size="small" column={1} bordered>
-            <Descriptions.Item label="Base URL">{cosmetri.baseUrl}</Descriptions.Item>
-            <Descriptions.Item label="Username">{cosmetri.username}</Descriptions.Item>
-            <Descriptions.Item label="Access token">
-              <code>{maskToken(cosmetri.accessToken)}</code>{' '}
-              <span style={{ color: '#999' }}>
-                expires {cosmetri.accessTokenExpiresAt?.slice(0, 16).replace('T', ' ')}
-              </span>
-            </Descriptions.Item>
-            <Descriptions.Item label="Refresh token">
-              <code>{maskToken(cosmetri.refreshToken)}</code>{' '}
-              <span style={{ color: '#999' }}>
-                expires {cosmetri.refreshTokenExpiresAt?.slice(0, 16).replace('T', ' ')}
-              </span>
-            </Descriptions.Item>
-            <Descriptions.Item label="Connected at">{cosmetri.lastSyncAt}</Descriptions.Item>
-            <Descriptions.Item label="Available data">
-              Raw materials (incl. supplier name, quality status), formulas &amp; composition,
-              compliance (INCI / CAS / % w/w) — used by the Formula BOM import and the automatic
-              prohibited/caution ingredient screen.
-            </Descriptions.Item>
-          </Descriptions>
+          <>
+            {cosmetri.lastRefreshError && (
+              <Alert
+                type="error"
+                showIcon
+                style={{ marginBottom: 12 }}
+                title="Last automatic refresh failed"
+                description={cosmetri.lastRefreshError}
+              />
+            )}
+            <Descriptions size="small" column={1} bordered>
+              <Descriptions.Item label="Base URL">{cosmetri.baseUrl}</Descriptions.Item>
+              <Descriptions.Item label="Access token expires">{fmt(cosmetri.accessTokenExpiresAt)}</Descriptions.Item>
+              <Descriptions.Item label="Refresh token expires">{fmt(cosmetri.refreshTokenExpiresAt)}</Descriptions.Item>
+              <Descriptions.Item label="Connected at">{fmt(cosmetri.connectedAt)}</Descriptions.Item>
+              <Descriptions.Item label="Last auto-refreshed">{fmt(cosmetri.lastRefreshedAt)}</Descriptions.Item>
+              <Descriptions.Item label="Available data">
+                Raw materials (incl. supplier name, quality status), formulas &amp; composition,
+                compliance (INCI / CAS / % w/w) — used by the Formula BOM import and the automatic
+                prohibited/caution ingredient screen.
+              </Descriptions.Item>
+            </Descriptions>
+          </>
         )}
       </Card>
 

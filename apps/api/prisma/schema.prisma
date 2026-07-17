@@ -687,3 +687,26 @@ model CosmetriSyncState {
 
   @@map("cosmetri_sync_state")
 }
+
+// Server-held Cosmetri OAuth connection (singleton — one org-wide credential,
+// never the browser). An admin bootstraps this once by pasting an
+// access_token/refresh_token pair obtained out-of-band; CosmetriRefreshJob
+// then keeps it alive via grant_type=refresh_token well before expiry, so the
+// password grant (real Cosmetri account credentials) is never needed again
+// in normal operation. Tokens are stored in plain columns for now, consistent
+// with AUTH_CLIENT_SECRET also living as a plain env value at this stage —
+// revisit if/when the project adopts a secrets manager.
+model CosmetriConnection {
+  id                    Int       @id @default(1)
+  baseUrl               String
+  accessToken           String
+  refreshToken          String
+  accessTokenExpiresAt  DateTime
+  refreshTokenExpiresAt DateTime
+  connectedAt           DateTime  @default(now())
+  lastRefreshedAt       DateTime?
+  lastRefreshError      String?
+  updatedAt             DateTime  @updatedAt
+
+  @@map("cosmetri_connection")
+}

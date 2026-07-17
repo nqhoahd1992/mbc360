@@ -242,21 +242,13 @@ export interface MarketTrack {
 
 // ---------------------------------------------------------------------------
 // Integrations (decision A3): MBc360 integrates with specialist systems rather
-// than replacing them. Cosmetri is read-only master data via its API; the demo
-// simulates the connection — a production build must exchange credentials
-// through a backend proxy, never from the browser.
+// than replacing them. Cosmetri is read-only master data via its API.
+//
+// The Cosmetri connection itself (base URL, tokens, refresh state) is NOT
+// modeled here: it's a single org-wide server-held credential, never the
+// browser's business (A3) — see apps/api/src/cosmetri/. The frontend only
+// ever reads its status from GET /api/integrations/cosmetri/status.
 // ---------------------------------------------------------------------------
-
-export interface CosmetriConnection {
-  baseUrl: string;
-  username?: string; // password is never persisted — only used to request tokens
-  connected: boolean;
-  accessToken?: string;
-  accessTokenExpiresAt?: string;
-  refreshToken?: string;
-  refreshTokenExpiresAt?: string;
-  lastSyncAt?: string;
-}
 
 export interface PowerAppsSettings {
   // "Create new raw material" change-request app: request -> approval ->
@@ -276,7 +268,6 @@ export interface GraphSettings {
 }
 
 export interface IntegrationSettings {
-  cosmetri: CosmetriConnection;
   powerApps: PowerAppsSettings;
   graph: GraphSettings;
 }
