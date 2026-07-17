@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ConfigProvider, Layout, Menu, Popconfirm, Button, Segmented, Select, Typography } from 'antd';
+import { ConfigProvider, Divider, Layout, Menu, Popconfirm, Button, Segmented, Select, Tooltip, Typography } from 'antd';
 import {
   ApiOutlined,
   AppstoreOutlined,
   BookOutlined,
   CheckCircleFilled,
+  EyeOutlined,
   FolderOpenOutlined,
   LockOutlined,
   ReloadOutlined,
@@ -369,17 +370,27 @@ function Shell() {
           >
             <ProjectContextTitle />
           </Typography.Text>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
             <AuthStatus user={session.user} loading={session.loading} onLogout={session.logout} />
-            {/* A4 demo simulation: stands in for the logged-in user's role until F6. */}
-            <Select
-              size="small"
-              style={{ width: 220 }}
-              value={viewRole}
-              onChange={setViewRole}
-              options={VIEW_ROLES.map((r) => ({ value: r.key, label: `View as: ${r.label}` }))}
-              popupMatchSelectWidth={false}
-            />
+
+            <Divider type="vertical" style={{ margin: 0, height: 22 }} />
+
+            <Tooltip title="Demo simulation: previews screens as if signed in with this role's permissions, until every screen reads permissions from your real signed-in account instead (rule A4).">
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <EyeOutlined style={{ color: '#999' }} />
+                <Select
+                  size="small"
+                  style={{ width: 190 }}
+                  value={viewRole}
+                  onChange={setViewRole}
+                  options={VIEW_ROLES.map((r) => ({ value: r.key, label: r.label }))}
+                  popupMatchSelectWidth={false}
+                />
+              </span>
+            </Tooltip>
+
+            <Divider type="vertical" style={{ margin: 0, height: 22 }} />
+
             <Button
               icon={<SearchOutlined />}
               onClick={() => setPaletteOpen(true)}

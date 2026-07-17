@@ -1,5 +1,5 @@
-import { Button, Space, Typography } from 'antd';
-import { LoginOutlined, LogoutOutlined } from '@ant-design/icons';
+import { Avatar, Button, Dropdown, Typography } from 'antd';
+import { LoginOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import type { SessionUser } from '../auth/useSession';
 
 interface AuthStatusProps {
@@ -8,12 +8,14 @@ interface AuthStatusProps {
   onLogout: () => void;
 }
 
-// The real signed-in identity (M2 Entra ID SSO), shown next to the "View as"
-// simulator rather than replacing it — gate/phase decisions in this demo UI
-// still run off the simulated role until the frontend is switched to the API
-// (M3). This is what decides whether the Admin > Users screen is reachable.
+// The real signed-in identity (M2 Entra ID SSO) — a single chip (avatar +
+// name) that opens a dropdown with the full identity and sign-out, rather
+// than loose text next to a button. This is what decides whether the
+// Admin > Users screen is reachable. It sits next to, not instead of, the
+// "View as" simulator: gate/phase decisions in this demo UI still run off
+// the simulated role until the frontend is switched to the API (M3).
 export default function AuthStatus({ user, loading, onLogout }: AuthStatusProps) {
-  if (loading) return null;
+  if (loading) return <div style={{ width: 32 }} />; // reserve space, avoid header jump
 
   if (!user) {
     return (
@@ -24,14 +26,42 @@ export default function AuthStatus({ user, loading, onLogout }: AuthStatusProps)
   }
 
   return (
-    <Space size={8}>
-      <Typography.Text style={{ fontSize: 12 }} type="secondary">
-        {user.displayName}
-        {user.department ? ` · ${user.department}` : ''}
-      </Typography.Text>
-      <Button size="small" icon={<LogoutOutlined />} onClick={onLogout}>
-        Sign out
+    <Dropdown
+      trigger={['click']}
+      menu={{
+        items: [
+          {
+            key: 'info',
+            label: (
+              <div style={{ lineHeight: 1.4, padding: '2px 0' }}>
+                <div style={{ fontWeight: 600 }}>{user.displayName}</div>
+                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                  {user.email}
+                  {user.department ? ` · ${user.department}` : ''}
+                </Typography.Text>
+              </div>
+            ),
+            disabled: true,
+          },
+          { type: 'divider' },
+          { key: 'logout', label: 'Sign out', icon: <LogoutOutlined />, onClick: onLogout },
+        ],
+      }}
+    >
+      <Button type="text" size="small" style={{ display: 'flex', alignItems: 'center', gap: 6, paddingInline: 6 }}>
+        <Avatar size={22} icon={<UserOutlined />} />
+        <span
+          style={{
+            fontSize: 13,
+            maxWidth: 140,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {user.displayName}
+        </span>
       </Button>
-    </Space>
+    </Dropdown>
   );
 }
