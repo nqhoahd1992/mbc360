@@ -12,4 +12,24 @@ export default defineConfig({
       '/api': 'http://localhost:3000',
     },
   },
+  optimizeDeps: {
+    // @mbc360/shared is an npm workspace symlink, so Vite serves it as
+    // source instead of pre-bundling it like a normal node_modules package.
+    // Its build output is CommonJS (tsc, no "type": "module") — without
+    // forcing it through esbuild here, the dev server's native-ESM import
+    // handling can't see named exports on that CJS file and throws
+    // "does not provide an export named ...". Production builds (Rollup)
+    // don't hit this; only `vite dev` needs the explicit include.
+    include: [
+      '@mbc360/shared/types',
+      '@mbc360/shared/config/gates',
+      '@mbc360/shared/config/phases',
+      '@mbc360/shared/config/evidence',
+      '@mbc360/shared/config/registers',
+      '@mbc360/shared/config/changeTriggers',
+      '@mbc360/shared/config/roles',
+      '@mbc360/shared/utils/gateProgress',
+      '@mbc360/shared/utils/ingredientWatch',
+    ],
+  },
 })
