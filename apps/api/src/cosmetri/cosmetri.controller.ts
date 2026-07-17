@@ -1,18 +1,22 @@
-import { Body, Controller, ForbiddenException, Get, Post } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { SessionUser } from '../auth/session-user';
 import { PermissionsService } from '../rbac/permissions.service';
+import { CosmetriDataService } from './cosmetri-data.service';
 import { CosmetriTokenService } from './cosmetri-token.service';
 
 // Cosmetri is read-only master data (A3) and its credentials never touch the
 // browser. Status is visible to any signed-in user (e.g. to decide whether
 // "Import from Cosmetri" should be offered); connecting/disconnecting/forcing
-// a refresh changes shared, org-wide state, so those are admin-only.
+// a refresh changes shared, org-wide state, so those are admin-only. Reading
+// formula/BOM data is likewise open to any signed-in user — it's the same
+// read-only master data the "Import from Cosmetri" button surfaces.
 @Controller('integrations/cosmetri')
 export class CosmetriController {
   constructor(
     private readonly tokens: CosmetriTokenService,
+    private readonly data: CosmetriDataService,
     private readonly permissions: PermissionsService,
     private readonly audit: AuditService,
   ) {}
@@ -24,6 +28,16 @@ export class CosmetriController {
   @Get('status')
   status() {
     return this.tokens.getStatus();
+  }
+
+  @Get('formulas')
+  listFormulas() {
+    return this.data.listFormulas();
+  }
+
+  @Get('formulas/:id/import-rows')
+  getFormulaImportRows(@Param('id', ParseIntPipe) id: number) {
+    return this.data.getFormulaImport(id);
   }
 
   @Post('connect')

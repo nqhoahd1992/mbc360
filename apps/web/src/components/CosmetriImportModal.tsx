@@ -17,11 +17,17 @@ export default function CosmetriImportModal({
   projectId,
   open,
   onClose,
+  onImported,
   hasExistingBom,
 }: {
   projectId: string;
   open: boolean;
   onClose: () => void;
+  // Called right after the import commits, so the caller can drop any
+  // pending local Formula BOM draft/edits — otherwise a draft's own
+  // unsaved-changes guard (see useDraft.ts) keeps showing stale rows and
+  // clicking "Save" would silently undo the import.
+  onImported?: () => void;
   hasExistingBom: boolean;
 }) {
   const setBom = useAppStore((s) => s.setBom);
@@ -69,8 +75,10 @@ export default function CosmetriImportModal({
       percentWw: r.percentWw,
       costPerKg: 0,
       notes: r.qualityStatus !== 'Approved' ? `Cosmetri quality status: ${r.qualityStatus}` : undefined,
+      fromCosmetri: true,
     }));
     setBom(projectId, lines);
+    onImported?.();
     message.success(`Imported ${lines.length} BOM lines from Cosmetri.`);
     onClose();
   };
@@ -122,7 +130,9 @@ export default function CosmetriImportModal({
           onChange={setSelectedId}
           options={formulas.map((f) => ({
             value: f.id,
-            label: `${f.reference} · v${f.version} — ${f.productTitle}`,
+            label: [f.reference, f.version && `v${f.version}`, f.productTitle, f.status && `(${f.status})`]
+              .filter(Boolean)
+              .join(' · '),
           }))}
         />
       </div>

@@ -353,6 +353,7 @@ export const useAppStore = create<AppState>()(
                   changeType: input.changeType,
                   reason: input.reason,
                   initiatedBy: input.initiatedBy,
+                  previousBomSnapshot: p.bom.map((line) => ({ ...line })),
                 },
               ],
               gates,

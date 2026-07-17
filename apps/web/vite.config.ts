@@ -30,6 +30,7 @@ export default defineConfig({
       '@mbc360/shared/config/roles',
       '@mbc360/shared/utils/gateProgress',
       '@mbc360/shared/utils/ingredientWatch',
+      '@mbc360/shared/utils/formulaDiff',
     ],
   },
 })

@@ -100,6 +100,11 @@ export interface BomLine {
   costPerKg: number;
   evidenceLink?: string;
   notes?: string;
+  // Set by the Cosmetri import (never by manual entry) — Cosmetri's own
+  // composition/supplier/identity fields become read-only on this line, since
+  // corrections belong in Cosmetri, not a silent local edit (A3, read-only).
+  // functionRole and costPerKg stay editable either way (MBc360-side entries).
+  fromCosmetri?: boolean;
 }
 
 export interface PackagingBomLine {
@@ -190,6 +195,12 @@ export interface FormulaVersionRecord {
   changeType: 'Major' | 'Minor';
   reason?: string;
   initiatedBy?: string;
+  // Formula BOM exactly as it stood at `previousVersion`, captured at the
+  // moment of this version bump — lets the UI show/compare an old version's
+  // composition later. Absent on history entries created before this field
+  // existed. The CURRENT version's BOM is never snapshotted here — it's just
+  // `ProjectData.bom` (still live/editable).
+  previousBomSnapshot?: BomLine[];
 }
 
 // Controlled follow-up action attached to a gate (confirmed rule B2). Open

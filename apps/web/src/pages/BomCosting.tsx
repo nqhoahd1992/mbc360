@@ -7,6 +7,7 @@ import type { BomLine, CostingInputs, PackagingBomLine } from '@mbc360/shared/ty
 import PhaseDependencyAlert from '../components/PhaseDependencyAlert';
 import CosmetriImportModal from '../components/CosmetriImportModal';
 import FormulaVersionModal from '../components/FormulaVersionModal';
+import FormulaVersionCompareModal, { type FormulaVersionOption } from '../components/FormulaVersionCompareModal';
 import { hasReachedPhase, positionSentence } from '@mbc360/shared/utils/gateProgress';
 import { bomWatchMatches } from '@mbc360/shared/utils/ingredientWatch';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
@@ -26,6 +27,7 @@ export default function BomCosting() {
   const cosmetriConnected = useCosmetriStatus().status.connected;
   const [importOpen, setImportOpen] = useState(false);
   const [versionOpen, setVersionOpen] = useState(false);
+  const [compare, setCompare] = useState<{ from?: string; to?: string } | undefined>();
 
   // Hooks must run unconditionally, so seed drafts from empty defaults when
   // there's no project yet — the early return below happens after.
@@ -47,6 +49,10 @@ export default function BomCosting() {
 
   const { bom, packagingBom } = project;
   const id = project.identity.id;
+  const versionOptions: FormulaVersionOption[] = [
+    ...project.formulaVersionHistory.map((r) => ({ version: r.previousVersion, bom: r.previousBomSnapshot })),
+    { version: project.formulaVersion, bom: project.bom },
+  ];
   const draftBom = bomDraft.draft;
   const draftPackaging = packagingDraft.draft;
   const costing = costingDraft.draft;
@@ -231,28 +237,43 @@ export default function BomCosting() {
             {
               title: 'RM Code',
               width: 110,
-              render: (_, l, i) => (
-                <Input size="small" value={l.rmCode} onChange={(e) => patchBomLine(i, { rmCode: e.target.value })} />
-              ),
+              render: (_, l, i) =>
+                l.fromCosmetri ? (
+                  <Tooltip title="From Cosmetri — read-only">
+                    <span style={{ color: '#666' }}>{l.rmCode}</span>
+                  </Tooltip>
+                ) : (
+                  <Input size="small" value={l.rmCode} onChange={(e) => patchBomLine(i, { rmCode: e.target.value })} />
+                ),
             },
             {
               title: 'Ingredient / INCI',
               width: 240,
-              render: (_, l, i) => (
-                <Input size="small" value={l.inciName} onChange={(e) => patchBomLine(i, { inciName: e.target.value })} />
-              ),
+              render: (_, l, i) =>
+                l.fromCosmetri ? (
+                  <Tooltip title="From Cosmetri — read-only">
+                    <span style={{ color: '#666' }}>{l.inciName}</span>
+                  </Tooltip>
+                ) : (
+                  <Input size="small" value={l.inciName} onChange={(e) => patchBomLine(i, { inciName: e.target.value })} />
+                ),
             },
             {
               title: 'CAS no.',
               width: 120,
-              render: (_, l, i) => (
-                <Input
-                  size="small"
-                  value={l.casNo}
-                  placeholder="from Cosmetri"
-                  onChange={(e) => patchBomLine(i, { casNo: e.target.value })}
-                />
-              ),
+              render: (_, l, i) =>
+                l.fromCosmetri ? (
+                  <Tooltip title="From Cosmetri — read-only">
+                    <span style={{ color: '#666' }}>{l.casNo}</span>
+                  </Tooltip>
+                ) : (
+                  <Input
+                    size="small"
+                    value={l.casNo}
+                    placeholder="from Cosmetri"
+                    onChange={(e) => patchBomLine(i, { casNo: e.target.value })}
+                  />
+                ),
             },
             {
               title: 'Function',
@@ -264,23 +285,33 @@ export default function BomCosting() {
             {
               title: 'Supplier',
               width: 150,
-              render: (_, l, i) => (
-                <Input size="small" value={l.supplier} onChange={(e) => patchBomLine(i, { supplier: e.target.value })} />
-              ),
+              render: (_, l, i) =>
+                l.fromCosmetri ? (
+                  <Tooltip title="From Cosmetri — read-only">
+                    <span style={{ color: '#666' }}>{l.supplier}</span>
+                  </Tooltip>
+                ) : (
+                  <Input size="small" value={l.supplier} onChange={(e) => patchBomLine(i, { supplier: e.target.value })} />
+                ),
             },
             {
               title: '% w/w',
               width: 100,
-              render: (_, l, i) => (
-                <InputNumber
-                  size="small"
-                  min={0}
-                  max={100}
-                  step={0.1}
-                  value={l.percentWw}
-                  onChange={(v) => patchBomLine(i, { percentWw: v ?? 0 })}
-                />
-              ),
+              render: (_, l, i) =>
+                l.fromCosmetri ? (
+                  <Tooltip title="From Cosmetri — read-only">
+                    <span style={{ color: '#666' }}>{money(l.percentWw)}</span>
+                  </Tooltip>
+                ) : (
+                  <InputNumber
+                    size="small"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={l.percentWw}
+                    onChange={(v) => patchBomLine(i, { percentWw: v ?? 0 })}
+                  />
+                ),
             },
             {
               title: 'Cost / kg',
@@ -329,13 +360,21 @@ export default function BomCosting() {
       )}
 
       {showFormula && project.formulaVersionHistory.length > 0 && (
-        <Card size="small" title="Formula version history (audit)">
+        <Card
+          size="small"
+          title="Formula version history (audit)"
+          extra={
+            <Button size="small" onClick={() => setCompare({})}>
+              Compare versions
+            </Button>
+          }
+        >
           <Table
             size="small"
             rowKey={(r) => `${r.version}-${r.date}`}
             dataSource={[...project.formulaVersionHistory].reverse()}
             pagination={false}
-            scroll={{ x: 800 }}
+            scroll={{ x: 900 }}
             columns={[
               { title: 'Date', width: 110, dataIndex: 'date' },
               {
@@ -356,15 +395,32 @@ export default function BomCosting() {
               },
               { title: 'Initiated by', width: 140, render: (_, r) => r.initiatedBy ?? '—' },
               { title: 'Reason', render: (_, r) => r.reason ?? '—' },
+              {
+                title: '',
+                width: 90,
+                render: (_, r) => (
+                  <Button size="small" type="link" onClick={() => setCompare({ from: r.previousVersion, to: r.version })}>
+                    Compare
+                  </Button>
+                ),
+              },
             ]}
           />
         </Card>
       )}
+      <FormulaVersionCompareModal
+        open={!!compare}
+        onClose={() => setCompare(undefined)}
+        options={versionOptions}
+        initialFrom={compare?.from}
+        initialTo={compare?.to}
+      />
 
       <CosmetriImportModal
         projectId={id}
         open={importOpen}
         onClose={() => setImportOpen(false)}
+        onImported={() => bomDraft.markSaved()}
         hasExistingBom={bom.length > 0}
       />
       <FormulaVersionModal
