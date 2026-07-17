@@ -19,6 +19,7 @@ import EightAnglesTable from '../components/EightAnglesTable';
 import SignOffBlock from '../components/SignOffBlock';
 import NextActionsCard from '../components/NextActionsCard';
 import MarketTrackingCard from '../components/MarketTrackingCard';
+import SectionJumpButton from '../components/SectionJumpButton';
 
 const PHASE_NOTES: Record<number, string> = {
   2: 'Do not re-enter Phase 1 target user/product/market/claim selections here.',
@@ -44,8 +45,21 @@ export default function PhasePage() {
     .map((check, index) => ({ check, index }))
     .filter((c) => phaseGateNumbers.includes(c.check.gate) || (phase === 4 && c.check.gate === 'ALL'));
 
+  const jumpSections = [
+    { id: 'sec-identification', label: 'Project Identification' },
+    { id: 'sec-gate-flow', label: 'Phase Gate Flow' },
+    ...config.checklistSections.map((s) => ({ id: `sec-checklist-${s.key}`, label: s.title })),
+    ...config.requirementSections.map((s) => ({ id: `sec-requirement-${s.key}`, label: s.title })),
+    { id: 'sec-gate-checks', label: 'Key Gate Checks' },
+    { id: 'sec-next-actions', label: 'Next Actions' },
+    ...(phase === 4 ? [{ id: 'sec-market-tracking', label: 'Market Regulatory & Launch Tracking' }] : []),
+    { id: 'sec-eight-angles', label: '8 Angles Coverage' },
+    { id: 'sec-sign-off', label: 'Evidence Summary, Decision and Sign-Off' },
+  ];
+
   return (
     <div style={{ display: 'grid', gap: 16 }}>
+      <SectionJumpButton sections={jumpSections} />
       <div>
         <Typography.Title level={4} style={{ margin: 0, color: meta.color }}>
           {meta.title} <span style={{ color: '#999', fontWeight: 400 }}>({meta.subtitle})</span>{' '}
@@ -114,59 +128,75 @@ export default function PhasePage() {
         />
       )}
 
-      <ProjectIdentificationCard identity={project.identity} />
+      <div id="sec-identification">
+        <ProjectIdentificationCard identity={project.identity} />
+      </div>
 
-      <GateFlowTable project={project} gateIds={config.gateIds} />
+      <div id="sec-gate-flow">
+        <GateFlowTable project={project} gateIds={config.gateIds} />
+      </div>
 
       {config.checklistSections.map((section) => (
-        <ChecklistSection
-          key={section.key}
-          projectId={project.identity.id}
-          sectionKey={section.key}
-          title={section.title}
-          gate={section.gate}
-          items={project.checklists[section.key] ?? []}
-        />
+        <div key={section.key} id={`sec-checklist-${section.key}`}>
+          <ChecklistSection
+            projectId={project.identity.id}
+            sectionKey={section.key}
+            title={section.title}
+            gate={section.gate}
+            items={project.checklists[section.key] ?? []}
+          />
+        </div>
       ))}
 
       {config.requirementSections.map((section) => (
-        <RequirementTable
-          key={section.key}
-          projectId={project.identity.id}
-          sectionKey={section.key}
-          title={section.title}
-          items={project.requirements[section.key] ?? []}
-        />
+        <div key={section.key} id={`sec-requirement-${section.key}`}>
+          <RequirementTable
+            projectId={project.identity.id}
+            sectionKey={section.key}
+            title={section.title}
+            items={project.requirements[section.key] ?? []}
+          />
+        </div>
       ))}
 
-      <GateChecksTable
-        projectId={project.identity.id}
-        title={`Key Gate Checks — Gates ${phaseGateNumbers.join(', ')}`}
-        checks={keyChecks}
-      />
+      <div id="sec-gate-checks">
+        <GateChecksTable
+          projectId={project.identity.id}
+          title={`Key Gate Checks — Gates ${phaseGateNumbers.join(', ')}`}
+          checks={keyChecks}
+        />
+      </div>
 
-      <NextActionsCard
-        projectId={project.identity.id}
-        gateIds={config.gateIds}
-        actions={project.nextActions}
-      />
+      <div id="sec-next-actions">
+        <NextActionsCard
+          projectId={project.identity.id}
+          gateIds={config.gateIds}
+          actions={project.nextActions}
+        />
+      </div>
 
       {phase === 4 && (
-        <MarketTrackingCard projectId={project.identity.id} tracks={project.marketTracks} />
+        <div id="sec-market-tracking">
+          <MarketTrackingCard projectId={project.identity.id} tracks={project.marketTracks} />
+        </div>
       )}
 
-      <EightAnglesTable
-        projectId={project.identity.id}
-        phase={phase}
-        angles={project.phaseClosures[phase].angles}
-      />
+      <div id="sec-eight-angles">
+        <EightAnglesTable
+          projectId={project.identity.id}
+          phase={phase}
+          angles={project.phaseClosures[phase].angles}
+        />
+      </div>
 
-      <SignOffBlock
-        projectId={project.identity.id}
-        phase={phase}
-        closure={project.phaseClosures[phase]}
-        checklist={checklist}
-      />
+      <div id="sec-sign-off">
+        <SignOffBlock
+          projectId={project.identity.id}
+          phase={phase}
+          closure={project.phaseClosures[phase]}
+          checklist={checklist}
+        />
+      </div>
     </div>
   );
 }
