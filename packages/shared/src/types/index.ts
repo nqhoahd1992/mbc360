@@ -87,6 +87,10 @@ export interface PhaseClosure {
   evidenceSummary?: string;
   signOffs: SignOff[];
   angles: AngleRow[];
+  // F13 / B5: pre-work (data entered before the phase formally opened) is
+  // allowed, but once the phase opens the responsible owner must review and
+  // accept it before it contributes to completion. This records that acceptance.
+  preWork?: { acceptedBy?: string; acceptedDate?: string };
 }
 
 export interface BomLine {

@@ -1,4 +1,4 @@
-import { Alert, Empty, Tag, Typography } from 'antd';
+import { Alert, Button, Empty, Tag, Typography } from 'antd';
 import { CheckCircleFilled, ClockCircleFilled, LockOutlined, RightCircleFilled } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import {
@@ -20,6 +20,7 @@ import SignOffBlock from '../components/SignOffBlock';
 import NextActionsCard from '../components/NextActionsCard';
 import MarketTrackingCard from '../components/MarketTrackingCard';
 import SectionJumpButton from '../components/SectionJumpButton';
+import { roleLabel } from '../utils/roles';
 
 const PHASE_NOTES: Record<number, string> = {
   2: 'Do not re-enter Phase 1 target user/product/market/claim selections here.',
@@ -31,12 +32,19 @@ export default function PhasePage() {
   const { projectId, phaseNo } = useParams();
   const phase = Number(phaseNo);
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
+  const viewRole = useAppStore((s) => s.viewRole);
+  const acceptPreWork = useAppStore((s) => s.acceptPhasePreWork);
 
   const config = PHASE_CONFIGS[phase];
   const meta = PHASES.find((p) => p.phase === phase);
   if (!project || !config || !meta) return <Empty description="Not found" />;
 
   const progress = phaseProgress(project, phase);
+  // F13 / B5: pre-work review. A not-yet-first phase that has opened prompts the
+  // responsible owner to review and accept any pre-work entered before it opened.
+  const closure = project.phaseClosures[phase];
+  const preWorkAccepted = !!closure?.preWork?.acceptedBy;
+  const showPreWorkReview = progress.state !== 'locked' && phase > 1 && !preWorkAccepted;
   const checklist = phaseCompletionChecklist(project, phase);
   const s42Triggers = skincareForTwoTriggers(project);
   const s42Incomplete = skincareForTwoIncompleteSections(project);
@@ -98,9 +106,30 @@ export default function PhasePage() {
           type="warning"
           showIcon
           icon={<LockOutlined />}
-          title="This phase is locked"
-          description="Gates must be completed in order. Complete all gates of the previous phases to unlock this phase. You can still review the forms below, but the gate flow stays read-only."
+          title="This phase is locked — entries here count as pre-work"
+          description="Gates must be completed in order. You can still review and fill the forms below (draft evidence, requirements, notes, risks, proposed actions), but the gate flow, sign-off and formal closure stay read-only. Anything entered now is recorded as Pre-work / Entered Before Gate Opened and must be reviewed and accepted by the responsible owner once this phase opens."
         />
+      )}
+
+      {showPreWorkReview && (
+        <Alert
+          type="warning"
+          showIcon
+          title="Pre-work review required"
+          description="If any data in this phase was entered before the phase opened (pre-work), the responsible owner must review and formally accept it before it contributes to completion."
+          action={
+            <Button size="small" onClick={() => acceptPreWork(project.identity.id, phase, roleLabel(viewRole))}>
+              Accept pre-work
+            </Button>
+          }
+        />
+      )}
+
+      {closure?.preWork?.acceptedBy && (
+        <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: 0 }}>
+          Pre-work reviewed and accepted by {closure.preWork.acceptedBy}
+          {closure.preWork.acceptedDate ? ` on ${closure.preWork.acceptedDate}` : ''}.
+        </Typography.Paragraph>
       )}
 
       {progress.awaitingApproval && (

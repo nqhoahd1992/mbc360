@@ -83,6 +83,8 @@ interface AppState {
   setGateChecksBulk: (id: string, updates: { index: number; patch: Partial<GateCheck> }[]) => void;
   setAnglesBulk: (id: string, phase: number, angles: AngleRow[]) => void;
   setSignOffsBulk: (id: string, phase: number, signOffs: SignOff[]) => void;
+  // F13: the responsible owner accepts a phase's pre-work once it has opened.
+  acceptPhasePreWork: (id: string, phase: number, acceptedBy: string) => void;
   setEvidenceSummary: (id: string, phase: number, value: string) => void;
 
   setBom: (id: string, lines: BomLine[]) => void;
@@ -421,6 +423,18 @@ export const useAppStore = create<AppState>()(
             phaseClosures: {
               ...p.phaseClosures,
               [phase]: { ...p.phaseClosures[phase], evidenceSummary: value },
+            },
+          })),
+        // F13: record the owner's acceptance of a phase's pre-work.
+        acceptPhasePreWork: (id, phase, acceptedBy) =>
+          updateProject(id, (p) => ({
+            ...p,
+            phaseClosures: {
+              ...p.phaseClosures,
+              [phase]: {
+                ...p.phaseClosures[phase],
+                preWork: { acceptedBy, acceptedDate: dayjs().format('YYYY-MM-DD') },
+              },
             },
           })),
 
