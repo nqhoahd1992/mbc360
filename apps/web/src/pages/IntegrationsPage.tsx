@@ -4,8 +4,10 @@ import {
   ApiOutlined,
   CheckCircleFilled,
   CloudOutlined,
+  CopyOutlined,
   DisconnectOutlined,
   ExportOutlined,
+  EyeOutlined,
   LinkOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
@@ -42,6 +44,10 @@ export default function IntegrationsPage() {
   const [disconnecting, setDisconnecting] = useState(false);
   const [refreshingNow, setRefreshingNow] = useState(false);
   const [powerAppsUrl, setPowerAppsUrlLocal] = useState(powerApps.newRawMaterialUrl);
+  // Admin-only token inspection (masked until revealed). Fetched on demand from
+  // the audited admin endpoint — tokens are never part of the public status.
+  const [secrets, setSecrets] = useState<{ accessToken: string; refreshToken: string } | null>(null);
+  const [loadingSecrets, setLoadingSecrets] = useState(false);
 
   const onConnect = async () => {
     setConnecting(true);
@@ -69,6 +75,7 @@ export default function IntegrationsPage() {
     try {
       const res = await fetch('/api/integrations/cosmetri/disconnect', { method: 'POST' });
       if (!res.ok) throw new Error('Disconnect failed.');
+      setSecrets(null);
       await refreshCosmetriStatus();
       message.success('Disconnected from Cosmetri.');
     } catch (err) {
@@ -93,6 +100,31 @@ export default function IntegrationsPage() {
       message.error(err instanceof Error ? err.message : 'Refresh failed.');
     } finally {
       setRefreshingNow(false);
+    }
+  };
+
+  // Admin-only: fetch the live token pair from the audited endpoint. The eye
+  // toggle on Input.Password keeps them masked until the admin chooses to reveal.
+  const onShowTokens = async () => {
+    setLoadingSecrets(true);
+    try {
+      const res = await fetch('/api/integrations/cosmetri/secrets');
+      const body = await res.json().catch(() => undefined);
+      if (!res.ok) throw new Error(body?.message ?? `Could not read tokens (HTTP ${res.status})`);
+      setSecrets({ accessToken: body.accessToken, refreshToken: body.refreshToken });
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Could not read tokens.');
+    } finally {
+      setLoadingSecrets(false);
+    }
+  };
+
+  const copyToken = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      message.success(`${label} copied to clipboard.`);
+    } catch {
+      message.error('Copy failed — your browser blocked clipboard access.');
     }
   };
 
@@ -220,6 +252,54 @@ export default function IntegrationsPage() {
                 prohibited/caution ingredient screen.
               </Descriptions.Item>
             </Descriptions>
+
+            {/* Admin-only live token inspection (audited). Not part of /status. */}
+            {isAdmin && (
+              <div style={{ marginTop: 12 }}>
+                <Alert
+                  type="warning"
+                  showIcon
+                  style={{ marginBottom: 8 }}
+                  message="Live credentials — admin only, viewing is audited"
+                  description="These are the actual Cosmetri OAuth tokens the backend uses. Anyone holding them can call Cosmetri as this account until they rotate or expire. Reveal only when needed for debugging, don't paste them elsewhere, and remember the refresh token is rotated on every refresh (a copied value goes stale)."
+                />
+                {!secrets ? (
+                  <Button size="small" icon={<EyeOutlined />} loading={loadingSecrets} onClick={onShowTokens}>
+                    Show access &amp; refresh tokens
+                  </Button>
+                ) : (
+                  <Space orientation="vertical" style={{ width: '100%', maxWidth: 680 }}>
+                    <div>
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        access_token
+                      </Typography.Text>
+                      <Space.Compact style={{ width: '100%' }}>
+                        <Input.Password readOnly value={secrets.accessToken} />
+                        <Button
+                          icon={<CopyOutlined />}
+                          onClick={() => copyToken(secrets.accessToken, 'access_token')}
+                        />
+                      </Space.Compact>
+                    </div>
+                    <div>
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        refresh_token
+                      </Typography.Text>
+                      <Space.Compact style={{ width: '100%' }}>
+                        <Input.Password readOnly value={secrets.refreshToken} />
+                        <Button
+                          icon={<CopyOutlined />}
+                          onClick={() => copyToken(secrets.refreshToken, 'refresh_token')}
+                        />
+                      </Space.Compact>
+                    </div>
+                    <Button size="small" onClick={() => setSecrets(null)}>
+                      Hide tokens
+                    </Button>
+                  </Space>
+                )}
+              </div>
+            )}
           </>
         )}
       </Card>

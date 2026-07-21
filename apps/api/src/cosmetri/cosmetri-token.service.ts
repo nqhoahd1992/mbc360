@@ -86,6 +86,25 @@ export class CosmetriTokenService {
     await this.prisma.cosmetriConnection.deleteMany({ where: { id: 1 } });
   }
 
+  // Returns the raw stored token pair. SENSITIVE — for the admin-only token
+  // inspection surface on the Integrations page. Never call this from the
+  // public status path; the controller gates it behind requireAdmin + audit.
+  async getSecrets(): Promise<{
+    accessToken: string;
+    refreshToken: string;
+    accessTokenExpiresAt: Date;
+    refreshTokenExpiresAt: Date;
+  } | null> {
+    const row = await this.prisma.cosmetriConnection.findUnique({ where: { id: 1 } });
+    if (!row) return null;
+    return {
+      accessToken: row.accessToken,
+      refreshToken: row.refreshToken,
+      accessTokenExpiresAt: row.accessTokenExpiresAt,
+      refreshTokenExpiresAt: row.refreshTokenExpiresAt,
+    };
+  }
+
   async getStatus(): Promise<CosmetriConnectionStatus> {
     const row = await this.prisma.cosmetriConnection.findUnique({ where: { id: 1 } });
     if (!row) return { connected: false };

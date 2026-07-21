@@ -1,4 +1,13 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+} from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { SessionUser } from '../auth/session-user';
@@ -28,6 +37,24 @@ export class CosmetriController {
   @Get('status')
   status() {
     return this.tokens.getStatus();
+  }
+
+  // Admin-only token inspection surface for the Integrations page. Unlike
+  // /status (token-free, any signed-in user), this returns the live
+  // access/refresh token pair — a shared, high-value credential — so it is
+  // gated behind requireAdmin AND every read is recorded in the audit trail.
+  @Get('secrets')
+  async secrets(@CurrentUser() user: SessionUser) {
+    this.requireAdmin(user);
+    const secrets = await this.tokens.getSecrets();
+    if (!secrets) throw new BadRequestException('Cosmetri is not connected');
+    await this.audit.record({
+      actorId: user.id,
+      entityType: 'cosmetri_connection',
+      entityId: 'singleton',
+      action: 'cosmetri.secrets_viewed',
+    });
+    return secrets;
   }
 
   @Get('formulas')
