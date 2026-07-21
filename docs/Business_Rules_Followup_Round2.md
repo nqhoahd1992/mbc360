@@ -10,6 +10,15 @@ Before we implement, two things remain:
 - **Section A — 3 clarifications** that your own answers raised. These need a decision from you.
 - **Section B — reference data/content** we will need from you as we build. Not blocking today; please start preparing. Where useful, we note which app screen each input lands in.
 
+**Status as of 2026-07-21: everything not waiting on this document is already implemented and merged** — the 3-tier gate-readiness engine (F1/C7), Next Action workflow (F8), Change-Control soft-lock (F9), Major/Minor classification (F5), pre-work on locked phases (F13), the Published Information 12-state workflow (F11), and the BOM-reconciliation gate before Gate 7 (F14) are all live. What's below is genuinely the remaining work, and the order we plan to act on it once answered:
+
+1. **A1 (critical criteria)** — highest priority. Three shipped features already have a placeholder for this and are only half-closed without it: F7's "critical gap → Hold/Backtrack" branch, F9's "may become a hard block depending on impact" for change controls, and F1's safety-finding severity. Answering this lets us finish work already in the codebase rather than leaving it partially done.
+2. **B — per-gate evidence mapping (F1/C7)** — the `gateReadiness.ts` engine and Gate Readiness panel design are ready; every item is currently `manual` (never blocks) purely because we don't have this mapping yet. This is the single highest-leverage item in Section B — it turns the already-built engine into real enforcement across all 12 gates.
+3. **A3 (concurrent versions, same market)** — needed before we start F4's data model (the heaviest remaining item, M3/Prisma work). Better to get this now than redesign `marketTracks` twice.
+4. **A2 (Infant & Baby Safety content)** — unlocks F2. Self-contained (a new workflow, doesn't touch existing code), so it's lower risk but still blocks starting that work at all.
+5. **B — CAS watch-lists (F3), Market Dossier checklists (F10), Claims Library (F11 content)** — each is self-contained content for an existing screen; can land in any order as it's ready.
+6. **B — Role×gate grid + AD mapping (F6)** — real urgency is later: only the e-signature part is needed before M6, and the role list itself (17 roles) is already coded. Least time-pressured item on this list.
+
 ---
 
 ## A. Clarifications needed
