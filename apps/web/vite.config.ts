@@ -20,6 +20,16 @@ export default defineConfig({
     // handling can't see named exports on that CJS file and throws
     // "does not provide an export named ...". Production builds (Rollup)
     // don't hit this; only `vite dev` needs the explicit include.
+    //
+    // `force: true` re-runs this prebundle on every dev server start instead
+    // of trusting the on-disk cache in node_modules/.vite/deps. That cache is
+    // keyed off the lockfile/config, NOT off packages/shared's dist content —
+    // so without `force`, editing shared and restarting `npm run dev` can
+    // still serve a stale prebundle (this bit us more than once; see the
+    // "Vite optimizeDeps stale cache" note in CLAUDE.md). `npm run dev:clean`
+    // (manual cache delete) is no longer needed for this reason, only as a
+    // fallback if a stray process is still holding the old cache in memory.
+    force: true,
     include: [
       '@mbc360/shared/types',
       '@mbc360/shared/config/gates',
