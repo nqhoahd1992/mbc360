@@ -80,16 +80,11 @@ export default function NextActionsCard({
         </span>
       }
       extra={
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: openCount > 0 ? '#d48806' : '#999', fontSize: 12 }}>
-            {openCount} open / {draft.length} total
-            {openCriticalCount > 0 && (
-              <span style={{ color: '#cf1322', fontWeight: 600 }}> · {openCriticalCount} Critical</span>
-            )}
-          </span>
-          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addAction}>
-            Add action
-          </Button>
+        <span style={{ color: openCount > 0 ? '#d48806' : '#999', fontSize: 12 }}>
+          {openCount} open / {draft.length} total
+          {openCriticalCount > 0 && (
+            <span style={{ color: '#cf1322', fontWeight: 600 }}> · {openCriticalCount} Critical</span>
+          )}
         </span>
       }
     >
@@ -210,6 +205,9 @@ export default function NextActionsCard({
           },
         ]}
       />
+      <Button size="small" type="dashed" block icon={<PlusOutlined />} onClick={addAction} style={{ marginTop: 8 }}>
+        Add action
+      </Button>
       <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
     </Card>
   );

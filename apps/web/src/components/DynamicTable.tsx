@@ -119,13 +119,9 @@ export default function DynamicTable({
         </span>
       }
       extra={
-        isRegister ? (
-          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addRow}>
-            Add row
-          </Button>
-        ) : (
-          <span style={{ color: '#999', fontSize: 12 }}>{draft.length} items</span>
-        )
+        <span style={{ color: '#999', fontSize: 12 }}>
+          {draft.length} {isRegister ? (draft.length === 1 ? 'row' : 'rows') : 'items'}
+        </span>
       }
     >
       {config.description && (
@@ -146,6 +142,20 @@ export default function DynamicTable({
         pagination={false}
         scroll={{ x: totalWidth }}
       />
+      {/* Below the table, right after the last row, rather than in the card
+          header — the add affordance belongs next to the rows it appends to. */}
+      {isRegister && (
+        <Button
+          size="small"
+          type="dashed"
+          block
+          icon={<PlusOutlined />}
+          onClick={addRow}
+          style={{ marginTop: 8 }}
+        >
+          Add row
+        </Button>
+      )}
       <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
     </Card>
   );
