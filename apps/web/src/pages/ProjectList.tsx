@@ -6,6 +6,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
 import { PHASE_1 } from '@mbc360/shared/config/phases';
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
+import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 
 interface NewProjectForm {
   id: string;
@@ -94,7 +95,7 @@ export default function ProjectList() {
             render: (_, p) => {
               const list = changes.filter((c) => c.projectId === p.identity.id);
               if (list.length === 0) return <span style={{ color: '#bbb' }}>0</span>;
-              const openCount = list.filter((c) => c.status !== 'Completed').length;
+              const openCount = list.filter((c) => isChangeOpen(c.status)).length;
               return (
                 <Link to="/change-control">
                   <b>{list.length}</b>

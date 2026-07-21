@@ -4,6 +4,7 @@ import { useAppStore } from '../store/useAppStore';
 import { GATES, PHASES } from '@mbc360/shared/config/gates';
 import StatusBadge from '../components/StatusBadge';
 import { currentGateIndex, gateBlockers, isGatePassed } from '@mbc360/shared/utils/gateProgress';
+import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 
 export default function Dashboard() {
   const projects = useAppStore((s) => s.projects);
@@ -12,7 +13,7 @@ export default function Dashboard() {
   const activeGates = projects.flatMap((p) =>
     p.gates.filter((g) => g.status === 'In Progress').map((g) => ({ project: p, gate: g })),
   );
-  const openChanges = changes.filter((c) => c.status !== 'Completed');
+  const openChanges = changes.filter((c) => isChangeOpen(c.status));
   const today = new Date().toISOString().slice(0, 10);
   const overdue = projects.flatMap((p) =>
     p.gates.filter((g) => g.dueDate && !isGatePassed(p, g.gateId) && g.dueDate < today),

@@ -3,10 +3,10 @@ import { Alert, Button, Card, DatePicker, Form, Input, Modal, Select, Space, Swi
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
-import type { ChangeRecord, RiskLevel, WorkStatus } from '@mbc360/shared/types';
-import { WORK_STATUSES } from '@mbc360/shared/config/gates';
+import type { ChangeRecord, ChangeStatus, RiskLevel } from '@mbc360/shared/types';
 import {
   CHANGE_RACI,
+  CHANGE_STATUSES,
   CHANGE_TRIGGERS,
   getChangeTrigger,
   phaseShortLabel,
@@ -101,7 +101,7 @@ export default function ChangeControl() {
       changeId: `CHG-${String(nextNumber).padStart(3, '0')}`,
       trigger: trig?.label ?? '',
       dueDate: values.dueDate ? values.dueDate.format('YYYY-MM-DD') : undefined,
-      status: 'Not Started',
+      status: 'Draft',
     };
     addChange(record);
     message.success(`Change ${record.changeId} opened`);
@@ -176,17 +176,20 @@ export default function ChangeControl() {
             { title: 'Due', width: 110, dataIndex: 'dueDate' },
             {
               title: 'Status',
-              width: 150,
+              width: 235,
               render: (_, c) => (
                 <Select
                   size="small"
-                  style={{ width: 140 }}
+                  style={{ width: 220 }}
                   value={c.status}
-                  options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
-                  onChange={(v: WorkStatus) =>
+                  options={CHANGE_STATUSES.map((s) => ({ value: s, label: s }))}
+                  onChange={(v: ChangeStatus) =>
                     patchChange(c.changeId, {
                       status: v,
-                      closedDate: v === 'Completed' ? dayjs().format('YYYY-MM-DD') : undefined,
+                      closedDate:
+                        v === 'Completed' || v === 'Rejected' || v === 'Cancelled' || v === 'Superseded'
+                          ? dayjs().format('YYYY-MM-DD')
+                          : undefined,
                     })
                   }
                 />

@@ -28,6 +28,7 @@ import { createEmptyProject, createEmptyRegisterRow } from './factory';
 import { seedChanges, seedProjects } from '../data/seed';
 import { gateIndex, isGateUnlocked, isLastGateOfPhase } from '@mbc360/shared/utils/gateProgress';
 import { GATES } from '@mbc360/shared/config/gates';
+import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 
 interface AppState {
   projects: ProjectData[];
@@ -142,21 +143,38 @@ export const useAppStore = create<AppState>()(
           set((s) => ({ projects: s.projects.filter((p) => p.identity.id !== id) })),
         updateProject,
 
+        // Uses `set((s) => ...)` (not updateProject) so the F9 guard below can
+        // read the sibling `changes` slice.
         setGate: (id, gateId, patch) =>
-          updateProject(id, (p) => {
-            // Sequential rule: locked gates (after the current one) cannot change
-            if (!isGateUnlocked(p, gateId)) return p;
-            // B1: a Gap prevents a normal Proceed decision.
-            if (patch.decision === 'Proceed') {
-              const record = p.gates.find((g) => g.gateId === gateId);
-              const status = patch.status ?? record?.status;
-              if (status === 'Gap') return p;
-            }
-            return {
-              ...p,
-              gates: p.gates.map((g) => (g.gateId === gateId ? { ...g, ...patch } : g)),
-            };
-          }),
+          set((s) => ({
+            projects: s.projects.map((p) => {
+              if (p.identity.id !== id) return p;
+              // Sequential rule: locked gates (after the current one) cannot change
+              if (!isGateUnlocked(p, gateId)) return p;
+              if (patch.decision === 'Proceed') {
+                const record = p.gates.find((g) => g.gateId === gateId);
+                const status = patch.status ?? record?.status;
+                // B1: a Gap prevents a normal Proceed decision.
+                if (status === 'Gap') return p;
+                // F9: an open change control record affecting this gate blocks a
+                // plain Proceed (Proceed with Conditions is allowed instead).
+                const gateNumber = GATES.find((g) => g.id === gateId)?.number;
+                const hasOpenChange = s.changes.some((c) => {
+                  if (c.projectId !== id || !isChangeOpen(c.status)) return false;
+                  const trig = getChangeTrigger(c.triggerId);
+                  return (
+                    !!trig &&
+                    (trig.gates.includes('ALL') || (!!gateNumber && trig.gates.includes(gateNumber)))
+                  );
+                });
+                if (hasOpenChange) return p;
+              }
+              return {
+                ...p,
+                gates: p.gates.map((g) => (g.gateId === gateId ? { ...g, ...patch } : g)),
+              };
+            }),
+          })),
         // Reopens gates from `toGateId` up to (but not including) `fromGateId` for
         // rework, and invalidates the approval of any phase whose closing gate falls
         // in that range. `fromGateId` keeps its own Backtrack decision as the
@@ -440,7 +458,7 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: 'mbc360-demo-store',
-      version: 8,
+      version: 9,
       // v1 -> v2 changed Stage status / Gate decision values to match the real
       // MBc360 workbook (Complete/Proceed instead of Completed/Go).
       // v2 -> v3 added packagingBom and the generic evidence `registers` map.
@@ -456,6 +474,9 @@ export const useAppStore = create<AppState>()(
       // v7 -> v8 (F8): NextAction status values changed (Done -> Closed; added
       // Awaiting Information / Ready for Verification / Cancelled) and priority
       // gained Critical — old persisted actions carry now-invalid statuses.
+      // v8 -> v9 (F9): ChangeRecord.status moved from WorkStatus to the change
+      // lifecycle vocabulary (Draft/Submitted/.../Superseded) — old persisted
+      // changes carry now-invalid statuses; re-seed.
       // Old persisted demo data doesn't fit the new schema, so re-seed instead of migrating it.
       migrate: () => ({ projects: seedProjects(), changes: seedChanges() }),
     },

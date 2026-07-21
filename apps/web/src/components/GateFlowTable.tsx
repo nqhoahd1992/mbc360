@@ -11,7 +11,7 @@ import {
 import dayjs from 'dayjs';
 import type { GateDecision, ProjectData, StageStatus } from '@mbc360/shared/types';
 import { GATES, GATE_DECISIONS, STAGE_STATUSES } from '@mbc360/shared/config/gates';
-import { getChangeTrigger } from '@mbc360/shared/config/changeTriggers';
+import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useAppStore } from '../store/useAppStore';
 import { currentGateIndex, gateBlockers, gateIndex, isAwaitingDecision, isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { canDecideGate, roleLabel } from '../utils/roles';
@@ -59,7 +59,7 @@ export default function GateFlowTable({
   // that gate — a visible warning until the change is assessed and closed.
   const openChangesForGate = (gateNumber: string) =>
     changes.filter((c) => {
-      if (c.projectId !== projectId || c.status === 'Completed') return false;
+      if (c.projectId !== projectId || !isChangeOpen(c.status)) return false;
       const trigger = getChangeTrigger(c.triggerId);
       if (!trigger) return false;
       return trigger.gates.includes('ALL') || trigger.gates.includes(gateNumber);
@@ -208,11 +208,33 @@ export default function GateFlowTable({
                       value: d,
                       label: d,
                       // B1: a Gap prevents a normal Proceed decision.
-                      disabled: d === 'Proceed' && r.record.status === 'Gap',
+                      // F9: an open change affecting the gate also blocks a plain
+                      // Proceed — record Proceed with Conditions instead.
+                      disabled:
+                        d === 'Proceed' && (r.record.status === 'Gap' || r.openChanges.length > 0),
                     }))}
                     onChange={(v: GateDecision | undefined) => {
                       if (v === 'Backtrack') {
                         openBacktrackModal(r.meta.id);
+                        return;
+                      }
+                      // F9: acknowledge any open change control record affecting
+                      // this gate before the decision is recorded (audit note).
+                      if (v && r.openChanges.length > 0) {
+                        const ids = r.openChanges.map((c) => c.changeId).join(', ');
+                        Modal.confirm({
+                          title: 'Acknowledge open change control',
+                          content: `Open change control record${r.openChanges.length > 1 ? 's' : ''} affect Gate ${r.meta.number}: ${ids}. Recording "${v}" acknowledges ${r.openChanges.length > 1 ? 'them' : 'it'} as accepted for this decision.`,
+                          okText: 'Acknowledge & record',
+                          cancelText: 'Cancel',
+                          onOk: () => {
+                            const note = `[Change ack ${dayjs().format('YYYY-MM-DD')}] Decision "${v}" recorded with open change(s) ${ids} acknowledged.`;
+                            setGate(projectId, r.meta.id, {
+                              decision: v,
+                              notes: r.record.notes ? `${r.record.notes}\n${note}` : note,
+                            });
+                          },
+                        });
                         return;
                       }
                       setGate(projectId, r.meta.id, { decision: v });
@@ -227,6 +249,11 @@ export default function GateFlowTable({
                 {r.record.status === 'Gap' && (
                   <div style={{ fontSize: 11, color: '#cf1322', marginTop: 2 }}>
                     Gap — normal Proceed blocked
+                  </div>
+                )}
+                {r.openChanges.length > 0 && (
+                  <div style={{ fontSize: 11, color: '#d48806', marginTop: 2 }}>
+                    Open change — plain Proceed blocked; use Proceed with Conditions (acknowledge required)
                   </div>
                 )}
                 {r.awaitingDecision && !r.record.decision && (

@@ -164,6 +164,9 @@ export function seedChanges(): ChangeRecord[] {
     {
       changeId: 'CHG-001',
       projectId: 'MBC-2026-001',
+      // Links the change to the Formula ingredient trigger (gates 05/08), so it
+      // soft-locks Gate 05 — the demo's current gate — until it is closed (F9).
+      triggerId: 'formula-ingredient',
       trigger: 'Supplier discontinued RM-005 grade',
       productSku: 'Soothing Nipple & Baby Balm 50g',
       affectedArea: 'Formula / Supplier',
@@ -174,7 +177,7 @@ export function seedChanges(): ChangeRecord[] {
       communicationRequired: true,
       salesMarketingMessage: 'No consumer-facing change; same soothing profile.',
       dueDate: '2026-08-30',
-      status: 'In Progress',
+      status: 'In Implementation',
       owner: 'Tuan Le',
       notes: 'Awaiting supplier CoA for replacement grade.',
     },

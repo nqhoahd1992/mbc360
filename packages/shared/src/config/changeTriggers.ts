@@ -1,4 +1,34 @@
 import { PHASES } from './gates';
+import type { ChangeStatus } from '../types';
+
+// Change-control lifecycle statuses (confirmed rule F9), in workflow order.
+export const CHANGE_STATUSES: ChangeStatus[] = [
+  'Draft',
+  'Submitted',
+  'Under Review',
+  'Approved - Implementation Pending',
+  'In Implementation',
+  'Verification Pending',
+  'On Hold',
+  'Completed',
+  'Rejected',
+  'Cancelled',
+  'Superseded',
+];
+
+// The four terminal states: a change in one of these no longer soft-locks a gate
+// (F9 — "Completed, Rejected, Cancelled and Superseded are treated as closed,
+// provided the final disposition is recorded"). Everything else counts as open.
+export const CHANGE_CLOSED_STATUSES: ChangeStatus[] = [
+  'Completed',
+  'Rejected',
+  'Cancelled',
+  'Superseded',
+];
+
+export function isChangeOpen(status: ChangeStatus): boolean {
+  return !CHANGE_CLOSED_STATUSES.includes(status);
+}
 
 // Consolidated change-control trigger catalogue, synthesised from the workbook's
 // three trigger sheets: Formula_Change_Control, Artwork_Change_Control and

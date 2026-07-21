@@ -302,6 +302,23 @@ export interface IntegrationSettings {
   graph: GraphSettings;
 }
 
+// Change-control lifecycle status (confirmed rule F9). "Open" statuses soft-lock
+// the gates the change affects; the four terminal states are treated as closed
+// once a final disposition is recorded. (See isChangeOpen / CHANGE_CLOSED_STATUSES
+// in config/changeTriggers.ts.)
+export type ChangeStatus =
+  | 'Draft'
+  | 'Submitted'
+  | 'Under Review'
+  | 'Approved - Implementation Pending'
+  | 'In Implementation'
+  | 'Verification Pending'
+  | 'On Hold'
+  | 'Completed'
+  | 'Rejected'
+  | 'Cancelled'
+  | 'Superseded';
+
 export interface ChangeRecord {
   changeId: string;
   projectId?: string;
@@ -317,7 +334,7 @@ export interface ChangeRecord {
   communicationRequired: boolean;
   salesMarketingMessage?: string;
   dueDate?: string;
-  status: WorkStatus;
+  status: ChangeStatus;
   closureEvidence?: string;
   closedDate?: string;
   owner: string;
