@@ -5,6 +5,8 @@
 **Cách sử dụng:** Với mỗi mục, xin vui lòng xác nhận **Đúng / Sai / Cần điều chỉnh** và ghi chú câu trả lời vào phần "Quyết định của bộ phận chuyên môn".
 
 > **Trạng thái (16/07/2026):** Đã nhận và ghi lại quyết định của bộ phận chuyên môn cho **tất cả các mục trừ C7** (vẫn còn mở). Đội ngũ bổ sung thêm 2 yêu cầu mới (Tài liệu GMP, quy trình Published Information Approval). Các điểm còn mở được tổng hợp tại mục **"Danh sách câu hỏi cần làm rõ tiếp (follow-up)"** ở cuối tài liệu.
+>
+> **Trạng thái (21/07/2026):** Bộ phận chuyên môn nay đã trả lời **toàn bộ 14 câu follow-up (F1–F14)**, cùng ba mục trước đó chưa trả lời **A5, B5 và C7** (nguồn: `docs/Response.txt`). Đáp án được ghi ngay tại mỗi mục bên dưới và tóm tắt trong bảng follow-up cuối tài liệu. **Chỉ còn đúng một điểm thực sự mở: F12** (phạm vi phủ compliance ASEAN/Việt Nam của Cosmetri — phải do Cosmetri xác nhận, không thuộc quyền quyết định của nhóm ta). Mọi thứ còn lại giờ chỉ là việc **cung cấp dữ liệu/nội dung** (xem mục "Đầu vào còn cần cho triển khai" ở cuối), không còn là quyết định quy tắc nữa.
 
 ---
 
@@ -30,6 +32,8 @@
 
 *Còn mở: → F4 (tương tác với thay đổi công thức trên sản phẩm đã launch; thêm/bớt thị trường giữa chừng; trạng thái hoàn thành tổng thể của project khi các thị trường lệch nhau).*
 
+> ✅ **Đã giải quyết (21/07/2026, F4):** các market track Gate 10–12 đã đóng được **giữ nguyên** cho version công thức cũ; một thay đổi major tạo **track Gate 10–12 mới** theo từng thị trường cho version mới — **hỗ trợ nhiều version song song** (version cũ vẫn bán trên thị trường cho tới khi bị thay thế/thu hồi/hết hàng chính thức). Thêm thị trường tạo track mới (và có thể trigger lại các gate trước nếu thị trường đó khác); bớt thị trường thì đánh dấu **Withdrawn/Cancelled/Not Proceeding kèm lý do** (không bao giờ xóa). Trạng thái tổng thể của project là enum: Development complete / Approved in some markets / Approved in all active markets / Market transition underway / Fully closed.
+
 ---
 
 ### A2. Formula version mới có chạy lại Gate 4–9 không?
@@ -49,6 +53,8 @@
 - **Thay đổi công thức lớn (major) tự động tạo formula version mới**, đồng thời bảo toàn các version cũ để phục vụ audit.
 
 *Còn mở: → F4 (các market track Gate 10–12 đã đóng xử lý ra sao; hai version tồn tại song song), → F5 (định nghĩa thay đổi "major" vs "minor").*
+
+> ✅ **Đã giải quyết (21/07/2026):** **F4** — track đã đóng ở lại với version cũ; version mới có track riêng theo từng thị trường; hai version chạy song song. **F5** — "major" theo catalogue trigger của Formula Change Control (bất kỳ thay đổi nào có thể ảnh hưởng: an toàn/phơi nhiễm, hiệu quả/hỗ trợ claim, hệ bảo quản, định danh nguyên liệu, nồng độ hoạt chất, trạng thái pháp lý, hồ sơ dị ứng, pH ngoài dải, dạng sản phẩm, quy trình ảnh hưởng potency/hiệu năng, độ ổn định, tương thích bao bì, khai báo nhãn, hay đăng ký thị trường). Người khởi tạo có thể đề xuất phân loại, nhưng **một reviewer kỹ thuật hoặc quality có thẩm quyền phải xác nhận** — không chỉ do người dùng tự chọn.
 
 ---
 
@@ -85,6 +91,8 @@
 - **Quy trình nguyên liệu mới:** một thành viên nhóm nghiên cứu tạo **change request "Create new raw material" trên Power Apps** → request đi qua quy trình phê duyệt → sau phê duyệt, nguyên liệu được nhập liệu vào Cosmetri → MBc360 gọi được nguyên liệu đó qua API. Khi một nguyên liệu chưa có để chọn, màn hình chọn nguyên liệu của MBc360 sẽ **gắn link tới ứng dụng Power Apps** để người dùng tạo request ngay tại chỗ.
 - Câu hỏi về độ phủ compliance zones ASEAN/Việt Nam vẫn mở → F12.
 
+> ⏳ **Vẫn còn mở (21/07/2026, F12) — điểm duy nhất thực sự chưa giải quyết.** Từ tài liệu API không thể khẳng định output compliance của Cosmetri có phủ ASEAN/Việt Nam, nên điểm này **vẫn mở cho tới khi Cosmetri xác nhận độ phủ ASEAN/VN hiện tại**. Trong lúc chờ, MBc360 phải: chỉ dùng dữ liệu compliance Cosmetri ở nơi có sẵn market zone tương ứng; hiển thị market zone nguồn + ngày cập nhật cuối; **không bao giờ giả định compliance EU/UK/US tương đương ASEAN hay Việt Nam**; chạy thêm màn hình quét pháp lý theo từng thị trường của riêng MBc360; và cho phép Regulatory đính kèm kết luận + bằng chứng ASEAN/VN riêng.
+
 ---
 
 ### A4. Phân quyền theo phòng ban (RBAC)
@@ -106,6 +114,8 @@
 
 *Còn mở: → F6 (ma trận vai trò/quyền cụ thể; nguồn dữ liệu user/phòng ban; ủy quyền khi vắng mặt; chuẩn chữ ký điện tử).*
 
+> ✅ **Đã giải quyết (21/07/2026, F6):** danh tính + phòng ban lấy từ **SSO/Active Directory** của công ty. Định nghĩa **ít nhất 17 vai trò** (Project Owner; Formulation Contributor; Safety / Quality / Regulatory Reviewer; Packaging/Artwork; Marketing/Sales; Supply Chain; Manufacturing Link; Study Author / Department Study Reviewer / Independent Study Reviewer; Published-Info Technical Reviewer / Regulatory Reviewer; Final Approver; System Administrator; Read-only Viewer). Contributor **không được tự phê duyệt phần approval-critical của chính mình** trừ khi có ngoại lệ được ghi nhận. **Ủy quyền** có thời hạn, do quản lý/admin duyệt, ghi lại người ủy quyền/người nhận/thời hạn/phạm vi, và lưu trong lịch sử audit. **Phê duyệt điện tử** ghi danh tính đã xác thực, ngày/giờ, vai trò, quyết định, comment (tùy chọn/bắt buộc), version được duyệt, và dấu vết vô hiệu hóa/thay thế. **Chưa cần triển khai 21 CFR Part 11 đầy đủ** (áp dụng nguyên tắc audit-trail + e-approval vững chắc ngay từ đầu).
+
 ---
 
 ### A5. Formula BOM có bắt buộc phải import từ một formula có sẵn trên Cosmetri, hay vẫn cho phép tự tạo dữ liệu trong MBc360?
@@ -119,7 +129,12 @@
 2. Hay việc nhập tay vẫn được chấp nhận cho các formula chưa đăng ký trên Cosmetri, sau đó thay thế/đối chiếu lại bằng import từ Cosmetri khi formula được chốt chính thức?
 3. Nếu vẫn cho nhập tay, có cần đánh dấu/đối chiếu lại với Cosmetri trước một gate cụ thể nào đó (ví dụ 07/10) không, hay việc này nằm ngoài phạm vi?
 
-**Quyết định của bộ phận chuyên môn:** ❌ **CHƯA ĐƯỢC TRẢ LỜI.**
+**Quyết định của bộ phận chuyên môn (21/07/2026):** ✅ **Đã xác nhận — cho phép cả 2 luồng, kèm đối chiếu (reconcile) bắt buộc trước khi duyệt an toàn cuối.**
+- Nhập tay Formula BOM **chỉ được chấp nhận cho giai đoạn phát triển thử nghiệm sớm** (trước khi formula được nhập chính thức vào Cosmetri).
+- Cosmetri trở thành **hệ thống ghi nhận (system of record) được kiểm soát bắt buộc** trước **Gate 7 (duyệt an toàn cuối)** và trước khi hoàn tất hồ sơ pháp lý.
+- Formula nhập tay phải được đánh dấu rõ **"Draft – Not Reconciled with Cosmetri"**; mỗi dòng nên gắn tham chiếu nguyên liệu Cosmetri khi nguyên liệu đã tồn tại; nguyên liệu chưa có trên Cosmetri kích hoạt quy trình Power Apps.
+- **Gate 10 và 11 bắt buộc dùng formula và version đã kiểm soát trên Cosmetri.** Sau khi đối chiếu, các trường định danh/INCI/CAS/composition đã import bị khóa không cho sửa tự do; mọi khác biệt MBc360 vs Cosmetri được xử lý qua quy trình so sánh formula + change control.
+- *Đây là đáp án F14/A5 — xem F14 bên dưới.*
 
 ---
 
@@ -151,6 +166,8 @@ Các phán quyết chi tiết:
 
 *Còn mở: → F1 (điều kiện 3 và 4 là mới và chưa được định nghĩa — danh sách sign-off/bằng chứng bắt buộc theo từng gate chính là câu C7 chưa được trả lời), → F7 (Gap có chặn luôn cả "Proceed with Conditions" không, hay chỉ chặn "Proceed" thường?).*
 
+> ✅ **Đã giải quyết (21/07/2026):** **F1** — điều kiện 3 & 4 giờ có danh sách cụ thể theo từng gate (Gate 1–12) theo mô hình 3 tầng Mandatory/Conditional/Supporting, thể hiện qua Gate Readiness panel — xem đáp án F1 đầy đủ bên dưới và quyết định C7 phía trên. **F7** — **Gap chặn Proceed thường**; **Proceed with Conditions chỉ còn khả dụng khi** gap không thuộc loại tới hạn về an toàn/pháp lý/release, có reviewer thẩm quyền chấp nhận rủi ro tạm thời, và tạo một Next Action được kiểm soát (owner, due date, điều kiện escalate); **gap tới hạn phải chuyển sang Hold, Backtrack hoặc Reject/Stop.**
+
 ---
 
 ### B2. Next action / Next due date / Next owner
@@ -172,6 +189,8 @@ Các phán quyết chi tiết:
 - Ngoài trường hợp đó, mọi action phải hoàn tất trước khi đóng gate.
 
 *Còn mở: → F8 (câu hỏi 4 gốc chưa được trả lời: ai được quyền đóng action; danh sách giá trị Priority).*
+
+> ✅ **Đã giải quyết (21/07/2026, F8):** **Owner** chịu trách nhiệm hoàn tất action, nhưng **người ghi ra, gate owner liên quan, hoặc một reviewer có thẩm quyền mới verify & đóng** — owner **không được tự ý xác nhận đóng** ở nơi cần xác nhận độc lập. Workflow trạng thái: **Open → In Progress → Awaiting Information → Ready for Verification → Closed → Cancelled**. Priority: **Low / Medium / High / Critical** — **action Critical chặn việc đóng gate thông thường.**
 
 ---
 
@@ -242,7 +261,11 @@ Tuy nhiên, **không bao giờ được xóa bất kỳ dữ liệu nào**. Thay
 1. Việc cho phép nhập liệu chuẩn bị trước (pre-work) trên một phase chưa tới lượt có thực sự mong muốn không, hay toàn bộ trang phải ở chế độ chỉ xem (read-only) cho tới khi phase được mở đúng thứ tự?
 2. Nếu cho phép nhập trước, dữ liệu nhập "sớm" có cần đánh dấu phân biệt (hiển thị/quy trình) so với dữ liệu nhập trong đúng giai đoạn của phase không (ví dụ gắn cờ ghi nhận là nhập trước khi phase chính thức mở)?
 
-**Quyết định của bộ phận chuyên môn:** ❌ **CHƯA ĐƯỢC TRẢ LỜI.**
+**Quyết định của bộ phận chuyên môn (21/07/2026):** ✅ **Đã xác nhận — cách làm hiện tại của demo về cơ bản đúng; cho phép nhập liệu chuẩn bị trước (pre-work).**
+- Khi phase đang khóa: quyết định gate, sign-off và đóng stage chính thức vẫn bị vô hiệu hóa; người dùng vẫn được thêm bằng chứng nháp, requirement, ghi chú, rủi ro và action đề xuất.
+- Các mục nhập sớm phải được đánh dấu rõ **"Pre-work / Entered Before Gate Opened"** kèm ngày nhập và người nhập.
+- Khi phase mở, owner phụ trách phải review và chính thức chấp nhận hoặc cập nhật phần pre-work trước khi nó được tính vào mức hoàn thành. Cách này hỗ trợ làm song song nhưng không cho tiến trình vượt kiểm soát.
+- *Đây là đáp án F13/B5 — xem F13 bên dưới.*
 
 ---
 
@@ -263,6 +286,8 @@ Tuy nhiên, **không bao giờ được xóa bất kỳ dữ liệu nào**. Thay
 
 *Còn mở: → F2 (câu trả lời không nhắc "Infant 0+" trong danh sách trigger — sản phẩm thuần cho em bé, không chọn mục maternal nào, có kích hoạt Skincare for Two không?).*
 
+> ✅ **Đã giải quyết (21/07/2026, F2):** **Riêng "Infant 0+" KHÔNG kích hoạt Skincare for Two.** Skincare for Two chỉ được kích hoạt bởi **Pregnancy / Breastfeeding / Postpartum** (an toàn cho mẹ + đánh giá tiếp xúc với bé). "Infant 0+" thay vào đó kích hoạt một **workflow "Infant & Baby Safety" riêng** (đặc tính da trẻ sơ sinh, phơi nhiễm, tiếp xúc miệng ngoài ý muốn khi liên quan, dùng vùng mắt, vùng cơ thể, tần suất, độ phù hợp theo tuổi). Sản phẩm dùng cho **cả** mẹ lẫn bé kích hoạt **cả hai** workflow.
+
 ---
 
 ### C2. Chuỗi phê duyệt Study/Human Trial có phải vai trò cố định không?
@@ -280,6 +305,8 @@ Tuy nhiên, **không bao giờ được xóa bất kỳ dữ liệu nào**. Thay
 - Hệ thống **phải chặn** trường hợp Independent Reviewer cùng phòng ban với Study Author.
 
 *Phụ thuộc → F6 (cần dữ liệu user/phòng ban để enforce quy tắc khác phòng ban).*
+
+> ✅ **Đã giải quyết (21/07/2026):** F6 đã trả lời — user + phòng ban lấy từ **SSO/AD**, cung cấp dữ liệu cần để enforce **Independent Study Reviewer ≠ phòng ban của Study Author**. Các vai trò riêng **Study Author / Department Study Reviewer / Independent Study Reviewer** đã có trong danh sách vai trò F6.
 
 ---
 
@@ -300,6 +327,8 @@ Hệ thống lập tức đánh dấu các vấn đề tiềm ẩn để review.
 
 *Còn mở: → F3 (cơ chế matching: watch-list chứa **tên nhóm** ("Parabens", "Formaldehyde releasers") trong khi BOM chứa **tên INCI** — cần nguồn ánh xạ nhóm→INCI/CAS, cùng nguồn và tần suất cập nhật của danh sách hạn chế theo từng thị trường).*
 
+> ✅ **Đã giải quyết (21/07/2026, F3):** thứ tự ưu tiên đối chiếu = **định danh nguyên liệu Cosmetri chính xác → tên INCI chính xác → số CAS → ánh xạ synonym/nhóm → review khoa học thủ công** khi tự động không chắc chắn. Danh sách prohibited/restricted/caution là **dataset tham chiếu được kiểm soát, do Regulatory & Safety duy trì**; mỗi entry gồm tên nguyên liệu/nhóm, tên INCI, số CAS, synonym, thị trường liên quan, restriction/caution, nồng độ tối đa/điều kiện sử dụng, nguồn, ngày hiệu lực, ngày review gần nhất, owner và version. Regulatory review danh sách hạn chế theo thị trường **ít nhất mỗi năm** (và khi có thay đổi pháp lý liên quan); giới hạn cho mẹ bầu/cho con bú được review khi có bằng chứng mới. **Kết quả match tự động chỉ là cờ sàng lọc — không thay thế review có chuyên môn.**
+
 ---
 
 ### C4. Change Control có chặn Gate Flow không?
@@ -315,6 +344,8 @@ Hệ thống lập tức đánh dấu các vấn đề tiềm ẩn để review.
 - Điều này duy trì khả năng truy vết (traceability).
 
 *Còn mở: → F9 (trạng thái Change nào được tính là "đang mở"; soft lock cụ thể là gì — chỉ banner cảnh báo hay bắt buộc xác nhận trước khi ghi gate decision).*
+
+> ✅ **Đã giải quyết (21/07/2026, F9):** trạng thái **đang mở** = Draft, Submitted, Under Review, Approved–Implementation Pending, In Implementation, Verification Pending, On Hold (Completed / Rejected / Cancelled / Superseded = đã đóng, khi đã ghi disposition cuối). Soft lock hiển thị **cảnh báo nổi bật** trên project/version công thức/thị trường/gate bị ảnh hưởng, nêu rõ change đang mở và owner, **bắt buộc người dùng acknowledge change đang mở trước khi ghi gate decision**, và **chặn Proceed thường** ở nơi change có thể ảnh hưởng kết luận gate (Proceed with Conditions chỉ khi một approver có thẩm quyền chấp nhận). Change liên quan an toàn, định danh công thức, phê duyệt pháp lý, artwork, claims hoặc launch release **có thể trở thành chặn cứng** tùy mức độ ảnh hưởng được đánh giá.
 
 ---
 
@@ -334,6 +365,8 @@ Việc hoàn tất PIF chặn cứng:
 Một sản phẩm có thể launch ở nước này trong khi vẫn bị chặn ở nước khác (nhất quán với A1 — Gate 10–12 theo từng thị trường).
 
 *Còn mở: → F10 (thị trường ngoài ASEAN — EU CPSR, Úc, Mỹ — checklist nào thay thế PIF_Checklist_ASEAN theo từng thị trường?).*
+
+> ✅ **Đã giải quyết (21/07/2026, F10):** dùng **"Market Dossier Profile" cấu hình được theo từng thị trường** thay vì mặc định checklist ASEAN PIF cho mọi nơi — ví dụ ASEAN/VN (ASEAN PIF + notification nội địa), EU/EEA (PIF/CPSR/CPNP/Responsible Person), UK (UK PIF/CPSR/SCPN/RP), Úc (compliance sản phẩm+nguyên liệu, AICIS khi áp dụng, review nhãn/claim + Product Master File nội bộ), Mỹ (MoCRA + hồ sơ FDA áp dụng, substantiation an toàn, review claim/nhãn), thị trường khác cấu hình được. **Regulatory duy trì profile của từng thị trường mà không cần build lại phần mềm.**
 
 ---
 
@@ -362,6 +395,8 @@ Mọi thông tin dự kiến phát hành công khai — bao gồm website, broch
 
 *Còn mở: → F11 (chi tiết workflow: các trạng thái/vai trò reviewer theo từng loại nội dung; nguồn và cách duy trì bộ hướng dẫn thuật ngữ/bằng chứng).*
 
+> ✅ **Đã giải quyết (21/07/2026, F11):** **trạng thái** workflow = Draft, Evidence Gathering, Technical Review, Regulatory Review Required, Regulatory Review Complete, Revision Required, Final Approval Pending, Approved for Release, Released, Expired, Withdrawn, Superseded. **Vai trò** = Content Owner/Author, Technical Reviewer, Regulatory Reviewer (khi nội dung có claim/an toàn/compliance/hướng dẫn/cảnh báo/đặc thù thị trường/nội dung HCP), Final Authorised Approver (nội dung marketing thuần thẩm mỹ có thể bỏ qua Regulatory, nhưng mọi phát biểu về sản phẩm vẫn phải dùng từ ngữ đã duyệt). Hướng dẫn thuật ngữ/claim đến từ một **Published Product Information Guideline / Claims Library được kiểm soát**, do **Technical + Regulatory** cùng duy trì; hệ thống xác nhận đúng SKU/version công thức, bằng chứng đã link, trạng thái PIF/Product Master File, phê duyệt thị trường hiện hành, và nội dung phát hành khớp với bản đã duyệt. **Phát hành khi chưa duyệt tạo bản ghi deviation/violation.** Phạm vi phủ website, mạng xã hội, brochure, catalogue, thuyết trình, tài liệu distributor/HCP, đào tạo, quảng cáo, **nội dung do AI tạo ra**, text nhãn/artwork và tóm tắt kỹ thuật dùng ra ngoài.
+
 ---
 
 ### C7. Các register an toàn/PIF có nên là điều kiện bắt buộc để pass gate không?
@@ -375,9 +410,18 @@ Mọi thông tin dự kiến phát hành công khai — bao gồm website, broch
 2. Nếu có, nên chặn cứng (không cho chọn decision Proceed) hay chỉ cảnh báo mềm (cho phép Proceed nhưng hiện banner nhắc còn bằng chứng chưa đóng)?
 3. Toàn bộ 37 bảng, hay chỉ một số bảng "an toàn tới hạn" (safety-critical) mới cần ràng buộc này?
 
-**Quyết định của bộ phận chuyên môn:** ❌ **CHƯA ĐƯỢC TRẢ LỜI.**
+**Quyết định của bộ phận chuyên môn (21/07/2026):** ✅ **Đã xác nhận — dùng một tập con theo rủi ro, phân loại 3 tầng (không phải cả 37 bảng đều chặn cứng).**
 
-> Điều kiện mới "mandatory evidence attached" trong B1 ngầm cho thấy câu trả lời là *có*, nhưng danh sách register/bằng chứng bắt buộc cụ thể theo từng gate và cách xử lý (chặn cứng vs cảnh báo mềm) vẫn chưa được định nghĩa. **Đây là lỗ hổng lớn nhất còn lại — xem F1.** B1 không thể triển khai nếu thiếu câu trả lời này.
+Mỗi register được phân loại thành:
+- **Mandatory (Bắt buộc)** — chặn cứng việc pass gate.
+- **Conditional (Có điều kiện)** — chỉ trở thành bắt buộc (và chặn cứng) khi bị kích hoạt bởi loại sản phẩm, người dùng, thị trường, claim hoặc change.
+- **Supporting (Hỗ trợ)** — có thể chưa hoàn tất mà không chặn gate, miễn là rủi ro phát sinh được ghi nhận (tạo cảnh báo/action, không tự động chặn).
+
+Các register an-toàn-tới-hạn và pháp-lý-tới-hạn **phải chặn cứng** gate liên quan. Hệ thống cung cấp một **Gate Readiness panel** cho từng gate, hiển thị: mục mandatory đã hoàn tất, mục conditional đã bị trigger, các gap đang chặn, cảnh báo, link bằng chứng còn thiếu, sign-off bắt buộc, Next Action đang mở, Change Control đang mở, và kết quả sẵn sàng hiện tại là **Not Ready / Ready with Conditions / Ready for Decision / Passed**.
+
+Danh sách cụ thể bằng chứng và sign-off bắt buộc theo từng gate (Gate 1–12) nằm trong đáp án **F1** bên dưới — cùng mô hình 3 tầng áp cho từng gate.
+
+> **Ghi chú triển khai:** F1/C7 mở khóa `gateBlockers()` — mục Mandatory/Conditional theo từng gate trở thành chặn cứng, mục Supporting trở thành cảnh báo, và Gate Readiness panel là một màn hình UI mới. Việc còn lại là ánh xạ mỗi mục trong danh sách vào register/field cụ thể trong app và vào điều kiện trigger.
 
 ---
 
@@ -403,32 +447,63 @@ Thay vào đó, MBc360 có mục **"GMP Links"** lưu tham chiếu/hyperlink t�
 
 ## Danh sách câu hỏi cần làm rõ tiếp (follow-up)
 
-> Tổng hợp mọi điểm còn mở sau đợt trả lời ngày 16/07/2026. **F1 chặn việc triển khai B1/C7 nên cần trả lời trước tiên.**
+> **Cập nhật (21/07/2026): cả 14 câu follow-up đã được trả lời** (nguồn: `docs/Response.txt`). Bảng dưới đây nay ghi đáp án đã chốt cho từng câu. **Chỉ còn F12 thực sự mở** — phụ thuộc vào việc Cosmetri xác nhận độ phủ compliance ASEAN/Việt Nam, nằm ngoài quyền kiểm soát của nhóm ta. Danh sách bằng chứng bắt buộc theo từng gate đầy đủ cho F1 nằm ở phần phụ lục ngay sau bảng này.
 >
-> Với những câu mà bản demo buộc phải tạm chọn một đáp án để chạy được, dòng đó có ghi *"Giả định tạm của demo"* — xin **xác nhận hoặc sửa** giả định đó thay vì trả lời từ đầu.
+> Chú thích: ✅ = đã trả lời/đóng · ⏳ = vẫn mở.
 
-| # | Liên quan | Câu hỏi |
-|---|---|---|
-| **F1** | C7, B1 | Định nghĩa theo từng gate của "required sign-offs" và "mandatory evidence": với mỗi gate (đặc biệt Gate 07 và 10), chính xác sign-off nào và register/bằng chứng nào ở trạng thái nào là điều kiện pass (ví dụ: Gate 07 ⇐ Formulation_Safety "Final safety release" = Completed VÀ Prohibited_Ingredients không còn dòng "REVIEW"/"Prohibited - remove")? Từng mục là chặn cứng hay cảnh báo mềm? Áp cho cả 37 register hay chỉ nhóm safety-critical? *Bản demo đã sẵn sàng áp dụng danh sách này dạng chặn cứng ngay khi được chốt.* |
-| **F2** | C1 | Chọn **"Infant 0+"** (sản phẩm thuần cho em bé, không chọn mục maternal) có kích hoạt Skincare for Two không? Câu trả lời hiện chỉ liệt kê Pregnancy/Breastfeeding/Postpartum. *Giả định tạm của demo: chỉ 3 lựa chọn đó kích hoạt chặn cứng.* |
-| **F3** | C3 | Cơ chế đối chiếu nguyên liệu — *đã giải quyết một phần*: Cosmetri cung cấp được tên INCI và **số CAS** của từng nguyên liệu, nên phép quét tự động có thể đối chiếu theo số CAS chính xác thay vì đoán theo tên. Còn mở: bản thân các danh sách theo dõi (Prohibited / PB caution) phải có danh sách số CAS thuộc từng nhóm nguyên liệu — **ai xây và duy trì bảng ánh xạ đó?** Và nguồn/tần suất cập nhật danh sách hạn chế pháp lý theo từng thị trường. |
-| **F4** | A1 × A2 | Sản phẩm đã launch (Gate 10–12 theo market đã đóng) có thay đổi công thức lớn → backtrack Gate 4–9. Các market track đã đóng có tự mở lại theo từng thị trường không (ví dụ VN cần ~6 tháng đăng ký lại)? Hệ thống có phải hỗ trợ **hai version song song** của một sản phẩm (version cũ vẫn bán trong khi version mới đang phát triển)? Thêm/bớt thị trường giữa chừng xử lý ra sao? *Giả định tạm của demo: formula version Major mở lại Gate 4–9 nhưng KHÔNG đụng tới các market track Gate 10–12, và danh sách market track cố định từ lúc tạo project.* |
-| **F5** | A2 | Tiêu chí phân loại thay đổi công thức **"major" vs "minor"** (major = tự tạo version mới + backtrack; minor = chỉ qua Change Control). Có thể dùng catalogue trigger sẵn có của `Formula_Change_Control` làm cơ sở phân loại không? *Giả định tạm của demo: người dùng tự chọn Major/Minor khi tạo version.* |
-| **F6** | A4, C2 | **Ma trận vai trò/quyền** cụ thể (vai trò × gate/section/register × đóng góp/phê duyệt/ký). Dữ liệu user + phòng ban lấy từ đâu (SSO/AD)? Ủy quyền khi vắng mặt? Chuẩn chữ ký điện tử cho "electronic approval history" (độ sâu audit-trail, theo kiểu 21 CFR Part 11 hay nhẹ hơn)? *Giả định tạm của demo: quyết định gate, chữ ký "Approved by" của phase và phê duyệt theo thị trường chỉ dành cho bộ phận được ghi là chủ trì (Primary owner) của gate/phase đó; các trường bằng chứng vẫn mở cho mọi người đóng góp.* |
-| **F7** | B1 | Trạng thái **Gap** chỉ chặn "Proceed" thường, hay chặn luôn cả "Proceed with Conditions"? *Giả định tạm của demo: Gap chỉ chặn Proceed thường; Proceed with Conditions vẫn chọn được.* |
-| **F8** | B2 | Ai được quyền **đóng** một Next Action (người ghi, owner, hay cả hai)? Danh sách giá trị Priority? *Giả định tạm của demo: ai cũng đóng được action; Priority = Low / Medium / High.* |
-| **F9** | C4 | Trạng thái Change nào được tính là "đang mở" để kích hoạt soft lock? Soft lock cụ thể làm gì — chỉ banner cảnh báo, hay bắt buộc xác nhận (acknowledgement) trước khi được ghi gate decision? *Giả định tạm của demo: mọi Change chưa "Completed" tính là đang mở; soft lock là icon cảnh báo trên gate, không có bước xác nhận.* |
-| **F10** | C5 | Với thị trường ngoài ASEAN (EU, Úc, Mỹ...): checklist nào thay thế `PIF_Checklist_ASEAN` làm định nghĩa "PIF complete" theo thị trường (ví dụ EU CPSR)? |
-| **F11** | C6 | Chi tiết workflow Published Information Approval: các trạng thái, vai trò reviewer bắt buộc theo từng loại nội dung, nguồn/cách duy trì bộ hướng dẫn thuật ngữ chấp nhận được và bằng chứng bắt buộc theo claim. *Giả định tạm của demo: 5 bước Y/N/N.A. trên register (kiểm tra thuật ngữ → xác minh bằng chứng → technical review → regulatory review → phê duyệt cuối) + cờ cảnh báo "đã publish khi chưa duyệt đủ".* |
-| **F12** | A3 | Kết nối Cosmetri — *gần như đã giải quyết xong nhờ tài liệu API nhận được*: cơ chế đăng nhập/cấp token đã rõ, nguyên liệu có kèm **tên nhà cung cấp**, và trường "code" của nguyên liệu là **số lô (Batch No.)** — nên danh tính nguyên liệu để đối chiếu (INCI/CAS) lấy từ dữ liệu compliance của Cosmetri. Đã chốt (16/07/2026): những dữ liệu mà **API của Cosmetri không cung cấp** thì **nhập tay** trong MBc360 — lưu ý đây là giới hạn của phiên bản API, không phải ứng dụng Cosmetri thiếu phần đó: chi tiết nhà cung cấp và tài liệu SDS/CoA/TDS **vẫn được lưu bên trong Cosmetri**, chỉ là API hiện tại chưa mở ra cho hệ thống ngoài truy cập; nguyên liệu mới theo quy trình **change request trên Power Apps → phê duyệt → nhập vào Cosmetri**, MBc360 gắn link tới ứng dụng Power Apps khi nguyên liệu chưa có để chọn. **Câu hỏi duy nhất còn lại: phạm vi compliance của Cosmetri có bao phủ ASEAN/Việt Nam không (tài liệu chỉ thấy ví dụ EU/UK/US)?** |
-| **F13** | B5 | Trên trang phase đang khóa (chưa tới lượt), có nên vô hiệu hóa TOÀN BỘ form nhập liệu, hay chỉ vô hiệu hóa control quyết định gate và sign-off (như demo đang làm, để cho phép nhập liệu chuẩn bị trước)? *Giả định tạm của demo: chỉ khóa quyết định gate và sign-off phase khi đang locked; mọi form khác (checklist, requirement, gate checks, next actions, 8 angles) vẫn mở để nhập.* |
-| **F14** | A5 | Formula BOM có bắt buộc phải import từ formula có sẵn trên Cosmetri không, hay vẫn chấp nhận nhập tay trong MBc360 cho formula chưa có trên Cosmetri? *Giả định tạm của demo: cho phép cả 2 — Import from Cosmetri khóa read-only composition/INCI/CAS/supplier trên dòng đã import; dòng nhập tay vẫn sửa được bình thường, không bắt buộc phải có bản ghi trên Cosmetri.* |
+| # | Liên quan | Trạng thái | Đáp án đã chốt (21/07/2026) |
+|---|---|---|---|
+| **F1** | C7, B1 | ✅ | Phân loại 3 tầng — **Mandatory** (chặn cứng), **Conditional** (chặn cứng khi bị trigger), **Supporting** (chỉ cảnh báo) — kèm danh sách bắt buộc cụ thể theo từng gate cho **Gate 1–12** và một **Gate Readiness panel** (Not Ready / Ready with Conditions / Ready for Decision / Passed). Danh sách đầy đủ theo gate ở phụ lục bên dưới. |
+| **F2** | C1 | ✅ | **Riêng "Infant 0+" KHÔNG kích hoạt Skincare for Two.** Nó kích hoạt một **workflow Infant & Baby Safety riêng**. Skincare for Two = chỉ Pregnancy/Breastfeeding/Postpartum; sản phẩm mẹ+bé kích hoạt cả hai. |
+| **F3** | C3 | ✅ | Thứ tự match: định danh RM Cosmetri → INCI → CAS → synonym/nhóm → review thủ công. Watch-list là **dataset được kiểm soát do Regulatory & Safety duy trì** (INCI/CAS/synonym/thị trường/giới hạn/nguồn/ngày/owner/version), review ≥ mỗi năm. Match tự động chỉ là cờ sàng lọc. |
+| **F4** | A1 × A2 | ✅ | **Hỗ trợ nhiều version song song.** Version cũ giữ nguyên các track Gate 10–12 đã đóng; thay đổi major tạo track **mới** theo từng thị trường cho version mới. Thêm thị trường = track mới (có thể trigger lại gate trước); bớt = đánh dấu Withdrawn/Cancelled (không xóa). Enum trạng thái project: Development complete / Approved in some / Approved in all active / Market transition underway / Fully closed. |
+| **F5** | A2 | ✅ | Catalogue trigger Formula Change Control là khung phân loại; **major** = bất kỳ thay đổi nào có thể ảnh hưởng an toàn, hiệu quả/claim, hệ bảo quản, định danh nguyên liệu, % hoạt chất, trạng thái pháp lý, dị ứng, pH ngoài dải, dạng, quy trình, độ ổn định, bao bì, khai báo nhãn hay đăng ký. Người khởi tạo đề xuất; **reviewer kỹ thuật/quality có thẩm quyền phải xác nhận** — không chỉ do user chọn. |
+| **F6** | A4, C2 | ✅ | Danh tính/phòng ban từ **SSO/AD**. Định nghĩa **≥17 vai trò** (xem A4 phía trên). Contributor không được tự duyệt phần approval-critical của mình. Ủy quyền có thời hạn, quản lý duyệt, có audit. E-approval ghi danh tính/thời gian/vai trò/quyết định/version + dấu vết vô hiệu hóa; **chưa cần 21 CFR Part 11 đầy đủ** (áp dụng nguyên tắc vững chắc ngay từ đầu). |
+| **F7** | B1 | ✅ | **Gap chặn Proceed thường.** Proceed with Conditions chỉ khi gap không tới hạn, có reviewer thẩm quyền chấp nhận rủi ro, và có Next Action được kiểm soát. **Gap tới hạn → Hold / Backtrack / Reject.** |
+| **F8** | B2 | ✅ | Owner **hoàn tất**; người ghi / gate owner / reviewer thẩm quyền **verify & đóng** (owner không được tự ý đóng ở nơi cần xác nhận độc lập). Trạng thái: Open / In Progress / Awaiting Information / Ready for Verification / Closed / Cancelled. Priority: Low / Medium / High / **Critical** (Critical chặn đóng gate). |
+| **F9** | C4 | ✅ | Đang mở = Draft / Submitted / Under Review / Approved–Impl Pending / In Implementation / Verification Pending / On Hold. Soft lock = cảnh báo nổi bật + **bắt buộc acknowledge** trước khi ra quyết định + **chặn Proceed thường** ở nơi có ảnh hưởng; có thể **chặn cứng** với thay đổi an toàn/định danh công thức/pháp lý/artwork/claim/launch. |
+| **F10** | C5 | ✅ | **Market Dossier Profile cấu hình được theo từng thị trường** (ASEAN PIF, EU PIF/CPSR/CPNP, UK PIF/CPSR/SCPN, AU AICIS + Product Master File, US MoCRA/FDA, khác cấu hình được). **Regulatory duy trì profile không cần build lại.** |
+| **F11** | C6 | ✅ | 12 trạng thái workflow (Draft → … → Approved for Release → Released → Expired/Withdrawn/Superseded); vai trò = Content Owner, Technical Reviewer, Regulatory Reviewer (khi áp dụng), Final Approver; hướng dẫn từ **Claims Library** được kiểm soát do Technical + Regulatory duy trì; phát hành khi chưa duyệt = bản ghi deviation. |
+| **F12** | A3 | ⏳ **MỞ** | **Điểm duy nhất còn mở.** Không thể khẳng định compliance Cosmetri phủ ASEAN/Việt Nam — **vẫn mở cho tới khi Cosmetri xác nhận**. Trong lúc chờ, MBc360 chạy thêm màn hình quét pháp lý theo từng thị trường, hiển thị market zone nguồn + ngày cập nhật, không bao giờ giả định EU/UK/US = ASEAN/VN, và cho Regulatory đính kèm kết luận ASEAN/VN riêng. |
+| **F13** | B5 | ✅ | **Cho phép** nhập pre-work; chỉ khóa quyết định gate/sign-off/đóng stage chính thức khi locked. Mục nhập sớm đánh dấu **"Pre-work / Entered Before Gate Opened"** kèm ngày+user; owner phải review/chấp nhận khi phase mở. |
+| **F14** | A5 | ✅ | Cả 2 luồng trong giai đoạn phát triển; nhập tay đánh dấu **"Draft – Not Reconciled with Cosmetri"**; **phải đối chiếu về một formula Cosmetri trước Gate 7 (duyệt an toàn cuối)**; **Gate 10 & 11 bắt buộc dùng formula/version đã kiểm soát trên Cosmetri**; các trường định danh/INCI/CAS/composition đã import bị khóa sau khi đối chiếu. |
 
 ---
 
+## Phụ lục (21/07/2026) — F1: Bằng chứng & sign-off bắt buộc theo từng gate
+
+Áp dụng mô hình 3 tầng (**Mandatory** chặn cứng · **Conditional** chặn cứng khi bị trigger · **Supporting** chỉ cảnh báo). Mỗi gate đều thêm yêu cầu **sign-off Prepared / Reviewed / Approved**. Chặn cứng áp cho bằng chứng bắt buộc về an toàn, pháp lý, PIF, claim và release; thông tin supporting chỉ cảnh báo chứ không chặn.
+
+- **Gate 1 — Cơ hội & Yêu cầu:** bản ghi product request, project owner, nguồn yêu cầu, phạm vi sản phẩm ban đầu, thị trường & người dùng mục tiêu ban đầu.
+- **Gate 2 — Người dùng mục tiêu & Brief:** development brief đã duyệt, người dùng mục tiêu & life stage, mục đích dùng & vùng cơ thể, thị trường đã chọn, cờ người dùng dễ tổn thương, yêu cầu & loại trừ của project.
+- **Gate 3 — Concept sản phẩm & Claims:** concept sản phẩm, danh sách claim đề xuất, phân loại claim sơ bộ, yêu cầu bằng chứng cho từng claim, review đối thủ/benchmark khi áp dụng, regulatory review cho claim rủi ro cao/ranh giới. *(Claim có thể còn đang phát triển, nhưng từ ngữ chưa có bằng chứng không được đánh dấu approved.)*
+- **Gate 4 — Sàng lọc nguyên liệu & RM:** tập nguyên liệu, định danh nguyên liệu + tham chiếu Cosmetri khi có, trạng thái bằng chứng supplier/RM, quét prohibited & restricted, quét caution mẹ bầu/cho con bú khi bị trigger, review allergen/tạp chất/chất nhiễm khi liên quan, **không còn "Prohibited – remove" chưa xử lý**. *(Một possible match chưa xử lý chỉ cho Proceed with Conditions khi reviewer đủ năng lực đánh giá là non-critical kèm action được kiểm soát.)*
+- **Gate 5 — Thiết kế & Phát triển công thức:** version công thức hiện tại, composition hoặc tham chiếu Cosmetri được kiểm soát, pH mục tiêu + dải chấp nhận, yêu cầu quy trình ảnh hưởng chức năng, chiến lược bảo quản khi áp dụng, đánh giá tương thích, cơ sở hiệu quả ban đầu/ánh xạ MoA, trạng thái costing/khả thi thương mại.
+- **Gate 6 — Bao bì & Linh kiện:** pack spec đề xuất, yêu cầu tương thích bao bì, yêu cầu nhãn & artwork, trạng thái supplier linh kiện, yêu cầu bao bì đặc thù thị trường, link bằng chứng bao bì được kiểm soát.
+- **Gate 7 — Duyệt An toàn (CHẶN CỨNG TỚI HẠN VỀ AN TOÀN):** hoàn tất review an toàn công thức cuối, đóng quét prohibited, đóng đánh giá restricted/caution, đánh giá phơi nhiễm/mục đích dùng, review allergen & tạp chất, đánh giá tiếp xúc mẹ + trẻ sơ sinh khi Skincare for Two bị trigger, kết luận an toàn + giới hạn, phê duyệt của safety reviewer bắt buộc, không còn phát hiện an toàn tới hạn chưa xử lý. **Gate 7 không được pass khi:** chưa hoàn tất final safety release · còn nguyên liệu prohibited trong công thức · còn vấn đề caution-limit tới hạn chưa xử lý · còn thiếu đánh giá tiếp xúc mẹ/trẻ sơ sinh bắt buộc.
+- **Gate 8 — Testing & Validation:** kế hoạch test, phương pháp/tham chiếu phương pháp, tiêu chí chấp nhận, xác định các test an toàn/hiệu quả/bảo quản/QC/hiệu năng bắt buộc, **hoàn tất phê duyệt human-study trước khi tuyển người tham gia** khi áp dụng, report hoặc action được kiểm soát cho test đang chạy. *(Test thiết yếu cho release phải xong trước gate release liên quan kể cả khi Gate 8 proceed có điều kiện.)*
+- **Gate 9 — Độ ổn định & Sẵn sàng Release:** trạng thái stability, trạng thái tương thích bao bì, trạng thái hiệu quả bảo quản khi áp dụng, tiêu chí chấp nhận lý/hóa/vi sinh, trạng thái scale-up/pilot khi áp dụng, review deviation & rủi ro mở, kết luận sẵn sàng release. *(Test release tới hạn phải đóng; stability dài hạn có thể còn tiếp diễn nếu có launch protocol đã duyệt + đủ dữ liệu hỗ trợ.)*
+- **Gate 10 — Pháp lý, Claims & PIF (CHẶN CỨNG THEO TỪNG THỊ TRƯỜNG):** checklist pháp lý áp dụng, trạng thái hồ sơ PIF/CPSR/Product Master File hoặc tương đương, register claim cấp SKU, **bằng chứng đính/link cho từng claim đã duyệt**, bằng chứng an toàn nguyên liệu & sản phẩm, bằng chứng hiệu năng sản phẩm khi liên quan, review nhãn & artwork, trạng thái published-information, phê duyệt pháp lý. *(Không claim công khai đã duyệt nào được thiếu bằng chứng + link PIF/Product Master File.)*
+- **Gate 11 — Sản xuất & Launch (CHẶN CỨNG THEO TỪNG THỊ TRƯỜNG):** Gate 10 đã hoàn tất cho thị trường đó, link tài liệu GMP, version công thức hiện hành đã duyệt, version artwork đã duyệt, sẵn sàng sản xuất, đường release quality, change control đã đóng hoặc chấp nhận chính thức, thông tin sản phẩm công khai đã duyệt, phê duyệt launch.
+- **Gate 12 — Hậu thị trường & Cải tiến:** phản hồi thị trường, trạng thái khiếu nại & biến cố bất lợi, review PV/PMS khi áp dụng, phản hồi hiệu năng sản phẩm, action CAPA/cải tiến, link change control, sign-off đóng review.
+
+---
+
+## Đầu vào còn cần cho triển khai (21/07/2026)
+
+Các **câu hỏi về quy tắc đã đóng** (chỉ F12 còn chờ Cosmetri). Việc còn lại là **cung cấp dữ liệu/nội dung** mà các đáp án nay yêu cầu — đây là đầu vào cần thu thập, không phải quyết định cần chốt:
+
+- **F1/C7** — ánh xạ mỗi mục theo gate ở trên vào register/field cụ thể trong app và vào điều kiện trigger (register nào là Mandatory vs Conditional vs Supporting cho từng gate).
+- **F3** — dataset watch-list được kiểm soát thực tế (số CAS thật theo từng nhóm nguyên liệu) do Regulatory & Safety xây/duy trì.
+- **F6** — lưới quyền chi tiết vai trò × gate/section/register, cùng ánh xạ thuộc tính SSO/AD thực (nhóm AD nào → vai trò/phòng ban MBc360 nào).
+- **F10** — nội dung checklist cụ thể theo từng Market Dossier Profile (mục EU CPSR, Úc, Mỹ, …) do Regulatory cung cấp.
+- **F11** — nội dung Published Product Information Guideline / Claims Library (từ ngữ đã duyệt, bằng chứng bắt buộc theo claim).
+- **F12** — Cosmetri xác nhận độ phủ compliance ASEAN/Việt Nam (phụ thuộc bên ngoài).
+
 ## Ghi chú
 
-- Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Đã trả lời — các follow-up còn lại của nhóm A: F4, F5, F6, F12, F14.)*
+- Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*
 - Nhóm B và C là quy tắc nghiệp vụ có thể tinh chỉnh dần trong quá trình phát triển mà không nhất thiết phá vỡ kiến trúc, nhưng vẫn cần xác nhận sớm để tránh phải làm lại UI/logic đã xây.
 - Đợt trả lời 16/07/2026 **đảo ngược 3 giả định nền của demo**: (1) pass gate phải đọc thêm sign-off, Next Actions và evidence registers — không chỉ Stage status + Gate decision; (2) backtrack không bao giờ được xóa dữ liệu — cần mô hình event-log/snapshot; (3) Gate 10–12 chuyển thành theo từng thị trường thay vì một luồng chung.
-- Tài liệu tham chiếu: `MBc360 Master Product Development System File.xlsx` (55 sheets) và bản demo ReactJS hiện tại (`mbc360-app/`).
+- Đợt trả lời 21/07/2026 bổ sung thêm 3 điểm **thay đổi demo**: (4) **nhiều version công thức song song** — thay đổi major giữ nguyên track thị trường đã đóng của version cũ và mở track mới theo từng thị trường (F4), đảo ngược giả định "market track cố định từ lúc tạo"; (5) **"Infant 0+" có workflow Infant & Baby Safety riêng**, tách khỏi Skincare for Two (F2); (6) dòng Formula BOM nhập tay phải được **đối chiếu về Cosmetri trước Gate 7**, và Gate 10/11 phải dùng formula Cosmetri được kiểm soát (F14).
+- Tài liệu tham chiếu: `MBc360 Master Product Development System File.xlsx` (55 sheets), bản demo ReactJS hiện tại (`mbc360-app/`), và phản hồi đầy đủ ngày 21/07/2026 của bộ phận chuyên môn (`docs/Response.txt`).

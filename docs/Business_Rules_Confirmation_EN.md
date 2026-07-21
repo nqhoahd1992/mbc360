@@ -5,6 +5,8 @@
 **How to use this document:** For each item, please confirm **Correct / Incorrect / Needs adjustment** and record the answer under "Subject-matter team decision".
 
 > **Status (2026-07-16):** Subject-matter team decisions have been received and recorded below for **all items except C7** (still open). Two new requirements were added by the team (GMP Documentation, Published Information Approval workflow). Remaining open points are consolidated in **"Outstanding follow-up questions"** at the end of this document.
+>
+> **Status (2026-07-21):** The subject-matter team has now answered **all 14 follow-up questions (F1–F14)**, plus the three previously-unanswered items **A5, B5 and C7** (source: `docs/Response.txt`). Their answers are recorded inline at each item below and summarised in the outstanding-questions table. **Only one point remains genuinely open: F12** (Cosmetri's compliance coverage of ASEAN/Vietnam — must be confirmed by Cosmetri, not by our team). Everything else is now a matter of **supplying data/content** (see the "Remaining implementation inputs" note at the end), not of deciding a rule.
 
 ---
 
@@ -30,6 +32,8 @@
 
 *Open follow-up: → F4 (interaction with formula changes on launched products; adding/removing a market mid-project; overall project completion when markets diverge).*
 
+> ✅ **Resolved (2026-07-21, F4):** launched per-market Gate 10–12 tracks are **preserved** for the old formula version; a major change creates a **new** per-market Gate 10–12 track for the new version — **concurrent versions are supported** (old version stays on market until formally superseded/withdrawn/depleted). Adding a market creates a new track (and may re-trigger earlier gates if that market differs); removing a market marks it **Withdrawn/Cancelled/Not Proceeding with a reason** (never deleted). Overall project status is an enum: Development complete / Approved in some markets / Approved in all active markets / Market transition underway / Fully closed.
+
 ---
 
 ### A2. Does a new formula version re-run Gates 4–9?
@@ -49,6 +53,8 @@
 - **Major formulation changes automatically create a new formula version** while preserving previous versions for audit history.
 
 *Open follow-ups: → F4 (what happens to closed per-market Gate 10–12 tracks; two versions live in parallel), → F5 (definition of "major" vs "minor" formulation change).*
+
+> ✅ **Resolved (2026-07-21):** **F4** — closed tracks stay with the old version; the new version gets its own per-market track; two versions run concurrently. **F5** — "major" follows the Formula Change Control trigger catalogue (any change that may affect safety/exposure, efficacy/claim support, preservative system, ingredient identity, active concentration, regulatory status, allergen profile, pH outside range, product form, process affecting potency/performance, stability, packaging compatibility, label declaration, or market registration). The initiator may propose the classification, but an **authorised technical or quality reviewer must confirm it** — not user choice alone.
 
 ---
 
@@ -85,6 +91,8 @@
 - **New raw material process:** a research team member raises a **"Create new raw material" change request in Power Apps** → the request goes through its approval workflow → on approval the material is entered into Cosmetri → it then becomes available to MBc360 via the API. When an ingredient is not yet available for selection, the MBc360 ingredient picker should **link out to the Power Apps request app** so the user can raise the request in place.
 - The ASEAN/Vietnam compliance-zone coverage question stays open → F12.
 
+> ⏳ **Still open (2026-07-21, F12) — the one genuinely unresolved point.** The team cannot confirm from the API documentation that Cosmetri's compliance output covers ASEAN/Vietnam, so this **remains open until Cosmetri confirms its current ASEAN/VN coverage**. In the meantime MBc360 must: use Cosmetri compliance data only where the relevant market zone is available; display the source market zone + last-update date; **never assume EU/UK/US compliance equals ASEAN or Vietnam**; run its own MBc360 market-specific regulatory screen in addition to the Cosmetri result; and let Regulatory attach a separate ASEAN/VN conclusion and evidence.
+
 ---
 
 ### A4. Role-based access control (RBAC)
@@ -106,6 +114,8 @@
 
 *Open follow-up: → F6 (concrete role/permission matrix; source of user/department data; delegation; e-signature standard).*
 
+> ✅ **Resolved (2026-07-21, F6):** user identity + department come from the company **SSO/Active Directory**. At least **17 roles** are defined (Project Owner; Formulation Contributor; Safety / Quality / Regulatory Reviewers; Packaging/Artwork; Marketing/Sales; Supply Chain; Manufacturing Link; Study Author / Department Study Reviewer / Independent Study Reviewer; Published-Info Technical Reviewer / Regulatory Reviewer; Final Approver; System Administrator; Read-only Viewer). Contributors **cannot approve their own approval-critical work** unless a documented exception exists. **Delegation** is time-limited, manager/admin-approved, records delegator/delegate/dates/scope, and stays in the audit history. **Electronic approval** records authenticated identity, date/time, role, decision, optional/mandatory comment, the version approved, and an invalidation/supersession trail. A **full 21 CFR Part 11 implementation is not required yet** (sound audit-trail + e-approval principles from the start).
+
 ---
 
 ### A5. Must the Formula BOM always come from importing an existing Cosmetri formula, or can it also be created manually in MBc360?
@@ -119,7 +129,12 @@
 2. Or is manual entry an accepted step for formulas not yet registered in Cosmetri, to be later replaced/reconciled by a Cosmetri import once the formula is finalized there?
 3. If manual entry stays allowed, does it need to be flagged/reconciled against Cosmetri before a specific gate (e.g. 07/10), or is that out of scope?
 
-**Subject-matter team decision:** ❌ **NOT YET ANSWERED.**
+**Subject-matter team decision (2026-07-21):** ✅ **Confirmed — both paths, with mandatory reconciliation before final safety approval.**
+- Manual Formula BOM entry is accepted **for early bench development only** (before the formula is formally entered into Cosmetri).
+- Cosmetri becomes the **mandatory controlled system of record** before **Gate 7 final safety approval** and regulatory dossier completion.
+- Manual formulas must be clearly marked **"Draft – Not Reconciled with Cosmetri"**; each line should carry a Cosmetri raw-material reference where the material already exists; a material not yet in Cosmetri triggers the Power Apps raw-material request process.
+- **Gates 10 and 11 must use the controlled Cosmetri formula and version.** Once reconciled, imported identity/INCI/CAS/composition fields are locked against uncontrolled editing, and any MBc360-vs-Cosmetri difference is resolved through the formula-comparison and change-control process.
+- *This is the F14/A5 answer — see F14 below.*
 
 ---
 
@@ -151,6 +166,8 @@ Detailed rulings:
 
 *Open follow-ups: → F1 (conditions 3 and 4 are new and undefined — the per-gate list of required sign-offs and mandatory evidence is exactly the unanswered question C7), → F7 (does a Gap also block "Proceed with Conditions", or only plain "Proceed"?).*
 
+> ✅ **Resolved (2026-07-21):** **F1** — conditions 3 & 4 now have a concrete per-gate list (Gates 1–12) under a 3-tier Mandatory/Conditional/Supporting model, surfaced through a Gate Readiness panel — see the full F1 answer below and the C7 decision above. **F7** — a **Gap blocks plain Proceed**; **Proceed with Conditions stays available only** when the gap is not safety/regulatory/release-critical, an authorised reviewer accepts the temporary risk, and a controlled Next Action (owner, due date, escalation) is created; **critical gaps must go to Hold, Backtrack or Reject/Stop.**
+
 ---
 
 ### B2. Next action / Next due date / Next owner
@@ -172,6 +189,8 @@ Detailed rulings:
 - Otherwise all actions should normally be completed before gate closure.
 
 *Open follow-up: → F8 (original question 4 not answered: who is authorized to close an action; also the Priority value list).*
+
+> ✅ **Resolved (2026-07-21, F8):** the action **Owner** is responsible for completing it, but the **raiser, the relevant gate owner, or an authorised reviewer verifies and closes** it — the owner **cannot unilaterally verify closure** where independent confirmation is required. Status workflow: **Open → In Progress → Awaiting Information → Ready for Verification → Closed → Cancelled**. Priorities: **Low / Medium / High / Critical** — **Critical actions block normal gate closure.**
 
 ---
 
@@ -242,7 +261,11 @@ However, **nothing is ever deleted**. Instead:
 1. Is early/pre-work data entry on a not-yet-reached phase actually desired, or should the whole page stay read-only until the phase is reached in order?
 2. If pre-work is allowed, does data entered "early" need any visual/procedural distinction from data entered during the phase's normal window (e.g. a flag noting it was entered before the phase formally opened)?
 
-**Subject-matter team decision:** ❌ **NOT YET ANSWERED.**
+**Subject-matter team decision (2026-07-21):** ✅ **Confirmed — the current demo approach is broadly correct; early/pre-work entry is allowed.**
+- While a phase is locked: gate decisions, sign-off and formal stage closure stay disabled; users may still add draft evidence, requirements, notes, risks and proposed actions.
+- Early entries must be visibly marked **"Pre-work / Entered Before Gate Opened"** and retain the entry date and user.
+- Once the phase opens, the responsible owner must review and formally accept or update the pre-work before it can contribute to completion. This supports parallel working without allowing uncontrolled progression.
+- *This is the F13/B5 answer — see F13 below.*
 
 ---
 
@@ -263,6 +286,8 @@ However, **nothing is ever deleted**. Instead:
 
 *Open follow-up: → F2 (the reply omits "Infant 0+" from the trigger list — does a baby-only product, with no maternal selection, also activate Skincare for Two?).*
 
+> ✅ **Resolved (2026-07-21, F2):** **"Infant 0+" alone does NOT activate Skincare for Two.** Skincare for Two is triggered only by **Pregnancy / Breastfeeding / Postpartum** (maternal use + baby-contact assessment). "Infant 0+" instead activates a **dedicated Infant & Baby Safety workflow** (infant skin characteristics, exposure, accidental oral contact where relevant, eye-area use, body area, frequency, age suitability). A product intended for **both** maternal and infant use activates **both** workflows.
+
 ---
 
 ### C2. Is the Study/Human Trial approval chain a fixed set of roles?
@@ -280,6 +305,8 @@ However, **nothing is ever deleted**. Instead:
 - The system **must prevent** the Independent Reviewer from belonging to the same department as the Study Author.
 
 *Depends on → F6 (user/department data is required to enforce the cross-department rule).*
+
+> ✅ **Resolved (2026-07-21):** F6 is answered — user + department come from **SSO/AD**, which supplies the data needed to enforce **Independent Study Reviewer ≠ Study Author department**. Dedicated **Study Author / Department Study Reviewer / Independent Study Reviewer** roles exist in the F6 role list.
 
 ---
 
@@ -300,6 +327,8 @@ The system immediately flags potential issues for review.
 
 *Open follow-up: → F3 (matching mechanics: the watch-lists contain group names ("Parabens", "Formaldehyde releasers") while the BOM holds INCI names — a group→INCI/CAS mapping source is needed, plus the source and update cadence of per-market regulatory restriction lists).*
 
+> ✅ **Resolved (2026-07-21, F3):** matching priority = **exact Cosmetri RM identifier → exact INCI → CAS → synonym/group mapping → manual scientific review** when automatic matching is uncertain. The prohibited/restricted/caution lists are **controlled reference datasets maintained by Regulatory & Safety**; each entry carries ingredient/group name, INCI names, CAS numbers, synonyms, relevant markets, restriction/caution, max concentration/condition of use, source, effective date, last-review date, owner and version. Regulatory reviews market restriction lists **at least annually** (and on any relevant regulatory change); pregnancy/breastfeeding limits are reviewed on new evidence. **Automatic matches are screening flags — they do not replace qualified review.**
+
 ---
 
 ### C4. Does an open Change Control record block the Gate Flow?
@@ -315,6 +344,8 @@ The system immediately flags potential issues for review.
 - This maintains traceability.
 
 *Open follow-up: → F9 (which Change statuses count as "open"; what the soft lock concretely does — banner only, or required acknowledgement before the gate decision).*
+
+> ✅ **Resolved (2026-07-21, F9):** **open** statuses = Draft, Submitted, Under Review, Approved–Implementation Pending, In Implementation, Verification Pending, On Hold (Completed / Rejected / Cancelled / Superseded = closed, once the final disposition is recorded). The soft lock shows a **prominent warning** on the affected project/formula version/market/gate, identifies the open change and its owner, **requires the user to acknowledge the open change before recording a gate decision**, and **blocks plain Proceed** where the change may affect the gate conclusion (Proceed with Conditions only if an authorised approver accepts it). Changes involving safety, formula identity, regulatory approval, artwork, claims or launch release **may become a hard block** depending on assessed impact.
 
 ---
 
@@ -334,6 +365,8 @@ PIF completion hard-blocks:
 A product may launch in one country while remaining blocked in another (consistent with A1's per-market Gate 10–12 tracking).
 
 *Open follow-up: → F10 (non-ASEAN markets — EU CPSR, Australia, US — which checklist plays the role of PIF_Checklist_ASEAN per market?).*
+
+> ✅ **Resolved (2026-07-21, F10):** use a **configurable per-market "Market Dossier Profile"** rather than assuming the ASEAN PIF checklist everywhere — e.g. ASEAN/VN (ASEAN PIF + local notification), EU/EEA (PIF/CPSR/CPNP/Responsible Person), UK (UK PIF/CPSR/SCPN/RP), Australia (product+ingredient compliance, AICIS where applicable, labelling/claim review + company Product Master File), US (MoCRA + applicable FDA records, safety substantiation, claim/labelling), other markets configurable. **Regulatory maintains each market's checklist profile without a software rebuild.**
 
 ---
 
@@ -362,6 +395,8 @@ Any information intended for public release — including websites, brochures, t
 
 *Open follow-up: → F11 (workflow states/roles per content type; source and maintenance of the terminology/claims guidance).*
 
+> ✅ **Resolved (2026-07-21, F11):** workflow **states** = Draft, Evidence Gathering, Technical Review, Regulatory Review Required, Regulatory Review Complete, Revision Required, Final Approval Pending, Approved for Release, Released, Expired, Withdrawn, Superseded. **Roles** = Content Owner/Author, Technical Reviewer, Regulatory Reviewer (whenever content includes claims/safety/compliance/directions/warnings/market-specific/HCP content), Final Authorised Approver (marketing-only aesthetic content may skip Regulatory, but any product statement must use approved wording). Terminology/claim guidance comes from a **controlled Published Product Information Guideline / Claims Library** maintained jointly by **Technical + Regulatory**; the system confirms correct SKU/formula version, linked evidence, PIF/Product-Master-File status, current market approval and that released content matches the approved version. **Releasing without approval generates a deviation/violation record.** Scope covers websites, social media, brochures, catalogues, presentations, distributor/pharmacy & HCP docs, training, ads, **AI-generated content**, label/artwork text and external technical summaries.
+
 ---
 
 ### C7. Should safety/PIF evidence registers be a mandatory condition to pass a gate?
@@ -375,9 +410,18 @@ Any information intended for public release — including websites, brochures, t
 2. If so, should it hard-block (disallow selecting a Proceed decision) or only soft-warn (allow Proceed but show a banner flagging unresolved evidence)?
 3. Should this apply to all 37 registers, or only a subset of "safety-critical" ones?
 
-**Subject-matter team decision:** ❌ **NOT YET ANSWERED.**
+**Subject-matter team decision (2026-07-21):** ✅ **Confirmed — a risk-based subset, using a 3-tier classification (not all 37 registers hard-block).**
 
-> B1's new condition "mandatory evidence attached" implies the direction is *yes*, but the specific per-gate list of required registers/evidence and the hard-block vs soft-warn behaviour remain undefined. **This is the largest remaining gap — see F1.** B1 cannot be implemented without this answer.
+Each register is classified as:
+- **Mandatory** — hard-blocks gate passage.
+- **Conditional** — becomes mandatory (and hard-blocks) only when triggered by product type, user, market, claim or change.
+- **Supporting** — may be incomplete without blocking the gate, provided the resulting risk is documented (generates warnings/actions, not an automatic block).
+
+Safety-critical and regulatory-critical registers **must hard-block** the relevant gate. The system provides a **Gate Readiness panel** per gate showing: mandatory items complete, conditional items triggered, blocking gaps, warnings, missing evidence links, required sign-offs, open Next Actions, open Change Controls, and a current readiness result of **Not Ready / Ready with Conditions / Ready for Decision / Passed**.
+
+The concrete per-gate list of required evidence and sign-offs (Gates 1–12) is given in the **F1** answer below — this is the same 3-tier model applied gate by gate.
+
+> **Implementation note:** F1/C7 unblocks `gateBlockers()` — the per-gate Mandatory/Conditional items become hard blocks, Supporting items become warnings, and the Gate Readiness panel is a new UI surface. The remaining work is mapping each listed item to a concrete register/field in the app and to a trigger condition.
 
 ---
 
@@ -403,32 +447,63 @@ Instead, MBc360 contains a **"GMP Links"** section which stores references/hyper
 
 ## Outstanding follow-up questions
 
-> Consolidated list of everything still open after the 2026-07-16 answers. **F1 blocks B1/C7 implementation and should be answered first.**
+> **Update (2026-07-21): all 14 follow-ups have been answered** (source: `docs/Response.txt`). The table below now records the confirmed answer for each. **Only F12 remains genuinely open** — it depends on Cosmetri confirming its ASEAN/Vietnam compliance coverage, which is outside our team's control. The full per-gate mandatory-evidence list for F1 is in the appendix section that follows this table.
 >
-> Where the demo had to assume an answer to keep working, the row carries a *"Demo working assumption"* — please **confirm or correct** it rather than answering from scratch.
+> Legend: ✅ = answered/closed · ⏳ = still open.
 
-| # | Relates to | Question |
-|---|---|---|
-| **F1** | C7, B1 | Per-gate definition of "required sign-offs" and "mandatory evidence": for each gate (esp. 07 and 10), exactly which sign-offs and which evidence registers/states are required to pass (e.g. Gate 07 ⇐ Formulation_Safety "Final safety release" Completed AND Prohibited_Ingredients with no "REVIEW"/"Prohibited - remove" rows)? Hard-block or soft-warn per item? All 37 registers or a safety-critical subset? *The demo is ready to enforce the confirmed list as hard blocks as soon as it is provided.* |
-| **F2** | C1 | Does selecting **"Infant 0+"** (baby-only product, no maternal selection) also activate Skincare for Two? The reply lists only Pregnancy/Breastfeeding/Postpartum. *Demo working assumption: only those three selections trigger the hard block.* |
-| **F3** | C3 | Ingredient-matching mechanics — *partially resolved*: Cosmetri can supply each ingredient's INCI name and **CAS number**, so the automatic screen can match on exact CAS numbers instead of guessing from names. Still open: the watch-lists (Prohibited / PB caution) must themselves list the CAS numbers belonging to each ingredient group — **who builds and maintains that mapping?** And the source and update cadence for per-market regulatory restriction lists. |
-| **F4** | A1 × A2 | A launched product (per-market Gates 10–12 closed) gets a major formula change → Gates 4–9 backtrack. Do the closed market tracks automatically reopen per market (e.g. Vietnam ~6-month re-registration)? Must the system support **two concurrent versions** of one product (old version still on market while the new one is in development)? What happens when a market is added/removed mid-project? *Demo working assumption: a Major formula version reopens Gates 4–9 but leaves the per-market Gate 10–12 tracks untouched, and market tracks are fixed at project creation.* |
-| **F5** | A2 | Criteria for **"major" vs "minor"** formulation change (major = auto new version + backtrack; minor = Change Control only). Can the existing `Formula_Change_Control` trigger catalogue serve as the classification basis? *Demo working assumption: the user classifies each change manually as Major or Minor when creating the version.* |
-| **F6** | A4, C2 | The concrete **role/permission matrix** (role × gate/section/register × contribute/approve/sign). Where does user + department data come from (SSO/AD)? Delegation during absence? Required e-signature standard for "electronic approval history" (audit-trail depth, 21 CFR Part 11-style or lighter)? *Demo working assumption: gate decisions, the phase "Approved by" signature and market approvals are restricted to the function named as each gate's/phase's primary owner; evidence fields stay open to all contributors.* |
-| **F7** | B1 | Does a **Gap** status block only plain "Proceed", or also "Proceed with Conditions"? *Demo working assumption: Gap blocks only plain Proceed; Proceed with Conditions stays available.* |
-| **F8** | B2 | Who is authorized to **close** a Next Action (the recorder, the owner, or either)? What is the Priority value list? *Demo working assumption: any user can close an action; priority values are Low / Medium / High.* |
-| **F9** | C4 | Which Change statuses count as "open" for the soft lock? What does the soft lock concretely do — warning banner only, or required acknowledgement before a gate decision can be recorded? *Demo working assumption: any change record not "Completed" counts as open; the soft lock is a warning icon on the gate with no acknowledgement step.* |
-| **F10** | C5 | For non-ASEAN markets (EU, Australia, US, ...): which checklist replaces `PIF_Checklist_ASEAN` as the per-market "PIF complete" definition (e.g. EU CPSR)? |
-| **F11** | C6 | Published Information Approval workflow details: states, required reviewer roles per content type, and the source/maintenance of the acceptable-terminology and required-evidence-per-claim guidance. *Demo working assumption: five Y/N/N.A. workflow steps on the register (terminology check → evidence verified → technical review → regulatory review → final approval) plus a released-without-approval violation flag.* |
-| **F12** | A3 | Cosmetri connection — *mostly resolved by the API documentation received*: the login/token mechanism is confirmed, raw materials include the **supplier name**, and the raw-material "code" field is a **batch number** — so ingredient identity for cross-checking (INCI/CAS) comes from Cosmetri's compliance data. Decided (2026-07-16): data that the **Cosmetri API does not provide** is **entered manually** in MBc360 — note this is a limitation of the current API version, not a gap in the Cosmetri application itself: supplier details and SDS/CoA/TDS documents **are stored inside Cosmetri**, the API just does not yet expose them to external systems; new raw materials follow the **Power Apps change request → approval → Cosmetri entry** flow, with MBc360 linking to the Power Apps app when an ingredient is not yet selectable. **Only remaining question: does Cosmetri's compliance coverage include ASEAN/Vietnam (the documentation shows EU/UK/US examples only)?** |
-| **F13** | B5 | On a locked (not-yet-reached) phase page, should ALL data-entry forms be disabled, or only the gate-decision and sign-off controls (as the demo currently does, to allow early/pre-work data entry)? *Demo working assumption: only gate decisions and phase sign-off are disabled while locked; every other form (checklists, requirements, gate checks, next actions, 8 angles) stays editable.* |
-| **F14** | A5 | Must Formula BOM entry require importing an existing Cosmetri formula, or is manual entry in MBc360 acceptable for formulas not yet in Cosmetri? *Demo working assumption: both are allowed — Import from Cosmetri locks composition/INCI/CAS/supplier as read-only on those lines; manually-added lines stay fully editable with no Cosmetri record required.* |
+| # | Relates to | Status | Confirmed answer (2026-07-21) |
+|---|---|---|---|
+| **F1** | C7, B1 | ✅ | 3-tier classification — **Mandatory** (hard-block), **Conditional** (hard-block when triggered), **Supporting** (warning only) — with an explicit per-gate required list for **Gates 1–12** and a **Gate Readiness panel** (Not Ready / Ready with Conditions / Ready for Decision / Passed). Full per-gate list in the appendix below. |
+| **F2** | C1 | ✅ | **"Infant 0+" alone does NOT trigger Skincare for Two.** It activates a separate **Infant & Baby Safety workflow**. Skincare for Two = Pregnancy/Breastfeeding/Postpartum only; a maternal+infant product activates both. |
+| **F3** | C3 | ✅ | Match priority: Cosmetri RM identifier → INCI → CAS → synonym/group mapping → manual review. Watch-lists are **controlled datasets maintained by Regulatory & Safety** (INCI/CAS/synonyms/markets/limits/source/dates/owner/version), reviewed ≥ annually. Auto-matches are screening flags only. |
+| **F4** | A1 × A2 | ✅ | **Multiple concurrent versions supported.** Old version keeps its closed per-market Gate 10–12 tracks; a major change creates a **new** per-market track for the new version. Adding a market = new track (may re-trigger earlier gates); removing = mark Withdrawn/Cancelled (never delete). Project status enum: Development complete / Approved in some / Approved in all active / Market transition underway / Fully closed. |
+| **F5** | A2 | ✅ | Formula Change Control trigger catalogue is the classification framework; **major** = any change possibly affecting safety, efficacy/claims, preservative, ingredient identity, active %, regulatory status, allergen, pH out of range, form, process, stability, packaging, label declaration or registration. Initiator proposes; **an authorised technical/quality reviewer must confirm** — not user choice alone. |
+| **F6** | A4, C2 | ✅ | Identity/department from **SSO/AD**. **≥17 roles** defined (see A4 above). Contributors cannot approve their own approval-critical work. Delegation time-limited, manager-approved, audited. E-approval records identity/time/role/decision/version + invalidation trail; **full 21 CFR Part 11 not required yet** (sound principles from the start). |
+| **F7** | B1 | ✅ | **Gap blocks plain Proceed.** Proceed with Conditions only if the gap is non-critical, an authorised reviewer accepts the risk, and a controlled Next Action exists. **Critical gaps → Hold / Backtrack / Reject.** |
+| **F8** | B2 | ✅ | Owner **completes**; raiser / gate owner / authorised reviewer **verifies & closes** (owner cannot unilaterally close where independent confirmation is required). Statuses: Open / In Progress / Awaiting Information / Ready for Verification / Closed / Cancelled. Priorities: Low / Medium / High / **Critical** (Critical blocks gate closure). |
+| **F9** | C4 | ✅ | Open = Draft / Submitted / Under Review / Approved–Impl Pending / In Implementation / Verification Pending / On Hold. Soft lock = prominent warning + **required acknowledgement** before a decision + **blocks plain Proceed** where impactful; may **hard-block** for safety/formula-identity/regulatory/artwork/claims/launch changes. |
+| **F10** | C5 | ✅ | **Configurable per-market Market Dossier Profile** (ASEAN PIF, EU PIF/CPSR/CPNP, UK PIF/CPSR/SCPN, AU AICIS + Product Master File, US MoCRA/FDA, others configurable). **Regulatory maintains profiles without a rebuild.** |
+| **F11** | C6 | ✅ | 12 workflow states (Draft → … → Approved for Release → Released → Expired/Withdrawn/Superseded); roles = Content Owner, Technical Reviewer, Regulatory Reviewer (where applicable), Final Approver; guidance from a controlled **Claims Library** maintained by Technical + Regulatory; release-without-approval = deviation record. |
+| **F12** | A3 | ⏳ **OPEN** | **The one item still open.** Cannot confirm Cosmetri compliance covers ASEAN/Vietnam — **remains open until Cosmetri confirms**. Meanwhile MBc360 runs its own market-specific regulatory screen in addition to Cosmetri, shows source zone + last-update, never assumes EU/UK/US = ASEAN/VN, and lets Regulatory attach a separate ASEAN/VN conclusion. |
+| **F13** | B5 | ✅ | Early/pre-work entry **allowed**; only gate decisions/sign-off/formal closure disabled while locked. Early entries marked **"Pre-work / Entered Before Gate Opened"** with date+user; owner must review/accept them once the phase opens. |
+| **F14** | A5 | ✅ | Both paths during development; manual marked **"Draft – Not Reconciled with Cosmetri"**; **must reconcile to a Cosmetri formula before Gate 7 final safety approval**; **Gates 10 & 11 must use the controlled Cosmetri formula/version**; imported identity/INCI/CAS/composition locked once reconciled. |
 
 ---
 
+## Appendix (2026-07-21) — F1: Per-gate mandatory evidence & sign-offs
+
+Applying the 3-tier model (**Mandatory** hard-blocks · **Conditional** hard-blocks when triggered · **Supporting** warns only). Every gate additionally requires **Prepared / Reviewed / Approved sign-off**. Hard blocks apply to mandatory safety, regulatory, PIF, claim and release evidence; supporting information warns rather than blocks.
+
+- **Gate 1 — Opportunity & Request:** product request record, project owner, request source, initial product scope, initial target market & user.
+- **Gate 2 — Target User & Brief:** approved development brief, target user & life stage, intended use & body area, selected markets, vulnerable-user flags, project requirements & exclusions.
+- **Gate 3 — Product Concept & Claims:** product concept, proposed claims list, preliminary claim classification, evidence requirements per claim, competitor/benchmark review where applicable, regulatory review of high-risk/borderline claims. *(A claim may stay under development, but unsupported wording must not be marked approved.)*
+- **Gate 4 — Ingredient & RM Screening:** ingredient set, ingredient identity + Cosmetri reference where available, supplier/RM evidence status, prohibited & restricted screen, pregnancy/breastfeeding caution screen when triggered, allergen/impurity/contaminant review where relevant, **no unresolved "Prohibited – remove"**. *(An unresolved possible match allows Proceed with Conditions only where a qualified reviewer assessed it non-critical with a controlled action.)*
+- **Gate 5 — Formula Design & Development:** current formula version, composition or controlled Cosmetri reference, target pH + acceptable range, process requirements affecting function, preservative strategy where applicable, compatibility assessment, initial efficacy rationale/MoA mapping, costing/commercial feasibility status.
+- **Gate 6 — Packaging & Components:** proposed pack spec, packaging compatibility requirements, label & artwork requirements, component supplier status, market-specific pack requirements, link to controlled packaging evidence.
+- **Gate 7 — Safety Review (SAFETY-CRITICAL HARD BLOCK):** final formulation safety review completed, prohibited screen closed, restricted/caution assessment closed, exposure/intended-use assessment, allergen & impurity review, maternal + infant-contact assessment when Skincare for Two triggered, safety conclusion + limitations, required safety-reviewer approval, no unresolved critical safety finding. **Gate 7 must not pass while:** final safety release incomplete · a prohibited ingredient remains · a critical caution-limit issue is unresolved · a mandatory maternal/infant-contact assessment is incomplete.
+- **Gate 8 — Testing & Validation:** testing plan, methods/method references, acceptance criteria, required safety/efficacy/preservative/QC/performance tests identified, **human-study approval completed before recruitment** where applicable, reports or controlled actions for in-progress tests. *(Release-essential testing must complete before the relevant later release gate even if Gate 8 proceeds conditionally.)*
+- **Gate 9 — Stability & Release Readiness:** stability status, packaging-compatibility status, preservative-efficacy status where applicable, physical/chemical/micro acceptance criteria, scale-up/pilot status where applicable, deviations & open risks reviewed, release-readiness conclusion. *(Critical release tests must close; longer-term stability may stay ongoing with an approved launch protocol + sufficient supporting data.)*
+- **Gate 10 — Regulatory, Claims & PIF (MARKET-SPECIFIC HARD BLOCK, per market):** applicable regulatory checklist, PIF/CPSR/Product Master File or equivalent dossier status, SKU-level claims register, **evidence attached/linked for every approved claim**, ingredient & product safety evidence, product-performance evidence where relevant, label & artwork review, published-information status, regulatory approval. *(No approved public claim may remain without evidence + a PIF/Product Master File link.)*
+- **Gate 11 — Production & Launch (MARKET-SPECIFIC HARD BLOCK):** Gate 10 complete for the market, GMP document links, approved current formula version, approved artwork version, production readiness, quality release pathway, change controls closed or formally accepted, published product information approved, launch approval.
+- **Gate 12 — Post-Market & Improvement:** market feedback, complaint & adverse-event status, PV/PMS review where applicable, product-performance feedback, CAPA/improvement actions, change-control links, review-closure sign-off.
+
+---
+
+## Remaining implementation inputs (2026-07-21)
+
+The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **supplying data/content** the answers now call for — these are inputs to gather, not decisions to make:
+
+- **F1/C7** — map each per-gate item above to a concrete register/field in the app and to its trigger condition (which registers are Mandatory vs Conditional vs Supporting for each gate).
+- **F3** — the actual controlled watch-list datasets (real CAS numbers per ingredient group) built/maintained by Regulatory & Safety.
+- **F6** — the fine-grained role × gate/section/register permission grid, plus the real SSO/AD attribute mapping (which AD group → which MBc360 role/department).
+- **F10** — the concrete per-market checklist content for each Market Dossier Profile (EU CPSR items, AU, US, …), supplied by Regulatory.
+- **F11** — the Published Product Information Guideline / Claims Library content (approved terms, required evidence per claim).
+- **F12** — Cosmetri's confirmation of ASEAN/Vietnam compliance coverage (external dependency).
+
 ## Notes
 
-- Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(Now answered — remaining Group A follow-ups: F4, F5, F6, F12, F14.)*
+- Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*
 - Groups B and C are business rules that can be refined progressively during development without necessarily breaking the architecture, but early confirmation is still recommended to avoid reworking UI/logic already built.
 - The 2026-07-16 answers **overturn three core demo assumptions**: (1) gate passing must also read sign-offs, Next Actions and evidence registers — not just Stage status + Gate decision; (2) backtrack must never delete — event-log/snapshot model required; (3) Gates 10–12 become per-market instead of a single shared flow.
-- Reference materials: `MBc360 Master Product Development System File.xlsx` (55 sheets) and the current ReactJS demo (`mbc360-app/`).
+- The 2026-07-21 answers add three further **demo-changing** points: (4) **concurrent formula versions** — a major change keeps the old version's closed market tracks and opens a new per-market track (F4), overturning the demo's "market tracks fixed at creation"; (5) **"Infant 0+" gets its own Infant & Baby Safety workflow**, separate from Skincare for Two (F2); (6) manual Formula BOM lines must be **reconciled to Cosmetri before Gate 7**, and Gates 10/11 must use the controlled Cosmetri formula (F14).
+- Reference materials: `MBc360 Master Product Development System File.xlsx` (55 sheets), the current ReactJS demo (`mbc360-app/`), and the subject-matter team's full 2026-07-21 reply (`docs/Response.txt`).

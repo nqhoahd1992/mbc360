@@ -1,0 +1,525 @@
+F1. Mandatory evidence and sign-offs by gate
+
+The app should enforce a risk-based subset of mandatory evidence, rather than requiring every register to be completed for every project.
+
+Each register should be classified as:
+
+Mandatory: hard-blocks gate passage.
+Conditional: becomes mandatory when triggered by product type, user, market, claim or change.
+Supporting: may be incomplete without blocking the gate, provided any resulting risk is documented.
+The minimum gate rules should be:
+
+Gate 1 – Opportunity and Request
+
+Required:
+
+Product request record.
+Project owner.
+Request source.
+Initial product scope.
+Initial target market and user.
+Prepared, reviewed and approved sign-off.
+Gate 2 – Target User and Brief
+
+Required:
+
+Approved development brief.
+Target user and life stage.
+Intended use and body area.
+Selected markets.
+Vulnerable-user flags.
+Project requirements and exclusions.
+Prepared, reviewed and approved sign-off.
+Gate 3 – Product Concept and Claims
+
+Required:
+
+Product concept.
+Proposed claims list.
+Preliminary claim classification.
+Evidence requirements identified for each proposed claim.
+Competitor or benchmark review where applicable.
+Regulatory review of high-risk or borderline claims.
+Prepared, reviewed and approved sign-off.
+A claim may remain under development, but unsupported wording must not be marked as approved.
+
+Gate 4 – Ingredient and Raw Material Screening
+
+Required:
+
+Formula ingredients or intended ingredient set.
+Ingredient identity and Cosmetri reference where available.
+Supplier and raw-material evidence status.
+Prohibited and restricted ingredient screen.
+Pregnancy/breastfeeding caution screen when triggered.
+Allergen, impurity and contaminant review where relevant.
+No unresolved “Prohibited – remove” findings.
+Prepared, reviewed and approved sign-off.
+An unresolved possible match may permit Proceed with Conditions only where a qualified reviewer has assessed it as non-critical and created a controlled action.
+
+Gate 5 – Formula Design and Development
+
+Required:
+
+Current formula version.
+Formula composition or controlled Cosmetri formula reference.
+Target pH and acceptable pH range.
+Manufacturing/process requirements affecting product function.
+Preservative strategy where applicable.
+Formula compatibility assessment.
+Initial efficacy rationale and mechanism-of-action mapping.
+Costing or commercial feasibility status.
+Prepared, reviewed and approved sign-off.
+Gate 6 – Packaging and Components
+
+Required:
+
+Proposed pack specification.
+Packaging compatibility requirements.
+Label and artwork requirements.
+Component supplier status.
+Market-specific pack requirements.
+Link to controlled packaging evidence.
+Prepared, reviewed and approved sign-off.
+Gate 7 – Safety Review
+
+This is a safety-critical hard block.
+
+Required:
+
+Final formulation safety review completed.
+Prohibited ingredient screen closed.
+Restricted/caution ingredient assessment closed.
+Exposure and intended-use assessment.
+Allergen and impurity review.
+Maternal and infant-contact assessment when Skincare for Two is triggered.
+Safety conclusion and identified limitations.
+Required safety reviewer approval.
+No unresolved critical safety finding.
+Prepared, reviewed and approved sign-off.
+Gate 7 must not pass while:
+
+Final safety release is incomplete.
+A prohibited ingredient remains in the formula.
+A critical caution-limit issue is unresolved.
+A mandatory maternal or infant-contact assessment is incomplete.
+Gate 8 – Testing and Validation
+
+Required:
+
+Testing plan.
+Test methods or method references.
+Acceptance criteria.
+Required safety, efficacy, preservative, QC and performance testing identified.
+Human-study approval workflow completed before participant recruitment, where applicable.
+Test reports or controlled actions for tests still in progress.
+Prepared, reviewed and approved sign-off.
+Testing that is essential to product release must be completed before the relevant later release gate, even where Gate 8 proceeds conditionally.
+
+Gate 9 – Stability and Release Readiness
+
+Required:
+
+Stability status.
+Packaging compatibility status.
+Preservative efficacy status where applicable.
+Physical, chemical and microbiological acceptance criteria.
+Scale-up or pilot status where applicable.
+Deviations and open risks reviewed.
+Release-readiness conclusion.
+Prepared, reviewed and approved sign-off.
+Critical release tests must be closed. Longer-term stability may remain ongoing where an approved launch protocol and sufficient supporting data exist.
+
+Gate 10 – Regulatory, Claims and PIF
+
+This is a market-specific hard block.
+
+Required for each market:
+
+Applicable regulatory checklist.
+PIF, CPSR, Product Master File or equivalent market dossier status.
+SKU-level claims register.
+Evidence attached or linked for every approved product claim.
+Ingredient and product safety evidence attached.
+Product-performance evidence attached where relevant.
+Label and artwork review.
+Published information status.
+Regulatory approval.
+Prepared, reviewed and approved sign-off.
+No approved public claim may remain without evidence and a PIF/Product Master File link.
+
+Gate 11 – Production and Launch
+
+This is a market-specific hard block.
+
+Required:
+
+Gate 10 complete for the relevant market.
+GMP document links.
+Approved current formula version.
+Approved artwork version.
+Production readiness.
+Quality release pathway.
+Change controls closed or formally accepted.
+Published product information approved.
+Launch approval.
+Prepared, reviewed and approved sign-off.
+Gate 12 – Post-Market and Improvement
+
+Required for formal lifecycle review:
+
+Market feedback.
+Complaint and adverse-event status.
+PV/PMS review where applicable.
+Product-performance feedback.
+CAPA or improvement actions.
+Change-control links.
+Prepared, reviewed and approved review closure.
+These rules should be hard blocks for mandatory safety, regulatory, PIF, claim and release evidence. Supporting information may generate warnings rather than blocks.
+
+F2. Infant 0+ and Skincare for Two
+
+A baby-only product should not automatically activate the full Skincare for Two maternal workflow merely because “Infant 0+” is selected.
+
+Instead:
+
+Pregnancy, breastfeeding or postpartum selection activates Skincare for Two, including maternal use and baby-contact assessment.
+Infant 0+ activates a dedicated Infant and Baby Safety workflow.
+Where a product is intended for both maternal use and infant use, both workflows activate.
+The infant workflow should include infant skin characteristics, exposure, accidental oral contact where relevant, eye-area use, body area, frequency and age suitability.
+
+F3. Prohibited and caution-list maintenance
+
+Ingredient matching should use the following priority:
+
+Exact Cosmetri ingredient or raw-material identifier.
+Exact INCI name.
+CAS number.
+Synonym or ingredient-group mapping.
+Manual scientific review where automatic matching is uncertain.
+The prohibited, restricted and caution lists should be controlled reference datasets maintained by the Regulatory and Safety functions.
+
+Each entry should contain:
+
+Ingredient or group name.
+INCI names.
+CAS numbers.
+Synonyms.
+Relevant markets.
+Restriction or caution.
+Maximum concentration or condition of use.
+Source/reference.
+Effective date.
+Last review date.
+Owner.
+Version.
+Regulatory should review market restriction lists at least annually and whenever a relevant regulatory change is identified. Safety-specific pregnancy/breastfeeding limits should also be reviewed whenever new evidence or an authoritative update is identified.
+
+Automatic matches are screening flags and do not replace qualified review.
+
+F4. Formula changes and market tracks
+
+The system must support multiple formula versions concurrently.
+
+For example, an existing version may remain legally on the market while its replacement is under development or registration.
+
+For a major formula change:
+
+Gates 4–9 reopen for the new formula version.
+Existing closed Gates 10–12 remain preserved for the currently marketed formula version.
+A new market-specific Gate 10–12 track is created for the new formula version.
+The old version remains active until formally superseded, withdrawn or depleted according to the approved transition plan.
+The system must clearly display which formula version is approved for each market.
+A market may be added during the project. This creates a new market-specific Gates 10–12 track and may also trigger review of earlier gates where the new market has different ingredient, claim, packaging or safety requirements.
+
+Removing a market should not delete its records. It should be marked Withdrawn, Cancelled or Not Proceeding, with a reason.
+
+Overall project status should distinguish between:
+
+Development complete.
+Approved in some markets.
+Approved in all selected active markets.
+Market transition underway.
+Fully closed.
+F5. Major versus minor formula changes
+
+The Formula Change Control trigger catalogue should provide the classification framework, but the system should not rely only on the user manually choosing Major or Minor.
+
+A major change includes any change that may affect:
+
+Safety or exposure.
+Product efficacy or claim support.
+Preservative system.
+Ingredient identity.
+Active concentration.
+Regulatory status.
+Allergen profile.
+pH outside the approved range.
+Product form or physical characteristics.
+Manufacturing process affecting ingredient potency or product performance.
+Stability.
+Packaging compatibility.
+Label ingredient declaration.
+Market notification or registration.
+A minor change is limited to changes demonstrated not to affect safety, efficacy, regulatory status, claims, specifications or product performance.
+
+Examples may include an administrative correction, internal code update or supplier-document update with no material change.
+
+The change initiator may propose the classification, but an authorised technical or quality reviewer must confirm it.
+
+F6. Roles, permissions, delegation and electronic approval
+
+User identity and department should preferably come from the company’s SSO/Active Directory.
+
+The application should support at least these roles:
+
+Project Owner.
+R&I/Formulation Contributor.
+Safety Reviewer.
+Quality Reviewer.
+Regulatory Reviewer.
+Packaging/Artwork Contributor.
+Marketing/Sales Contributor.
+Supply Chain Contributor.
+Manufacturing Link Contributor.
+Study Author.
+Department Study Reviewer.
+Independent Study Reviewer.
+Published Information Technical Reviewer.
+Published Information Regulatory Reviewer.
+Final Approver.
+System Administrator.
+Read-only Viewer.
+Contributors may create and edit records within their assigned scope but cannot approve their own approval-critical work unless an authorised exception is documented.
+
+Delegation during absence should:
+
+Be time-limited.
+Be approved by an authorised manager or administrator.
+Record the delegator, delegate, start/end dates and scope.
+Remain visible in the audit history.
+Electronic approval should require:
+
+Authenticated user identity.
+Date and time.
+Approval role.
+Decision.
+Optional or mandatory comment, depending on decision.
+Record version approved.
+Audit trail of later invalidation or supersession.
+A full pharmaceutical 21 CFR Part 11 implementation is not presently required unless the system is later declared to support regulated electronic records requiring that standard. However, the system should use sound audit-trail and electronic-approval principles from the beginning.
+
+F7. Gap status and gate decisions
+
+A Gap should block plain Proceed.
+
+Proceed with Conditions may remain available only where:
+
+The gap is not safety-critical, regulatory-critical or release-critical.
+An authorised reviewer has accepted the temporary risk.
+A controlled Next Action is created.
+The action has an owner, due date and escalation condition.
+The gap does not breach a mandatory hard-block rule.
+Critical gaps must result in Hold, Backtrack or Reject/Stop.
+
+F8. Next Action closure and priority
+
+The action owner is responsible for completing the action.
+
+The person who raised the action, the relevant gate owner or an authorised reviewer should verify and close it. The action owner should not be able to unilaterally verify closure where independent confirmation is required.
+
+Recommended workflow:
+
+Open.
+In Progress.
+Awaiting Information.
+Ready for Verification.
+Closed.
+Cancelled.
+Recommended priorities:
+
+Low.
+Medium.
+High.
+Critical.
+Critical actions must prevent normal gate closure.
+
+F9. Change-Control soft locks
+
+The following statuses count as open:
+
+Draft.
+Submitted.
+Under Review.
+Approved – Implementation Pending.
+In Implementation.
+Verification Pending.
+On Hold.
+Completed, Rejected, Cancelled and Superseded are treated as closed, provided the final disposition is recorded.
+
+A soft lock should:
+
+Show a prominent warning on the affected project, formula version, market and gate.
+Identify the open change and its owner.
+Require the user to acknowledge the open change before recording a gate decision.
+Prevent plain Proceed where the change may affect the gate conclusion.
+Permit Proceed with Conditions only where an authorised approver accepts the open change.
+A change involving safety, formula identity, regulatory approval, artwork, claims or launch release may require a hard block depending on its assessed impact.
+
+F10. Market-specific dossier requirements
+
+The application should use a configurable Market Dossier Profile, rather than assuming every market uses the ASEAN PIF checklist.
+
+Examples:
+
+ASEAN/Vietnam: ASEAN PIF and local notification/administrative requirements.
+EU/EEA: PIF, CPSR, CPNP and Responsible Person records.
+United Kingdom: UK PIF/CPSR, SCPN and UK Responsible Person records.
+Australia: product and ingredient compliance records, AICIS status where applicable, labelling and claim review, with any additional company Product Master File requirements.
+United States: MoCRA and other applicable FDA records, facility/product requirements where applicable, safety substantiation and claim/labelling review.
+Other markets: configurable checklist approved by Regulatory.
+Regulatory should be able to maintain the checklist profile for each market without requiring a software rebuild.
+
+F11. Published Information Approval workflow
+
+Recommended states:
+
+Draft.
+Evidence Gathering.
+Technical Review.
+Regulatory Review Required.
+Regulatory Review Complete.
+Revision Required.
+Final Approval Pending.
+Approved for Release.
+Released.
+Expired.
+Withdrawn.
+Superseded.
+Minimum required roles:
+
+Content Owner or Author.
+Technical Reviewer.
+Regulatory Reviewer where the content includes claims, safety, compliance, product directions, warnings, market-specific information or healthcare-professional content.
+Final Authorised Approver.
+Marketing-only aesthetic content may not require a separate Regulatory review, but any product statement must still use approved wording.
+
+The workflow must cover:
+
+Websites.
+Social media.
+Brochures.
+Product catalogues.
+Presentations.
+Distributor and pharmacy documents.
+HCP documents.
+Training materials.
+Advertisements.
+AI-generated content.
+Label and artwork text.
+Technical summaries intended for external use.
+The acceptable terminology and claim guidance should come from a controlled Published Product Information Guideline / Claims Library maintained jointly by Technical and Regulatory functions.
+
+Each approved wording entry should include:
+
+Approved term or claim.
+Prohibited or discouraged alternatives.
+Required evidence type.
+Applicable products.
+Applicable markets.
+Approved context or channel.
+Limitations or mandatory qualifiers.
+Owner.
+Version and review date.
+The system should require confirmation that:
+
+The correct SKU and formula version were used.
+Required evidence is linked.
+PIF/Product Master File status permits use.
+Market-specific approval is current.
+The released content matches the approved version.
+Releasing content without approval should generate a deviation or violation record.
+
+F12. Cosmetri compliance coverage
+
+We cannot confirm from the API documentation alone that Cosmetri’s compliance output includes complete ASEAN and Vietnam coverage.
+
+The application should therefore:
+
+Use Cosmetri compliance data where the relevant market zone is available.
+Display the source market zone and last update date.
+Never assume EU/UK/US compliance equals ASEAN or Vietnam compliance.
+Run the MBc360 market-specific regulatory screen in addition to the Cosmetri result.
+Allow Regulatory to attach a separate ASEAN/Vietnam conclusion and evidence.
+This point should remain open until Cosmetri confirms its current ASEAN and Vietnam coverage.
+
+F13. Data entry in locked phases
+
+Early/pre-work entry should be allowed.
+
+While a phase is locked:
+
+Gate decisions remain disabled.
+Sign-off remains disabled.
+Formal stage closure remains disabled.
+Users may add draft evidence, requirements, notes, risks and proposed actions.
+Early entries should be visibly marked Pre-work / Entered Before Gate Opened and retain the entry date and user.
+
+Once the phase opens, the responsible owner must review and formally accept or update the pre-work before it can contribute to completion.
+
+This supports parallel working without allowing uncontrolled progression.
+
+F14. Formula BOM entry
+
+Both pathways should be supported during development:
+
+Import from Cosmetri.
+Temporary manual formula entry in MBc360.
+Manual entry is necessary for early bench development before the formula is formally entered into Cosmetri.
+
+However:
+
+Manual formulas must be clearly marked Draft – Not Reconciled with Cosmetri.
+Each line should use a Cosmetri raw-material reference where the material already exists.
+A material not yet in Cosmetri should trigger the approved Power Apps raw-material request process.
+Manual formula composition must be reconciled against an imported Cosmetri formula before Gate 7 final safety approval.
+Gates 10 and 11 must use the controlled Cosmetri formula and version.
+Once reconciled, imported identity, INCI, CAS and composition fields should be locked against uncontrolled editing.
+Any difference between the MBc360 draft and Cosmetri formula must be resolved through the formula comparison and change-control process.
+A5. Final decision
+
+Manual Formula BOM entry is accepted for early development only.
+
+Cosmetri becomes mandatory as the controlled formula system of record before final safety approval and regulatory dossier completion.
+
+B5. Locked-phase behaviour
+
+The current demo approach is broadly correct, with the additional pre-work flag described under F13.
+
+Only formal progression controls should be disabled while the phase is locked. Draft technical work may continue.
+
+C7. Final evidence-register rule
+
+Not all 37 registers should hard-block every project.
+
+The application should use the Mandatory, Conditional and Supporting classification described under F1.
+
+Safety-critical and regulatory-critical registers must hard-block the relevant gate. Conditional registers hard-block only when their trigger applies. Supporting registers generate warnings or actions rather than automatic blocks.
+
+The system should provide a clear Gate Readiness panel showing:
+
+Mandatory items complete.
+Conditional items triggered.
+Blocking gaps.
+Warnings.
+Missing evidence links.
+Required sign-offs.
+Open Next Actions.
+Open Change Controls.
+Current readiness result.
+The readiness result should be one of:
+
+Not Ready.
+Ready with Conditions.
+Ready for Decision.
+Passed.A
