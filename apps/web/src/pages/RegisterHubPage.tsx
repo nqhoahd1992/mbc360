@@ -98,16 +98,20 @@ export default function RegisterHubPage() {
     // Breadcrumb parent = this register's department group.
     const parent = findNavGroupForRegister(registerKey);
 
-    // C6: flag rows already published (final link filled) without a completed
-    // approval workflow — "no public information until the workflow is done".
+    // C6/F11: flag rows already published (final link filled) without a
+    // completed approval workflow — "no public information until the workflow
+    // reaches Approved for Release". A row violates if any step is not Y OR its
+    // workflow state is not a released/approved state.
     const C6_STEPS = ['terminologyChecked', 'evidenceVerified', 'technicalReview', 'regulatoryReview', 'finalApproval'];
+    const RELEASED_STATES = ['Approved for Release', 'Released'];
     const publishViolations =
       registerKey === 'publishedInfoApproval'
         ? (project.registers[registerKey] ?? []).filter(
             (row) =>
               typeof row.finalPublishedLink === 'string' &&
               row.finalPublishedLink.trim() !== '' &&
-              C6_STEPS.some((step) => row[step] !== 'Y'),
+              (C6_STEPS.some((step) => row[step] !== 'Y') ||
+                !RELEASED_STATES.includes(String(row.workflowState))),
           )
         : [];
 
@@ -132,7 +136,7 @@ export default function RegisterHubPage() {
             type="error"
             showIcon
             title={`${publishViolations.length} item${publishViolations.length > 1 ? 's' : ''} published without a completed approval workflow`}
-            description={`No public information may be released until all five workflow steps are Y (rule C6). Review: ${publishViolations
+            description={`No public information may be released until all five workflow steps are Y and the workflow state is "Approved for Release" or "Released" (rules C6 / F11). Review: ${publishViolations
               .map((r) => String(r.recordId || r.publishedItem || 'unnamed item'))
               .join(', ')}.`}
           />
