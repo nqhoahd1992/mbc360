@@ -5,6 +5,7 @@ import { useAppStore } from '../store/useAppStore';
 import StudyApprovalCard from '../components/StudyApprovalCard';
 import {
   findNavGroupForRegister,
+  formatGate,
   getNavGroup,
   getRegisterConfig,
   navItemHref,
@@ -173,7 +174,15 @@ export default function RegisterHubPage() {
             <RightOutlined style={{ color: '#bbb', marginTop: 4 }} />
           </div>
           <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {config?.gate && <Tag>Gate {config.gate}</Tag>}
+            {/* Read from `item.gate`, not `config?.gate` — a dedicated page
+                (e.g. Formula BOM: page: 'bom/formula', no registerKey) has no
+                RegisterConfig behind it at all, so `config` is undefined and
+                this tag used to be silently skipped even though the sidebar
+                shows the same item's gate (via the same `formatGate` helper)
+                right next to it. For a register-backed item `item.gate` is
+                populated from `config.gate` by `registerNavItem()` anyway, so
+                this is a strict improvement, not a behaviour change there. */}
+            {item.gate && <Tag>{formatGate(item.gate)}</Tag>}
             {config ? (
               <Tag color={config.mode === 'register' ? 'blue' : 'default'}>
                 {config.mode === 'register' ? 'Register' : 'Reference'}
