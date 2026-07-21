@@ -25,7 +25,10 @@ npm run lint      # oxlint across the whole repo
 docker compose -f docker-compose.dev.yml up -d   # dev Postgres (apps are NOT containerized in dev)
 npm run db:migrate -w @mbc360/api   # prisma migrate dev (needs dev Postgres up + apps/api/.env, see .env.example)
 npm run db:seed -w @mbc360/api      # idempotent seeder: rule config + demo project scaffolded from shared config
+npm run db:setup                    # all three of the above in order — run this after a fresh clone or a wiped/new Postgres volume
 ```
+
+**Fresh/reset dev Postgres → `npm run db:setup` before `npm run dev`.** A new (or volume-wiped) dev Postgres container starts with an empty `public` schema — no `users` table, no seeded roles. `npm run dev` itself never runs migrations (deliberately — migrations must be a conscious step), so starting the API against a schema-less DB surfaces as `PrismaClientKnownRequestError P2021: The table "public.users" does not exist` the moment anyone hits an endpoint that touches Prisma (e.g. the OIDC callback in `AuthService.upsertSsoUser`). Always run `npm run db:setup` (or the 3 commands above in order) once after: first clone on a new machine, `docker compose down -v` / any Postgres volume reset, or pulling a branch with new Prisma migrations.
 
 Per-workspace: `npm run <script> -w @mbc360/web|@mbc360/api|@mbc360/shared`. If TypeScript can't resolve `@mbc360/shared/*`, build the shared package first (`npm run build -w @mbc360/shared`). The Vite dev server proxies `/api` → `localhost:3000` (same-origin, mirroring production nginx routing) — the frontend must always call relative `/api/...` URLs.
 
