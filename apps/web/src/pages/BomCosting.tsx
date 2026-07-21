@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Alert, Button, Card, Col, Descriptions, Empty, Input, InputNumber, Popconfirm, Row, Statistic, Table, Tag, Tooltip } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Card, Col, Descriptions, Empty, Input, InputNumber, Popconfirm, Row, Select, Statistic, Table, Tag, Tooltip } from 'antd';
 import { PlusOutlined, DeleteOutlined, CloudDownloadOutlined } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
@@ -11,6 +11,7 @@ import FormulaVersionCompareModal, { type FormulaVersionOption } from '../compon
 import { hasReachedPhase, positionSentence } from '@mbc360/shared/utils/gateProgress';
 import { bomWatchMatches } from '@mbc360/shared/utils/ingredientWatch';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
+import { cosmetriListRawMaterials, type CosmetriRawMaterialSummary } from '../integrations/cosmetri';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from '../components/SaveBar';
 
@@ -28,6 +29,24 @@ export default function BomCosting() {
   const [importOpen, setImportOpen] = useState(false);
   const [versionOpen, setVersionOpen] = useState(false);
   const [compare, setCompare] = useState<{ from?: string; to?: string } | undefined>();
+
+  // F14: manual BOM lines identify their raw material by picking it from
+  // Cosmetri's catalogue rather than typing free text — fetched once per
+  // page visit (same simplifying assumption as the formula picker used by
+  // CosmetriImportModal; no caching layer yet, see the backend comment).
+  const [rawMaterials, setRawMaterials] = useState<CosmetriRawMaterialSummary[]>([]);
+  const [loadingRawMaterials, setLoadingRawMaterials] = useState(false);
+  useEffect(() => {
+    if (!cosmetriConnected) {
+      setRawMaterials([]);
+      return;
+    }
+    setLoadingRawMaterials(true);
+    cosmetriListRawMaterials()
+      .then(setRawMaterials)
+      .catch(() => setRawMaterials([]))
+      .finally(() => setLoadingRawMaterials(false));
+  }, [cosmetriConnected]);
 
   // Hooks must run unconditionally, so seed drafts from empty defaults when
   // there's no project yet — the early return below happens after.
@@ -75,6 +94,35 @@ export default function BomCosting() {
     const costPerUnit = unitsPerBatch > 0 ? costPerBatch / unitsPerBatch : 0;
     return { kgNeeded, costPerBatch, costPerUnit };
   };
+
+  // "{trade name} | {code}" matches how Cosmetri's own UI labels a raw
+  // material (see the raw-material composition table on a Cosmetri formula)
+  // — kept identical to `rmDisplayName` (used for fromCosmetri lines) so a
+  // manual line's picker shows the exact same format once something is
+  // selected. Supplier is deliberately NOT part of the label (code is already
+  // a unique-enough identifier); quality status still surfaces as a warning
+  // when it isn't "Approved".
+  const rawMaterialLabel = (r: CosmetriRawMaterialSummary) =>
+    `${r.tradeName} | ${r.code}${r.qualityStatus !== 'Approved' ? ` (${r.qualityStatus})` : ''}`;
+
+  // Built ONCE per `rawMaterials` fetch (not per row, not per keystroke) —
+  // BomCosting re-renders on every draft edit, so mapping/scanning up to
+  // 1,000 raw materials inline inside a per-row cell render was the actual
+  // source of the typing lag (not an API call; nothing here calls the
+  // network per keystroke — every input already only writes to the local
+  // useDraft state, committed to the store solely by the Save button).
+  const rawMaterialOptions = useMemo(
+    () => rawMaterials.map((r) => ({ value: `RM-${r.id}`, label: rawMaterialLabel(r) })),
+    [rawMaterials],
+  );
+  const rawMaterialById = useMemo(
+    () => new Map(rawMaterials.map((r) => [`RM-${r.id}`, r])),
+    [rawMaterials],
+  );
+  // F14: the Cosmetri raw material a manual line is pointed at, if any — used
+  // to lock the fields Cosmetri's raw-material API actually supplies (only
+  // Supplier; it has no INCI/CAS, so those stay user-entered either way).
+  const matchedRawMaterial = (l: BomLine) => rawMaterialById.get(l.rmCode);
 
   const packagingDerived = (l: PackagingBomLine) =>
     l.unitCost * l.unitsPerFinishedUnit * (1 + (l.wastagePercent || 0) / 100);
@@ -273,15 +321,70 @@ export default function BomCosting() {
                 ),
             },
             {
-              title: 'RM Code',
-              width: 110,
+              // F14: a manual line identifies its raw material by picking it
+              // from Cosmetri's catalogue — not free text — so the identity
+              // always references a real, existing Cosmetri record. Cosmetri
+              // has no "create" flow via this API; a material not yet there
+              // goes through the Power Apps request (see the Integrations
+              // page / CosmetriImportModal for that link).
+              title: 'Raw material (Cosmetri)',
+              width: 260,
               render: (_, l, i) =>
                 l.fromCosmetri ? (
+                  // Read-only, same label format as the picker below — a
+                  // full-formula import used to just show the raw internal
+                  // join key (rmCode, e.g. "RM-57136"), which isn't anything
+                  // a human sees inside Cosmetri itself.
                   <Tooltip title="From Cosmetri — read-only">
-                    <span style={{ color: '#666' }}>{l.rmCode}</span>
+                    <span style={{ color: '#666' }}>{l.rmDisplayName || l.rmCode}</span>
                   </Tooltip>
                 ) : (
-                  <Input size="small" value={l.rmCode} onChange={(e) => patchBomLine(i, { rmCode: e.target.value })} />
+                  <Select
+                    size="small"
+                    style={{ width: '100%' }}
+                    showSearch
+                    allowClear
+                    loading={loadingRawMaterials}
+                    disabled={!cosmetriConnected}
+                    placeholder={cosmetriConnected ? 'Search raw material…' : 'Connect Cosmetri in Integrations first'}
+                    value={l.rmCode || undefined}
+                    optionFilterProp="label"
+                    options={
+                      // Keep the line's current value selectable/visible even if
+                      // it isn't in the fetched catalogue (legacy data, or a
+                      // material since renamed/removed in Cosmetri) — never
+                      // silently blank out existing data just by rendering it.
+                      // Reuses the memoized `rawMaterialOptions` array as-is
+                      // (same reference every render) rather than remapping —
+                      // only the rare "not in catalogue" case allocates a new
+                      // (tiny) array, and only for that one row.
+                      l.rmCode && !rawMaterialById.has(l.rmCode)
+                        ? [
+                            {
+                              value: l.rmCode,
+                              label: `${l.rmDisplayName || l.rmCode} — not in the current Cosmetri catalogue`,
+                            },
+                            ...rawMaterialOptions,
+                          ]
+                        : rawMaterialOptions
+                    }
+                    onChange={(value: string | undefined) => {
+                      const match = value ? rawMaterialById.get(value) : undefined;
+                      patchBomLine(i, {
+                        rmCode: value ?? '',
+                        rmDisplayName: match ? `${match.tradeName} | ${match.code}` : undefined,
+                        // Supplier is a real field Cosmetri's raw-material API
+                        // supplies — safe to set as an actual value. INCI is
+                        // NOT: the raw-material endpoint has no INCI field at
+                        // all (confirmed against a real API response), so this
+                        // never sets `inciName` — only a placeholder hint below
+                        // shows the trade name, never a stored value that could
+                        // masquerade as real Cosmetri data feeding the
+                        // prohibited/caution ingredient screen.
+                        ...(match && { supplier: match.supplierName }),
+                      });
+                    }}
+                  />
                 ),
             },
             {
@@ -293,7 +396,18 @@ export default function BomCosting() {
                     <span style={{ color: '#666' }}>{l.inciName}</span>
                   </Tooltip>
                 ) : (
-                  <Input size="small" value={l.inciName} onChange={(e) => patchBomLine(i, { inciName: e.target.value })} />
+                  <Input
+                    size="small"
+                    value={l.inciName}
+                    // Cosmetri's raw-material API has no INCI field (only
+                    // /compliance/{formulaId} does, per formula) — the trade
+                    // name is shown as a grey HINT only (never stored/typed
+                    // in automatically), so the user always types the real
+                    // INCI themselves rather than trusting a guess that could
+                    // silently feed the prohibited/caution ingredient screen.
+                    placeholder={matchedRawMaterial(l)?.tradeName}
+                    onChange={(e) => patchBomLine(i, { inciName: e.target.value })}
+                  />
                 ),
             },
             {
@@ -323,14 +437,21 @@ export default function BomCosting() {
             {
               title: 'Supplier',
               width: 150,
-              render: (_, l, i) =>
-                l.fromCosmetri ? (
+              render: (_, l, i) => {
+                const match = matchedRawMaterial(l);
+                // Read-only whenever the supplier is a value Cosmetri's own
+                // raw-material API supplies — a full formula import
+                // (fromCosmetri) or a manual line pointed at a picked
+                // Cosmetri raw material — since a silent local edit would
+                // just drift from what Cosmetri actually says.
+                return l.fromCosmetri || match ? (
                   <Tooltip title="From Cosmetri — read-only">
-                    <span style={{ color: '#666' }}>{l.supplier}</span>
+                    <span style={{ color: '#666' }}>{match?.supplierName ?? l.supplier}</span>
                   </Tooltip>
                 ) : (
                   <Input size="small" value={l.supplier} onChange={(e) => patchBomLine(i, { supplier: e.target.value })} />
-                ),
+                );
+              },
             },
             {
               title: '% w/w',

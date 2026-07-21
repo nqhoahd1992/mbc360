@@ -68,6 +68,7 @@ export default function CosmetriImportModal({
     const lines: BomLine[] = rows.map((r, i) => ({
       line: i + 1,
       rmCode: `RM-${r.rmId}`,
+      rmDisplayName: r.code ? `${r.tradeName} | ${r.code}` : r.tradeName,
       inciName: r.inciName,
       casNo: r.casNo,
       functionRole: '',
@@ -150,7 +151,7 @@ export default function CosmetriImportModal({
             pagination={false}
             scroll={{ x: 760 }}
             columns={[
-              { title: 'RM', width: 90, render: (_, r) => `RM-${r.rmId}` },
+              { title: 'Code', width: 90, render: (_, r) => r.code || `RM-${r.rmId}` },
               { title: 'Trade name', width: 170, dataIndex: 'tradeName' },
               { title: 'INCI', width: 200, dataIndex: 'inciName' },
               { title: 'CAS no.', width: 110, dataIndex: 'casNo' },

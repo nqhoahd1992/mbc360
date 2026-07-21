@@ -22,6 +22,9 @@ export interface CosmetriFormulaSummary {
 export interface CosmetriImportRow {
   rmId: number;
   tradeName: string;
+  // inf_code — Cosmetri's own human-readable raw-material code (e.g.
+  // "OL-NA-006"), as shown in Cosmetri's own UI ("{trade name} | {code}").
+  code: string;
   inciName: string;
   casNo: string;
   percentWw: number;
@@ -47,4 +50,20 @@ export async function cosmetriListFormulas(): Promise<CosmetriFormulaSummary[]> 
 
 export async function cosmetriGetFormulaImport(formulaId: number): Promise<CosmetriImportRow[]> {
   return getJson<CosmetriImportRow[]>(`/api/integrations/cosmetri/formulas/${formulaId}/import-rows`);
+}
+
+// Standalone raw-material catalogue (F14: the manual Formula BOM line
+// raw-material picker) — not INCI/CAS, only identity/supplier/status; see
+// the backend service comment for why.
+export interface CosmetriRawMaterialSummary {
+  id: number;
+  tradeName: string;
+  code: string;
+  supplierName: string;
+  qualityStatus: string;
+  category: string;
+}
+
+export async function cosmetriListRawMaterials(): Promise<CosmetriRawMaterialSummary[]> {
+  return getJson<CosmetriRawMaterialSummary[]>('/api/integrations/cosmetri/raw-materials');
 }

@@ -116,6 +116,14 @@ export interface BomLine {
   // the controlled Cosmetri formula. A `fromCosmetri` line is inherently
   // reconciled; a manual line needs this flag set.
   reconciled?: boolean;
+  // Human-readable Cosmetri identity ("{trade name} | {code}", matching how
+  // Cosmetri's own UI labels a raw material), captured once at import time
+  // (CosmetriImportModal) or pick time (the raw-material picker in
+  // BomCosting) — NOT re-derived from a live catalogue fetch on every render,
+  // so it stays correct even if that fetch is incomplete/unavailable later.
+  // `rmCode` (`RM-{Cosmetri numeric id}`) remains the internal join key; this
+  // is what a human should actually see.
+  rmDisplayName?: string;
 }
 
 export interface PackagingBomLine {

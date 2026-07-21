@@ -62,6 +62,13 @@ export class CosmetriController {
     return this.data.listFormulas();
   }
 
+  // F14: the raw-material picker for manual Formula BOM lines. Same read-only
+  // master-data access level as /formulas — open to any signed-in user.
+  @Get('raw-materials')
+  listRawMaterials() {
+    return this.data.listRawMaterials();
+  }
+
   @Get('formulas/:id/import-rows')
   getFormulaImportRows(@Param('id', ParseIntPipe) id: number) {
     return this.data.getFormulaImport(id);
