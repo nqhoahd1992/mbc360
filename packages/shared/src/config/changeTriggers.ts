@@ -30,6 +30,34 @@ export function isChangeOpen(status: ChangeStatus): boolean {
   return !CHANGE_CLOSED_STATUSES.includes(status);
 }
 
+// Major-vs-minor formula-change classification framework (confirmed rule F5).
+// A change is MAJOR if it may affect ANY of these; a MINOR change is one
+// demonstrated not to affect safety, efficacy, regulatory status, claims,
+// specifications or product performance. The initiator proposes by selecting
+// the criteria that apply; an authorised technical/quality reviewer must
+// confirm the classification (reviewer authorisation itself lands with F6).
+export interface MajorChangeCriterion {
+  id: string;
+  label: string;
+}
+
+export const MAJOR_CHANGE_CRITERIA: MajorChangeCriterion[] = [
+  { id: 'safety-exposure', label: 'Safety or exposure' },
+  { id: 'efficacy-claims', label: 'Product efficacy or claim support' },
+  { id: 'preservative', label: 'Preservative system' },
+  { id: 'ingredient-identity', label: 'Ingredient identity' },
+  { id: 'active-concentration', label: 'Active concentration' },
+  { id: 'regulatory-status', label: 'Regulatory status' },
+  { id: 'allergen', label: 'Allergen profile' },
+  { id: 'ph-range', label: 'pH outside the approved range' },
+  { id: 'product-form', label: 'Product form or physical characteristics' },
+  { id: 'process-potency', label: 'Manufacturing process affecting ingredient potency or product performance' },
+  { id: 'stability', label: 'Stability' },
+  { id: 'packaging-compat', label: 'Packaging compatibility' },
+  { id: 'label-declaration', label: 'Label ingredient declaration' },
+  { id: 'market-registration', label: 'Market notification or registration' },
+];
+
 // Consolidated change-control trigger catalogue, synthesised from the workbook's
 // three trigger sheets: Formula_Change_Control, Artwork_Change_Control and
 // PIF_Evidence_Closure. Each trigger declares the gate(s) it touches; the phase(s)

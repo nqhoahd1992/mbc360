@@ -202,6 +202,10 @@ export interface FormulaVersionRecord {
   changeType: 'Major' | 'Minor';
   reason?: string;
   initiatedBy?: string;
+  // F5: the Major-change criteria the initiator selected (ids from
+  // MAJOR_CHANGE_CRITERIA) and the reviewer who confirmed the classification.
+  majorCriteria?: string[];
+  classificationConfirmedBy?: string;
   // Formula BOM exactly as it stood at `previousVersion`, captured at the
   // moment of this version bump — lets the UI show/compare an old version's
   // composition later. Absent on history entries created before this field

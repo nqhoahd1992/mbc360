@@ -65,9 +65,17 @@ interface AppState {
   setStudyApprovalsBulk: (id: string, approvals: StudyApproval[]) => void;
 
   // A2: create a new formula version; Major changes reopen Gates 4-9.
+  // F5: majorCriteria / classificationConfirmedBy capture the classification trail.
   createFormulaVersion: (
     id: string,
-    input: { version: string; changeType: 'Major' | 'Minor'; reason?: string; initiatedBy?: string },
+    input: {
+      version: string;
+      changeType: 'Major' | 'Minor';
+      reason?: string;
+      initiatedBy?: string;
+      majorCriteria?: string[];
+      classificationConfirmedBy?: string;
+    },
   ) => void;
 
   setChecklistSection: (id: string, section: string, items: ChecklistItem[]) => void;
@@ -371,6 +379,8 @@ export const useAppStore = create<AppState>()(
                   changeType: input.changeType,
                   reason: input.reason,
                   initiatedBy: input.initiatedBy,
+                  majorCriteria: input.majorCriteria,
+                  classificationConfirmedBy: input.classificationConfirmedBy,
                   previousBomSnapshot: p.bom.map((line) => ({ ...line })),
                 },
               ],
