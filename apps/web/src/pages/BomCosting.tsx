@@ -64,6 +64,8 @@ export default function BomCosting() {
   const showCosting = !section || section === 'costing';
 
   const totalPercent = draftBom.reduce((sum, l) => sum + (l.percentWw || 0), 0);
+  // F14: manual lines not yet reconciled to a Cosmetri formula.
+  const unreconciledBom = draftBom.filter((l) => !l.fromCosmetri && !l.reconciled);
   const watchMatches = bomWatchMatches(project);
   const unitsPerBatch = costing.fillSizeG > 0 ? (costing.batchSizeKg * 1000) / costing.fillSizeG : 0;
 
@@ -226,14 +228,50 @@ export default function BomCosting() {
           </span>
         }
       >
+        {unreconciledBom.length > 0 && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message={`${unreconciledBom.length} manual BOM line${unreconciledBom.length > 1 ? 's' : ''} not reconciled to Cosmetri (Draft)`}
+            description="Manual composition must be reconciled to a controlled Cosmetri formula before Gate 7 final safety approval; Gates 10 and 11 require the controlled Cosmetri formula. Click the orange “Draft — reconcile” tag on each line once it has been matched in Cosmetri."
+          />
+        )}
         <Table
           size="small"
           rowKey={(l) => l.line}
           dataSource={draftBom}
           pagination={false}
-          scroll={{ x: 1900 }}
+          scroll={{ x: 2070 }}
           columns={[
             { title: '#', width: 40, dataIndex: 'line' },
+            {
+              // F14: source & reconciliation state. Cosmetri lines are inherently
+              // reconciled; a manual line is "Draft - Not Reconciled" until it is
+              // reconciled to a controlled Cosmetri formula (blocks Gate 7 / 10 / 11).
+              title: 'Source',
+              width: 170,
+              render: (_, l, i) =>
+                l.fromCosmetri ? (
+                  <Tag color="green">Cosmetri</Tag>
+                ) : l.reconciled ? (
+                  <Tooltip title="Manual line reconciled to a Cosmetri formula">
+                    <Tag color="blue" style={{ cursor: 'pointer' }} onClick={() => patchBomLine(i, { reconciled: false })}>
+                      Reconciled
+                    </Tag>
+                  </Tooltip>
+                ) : (
+                  <Tooltip title="Reconcile this manual line against a controlled Cosmetri formula (required before Gate 7)">
+                    <Tag
+                      color="orange"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => patchBomLine(i, { reconciled: true })}
+                    >
+                      Draft — reconcile
+                    </Tag>
+                  </Tooltip>
+                ),
+            },
             {
               title: 'RM Code',
               width: 110,
@@ -375,7 +413,7 @@ export default function BomCosting() {
           ]}
           summary={() => (
             <Table.Summary.Row>
-              <Table.Summary.Cell index={0} colSpan={6}>
+              <Table.Summary.Cell index={0} colSpan={7}>
                 <b>Total</b>
               </Table.Summary.Cell>
               <Table.Summary.Cell index={1}>

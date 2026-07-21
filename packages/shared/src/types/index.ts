@@ -106,6 +106,12 @@ export interface BomLine {
   // corrections belong in Cosmetri, not a silent local edit (A3, read-only).
   // functionRole and costPerKg stay editable either way (MBc360-side entries).
   fromCosmetri?: boolean;
+  // F14: a manually-entered line is "Draft - Not Reconciled with Cosmetri"
+  // until reconciled against a controlled Cosmetri formula. Manual lines must
+  // be reconciled before Gate 7 final safety approval, and Gates 10/11 must use
+  // the controlled Cosmetri formula. A `fromCosmetri` line is inherently
+  // reconciled; a manual line needs this flag set.
+  reconciled?: boolean;
 }
 
 export interface PackagingBomLine {

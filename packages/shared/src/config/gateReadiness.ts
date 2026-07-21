@@ -37,7 +37,11 @@ export type ReadinessCheck =
   // Reuses the maternal + infant-contact safety completion logic (rule C1).
   | { kind: 'skincareForTwo' }
   // Reuses the open-next-actions logic (rule B2).
-  | { kind: 'nextActionsClosed' };
+  | { kind: 'nextActionsClosed' }
+  // F14: every Formula BOM line is either from Cosmetri or a manual line that
+  // has been reconciled to a controlled Cosmetri formula (no "Draft - Not
+  // Reconciled" lines remain).
+  | { kind: 'bomReconciled' };
 
 export interface ReadinessRequirement {
   id: string;
@@ -114,6 +118,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   SG07: [
     { id: 'sg07-final-safety', label: 'Final formulation safety review completed', tier: 'Mandatory', check: { kind: 'manual' } },
     {
+      id: 'sg07-bom-reconciled',
+      label: 'Formula BOM reconciled to a controlled Cosmetri formula (no "Draft - Not Reconciled" lines)',
+      tier: 'Mandatory',
+      // F14: manual composition must be reconciled before Gate 7 final safety.
+      check: { kind: 'bomReconciled' },
+    },
+    {
       id: 'sg07-prohibited-closed',
       label: 'Prohibited ingredient screen closed (no "REVIEW" / "Prohibited - remove" rows)',
       tier: 'Mandatory',
@@ -160,6 +171,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   // Gate 10 is a market-specific hard block (requirements repeat per market).
   SG10: [
     { id: 'sg10-checklist', label: 'Applicable regulatory checklist (per market)', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      id: 'sg10-cosmetri-formula',
+      label: 'Uses the controlled Cosmetri formula (no unreconciled manual BOM lines)',
+      tier: 'Mandatory',
+      // F14: Gates 10/11 must use the controlled Cosmetri formula and version.
+      check: { kind: 'bomReconciled' },
+    },
     { id: 'sg10-dossier', label: 'PIF, CPSR, Product Master File or equivalent market dossier status', tier: 'Mandatory', check: { kind: 'manual' } },
     { id: 'sg10-claims-register', label: 'SKU-level claims register', tier: 'Mandatory', check: { kind: 'manual' } },
     { id: 'sg10-claim-evidence', label: 'Evidence attached or linked for every approved product claim', tier: 'Mandatory', check: { kind: 'manual' } },
@@ -174,6 +192,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     { id: 'sg11-gate10', label: 'Gate 10 complete for the relevant market', tier: 'Mandatory', check: { kind: 'manual' } },
     { id: 'sg11-gmp', label: 'GMP document links', tier: 'Mandatory', check: { kind: 'manual' } },
     { id: 'sg11-formula', label: 'Approved current formula version', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      id: 'sg11-cosmetri-formula',
+      label: 'Uses the controlled Cosmetri formula (no unreconciled manual BOM lines)',
+      tier: 'Mandatory',
+      // F14: Gates 10/11 must use the controlled Cosmetri formula and version.
+      check: { kind: 'bomReconciled' },
+    },
     { id: 'sg11-artwork', label: 'Approved artwork version', tier: 'Mandatory', check: { kind: 'manual' } },
     { id: 'sg11-production', label: 'Production readiness', tier: 'Mandatory', check: { kind: 'manual' } },
     { id: 'sg11-release-pathway', label: 'Quality release pathway', tier: 'Mandatory', check: { kind: 'manual' } },

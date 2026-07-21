@@ -95,12 +95,14 @@ function buildSampleProjectA(): ProjectData {
       : t,
   );
 
+  // Established formula — its lines are reconciled to Cosmetri (F14); a newly
+  // added manual line defaults to "Draft - Not Reconciled" until reconciled.
   p.bom = [
-    { line: 1, rmCode: 'RM-001', inciName: 'Lanolin', functionRole: 'Emollient / base', supplier: 'NZ Lanolin Co', percentWw: 60, costPerKg: 18.5 },
-    { line: 2, rmCode: 'RM-002', inciName: 'Butyrospermum Parkii (Shea) Butter', functionRole: 'Emollient', supplier: 'Naturals SEA', percentWw: 20, costPerKg: 9.2 },
-    { line: 3, rmCode: 'RM-003', inciName: 'Cocos Nucifera (Coconut) Oil', functionRole: 'Emollient', supplier: 'Naturals SEA', percentWw: 15, costPerKg: 6.8 },
-    { line: 4, rmCode: 'RM-004', inciName: 'Tocopherol', functionRole: 'Antioxidant', supplier: 'VitaChem', percentWw: 0.5, costPerKg: 42 },
-    { line: 5, rmCode: 'RM-005', inciName: 'Calendula Officinalis Extract', functionRole: 'Soothing active', supplier: 'BotaniPure', percentWw: 4.5, costPerKg: 55 },
+    { line: 1, rmCode: 'RM-001', inciName: 'Lanolin', functionRole: 'Emollient / base', supplier: 'NZ Lanolin Co', percentWw: 60, costPerKg: 18.5, reconciled: true },
+    { line: 2, rmCode: 'RM-002', inciName: 'Butyrospermum Parkii (Shea) Butter', functionRole: 'Emollient', supplier: 'Naturals SEA', percentWw: 20, costPerKg: 9.2, reconciled: true },
+    { line: 3, rmCode: 'RM-003', inciName: 'Cocos Nucifera (Coconut) Oil', functionRole: 'Emollient', supplier: 'Naturals SEA', percentWw: 15, costPerKg: 6.8, reconciled: true },
+    { line: 4, rmCode: 'RM-004', inciName: 'Tocopherol', functionRole: 'Antioxidant', supplier: 'VitaChem', percentWw: 0.5, costPerKg: 42, reconciled: true },
+    { line: 5, rmCode: 'RM-005', inciName: 'Calendula Officinalis Extract', functionRole: 'Soothing active', supplier: 'BotaniPure', percentWw: 4.5, costPerKg: 55, reconciled: true },
   ];
   p.costing = {
     batchSizeKg: 100,

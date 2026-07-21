@@ -120,6 +120,13 @@ function evaluateReadinessCheck(
       return { evaluable: true, satisfied: skincareForTwoIncompleteSections(project).length === 0 };
     case 'nextActionsClosed':
       return { evaluable: true, satisfied: openNextActions(project, '').length === 0 };
+    case 'bomReconciled':
+      // F14: satisfied when no manual line remains unreconciled (a fromCosmetri
+      // line is inherently reconciled).
+      return {
+        evaluable: true,
+        satisfied: !project.bom.some((l) => !l.fromCosmetri && !l.reconciled),
+      };
     default:
       return { evaluable: false, satisfied: false };
   }
