@@ -72,8 +72,9 @@ function buildSampleProjectA(): ProjectData {
       description: 'Collect missing allergen statement for RM-005 (calendula extract)',
       owner: 'Chidkamon',
       dueDate: '2026-06-30',
-      status: 'Done',
+      status: 'Closed',
       priority: 'High',
+      verifiedBy: 'George',
       dateCompleted: '2026-06-24',
     },
     {

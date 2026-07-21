@@ -7,13 +7,23 @@ import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 
-const STATUS_OPTIONS: NextActionStatus[] = ['Open', 'In Progress', 'Done'];
-const PRIORITY_OPTIONS: NextActionPriority[] = ['Low', 'Medium', 'High'];
+// F8: full controlled-record workflow + Critical priority.
+const STATUS_OPTIONS: NextActionStatus[] = [
+  'Open',
+  'In Progress',
+  'Awaiting Information',
+  'Ready for Verification',
+  'Closed',
+  'Cancelled',
+];
+const PRIORITY_OPTIONS: NextActionPriority[] = ['Low', 'Medium', 'High', 'Critical'];
+const TERMINAL_STATUSES: NextActionStatus[] = ['Closed', 'Cancelled'];
 
 const PRIORITY_COLORS: Record<NextActionPriority, string> = {
   Low: 'default',
   Medium: 'gold',
-  High: 'red',
+  High: 'volcano',
+  Critical: 'red',
 };
 
 // Controlled per-gate follow-up actions (confirmed rule B2). Open actions block
@@ -30,7 +40,10 @@ export default function NextActionsCard({
   const setActionsBulk = useAppStore((s) => s.setNextActionsBulk);
   const rows = actions.filter((a) => gateIds.includes(a.gateId));
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
-  const openCount = draft.filter((a) => a.status !== 'Done').length;
+  const openCount = draft.filter((a) => !TERMINAL_STATUSES.includes(a.status)).length;
+  const openCriticalCount = draft.filter(
+    (a) => !TERMINAL_STATUSES.includes(a.status) && a.priority === 'Critical',
+  ).length;
   const gateOptions = gateIds.map((id) => {
     const meta = GATES.find((g) => g.id === id);
     return { value: id, label: `Gate ${meta?.number ?? id}` };
@@ -61,7 +74,8 @@ export default function NextActionsCard({
         <span>
           Next Actions{' '}
           <span style={{ fontWeight: 400, color: '#999', fontSize: 12 }}>
-            — open actions block a plain Proceed; allowed only under Proceed with Conditions
+            — open actions block a plain Proceed (allowed only under Proceed with Conditions); a
+            Critical action blocks the gate even under Proceed with Conditions
           </span>
         </span>
       }
@@ -69,6 +83,9 @@ export default function NextActionsCard({
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           <span style={{ color: openCount > 0 ? '#d48806' : '#999', fontSize: 12 }}>
             {openCount} open / {draft.length} total
+            {openCriticalCount > 0 && (
+              <span style={{ color: '#cf1322', fontWeight: 600 }}> · {openCriticalCount} Critical</span>
+            )}
           </span>
           <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addAction}>
             Add action
@@ -81,7 +98,7 @@ export default function NextActionsCard({
         rowKey={(a) => a.id}
         dataSource={draft}
         pagination={false}
-        scroll={{ x: 1050 }}
+        scroll={{ x: 1180 }}
         locale={{ emptyText: 'No next actions recorded for this phase' }}
         columns={[
           {
@@ -156,9 +173,24 @@ export default function NextActionsCard({
                 onChange={(v: NextActionStatus) =>
                   patch(i, {
                     status: v,
-                    dateCompleted: v === 'Done' ? dayjs().format('YYYY-MM-DD') : undefined,
+                    dateCompleted: v === 'Closed' ? dayjs().format('YYYY-MM-DD') : undefined,
                   })
                 }
+              />
+            ),
+          },
+          {
+            // F8: verified & closed by someone other than the owner where
+            // independent confirmation is required (authorisation enforced with
+            // real roles under F6).
+            title: 'Verified by',
+            width: 130,
+            render: (_, a, i) => (
+              <Input
+                size="small"
+                placeholder="Reviewer"
+                value={a.verifiedBy}
+                onChange={(e) => patch(i, { verifiedBy: e.target.value })}
               />
             ),
           },

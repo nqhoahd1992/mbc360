@@ -440,7 +440,7 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: 'mbc360-demo-store',
-      version: 7,
+      version: 8,
       // v1 -> v2 changed Stage status / Gate decision values to match the real
       // MBc360 workbook (Complete/Proceed instead of Completed/Go).
       // v2 -> v3 added packagingBom and the generic evidence `registers` map.
@@ -453,6 +453,9 @@ export const useAppStore = create<AppState>()(
       // v6 -> v7: some browsers still had pre-v6 projects stored under the v6
       // number (formulaVersionHistory undefined -> BomCosting crashed reading
       // .length), so the "no-op" migrate never re-seeded them. Bump forces it.
+      // v7 -> v8 (F8): NextAction status values changed (Done -> Closed; added
+      // Awaiting Information / Ready for Verification / Cancelled) and priority
+      // gained Critical — old persisted actions carry now-invalid statuses.
       // Old persisted demo data doesn't fit the new schema, so re-seed instead of migrating it.
       migrate: () => ({ projects: seedProjects(), changes: seedChanges() }),
     },

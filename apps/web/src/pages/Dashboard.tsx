@@ -20,7 +20,9 @@ export default function Dashboard() {
 
   // Confirmed-rules signals: open next actions (B2), gates with active
   // blockers (B1/C1), and per-market launch readiness (A1/C5).
-  const openActions = projects.flatMap((p) => p.nextActions.filter((a) => a.status !== 'Done'));
+  const openActions = projects.flatMap((p) =>
+    p.nextActions.filter((a) => a.status !== 'Closed' && a.status !== 'Cancelled'),
+  );
   const overdueActions = openActions.filter((a) => a.dueDate && a.dueDate < today);
   const blockedGates = projects.flatMap((p) =>
     p.gates.filter((g) => g.status !== 'Not Started' && gateBlockers(p, g.gateId).length > 0),

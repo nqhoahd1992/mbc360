@@ -204,21 +204,39 @@ export interface FormulaVersionRecord {
   previousBomSnapshot?: BomLine[];
 }
 
-// Controlled follow-up action attached to a gate (confirmed rule B2). Open
-// actions block a plain "Proceed" pass — they may stay open only under a
-// "Proceed with Conditions" decision.
-export type NextActionStatus = 'Open' | 'In Progress' | 'Done';
-export type NextActionPriority = 'Low' | 'Medium' | 'High';
+// Controlled follow-up action attached to a gate (confirmed rules B2 + F8).
+// Open actions block a plain "Proceed" pass — they may stay open only under a
+// "Proceed with Conditions" decision. A **Critical** action blocks normal gate
+// closure even under Proceed with Conditions (F8; consistent with F7's rule
+// that critical gaps force Hold/Backtrack/Reject). "Open" for blocking purposes
+// means any status other than the two terminal ones (Closed / Cancelled).
+export type NextActionStatus =
+  | 'Open'
+  | 'In Progress'
+  | 'Awaiting Information'
+  | 'Ready for Verification'
+  | 'Closed'
+  | 'Cancelled';
+export type NextActionPriority = 'Low' | 'Medium' | 'High' | 'Critical';
+
+// Terminal statuses — an action in one of these no longer blocks a gate.
+export const NEXT_ACTION_TERMINAL_STATUSES: NextActionStatus[] = ['Closed', 'Cancelled'];
 
 export interface NextAction {
   id: string;
   gateId: string; // SG01..SG12
   description: string;
-  owner?: string;
+  owner?: string; // responsible for COMPLETING the action (F8)
   dueDate?: string;
   status: NextActionStatus;
   priority: NextActionPriority;
   dateCompleted?: string;
+  // F8: the action owner may not unilaterally verify closure where independent
+  // confirmation is required — the raiser / gate owner / an authorised reviewer
+  // verifies and closes it. `raisedBy`/`verifiedBy` record that trail; the
+  // owner ≠ verifier authorisation itself is enforced once real roles land (F6).
+  raisedBy?: string;
+  verifiedBy?: string;
 }
 
 // Immutable audit record of a backtrack (confirmed rule B4 — "no silent
