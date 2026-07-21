@@ -1,4 +1,4 @@
-import { Button, Space, Typography } from 'antd';
+import { Button, Space, Tooltip, Typography } from 'antd';
 import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
 
 // Paired with useDraft: appears only while a table/section has unsaved local
@@ -7,10 +7,19 @@ export default function SaveBar({
   dirty,
   onSave,
   onDiscard,
+  // Blocks Save (e.g. a validation error in the draft, like a duplicate raw
+  // material) — Discard stays available so the user can still back out.
+  // The caller is expected to also surface `disabledReason` as a visible
+  // Alert near the table; this tooltip is a secondary hint, not the primary
+  // explanation.
+  disabled,
+  disabledReason,
 }: {
   dirty: boolean;
   onSave: () => void;
   onDiscard: () => void;
+  disabled?: boolean;
+  disabledReason?: string;
 }) {
   if (!dirty) return null;
   return (
@@ -18,9 +27,11 @@ export default function SaveBar({
       <Typography.Text type="warning" style={{ fontSize: 12 }}>
         Unsaved changes
       </Typography.Text>
-      <Button size="small" type="primary" icon={<SaveOutlined />} onClick={onSave}>
-        Save
-      </Button>
+      <Tooltip title={disabled ? disabledReason : undefined}>
+        <Button size="small" type="primary" icon={<SaveOutlined />} onClick={onSave} disabled={disabled}>
+          Save
+        </Button>
+      </Tooltip>
       <Button size="small" icon={<UndoOutlined />} onClick={onDiscard}>
         Discard
       </Button>

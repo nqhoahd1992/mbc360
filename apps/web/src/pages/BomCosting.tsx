@@ -85,6 +85,35 @@ export default function BomCosting() {
   const totalPercent = draftBom.reduce((sum, l) => sum + (l.percentWw || 0), 0);
   // F14: manual lines not yet reconciled to a Cosmetri formula.
   const unreconciledBom = draftBom.filter((l) => !l.fromCosmetri && !l.reconciled);
+
+  // Two lines pointing at the same Cosmetri raw material (whichever source —
+  // a full-formula import or the manual picker) is always a mistake: combine
+  // the % w/w into one line instead. Lines with no raw material picked yet
+  // (empty rmCode) are excluded — several blank rows while filling in a BOM
+  // is normal, not a duplicate. Blocks Save entirely rather than just warning,
+  // since a duplicate would double-count cost/composition and could hide a
+  // watch-list match relevant to the merged quantity.
+  const duplicateRawMaterials = useMemo(() => {
+    const lineNumbersByRmCode = new Map<string, number[]>();
+    for (const l of draftBom) {
+      if (!l.rmCode) continue;
+      lineNumbersByRmCode.set(l.rmCode, [...(lineNumbersByRmCode.get(l.rmCode) ?? []), l.line]);
+    }
+    for (const [rmCode, lines] of lineNumbersByRmCode) {
+      if (lines.length < 2) lineNumbersByRmCode.delete(rmCode);
+    }
+    return lineNumbersByRmCode;
+  }, [draftBom]);
+  const hasDuplicateRawMaterials = duplicateRawMaterials.size > 0;
+
+  // A line with no raw material picked at all (only possible on a manual/
+  // picker line — a Cosmetri import always sets rmCode) blocks Save the same
+  // way a duplicate does: an incomplete identity can't be reconciled, priced
+  // or watch-list screened.
+  const emptyRawMaterialLines = draftBom.filter((l) => !l.rmCode);
+  const hasEmptyRawMaterialLines = emptyRawMaterialLines.length > 0;
+  const bomSaveBlocked = hasDuplicateRawMaterials || hasEmptyRawMaterialLines;
+
   const watchMatches = bomWatchMatches(project);
   const unitsPerBatch = costing.fillSizeG > 0 ? (costing.batchSizeKg * 1000) / costing.fillSizeG : 0;
 
@@ -146,6 +175,11 @@ export default function BomCosting() {
   const removeBomLine = (index: number) =>
     bomDraft.update((prev) => prev.filter((_, i) => i !== index).map((l, i) => ({ ...l, line: i + 1 })));
   const saveBom = () => {
+    // Defense in depth — the Save button is already disabled in this case
+    // (see the SaveBar `disabled` prop below), but never silently commit a
+    // duplicate or incomplete (no raw material picked) line even if that's
+    // somehow bypassed.
+    if (bomSaveBlocked) return;
     setBom(id, draftBom);
     bomDraft.markSaved();
   };
@@ -270,12 +304,39 @@ export default function BomCosting() {
                 Import from Cosmetri
               </Button>
             </Tooltip>
-            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addBomLine}>
-              Add line
-            </Button>
           </span>
         }
       >
+        {hasEmptyRawMaterialLines && (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="Raw material not selected — cannot save"
+            description={`Every Formula BOM line needs a raw material picked from Cosmetri before it can be saved. Affected: line${emptyRawMaterialLines.length > 1 ? 's' : ''} ${emptyRawMaterialLines.map((l) => l.line).join(', ')}.`}
+          />
+        )}
+        {hasDuplicateRawMaterials && (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="Duplicate raw material — cannot save"
+            description={
+              <>
+                Each Formula BOM line must reference a different raw material — combine the % w/w
+                into a single line instead of repeating it. Affected:{' '}
+                {[...duplicateRawMaterials.entries()]
+                  .map(([rmCode, lines]) => {
+                    const label = draftBom.find((l) => l.rmCode === rmCode)?.rmDisplayName || rmCode;
+                    return `${label} (lines ${lines.join(', ')})`;
+                  })
+                  .join('; ')}
+                .
+              </>
+            }
+          />
+        )}
         {unreconciledBom.length > 0 && (
           <Alert
             type="warning"
@@ -329,14 +390,18 @@ export default function BomCosting() {
               // page / CosmetriImportModal for that link).
               title: 'Raw material (Cosmetri)',
               width: 260,
-              render: (_, l, i) =>
-                l.fromCosmetri ? (
+              render: (_, l, i) => {
+                const isDuplicate = !!l.rmCode && duplicateRawMaterials.has(l.rmCode);
+                const isEmpty = !l.rmCode;
+                return l.fromCosmetri ? (
                   // Read-only, same label format as the picker below — a
                   // full-formula import used to just show the raw internal
                   // join key (rmCode, e.g. "RM-57136"), which isn't anything
                   // a human sees inside Cosmetri itself.
-                  <Tooltip title="From Cosmetri — read-only">
-                    <span style={{ color: '#666' }}>{l.rmDisplayName || l.rmCode}</span>
+                  <Tooltip title={isDuplicate ? 'Duplicate raw material — cannot save' : 'From Cosmetri — read-only'}>
+                    <span style={{ color: isDuplicate ? '#cf1322' : '#666' }}>
+                      {l.rmDisplayName || l.rmCode}
+                    </span>
                   </Tooltip>
                 ) : (
                   <Select
@@ -344,6 +409,7 @@ export default function BomCosting() {
                     style={{ width: '100%' }}
                     showSearch
                     allowClear
+                    status={isDuplicate || isEmpty ? 'error' : undefined}
                     loading={loadingRawMaterials}
                     disabled={!cosmetriConnected}
                     placeholder={cosmetriConnected ? 'Search raw material…' : 'Connect Cosmetri in Integrations first'}
@@ -385,7 +451,8 @@ export default function BomCosting() {
                       });
                     }}
                   />
-                ),
+                );
+              },
             },
             {
               title: 'Ingredient / INCI',
@@ -548,7 +615,16 @@ export default function BomCosting() {
             </Table.Summary.Row>
           )}
         />
-        <SaveBar dirty={bomDraft.dirty} onSave={saveBom} onDiscard={bomDraft.discard} />
+        <Button size="small" type="dashed" block icon={<PlusOutlined />} onClick={addBomLine} style={{ marginTop: 8 }}>
+          Add line
+        </Button>
+        <SaveBar
+          dirty={bomDraft.dirty}
+          onSave={saveBom}
+          onDiscard={bomDraft.discard}
+          disabled={bomSaveBlocked}
+          disabledReason="Resolve the issue(s) flagged above before saving."
+        />
       </Card>
       )}
 
@@ -624,15 +700,7 @@ export default function BomCosting() {
       />
 
       {showPackaging && (
-      <Card
-        size="small"
-        title="Packaging BOM"
-        extra={
-          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={addPackagingLine}>
-            Add component
-          </Button>
-        }
-      >
+      <Card size="small" title="Packaging BOM">
         <Table
           size="small"
           rowKey={(l) => l.line}
@@ -753,6 +821,16 @@ export default function BomCosting() {
             ) : null
           }
         />
+        <Button
+          size="small"
+          type="dashed"
+          block
+          icon={<PlusOutlined />}
+          onClick={addPackagingLine}
+          style={{ marginTop: 8 }}
+        >
+          Add component
+        </Button>
         <SaveBar dirty={packagingDraft.dirty} onSave={savePackaging} onDiscard={packagingDraft.discard} />
       </Card>
       )}
