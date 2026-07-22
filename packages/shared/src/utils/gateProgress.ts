@@ -127,9 +127,89 @@ function evaluateReadinessCheck(
         evaluable: true,
         satisfied: !project.bom.some((l) => !l.fromCosmetri && !l.reconciled),
       };
+    case 'gateCheckDone': {
+      const row = project.gateChecks.find((c) => c.gate === check.gate && c.check === check.check);
+      // Same rule as the existing phase-level keyChecksDone: done+Y, or
+      // NA+justified (a note explaining why it's not applicable).
+      const satisfied = !!row && ((row.done && row.ynna === 'Y') || (row.ynna === 'NA' && !!row.notes?.trim()));
+      return { evaluable: true, satisfied };
+    }
+    case 'checklistHasSelection': {
+      const rows = project.checklists[check.section] ?? [];
+      return { evaluable: true, satisfied: rows.some((r) => r.status === 'Y') };
+    }
+    case 'registerHasRows': {
+      const rows = project.registers[check.register] ?? [];
+      return { evaluable: true, satisfied: rows.length > 0 };
+    }
+    case 'bomHasLines':
+      return { evaluable: true, satisfied: project.bom.length > 0 };
+    case 'bomIdentityComplete':
+      return { evaluable: true, satisfied: project.bom.every((l) => !!l.inciName?.trim()) };
+    case 'registerColumnFilled': {
+      const rows = project.registers[check.register] ?? [];
+      return { evaluable: true, satisfied: rows.every((r) => String(r[check.column] ?? '').trim() !== '') };
+    }
+    case 'requirementDone': {
+      const row = (project.requirements[check.section] ?? []).find((r) => r.requirement === check.requirement);
+      return { evaluable: true, satisfied: row?.status === 'Completed' };
+    }
     default:
       return { evaluable: false, satisfied: false };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Required-field UX helper (not a rule — a display aid for the Key Gate
+// Checks table): which (gate, check) rows back a Mandatory F1/C7 readiness
+// item, independent of any project's live data. Used to show a red asterisk
+// on a required-but-empty field, regardless of which project is open.
+// ---------------------------------------------------------------------------
+
+const MANDATORY_GATE_CHECK_KEYS = new Set(
+  Object.values(GATE_READINESS)
+    .flat()
+    .filter(
+      (r): r is ReadinessRequirement & { check: { kind: 'gateCheckDone'; gate: string; check: string } } =>
+        r.tier === 'Mandatory' && r.check.kind === 'gateCheckDone',
+    )
+    .map((r) => `${r.check.gate}|${r.check.check}`),
+);
+
+export function isMandatoryGateCheck(gate: string, check: string): boolean {
+  return MANDATORY_GATE_CHECK_KEYS.has(`${gate}|${check}`);
+}
+
+// Same idea for `checklistHasSelection` requirements — which checklist
+// section keys (e.g. 'targetUsers') back a Mandatory F1/C7 item.
+const MANDATORY_CHECKLIST_SECTIONS = new Set(
+  Object.values(GATE_READINESS)
+    .flat()
+    .filter(
+      (r): r is ReadinessRequirement & { check: { kind: 'checklistHasSelection'; section: string } } =>
+        r.tier === 'Mandatory' && r.check.kind === 'checklistHasSelection',
+    )
+    .map((r) => r.check.section),
+);
+
+export function isMandatoryChecklistSection(section: string): boolean {
+  return MANDATORY_CHECKLIST_SECTIONS.has(section);
+}
+
+// Same idea for `requirementDone` requirements — which (section, requirement)
+// pairs back a Mandatory F1/C7 item.
+const MANDATORY_REQUIREMENT_KEYS = new Set(
+  Object.values(GATE_READINESS)
+    .flat()
+    .filter(
+      (r): r is ReadinessRequirement & { check: { kind: 'requirementDone'; section: string; requirement: string } } =>
+        r.tier === 'Mandatory' && r.check.kind === 'requirementDone',
+    )
+    .map((r) => `${r.check.section}|${r.check.requirement}`),
+);
+
+export function isMandatoryRequirementRow(section: string, requirement: string): boolean {
+  return MANDATORY_REQUIREMENT_KEYS.has(`${section}|${requirement}`);
 }
 
 export type ReadinessResult = 'Not Ready' | 'Ready with Conditions' | 'Ready for Decision' | 'Passed';
@@ -211,25 +291,21 @@ export function gateReadiness(project: ProjectData, gateId: string): GateReadine
 // Gate pass (rule B1 + C1 + F1/C7)
 // ---------------------------------------------------------------------------
 
-// Reasons the gate cannot pass yet even with a positive decision recorded.
-export function gateBlockers(project: ProjectData, gateId: string): string[] {
+// Blockers that even a "Proceed with Conditions" decision cannot clear:
+// Critical next actions (F8 — "Critical blocks even Proceed with
+// Conditions"), the Skincare for Two safety screen (C1 — hard-blocks
+// regardless of decision), and F1/C7 Mandatory evidence (hard-blocks gate
+// passage, no Proceed-with-Conditions escape valve described in the confirmed
+// rule). Used by the UI to disable "Proceed with Conditions" too, not just
+// plain "Proceed" — see `gateBlockers` below for the softer, PwC-clearable
+// open-next-action case this deliberately excludes.
+export function hardGateBlockers(project: ProjectData, gateId: string): string[] {
   const blockers: string[] = [];
-  const record = project.gates.find((g) => g.gateId === gateId);
 
-  // B2 + F8: open next actions block a plain Proceed. Under Proceed with
-  // Conditions non-critical actions are tracked but allowed to stay open — but a
-  // CRITICAL action blocks gate closure even under Proceed with Conditions (F8).
-  const open = openNextActions(project, gateId);
-  const criticalOpen = open.filter((a) => a.priority === 'Critical');
-  const otherOpen = open.filter((a) => a.priority !== 'Critical');
+  const criticalOpen = openNextActions(project, gateId).filter((a) => a.priority === 'Critical');
   if (criticalOpen.length > 0) {
     blockers.push(
       `${criticalOpen.length} open Critical next action${criticalOpen.length > 1 ? 's' : ''} — must be closed before the gate can pass (Critical blocks even Proceed with Conditions)`,
-    );
-  }
-  if (otherOpen.length > 0 && record?.decision !== 'Proceed with Conditions') {
-    blockers.push(
-      `${otherOpen.length} open next action${otherOpen.length > 1 ? 's' : ''} — complete them or record Proceed with Conditions`,
     );
   }
 
@@ -252,6 +328,25 @@ export function gateBlockers(project: ProjectData, gateId: string): string[] {
     if (req.blocking && GATE_READINESS[gateId]?.find((r) => r.id === req.id)?.check.kind !== 'skincareForTwo') {
       blockers.push(req.label);
     }
+  }
+
+  return blockers;
+}
+
+// Reasons the gate cannot pass yet even with a positive decision recorded.
+export function gateBlockers(project: ProjectData, gateId: string): string[] {
+  const blockers = hardGateBlockers(project, gateId);
+  const record = project.gates.find((g) => g.gateId === gateId);
+
+  // B2 + F8: open non-critical next actions block a plain Proceed, but are
+  // specifically allowed to stay open under Proceed with Conditions — the
+  // one blocker in this list that Proceed with Conditions is designed to
+  // clear (Critical actions are handled in hardGateBlockers above instead).
+  const otherOpen = openNextActions(project, gateId).filter((a) => a.priority !== 'Critical');
+  if (otherOpen.length > 0 && record?.decision !== 'Proceed with Conditions') {
+    blockers.push(
+      `${otherOpen.length} open next action${otherOpen.length > 1 ? 's' : ''} — complete them or record Proceed with Conditions`,
+    );
   }
 
   return blockers;
@@ -297,6 +392,10 @@ export interface PhaseCompletionChecklist {
   keyChecksDone: boolean; // every key gate check done/Y or justified N/A
   anglesCovered: boolean; // every angle covered/Y or justified N/A
   actionsClosed: boolean; // no open next actions, except under Proceed with Conditions
+  // F13/B5: for phase > 1, the responsible owner must formally accept any
+  // pre-work before the phase can close — always true for phase 1 (nothing
+  // can be "pre-work" before the very first phase).
+  preWorkAccepted: boolean;
   signOffsComplete: boolean; // Prepared + Reviewed + Approved all signed
   canSignOff: boolean; // sign-off unlocks only once the sections above are done
   complete: boolean;
@@ -333,13 +432,16 @@ export function phaseCompletionChecklist(project: ProjectData, phase: number): P
     (s) => !!(s.name?.trim() || s.initials?.trim()),
   );
 
-  const canSignOff = gatesPassed && keyChecksDone && anglesCovered && actionsClosed;
+  const preWorkAccepted = phase === 1 || !!closure?.preWork?.acceptedBy;
+
+  const canSignOff = gatesPassed && keyChecksDone && anglesCovered && actionsClosed && preWorkAccepted;
 
   return {
     gatesPassed,
     keyChecksDone,
     anglesCovered,
     actionsClosed,
+    preWorkAccepted,
     signOffsComplete,
     canSignOff,
     complete: canSignOff && signOffsComplete,
@@ -365,8 +467,23 @@ export function currentGateIndex(project: ProjectData): number {
   return GATES.length;
 }
 
+// B4 ("no silent corrections"): only the single gate currently open for work
+// may have its Phase Gate Flow fields edited directly. An already-PASSED
+// gate is not "unlocked" for editing — correcting it must go through
+// Backtrack (which snapshots the prior state and invalidates downstream
+// approvals), never a silent direct edit. Previously this allowed any gate
+// at or before the current index (`<=`), which let earlier passed gates be
+// edited in place with no audit trail — tightened to `===` to match this
+// function's own documented intent ("the single gate currently open for
+// work", see CLAUDE.md).
 export function isGateUnlocked(project: ProjectData, gateId: string): boolean {
-  return gateIndex(gateId) <= currentGateIndex(project);
+  return gateIndex(gateId) === currentGateIndex(project);
+}
+
+// The gate `number` (e.g. '01') of the gate currently open for work, for UI
+// highlighting — undefined once every gate has passed.
+export function currentGateNumber(project: ProjectData): string | undefined {
+  return GATES[currentGateIndex(project)]?.number;
 }
 
 export type GateState = 'passed' | 'current' | 'locked' | 'hold' | 'gap';

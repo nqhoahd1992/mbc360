@@ -11,6 +11,8 @@ import type {
   EvidenceItem,
   FeedbackEntry,
   GateCheck,
+  GateChangeLogEntry,
+  GateFieldChange,
   GateRecord,
   GraphSettings,
   IntegrationSettings,
@@ -43,7 +45,15 @@ interface AppState {
   deleteProject: (id: string) => void;
   updateProject: (id: string, updater: (p: ProjectData) => ProjectData) => void;
 
-  setGate: (id: string, gateId: string, patch: Partial<GateRecord>) => void;
+  // `changedBy` (the real signed-in user) is recorded on every field this
+  // patch actually changes, in `gateChangeLog` — the general "who changed
+  // what" audit trail for Phase Gate Flow edits.
+  setGate: (id: string, gateId: string, patch: Partial<GateRecord>, changedBy?: string) => void;
+  // Pairs with useDraft: commits a whole batch of edited GateRecord rows (one
+  // Phase Gate Flow table's worth) in a single write, applying the same B1/F9
+  // decision guards as setGate — but scoped to the `decision` field only, so
+  // an invalid decision change never discards the row's other valid edits.
+  setGatesBulk: (id: string, updates: GateRecord[], changedBy?: string) => void;
   backtrackGate: (
     id: string,
     fromGateId: string,
@@ -123,6 +133,37 @@ function studyApprovalConflict(approvals: StudyApproval[]): boolean {
   );
 }
 
+// Every ordinary Phase Gate Flow edit (setGate/setGatesBulk) is diffed
+// against the field's previous value and logged to `gateChangeLog` — the
+// general audit trail for regular edits, distinct from the richer
+// BacktrackEvent log used specifically for backtracks (see backtrackGate).
+const GATE_RECORD_FIELDS: GateFieldChange['field'][] = [
+  'status',
+  'decision',
+  'owner',
+  'dueDate',
+  'evidenceLink',
+  'notes',
+];
+
+function diffGateRecord(existing: GateRecord, next: Partial<GateRecord>): GateFieldChange[] {
+  const changes: GateFieldChange[] = [];
+  for (const field of GATE_RECORD_FIELDS) {
+    if (field in next && next[field] !== existing[field]) {
+      changes.push({ field, from: existing[field], to: next[field] });
+    }
+  }
+  return changes;
+}
+
+function gateChangeLogEntry(
+  gateId: string,
+  changedBy: string | undefined,
+  changes: GateFieldChange[],
+): GateChangeLogEntry {
+  return { id: `GCL-${Date.now()}-${gateId}`, gateId, date: dayjs().format('YYYY-MM-DD HH:mm'), changedBy, changes };
+}
+
 const DEFAULT_INTEGRATIONS: IntegrationSettings = {
   powerApps: {
     // PLACEHOLDER — replace with the real "Create new raw material" Power Apps
@@ -155,15 +196,16 @@ export const useAppStore = create<AppState>()(
 
         // Uses `set((s) => ...)` (not updateProject) so the F9 guard below can
         // read the sibling `changes` slice.
-        setGate: (id, gateId, patch) =>
+        setGate: (id, gateId, patch, changedBy) =>
           set((s) => ({
             projects: s.projects.map((p) => {
               if (p.identity.id !== id) return p;
               // Sequential rule: locked gates (after the current one) cannot change
               if (!isGateUnlocked(p, gateId)) return p;
+              const existing = p.gates.find((g) => g.gateId === gateId);
+              if (!existing) return p;
               if (patch.decision === 'Proceed') {
-                const record = p.gates.find((g) => g.gateId === gateId);
-                const status = patch.status ?? record?.status;
+                const status = patch.status ?? existing.status;
                 // B1: a Gap prevents a normal Proceed decision.
                 if (status === 'Gap') return p;
                 // F9: an open change control record affecting this gate blocks a
@@ -179,10 +221,52 @@ export const useAppStore = create<AppState>()(
                 });
                 if (hasOpenChange) return p;
               }
+              const changes = diffGateRecord(existing, patch);
+              if (changes.length === 0) return p;
               return {
                 ...p,
                 gates: p.gates.map((g) => (g.gateId === gateId ? { ...g, ...patch } : g)),
+                gateChangeLog: [...p.gateChangeLog, gateChangeLogEntry(gateId, changedBy, changes)],
               };
+            }),
+          })),
+        setGatesBulk: (id, updates, changedBy) =>
+          set((s) => ({
+            projects: s.projects.map((p) => {
+              if (p.identity.id !== id) return p;
+              let gates = p.gates;
+              const newLogEntries: GateChangeLogEntry[] = [];
+              for (const update of updates) {
+                const { gateId } = update;
+                const existing = gates.find((g) => g.gateId === gateId);
+                if (!existing || !isGateUnlocked(p, gateId)) continue;
+                // Same B1/F9 guard as setGate, scoped to the `decision` field
+                // only: if the new decision would be invalid, keep the
+                // existing decision but still apply every other field edit.
+                let decision = update.decision;
+                if (decision === 'Proceed') {
+                  if (update.status === 'Gap') {
+                    decision = existing.decision;
+                  } else {
+                    const gateNumber = GATES.find((g) => g.id === gateId)?.number;
+                    const hasOpenChange = s.changes.some((c) => {
+                      if (c.projectId !== id || !isChangeOpen(c.status)) return false;
+                      const trig = getChangeTrigger(c.triggerId);
+                      return (
+                        !!trig &&
+                        (trig.gates.includes('ALL') || (!!gateNumber && trig.gates.includes(gateNumber)))
+                      );
+                    });
+                    if (hasOpenChange) decision = existing.decision;
+                  }
+                }
+                const finalUpdate = { ...update, decision };
+                const changes = diffGateRecord(existing, finalUpdate);
+                if (changes.length > 0) newLogEntries.push(gateChangeLogEntry(gateId, changedBy, changes));
+                gates = gates.map((g) => (g.gateId === gateId ? { ...g, ...finalUpdate } : g));
+              }
+              if (newLogEntries.length === 0) return { ...p, gates };
+              return { ...p, gates, gateChangeLog: [...p.gateChangeLog, ...newLogEntries] };
             }),
           })),
         // Reopens gates from `toGateId` up to (but not including) `fromGateId` for
@@ -190,7 +274,11 @@ export const useAppStore = create<AppState>()(
         // in that range. `fromGateId` keeps its own Backtrack decision as the
         // permanent record of why. B4 ("no silent corrections"): nothing is lost —
         // the pre-backtrack gate records and sign-offs are snapshotted into an
-        // immutable BacktrackEvent before the live records are reset.
+        // immutable BacktrackEvent before the live records are reset. Who/why/when
+        // is recorded ONLY on that immutable event (shown on Project Overview) —
+        // deliberately not also written into the `notes` field, which is a
+        // normal editable field and would give a false, overwritable sense of
+        // being "the" audit record.
         backtrackGate: (id, fromGateId, toGateId, reason, initiatedBy) =>
           updateProject(id, (p) => {
             const fromIdx = gateIndex(fromGateId);
@@ -198,10 +286,6 @@ export const useAppStore = create<AppState>()(
             if (toIdx < 0 || fromIdx < 0 || toIdx >= fromIdx) return p;
 
             const dateStr = dayjs().format('YYYY-MM-DD');
-            const fromMeta = GATES[fromIdx];
-            const toMeta = GATES[toIdx];
-            const appendNote = (existing: string | undefined, note: string) =>
-              existing ? `${existing}\n${note}` : note;
 
             const affectedIds = p.gates
               .filter((g) => {
@@ -216,12 +300,7 @@ export const useAppStore = create<AppState>()(
                 return { ...g, status: 'Not Started' as const, decision: undefined };
               }
               if (g.gateId === fromGateId) {
-                const note = `[Backtrack ${dateStr}] Reopened Gate ${toMeta.number}${reason ? ` — ${reason}` : ''}.`;
-                return { ...g, decision: 'Backtrack' as const, notes: appendNote(g.notes, note) };
-              }
-              if (g.gateId === toGateId) {
-                const note = `[Backtrack ${dateStr}] Reopened for rework (from Gate ${fromMeta.number}).`;
-                return { ...g, notes: appendNote(g.notes, note) };
+                return { ...g, decision: 'Backtrack' as const };
               }
               return g;
             });
@@ -482,7 +561,7 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: 'mbc360-demo-store',
-      version: 9,
+      version: 10,
       // v1 -> v2 changed Stage status / Gate decision values to match the real
       // MBc360 workbook (Complete/Proceed instead of Completed/Go).
       // v2 -> v3 added packagingBom and the generic evidence `registers` map.
@@ -501,6 +580,9 @@ export const useAppStore = create<AppState>()(
       // v8 -> v9 (F9): ChangeRecord.status moved from WorkStatus to the change
       // lifecycle vocabulary (Draft/Submitted/.../Superseded) — old persisted
       // changes carry now-invalid statuses; re-seed.
+      // v9 -> v10: added gateChangeLog (general Phase Gate Flow edit audit trail,
+      // separate from backtrackEvents) and removed the old backtrack note-append
+      // behavior — old persisted projects lack gateChangeLog entirely.
       // Old persisted demo data doesn't fit the new schema, so re-seed instead of migrating it.
       migrate: () => ({ projects: seedProjects(), changes: seedChanges() }),
     },

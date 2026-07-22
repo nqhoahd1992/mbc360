@@ -23,6 +23,20 @@ export interface RegisterConfig {
   reviewOwner?: string; // "REVIEW OWNER" header transcribed from the source workbook
 }
 
+// A freshly-added row (createEmptyRegisterRow, apps/web/src/store/factory.ts)
+// pre-fills checkbox columns to `false` and the `status` column to
+// "Not Started" — neither indicates the row was actually filled in. A row
+// counts as blank when every OTHER column is still empty, so "Add row" then
+// "Save" with nothing typed can be blocked without false-flagging normal
+// partial entry (e.g. only a status set, or only one column filled).
+export function isRegisterRowBlank(config: RegisterConfig, row: RegisterRow): boolean {
+  return config.columns.every((col) => {
+    if (col.type === 'checkbox' || col.key === 'status') return true;
+    const v = row[col.key];
+    return v == null || String(v).trim() === '';
+  });
+}
+
 const WORK_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Backtracked'] as const;
 const YNNA = ['Y', 'N', 'N/A'] as const;
 

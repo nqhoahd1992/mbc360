@@ -14,6 +14,7 @@ import {
 } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
 import DynamicTable from '../components/DynamicTable';
+import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
 
 // Content transcribed verbatim from the source workbook's front-matter sheets
@@ -142,11 +143,21 @@ export default function RegisterHubPage() {
               .join(', ')}.`}
           />
         )}
-        <DynamicTable
-          config={config}
-          rows={project.registers[registerKey] ?? []}
-          onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
-        />
+        {registerKey === 'supplierRmEvidence' ? (
+          // F14-style Cosmetri raw-material picker for rmCode/grade/supplier —
+          // see the tradeoffs noted in docs/F1_Per_Gate_Open_Questions.md.
+          <SupplierRmEvidenceTable
+            config={config}
+            rows={project.registers[registerKey] ?? []}
+            onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
+          />
+        ) : (
+          <DynamicTable
+            config={config}
+            rows={project.registers[registerKey] ?? []}
+            onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
+          />
+        )}
       </div>
     );
   }

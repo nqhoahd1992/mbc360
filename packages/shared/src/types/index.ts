@@ -24,6 +24,26 @@ export interface GateRecord {
   notes?: string;
 }
 
+// Audit trail for ordinary Phase Gate Flow edits (status/decision/owner/due
+// date/evidence link/notes) — every field a save actually changes gets its
+// own immutable entry (who, when, old value, new value). Deliberately
+// separate from BacktrackEvent: a backtrack is its own richer, specialized
+// event (reopened range + snapshots + invalidated sign-offs) and is not
+// duplicated here.
+export interface GateFieldChange {
+  field: keyof Omit<GateRecord, 'gateId'>;
+  from?: string;
+  to?: string;
+}
+
+export interface GateChangeLogEntry {
+  id: string;
+  gateId: string;
+  date: string;
+  changedBy?: string;
+  changes: GateFieldChange[];
+}
+
 export interface ChecklistItem {
   label: string;
   gate: string;
@@ -397,6 +417,7 @@ export interface ProjectData {
   registers: Record<string, RegisterRow[]>; // keyed by RegisterConfig.key
   nextActions: NextAction[]; // controlled per-gate follow-up actions (rule B2)
   backtrackEvents: BacktrackEvent[]; // immutable backtrack audit log (rule B4)
+  gateChangeLog: GateChangeLogEntry[]; // immutable log of ordinary Phase Gate Flow field edits
   marketTracks: MarketTrack[]; // per-market Gate 10-12 tracking (rules A1/C5)
   studyApprovals: StudyApproval[]; // dedicated study approval workflow (rule C2)
   formulaVersion: string; // current formula version, e.g. "F1.0" (rule A2)

@@ -124,6 +124,7 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     registers: seedRegisters(),
     nextActions: [],
     backtrackEvents: [],
+    gateChangeLog: [],
     marketTracks,
     studyApprovals: [
       { role: 'Study Author' },

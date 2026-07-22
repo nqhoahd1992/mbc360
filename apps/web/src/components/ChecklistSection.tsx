@@ -1,5 +1,6 @@
-import { Card, Checkbox, Input, Select, Table, Tag } from 'antd';
+import { Card, Checkbox, Input, Select, Table, Tag, Tooltip } from 'antd';
 import type { ChecklistItem, YNNA } from '@mbc360/shared/types';
+import { isMandatoryChecklistSection } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
@@ -12,16 +13,22 @@ export default function ChecklistSection({
   title,
   gate,
   items,
+  currentGateNumber,
 }: {
   projectId: string;
   sectionKey: string;
   title: string;
   gate: string;
   items: ChecklistItem[];
+  // Gate `number` (e.g. '02') currently open for work — see the highlight below.
+  currentGateNumber?: string;
 }) {
   const setSection = useAppStore((s) => s.setChecklistSection);
   const { draft, dirty, update, markSaved, discard } = useDraft(items);
   const selectedCount = draft.filter((i) => i.selected).length;
+  const hasSelection = draft.some((i) => i.status === 'Y');
+  const required = isMandatoryChecklistSection(sectionKey) && !hasSelection;
+  const isCurrentGate = gate === currentGateNumber;
 
   const patch = (index: number, p: Partial<ChecklistItem>) => update((prev) => patchArray(prev, index, p));
   const save = () => {
@@ -32,9 +39,15 @@ export default function ChecklistSection({
   return (
     <Card
       size="small"
+      style={required && isCurrentGate ? { background: '#fffbe6' } : undefined}
       title={
         <span>
           {title} <Tag>Gate {gate}</Tag>
+          {required && (
+            <Tooltip title="At least one option must be recorded (status Y) before this gate can pass (F1/C7 mandatory evidence)">
+              <span style={{ color: '#ff4d4f' }}> *</span>
+            </Tooltip>
+          )}
         </span>
       }
       extra={<span style={{ color: '#999' }}>{selectedCount} selected</span>}

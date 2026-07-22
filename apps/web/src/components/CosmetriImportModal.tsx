@@ -10,6 +10,7 @@ import {
 } from '../integrations/cosmetri';
 import { matchIngredientWatchLists } from '@mbc360/shared/utils/ingredientWatch';
 import { useAppStore } from '../store/useAppStore';
+import { createEmptyRegisterRow } from '../store/factory';
 
 // Imports a Formula BOM from Cosmetri (decision A3 — Cosmetri is the read-only
 // master data source; MBc360 stores only project-specific evidence and links).
@@ -31,6 +32,8 @@ export default function CosmetriImportModal({
   hasExistingBom: boolean;
 }) {
   const setBom = useAppStore((s) => s.setBom);
+  const setRegisterRowsBulk = useAppStore((s) => s.setRegisterRowsBulk);
+  const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const powerAppsUrl = useAppStore((s) => s.integrations.powerApps.newRawMaterialUrl);
 
   const [formulas, setFormulas] = useState<CosmetriFormulaSummary[]>([]);
@@ -79,8 +82,43 @@ export default function CosmetriImportModal({
       fromCosmetri: true,
     }));
     setBom(projectId, lines);
+
+    // F1/C7 Gate 4: every material touching the Formula BOM should be
+    // traceable in Supplier_RM_Evidence, even one that arrived via a
+    // whole-formula import rather than the per-line picker (which already
+    // requires an existing evidence row before it can be picked — see
+    // BomCosting.tsx). Auto-create an identity-only stub row (SDS/CoA/
+    // allergen/etc. left blank for R&I/Procurement to fill in) for any
+    // imported material that doesn't have one yet, rather than blocking the
+    // import itself.
+    const existingEvidence = project?.registers['supplierRmEvidence'] ?? [];
+    const existingRmCodes = new Set(existingEvidence.map((r) => String(r.rmCode ?? '')));
+    const newEvidenceRows = rows
+      .filter((r) => {
+        const rmCode = `RM-${r.rmId}`;
+        if (existingRmCodes.has(rmCode)) return false;
+        existingRmCodes.add(rmCode); // dedupe if the same material appears twice in one formula
+        return true;
+      })
+      .map((r) => ({
+        ...createEmptyRegisterRow('supplierRmEvidence'),
+        rmCode: `RM-${r.rmId}`,
+        inciName: r.inciName,
+        supplier: r.supplierName,
+        grade: r.code ? `${r.tradeName} | ${r.code}` : r.tradeName,
+      }));
+    if (newEvidenceRows.length > 0) {
+      setRegisterRowsBulk(projectId, 'supplierRmEvidence', [...existingEvidence, ...newEvidenceRows]);
+    }
+
     onImported?.();
-    message.success(`Imported ${lines.length} BOM lines from Cosmetri.`);
+    message.success(
+      `Imported ${lines.length} BOM lines from Cosmetri` +
+        (newEvidenceRows.length > 0
+          ? ` and added ${newEvidenceRows.length} new Supplier & RM Evidence record${newEvidenceRows.length > 1 ? 's' : ''}`
+          : '') +
+        '.',
+    );
     onClose();
   };
 
@@ -109,7 +147,9 @@ export default function CosmetriImportModal({
       <Typography.Paragraph type="secondary" style={{ fontSize: 13 }}>
         Composition, supplier names and INCI/CAS identity come read-only from Cosmetri
         (formula + raw-material + compliance endpoints). Costs and function/role stay
-        MBc360-side entries.
+        MBc360-side entries. Any imported material without a Supplier &amp; RM Evidence
+        record yet gets one created automatically (identity fields only — SDS/CoA/
+        allergen/etc. still need to be added there).
       </Typography.Paragraph>
 
       {hasExistingBom && (

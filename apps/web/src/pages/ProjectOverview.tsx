@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { GATES, PHASES } from '@mbc360/shared/config/gates';
+import { GATE_FIELD_LABELS, GATES, PHASES } from '@mbc360/shared/config/gates';
 import { isGatePassed, phaseProgress } from '@mbc360/shared/utils/gateProgress';
 import PhaseStepper from '../components/PhaseStepper';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
@@ -182,6 +182,51 @@ export default function ProjectOverview() {
                     </span>
                   );
                 },
+              },
+            ]}
+          />
+        </Card>
+      )}
+
+      {project.gateChangeLog.length > 0 && (
+        <Card
+          size="small"
+          title={
+            <span>
+              <HistoryOutlined style={{ marginRight: 6 }} />
+              Gate change log{' '}
+              <span style={{ fontWeight: 400, color: '#999', fontSize: 12 }}>
+                — who changed what, in the Phase Gate Flow table, and when
+              </span>
+            </span>
+          }
+        >
+          <Table
+            size="small"
+            rowKey={(e) => e.id}
+            dataSource={[...project.gateChangeLog].reverse()}
+            pagination={false}
+            scroll={{ x: 800 }}
+            columns={[
+              { title: 'Date', width: 140, dataIndex: 'date' },
+              {
+                title: 'Gate',
+                width: 90,
+                render: (_, e) => {
+                  const meta = GATES.find((g) => g.id === e.gateId);
+                  return <span>Gate {meta?.number ?? e.gateId}</span>;
+                },
+              },
+              { title: 'Changed by', width: 150, render: (_, e) => e.changedBy ?? '—' },
+              {
+                title: 'Changes',
+                render: (_, e) => (
+                  <span style={{ fontSize: 12, color: '#666' }}>
+                    {e.changes
+                      .map((c) => `${GATE_FIELD_LABELS[c.field]}: ${c.from || '—'} → ${c.to || '—'}`)
+                      .join(' · ')}
+                  </span>
+                ),
               },
             ]}
           />

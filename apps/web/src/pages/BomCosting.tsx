@@ -112,7 +112,28 @@ export default function BomCosting() {
   // or watch-list screened.
   const emptyRawMaterialLines = draftBom.filter((l) => !l.rmCode);
   const hasEmptyRawMaterialLines = emptyRawMaterialLines.length > 0;
-  const bomSaveBlocked = hasDuplicateRawMaterials || hasEmptyRawMaterialLines;
+
+  // A material may only be picked into the Formula BOM once R&I/Procurement
+  // has screened it in Supplier_RM_Evidence (Gate 4) — Gate 4's ingredient
+  // screening must happen before Gate 5 locks the formula (see registers.ts's
+  // `linkedGate: '05_Formula_BOM_Costing'` note and F1_Per_Gate_Open_Questions.md).
+  // Only applies to manually-picked lines below; a full-formula Cosmetri
+  // import (`fromCosmetri`) is a different, already-established trust
+  // boundary and is intentionally exempt.
+  const rmCodesWithEvidence = useMemo(
+    () => new Set((project.registers['supplierRmEvidence'] ?? []).map((r) => String(r.rmCode ?? '')).filter(Boolean)),
+    [project.registers],
+  );
+
+  // A manually-picked line whose raw material has no Supplier_RM_Evidence
+  // record (e.g. the evidence row was later removed, or legacy data from
+  // before this constraint existed) blocks Save the same way — Gate 4
+  // screening must exist before Gate 5 locks the formula around it. Exempts
+  // `fromCosmetri` lines (full-formula import, a different trust boundary).
+  const unvettedManualLines = draftBom.filter((l) => !l.fromCosmetri && l.rmCode && !rmCodesWithEvidence.has(l.rmCode));
+  const hasUnvettedManualLines = unvettedManualLines.length > 0;
+
+  const bomSaveBlocked = hasDuplicateRawMaterials || hasEmptyRawMaterialLines || hasUnvettedManualLines;
 
   const watchMatches = bomWatchMatches(project);
   const unitsPerBatch = costing.fillSizeG > 0 ? (costing.batchSizeKg * 1000) / costing.fillSizeG : 0;
@@ -141,8 +162,11 @@ export default function BomCosting() {
   // network per keystroke — every input already only writes to the local
   // useDraft state, committed to the store solely by the Save button).
   const rawMaterialOptions = useMemo(
-    () => rawMaterials.map((r) => ({ value: `RM-${r.id}`, label: rawMaterialLabel(r) })),
-    [rawMaterials],
+    () =>
+      rawMaterials
+        .filter((r) => rmCodesWithEvidence.has(`RM-${r.id}`))
+        .map((r) => ({ value: `RM-${r.id}`, label: rawMaterialLabel(r) })),
+    [rawMaterials, rmCodesWithEvidence],
   );
   const rawMaterialById = useMemo(
     () => new Map(rawMaterials.map((r) => [`RM-${r.id}`, r])),
@@ -337,6 +361,15 @@ export default function BomCosting() {
             }
           />
         )}
+        {hasUnvettedManualLines && (
+          <Alert
+            type="error"
+            showIcon
+            style={{ marginBottom: 12 }}
+            message="Raw material not yet screened — cannot save"
+            description={`Every manually-picked Formula BOM line must reference a material that already has a Supplier & RM Evidence record (Gate 4 screening before Gate 5 locks the formula). Affected: line${unvettedManualLines.length > 1 ? 's' : ''} ${unvettedManualLines.map((l) => l.line).join(', ')} — add a Supplier & RM Evidence record for that material first.`}
+          />
+        )}
         {unreconciledBom.length > 0 && (
           <Alert
             type="warning"
@@ -417,18 +450,21 @@ export default function BomCosting() {
                     optionFilterProp="label"
                     options={
                       // Keep the line's current value selectable/visible even if
-                      // it isn't in the fetched catalogue (legacy data, or a
-                      // material since renamed/removed in Cosmetri) — never
+                      // it's no longer pickable for any reason (legacy data, a
+                      // material since renamed/removed in Cosmetri, or its
+                      // Supplier_RM_Evidence row was later deleted) — never
                       // silently blank out existing data just by rendering it.
                       // Reuses the memoized `rawMaterialOptions` array as-is
                       // (same reference every render) rather than remapping —
-                      // only the rare "not in catalogue" case allocates a new
+                      // only the rare "not pickable" case allocates a new
                       // (tiny) array, and only for that one row.
-                      l.rmCode && !rawMaterialById.has(l.rmCode)
+                      l.rmCode && !rawMaterialOptions.some((o) => o.value === l.rmCode)
                         ? [
                             {
                               value: l.rmCode,
-                              label: `${l.rmDisplayName || l.rmCode} — not in the current Cosmetri catalogue`,
+                              label: !rawMaterialById.has(l.rmCode)
+                                ? `${l.rmDisplayName || l.rmCode} — not in the current Cosmetri catalogue`
+                                : `${l.rmDisplayName || l.rmCode} — no Supplier & RM Evidence record yet`,
                             },
                             ...rawMaterialOptions,
                           ]
@@ -457,42 +493,36 @@ export default function BomCosting() {
             {
               title: 'Ingredient / INCI',
               width: 240,
-              render: (_, l, i) =>
-                l.fromCosmetri ? (
-                  <Tooltip title="From Cosmetri — read-only">
-                    <span style={{ color: '#666' }}>{l.inciName}</span>
-                  </Tooltip>
-                ) : (
-                  <Input
-                    size="small"
-                    value={l.inciName}
-                    // Cosmetri's raw-material API has no INCI field (only
-                    // /compliance/{formulaId} does, per formula) — the trade
-                    // name is shown as a grey HINT only (never stored/typed
-                    // in automatically), so the user always types the real
-                    // INCI themselves rather than trusting a guess that could
-                    // silently feed the prohibited/caution ingredient screen.
-                    placeholder={matchedRawMaterial(l)?.tradeName}
-                    onChange={(e) => patchBomLine(i, { inciName: e.target.value })}
-                  />
-                ),
+              render: (_, l, i) => (
+                <Input
+                  size="small"
+                  value={l.inciName}
+                  // Always editable, even on a `fromCosmetri` (full-formula
+                  // import) line: unlike Supplier, INCI here isn't a direct
+                  // Cosmetri field — the formula-import endpoint joins it from
+                  // /compliance/{formulaId} by raw-material TRADE NAME (that
+                  // endpoint carries no raw-material id), a best-effort match
+                  // that can come back blank or wrong. Locking it read-only
+                  // would leave no way to fix a bad/missing join.
+                  placeholder={matchedRawMaterial(l)?.tradeName}
+                  onChange={(e) => patchBomLine(i, { inciName: e.target.value })}
+                />
+              ),
             },
             {
               title: 'CAS no.',
               width: 120,
-              render: (_, l, i) =>
-                l.fromCosmetri ? (
-                  <Tooltip title="From Cosmetri — read-only">
-                    <span style={{ color: '#666' }}>{l.casNo}</span>
-                  </Tooltip>
-                ) : (
-                  <Input
-                    size="small"
-                    value={l.casNo}
-                    placeholder="from Cosmetri"
-                    onChange={(e) => patchBomLine(i, { casNo: e.target.value })}
-                  />
-                ),
+              render: (_, l, i) => (
+                <Input
+                  size="small"
+                  value={l.casNo}
+                  placeholder="from Cosmetri"
+                  // Same reasoning as Ingredient/INCI above — CAS comes from
+                  // the same best-effort compliance join, not a reliable
+                  // direct field, so it stays editable on imported lines too.
+                  onChange={(e) => patchBomLine(i, { casNo: e.target.value })}
+                />
+              ),
             },
             {
               title: 'Function',

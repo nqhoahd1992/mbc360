@@ -2,6 +2,7 @@ import { Button, Card, Checkbox, DatePicker, Input, InputNumber, Popconfirm, Sel
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
+import { isRegisterRowBlank } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { createEmptyRegisterRow } from '../store/factory';
@@ -23,7 +24,9 @@ export default function DynamicTable({
     update((prev) => patchArray(prev, index, { [key]: value } as Partial<RegisterRow>));
   const addRow = () => update((prev) => [...prev, createEmptyRegisterRow(config.key)]);
   const removeRow = (index: number) => update((prev) => prev.filter((_, i) => i !== index));
+  const hasBlankRows = isRegister && draft.some((r) => isRegisterRowBlank(config, r));
   const save = () => {
+    if (hasBlankRows) return;
     onSave(draft);
     markSaved();
   };
@@ -141,6 +144,7 @@ export default function DynamicTable({
         columns={columns}
         pagination={false}
         scroll={{ x: totalWidth }}
+        onRow={(row) => (isRegister && isRegisterRowBlank(config, row) ? { style: { background: '#fff1f0' } } : {})}
       />
       {/* Below the table, right after the last row, rather than in the card
           header — the add affordance belongs next to the rows it appends to. */}
@@ -156,7 +160,13 @@ export default function DynamicTable({
           Add row
         </Button>
       )}
-      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
+      <SaveBar
+        dirty={dirty}
+        onSave={save}
+        onDiscard={discard}
+        disabled={hasBlankRows}
+        disabledReason="One or more rows have no data entered — fill in at least one field or remove the row before saving."
+      />
     </Card>
   );
 }

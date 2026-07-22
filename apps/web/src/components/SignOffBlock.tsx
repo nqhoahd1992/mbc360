@@ -47,6 +47,7 @@ export default function SignOffBlock({
     !checklist.keyChecksDone && 'key gate checks done (or justified N/A)',
     !checklist.anglesCovered && 'all 8 angles covered (or justified N/A)',
     !checklist.actionsClosed && 'next actions closed (unless Proceed with Conditions)',
+    !checklist.preWorkAccepted && 'pre-work reviewed and accepted',
   ].filter(Boolean) as string[];
 
   // A4 demo simulation: only the phase's responsible department (or admin) may

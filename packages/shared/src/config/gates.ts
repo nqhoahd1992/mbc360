@@ -1,3 +1,5 @@
+import type { GateFieldChange } from '../types';
+
 export interface GateMeta {
   id: string; // SG01..SG12
   number: string; // 01..12
@@ -200,3 +202,15 @@ export const GATE_DECISIONS = [
   'Backtrack',
   'N/A',
 ] as const;
+
+// Display labels for GateFieldChange.field — shared between the Project
+// Overview "Gate change log" card and the per-gate history popup on the
+// Phase Gate Flow table, so both render the same wording.
+export const GATE_FIELD_LABELS: Record<GateFieldChange['field'], string> = {
+  status: 'Stage status',
+  decision: 'Gate decision',
+  owner: 'Owner',
+  dueDate: 'Due date',
+  evidenceLink: 'Evidence link',
+  notes: 'Notes',
+};

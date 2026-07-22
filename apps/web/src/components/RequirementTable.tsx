@@ -1,6 +1,7 @@
-import { Card, Input, Select, Table, Tag } from 'antd';
+import { Card, Input, Select, Table, Tag, Tooltip } from 'antd';
 import type { RequirementItem, WorkStatus } from '@mbc360/shared/types';
 import { WORK_STATUSES } from '@mbc360/shared/config/gates';
+import { isMandatoryRequirementRow } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
@@ -10,11 +11,14 @@ export default function RequirementTable({
   sectionKey,
   title,
   items,
+  currentGateNumber,
 }: {
   projectId: string;
   sectionKey: string;
   title: string;
   items: RequirementItem[];
+  // Gate `number` (e.g. '05') currently open for work — see the highlight below.
+  currentGateNumber?: string;
 }) {
   const setSection = useAppStore((s) => s.setRequirementSection);
   const { draft, dirty, update, markSaved, discard } = useDraft(items);
@@ -33,9 +37,31 @@ export default function RequirementTable({
         dataSource={draft}
         pagination={false}
         scroll={{ x: 1100 }}
+        onRow={(r) => {
+          const required = isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';
+          const isCurrentGate = r.gate === currentGateNumber;
+          return required && isCurrentGate ? { style: { background: '#fffbe6' } } : {};
+        }}
         columns={[
           { title: 'Gate', width: 60, render: (_, r) => <Tag>{r.gate}</Tag> },
-          { title: 'Requirement / field', width: 200, dataIndex: 'requirement', render: (v) => <b>{v}</b> },
+          {
+            title: 'Requirement / field',
+            width: 200,
+            dataIndex: 'requirement',
+            render: (v, r) => {
+              const required = isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';
+              return (
+                <b>
+                  {v}
+                  {required && (
+                    <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
+                      <span style={{ color: '#ff4d4f' }}> *</span>
+                    </Tooltip>
+                  )}
+                </b>
+              );
+            },
+          },
           { title: 'Minimum requirement', width: 260, dataIndex: 'minimumRequirement' },
           {
             title: 'Rationale / control reason',

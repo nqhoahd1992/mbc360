@@ -2,6 +2,7 @@ import { Alert, Button, Empty, Tag, Typography } from 'antd';
 import { CheckCircleFilled, ClockCircleFilled, LockOutlined, RightCircleFilled } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import {
+  currentGateNumber,
   phaseCompletionChecklist,
   phaseProgress,
   skincareForTwoIncompleteSections,
@@ -22,10 +23,14 @@ import MarketTrackingCard from '../components/MarketTrackingCard';
 import SectionJumpButton from '../components/SectionJumpButton';
 import { roleLabel } from '../utils/roles';
 
+// Transcribed verbatim from cell A20 of each phase's source workbook sheet
+// (PHASE1 G1-3 MKTG has no equivalent cell — its A20 is a table header, not a
+// note). Keep these complete, not paraphrased or truncated — the second
+// sentence in each is what actually explains the instruction.
 const PHASE_NOTES: Record<number, string> = {
-  2: 'Do not re-enter Phase 1 target user/product/market/claim selections here.',
-  3: 'Phase 3 proves whether the Phase 1-2 choices are safe, valid, stable and ready for release.',
-  4: 'Phase 4 converts the approved development record into dossier evidence, launch sign-off and post-market learning.',
+  2: 'Do not re-enter Phase 1 target user/product/market/claim selections here. Use those choices as inputs and record only ingredient, formula, costing, packaging and artwork decisions.',
+  3: 'Phase 3 proves whether the Phase 1-2 choices are safe, valid, stable and releasable. It does not repeat product positioning choices unless a backtrack is required.',
+  4: 'Phase 4 converts the approved development record into dossier evidence, launch approval and a monitored post-market improvement loop. Claim/market/product choices are referenced from Phase 1, not re-entered.',
 };
 
 export default function PhasePage() {
@@ -49,6 +54,7 @@ export default function PhasePage() {
   const s42Triggers = skincareForTwoTriggers(project);
   const s42Incomplete = skincareForTwoIncompleteSections(project);
   const phaseGateNumbers = config.gateIds.map((id) => id.replace('SG', ''));
+  const currentGateNum = currentGateNumber(project);
   const keyChecks = project.gateChecks
     .map((check, index) => ({ check, index }))
     .filter((c) => phaseGateNumbers.includes(c.check.gate) || (phase === 4 && c.check.gate === 'ALL'));
@@ -173,6 +179,7 @@ export default function PhasePage() {
             title={section.title}
             gate={section.gate}
             items={project.checklists[section.key] ?? []}
+            currentGateNumber={currentGateNum}
           />
         </div>
       ))}
@@ -184,6 +191,7 @@ export default function PhasePage() {
             sectionKey={section.key}
             title={section.title}
             items={project.requirements[section.key] ?? []}
+            currentGateNumber={currentGateNum}
           />
         </div>
       ))}
@@ -193,6 +201,7 @@ export default function PhasePage() {
           projectId={project.identity.id}
           title={`Key Gate Checks — Gates ${phaseGateNumbers.join(', ')}`}
           checks={keyChecks}
+          currentGateNumber={currentGateNum}
         />
       </div>
 

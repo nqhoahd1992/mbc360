@@ -1,6 +1,7 @@
-import { Card, Checkbox, DatePicker, Input, Select, Table, Tag } from 'antd';
+import { Card, Checkbox, DatePicker, Input, Select, Table, Tag, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import type { GateCheck, YNNA } from '@mbc360/shared/types';
+import { isMandatoryGateCheck } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
@@ -11,10 +12,14 @@ export default function GateChecksTable({
   projectId,
   title,
   checks,
+  currentGateNumber,
 }: {
   projectId: string;
   title: string;
   checks: { check: GateCheck; index: number }[];
+  // Gate `number` (e.g. '01') currently open for work — rows for that gate
+  // that are still-required get an extra highlight (see the render below).
+  currentGateNumber?: string;
 }) {
   const setChecksBulk = useAppStore((s) => s.setGateChecksBulk);
   // Draft holds just the mutable GateCheck values, in the same order as
@@ -48,12 +53,29 @@ export default function GateChecksTable({
         dataSource={draft}
         pagination={false}
         scroll={{ x: 1100 }}
+        onRow={(r) => {
+          const required = isMandatoryGateCheck(r.gate, r.check) && !r.done;
+          const isCurrentGate = r.gate === currentGateNumber;
+          return required && isCurrentGate ? { style: { background: '#fffbe6' } } : {};
+        }}
         columns={[
           { title: 'Gate', width: 60, render: (_, r) => <Tag>{r.gate}</Tag> },
           {
             title: 'Key check',
             width: 320,
-            render: (_, r) => <span style={{ fontWeight: r.done ? 600 : 400 }}>{r.check}</span>,
+            render: (_, r) => {
+              const required = isMandatoryGateCheck(r.gate, r.check) && !r.done;
+              return (
+                <span style={{ fontWeight: r.done ? 600 : 400 }}>
+                  {r.check}
+                  {required && (
+                    <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
+                      <span style={{ color: '#ff4d4f' }}> *</span>
+                    </Tooltip>
+                  )}
+                </span>
+              );
+            },
           },
           {
             title: 'Done',
