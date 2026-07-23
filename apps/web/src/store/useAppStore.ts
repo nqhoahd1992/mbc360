@@ -28,7 +28,7 @@ import type {
 } from '@mbc360/shared/types';
 import { createEmptyProject, createEmptyRegisterRow } from './factory';
 import { seedChanges, seedProjects } from '../data/seed';
-import { gateIndex, isGateUnlocked, isLastGateOfPhase } from '@mbc360/shared/utils/gateProgress';
+import { gateBlockers, gateIndex, hardGateBlockers, isGateUnlocked } from '@mbc360/shared/utils/gateProgress';
 import { GATES } from '@mbc360/shared/config/gates';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 
@@ -204,22 +204,32 @@ export const useAppStore = create<AppState>()(
               if (!isGateUnlocked(p, gateId)) return p;
               const existing = p.gates.find((g) => g.gateId === gateId);
               if (!existing) return p;
-              if (patch.decision === 'Proceed') {
+              if (patch.decision === 'Proceed' || patch.decision === 'Proceed with Conditions') {
                 const status = patch.status ?? existing.status;
-                // B1: a Gap prevents a normal Proceed decision.
-                if (status === 'Gap') return p;
-                // F9: an open change control record affecting this gate blocks a
-                // plain Proceed (Proceed with Conditions is allowed instead).
-                const gateNumber = GATES.find((g) => g.id === gateId)?.number;
-                const hasOpenChange = s.changes.some((c) => {
-                  if (c.projectId !== id || !isChangeOpen(c.status)) return false;
-                  const trig = getChangeTrigger(c.triggerId);
-                  return (
-                    !!trig &&
-                    (trig.gates.includes('ALL') || (!!gateNumber && trig.gates.includes(gateNumber)))
-                  );
-                });
-                if (hasOpenChange) return p;
+                if (patch.decision === 'Proceed') {
+                  // B1: a Gap prevents a normal Proceed decision.
+                  if (status === 'Gap') return p;
+                  // F9: an open change control record affecting this gate blocks a
+                  // plain Proceed (Proceed with Conditions is allowed instead).
+                  const gateNumber = GATES.find((g) => g.id === gateId)?.number;
+                  const hasOpenChange = s.changes.some((c) => {
+                    if (c.projectId !== id || !isChangeOpen(c.status)) return false;
+                    const trig = getChangeTrigger(c.triggerId);
+                    return (
+                      !!trig &&
+                      (trig.gates.includes('ALL') || (!!gateNumber && trig.gates.includes(gateNumber)))
+                    );
+                  });
+                  if (hasOpenChange) return p;
+                }
+                // F1/C7: mandatory evidence / safety / critical-action blockers must
+                // be cleared before either decision can be recorded — Proceed with
+                // Conditions clears the softer open-non-critical-next-action
+                // blocker (gateBlockers with this decision as the override) but not
+                // the harder ones (hardGateBlockers).
+                const blockers =
+                  patch.decision === 'Proceed' ? gateBlockers(p, gateId, patch.decision) : hardGateBlockers(p, gateId);
+                if (blockers.length > 0) return p;
               }
               const changes = diffGateRecord(existing, patch);
               if (changes.length === 0) return p;
@@ -240,25 +250,34 @@ export const useAppStore = create<AppState>()(
                 const { gateId } = update;
                 const existing = gates.find((g) => g.gateId === gateId);
                 if (!existing || !isGateUnlocked(p, gateId)) continue;
-                // Same B1/F9 guard as setGate, scoped to the `decision` field
-                // only: if the new decision would be invalid, keep the
-                // existing decision but still apply every other field edit.
+                // Same B1/F9/F1/C7 guard as setGate, scoped to the `decision` field
+                // only: if the new decision would be invalid, keep the existing
+                // decision but still apply every other field edit.
                 let decision = update.decision;
-                if (decision === 'Proceed') {
-                  if (update.status === 'Gap') {
-                    decision = existing.decision;
-                  } else {
-                    const gateNumber = GATES.find((g) => g.id === gateId)?.number;
-                    const hasOpenChange = s.changes.some((c) => {
-                      if (c.projectId !== id || !isChangeOpen(c.status)) return false;
-                      const trig = getChangeTrigger(c.triggerId);
-                      return (
-                        !!trig &&
-                        (trig.gates.includes('ALL') || (!!gateNumber && trig.gates.includes(gateNumber)))
-                      );
-                    });
-                    if (hasOpenChange) decision = existing.decision;
+                if (decision === 'Proceed' || decision === 'Proceed with Conditions') {
+                  const status = update.status ?? existing.status;
+                  let invalid = false;
+                  if (decision === 'Proceed') {
+                    if (status === 'Gap') {
+                      invalid = true;
+                    } else {
+                      const gateNumber = GATES.find((g) => g.id === gateId)?.number;
+                      const hasOpenChange = s.changes.some((c) => {
+                        if (c.projectId !== id || !isChangeOpen(c.status)) return false;
+                        const trig = getChangeTrigger(c.triggerId);
+                        return (
+                          !!trig &&
+                          (trig.gates.includes('ALL') || (!!gateNumber && trig.gates.includes(gateNumber)))
+                        );
+                      });
+                      if (hasOpenChange) invalid = true;
+                    }
                   }
+                  if (!invalid) {
+                    const blockers = decision === 'Proceed' ? gateBlockers(p, gateId, decision) : hardGateBlockers(p, gateId);
+                    if (blockers.length > 0) invalid = true;
+                  }
+                  if (invalid) decision = existing.decision;
                 }
                 const finalUpdate = { ...update, decision };
                 const changes = diffGateRecord(existing, finalUpdate);
@@ -269,16 +288,26 @@ export const useAppStore = create<AppState>()(
               return { ...p, gates, gateChangeLog: [...p.gateChangeLog, ...newLogEntries] };
             }),
           })),
-        // Reopens gates from `toGateId` up to (but not including) `fromGateId` for
-        // rework, and invalidates the approval of any phase whose closing gate falls
-        // in that range. `fromGateId` keeps its own Backtrack decision as the
-        // permanent record of why. B4 ("no silent corrections"): nothing is lost —
-        // the pre-backtrack gate records and sign-offs are snapshotted into an
-        // immutable BacktrackEvent before the live records are reset. Who/why/when
-        // is recorded ONLY on that immutable event (shown on Project Overview) —
-        // deliberately not also written into the `notes` field, which is a
-        // normal editable field and would give a false, overwritable sense of
-        // being "the" audit record.
+        // Reopens gates from `toGateId` up to AND INCLUDING `fromGateId` for rework
+        // (the gate you're backtracking FROM needs redoing too — that's the whole
+        // reason a Backtrack was recorded there in the first place, not a reason to
+        // leave it untouched), and invalidates ALL sign-offs (Prepared/Reviewed/
+        // Approved) of any phase that has at least one gate in that range — not
+        // only when the range reaches that phase's own closing gate (per-user
+        // decision, 2026-07-23: any affected gate voids the whole phase's sign-off
+        // trail, since "Prepared"/"Reviewed" no longer reliably describe a phase
+        // with a gate now being reworked either). B4 ("no silent corrections"):
+        // nothing is lost — the pre-backtrack gate records and sign-offs are
+        // snapshotted into an immutable BacktrackEvent before the live records are
+        // reset. Who/why/when is recorded ONLY on that immutable event (shown on
+        // Project Overview) — deliberately not also written into the `notes`
+        // field, which is a normal editable field and would give a false,
+        // overwritable sense of being "the" audit record. Previously `fromGateId`
+        // was excluded from the reset and instead kept `decision: 'Backtrack'` as
+        // a permanent marker — that left it showing "Backtrack" still selected in
+        // the Gate Flow table instead of reopened like every other gate in the
+        // range, and (since it's the range's upper bound) silently skipped
+        // invalidating a phase whose LAST gate is `fromGateId` itself.
         backtrackGate: (id, fromGateId, toGateId, reason, initiatedBy) =>
           updateProject(id, (p) => {
             const fromIdx = gateIndex(fromGateId);
@@ -287,40 +316,34 @@ export const useAppStore = create<AppState>()(
 
             const dateStr = dayjs().format('YYYY-MM-DD');
 
-            const affectedIds = p.gates
-              .filter((g) => {
-                const idx = gateIndex(g.gateId);
-                return (idx >= toIdx && idx < fromIdx) || g.gateId === fromGateId;
-              })
-              .map((g) => g.gateId);
+            const inRange = (idx: number) => idx >= toIdx && idx <= fromIdx;
 
-            const gates = p.gates.map((g) => {
-              const idx = gateIndex(g.gateId);
-              if (idx >= toIdx && idx < fromIdx) {
-                return { ...g, status: 'Not Started' as const, decision: undefined };
-              }
-              if (g.gateId === fromGateId) {
-                return { ...g, decision: 'Backtrack' as const };
-              }
-              return g;
-            });
+            const affectedIds = p.gates.filter((g) => inRange(gateIndex(g.gateId))).map((g) => g.gateId);
 
-            // Invalidate the approval of any phase whose closing gate sits inside the
-            // reopened range — re-approval is required; the previous signature is
-            // preserved in the BacktrackEvent snapshot below, never deleted.
+            const gates = p.gates.map((g) =>
+              inRange(gateIndex(g.gateId)) ? { ...g, status: 'Not Started' as const, decision: undefined } : g,
+            );
+
+            // Invalidate ALL sign-offs (Prepared by / Reviewed by / Approved by) of
+            // any phase with at least one gate inside the reopened range — not just
+            // when that range happens to reach the phase's own closing gate. Even a
+            // single reworked gate means "Prepared"/"Reviewed" no longer reliably
+            // describe that phase either, so a partial re-approval (Approved by
+            // only) would understate how much has changed. The previous signatures
+            // are preserved in the BacktrackEvent snapshot below, never deleted.
+            const affectedPhases = new Set<number>();
+            for (let idx = toIdx; idx <= fromIdx; idx++) {
+              affectedPhases.add(GATES[idx].phase);
+            }
             const previousSignOffs: Record<number, SignOff[]> = {};
             const phaseClosures = { ...p.phaseClosures };
-            for (let idx = toIdx; idx < fromIdx; idx++) {
-              if (!isLastGateOfPhase(idx)) continue;
-              const phase = GATES[idx].phase;
+            for (const phase of affectedPhases) {
               const closure = phaseClosures[phase];
               if (!closure) continue;
               previousSignOffs[phase] = closure.signOffs.map((s) => ({ ...s }));
               phaseClosures[phase] = {
                 ...closure,
-                signOffs: closure.signOffs.map((s) =>
-                  s.role === 'Approved by' ? { role: s.role } : s,
-                ),
+                signOffs: closure.signOffs.map((s) => ({ role: s.role })),
               };
             }
 
@@ -331,7 +354,7 @@ export const useAppStore = create<AppState>()(
               reason,
               fromGateId,
               toGateId,
-              reopenedGateIds: affectedIds.filter((gid) => gid !== fromGateId),
+              reopenedGateIds: affectedIds,
               previousGates: p.gates
                 .filter((g) => affectedIds.includes(g.gateId))
                 .map((g) => ({ ...g })),
@@ -404,17 +427,26 @@ export const useAppStore = create<AppState>()(
                 };
               });
 
+              // Invalidate ALL sign-offs (Prepared/Reviewed/Approved), not just
+              // Approved by, for every phase with at least one gate in the
+              // reopened range — same fix as `backtrackGate` (2026-07-23):
+              // a Major change can legitimately land after Phase 2 AND 3 are
+              // both fully signed off (e.g. discovered in Phase 4 or post-
+              // market), so clearing only the final approval would leave
+              // stale Prepared/Reviewed names on a phase whose Gates 4-9 are
+              // being reworked.
+              const affectedPhases = new Set(
+                affected.map((g) => GATES.find((m) => m.id === g.gateId)!.phase),
+              );
               const previousSignOffs: Record<number, SignOff[]> = {};
               phaseClosures = { ...p.phaseClosures };
-              for (const phase of [2, 3]) {
+              for (const phase of affectedPhases) {
                 const closure = phaseClosures[phase];
                 if (!closure) continue;
                 previousSignOffs[phase] = closure.signOffs.map((s) => ({ ...s }));
                 phaseClosures[phase] = {
                   ...closure,
-                  signOffs: closure.signOffs.map((s) =>
-                    s.role === 'Approved by' ? { role: s.role } : s,
-                  ),
+                  signOffs: closure.signOffs.map((s) => ({ role: s.role })),
                 };
               }
 

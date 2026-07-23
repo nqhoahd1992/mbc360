@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Card, DatePicker, Empty, Input, message, Modal, Select, Table, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Empty, Input, message, Modal, Select, Table, Tooltip, Typography } from 'antd';
 import {
   CheckCircleFilled,
   ExclamationCircleFilled,
@@ -40,10 +40,6 @@ export default function GateFlowTable({
   const records = gateIds.map((id) => project.gates.find((g) => g.gateId === id)!);
   const { draft, dirty, update, markSaved, discard } = useDraft(records);
   const patch = (index: number, p: Partial<GateRecord>) => update((prev) => patchArray(prev, index, p));
-  const save = () => {
-    setGatesBulk(projectId, draft, user?.displayName);
-    markSaved();
-  };
 
   // Per-gate history popup — surfaces the same audit data as the Project
   // Overview "Backtrack audit log" / "Gate change log" cards, but reachable
@@ -116,11 +112,16 @@ export default function GateFlowTable({
       ...r,
       passed: isGatePassed(project, r.meta.id),
       awaitingDecision: isAwaitingDecision(project, r.meta.id),
-      blockers: gateBlockers(project, r.meta.id),
-      // Subset of `blockers` that even Proceed with Conditions can't clear
-      // (Critical next actions, Skincare for Two, F1/C7 Mandatory evidence) —
-      // disables "Proceed with Conditions" too, not just plain "Proceed".
+      // Subset that even Proceed with Conditions can't clear (Critical next
+      // actions, Skincare for Two, F1/C7 Mandatory evidence) — decision-
+      // independent, so it doesn't need the draft-decision override below.
       hardBlockers: hardGateBlockers(project, r.meta.id),
+      // Reasons the gate can't pass yet given the DRAFT decision currently
+      // selected (not yet saved) — the soft "open next action" blocker
+      // depends on whether that draft decision is Proceed with Conditions, so
+      // this must be re-evaluated against the draft, not the committed
+      // record, to give live, accurate guidance as the user picks an option.
+      liveBlockers: gateBlockers(project, r.meta.id, r.draftRecord.decision),
       openChanges: openChangesForGate(r.meta.number),
       // A4 demo simulation: only the gate's primary-owner function may decide.
       canDecide: canDecideGate(viewRole, r.meta.id),
@@ -143,7 +144,51 @@ export default function GateFlowTable({
         project.backtrackEvents.filter(
           (e) => e.fromGateId === r.meta.id || e.toGateId === r.meta.id || e.reopenedGateIds.includes(r.meta.id),
         ).length,
-    }));
+    }))
+    // Whether the currently-selected DRAFT decision (unsaved) would actually
+    // be rejected by the store guard if Saved right now — surfaced as a
+    // Save-blocking reason instead of removing the option from the dropdown,
+    // so the user can still select it and see exactly what's missing.
+    .map((r) => {
+      const saveInvalidReason =
+        r.draftRecord.decision === 'Proceed' && (r.draftRecord.status === 'Gap' || r.liveBlockers.length > 0)
+          ? `Gate ${r.meta.number}: "Proceed" isn't valid yet — ${
+              r.draftRecord.status === 'Gap' ? 'stage status is Gap' : r.liveBlockers.join('; ')
+            }`
+          : r.draftRecord.decision === 'Proceed with Conditions' && r.hardBlockers.length > 0
+            ? `Gate ${r.meta.number}: "Proceed with Conditions" isn't valid yet — ${r.hardBlockers.join('; ')}`
+            : undefined;
+      return { ...r, saveInvalidReason };
+    });
+
+  // Rows whose currently-selected (unsaved) decision would be rejected by
+  // the store guard — Save stays disabled while any exist, with the reason
+  // spelled out here rather than hidden behind a disabled dropdown option.
+  const saveBlockedRows = rows.filter((r) => r.saveInvalidReason);
+
+  // Gate-decision guidance (permission/Gap/open-change/pending/blockers) used
+  // to live crammed inside the narrow "Gate decision" column — long blocker
+  // lists made that column (and the whole row) very tall. Rendered instead as
+  // a full-width row via the Table's `expandable` mechanism, always shown
+  // (not user-toggleable) whenever there's something to say about a gate.
+  const rowHasGuidance = (r: (typeof rows)[number]) =>
+    (!r.canDecide && !r.locked) ||
+    r.draftRecord.status === 'Gap' ||
+    r.openChanges.length > 0 ||
+    (r.awaitingDecision && !r.record.decision) ||
+    r.liveBlockers.length > 0;
+  const guidanceRowKeys = rows.filter(rowHasGuidance).map((r) => r.meta.id);
+
+  const save = () => {
+    // Defense in depth — the Save button is already disabled in this case
+    // (see the SaveBar `disabled` prop below), but never silently commit an
+    // invalid decision even if that's somehow bypassed; setGatesBulk's own
+    // guard would also revert it, but bailing here avoids a confusing
+    // partial-save round-trip.
+    if (saveBlockedRows.length > 0) return;
+    setGatesBulk(projectId, draft, user?.displayName);
+    markSaved();
+  };
 
   const backtrackFromMeta = backtrackFrom ? GATES.find((g) => g.id === backtrackFrom) : undefined;
   const backtrackTargetOptions = backtrackFrom
@@ -164,6 +209,21 @@ export default function GateFlowTable({
         </span>
       }
     >
+      {saveBlockedRows.length > 0 && (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message="Decision not valid yet — cannot save"
+          description={
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {saveBlockedRows.map((r) => (
+                <li key={r.meta.id}>{r.saveInvalidReason}</li>
+              ))}
+            </ul>
+          }
+        />
+      )}
       <Table
         size="small"
         rowKey={(r) => r.meta.id}
@@ -171,6 +231,48 @@ export default function GateFlowTable({
         pagination={false}
         scroll={{ x: 1250 }}
         rowClassName={(r) => (r.passed ? 'gate-row-passed' : r.locked ? 'gate-row-locked' : '')}
+        expandable={{
+          showExpandColumn: false,
+          expandedRowKeys: guidanceRowKeys,
+          onExpandedRowsChange: () => {
+            // Fully controlled by `guidanceRowKeys` — not user-toggleable, so
+            // there's nothing to do here (and no expand icon to click anyway).
+          },
+          rowExpandable: rowHasGuidance,
+          expandedRowRender: (r) => (
+            <div style={{ display: 'grid', gap: 4 }}>
+              {!r.canDecide && !r.locked && (
+                <div style={{ fontSize: 12, color: '#999' }}>
+                  Decision restricted to {r.meta.primaryOwner}
+                </div>
+              )}
+              {r.draftRecord.status === 'Gap' && (
+                <div style={{ fontSize: 12, color: '#cf1322' }}>Gap — normal Proceed blocked</div>
+              )}
+              {r.openChanges.length > 0 && (
+                <div style={{ fontSize: 12, color: '#d48806' }}>
+                  Open change — plain Proceed blocked; use Proceed with Conditions (acknowledge required)
+                </div>
+              )}
+              {r.awaitingDecision && !r.record.decision && (
+                <div style={{ fontSize: 12, color: '#d48806' }}>Pending — decision required to pass</div>
+              )}
+              {r.liveBlockers.length > 0 && (
+                <div style={{ fontSize: 12, color: '#cf1322' }}>
+                  <span style={{ fontWeight: 600 }}>What's blocking Gate {r.meta.number}: </span>
+                  <ul style={{ margin: '2px 0 0', paddingLeft: 18 }}>
+                    {r.liveBlockers.map((b, idx) => (
+                      <li key={idx}>
+                        {b}
+                        {!r.hardBlockers.includes(b) && ' — clears with Proceed with Conditions'}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ),
+        }}
         columns={[
           {
             title: 'Gate',
@@ -263,21 +365,15 @@ export default function GateFlowTable({
                     options={GATE_DECISIONS.map((d) => ({
                       value: d,
                       label: d,
-                      disabled:
-                        // B1: a Gap prevents a normal Proceed decision.
-                        // F9: an open change affecting the gate also blocks a plain
-                        // Proceed — record Proceed with Conditions instead.
-                        // B1/F1/C7: ANY blocker (including a soft, PwC-clearable
-                        // open next action) still blocks a plain Proceed.
-                        (d === 'Proceed' &&
-                          (r.record.status === 'Gap' || r.openChanges.length > 0 || r.blockers.length > 0)) ||
-                        // F8/C1/F1/C7: hard blockers (Critical actions, Skincare
-                        // for Two, Mandatory evidence) are not cleared by Proceed
-                        // with Conditions either — only the soft open-next-action
-                        // blocker is (see hardGateBlockers vs. gateBlockers).
-                        (d === 'Proceed with Conditions' && r.hardBlockers.length > 0) ||
-                        // Backtrack reopens an EARLIER gate — Gate 1 has none.
-                        (d === 'Backtrack' && r.meta.id === 'SG01'),
+                      // Proceed / Proceed with Conditions are deliberately left
+                      // selectable even when they'd currently be rejected — B1/
+                      // F1/C7 still enforce the rule (via the Save-blocked
+                      // banner/button below and the store guard), but disabling
+                      // the option outright hid *why* from the user. Only
+                      // Backtrack (reopens an EARLIER gate — Gate 1 has none)
+                      // stays disabled here, since there's no "what's missing"
+                      // explanation that would apply to it.
+                      disabled: d === 'Backtrack' && r.meta.id === 'SG01',
                     }))}
                     onChange={(v: GateDecision | undefined) => {
                       if (v === 'Backtrack') {
@@ -311,34 +407,6 @@ export default function GateFlowTable({
                     }}
                   />
                 </Tooltip>
-                {!r.canDecide && !r.locked && (
-                  <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>
-                    Decision restricted to {r.meta.primaryOwner}
-                  </div>
-                )}
-                {r.record.status === 'Gap' && (
-                  <div style={{ fontSize: 11, color: '#cf1322', marginTop: 2 }}>
-                    Gap — normal Proceed blocked
-                  </div>
-                )}
-                {r.openChanges.length > 0 && (
-                  <div style={{ fontSize: 11, color: '#d48806', marginTop: 2 }}>
-                    Open change — plain Proceed blocked; use Proceed with Conditions (acknowledge required)
-                  </div>
-                )}
-                {r.awaitingDecision && !r.record.decision && (
-                  <div style={{ fontSize: 11, color: '#d48806', marginTop: 2 }}>
-                    Pending — decision required to pass
-                  </div>
-                )}
-                {r.blockers.length > 0 && r.record.status === 'Complete' && (
-                  <Tooltip title={r.blockers.join(' · ')}>
-                    <div style={{ fontSize: 11, color: '#cf1322', marginTop: 2 }}>
-                      Blocked: {r.blockers[0]}
-                      {r.blockers.length > 1 ? ` (+${r.blockers.length - 1} more)` : ''}
-                    </div>
-                  </Tooltip>
-                )}
               </span>
             ),
           },
@@ -410,7 +478,13 @@ export default function GateFlowTable({
           },
         ]}
       />
-      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
+      <SaveBar
+        dirty={dirty}
+        onSave={save}
+        onDiscard={discard}
+        disabled={saveBlockedRows.length > 0}
+        disabledReason="Resolve the issue(s) flagged above before saving."
+      />
 
       <Modal
         title={backtrackFromMeta ? `Backtrack from Gate ${backtrackFromMeta.number}` : 'Backtrack'}

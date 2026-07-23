@@ -1,4 +1,4 @@
-import type { NextAction, ProjectData } from '../types';
+import type { GateRecord, NextAction, ProjectData } from '../types';
 import { NEXT_ACTION_TERMINAL_STATUSES } from '../types';
 import { GATES } from '../config/gates';
 import {
@@ -334,16 +334,26 @@ export function hardGateBlockers(project: ProjectData, gateId: string): string[]
 }
 
 // Reasons the gate cannot pass yet even with a positive decision recorded.
-export function gateBlockers(project: ProjectData, gateId: string): string[] {
+// `decisionOverride` lets a caller ask "if this decision were recorded, would
+// it still be blocked?" without having committed it yet — used to validate a
+// pending (unsaved) decision in the Phase Gate Flow draft before Save is
+// enabled, and by the store guards before committing it. Defaults to the
+// gate's currently committed decision when omitted.
+export function gateBlockers(
+  project: ProjectData,
+  gateId: string,
+  decisionOverride?: GateRecord['decision'],
+): string[] {
   const blockers = hardGateBlockers(project, gateId);
   const record = project.gates.find((g) => g.gateId === gateId);
+  const decision = decisionOverride !== undefined ? decisionOverride : record?.decision;
 
   // B2 + F8: open non-critical next actions block a plain Proceed, but are
   // specifically allowed to stay open under Proceed with Conditions — the
   // one blocker in this list that Proceed with Conditions is designed to
   // clear (Critical actions are handled in hardGateBlockers above instead).
   const otherOpen = openNextActions(project, gateId).filter((a) => a.priority !== 'Critical');
-  if (otherOpen.length > 0 && record?.decision !== 'Proceed with Conditions') {
+  if (otherOpen.length > 0 && decision !== 'Proceed with Conditions') {
     blockers.push(
       `${otherOpen.length} open next action${otherOpen.length > 1 ? 's' : ''} — complete them or record Proceed with Conditions`,
     );

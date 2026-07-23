@@ -33,6 +33,9 @@ Ngoài phạm vi: sinh/quản lý tài liệu GMP (chỉ lưu link — theo yêu
 4. **Gates 1–9 chung, Gates 10–12 per-market (A1/C5).** `market_tracks` per (project, market), mang PIF/Regulatory/Claims/Launch status + dates; launch approval hard-block khi PIF chưa Approved — enforce ở API, không chỉ UI.
 5. **Cosmetri read-only qua proxy (A3).** Browser không bao giờ giữ credential Cosmetri. Backend giữ token, đồng bộ polling (`since_updated_at`), cache local, và **không có code path nào gọi `PUT /raw-material/update`**.
 6. **Register config-driven như frontend.** ~37 evidence register dùng chung một bảng `register_rows` (JSONB) + định nghĩa cột từ `packages/shared/config/registers.ts`. Thêm register mới (vd. F10 — checklist EU CPSR/AU/US) = thêm config, không migration.
+7. **(Thêm 2026-07-23) Validate nghiệp vụ ở server là nguồn xác thực duy nhất, không suy diễn từ việc frontend đã chặn.** Mọi guard hiện có ở `apps/web/src/store/useAppStore.ts` (B1 Gap/F9 open-change chặn Proceed, F1/C7 mandatory evidence, C1 Skincare for Two, C2 Independent Reviewer khác department, C5 PIF Approved trước khi launch, B4 backtrack reset + invalidate sign-off) phải được **implement lại y hệt ở API** — không phải "vì UI đã disable option/nút Save nên server khỏi check". Client luôn có thể bị bypass (gọi thẳng endpoint, devtools, request thủ công/script) — nếu server không tự enforce thì rule coi như không tồn tại. Dùng lại pure function đã có trong `packages/shared/src/utils/gateProgress.ts` (không copy lại logic) theo đúng nguyên tắc monorepo "never fork a copy".
+8. **(Thêm 2026-07-23) Concurrency control — chống race condition khi 2 request cùng sửa 1 project.** Các action đọc nhiều bản ghi rồi ghi lại nhiều bản ghi cùng lúc (`setGatesBulk`, `backtrackGate`, `createFormulaVersion`) không được tách thành nhiều round-trip riêng: phải chạy trong **1 Prisma transaction duy nhất**, đủ mạnh để 2 request gần như đồng thời (2 tab, 2 người) không thể tính guard (`isGateUnlocked`/`gateBlockers`) dựa trên dữ liệu đã bị request kia ghi đè — dùng mức cô lập Serializable hoặc khoá theo `project_id` (`SELECT ... FOR UPDATE`). Thêm cột `version` (optimistic lock) ở mức `projects`: client gửi kèm version đã fetch khi ghi, server trả `409 Conflict` nếu version hiện tại đã lệch, thay vì âm thầm ghi đè (last-write-wins không chấp nhận được cho dữ liệu Phase-Gate có tính pháp lý/audit).
+9. **(Thêm 2026-07-23) Idempotency cho mọi endpoint tạo side-effect mới.** `POST /api/projects`, `POST /api/projects/:id/backtrack`, tạo formula version (A2), thêm CAPA/Feedback... là hành động có thể bị gọi lặp (double-click, timeout client rồi resend, retry mạng) mà server không có cách phân biệt "gọi lại do lỗi" với "cố ý tạo thêm 1 bản ghi". Mọi endpoint POST dạng "action" (không phải CRUD liệt kê/đọc) phải nhận header `Idempotency-Key` do client tự sinh 1 lần/thao tác (giữ nguyên khi resend); server lưu key kèm response đã trả (bảng nhỏ `idempotency_keys`: key, endpoint, request_hash, response_json, created_at, TTL vài giờ) — nếu key đã thấy, trả lại đúng response cũ thay vì chạy lại logic và tạo bản ghi thứ hai.
 
 ## 4. Thiết kế database (bản phác)
 
@@ -43,7 +46,7 @@ Ngoài phạm vi: sinh/quản lý tài liệu GMP (chỉ lưu link — theo yêu
 - `permissions` / `role_permissions` — **ma trận role × resource × hành động (contribute / decide / approve / sign)**. Chờ F6: seed ban đầu tái tạo đúng logic keyword-match của `src/utils/roles.ts` (demo-parity), thay bằng ma trận thật khi có — chỉ đổi data.
 
 ### 4.2. Project & gate flow
-- `projects` (các field `ProjectIdentity`; `markets` chuyển thành bảng con `project_markets`)
+- `projects` (các field `ProjectIdentity`; `markets` chuyển thành bảng con `project_markets`) — **thêm cột `version` (int, tăng mỗi lần ghi)** cho optimistic locking, xem nguyên tắc 8 ở §3
 - `gate_records` (project_id, gate_id SG01–SG12, status, decision, owner, due_date, evidence_link, notes) — trạng thái hiện tại; mọi thay đổi ghi kèm `audit_events`
 - `next_actions` (B2: description, owner, due_date, status, priority, date_completed, closed_by)
 - `phase_closures` + `sign_offs` (role Prepared/Reviewed/Approved, ký bởi user thật, `signed_at`, `invalidated_by_event_id`)
@@ -64,6 +67,7 @@ Ngoài phạm vi: sinh/quản lý tài liệu GMP (chỉ lưu link — theo yêu
 ### 4.5. Cross-cutting
 - `change_records` (Change Control; `trigger_id` liên kết gate bị ảnh hưởng → soft-lock C4/F9)
 - `capa_records`, `feedback_entries`
+- `idempotency_keys` (key, endpoint, request_hash, response_json, created_at + TTL) — xem nguyên tắc 9 ở §3
 - `audit_events` — **bảng xương sống**: (id, actor_id, project_id?, entity_type, entity_id, action, before JSONB, after JSONB, occurred_at). Đây là "electronic approval history" mà A4 yêu cầu.
 
 ### 4.6. Cấu hình luật (data, không phải code)
