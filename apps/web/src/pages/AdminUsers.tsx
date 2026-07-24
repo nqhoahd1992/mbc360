@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Alert, Select, Switch, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Popconfirm, Select, Switch, Table, Tooltip, Typography, message } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
 
 interface AdminUser {
   id: string;
@@ -77,6 +78,20 @@ export default function AdminUsers() {
     setUsers((prev) => prev.map((u) => (u.id === id ? updated : u)));
   };
 
+  // Hard delete — the backend only allows this for an account with no
+  // historical footprint (never signed/edited/uploaded/audited anything); it
+  // refuses with a clear message otherwise. Deactivating (the Active switch
+  // above) is the right action for a user who has done real work.
+  const deleteUser = async (id: string) => {
+    const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => undefined);
+      message.error(body?.message ?? 'Could not delete user');
+      return;
+    }
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+  };
+
   if (forbidden) {
     return (
       <Alert
@@ -90,11 +105,12 @@ export default function AdminUsers() {
 
   return (
     <>
-      <Typography.Title level={4}>Users & Roles</Typography.Title>
+      <Typography.Title level={4}>Users</Typography.Title>
       <Typography.Paragraph type="secondary">
         Assign each signed-in user a role — this is the only place a role is granted; it is
         never inferred from Microsoft Entra ID or department data. A user with no role can
-        contribute evidence but cannot decide, approve or sign anything (rule A4).
+        contribute evidence but cannot decide, approve or sign anything (rule A4). Edit what each
+        role can do under Users &amp; Roles → Roles.
       </Typography.Paragraph>
       <Table
         rowKey="id"
@@ -137,14 +153,22 @@ export default function AdminUsers() {
             ),
           },
           {
-            title: 'Source',
-            key: 'source',
-            render: (_, record) =>
-              record.email.endsWith('@demo.mbc360.local') ? (
-                <Tag>demo</Tag>
-              ) : (
-                <Tag color="blue">SSO</Tag>
-              ),
+            title: '',
+            key: 'delete',
+            width: 44,
+            render: (_, record) => (
+              <Tooltip title="Only works for an account with no history — otherwise deactivate it instead">
+                <Popconfirm
+                  title="Delete this user?"
+                  description="Only succeeds if the account has never signed, edited, uploaded, or acted in the audit trail."
+                  onConfirm={() => void deleteUser(record.id)}
+                  okText="Delete"
+                  okButtonProps={{ danger: true }}
+                >
+                  <Button size="small" danger type="text" icon={<DeleteOutlined />} />
+                </Popconfirm>
+              </Tooltip>
+            ),
           },
         ]}
       />

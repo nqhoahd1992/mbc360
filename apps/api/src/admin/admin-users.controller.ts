@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   Param,
@@ -12,6 +13,9 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { SessionUser } from '../auth/session-user';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionsService } from '../rbac/permissions.service';
+import { SSO_ROLES } from '@mbc360/shared/config/roles';
+
+const SSO_ROLE_KEYS = new Set(SSO_ROLES.map((r) => r.key));
 
 // User & role management (the user's role is a decision made INSIDE MBc360,
 // never inferred from Graph/AD attributes — an SSO login only creates the
@@ -49,11 +53,16 @@ export class AdminUsersController {
     };
   }
 
+  // Only the F6-confirmed real role list (`SSO_ROLES`) is offered here — the
+  // `roles` table also carries the legacy `VIEW_ROLES` demo/"View as"
+  // simulator entries (needed for dev-login + the existing gate/phase
+  // keyword-match permission grants), which would otherwise show up
+  // alongside these as confusing, oddly-labeled duplicates.
   @Get('roles')
   async listRoles(@CurrentUser() currentUser: SessionUser) {
     await this.requireAdmin(currentUser);
     const roles = await this.prisma.role.findMany({ orderBy: { name: 'asc' } });
-    return roles.map((r) => ({ key: r.key, name: r.name }));
+    return roles.filter((r) => SSO_ROLE_KEYS.has(r.key)).map((r) => ({ key: r.key, name: r.name }));
   }
 
   @Get('users')
@@ -155,5 +164,55 @@ export class AdminUsersController {
     });
 
     return this.toUserResponse(updated);
+  }
+
+  // Hard delete — reserved for accounts with no historical footprint (never
+  // signed anything, edited a register row, uploaded an attachment, or
+  // acted in the audit trail). Any of that and the delete is refused: this
+  // app's audit/sign-off relations to `User` are optional FKs with no
+  // explicit `onDelete` (Prisma default = SetNull), so deleting a user who
+  // DOES have history wouldn't remove those records — it would silently
+  // blank out "who" on them, which is exactly the "no silent corrections"
+  // (B4) principle this app is built around. Deactivate (`active: false`,
+  // above) is the right tool for a user who has done real work; this is
+  // only for cleaning up an unused/mistaken account (e.g. a demo/test row).
+  @Delete('users/:id')
+  async deleteUser(@CurrentUser() currentUser: SessionUser, @Param('id') id: string) {
+    await this.requireAdmin(currentUser);
+    if (id === currentUser.id) {
+      throw new BadRequestException('Cannot delete your own account');
+    }
+
+    const target = await this.prisma.user.findUnique({ where: { id } });
+    if (!target) throw new BadRequestException('Unknown user');
+
+    const [auditCount, registerRowCount, attachmentCount, signOffCount] = await Promise.all([
+      this.prisma.auditEvent.count({ where: { actorId: id } }),
+      this.prisma.registerRow.count({ where: { updatedById: id } }),
+      this.prisma.attachment.count({ where: { uploadedById: id } }),
+      this.prisma.signOff.count({ where: { signedByUserId: id } }),
+    ]);
+    const historyCount = auditCount + registerRowCount + attachmentCount + signOffCount;
+    if (historyCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete ${target.email} — it has ${historyCount} historical record(s) (audit trail, register edits, attachments, or sign-offs) attached. Deactivate it instead to preserve the audit trail.`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.delete({ where: { id } }); // cascades UserRole rows only
+      await this.audit.record(
+        {
+          actorId: currentUser.id,
+          entityType: 'user',
+          entityId: id,
+          action: 'user.deleted',
+          before: { email: target.email, displayName: target.displayName },
+        },
+        tx,
+      );
+    });
+
+    return { ok: true };
   }
 }

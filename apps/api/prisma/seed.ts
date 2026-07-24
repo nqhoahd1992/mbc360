@@ -18,6 +18,7 @@ import {
 import { GATES, PHASES } from '@mbc360/shared/config/gates';
 import {
   ADMIN_ROLE,
+  SSO_ROLES,
   VIEW_ROLES,
   canApprovePhase,
   canDecideGate,
@@ -83,9 +84,19 @@ async function seedCosmetriSyncState(): Promise<void> {
 // Demo-parity RBAC seed (BACKEND_PLAN 4.1 / M2): materialise the keyword-match
 // mapping from @mbc360/shared/config/roles into roles / permissions /
 // role_permissions rows. The admin role gets NO rows — PermissionsService
-// short-circuits it. Replaced by the real matrix when F6 is answered.
+// short-circuits it. Permission-grant computation (below) is still demo-
+// parity, awaiting F6's role×gate/phase grid.
+//
+// The `roles` table also now carries the F6-confirmed real role list
+// (`SSO_ROLES`) — seeded AFTER `VIEW_ROLES` so its label wins for the shared
+// `admin` key (ends up named "System Administrator", not the old demo "Admin
+// (unrestricted)"). `SSO_ROLES` entries get zero permission grants below
+// (same as any other role.key not found in VIEW_ROLES — `canDecideGate`/
+// `canApprovePhase`/`canEditMarketTrack` simply don't recognise them yet),
+// which is correct: the role×gate/phase mapping for these 17 roles is F6's
+// still-open remainder, not yet answered.
 async function seedRbac(): Promise<void> {
-  for (const viewRole of VIEW_ROLES) {
+  for (const viewRole of [...VIEW_ROLES, ...SSO_ROLES]) {
     await prisma.role.upsert({
       where: { key: viewRole.key },
       update: { name: viewRole.label },
@@ -147,19 +158,31 @@ async function seedRbac(): Promise<void> {
   console.log(`Seeded ${roles.length} roles, ${permissionDefs.length} permissions, ${grants} grants (demo-parity, awaiting F6)`);
 }
 
-// One demo user per role so dev-login works before the Entra app registration
-// exists. Skip with SEED_DEMO_USERS=false (production).
+// One demo user per SSO role (2026-07-23, user-requested: re-seed demo users
+// against the new F6 role list) so dev-login covers every real assignable
+// role, not just the old VIEW_ROLES demo/"View as" keys. Independent Study
+// Reviewer deliberately gets a DIFFERENT department than Study Author/
+// Department Study Reviewer, so the C2 "Independent Reviewer must not share
+// the Study Author's department" guard is actually exercisable against these
+// demo accounts. Skip with SEED_DEMO_USERS=false (production).
 const DEMO_USER_DEPARTMENTS: Record<string, string> = {
   [ADMIN_ROLE]: 'Management',
-  'project-owner': 'Project Office',
-  'marketing-sales': 'Marketing & Sales',
-  'npd-ri': 'NPD / R&I',
-  procurement: 'Procurement',
-  packaging: 'Packaging',
-  manufacturing: 'Manufacturing',
-  quality: 'Quality',
-  safety: 'Safety',
-  regulatory: 'Regulatory',
+  'sso-project-owner': 'Project Office',
+  'sso-formulation-contributor': 'NPD / R&I',
+  'sso-safety-reviewer': 'Safety',
+  'sso-quality-reviewer': 'Quality',
+  'sso-regulatory-reviewer': 'Regulatory',
+  'sso-packaging-artwork-contributor': 'Packaging',
+  'sso-marketing-sales-contributor': 'Marketing & Sales',
+  'sso-supply-chain-contributor': 'Supply Chain',
+  'sso-manufacturing-link-contributor': 'Manufacturing',
+  'sso-study-author': 'NPD / R&I',
+  'sso-department-study-reviewer': 'NPD / R&I',
+  'sso-independent-study-reviewer': 'Quality',
+  'sso-published-info-technical-reviewer': 'Quality',
+  'sso-published-info-regulatory-reviewer': 'Regulatory',
+  'sso-final-approver': 'Management',
+  'sso-read-only-viewer': 'Management',
 };
 
 async function seedDemoUsers(): Promise<void> {
@@ -167,17 +190,28 @@ async function seedDemoUsers(): Promise<void> {
     console.log('SEED_DEMO_USERS=false — demo users skipped');
     return;
   }
-  for (const viewRole of VIEW_ROLES) {
-    const email = `${viewRole.key}@demo.mbc360.local`;
-    const departmentName = DEMO_USER_DEPARTMENTS[viewRole.key] ?? 'Management';
-    const role = await prisma.role.findUnique({ where: { key: viewRole.key } });
+  // Previously-seeded VIEW_ROLES-keyed demo users (project-owner@demo...,
+  // npd-ri@demo..., etc.) are left as-is, not deleted — this loop is purely
+  // additive, matching the idempotent-seed convention used throughout this
+  // file (never destructive).
+  for (const ssoRole of SSO_ROLES) {
+    // Keep the full key (incl. `sso-` prefix) as the email local-part rather
+    // than stripping it — `sso-project-owner` would otherwise collide with
+    // the pre-existing VIEW_ROLES demo user at `project-owner@demo...`,
+    // silently merging two different roles onto one user instead of creating
+    // a distinct account. `admin` is unprefixed either way, so it correctly
+    // reuses the existing `admin@demo.mbc360.local` account (same role, same
+    // person — that reuse IS intended).
+    const email = `${ssoRole.key}@demo.mbc360.local`;
+    const departmentName = DEMO_USER_DEPARTMENTS[ssoRole.key] ?? 'Management';
+    const role = await prisma.role.findUnique({ where: { key: ssoRole.key } });
     if (!role) continue;
     const user = await prisma.user.upsert({
       where: { email },
       update: {},
       create: {
         email,
-        displayName: `${viewRole.label} (demo)`,
+        displayName: `${ssoRole.label} (demo)`,
         department: {
           connectOrCreate: { where: { name: departmentName }, create: { name: departmentName } },
         },
@@ -189,7 +223,7 @@ async function seedDemoUsers(): Promise<void> {
       create: { userId: user.id, roleId: role.id },
     });
   }
-  console.log(`Seeded ${VIEW_ROLES.length} demo users (…@demo.mbc360.local, one per role)`);
+  console.log(`Seeded ${SSO_ROLES.length} demo users (…@demo.mbc360.local, one per SSO role)`);
 }
 
 async function seedDemoProject(): Promise<void> {

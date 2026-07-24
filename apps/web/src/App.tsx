@@ -14,10 +14,11 @@ import {
 } from '@ant-design/icons';
 import { HashRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from './store/useAppStore';
-import { VIEW_ROLES } from './utils/roles';
+import { SSO_ROLES } from './utils/roles';
 import { useSession } from './auth/useSession';
 import AuthStatus from './components/AuthStatus';
 import AdminUsers from './pages/AdminUsers';
+import AdminRoles from './pages/AdminRoles';
 import Dashboard from './pages/Dashboard';
 import ProjectList from './pages/ProjectList';
 import ProjectOverview from './pages/ProjectOverview';
@@ -87,7 +88,17 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
       { key: '/projects', icon: <FolderOpenOutlined />, label: <Link to="/projects">All Projects</Link> },
       { key: '/integrations', icon: <ApiOutlined />, label: <Link to="/integrations">Integrations</Link> },
       ...(isAdmin
-        ? [{ key: '/admin/users', icon: <TeamOutlined />, label: <Link to="/admin/users">Users & Roles</Link> }]
+        ? [
+            {
+              key: 'admin-users-roles',
+              icon: <TeamOutlined />,
+              label: 'Users & Roles',
+              children: [
+                { key: '/admin/users', label: <Link to="/admin/users">Users</Link> },
+                { key: '/admin/roles', label: <Link to="/admin/roles">Roles</Link> },
+              ],
+            },
+          ]
         : []),
     ],
     [isAdmin],
@@ -204,6 +215,7 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
         theme="dark"
         mode="inline"
         selectedKeys={[location.pathname]}
+        defaultOpenKeys={['admin-users-roles']}
         items={globalItems as never}
       />
       {projectId && (
@@ -302,9 +314,18 @@ function Shell() {
   const resetDemoData = useAppStore((s) => s.resetDemoData);
   const viewRole = useAppStore((s) => s.viewRole);
   const setViewRole = useAppStore((s) => s.setViewRole);
+  const loadPermissionGrid = useAppStore((s) => s.loadPermissionGrid);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   const session = useSession();
+
+  // Load the role x capability grid once a session exists — it drives the
+  // "View as" gate/phase/market-track permission checks (utils/permissions.ts)
+  // and is edited on the Users & Roles Role Editor. Reloaded there after a
+  // save so "View as" reflects the change live.
+  useEffect(() => {
+    if (session.user) void loadPermissionGrid();
+  }, [session.user, loadPermissionGrid]);
 
   // Microsoft 365 SSO is the only sign-in method — no session (never signed
   // in, signed out, or the session expired) means the Login screen, full
@@ -377,10 +398,10 @@ function Shell() {
                 <EyeOutlined style={{ color: '#999' }} />
                 <Select
                   size="small"
-                  style={{ width: 190 }}
+                  style={{ width: 230 }}
                   value={viewRole}
                   onChange={setViewRole}
-                  options={VIEW_ROLES.map((r) => ({ value: r.key, label: r.label }))}
+                  options={SSO_ROLES.map((r) => ({ value: r.key, label: r.label }))}
                   popupMatchSelectWidth={false}
                 />
               </span>
@@ -430,6 +451,7 @@ function Shell() {
             <Route path="/change-control" element={<ChangeControl />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
             <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/roles" element={<AdminRoles />} />
           </Routes>
         </Content>
       </Layout>
