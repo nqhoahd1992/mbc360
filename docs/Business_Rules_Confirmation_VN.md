@@ -500,6 +500,21 @@ Các **câu hỏi về quy tắc đã đóng** (chỉ F12 còn chờ Cosmetri). 
 - **F11** — nội dung Published Product Information Guideline / Claims Library (từ ngữ đã duyệt, bằng chứng bắt buộc theo claim).
 - **F12** — Cosmetri xác nhận độ phủ compliance ASEAN/Việt Nam (phụ thuộc bên ngoài).
 
+## NPD Front-End Roadmap (workbook v2, 24/07/2026)
+
+**Trạng thái:** ✅ Đã xác nhận. File `MBc360 Master Product Development System File v2.xlsx` do chính đội ngũ chuyên gia biên soạn, được coi là nguồn đã xác nhận sẵn — có giá trị ngang với workbook gốc — nên không cần thêm vòng xác nhận nào nữa cho các quy tắc dưới đây.
+
+**Nội dung bổ sung:** một quy trình khoa học đầu-vào bắt buộc gồm 4 bước, mọi sản phẩm mới phải hoàn thành theo đúng thứ tự trước khi công thức bị khóa ở Gate 5:
+
+1. **Nhu cầu & Cơ sở khoa học (Needs & Scientific Basis)** — nhu cầu thể chất, cảm xúc, của người chăm sóc và hệ quả thiết kế, kèm câu hỏi nghiên cứu và phương pháp tra cứu tài liệu. Gate ký duyệt: **Gate 02**.
+2. **Bối cảnh cạnh tranh (Competitor Landscape)** — sản phẩm đối thủ đã mua và kiểm nghiệm thực tế, so sánh thử nghiệm và phân tích giải pháp hiện có/tiêu chuẩn chăm sóc hiện tại. Gate ký duyệt: **Gate 03**.
+3. **Hồ sơ sản phẩm mục tiêu & Công nghệ nền (Target Product Profile & Backbone Technology)** — một định nghĩa thống nhất về "thành công" của sản phẩm, cùng công nghệ nền đề xuất và lý do vượt trội so với thị trường. Phải **hoàn tất trước khi khóa công thức (Gate 05)**.
+4. **Kế hoạch bằng chứng & Hỗ trợ tuyên bố (Evidence Plan & Claim Support)** — kế hoạch chứng minh (chỉ số đo, đối chứng, tiêu chí đạt/không đạt) phải được thống nhất **trước khi** khóa công thức (Gate 05); quy trình test chi tiết hoàn tất khi đã có sản phẩm mẫu (Gate 08).
+
+**Cách thực thi:** Formula BOM (Gate 05) giờ bị chặn cứng — giống cách một sign-off an toàn còn thiếu đã chặn gate từ trước — cho tới khi Bước 1-3 hoàn tất và ký duyệt, và kế hoạch bằng chứng của Bước 4 đã được ghi nhận. Gate 02, 03 và 08 mỗi gate cũng có thêm điểm kiểm tra sớm tương ứng với bước của mình, để vấn đề được phát hiện sớm nhất có thể thay vì chỉ tới cuối cùng mới lộ ra.
+
+**Chủ động chưa thực thi cứng (có ghi chú, không phải bỏ sót):** sheet nguồn cũng nêu rằng không tuyên bố (claim) nào được xuất hiện trên bao bì, tài liệu HCP hay tài liệu bán hàng nếu chưa có "Claim ID" đã duyệt lưu hồ sơ. Điều này đã được theo dõi trên 1 register mới nhưng **chưa** chặn cứng bất kỳ đâu — vì làm vậy sẽ phải sửa quy trình duyệt Published Information hiện có (F11), nằm ngoài phạm vi đợt này. Đề xuất với đội ngũ nếu muốn biến đây thành rule bắt buộc ở đợt sau.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

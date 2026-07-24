@@ -77,6 +77,12 @@ export const REVIEW_SPECS = {
   salesMarketing: { owner: { role: 'sales-marketing' } },
   supplyChain: { owner: { role: 'supply-chain' } },
   facilityPm: { owner: { role: 'facility-pm' } },
+  // NPD Front-End Roadmap (v2 workbook, 2026-07-24) — Competitor Landscape is
+  // owned by Marketing with R&I co-review (Roadmap: "Marketing / R&I");
+  // Evidence & Claim Support is owned by R&I with Quality co-review (Roadmap:
+  // "R&I / Quality"). The other new NPD sheets reuse the existing `ri` spec.
+  npdCompetitor: { owner: { role: 'sales-marketing' }, coReview: [{ role: 'ri' }] },
+  npdEvidence: { owner: { role: 'ri' }, coReview: [{ role: 'quality' }] },
 } satisfies Record<string, ReviewOwnerSpec>;
 
 // Compose the "Owner (Area) · Co-review: … · Co-sign: …, Chris (Project Manager)"

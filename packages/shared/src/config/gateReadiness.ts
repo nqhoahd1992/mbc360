@@ -80,7 +80,15 @@ export type ReadinessCheck =
   // has status === 'Completed'. Unlike ChecklistItem/GateCheck, RequirementItem
   // has no Y/N/NA — WorkStatus has no "not applicable, justified" escape — so
   // only use this for rows that are universally applicable at that gate.
-  | { kind: 'requirementDone'; section: string; requirement: string };
+  | { kind: 'requirementDone'; section: string; requirement: string }
+  // NPD Front-End Roadmap (v2 workbook, 2026-07-24): every row of a
+  // `mode:'fixed'` register has a non-empty value in EVERY listed column —
+  // a direct generalization of registerColumnFilled (single column) to
+  // multiple columns, used to express "this fixed-role sign-off register
+  // (e.g. needsSignOff/targetProductSignOff) has name AND date filled for
+  // every role" as ONE clean Mandatory item instead of two awkwardly-split
+  // single-column items.
+  | { kind: 'registerRowsComplete'; register: string; columns: string[] };
 
 export interface ReadinessRequirement {
   id: string;
@@ -216,6 +224,23 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Mandatory',
       check: { kind: 'gateCheckDone', gate: '02', check: 'Commercial planning inputs entered or marked N/A' },
     },
+    // NPD Front-End Roadmap (v2 workbook, 2026-07-24, expert-authored, treated
+    // as confirmed — no further SME round needed): Step 1 ("Define the NEEDS
+    // and the scientific basis") is mandatory before formula work and its
+    // sign-off gate is SG02. Reused again at SG05 (see below) since the
+    // Roadmap also holds Formula BOM until Steps 1-3 are signed off.
+    {
+      id: 'sg02-npd-needs-content',
+      label: 'Needs & Scientific Basis — research questions recorded',
+      tier: 'Mandatory',
+      check: { kind: 'registerHasRows', register: 'needsResearchQuestions' },
+    },
+    {
+      id: 'sg02-npd-needs-signoff',
+      label: 'Needs & Scientific Basis dossier signed off (name + date, all 3 roles)',
+      tier: 'Mandatory',
+      check: { kind: 'registerRowsComplete', register: 'needsSignOff', columns: ['name', 'date'] },
+    },
   ],
   SG03: [
     {
@@ -264,6 +289,32 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // tier means this only ever warns, never hard-blocks, so reusing the
       // same evidence carries no extra risk.
       check: { kind: 'gateCheckDone', gate: '03', check: 'Concept direction and benchmark/competitor review recorded' },
+    },
+    // NPD Front-End Roadmap (v2 workbook, 2026-07-24): Step 2 ("Map
+    // COMPETITORS & current existing solutions"), sign-off gate SG03. This is
+    // a STRICTER companion signal to sg03-benchmark above (a real purchased-
+    // sample register, not just a checkbox) — not a duplicate. Reused at SG05
+    // (Formula BOM hard-blocked pending Steps 1-3).
+    {
+      id: 'sg03-npd-competitor-content',
+      label: 'Competitor & current-solution landscape recorded',
+      tier: 'Mandatory',
+      check: { kind: 'registerHasRows', register: 'competitorLandscape' },
+    },
+    // Step 3 (Target Product Profile + Backbone Technology) is only a
+    // non-blocking visibility nudge at SG03 — the sheet's own text states the
+    // hard requirement is "before formula lock (Gate 5)", so the actual
+    // Mandatory block lives at SG05, not here.
+    {
+      id: 'sg03-npd-target-product-progress',
+      label: 'Target Product Profile in progress',
+      tier: 'Supporting',
+      // targetProductProfile is a `mode:'fixed'` register — its 7 attribute
+      // rows are seeded at project creation regardless of user input, so
+      // `registerHasRows` would be vacuously always true. `registerColumnFilled`
+      // on 'target' (the "aim" column, blank until actually answered) is the
+      // real signal.
+      check: { kind: 'registerColumnFilled', register: 'targetProductProfile', column: 'target' },
     },
     // sg03-reg-claims: still `manual` — depends on a "high-risk/borderline
     // claim" flag that doesn't exist yet (same open question as Round 2's A1
@@ -461,6 +512,47 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Mandatory',
       check: { kind: 'gateCheckDone', gate: '05', check: 'Development decision recorded with evidence or conditions' },
     },
+    // NPD Front-End Roadmap (v2 workbook, 2026-07-24, expert-authored, treated
+    // as confirmed): "Formula work HELD until Steps 1-3 are signed off" —
+    // Gate 5 (Formula BOM lock) is hard-blocked until Needs & Scientific
+    // Basis, Competitor Landscape and Target Product & Tech are all complete/
+    // signed off, plus the Step 4 prospective evidence plan (agree BEFORE
+    // formula lock). This is the actual "hold formula work" enforcement the
+    // Roadmap describes; sg02-npd-*/sg03-npd-competitor-content above are the
+    // earlier, per-step checkpoints reusing the same underlying registers.
+    {
+      id: 'sg05-npd-needs-signoff',
+      label: 'Needs & Scientific Basis dossier signed off (name + date, all 3 roles)',
+      tier: 'Mandatory',
+      check: { kind: 'registerRowsComplete', register: 'needsSignOff', columns: ['name', 'date'] },
+    },
+    {
+      id: 'sg05-npd-competitor-content',
+      label: 'Competitor & current-solution landscape recorded',
+      tier: 'Mandatory',
+      check: { kind: 'registerHasRows', register: 'competitorLandscape' },
+    },
+    {
+      id: 'sg05-npd-target-product-content',
+      label: 'Target Product Profile recorded',
+      tier: 'Mandatory',
+      // Same registerColumnFilled reasoning as sg03-npd-target-product-progress
+      // above — targetProductProfile's fixed rows always exist, so `target`
+      // (blank until answered) is the real signal, not registerHasRows.
+      check: { kind: 'registerColumnFilled', register: 'targetProductProfile', column: 'target' },
+    },
+    {
+      id: 'sg05-npd-target-product-signoff',
+      label: 'Target Product & Tech Platform signed off (name + date, all 3 roles)',
+      tier: 'Mandatory',
+      check: { kind: 'registerRowsComplete', register: 'targetProductSignOff', columns: ['name', 'date'] },
+    },
+    {
+      id: 'sg05-npd-evidence-plan',
+      label: 'Prospective evidence plan recorded (agree before formula lock)',
+      tier: 'Mandatory',
+      check: { kind: 'registerHasRows', register: 'evidencePlanProspective' },
+    },
   ],
   SG06: [
     { id: 'sg06-pack-spec', label: 'Proposed pack specification', tier: 'Mandatory', check: { kind: 'manual' } },
@@ -514,6 +606,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     { id: 'sg08-required-tests', label: 'Required safety, efficacy, preservative, QC and performance testing identified', tier: 'Mandatory', check: { kind: 'manual' } },
     { id: 'sg08-human-study', label: 'Human-study approval workflow completed before participant recruitment, where applicable', tier: 'Conditional', check: { kind: 'manual' } },
     { id: 'sg08-reports', label: 'Test reports or controlled actions for tests still in progress', tier: 'Mandatory', check: { kind: 'manual' } },
+    // NPD Front-End Roadmap (v2 workbook, 2026-07-24): Step 4's detailed test
+    // protocol ("complete once prototype exists — Gate 8"), distinct from
+    // sg08-human-study above (a different, existing workflow).
+    {
+      id: 'sg08-npd-evidence-protocol',
+      label: 'Detailed test protocol recorded',
+      tier: 'Mandatory',
+      check: { kind: 'registerHasRows', register: 'evidenceTestProtocol' },
+    },
   ],
   SG09: [
     { id: 'sg09-stability', label: 'Stability status', tier: 'Mandatory', check: { kind: 'manual' } },

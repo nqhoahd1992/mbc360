@@ -500,6 +500,21 @@ The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **
 - **F11** — the Published Product Information Guideline / Claims Library content (approved terms, required evidence per claim).
 - **F12** — Cosmetri's confirmation of ASEAN/Vietnam compliance coverage (external dependency).
 
+## NPD Front-End Roadmap (v2 workbook, 2026-07-24)
+
+**Status:** ✅ Confirmed. `MBc360 Master Product Development System File v2.xlsx` was authored directly by the expert/SME team and is treated as an already-confirmed source, the same authority as the original workbook — no additional confirmation round was needed for the rules below.
+
+**What it adds:** a mandatory 4-step scientific front-end that every new product must complete, in order, before the formula is locked at Gate 5:
+
+1. **Needs & Scientific Basis** — physical, emotional, caregiver and design-implication needs, with research questions and literature-search method recorded. Sign-off gate: **Gate 02**.
+2. **Competitor Landscape** — purchased-and-tested competitor products, comparative testing and current-solution/standard-of-care analysis. Sign-off gate: **Gate 03**.
+3. **Target Product Profile & Backbone Technology** — one agreed definition of product success, plus the proposed technology platform and why it is superior to the market. Must be **complete before the formula is locked (Gate 05)**.
+4. **Evidence Plan & Claim Support** — the proof plan (endpoint, comparator, pass/fail) must be agreed **before** the formula is locked (Gate 05); the detailed test protocol is completed once a prototype exists (Gate 08).
+
+**Enforcement:** Formula BOM (Gate 05) is now hard-blocked — the same way a missing safety sign-off already blocks a gate — until Steps 1–3 are complete and signed off, and the Step 4 evidence plan is recorded. Gates 02, 03 and 08 each also gained their own earlier checkpoint for the matching step, so problems surface as soon as possible rather than only at the very end.
+
+**Deliberately not enforced (documented, not silently dropped):** the source sheet also states that no claim may appear on packaging, HCP material or sales material unless it has an approved "Claim ID" on file. This is tracked on a new register but does **not** hard-block anything yet — doing so would mean changing the existing Published Information approval workflow (F11), which was out of scope for this round. Flag to the team if this should become a hard rule in a future round.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

@@ -31,6 +31,11 @@ import ProductFeedback from './pages/ProductFeedback';
 import RegisterHubPage from './pages/RegisterHubPage';
 import CommandPalette from './components/CommandPalette';
 import FormulationSafety from './pages/FormulationSafety';
+import NeedsScientificBasis from './pages/NeedsScientificBasis';
+import CompetitorLandscape from './pages/CompetitorLandscape';
+import TargetProductTech from './pages/TargetProductTech';
+import EvidenceClaimSupport from './pages/EvidenceClaimSupport';
+import EvidenceSearchRules from './pages/EvidenceSearchRules';
 import IntegrationsPage from './pages/IntegrationsPage';
 import Login from './pages/Login';
 import { PHASES } from '@mbc360/shared/config/gates';
@@ -443,6 +448,11 @@ function Shell() {
             <Route path="/projects/:projectId/bom" element={<BomCosting />} />
             <Route path="/projects/:projectId/bom/:section" element={<BomCosting />} />
             <Route path="/projects/:projectId/formulation-safety" element={<FormulationSafety />} />
+            <Route path="/projects/:projectId/needs-scientific-basis" element={<NeedsScientificBasis />} />
+            <Route path="/projects/:projectId/competitor-landscape" element={<CompetitorLandscape />} />
+            <Route path="/projects/:projectId/target-product-tech" element={<TargetProductTech />} />
+            <Route path="/projects/:projectId/evidence-claim-support" element={<EvidenceClaimSupport />} />
+            <Route path="/projects/:projectId/evidence-search-rules" element={<EvidenceSearchRules />} />
             <Route path="/projects/:projectId/registers/cat/:categoryKey" element={<RegisterHubPage />} />
             <Route path="/projects/:projectId/registers/reg/:registerKey" element={<RegisterHubPage />} />
             <Route path="/projects/:projectId/evidence" element={<EvidenceSummary />} />

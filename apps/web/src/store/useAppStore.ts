@@ -638,7 +638,7 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: 'mbc360-demo-store',
-      version: 11,
+      version: 12,
       // `permissionGrid` is server state, always loaded fresh on startup — never
       // persist a stale copy to localStorage. (Functions and everything else are
       // handled as before; this only strips the grid.)
@@ -670,6 +670,18 @@ export const useAppStore = create<AppState>()(
       // v10 -> v11: ProjectIdentity gained required `reviewers` (per-project review
       // owners / co-signers, replacing the old hardcoded config demo names) — old
       // persisted projects have no reviewers, which would render blank captions.
+      // v11 -> v12 (NPD Front-End Roadmap, v2 workbook): added ~25 new
+      // RegisterConfig keys (Needs & Scientific Basis, Competitor Landscape,
+      // Target Product & Tech, Evidence & Claim Support, Ingredient Monograph,
+      // Evidence & Search Rules, Carrier/Emollient Review, NPD Roadmap
+      // reference). `seedRegisters()` only runs at project creation, so an
+      // already-persisted project's `registers` object would be missing every
+      // new key — for the `mode: 'fixed'` ones (roughly half) that means the
+      // labelled rows never materialize at all (DynamicTable only offers "Add
+      // row" for `mode: 'register'`), and since the new SG02/SG03/SG05/SG08
+      // Mandatory readiness items read these registers live, an existing
+      // project already past those gates would retroactively re-evaluate them
+      // as unpassed. Re-seed, not a real migration, same as every prior bump.
       // Old persisted demo data doesn't fit the new schema, so re-seed instead of migrating it.
       migrate: () => ({ projects: seedProjects(), changes: seedChanges() }),
     },

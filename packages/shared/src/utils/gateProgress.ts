@@ -150,6 +150,15 @@ function evaluateReadinessCheck(
       const rows = project.registers[check.register] ?? [];
       return { evaluable: true, satisfied: rows.every((r) => String(r[check.column] ?? '').trim() !== '') };
     }
+    case 'registerRowsComplete': {
+      const rows = project.registers[check.register] ?? [];
+      // Unlike registerColumnFilled, an empty register must NOT vacuously
+      // satisfy this — it backs sign-off-style hard blocks (NPD Front-End
+      // Roadmap, 2026-07-24) where "no rows yet" must read as incomplete.
+      const satisfied =
+        rows.length > 0 && rows.every((r) => check.columns.every((c) => String(r[c] ?? '').trim() !== ''));
+      return { evaluable: true, satisfied };
+    }
     case 'requirementDone': {
       const row = (project.requirements[check.section] ?? []).find((r) => r.requirement === check.requirement);
       return { evaluable: true, satisfied: row?.status === 'Completed' };

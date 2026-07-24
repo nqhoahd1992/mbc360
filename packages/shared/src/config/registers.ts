@@ -1438,6 +1438,599 @@ const systemFeedback: RegisterConfig = {
 };
 
 // ---------------------------------------------------------------------------
+// NPD Front-End Roadmap (v2 workbook, 2026-07-24) — see CLAUDE.md for the
+// full rationale. Every register below is transcribed from the new sheets in
+// `docs/MBc360 Master Product Development System File v2.xlsx`. `gate` is the
+// LOCKING gate(s) — set to cover every gate whose Mandatory readiness check
+// (gateReadiness.ts) reads that register, same rule `ingredientSubstitution`
+// already follows with '04/07'.
+// ---------------------------------------------------------------------------
+
+// Page: "1. Needs & Scientific Basis" (page slug: needs-scientific-basis)
+
+export const needsExecutiveBrief: RegisterConfig = {
+  key: 'needsExecutiveBrief',
+  title: 'Needs — Executive Brief',
+  sheetName: 'Chris Needs Document',
+  description: 'Executive brief: what this product must do, based on the physiology and emotional needs of the intended user(s). Dot points only; every need must be referenced. Companion to the full dossier below.',
+  mode: 'register',
+  gate: '02',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'category', label: 'Need category', type: 'select', width: 200, options: ['User / Infant — Physical', 'User / Infant — Emotional', 'Caregiver — Emotional', 'Caregiver — Practical / Functional', 'Needs -> Design Implication', 'Open Question'] },
+    { key: 'needPoint', label: 'Need (dot point)', type: 'textarea', width: 320 },
+    { key: 'reference', label: 'Reference', type: 'text', width: 200 },
+  ],
+};
+
+export const needsResearchQuestions: RegisterConfig = {
+  key: 'needsResearchQuestions',
+  title: 'Framed Scientific Research Questions',
+  sheetName: '1. Needs & Scientific Basis',
+  description: 'What must be answered before design. Formula work is HELD until this dossier is reviewed and signed off.',
+  mode: 'register',
+  gate: '02',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'needDomain', label: 'Need domain', type: 'select', width: 180, options: ['Physical / physiological', 'Emotional / developmental', 'Caregiver emotional', 'Practical / functional', 'Disease vs cosmetic boundary', 'Exposure / hand-to-mouth'] },
+    { key: 'need', label: 'Need (dot point)', type: 'textarea', width: 220 },
+    { key: 'researchQuestion', label: 'Framed research question (PICO/PECO)', type: 'textarea', width: 280 },
+    { key: 'population', label: 'Population / life stage', type: 'text', width: 160 },
+    { key: 'endpoint', label: 'Measurement endpoint', type: 'text', width: 180 },
+    { key: 'evidenceFound', label: 'Evidence found (summary)', type: 'textarea', width: 260 },
+    { key: 'reference', label: 'Reference', type: 'text', width: 160 },
+  ],
+};
+
+export const needsLiteratureSearchMethod: RegisterConfig = {
+  key: 'needsLiteratureSearchMethod',
+  title: 'Literature-Search Method',
+  sheetName: '1. Needs & Scientific Basis',
+  description: 'Record the search so it is reproducible.',
+  mode: 'fixed',
+  gate: '02',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'database', label: 'Database', type: 'text', width: 200, editable: false },
+    { key: 'searchString', label: 'Search string', type: 'textarea', width: 240 },
+    { key: 'searchDate', label: 'Search date', type: 'date', width: 130 },
+    { key: 'inclusionCriteria', label: 'Inclusion criteria', type: 'textarea', width: 200 },
+    { key: 'exclusionCriteria', label: 'Exclusion criteria', type: 'textarea', width: 200 },
+    { key: 'recordsScreenedIncluded', label: 'Records screened / included', type: 'text', width: 160 },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
+  ],
+  fixedRows: [
+    { database: 'PubMed' },
+    { database: 'Cochrane' },
+    { database: 'ClinicalTrials.gov' },
+    { database: 'Patent (Espacenet / Google Patents)' },
+    { database: 'Supplier / grey literature' },
+  ],
+};
+
+export const needsAnatomyExposureNotes: RegisterConfig = {
+  key: 'needsAnatomyExposureNotes',
+  title: 'Anatomy, Physiology, Exposure Science & Contradictory Evidence',
+  sheetName: '1. Needs & Scientific Basis',
+  mode: 'fixed',
+  gate: '02',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'topic', label: 'Topic', type: 'text', width: 260, editable: false },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 420 },
+  ],
+  fixedRows: [
+    { topic: 'Relevant anatomy / physiology' },
+    { topic: 'Exposure science (dose, frequency, surface area, hand-to-mouth, occlusion)' },
+    { topic: 'Population-specific analysis (infant vs adult vs pregnant/BF differences)' },
+    { topic: 'Contradictory or null evidence found' },
+    { topic: 'Disease vs cosmetic boundary' },
+    { topic: 'Evidence gaps & research priorities' },
+  ],
+};
+
+export const needsTechnologyTraceability: RegisterConfig = {
+  key: 'needsTechnologyTraceability',
+  title: 'Needs -> Technology Traceability Matrix',
+  sheetName: '1. Needs & Scientific Basis',
+  description: 'Carries into the Target Product & Tech Platform dossier.',
+  mode: 'register',
+  gate: '02',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'needId', label: 'Need ID', type: 'text', width: 80 },
+    { key: 'need', label: 'Need', type: 'textarea', width: 200 },
+    { key: 'designImplication', label: 'Design implication', type: 'textarea', width: 220 },
+    { key: 'technologyDirection', label: 'Backbone / technology direction', type: 'textarea', width: 220 },
+    { key: 'criticalAttribute', label: 'Critical attribute + target', type: 'textarea', width: 200 },
+    { key: 'evidenceStatus', label: 'Evidence status', type: 'select', width: 150, options: ['Demonstrated', 'Ingredient-only', 'Gap'] },
+    { key: 'reference', label: 'Reference', type: 'text', width: 150 },
+  ],
+};
+
+export const needsSignOff: RegisterConfig = {
+  key: 'needsSignOff',
+  title: 'Needs & Scientific Basis — Gate Sign-Off',
+  sheetName: '1. Needs & Scientific Basis',
+  description: 'Formula work may NOT proceed until complete.',
+  mode: 'fixed',
+  gate: '02/05', // read by Mandatory checks at both SG02 and SG05
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'role', label: 'Role', type: 'text', width: 220, editable: false },
+    { key: 'name', label: 'Name', type: 'text', width: 180 },
+    { key: 'department', label: 'Department', type: 'text', width: 160 },
+    { key: 'date', label: 'Date', type: 'date', width: 130 },
+  ],
+  fixedRows: [
+    { role: 'Prepared by (R&I)' },
+    { role: 'Reviewed by (Head of Dept)' },
+    { role: 'Independent reviewer' },
+  ],
+};
+
+// Page: "Carrier / Emollient Review" (page: carrier-emollient-review — plain
+// nav entries, no bespoke composite page needed for just 2 registers).
+
+export const carrierEmollientReview: RegisterConfig = {
+  key: 'carrierEmollientReview',
+  title: 'Carrier / Emollient System Review',
+  sheetName: 'Chris Ingredient Review',
+  description: 'Are the carriers correct, could they be improved, and are they research-backed? (Actives are reviewed separately.) Feeds Step 3 (Backbone Technology) — no changes are written into the formula file until the Needs sheet is reviewed and signed off.',
+  mode: 'register',
+  gate: '02',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'ingredientName', label: 'Carrier / emollient', type: 'text', width: 180 },
+    { key: 'percentInDraft', label: '% in current draft', type: 'number', width: 100 },
+    { key: 'role', label: 'Role', type: 'text', width: 140 },
+    { key: 'assessment', label: "Assessment for target user's skin", type: 'textarea', width: 260 },
+    { key: 'researchBacked', label: 'Research-backed?', type: 'select', width: 130, options: ['Yes', 'No'] },
+    { key: 'recommendation', label: 'Recommendation', type: 'select', width: 160, options: ['KEEP', 'IMPROVE', 'REVIEW-REDUCE', 'REPLACE'] },
+    { key: 'reference', label: 'Reference', type: 'text', width: 180 },
+  ],
+};
+
+export const carrierReviewSummary: RegisterConfig = {
+  key: 'carrierReviewSummary',
+  title: 'Carrier Review — Summary',
+  sheetName: 'Chris Ingredient Review',
+  mode: 'fixed',
+  gate: '02',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'topic', label: 'Topic', type: 'text', width: 220, editable: false },
+    { key: 'answer', label: 'Answer', type: 'textarea', width: 420 },
+  ],
+  fixedRows: [
+    { topic: 'Overall verdict — is the carrier system correct?' },
+    { topic: '#1 priority fix' },
+    { topic: '#2 consider' },
+    { topic: '#3 keep & possibly lift' },
+    { topic: 'Actives (separate from carriers)' },
+  ],
+};
+
+// Page: "2. Competitor Landscape" (page slug: competitor-landscape)
+
+export const competitorLandscape: RegisterConfig = {
+  key: 'competitorLandscape',
+  title: 'Competitor Product Register — Identity, Claims & IP',
+  sheetName: '2. Competitor Landscape',
+  description: 'One row per competitor product. Every important competitor must be purchased and physically evaluated, not just researched online. (Merges the source sheet\'s "Purchase & Identity" and "Claims/INCI/IP" tables into one row per competitor.)',
+  mode: 'register',
+  gate: '03/05', // read by Mandatory checks at both SG03 and SG05
+  reviewOwner: REVIEW_SPECS.npdCompetitor,
+  columns: [
+    { key: 'whySelected', label: 'Why selected / market role', type: 'textarea', width: 200 },
+    { key: 'brandProduct', label: 'Brand & exact product', type: 'text', width: 180 },
+    { key: 'countryRetailer', label: 'Country / retailer', type: 'text', width: 140 },
+    { key: 'purchaseDate', label: 'Purchase date', type: 'date', width: 120 },
+    { key: 'batchLotExpiry', label: 'Batch / lot / expiry', type: 'text', width: 150 },
+    { key: 'priceCostPerUse', label: 'Price & cost per use', type: 'text', width: 140 },
+    { key: 'labelArchivedLink', label: 'Full label archived? (link)', type: 'text', width: 160 },
+    { key: 'doseFrequency', label: 'Dose / frequency', type: 'text', width: 140 },
+    { key: 'exactClaims', label: 'Exact claims & qualifications', type: 'textarea', width: 220 },
+    { key: 'fullInci', label: 'Full INCI', type: 'textarea', width: 220 },
+    { key: 'activesPercent', label: 'Highlighted actives & %', type: 'textarea', width: 180 },
+    { key: 'patents', label: 'Patents / registered tech', type: 'textarea', width: 180 },
+    { key: 'publicationsTrials', label: 'Publications / clinical trials', type: 'textarea', width: 180 },
+    { key: 'disclosedTesting', label: 'Disclosed testing', type: 'textarea', width: 180 },
+    { key: 'packagingDosingPerformance', label: 'Packaging & dosing performance', type: 'textarea', width: 200 },
+    { key: 'strengthsWeaknesses', label: 'Strengths / weaknesses / uncertainties', type: 'textarea', width: 240 },
+  ],
+};
+
+export const competitorTestingProtocol: RegisterConfig = {
+  key: 'competitorTestingProtocol',
+  title: 'Comparative Testing Protocol',
+  sheetName: '2. Competitor Landscape',
+  description: 'Blinded where possible — sensory, human-factors, analytical.',
+  mode: 'register',
+  gate: '03',
+  reviewOwner: REVIEW_SPECS.npdCompetitor,
+  columns: [
+    { key: 'attributeTested', label: 'Attribute tested', type: 'text', width: 180 },
+    { key: 'method', label: 'Method / instrument', type: 'textarea', width: 200 },
+    { key: 'ourResult', label: 'Our product result', type: 'text', width: 150 },
+    { key: 'competitorResult', label: 'Best competitor result', type: 'text', width: 150 },
+    { key: 'winner', label: 'Comparator winner', type: 'select', width: 120, options: ['Us', 'Competitor'] },
+    { key: 'acceptanceTarget', label: 'Acceptance target', type: 'text', width: 150 },
+    { key: 'blinded', label: 'Blinded?', type: 'select', width: 90, options: ['Y', 'N'] },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
+  ],
+};
+
+export const currentSolutionsStandardOfCare: RegisterConfig = {
+  key: 'currentSolutionsStandardOfCare',
+  title: 'Current Solutions & Standard of Care',
+  sheetName: '2. Competitor Landscape',
+  description: 'What users do now WITHOUT a specialised product.',
+  mode: 'register',
+  gate: '03',
+  reviewOwner: REVIEW_SPECS.npdCompetitor,
+  columns: [
+    { key: 'currentBehaviour', label: 'Current behaviour / solution', type: 'text', width: 180 },
+    { key: 'whyUsersDoIt', label: 'Why users do it', type: 'textarea', width: 180 },
+    { key: 'whatWorks', label: 'What works adequately', type: 'textarea', width: 180 },
+    { key: 'whatFails', label: 'What fails', type: 'textarea', width: 180 },
+    { key: 'medicalRecommendation', label: 'Medical / professional recommendation', type: 'textarea', width: 200 },
+    { key: 'gapJustifyingProduct', label: 'Gap that justifies a new product', type: 'textarea', width: 220 },
+    { key: 'reference', label: 'Evidence / reference', type: 'text', width: 160 },
+    { key: 'designDecision', label: 'Design decision', type: 'textarea', width: 200 },
+  ],
+};
+
+export const competitorLandscapeSummary: RegisterConfig = {
+  key: 'competitorLandscapeSummary',
+  title: 'Landscape Decision Summary',
+  sheetName: '2. Competitor Landscape',
+  mode: 'fixed',
+  gate: '03',
+  reviewOwner: REVIEW_SPECS.npdCompetitor,
+  columns: [
+    { key: 'topic', label: 'Topic', type: 'text', width: 260, editable: false },
+    { key: 'answer', label: 'Answer', type: 'textarea', width: 400 },
+  ],
+  fixedRows: [
+    { topic: 'Our position vs best competitor' },
+    { topic: 'Demonstrated unmet need (not just an internal idea)' },
+    { topic: 'Superiority target the backbone technology must beat' },
+  ],
+};
+
+// Page: "3. Target Product & Tech" (page slug: target-product-tech)
+
+export const targetProductProfile: RegisterConfig = {
+  key: 'targetProductProfile',
+  title: 'Target Product Profile (TPP)',
+  sheetName: '3. Target Product & Tech',
+  description: 'Agree BEFORE development; every row measurable. Complete before formula lock (Gate 5).',
+  mode: 'fixed',
+  gate: '05',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'attribute', label: 'Attribute / parameter', type: 'text', width: 200, editable: false },
+    { key: 'minimum', label: 'Minimum (must-have to launch)', type: 'textarea', width: 200 },
+    { key: 'target', label: 'Target (the aim)', type: 'textarea', width: 180 },
+    { key: 'ideal', label: 'Ideal (stretch)', type: 'textarea', width: 160 },
+    { key: 'unacceptable', label: 'Unacceptable (auto-fail)', type: 'textarea', width: 180 },
+    { key: 'measurementMethod', label: 'Measurement method / evidence', type: 'textarea', width: 220 },
+  ],
+  fixedRows: [
+    { attribute: 'Core efficacy endpoint' },
+    { attribute: 'Onset / time to benefit' },
+    { attribute: 'Safety / tolerability (incl. infant contact)' },
+    { attribute: 'Sensory / usability' },
+    { attribute: 'Stability / shelf life' },
+    { attribute: 'Cost / margin' },
+    { attribute: 'Claim(s) to be supported' },
+  ],
+};
+
+export const backbonePlatformTechnology: RegisterConfig = {
+  key: 'backbonePlatformTechnology',
+  title: 'Backbone / Platform Technology',
+  sheetName: '3. Target Product & Tech',
+  description: 'The proposed superior solution — must be demonstrably superior to the current market (Competitor Landscape).',
+  mode: 'fixed',
+  gate: '05',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'question', label: 'Question / field', type: 'text', width: 240, editable: false },
+    { key: 'answer', label: 'Answer (dot points)', type: 'textarea', width: 420 },
+  ],
+  fixedRows: [
+    { question: 'Precise problem being solved' },
+    { question: 'Routes / platforms considered' },
+    { question: 'Selected platform & why' },
+    { question: 'Mechanism of action' },
+    { question: 'Why SUPERIOR to current market' },
+    { question: 'Critical-to-quality attributes' },
+    { question: 'Evidence maturity' },
+    { question: 'Patent / IP landscape' },
+    { question: 'SKU / portfolio transfer' },
+  ],
+};
+
+export const targetProductSignOff: RegisterConfig = {
+  key: 'targetProductSignOff',
+  title: 'Target Product & Tech — Sign-Off',
+  sheetName: '3. Target Product & Tech',
+  description: 'TPP + platform agreed before formula work begins.',
+  mode: 'fixed',
+  gate: '05',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'role', label: 'Role', type: 'text', width: 200, editable: false },
+    { key: 'name', label: 'Name', type: 'text', width: 180 },
+    { key: 'date', label: 'Date', type: 'date', width: 130 },
+  ],
+  fixedRows: [
+    { role: 'Project Manager' },
+    { role: 'Head of Department' },
+    { role: 'R&I' },
+  ],
+};
+
+// Page: "4. Evidence & Claim Support" (page slug: evidence-claim-support)
+
+export const evidencePlanProspective: RegisterConfig = {
+  key: 'evidencePlanProspective',
+  title: 'Prospective Evidence Plan',
+  sheetName: '4. Evidence & Claim Support',
+  description: 'Agree BEFORE formula lock (Gate 3/5). Defining pass/fail before results prevents outcome-shopping.',
+  mode: 'register',
+  gate: '05',
+  reviewOwner: REVIEW_SPECS.npdEvidence,
+  columns: [
+    { key: 'claim', label: 'Claim / benefit to prove', type: 'textarea', width: 220 },
+    { key: 'endpoint', label: 'Endpoint / what is measured', type: 'textarea', width: 200 },
+    { key: 'comparator', label: 'Comparator (vs what)', type: 'text', width: 160 },
+    { key: 'method', label: 'Method / study type', type: 'text', width: 160 },
+    { key: 'minAcceptableResult', label: 'Minimum acceptable result (pass)', type: 'textarea', width: 220 },
+    { key: 'failureDefinition', label: 'Failure definition', type: 'textarea', width: 200 },
+  ],
+};
+
+export const evidenceTestProtocol: RegisterConfig = {
+  key: 'evidenceTestProtocol',
+  title: 'Detailed Test Protocol',
+  sheetName: '4. Evidence & Claim Support',
+  description: 'Complete once prototype exists (Gate 8).',
+  mode: 'register',
+  gate: '08',
+  reviewOwner: REVIEW_SPECS.npdEvidence,
+  columns: [
+    { key: 'testMethod', label: 'Test / method', type: 'text', width: 180 },
+    { key: 'sampleSizeRationale', label: 'Sample size & rationale', type: 'textarea', width: 200 },
+    { key: 'conditionsTimepoints', label: 'Conditions / timepoints', type: 'textarea', width: 200 },
+    { key: 'acceptanceLimit', label: 'Acceptance limit', type: 'text', width: 150 },
+    { key: 'reportLink', label: 'Report / evidence link', type: 'text', width: 180 },
+    { key: 'owner', label: 'Owner', type: 'text', width: 140 },
+  ],
+};
+
+export const claimEvidenceTraceability: RegisterConfig = {
+  key: 'claimEvidenceTraceability',
+  title: 'Claim -> Evidence Traceability',
+  sheetName: '4. Evidence & Claim Support',
+  description: 'Permanent claim IDs. No claim may appear on artwork, HCP material or sales material unless it has a Claim ID here with status \'Supported\'.',
+  mode: 'register',
+  gate: '10/11',
+  reviewOwner: REVIEW_SPECS.npdEvidence,
+  columns: [
+    { key: 'claimId', label: 'Claim ID', type: 'text', width: 100 },
+    { key: 'approvedWording', label: 'Approved claim wording', type: 'textarea', width: 240 },
+    { key: 'mechanism', label: 'Mechanism', type: 'text', width: 160 },
+    { key: 'evidenceGrade', label: 'Evidence grade', type: 'select', width: 110, options: ['A', 'B', 'C', 'D', 'E'] },
+    { key: 'supportingEvidence', label: 'Supporting evidence / report', type: 'text', width: 200 },
+    { key: 'status', label: 'Status', type: 'select', width: 120, options: ['Pending', 'Supported'] },
+    { key: 'approvedByDate', label: 'Approved by / date', type: 'text', width: 160 },
+  ],
+};
+
+// Page: "5. Ingredient Monograph" — single flat register, no bespoke page.
+
+export const ingredientMonograph: RegisterConfig = {
+  key: 'ingredientMonograph',
+  title: 'Ingredient / Active Evidence Monograph',
+  sheetName: '5. Ingredient Monograph',
+  description: 'One monograph per key active/functional ingredient. Fixes the exact material used, provenance, patents, external trial history and how far that evidence transfers to OUR product. Complete at Gate 4/5; feeds the Target Product & Tech and Evidence & Claim Support dossiers and Supplier & Raw Material Evidence.',
+  mode: 'register',
+  gate: '04/05',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'inciName', label: 'INCI / chemical name', type: 'text', width: 160 },
+    { key: 'tradeNameSupplier', label: 'Trade name & supplier', type: 'text', width: 180 },
+    { key: 'gradeSpecConcentration', label: 'Grade / spec / concentration used', type: 'text', width: 200 },
+    { key: 'formExtractionProcess', label: 'Form / extraction / process', type: 'textarea', width: 200 },
+    { key: 'originStory', label: 'Origin / source story', type: 'textarea', width: 200 },
+    { key: 'whyChosen', label: 'Why chosen for this product', type: 'textarea', width: 200 },
+    { key: 'patentIpStatus', label: 'Patent / IP status', type: 'textarea', width: 200 },
+    { key: 'externalTrialHistory', label: 'External clinical / trial history', type: 'textarea', width: 220 },
+    { key: 'studyConditions', label: 'Study conditions (dose, vehicle, population)', type: 'textarea', width: 220 },
+    { key: 'evidenceTransfers', label: 'Does evidence transfer?', type: 'select', width: 130, options: ['Yes', 'No'] },
+    { key: 'inferenceVsProof', label: 'Inference vs proof', type: 'textarea', width: 200 },
+    { key: 'gapTestNeeded', label: 'Gap / test needed in OUR formula', type: 'textarea', width: 200 },
+    { key: 'hcpExplanation', label: 'Professional / HCP explanation', type: 'textarea', width: 220 },
+    { key: 'consumerExplanation', label: 'Consumer explanation', type: 'textarea', width: 200 },
+    { key: 'wordingToAvoid', label: 'Wording to AVOID', type: 'textarea', width: 200 },
+  ],
+};
+
+// Page: "6. Evidence & Search Rules" — pure corporate rulebook, all
+// editable:false (like Template_Index), no gate — never locks.
+
+export const evidenceHierarchyGrades: RegisterConfig = {
+  key: 'evidenceHierarchyGrades',
+  title: 'Evidence Hierarchy',
+  sheetName: '6. Evidence & Search Rules',
+  description: 'How strong is the proof? Applies to every efficacy/claim sheet.',
+  mode: 'fixed',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'grade', label: 'Grade', type: 'text', width: 70, editable: false },
+    { key: 'evidenceType', label: 'Evidence type', type: 'textarea', width: 300, editable: false },
+    { key: 'whenSupportsClaim', label: 'When it may support a claim', type: 'textarea', width: 260, editable: false },
+    { key: 'limitations', label: 'Limitations / conditions', type: 'textarea', width: 280, editable: false },
+  ],
+  fixedRows: [
+    { grade: 'A', evidenceType: 'Systematic review / meta-analysis, or ≥2 well-controlled human RCTs on the FINISHED product or identical formula', whenSupportsClaim: 'Directly supports a strong efficacy/benefit claim for this product', limitations: 'Must be on the finished formula or a matrix-equivalent formula; register + protocol on file' },
+    { grade: 'B', evidenceType: 'Single well-controlled human study on the product, OR robust human data on the SAME active at the SAME use level/vehicle', whenSupportsClaim: 'Supports a qualified claim (e.g. "shown to…" with method footnote)', limitations: 'Confirm dose, vehicle and exposure match; note sample size and duration' },
+    { grade: 'C', evidenceType: 'Ex-vivo / in-vitro / mechanistic data, or human data on the active in a DIFFERENT vehicle or dose', whenSupportsClaim: 'Supports a mechanism or "designed to" statement only — NOT a finished-product efficacy claim', limitations: 'Flag as inference; cannot stand alone for a consumer efficacy claim' },
+    { grade: 'D', evidenceType: 'Ingredient-supplier data, monographs, reviews, or secondary/lay sources', whenSupportsClaim: 'Background & hypothesis generation only', limitations: 'Replace with primary source before claims stage; never sole support' },
+    { grade: 'E', evidenceType: 'Traditional use / anecdote / marketing collateral', whenSupportsClaim: 'Not usable to support a regulated claim', limitations: 'Record for context only' },
+    { grade: '—', evidenceType: 'Safety evidence (tox, CPSR, patch/HRIPT)', whenSupportsClaim: 'Required for safety substantiation regardless of efficacy grade', limitations: 'Governed by the Safety / PIF sheets, not this efficacy scale' },
+  ],
+};
+
+export const evidenceTransferabilityRules: RegisterConfig = {
+  key: 'evidenceTransferabilityRules',
+  title: 'Transferability & Inference Rules',
+  sheetName: '6. Evidence & Search Rules',
+  description: "Does the evidence actually apply to THIS product? If ANY test fails, the claim is an inference (max Grade C) until confirmed on the finished formula. Per the MBc360 'more than one reference' rule, no single source — and no lay source — may be the sole support for a market claim.",
+  mode: 'fixed',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'test', label: 'Test', type: 'text', width: 140, editable: false },
+    { key: 'question', label: 'Question to answer', type: 'textarea', width: 300, editable: false },
+    { key: 'passCondition', label: 'PASS = transfers directly', type: 'textarea', width: 220, editable: false },
+    { key: 'failCondition', label: 'FAIL = inference only (downgrade grade)', type: 'textarea', width: 240, editable: false },
+  ],
+  fixedRows: [
+    { test: 'Same active', question: 'Is it the same molecule/extract (INCI, chemotype, extraction)?', passCondition: 'Identical active', failCondition: 'Different salt, extract or grade' },
+    { test: 'Same dose', question: 'Is the use level >= the level shown effective in the source?', passCondition: 'At or above effective level', failCondition: 'Below effective level or unknown' },
+    { test: 'Same vehicle', question: 'Is the carrier/matrix comparable (leave-on vs rinse-off, emulsion type)?', passCondition: 'Comparable vehicle', failCondition: 'Different vehicle -> bioavailability differs' },
+    { test: 'Same exposure', question: 'Same site, frequency, duration and user group (incl. infant/maternal)?', passCondition: 'Matches intended use', failCondition: 'Different population or regimen' },
+    { test: 'Same endpoint', question: 'Does the source measure the SAME outcome being claimed?', passCondition: 'Same measured endpoint', failCondition: 'Surrogate or different endpoint' },
+    { test: 'Combination effect', question: 'Could other ingredients enhance/inhibit the effect?', passCondition: 'No material interaction expected', failCondition: 'Interaction plausible -> test on finished formula' },
+  ],
+};
+
+export const evidenceSearchStandard: RegisterConfig = {
+  key: 'evidenceSearchStandard',
+  title: 'Literature-Search & Referencing Standard',
+  sheetName: '6. Evidence & Search Rules',
+  description: 'How we find and record the evidence. Mandatory for Sheets 1-5 and every efficacy/claim sheet.',
+  mode: 'fixed',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'element', label: 'Element', type: 'text', width: 160, editable: false },
+    { key: 'standard', label: 'Standard / requirement', type: 'textarea', width: 320, editable: false },
+    { key: 'whatToRecord', label: 'What to record on the sheet', type: 'textarea', width: 220, editable: false },
+    { key: 'owner', label: 'Owner', type: 'text', width: 110, editable: false },
+  ],
+  fixedRows: [
+    { element: 'Databases', standard: 'Search recognised sources: PubMed / MEDLINE, Embase, Cochrane, Google Scholar, plus patent (Espacenet, Google Patents) and trial registries (ClinicalTrials.gov, ANZCTR)', whatToRecord: 'List every database searched', owner: 'R&I' },
+    { element: 'Search strings', standard: 'Record the exact Boolean strings (active AND endpoint AND population) used per question', whatToRecord: 'Paste full search string(s)', owner: 'R&I' },
+    { element: 'Search dates', standard: 'Record the date each search was run and the date range covered', whatToRecord: 'dd-mmm-yyyy run date', owner: 'R&I' },
+    { element: 'Inclusion / exclusion', standard: 'Define criteria up front: species, human vs in-vitro, language, study design, dose/vehicle relevance', whatToRecord: 'State criteria + count included/excluded', owner: 'R&I' },
+    { element: 'Study identifiers', standard: 'Capture DOI and/or PMID for every journal source; register ID for trials', whatToRecord: 'DOI: 10.xxxx / PMID: xxxxxxx', owner: 'R&I' },
+    { element: 'Patent citation', standard: 'Cite as: Applicant, Title, Patent no. (e.g. US1234567B2), grant/priority date', whatToRecord: 'Full patent number + status', owner: 'R&I / Legal' },
+    { element: 'Full https links', standard: 'Every reference must carry a full working https link for one-click verification', whatToRecord: 'Paste live URL', owner: 'R&I' },
+    { element: 'Two-reference rule', standard: "Confirm each need/claim meets the MBc360 'more than one reference' rule; replace any lay/secondary source with the primary article at claims stage", whatToRecord: 'Tick when >=2 primary sources on file', owner: 'R&I -> Regulatory' },
+  ],
+};
+
+export const evidenceControlSignOff: RegisterConfig = {
+  key: 'evidenceControlSignOff',
+  title: 'Control & Sign-Off',
+  sheetName: '6. Evidence & Search Rules',
+  description: "This standard is mandatory for Sheets 1-5 and every efficacy/claim sheet. No need or claim may progress to formula or label without: (a) an assigned evidence Grade (Sec 1), (b) a passed transferability check or an explicit inference flag (Sec 2), and (c) a complete, dated, linked search record (Sec 3).",
+  mode: 'fixed',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'role', label: 'Role', type: 'text', width: 260, editable: false },
+    { key: 'name', label: 'Name', type: 'text', width: 180 },
+    { key: 'date', label: 'Date', type: 'date', width: 130 },
+  ],
+  fixedRows: [
+    { role: 'Prepared by (R&I)' },
+    { role: 'Approved by (Head of Dept / Regulatory)' },
+  ],
+};
+
+// The "NPD Front-End Roadmap" sheet itself — pure reference (Sections A/B/C),
+// no gate, never locks. Content transcribed verbatim from the source sheet.
+
+export const npdRoadmapFirstSteps: RegisterConfig = {
+  key: 'npdRoadmapFirstSteps',
+  title: 'NPD Roadmap — Mandatory First Steps',
+  sheetName: 'NPD Front-End Roadmap',
+  description: 'If you were to practise MBc360 — what to do first (mandatory order, hold formula work until Steps 1-3 are signed off).',
+  mode: 'fixed',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'step', label: '#', type: 'text', width: 50, editable: false },
+    { key: 'doThis', label: 'Do this first', type: 'textarea', width: 240, editable: false },
+    { key: 'minimumOutput', label: 'What it must produce (minimum output)', type: 'textarea', width: 320, editable: false },
+    { key: 'controlledSheet', label: 'Controlled sheet to use', type: 'text', width: 220, editable: false },
+    { key: 'owner', label: 'Owner', type: 'text', width: 140, editable: false },
+    { key: 'signOffGate', label: 'Sign-off gate', type: 'text', width: 110, editable: false },
+  ],
+  fixedRows: [
+    { step: '1', doThis: 'Define the NEEDS (physical + emotional) and the scientific basis', minimumOutput: 'Physical/physiological, emotional/developmental, caregiver & practical needs; needs -> design implications; research questions; references; open questions. Formula work HELD until reviewed.', controlledSheet: 'Chris Needs Document (brief) -> 1. Needs & Scientific Basis', owner: 'Project Manager / R&I', signOffGate: 'SG02' },
+    { step: '2', doThis: 'Map COMPETITORS & current existing solutions', minimumOutput: "Selected competitors with purchase evidence (country/retailer/date/lot), full INCI, claims, patents, disclosed testing, price/use, sensory + analytical comparison, and the Max Biocare design decision from each comparison. Also 'standard of care' / what users do now.", controlledSheet: '2. Competitor & Current-Solution Landscape', owner: 'Marketing / R&I', signOffGate: 'SG03' },
+    { step: '3', doThis: 'Define the TARGET PRODUCT PROFILE + propose the BACKBONE TECHNOLOGY', minimumOutput: 'One agreed definition of success (min/target/ideal/unacceptable per attribute + measurement method). Technology platform: precise problem, routes considered, why selected, mechanism, critical attributes, evidence maturity, patent landscape, and HOW it is superior to existing products.', controlledSheet: '3. Target Product Profile & Tech Platform', owner: 'R&I / Project Manager', signOffGate: 'SG03->SG05' },
+    { step: '4', doThis: 'Plan EVIDENCE / TESTING before formula lock, then FINAL FORMULA + testing to support the claim', minimumOutput: 'Prospective evidence plan (endpoint, comparator, method, minimum acceptable result, failure definition) BEFORE formula lock; detailed protocol AFTER prototype; then final formula + tests that substantiate each claim.', controlledSheet: '4. Evidence Plan & Claim Support (-> efficacy/study sheets, Formula BOM)', owner: 'R&I / Quality', signOffGate: 'SG05 / SG08' },
+  ],
+};
+
+export const npdRoadmapStructure: RegisterConfig = {
+  key: 'npdRoadmapStructure',
+  title: 'NPD Roadmap — Mandatory 4-Part Structure',
+  sheetName: 'NPD Front-End Roadmap',
+  description: 'Same structure for every new product, for all team members.',
+  mode: 'fixed',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'part', label: 'Part', type: 'text', width: 50, editable: false },
+    { key: 'element', label: 'Mandatory element', type: 'text', width: 220, editable: false },
+    { key: 'question', label: 'Question it answers', type: 'textarea', width: 280, editable: false },
+    { key: 'controlledSheet', label: 'New controlled sheet', type: 'text', width: 220, editable: false },
+    { key: 'status', label: 'Status', type: 'text', width: 80, editable: false },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 260, editable: false },
+  ],
+  fixedRows: [
+    { part: '1', element: 'NEEDS — physical & emotional', question: 'What needs are we trying to address (body + mind, user + caregiver)?', controlledSheet: '1. Needs & Scientific Basis', status: 'New', notes: "Executive summary stays in 'Chris Needs Document'; full science here." },
+    { part: '2', element: 'COMPETITORS / existing solutions', question: 'What already exists, how well does it work, where is the real unmet gap?', controlledSheet: '2. Competitor & Current-Solution Landscape', status: 'New', notes: 'Includes purchased-sample & comparative-testing protocol.' },
+    { part: '3', element: 'BACKBONE technology / structure (must be superior)', question: 'What platform will address the needs, and how is it better than the market?', controlledSheet: '3. Target Product Profile & Tech Platform', status: 'New', notes: 'Combines Target Product Profile + Technology Platform.' },
+    { part: '4', element: 'FINAL formula + testing to support the claim', question: 'Does the finished product deliver, and is every claim substantiated?', controlledSheet: '4. Evidence Plan & Claim Support', status: 'New', notes: 'Feeds Formula BOM and efficacy/study sheets.' },
+  ],
+};
+
+export const npdRoadmapGapRegister: RegisterConfig = {
+  key: 'npdRoadmapGapRegister',
+  title: 'NPD Roadmap — Gap Register',
+  sheetName: 'NPD Front-End Roadmap',
+  description: 'Missing front-end / scientific components from the 24-Jul-2026 NPD review. Retain existing operational controls unchanged.',
+  mode: 'fixed',
+  reviewOwner: REVIEW_SPECS.ri,
+  columns: [
+    { key: 'priority', label: 'Priority', type: 'text', width: 90, editable: false },
+    { key: 'missingComponent', label: 'Missing component', type: 'text', width: 220, editable: false },
+    { key: 'currentCoverage', label: 'Current coverage', type: 'textarea', width: 220, editable: false },
+    { key: 'action', label: 'Action', type: 'textarea', width: 280, editable: false },
+    { key: 'sheetOwner', label: 'Sheet / owner', type: 'text', width: 220, editable: false },
+    { key: 'status', label: 'Status', type: 'text', width: 130, editable: false },
+  ],
+  fixedRows: [
+    { priority: 'Highest', missingComponent: 'Human Needs & Scientific Basis Dossier', currentCoverage: 'Partly — Chris Needs Document is a good brief', action: 'Add full scientific needs standard (research questions, search method, evidence quality, traceability)', sheetOwner: '1. Needs & Scientific Basis', status: 'Template created' },
+    { priority: 'Highest', missingComponent: 'Market, Competitor & Current-Solution Landscape', currentCoverage: 'Weak — link + Gate 3 note only', action: 'Add controlled competitor methodology + purchased-sample & comparative-testing protocol + standard-of-care analysis', sheetOwner: '2. Competitor & Current-Solution Landscape', status: 'Template created' },
+    { priority: 'Highest', missingComponent: 'Target Product Profile + Evidence Development Plan', currentCoverage: 'Distributed across phases, not one document', action: 'Consolidate one agreed success definition; split prospective plan vs post-prototype protocol', sheetOwner: '3. Target Product Profile & Tech Platform / 4. Evidence Plan', status: 'Template created' },
+    { priority: 'Highest', missingComponent: 'Technology Platform & Evidence Dossier', currentCoverage: "Largely missing ('Backbone Technology' mentioned)", action: 'Add reusable technology-platform structure (routes, mechanism, critical attributes, patent landscape, SKU transfer)', sheetOwner: '3. Target Product Profile & Tech Platform', status: 'Template created' },
+    { priority: 'Highest', missingComponent: 'Ingredient & Raw-Material Evidence Monograph', currentCoverage: 'Strong supplier control; weak science/story', action: 'Add exact-material identity, provenance, patents, trial history, transferability, approved story', sheetOwner: '5. Ingredient Evidence Monograph', status: 'Template created' },
+    { priority: 'Highest', missingComponent: "Evidence hierarchy, transferability & inference rules", currentCoverage: "'Evidence level' field exists but undefined", action: 'Add corporate evidence-grading + transferability + inference-boundary instruction', sheetOwner: '6. Evidence Hierarchy & Search Rules', status: 'Template created' },
+    { priority: 'Highest', missingComponent: 'Corporate literature-search & referencing standard', currentCoverage: 'Largely missing', action: 'Add databases, search strings/dates, inclusion/exclusion, DOI/PMID, patent & trial citation rules', sheetOwner: '6. Evidence Hierarchy & Search Rules', status: 'Template created' },
+    { priority: 'Also req.', missingComponent: 'Portfolio, Range & Routine Architecture', currentCoverage: 'Missing (SKU-level only)', action: 'Add portfolio/routine/technology-relationship structure', sheetOwner: 'Roadmap note — build when range work begins', status: 'Logged' },
+    { priority: 'Also req.', missingComponent: 'Product Technical & Evidence Dossier structure', currentCoverage: 'Evidence indexed, narrative missing', action: 'Define complete written product dossier structure', sheetOwner: '4. Evidence Plan & Claim Support (narrative section)', status: 'Logged' },
+    { priority: 'Also req.', missingComponent: 'Patent / clinical-trial / provenance registers', currentCoverage: 'Missing', action: 'Included as sections in Ingredient Monograph + Tech Platform', sheetOwner: '5. Ingredient Evidence Monograph', status: 'Template created' },
+    { priority: 'Also req.', missingComponent: 'Scientific storytelling & training standard', currentCoverage: 'Partly (approval only)', action: 'Add Need->solution->insight->technology->formula->evidence->claim story architecture', sheetOwner: 'Roadmap note — build with Marketing', status: 'Logged' },
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // Registry + categories
 // ---------------------------------------------------------------------------
 
@@ -1492,6 +2085,32 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   templateIndex,
   systemRequirements,
   systemFeedback,
+  needsExecutiveBrief,
+  needsResearchQuestions,
+  needsLiteratureSearchMethod,
+  needsAnatomyExposureNotes,
+  needsTechnologyTraceability,
+  needsSignOff,
+  carrierEmollientReview,
+  carrierReviewSummary,
+  competitorLandscape,
+  competitorTestingProtocol,
+  currentSolutionsStandardOfCare,
+  competitorLandscapeSummary,
+  targetProductProfile,
+  backbonePlatformTechnology,
+  targetProductSignOff,
+  evidencePlanProspective,
+  evidenceTestProtocol,
+  claimEvidenceTraceability,
+  ingredientMonograph,
+  evidenceHierarchyGrades,
+  evidenceTransferabilityRules,
+  evidenceSearchStandard,
+  evidenceControlSignOff,
+  npdRoadmapFirstSteps,
+  npdRoadmapStructure,
+  npdRoadmapGapRegister,
 ];
 
 // Owner-prefixed tab names + "REVIEW OWNER" strings transcribed from the V18
@@ -1621,6 +2240,30 @@ interface RawDept {
 // Full workbook, grouped by responsible department (see the source workbook's
 // owner-prefixed tabs). Dedicated-page sheets link to the page that hosts them.
 const DEPARTMENTS: RawDept[] = [
+  {
+    // NPD Front-End Roadmap (v2 workbook, 2026-07-24) — the 4-step scientific
+    // front-end (Needs -> Competitor Landscape -> Target Product & Tech ->
+    // Evidence Plan) that must be signed off before Formula BOM/Gate 5 (see
+    // gateReadiness.ts SG05 Mandatory items). Placed first since it precedes
+    // every other department's work chronologically.
+    key: 'dept-npd-frontend',
+    title: 'NPD Front-End Roadmap',
+    description: 'Needs & scientific basis, competitor landscape, target product profile/tech platform and evidence planning — mandatory before Formula BOM lock (Gate 5).',
+    reviewOwner: REVIEW_SPECS.ri,
+    items: [
+      'npdRoadmapFirstSteps',
+      'npdRoadmapStructure',
+      'npdRoadmapGapRegister',
+      { title: 'Needs & Scientific Basis', sheetName: '1. Needs & Scientific Basis', page: 'needs-scientific-basis', gate: '02/05' },
+      'carrierEmollientReview',
+      'carrierReviewSummary',
+      { title: 'Competitor Landscape', sheetName: '2. Competitor Landscape', page: 'competitor-landscape', gate: '03/05' },
+      { title: 'Target Product & Tech Platform', sheetName: '3. Target Product & Tech', page: 'target-product-tech', gate: '05' },
+      { title: 'Evidence Plan & Claim Support', sheetName: '4. Evidence & Claim Support', page: 'evidence-claim-support', gate: '05/08' },
+      'ingredientMonograph',
+      { title: 'Evidence Hierarchy & Search Rules', sheetName: '6. Evidence & Search Rules', page: 'evidence-search-rules' },
+    ],
+  },
   {
     key: 'dept-raw-material',
     title: 'Raw Material Operations',
