@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Checkbox, DatePicker, Input, InputNumber, Popconfirm, Select, Table, Tag, Tooltip } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Checkbox, DatePicker, Input, InputNumber, Popconfirm, Select, Table, Tag, Tooltip } from 'antd';
+import { PlusOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
 import { isRegisterRowBlank } from '@mbc360/shared/config/registers';
-import type { RegisterRow } from '@mbc360/shared/types';
+import type { BomLine, RegisterRow } from '@mbc360/shared/types';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { createEmptyRegisterRow } from '../store/factory';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
@@ -21,11 +21,23 @@ import SaveBar from './SaveBar';
 export default function SupplierRmEvidenceTable({
   config,
   rows,
+  bom,
   onSave,
+  // Gate-level edit lock (2026-07-23): read-only once every gate this register
+  // is tied to has passed (Gate 04, here). Static cells, no picker/Add/Delete/
+  // Save — correcting a passed gate's evidence requires Backtrack.
+  readOnly,
+  readOnlyReason,
 }: {
   config: RegisterConfig;
   rows: RegisterRow[];
+  // Formula BOM lines that may reference a row here by `rmCode` — a row in
+  // use can't be removed until it's removed from the BOM first (see
+  // `removeRow` below).
+  bom: BomLine[];
   onSave: (rows: RegisterRow[]) => void;
+  readOnly?: boolean;
+  readOnlyReason?: string;
 }) {
   const cosmetriConnected = useCosmetriStatus().status.connected;
   const [rawMaterials, setRawMaterials] = useState<CosmetriRawMaterialSummary[]>([]);
@@ -46,7 +58,22 @@ export default function SupplierRmEvidenceTable({
   const patch = (index: number, key: string, value: string | number | boolean | undefined) =>
     update((prev) => patchArray(prev, index, { [key]: value } as Partial<RegisterRow>));
   const addRow = () => update((prev) => [...prev, createEmptyRegisterRow(config.key)]);
-  const removeRow = (index: number) => update((prev) => prev.filter((_, i) => i !== index));
+
+  // A row still referenced by a Formula BOM line can't be removed — deleting
+  // it out from under the BOM would silently orphan that line's raw-material
+  // identity (and, since 2026-07-23, drop it out of the approved-for-use
+  // picker entirely, which would then block the BOM's own Save). Delete the
+  // BOM line first, then the evidence row. Checked against the committed
+  // `project.bom` (this table's own Save cycle is independent from BomCosting's).
+  const rmCodesInBom = new Set(bom.map((l) => l.rmCode).filter(Boolean));
+  const removeRow = (index: number) => {
+    const code = String(draft[index]?.rmCode ?? '');
+    // Defense in depth — the Delete button is already disabled for this case
+    // (see the column below), but never remove a row still in use even if
+    // that's somehow bypassed.
+    if (code && rmCodesInBom.has(code)) return;
+    update((prev) => prev.filter((_, i) => i !== index));
+  };
 
   // Same format Cosmetri's own UI uses for a raw material, and identical to
   // BomCosting's `rawMaterialLabel` so a picked value reads the same way in
@@ -86,12 +113,44 @@ export default function SupplierRmEvidenceTable({
   };
 
   const renderGeneric = (column: RegisterColumn, row: RegisterRow, index: number) => {
-    const editable = column.editable !== false;
+    const editable = column.editable !== false && !readOnly;
     const value = row[column.key];
     if (!editable) return <span style={{ color: '#666' }}>{value != null ? String(value) : ''}</span>;
     switch (column.type) {
-      case 'checkbox':
-        return <Checkbox checked={!!value} onChange={(e) => patch(index, column.key, e.target.checked)} />;
+      case 'checkbox': {
+        // Same "remove it from the BOM first" rule as row deletion above,
+        // applied to revoking approval instead of deleting the row outright:
+        // can't uncheck `approvedForUse` on a material the Formula BOM still
+        // references (checking it back on is always fine — only the
+        // true → false transition on an in-use material is blocked). This is
+        // the only checkbox column on this register, so scoping by
+        // `column.key` rather than hard-coding a separate render path keeps
+        // `renderGeneric` reusable if that ever changes.
+        const code = String(row.rmCode ?? '');
+        const blockedFromUnchecking =
+          column.key === 'approvedForUse' && !!value && !!code && rmCodesInBom.has(code);
+        return (
+          <Tooltip
+            title={
+              blockedFromUnchecking
+                ? 'In use on the Formula BOM — remove it there first before revoking approval'
+                : undefined
+            }
+          >
+            <Checkbox
+              checked={!!value}
+              disabled={blockedFromUnchecking}
+              onChange={(e) => {
+                // Defense in depth — the checkbox is already disabled for
+                // this case, but never silently revoke approval on an in-use
+                // material even if that's somehow bypassed.
+                if (blockedFromUnchecking && !e.target.checked) return;
+                patch(index, column.key, e.target.checked);
+              }}
+            />
+          </Tooltip>
+        );
+      }
       case 'select':
         return (
           <Select
@@ -138,8 +197,18 @@ export default function SupplierRmEvidenceTable({
     }
   };
 
+  // Static (read-only) cell for a locked gate — no inputs, no picker.
+  const staticCell = (column: RegisterColumn, row: RegisterRow) => {
+    const value = row[column.key];
+    if (column.type === 'checkbox') return <Checkbox checked={!!value} disabled />;
+    return <span style={{ color: '#666' }}>{value != null ? String(value) : ''}</span>;
+  };
+
   const columns = [
     ...config.columns.map((col) => {
+      if (readOnly) {
+        return { title: col.label, width: col.key === 'rmCode' ? 260 : col.width ?? 140, render: (_: unknown, row: RegisterRow) => staticCell(col, row) };
+      }
       if (col.key === 'rmCode') {
         return {
           title: col.label,
@@ -248,15 +317,29 @@ export default function SupplierRmEvidenceTable({
         render: (_: unknown, row: RegisterRow, index: number) => renderGeneric(col, row, index),
       };
     }),
-    {
+    ...(readOnly ? [] : [{
       title: '',
       width: 44,
-      render: (_: unknown, __: RegisterRow, index: number) => (
-        <Popconfirm title="Remove this row?" onConfirm={() => removeRow(index)}>
-          <Button size="small" danger type="text" icon={<DeleteOutlined />} />
-        </Popconfirm>
-      ),
-    },
+      render: (_: unknown, row: RegisterRow, index: number) => {
+        const inUse = !!row.rmCode && rmCodesInBom.has(String(row.rmCode));
+        return (
+          // A disabled antd Button's root DOM node is a genuine `disabled`
+          // <button>, which doesn't fire the hover events Tooltip listens
+          // for — unlike Checkbox (its disabled state only disables the
+          // inner <input>, so the wrapper span the Tooltip below hovers on
+          // stays "live"). Wrapping in a plain <span> gives Tooltip a
+          // non-disabled hover target, the standard antd workaround (see
+          // Tooltip's own FAQ: "child doesn't trigger hover when disabled").
+          <Tooltip title={inUse ? 'In use on the Formula BOM — remove it there first' : undefined}>
+            <span>
+              <Popconfirm title="Remove this row?" onConfirm={() => removeRow(index)} disabled={inUse}>
+                <Button size="small" danger type="text" icon={<DeleteOutlined />} disabled={inUse} />
+              </Popconfirm>
+            </span>
+          </Tooltip>
+        );
+      },
+    }]),
   ];
 
   const totalWidth = config.columns.reduce((sum, c) => sum + (c.key === 'rmCode' ? 260 : c.width ?? 140), 0) + 44;
@@ -274,10 +357,21 @@ export default function SupplierRmEvidenceTable({
       {config.description && (
         <p style={{ color: '#888', fontSize: 12, marginTop: -4, marginBottom: 12 }}>{config.description}</p>
       )}
-      {!cosmetriConnected && (
-        <p style={{ color: '#d48806', fontSize: 12, marginTop: -4, marginBottom: 12 }}>
-          Cosmetri is not connected — raw material picking is disabled; connect it on the Integrations page.
-        </p>
+      {readOnly ? (
+        <Alert
+          type="info"
+          showIcon
+          icon={<LockOutlined />}
+          style={{ marginBottom: 12 }}
+          message="Read-only — gate passed"
+          description={readOnlyReason ?? 'This evidence belongs to a gate that has already passed. To correct it, Backtrack to reopen that gate first.'}
+        />
+      ) : (
+        !cosmetriConnected && (
+          <p style={{ color: '#d48806', fontSize: 12, marginTop: -4, marginBottom: 12 }}>
+            Cosmetri is not connected — raw material picking is disabled; connect it on the Integrations page.
+          </p>
+        )
       )}
       <Table
         size="small"
@@ -293,20 +387,24 @@ export default function SupplierRmEvidenceTable({
           return isDuplicate || isBlank ? { style: { background: '#fff1f0' } } : {};
         }}
       />
-      <Button size="small" type="dashed" block icon={<PlusOutlined />} onClick={addRow} style={{ marginTop: 8 }}>
-        Add row
-      </Button>
-      <SaveBar
-        dirty={dirty}
-        onSave={save}
-        onDiscard={discard}
-        disabled={saveBlocked}
-        disabledReason={
-          hasDuplicates
-            ? 'Two or more rows point at the same Cosmetri raw material — merge them into one row before saving.'
-            : 'One or more rows have no data entered — fill in at least one field or remove the row before saving.'
-        }
-      />
+      {!readOnly && (
+        <Button size="small" type="dashed" block icon={<PlusOutlined />} onClick={addRow} style={{ marginTop: 8 }}>
+          Add row
+        </Button>
+      )}
+      {!readOnly && (
+        <SaveBar
+          dirty={dirty}
+          onSave={save}
+          onDiscard={discard}
+          disabled={saveBlocked}
+          disabledReason={
+            hasDuplicates
+              ? 'Two or more rows point at the same Cosmetri raw material — merge them into one row before saving.'
+              : 'One or more rows have no data entered — fill in at least one field or remove the row before saving.'
+          }
+        />
+      )}
     </Card>
   );
 }

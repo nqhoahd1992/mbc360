@@ -3,6 +3,7 @@ import { CheckCircleFilled, ClockCircleFilled, LockOutlined, RightCircleFilled }
 import { useParams } from 'react-router-dom';
 import {
   currentGateNumber,
+  isGateRefLocked,
   phaseCompletionChecklist,
   phaseProgress,
   skincareForTwoIncompleteSections,
@@ -22,6 +23,7 @@ import NextActionsCard from '../components/NextActionsCard';
 import MarketTrackingCard from '../components/MarketTrackingCard';
 import SectionJumpButton from '../components/SectionJumpButton';
 import { roleLabel } from '../utils/roles';
+import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 
 // Transcribed verbatim from cell A20 of each phase's source workbook sheet
 // (PHASE1 G1-3 MKTG has no equivalent cell — its A20 is a table header, not a
@@ -65,9 +67,9 @@ export default function PhasePage() {
     ...config.checklistSections.map((s) => ({ id: `sec-checklist-${s.key}`, label: s.title })),
     ...config.requirementSections.map((s) => ({ id: `sec-requirement-${s.key}`, label: s.title })),
     { id: 'sec-gate-checks', label: 'Key Gate Checks' },
-    { id: 'sec-next-actions', label: 'Next Actions' },
     ...(phase === 4 ? [{ id: 'sec-market-tracking', label: 'Market Regulatory & Launch Tracking' }] : []),
     { id: 'sec-eight-angles', label: '8 Angles Coverage' },
+    { id: 'sec-next-actions', label: 'Next Actions' },
     { id: 'sec-sign-off', label: 'Evidence Summary, Decision and Sign-Off' },
   ];
 
@@ -102,7 +104,9 @@ export default function PhasePage() {
         {config.reviewOwner && (
           <>
             <br />
-            <Typography.Text type="secondary">Review owner: {config.reviewOwner}</Typography.Text>
+            <Typography.Text type="secondary">
+              Review owner: {composeReviewOwner(config.reviewOwner, project.identity.reviewers)}
+            </Typography.Text>
           </>
         )}
       </div>
@@ -180,6 +184,7 @@ export default function PhasePage() {
             gate={section.gate}
             items={project.checklists[section.key] ?? []}
             currentGateNumber={currentGateNum}
+            readOnly={isGateRefLocked(project, section.gate)}
           />
         </div>
       ))}
@@ -192,6 +197,7 @@ export default function PhasePage() {
             title={section.title}
             items={project.requirements[section.key] ?? []}
             currentGateNumber={currentGateNum}
+            isRowLocked={(item) => isGateRefLocked(project, item.gate)}
           />
         </div>
       ))}
@@ -202,14 +208,7 @@ export default function PhasePage() {
           title={`Key Gate Checks — Gates ${phaseGateNumbers.join(', ')}`}
           checks={keyChecks}
           currentGateNumber={currentGateNum}
-        />
-      </div>
-
-      <div id="sec-next-actions">
-        <NextActionsCard
-          projectId={project.identity.id}
-          gateIds={config.gateIds}
-          actions={project.nextActions}
+          isRowLocked={(check) => isGateRefLocked(project, check.gate)}
         />
       </div>
 
@@ -224,6 +223,14 @@ export default function PhasePage() {
           projectId={project.identity.id}
           phase={phase}
           angles={project.phaseClosures[phase].angles}
+        />
+      </div>
+
+      <div id="sec-next-actions">
+        <NextActionsCard
+          projectId={project.identity.id}
+          gateIds={config.gateIds}
+          actions={project.nextActions}
         />
       </div>
 

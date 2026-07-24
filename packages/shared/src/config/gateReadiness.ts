@@ -186,6 +186,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Mandatory',
       check: { kind: 'checklistHasSelection', section: 'targetMarkets' },
     },
+    {
+      // Gate 02 brief must name the product type — at least one Product Type
+      // option selected (2026-07-23, user-requested). Mandatory, so it hard-
+      // blocks the gate decision (Proceed / Proceed with Conditions alike),
+      // like the other core brief selections above.
+      id: 'sg02-product-type',
+      label: 'Product type — at least one selected',
+      tier: 'Mandatory',
+      check: { kind: 'checklistHasSelection', section: 'productType' },
+    },
     // sg02-vulnerable: still `manual` — genuinely ambiguous whether this means
     // "the target-user checklist has been reviewed at all" (same signal as
     // sg02-user, which would make this a 3rd reuse of the same evidence) or a

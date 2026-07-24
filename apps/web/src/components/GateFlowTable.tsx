@@ -15,7 +15,8 @@ import { GATE_FIELD_LABELS, GATES, GATE_DECISIONS, STAGE_STATUSES } from '@mbc36
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useAppStore } from '../store/useAppStore';
 import { currentGateIndex, gateBlockers, gateIndex, hardGateBlockers, isAwaitingDecision, isGatePassed } from '@mbc360/shared/utils/gateProgress';
-import { canDecideGate, roleLabel } from '../utils/roles';
+import { roleLabel } from '../utils/roles';
+import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import { useSession } from '../auth/useSession';
@@ -32,6 +33,7 @@ export default function GateFlowTable({
   const backtrackGate = useAppStore((s) => s.backtrackGate);
   const changes = useAppStore((s) => s.changes);
   const viewRole = useAppStore((s) => s.viewRole);
+  const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const { user } = useSession();
   const projectId = project.identity.id;
   const gates = project.gates;
@@ -124,7 +126,7 @@ export default function GateFlowTable({
       liveBlockers: gateBlockers(project, r.meta.id, r.draftRecord.decision),
       openChanges: openChangesForGate(r.meta.number),
       // A4 demo simulation: only the gate's primary-owner function may decide.
-      canDecide: canDecideGate(viewRole, r.meta.id),
+      canDecide: canDecideGate(grants, viewRole, r.meta.id),
       // C5 soft check (per-market hard blocks live in Market Tracking; the
       // project-level effect of a partially-ready market set is follow-up F4).
       marketsNotReady:

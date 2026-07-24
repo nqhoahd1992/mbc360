@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Card, DatePicker, Form, Input, Modal, Popconfirm, Progress, Select, Table, Tag, message } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
 import { PHASE_1 } from '@mbc360/shared/config/phases';
+import { REVIEW_ROLES } from '@mbc360/shared/config/reviewers';
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 
@@ -18,6 +19,14 @@ interface NewProjectForm {
   ownerDepartment: string;
   targetLaunchDate?: Dayjs;
   markets: string[];
+  reviewers: Record<string, string>;
+}
+
+interface PickerUser {
+  id: string;
+  displayName: string;
+  roleKey: string | null;
+  roleName: string | null;
 }
 
 export default function ProjectList() {
@@ -27,6 +36,33 @@ export default function ProjectList() {
   const deleteProject = useAppStore((s) => s.deleteProject);
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<NewProjectForm>();
+
+  // Active users for the reviewer pickers (no hard role filter — every field
+  // lists all active users, role shown as a tag). Fetched when the modal opens.
+  const [users, setUsers] = useState<PickerUser[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetch('/api/rbac/users')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: PickerUser[]) => {
+        if (!cancelled) setUsers(list);
+      })
+      .catch(() => {
+        if (!cancelled) setUsers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  // Deduped by displayName (the stored value) so antd Select has unique option
+  // values; each option carries its role for the tag + text search.
+  const userOptions = Array.from(new Map(users.map((u) => [u.displayName, u])).values()).map((u) => ({
+    value: u.displayName,
+    label: u.displayName,
+    roleName: u.roleName ?? '—',
+  }));
 
   const marketOptions = PHASE_1.checklistSections
     .find((s) => s.key === 'targetMarkets')!
@@ -44,6 +80,7 @@ export default function ProjectList() {
       dateOpened: dayjs().format('YYYY-MM-DD'),
       targetLaunchDate: values.targetLaunchDate ? values.targetLaunchDate.format('YYYY-MM-DD') : '',
       markets: values.markets ?? [],
+      reviewers: values.reviewers,
     });
     message.success('Project created');
     setOpen(false);
@@ -137,7 +174,7 @@ export default function ProjectList() {
         onOk={onCreate}
         onCancel={() => setOpen(false)}
         okText="Create"
-        width={640}
+        width={720}
       >
         <Form form={form} layout="vertical">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
@@ -169,6 +206,42 @@ export default function ProjectList() {
           <Form.Item name="markets" label="Countries / Markets">
             <Select mode="multiple" options={marketOptions} placeholder="Select markets" />
           </Form.Item>
+
+          {/* Review owners / co-signers — assigned per project (2026-07-23).
+              Each page's "Review owner · Co-sign: …" caption is composed from
+              these people. All required; the placeholder is the workbook's
+              reference name for that responsibility. */}
+          <div style={{ fontWeight: 600, margin: '4px 0 12px' }}>
+            Review owners &amp; co-signers
+            <span style={{ fontWeight: 400, color: '#999', fontSize: 12, marginLeft: 8 }}>
+              — the person responsible for each area on this project
+            </span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            {REVIEW_ROLES.map((role) => (
+              <Form.Item
+                key={role.key}
+                name={['reviewers', role.key]}
+                label={role.label}
+                rules={[{ required: true, message: `${role.label} is required` }]}
+              >
+                <Select
+                  showSearch
+                  placeholder="Select a user"
+                  optionFilterProp="label"
+                  popupMatchSelectWidth={false}
+                  notFoundContent={users.length === 0 ? 'No users found' : 'No match'}
+                  options={userOptions}
+                  optionRender={(opt) => (
+                    <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                      <span>{opt.data.label}</span>
+                      <Tag style={{ marginInlineEnd: 0 }}>{(opt.data as { roleName?: string }).roleName}</Tag>
+                    </span>
+                  )}
+                />
+              </Form.Item>
+            ))}
+          </div>
         </Form>
       </Modal>
     </Card>

@@ -38,6 +38,7 @@ export default defineConfig({
       '@mbc360/shared/config/registers',
       '@mbc360/shared/config/changeTriggers',
       '@mbc360/shared/config/roles',
+      '@mbc360/shared/config/reviewers',
       '@mbc360/shared/utils/gateProgress',
       '@mbc360/shared/utils/ingredientWatch',
       '@mbc360/shared/utils/formulaDiff',

@@ -1,4 +1,5 @@
 import type { ChangeRecord, ProjectData } from '@mbc360/shared/types';
+import { DEFAULT_REVIEWERS } from '@mbc360/shared/config/reviewers';
 import { createEmptyProject } from '../store/factory';
 
 function buildSampleProjectA(): ProjectData {
@@ -13,6 +14,7 @@ function buildSampleProjectA(): ProjectData {
     productSku: 'Soothing Nipple & Baby Balm 50g',
     ownerDepartment: 'NPD',
     markets: ['Vietnam', 'Australia', 'Malaysia'],
+    reviewers: DEFAULT_REVIEWERS,
   });
 
   // Phase 1 passed and signed off, Phase 2 in progress
@@ -150,6 +152,7 @@ function buildSampleProjectB(): ProjectData {
     productSku: 'Gentle Feminine Wash 250mL',
     ownerDepartment: 'Marketing',
     markets: ['Vietnam'],
+    reviewers: DEFAULT_REVIEWERS,
   });
   p.gates = p.gates.map((g, i) =>
     i === 0 ? { ...g, status: 'In Progress', owner: 'Bao Nguyen', dueDate: '2026-07-31' } : g,

@@ -1,3 +1,5 @@
+import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
+
 export interface ChecklistSectionConfig {
   key: string;
   title: string;
@@ -31,12 +33,13 @@ export interface PhaseConfig {
   checklistSections: ChecklistSectionConfig[];
   requirementSections: RequirementSectionConfig[];
   keyGateChecks: KeyGateCheckConfig[];
-  reviewOwner?: string;
+  reviewOwner?: ReviewOwnerSpec;
 }
 
-// Review owner transcribed from the source workbook's "REVIEW OWNER" header row.
-// All four phase sheets share the same owner.
-const PHASE_REVIEW_OWNER = 'Kaukab (Facility / PM Operations) · Co-sign: Chris (Project Manager)';
+// Review owner of the source workbook's "REVIEW OWNER" header row — all four
+// phase sheets share Facility / PM Operations (+ Project Manager co-sign). The
+// actual people are per-project (identity.reviewers), composed at display time.
+const PHASE_REVIEW_OWNER: ReviewOwnerSpec = REVIEW_SPECS.facilityPm;
 
 export const PHASE_1: PhaseConfig = {
   phase: 1,

@@ -1,4 +1,5 @@
 import { Card, Checkbox, DatePicker, Input, Select, Table, Tag, Tooltip } from 'antd';
+import { LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { GateCheck, YNNA } from '@mbc360/shared/types';
 import { isMandatoryGateCheck } from '@mbc360/shared/utils/gateProgress';
@@ -13,6 +14,7 @@ export default function GateChecksTable({
   title,
   checks,
   currentGateNumber,
+  isRowLocked,
 }: {
   projectId: string;
   title: string;
@@ -20,6 +22,10 @@ export default function GateChecksTable({
   // Gate `number` (e.g. '01') currently open for work — rows for that gate
   // that are still-required get an extra highlight (see the render below).
   currentGateNumber?: string;
+  // Gate-level edit lock (2026-07-23): a row whose gate has passed is
+  // read-only (inputs disabled). Key Gate Checks span every gate in a phase,
+  // so this is per-row.
+  isRowLocked?: (check: GateCheck) => boolean;
 }) {
   const setChecksBulk = useAppStore((s) => s.setGateChecksBulk);
   // Draft holds just the mutable GateCheck values, in the same order as
@@ -59,7 +65,11 @@ export default function GateChecksTable({
           return required && isCurrentGate ? { style: { background: '#fffbe6' } } : {};
         }}
         columns={[
-          { title: 'Gate', width: 60, render: (_, r) => <Tag>{r.gate}</Tag> },
+          {
+            title: 'Gate',
+            width: 60,
+            render: (_, r) => <Tag icon={isRowLocked?.(r) ? <LockOutlined /> : undefined}>{r.gate}</Tag>,
+          },
           {
             title: 'Key check',
             width: 320,
@@ -83,6 +93,7 @@ export default function GateChecksTable({
             render: (_, r, i) => (
               <Checkbox
                 checked={r.done}
+                disabled={isRowLocked?.(r)}
                 onChange={(e) =>
                   patch(i, {
                     done: e.target.checked,
@@ -101,6 +112,7 @@ export default function GateChecksTable({
                 size="small"
                 style={{ width: 70 }}
                 value={r.ynna}
+                disabled={isRowLocked?.(r)}
                 options={YNNA_OPTIONS}
                 onChange={(v: YNNA) => patch(i, { ynna: v })}
               />
@@ -113,6 +125,7 @@ export default function GateChecksTable({
               <DatePicker
                 size="small"
                 value={r.date ? dayjs(r.date) : null}
+                disabled={isRowLocked?.(r)}
                 onChange={(d) => patch(i, { date: d ? d.format('YYYY-MM-DD') : undefined })}
               />
             ),
@@ -122,7 +135,7 @@ export default function GateChecksTable({
             width: 160,
             render: (_, r, i) =>
               r.done ? (
-                <Input size="small" value={r.evidenceRef} onChange={(e) => patch(i, { evidenceRef: e.target.value })} />
+                <Input size="small" value={r.evidenceRef} disabled={isRowLocked?.(r)} onChange={(e) => patch(i, { evidenceRef: e.target.value })} />
               ) : (
                 <span style={{ color: '#d9d9d9' }}>—</span>
               ),
@@ -132,7 +145,7 @@ export default function GateChecksTable({
             width: 120,
             render: (_, r, i) =>
               r.done ? (
-                <Input size="small" value={r.methodRef} onChange={(e) => patch(i, { methodRef: e.target.value })} />
+                <Input size="small" value={r.methodRef} disabled={isRowLocked?.(r)} onChange={(e) => patch(i, { methodRef: e.target.value })} />
               ) : (
                 <span style={{ color: '#d9d9d9' }}>—</span>
               ),
@@ -142,7 +155,7 @@ export default function GateChecksTable({
             width: 90,
             render: (_, r, i) =>
               r.done ? (
-                <Input size="small" value={r.initials} onChange={(e) => patch(i, { initials: e.target.value })} />
+                <Input size="small" value={r.initials} disabled={isRowLocked?.(r)} onChange={(e) => patch(i, { initials: e.target.value })} />
               ) : (
                 <span style={{ color: '#d9d9d9' }}>—</span>
               ),
@@ -151,7 +164,7 @@ export default function GateChecksTable({
             title: 'Notes / action',
             width: 180,
             render: (_, r, i) => (
-              <Input size="small" value={r.notes} onChange={(e) => patch(i, { notes: e.target.value })} />
+              <Input size="small" value={r.notes} disabled={isRowLocked?.(r)} onChange={(e) => patch(i, { notes: e.target.value })} />
             ),
           },
         ]}

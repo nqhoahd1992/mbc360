@@ -1,4 +1,5 @@
 import { Card, Input, Select, Table, Tag, Tooltip } from 'antd';
+import { LockOutlined } from '@ant-design/icons';
 import type { RequirementItem, WorkStatus } from '@mbc360/shared/types';
 import { WORK_STATUSES } from '@mbc360/shared/config/gates';
 import { isMandatoryRequirementRow } from '@mbc360/shared/utils/gateProgress';
@@ -12,6 +13,7 @@ export default function RequirementTable({
   title,
   items,
   currentGateNumber,
+  isRowLocked,
 }: {
   projectId: string;
   sectionKey: string;
@@ -19,6 +21,10 @@ export default function RequirementTable({
   items: RequirementItem[];
   // Gate `number` (e.g. '05') currently open for work — see the highlight below.
   currentGateNumber?: string;
+  // Gate-level edit lock (2026-07-23): a row whose gate has passed is
+  // read-only (inputs disabled). A requirement section can span several gates,
+  // so this is per-row, not per-table.
+  isRowLocked?: (item: RequirementItem) => boolean;
 }) {
   const setSection = useAppStore((s) => s.setRequirementSection);
   const { draft, dirty, update, markSaved, discard } = useDraft(items);
@@ -43,7 +49,13 @@ export default function RequirementTable({
           return required && isCurrentGate ? { style: { background: '#fffbe6' } } : {};
         }}
         columns={[
-          { title: 'Gate', width: 60, render: (_, r) => <Tag>{r.gate}</Tag> },
+          {
+            title: 'Gate',
+            width: 60,
+            render: (_, r) => (
+              <Tag icon={isRowLocked?.(r) ? <LockOutlined /> : undefined}>{r.gate}</Tag>
+            ),
+          },
           {
             title: 'Requirement / field',
             width: 200,
@@ -78,6 +90,7 @@ export default function RequirementTable({
                 size="small"
                 style={{ width: 130 }}
                 value={r.status}
+                disabled={isRowLocked?.(r)}
                 options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
                 onChange={(v: WorkStatus) => patch(i, { status: v })}
               />
@@ -91,6 +104,7 @@ export default function RequirementTable({
                 size="small"
                 value={r.evidenceLink}
                 placeholder="link"
+                disabled={isRowLocked?.(r)}
                 onChange={(e) => patch(i, { evidenceLink: e.target.value })}
               />
             ),
@@ -99,7 +113,7 @@ export default function RequirementTable({
             title: 'Notes / action',
             width: 200,
             render: (_, r, i) => (
-              <Input size="small" value={r.notes} onChange={(e) => patch(i, { notes: e.target.value })} />
+              <Input size="small" value={r.notes} disabled={isRowLocked?.(r)} onChange={(e) => patch(i, { notes: e.target.value })} />
             ),
           },
         ]}

@@ -378,6 +378,35 @@ export function isAwaitingDecision(project: ProjectData, gateId: string): boolea
 }
 
 // ---------------------------------------------------------------------------
+// Gate-level evidence edit lock (2026-07-23, user-requested)
+// ---------------------------------------------------------------------------
+//
+// Once a gate has PASSED, the evidence tied to it is READ-ONLY: correcting a
+// passed gate's data must go through Backtrack (which un-passes the gate and
+// reopens it for rework), never a silent in-place edit ("no silent
+// corrections", B4). Not-yet-passed gates (the current gate and future ones)
+// stay editable, so entering data early / pre-work on later gates is still
+// allowed. A page or register used across SEVERAL gates (config `gate` like
+// '04/07' — e.g. Ingredient Substitution Evidence, used at Gate 04 and again
+// at Gate 07) only locks once EVERY one of those gates has passed, so it stays
+// editable through the last gate that still relies on it.
+//
+// `gateRef` is a config `gate` string: a single number ('04'), a slash list
+// ('04/07', '05/07/10'), 'ALL', or undefined. 'ALL'/undefined never lock
+// (cross-cutting evidence like the Evidence Summary or Change Control).
+export function isGateRefLocked(project: ProjectData, gateRef: string | undefined): boolean {
+  if (!gateRef) return false;
+  const ref = gateRef.trim();
+  if (ref === '' || ref.toUpperCase() === 'ALL') return false;
+  const gateIds = ref
+    .split('/')
+    .map((n) => GATES.find((g) => g.number === n.trim())?.id)
+    .filter((id): id is string => !!id);
+  if (gateIds.length === 0) return false;
+  return gateIds.every((id) => isGatePassed(project, id));
+}
+
+// ---------------------------------------------------------------------------
 // Phase completion (rule B3)
 // ---------------------------------------------------------------------------
 

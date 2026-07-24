@@ -1,4 +1,5 @@
 import { Card, Checkbox, Input, Select, Table, Tag, Tooltip } from 'antd';
+import { LockOutlined } from '@ant-design/icons';
 import type { ChecklistItem, YNNA } from '@mbc360/shared/types';
 import { isMandatoryChecklistSection } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
@@ -14,6 +15,7 @@ export default function ChecklistSection({
   gate,
   items,
   currentGateNumber,
+  readOnly,
 }: {
   projectId: string;
   sectionKey: string;
@@ -22,6 +24,9 @@ export default function ChecklistSection({
   items: ChecklistItem[];
   // Gate `number` (e.g. '02') currently open for work — see the highlight below.
   currentGateNumber?: string;
+  // Gate-level edit lock (2026-07-23): true once this section's gate has
+  // passed — inputs disabled, no Save; edit requires Backtrack.
+  readOnly?: boolean;
 }) {
   const setSection = useAppStore((s) => s.setChecklistSection);
   const { draft, dirty, update, markSaved, discard } = useDraft(items);
@@ -43,7 +48,12 @@ export default function ChecklistSection({
       title={
         <span>
           {title} <Tag>Gate {gate}</Tag>
-          {required && (
+          {readOnly && (
+            <Tag icon={<LockOutlined />} color="default">
+              Read-only — gate passed
+            </Tag>
+          )}
+          {required && !readOnly && (
             <Tooltip title="At least one option must be recorded (status Y) before this gate can pass (F1/C7 mandatory evidence)">
               <span style={{ color: '#ff4d4f' }}> *</span>
             </Tooltip>
@@ -65,6 +75,7 @@ export default function ChecklistSection({
             render: (_, r, i) => (
               <Checkbox
                 checked={r.selected}
+                disabled={readOnly}
                 onChange={(e) => patch(i, { selected: e.target.checked, status: e.target.checked ? 'Y' : 'NA' })}
               />
             ),
@@ -85,6 +96,7 @@ export default function ChecklistSection({
                 size="small"
                 style={{ width: 70 }}
                 value={r.status}
+                disabled={readOnly}
                 options={YNNA_OPTIONS}
                 onChange={(v: YNNA) => patch(i, { status: v })}
               />
@@ -99,6 +111,7 @@ export default function ChecklistSection({
                   size="small"
                   value={r.evidenceLink}
                   placeholder="link"
+                  disabled={readOnly}
                   onChange={(e) => patch(i, { evidenceLink: e.target.value })}
                 />
               ) : (
@@ -110,14 +123,14 @@ export default function ChecklistSection({
             width: 240,
             render: (_, r, i) =>
               r.selected ? (
-                <Input size="small" value={r.notes} onChange={(e) => patch(i, { notes: e.target.value })} />
+                <Input size="small" value={r.notes} disabled={readOnly} onChange={(e) => patch(i, { notes: e.target.value })} />
               ) : (
                 <span style={{ color: '#d9d9d9' }}>—</span>
               ),
           },
         ]}
       />
-      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
+      {!readOnly && <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />}
     </Card>
   );
 }

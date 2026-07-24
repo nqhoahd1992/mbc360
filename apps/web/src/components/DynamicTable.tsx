@@ -1,5 +1,5 @@
-import { Button, Card, Checkbox, DatePicker, Input, InputNumber, Popconfirm, Select, Table, Tag } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Checkbox, DatePicker, Input, InputNumber, Popconfirm, Select, Table, Tag } from 'antd';
+import { PlusOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
 import { isRegisterRowBlank } from '@mbc360/shared/config/registers';
@@ -12,12 +12,28 @@ export default function DynamicTable({
   config,
   rows,
   onSave,
+  // Already-composed "Review owner · Co-sign: …" caption for this project.
+  // 2026-07-23: review owners are now per-project (composeReviewOwner over
+  // identity.reviewers), so the parent composes the string and passes it in —
+  // DynamicTable no longer reads config.reviewOwner (now a structure, not a
+  // string). RegisterHubPage's single-register view shows its own dedicated
+  // "Review owner" card instead and passes nothing here; FormulationSafety's
+  // 3-table composite passes this so each table keeps its inline caption.
+  reviewOwnerText,
+  // Gate-level edit lock (2026-07-23): true once every gate this register is
+  // tied to has passed. The whole table renders read-only (static cells, no
+  // Add/Delete/Save) — editing a passed gate's evidence requires Backtrack.
+  readOnly,
+  readOnlyReason,
 }: {
   config: RegisterConfig;
   rows: RegisterRow[];
   onSave: (rows: RegisterRow[]) => void;
+  reviewOwnerText?: string;
+  readOnly?: boolean;
+  readOnlyReason?: string;
 }) {
-  const isRegister = config.mode === 'register';
+  const isRegister = config.mode === 'register' && !readOnly;
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
 
   const patch = (index: number, key: string, value: string | number | boolean | undefined) =>
@@ -32,10 +48,11 @@ export default function DynamicTable({
   };
 
   const renderCell = (column: RegisterColumn, row: RegisterRow, index: number) => {
-    const editable = column.editable !== false;
+    const editable = column.editable !== false && !readOnly;
     const value = row[column.key];
 
     if (!editable) {
+      if (column.type === 'checkbox') return <Checkbox checked={!!value} disabled />;
       return <span style={{ color: '#666' }}>{value != null ? String(value) : ''}</span>;
     }
 
@@ -128,10 +145,22 @@ export default function DynamicTable({
       }
     >
       {config.description && (
-        <p style={{ color: '#888', fontSize: 12, marginTop: -4, marginBottom: config.reviewOwner ? 4 : 12 }}>{config.description}</p>
+        <p style={{ color: '#888', fontSize: 12, marginTop: -4, marginBottom: reviewOwnerText ? 4 : 12 }}>
+          {config.description}
+        </p>
       )}
-      {config.reviewOwner && (
-        <p style={{ color: '#999', fontSize: 12, marginTop: 0, marginBottom: 12 }}>Review owner: {config.reviewOwner}</p>
+      {reviewOwnerText && (
+        <p style={{ color: '#999', fontSize: 12, marginTop: 0, marginBottom: 12 }}>Review owner: {reviewOwnerText}</p>
+      )}
+      {readOnly && (
+        <Alert
+          type="info"
+          showIcon
+          icon={<LockOutlined />}
+          style={{ marginBottom: 12 }}
+          message="Read-only — gate passed"
+          description={readOnlyReason ?? 'This evidence belongs to a gate that has already passed. To correct it, Backtrack to reopen that gate first.'}
+        />
       )}
       <Table
         size="small"

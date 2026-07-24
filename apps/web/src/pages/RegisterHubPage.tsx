@@ -1,5 +1,5 @@
-import { Alert, Card, Empty, Progress, Table, Tabs, Tag, Typography } from 'antd';
-import { RightOutlined } from '@ant-design/icons';
+import { Alert, Card, Descriptions, Empty, Progress, Table, Tabs, Tag, Typography } from 'antd';
+import { RightOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import StudyApprovalCard from '../components/StudyApprovalCard';
@@ -13,6 +13,8 @@ import {
   type RegisterConfig,
 } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
+import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
+import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import DynamicTable from '../components/DynamicTable';
 import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
@@ -117,6 +119,10 @@ export default function RegisterHubPage() {
           )
         : [];
 
+    // Gate-level edit lock: read-only once every gate this register is tied to
+    // has passed (config `gate`, e.g. '04' or '04/07'). Editing requires Backtrack.
+    const locked = isGateRefLocked(project, config.gate);
+
     return (
       <div style={{ display: 'grid', gap: 16 }}>
         <div>
@@ -130,6 +136,27 @@ export default function RegisterHubPage() {
           </Typography.Title>
         </div>
         <ProjectIdentificationCard identity={project.identity} />
+        {/* Prominent, dedicated "Review owner" section right under Project
+            Identification (2026-07-23). Composed from the project's own
+            assigned people (identity.reviewers) via composeReviewOwner —
+            DynamicTable below is passed no reviewOwnerText, so it doesn't
+            duplicate this caption on the single-register view. */}
+        {config.reviewOwner && (
+          <Card size="small">
+            <Descriptions size="small" column={1}>
+              <Descriptions.Item
+                label={
+                  <span>
+                    <UserOutlined style={{ marginRight: 6 }} />
+                    Review owner
+                  </span>
+                }
+              >
+                <b>{composeReviewOwner(config.reviewOwner, project.identity.reviewers)}</b>
+              </Descriptions.Item>
+            </Descriptions>
+          </Card>
+        )}
         {registerKey === 'studyProtocolSetup' && (
           <StudyApprovalCard projectId={id} approvals={project.studyApprovals} />
         )}
@@ -149,13 +176,16 @@ export default function RegisterHubPage() {
           <SupplierRmEvidenceTable
             config={config}
             rows={project.registers[registerKey] ?? []}
+            bom={project.bom}
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
+            readOnly={locked}
           />
         ) : (
           <DynamicTable
             config={config}
             rows={project.registers[registerKey] ?? []}
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
+            readOnly={locked}
           />
         )}
       </div>
@@ -244,7 +274,7 @@ export default function RegisterHubPage() {
         {group.reviewOwner && (
           <div style={{ marginTop: 4 }}>
             <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              Review owner: {group.reviewOwner}
+              Review owner: {composeReviewOwner(group.reviewOwner, project.identity.reviewers)}
             </Typography.Text>
           </div>
         )}

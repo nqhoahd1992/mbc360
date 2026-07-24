@@ -27,9 +27,12 @@ import type {
   StudyApproval,
 } from '@mbc360/shared/types';
 import { createEmptyProject, createEmptyRegisterRow } from './factory';
+import type { PermissionGrid } from '../utils/permissions';
 import { seedChanges, seedProjects } from '../data/seed';
-import { gateBlockers, gateIndex, hardGateBlockers, isGateUnlocked } from '@mbc360/shared/utils/gateProgress';
+import { gateBlockers, gateIndex, hardGateBlockers, isGateRefLocked, isGateUnlocked } from '@mbc360/shared/utils/gateProgress';
 import { GATES } from '@mbc360/shared/config/gates';
+import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
+import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 
 interface AppState {
@@ -40,6 +43,14 @@ interface AppState {
   // stands in for the authenticated user's role until F6 (real role matrix/SSO).
   viewRole: string;
   setViewRole: (role: string) => void;
+
+  // The role x capability permission grid, loaded from the backend
+  // (`GET /api/rbac/permissions-grid`). Drives the "View as" gate/phase/
+  // market-track permission checks (via apps/web/src/utils/permissions.ts) and
+  // is edited on the Users & Roles Role Editor. NOT persisted — always loaded
+  // fresh from the server on startup (see loadPermissionGrid in App.tsx).
+  permissionGrid: PermissionGrid | null;
+  loadPermissionGrid: () => Promise<void>;
 
   createProject: (identity: ProjectIdentity) => void;
   deleteProject: (id: string) => void;
@@ -187,6 +198,13 @@ export const useAppStore = create<AppState>()(
 
         viewRole: 'admin',
         setViewRole: (role) => set({ viewRole: role }),
+
+        permissionGrid: null,
+        loadPermissionGrid: async () => {
+          const res = await fetch('/api/rbac/permissions-grid');
+          if (!res.ok) return; // leave null; permission checks fail closed (all restricted) except admin
+          set({ permissionGrid: (await res.json()) as PermissionGrid });
+        },
 
         createProject: (identity) =>
           set((s) => ({ projects: [...s.projects, createEmptyProject(identity)] })),
@@ -506,15 +524,37 @@ export const useAppStore = create<AppState>()(
               },
             };
           }),
+        // Gate-level edit lock (2026-07-23): a passed gate's evidence is
+        // read-only (correcting it requires Backtrack, B4) — the UI renders it
+        // read-only, and these guards refuse the write at the store layer too
+        // (defense in depth, same principle as the setGate/backtrack guards).
         setChecklistSection: (id, section, items) =>
-          updateProject(id, (p) => ({ ...p, checklists: { ...p.checklists, [section]: items } })),
+          updateProject(id, (p) => {
+            const cfg = Object.values(PHASE_CONFIGS)
+              .flatMap((c) => c.checklistSections)
+              .find((s) => s.key === section);
+            if (cfg && isGateRefLocked(p, cfg.gate)) return p; // gate passed → read-only
+            return { ...p, checklists: { ...p.checklists, [section]: items } };
+          }),
+        // Requirement sections can span several gates, so merge per-row: keep
+        // the committed value for any row whose gate has passed, take the
+        // incoming value for the rest.
         setRequirementSection: (id, section, items) =>
-          updateProject(id, (p) => ({ ...p, requirements: { ...p.requirements, [section]: items } })),
+          updateProject(id, (p) => {
+            const committed = p.requirements[section] ?? [];
+            const merged = items.map((incoming) => {
+              if (!isGateRefLocked(p, incoming.gate)) return incoming;
+              return committed.find((c) => c.requirement === incoming.requirement && c.gate === incoming.gate) ?? incoming;
+            });
+            return { ...p, requirements: { ...p.requirements, [section]: merged } };
+          }),
         setGateChecksBulk: (id, updates) =>
           updateProject(id, (p) => {
             const gateChecks = [...p.gateChecks];
             for (const { index, patch } of updates) {
-              gateChecks[index] = { ...gateChecks[index], ...patch };
+              const row = gateChecks[index];
+              if (!row || isGateRefLocked(p, row.gate)) continue; // locked gate → skip
+              gateChecks[index] = { ...row, ...patch };
             }
             return { ...p, gateChecks };
           }),
@@ -552,12 +592,13 @@ export const useAppStore = create<AppState>()(
         // Replaces the whole Formula BOM (used by the Cosmetri import and the
         // Formula BOM section's save button).
         setBom: (id, lines) =>
-          updateProject(id, (p) => ({
-            ...p,
-            bom: lines.map((l, i) => ({ ...l, line: i + 1 })),
-          })),
+          updateProject(id, (p) =>
+            isGateRefLocked(p, '05') // Formula BOM is Gate 05 — read-only once passed
+              ? p
+              : { ...p, bom: lines.map((l, i) => ({ ...l, line: i + 1 })) },
+          ),
         setCosting: (id, patch) =>
-          updateProject(id, (p) => ({ ...p, costing: { ...p.costing, ...patch } })),
+          updateProject(id, (p) => (isGateRefLocked(p, '05') ? p : { ...p, costing: { ...p.costing, ...patch } })),
 
         integrations: DEFAULT_INTEGRATIONS,
         setPowerAppsUrl: (url) =>
@@ -570,13 +611,17 @@ export const useAppStore = create<AppState>()(
           })),
 
         setPackagingBomBulk: (id, lines) =>
-          updateProject(id, (p) => ({ ...p, packagingBom: lines.map((l, i) => ({ ...l, line: i + 1 })) })),
+          updateProject(id, (p) =>
+            isGateRefLocked(p, '06') // Packaging BOM is Gate 06
+              ? p
+              : { ...p, packagingBom: lines.map((l, i) => ({ ...l, line: i + 1 })) },
+          ),
 
         setRegisterRowsBulk: (id, registerKey, rows) =>
-          updateProject(id, (p) => ({
-            ...p,
-            registers: { ...p.registers, [registerKey]: rows },
-          })),
+          updateProject(id, (p) => {
+            if (isGateRefLocked(p, getRegisterConfig(registerKey)?.gate)) return p; // register's gate(s) passed → read-only
+            return { ...p, registers: { ...p.registers, [registerKey]: rows } };
+          }),
 
         setEvidenceItemsBulk: (id, items) => updateProject(id, (p) => ({ ...p, evidence: items })),
         addCapa: (id, record) =>
@@ -593,7 +638,14 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: 'mbc360-demo-store',
-      version: 10,
+      version: 11,
+      // `permissionGrid` is server state, always loaded fresh on startup — never
+      // persist a stale copy to localStorage. (Functions and everything else are
+      // handled as before; this only strips the grid.)
+      partialize: (state) => {
+        const { permissionGrid: _omit, ...rest } = state;
+        return rest;
+      },
       // v1 -> v2 changed Stage status / Gate decision values to match the real
       // MBc360 workbook (Complete/Proceed instead of Completed/Go).
       // v2 -> v3 added packagingBom and the generic evidence `registers` map.
@@ -615,6 +667,9 @@ export const useAppStore = create<AppState>()(
       // v9 -> v10: added gateChangeLog (general Phase Gate Flow edit audit trail,
       // separate from backtrackEvents) and removed the old backtrack note-append
       // behavior — old persisted projects lack gateChangeLog entirely.
+      // v10 -> v11: ProjectIdentity gained required `reviewers` (per-project review
+      // owners / co-signers, replacing the old hardcoded config demo names) — old
+      // persisted projects have no reviewers, which would render blank captions.
       // Old persisted demo data doesn't fit the new schema, so re-seed instead of migrating it.
       migrate: () => ({ projects: seedProjects(), changes: seedChanges() }),
     },

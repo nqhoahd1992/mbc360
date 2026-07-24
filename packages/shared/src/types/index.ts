@@ -394,6 +394,12 @@ export interface ProjectIdentity {
   productSku: string;
   ownerDepartment: string;
   markets: string[];
+  // Per-project review owners / co-signers, keyed by REVIEW_ROLES[].key (see
+  // packages/shared/src/config/reviewers.ts). Entered (all required) on the
+  // Create New Project form; each page composes its "Review owner · Co-sign: …"
+  // caption from these via composeReviewOwner(). Replaces the old hardcoded
+  // demo-name strings that used to live in config.
+  reviewers: Record<string, string>;
 }
 
 // Generic evidence-register row (Supplier_RM_Evidence, Prohibited_Ingredients,

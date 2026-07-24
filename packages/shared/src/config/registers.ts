@@ -1,4 +1,5 @@
 import type { RegisterRow } from '../types';
+import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
 export type ColumnType = 'text' | 'textarea' | 'select' | 'date' | 'checkbox' | 'number';
 
@@ -20,7 +21,10 @@ export interface RegisterConfig {
   gate?: string;
   columns: RegisterColumn[];
   fixedRows?: RegisterRow[];
-  reviewOwner?: string; // "REVIEW OWNER" header transcribed from the source workbook
+  // "REVIEW OWNER" of the source sheet, as a STRUCTURE (which role owns/co-
+  // reviews/co-signs) — the actual people are per-project (identity.reviewers)
+  // and composed at display time via composeReviewOwner(). See reviewers.ts.
+  reviewOwner?: ReviewOwnerSpec;
 }
 
 // A freshly-added row (createEmptyRegisterRow, apps/web/src/store/factory.ts)
@@ -1232,7 +1236,7 @@ export const formulationSafetyFinalSignOff: RegisterConfig = {
 // Three blocks share one sheet, mirroring the Formulation_Safety composite.
 // ---------------------------------------------------------------------------
 
-const RELEASED_LABEL_OWNER = 'Lily (Packaging) · Anki (Digital / Platforms) · Co-sign: Chris (Project Manager)';
+const RELEASED_LABEL_OWNER = REVIEW_SPECS.releasedLabel;
 
 const releasedLabelRegister: RegisterConfig = {
   key: 'releasedLabelRegister',
@@ -1334,7 +1338,8 @@ const templateIndex: RegisterConfig = {
   sheetName: 'Template_Index',
   description: 'Map of every evidence template: concept, tab, what it captures, when, gate and owner.',
   mode: 'fixed',
-  reviewOwner: 'MBc360 Development & Quality System',
+  // System reference sheet — no per-project person to assign (matches the
+  // dept-system nav group, which likewise has no review owner).
   columns: [
     { key: 'concept', label: 'Evidence concept', type: 'text', width: 160, editable: false },
     { key: 'templateTab', label: 'Template tab', type: 'text', width: 180, editable: false },
@@ -1383,7 +1388,8 @@ const systemRequirements: RegisterConfig = {
   sheetName: 'Requirements',
   description: 'Controlled system requirements for the MBc360 workbook.',
   mode: 'fixed',
-  reviewOwner: 'MBc360 Development & Quality System',
+  // System reference sheet — no per-project person to assign (matches the
+  // dept-system nav group, which likewise has no review owner).
   columns: [
     { key: 'metric', label: 'Metric', type: 'text', width: 220, editable: false },
     { key: 'value', label: 'Value', type: 'text', width: 200, editable: false },
@@ -1492,44 +1498,44 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
 // workbook, keyed by the historical (unprefixed) sheetName. The app does not
 // read the workbook at runtime, so sheetName is only a display/reference label.
 // `key` is unchanged to keep persisted localStorage data valid.
-const SHEET_METADATA: Record<string, { sheetName: string; reviewOwner: string }> = {
-  Supplier_RM_Evidence: { sheetName: 'Chidkamon-Supplier_RM', reviewOwner: 'Chidkamon (Raw Material Operations) · Co-sign: Chris (Project Manager)' },
-  Ingredient_Substitution: { sheetName: 'Chidkamon-Ingred_Substit', reviewOwner: 'Chidkamon (Raw Material Operations) · Co-sign: Chris (Project Manager)' },
-  Product_Family_Register: { sheetName: 'Chidkamon-Prod_Family_Reg', reviewOwner: 'Chidkamon (Raw Material Operations) · Co-sign: Chris (Project Manager)' },
-  Prohibited_Ingredients: { sheetName: 'ChiChu-Prohibited_Ingred', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: George (R&I), Chris (Project Manager)' },
-  PB_Caution_Limits: { sheetName: 'ChiChu-PB_Caution_Limits', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
-  Fragrance_Safety: { sheetName: 'ChiChu-Fragrance_Safety', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
-  ASEAN_PIF_Map: { sheetName: 'ChiChu-ASEAN_PIF_Map', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
-  PIF_Checklist_ASEAN: { sheetName: 'ChiChu-PIF_Checklist', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
-  PIF_Evidence_Export: { sheetName: 'ChiChu-PIF_Evid_Export', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
-  SKU_Claims_PIF_Register: { sheetName: 'ChiChu-SKU_Claims_PIF', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
-  PIF_Evidence_Closure: { sheetName: 'ChiChu-PIF_Evid_Closure', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
-  Published_Info_Approval: { sheetName: 'ChiChu-Published_Info_Ap', reviewOwner: 'Chi Chu (Regulatory) · Co-sign: Chris (Project Manager)' },
-  Formulation_Safety: { sheetName: 'Tuan-Formulation_Safety', reviewOwner: 'Tuan (Formulation) · Co-sign: Chris (Project Manager)' },
-  Formula_Change_Control: { sheetName: 'Tuan-Formula_Chg_Control', reviewOwner: 'Tuan (Formulation) · Co-sign: Chris (Project Manager)' },
-  Formulation_Change_Register: { sheetName: 'Tuan-Formulation_Chg_Reg', reviewOwner: 'Tuan (Formulation) · Co-sign: Chris (Project Manager)' },
-  Batch_Formula_Trace: { sheetName: 'Tuan-Batch_Formula_Trace', reviewOwner: 'Tuan (Formulation) · Co-sign: Chris (Project Manager)' },
-  Product_Development_Report: { sheetName: 'Tuan-Product_Dev_Report', reviewOwner: 'Tuan (Formulation – Product Development Reporting) · Co-sign: Chris (Project Manager)' },
-  Test_Report_Index: { sheetName: 'Sankar-Test_Report_Index', reviewOwner: 'Sankar (Quality) · Co-sign: Lani (HR/Quality), Chris (Project Manager)' },
-  Eye_Safety_Evidence: { sheetName: 'Sankar-Eye_Safety_Evid', reviewOwner: 'Sankar (Quality) · Co-sign: Lani (HR/Quality), Chris (Project Manager)' },
-  Micro_PET_Evidence: { sheetName: 'Sekar-Micro_PET_Evidence', reviewOwner: 'Sekar (Quality & GMP) · Co-sign: Tuan (Formulation – PET), Chris (Project Manager)' },
-  Stability_Release: { sheetName: 'Sekar-Stability_Release', reviewOwner: 'Sekar (Quality & GMP) · Co-sign: Tuan (Formulation – Stability), Chris (Project Manager)' },
-  GMP_Links: { sheetName: 'Sekar-GMP_Links', reviewOwner: 'Sekar (Quality & GMP) · Co-sign: Chris (Project Manager)' },
-  Mechanism_Claims_Map: { sheetName: 'George-Mechanism_Claims', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
-  Twinkle5_Claims_Map: { sheetName: 'George-Twinkle5_Claims', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
-  Efficacy_Assurance: { sheetName: 'George-Efficacy_Assur', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
-  Functional_Efficacy: { sheetName: 'George-Functional_Effic', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
-  Clinical_Human_Evidence: { sheetName: 'George-Clinical_Human_Ev', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
-  Study_Protocol: { sheetName: 'George-Study_Protocol', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
-  Efficacy_Study_Plan: { sheetName: 'George-Efficacy_Std_Plan', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
-  Potency_Process_Control: { sheetName: 'George-Potency_Proc_Ctrl', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
-  Medical_Summary: { sheetName: 'George-Medical_Summary', reviewOwner: 'George (R&I) · Co-sign: Chris (Project Manager)' },
-  Packaging_Specs_Artwork: { sheetName: 'Lily-Packaging_Specs_Art', reviewOwner: 'Lily (Packaging) · Co-sign: Chris (Project Manager)' },
-  Artwork_Change_Control: { sheetName: 'Lily-Artwork_Chg_Control', reviewOwner: 'Lily (Packaging) · Co-sign: Chris (Project Manager)' },
-  HCP_Efficacy_Answer: { sheetName: 'Nguyen-HCP_Efficacy_Ans', reviewOwner: 'Nguyen (Sales & Marketing) · Co-sign: Chris (Project Manager)' },
-  HCP_Test_Report_Pack: { sheetName: 'Nguyen-HCP_Test_Rpt_Pack', reviewOwner: 'Nguyen (Sales & Marketing) · Co-sign: Chris (Project Manager)' },
-  Change_Templates: { sheetName: 'Nguyen-Change_Templates', reviewOwner: 'Nguyen (Sales & Marketing) · Co-sign: Chris (Project Manager)' },
-  Campaigns_Social_Media: { sheetName: 'Nguyen-Campaigns_Social', reviewOwner: 'Nguyen (Sales & Marketing) · Co-sign: Chris (Project Manager)' },
+const SHEET_METADATA: Record<string, { sheetName: string; reviewOwner: ReviewOwnerSpec }> = {
+  Supplier_RM_Evidence: { sheetName: 'Chidkamon-Supplier_RM', reviewOwner: REVIEW_SPECS.rawMaterial },
+  Ingredient_Substitution: { sheetName: 'Chidkamon-Ingred_Substit', reviewOwner: REVIEW_SPECS.rawMaterial },
+  Product_Family_Register: { sheetName: 'Chidkamon-Prod_Family_Reg', reviewOwner: REVIEW_SPECS.rawMaterial },
+  Prohibited_Ingredients: { sheetName: 'ChiChu-Prohibited_Ingred', reviewOwner: REVIEW_SPECS.regulatoryWithRi },
+  PB_Caution_Limits: { sheetName: 'ChiChu-PB_Caution_Limits', reviewOwner: REVIEW_SPECS.regulatory },
+  Fragrance_Safety: { sheetName: 'ChiChu-Fragrance_Safety', reviewOwner: REVIEW_SPECS.regulatory },
+  ASEAN_PIF_Map: { sheetName: 'ChiChu-ASEAN_PIF_Map', reviewOwner: REVIEW_SPECS.regulatory },
+  PIF_Checklist_ASEAN: { sheetName: 'ChiChu-PIF_Checklist', reviewOwner: REVIEW_SPECS.regulatory },
+  PIF_Evidence_Export: { sheetName: 'ChiChu-PIF_Evid_Export', reviewOwner: REVIEW_SPECS.regulatory },
+  SKU_Claims_PIF_Register: { sheetName: 'ChiChu-SKU_Claims_PIF', reviewOwner: REVIEW_SPECS.regulatory },
+  PIF_Evidence_Closure: { sheetName: 'ChiChu-PIF_Evid_Closure', reviewOwner: REVIEW_SPECS.regulatory },
+  Published_Info_Approval: { sheetName: 'ChiChu-Published_Info_Ap', reviewOwner: REVIEW_SPECS.regulatory },
+  Formulation_Safety: { sheetName: 'Tuan-Formulation_Safety', reviewOwner: REVIEW_SPECS.formulation },
+  Formula_Change_Control: { sheetName: 'Tuan-Formula_Chg_Control', reviewOwner: REVIEW_SPECS.formulation },
+  Formulation_Change_Register: { sheetName: 'Tuan-Formulation_Chg_Reg', reviewOwner: REVIEW_SPECS.formulation },
+  Batch_Formula_Trace: { sheetName: 'Tuan-Batch_Formula_Trace', reviewOwner: REVIEW_SPECS.formulation },
+  Product_Development_Report: { sheetName: 'Tuan-Product_Dev_Report', reviewOwner: REVIEW_SPECS.formulationProductDevReport },
+  Test_Report_Index: { sheetName: 'Sankar-Test_Report_Index', reviewOwner: REVIEW_SPECS.quality },
+  Eye_Safety_Evidence: { sheetName: 'Sankar-Eye_Safety_Evid', reviewOwner: REVIEW_SPECS.quality },
+  Micro_PET_Evidence: { sheetName: 'Sekar-Micro_PET_Evidence', reviewOwner: REVIEW_SPECS.qualityGmpPet },
+  Stability_Release: { sheetName: 'Sekar-Stability_Release', reviewOwner: REVIEW_SPECS.qualityGmpStability },
+  GMP_Links: { sheetName: 'Sekar-GMP_Links', reviewOwner: REVIEW_SPECS.qualityGmp },
+  Mechanism_Claims_Map: { sheetName: 'George-Mechanism_Claims', reviewOwner: REVIEW_SPECS.ri },
+  Twinkle5_Claims_Map: { sheetName: 'George-Twinkle5_Claims', reviewOwner: REVIEW_SPECS.ri },
+  Efficacy_Assurance: { sheetName: 'George-Efficacy_Assur', reviewOwner: REVIEW_SPECS.ri },
+  Functional_Efficacy: { sheetName: 'George-Functional_Effic', reviewOwner: REVIEW_SPECS.ri },
+  Clinical_Human_Evidence: { sheetName: 'George-Clinical_Human_Ev', reviewOwner: REVIEW_SPECS.ri },
+  Study_Protocol: { sheetName: 'George-Study_Protocol', reviewOwner: REVIEW_SPECS.ri },
+  Efficacy_Study_Plan: { sheetName: 'George-Efficacy_Std_Plan', reviewOwner: REVIEW_SPECS.ri },
+  Potency_Process_Control: { sheetName: 'George-Potency_Proc_Ctrl', reviewOwner: REVIEW_SPECS.ri },
+  Medical_Summary: { sheetName: 'George-Medical_Summary', reviewOwner: REVIEW_SPECS.ri },
+  Packaging_Specs_Artwork: { sheetName: 'Lily-Packaging_Specs_Art', reviewOwner: REVIEW_SPECS.packaging },
+  Artwork_Change_Control: { sheetName: 'Lily-Artwork_Chg_Control', reviewOwner: REVIEW_SPECS.packaging },
+  HCP_Efficacy_Answer: { sheetName: 'Nguyen-HCP_Efficacy_Ans', reviewOwner: REVIEW_SPECS.salesMarketing },
+  HCP_Test_Report_Pack: { sheetName: 'Nguyen-HCP_Test_Rpt_Pack', reviewOwner: REVIEW_SPECS.salesMarketing },
+  Change_Templates: { sheetName: 'Nguyen-Change_Templates', reviewOwner: REVIEW_SPECS.salesMarketing },
+  Campaigns_Social_Media: { sheetName: 'Nguyen-Campaigns_Social', reviewOwner: REVIEW_SPECS.salesMarketing },
 };
 
 for (const config of REGISTER_CONFIGS) {
@@ -1581,7 +1587,7 @@ export interface NavGroup {
   key: string;
   title: string;
   description?: string;
-  reviewOwner?: string; // department head + co-sign
+  reviewOwner?: ReviewOwnerSpec; // department head + co-sign (composed per project)
   items: NavItem[];
 }
 
@@ -1608,7 +1614,7 @@ interface RawDept {
   key: string;
   title: string;
   description?: string;
-  reviewOwner?: string;
+  reviewOwner?: ReviewOwnerSpec;
   items: RawDeptItem[];
 }
 
@@ -1616,10 +1622,17 @@ interface RawDept {
 // owner-prefixed tabs). Dedicated-page sheets link to the page that hosts them.
 const DEPARTMENTS: RawDept[] = [
   {
+    key: 'dept-raw-material',
+    title: 'Raw Material Operations',
+    description: 'Supplier/raw-material documents, substitutions and product-family versioning.',
+    reviewOwner: REVIEW_SPECS.rawMaterial,
+    items: ['supplierRmEvidence', 'ingredientSubstitution', 'productFamilyRegister'],
+  },
+  {
     key: 'dept-formulation',
     title: 'Formulation',
     description: 'Formula BOM, change control/registers, batch traceability and the product development report.',
-    reviewOwner: 'Tuan (Formulation) · Co-sign: Chris (Project Manager)',
+    reviewOwner: REVIEW_SPECS.formulation,
     items: [
       { title: 'Formula BOM', sheetName: 'Formula_BOM', page: 'bom/formula', gate: '05' },
       'batchFormulaTrace',
@@ -1634,7 +1647,7 @@ const DEPARTMENTS: RawDept[] = [
     key: 'dept-quality',
     title: 'Quality',
     description: 'Test-report index, eye safety, evidence summary, formulation safety and R&I efficacy/claims evidence.',
-    reviewOwner: 'Sankar (Quality) · Co-sign: Lani (HR/Quality), Chris (Project Manager)',
+    reviewOwner: REVIEW_SPECS.quality,
     items: [
       'testReportIndex',
       'eyeSafetyEvidence',
@@ -1656,14 +1669,14 @@ const DEPARTMENTS: RawDept[] = [
     key: 'dept-quality-gmp',
     title: 'Quality & GMP',
     description: 'GMP manufacturing links, microbiology/PET and stability & release evidence.',
-    reviewOwner: 'Sekar (Quality & GMP) · Co-sign: Tuan (Formulation – PET), Chris (Project Manager)',
+    reviewOwner: REVIEW_SPECS.qualityGmpPet,
     items: ['gmpLinks', 'microPetEvidence', 'stabilityRelease'],
   },
   {
     key: 'dept-regulatory',
     title: 'Regulatory',
     description: 'Prohibited/caution watch-lists, fragrance, ASEAN PIF closure, claims and publication approval.',
-    reviewOwner: 'Chi Chu (Regulatory) · Co-sign: George (R&I), Chris (Project Manager)',
+    reviewOwner: REVIEW_SPECS.regulatoryWithRi,
     items: [
       'prohibitedIngredients',
       'pbCautionLimits',
@@ -1682,7 +1695,7 @@ const DEPARTMENTS: RawDept[] = [
     key: 'dept-packaging',
     title: 'Packaging',
     description: 'Released-label control, packaging BOM, packaging specs/artwork evidence and artwork change control.',
-    reviewOwner: 'Lily (Packaging) · Co-sign: Chris (Project Manager)',
+    reviewOwner: REVIEW_SPECS.packaging,
     items: [
       'releasedLabelRegister',
       'labelPlatformRollout',
@@ -1693,17 +1706,10 @@ const DEPARTMENTS: RawDept[] = [
     ],
   },
   {
-    key: 'dept-raw-material',
-    title: 'Raw Material Operations',
-    description: 'Supplier/raw-material documents, substitutions and product-family versioning.',
-    reviewOwner: 'Chidkamon (Raw Material Operations) · Co-sign: Chris (Project Manager)',
-    items: ['supplierRmEvidence', 'ingredientSubstitution', 'productFamilyRegister'],
-  },
-  {
     key: 'dept-sales-marketing',
     title: 'Sales & Marketing',
     description: 'Campaign declarations, HCP/distributor answer packs, panel feedback, change control and templates.',
-    reviewOwner: 'Nguyen (Sales & Marketing) · Co-sign: Chris (Project Manager)',
+    reviewOwner: REVIEW_SPECS.salesMarketing,
     items: [
       'campaignsSocialMedia',
       'hcpEfficacyAnswer',
@@ -1717,7 +1723,7 @@ const DEPARTMENTS: RawDept[] = [
     key: 'dept-supply-chain',
     title: 'Supply Chain',
     description: 'Costing calculator and post-market / complaint / CAPA evidence.',
-    reviewOwner: 'Hannah (Supply Chain) · Co-sign: Chris (Project Manager)',
+    reviewOwner: REVIEW_SPECS.supplyChain,
     items: [
       { title: 'Costing Calculator', sheetName: 'Costing_Calc', page: 'bom/costing', gate: '05' },
       { title: 'Post-Market / CAPA', sheetName: 'PostMarket_CAPA', page: 'post-market', gate: '12' },

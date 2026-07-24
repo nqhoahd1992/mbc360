@@ -6,7 +6,8 @@ import type { PhaseClosure, SignOff } from '@mbc360/shared/types';
 import type { PhaseCompletionChecklist } from '@mbc360/shared/utils/gateProgress';
 import { GATE_DECISIONS, PHASES } from '@mbc360/shared/config/gates';
 import { useAppStore } from '../store/useAppStore';
-import { canApprovePhase, roleLabel } from '../utils/roles';
+import { roleLabel } from '../utils/roles';
+import { canApprovePhase, EMPTY_GRANTS } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 
@@ -29,6 +30,7 @@ export default function SignOffBlock({
   const setEvidenceSummary = useAppStore((s) => s.setEvidenceSummary);
   const setSignOffsBulk = useAppStore((s) => s.setSignOffsBulk);
   const viewRole = useAppStore((s) => s.viewRole);
+  const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
 
   // useDraft compares the committed value by reference, so this composite
   // must stay referentially stable across renders that don't actually change
@@ -52,7 +54,7 @@ export default function SignOffBlock({
 
   // A4 demo simulation: only the phase's responsible department (or admin) may
   // sign "Approved by"; anyone may fill Prepared/Reviewed (contribute rights).
-  const canApprove = canApprovePhase(viewRole, phase);
+  const canApprove = canApprovePhase(grants, viewRole, phase);
   const rowDisabled = (r: SignOff) => locked || (r.role === 'Approved by' && !canApprove);
   const phaseDept = PHASES.find((p) => p.phase === phase)?.department;
 

@@ -27,10 +27,16 @@ export default function SaveBar({
       <Typography.Text type="warning" style={{ fontSize: 12 }}>
         Unsaved changes
       </Typography.Text>
+      {/* A disabled antd Button's root DOM node is a genuine `disabled`
+          <button>, which doesn't fire the hover events Tooltip listens for —
+          wrapping in a plain <span> gives it a non-disabled hover target
+          (the standard antd workaround; see Tooltip's own FAQ). */}
       <Tooltip title={disabled ? disabledReason : undefined}>
-        <Button size="small" type="primary" icon={<SaveOutlined />} onClick={onSave} disabled={disabled}>
-          Save
-        </Button>
+        <span>
+          <Button size="small" type="primary" icon={<SaveOutlined />} onClick={onSave} disabled={disabled}>
+            Save
+          </Button>
+        </span>
       </Tooltip>
       <Button size="small" icon={<UndoOutlined />} onClick={onDiscard}>
         Discard

@@ -1,19 +1,28 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, Button, Card, Col, Descriptions, Empty, Input, InputNumber, Popconfirm, Row, Select, Statistic, Table, Tag, Tooltip } from 'antd';
-import { PlusOutlined, DeleteOutlined, CloudDownloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, CloudDownloadOutlined, UserOutlined, LockOutlined } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import type { BomLine, CostingInputs, PackagingBomLine } from '@mbc360/shared/types';
+import type { BomLine, CostingInputs, PackagingBomLine, RegisterRow } from '@mbc360/shared/types';
 import PhaseDependencyAlert from '../components/PhaseDependencyAlert';
+import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
 import CosmetriImportModal from '../components/CosmetriImportModal';
 import FormulaVersionModal from '../components/FormulaVersionModal';
 import FormulaVersionCompareModal, { type FormulaVersionOption } from '../components/FormulaVersionCompareModal';
-import { hasReachedPhase, positionSentence } from '@mbc360/shared/utils/gateProgress';
+import { hasReachedPhase, isGateRefLocked, positionSentence } from '@mbc360/shared/utils/gateProgress';
 import { bomWatchMatches } from '@mbc360/shared/utils/ingredientWatch';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
-import { cosmetriListRawMaterials, type CosmetriRawMaterialSummary } from '../integrations/cosmetri';
+import { composeReviewOwner, type ReviewOwnerSpec } from '@mbc360/shared/config/reviewers';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from '../components/SaveBar';
+
+// Formula BOM's own review-owner combo (workbook): Formulation owner, Quality
+// co-review (Formula BOM & sensory testing), Project Manager co-sign (appended
+// by composeReviewOwner). Composed per project from identity.reviewers.
+const FORMULA_BOM_REVIEW_OWNER: ReviewOwnerSpec = {
+  owner: { role: 'formulation' },
+  coReview: [{ role: 'quality', hat: 'Formula BOM & sensory testing' }],
+};
 
 function money(v: number) {
   return v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 });
@@ -29,24 +38,6 @@ export default function BomCosting() {
   const [importOpen, setImportOpen] = useState(false);
   const [versionOpen, setVersionOpen] = useState(false);
   const [compare, setCompare] = useState<{ from?: string; to?: string } | undefined>();
-
-  // F14: manual BOM lines identify their raw material by picking it from
-  // Cosmetri's catalogue rather than typing free text — fetched once per
-  // page visit (same simplifying assumption as the formula picker used by
-  // CosmetriImportModal; no caching layer yet, see the backend comment).
-  const [rawMaterials, setRawMaterials] = useState<CosmetriRawMaterialSummary[]>([]);
-  const [loadingRawMaterials, setLoadingRawMaterials] = useState(false);
-  useEffect(() => {
-    if (!cosmetriConnected) {
-      setRawMaterials([]);
-      return;
-    }
-    setLoadingRawMaterials(true);
-    cosmetriListRawMaterials()
-      .then(setRawMaterials)
-      .catch(() => setRawMaterials([]))
-      .finally(() => setLoadingRawMaterials(false));
-  }, [cosmetriConnected]);
 
   // Hooks must run unconditionally, so seed drafts from empty defaults when
   // there's no project yet — the early return below happens after.
@@ -114,26 +105,58 @@ export default function BomCosting() {
   const hasEmptyRawMaterialLines = emptyRawMaterialLines.length > 0;
 
   // A material may only be picked into the Formula BOM once R&I/Procurement
-  // has screened it in Supplier_RM_Evidence (Gate 4) — Gate 4's ingredient
-  // screening must happen before Gate 5 locks the formula (see registers.ts's
-  // `linkedGate: '05_Formula_BOM_Costing'` note and F1_Per_Gate_Open_Questions.md).
-  // Only applies to manually-picked lines below; a full-formula Cosmetri
-  // import (`fromCosmetri`) is a different, already-established trust
-  // boundary and is intentionally exempt.
-  const rmCodesWithEvidence = useMemo(
-    () => new Set((project.registers['supplierRmEvidence'] ?? []).map((r) => String(r.rmCode ?? '')).filter(Boolean)),
-    [project.registers],
+  // has screened AND approved it in Supplier_RM_Evidence (Gate 4) — Gate 4's
+  // ingredient screening must happen before Gate 5 locks the formula (see
+  // registers.ts's `linkedGate: '05_Formula_BOM_Costing'` note and
+  // F1_Per_Gate_Open_Questions.md). Tightened 2026-07-23 (user-requested):
+  // previously this only required *some* Supplier & RM Evidence row to
+  // exist (even an identity-only stub auto-created by CosmetriImportModal,
+  // or one added but not yet actually screened) — now it requires that
+  // row's `approvedForUse` checkbox to be checked, so a manual line can't
+  // reference a raw material that's been added to the register but hasn't
+  // actually cleared screening yet. Only applies to manually-picked lines
+  // below; a full-formula Cosmetri import (`fromCosmetri`) is a different,
+  // already-established trust boundary and is intentionally exempt.
+  // 2026-07-23, further tightened (user-requested): the manual-line picker
+  // used to search Cosmetri's *entire* raw-material catalogue live (a
+  // network call on every page visit) and only then filter down to the
+  // approved subset. Since a manual line can only ever reference an already-
+  // approved row anyway, that live fetch was both wasteful and the source of
+  // a load-order flicker (existing lines briefly looked "not in Cosmetri" on
+  // every visit until the fetch resolved) — the approved subset is already
+  // sitting locally in `project.registers`, so the picker is built from that
+  // directly with no network round-trip and no loading state at all. None of
+  // this (nor `rawMaterialOptions`/`rawMaterialById` below) needs
+  // memoizing any more either — they now only scan the project's own
+  // (small, at most a few dozen rows) Supplier & RM Evidence register,
+  // unlike the old up-to-1,000-row live Cosmetri catalogue scan that
+  // memoization used to guard against.
+  const approvedRmRows = (project.registers['supplierRmEvidence'] ?? []).filter(
+    (r) => r.approvedForUse === true && r.rmCode,
   );
+  const rmCodesApprovedForUse = new Set(approvedRmRows.map((r) => String(r.rmCode)));
 
-  // A manually-picked line whose raw material has no Supplier_RM_Evidence
-  // record (e.g. the evidence row was later removed, or legacy data from
-  // before this constraint existed) blocks Save the same way — Gate 4
-  // screening must exist before Gate 5 locks the formula around it. Exempts
-  // `fromCosmetri` lines (full-formula import, a different trust boundary).
-  const unvettedManualLines = draftBom.filter((l) => !l.fromCosmetri && l.rmCode && !rmCodesWithEvidence.has(l.rmCode));
-  const hasUnvettedManualLines = unvettedManualLines.length > 0;
+  // A manually-picked line whose raw material has no *approved* Supplier_RM_
+  // Evidence record (never had one, it was later removed, the checkbox was
+  // unchecked again, or legacy data from before this constraint existed)
+  // blocks Save the same way — Gate 4 screening + approval must be done
+  // before Gate 5 locks the formula around it. Exempts `fromCosmetri` lines
+  // (full-formula import, a different trust boundary).
+  const unapprovedManualLines = draftBom.filter(
+    (l) => !l.fromCosmetri && l.rmCode && !rmCodesApprovedForUse.has(l.rmCode),
+  );
+  const hasUnapprovedManualLines = unapprovedManualLines.length > 0;
 
-  const bomSaveBlocked = hasDuplicateRawMaterials || hasEmptyRawMaterialLines || hasUnvettedManualLines;
+  // Gate-level edit lock (2026-07-23): Formula BOM & Costing belong to Gate 05,
+  // Packaging BOM to Gate 06 — read-only once that gate has passed (edit via
+  // Backtrack). `formulaLocked` also gates New-version / Import / Add line.
+  const formulaLocked = isGateRefLocked(project, '05');
+  const packagingLocked = isGateRefLocked(project, '06');
+  const LOCK_REASON =
+    'This gate has already passed — its evidence is read-only. Backtrack to reopen the gate first if you need to correct it.';
+
+  const bomSaveBlocked =
+    hasDuplicateRawMaterials || hasEmptyRawMaterialLines || hasUnapprovedManualLines || formulaLocked;
 
   const watchMatches = bomWatchMatches(project);
   const unitsPerBatch = costing.fillSizeG > 0 ? (costing.batchSizeKg * 1000) / costing.fillSizeG : 0;
@@ -145,36 +168,19 @@ export default function BomCosting() {
     return { kgNeeded, costPerBatch, costPerUnit };
   };
 
-  // "{trade name} | {code}" matches how Cosmetri's own UI labels a raw
-  // material (see the raw-material composition table on a Cosmetri formula)
-  // — kept identical to `rmDisplayName` (used for fromCosmetri lines) so a
-  // manual line's picker shows the exact same format once something is
-  // selected. Supplier is deliberately NOT part of the label (code is already
-  // a unique-enough identifier); quality status still surfaces as a warning
-  // when it isn't "Approved".
-  const rawMaterialLabel = (r: CosmetriRawMaterialSummary) =>
-    `${r.tradeName} | ${r.code}${r.qualityStatus !== 'Approved' ? ` (${r.qualityStatus})` : ''}`;
+  // "{grade/trade name} | {rmCode}" — same format `rmDisplayName` uses for
+  // `fromCosmetri` lines, so a manual line's picker shows an identical style
+  // once something is selected. No quality-status suffix needed any more:
+  // every row here already passed the `approvedForUse` filter above.
+  const rawMaterialLabel = (r: RegisterRow) => `${String(r.grade || r.inciName || r.rmCode)} | ${String(r.rmCode)}`;
 
-  // Built ONCE per `rawMaterials` fetch (not per row, not per keystroke) —
-  // BomCosting re-renders on every draft edit, so mapping/scanning up to
-  // 1,000 raw materials inline inside a per-row cell render was the actual
-  // source of the typing lag (not an API call; nothing here calls the
-  // network per keystroke — every input already only writes to the local
-  // useDraft state, committed to the store solely by the Save button).
-  const rawMaterialOptions = useMemo(
-    () =>
-      rawMaterials
-        .filter((r) => rmCodesWithEvidence.has(`RM-${r.id}`))
-        .map((r) => ({ value: `RM-${r.id}`, label: rawMaterialLabel(r) })),
-    [rawMaterials, rmCodesWithEvidence],
-  );
-  const rawMaterialById = useMemo(
-    () => new Map(rawMaterials.map((r) => [`RM-${r.id}`, r])),
-    [rawMaterials],
-  );
-  // F14: the Cosmetri raw material a manual line is pointed at, if any — used
-  // to lock the fields Cosmetri's raw-material API actually supplies (only
-  // Supplier; it has no INCI/CAS, so those stay user-entered either way).
+  // Built from the (already-filtered, already-local) `approvedRmRows` — see
+  // the comment above it for why this no longer needs memoizing.
+  const rawMaterialOptions = approvedRmRows.map((r) => ({ value: String(r.rmCode), label: rawMaterialLabel(r) }));
+  const rawMaterialById = new Map(approvedRmRows.map((r) => [String(r.rmCode), r]));
+  // The Supplier & RM Evidence row a manual line is pointed at, if any — used
+  // to lock/pre-fill the fields that register already carries (Supplier);
+  // INCI/CAS stay user-entered either way (see the Ingredient/INCI column).
   const matchedRawMaterial = (l: BomLine) => rawMaterialById.get(l.rmCode);
 
   const packagingDerived = (l: PackagingBomLine) =>
@@ -242,6 +248,7 @@ export default function BomCosting() {
         min={0}
         step={step}
         value={costing[field]}
+        disabled={formulaLocked}
         onChange={(v) => costingDraft.update((prev) => ({ ...prev, [field]: v ?? 0 }))}
       />
     </Descriptions.Item>
@@ -249,18 +256,33 @@ export default function BomCosting() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
+      <ProjectIdentificationCard identity={project.identity} />
+
       <PhaseDependencyAlert
         reached={hasReachedPhase(project, 2)}
         title="Phase 2 activity (Gate 05-06)"
         description={`Formula BOM & Costing is normally completed once the formula and packaging route is confirmed in Phase 2. ${positionSentence(project)} You can enter data now — it stays provisional until then.`}
       />
 
-      {showFormula && Math.round(totalPercent * 100) / 100 !== 100 && draftBom.length > 0 && (
-        <Alert
-          type="warning"
-          showIcon
-          title={`Formula total is ${money(totalPercent)} % w/w — a complete formula should total 100%.`}
-        />
+      {/* Formula BOM's own review owner — specific to this section (Packaging/
+          Costing below have different owners: Lily/Hannah respectively), so
+          scoped to `showFormula` rather than shown page-wide like Project
+          Identification above (2026-07-23, user-requested). */}
+      {showFormula && (
+        <Card size="small">
+          <Descriptions size="small" column={1}>
+            <Descriptions.Item
+              label={
+                <span>
+                  <UserOutlined style={{ marginRight: 6 }} />
+                  Review owner
+                </span>
+              }
+            >
+              <b>{composeReviewOwner(FORMULA_BOM_REVIEW_OWNER, project.identity.reviewers)}</b>
+            </Descriptions.Item>
+          </Descriptions>
+        </Card>
       )}
 
       {/* C3: automatic watch-list cross-check on every BOM ingredient. */}
@@ -314,15 +336,17 @@ export default function BomCosting() {
             </Button>
             <Tooltip
               title={
-                cosmetriConnected
-                  ? 'Import composition, INCI/CAS and supplier names read-only from Cosmetri'
-                  : 'Connect Cosmetri in Integrations first'
+                formulaLocked
+                  ? LOCK_REASON
+                  : cosmetriConnected
+                    ? 'Import composition, INCI/CAS and supplier names read-only from Cosmetri'
+                    : 'Connect Cosmetri in Integrations first'
               }
             >
               <Button
                 size="small"
                 icon={<CloudDownloadOutlined />}
-                disabled={!cosmetriConnected}
+                disabled={!cosmetriConnected || formulaLocked}
                 onClick={() => setImportOpen(true)}
               >
                 Import from Cosmetri
@@ -331,13 +355,23 @@ export default function BomCosting() {
           </span>
         }
       >
+        {formulaLocked && (
+          <Alert
+            type="info"
+            showIcon
+            icon={<LockOutlined />}
+            style={{ marginBottom: 12 }}
+            message="Read-only — Gate 05 passed"
+            description={LOCK_REASON}
+          />
+        )}
         {hasEmptyRawMaterialLines && (
           <Alert
             type="error"
             showIcon
             style={{ marginBottom: 12 }}
             message="Raw material not selected — cannot save"
-            description={`Every Formula BOM line needs a raw material picked from Cosmetri before it can be saved. Affected: line${emptyRawMaterialLines.length > 1 ? 's' : ''} ${emptyRawMaterialLines.map((l) => l.line).join(', ')}.`}
+            description={`Every Formula BOM line needs a raw material picked from an approved Supplier & RM Evidence record before it can be saved. Affected: line${emptyRawMaterialLines.length > 1 ? 's' : ''} ${emptyRawMaterialLines.map((l) => l.line).join(', ')}.`}
           />
         )}
         {hasDuplicateRawMaterials && (
@@ -361,13 +395,13 @@ export default function BomCosting() {
             }
           />
         )}
-        {hasUnvettedManualLines && (
+        {hasUnapprovedManualLines && (
           <Alert
             type="error"
             showIcon
             style={{ marginBottom: 12 }}
-            message="Raw material not yet screened — cannot save"
-            description={`Every manually-picked Formula BOM line must reference a material that already has a Supplier & RM Evidence record (Gate 4 screening before Gate 5 locks the formula). Affected: line${unvettedManualLines.length > 1 ? 's' : ''} ${unvettedManualLines.map((l) => l.line).join(', ')} — add a Supplier & RM Evidence record for that material first.`}
+            message="Raw material not approved for use — cannot save"
+            description={`Every manually-picked Formula BOM line must reference a material whose Supplier & RM Evidence record has "Approved for use?" checked (Gate 4 screening + approval before Gate 5 locks the formula). Affected: line${unapprovedManualLines.length > 1 ? 's' : ''} ${unapprovedManualLines.map((l) => l.line).join(', ')} — check "Approved for use?" on that material's Supplier & RM Evidence record first.`}
           />
         )}
         {unreconciledBom.length > 0 && (
@@ -415,13 +449,24 @@ export default function BomCosting() {
                 ),
             },
             {
-              // F14: a manual line identifies its raw material by picking it
-              // from Cosmetri's catalogue — not free text — so the identity
-              // always references a real, existing Cosmetri record. Cosmetri
-              // has no "create" flow via this API; a material not yet there
-              // goes through the Power Apps request (see the Integrations
-              // page / CosmetriImportModal for that link).
-              title: 'Raw material (Cosmetri)',
+              // F14/Gate 4: a manual line identifies its raw material by
+              // picking it from the already-approved Supplier & RM Evidence
+              // list — not free text, and (2026-07-23) no longer a live
+              // Cosmetri catalogue search either, since only materials that
+              // already cleared Gate 4 screening (`approvedForUse`) are ever
+              // selectable here anyway. A material not yet screened/approved
+              // goes through Supplier & RM Evidence first (which has its own
+              // Cosmetri picker for adding a new row), or the Power Apps
+              // "create new raw material" request if it's not in Cosmetri at
+              // all (see the Integrations page).
+              // Title dropped its "(Cosmetri)" qualifier (2026-07-23,
+              // user-reported): the picker here no longer searches Cosmetri
+              // directly (see the comment above), and the per-row "Source"
+              // column already shows provenance (Cosmetri tag vs Draft —
+              // reconcile) — repeating "Cosmetri" in this header was stale
+              // and misleading now that the real source is Supplier & RM
+              // Evidence.
+              title: 'Raw material',
               width: 260,
               render: (_, l, i) => {
                 const isDuplicate = !!l.rmCode && duplicateRawMaterials.has(l.rmCode);
@@ -443,28 +488,20 @@ export default function BomCosting() {
                     showSearch
                     allowClear
                     status={isDuplicate || isEmpty ? 'error' : undefined}
-                    loading={loadingRawMaterials}
-                    disabled={!cosmetriConnected}
-                    placeholder={cosmetriConnected ? 'Search raw material…' : 'Connect Cosmetri in Integrations first'}
+                    placeholder="Search approved raw material…"
                     value={l.rmCode || undefined}
                     optionFilterProp="label"
                     options={
                       // Keep the line's current value selectable/visible even if
-                      // it's no longer pickable for any reason (legacy data, a
-                      // material since renamed/removed in Cosmetri, or its
-                      // Supplier_RM_Evidence row was later deleted) — never
+                      // it's no longer pickable for any reason (legacy data, its
+                      // Supplier_RM_Evidence row was later deleted, or the
+                      // `approvedForUse` checkbox was unchecked again) — never
                       // silently blank out existing data just by rendering it.
-                      // Reuses the memoized `rawMaterialOptions` array as-is
-                      // (same reference every render) rather than remapping —
-                      // only the rare "not pickable" case allocates a new
-                      // (tiny) array, and only for that one row.
                       l.rmCode && !rawMaterialOptions.some((o) => o.value === l.rmCode)
                         ? [
                             {
                               value: l.rmCode,
-                              label: !rawMaterialById.has(l.rmCode)
-                                ? `${l.rmDisplayName || l.rmCode} — not in the current Cosmetri catalogue`
-                                : `${l.rmDisplayName || l.rmCode} — no Supplier & RM Evidence record yet`,
+                              label: `${l.rmDisplayName || l.rmCode} — not approved for use in Supplier & RM Evidence`,
                             },
                             ...rawMaterialOptions,
                           ]
@@ -474,16 +511,15 @@ export default function BomCosting() {
                       const match = value ? rawMaterialById.get(value) : undefined;
                       patchBomLine(i, {
                         rmCode: value ?? '',
-                        rmDisplayName: match ? `${match.tradeName} | ${match.code}` : undefined,
-                        // Supplier is a real field Cosmetri's raw-material API
-                        // supplies — safe to set as an actual value. INCI is
-                        // NOT: the raw-material endpoint has no INCI field at
-                        // all (confirmed against a real API response), so this
-                        // never sets `inciName` — only a placeholder hint below
-                        // shows the trade name, never a stored value that could
-                        // masquerade as real Cosmetri data feeding the
+                        rmDisplayName: match ? rawMaterialLabel(match) : undefined,
+                        // Supplier is a real field already captured on the
+                        // Supplier & RM Evidence row — safe to set as an
+                        // actual value. INCI is left to the user (see the
+                        // Ingredient/INCI column's placeholder instead), so
+                        // this never silently sets `inciName` from a value
+                        // that could masquerade as verified data feeding the
                         // prohibited/caution ingredient screen.
-                        ...(match && { supplier: match.supplierName }),
+                        ...(match && { supplier: String(match.supplier ?? '') }),
                       });
                     }}
                   />
@@ -493,21 +529,28 @@ export default function BomCosting() {
             {
               title: 'Ingredient / INCI',
               width: 240,
-              render: (_, l, i) => (
-                <Input
-                  size="small"
-                  value={l.inciName}
-                  // Always editable, even on a `fromCosmetri` (full-formula
-                  // import) line: unlike Supplier, INCI here isn't a direct
-                  // Cosmetri field — the formula-import endpoint joins it from
-                  // /compliance/{formulaId} by raw-material TRADE NAME (that
-                  // endpoint carries no raw-material id), a best-effort match
-                  // that can come back blank or wrong. Locking it read-only
-                  // would leave no way to fix a bad/missing join.
-                  placeholder={matchedRawMaterial(l)?.tradeName}
-                  onChange={(e) => patchBomLine(i, { inciName: e.target.value })}
-                />
-              ),
+              render: (_, l, i) => {
+                const match = matchedRawMaterial(l);
+                return (
+                  <Input
+                    size="small"
+                    value={l.inciName}
+                    // Always editable, even on a `fromCosmetri` (full-formula
+                    // import) line: unlike Supplier, INCI here isn't a direct
+                    // Cosmetri field on that path — the formula-import endpoint
+                    // joins it from /compliance/{formulaId} by raw-material
+                    // TRADE NAME (that endpoint carries no raw-material id), a
+                    // best-effort match that can come back blank or wrong.
+                    // Locking it read-only would leave no way to fix a bad/
+                    // missing join. On a manually-picked line, the placeholder
+                    // is the actual screened INCI name from that material's
+                    // Supplier & RM Evidence row (only a hint, not auto-filled —
+                    // still user-entered/confirmed either way).
+                    placeholder={match?.inciName ? String(match.inciName) : undefined}
+                    onChange={(e) => patchBomLine(i, { inciName: e.target.value })}
+                  />
+                );
+              },
             },
             {
               title: 'CAS no.',
@@ -536,14 +579,14 @@ export default function BomCosting() {
               width: 150,
               render: (_, l, i) => {
                 const match = matchedRawMaterial(l);
-                // Read-only whenever the supplier is a value Cosmetri's own
-                // raw-material API supplies — a full formula import
-                // (fromCosmetri) or a manual line pointed at a picked
-                // Cosmetri raw material — since a silent local edit would
-                // just drift from what Cosmetri actually says.
+                // Read-only whenever the supplier is a value already captured
+                // elsewhere — a full formula import (fromCosmetri) or a
+                // manual line pointed at an approved Supplier & RM Evidence
+                // row — since a silent local edit here would just drift from
+                // what that record actually says.
                 return l.fromCosmetri || match ? (
-                  <Tooltip title="From Cosmetri — read-only">
-                    <span style={{ color: '#666' }}>{match?.supplierName ?? l.supplier}</span>
+                  <Tooltip title="From Supplier & RM Evidence — read-only">
+                    <span style={{ color: '#666' }}>{match ? String(match.supplier ?? '') : l.supplier}</span>
                   </Tooltip>
                 ) : (
                   <Input size="small" value={l.supplier} onChange={(e) => patchBomLine(i, { supplier: e.target.value })} />
@@ -645,15 +688,28 @@ export default function BomCosting() {
             </Table.Summary.Row>
           )}
         />
-        <Button size="small" type="dashed" block icon={<PlusOutlined />} onClick={addBomLine} style={{ marginTop: 8 }}>
-          Add line
-        </Button>
+        {/* Moved inside the Formula BOM card, below the table (2026-07-23,
+            user-requested) — it used to sit above the card, at the very top
+            of the page. */}
+        {Math.round(totalPercent * 100) / 100 !== 100 && draftBom.length > 0 && (
+          <Alert
+            type="warning"
+            showIcon
+            style={{ marginTop: 12 }}
+            title={`Formula total is ${money(totalPercent)} % w/w — a complete formula should total 100%.`}
+          />
+        )}
+        {!formulaLocked && (
+          <Button size="small" type="dashed" block icon={<PlusOutlined />} onClick={addBomLine} style={{ marginTop: 8 }}>
+            Add line
+          </Button>
+        )}
         <SaveBar
           dirty={bomDraft.dirty}
           onSave={saveBom}
           onDiscard={bomDraft.discard}
           disabled={bomSaveBlocked}
-          disabledReason="Resolve the issue(s) flagged above before saving."
+          disabledReason={formulaLocked ? LOCK_REASON : 'Resolve the issue(s) flagged above before saving.'}
         />
       </Card>
       )}
@@ -731,6 +787,16 @@ export default function BomCosting() {
 
       {showPackaging && (
       <Card size="small" title="Packaging BOM">
+        {packagingLocked && (
+          <Alert
+            type="info"
+            showIcon
+            icon={<LockOutlined />}
+            style={{ marginBottom: 12 }}
+            message="Read-only — Gate 06 passed"
+            description={LOCK_REASON}
+          />
+        )}
         <Table
           size="small"
           rowKey={(l) => l.line}
@@ -851,17 +917,25 @@ export default function BomCosting() {
             ) : null
           }
         />
-        <Button
-          size="small"
-          type="dashed"
-          block
-          icon={<PlusOutlined />}
-          onClick={addPackagingLine}
-          style={{ marginTop: 8 }}
-        >
-          Add component
-        </Button>
-        <SaveBar dirty={packagingDraft.dirty} onSave={savePackaging} onDiscard={packagingDraft.discard} />
+        {!packagingLocked && (
+          <Button
+            size="small"
+            type="dashed"
+            block
+            icon={<PlusOutlined />}
+            onClick={addPackagingLine}
+            style={{ marginTop: 8 }}
+          >
+            Add component
+          </Button>
+        )}
+        <SaveBar
+          dirty={packagingDraft.dirty}
+          onSave={savePackaging}
+          onDiscard={packagingDraft.discard}
+          disabled={packagingLocked}
+          disabledReason={LOCK_REASON}
+        />
       </Card>
       )}
 
@@ -875,10 +949,16 @@ export default function BomCosting() {
               rowKey={(l) => l.line}
               dataSource={bom}
               pagination={false}
-              scroll={{ x: 1000 }}
+              scroll={{ x: 1200 }}
               locale={{ emptyText: 'No formula lines entered yet' }}
               columns={[
                 { title: '#', width: 40, dataIndex: 'line' },
+                // Trade name isn't its own `BomLine` field — every path that
+                // sets `rmDisplayName` (CosmetriImportModal's whole-formula
+                // import, and the manual picker's `rawMaterialLabel`) writes
+                // it as "{trade name} | {rmCode}", so the trade name is
+                // whatever comes before that separator.
+                { title: 'Trade name', width: 200, render: (_, l) => l.rmDisplayName?.split(' | ')[0] ?? '' },
                 { title: 'RM Code', width: 110, dataIndex: 'rmCode' },
                 { title: 'Ingredient / INCI', width: 240, dataIndex: 'inciName' },
                 { title: 'Function', width: 160, dataIndex: 'functionRole' },
@@ -892,7 +972,7 @@ export default function BomCosting() {
               summary={() =>
                 bom.length > 0 ? (
                   <Table.Summary.Row>
-                    <Table.Summary.Cell index={0} colSpan={5}>
+                    <Table.Summary.Cell index={0} colSpan={6}>
                       <b>Total</b>
                     </Table.Summary.Cell>
                     <Table.Summary.Cell index={1}>
@@ -945,6 +1025,16 @@ export default function BomCosting() {
       <Row gutter={16}>
         <Col xs={24} md={12}>
           <Card size="small" title="Costing inputs">
+            {formulaLocked && (
+              <Alert
+                type="info"
+                showIcon
+                icon={<LockOutlined />}
+                style={{ marginBottom: 12 }}
+                message="Read-only — Gate 05 passed"
+                description={LOCK_REASON}
+              />
+            )}
             <Descriptions size="small" column={1} bordered>
               {numberInput('batchSizeKg', 'Batch size (kg)', 1)}
               {numberInput('fillSizeG', 'Fill size (g or mL)', 1)}
@@ -955,6 +1045,7 @@ export default function BomCosting() {
                   min={0}
                   step={0.01}
                   value={costing.packagingCostPerUnit}
+                  disabled={formulaLocked}
                   onChange={(v) => costingDraft.update((prev) => ({ ...prev, packagingCostPerUnit: v ?? 0 }))}
                 />
                 {draftPackaging.length > 0 && (
@@ -967,7 +1058,13 @@ export default function BomCosting() {
               {numberInput('freightOtherPerUnit', 'Freight / other / unit')}
               {numberInput('targetSellPrice', 'Target sell price / unit')}
             </Descriptions>
-            <SaveBar dirty={costingDraft.dirty} onSave={saveCosting} onDiscard={costingDraft.discard} />
+            <SaveBar
+              dirty={costingDraft.dirty}
+              onSave={saveCosting}
+              onDiscard={costingDraft.discard}
+              disabled={formulaLocked}
+              disabledReason={LOCK_REASON}
+            />
           </Card>
         </Col>
         <Col xs={24} md={12}>
