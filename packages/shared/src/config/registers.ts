@@ -2130,15 +2130,15 @@ const SHEET_METADATA: Record<string, { sheetName: string; reviewOwner: ReviewOwn
   SKU_Claims_PIF_Register: { sheetName: 'ChiChu-SKU_Claims_PIF', reviewOwner: REVIEW_SPECS.regulatory },
   PIF_Evidence_Closure: { sheetName: 'ChiChu-PIF_Evid_Closure', reviewOwner: REVIEW_SPECS.regulatory },
   Published_Info_Approval: { sheetName: 'ChiChu-Published_Info_Ap', reviewOwner: REVIEW_SPECS.regulatory },
-  Formulation_Safety: { sheetName: 'Tuan-Formulation_Safety', reviewOwner: REVIEW_SPECS.formulation },
+  Formulation_Safety: { sheetName: 'George-Formulation_Safety', reviewOwner: REVIEW_SPECS.formulation },
   Formula_Change_Control: { sheetName: 'Tuan-Formula_Chg_Control', reviewOwner: REVIEW_SPECS.formulation },
   Formulation_Change_Register: { sheetName: 'Tuan-Formulation_Chg_Reg', reviewOwner: REVIEW_SPECS.formulation },
   Batch_Formula_Trace: { sheetName: 'Tuan-Batch_Formula_Trace', reviewOwner: REVIEW_SPECS.formulation },
   Product_Development_Report: { sheetName: 'Tuan-Product_Dev_Report', reviewOwner: REVIEW_SPECS.formulationProductDevReport },
-  Test_Report_Index: { sheetName: 'Sankar-Test_Report_Index', reviewOwner: REVIEW_SPECS.quality },
-  Eye_Safety_Evidence: { sheetName: 'Sankar-Eye_Safety_Evid', reviewOwner: REVIEW_SPECS.quality },
+  Test_Report_Index: { sheetName: 'George-Test_Report_Index', reviewOwner: REVIEW_SPECS.quality },
+  Eye_Safety_Evidence: { sheetName: 'George-Eye_Safety_Evid', reviewOwner: REVIEW_SPECS.quality },
   Micro_PET_Evidence: { sheetName: 'Sekar-Micro_PET_Evidence', reviewOwner: REVIEW_SPECS.qualityGmpPet },
-  Stability_Release: { sheetName: 'Sekar-Stability_Release', reviewOwner: REVIEW_SPECS.qualityGmpStability },
+  Stability_Release: { sheetName: 'Sankar-Stability_Release', reviewOwner: REVIEW_SPECS.qualityGmpStability },
   GMP_Links: { sheetName: 'Sekar-GMP_Links', reviewOwner: REVIEW_SPECS.qualityGmp },
   Mechanism_Claims_Map: { sheetName: 'George-Mechanism_Claims', reviewOwner: REVIEW_SPECS.ri },
   Twinkle5_Claims_Map: { sheetName: 'George-Twinkle5_Claims', reviewOwner: REVIEW_SPECS.ri },
@@ -2225,9 +2225,15 @@ function registerNavItem(registerKey: string): NavItem | null {
 }
 
 // A department item is either a register (its key) or a dedicated page.
+// `sheetName` is optional (matching NavItem): almost every entry maps to a
+// real workbook tab, but an app-only page with no Excel counterpart (e.g. the
+// Gate Rules & Sheet Map, which is generated from config, not transcribed
+// from a sheet) must be able to omit it rather than invent one — the sheet map
+// itself is built by sheetName, so a placeholder would show up there as a
+// workbook sheet that doesn't exist.
 type RawDeptItem =
   | string
-  | { title: string; sheetName: string; page?: string; href?: string; gate?: string };
+  | { title: string; sheetName?: string; page?: string; href?: string; gate?: string };
 
 interface RawDept {
   key: string;
@@ -2277,7 +2283,7 @@ const DEPARTMENTS: RawDept[] = [
     description: 'Formula BOM, change control/registers, batch traceability and the product development report.',
     reviewOwner: REVIEW_SPECS.formulation,
     items: [
-      { title: 'Formula BOM', sheetName: 'Formula_BOM', page: 'bom/formula', gate: '05' },
+      { title: 'Formula BOM', sheetName: 'Tuan-Formula_BOM', page: 'bom/formula', gate: '05' },
       'batchFormulaTrace',
       'formulationChangeRegister',
       'formulaChangeControl',
@@ -2294,8 +2300,8 @@ const DEPARTMENTS: RawDept[] = [
     items: [
       'testReportIndex',
       'eyeSafetyEvidence',
-      { title: 'Product Evidence Summary', sheetName: 'Product_Evid_Summ', page: 'evidence', gate: 'ALL' },
-      { title: 'Formulation Safety', sheetName: 'Formulation_Safety', page: 'formulation-safety', gate: '07/10' },
+      { title: 'Product Evidence Summary', sheetName: 'George-Product_Evid_Summ', page: 'evidence', gate: 'ALL' },
+      { title: 'Formulation Safety', sheetName: 'George-Formulation_Safety', page: 'formulation-safety', gate: '07/10' },
       'mechanismClaimsMap',
       'twinkle5ClaimsMap',
       'efficacyAssurance',
@@ -2343,7 +2349,7 @@ const DEPARTMENTS: RawDept[] = [
       'releasedLabelRegister',
       'labelPlatformRollout',
       'labelShipmentVerification',
-      { title: 'Packaging BOM', sheetName: 'Packaging_BOM', page: 'bom/packaging', gate: '06' },
+      { title: 'Packaging BOM', sheetName: 'Lily-Packaging_BOM', page: 'bom/packaging', gate: '06' },
       'packagingSpecsArtwork',
       'artworkChangeControl',
     ],
@@ -2357,8 +2363,8 @@ const DEPARTMENTS: RawDept[] = [
       'campaignsSocialMedia',
       'hcpEfficacyAnswer',
       'hcpTestReportPack',
-      { title: 'Product / Sample Feedback', sheetName: 'Product_Feedback', page: 'feedback', gate: '07/08' },
-      { title: 'Change Control & Communication', sheetName: 'Change_Ctrl_Comm', href: '/change-control', gate: 'ALL' },
+      { title: 'Product / Sample Feedback', sheetName: 'Nguyen-Product_Feedback', page: 'feedback', gate: '07/08' },
+      { title: 'Change Control & Communication', sheetName: 'Nguyen-Change_Ctrl_Comm', href: '/change-control', gate: 'ALL' },
       'changeTemplates',
     ],
   },
@@ -2368,15 +2374,24 @@ const DEPARTMENTS: RawDept[] = [
     description: 'Costing calculator and post-market / complaint / CAPA evidence.',
     reviewOwner: REVIEW_SPECS.supplyChain,
     items: [
-      { title: 'Costing Calculator', sheetName: 'Costing_Calc', page: 'bom/costing', gate: '05' },
-      { title: 'Post-Market / CAPA', sheetName: 'PostMarket_CAPA', page: 'post-market', gate: '12' },
+      { title: 'Costing Calculator', sheetName: 'Hannah-Costing_Calc', page: 'bom/costing', gate: '05' },
+      { title: 'Post-Market / CAPA', sheetName: 'Hannah-PostMarket_CAPA', page: 'post-market', gate: '12' },
     ],
   },
   {
     key: 'dept-system',
     title: 'System Guide & Reference',
     description: 'How to use MBc360, the evidence template index, controlled system requirements and feedback on the system itself.',
-    items: ['systemRequirements', 'templateIndex', 'systemFeedback'],
+    items: [
+      // One-page map of every workbook sheet plus the two gate rules that
+      // govern them: what hard-blocks a gate, and what becomes read-only once
+      // a gate passes (2026-07-25, user-requested). A dedicated page rather
+      // than a register — it renders live rule state, it has no rows of its own.
+      { title: 'Gate Rules & Sheet Map', page: 'gate-rules-map', gate: 'ALL' },
+      'systemRequirements',
+      'templateIndex',
+      'systemFeedback',
+    ],
   },
 ];
 

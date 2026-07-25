@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { Alert, Button, Card, DatePicker, Empty, Input, message, Modal, Select, Table, Tooltip, Typography } from 'antd';
 import {
   CheckCircleFilled,
@@ -14,11 +15,12 @@ import type { GateDecision, GateRecord, ProjectData, StageStatus } from '@mbc360
 import { GATE_FIELD_LABELS, GATES, GATE_DECISIONS, STAGE_STATUSES } from '@mbc360/shared/config/gates';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useAppStore } from '../store/useAppStore';
-import { currentGateIndex, gateBlockers, gateIndex, hardGateBlockers, isAwaitingDecision, isGatePassed } from '@mbc360/shared/utils/gateProgress';
+import { currentGateIndex, gateIndex, gateReadinessChecklist, isAwaitingDecision, isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { roleLabel } from '../utils/roles';
 import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import { ApiError } from '../api/projectsApi';
 import { useSession } from '../auth/useSession';
 
 export default function GateFlowTable({
@@ -35,6 +37,7 @@ export default function GateFlowTable({
   const viewRole = useAppStore((s) => s.viewRole);
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const { user } = useSession();
+  const location = useLocation();
   const projectId = project.identity.id;
   const gates = project.gates;
   const currentIdx = currentGateIndex(project);
@@ -77,9 +80,30 @@ export default function GateFlowTable({
   // or initiator.
   const canConfirmBacktrack = !!backtrackTo && !!backtrackReason.trim() && !!backtrackInitiatedBy.trim();
 
-  const confirmBacktrack = () => {
+  // M3 Phase 1: these writes go to the API, so they can fail (rejected by a
+  // server-side guard, a stale optimistic-lock version, or the network). The
+  // old store actions silently no-op'd on rejection; surfacing the server's own
+  // message is the point of moving enforcement there.
+  const reportWriteError = (err: unknown) => {
+    const conflict = err instanceof ApiError && err.isConflict;
+    message.error(
+      conflict
+        ? 'This project was changed by someone else — reload the page before saving again.'
+        : err instanceof Error
+          ? err.message
+          : 'Could not save — please try again.',
+      conflict ? 8 : 6,
+    );
+  };
+
+  const confirmBacktrack = async () => {
     if (!backtrackFrom || !backtrackTo || !backtrackReason.trim() || !backtrackInitiatedBy.trim()) return;
-    backtrackGate(projectId, backtrackFrom, backtrackTo, backtrackReason.trim(), backtrackInitiatedBy.trim());
+    try {
+      await backtrackGate(projectId, backtrackFrom, backtrackTo, backtrackReason.trim(), backtrackInitiatedBy.trim());
+    } catch (err) {
+      reportWriteError(err);
+      return; // keep the modal open and the draft intact so nothing is lost
+    }
     // Backtrack resets a whole range of gates at once (well beyond a single
     // row) — rather than hand-replicate that logic client-side, drop any
     // pending unsaved edits in this table so the next render's resync picks
@@ -110,43 +134,49 @@ export default function GateFlowTable({
       draftIndex: i,
     }))
     .filter((r) => r.meta && r.record)
-    .map((r) => ({
-      ...r,
-      passed: isGatePassed(project, r.meta.id),
-      awaitingDecision: isAwaitingDecision(project, r.meta.id),
-      // Subset that even Proceed with Conditions can't clear (Critical next
-      // actions, Skincare for Two, F1/C7 Mandatory evidence) — decision-
-      // independent, so it doesn't need the draft-decision override below.
-      hardBlockers: hardGateBlockers(project, r.meta.id),
-      // Reasons the gate can't pass yet given the DRAFT decision currently
-      // selected (not yet saved) — the soft "open next action" blocker
-      // depends on whether that draft decision is Proceed with Conditions, so
-      // this must be re-evaluated against the draft, not the committed
-      // record, to give live, accurate guidance as the user picks an option.
-      liveBlockers: gateBlockers(project, r.meta.id, r.draftRecord.decision),
-      openChanges: openChangesForGate(r.meta.number),
-      // A4 demo simulation: only the gate's primary-owner function may decide.
-      canDecide: canDecideGate(grants, viewRole, r.meta.id),
-      // C5 soft check (per-market hard blocks live in Market Tracking; the
-      // project-level effect of a partially-ready market set is follow-up F4).
-      marketsNotReady:
-        r.meta.id === 'SG11'
-          ? project.marketTracks.filter((t) => t.launchApproval !== 'Approved' && t.launchApproval !== 'N/A')
-          : [],
-      isCurrent: gateIndex(r.meta.id) === currentIdx,
-      // B4 ("no silent corrections"): only the current gate is directly
-      // editable here — an earlier, already-PASSED gate is locked too, not
-      // just a future one. Correcting a passed gate's data must go through
-      // Backtrack (openBacktrackModal below), which snapshots the prior
-      // state and invalidates downstream approvals instead of overwriting
-      // it in place.
-      locked: gateIndex(r.meta.id) !== currentIdx,
-      historyCount:
-        project.gateChangeLog.filter((e) => e.gateId === r.meta.id).length +
-        project.backtrackEvents.filter(
-          (e) => e.fromGateId === r.meta.id || e.toGateId === r.meta.id || e.reopenedGateIds.includes(r.meta.id),
-        ).length,
-    }))
+    .map((r) => {
+      // Full readiness checklist (satisfied + unsatisfied) evaluated against
+      // the DRAFT decision currently selected (not yet saved) — the soft
+      // "open next action" item depends on whether that draft decision is
+      // Proceed with Conditions, so this must be re-evaluated against the
+      // draft, not the committed record, to give live, accurate guidance as
+      // the user picks an option.
+      const readinessChecklist = gateReadinessChecklist(project, r.meta.id, r.draftRecord.decision);
+      return {
+        ...r,
+        passed: isGatePassed(project, r.meta.id),
+        awaitingDecision: isAwaitingDecision(project, r.meta.id),
+        readinessChecklist,
+        // Subset that even Proceed with Conditions can't clear (Critical next
+        // actions, Skincare for Two, F1/C7 Mandatory evidence) — decision only
+        // affects the (never-hard) open-next-actions item, so this is exactly
+        // the decision-independent hardGateBlockers() result.
+        hardBlockers: readinessChecklist.filter((item) => item.hardBlock && !item.satisfied),
+        liveBlockers: readinessChecklist.filter((item) => !item.satisfied),
+        openChanges: openChangesForGate(r.meta.number),
+        // A4 demo simulation: only the gate's primary-owner function may decide.
+        canDecide: canDecideGate(grants, viewRole, r.meta.id),
+        // C5 soft check (per-market hard blocks live in Market Tracking; the
+        // project-level effect of a partially-ready market set is follow-up F4).
+        marketsNotReady:
+          r.meta.id === 'SG11'
+            ? project.marketTracks.filter((t) => t.launchApproval !== 'Approved' && t.launchApproval !== 'N/A')
+            : [],
+        isCurrent: gateIndex(r.meta.id) === currentIdx,
+        // B4 ("no silent corrections"): only the current gate is directly
+        // editable here — an earlier, already-PASSED gate is locked too, not
+        // just a future one. Correcting a passed gate's data must go through
+        // Backtrack (openBacktrackModal below), which snapshots the prior
+        // state and invalidates downstream approvals instead of overwriting
+        // it in place.
+        locked: gateIndex(r.meta.id) !== currentIdx,
+        historyCount:
+          project.gateChangeLog.filter((e) => e.gateId === r.meta.id).length +
+          project.backtrackEvents.filter(
+            (e) => e.fromGateId === r.meta.id || e.toGateId === r.meta.id || e.reopenedGateIds.includes(r.meta.id),
+          ).length,
+      };
+    })
     // Whether the currently-selected DRAFT decision (unsaved) would actually
     // be rejected by the store guard if Saved right now — surfaced as a
     // Save-blocking reason instead of removing the option from the dropdown,
@@ -155,10 +185,10 @@ export default function GateFlowTable({
       const saveInvalidReason =
         r.draftRecord.decision === 'Proceed' && (r.draftRecord.status === 'Gap' || r.liveBlockers.length > 0)
           ? `Gate ${r.meta.number}: "Proceed" isn't valid yet — ${
-              r.draftRecord.status === 'Gap' ? 'stage status is Gap' : r.liveBlockers.join('; ')
+              r.draftRecord.status === 'Gap' ? 'stage status is Gap' : r.liveBlockers.map((b) => b.label).join('; ')
             }`
           : r.draftRecord.decision === 'Proceed with Conditions' && r.hardBlockers.length > 0
-            ? `Gate ${r.meta.number}: "Proceed with Conditions" isn't valid yet — ${r.hardBlockers.join('; ')}`
+            ? `Gate ${r.meta.number}: "Proceed with Conditions" isn't valid yet — ${r.hardBlockers.map((b) => b.label).join('; ')}`
             : undefined;
       return { ...r, saveInvalidReason };
     });
@@ -178,7 +208,9 @@ export default function GateFlowTable({
     r.draftRecord.status === 'Gap' ||
     r.openChanges.length > 0 ||
     (r.awaitingDecision && !r.record.decision) ||
-    r.liveBlockers.length > 0;
+    // The readiness checklist itself is shown even once fully satisfied
+    // (green, not hidden) — see the expandedRowRender below.
+    r.readinessChecklist.length > 0;
   const guidanceRowKeys = rows.filter(rowHasGuidance).map((r) => r.meta.id);
 
   const save = () => {
@@ -188,8 +220,11 @@ export default function GateFlowTable({
     // guard would also revert it, but bailing here avoids a confusing
     // partial-save round-trip.
     if (saveBlockedRows.length > 0) return;
-    setGatesBulk(projectId, draft, user?.displayName);
-    markSaved();
+    setGatesBulk(projectId, draft, user?.displayName)
+      // markSaved only after the server accepted the write — otherwise the
+      // draft would be cleared while the database still holds the old values.
+      .then(() => markSaved())
+      .catch(reportWriteError);
   };
 
   const backtrackFromMeta = backtrackFrom ? GATES.find((g) => g.id === backtrackFrom) : undefined;
@@ -259,16 +294,48 @@ export default function GateFlowTable({
               {r.awaitingDecision && !r.record.decision && (
                 <div style={{ fontSize: 12, color: '#d48806' }}>Pending — decision required to pass</div>
               )}
-              {r.liveBlockers.length > 0 && (
-                <div style={{ fontSize: 12, color: '#cf1322' }}>
-                  <span style={{ fontWeight: 600 }}>What's blocking Gate {r.meta.number}: </span>
+              {r.readinessChecklist.length > 0 && (
+                <div style={{ fontSize: 12 }}>
+                  <span style={{ fontWeight: 600, color: r.liveBlockers.length > 0 ? '#cf1322' : '#389e0d' }}>
+                    {r.liveBlockers.length > 0
+                      ? `What's blocking Gate ${r.meta.number}: `
+                      : `Gate ${r.meta.number} readiness — all requirements met:`}
+                  </span>
                   <ul style={{ margin: '2px 0 0', paddingLeft: 18 }}>
-                    {r.liveBlockers.map((b, idx) => (
-                      <li key={idx}>
-                        {b}
-                        {!r.hardBlockers.includes(b) && ' — clears with Proceed with Conditions'}
-                      </li>
-                    ))}
+                    {r.readinessChecklist.map((b) => {
+                      const color = b.satisfied ? '#389e0d' : '#cf1322';
+                      const targetPath = b.link ? `/projects/${projectId}${b.link.href}` : undefined;
+                      const targetHref = targetPath
+                        ? `${targetPath}${b.link?.scrollToId ? `?scrollTo=${b.link.scrollToId}` : ''}`
+                        : undefined;
+                      // A link to a section on the phase page already open here
+                      // navigates + scrolls in place; a link to a different
+                      // page (a register, the BOM page, ...) opens in a new
+                      // browser tab instead, so the Gate Flow view the user is
+                      // reading isn't replaced. Landing directly on that page
+                      // already auto-expands its sidebar parent group (App.tsx
+                      // derives `openKeys` from the route on mount).
+                      const isSamePage = targetPath === location.pathname;
+                      return (
+                        <li key={b.id} style={{ color }}>
+                          {b.satisfied && '✓ '}
+                          {targetHref ? (
+                            isSamePage ? (
+                              <Link to={targetHref} style={{ color }}>
+                                {b.label}
+                              </Link>
+                            ) : (
+                              <a href={`#${targetHref}`} target="_blank" rel="noopener noreferrer" style={{ color }}>
+                                {b.label}
+                              </a>
+                            )
+                          ) : (
+                            b.label
+                          )}
+                          {!b.satisfied && !b.hardBlock && ' — clears with Proceed with Conditions'}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
@@ -399,8 +466,9 @@ export default function GateFlowTable({
                           onOk: () => {
                             const note = `[Change ack ${dayjs().format('YYYY-MM-DD')}] Decision "${v}" recorded with open change(s) ${ids} acknowledged.`;
                             const notes = r.record.notes ? `${r.record.notes}\n${note}` : note;
-                            setGate(projectId, r.meta.id, { decision: v, notes }, user?.displayName);
-                            patch(r.draftIndex, { decision: v, notes });
+                            setGate(projectId, r.meta.id, { decision: v, notes }, user?.displayName)
+                              .then(() => patch(r.draftIndex, { decision: v, notes }))
+                              .catch(reportWriteError);
                           },
                         });
                         return;

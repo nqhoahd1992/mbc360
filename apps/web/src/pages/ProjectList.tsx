@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, DatePicker, Form, Input, Modal, Popconfirm, Progress, Select, Table, Tag, message } from 'antd';
+import { Button, Card, DatePicker, Form, Input, Modal, Popconfirm, Popover, Progress, Select, Table, Tag, message } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
@@ -8,6 +8,7 @@ import { PHASE_1 } from '@mbc360/shared/config/phases';
 import { REVIEW_ROLES } from '@mbc360/shared/config/reviewers';
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
+import { useSession } from '../auth/useSession';
 
 interface NewProjectForm {
   id: string;
@@ -36,6 +37,8 @@ export default function ProjectList() {
   const deleteProject = useAppStore((s) => s.deleteProject);
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<NewProjectForm>();
+  // Used only to mark the signed-in person in the Reviewers column.
+  const myName = useSession().user?.displayName;
 
   // Active users for the reviewer pickers (no hard role filter — every field
   // lists all active users, role shown as a tag). Fetched when the modal opens.
@@ -75,13 +78,21 @@ export default function ProjectList() {
       message.error('Project ID already exists');
       return;
     }
-    createProject({
-      ...values,
-      dateOpened: dayjs().format('YYYY-MM-DD'),
-      targetLaunchDate: values.targetLaunchDate ? values.targetLaunchDate.format('YYYY-MM-DD') : '',
-      markets: values.markets ?? [],
-      reviewers: values.reviewers,
-    });
+    // M3 Phase 1: this is a real POST /api/projects now, so it can be rejected
+    // (duplicate id/product code, validation) — the modal stays open with the
+    // entered values instead of pretending the project was created.
+    try {
+      await createProject({
+        ...values,
+        dateOpened: dayjs().format('YYYY-MM-DD'),
+        targetLaunchDate: values.targetLaunchDate ? values.targetLaunchDate.format('YYYY-MM-DD') : '',
+        markets: values.markets ?? [],
+        reviewers: values.reviewers,
+      });
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : 'Could not create the project');
+      return;
+    }
     message.success('Project created');
     setOpen(false);
     form.resetFields();
@@ -101,7 +112,7 @@ export default function ProjectList() {
         size="small"
         rowKey={(p) => p.identity.id}
         dataSource={projects}
-        scroll={{ x: 1060 }}
+        scroll={{ x: 1290 }}
         columns={[
           {
             title: 'Project ID',
@@ -125,6 +136,71 @@ export default function ProjectList() {
                 ))}
               </div>
             ),
+          },
+          {
+            // The 13 review areas assigned at project creation. One person can
+            // hold several areas, so the cell lists DISTINCT people (a few
+            // inline, the rest behind a popover with the full role -> person
+            // grid) rather than 13 near-duplicate names.
+            title: 'Reviewers',
+            width: 230,
+            render: (_, p) => {
+              const reviewers = p.identity.reviewers ?? {};
+              const assigned = REVIEW_ROLES.filter((role) => !!reviewers[role.key]?.trim());
+              if (assigned.length === 0) {
+                return <span style={{ color: '#bbb' }}>Not assigned</span>;
+              }
+              // Distinct people, in role order, each with every area they hold.
+              const byPerson = new Map<string, string[]>();
+              for (const role of assigned) {
+                const name = reviewers[role.key].trim();
+                if (!byPerson.has(name)) byPerson.set(name, []);
+                byPerson.get(name)!.push(role.label);
+              }
+              const people = [...byPerson.entries()];
+              const shown = people.slice(0, 3);
+              const hidden = people.length - shown.length;
+              const isMe = (name: string) =>
+                !!myName && name.trim().toLowerCase() === myName.trim().toLowerCase();
+              return (
+                <Popover
+                  placement="left"
+                  title={`Review owners — ${p.identity.id}`}
+                  content={
+                    <div style={{ display: 'grid', gap: 2, fontSize: 12, maxWidth: 320 }}>
+                      {REVIEW_ROLES.map((role) => {
+                        const name = reviewers[role.key]?.trim();
+                        return (
+                          <div key={role.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                            <span style={{ color: '#888' }}>{role.label}</span>
+                            <span style={{ fontWeight: name && isMe(name) ? 700 : 400 }}>
+                              {name || <span style={{ color: '#bbb' }}>unassigned</span>}
+                              {name && isMe(name) && <Tag color="gold" style={{ marginInlineStart: 6 }}>You</Tag>}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  }
+                >
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, cursor: 'help' }}>
+                    {shown.map(([name, areas]) => (
+                      <Tag
+                        key={name}
+                        color={isMe(name) ? 'gold' : undefined}
+                        style={{ marginInlineEnd: 0 }}
+                      >
+                        {name}
+                        {areas.length > 1 && <span style={{ opacity: 0.6 }}> ×{areas.length}</span>}
+                      </Tag>
+                    ))}
+                    {hidden > 0 && (
+                      <Tag style={{ marginInlineEnd: 0, borderStyle: 'dashed' }}>+{hidden} more</Tag>
+                    )}
+                  </div>
+                </Popover>
+              );
+            },
           },
           {
             title: 'Change requests',
@@ -159,7 +235,11 @@ export default function ProjectList() {
             render: (_, p) => (
               <Popconfirm
                 title="Delete this project?"
-                onConfirm={() => deleteProject(p.identity.id)}
+                onConfirm={() =>
+                  deleteProject(p.identity.id).catch((err: unknown) =>
+                    message.error(err instanceof Error ? err.message : 'Could not delete the project'),
+                  )
+                }
               >
                 <Button size="small" danger type="text" icon={<DeleteOutlined />} />
               </Popconfirm>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ConfigProvider, Divider, Layout, Menu, Popconfirm, Button, Select, Spin, Tooltip, Typography } from 'antd';
+import { ConfigProvider, Divider, Layout, Menu, Button, Select, Spin, Tooltip, Typography } from 'antd';
 import {
   ApiOutlined,
   AppstoreOutlined,
@@ -7,9 +7,9 @@ import {
   EyeOutlined,
   FolderOpenOutlined,
   LockOutlined,
-  ReloadOutlined,
   RightCircleFilled,
   SearchOutlined,
+  StarOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
 import { HashRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
@@ -36,10 +36,13 @@ import CompetitorLandscape from './pages/CompetitorLandscape';
 import TargetProductTech from './pages/TargetProductTech';
 import EvidenceClaimSupport from './pages/EvidenceClaimSupport';
 import EvidenceSearchRules from './pages/EvidenceSearchRules';
+import GateRulesMap from './pages/GateRulesMap';
+import MySheets from './pages/MySheets';
 import IntegrationsPage from './pages/IntegrationsPage';
 import Login from './pages/Login';
 import { PHASES } from '@mbc360/shared/config/gates';
-import { getNavGroups, findNavGroupForRegister, navItemHref, formatGate } from '@mbc360/shared/config/registers';
+import { getNavGroups, findNavGroupForRegister, getRegisterConfig, navItemHref, formatGate } from '@mbc360/shared/config/registers';
+import { ownerName, reviewRoleLabel } from '@mbc360/shared/config/reviewers';
 import { phaseProgress } from '@mbc360/shared/utils/gateProgress';
 
 const { Sider, Header, Content } = Layout;
@@ -115,6 +118,13 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
     if (!projectId || !activeProject) return [];
     const items = [
       { key: `/projects/${projectId}`, label: <Link to={`/projects/${projectId}`}>Overview</Link> },
+      {
+        // The digital replacement for the workbook's owner tab-prefix: which
+        // sheets THIS signed-in person is responsible for on THIS project.
+        key: `/projects/${projectId}/my-sheets`,
+        icon: <StarOutlined style={{ color: '#faad14' }} />,
+        label: <Link to={`/projects/${projectId}/my-sheets`}>My Sheets</Link>,
+      },
       ...PHASES.map((ph) => {
         const progress = phaseProgress(activeProject, ph.phase);
         const icon =
@@ -148,31 +158,62 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
   // match below.
   const registerItems = useMemo(() => {
     if (!projectId) return [];
-    return getNavGroups().map((group) => ({
-      key: `registers-sub-${group.key}`,
-      label: group.title,
-      children: [
-        {
-          key: `cat:${group.key}`,
-          label: <Link to={`/projects/${projectId}/registers/cat/${group.key}`}>Overview</Link>,
-        },
-        ...group.items.map((item, idx) => {
-          const gate = formatGate(item.gate);
-          return {
-            key: `${group.key}:${idx}`,
-            label: (
-              <Link to={navItemHref(item, projectId)}>
-                {item.title}
-                {gate && (
-                  <span style={{ marginLeft: 6, opacity: 0.55, fontSize: 11 }}>{gate}</span>
-                )}
-              </Link>
-            ),
-          };
-        }),
-      ],
-    }));
-  }, [projectId]);
+    const reviewers = activeProject?.identity.reviewers;
+    return getNavGroups().map((group) => {
+      // The group is labelled with the person actually assigned to it on THIS
+      // project (the workbook's tab-name prefix digitised — see reviewers.ts),
+      // not a name baked into config.
+      const groupOwner = ownerName(group.reviewOwner, reviewers);
+      const groupRole = group.reviewOwner?.owner.role;
+      return {
+        key: `registers-sub-${group.key}`,
+        label: (
+          <span>
+            {group.title}
+            {groupOwner && (
+              <span style={{ marginLeft: 6, opacity: 0.5, fontSize: 11, fontWeight: 400 }}>
+                {groupOwner}
+              </span>
+            )}
+          </span>
+        ),
+        children: [
+          {
+            key: `cat:${group.key}`,
+            label: <Link to={`/projects/${projectId}/registers/cat/${group.key}`}>Overview</Link>,
+          },
+          ...group.items.map((item, idx) => {
+            const gate = formatGate(item.gate);
+            // Some sheets are deliberately filed outside their own review
+            // owner's group (10 R&I-owned sheets sit under "Quality" — a
+            // confirmed business remap, see CLAUDE.md). Without this badge the
+            // sidebar reads "Quality" while the page caption reads "…(R&I)",
+            // which looks like a contradiction rather than a decision.
+            const itemRole = item.registerKey
+              ? getRegisterConfig(item.registerKey)?.reviewOwner?.owner.role
+              : undefined;
+            const showOwnerBadge = !!itemRole && !!groupRole && itemRole !== groupRole;
+            return {
+              key: `${group.key}:${idx}`,
+              label: (
+                <Link to={navItemHref(item, projectId)}>
+                  {item.title}
+                  {gate && (
+                    <span style={{ marginLeft: 6, opacity: 0.55, fontSize: 11 }}>{gate}</span>
+                  )}
+                  {showOwnerBadge && (
+                    <span style={{ marginLeft: 6, opacity: 0.55, fontSize: 11 }}>
+                      · {reviewRoleLabel(itemRole)}
+                    </span>
+                  )}
+                </Link>
+              ),
+            };
+          }),
+        ],
+      };
+    });
+  }, [projectId, activeProject]);
 
   // Highlight every leaf whose route matches the current path.
   const registerSelectedKeys = useMemo(() => {
@@ -316,10 +357,10 @@ function StickySidebar({ children }: { children: React.ReactNode }) {
 }
 
 function Shell() {
-  const resetDemoData = useAppStore((s) => s.resetDemoData);
   const viewRole = useAppStore((s) => s.viewRole);
   const setViewRole = useAppStore((s) => s.setViewRole);
   const loadPermissionGrid = useAppStore((s) => s.loadPermissionGrid);
+  const loadProjects = useAppStore((s) => s.loadProjects);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   const session = useSession();
@@ -331,6 +372,15 @@ function Shell() {
   useEffect(() => {
     if (session.user) void loadPermissionGrid();
   }, [session.user, loadPermissionGrid]);
+
+  // M3 Phase 1: projects are server state now, so they are fetched once the
+  // session resolves instead of being seeded into localStorage. Nothing renders
+  // project data before this completes (the list simply shows empty), and
+  // failures surface through `projectsError` rather than silently showing an
+  // empty database.
+  useEffect(() => {
+    if (session.user) void loadProjects();
+  }, [session.user, loadProjects]);
 
   // Microsoft 365 SSO is the only sign-in method — no session (never signed
   // in, signed out, or the session expired) means the Login screen, full
@@ -387,17 +437,10 @@ function Shell() {
             <ProjectContextTitle />
           </Typography.Text>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-            <Popconfirm
-              title="Reset all demo data to the seeded samples?"
-              onConfirm={() => resetDemoData()}
-            >
-              <Button size="small" icon={<ReloadOutlined />}>
-                Reset demo data
-              </Button>
-            </Popconfirm>
-
-            <Divider orientation="vertical" style={{ margin: 0, height: 22 }} />
-
+            {/* "Reset demo data" was removed in M3 Phase 1: projects are real
+                database records now, not seeded demo state, so a client-side
+                reset button would have nothing meaningful to reset (and must
+                not be able to wipe server data). */}
             <Tooltip title="Demo simulation: previews screens as if signed in with this role's permissions, until every screen reads permissions from your real signed-in account instead (rule A4).">
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <EyeOutlined style={{ color: '#999' }} />
@@ -453,6 +496,8 @@ function Shell() {
             <Route path="/projects/:projectId/target-product-tech" element={<TargetProductTech />} />
             <Route path="/projects/:projectId/evidence-claim-support" element={<EvidenceClaimSupport />} />
             <Route path="/projects/:projectId/evidence-search-rules" element={<EvidenceSearchRules />} />
+            <Route path="/projects/:projectId/gate-rules-map" element={<GateRulesMap />} />
+            <Route path="/projects/:projectId/my-sheets" element={<MySheets />} />
             <Route path="/projects/:projectId/registers/cat/:categoryKey" element={<RegisterHubPage />} />
             <Route path="/projects/:projectId/registers/reg/:registerKey" element={<RegisterHubPage />} />
             <Route path="/projects/:projectId/evidence" element={<EvidenceSummary />} />

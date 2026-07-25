@@ -21,7 +21,7 @@ Once confirmed, each row becomes one `ReadinessRequirement` entry in `gateReadin
 | Item | Tier | Actual source | Check | Status |
 |---|---|---|---|---|
 | Product request record | Mandatory | `gateChecks` row: "Product request, opportunity and requester captured" (gate '01') | `gateCheckDone` | ✅ Implemented |
-| Project owner | Mandatory | `gateChecks` row: "Initial project record opened and owner assigned" (gate '01') | `gateCheckDone` | ✅ Implemented |
+| Project owner | Mandatory | `ProjectIdentity.projectLead` — **required** on the Create New Project form, so a project can never exist without one (2026-07-25 fix: previously reused the "Initial project record opened and owner assigned" Key Gate Check row, which made the user re-confirm something project creation already guarantees) | `identityFieldFilled` | ✅ Implemented (always satisfied) |
 | Request source | Mandatory | Same row as "Product request record" — no separate signal exists | `gateCheckDone` | ✅ Implemented (shared evidence) |
 | Initial product scope | Mandatory | *(none — no field matches)* | `manual` | ⛔ Open question — see `F1_Per_Gate_Open_Questions.md` Q1 |
 | Initial target market and user | Mandatory | *(none — only Gate-02-tagged checklist data exists)* | `manual` | ⛔ Open question — see `F1_Per_Gate_Open_Questions.md` Q2 |

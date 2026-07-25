@@ -32,3 +32,6 @@ pnpm-debug.log*
 
 # Generated Prisma client (recreated by `prisma generate` during dev/build)
 apps/api/src/generated/
+
+# Excel lock files (created while a workbook in docs/ is open)
+~$*

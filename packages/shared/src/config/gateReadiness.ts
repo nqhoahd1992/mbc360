@@ -88,7 +88,14 @@ export type ReadinessCheck =
   // (e.g. needsSignOff/targetProductSignOff) has name AND date filled for
   // every role" as ONE clean Mandatory item instead of two awkwardly-split
   // single-column items.
-  | { kind: 'registerRowsComplete'; register: string; columns: string[] };
+  | { kind: 'registerRowsComplete'; register: string; columns: string[] }
+  // A `ProjectIdentity` field is non-empty — for fields that are REQUIRED on
+  // the Create New Project form (ProjectList.tsx), so this is really "was the
+  // project created at all" rather than a per-gate task; used where a Gate
+  // 01 F1 item duplicates data the project can never actually be missing
+  // (e.g. Project Lead/owner, required to create the project in the first
+  // place — see 2026-07-25 sg01-owner fix).
+  | { kind: 'identityFieldFilled'; field: 'projectLead' };
 
 export interface ReadinessRequirement {
   id: string;
@@ -113,10 +120,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'gateCheckDone', gate: '01', check: 'Product request, opportunity and requester captured' },
     },
     {
+      // Project Lead is a REQUIRED field on the Create New Project form
+      // itself (ProjectList.tsx) — a project cannot exist without one, so
+      // this can never actually be missing by the time Gate 01 is being
+      // worked. Previously reused the "Initial project record opened and
+      // owner assigned" Key Gate Check row, which made the user manually
+      // re-confirm something the project creation flow already guarantees.
       id: 'sg01-owner',
       label: 'Project owner',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '01', check: 'Initial project record opened and owner assigned' },
+      check: { kind: 'identityFieldFilled', field: 'projectLead' },
     },
     {
       id: 'sg01-source',

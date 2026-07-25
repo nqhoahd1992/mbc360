@@ -1,6 +1,7 @@
+import { useEffect } from 'react';
 import { Alert, Button, Empty, Tag, Typography } from 'antd';
 import { CheckCircleFilled, ClockCircleFilled, LockOutlined, RightCircleFilled } from '@ant-design/icons';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import {
   currentGateNumber,
   isGateRefLocked,
@@ -41,6 +42,36 @@ export default function PhasePage() {
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const viewRole = useAppStore((s) => s.viewRole);
   const acceptPreWork = useAppStore((s) => s.acceptPhasePreWork);
+
+  // Deep-link support for the "What's blocking Gate X" list (GateFlowTable):
+  // a blocker link to a section on THIS phase page carries `?scrollTo=<anchor
+  // id>`. On arrival, scroll to it and briefly highlight it, then drop the
+  // param so a later refresh/re-render doesn't re-trigger the scroll.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const targetId = searchParams.get('scrollTo');
+    if (!targetId) return;
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const prevBackground = el.style.backgroundColor;
+    const prevTransition = el.style.transition;
+    el.style.transition = 'background-color 0.4s';
+    el.style.backgroundColor = '#fffbe6';
+    const timer = setTimeout(() => {
+      el.style.backgroundColor = prevBackground;
+      el.style.transition = prevTransition;
+    }, 2200);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('scrollTo');
+        return next;
+      },
+      { replace: true },
+    );
+    return () => clearTimeout(timer);
+  }, [searchParams, setSearchParams]);
 
   const config = PHASE_CONFIGS[phase];
   const meta = PHASES.find((p) => p.phase === phase);

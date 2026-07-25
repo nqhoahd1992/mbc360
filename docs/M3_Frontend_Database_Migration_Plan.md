@@ -76,6 +76,51 @@ Tạo `ProjectsModule` mới (đăng ký vào `app.module.ts`), dùng lại `Pri
 6. **Idempotency:** gọi `POST /api/projects/:id/backtrack` 2 lần liên tiếp với cùng `Idempotency-Key` (mô phỏng double-click/retry mạng) — xác nhận chỉ có **đúng 1** `backtrackEvent` mới được tạo, gate range chỉ bị reset 1 lần (không bị reset chồng hay ghi đè lần 2 lên dữ liệu đã reset của lần 1).
 7. **Guard server-side độc lập với FE:** gọi thẳng `PUT /gates/:gateId` bằng `curl` với payload cố tình vi phạm rule (vd. `decision: 'Proceed with Conditions'` khi còn `hardGateBlockers`) — xác nhận server tự chặn (không ghi, trả lỗi rõ ràng) dù không đi qua UI, chứng minh rule không chỉ tồn tại ở `GateFlowTable.tsx`.
 
+---
+
+## ✅ Trạng thái: Phase 1 ĐÃ HOÀN THÀNH (2026-07-26)
+
+Toàn bộ Phase 1 đã code và verify end-to-end. Những gì thực tế khác với kế hoạch ban đầu, ghi lại đầy đủ ở đây:
+
+### Tiền đề phát sinh (kế hoạch không lường trước, đã làm trước khi code)
+
+Khi đối chiếu schema thật với `ProjectData`, phát hiện **schema đã trôi** so với frontend kể từ khi tài liệu này được viết (2026-07-22) — câu "schema khớp gần như 1:1" đúng lúc đó nhưng type frontend đã đi tiếp. Gộp vào **2 migration**:
+
+- `20260725170519_add_project_reviewers` — bảng `project_reviewers` (13 review area per project). **DB trước đó không có chỗ nào lưu reviewers**, nên `POST /projects` sẽ làm mất toàn bộ assignment và mọi caption "Review owner", trang My Sheets, cột Responsible của Sheet Map đều rỗng. Lưu cả `userId` (FK thật, query được) và `name` (snapshot — mọi FK tới `User` đều `SetNull`, xoá user sẽ xoá trắng danh tính, trái B4).
+- `20260725171452_m3_phase1_prereqs` — 4 thứ: `projects.version` (optimistic lock, quyết định #2 **yêu cầu** nhưng cột chưa tồn tại), bảng `idempotency_keys` (cùng quyết định #2, cũng chưa tồn tại), `phase_closures.preWorkAcceptedBy/Date` (F13, cần cho Phase 2), `next_actions.raisedBy/verifiedBy` (F8, DB chỉ có `closedBy` — cần cho Phase 5).
+
+`diffGateRecord`/`GATE_RECORD_FIELDS` đã chuyển từ `useAppStore.ts` sang `packages/shared/src/utils/gateDiff.ts` (nguyên tắc "never fork a copy") — server và client giờ diff bằng cùng một hàm.
+
+**Không phải gap** (đã kiểm, để không sửa oan): `formulaVersion` hiện tại suy ra được từ `FormulaVersion.status = 'Active'`; `previousBomSnapshot` không cần vì `BomLine` đã gắn `formulaVersionId` — lịch sử thật, tốt hơn snapshot.
+
+### Quyết định "shape chuyển tiếp": chọn **(a) mở rộng** — đọc ĐẦY ĐỦ, ghi chỉ Phase 1
+
+Không dùng "giá trị rỗng mặc định" như phương án (a) mô tả. Lý do: **rule engine server-side cần dữ liệu thật** (`checklists`/`gateChecks`/`registers`/`bom`/`nextActions`) để chạy `gateBlockers`; trả rỗng thì mọi gate sẽ bị chặn sai. Vì mọi bảng đã tồn tại trong DB, `project-mapper.ts` map **toàn bộ 20 field** của `ProjectData` từ Prisma. Kết quả: `GET /projects/:id` trả object hoàn chỉnh, các trang Phase 2–6 render đúng dữ liệu DB (không rỗng), chỉ có **ghi** là còn giới hạn ở Phase 1. Hệ quả cần biết: sửa ở các trang chưa migrate vẫn chỉ nằm trong bộ nhớ Zustand và mất khi reload — cho tới khi phase tương ứng xong.
+
+### Khác biệt so với kế hoạch
+
+- **`changes` (Change Control) vẫn ở localStorage.** Kế hoạch (mục Frontend) nói bỏ cả `projects` **và** `changes` khỏi persist ở Phase 1, nhưng bảng chia phase lại đặt `changes` ở **Phase 6** — hai chỗ tự mâu thuẫn. Giữ `changes` persisted là lựa chọn đúng: bỏ ra mà chưa có API thì dữ liệu Change Control mất khi reload.
+- **`resetDemoData` đã xoá hẳn** (quyết định #4) cùng nút "Reset demo data" trên header — projects là bản ghi DB thật, không còn gì để "reset" và client không được phép xoá dữ liệu server.
+- **`Project.id` = mã project người dùng nhập** (`MBC-2026-001`), truyền tường minh chứ không để cuid mặc định, để `ProjectIdentity.id` và URL `/projects/:id` trùng nhau. Project demo đã seed **trước** thay đổi này vẫn giữ id cuid; muốn id đẹp thì `docker compose down -v` + `npm run db:setup`.
+- **`changedBy` do client truyền giờ bị server bỏ qua** — actor lấy từ session (`@CurrentUser()`), client không thể mạo danh. Tham số vẫn giữ trong chữ ký store action để 6 call site compile không đổi.
+- **Ghi bị từ chối giờ THROW** thay vì no-op âm thầm như guard cũ ở store; `GateFlowTable`/`ProjectList` bắt lỗi và hiện message của server (409 có thông điệp riêng: "reload trước khi lưu"), draft không bị mất.
+
+### Kết quả kiểm thử (đúng 7 mục ở "Kế hoạch kiểm thử" bên trên)
+
+| # | Nội dung | Kết quả |
+|---|---|---|
+| 1 | migrate + seed | ✅ 2 migration áp dụng, seed idempotent (chạy 2 lần: 13 reviewer, không nhân bản) |
+| 2 | curl mọi endpoint | ✅ POST thiếu `Idempotency-Key` → 400; POST có key → 201 + `ProjectData` đầy đủ; GET list/detail; DELETE |
+| 3 | browser: sửa Gate 01 → Save → **reload toàn trang** | ✅ owner + notes còn nguyên sau reload (bằng chứng dữ liệu ở Postgres); Backtrack + popup History hiện cả backtrack event lẫn field edit |
+| 4 | localStorage không còn là nguồn dữ liệu | ✅ key `projects` không còn trong `mbc360-demo-store` |
+| 5 | race 2 tab cùng version | ✅ tab A lưu được, tab B nhận "changed by someone else", **edit của tab B không bị mất**, DB giữ giá trị của tab A |
+| 6 | idempotency backtrack 2 lần cùng key | ✅ đúng **1** `backtrack_events` row |
+| 7 | guard server-side độc lập FE | ✅ curl `Proceed` **và** `Proceed with Conditions` khi còn F1/C7 mandatory → 400 kèm danh sách blocker; sửa gate chưa mở → 403; version cũ → 409 |
+
+### Việc còn lại của M3
+
+Phase 2–6 theo đúng bảng chia phase bên trên, dùng lại khuôn mẫu Phase 1 (`project-mapper.ts` đã map sẵn mọi field nên chỉ cần thêm endpoint **ghi** + rewrite store action tương ứng). Lưu ý riêng: Phase 2 cần `preWork` (đã có cột), Phase 5 cần `raisedBy`/`verifiedBy` (đã có cột).
+
 ## Tài liệu liên quan
 
 `docs/BACKEND_PLAN.md` §3 (nguyên tắc kiến trúc), §4 (thiết kế DB), §5 (danh sách endpoint) — tài liệu này là kế hoạch triển khai cụ thể cho M3 dựa trên các mục đó. Sau khi Phase 1 hoàn thành, cập nhật lại dòng M3 trong bảng milestone của `BACKEND_PLAN.md` §6 và cập nhật `CLAUDE.md`'s phần "Status & pending work" cho khớp.

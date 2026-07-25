@@ -105,3 +105,57 @@ export function composeReviewOwner(spec: ReviewOwnerSpec, reviewers: Record<stri
   out += ` · Co-sign: ${coSign.map(credit).join(', ')}`;
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Person -> responsibility lookups (2026-07-25)
+// ---------------------------------------------------------------------------
+// The source workbook encoded "who is responsible" as a tab-name PREFIX
+// (Tuan-, George-, ChiChu-, …), which is how a person found their own tabs.
+// Digitised, that prefix must NOT be a fixed folder: the people are assigned
+// per project on the Create New Project form (ProjectIdentity.reviewers), so
+// "my sheets" is a per-project lookup, not a static grouping. These helpers
+// back the "My Sheets" page and the Sheet Map's responsibility facet.
+
+export type ReviewInvolvement = 'owner' | 'co-review' | 'co-sign';
+
+// Which review roles a person holds on a project. Matched on the stored
+// displayName (what the Create-form user picker writes), trimmed and
+// case-insensitive so a differently-cased directory name still matches.
+export function rolesAssignedTo(
+  reviewers: Record<string, string> | undefined,
+  personName: string | undefined,
+): string[] {
+  const needle = personName?.trim().toLowerCase();
+  if (!needle || !reviewers) return [];
+  return Object.entries(reviewers)
+    .filter(([, name]) => name?.trim().toLowerCase() === needle)
+    .map(([role]) => role);
+}
+
+// How the holder of `roleKeys` is involved in one review spec. Mirrors
+// composeReviewOwner's auto-appended Project Manager co-signature, so the
+// Project Manager correctly comes back as a co-signer of EVERY area rather
+// than appearing to own nothing.
+export function involvementIn(
+  spec: ReviewOwnerSpec | undefined,
+  roleKeys: string[],
+): ReviewInvolvement[] {
+  if (!spec || roleKeys.length === 0) return [];
+  const holds = (c: ReviewCredit) => roleKeys.includes(c.role);
+  const out: ReviewInvolvement[] = [];
+  if (holds(spec.owner)) out.push('owner');
+  if ((spec.coReview ?? []).some(holds)) out.push('co-review');
+  const coSign: ReviewCredit[] = [...(spec.coSign ?? []), { role: 'project-manager' }];
+  if (coSign.some(holds)) out.push('co-sign');
+  return out;
+}
+
+// The assigned person for a spec's OWNER role, e.g. to label a nav group with
+// who actually holds it on this project. Falls back to the area label.
+export function ownerName(
+  spec: ReviewOwnerSpec | undefined,
+  reviewers: Record<string, string> | undefined,
+): string | undefined {
+  if (!spec) return undefined;
+  return reviewers?.[spec.owner.role]?.trim() || `‹${reviewRoleLabel(spec.owner.role)}›`;
+}
