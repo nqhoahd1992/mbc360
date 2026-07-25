@@ -11,8 +11,6 @@ import type {
   EvidenceItem,
   FeedbackEntry,
   GateCheck,
-  GateChangeLogEntry,
-  GateFieldChange,
   GateRecord,
   GraphSettings,
   IntegrationSettings,
@@ -26,14 +24,14 @@ import type {
   SignOff,
   StudyApproval,
 } from '@mbc360/shared/types';
-import { createEmptyProject, createEmptyRegisterRow } from './factory';
+import { createEmptyRegisterRow } from './factory';
 import type { PermissionGrid } from '../utils/permissions';
-import { seedChanges, seedProjects } from '../data/seed';
-import { gateBlockers, gateIndex, hardGateBlockers, isGateRefLocked, isGateUnlocked } from '@mbc360/shared/utils/gateProgress';
+import { seedChanges } from '../data/seed';
+import * as projectsApi from '../api/projectsApi';
+import { gateIndex, isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { GATES } from '@mbc360/shared/config/gates';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import { getRegisterConfig } from '@mbc360/shared/config/registers';
-import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 
 interface AppState {
   projects: ProjectData[];
@@ -52,26 +50,41 @@ interface AppState {
   permissionGrid: PermissionGrid | null;
   loadPermissionGrid: () => Promise<void>;
 
-  createProject: (identity: ProjectIdentity) => void;
-  deleteProject: (id: string) => void;
+  // M3 Phase 1 (2026-07-26): `projects` is no longer demo data in localStorage —
+  // it is server state fetched from GET /api/projects/:id. Zustand stays the
+  // in-memory cache the UI renders from (BACKEND_PLAN §1: no React Query), so
+  // every action below replaces its cached project with the API's response.
+  // `projectVersions` holds the optimistic-lock version per project id; a write
+  // sends the version it last saw and gets 409 if someone else got there first.
+  projectVersions: Record<string, number>;
+  projectsLoading: boolean;
+  projectsError?: string;
+  loadProjects: () => Promise<void>;
+  loadProject: (id: string) => Promise<void>;
+
+  createProject: (identity: ProjectIdentity) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
   updateProject: (id: string, updater: (p: ProjectData) => ProjectData) => void;
 
   // `changedBy` (the real signed-in user) is recorded on every field this
   // patch actually changes, in `gateChangeLog` — the general "who changed
   // what" audit trail for Phase Gate Flow edits.
-  setGate: (id: string, gateId: string, patch: Partial<GateRecord>, changedBy?: string) => void;
+  // `changedBy` is now ignored by the server (the audited actor comes from the
+  // session — a client cannot claim to be someone else); the parameter is kept
+  // so the ~6 existing call sites compile unchanged.
+  setGate: (id: string, gateId: string, patch: Partial<GateRecord>, changedBy?: string) => Promise<void>;
   // Pairs with useDraft: commits a whole batch of edited GateRecord rows (one
   // Phase Gate Flow table's worth) in a single write, applying the same B1/F9
   // decision guards as setGate — but scoped to the `decision` field only, so
   // an invalid decision change never discards the row's other valid edits.
-  setGatesBulk: (id: string, updates: GateRecord[], changedBy?: string) => void;
+  setGatesBulk: (id: string, updates: GateRecord[], changedBy?: string) => Promise<void>;
   backtrackGate: (
     id: string,
     fromGateId: string,
     toGateId: string,
     reason?: string,
     initiatedBy?: string,
-  ) => void;
+  ) => Promise<void>;
 
   // Bulk-commit the actions in scope for `gateIds` (NextActionsCard shows a
   // per-phase FILTERED subset of the full list) — replaces that whole subset
@@ -130,7 +143,6 @@ interface AppState {
   addChange: (record: ChangeRecord) => void;
   setChangesBulk: (records: ChangeRecord[]) => void;
 
-  resetDemoData: () => void;
 }
 
 // C2: the Independent Reviewer must not belong to the Study Author's department.
@@ -144,37 +156,6 @@ function studyApprovalConflict(approvals: StudyApproval[]): boolean {
   );
 }
 
-// Every ordinary Phase Gate Flow edit (setGate/setGatesBulk) is diffed
-// against the field's previous value and logged to `gateChangeLog` — the
-// general audit trail for regular edits, distinct from the richer
-// BacktrackEvent log used specifically for backtracks (see backtrackGate).
-const GATE_RECORD_FIELDS: GateFieldChange['field'][] = [
-  'status',
-  'decision',
-  'owner',
-  'dueDate',
-  'evidenceLink',
-  'notes',
-];
-
-function diffGateRecord(existing: GateRecord, next: Partial<GateRecord>): GateFieldChange[] {
-  const changes: GateFieldChange[] = [];
-  for (const field of GATE_RECORD_FIELDS) {
-    if (field in next && next[field] !== existing[field]) {
-      changes.push({ field, from: existing[field], to: next[field] });
-    }
-  }
-  return changes;
-}
-
-function gateChangeLogEntry(
-  gateId: string,
-  changedBy: string | undefined,
-  changes: GateFieldChange[],
-): GateChangeLogEntry {
-  return { id: `GCL-${Date.now()}-${gateId}`, gateId, date: dayjs().format('YYYY-MM-DD HH:mm'), changedBy, changes };
-}
-
 const DEFAULT_INTEGRATIONS: IntegrationSettings = {
   powerApps: {
     // PLACEHOLDER — replace with the real "Create new raw material" Power Apps
@@ -186,14 +167,33 @@ const DEFAULT_INTEGRATIONS: IntegrationSettings = {
 
 export const useAppStore = create<AppState>()(
   persist(
-    (set) => {
+    (set, get) => {
+      // Replace one cached project (and its optimistic-lock version) with a
+      // server response, so a mutation response and a fresh GET land in exactly
+      // the same state. A local helper rather than a store action: nothing
+      // outside this file should be able to inject a project.
+      const applyEnvelope = (envelope: projectsApi.ProjectEnvelope) =>
+        set((s) => {
+          const id = envelope.project.identity.id;
+          const exists = s.projects.some((p) => p.identity.id === id);
+          return {
+            projects: exists
+              ? s.projects.map((p) => (p.identity.id === id ? envelope.project : p))
+              : [...s.projects, envelope.project],
+            projectVersions: { ...s.projectVersions, [id]: envelope.version },
+          };
+        });
+
       const updateProject = (id: string, updater: (p: ProjectData) => ProjectData) =>
         set((s) => ({
           projects: s.projects.map((p) => (p.identity.id === id ? updater(p) : p)),
         }));
 
       return {
-        projects: seedProjects(),
+        // Empty until loadProjects() runs (App.tsx, once the session resolves).
+        projects: [],
+        projectVersions: {},
+        projectsLoading: false,
         changes: seedChanges(),
 
         viewRole: 'admin',
@@ -206,181 +206,72 @@ export const useAppStore = create<AppState>()(
           set({ permissionGrid: (await res.json()) as PermissionGrid });
         },
 
-        createProject: (identity) =>
-          set((s) => ({ projects: [...s.projects, createEmptyProject(identity)] })),
-        deleteProject: (id) =>
-          set((s) => ({ projects: s.projects.filter((p) => p.identity.id !== id) })),
+        // The list endpoint returns summary rows only, so each project is then
+        // fetched in full — the UI reads whole ProjectData objects everywhere,
+        // and Phase 1 has no per-page lazy loading to build on yet.
+        loadProjects: async () => {
+          set({ projectsLoading: true, projectsError: undefined });
+          try {
+            const list = await projectsApi.listProjects();
+            const loaded = await Promise.all(list.map((row) => projectsApi.getProject(row.id)));
+            set({
+              projects: loaded.map((e) => e.project),
+              projectVersions: Object.fromEntries(loaded.map((e) => [e.project.identity.id, e.version])),
+              projectsLoading: false,
+            });
+          } catch (err) {
+            set({
+              projectsLoading: false,
+              projectsError: err instanceof Error ? err.message : 'Could not load projects',
+            });
+          }
+        },
+
+        loadProject: async (id) => {
+          const envelope = await projectsApi.getProject(id);
+          applyEnvelope(envelope);
+        },
+
+        createProject: async (identity) => {
+          const envelope = await projectsApi.createProject(identity, projectsApi.newIdempotencyKey());
+          applyEnvelope(envelope);
+        },
+
+        deleteProject: async (id) => {
+          await projectsApi.deleteProject(id);
+          set((s) => {
+            const { [id]: _dropped, ...versions } = s.projectVersions;
+            return { projects: s.projects.filter((p) => p.identity.id !== id), projectVersions: versions };
+          });
+        },
         updateProject,
 
-        // Uses `set((s) => ...)` (not updateProject) so the F9 guard below can
-        // read the sibling `changes` slice.
-        setGate: (id, gateId, patch, changedBy) =>
-          set((s) => ({
-            projects: s.projects.map((p) => {
-              if (p.identity.id !== id) return p;
-              // Sequential rule: locked gates (after the current one) cannot change
-              if (!isGateUnlocked(p, gateId)) return p;
-              const existing = p.gates.find((g) => g.gateId === gateId);
-              if (!existing) return p;
-              if (patch.decision === 'Proceed' || patch.decision === 'Proceed with Conditions') {
-                const status = patch.status ?? existing.status;
-                if (patch.decision === 'Proceed') {
-                  // B1: a Gap prevents a normal Proceed decision.
-                  if (status === 'Gap') return p;
-                  // F9: an open change control record affecting this gate blocks a
-                  // plain Proceed (Proceed with Conditions is allowed instead).
-                  const gateNumber = GATES.find((g) => g.id === gateId)?.number;
-                  const hasOpenChange = s.changes.some((c) => {
-                    if (c.projectId !== id || !isChangeOpen(c.status)) return false;
-                    const trig = getChangeTrigger(c.triggerId);
-                    return (
-                      !!trig &&
-                      (trig.gates.includes('ALL') || (!!gateNumber && trig.gates.includes(gateNumber)))
-                    );
-                  });
-                  if (hasOpenChange) return p;
-                }
-                // F1/C7: mandatory evidence / safety / critical-action blockers must
-                // be cleared before either decision can be recorded — Proceed with
-                // Conditions clears the softer open-non-critical-next-action
-                // blocker (gateBlockers with this decision as the override) but not
-                // the harder ones (hardGateBlockers).
-                const blockers =
-                  patch.decision === 'Proceed' ? gateBlockers(p, gateId, patch.decision) : hardGateBlockers(p, gateId);
-                if (blockers.length > 0) return p;
-              }
-              const changes = diffGateRecord(existing, patch);
-              if (changes.length === 0) return p;
-              return {
-                ...p,
-                gates: p.gates.map((g) => (g.gateId === gateId ? { ...g, ...patch } : g)),
-                gateChangeLog: [...p.gateChangeLog, gateChangeLogEntry(gateId, changedBy, changes)],
-              };
-            }),
-          })),
-        setGatesBulk: (id, updates, changedBy) =>
-          set((s) => ({
-            projects: s.projects.map((p) => {
-              if (p.identity.id !== id) return p;
-              let gates = p.gates;
-              const newLogEntries: GateChangeLogEntry[] = [];
-              for (const update of updates) {
-                const { gateId } = update;
-                const existing = gates.find((g) => g.gateId === gateId);
-                if (!existing || !isGateUnlocked(p, gateId)) continue;
-                // Same B1/F9/F1/C7 guard as setGate, scoped to the `decision` field
-                // only: if the new decision would be invalid, keep the existing
-                // decision but still apply every other field edit.
-                let decision = update.decision;
-                if (decision === 'Proceed' || decision === 'Proceed with Conditions') {
-                  const status = update.status ?? existing.status;
-                  let invalid = false;
-                  if (decision === 'Proceed') {
-                    if (status === 'Gap') {
-                      invalid = true;
-                    } else {
-                      const gateNumber = GATES.find((g) => g.id === gateId)?.number;
-                      const hasOpenChange = s.changes.some((c) => {
-                        if (c.projectId !== id || !isChangeOpen(c.status)) return false;
-                        const trig = getChangeTrigger(c.triggerId);
-                        return (
-                          !!trig &&
-                          (trig.gates.includes('ALL') || (!!gateNumber && trig.gates.includes(gateNumber)))
-                        );
-                      });
-                      if (hasOpenChange) invalid = true;
-                    }
-                  }
-                  if (!invalid) {
-                    const blockers = decision === 'Proceed' ? gateBlockers(p, gateId, decision) : hardGateBlockers(p, gateId);
-                    if (blockers.length > 0) invalid = true;
-                  }
-                  if (invalid) decision = existing.decision;
-                }
-                const finalUpdate = { ...update, decision };
-                const changes = diffGateRecord(existing, finalUpdate);
-                if (changes.length > 0) newLogEntries.push(gateChangeLogEntry(gateId, changedBy, changes));
-                gates = gates.map((g) => (g.gateId === gateId ? { ...g, ...finalUpdate } : g));
-              }
-              if (newLogEntries.length === 0) return { ...p, gates };
-              return { ...p, gates, gateChangeLog: [...p.gateChangeLog, ...newLogEntries] };
-            }),
-          })),
-        // Reopens gates from `toGateId` up to AND INCLUDING `fromGateId` for rework
-        // (the gate you're backtracking FROM needs redoing too — that's the whole
-        // reason a Backtrack was recorded there in the first place, not a reason to
-        // leave it untouched), and invalidates ALL sign-offs (Prepared/Reviewed/
-        // Approved) of any phase that has at least one gate in that range — not
-        // only when the range reaches that phase's own closing gate (per-user
-        // decision, 2026-07-23: any affected gate voids the whole phase's sign-off
-        // trail, since "Prepared"/"Reviewed" no longer reliably describe a phase
-        // with a gate now being reworked either). B4 ("no silent corrections"):
-        // nothing is lost — the pre-backtrack gate records and sign-offs are
-        // snapshotted into an immutable BacktrackEvent before the live records are
-        // reset. Who/why/when is recorded ONLY on that immutable event (shown on
-        // Project Overview) — deliberately not also written into the `notes`
-        // field, which is a normal editable field and would give a false,
-        // overwritable sense of being "the" audit record. Previously `fromGateId`
-        // was excluded from the reset and instead kept `decision: 'Backtrack'` as
-        // a permanent marker — that left it showing "Backtrack" still selected in
-        // the Gate Flow table instead of reopened like every other gate in the
-        // range, and (since it's the range's upper bound) silently skipped
-        // invalidating a phase whose LAST gate is `fromGateId` itself.
-        backtrackGate: (id, fromGateId, toGateId, reason, initiatedBy) =>
-          updateProject(id, (p) => {
-            const fromIdx = gateIndex(fromGateId);
-            const toIdx = gateIndex(toGateId);
-            if (toIdx < 0 || fromIdx < 0 || toIdx >= fromIdx) return p;
+        // M3 Phase 1: the B1/F9/F1/C7 guards these three actions used to run
+        // in the browser now live on the server, which is the sole authority
+        // (BACKEND_PLAN §3 principle 7) — the API re-runs the very same shared
+        // pure functions, so nothing was reimplemented. A rejected write now
+        // THROWS instead of silently no-op'ing, which is why callers await and
+        // surface the message.
+        setGate: async (id, gateId, patch) => {
+          const envelope = await projectsApi.updateGate(id, gateId, patch, get().projectVersions[id] ?? 0);
+          applyEnvelope(envelope);
+        },
 
-            const dateStr = dayjs().format('YYYY-MM-DD');
+        setGatesBulk: async (id, updates) => {
+          const envelope = await projectsApi.updateGates(id, updates, get().projectVersions[id] ?? 0);
+          applyEnvelope(envelope);
+        },
 
-            const inRange = (idx: number) => idx >= toIdx && idx <= fromIdx;
+        backtrackGate: async (id, fromGateId, toGateId, reason, initiatedBy) => {
+          const envelope = await projectsApi.backtrackGate(
+            id,
+            { fromGateId, toGateId, reason: reason ?? '', initiatedBy },
+            get().projectVersions[id] ?? 0,
+            projectsApi.newIdempotencyKey(),
+          );
+          applyEnvelope(envelope);
+        },
 
-            const affectedIds = p.gates.filter((g) => inRange(gateIndex(g.gateId))).map((g) => g.gateId);
-
-            const gates = p.gates.map((g) =>
-              inRange(gateIndex(g.gateId)) ? { ...g, status: 'Not Started' as const, decision: undefined } : g,
-            );
-
-            // Invalidate ALL sign-offs (Prepared by / Reviewed by / Approved by) of
-            // any phase with at least one gate inside the reopened range — not just
-            // when that range happens to reach the phase's own closing gate. Even a
-            // single reworked gate means "Prepared"/"Reviewed" no longer reliably
-            // describe that phase either, so a partial re-approval (Approved by
-            // only) would understate how much has changed. The previous signatures
-            // are preserved in the BacktrackEvent snapshot below, never deleted.
-            const affectedPhases = new Set<number>();
-            for (let idx = toIdx; idx <= fromIdx; idx++) {
-              affectedPhases.add(GATES[idx].phase);
-            }
-            const previousSignOffs: Record<number, SignOff[]> = {};
-            const phaseClosures = { ...p.phaseClosures };
-            for (const phase of affectedPhases) {
-              const closure = phaseClosures[phase];
-              if (!closure) continue;
-              previousSignOffs[phase] = closure.signOffs.map((s) => ({ ...s }));
-              phaseClosures[phase] = {
-                ...closure,
-                signOffs: closure.signOffs.map((s) => ({ role: s.role })),
-              };
-            }
-
-            const event = {
-              id: `BT-${Date.now()}`,
-              date: dateStr,
-              initiatedBy: initiatedBy?.trim() || undefined,
-              reason,
-              fromGateId,
-              toGateId,
-              reopenedGateIds: affectedIds,
-              previousGates: p.gates
-                .filter((g) => affectedIds.includes(g.gateId))
-                .map((g) => ({ ...g })),
-              previousSignOffs,
-            };
-
-            return { ...p, gates, phaseClosures, backtrackEvents: [...p.backtrackEvents, event] };
-          }),
 
         setNextActionsBulk: (id, gateIds, updated) =>
           updateProject(id, (p) => ({
@@ -633,17 +524,28 @@ export const useAppStore = create<AppState>()(
         addChange: (record) => set((s) => ({ changes: [...s.changes, record] })),
         setChangesBulk: (records) => set({ changes: records }),
 
-        resetDemoData: () => set({ projects: seedProjects(), changes: seedChanges() }),
       };
     },
     {
       name: 'mbc360-demo-store',
-      version: 12,
+      version: 13,
       // `permissionGrid` is server state, always loaded fresh on startup — never
       // persist a stale copy to localStorage. (Functions and everything else are
       // handled as before; this only strips the grid.)
+      // M3 Phase 1: `projects`/`projectVersions` are server state fetched on
+      // startup, and `permissionGrid` likewise — persisting any of them would
+      // put a stale copy of the database in the browser, which is exactly what
+      // this milestone removes. `changes` (Change Control) is still local until
+      // Phase 6 migrates it.
       partialize: (state) => {
-        const { permissionGrid: _omit, ...rest } = state;
+        const {
+          permissionGrid: _grid,
+          projects: _projects,
+          projectVersions: _versions,
+          projectsLoading: _loading,
+          projectsError: _error,
+          ...rest
+        } = state;
         return rest;
       },
       // v1 -> v2 changed Stage status / Gate decision values to match the real
@@ -683,7 +585,9 @@ export const useAppStore = create<AppState>()(
       // project already past those gates would retroactively re-evaluate them
       // as unpassed. Re-seed, not a real migration, same as every prior bump.
       // Old persisted demo data doesn't fit the new schema, so re-seed instead of migrating it.
-      migrate: () => ({ projects: seedProjects(), changes: seedChanges() }),
+      // v12 -> v13: projects left localStorage entirely (M3 Phase 1). Only the
+      // still-local slices are re-seeded; projects come from GET /api/projects.
+      migrate: () => ({ changes: seedChanges() }),
     },
   ),
 );

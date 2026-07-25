@@ -1,0 +1,361 @@
+// Prisma rows -> the frontend's `ProjectData` shape (M3 Phase 1, 2026-07-26).
+//
+// Two consumers, one mapper on purpose:
+//   1. GET /api/projects/:id returns this object, so the frontend keeps its
+//      existing types and components unchanged (BACKEND_PLAN §1: "giữ nguyên
+//      chữ ký các store action... để UI gần như không đổi").
+//   2. The server-side guards call the SAME rule engine the browser does
+//      (gateProgress.ts's gateBlockers / hardGateBlockers / isGateUnlocked),
+//      which are pure functions over `ProjectData`. Rebuilding that object here
+//      is what lets the API enforce B1/F9/F1/C7 without re-implementing a line
+//      of rule logic (BACKEND_PLAN §3 principle 1, "never fork a copy").
+//
+// Every field is read, not just the ones Phase 1 can WRITE: the rule engine
+// needs checklists/gateChecks/registers/bom/nextActions to evaluate readiness,
+// and a response missing them would make pages for later phases render empty.
+import { GATES } from '@mbc360/shared/config/gates';
+import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
+import type {
+  BacktrackEvent,
+  BomLine,
+  ChecklistItem,
+  GateChangeLogEntry,
+  GateCheck,
+  GateRecord,
+  ProjectData,
+  RegisterRow,
+  RequirementItem,
+  SignOff,
+} from '@mbc360/shared/types';
+import type { Prisma } from '../generated/prisma/client';
+
+// Everything GET /projects/:id and the guards need, in one query.
+export const PROJECT_INCLUDE = {
+  markets: { orderBy: { market: 'asc' } },
+  reviewers: true,
+  gates: true,
+  checklistItems: { orderBy: [{ sectionKey: 'asc' }, { itemOrder: 'asc' }] },
+  requirementItems: { orderBy: [{ sectionKey: 'asc' }, { itemOrder: 'asc' }] },
+  gateChecks: { orderBy: { id: 'asc' } },
+  phaseClosures: { include: { signOffs: true, angles: true }, orderBy: { phase: 'asc' } },
+  nextActions: { orderBy: { createdAt: 'asc' } },
+  backtrackEvents: { orderBy: { occurredAt: 'asc' } },
+  marketTracks: { orderBy: { market: 'asc' } },
+  studyApprovals: true,
+  packagingBom: { orderBy: { line: 'asc' } },
+  costing: true,
+  evidenceItems: { orderBy: { id: 'asc' } },
+  registerRows: { orderBy: [{ registerKey: 'asc' }, { rowOrder: 'asc' }] },
+  formulaVersions: { include: { bomLines: { orderBy: { line: 'asc' } } }, orderBy: { createdAt: 'asc' } },
+  capaRecords: { orderBy: { id: 'asc' } },
+  feedbackEntries: { orderBy: { id: 'asc' } },
+} satisfies Prisma.ProjectInclude;
+
+export type ProjectWithAll = Prisma.ProjectGetPayload<{ include: typeof PROJECT_INCLUDE }>;
+
+// Prisma returns `null` for an unset column; the frontend types use optional
+// (`?`) properties, and the difference is visible in JSON (`"owner": null` vs
+// absent). Normalising to undefined keeps the API response byte-identical in
+// shape to what the store used to hold locally.
+function opt(value: string | null): string | undefined {
+  return value ?? undefined;
+}
+
+// Date columns are `@db.Date`; the frontend stores plain 'YYYY-MM-DD' strings.
+function dateOnly(value: Date | null): string | undefined {
+  return value ? value.toISOString().slice(0, 10) : undefined;
+}
+
+function dateTime(value: Date): string {
+  // Same 'YYYY-MM-DD HH:mm' shape the store used for change-log entries.
+  return value.toISOString().slice(0, 16).replace('T', ' ');
+}
+
+function toGateRecord(g: ProjectWithAll['gates'][number]): GateRecord {
+  return {
+    gateId: g.gateId,
+    status: g.status as GateRecord['status'],
+    decision: opt(g.decision) as GateRecord['decision'],
+    owner: opt(g.owner),
+    dueDate: dateOnly(g.dueDate),
+    evidenceLink: opt(g.evidenceLink),
+    notes: opt(g.notes),
+  };
+}
+
+function toSignOff(s: ProjectWithAll['phaseClosures'][number]['signOffs'][number]): SignOff {
+  return {
+    role: s.role as SignOff['role'],
+    name: opt(s.name),
+    initials: opt(s.initials),
+    date: dateOnly(s.date),
+    decision: opt(s.decision) as SignOff['decision'],
+    comments: opt(s.comments),
+  };
+}
+
+// gateChangeLog has no table of its own (M3 plan decision #1): every gate write
+// already records an append-only audit_events row carrying the field diff, so
+// the log is derived from those rows instead of duplicating them.
+export function toGateChangeLog(
+  events: { id: string; entityId: string; occurredAt: Date; after: Prisma.JsonValue; actor: { displayName: string } | null }[],
+): GateChangeLogEntry[] {
+  const entries: GateChangeLogEntry[] = [];
+  for (const e of events) {
+    const after = (e.after ?? {}) as { changes?: GateChangeLogEntry['changes']; changedBy?: string };
+    if (!after.changes || after.changes.length === 0) continue;
+    entries.push({
+      id: e.id,
+      gateId: e.entityId,
+      date: dateTime(e.occurredAt),
+      // Prefer the real actor from the session over anything the client sent.
+      changedBy: e.actor?.displayName ?? after.changedBy,
+      changes: after.changes,
+    });
+  }
+  return entries;
+}
+
+export function toProjectData(p: ProjectWithAll, gateChangeLog: GateChangeLogEntry[]): ProjectData {
+  const checklists: Record<string, ChecklistItem[]> = {};
+  for (const item of p.checklistItems) {
+    (checklists[item.sectionKey] ??= []).push({
+      label: item.label,
+      gate: item.gate,
+      selected: item.selected,
+      ownerFunction: item.ownerFunction,
+      status: item.status as ChecklistItem['status'],
+      evidenceLink: opt(item.evidenceLink),
+      notes: opt(item.notes),
+    });
+  }
+
+  const requirements: Record<string, RequirementItem[]> = {};
+  for (const item of p.requirementItems) {
+    (requirements[item.sectionKey] ??= []).push({
+      gate: item.gate,
+      requirement: item.requirement,
+      minimumRequirement: item.minimumRequirement,
+      rationale: item.rationale,
+      owner: item.owner,
+      status: item.status as RequirementItem['status'],
+      evidenceLink: opt(item.evidenceLink),
+      notes: opt(item.notes),
+    });
+  }
+
+  const registers: Record<string, RegisterRow[]> = {};
+  for (const row of p.registerRows) {
+    (registers[row.registerKey] ??= []).push(row.data as RegisterRow);
+  }
+
+  const phaseClosures: ProjectData['phaseClosures'] = {};
+  for (const closure of p.phaseClosures) {
+    phaseClosures[closure.phase] = {
+      evidenceSummary: opt(closure.evidenceSummary),
+      signOffs: closure.signOffs.map(toSignOff),
+      angles: closure.angles.map((a) => ({
+        angle: a.angle,
+        ynna: a.ynna as 'Y' | 'N' | 'NA',
+        covered: a.covered,
+        date: dateOnly(a.date),
+        evidenceRef: opt(a.evidenceRef),
+        internalLink: opt(a.internalLink),
+        initials: opt(a.initials),
+        comments: opt(a.comments),
+      })),
+      ...(closure.preWorkAcceptedBy || closure.preWorkAcceptedDate
+        ? {
+            preWork: {
+              acceptedBy: opt(closure.preWorkAcceptedBy),
+              acceptedDate: dateOnly(closure.preWorkAcceptedDate),
+            },
+          }
+        : {}),
+    };
+  }
+
+  // "Current" formula version = the Active one (the schema deliberately has no
+  // scalar field on Project — see the note at the top of schema.prisma).
+  const active = p.formulaVersions.find((v) => v.status === 'Active') ?? p.formulaVersions.at(-1);
+  const superseded = p.formulaVersions.filter((v) => v.id !== active?.id);
+  const versionById = new Map(p.formulaVersions.map((v) => [v.id, v.version]));
+
+  const toBomLine = (l: ProjectWithAll['formulaVersions'][number]['bomLines'][number]): BomLine => ({
+    line: l.line,
+    rmCode: l.rmCode,
+    inciName: l.inciName,
+    casNo: opt(l.casNo),
+    functionRole: l.functionRole,
+    supplier: l.supplier,
+    percentWw: l.percentWw,
+    costPerKg: l.costPerKg,
+    evidenceLink: opt(l.evidenceLink),
+    notes: opt(l.notes),
+  });
+
+  const reviewers: Record<string, string> = {};
+  for (const r of p.reviewers) {
+    if (REVIEW_ROLE_KEYS.includes(r.roleKey)) reviewers[r.roleKey] = r.name;
+  }
+
+  // Gates in canonical SG01..SG12 order regardless of insert order — the rule
+  // engine indexes by position (currentGateIndex / isGateUnlocked).
+  const gateByIdRow = new Map(p.gates.map((g) => [g.gateId, g]));
+  const gates = GATES.map((meta) => {
+    const row = gateByIdRow.get(meta.id);
+    return row ? toGateRecord(row) : { gateId: meta.id, status: 'Not Started' as const };
+  });
+
+  return {
+    identity: {
+      id: p.id,
+      productCode: p.productCode,
+      projectLead: p.projectLead,
+      productGroup: p.productGroup,
+      brandCustomer: p.brandCustomer,
+      dateOpened: p.dateOpened.toISOString().slice(0, 10),
+      targetLaunchDate: p.targetLaunchDate.toISOString().slice(0, 10),
+      productSku: p.productSku,
+      ownerDepartment: p.ownerDepartment,
+      markets: p.markets.map((m) => m.market),
+      reviewers,
+    },
+    gates,
+    checklists,
+    requirements,
+    gateChecks: p.gateChecks.map(
+      (c): GateCheck => ({
+        gate: c.gate,
+        check: c.check,
+        done: c.done,
+        ynna: c.ynna as GateCheck['ynna'],
+        date: dateOnly(c.date),
+        evidenceRef: opt(c.evidenceRef),
+        methodRef: opt(c.methodRef),
+        internalLink: opt(c.internalLink),
+        initials: opt(c.initials),
+        notes: opt(c.notes),
+      }),
+    ),
+    phaseClosures,
+    bom: (active?.bomLines ?? []).map(toBomLine),
+    packagingBom: p.packagingBom.map((l) => ({
+      line: l.line,
+      component: l.component,
+      componentType: l.componentType,
+      supplier: l.supplier,
+      unitsPerFinishedUnit: l.unitsPerFinishedUnit,
+      unitCost: l.unitCost,
+      wastagePercent: l.wastagePercent,
+      leadTime: opt(l.leadTime),
+      moq: opt(l.moq),
+      evidenceLink: opt(l.evidenceLink),
+      methodRef: opt(l.methodRef),
+      notes: opt(l.notes),
+      approval: opt(l.approval),
+    })),
+    costing: {
+      batchSizeKg: p.costing?.batchSizeKg ?? 0,
+      fillSizeG: p.costing?.fillSizeG ?? 0,
+      targetUnits: p.costing?.targetUnits ?? 0,
+      packagingCostPerUnit: p.costing?.packagingCostPerUnit ?? 0,
+      labourOverheadPerUnit: p.costing?.labourOverheadPerUnit ?? 0,
+      freightOtherPerUnit: p.costing?.freightOtherPerUnit ?? 0,
+      targetSellPrice: p.costing?.targetSellPrice ?? 0,
+    },
+    evidence: p.evidenceItems.map((e) => ({
+      area: e.area,
+      required: e.required as 'Y' | 'Conditional',
+      trigger: e.trigger,
+      primaryTemplate: e.primaryTemplate,
+      owner: e.owner,
+      status: e.status as RequirementItem['status'],
+      gate: e.gate,
+      evidenceLink: opt(e.evidenceLink),
+      notes: opt(e.notes),
+    })),
+    capa: p.capaRecords.map((c) => ({
+      id: c.code,
+      market: c.market,
+      eventType: c.eventType,
+      summary: c.summary,
+      severity: c.severity as ProjectData['capa'][number]['severity'],
+      status: c.status as ProjectData['capa'][number]['status'],
+      owner: c.owner,
+      notes: opt(c.notes),
+    })),
+    feedback: p.feedbackEntries.map((f) => ({
+      id: f.id,
+      testerName: f.testerName,
+      gender: f.gender as 'M' | 'F',
+      dept: f.dept,
+      dateTested: dateOnly(f.dateTested) ?? '',
+      texture: f.texture,
+      fragrance: f.fragrance,
+      overall: f.overall,
+      tooOilySlippery: f.tooOilySlippery,
+      wouldRecommend: f.wouldRecommend,
+      bestLiked: opt(f.bestLiked),
+      concerns: opt(f.concerns),
+    })),
+    registers,
+    nextActions: p.nextActions.map((a) => ({
+      id: a.id,
+      gateId: a.gateId,
+      description: a.description,
+      owner: opt(a.owner),
+      dueDate: dateOnly(a.dueDate),
+      status: a.status as ProjectData['nextActions'][number]['status'],
+      priority: a.priority as ProjectData['nextActions'][number]['priority'],
+      dateCompleted: dateOnly(a.dateCompleted),
+      raisedBy: opt(a.raisedBy),
+      verifiedBy: opt(a.verifiedBy),
+    })),
+    backtrackEvents: p.backtrackEvents.map(
+      (e): BacktrackEvent => ({
+        id: e.id,
+        date: dateOnly(e.occurredAt) ?? dateTime(e.occurredAt),
+        initiatedBy: opt(e.initiatedBy),
+        reason: opt(e.reason),
+        fromGateId: e.fromGateId,
+        toGateId: e.toGateId,
+        reopenedGateIds: e.reopenedGateIds,
+        // Snapshots are stored as opaque JSON on purpose (the whole point is an
+        // immutable record of what the rows looked like), so the cast goes via
+        // unknown rather than pretending Prisma's JsonValue overlaps the type.
+        previousGates: (e.previousGates ?? []) as unknown as GateRecord[],
+        previousSignOffs: (e.previousSignOffs ?? {}) as unknown as Record<number, SignOff[]>,
+      }),
+    ),
+    gateChangeLog,
+    marketTracks: p.marketTracks.map((t) => ({
+      market: t.market,
+      pifStatus: t.pifStatus as ProjectData['marketTracks'][number]['pifStatus'],
+      regulatoryStatus: t.regulatoryStatus as ProjectData['marketTracks'][number]['regulatoryStatus'],
+      claimsApproval: t.claimsApproval as ProjectData['marketTracks'][number]['claimsApproval'],
+      launchApproval: t.launchApproval as ProjectData['marketTracks'][number]['launchApproval'],
+      regulatoryNotes: opt(t.regulatoryNotes),
+      pifApprovedDate: dateOnly(t.pifApprovedDate),
+      launchApprovedDate: dateOnly(t.launchApprovedDate),
+    })),
+    studyApprovals: p.studyApprovals.map((s) => ({
+      role: s.role as ProjectData['studyApprovals'][number]['role'],
+      name: opt(s.name),
+      department: opt(s.department),
+      date: dateOnly(s.date),
+      decision: opt(s.decision) as ProjectData['studyApprovals'][number]['decision'],
+      comments: opt(s.comments),
+    })),
+    formulaVersion: active?.version ?? 'F1.0',
+    formulaVersionHistory: superseded.map((v) => ({
+      version: v.version,
+      previousVersion: (v.previousVersionId ? versionById.get(v.previousVersionId) : undefined) ?? '',
+      date: dateOnly(v.createdAt) ?? '',
+      changeType: (v.changeType ?? 'Minor') as 'Major' | 'Minor',
+      reason: opt(v.reason),
+      initiatedBy: opt(v.initiatedBy),
+      previousBomSnapshot: v.bomLines.map(toBomLine),
+    })),
+  };
+}

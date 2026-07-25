@@ -163,6 +163,8 @@ function evaluateReadinessCheck(
       const row = (project.requirements[check.section] ?? []).find((r) => r.requirement === check.requirement);
       return { evaluable: true, satisfied: row?.status === 'Completed' };
     }
+    case 'identityFieldFilled':
+      return { evaluable: true, satisfied: !!project.identity[check.field]?.trim() };
     default:
       return { evaluable: false, satisfied: false };
   }
@@ -300,75 +302,190 @@ export function gateReadiness(project: ProjectData, gateId: string): GateReadine
 // Gate pass (rule B1 + C1 + F1/C7)
 // ---------------------------------------------------------------------------
 
-// Blockers that even a "Proceed with Conditions" decision cannot clear:
-// Critical next actions (F8 — "Critical blocks even Proceed with
-// Conditions"), the Skincare for Two safety screen (C1 — hard-blocks
-// regardless of decision), and F1/C7 Mandatory evidence (hard-blocks gate
-// passage, no Proceed-with-Conditions escape valve described in the confirmed
-// rule). Used by the UI to disable "Proceed with Conditions" too, not just
-// plain "Proceed" — see `gateBlockers` below for the softer, PwC-clearable
-// open-next-action case this deliberately excludes.
-export function hardGateBlockers(project: ProjectData, gateId: string): string[] {
-  const blockers: string[] = [];
-
-  const criticalOpen = openNextActions(project, gateId).filter((a) => a.priority === 'Critical');
-  if (criticalOpen.length > 0) {
-    blockers.push(
-      `${criticalOpen.length} open Critical next action${criticalOpen.length > 1 ? 's' : ''} — must be closed before the gate can pass (Critical blocks even Proceed with Conditions)`,
-    );
-  }
-
-  // C1: Skincare for Two hard-blocks Gate 07 until the mandatory maternal and
-  // infant-contact safety sections are fully completed. (This gives a detailed
-  // per-section message; the equivalent F1 readiness check is skipped in the
-  // loop below to avoid a duplicate, less specific line.)
-  if (gateId === 'SG07') {
-    const incomplete = skincareForTwoIncompleteSections(project);
-    if (incomplete.length > 0) {
-      blockers.push(`Skincare for Two safety screen incomplete: ${incomplete.join('; ')}`);
-    }
-  }
-
-  // F1 / C7: Mandatory evidence requirements with a wired data source hard-block
-  // the gate when unsatisfied. Manual (unwired) requirements never hard-block —
-  // they surface on the Gate Readiness panel for confirmation instead. The
-  // skincareForTwo check is already covered by the dedicated C1 block above.
-  for (const req of evaluateReadinessRequirements(project, gateId)) {
-    if (req.blocking && GATE_READINESS[gateId]?.find((r) => r.id === req.id)?.check.kind !== 'skincareForTwo') {
-      blockers.push(req.label);
-    }
-  }
-
-  return blockers;
+// A deep link to where a blocker should actually be resolved. `scrollToId`
+// is a DOM anchor id (see PhasePage.tsx's `sec-*` anchors) the target page
+// scrolls to and briefly highlights after navigation — used for sections
+// that live inline on a phase page rather than their own route.
+export interface GateBlockerLink {
+  href: string;
+  scrollToId?: string;
 }
 
-// Reasons the gate cannot pass yet even with a positive decision recorded.
-// `decisionOverride` lets a caller ask "if this decision were recorded, would
-// it still be blocked?" without having committed it yet — used to validate a
-// pending (unsaved) decision in the Phase Gate Flow draft before Save is
-// enabled, and by the store guards before committing it. Defaults to the
-// gate's currently committed decision when omitted.
+export interface GateBlocker {
+  id: string;
+  label: string;
+  // True for blockers even "Proceed with Conditions" cannot clear (mirrors
+  // the old hardGateBlockers/gateBlockers split, but carried per-item now
+  // instead of requiring a separate string-identity comparison downstream).
+  hardBlock: boolean;
+  link?: GateBlockerLink;
+}
+
+// Every item bearing on this gate — both satisfied and unsatisfied — so the
+// UI can keep showing a gate's full readiness checklist after it passes
+// (satisfied items in green) instead of the list disappearing once nothing
+// is left to complain about. `hardGateBlockers`/`gateBlockers` below are
+// just this list filtered to `!satisfied`, so the two can never drift.
+export interface GateReadinessItem extends GateBlocker {
+  satisfied: boolean;
+}
+
+// Resolve a per-gate phase-page anchor link for the phase that owns `gateId`.
+function phaseSectionLink(gateId: string, scrollToId: string): GateBlockerLink | undefined {
+  const phase = GATES.find((g) => g.id === gateId)?.phase;
+  return phase ? { href: `/phase/${phase}`, scrollToId } : undefined;
+}
+
+// Where a `ReadinessCheck` should be resolved by a user — a register page,
+// the Formula BOM page, or a specific section anchor on the gate's phase
+// page. `manual` checks have no linked data source yet, so no link.
+function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLink | undefined {
+  switch (check.kind) {
+    case 'checklistHasSelection':
+      return phaseSectionLink(gateId, `sec-checklist-${check.section}`);
+    case 'requirementDone':
+      return phaseSectionLink(gateId, `sec-requirement-${check.section}`);
+    case 'gateCheckDone':
+      return phaseSectionLink(gateId, 'sec-gate-checks');
+    case 'nextActionsClosed':
+      return phaseSectionLink(gateId, 'sec-next-actions');
+    case 'registerHasRows':
+    case 'registerColumnFilled':
+    case 'registerNoBadRows':
+    case 'registerRowsComplete':
+      return { href: `/registers/reg/${check.register}` };
+    case 'bomHasLines':
+    case 'bomIdentityComplete':
+    case 'bomReconciled':
+      return { href: '/bom' };
+    case 'skincareForTwo':
+      return phaseSectionLink(gateId, 'sec-requirement-skincareForTwo');
+    case 'identityFieldFilled':
+      return phaseSectionLink(gateId, 'sec-identification');
+    case 'manual':
+    default:
+      return undefined;
+  }
+}
+
+// Every item that bears on whether this gate can pass — Critical next
+// actions (F8), the Skincare for Two safety screen (C1), F1/C7 Mandatory
+// evidence, and open non-critical next actions (B2) — each carrying whether
+// it's currently satisfied. Always includes the always-applicable items
+// (next actions) even when there's nothing open, so the UI has a full
+// checklist to render (all green) rather than an empty list once the gate
+// passes. `decisionOverride` lets a caller ask "if this decision were
+// recorded, would the open-next-actions item still be unsatisfied?" without
+// having committed it yet — used to validate a pending (unsaved) decision in
+// the Phase Gate Flow draft before Save is enabled, and by the store guards
+// before committing it. Defaults to the gate's currently committed decision
+// when omitted.
+export function gateReadinessChecklist(
+  project: ProjectData,
+  gateId: string,
+  decisionOverride?: GateRecord['decision'],
+): GateReadinessItem[] {
+  const items: GateReadinessItem[] = [];
+
+  // Next Actions (B2 + F8) — two separate items, kept next to each other,
+  // because they differ in severity: Critical ones hard-block regardless of
+  // decision, while the rest only block a plain Proceed and are specifically
+  // allowed to stay open under Proceed with Conditions. Merging them into one
+  // item would hide which severity is actually the problem and make the
+  // "clears with Proceed with Conditions" note (only true for the non-
+  // critical item) ambiguous.
+  const criticalOpen = openNextActions(project, gateId).filter((a) => a.priority === 'Critical');
+  items.push({
+    id: 'critical-next-actions',
+    label:
+      criticalOpen.length > 0
+        ? `${criticalOpen.length} open Critical next action${criticalOpen.length > 1 ? 's' : ''} — must be closed before the gate can pass (Critical blocks even Proceed with Conditions)`
+        : 'No open Critical next actions',
+    satisfied: criticalOpen.length === 0,
+    hardBlock: true,
+    link: phaseSectionLink(gateId, 'sec-next-actions'),
+  });
+
+  const record = project.gates.find((g) => g.gateId === gateId);
+  const decision = decisionOverride !== undefined ? decisionOverride : record?.decision;
+  const otherOpen = openNextActions(project, gateId).filter((a) => a.priority !== 'Critical');
+  items.push({
+    id: 'open-next-actions',
+    label:
+      otherOpen.length > 0
+        ? `${otherOpen.length} open next action${otherOpen.length > 1 ? 's' : ''} — complete them or record Proceed with Conditions`
+        : 'No open next actions',
+    satisfied: otherOpen.length === 0 || decision === 'Proceed with Conditions',
+    hardBlock: false,
+    link: phaseSectionLink(gateId, 'sec-next-actions'),
+  });
+
+  // C1: Skincare for Two hard-blocks Gate 07 until the mandatory maternal and
+  // infant-contact safety sections are fully completed — only shown at all
+  // when actually triggered for this project (otherwise it isn't part of
+  // this gate's readiness). Gives a detailed per-section message; the
+  // equivalent F1 readiness check is skipped in the loop below to avoid a
+  // duplicate, less specific line.
+  if (gateId === 'SG07' && isSkincareForTwoTriggered(project)) {
+    const incomplete = skincareForTwoIncompleteSections(project);
+    items.push({
+      id: 'skincare-for-two',
+      label:
+        incomplete.length > 0
+          ? `Skincare for Two safety screen incomplete: ${incomplete.join('; ')}`
+          : 'Skincare for Two safety screen complete',
+      satisfied: incomplete.length === 0,
+      hardBlock: true,
+      link: phaseSectionLink(gateId, 'sec-requirement-skincareForTwo'),
+    });
+  }
+
+  // F1 / C7: Mandatory evidence requirements with a wired data source hard-
+  // block the gate when unsatisfied. Manual (unwired) and inactive
+  // Conditional requirements are left off this checklist entirely — they
+  // never hard-block today, so there's nothing to turn green/red for. The
+  // skincareForTwo check is already covered by the dedicated C1 item above.
+  for (const req of evaluateReadinessRequirements(project, gateId)) {
+    if (!req.active || !req.evaluable || req.tier !== 'Mandatory') continue;
+    const check = GATE_READINESS[gateId]?.find((r) => r.id === req.id)?.check;
+    if (check?.kind === 'skincareForTwo') continue;
+    items.push({
+      id: req.id,
+      label: req.label,
+      satisfied: req.satisfied,
+      hardBlock: true,
+      link: check ? resolveCheckLink(gateId, check) : undefined,
+    });
+  }
+
+  return items;
+}
+
+// Blockers that even a "Proceed with Conditions" decision cannot clear —
+// the `gateReadinessChecklist` items still unsatisfied, restricted to the
+// ones that hard-block. Used by the UI to disable "Proceed with Conditions"
+// too, not just plain "Proceed" — see `gateBlockers` below for the softer,
+// PwC-clearable open-next-action case this deliberately excludes.
+export function hardGateBlockers(project: ProjectData, gateId: string): GateBlocker[] {
+  return gateReadinessChecklist(project, gateId)
+    .filter((item) => item.hardBlock && !item.satisfied)
+    .map(({ satisfied: _satisfied, ...blocker }) => blocker);
+}
+
+// Reasons the gate cannot pass yet even with a positive decision recorded —
+// every unsatisfied `gateReadinessChecklist` item (hard and soft alike).
+// `decisionOverride` lets a caller ask "if this decision were recorded,
+// would it still be blocked?" without having committed it yet — used to
+// validate a pending (unsaved) decision in the Phase Gate Flow draft before
+// Save is enabled, and by the store guards before committing it.
 export function gateBlockers(
   project: ProjectData,
   gateId: string,
   decisionOverride?: GateRecord['decision'],
-): string[] {
-  const blockers = hardGateBlockers(project, gateId);
-  const record = project.gates.find((g) => g.gateId === gateId);
-  const decision = decisionOverride !== undefined ? decisionOverride : record?.decision;
-
-  // B2 + F8: open non-critical next actions block a plain Proceed, but are
-  // specifically allowed to stay open under Proceed with Conditions — the
-  // one blocker in this list that Proceed with Conditions is designed to
-  // clear (Critical actions are handled in hardGateBlockers above instead).
-  const otherOpen = openNextActions(project, gateId).filter((a) => a.priority !== 'Critical');
-  if (otherOpen.length > 0 && decision !== 'Proceed with Conditions') {
-    blockers.push(
-      `${otherOpen.length} open next action${otherOpen.length > 1 ? 's' : ''} — complete them or record Proceed with Conditions`,
-    );
-  }
-
-  return blockers;
+): GateBlocker[] {
+  return gateReadinessChecklist(project, gateId, decisionOverride)
+    .filter((item) => !item.satisfied)
+    .map(({ satisfied: _satisfied, ...blocker }) => blocker);
 }
 
 export function isGatePassed(project: ProjectData, gateId: string): boolean {
@@ -403,14 +520,27 @@ export function isAwaitingDecision(project: ProjectData, gateId: string): boolea
 // `gateRef` is a config `gate` string: a single number ('04'), a slash list
 // ('04/07', '05/07/10'), 'ALL', or undefined. 'ALL'/undefined never lock
 // (cross-cutting evidence like the Evidence Summary or Change Control).
-export function isGateRefLocked(project: ProjectData, gateRef: string | undefined): boolean {
-  if (!gateRef) return false;
+//
+// Which gates a config `gate` string refers to, as gate ids. Empty for
+// 'ALL'/undefined/unparseable (i.e. "not tied to specific gates" — never
+// locks). Exported so the Gate Rules & Sheet Map page can display the same
+// lock rule this function enforces without re-implementing the parsing.
+// Accepts '/' and '-' as separators: phases.ts writes the Testing Families
+// checklist section as '08-09' while every register uses '04/07' — both mean
+// the same "these gates" list (fixed 2026-07-25: the dash form used to parse
+// to nothing, so that one section could never lock).
+export function gateRefGateIds(gateRef: string | undefined): string[] {
+  if (!gateRef) return [];
   const ref = gateRef.trim();
-  if (ref === '' || ref.toUpperCase() === 'ALL') return false;
-  const gateIds = ref
-    .split('/')
+  if (ref === '' || ref.toUpperCase() === 'ALL') return [];
+  return ref
+    .split(/[/-]/)
     .map((n) => GATES.find((g) => g.number === n.trim())?.id)
     .filter((id): id is string => !!id);
+}
+
+export function isGateRefLocked(project: ProjectData, gateRef: string | undefined): boolean {
+  const gateIds = gateRefGateIds(gateRef);
   if (gateIds.length === 0) return false;
   return gateIds.every((id) => isGatePassed(project, id));
 }

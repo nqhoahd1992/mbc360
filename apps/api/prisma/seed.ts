@@ -1,5 +1,8 @@
-// Database seeder (BACKEND_PLAN M1). Run with `npm run db:seed -w @mbc360/api`
-// (or automatically after `prisma migrate dev` / `prisma migrate reset`).
+// Database seeder (BACKEND_PLAN M1). Run with `npm run db:seed -w @mbc360/api`.
+// NOTE: Prisma 7's `migrate dev` / `migrate reset` do NOT invoke this
+// automatically despite the `migrations.seed` entry in prisma.config.ts (found
+// 2026-07-26 — a reset left a completely empty database). Always run the seed
+// as its own step; `./reset-dev-data.sh` and `npm run db:setup` both do.
 //
 // Seeds two kinds of data, both idempotent:
 //   1. Rule configuration (principle 2 — data, not code): safety triggers (C1)
@@ -19,12 +22,12 @@ import { GATES, PHASES } from '@mbc360/shared/config/gates';
 import {
   ADMIN_ROLE,
   SSO_ROLES,
-  VIEW_ROLES,
   canApprovePhase,
   canDecideGate,
   canEditMarketTrack,
 } from '@mbc360/shared/config/roles';
-import { createProjectWithScaffold } from '../src/projects/project-scaffold';
+import { REVIEW_ROLES } from '@mbc360/shared/config/reviewers';
+import { createProjectWithScaffold, type NewProjectReviewer } from '../src/projects/project-scaffold';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error('DATABASE_URL is not set (see apps/api/.env.example)');
@@ -96,11 +99,18 @@ async function seedCosmetriSyncState(): Promise<void> {
 // which is correct: the role×gate/phase mapping for these 17 roles is F6's
 // still-open remainder, not yet answered.
 async function seedRbac(): Promise<void> {
-  for (const viewRole of [...VIEW_ROLES, ...SSO_ROLES]) {
+  // Only the 17 real assignable roles (F6). VIEW_ROLES — the old "View as" demo
+  // keys — used to be seeded alongside them purely so a dev database that
+  // already had `user_roles` rows against those keys kept working; nothing
+  // reads VIEW_ROLES at runtime any more (the simulator, canDecideGate,
+  // canApprovePhase and canEditMarketTrack all moved to SSO_ROLES). Dropped
+  // here on 2026-07-26 together with a full database reset, which is exactly
+  // the moment CLAUDE.md named as safe to remove them.
+  for (const role of SSO_ROLES) {
     await prisma.role.upsert({
-      where: { key: viewRole.key },
-      update: { name: viewRole.label },
-      create: { key: viewRole.key, name: viewRole.label },
+      where: { key: role.key },
+      update: { name: role.label },
+      create: { key: role.key, name: role.label },
     });
   }
 
@@ -226,15 +236,148 @@ async function seedDemoUsers(): Promise<void> {
   console.log(`Seeded ${SSO_ROLES.length} demo users (…@demo.mbc360.local, one per SSO role)`);
 }
 
-async function seedDemoProject(): Promise<void> {
+// The 13 review areas each have a named owner in the source workbook (encoded
+// as the tab-name prefix: Tuan-, George-, ChiChu-, ...). Seeding them as real
+// User rows is what makes the reviewer assignment DYNAMIC rather than a
+// hardcoded name: the Create New Project form's user pickers list active users
+// from GET /api/rbac/users, so these people become selectable there, and the
+// demo project below is assigned from these rows instead of a config constant.
+// REVIEW_ROLES[].defaultName stays in config only as the form placeholder.
+//
+// Departments reuse the existing demo department names where one fits, so this
+// does not sprawl a new Department row per person.
+//
+// Each also gets ONE assignable SSO role (2026-07-26, user-requested — they were
+// initially left role-less because the F6 role x review-area matrix is still
+// open). This mapping is DERIVED, not SME-confirmed: 9 of the 13 match an SSO
+// role label almost literally, and 4 are a judgement call marked below. Change
+// these rows when F6 answers — it is seed data, not logic. The app enforces one
+// role per user (see admin-users.controller.ts), so each area gets exactly one
+// even where the person wears two hats in the workbook (e.g. George is both R&I
+// evidence owner and the C2 Department Study Reviewer — that second authority
+// comes from the dedicated study-approval workflow, not from this role).
+const REVIEW_OWNER_ROLES: Record<string, string> = {
+  'project-manager': 'sso-project-owner',
+  formulation: 'sso-formulation-contributor',
+  ri: 'sso-formulation-contributor', // the SSO label is literally "R&I/Formulation Contributor"
+  quality: 'sso-quality-reviewer',
+  'quality-gmp': 'sso-quality-reviewer', // GMP is a Quality hat; no separate GMP role exists
+  regulatory: 'sso-regulatory-reviewer',
+  // --- judgement calls (no close SSO label): revisit when F6 answers ---
+  'raw-material': 'sso-supply-chain-contributor', // Raw Material Ops ~ procurement/supply
+  'facility-pm': 'sso-manufacturing-link-contributor', // Facility / PM Operations ~ manufacturing link
+  'hr-quality': 'sso-quality-reviewer', // HR/Quality co-signs Quality areas
+  // Digital / Platforms only CO-REVIEWS one register (Released Label Control) and
+  // holds no gate-decision authority in the workbook, so Read-only Viewer —
+  // which carries no decide/approve grants — matches the actual authority
+  // better than inventing one. NOT "admin": administering the platform is a
+  // different thing from having business decision rights.
+  'digital-platforms': 'sso-read-only-viewer',
+  // --- back to literal matches ---
+  packaging: 'sso-packaging-artwork-contributor',
+  'sales-marketing': 'sso-marketing-sales-contributor',
+  'supply-chain': 'sso-supply-chain-contributor',
+};
+
+const REVIEW_OWNER_DEPARTMENTS: Record<string, string> = {
+  'project-manager': 'Project Office',
+  formulation: 'NPD / R&I',
+  ri: 'NPD / R&I',
+  quality: 'Quality',
+  'quality-gmp': 'Quality',
+  regulatory: 'Regulatory',
+  'raw-material': 'Supply Chain',
+  packaging: 'Packaging',
+  'sales-marketing': 'Marketing & Sales',
+  'supply-chain': 'Supply Chain',
+  'facility-pm': 'Facility / PM Operations',
+  'hr-quality': 'Quality',
+  'digital-platforms': 'Digital / Platforms',
+};
+
+function reviewOwnerEmail(name: string): string {
+  const local = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `${local}@demo.mbc360.local`;
+}
+
+// Returns roleKey -> { userId, name } for the seeded review owners.
+async function seedReviewOwnerUsers(): Promise<NewProjectReviewer[]> {
+  if (process.env.SEED_DEMO_USERS === 'false') {
+    console.log('SEED_DEMO_USERS=false — review-owner users skipped');
+    return [];
+  }
+  const assigned: NewProjectReviewer[] = [];
+  for (const role of REVIEW_ROLES) {
+    const email = reviewOwnerEmail(role.defaultName);
+    const departmentName = REVIEW_OWNER_DEPARTMENTS[role.key] ?? 'Management';
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: {
+        email,
+        displayName: role.defaultName,
+        department: {
+          connectOrCreate: { where: { name: departmentName }, create: { name: departmentName } },
+        },
+      },
+    });
+
+    const roleKey = REVIEW_OWNER_ROLES[role.key];
+    const dbRole = roleKey ? await prisma.role.findUnique({ where: { key: roleKey } }) : null;
+    if (dbRole) {
+      await prisma.userRole.upsert({
+        where: { userId_roleId: { userId: user.id, roleId: dbRole.id } },
+        update: {},
+        create: { userId: user.id, roleId: dbRole.id },
+      });
+    } else if (roleKey) {
+      console.warn(`  ! review owner ${role.defaultName}: role "${roleKey}" not found — left without a role`);
+    }
+
+    assigned.push({ roleKey: role.key, userId: user.id, name: user.displayName });
+  }
+  console.log(
+    `Seeded ${assigned.length} review-owner users with roles (${assigned.map((a) => a.name).join(', ')})`,
+  );
+  return assigned;
+}
+
+async function seedDemoProject(reviewers: NewProjectReviewer[]): Promise<void> {
   const productCode = 'MBB-BALM-50';
   const existing = await prisma.project.findUnique({ where: { productCode } });
   if (existing) {
-    console.log(`Demo project ${productCode} already present — skipped`);
+    // Additive backfill rather than a plain skip: the demo project predates the
+    // project_reviewers table (2026-07-26), so an already-seeded database would
+    // otherwise keep a project with no review owners forever. Upsert per role
+    // so re-running never duplicates and never overwrites a real reassignment.
+    let added = 0;
+    for (const r of reviewers) {
+      const result = await prisma.projectReviewer.upsert({
+        where: { projectId_roleKey: { projectId: existing.id, roleKey: r.roleKey } },
+        update: {},
+        create: {
+          projectId: existing.id,
+          roleKey: r.roleKey,
+          userId: r.userId,
+          name: r.name,
+        },
+      });
+      if (result.assignedAt.getTime() > Date.now() - 5000) added++;
+    }
+    console.log(
+      `Demo project ${productCode} already present — scaffold skipped, ${added} review owner(s) backfilled`,
+    );
     return;
   }
   await prisma.$transaction(async (tx) => {
     const { projectId } = await createProjectWithScaffold(tx, {
+      // Same id the frontend demo used, so a fresh database lines up with the
+      // human project code shown in the UI instead of an opaque cuid.
+      id: 'MBC-2026-001',
       productCode,
       projectLead: 'Anna Tran',
       productGroup: 'Mother & Baby Care',
@@ -244,6 +387,7 @@ async function seedDemoProject(): Promise<void> {
       productSku: 'Soothing Nipple & Baby Balm 50g',
       ownerDepartment: 'NPD',
       markets: ['Vietnam', 'Australia', 'Malaysia'],
+      reviewers,
     });
     await tx.auditEvent.create({
       data: {
@@ -264,7 +408,8 @@ async function main(): Promise<void> {
   await seedCosmetriSyncState();
   await seedRbac();
   await seedDemoUsers();
-  await seedDemoProject();
+  const reviewers = await seedReviewOwnerUsers();
+  await seedDemoProject(reviewers);
 }
 
 main()

@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { RbacModule } from './rbac/rbac.module';
 import { AdminModule } from './admin/admin.module';
 import { CosmetriModule } from './cosmetri/cosmetri.module';
+import { ProjectsModule } from './projects/projects.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CosmetriModule } from './cosmetri/cosmetri.module';
     RbacModule,
     AdminModule,
     CosmetriModule,
+    ProjectsModule,
   ],
   controllers: [HealthController, MetaController],
 })

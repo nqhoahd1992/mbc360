@@ -6,10 +6,25 @@ import { EIGHT_ANGLES, GATES } from '@mbc360/shared/config/gates';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import { EVIDENCE_AREAS } from '@mbc360/shared/config/evidence';
 import { REGISTER_CONFIGS } from '@mbc360/shared/config/registers';
+import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
 import type { RegisterRow } from '@mbc360/shared/types';
 import type { Prisma } from '../generated/prisma/client';
 
+// One assigned review owner. `userId` is the real link (optional so a project
+// can still be created before the person exists as a user); `name` is the
+// snapshot shown in captions — see the ProjectReviewer comment in schema.prisma.
+export interface NewProjectReviewer {
+  roleKey: string; // must be one of REVIEW_ROLE_KEYS
+  userId?: string;
+  name: string;
+}
+
 export interface NewProjectInput {
+  // The human project code from the Create New Project form ("MBC-2026-001").
+  // Supplied explicitly so Project.id and the frontend's ProjectIdentity.id are
+  // the same value — it is what appears in every /projects/:id URL. Omit only
+  // for a caller that genuinely has no code, and a cuid is generated instead.
+  id?: string;
   productCode: string;
   projectLead: string;
   productGroup: string;
@@ -19,6 +34,37 @@ export interface NewProjectInput {
   productSku: string;
   ownerDepartment: string;
   markets: string[];
+  // The 13 review areas assigned on the Create New Project form. Optional here
+  // so existing callers keep compiling, but POST /projects should require them
+  // (the form already does) — a project with no reviewers renders every
+  // "Review owner" caption blank.
+  reviewers?: NewProjectReviewer[];
+}
+
+// Validated at this layer, matching the convention for every other
+// dropdown-valued field: the shared config list is the authority, so a typo'd
+// role key fails loudly here instead of silently creating a row nothing reads.
+function reviewerCreates(
+  reviewers: NewProjectReviewer[] | undefined,
+): Prisma.ProjectReviewerCreateWithoutProjectInput[] {
+  if (!reviewers || reviewers.length === 0) return [];
+  const seen = new Set<string>();
+  return reviewers.map((r) => {
+    if (!REVIEW_ROLE_KEYS.includes(r.roleKey)) {
+      throw new Error(`Unknown review role key "${r.roleKey}"`);
+    }
+    if (seen.has(r.roleKey)) {
+      throw new Error(`Duplicate review role key "${r.roleKey}"`);
+    }
+    seen.add(r.roleKey);
+    const name = r.name?.trim();
+    if (!name) throw new Error(`Review role "${r.roleKey}" has no assigned person`);
+    return {
+      roleKey: r.roleKey,
+      name,
+      ...(r.userId ? { user: { connect: { id: r.userId } } } : {}),
+    };
+  });
 }
 
 const SIGN_OFF_ROLES = ['Prepared by', 'Reviewed by', 'Approved by'] as const;
@@ -111,6 +157,7 @@ export async function createProjectWithScaffold(
 ): Promise<{ projectId: string; formulaVersionId: string }> {
   const project = await tx.project.create({
     data: {
+      ...(input.id ? { id: input.id } : {}),
       productCode: input.productCode,
       projectLead: input.projectLead,
       productGroup: input.productGroup,
@@ -120,6 +167,7 @@ export async function createProjectWithScaffold(
       productSku: input.productSku,
       ownerDepartment: input.ownerDepartment,
       markets: { create: input.markets.map((market) => ({ market })) },
+      reviewers: { create: reviewerCreates(input.reviewers) },
       gates: { create: GATES.map((g) => ({ gateId: g.id })) },
       checklistItems: { create: checklistItemCreates() },
       requirementItems: { create: requirementItemCreates() },

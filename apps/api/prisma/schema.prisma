@@ -54,6 +54,7 @@ model User {
   registerRows RegisterRow[] @relation("RegisterRowUpdatedBy")
   attachments  Attachment[]  @relation("AttachmentUploadedBy")
   signOffs     SignOff[]     @relation("SignOffSignedBy")
+  reviewerOf   ProjectReviewer[]
 
   @@map("users")
 }
@@ -110,6 +111,11 @@ model RolePermission {
 // ---------------------------------------------------------------------------
 
 model Project {
+  // Human project code entered on the Create New Project form (e.g.
+  // "MBC-2026-001"), supplied explicitly rather than generated: it is the id the
+  // frontend's ProjectIdentity.id carries and what appears in every /projects/:id
+  // URL, so keeping them identical avoids a second lookup key. `@default(cuid())`
+  // remains only as a fallback for a caller that omits it.
   id               String   @id @default(cuid())
   productCode      String   @unique
   projectLead      String
@@ -119,10 +125,16 @@ model Project {
   targetLaunchDate DateTime @db.Date
   productSku       String
   ownerDepartment  String
+  // Optimistic lock (BACKEND_PLAN §3 principle 8). Every mutation bumps it
+  // inside the same transaction that reads it; a client sending a stale
+  // expectedVersion gets 409 Conflict instead of silently overwriting the
+  // other writer's work.
+  version          Int      @default(0)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
   markets          ProjectMarket[]
+  reviewers        ProjectReviewer[]
   gates            GateRecord[]
   nextActions      NextAction[]
   phaseClosures    PhaseClosure[]
@@ -144,6 +156,53 @@ model Project {
   auditEvents      AuditEvent[]
 
   @@map("projects")
+}
+
+// Per-project review owners (2026-07-26). The source workbook encoded "who is
+// responsible" as a tab-name PREFIX (Tuan-, George-, ChiChu-, ...); digitised,
+// the AREA is config (REVIEW_ROLES in packages/shared/src/config/reviewers.ts)
+// while the PERSON is assigned per project on the Create New Project form. This
+// table is where that assignment lives — without it a project loaded from the
+// API would have no reviewers at all, blanking every "Review owner" caption,
+// the My Sheets page and the Sheet Map's Responsible column.
+//
+// Both `userId` and `name` are stored on purpose:
+//   - userId is the real link, so "which projects am I the Formulation owner
+//     of" is an exact server-side query and survives a display-name change.
+//   - name is a snapshot taken at assignment time. Every other User FK in this
+//     schema is optional with the default SetNull, so deleting a user would
+//     silently blank out WHO was responsible — the opposite of rule B4 ("no
+//     silent corrections"). The snapshot keeps the historical record readable.
+// Replay protection for POST "action" endpoints (BACKEND_PLAN §3 principle 9).
+// The client generates one key per user intent (e.g. when the Backtrack modal
+// opens) and reuses it across retries; the server returns the stored response
+// instead of creating a second project / backtrack event. `scope` keeps keys
+// from different endpoints from colliding.
+model IdempotencyKey {
+  id         String   @id @default(cuid())
+  key        String
+  scope      String // e.g. "project.create" | "project.backtrack"
+  statusCode Int
+  response   Json
+  createdAt  DateTime @default(now())
+
+  @@unique([scope, key])
+  @@map("idempotency_keys")
+}
+
+model ProjectReviewer {
+  id         String   @id @default(cuid())
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId  String
+  roleKey    String // REVIEW_ROLES[].key, e.g. "formulation" | "ri" | "quality"
+  user       User?    @relation(fields: [userId], references: [id])
+  userId     String?
+  name       String
+  assignedAt DateTime @default(now())
+
+  @@unique([projectId, roleKey])
+  @@index([userId])
+  @@map("project_reviewers")
 }
 
 model ProjectMarket {
@@ -188,6 +247,11 @@ model NextAction {
   priority      String    @default("Medium") // Low | Medium | High
   dateCompleted DateTime? @db.Date
   closedBy      String? // who may close is follow-up F8
+  // F8 (confirmed after this table was first written): the action owner may not
+  // unilaterally verify closure where independent confirmation is required, so
+  // the raiser and the verifier are recorded separately from `owner`/`closedBy`.
+  raisedBy      String?
+  verifiedBy    String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -204,6 +268,12 @@ model PhaseClosure {
   projectId       String
   phase           Int // 1..4
   evidenceSummary String?
+  // F13 / B5: pre-work entered before the phase formally opened is allowed, but
+  // the responsible owner must accept it before the phase can close — a required
+  // condition of canSignOff (see phaseCompletionChecklist). Stored as two
+  // nullable columns rather than JSON so "who accepted, when" stays queryable.
+  preWorkAcceptedBy   String?
+  preWorkAcceptedDate DateTime? @db.Date
 
   signOffs SignOff[]
   angles   AngleRow[]
