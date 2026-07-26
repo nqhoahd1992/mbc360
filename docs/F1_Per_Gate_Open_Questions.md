@@ -49,13 +49,21 @@ Checked every candidate: not a Key Gate Check row (the 3 Gate-02 rows are about 
 
 **Question:** does "approved development brief" mean a **separate document/link** we should add a field for (e.g. on the Project Identification card, or a new Key Gate Check row), or does it mean **the combination of the 4 Phase 1 checklist sections** (Target Area, Product Type, Target Users, Target Markets) — i.e., once those are filled in, that collectively *is* the brief, and no new field is needed, just an aggregate check that all 4 sections have at least one selection?
 
-### Q2. "Vulnerable-user flags" — ambiguous against the same evidence as "Target user and life stage"
+### Q2. ~~"Vulnerable-user flags" — ambiguous against the same evidence as "Target user and life stage"~~ — **NO LONGER NEEDED (2026-07-26)**
+
+> **Resolved without an SME round.** The vulnerable-user flags genuinely *are* the target-user checklist entries (Pregnancy / Breastfeeding / Postpartum / Infant 0+ / Sensitive skin / Cancer patient support / Kidney disease support …), so the item is now wired to `checklistHasSelection: targetUsers` — the same evidence as "Target user and life stage". Reusing one piece of evidence for two appendix items is an established pattern here (Gate 1's "Product request record" and "Request source" already share a Key Gate Check). The alternative reading — a per-flag cardinality rule ("which flags must each be answered") — was NOT adopted, because that would be inventing a rule nobody confirmed. Raise it again only if the team wants per-flag enforcement.
+
+<details><summary>Original question (kept for the record)</summary>
+
+
 
 The only vulnerable-user data in the app is the `targetUsers` checklist itself (`Pregnancy`, `Breastfeeding`, `Postpartum`, `Infant 0+`, `Child 2+/3+`, `Sensitive skin`, etc. — the same list `skincareForTwoTriggers()` already reads for the C1 safety screen). Mapping "Vulnerable-user flags" to the same Key Gate Check as "Target user and life stage" would make 3 different F1 wordings ("target user and life stage", "intended use and body area", "vulnerable-user flags") all resolve to one identical signal, which stops being meaningful as a distinct mandatory item.
 
 **Question:** should this item instead check the **`targetUsers` checklist data directly** — and if so, satisfied by what condition? Two candidates:
 - (a) At least one `targetUsers` item is `selected`, regardless of which one (i.e., "the question was considered" — satisfied even for a plain "General adult" product with no vulnerable flag), or
 - (b) Something stricter tied to whether a vulnerable label is selected — e.g. once a vulnerable label is selected, some additional acknowledgement/note is required before Gate 2 can proceed.
+
+</details>
 
 ### Q3. "Project requirements and exclusions" — Phase 1 has no requirement-table data at all
 
@@ -87,13 +95,21 @@ This is the Gate 3 instance of the same gap `Business_Rules_Followup_Round2.md` 
 
 6 of 7 F1 items implemented (`SG04` in `gateReadiness.ts`) — same Key-Gate-Check + detail-guard pattern as Gates 1-3, plus two new detail-guard kinds (`registerHasRows`, `bomHasLines`/`bomIdentityComplete`) that generalize cleanly to later gates too. Only 1 item open, and it's low priority (Conditional — never hard-blocks even once wired):
 
-### Q1. "Allergen, impurity and contaminant review where relevant" — no checkable data exists
+### Q1. ~~"Allergen, impurity and contaminant review where relevant" — no checkable data exists~~ — **NO LONGER NEEDED (2026-07-26)**
+
+> **Resolved without an SME round.** Wired to `registerRowsComplete: supplierRmEvidence ['allergenStatement','impurities']` — i.e. every screened raw material must have *something* recorded in both columns. This asserts only that they are **not empty**, never a judgement on the content (that would be the invented rule the original question was worried about). It is non-vacuous by design (an untouched register does not pass), and the item is Conditional tier, so it warns rather than hard-blocks. A stricter content rule would still need the team.
+
+<details><summary>Original question (kept for the record)</summary>
+
+
 
 `Supplier_RM_Evidence`'s `allergenStatement` and `impurities` columns are free text, not a status/enum — there's nothing to compare against a "bad values" list without inventing what counts as "reviewed" (a blank string? a specific keyword? a Y/N column that doesn't exist yet?).
 
 **Question:** should we add a status column (e.g. Y/N/NA) next to `allergenStatement`/`impurities` in `Supplier_RM_Evidence` specifically for this check, or is this meant to stay a manual reviewer judgement call with no automated signal?
 
 ---
+
+</details>
 
 ## Gate 5 — Formula Design & Development
 
@@ -123,4 +139,42 @@ None of Phase 2's requirement rows are preservative-specific. Even if they were,
 
 ---
 
-*(Gates 6–12 will be added here as each is analyzed and wired.)*
+## Gates 6–12 (added 2026-07-26)
+
+**Status:** Gates 6, 7, 8, 9 and 12 are now **fully wired** (every Mandatory item hard-blocks), and Gates 10–11 are wired except the items below. Nothing in this section was previously asked, because when this document was written Gates 6–12 had not been analysed yet. Two questions that *were* raised in `F1_Gate_Readiness_Mapping_Proposal.md`'s "Needs confirmation" column for Gate 7 have since been answered from the workbook itself and need no SME round:
+
+- *"At Gate 7, does the Pregnancy/Breastfeeding caution screen apply to **every** project, or only Skincare-for-Two ones?"* → The F1 appendix lists the Gate 7 item as **Mandatory and unconditional**, unlike the Gate 4 version which is Conditional on the trigger. It is now enforced unconditionally at Gate 7. Tell us if that reading is wrong.
+- *"Is a separate **gate-level** safety sign-off needed, or is the phase-level Prepared/Reviewed/Approved block sufficient at Gate 7?"* → The workbook already ships a gate-level one: the Final Safety Sign-off sheet has an owner and a decision date against each of its 10 safety questions. That is now what the gate checks, and the phase-level sign-off remains a separate condition. Tell us if you intended only one of the two.
+
+### Q1. "No unresolved critical safety finding" (Gate 7) — no separate field exists for it
+
+Gate 7 is now enforced by requiring **all 10 Final Safety Sign-off questions** to be Completed (including the last one, "Final safety release"), plus a safety decision recorded against every ingredient in the safety matrix. We treat that as being the same thing as "no unresolved critical safety finding" — there is no separate "critical finding" flag anywhere in the workbook.
+
+**Question:** is that acceptable, or do you want a **distinct field** (e.g. a "Critical safety finding: Yes/No + description" row) that must be explicitly cleared before Gate 7 can pass? This links to Round-2 question **A1** (the definition of "critical").
+
+### Q2. "Applicable regulatory checklist (per market)" (Gate 10) — only the ASEAN checklist exists
+
+The app has a complete ASEAN PIF checklist, but the non-ASEAN equivalents (EU CPSR, Australia, US) are the **F10 / C5 "Market Dossier Profile"** work that is confirmed in principle but not yet supplied as content. We have deliberately **not** enforced the ASEAN checklist for all projects, because that would wrongly block a product that is not being sold in ASEAN.
+
+**Question:** until the per-market profiles exist, should Gate 10 (a) stay unenforced on this item, (b) enforce the ASEAN checklist only for projects whose markets include an ASEAN country, or (c) something else?
+
+### Q3. Three items are per-market and need the F4 decision first
+
+These cannot be enforced at project level at all, because a project can legitimately be approved in one market and pending in another (rule A1/C5):
+
+| Gate | Item |
+|---|---|
+| 10 | Regulatory approval |
+| 11 | Gate 10 complete for the relevant market |
+| 11 | Launch approval |
+
+A project-level check would either pass as soon as **one** market is approved (too lax) or block while **any** market is pending (too strict). Launch approval already has a real per-market hard block (PIF must be Approved — C5) in the Market Tracking screen; what is missing is how a per-market state should feed the **gate**'s own readiness.
+
+**Question:** when a project sells into several markets, should Gate 10/11 be considered "ready" (a) only when **every** market is approved, (b) as soon as **any** market is approved, with the rest tracked separately, or (c) should the gate itself become per-market (which is the larger F4 change)?
+
+### Q4. "Change controls closed or formally accepted" (Gate 11) — already enforced by a different mechanism
+
+An open Change Control record **already** soft-locks the gate today through rule C4/F9 (it blocks a plain Proceed and requires an explicit acknowledgement to record Proceed with Conditions). Adding a second, readiness-level check for the same thing would either duplicate it or contradict it.
+
+**Question:** is the existing C4/F9 soft-lock what you meant by this appendix item, or did you intend a **separate, harder** requirement at Gate 11 (i.e. no open change may exist at all, with no acknowledgement escape)?
+

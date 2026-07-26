@@ -18,19 +18,41 @@ export interface ReviewRole {
   defaultName: string;
 }
 
-// The full set collected at project creation (all required). Order is the
-// order shown on the Create New Project form.
+// The full set collected at project creation (all required).
+//
+// ORDER MATTERS and is not arbitrary (reordered 2026-07-26, user-requested):
+// it mirrors the `DEPARTMENTS` order in config/registers.ts — the sidebar's
+// "WORKBOOK BY RESPONSIBILITY" groups — so the Reviewers popover, the Create New
+// Project form fields and the Sheet Map's responsibility facet all read in the
+// same sequence the user navigates the workbook in, roughly following the
+// lifecycle (NPD front-end -> raw material -> formula -> quality -> regulatory
+// -> packaging -> sales -> supply chain). Previously the two lists were in
+// completely different orders, so the same 13 people appeared in one sequence in
+// the sidebar and another in every reviewer list.
+//
+// Two groups sit outside that mirror on purpose:
+//   - Project Manager first: cross-cutting, auto-appended as co-signer of EVERY
+//     area by composeReviewOwner, so it belongs at the top rather than at some
+//     gate's position.
+//   - Facility / PM Operations, HR/Quality and Digital / Platforms last: they own
+//     no sheet of their own (they only ever co-review or co-sign), so they have
+//     no place in the lifecycle sequence.
+//
+// If DEPARTMENTS is reordered, reorder this list to match.
 export const REVIEW_ROLES: ReviewRole[] = [
+  // cross-cutting
   { key: 'project-manager', label: 'Project Manager', defaultName: 'Chris' },
-  { key: 'formulation', label: 'Formulation', defaultName: 'Tuan' },
-  { key: 'ri', label: 'R&I', defaultName: 'George' },
-  { key: 'quality', label: 'Quality', defaultName: 'Sankar' },
-  { key: 'quality-gmp', label: 'Quality & GMP', defaultName: 'Sekar' },
-  { key: 'regulatory', label: 'Regulatory', defaultName: 'Chi Chu' },
-  { key: 'raw-material', label: 'Raw Material Operations', defaultName: 'Chidkamon' },
-  { key: 'packaging', label: 'Packaging', defaultName: 'Lily' },
-  { key: 'sales-marketing', label: 'Sales & Marketing', defaultName: 'Nguyen' },
-  { key: 'supply-chain', label: 'Supply Chain', defaultName: 'Hannah' },
+  // mirrors DEPARTMENTS, in order
+  { key: 'ri', label: 'R&I', defaultName: 'George' }, // dept-npd-frontend
+  { key: 'raw-material', label: 'Raw Material Operations', defaultName: 'Chidkamon' }, // dept-raw-material
+  { key: 'formulation', label: 'Formulation', defaultName: 'Tuan' }, // dept-formulation
+  { key: 'quality', label: 'Quality', defaultName: 'Sankar' }, // dept-quality
+  { key: 'quality-gmp', label: 'Quality & GMP', defaultName: 'Sekar' }, // dept-quality-gmp
+  { key: 'regulatory', label: 'Regulatory', defaultName: 'Chi Chu' }, // dept-regulatory
+  { key: 'packaging', label: 'Packaging', defaultName: 'Lily' }, // dept-packaging
+  { key: 'sales-marketing', label: 'Sales & Marketing', defaultName: 'Nguyen' }, // dept-sales-marketing
+  { key: 'supply-chain', label: 'Supply Chain', defaultName: 'Hannah' }, // dept-supply-chain
+  // own no sheets — co-review / co-sign only
   { key: 'facility-pm', label: 'Facility / PM Operations', defaultName: 'Kaukab' },
   { key: 'hr-quality', label: 'HR/Quality', defaultName: 'Lani' },
   { key: 'digital-platforms', label: 'Digital / Platforms', defaultName: 'Anki' },

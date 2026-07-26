@@ -130,6 +130,16 @@ async function seedRbac(): Promise<void> {
       action: 'approve',
       description: 'Approve market PIF / regulatory / claims / launch statuses (A1/C5)',
     },
+    {
+      // 2026-07-26, user-requested: "only Project Owner may archive a project".
+      // A real capability (not a hard-coded role check) because archiving is
+      // reversible and the Roles page is meant to be where this kind of
+      // authority is adjusted. DELETING a project is deliberately NOT a
+      // capability — see the isAdmin() check in ProjectsService.remove.
+      resource: 'project',
+      action: 'archive',
+      description: 'Archive / restore a project (reversible; deleting is admin-only)',
+    },
   ];
   for (const def of permissionDefs) {
     await prisma.permission.upsert({
@@ -155,6 +165,10 @@ async function seedRbac(): Promise<void> {
       if (canApprovePhase(role.key, phase.phase)) grantedIds.push(permissionId(`phase:${phase.phase}`, 'approve'));
     }
     if (canEditMarketTrack(role.key)) grantedIds.push(permissionId('market-track', 'approve'));
+    // Project Owner only, per the user's rule. Not derived from the keyword-match
+    // token functions: this one authority WAS stated explicitly, so it is not a
+    // guess awaiting F6 like the gate/phase grants around it.
+    if (role.key === 'sso-project-owner') grantedIds.push(permissionId('project', 'archive'));
 
     for (const pid of grantedIds) {
       await prisma.rolePermission.upsert({

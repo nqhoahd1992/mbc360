@@ -35,6 +35,15 @@ function has(grants: Record<string, string[]>, roleKey: string, capabilityId: st
   return grants[roleKey]?.includes(capabilityId) ?? false;
 }
 
+// Archive / restore a project (2026-07-26). Seeded to Project Owner only.
+// Deliberately checked against the REAL signed-in roles, not the "View as"
+// simulator: archiving changes real data, so a demo role switch must not grant
+// it. Deleting a project is not here at all — it is an isAdmin() check on the
+// server and cannot be granted from the Roles page.
+export function canArchiveProject(grants: Record<string, string[]>, roleKeys: string[]): boolean {
+  return roleKeys.some((key) => has(grants, key, 'project|archive'));
+}
+
 export function canDecideGate(grants: Record<string, string[]>, roleKey: string, gateId: string): boolean {
   return has(grants, roleKey, `gate:${gateId}|decide`);
 }

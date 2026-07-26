@@ -39,6 +39,7 @@ export default function GateFlowTable({
   const { user } = useSession();
   const location = useLocation();
   const projectId = project.identity.id;
+  const archived = !!project.identity.archived;
   const gates = project.gates;
   const currentIdx = currentGateIndex(project);
 
@@ -169,7 +170,10 @@ export default function GateFlowTable({
         // Backtrack (openBacktrackModal below), which snapshots the prior
         // state and invalidates downstream approvals instead of overwriting
         // it in place.
-        locked: gateIndex(r.meta.id) !== currentIdx,
+        // An archived project is read-only until it is restored, so no row is
+        // editable regardless of which gate is current (the server refuses the
+        // write too — this only avoids offering an action that would be refused).
+        locked: gateIndex(r.meta.id) !== currentIdx || archived,
         historyCount:
           project.gateChangeLog.filter((e) => e.gateId === r.meta.id).length +
           project.backtrackEvents.filter(
@@ -246,6 +250,15 @@ export default function GateFlowTable({
         </span>
       }
     >
+      {archived && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message="This project is archived — read-only"
+          description="Restore it from the Projects list to make changes. Nothing has been deleted."
+        />
+      )}
       {saveBlockedRows.length > 0 && (
         <Alert
           type="error"

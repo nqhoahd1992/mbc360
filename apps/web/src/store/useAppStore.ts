@@ -1,6 +1,6 @@
+import { message } from 'antd';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import dayjs from 'dayjs';
 import type {
   AngleRow,
   BomLine,
@@ -24,14 +24,8 @@ import type {
   SignOff,
   StudyApproval,
 } from '@mbc360/shared/types';
-import { createEmptyRegisterRow } from './factory';
 import type { PermissionGrid } from '../utils/permissions';
-import { seedChanges } from '../data/seed';
 import * as projectsApi from '../api/projectsApi';
-import { gateIndex, isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
-import { GATES } from '@mbc360/shared/config/gates';
-import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
-import { getRegisterConfig } from '@mbc360/shared/config/registers';
 
 interface AppState {
   projects: ProjectData[];
@@ -59,8 +53,13 @@ interface AppState {
   projectVersions: Record<string, number>;
   projectsLoading: boolean;
   projectsError?: string;
-  loadProjects: () => Promise<void>;
+  loadProjects: (includeArchived?: boolean) => Promise<void>;
   loadProject: (id: string) => Promise<void>;
+  // Archive / restore a project (needs `project|archive`; the server enforces).
+  setProjectArchived: (id: string, archived: boolean) => Promise<void>;
+  // Whether the Projects list currently includes archived projects.
+  showArchivedProjects: boolean;
+  setShowArchivedProjects: (show: boolean) => Promise<void>;
 
   createProject: (identity: ProjectIdentity) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
@@ -145,17 +144,6 @@ interface AppState {
 
 }
 
-// C2: the Independent Reviewer must not belong to the Study Author's department.
-function studyApprovalConflict(approvals: StudyApproval[]): boolean {
-  const author = approvals.find((a) => a.role === 'Study Author');
-  const independent = approvals.find((a) => a.role === 'Independent Reviewer');
-  return (
-    !!author?.department?.trim() &&
-    !!independent?.department?.trim() &&
-    author.department.trim().toLowerCase() === independent.department.trim().toLowerCase()
-  );
-}
-
 const DEFAULT_INTEGRATIONS: IntegrationSettings = {
   powerApps: {
     // PLACEHOLDER — replace with the real "Create new raw material" Power Apps
@@ -181,8 +169,41 @@ export const useAppStore = create<AppState>()(
               ? s.projects.map((p) => (p.identity.id === id ? envelope.project : p))
               : [...s.projects, envelope.project],
             projectVersions: { ...s.projectVersions, [id]: envelope.version },
+            // Swap out just this project's Change Control rows.
+            changes: [...s.changes.filter((c) => c.projectId !== id), ...(envelope.changes ?? [])],
           };
         });
+
+      // M3 Phase 2-6: every section write goes through here. It keeps the store
+      // action signatures unchanged (so the ~25 components calling them need no
+      // edit, per BACKEND_PLAN §1) while still never lying about success: on
+      // failure it surfaces the server's own message and reloads the project, so
+      // a component that already called markSaved() snaps back to the real
+      // values instead of showing a save that did not happen.
+      const writeSection = async (
+        id: string,
+        call: (version: number) => Promise<projectsApi.ProjectEnvelope>,
+      ): Promise<void> => {
+        try {
+          applyEnvelope(await call(get().projectVersions[id] ?? 0));
+        } catch (err) {
+          const conflict = err instanceof projectsApi.ApiError && err.isConflict;
+          message.error(
+            conflict
+              ? 'This project was changed by someone else — your edit was not saved. The page has been refreshed.'
+              : err instanceof Error
+                ? err.message
+                : 'Could not save — please try again.',
+            8,
+          );
+          try {
+            applyEnvelope(await projectsApi.getProject(id));
+          } catch {
+            // The reload itself failed (offline?) — the message above already told
+            // the user; leaving the cached copy alone is better than blanking it.
+          }
+        }
+      };
 
       const updateProject = (id: string, updater: (p: ProjectData) => ProjectData) =>
         set((s) => ({
@@ -194,7 +215,8 @@ export const useAppStore = create<AppState>()(
         projects: [],
         projectVersions: {},
         projectsLoading: false,
-        changes: seedChanges(),
+        // Loaded from the API with the projects (no seed, no localStorage).
+        changes: [],
 
         viewRole: 'admin',
         setViewRole: (role) => set({ viewRole: role }),
@@ -209,14 +231,17 @@ export const useAppStore = create<AppState>()(
         // The list endpoint returns summary rows only, so each project is then
         // fetched in full — the UI reads whole ProjectData objects everywhere,
         // and Phase 1 has no per-page lazy loading to build on yet.
-        loadProjects: async () => {
+        loadProjects: async (includeArchived = false) => {
           set({ projectsLoading: true, projectsError: undefined });
           try {
-            const list = await projectsApi.listProjects();
+            const list = await projectsApi.listProjects(includeArchived);
             const loaded = await Promise.all(list.map((row) => projectsApi.getProject(row.id)));
             set({
               projects: loaded.map((e) => e.project),
               projectVersions: Object.fromEntries(loaded.map((e) => [e.project.identity.id, e.version])),
+              // Change Control rows arrive per project and are flattened back
+              // into the single global slice the UI reads.
+              changes: loaded.flatMap((e) => e.changes ?? []),
               projectsLoading: false,
             });
           } catch (err) {
@@ -230,6 +255,20 @@ export const useAppStore = create<AppState>()(
         loadProject: async (id) => {
           const envelope = await projectsApi.getProject(id);
           applyEnvelope(envelope);
+        },
+
+        // Archive is reversible; the server enforces the `project|archive`
+        // capability. Reloads the list afterwards because an archived project
+        // drops out of (or reappears in) the default listing.
+        setProjectArchived: async (id, archived) => {
+          await projectsApi.setProjectArchived(id, archived);
+          await (get() as AppState).loadProjects(get().showArchivedProjects);
+        },
+
+        showArchivedProjects: false,
+        setShowArchivedProjects: async (show) => {
+          set({ showArchivedProjects: show });
+          await (get() as AppState).loadProjects(show);
         },
 
         createProject: async (identity) => {
@@ -274,222 +313,109 @@ export const useAppStore = create<AppState>()(
 
 
         setNextActionsBulk: (id, gateIds, updated) =>
-          updateProject(id, (p) => ({
-            ...p,
-            nextActions: [...p.nextActions.filter((a) => !gateIds.includes(a.gateId)), ...updated],
-          })),
+          writeSection(id, (v) => projectsApi.setNextActions(id, gateIds, updated, v)),
 
-        // C5: launch approval for a market is hard-blocked until that market's
-        // PIF status is Approved.
+        // C5 (launch approval blocked until PIF is Approved) and the
+        // `market-track|approve` permission are now enforced by the API — the
+        // client no longer re-implements either.
         setMarketTracksBulk: (id, tracks) =>
-          updateProject(id, (p) => ({
-            ...p,
-            marketTracks: tracks.map((next) => {
-              const prev = p.marketTracks.find((t) => t.market === next.market);
-              // Re-enforce C5 even if the draft tried to slip a launch
-              // approval through without an Approved PIF.
-              if (next.launchApproval === 'Approved' && next.pifStatus !== 'Approved') {
-                return { ...next, launchApproval: prev?.launchApproval ?? 'Not Started' };
-              }
-              return next;
-            }),
-          })),
+          writeSection(id, (v) => projectsApi.setMarketTracks(id, tracks, v)),
 
-        // C2: the Independent Reviewer must not belong to the same department
-        // as the Study Author — such a patch is rejected here (and prevented in
-        // the UI).
+        // C2 (Independent Reviewer must not share the Study Author's department)
+        // is enforced by the API, which rejects the save with a message instead
+        // of the old silent no-op. The UI still prevents it up front.
         setStudyApprovalsBulk: (id, approvals) =>
-          updateProject(id, (p) => (studyApprovalConflict(approvals) ? p : { ...p, studyApprovals: approvals })),
+          writeSection(id, (v) => projectsApi.setStudyApprovals(id, approvals, v)),
 
-        // A2: a new formula version is recorded in the version history and the
-        // Formulation Change Register. A MAJOR change also reopens Gates 4-9
-        // for redesign/testing/safety revalidation, invalidating the Phase 2/3
-        // approvals — with the pre-change state preserved in the backtrack
-        // audit log (B4, "no silent corrections").
+        // A2: the whole cascade (new version, supersede the old one, carry the
+        // BOM forward, reopen Gates 4-9 on a Major change, invalidate the
+        // affected phases' sign-offs, snapshot a BacktrackEvent, append to the
+        // Formulation Change Register) now runs server-side in ONE transaction —
+        // see ProjectsService.createFormulaVersion. It was ~90 lines of client
+        // logic; keeping a second copy here is exactly what "never fork a copy"
+        // forbids, and a half-applied cascade is the kind of thing a transaction
+        // exists to prevent.
         createFormulaVersion: (id, input) =>
-          updateProject(id, (p) => {
-            const version = input.version.trim();
-            if (!version || version === p.formulaVersion) return p;
-            const dateStr = dayjs().format('YYYY-MM-DD');
-
-            let gates = p.gates;
-            let phaseClosures = p.phaseClosures;
-            let backtrackEvents = p.backtrackEvents;
-
-            if (input.changeType === 'Major') {
-              const fromIdx = gateIndex('SG09');
-              const toIdx = gateIndex('SG04');
-              const affected = p.gates.filter((g) => {
-                const idx = gateIndex(g.gateId);
-                return idx >= toIdx && idx <= fromIdx;
-              });
-
-              const note = `[Formula ${version} ${dateStr}] Gates 4-9 reopened for formula version change${input.reason ? ` — ${input.reason}` : ''}.`;
-              gates = p.gates.map((g) => {
-                const idx = gateIndex(g.gateId);
-                if (idx < toIdx || idx > fromIdx) return g;
-                return {
-                  ...g,
-                  status: 'Not Started' as const,
-                  decision: undefined,
-                  notes: g.gateId === 'SG04' ? (g.notes ? `${g.notes}\n${note}` : note) : g.notes,
-                };
-              });
-
-              // Invalidate ALL sign-offs (Prepared/Reviewed/Approved), not just
-              // Approved by, for every phase with at least one gate in the
-              // reopened range — same fix as `backtrackGate` (2026-07-23):
-              // a Major change can legitimately land after Phase 2 AND 3 are
-              // both fully signed off (e.g. discovered in Phase 4 or post-
-              // market), so clearing only the final approval would leave
-              // stale Prepared/Reviewed names on a phase whose Gates 4-9 are
-              // being reworked.
-              const affectedPhases = new Set(
-                affected.map((g) => GATES.find((m) => m.id === g.gateId)!.phase),
-              );
-              const previousSignOffs: Record<number, SignOff[]> = {};
-              phaseClosures = { ...p.phaseClosures };
-              for (const phase of affectedPhases) {
-                const closure = phaseClosures[phase];
-                if (!closure) continue;
-                previousSignOffs[phase] = closure.signOffs.map((s) => ({ ...s }));
-                phaseClosures[phase] = {
-                  ...closure,
-                  signOffs: closure.signOffs.map((s) => ({ role: s.role })),
-                };
-              }
-
-              backtrackEvents = [
-                ...p.backtrackEvents,
-                {
-                  id: `BT-${Date.now()}`,
-                  date: dateStr,
-                  initiatedBy: input.initiatedBy?.trim() || undefined,
-                  reason: `Formula version ${p.formulaVersion} -> ${version} (Major)${input.reason ? ` — ${input.reason}` : ''}`,
-                  fromGateId: 'SG09',
-                  toGateId: 'SG04',
-                  reopenedGateIds: affected.map((g) => g.gateId),
-                  previousGates: affected.map((g) => ({ ...g })),
-                  previousSignOffs,
-                },
-              ];
-            }
-
-            const registerRows = p.registers['formulationChangeRegister'] ?? [];
-            const newRow: RegisterRow = {
-              ...createEmptyRegisterRow('formulationChangeRegister'),
-              changeId: `FC-${String(registerRows.length + 1).padStart(3, '0')}`,
-              productFamilySku: p.identity.productSku,
-              requestedByNpd: input.initiatedBy ?? '',
-              dateRequested: dateStr,
-              changeTitle: `Formula version ${p.formulaVersion} -> ${version} (${input.changeType})`,
-              explanation: input.reason ?? '',
-              vnRegistrationRequired:
-                input.changeType === 'Major' && p.identity.markets.includes('Vietnam'),
-              overallStatus: 'In Progress',
-            };
-
-            return {
-              ...p,
-              formulaVersion: version,
-              formulaVersionHistory: [
-                ...p.formulaVersionHistory,
-                {
-                  version,
-                  previousVersion: p.formulaVersion,
-                  date: dateStr,
-                  changeType: input.changeType,
-                  reason: input.reason,
-                  initiatedBy: input.initiatedBy,
-                  majorCriteria: input.majorCriteria,
-                  classificationConfirmedBy: input.classificationConfirmedBy,
-                  previousBomSnapshot: p.bom.map((line) => ({ ...line })),
-                },
-              ],
-              gates,
-              phaseClosures,
-              backtrackEvents,
-              registers: {
-                ...p.registers,
-                formulationChangeRegister: [...registerRows, newRow],
-              },
-            };
-          }),
-        // Gate-level edit lock (2026-07-23): a passed gate's evidence is
-        // read-only (correcting it requires Backtrack, B4) — the UI renders it
-        // read-only, and these guards refuse the write at the store layer too
-        // (defense in depth, same principle as the setGate/backtrack guards).
-        setChecklistSection: (id, section, items) =>
-          updateProject(id, (p) => {
-            const cfg = Object.values(PHASE_CONFIGS)
-              .flatMap((c) => c.checklistSections)
-              .find((s) => s.key === section);
-            if (cfg && isGateRefLocked(p, cfg.gate)) return p; // gate passed → read-only
-            return { ...p, checklists: { ...p.checklists, [section]: items } };
-          }),
-        // Requirement sections can span several gates, so merge per-row: keep
-        // the committed value for any row whose gate has passed, take the
-        // incoming value for the rest.
-        setRequirementSection: (id, section, items) =>
-          updateProject(id, (p) => {
-            const committed = p.requirements[section] ?? [];
-            const merged = items.map((incoming) => {
-              if (!isGateRefLocked(p, incoming.gate)) return incoming;
-              return committed.find((c) => c.requirement === incoming.requirement && c.gate === incoming.gate) ?? incoming;
-            });
-            return { ...p, requirements: { ...p.requirements, [section]: merged } };
-          }),
-        setGateChecksBulk: (id, updates) =>
-          updateProject(id, (p) => {
-            const gateChecks = [...p.gateChecks];
-            for (const { index, patch } of updates) {
-              const row = gateChecks[index];
-              if (!row || isGateRefLocked(p, row.gate)) continue; // locked gate → skip
-              gateChecks[index] = { ...row, ...patch };
-            }
-            return { ...p, gateChecks };
-          }),
-        setAnglesBulk: (id, phase, angles) =>
-          updateProject(id, (p) => ({
-            ...p,
-            phaseClosures: { ...p.phaseClosures, [phase]: { ...p.phaseClosures[phase], angles } },
-          })),
-        setSignOffsBulk: (id, phase, signOffs) =>
-          updateProject(id, (p) => ({
-            ...p,
-            phaseClosures: { ...p.phaseClosures, [phase]: { ...p.phaseClosures[phase], signOffs } },
-          })),
-        setEvidenceSummary: (id, phase, value) =>
-          updateProject(id, (p) => ({
-            ...p,
-            phaseClosures: {
-              ...p.phaseClosures,
-              [phase]: { ...p.phaseClosures[phase], evidenceSummary: value },
-            },
-          })),
-        // F13: record the owner's acceptance of a phase's pre-work.
-        acceptPhasePreWork: (id, phase, acceptedBy) =>
-          updateProject(id, (p) => ({
-            ...p,
-            phaseClosures: {
-              ...p.phaseClosures,
-              [phase]: {
-                ...p.phaseClosures[phase],
-                preWork: { acceptedBy, acceptedDate: dayjs().format('YYYY-MM-DD') },
-              },
-            },
-          })),
-
-        // Replaces the whole Formula BOM (used by the Cosmetri import and the
-        // Formula BOM section's save button).
-        setBom: (id, lines) =>
-          updateProject(id, (p) =>
-            isGateRefLocked(p, '05') // Formula BOM is Gate 05 — read-only once passed
-              ? p
-              : { ...p, bom: lines.map((l, i) => ({ ...l, line: i + 1 })) },
+          writeSection(id, (v) =>
+            projectsApi.createFormulaVersion(id, input, v, projectsApi.newIdempotencyKey()),
           ),
-        setCosting: (id, patch) =>
-          updateProject(id, (p) => (isGateRefLocked(p, '05') ? p : { ...p, costing: { ...p.costing, ...patch } })),
+
+
+        // Gate-level edit lock (B4), the per-row requirement merge and the
+        // register/BOM/costing locks all moved to the API (ProjectsService) —
+        // they are enforced there against the database, which is the only place
+        // that can actually enforce them. These actions keep their signatures so
+        // no component changed.
+        setChecklistSection: (id, section, items) =>
+          writeSection(id, (v) => projectsApi.setChecklistSection(id, section, items, v)),
+        setRequirementSection: (id, section, items) =>
+          writeSection(id, (v) => projectsApi.setRequirementSection(id, section, items, v)),
+        // The store used to address gate checks by array index; the API uses the
+        // row's real identity (gate, check), so the index is resolved here while
+        // the caller's signature stays unchanged.
+        setGateChecksBulk: (id, updates) => {
+          const project = get().projects.find((p) => p.identity.id === id);
+          if (!project) return Promise.resolve();
+          const resolved = updates
+            .map(({ index, patch }) => {
+              const row = project.gateChecks[index];
+              return row ? { gate: row.gate, check: row.check, patch } : null;
+            })
+            .filter((u): u is { gate: string; check: string; patch: Partial<GateCheck> } => u !== null);
+          return writeSection(id, (v) => projectsApi.setGateChecks(id, resolved, v));
+        },
+        setAnglesBulk: (id, phase, angles) =>
+          writeSection(id, (v) => projectsApi.setAngles(id, phase, angles, v)),
+        setSignOffsBulk: (id, phase, signOffs) =>
+          writeSection(id, (v) => projectsApi.setSignOffs(id, phase, signOffs, v)),
+        setEvidenceSummary: (id, phase, value) =>
+          writeSection(id, (v) => projectsApi.setEvidenceSummary(id, phase, value, v)),
+        // F13: the acceptor is taken from the session server-side, so the
+        // `acceptedBy` argument is no longer trusted (kept for signature parity).
+        acceptPhasePreWork: (id, phase) =>
+          writeSection(id, (v) => projectsApi.acceptPreWork(id, phase, v)),
+
+        setBom: (id, lines) => writeSection(id, (v) => projectsApi.setBom(id, lines, v)),
+        setCosting: (id, patch) => writeSection(id, (v) => projectsApi.setCosting(id, patch, v)),
+        setPackagingBomBulk: (id, lines) =>
+          writeSection(id, (v) => projectsApi.setPackagingBom(id, lines, v)),
+        setRegisterRowsBulk: (id, registerKey, rows) =>
+          writeSection(id, (v) => projectsApi.setRegisterRows(id, registerKey, rows, v)),
+        setEvidenceItemsBulk: (id, items) =>
+          writeSection(id, (v) => projectsApi.setEvidenceItems(id, items, v)),
+
+        setCapaBulk: (id, records) => writeSection(id, (v) => projectsApi.setCapa(id, records, v)),
+        addCapa: (id, record) => {
+          const project = get().projects.find((p) => p.identity.id === id);
+          return writeSection(id, (v) => projectsApi.setCapa(id, [...(project?.capa ?? []), record], v));
+        },
+        addFeedback: (id, entry) => {
+          const project = get().projects.find((p) => p.identity.id === id);
+          return writeSection(id, (v) =>
+            projectsApi.setFeedback(id, [...(project?.feedback ?? []), entry], v),
+          );
+        },
+
+        // Change Control is stored per project in the database even though this
+        // slice is one global list; both writers scope by the record's projectId.
+        setChangesBulk: (records) => {
+          const byProject = new Map<string, ChangeRecord[]>();
+          for (const p of get().projects) byProject.set(p.identity.id, []);
+          for (const r of records) {
+            if (r.projectId && byProject.has(r.projectId)) byProject.get(r.projectId)!.push(r);
+          }
+          set({ changes: records });
+          return Promise.all(
+            [...byProject].map(([pid, rows]) =>
+              writeSection(pid, (v) => projectsApi.setChanges(pid, rows, v)),
+            ),
+          ).then(() => undefined);
+        },
+        addChange: (record) => {
+          const all = [...get().changes, record];
+          return (get() as AppState).setChangesBulk(all);
+        },
+
 
         integrations: DEFAULT_INTEGRATIONS,
         setPowerAppsUrl: (url) =>
@@ -501,34 +427,11 @@ export const useAppStore = create<AppState>()(
             integrations: { ...s.integrations, graph: { ...s.integrations.graph, ...patch } },
           })),
 
-        setPackagingBomBulk: (id, lines) =>
-          updateProject(id, (p) =>
-            isGateRefLocked(p, '06') // Packaging BOM is Gate 06
-              ? p
-              : { ...p, packagingBom: lines.map((l, i) => ({ ...l, line: i + 1 })) },
-          ),
-
-        setRegisterRowsBulk: (id, registerKey, rows) =>
-          updateProject(id, (p) => {
-            if (isGateRefLocked(p, getRegisterConfig(registerKey)?.gate)) return p; // register's gate(s) passed → read-only
-            return { ...p, registers: { ...p.registers, [registerKey]: rows } };
-          }),
-
-        setEvidenceItemsBulk: (id, items) => updateProject(id, (p) => ({ ...p, evidence: items })),
-        addCapa: (id, record) =>
-          updateProject(id, (p) => ({ ...p, capa: [...p.capa, record] })),
-        setCapaBulk: (id, records) => updateProject(id, (p) => ({ ...p, capa: records })),
-        addFeedback: (id, entry) =>
-          updateProject(id, (p) => ({ ...p, feedback: [...p.feedback, entry] })),
-
-        addChange: (record) => set((s) => ({ changes: [...s.changes, record] })),
-        setChangesBulk: (records) => set({ changes: records }),
-
       };
     },
     {
       name: 'mbc360-demo-store',
-      version: 13,
+      version: 14,
       // `permissionGrid` is server state, always loaded fresh on startup — never
       // persist a stale copy to localStorage. (Functions and everything else are
       // handled as before; this only strips the grid.)
@@ -537,13 +440,19 @@ export const useAppStore = create<AppState>()(
       // put a stale copy of the database in the browser, which is exactly what
       // this milestone removes. `changes` (Change Control) is still local until
       // Phase 6 migrates it.
+      // M3 Phase 2-6 complete: NOTHING project-related is stored in the browser
+      // any more. Only `viewRole` (the demo RBAC simulator) and `integrations`
+      // (Power Apps URL / Graph settings) are still local — both are global
+      // preferences, not project data, and are the last two items on the M3 list.
       partialize: (state) => {
         const {
           permissionGrid: _grid,
           projects: _projects,
           projectVersions: _versions,
+          showArchivedProjects: _showArchived,
           projectsLoading: _loading,
           projectsError: _error,
+          changes: _changes,
           ...rest
         } = state;
         return rest;
@@ -585,9 +494,9 @@ export const useAppStore = create<AppState>()(
       // project already past those gates would retroactively re-evaluate them
       // as unpassed. Re-seed, not a real migration, same as every prior bump.
       // Old persisted demo data doesn't fit the new schema, so re-seed instead of migrating it.
-      // v12 -> v13: projects left localStorage entirely (M3 Phase 1). Only the
-      // still-local slices are re-seeded; projects come from GET /api/projects.
-      migrate: () => ({ changes: seedChanges() }),
+      // v13 -> v14: `changes` left localStorage too (M3 Phase 2-6), so there is
+      // no project data left to migrate — everything comes from the API.
+      migrate: () => ({}),
     },
   ),
 );

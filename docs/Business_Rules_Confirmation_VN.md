@@ -425,6 +425,44 @@ Danh sách cụ thể bằng chứng và sign-off bắt buộc theo từng gate 
 
 ---
 
+## Thẩm quyền vòng đời dự án (26/07/2026, do chủ dự án quyết định)
+
+Đây là những quyết định **do chúng tôi tự đưa ra, không hỏi đội chuyên môn** — ghi lại ở đây để mọi người đọc tài liệu này đều thấy, và để có thể phản biện nếu nó trái với cách vận hành thực tế. Các quy tắc này được máy chủ thực thi, không chỉ ẩn trong giao diện.
+
+### D1. Ai được xoá dự án — và xoá thì mất những gì
+
+✅ **Chỉ System Administrator được xoá dự án, và việc xoá sẽ xoá luôn toàn bộ lịch sử thay đổi (audit trail) của dự án đó.**
+
+Xoá một dự án sẽ xoá dữ liệu trên khoảng 18 bảng liên quan (bản ghi gate, checklist, register, BOM, theo dõi thị trường, sign-off…). Trước đây các bản ghi lịch sử vẫn còn nhưng mất liên kết với dự án — vẫn đọc được *"ai đó đã sửa người phụ trách Gate 01"* mà **không biết thuộc dự án nào**. Như vậy còn tệ hơn cả hai lựa chọn giữ hoặc xoá, nên nay lịch sử bị xoá cùng dự án.
+
+**Cố ý giữ lại đúng một bản ghi:** một "bia mộ" ghi ai đã xoá, xoá cái gì, lúc nào, dự án đó có được archive trước hay không, và đã phá huỷ bao nhiêu (ví dụ 12 bản ghi gate, 255 dòng register, 2 bản ghi lịch sử). Một dự án **không được phép biến mất không để lại dấu vết** về người đã xoá — đó là quy tắc B4 ("không sửa âm thầm") áp cho chính hành động xoá.
+
+Quyền xoá **không phải** là một quyền có thể cấp trên trang Roles. Nó gắn cứng với vai trò System Administrator, đúng để không thể trao nhầm cho vai trò khác.
+
+### D2. Ai được archive dự án
+
+✅ **Chỉ Project Owner được archive (và phục hồi) dự án. Các vai trò khác không được archive cũng không được xoá.**
+
+Archive là con đường duy nhất để các vai trò không phải quản trị viên "cất" một dự án: **có thể đảo lại**, không xoá gì cả, dự án chỉ biến khỏi danh sách mặc định (có ô "Show archived" để xem lại). Khác với xoá, đây **là** một quyền trên trang Roles, nên có thể điều chỉnh sau này mà không cần sửa phần mềm.
+
+System Administrator cũng archive được — vốn đã xoá được (việc phá hoại hơn nhiều), nên từ chối họ hành động nhẹ hơn là vô lý.
+
+### D3. Dự án đã archive thì chỉ đọc
+
+✅ **Khi dự án đang ở trạng thái archive, không ai được sửa dữ liệu của nó — kể cả System Administrator. Muốn sửa phải phục hồi trước.**
+
+"Chỉ đọc" là thuộc tính của **trạng thái dự án**, không phải của quyền người dùng: nếu quản trị viên sửa xuyên qua được thì "archive" chẳng còn ý nghĩa gì. Hai việc vẫn làm được: phục hồi dự án (đường ra), và — với System Administrator — xoá nó, đúng theo trình tự tự nhiên archive rồi xoá.
+
+### D4. Ai được tạo dự án
+
+✅ **Bất kỳ người dùng đã đăng nhập đều tạo được dự án.** Thắt lại sẽ chặn nghiệp vụ bình thường (Project Owner mở dự án mới), mà tạo dự án thì không phá huỷ gì — sai thì archive hoặc xoá.
+
+### D5. "Project owner" không còn là điều kiện chặn ở Gate 1
+
+✅ **Điều kiện "Project owner" của Gate 1 nay tự động được thoả mãn.** Project Lead là **trường bắt buộc trên form Tạo dự án mới**, nên dự án không thể tồn tại mà thiếu người này. Trước đây mục này gắn vào một dòng Key Gate Check, khiến đội ngũ phải xác nhận lại điều mà form tạo dự án đã bảo đảm.
+
+---
+
 ## Yêu cầu bổ sung — Tài liệu GMP (do đội ngũ thêm mới)
 
 Bộ phận Manufacturing đã vận hành hệ thống tài liệu GMP được kiểm soát riêng.

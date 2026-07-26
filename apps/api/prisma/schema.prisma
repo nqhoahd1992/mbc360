@@ -55,6 +55,7 @@ model User {
   attachments  Attachment[]  @relation("AttachmentUploadedBy")
   signOffs     SignOff[]     @relation("SignOffSignedBy")
   reviewerOf   ProjectReviewer[]
+  archivedProjects Project[]     @relation("ProjectArchivedBy")
 
   @@map("users")
 }
@@ -130,6 +131,13 @@ model Project {
   // expectedVersion gets 409 Conflict instead of silently overwriting the
   // other writer's work.
   version          Int      @default(0)
+  // Archive (2026-07-26, user-requested): reversible, hides the project from the
+  // default list, and is the ONLY way most roles can retire one — deleting is
+  // admin-only and irreversible. Nullable = not archived; both columns are set
+  // and cleared together.
+  archivedAt       DateTime?
+  archivedBy       User?     @relation("ProjectArchivedBy", fields: [archivedById], references: [id])
+  archivedById     String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -653,7 +661,13 @@ model AuditEvent {
   id         String   @id @default(cuid())
   actor      User?    @relation(fields: [actorId], references: [id])
   actorId    String?
-  project    Project? @relation(fields: [projectId], references: [id])
+  // onDelete: Cascade (2026-07-26, user-requested: "delete the project together
+  // with its entire audit trail"). Previously this optional relation used
+  // Prisma's default SetNull, which left the audit rows behind with no project —
+  // you could still read "someone changed gate SG01's owner" but no longer which
+  // project it belonged to, which is worse than either keeping or removing them.
+  // User-scoped events (auth.login, …) have projectId NULL and are unaffected.
+  project    Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId  String?
   entityType String // e.g. "gate_record", "sign_off", "register_row"
   entityId   String

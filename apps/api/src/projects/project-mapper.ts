@@ -33,6 +33,7 @@ import type { Prisma } from '../generated/prisma/client';
 export const PROJECT_INCLUDE = {
   markets: { orderBy: { market: 'asc' } },
   reviewers: true,
+  archivedBy: { select: { displayName: true } },
   gates: true,
   checklistItems: { orderBy: [{ sectionKey: 'asc' }, { itemOrder: 'asc' }] },
   requirementItems: { orderBy: [{ sectionKey: 'asc' }, { itemOrder: 'asc' }] },
@@ -48,6 +49,7 @@ export const PROJECT_INCLUDE = {
   registerRows: { orderBy: [{ registerKey: 'asc' }, { rowOrder: 'asc' }] },
   formulaVersions: { include: { bomLines: { orderBy: { line: 'asc' } } }, orderBy: { createdAt: 'asc' } },
   capaRecords: { orderBy: { id: 'asc' } },
+  changeRecords: { orderBy: { createdAt: 'asc' } },
   feedbackEntries: { orderBy: { id: 'asc' } },
 } satisfies Prisma.ProjectInclude;
 
@@ -114,6 +116,32 @@ export function toGateChangeLog(
     });
   }
   return entries;
+}
+
+// Change Control rows are project-scoped in the database but the store keeps one
+// global list, so they are returned alongside ProjectData rather than inside it.
+export function toChangeRecords(p: ProjectWithAll) {
+  return p.changeRecords.map((c) => ({
+    changeId: c.changeId,
+    projectId: p.id,
+    triggerId: opt(c.triggerId),
+    trigger: c.trigger,
+    productSku: c.productSku,
+    affectedArea: c.affectedArea,
+    oldVersion: opt(c.oldVersion),
+    riskLevel: c.riskLevel,
+    requiredAction: opt(c.requiredAction),
+    evidenceLink: opt(c.evidenceLink),
+    requiredSignOffs: opt(c.requiredSignOffs),
+    communicationRequired: c.communicationRequired,
+    salesMarketingMessage: opt(c.salesMarketingMessage),
+    dueDate: dateOnly(c.dueDate),
+    status: c.status,
+    closureEvidence: opt(c.closureEvidence),
+    closedDate: dateOnly(c.closedDate),
+    owner: c.owner,
+    notes: opt(c.notes),
+  }));
 }
 
 export function toProjectData(p: ProjectWithAll, gateChangeLog: GateChangeLogEntry[]): ProjectData {
@@ -220,6 +248,9 @@ export function toProjectData(p: ProjectWithAll, gateChangeLog: GateChangeLogEnt
       ownerDepartment: p.ownerDepartment,
       markets: p.markets.map((m) => m.market),
       reviewers,
+      ...(p.archivedAt
+        ? { archived: { at: p.archivedAt.toISOString().slice(0, 10), by: p.archivedBy?.displayName } }
+        : {}),
     },
     gates,
     checklists,

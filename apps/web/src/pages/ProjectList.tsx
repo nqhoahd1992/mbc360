@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, DatePicker, Form, Input, Modal, Popconfirm, Popover, Progress, Select, Table, Tag, message } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Button, Card, Checkbox, DatePicker, Form, Input, Modal, Popconfirm, Popover, Progress, Select, Table, Tag, Tooltip, message } from 'antd';
+import { PlusOutlined, DeleteOutlined, InboxOutlined, UndoOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
@@ -9,6 +9,7 @@ import { REVIEW_ROLES } from '@mbc360/shared/config/reviewers';
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useSession } from '../auth/useSession';
+import { canArchiveProject, EMPTY_GRANTS } from '../utils/permissions';
 
 interface NewProjectForm {
   id: string;
@@ -35,10 +36,19 @@ export default function ProjectList() {
   const changes = useAppStore((s) => s.changes);
   const createProject = useAppStore((s) => s.createProject);
   const deleteProject = useAppStore((s) => s.deleteProject);
+  const setProjectArchived = useAppStore((s) => s.setProjectArchived);
+  const showArchived = useAppStore((s) => s.showArchivedProjects);
+  const setShowArchived = useAppStore((s) => s.setShowArchivedProjects);
+  const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm<NewProjectForm>();
-  // Used only to mark the signed-in person in the Reviewers column.
-  const myName = useSession().user?.displayName;
+  // The real signed-in identity — NOT the "View as" simulator: archiving and
+  // deleting change real data, so a demo role switch must not grant them.
+  const session = useSession();
+  const myName = session.user?.displayName;
+  const myRoleKeys = session.user?.roles.map((r) => r.key) ?? [];
+  const canArchive = canArchiveProject(grants, myRoleKeys);
+  const canDelete = session.isAdmin;
 
   // Active users for the reviewer pickers (no hard role filter — every field
   // lists all active users, role shown as a tag). Fetched when the modal opens.
@@ -103,9 +113,21 @@ export default function ProjectList() {
       size="small"
       title="Projects"
       extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
-          New Project
-        </Button>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Checkbox
+            checked={showArchived}
+            onChange={(e) =>
+              setShowArchived(e.target.checked).catch((err: unknown) =>
+                message.error(err instanceof Error ? err.message : 'Could not reload projects'),
+              )
+            }
+          >
+            Show archived
+          </Checkbox>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+            New Project
+          </Button>
+        </span>
       }
     >
       <Table
@@ -117,7 +139,22 @@ export default function ProjectList() {
           {
             title: 'Project ID',
             width: 140,
-            render: (_, p) => <Link to={`/projects/${p.identity.id}`}><b>{p.identity.id}</b></Link>,
+            render: (_, p) => (
+              <span>
+                <Link to={`/projects/${p.identity.id}`}>
+                  <b>{p.identity.id}</b>
+                </Link>
+                {p.identity.archived && (
+                  <Tooltip
+                    title={`Archived ${p.identity.archived.at}${p.identity.archived.by ? ` by ${p.identity.archived.by}` : ''} — restore it to resume work.`}
+                  >
+                    <Tag icon={<InboxOutlined />} style={{ marginInlineStart: 6 }}>
+                      Archived
+                    </Tag>
+                  </Tooltip>
+                )}
+              </span>
+            ),
           },
           { title: 'Product / SKU', width: 240, render: (_, p) => p.identity.productSku },
           { title: 'Product group', width: 160, render: (_, p) => p.identity.productGroup },
@@ -230,20 +267,58 @@ export default function ProjectList() {
             },
           },
           {
+            // Two different authorities, deliberately not interchangeable:
+            //   Archive  — reversible, keeps everything, needs `project|archive`
+            //              (Project Owner). Shown to whoever holds it.
+            //   Delete   — irreversible, also destroys the audit trail, System
+            //              Administrator only. Hidden entirely otherwise, so a
+            //              role that cannot use it never sees the button.
+            // Both are re-checked on the server; hiding is only about not
+            // offering an action that would be refused.
             title: '',
-            width: 60,
-            render: (_, p) => (
-              <Popconfirm
-                title="Delete this project?"
-                onConfirm={() =>
-                  deleteProject(p.identity.id).catch((err: unknown) =>
-                    message.error(err instanceof Error ? err.message : 'Could not delete the project'),
-                  )
-                }
-              >
-                <Button size="small" danger type="text" icon={<DeleteOutlined />} />
-              </Popconfirm>
-            ),
+            width: 92,
+            render: (_, p) => {
+              const archived = !!p.identity.archived;
+              return (
+                <span style={{ whiteSpace: 'nowrap' }}>
+                  {canArchive && (
+                    <Popconfirm
+                      title={archived ? 'Restore this project?' : 'Archive this project?'}
+                      description={
+                        archived
+                          ? 'It reappears in the active list.'
+                          : 'It is hidden from the list but nothing is deleted — you can restore it later.'
+                      }
+                      onConfirm={() =>
+                        setProjectArchived(p.identity.id, !archived).catch((err: unknown) =>
+                          message.error(err instanceof Error ? err.message : 'Could not update the project'),
+                        )
+                      }
+                    >
+                      <Tooltip title={archived ? 'Restore' : 'Archive (reversible)'}>
+                        <Button size="small" type="text" icon={archived ? <UndoOutlined /> : <InboxOutlined />} />
+                      </Tooltip>
+                    </Popconfirm>
+                  )}
+                  {canDelete && (
+                    <Popconfirm
+                      title="Delete this project?"
+                      description="This also deletes its entire audit trail and cannot be undone. Archive instead if you may need the record."
+                      okButtonProps={{ danger: true }}
+                      onConfirm={() =>
+                        deleteProject(p.identity.id).catch((err: unknown) =>
+                          message.error(err instanceof Error ? err.message : 'Could not delete the project'),
+                        )
+                      }
+                    >
+                      <Tooltip title="Delete permanently (System Administrator only)">
+                        <Button size="small" danger type="text" icon={<DeleteOutlined />} />
+                      </Tooltip>
+                    </Popconfirm>
+                  )}
+                </span>
+              );
+            },
           },
         ]}
       />

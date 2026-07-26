@@ -1,7 +1,19 @@
 // Thin fetch wrappers for the M3 Phase 1 project endpoints (2026-07-26).
 // Same shape as apps/web/src/integrations/cosmetri.ts: relative `/api/...` URLs
 // through the Vite proxy (never an absolute origin — see CLAUDE.md).
-import type { GateRecord, ProjectData, ProjectIdentity } from '@mbc360/shared/types';
+import type {
+  AngleRow,
+  ChangeRecord,
+  ChecklistItem,
+  CostingInputs,
+  GateCheck,
+  GateRecord,
+  ProjectData,
+  ProjectIdentity,
+  RegisterRow,
+  RequirementItem,
+  SignOff,
+} from '@mbc360/shared/types';
 
 export interface ProjectListItem {
   id: string;
@@ -14,6 +26,8 @@ export interface ProjectListItem {
   targetLaunchDate: string;
   markets: string[];
   version: number;
+  archivedAt?: string;
+  archivedBy?: string;
 }
 
 // Every read and every write returns the whole project plus the version the
@@ -22,6 +36,8 @@ export interface ProjectListItem {
 export interface ProjectEnvelope {
   project: ProjectData;
   version: number;
+  // Change Control rows for this project (kept in a separate store slice).
+  changes: ChangeRecord[];
 }
 
 // Thrown for any non-2xx so callers can surface the server's own message
@@ -68,8 +84,17 @@ export function newIdempotencyKey(): string {
   return crypto.randomUUID();
 }
 
-export function listProjects(): Promise<ProjectListItem[]> {
-  return request<ProjectListItem[]>('/projects');
+export function listProjects(includeArchived = false): Promise<ProjectListItem[]> {
+  return request<ProjectListItem[]>(`/projects${includeArchived ? '?includeArchived=1' : ''}`);
+}
+
+// Archive is reversible and needs the `project|archive` capability; deleting is
+// admin-only and irreversible (it removes the audit trail too).
+export function setProjectArchived(id: string, archived: boolean): Promise<ProjectEnvelope> {
+  return request<ProjectEnvelope>(
+    `/projects/${encodeURIComponent(id)}/${archived ? 'archive' : 'restore'}`,
+    { method: 'POST' },
+  );
 }
 
 export function getProject(id: string): Promise<ProjectEnvelope> {
@@ -136,5 +161,98 @@ export function backtrackGate(
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify({ ...body, expectedVersion }),
+  });
+}
+
+// --- M3 Phase 2-6 section writes -------------------------------------------
+// One helper per store bulk action. All of them send `expectedVersion` and get
+// the whole project back, so the caller replaces its cached copy and always
+// holds a fresh version — identical to the Phase 1 endpoints.
+const put = (id: string, path: string, body: object, expectedVersion: number) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/${path}`, {
+    method: 'PUT',
+    body: JSON.stringify({ ...body, expectedVersion }),
+  });
+
+export const setChecklistSection = (id: string, section: string, items: ChecklistItem[], v: number) =>
+  put(id, `checklists/${encodeURIComponent(section)}`, { items }, v);
+
+export const setRequirementSection = (id: string, section: string, items: RequirementItem[], v: number) =>
+  put(id, `requirements/${encodeURIComponent(section)}`, { items }, v);
+
+export const setGateChecks = (
+  id: string,
+  updates: { gate: string; check: string; patch: Partial<GateCheck> }[],
+  v: number,
+) => put(id, 'gate-checks', { updates }, v);
+
+export const setAngles = (id: string, phase: number, angles: AngleRow[], v: number) =>
+  put(id, `phases/${phase}/angles`, { angles }, v);
+
+export const setSignOffs = (id: string, phase: number, signOffs: SignOff[], v: number) =>
+  put(id, `phases/${phase}/sign-offs`, { signOffs }, v);
+
+export const setEvidenceSummary = (id: string, phase: number, value: string, v: number) =>
+  put(id, `phases/${phase}/evidence-summary`, { value }, v);
+
+export const acceptPreWork = (id: string, phase: number, expectedVersion: number) =>
+  request<ProjectEnvelope>(
+    `/projects/${encodeURIComponent(id)}/phases/${phase}/accept-pre-work`,
+    { method: 'POST', body: JSON.stringify({ expectedVersion }) },
+  );
+
+export const setRegisterRows = (id: string, registerKey: string, rows: RegisterRow[], v: number) =>
+  put(id, `registers/${encodeURIComponent(registerKey)}`, { rows }, v);
+
+export const setEvidenceItems = (id: string, items: ProjectData['evidence'], v: number) =>
+  put(id, 'evidence', { items }, v);
+
+export const setBom = (id: string, lines: ProjectData['bom'], v: number) => put(id, 'bom', { lines }, v);
+
+export const setPackagingBom = (id: string, lines: ProjectData['packagingBom'], v: number) =>
+  put(id, 'packaging-bom', { lines }, v);
+
+export const setCosting = (id: string, patch: Partial<CostingInputs>, v: number) =>
+  put(id, 'costing', { patch }, v);
+
+export const setNextActions = (
+  id: string,
+  gateIds: string[],
+  actions: ProjectData['nextActions'],
+  v: number,
+) => put(id, 'next-actions', { gateIds, actions }, v);
+
+export const setMarketTracks = (id: string, tracks: ProjectData['marketTracks'], v: number) =>
+  put(id, 'market-tracks', { tracks }, v);
+
+export const setStudyApprovals = (id: string, approvals: ProjectData['studyApprovals'], v: number) =>
+  put(id, 'study-approvals', { approvals }, v);
+
+export const setCapa = (id: string, records: ProjectData['capa'], v: number) =>
+  put(id, 'capa', { records }, v);
+
+export const setFeedback = (id: string, entries: ProjectData['feedback'], v: number) =>
+  put(id, 'feedback', { entries }, v);
+
+export const setChanges = (id: string, records: ChangeRecord[], v: number) =>
+  put(id, 'changes', { records }, v);
+
+export function createFormulaVersion(
+  id: string,
+  input: {
+    version: string;
+    changeType: 'Major' | 'Minor';
+    reason?: string;
+    initiatedBy?: string;
+    majorCriteria?: string[];
+    classificationConfirmedBy?: string;
+  },
+  expectedVersion: number,
+  idempotencyKey: string,
+): Promise<ProjectEnvelope> {
+  return request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/formula-versions`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify({ ...input, expectedVersion }),
   });
 }

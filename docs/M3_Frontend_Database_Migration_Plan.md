@@ -117,9 +117,22 @@ Không dùng "giá trị rỗng mặc định" như phương án (a) mô tả. L
 | 6 | idempotency backtrack 2 lần cùng key | ✅ đúng **1** `backtrack_events` row |
 | 7 | guard server-side độc lập FE | ✅ curl `Proceed` **và** `Proceed with Conditions` khi còn F1/C7 mandatory → 400 kèm danh sách blocker; sửa gate chưa mở → 403; version cũ → 409 |
 
+## ✅ Phase 2–6 HOÀN THÀNH (2026-07-26, cùng ngày)
+
+Theo yêu cầu "làm toàn bộ mọi thứ vào database, không lưu bằng Zustand/localStorage để demo nữa". **Không còn dữ liệu project nào nằm trong browser.**
+
+- **19 endpoint section** (tổng 28 route), một endpoint cho mỗi store bulk action — xem danh sách trong `CLAUDE.md`.
+- **Một chỗ chung duy nhất**: mọi endpoint đi qua `ProjectsService.mutate()` — 1 transaction, `FOR UPDATE`, `expectedVersion` → 409, chặn khi archived, bump version, ghi audit. Boilerplate viết 1 lần thay vì 19 lần; endpoint thêm sau tự kế thừa.
+- **Guard port bằng cách GỌI lại pure function của shared**, không viết lại: `isGateRefLocked` (lock checklist/register/BOM/costing + merge per-row của requirement), `canApprovePhase` (sign-off), `canApproveMarketTrack` + C5, C2.
+- **2 chỗ tốt hơn bản cũ ở store**: gate check định danh bằng `(gate, check)` thay vì index mảng (index cũ chỉ đúng nhờ 2 bên tình cờ sort giống nhau); và `createFormulaVersion` — ~90 dòng cascade A2 ở client — giờ chạy trong 1 transaction nên không thể half-apply.
+- **Store**: một wrapper `writeSection()` giữ nguyên chữ ký cả 19 action (không sửa ~25 component nào), nhưng không bao giờ báo thành công giả — lỗi thì hiện message của server rồi refetch project, nên component đã `markSaved()` sẽ tự bật về giá trị thật.
+- **Persist v13→v14**: whitelist loại hết slice liên quan project. Còn đúng **2 thứ** ở localStorage: `viewRole` (giả lập RBAC demo) và `integrations` (URL Power Apps / cấu hình Graph) — đều là preference toàn cục, không phải dữ liệu project. Đây chính là 2 mục cuối trong quyết định #3 của kế hoạch.
+
+**Kiểm chứng:** tick checklist trên browser → **sống qua hard reload** (đúng ca bị mất dữ liệu âm thầm giữa Phase 1 và giờ); `localStorage` chỉ còn 2 key trên; C2 trả lỗi rõ ràng; C5 giữ lại giá trị launch cũ; role không có `phase:1|approve` bị 403 khi sign-off; project archived trả 403 trên checklists/registers/BOM/CAPA.
+
 ### Việc còn lại của M3
 
-Phase 2–6 theo đúng bảng chia phase bên trên, dùng lại khuôn mẫu Phase 1 (`project-mapper.ts` đã map sẵn mọi field nên chỉ cần thêm endpoint **ghi** + rewrite store action tương ứng). Lưu ý riêng: Phase 2 cần `preWork` (đã có cột), Phase 5 cần `raisedBy`/`verifiedBy` (đã có cột).
+Không còn gì về dữ liệu project. Hai mục cuối của quyết định #3 (`viewRole` và `integrations`) vẫn ở localStorage — `viewRole` sẽ bỏ hẳn khi F6 có ma trận thật, `integrations` cần 1 endpoint settings nhỏ.
 
 ## Tài liệu liên quan
 

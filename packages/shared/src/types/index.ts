@@ -400,6 +400,10 @@ export interface ProjectIdentity {
   // caption from these via composeReviewOwner(). Replaces the old hardcoded
   // demo-name strings that used to live in config.
   reviewers: Record<string, string>;
+  // Set while the project is archived (2026-07-26). Archiving is reversible and
+  // hides the project from the default list; only a role holding
+  // `project|archive` may set it. Absent = active.
+  archived?: { at: string; by?: string };
 }
 
 // Generic evidence-register row (Supplier_RM_Evidence, Prohibited_Ingredients,

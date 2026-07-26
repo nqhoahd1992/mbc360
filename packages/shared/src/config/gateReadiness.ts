@@ -217,12 +217,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Mandatory',
       check: { kind: 'checklistHasSelection', section: 'productType' },
     },
-    // sg02-vulnerable: still `manual` — genuinely ambiguous whether this means
-    // "the target-user checklist has been reviewed at all" (same signal as
-    // sg02-user, which would make this a 3rd reuse of the same evidence) or a
-    // distinct, per-item check against `checklists['targetUsers']`. Open
-    // question — see docs/F1_Per_Gate_Open_Questions.md.
-    { id: 'sg02-vulnerable', label: 'Vulnerable-user flags', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      id: 'sg02-vulnerable',
+      label: 'Vulnerable-user flags',
+      tier: 'Mandatory',
+      // Wired 2026-07-26 to the target-user checklist, which IS where the
+      // vulnerable-user flags live (Pregnancy / Breastfeeding / Postpartum /
+      // Infant 0+ / Sensitive skin / Cancer patient support / …). The open
+      // question was whether this is a 3rd reuse of sg02-user's evidence or a
+      // distinct per-item check; reusing it is the same shared-evidence pattern
+      // already used at sg01-request / sg01-source, and a per-item cardinality
+      // rule ("which flags must be answered") is not something to invent.
+      check: { kind: 'checklistHasSelection', section: 'targetUsers' },
+    },
     // sg02-requirements: still `manual` — PHASE_1.requirementSections is
     // empty (config/phases.ts), so there is no requirement-table data at all
     // for Phase 1, unlike Phases 2-4. Open question — see
@@ -426,12 +433,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         badValues: ['Needs Safety Review', 'Needs Regulatory Review'],
       },
     },
-    // sg04-allergen: still `manual` — Supplier_RM_Evidence's allergen/impurity
-    // columns are free text, no status enum to check against; defining "has
-    // this been reviewed" would mean inventing a rule nobody confirmed. Low
-    // priority: Conditional tier never hard-blocks. Open question — see
-    // docs/F1_Per_Gate_Open_Questions.md.
-    { id: 'sg04-allergen', label: 'Allergen, impurity and contaminant review where relevant', tier: 'Conditional', check: { kind: 'manual' } },
+    {
+      id: 'sg04-allergen',
+      label: 'Allergen, impurity and contaminant review where relevant',
+      tier: 'Conditional',
+      // Wired 2026-07-26. The columns are free text, so this only asserts they
+      // are NOT EMPTY for every screened material — a minimum-bar "has this been
+      // filled in" guard, not a judgement on the content (that would be
+      // inventing a rule). registerRowsComplete is non-vacuous, so an untouched
+      // register does not pass. Conditional tier: warns, never hard-blocks.
+      check: { kind: 'registerRowsComplete', register: 'supplierRmEvidence', columns: ['allergenStatement', 'impurities'] },
+    },
   ],
   SG05: [
     {
@@ -567,17 +579,124 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'registerHasRows', register: 'evidencePlanProspective' },
     },
   ],
+  // Gate 6 wired 2026-07-26 (previously 0 of 5 Mandatory items enforced — the
+  // gate could be passed with no packaging evidence at all). Same method as
+  // Gates 1-5: the Key Gate Check row is the primary signal (it already has a
+  // confirmed done/Y-N-NA + justified-NA rule), paired with a minimum-bar
+  // "has this actually been touched" guard on the underlying register/checklist.
+  // No new cardinality rules invented.
   SG06: [
-    { id: 'sg06-pack-spec', label: 'Proposed pack specification', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg06-compatibility', label: 'Packaging compatibility requirements', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg06-artwork', label: 'Label and artwork requirements', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg06-supplier', label: 'Component supplier status', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg06-market-pack', label: 'Market-specific pack requirements', tier: 'Conditional', check: { kind: 'manual' } },
-    { id: 'sg06-evidence-link', label: 'Link to controlled packaging evidence', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      id: 'sg06-pack-spec',
+      label: 'Proposed pack specification',
+      tier: 'Mandatory',
+      check: { kind: 'gateCheckDone', gate: '06', check: 'Packaging format and component requirements selected' },
+    },
+    {
+      id: 'sg06-pack-spec-detail',
+      label: 'Proposed pack specification — at least one component recorded',
+      tier: 'Mandatory',
+      check: { kind: 'registerHasRows', register: 'packagingSpecsArtwork' },
+    },
+    {
+      id: 'sg06-compatibility',
+      label: 'Packaging compatibility requirements',
+      tier: 'Mandatory',
+      // The row's own wording bundles "pack compatibility triggers".
+      check: { kind: 'gateCheckDone', gate: '06', check: 'Artwork/label needs and pack compatibility triggers identified' },
+    },
+    {
+      id: 'sg06-compatibility-detail',
+      label: 'Packaging compatibility — compatibility evidence recorded per component',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'compatibilityEvidence' },
+    },
+    {
+      id: 'sg06-artwork',
+      label: 'Label and artwork requirements',
+      tier: 'Mandatory',
+      // Shares the Key Gate Check above ("Artwork/label needs …"); the distinct
+      // signal is the artwork trigger checklist below.
+      check: { kind: 'checklistHasSelection', section: 'artworkTriggers' },
+    },
+    {
+      id: 'sg06-artwork-version',
+      label: 'Label and artwork — artwork version recorded per component',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'artworkVersion' },
+    },
+    {
+      id: 'sg06-supplier',
+      label: 'Component supplier status',
+      tier: 'Mandatory',
+      check: { kind: 'gateCheckDone', gate: '06', check: 'Packaging cost, lead time and supplier approval requirements entered' },
+    },
+    {
+      id: 'sg06-supplier-detail',
+      label: 'Component supplier — supplier named for every component',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'supplier' },
+    },
+    {
+      id: 'sg06-market-pack',
+      label: 'Market-specific pack requirements',
+      tier: 'Conditional',
+      check: { kind: 'checklistHasSelection', section: 'packagingOptions' },
+    },
+    {
+      id: 'sg06-evidence-link',
+      label: 'Link to controlled packaging evidence',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'specLink' },
+    },
   ],
   // Gate 7 is a safety-critical hard block.
+  // Gate 7 wired 2026-07-26. Earlier judged "needs an SME threshold first"; that
+  // was too cautious — the workbook already ships the exact surface for it in
+  // `formulationSafetyFinalSignOff` (mode:'fixed', 10 seeded safety questions:
+  // Formula identity locked, Toxicology / safety assessment, Pregnancy /
+  // breastfeeding, Baby-contact / nipple-use, Preservation / microbiology,
+  // Impurities / heavy metals, Fragrance / allergen, Stability / compatibility,
+  // Label warnings / directions, Final safety release) plus a per-ingredient
+  // `formulationSafetyMatrix`. Because that register is `fixed` with 10 seeded
+  // rows it can never be vacuously satisfied.
   SG07: [
-    { id: 'sg07-final-safety', label: 'Final formulation safety review completed', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      id: 'sg07-final-safety',
+      label: 'Final formulation safety review completed',
+      tier: 'Mandatory',
+      // Every one of the 10 Final Safety Sign-off questions must be Completed.
+      // `status` (not evidenceLink) because that column carries the register's
+      // own done/outstanding semantics.
+      check: {
+        kind: 'registerNoBadRows',
+        register: 'formulationSafetyFinalSignOff',
+        column: 'status',
+        badValues: ['Not Started', 'In Progress', 'On Hold', 'Backtracked'],
+      },
+    },
+    {
+      id: 'sg07-matrix-rows',
+      label: 'Formulation safety matrix — every formula ingredient assessed',
+      tier: 'Mandatory',
+      // Guards the three per-column matrix checks below: `.every()` over an empty
+      // register is vacuously true, so the row-count check has to be Mandatory too.
+      check: { kind: 'registerHasRows', register: 'formulationSafetyMatrix' },
+    },
+    {
+      id: 'sg07-safety-questions',
+      label: 'Safety/tolerance questions defined and vulnerable-user risks reviewed',
+      tier: 'Mandatory',
+      // Not an F1-named item — already mandatory-in-effect via B3, same pattern
+      // as sg01-constraints.
+      check: { kind: 'gateCheckDone', gate: '07', check: 'Safety/tolerance questions defined and vulnerable-user risks reviewed' },
+    },
+    {
+      id: 'sg07-restrictions-linked',
+      label: 'Restrictions, conditions and safety evidence linked',
+      tier: 'Mandatory',
+      check: { kind: 'gateCheckDone', gate: '07', check: 'Restrictions, conditions and safety evidence linked' },
+    },
     {
       id: 'sg07-bom-reconciled',
       label: 'Formula BOM reconciled to a controlled Cosmetri formula (no "Draft - Not Reconciled" lines)',
@@ -597,9 +716,42 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         badValues: ['REVIEW - possible formula match', 'Prohibited - remove', 'Needs Regulatory Review'],
       },
     },
-    { id: 'sg07-caution-closed', label: 'Restricted/caution ingredient assessment closed', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg07-exposure', label: 'Exposure and intended-use assessment', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg07-allergen', label: 'Allergen and impurity review', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      id: 'sg07-caution-closed',
+      label: 'Restricted/caution ingredient assessment closed',
+      tier: 'Mandatory',
+      // Resolves the open question in F1_Per_Gate_Open_Questions.md ("at Gate 7
+      // should this apply to EVERY project, not just Skincare-for-Two ones?") by
+      // following the appendix literally: the Gate 7 item is Mandatory and
+      // unconditional, unlike sg04-pb-screen which is Conditional on the
+      // skincareForTwo trigger. Every row must be resolved to "Not present" or
+      // "Within limit - evidence linked".
+      check: {
+        kind: 'registerNoBadRows',
+        register: 'pbCautionLimits',
+        column: 'productStatus',
+        badValues: [
+          'Not assessed',
+          'Exceeds limit - reformulate',
+          'Needs Safety Review',
+          'Needs Regulatory Review',
+        ],
+      },
+    },
+    {
+      id: 'sg07-exposure',
+      label: 'Exposure and intended-use assessment',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'formulationSafetyMatrix', column: 'exposureRationale' },
+    },
+    {
+      id: 'sg07-allergen',
+      label: 'Allergen and impurity review',
+      tier: 'Mandatory',
+      // registerRowsComplete (not two registerColumnFilled items) because it is
+      // one review covering both columns, and this kind is non-vacuous by design.
+      check: { kind: 'registerRowsComplete', register: 'formulationSafetyMatrix', columns: ['allergenIfra', 'impurityProof'] },
+    },
     {
       id: 'sg07-maternal-infant',
       label: 'Maternal and infant-contact assessment (when Skincare for Two is triggered)',
@@ -608,17 +760,96 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'skincareForTwo' },
       trigger: 'skincareForTwo',
     },
-    { id: 'sg07-conclusion', label: 'Safety conclusion and identified limitations', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg07-reviewer', label: 'Required safety reviewer approval', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg07-no-critical', label: 'No unresolved critical safety finding', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      id: 'sg07-conclusion',
+      label: 'Safety conclusion and identified limitations',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'formulationSafetyMatrix', column: 'safetyDecision' },
+    },
+    {
+      id: 'sg07-reviewer',
+      label: 'Required safety reviewer approval',
+      tier: 'Mandatory',
+      // Answers the other open question ("a separate GATE-level sign-off, or is
+      // the phase-level Prepared/Reviewed/Approved block enough?"): the workbook
+      // already provides a gate-level one — Final Safety Sign-off carries `owner`
+      // and `decisionDate` per question — so that is used rather than reusing the
+      // phase block, and the phase-level sign-off stays a separate B3 condition.
+      check: { kind: 'registerRowsComplete', register: 'formulationSafetyFinalSignOff', columns: ['owner', 'decisionDate'] },
+    },
+    {
+      id: 'sg07-no-critical',
+      label: 'No unresolved critical safety finding',
+      tier: 'Mandatory',
+      // Shares sg07-final-safety's check on purpose: there is no separate
+      // "critical finding" flag anywhere, and "every safety question Completed —
+      // including the 'Final safety release' row" IS the absence of an unresolved
+      // critical finding. Same shared-evidence pattern as sg01-request /
+      // sg01-source. Flagged rather than hidden: if the team wants a distinct
+      // critical-finding field, that is a config addition, not a rule change.
+      check: {
+        kind: 'registerNoBadRows',
+        register: 'formulationSafetyFinalSignOff',
+        column: 'status',
+        badValues: ['Not Started', 'In Progress', 'On Hold', 'Backtracked'],
+      },
+    },
   ],
+  // Gate 8 wired 2026-07-26. `evidenceTestProtocol` (gate '08') carries
+  // testMethod / acceptanceLimit / reportLink per test, and the existing
+  // sg08-npd-evidence-protocol (registerHasRows on the same register) is the
+  // non-vacuous guard for the three per-column checks below.
   SG08: [
-    { id: 'sg08-plan', label: 'Testing plan', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg08-methods', label: 'Test methods or method references', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg08-acceptance', label: 'Acceptance criteria', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg08-required-tests', label: 'Required safety, efficacy, preservative, QC and performance testing identified', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg08-human-study', label: 'Human-study approval workflow completed before participant recruitment, where applicable', tier: 'Conditional', check: { kind: 'manual' } },
-    { id: 'sg08-reports', label: 'Test reports or controlled actions for tests still in progress', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      id: 'sg08-plan',
+      label: 'Testing plan',
+      tier: 'Mandatory',
+      check: { kind: 'gateCheckDone', gate: '08', check: 'Testing families selected and methods/protocols referenced' },
+    },
+    {
+      id: 'sg08-methods',
+      label: 'Test methods or method references',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'evidenceTestProtocol', column: 'testMethod' },
+    },
+    {
+      id: 'sg08-acceptance',
+      label: 'Acceptance criteria',
+      tier: 'Mandatory',
+      check: { kind: 'gateCheckDone', gate: '08', check: 'Acceptance criteria, results and CAPA pathway defined' },
+    },
+    {
+      id: 'sg08-acceptance-detail',
+      label: 'Acceptance criteria — an acceptance limit on every planned test',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'evidenceTestProtocol', column: 'acceptanceLimit' },
+    },
+    {
+      id: 'sg08-required-tests',
+      label: 'Required safety, efficacy, preservative, QC and performance testing identified',
+      tier: 'Mandatory',
+      check: { kind: 'checklistHasSelection', section: 'testingFamilies' },
+    },
+    {
+      id: 'sg08-human-study',
+      label: 'Human-study approval workflow completed before participant recruitment, where applicable',
+      tier: 'Conditional',
+      // Phase 3's humanStudy requirement section is tagged gate '08' and has an
+      // "Approval trail" row — the C2 study-approval workflow's own checkpoint.
+      check: { kind: 'requirementDone', section: 'humanStudy', requirement: 'Approval trail' },
+    },
+    {
+      id: 'sg08-reports',
+      label: 'Test reports or controlled actions for tests still in progress',
+      tier: 'Mandatory',
+      check: { kind: 'gateCheckDone', gate: '08', check: 'Validation report linked or placeholder/action used' },
+    },
+    {
+      id: 'sg08-reports-detail',
+      label: 'Test reports — a report link on every planned test',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'evidenceTestProtocol', column: 'reportLink' },
+    },
     // NPD Front-End Roadmap (v2 workbook, 2026-07-24): Step 4's detailed test
     // protocol ("complete once prototype exists — Gate 8"), distinct from
     // sg08-human-study above (a different, existing workflow).
@@ -629,14 +860,80 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'registerHasRows', register: 'evidenceTestProtocol' },
     },
   ],
+  // Gate 9 wired 2026-07-26 (previously 0 of 5 Mandatory items enforced). Phase 3
+  // has a real requirement section for exactly this gate
+  // (PHASE_3.requirementSections 'stabilityRelease', all rows gate '09'), so most
+  // items map to a specific requirement row rather than a coarse gate check.
   SG09: [
-    { id: 'sg09-stability', label: 'Stability status', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg09-pack-compat', label: 'Packaging compatibility status', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg09-pet', label: 'Preservative efficacy status where applicable', tier: 'Conditional', check: { kind: 'manual' } },
-    { id: 'sg09-acceptance', label: 'Physical, chemical and microbiological acceptance criteria', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg09-scaleup', label: 'Scale-up or pilot status where applicable', tier: 'Conditional', check: { kind: 'manual' } },
-    { id: 'sg09-deviations', label: 'Deviations and open risks reviewed', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg09-conclusion', label: 'Release-readiness conclusion', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      id: 'sg09-stability',
+      label: 'Stability status',
+      tier: 'Mandatory',
+      check: { kind: 'gateCheckDone', gate: '09', check: 'Stability, preservation/micro and pack compatibility program selected' },
+    },
+    {
+      id: 'sg09-stability-detail',
+      label: 'Stability status — stability program requirement completed',
+      tier: 'Mandatory',
+      check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Stability program selected' },
+    },
+    {
+      id: 'sg09-stability-evidence',
+      label: 'Stability status — at least one stability/release result recorded',
+      tier: 'Mandatory',
+      check: { kind: 'registerHasRows', register: 'stabilityRelease' },
+    },
+    {
+      id: 'sg09-pack-compat',
+      label: 'Packaging compatibility status',
+      tier: 'Mandatory',
+      check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Pack compatibility assessed' },
+    },
+    {
+      id: 'sg09-pet',
+      label: 'Preservative efficacy status where applicable',
+      tier: 'Conditional',
+      check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Preservation / microbiology checks selected' },
+    },
+    {
+      id: 'sg09-acceptance',
+      label: 'Physical, chemical and microbiological acceptance criteria',
+      tier: 'Mandatory',
+      check: { kind: 'gateCheckDone', gate: '09', check: 'Pilot/scale-up and release criteria assessed' },
+    },
+    {
+      id: 'sg09-acceptance-detail',
+      label: 'Acceptance criteria — recorded against every stability/release row',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'stabilityRelease', column: 'acceptanceCriteria' },
+    },
+    {
+      id: 'sg09-scaleup',
+      label: 'Scale-up or pilot status where applicable',
+      tier: 'Conditional',
+      // Shares the Key Gate Check above — its own wording covers "Pilot/scale-up".
+      check: { kind: 'gateCheckDone', gate: '09', check: 'Pilot/scale-up and release criteria assessed' },
+    },
+    {
+      id: 'sg09-deviations',
+      label: 'Deviations and open risks reviewed',
+      tier: 'Mandatory',
+      check: { kind: 'gateCheckDone', gate: '09', check: 'Release readiness risks closed or conditionally accepted' },
+    },
+    {
+      id: 'sg09-conclusion',
+      label: 'Release-readiness conclusion',
+      tier: 'Mandatory',
+      check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Release readiness risks closed' },
+    },
+    {
+      id: 'sg09-retest-pathway',
+      label: 'Retest or CAPA pathway defined',
+      tier: 'Mandatory',
+      // Not an F1-named item — same generalizable rule as sg01-constraints: this
+      // requirement row was already mandatory-in-effect via B3 (phase close).
+      check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Retest or CAPA pathway defined' },
+    },
   ],
   // Gate 10 is a market-specific hard block (requirements repeat per market).
   SG10: [
@@ -648,20 +945,89 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // F14: Gates 10/11 must use the controlled Cosmetri formula and version.
       check: { kind: 'bomReconciled' },
     },
-    { id: 'sg10-dossier', label: 'PIF, CPSR, Product Master File or equivalent market dossier status', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg10-claims-register', label: 'SKU-level claims register', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg10-claim-evidence', label: 'Evidence attached or linked for every approved product claim', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg10-safety-evidence', label: 'Ingredient and product safety evidence attached', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg10-performance-evidence', label: 'Product-performance evidence attached where relevant', tier: 'Conditional', check: { kind: 'manual' } },
-    { id: 'sg10-artwork', label: 'Label and artwork review', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg10-published-info', label: 'Published information status', tier: 'Mandatory', check: { kind: 'manual' } },
+    // Partially wired 2026-07-26: the PIF/claims/published-info items map onto
+    // registers and Phase 4 requirement rows that already exist. The two items
+    // that are genuinely PER MARKET (regulatory approval, and Gate 10 completion
+    // at Gate 11) stay `manual` — they live in `marketTracks`, whose per-market
+    // gating is follow-up F4, and a project-level check would either pass with
+    // one market approved or block with one market pending. Not guessed.
+    {
+      id: 'sg10-dossier',
+      label: 'PIF, CPSR, Product Master File or equivalent market dossier status',
+      tier: 'Mandatory',
+      check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'PIF/CPSR export-ready' },
+    },
+    {
+      id: 'sg10-pif-mapped',
+      label: 'ASEAN PIF mapped',
+      tier: 'Mandatory',
+      // Not an F1-named item — already mandatory-in-effect via B3, same as
+      // sg01-constraints; wiring it here only enforces it earlier.
+      check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'ASEAN PIF mapped' },
+    },
+    {
+      id: 'sg10-claims-register',
+      label: 'SKU-level claims register',
+      tier: 'Mandatory',
+      check: { kind: 'registerHasRows', register: 'skuClaimsPifRegister' },
+    },
+    {
+      id: 'sg10-claim-evidence',
+      label: 'Evidence attached or linked for every approved product claim',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'skuClaimsPifRegister', column: 'evidenceLink' },
+    },
+    {
+      id: 'sg10-safety-evidence',
+      label: 'Ingredient and product safety evidence attached',
+      tier: 'Mandatory',
+      check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'Product Safety Summary' },
+    },
+    {
+      id: 'sg10-performance-evidence',
+      label: 'Product-performance evidence attached where relevant',
+      tier: 'Conditional',
+      check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'Efficacy evidence summary' },
+    },
+    {
+      id: 'sg10-artwork',
+      label: 'Label and artwork review',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'approval' },
+    },
+    {
+      id: 'sg10-published-info',
+      label: 'Published information status',
+      tier: 'Mandatory',
+      check: { kind: 'registerHasRows', register: 'publishedInfoApproval' },
+    },
+    // sg10-reg-approval: still `manual` — per-market (marketTracks.regulatoryStatus),
+    // needs F4. See docs/F1_Per_Gate_Open_Questions.md.
     { id: 'sg10-reg-approval', label: 'Regulatory approval', tier: 'Mandatory', check: { kind: 'manual' } },
   ],
   // Gate 11 is a market-specific hard block.
   SG11: [
+    // sg11-gate10: still `manual` — per-market, same F4 dependency as
+    // sg10-reg-approval below it.
     { id: 'sg11-gate10', label: 'Gate 10 complete for the relevant market', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg11-gmp', label: 'GMP document links', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg11-formula', label: 'Approved current formula version', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      id: 'sg11-gmp',
+      label: 'GMP document links',
+      tier: 'Mandatory',
+      check: { kind: 'registerHasRows', register: 'gmpLinks' },
+    },
+    {
+      id: 'sg11-gmp-link',
+      label: 'GMP document links — a link recorded on every entry',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'gmpLinks', column: 'link' },
+    },
+    {
+      id: 'sg11-formula',
+      label: 'Approved current formula version',
+      tier: 'Mandatory',
+      check: { kind: 'gateCheckDone', gate: '11', check: 'Final formula/version, packaging and artwork approved' },
+    },
     {
       id: 'sg11-cosmetri-formula',
       label: 'Uses the controlled Cosmetri formula (no unreconciled manual BOM lines)',
@@ -669,19 +1035,103 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // F14: Gates 10/11 must use the controlled Cosmetri formula and version.
       check: { kind: 'bomReconciled' },
     },
-    { id: 'sg11-artwork', label: 'Approved artwork version', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg11-production', label: 'Production readiness', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg11-release-pathway', label: 'Quality release pathway', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      id: 'sg11-artwork',
+      label: 'Approved artwork version',
+      tier: 'Mandatory',
+      check: { kind: 'registerHasRows', register: 'releasedLabelRegister' },
+    },
+    {
+      id: 'sg11-production',
+      label: 'Production readiness',
+      tier: 'Mandatory',
+      check: { kind: 'gateCheckDone', gate: '11', check: 'Production records ready and GMP links added' },
+    },
+    {
+      id: 'sg11-production-detail',
+      label: 'Production readiness — production/launch records selected',
+      tier: 'Mandatory',
+      check: { kind: 'checklistHasSelection', section: 'productionRecords' },
+    },
+    {
+      id: 'sg11-release-pathway',
+      label: 'Quality release pathway',
+      tier: 'Mandatory',
+      check: { kind: 'registerColumnFilled', register: 'stabilityRelease', column: 'releaseDecision' },
+    },
+    // sg11-changes-closed: still `manual`. An open change control record already
+    // soft-locks the gate through a DIFFERENT mechanism (F9/C4 — openChangesForGate
+    // in the gate-decision guard), so adding a readiness check here would either
+    // duplicate it or contradict it. Left for the SME round.
     { id: 'sg11-changes-closed', label: 'Change controls closed or formally accepted', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg11-published-approved', label: 'Published product information approved', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      id: 'sg11-published-approved',
+      label: 'Published product information approved',
+      tier: 'Mandatory',
+      // C6/F11: no row may still be short of a released/approved workflow state.
+      check: {
+        kind: 'registerNoBadRows',
+        register: 'publishedInfoApproval',
+        column: 'workflowState',
+        badValues: [
+          'Draft',
+          'Evidence Gathering',
+          'Technical Review',
+          'Regulatory Review Required',
+          'Revision Required',
+          'Final Approval Pending',
+        ],
+      },
+    },
+    // sg11-launch: still `manual` — per-market (marketTracks.launchApproval, already
+    // hard-blocked per market by C5 in MarketTrackingCard/setMarketTracks). F4.
     { id: 'sg11-launch', label: 'Launch approval', tier: 'Mandatory', check: { kind: 'manual' } },
   ],
+  // Gate 12 wired 2026-07-26 (previously 0 of 2 Mandatory items enforced).
+  // Deliberately NOT requiring a CAPA record to exist: a product with no
+  // complaints legitimately has no CAPA, so requiring a row would block a clean
+  // project. The Key Gate Check is the right mechanism precisely because it has
+  // the NA-with-justification escape.
   SG12: [
-    { id: 'sg12-feedback', label: 'Market feedback', tier: 'Supporting', check: { kind: 'manual' } },
-    { id: 'sg12-complaints', label: 'Complaint and adverse-event status', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg12-pv-pms', label: 'PV/PMS review where applicable', tier: 'Conditional', check: { kind: 'manual' } },
-    { id: 'sg12-performance', label: 'Product-performance feedback', tier: 'Supporting', check: { kind: 'manual' } },
-    { id: 'sg12-capa', label: 'CAPA or improvement actions', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg12-change-links', label: 'Change-control links', tier: 'Supporting', check: { kind: 'manual' } },
+    {
+      id: 'sg12-feedback',
+      label: 'Market feedback',
+      tier: 'Supporting',
+      check: { kind: 'checklistHasSelection', section: 'postMarketSources' },
+    },
+    {
+      id: 'sg12-complaints',
+      label: 'Complaint and adverse-event status',
+      tier: 'Mandatory',
+      check: { kind: 'gateCheckDone', gate: '12', check: 'Complaints/issues triaged and CAPA/improvement actions assigned' },
+    },
+    {
+      id: 'sg12-pv-pms',
+      label: 'PV/PMS review where applicable',
+      tier: 'Conditional',
+      check: { kind: 'gateCheckDone', gate: '12', check: 'Feedback sources monitored and PV/PMS signals classified' },
+    },
+    {
+      id: 'sg12-performance',
+      label: 'Product-performance feedback',
+      tier: 'Supporting',
+      // Shares the feedback-source checklist — Supporting tier only warns.
+      check: { kind: 'checklistHasSelection', section: 'postMarketSources' },
+    },
+    {
+      id: 'sg12-capa',
+      label: 'CAPA or improvement actions',
+      tier: 'Mandatory',
+      // Shares the same Key Gate Check as sg12-complaints — its own wording
+      // already covers "CAPA/improvement actions assigned", and no separate
+      // signal exists that would not wrongly demand a CAPA record.
+      check: { kind: 'gateCheckDone', gate: '12', check: 'Complaints/issues triaged and CAPA/improvement actions assigned' },
+    },
+    {
+      id: 'sg12-change-links',
+      label: 'Change-control links',
+      tier: 'Supporting',
+      check: { kind: 'gateCheckDone', gate: '12', check: 'Loopback to NPD or change control recorded where needed' },
+    },
   ],
 };

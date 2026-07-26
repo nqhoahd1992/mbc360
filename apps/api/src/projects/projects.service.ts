@@ -7,19 +7,40 @@ import {
 } from '@nestjs/common';
 import { GATES } from '@mbc360/shared/config/gates';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
+import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
+import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import {
   gateBlockers,
   gateIndex,
   hardGateBlockers,
+  isGateRefLocked,
   isGateUnlocked,
 } from '@mbc360/shared/utils/gateProgress';
-import type { GateRecord, ProjectData, SignOff } from '@mbc360/shared/types';
+import type {
+  AngleRow,
+  ChangeRecord,
+  ChecklistItem,
+  GateCheck,
+  GateRecord,
+  ProjectData,
+  RegisterRow,
+  RequirementItem,
+  SignOff,
+} from '@mbc360/shared/types';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { PermissionsService } from '../rbac/permissions.service';
+import type { SessionUser } from '../auth/session-user';
 import { IdempotencyService } from './idempotency.service';
-import { PROJECT_INCLUDE, toGateChangeLog, toProjectData, type ProjectWithAll } from './project-mapper';
+import {
+  PROJECT_INCLUDE,
+  toChangeRecords,
+  toGateChangeLog,
+  toProjectData,
+  type ProjectWithAll,
+} from './project-mapper';
 import { createProjectWithScaffold, type NewProjectInput } from './project-scaffold';
 
 // M3 Phase 1 (2026-07-26). Every guard here is the SAME shared pure function the
@@ -44,6 +65,8 @@ export interface ProjectListItem {
   targetLaunchDate: string;
   markets: string[];
   version: number;
+  archivedAt?: string;
+  archivedBy?: string;
 }
 
 // What every read/write returns: the full ProjectData plus the version the
@@ -51,6 +74,9 @@ export interface ProjectListItem {
 export interface ProjectEnvelope {
   project: ProjectData;
   version: number;
+  // Change Control rows for this project. Outside ProjectData because the store
+  // keeps them in a separate global slice.
+  changes: ChangeRecord[];
 }
 
 const GATE_ENTITY = 'gate_record';
@@ -61,13 +87,35 @@ export class ProjectsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
+    private readonly permissions: PermissionsService,
   ) {}
+
+  // A4 / F6: only a role granted `gate:<id>|decide` may record that gate's
+  // decision (admin is unrestricted). Contributing evidence needs no permission.
+  //
+  // This is checked HERE, not only in the browser: the Phase Gate Flow table
+  // disables the decision dropdown for a role without the grant, but until this
+  // was added (2026-07-26) a plain `curl` could still write one — verified by
+  // signing in as Read-only Viewer, which holds zero grants, and successfully
+  // recording a decision. Exactly the failure mode BACKEND_PLAN §3 principle 7
+  // exists to prevent ("never left as 'the UI already disables it'").
+  private async assertCanDecide(user: SessionUser, gateId: string): Promise<void> {
+    if (!(await this.permissions.canDecideGate(user, gateId))) {
+      throw new ForbiddenException(
+        `Your role may not record the decision for gate ${gateId} (needs gate:${gateId}|decide)`,
+      );
+    }
+  }
 
   // ---------------------------------------------------------------- reads ----
 
-  async list(): Promise<ProjectListItem[]> {
+  // Archived projects are hidden by default — archiving exists to get a retired
+  // project out of the way without destroying it, so the default list must not
+  // show it. `includeArchived` is how the UI offers "show archived".
+  async list(includeArchived = false): Promise<ProjectListItem[]> {
     const rows = await this.prisma.project.findMany({
-      include: { markets: { orderBy: { market: 'asc' } } },
+      where: includeArchived ? {} : { archivedAt: null },
+      include: { markets: { orderBy: { market: 'asc' } }, archivedBy: { select: { displayName: true } } },
       orderBy: { createdAt: 'asc' },
     });
     return rows.map((p) => ({
@@ -81,6 +129,8 @@ export class ProjectsService {
       targetLaunchDate: p.targetLaunchDate.toISOString().slice(0, 10),
       markets: p.markets.map((m) => m.market),
       version: p.version,
+      archivedAt: p.archivedAt ? p.archivedAt.toISOString().slice(0, 10) : undefined,
+      archivedBy: p.archivedBy?.displayName,
     }));
   }
 
@@ -98,7 +148,11 @@ export class ProjectsService {
       include: { actor: { select: { displayName: true } } },
       orderBy: { occurredAt: 'asc' },
     });
-    return { project: toProjectData(row, toGateChangeLog(events)), version: row.version };
+    return {
+      project: toProjectData(row, toGateChangeLog(events)),
+      version: row.version,
+      changes: toChangeRecords(row) as ChangeRecord[],
+    };
   }
 
   private async loadOrThrow(tx: Prisma.TransactionClient, id: string): Promise<ProjectWithAll> {
@@ -150,23 +204,895 @@ export class ProjectsService {
     return envelope;
   }
 
-  async remove(actorId: string, id: string): Promise<void> {
+  // Deleting a project destroys it across ~18 cascading tables AND, since
+  // 2026-07-26, its entire audit trail with it (audit_events.projectId is now
+  // onDelete: Cascade at the user's request). Restricted to System Administrator
+  // by an isAdmin() check rather than a `project|delete` capability ON PURPOSE:
+  // a capability would appear on the Roles page and could be granted to any
+  // role, which would contradict "only System Administrator may delete". Roles
+  // that need to retire a project use archive instead — reversible, and it keeps
+  // the record.
+  async remove(user: SessionUser, id: string): Promise<void> {
+    if (!this.permissions.isAdmin(user)) {
+      throw new ForbiddenException(
+        'Only a System Administrator may delete a project (this also deletes its audit trail). Archive it instead.',
+      );
+    }
+    const actorId = user.id;
     const row = await this.prisma.project.findUnique({ where: { id } });
     if (!row) throw new NotFoundException(`Project ${id} not found`);
     await this.prisma.$transaction(async (tx) => {
-      // Audit first: the row (and its cascade) is about to disappear, so the
-      // "before" snapshot has to be written while it still exists.
+      // Count what is about to be destroyed, so the tombstone below says how much
+      // was lost rather than just naming the project.
+      const [gates, registerRows, auditRows] = await Promise.all([
+        tx.gateRecord.count({ where: { projectId: id } }),
+        tx.registerRow.count({ where: { projectId: id } }),
+        tx.auditEvent.count({ where: { projectId: id } }),
+      ]);
+
+      // A TOMBSTONE, written deliberately WITHOUT `projectId`.
+      //
+      // Every other audit row for this project is destroyed with it (that is the
+      // requested behaviour — audit_events.projectId cascades). If this row
+      // carried the projectId it would be destroyed too, and a project could
+      // vanish leaving no trace whatsoever that it ever existed or who removed
+      // it. That is unacceptable in a system built on "no silent corrections"
+      // (B4), so the record of the DELETION outlives the project's own trail.
+      // It is self-contained for the same reason: once the cascade runs there is
+      // nothing left to join back to.
       await this.audit.record(
         {
           actorId,
           entityType: 'project',
           entityId: id,
           action: 'project.deleted',
-          before: { productCode: row.productCode, productSku: row.productSku },
+          before: {
+            id,
+            productCode: row.productCode,
+            productSku: row.productSku,
+            projectLead: row.projectLead,
+            wasArchived: !!row.archivedAt,
+            destroyed: { gateRecords: gates, registerRows, auditEvents: auditRows },
+          },
         },
         tx,
       );
       await tx.project.delete({ where: { id } });
+    });
+  }
+
+  // Archive (reversible) — the route every non-admin role has for retiring a
+  // project. Gated by the `project|archive` capability, seeded to Project Owner
+  // only; admin short-circuits every permission check in this codebase, and must
+  // here too, since it can already do the strictly more destructive delete.
+  async setArchived(user: SessionUser, id: string, archived: boolean): Promise<ProjectEnvelope> {
+    if (!(await this.permissions.hasPermission(user, 'project', 'archive'))) {
+      throw new ForbiddenException(
+        `Your role may not ${archived ? 'archive' : 'restore'} a project (needs project|archive)`,
+      );
+    }
+    await this.prisma.$transaction(async (tx) => {
+      const row = await tx.project.findUnique({ where: { id } });
+      if (!row) throw new NotFoundException(`Project ${id} not found`);
+      if (!!row.archivedAt === archived) {
+        throw new BadRequestException(`Project ${id} is already ${archived ? 'archived' : 'active'}`);
+      }
+      await tx.project.update({
+        where: { id },
+        data: {
+          archivedAt: archived ? new Date() : null,
+          archivedById: archived ? user.id : null,
+          version: { increment: 1 },
+        },
+      });
+      await this.audit.record(
+        {
+          actorId: user.id,
+          projectId: id,
+          entityType: 'project',
+          entityId: id,
+          action: archived ? 'project.archived' : 'project.restored',
+          before: { archivedAt: row.archivedAt?.toISOString() ?? null },
+          after: { archivedAt: archived ? new Date().toISOString() : null },
+        },
+        tx,
+      );
+    });
+    return this.envelope(await this.loadOrThrow(this.prisma, id));
+  }
+
+  // ------------------------------------------------- section mutations ----
+  //
+  // M3 Phase 2-6 (2026-07-26): every remaining `ProjectData` field moves off the
+  // browser and into Postgres. All of them share the same envelope — one
+  // transaction, row lock, `expectedVersion` check, archived check, version bump
+  // and audit row — so that lives here once instead of being copy-pasted 19
+  // times (and forgotten once).
+  //
+  // `write` receives the locked Prisma row AND the same row already mapped to
+  // `ProjectData`, because the guards it has to honour (isGateRefLocked, C5, C2)
+  // are the shared pure functions that operate on ProjectData — the store's
+  // guards are ported by CALLING them, never by restating them.
+  private async mutate(
+    user: SessionUser,
+    id: string,
+    expectedVersion: number,
+    action: string,
+    write: (
+      tx: Prisma.TransactionClient,
+      row: ProjectWithAll,
+      project: ProjectData,
+    ) => Promise<Prisma.InputJsonValue | void>,
+  ): Promise<ProjectEnvelope> {
+    await this.prisma.$transaction(async (tx) => {
+      const row = await this.loadVersionLocked(tx, id, expectedVersion);
+      const after = await write(tx, row, toProjectData(row, []));
+      await this.bumpVersion(tx, id);
+      await this.audit.record(
+        {
+          actorId: user.id,
+          projectId: id,
+          entityType: 'project_section',
+          entityId: id,
+          action,
+          ...(after ? { after } : {}),
+        },
+        tx,
+      );
+    });
+    return this.envelope(await this.loadOrThrow(this.prisma, id));
+  }
+
+  private dateOrNull(value: string | undefined): Date | null {
+    return value ? new Date(value) : null;
+  }
+
+  // --- Phase 2: checklists / requirements / gate checks / phase closure ---
+
+  // Gate-level edit lock (B4): a checklist section whose gate has passed is
+  // read-only — correcting it requires Backtrack.
+  async setChecklistSection(
+    user: SessionUser,
+    id: string,
+    section: string,
+    items: ChecklistItem[],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'checklist.updated', async (tx, row, project) => {
+      const cfg = Object.values(PHASE_CONFIGS)
+        .flatMap((c) => c.checklistSections)
+        .find((sec) => sec.key === section);
+      if (!cfg) throw new BadRequestException(`Unknown checklist section "${section}"`);
+      if (isGateRefLocked(project, cfg.gate)) {
+        throw new ForbiddenException(
+          `Checklist "${section}" belongs to gate ${cfg.gate}, which has passed — it is read-only (use Backtrack)`,
+        );
+      }
+      const existing = row.checklistItems.filter((i) => i.sectionKey === section);
+      if (items.length !== existing.length) {
+        throw new BadRequestException(
+          `Checklist "${section}" expects ${existing.length} rows, received ${items.length}`,
+        );
+      }
+      // Rows are seeded from config and never added/removed, so they are matched
+      // by their stable itemOrder rather than by array position.
+      const byOrder = [...existing].sort((a, b) => a.itemOrder - b.itemOrder);
+      await Promise.all(
+        items.map((item, index) =>
+          tx.checklistItem.update({
+            where: { id: byOrder[index].id },
+            data: {
+              selected: item.selected,
+              status: item.status,
+              evidenceLink: item.evidenceLink ?? null,
+              notes: item.notes ?? null,
+            },
+          }),
+        ),
+      );
+      return { section, rows: items.length };
+    });
+  }
+
+  // Requirement rows can span several gates, so the lock is applied PER ROW:
+  // a locked row keeps its committed value while the rest take the incoming one
+  // (ported from the store's setRequirementSection merge).
+  async setRequirementSection(
+    user: SessionUser,
+    id: string,
+    section: string,
+    items: RequirementItem[],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'requirement.updated', async (tx, row, project) => {
+      const existing = row.requirementItems
+        .filter((i) => i.sectionKey === section)
+        .sort((a, b) => a.itemOrder - b.itemOrder);
+      if (existing.length === 0) throw new BadRequestException(`Unknown requirement section "${section}"`);
+      if (items.length !== existing.length) {
+        throw new BadRequestException(
+          `Requirement section "${section}" expects ${existing.length} rows, received ${items.length}`,
+        );
+      }
+      let skipped = 0;
+      for (const [index, item] of items.entries()) {
+        const target = existing[index];
+        if (isGateRefLocked(project, target.gate)) {
+          skipped++;
+          continue;
+        }
+        await tx.requirementItem.update({
+          where: { id: target.id },
+          data: {
+            status: item.status,
+            evidenceLink: item.evidenceLink ?? null,
+            notes: item.notes ?? null,
+          },
+        });
+      }
+      return { section, rows: items.length, skippedLocked: skipped };
+    });
+  }
+
+  // Identified by (gate, check) rather than array index: the store used an index
+  // into its own copy, which only worked because both sides happened to sort the
+  // same way. The pair is the row's real identity.
+  async setGateChecks(
+    user: SessionUser,
+    id: string,
+    updates: { gate: string; check: string; patch: Partial<GateCheck> }[],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'gate_checks.updated', async (tx, row, project) => {
+      let skipped = 0;
+      for (const update of updates) {
+        const target = row.gateChecks.find((c) => c.gate === update.gate && c.check === update.check);
+        if (!target || isGateRefLocked(project, target.gate)) {
+          skipped++;
+          continue; // locked gate -> skip the row, same as the store did
+        }
+        const p = update.patch;
+        await tx.gateCheck.update({
+          where: { id: target.id },
+          data: {
+            ...(p.done !== undefined ? { done: p.done } : {}),
+            ...(p.ynna !== undefined ? { ynna: p.ynna } : {}),
+            ...('date' in p ? { date: this.dateOrNull(p.date) } : {}),
+            ...('evidenceRef' in p ? { evidenceRef: p.evidenceRef ?? null } : {}),
+            ...('methodRef' in p ? { methodRef: p.methodRef ?? null } : {}),
+            ...('internalLink' in p ? { internalLink: p.internalLink ?? null } : {}),
+            ...('initials' in p ? { initials: p.initials ?? null } : {}),
+            ...('notes' in p ? { notes: p.notes ?? null } : {}),
+          },
+        });
+      }
+      return { updated: updates.length - skipped, skippedLocked: skipped };
+    });
+  }
+
+  private async phaseClosureId(tx: Prisma.TransactionClient, id: string, phase: number): Promise<string> {
+    const closure = await tx.phaseClosure.findUnique({
+      where: { projectId_phase: { projectId: id, phase } },
+      select: { id: true },
+    });
+    if (!closure) throw new NotFoundException(`Phase ${phase} closure not found on project ${id}`);
+    return closure.id;
+  }
+
+  async setAngles(
+    user: SessionUser,
+    id: string,
+    phase: number,
+    angles: AngleRow[],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'angles.updated', async (tx) => {
+      const closureId = await this.phaseClosureId(tx, id, phase);
+      for (const a of angles) {
+        await tx.angleRow.update({
+          where: { phaseClosureId_angle: { phaseClosureId: closureId, angle: a.angle } },
+          data: {
+            ynna: a.ynna,
+            covered: a.covered,
+            date: this.dateOrNull(a.date),
+            evidenceRef: a.evidenceRef ?? null,
+            internalLink: a.internalLink ?? null,
+            initials: a.initials ?? null,
+            comments: a.comments ?? null,
+          },
+        });
+      }
+      return { phase, angles: angles.length };
+    });
+  }
+
+  // B3/A4: signing a phase off is an APPROVAL, so it needs `phase:N|approve` —
+  // the same restriction the UI applies to the "Approved by" row.
+  async setSignOffs(
+    user: SessionUser,
+    id: string,
+    phase: number,
+    signOffs: SignOff[],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    if (!(await this.permissions.canApprovePhase(user, phase))) {
+      throw new ForbiddenException(
+        `Your role may not sign off Phase ${phase} (needs phase:${phase}|approve)`,
+      );
+    }
+    return this.mutate(user, id, expectedVersion, 'sign_offs.updated', async (tx) => {
+      const closureId = await this.phaseClosureId(tx, id, phase);
+      for (const so of signOffs) {
+        const signed = !!(so.name?.trim() || so.initials?.trim());
+        await tx.signOff.updateMany({
+          where: { phaseClosureId: closureId, role: so.role },
+          data: {
+            name: so.name ?? null,
+            initials: so.initials ?? null,
+            date: this.dateOrNull(so.date),
+            decision: so.decision ?? null,
+            comments: so.comments ?? null,
+            // Who actually signed comes from the session, not the typed name.
+            signedByUserId: signed ? user.id : null,
+            signedAt: signed ? new Date() : null,
+          },
+        });
+      }
+      return { phase, signOffs: signOffs.length };
+    });
+  }
+
+  async setEvidenceSummary(
+    user: SessionUser,
+    id: string,
+    phase: number,
+    value: string,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'evidence_summary.updated', async (tx) => {
+      await tx.phaseClosure.update({
+        where: { projectId_phase: { projectId: id, phase } },
+        data: { evidenceSummary: value },
+      });
+      return { phase };
+    });
+  }
+
+  // F13: the responsible owner accepts a phase's pre-work. The acceptor is the
+  // session user, not a client-supplied name.
+  async acceptPreWork(
+    user: SessionUser,
+    id: string,
+    phase: number,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'pre_work.accepted', async (tx) => {
+      await tx.phaseClosure.update({
+        where: { projectId_phase: { projectId: id, phase } },
+        data: { preWorkAcceptedBy: user.displayName, preWorkAcceptedDate: new Date() },
+      });
+      return { phase, acceptedBy: user.displayName };
+    });
+  }
+
+  // --- Phase 3: registers / evidence ---
+
+  // One endpoint for all ~76 registers: the rows are JSONB, so the shape is the
+  // register's own config problem, not the API's. Replace-the-whole-section
+  // matches the draft+Save UI (rows can be added and removed together).
+  async setRegisterRows(
+    user: SessionUser,
+    id: string,
+    registerKey: string,
+    rows: RegisterRow[],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    const config = getRegisterConfig(registerKey);
+    if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    return this.mutate(user, id, expectedVersion, 'register.updated', async (tx, _row, project) => {
+      if (isGateRefLocked(project, config.gate)) {
+        throw new ForbiddenException(
+          `Register "${registerKey}" belongs to gate ${config.gate}, which has passed — it is read-only (use Backtrack)`,
+        );
+      }
+      await tx.registerRow.deleteMany({ where: { projectId: id, registerKey } });
+      if (rows.length > 0) {
+        await tx.registerRow.createMany({
+          data: rows.map((data, rowOrder) => ({
+            projectId: id,
+            registerKey,
+            rowOrder,
+            data: data as Prisma.InputJsonValue,
+            updatedById: user.id,
+          })),
+        });
+      }
+      return { registerKey, rows: rows.length };
+    });
+  }
+
+  async setEvidenceItems(
+    user: SessionUser,
+    id: string,
+    items: ProjectData['evidence'],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'evidence.updated', async (tx, row) => {
+      // Fixed rows seeded from EVIDENCE_AREAS — matched by `area`, never replaced
+      // wholesale, so the seeded reference text cannot be overwritten by a client.
+      for (const item of items) {
+        const target = row.evidenceItems.find((e) => e.area === item.area);
+        if (!target) continue;
+        await tx.evidenceItem.update({
+          where: { id: target.id },
+          data: {
+            status: item.status,
+            evidenceLink: item.evidenceLink ?? null,
+            notes: item.notes ?? null,
+          },
+        });
+      }
+      return { items: items.length };
+    });
+  }
+
+  // --- Phase 4: BOM / packaging / costing / formula versions ---
+
+  // BOM lines hang off the ACTIVE formula version, not the project, so a version
+  // bump keeps the old composition intact (that is what makes the version-compare
+  // feature possible).
+  async setBom(
+    user: SessionUser,
+    id: string,
+    lines: ProjectData['bom'],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'bom.updated', async (tx, row, project) => {
+      if (isGateRefLocked(project, '05')) {
+        throw new ForbiddenException('The Formula BOM belongs to gate 05, which has passed — it is read-only (use Backtrack)');
+      }
+      const active = row.formulaVersions.find((v) => v.status === 'Active') ?? row.formulaVersions.at(-1);
+      if (!active) throw new BadRequestException('Project has no formula version to attach BOM lines to');
+      await tx.bomLine.deleteMany({ where: { formulaVersionId: active.id } });
+      if (lines.length > 0) {
+        await tx.bomLine.createMany({
+          data: lines.map((l, i) => ({
+            formulaVersionId: active.id,
+            line: i + 1,
+            rmCode: l.rmCode,
+            inciName: l.inciName,
+            casNo: l.casNo ?? null,
+            functionRole: l.functionRole,
+            supplier: l.supplier,
+            percentWw: l.percentWw,
+            costPerKg: l.costPerKg,
+            evidenceLink: l.evidenceLink ?? null,
+            notes: l.notes ?? null,
+          })),
+        });
+      }
+      return { version: active.version, lines: lines.length };
+    });
+  }
+
+  async setPackagingBom(
+    user: SessionUser,
+    id: string,
+    lines: ProjectData['packagingBom'],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'packaging_bom.updated', async (tx, _row, project) => {
+      if (isGateRefLocked(project, '06')) {
+        throw new ForbiddenException('The Packaging BOM belongs to gate 06, which has passed — it is read-only (use Backtrack)');
+      }
+      await tx.packagingBomLine.deleteMany({ where: { projectId: id } });
+      if (lines.length > 0) {
+        await tx.packagingBomLine.createMany({
+          data: lines.map((l, i) => ({
+            projectId: id,
+            line: i + 1,
+            component: l.component,
+            componentType: l.componentType,
+            supplier: l.supplier,
+            unitsPerFinishedUnit: l.unitsPerFinishedUnit,
+            unitCost: l.unitCost,
+            wastagePercent: l.wastagePercent,
+            leadTime: l.leadTime ?? null,
+            moq: l.moq ?? null,
+            evidenceLink: l.evidenceLink ?? null,
+            methodRef: l.methodRef ?? null,
+            notes: l.notes ?? null,
+            approval: l.approval ?? null,
+          })),
+        });
+      }
+      return { lines: lines.length };
+    });
+  }
+
+  async setCosting(
+    user: SessionUser,
+    id: string,
+    patch: Partial<ProjectData['costing']>,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'costing.updated', async (tx, _row, project) => {
+      if (isGateRefLocked(project, '05')) {
+        throw new ForbiddenException('Costing belongs to gate 05, which has passed — it is read-only (use Backtrack)');
+      }
+      await tx.costingInputs.update({ where: { projectId: id }, data: patch });
+      return { fields: Object.keys(patch) };
+    });
+  }
+
+  // --- Phase 5: next actions / market tracks / study approvals ---
+
+  // Replaces the actions for the given gates only — the card shows a per-phase
+  // filtered subset, so other gates' actions must survive untouched.
+  async setNextActions(
+    user: SessionUser,
+    id: string,
+    gateIds: string[],
+    actions: ProjectData['nextActions'],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'next_actions.updated', async (tx) => {
+      await tx.nextAction.deleteMany({ where: { projectId: id, gateId: { in: gateIds } } });
+      if (actions.length > 0) {
+        await tx.nextAction.createMany({
+          data: actions.map((a) => ({
+            projectId: id,
+            gateId: a.gateId,
+            description: a.description,
+            owner: a.owner ?? null,
+            dueDate: this.dateOrNull(a.dueDate),
+            status: a.status,
+            priority: a.priority,
+            dateCompleted: this.dateOrNull(a.dateCompleted),
+            raisedBy: a.raisedBy ?? null,
+            verifiedBy: a.verifiedBy ?? null,
+          })),
+        });
+      }
+      return { gates: gateIds, actions: actions.length };
+    });
+  }
+
+  // A1/C5: market approvals need `market-track|approve`, and launch approval is
+  // hard-blocked until that market's PIF status is Approved — re-enforced here,
+  // not trusted from the draft (ported from the store's setMarketTracksBulk).
+  async setMarketTracks(
+    user: SessionUser,
+    id: string,
+    tracks: ProjectData['marketTracks'],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    if (!(await this.permissions.canApproveMarketTrack(user))) {
+      throw new ForbiddenException('Your role may not change market approvals (needs market-track|approve)');
+    }
+    return this.mutate(user, id, expectedVersion, 'market_tracks.updated', async (tx, row) => {
+      let blocked = 0;
+      for (const next of tracks) {
+        const prev = row.marketTracks.find((t) => t.market === next.market);
+        if (!prev) continue;
+        let launchApproval = next.launchApproval;
+        if (launchApproval === 'Approved' && next.pifStatus !== 'Approved') {
+          // C5 — keep the previous value rather than rejecting the whole save,
+          // exactly as the store did.
+          launchApproval = (prev.launchApproval as typeof launchApproval) ?? 'Not Started';
+          blocked++;
+        }
+        await tx.marketTrack.update({
+          where: { id: prev.id },
+          data: {
+            pifStatus: next.pifStatus,
+            regulatoryStatus: next.regulatoryStatus,
+            claimsApproval: next.claimsApproval,
+            launchApproval,
+            regulatoryNotes: next.regulatoryNotes ?? null,
+            pifApprovedDate: this.dateOrNull(next.pifApprovedDate),
+            launchApprovedDate: this.dateOrNull(next.launchApprovedDate),
+          },
+        });
+      }
+      return { tracks: tracks.length, launchBlockedByPif: blocked };
+    });
+  }
+
+  // C2: the Independent Reviewer must not share the Study Author's department.
+  // Rejected outright (the whole point is that the combination is invalid).
+  async setStudyApprovals(
+    user: SessionUser,
+    id: string,
+    approvals: ProjectData['studyApprovals'],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'study_approvals.updated', async (tx, row) => {
+      const author = approvals.find((a) => a.role === 'Study Author');
+      const independent = approvals.find((a) => a.role === 'Independent Reviewer');
+      if (
+        author?.department?.trim() &&
+        independent?.department?.trim() &&
+        author.department.trim().toLowerCase() === independent.department.trim().toLowerCase()
+      ) {
+        throw new BadRequestException(
+          'The Independent Reviewer must not belong to the same department as the Study Author (rule C2)',
+        );
+      }
+      for (const a of approvals) {
+        const target = row.studyApprovals.find((s) => s.role === a.role);
+        if (!target) continue;
+        await tx.studyApproval.update({
+          where: { id: target.id },
+          data: {
+            name: a.name ?? null,
+            department: a.department ?? null,
+            date: this.dateOrNull(a.date),
+            decision: a.decision ?? null,
+            comments: a.comments ?? null,
+          },
+        });
+      }
+      return { approvals: approvals.length };
+    });
+  }
+
+  // --- Phase 6: CAPA / feedback / change control ---
+
+  async setCapa(
+    user: SessionUser,
+    id: string,
+    records: ProjectData['capa'],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'capa.updated', async (tx) => {
+      // `code` is globally unique, so deletes are scoped to this project and the
+      // rows are recreated from the submitted list.
+      await tx.capaRecord.deleteMany({ where: { projectId: id } });
+      if (records.length > 0) {
+        await tx.capaRecord.createMany({
+          data: records.map((c) => ({
+            projectId: id,
+            code: c.id,
+            market: c.market,
+            eventType: c.eventType,
+            summary: c.summary,
+            severity: c.severity,
+            status: c.status,
+            owner: c.owner,
+            notes: c.notes ?? null,
+          })),
+        });
+      }
+      return { records: records.length };
+    });
+  }
+
+  async setFeedback(
+    user: SessionUser,
+    id: string,
+    entries: ProjectData['feedback'],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'feedback.updated', async (tx) => {
+      await tx.feedbackEntry.deleteMany({ where: { projectId: id } });
+      if (entries.length > 0) {
+        await tx.feedbackEntry.createMany({
+          data: entries.map((f) => ({
+            projectId: id,
+            testerName: f.testerName,
+            gender: f.gender,
+            dept: f.dept,
+            dateTested: new Date(f.dateTested),
+            texture: f.texture,
+            fragrance: f.fragrance,
+            overall: f.overall,
+            tooOilySlippery: f.tooOilySlippery,
+            wouldRecommend: f.wouldRecommend,
+            bestLiked: f.bestLiked ?? null,
+            concerns: f.concerns ?? null,
+          })),
+        });
+      }
+      return { entries: entries.length };
+    });
+  }
+
+  // A2: a new formula version is recorded in the version history and the
+  // Formulation Change Register. A MAJOR change also reopens Gates 4-9 and
+  // invalidates the sign-offs of every phase with a gate in that range, with the
+  // pre-change state preserved in a BacktrackEvent (B4 — nothing is deleted).
+  // Ported from the store's createFormulaVersion; the reopen/invalidate half is
+  // deliberately the same shape as `backtrack` above, because it IS a backtrack.
+  async createFormulaVersion(
+    user: SessionUser,
+    id: string,
+    input: {
+      version: string;
+      changeType: 'Major' | 'Minor';
+      reason?: string;
+      initiatedBy?: string;
+      majorCriteria?: string[];
+      classificationConfirmedBy?: string;
+    },
+    expectedVersion: number,
+    idempotencyKey: string,
+  ): Promise<ProjectEnvelope> {
+    const scope = 'project.formula_version';
+    const replayed = await this.idempotency.replay(scope, idempotencyKey);
+    if (replayed) return replayed as ProjectEnvelope;
+
+    const version = input.version.trim();
+    if (!version) throw new BadRequestException('A formula version is required');
+
+    const envelope = await this.mutate(
+      user,
+      id,
+      expectedVersion,
+      'formula_version.created',
+      async (tx, row, project) => {
+        if (version === project.formulaVersion) {
+          throw new BadRequestException(`Project is already on formula version ${version}`);
+        }
+        const previous = row.formulaVersions.find((v) => v.status === 'Active') ?? row.formulaVersions.at(-1);
+
+        // Supersede the outgoing version and create the new Active one. The old
+        // version KEEPS its BOM lines, which is what makes the version-compare
+        // feature work without a snapshot column.
+        if (previous) {
+          await tx.formulaVersion.update({ where: { id: previous.id }, data: { status: 'Superseded' } });
+        }
+        const created = await tx.formulaVersion.create({
+          data: {
+            projectId: id,
+            version,
+            previousVersionId: previous?.id,
+            changeType: input.changeType,
+            reason: input.reason ?? null,
+            initiatedBy: input.initiatedBy ?? user.displayName,
+            status: 'Active',
+          },
+        });
+        // Carry the current composition forward so the new version starts from
+        // the old one rather than empty.
+        const carried = previous?.bomLines ?? [];
+        if (carried.length > 0) {
+          await tx.bomLine.createMany({
+            data: carried.map((l) => ({
+              formulaVersionId: created.id,
+              line: l.line,
+              rmCode: l.rmCode,
+              inciName: l.inciName,
+              casNo: l.casNo,
+              functionRole: l.functionRole,
+              supplier: l.supplier,
+              percentWw: l.percentWw,
+              costPerKg: l.costPerKg,
+              evidenceLink: l.evidenceLink,
+              notes: l.notes,
+            })),
+          });
+        }
+        // Market tracks follow the controlled version (F14/A1).
+        await tx.marketTrack.updateMany({ where: { projectId: id }, data: { formulaVersionId: created.id } });
+
+        let reopened: string[] = [];
+        if (input.changeType === 'Major') {
+          const toIdx = gateIndex('SG04');
+          const fromIdx = gateIndex('SG09');
+          const affected = project.gates.filter((g) => {
+            const idx = gateIndex(g.gateId);
+            return idx >= toIdx && idx <= fromIdx;
+          });
+          reopened = affected.map((g) => g.gateId);
+
+          const affectedPhases = new Set(reopened.map((gid) => GATES.find((m) => m.id === gid)!.phase));
+          const previousSignOffs: Record<number, SignOff[]> = {};
+          for (const phase of affectedPhases) {
+            const closure = row.phaseClosures.find((c) => c.phase === phase);
+            if (!closure) continue;
+            previousSignOffs[phase] = closure.signOffs.map((so) => ({
+              role: so.role as SignOff['role'],
+              name: so.name ?? undefined,
+              initials: so.initials ?? undefined,
+              date: so.date ? so.date.toISOString().slice(0, 10) : undefined,
+              decision: (so.decision ?? undefined) as SignOff['decision'],
+              comments: so.comments ?? undefined,
+            }));
+            await tx.signOff.updateMany({
+              where: { phaseClosureId: closure.id },
+              data: { name: null, initials: null, date: null, decision: null, comments: null, signedByUserId: null, signedAt: null },
+            });
+          }
+
+          await tx.backtrackEvent.create({
+            data: {
+              projectId: id,
+              initiatedBy: input.initiatedBy?.trim() || user.displayName,
+              reason: `Formula version ${project.formulaVersion} -> ${version} (Major)${input.reason ? ` — ${input.reason}` : ''}`,
+              fromGateId: 'SG09',
+              toGateId: 'SG04',
+              reopenedGateIds: reopened,
+              previousGates: affected.map((g) => ({ ...g })) as unknown as Prisma.InputJsonValue,
+              previousSignOffs: previousSignOffs as unknown as Prisma.InputJsonValue,
+            },
+          });
+          await tx.gateRecord.updateMany({
+            where: { projectId: id, gateId: { in: reopened } },
+            data: { status: 'Not Started', decision: null },
+          });
+        }
+
+        // Formulation Change Register entry (A2).
+        const existingRows = await tx.registerRow.count({
+          where: { projectId: id, registerKey: 'formulationChangeRegister' },
+        });
+        await tx.registerRow.create({
+          data: {
+            projectId: id,
+            registerKey: 'formulationChangeRegister',
+            rowOrder: existingRows,
+            updatedById: user.id,
+            data: {
+              changeId: `FC-${String(existingRows + 1).padStart(3, '0')}`,
+              productFamilySku: project.identity.productSku,
+              requestedByNpd: input.initiatedBy ?? user.displayName,
+              dateRequested: new Date().toISOString().slice(0, 10),
+              changeTitle: `Formula version ${project.formulaVersion} -> ${version} (${input.changeType})`,
+              explanation: input.reason ?? '',
+              vnRegistrationRequired:
+                input.changeType === 'Major' && project.identity.markets.includes('Vietnam'),
+              overallStatus: 'In Progress',
+            } as Prisma.InputJsonValue,
+          },
+        });
+
+        return { version, changeType: input.changeType, reopenedGateIds: reopened };
+      },
+    );
+
+    await this.prisma.$transaction((tx) =>
+      this.idempotency.remember(tx, scope, idempotencyKey, 201, envelope as unknown as Prisma.InputJsonValue),
+    );
+    return envelope;
+  }
+
+  // Change Control is project-scoped in the database even though the store kept
+  // it as one global list; the UI filters by projectId either way.
+  async setChanges(
+    user: SessionUser,
+    id: string,
+    records: ChangeRecord[],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'changes.updated', async (tx) => {
+      await tx.changeRecord.deleteMany({ where: { projectId: id } });
+      if (records.length > 0) {
+        await tx.changeRecord.createMany({
+          data: records.map((c) => ({
+            projectId: id,
+            changeId: c.changeId,
+            triggerId: c.triggerId ?? null,
+            trigger: c.trigger,
+            productSku: c.productSku,
+            affectedArea: c.affectedArea,
+            oldVersion: c.oldVersion ?? null,
+            riskLevel: c.riskLevel,
+            requiredAction: c.requiredAction ?? null,
+            evidenceLink: c.evidenceLink ?? null,
+            requiredSignOffs: c.requiredSignOffs ?? null,
+            communicationRequired: c.communicationRequired,
+            salesMarketingMessage: c.salesMarketingMessage ?? null,
+            dueDate: this.dateOrNull(c.dueDate),
+            status: c.status,
+            closureEvidence: c.closureEvidence ?? null,
+            closedDate: this.dateOrNull(c.closedDate),
+            owner: c.owner,
+            notes: c.notes ?? null,
+          })),
+        });
+      }
+      return { records: records.length };
     });
   }
 
@@ -242,12 +1168,16 @@ export class ProjectsService {
   }
 
   async updateGate(
-    actorId: string,
+    user: SessionUser,
     id: string,
     gateId: string,
     patch: Partial<GateRecord>,
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
+    const actorId = user.id;
+    // Only a decision change needs the grant — owner/due date/evidence/notes are
+    // ordinary contribution, open to any authenticated user (rule A4).
+    if ('decision' in patch) await this.assertCanDecide(user, gateId);
     const projectId = await this.prisma.$transaction(async (tx) => {
       const row = await this.loadVersionLocked(tx, id, expectedVersion);
       const project = toProjectData(row, []);
@@ -301,11 +1231,18 @@ export class ProjectsService {
   // invalid decision only drops the `decision` field — every other valid field
   // edit on that row is still applied (matching setGatesBulk).
   async updateGates(
-    actorId: string,
+    user: SessionUser,
     id: string,
     gates: (Partial<GateRecord> & { gateId: string })[],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
+    const actorId = user.id;
+    // Checked BEFORE the transaction and for every row that carries a decision,
+    // so a bulk save cannot smuggle one gate's decision past the grant check by
+    // burying it among rows the user is allowed to edit.
+    for (const update of gates) {
+      if ('decision' in update) await this.assertCanDecide(user, update.gateId);
+    }
     await this.prisma.$transaction(async (tx) => {
       const row = await this.loadVersionLocked(tx, id, expectedVersion);
       const project = toProjectData(row, []);
@@ -356,12 +1293,18 @@ export class ProjectsService {
   // sign-offs, and nothing is deleted — the prior gates and sign-offs are
   // snapshotted into an immutable BacktrackEvent first.
   async backtrack(
-    actorId: string,
+    user: SessionUser,
     id: string,
     body: { fromGateId: string; toGateId: string; reason: string; initiatedBy?: string },
     expectedVersion: number,
     idempotencyKey: string,
   ): Promise<ProjectEnvelope> {
+    const actorId = user.id;
+    // Backtrack is selected from the same "Gate decision" dropdown in the UI, so
+    // it carries the same authority requirement as recording a decision on the
+    // gate being backtracked FROM — and it is strictly more destructive (it
+    // reopens a whole range and voids sign-offs).
+    await this.assertCanDecide(user, body.fromGateId);
     const scope = 'project.backtrack';
     const replayed = await this.idempotency.replay(scope, idempotencyKey);
     if (replayed) return replayed as ProjectEnvelope;
@@ -467,6 +1410,23 @@ export class ProjectsService {
 
   // ------------------------------------------------------------- helpers ----
 
+  // An archived project is READ-ONLY (2026-07-26, user-requested: "a project that
+  // has been archived may not have its data changed any more, unless it is
+  // brought back"). Enforced here rather than per-endpoint because every
+  // project-data mutation goes through loadVersionLocked below — which also means
+  // the Phase 2-6 endpoints inherit it for free instead of each having to
+  // remember. Deliberately NOT applied to `setArchived` (restore is the way out
+  // of the archive) or `remove` (an admin must still be able to delete an
+  // archived project — that is the natural archive-then-delete flow); both do
+  // their own lookup precisely so they bypass this.
+  private assertMutable(row: { id: string; archivedAt: Date | null }): void {
+    if (row.archivedAt) {
+      throw new ForbiddenException(
+        `Project ${row.id} is archived and read-only — restore it before making changes`,
+      );
+    }
+  }
+
   // Reads the project FOR UPDATE (row lock) and rejects a stale writer, so the
   // guard evaluation below cannot be based on data another request is changing.
   private async loadVersionLocked(
@@ -476,6 +1436,7 @@ export class ProjectsService {
   ): Promise<ProjectWithAll> {
     await tx.$queryRaw`SELECT id FROM projects WHERE id = ${id} FOR UPDATE`;
     const row = await this.loadOrThrow(tx, id);
+    this.assertMutable(row);
     if (Number.isInteger(expectedVersion) && expectedVersion !== row.version) {
       throw new ConflictException({
         message: 'This project was updated by someone else — reload before saving',

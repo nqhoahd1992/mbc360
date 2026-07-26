@@ -21,6 +21,7 @@ function buildGroups(defs: PermissionDef[]): CapGroup[] {
   const gate: CapGroup['caps'] = [];
   const phase: CapGroup['caps'] = [];
   const market: CapGroup['caps'] = [];
+  const project: CapGroup['caps'] = [];
   for (const d of defs) {
     if (d.resource.startsWith('gate:')) {
       const g = GATES.find((x) => x.id === d.resource.slice('gate:'.length));
@@ -31,12 +32,18 @@ function buildGroups(defs: PermissionDef[]): CapGroup[] {
       phase.push({ id: d.id, label: p ? p.title : d.resource });
     } else if (d.resource === 'market-track') {
       market.push({ id: d.id, label: 'Approve market PIF / regulatory / claims / launch statuses' });
+    } else if (d.resource === 'project') {
+      project.push({ id: d.id, label: d.description ?? d.id });
     }
   }
   const groups: CapGroup[] = [];
   if (gate.length) groups.push({ key: 'gate', title: 'Gate decisions', caps: gate });
   if (phase.length) groups.push({ key: 'phase', title: 'Phase approvals', caps: phase });
   if (market.length) groups.push({ key: 'market', title: 'Market tracking', caps: market });
+  // Project-level authority (archive). Deleting a project is deliberately NOT
+  // here: it is an isAdmin() check in the API, not a grantable capability, so it
+  // cannot be handed to another role from this screen.
+  if (project.length) groups.push({ key: 'project', title: 'Project lifecycle', caps: project });
   return groups;
 }
 

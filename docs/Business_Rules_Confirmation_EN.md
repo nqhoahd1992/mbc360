@@ -425,6 +425,44 @@ The concrete per-gate list of required evidence and sign-offs (Gates 1–12) is 
 
 ---
 
+## Project lifecycle authority (2026-07-26, decided by the project owner)
+
+These were **decided by us, not asked of the subject-matter team** — recorded here so the decisions are visible to everyone reading this document, and so they can be challenged if they conflict with how the business actually works. They are implemented and enforced by the server, not just hidden in the interface.
+
+### D1. Who may delete a project — and what a deletion destroys
+
+✅ **Only a System Administrator may delete a project, and the deletion removes the project's entire audit trail with it.**
+
+Deleting a project removes its data across ~18 related tables (gate records, checklists, registers, BOM, market tracks, sign-offs, …). Previously the audit events survived the deletion but lost their link to the project — you could still read *"someone changed Gate 01's owner"* without being able to tell **which project** it belonged to. That is worse than either keeping or removing them, so the audit trail is now deleted together with the project.
+
+**One record deliberately survives:** a tombstone entry stating who deleted what, when, whether the project had been archived first, and how much was destroyed (e.g. 12 gate records, 255 register rows, 2 audit events). A project must never be able to vanish leaving no trace of who removed it — that is rule B4 ("no silent corrections") applied to deletion itself.
+
+Deletion authority is **not** a permission that can be granted on the Roles screen. It is tied structurally to the System Administrator role, precisely so it cannot be handed to another role by mistake.
+
+### D2. Who may archive a project
+
+✅ **Only the Project Owner may archive (and restore) a project. No other role may archive or delete.**
+
+Archiving is the route every non-administrator role has for retiring a project: it is **reversible**, nothing is deleted, and the project simply drops out of the default project list (a "Show archived" toggle brings it back into view). Unlike deletion, this *is* a permission on the Roles screen, so the authority can be adjusted later without a software change.
+
+A System Administrator may also archive — it can already perform the strictly more destructive deletion, so refusing it the lesser action would be incoherent.
+
+### D3. An archived project is read-only
+
+✅ **While a project is archived, none of its data may be changed — by anyone, including a System Administrator. Restore it first.**
+
+Read-only is a property of the **project's state**, not of the user's permissions: if an administrator could edit through it, "archived" would mean nothing. Two things stay available: restoring it (that is the way out), and — for a System Administrator — deleting it, which is the natural archive-then-delete sequence.
+
+### D4. Who may create a project
+
+✅ **Any signed-in user may create a project.** Restricting this would block ordinary business use (a Project Owner opening a new project), and creating a project destroys nothing — a mistake can be archived or deleted.
+
+### D5. "Project owner" is no longer a gate condition at Gate 1
+
+✅ **Gate 1's "Project owner" requirement is now satisfied automatically.** The Project Lead is a **required field on the Create New Project form**, so a project cannot exist without one. Previously this item was tied to a Key Gate Check, which made the team re-confirm something the creation form already guarantees.
+
+---
+
 ## Additional requirement — GMP Documentation (added by the team)
 
 Manufacturing already operates its own controlled GMP documentation system.
