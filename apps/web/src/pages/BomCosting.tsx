@@ -55,6 +55,30 @@ export default function BomCosting() {
     },
   );
 
+  // Two lines pointing at the same Cosmetri raw material (whichever source —
+  // a full-formula import or the manual picker) is always a mistake: combine
+  // the % w/w into one line instead. Lines with no raw material picked yet
+  // (empty rmCode) are excluded — several blank rows while filling in a BOM
+  // is normal, not a duplicate. Blocks Save entirely rather than just warning,
+  // since a duplicate would double-count cost/composition and could hide a
+  // watch-list match relevant to the merged quantity.
+  //
+  // Must run before the `!project` early return below (Rules of Hooks — every
+  // hook runs on every render regardless of that condition), so it reads
+  // `bomDraft.draft` directly rather than the `draftBom` alias defined after
+  // the return.
+  const duplicateRawMaterials = useMemo(() => {
+    const lineNumbersByRmCode = new Map<string, number[]>();
+    for (const l of bomDraft.draft) {
+      if (!l.rmCode) continue;
+      lineNumbersByRmCode.set(l.rmCode, [...(lineNumbersByRmCode.get(l.rmCode) ?? []), l.line]);
+    }
+    for (const [rmCode, lines] of lineNumbersByRmCode) {
+      if (lines.length < 2) lineNumbersByRmCode.delete(rmCode);
+    }
+    return lineNumbersByRmCode;
+  }, [bomDraft.draft]);
+
   if (!project) return <Empty description="Project not found" />;
 
   const { bom, packagingBom } = project;
@@ -77,24 +101,6 @@ export default function BomCosting() {
   // F14: manual lines not yet reconciled to a Cosmetri formula.
   const unreconciledBom = draftBom.filter((l) => !l.fromCosmetri && !l.reconciled);
 
-  // Two lines pointing at the same Cosmetri raw material (whichever source —
-  // a full-formula import or the manual picker) is always a mistake: combine
-  // the % w/w into one line instead. Lines with no raw material picked yet
-  // (empty rmCode) are excluded — several blank rows while filling in a BOM
-  // is normal, not a duplicate. Blocks Save entirely rather than just warning,
-  // since a duplicate would double-count cost/composition and could hide a
-  // watch-list match relevant to the merged quantity.
-  const duplicateRawMaterials = useMemo(() => {
-    const lineNumbersByRmCode = new Map<string, number[]>();
-    for (const l of draftBom) {
-      if (!l.rmCode) continue;
-      lineNumbersByRmCode.set(l.rmCode, [...(lineNumbersByRmCode.get(l.rmCode) ?? []), l.line]);
-    }
-    for (const [rmCode, lines] of lineNumbersByRmCode) {
-      if (lines.length < 2) lineNumbersByRmCode.delete(rmCode);
-    }
-    return lineNumbersByRmCode;
-  }, [draftBom]);
   const hasDuplicateRawMaterials = duplicateRawMaterials.size > 0;
 
   // A line with no raw material picked at all (only possible on a manual/
