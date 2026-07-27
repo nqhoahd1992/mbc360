@@ -61,6 +61,11 @@ export const PUBLISHED_INFO_STATES = [
   'Superseded',
 ] as const;
 
+// The two "this is actually public now" states — shared by the C6/F11
+// publish-without-approval check (RegisterHubPage) and the claim-support
+// hard block (utils/claimEvidence.ts) so the two checks can't drift apart.
+export const RELEASED_INFO_STATES: readonly string[] = ['Approved for Release', 'Released'];
+
 // ---------------------------------------------------------------------------
 // Category 1: Ingredient & Supplier Safety (Gate 04/07)
 // ---------------------------------------------------------------------------
@@ -833,7 +838,7 @@ const publishedInfoApproval: RegisterConfig = {
   title: 'Published Information Approval',
   sheetName: 'Published_Info_Approval',
   description:
-    'Mandatory approval workflow (confirmed rules C6 / F11) for ANY information intended for public release — websites, social media, brochures, catalogues, presentations, distributor/pharmacy & HCP documents, training, advertisements, AI-generated content, label/artwork text and external technical summaries. No public information may be released until the workflow reaches "Approved for Release". Acceptable terminology comes from the controlled Claims Library (maintained by Technical + Regulatory — content pending, F11/§B).',
+    'Mandatory approval workflow (confirmed rules C6 / F11) for ANY information intended for public release — websites, social media, brochures, catalogues, presentations, distributor/pharmacy & HCP documents, training, advertisements, AI-generated content, label/artwork text and external technical summaries. No public information may be released until the workflow reaches "Approved for Release". Acceptable terminology comes from the controlled Claims Library (maintained by Technical + Regulatory — content pending, F11/§B). If "Claim ID" is filled in, that claim must be \'Supported\' in Claim -> Evidence Traceability before this row can reach a released state (Gate 3 rule: "a claim may remain under development, but unsupported wording must not be marked as approved" — hard-blocked, 2026-07-27).',
   mode: 'register',
   gate: '10/11',
   columns: [
@@ -848,6 +853,11 @@ const publishedInfoApproval: RegisterConfig = {
     { key: 'publishedItem', label: 'Published information item', type: 'text', width: 180 },
     { key: 'audience', label: 'Audience', type: 'text', width: 120 },
     { key: 'claimCategory', label: 'Claim / terminology category', type: 'text', width: 160 },
+    // Links this row to a specific row in Claim -> Evidence Traceability
+    // (claimEvidenceTraceability.claimId) — hard-blocks release until that
+    // claim's own status is 'Supported'. Leave blank for non-claim content
+    // (e.g. plain company/product info with no substantiated benefit claim).
+    { key: 'claimId', label: 'Claim ID (Claim -> Evidence Traceability)', type: 'text', width: 150 },
     { key: 'exactWording', label: 'Exact wording / technical statement', type: 'textarea', width: 220 },
     { key: 'evidenceTypeRequired', label: 'Evidence type required', type: 'text', width: 150 },
     { key: 'evidenceLink', label: 'Evidence / PMF / PIF link', type: 'text', width: 150 },

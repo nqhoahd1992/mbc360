@@ -1,8 +1,16 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// apps/web has "type": "module", so this config file has no `__dirname` —
+// derive it from import.meta.url instead (works whether Vite loads this
+// config as ESM or bundles it to CJS internally).
+const dirname = path.dirname(fileURLToPath(import.meta.url))
+const sharedSrc = path.resolve(dirname, '../../packages/shared/src')
+
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react()],
   server: {
     // Same-origin '/api' in dev mirrors the production nginx routing
@@ -12,38 +20,31 @@ export default defineConfig({
       '/api': 'http://localhost:3000',
     },
   },
-  optimizeDeps: {
-    // @mbc360/shared is an npm workspace symlink, so Vite serves it as
-    // source instead of pre-bundling it like a normal node_modules package.
-    // Its build output is CommonJS (tsc, no "type": "module") — without
-    // forcing it through esbuild here, the dev server's native-ESM import
-    // handling can't see named exports on that CJS file and throws
-    // "does not provide an export named ...". Production builds (Rollup)
-    // don't hit this; only `vite dev` needs the explicit include.
+  resolve: {
+    // DEV ONLY (2026-07-26, fixing a recurring "edit shared, must restart
+    // dev server to see it" complaint): point every @mbc360/shared/* import
+    // straight at its TypeScript SOURCE instead of the compiled `dist`
+    // package. Source is real ESM (`export` syntax, no CJS ambiguity), so
+    // Vite transforms it on the fly exactly like app code in apps/web/src —
+    // real file-watch + HMR, no restart needed when packages/shared changes.
+    // This replaces the previous `optimizeDeps.include` + `force: true`
+    // approach, which pre-bundled the compiled CJS `dist` output once at
+    // server START and never re-checked it afterwards (Vite treats a
+    // "dependency" pre-bundle as immutable for the rest of the dev session
+    // by design) — so editing shared always required a full restart to be
+    // seen, even though packages/shared's own `tsc --watch` (part of
+    // `npm run dev`) had already recompiled `dist` within a second.
     //
-    // `force: true` re-runs this prebundle on every dev server start instead
-    // of trusting the on-disk cache in node_modules/.vite/deps. That cache is
-    // keyed off the lockfile/config, NOT off packages/shared's dist content —
-    // so without `force`, editing shared and restarting `npm run dev` can
-    // still serve a stale prebundle (this bit us more than once; see the
-    // "Vite optimizeDeps stale cache" note in CLAUDE.md). `npm run dev:clean`
-    // (manual cache delete) is no longer needed for this reason, only as a
-    // fallback if a stray process is still holding the old cache in memory.
-    force: true,
-    include: [
-      '@mbc360/shared/types',
-      '@mbc360/shared/config/gates',
-      '@mbc360/shared/config/phases',
-      '@mbc360/shared/config/evidence',
-      '@mbc360/shared/config/registers',
-      '@mbc360/shared/config/gateReadiness',
-      '@mbc360/shared/config/changeTriggers',
-      '@mbc360/shared/config/roles',
-      '@mbc360/shared/config/reviewers',
-      '@mbc360/shared/utils/gateProgress',
-      '@mbc360/shared/utils/gateDiff',
-      '@mbc360/shared/utils/ingredientWatch',
-      '@mbc360/shared/utils/formulaDiff',
-    ],
+    // Left untouched for `vite build` (production): it still resolves
+    // through package.json's `exports` map to the compiled `dist`, same as
+    // before — apps/api is unaffected either way, it never goes through Vite.
+    alias:
+      command === 'serve'
+        ? [
+            { find: '@mbc360/shared/types', replacement: path.join(sharedSrc, 'types/index.ts') },
+            { find: /^@mbc360\/shared\/config\/(.+)$/, replacement: path.join(sharedSrc, 'config/$1.ts') },
+            { find: /^@mbc360\/shared\/utils\/(.+)$/, replacement: path.join(sharedSrc, 'utils/$1.ts') },
+          ]
+        : [],
   },
-})
+}))

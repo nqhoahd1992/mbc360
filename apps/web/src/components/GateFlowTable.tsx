@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Alert, Button, Card, DatePicker, Empty, Input, message, Modal, Select, Table, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Empty, Input, message, Modal, Select, Table, Tag, Tooltip, Typography } from 'antd';
 import {
   CheckCircleFilled,
   ExclamationCircleFilled,
@@ -16,12 +16,36 @@ import { GATE_FIELD_LABELS, GATES, GATE_DECISIONS, STAGE_STATUSES } from '@mbc36
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useAppStore } from '../store/useAppStore';
 import { currentGateIndex, gateIndex, gateReadinessChecklist, isAwaitingDecision, isGatePassed } from '@mbc360/shared/utils/gateProgress';
+import type { ReadinessSource, ReadinessTier } from '@mbc360/shared/config/gateReadiness';
 import { roleLabel } from '../utils/roles';
 import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import { ApiError } from '../api/projectsApi';
 import { useSession } from '../auth/useSession';
+
+// Why an item below the divider isn't in the SME's own F1 appendix — see
+// `ReadinessSource` in packages/shared/src/config/gateReadiness.ts.
+const READINESS_SOURCE_LABELS: Record<ReadinessSource, string> = {
+  b3: "not in the SME's F1 list — already mandatory via the confirmed phase-close rule B3",
+  'npd-roadmap': "not in the SME's F1 list — from the NPD Front-End Roadmap (v2 workbook, expert-authored)",
+  'dev-decision': "not in the SME's F1 list — added by internal decision, not SME-confirmed",
+};
+
+// Verbatim from the F1 appendix (docs/Response.txt) — shown as a tooltip on
+// each item's tier badge (2026-07-27, user-requested) so the definition is
+// one hover away instead of only living in a config comment.
+const READINESS_TIER_DEFINITIONS: Record<ReadinessTier, string> = {
+  Mandatory: 'Mandatory: hard-blocks gate passage.',
+  Conditional: 'Conditional: becomes mandatory when triggered by product type, user, market, claim or change.',
+  Supporting: 'Supporting: may be incomplete without blocking the gate, provided any resulting risk is documented.',
+};
+
+const READINESS_TIER_COLORS: Record<ReadinessTier, string> = {
+  Mandatory: 'red',
+  Conditional: 'orange',
+  Supporting: 'blue',
+};
 
 export default function GateFlowTable({
   project,
@@ -151,9 +175,12 @@ export default function GateFlowTable({
         // Subset that even Proceed with Conditions can't clear (Critical next
         // actions, Skincare for Two, F1/C7 Mandatory evidence) — decision only
         // affects the (never-hard) open-next-actions item, so this is exactly
-        // the decision-independent hardGateBlockers() result.
-        hardBlockers: readinessChecklist.filter((item) => item.hardBlock && !item.satisfied),
-        liveBlockers: readinessChecklist.filter((item) => !item.satisfied),
+        // the decision-independent hardGateBlockers() result. `pending`
+        // (manual, unwired) and `advisory` (Conditional/Supporting tier)
+        // items are excluded — they're shown on the panel for visibility but
+        // never actually block anything.
+        hardBlockers: readinessChecklist.filter((item) => item.hardBlock && !item.satisfied && !item.pending && !item.advisory),
+        liveBlockers: readinessChecklist.filter((item) => !item.satisfied && !item.pending && !item.advisory),
         openChanges: openChangesForGate(r.meta.number),
         // A4 demo simulation: only the gate's primary-owner function may decide.
         canDecide: canDecideGate(grants, viewRole, r.meta.id),
@@ -315,8 +342,13 @@ export default function GateFlowTable({
                       : `Gate ${r.meta.number} readiness — all requirements met:`}
                   </span>
                   <ul style={{ margin: '2px 0 0', paddingLeft: 18 }}>
-                    {r.readinessChecklist.map((b) => {
-                      const color = b.satisfied ? '#389e0d' : '#cf1322';
+                    {r.readinessChecklist.map((b, idx) => {
+                      // Green = satisfied, red = an actual blocker, amber =
+                      // never blocks (either no data source wired yet, or a
+                      // Conditional/Supporting tier item that's advisory only
+                      // by definition — see `pending`/`advisory` on
+                      // GateReadinessItem).
+                      const color = b.satisfied ? '#389e0d' : b.pending || b.advisory ? '#d48806' : '#cf1322';
                       const targetPath = b.link ? `/projects/${projectId}${b.link.href}` : undefined;
                       const targetHref = targetPath
                         ? `${targetPath}${b.link?.scrollToId ? `?scrollTo=${b.link.scrollToId}` : ''}`
@@ -329,24 +361,49 @@ export default function GateFlowTable({
                       // already auto-expands its sidebar parent group (App.tsx
                       // derives `openKeys` from the route on mount).
                       const isSamePage = targetPath === location.pathname;
+                      // gateReadinessChecklist groups the SME's own F1-appendix
+                      // items first (no `source`), then everything else — the
+                      // divider marks that boundary (2026-07-26, user-requested)
+                      // so it's never mistaken for part of the SME's own list.
+                      const prevSource = idx > 0 ? r.readinessChecklist[idx - 1].source : undefined;
+                      const showDivider = !!b.source && !prevSource;
                       return (
-                        <li key={b.id} style={{ color }}>
-                          {b.satisfied && '✓ '}
-                          {targetHref ? (
-                            isSamePage ? (
-                              <Link to={targetHref} style={{ color }}>
-                                {b.label}
-                              </Link>
-                            ) : (
-                              <a href={`#${targetHref}`} target="_blank" rel="noopener noreferrer" style={{ color }}>
-                                {b.label}
-                              </a>
-                            )
-                          ) : (
-                            b.label
+                        <>
+                          {showDivider && (
+                            <li key={`${b.id}-divider`} style={{ listStyle: 'none', margin: '4px 0 2px -18px', color: '#8c8c8c', fontWeight: 600 }}>
+                              — Additional requirements (not in the SME's F1 list) —
+                            </li>
                           )}
-                          {!b.satisfied && !b.hardBlock && ' — clears with Proceed with Conditions'}
-                        </li>
+                          <li key={b.id} style={{ color }}>
+                            {b.satisfied && '✓ '}
+                            {targetHref ? (
+                              isSamePage ? (
+                                <Link to={targetHref} style={{ color }}>
+                                  {b.label}
+                                </Link>
+                              ) : (
+                                <a href={`#${targetHref}`} target="_blank" rel="noopener noreferrer" style={{ color }}>
+                                  {b.label}
+                                </a>
+                              )
+                            ) : (
+                              b.label
+                            )}
+                            {b.tier && (
+                              <Tooltip title={READINESS_TIER_DEFINITIONS[b.tier]}>
+                                <Tag color={READINESS_TIER_COLORS[b.tier]} style={{ marginLeft: 6, cursor: 'default' }}>
+                                  {b.tier}
+                                </Tag>
+                              </Tooltip>
+                            )}
+                            {b.pending
+                              ? ' — not yet wired to a data source; shown for confirmation only, never blocks'
+                              : !b.satisfied && b.advisory
+                                ? ' — Conditional/Supporting tier, advisory only, never blocks the gate'
+                                : !b.satisfied && !b.hardBlock && ' — clears with Proceed with Conditions'}
+                            {b.source && ` (${READINESS_SOURCE_LABELS[b.source]})`}
+                          </li>
+                        </>
                       );
                     })}
                   </ul>

@@ -7,22 +7,77 @@
 
 ---
 
+## Cross-cutting (2026-07-27): tier assignment from "where applicable" / "where relevant" wording — decided by the project owner, needs SME confirmation
+
+**What we found:** re-reading the F1 appendix (`docs/Response.txt`) closely, every gate's item list sits under one flat **"Required:"** heading — the appendix does not tag any individual item as Mandatory, Conditional or Supporting. Those three tiers are only defined once, up front, as a general framework:
+
+> Mandatory: hard-blocks gate passage. Conditional: becomes mandatory when triggered by product type, user, market, claim or change. Supporting: may be incomplete without blocking the gate, provided any resulting risk is documented. ... These rules should be hard blocks for mandatory safety, regulatory, PIF, claim and release evidence. Supporting information may generate warnings rather than blocks.
+
+So every per-item tier in `gateReadiness.ts` that is not Mandatory is something the team inferred, not something the appendix states outright. **This was raised because two Gate 3 items were briefly changed to Mandatory** (on the reading "the appendix just says Required, so tier them all the same"), then reconsidered: the project owner's decision is to **keep the inference rule below** rather than tier everything Mandatory, and have it formally confirmed here instead of left as a silent assumption.
+
+**The rule being confirmed:**
+1. An item whose own wording carries a qualifier — **"where applicable"**, **"where relevant"**, **"where triggered"**, or a self-limiting phrase like **"high-risk or borderline"** (i.e. only some claims are) — is tiered **Conditional**. This matches the appendix's own definition of Conditional word-for-word: it "becomes mandatory when triggered by product type, user, market, claim or change."
+2. An item that is inherently soft business/lifecycle context rather than safety, regulatory, PIF or release evidence (e.g. a costing status, a market-feedback log) is tiered **Supporting**, matching the appendix's own closing line about "Supporting information."
+3. Everything else is **Mandatory** — hard-blocks the gate.
+
+**Every item tiered this way** (Conditional unless marked Supporting):
+
+| Gate | Item | Appendix wording | Tier |
+|---|---|---|---|
+| 3 | Competitor or benchmark review where applicable | "...where applicable" | Conditional |
+| 3 | Regulatory review of high-risk or borderline claims | "...high-risk or borderline" | Conditional |
+| 4 | Pregnancy/breastfeeding caution screen when triggered | "...when triggered" | Conditional (also backed by the confirmed rule C1 — this one has a real trigger, not just a wording inference) |
+| 4 | Allergen, impurity and contaminant review where relevant | "...where relevant" | Conditional |
+| 5 | Preservative strategy where applicable | "...where applicable" | Conditional |
+| 5 | Costing or commercial feasibility status | *(no qualifier — tiered on the "soft business context" reading instead)* | Supporting |
+| 7 | Maternal and infant-contact assessment when Skincare for Two is triggered | "...when triggered" | Conditional (rule C1, real trigger) |
+| 8 | Human-study approval workflow completed before participant recruitment, where applicable | "...where applicable" | Conditional |
+| 9 | Preservative efficacy status where applicable | "...where applicable" | Conditional |
+| 9 | Scale-up or pilot status where applicable | "...where applicable" | Conditional |
+| 10 | Product-performance evidence attached where relevant | "...where relevant" | Conditional |
+| 12 | Market feedback | *(no qualifier — soft business context)* | Supporting |
+| 12 | PV/PMS review where applicable | "...where applicable" | Conditional |
+| 12 | Product-performance feedback | *(no qualifier — soft business context)* | Supporting |
+| 12 | Change-control links | *(no qualifier — soft business context)* | Supporting |
+
+**One inconsistency found while compiling this list, flagged rather than silently fixed:**
+
+| Gate | Item | Appendix wording | Current tier | Problem |
+|---|---|---|---|---|
+| 6 | Market-specific pack requirements | No qualifier at all — reads exactly like the other 5 Mandatory items on Gate 6's list | Conditional | Doesn't fit either rule above (no "where applicable" wording, and it's not "soft business context" either — packaging requirements are release-relevant). Left as Conditional for now since changing it is exactly the kind of judgment call this section exists to avoid making silently. |
+
+**Question for the team:** does this tiering rule (qualifier wording → Conditional; soft business/lifecycle info → Supporting; everything else → Mandatory) match what you intended when you wrote "Required" for every item? And separately: should Gate 6's "Market-specific pack requirements" be Mandatory (it has no qualifying wording) or Conditional (packaging can genuinely vary by market)?
+
+**A second, more important caveat the project owner raised (2026-07-27): the appendix's own Conditional definition — "becomes mandatory when triggered by product type, user, market, claim or change" — is too generic to actually act on.** It names five possible KINDS of trigger but not, for any specific item, which product types / which markets / which claim types / which change actually flips it to mandatory. Concretely, that means: of the 13 items above tiered Conditional, **only 2 have a real, working trigger today** — "Pregnancy/breastfeeding caution screen" and "Maternal and infant-contact assessment" both key off the confirmed rule C1 (Pregnancy/Breastfeeding/Postpartum selected as a target user). The other 11 Conditional items (and the 4 Supporting ones) have **no trigger definition of any kind wired** — there is nothing in the app that can evaluate "has this been triggered," so today they behave as permanently advisory: they will show green when satisfied and amber when not, but can **never** actually hard-block a gate, no matter what the project's real product type, market, user or claim is. That is a real gap against the appendix's own words ("becomes mandatory"), not a deliberate design choice — we don't have enough information to close it ourselves.
+
+**Question:** for each of the 11 untriggered Conditional items and the Gate 4/7 pattern they're modelled on, can the team specify the exact condition that should flip it to mandatory (e.g. "Preservative strategy where applicable" — mandatory whenever the formula is NOT a single-use/anhydrous product that can't support microbial growth; not mandatory otherwise)? Until that's supplied, these items stay permanently advisory in practice, whatever tier they're labelled with.
+
+**Practical effect until then:** Conditional/Supporting items never hard-block the gate today — they show on the "What's blocking Gate X" panel in amber, satisfied or not, purely for visibility. If the team supplies a real trigger condition for one of them, it can be wired the same way rule C1 already is, and it will then genuinely hard-block once triggered — matching the appendix's definition in practice, not just in label.
+
+---
+
 ## Gate 1 — Opportunity & Request
 
-3 of the 5 F1 items for Gate 1 are now implemented in `packages/shared/src/config/gateReadiness.ts` (`SG01`), reading real "Key Gate Check" rows (`ProjectData.gateChecks`, the same data behind the "Key Gate Checks" table on the Phase 1 page):
+2 of the 5 F1 items for Gate 1 are now implemented in `packages/shared/src/config/gateReadiness.ts` (`SG01`), reading real "Key Gate Check" rows (`ProjectData.gateChecks`, the same data behind the "Key Gate Checks" table on the Phase 1 page):
 
-- "Product request record" and "Request source" → both read the check row **"Product request, opportunity and requester captured"**
-- "Project owner" → reads the check row **"Initial project record opened and owner assigned"**
+- "Product request record" → reads the check row **"Product request, opportunity and requester captured"**
+- "Project owner" → auto-satisfied from the moment the project exists, because Project Lead is a **required field on the Create New Project form** — a project cannot be created without one.
 
-The other 2 items are **not** implemented — both because the underlying data doesn't cleanly exist yet, not because of a mapping preference:
+The other 3 items are **not** implemented — because the underlying data doesn't cleanly exist yet, not because of a mapping preference:
 
-### Q1. "Initial product scope" — no matching field exists
+### Q1. "Request source" — was reusing "Product request record"'s evidence; reopened
+
+We had initially read this the same way as "Product request record", on the theory that the Key Gate Check row's wording ("...requester captured") already covers where the request came from. **That was our own assumption, not confirmed by you** — correctly challenged: the appendix lists "Product request record" and "Request source" as two separate lines with no further detail, and if a single piece of evidence covered both, we'd expect them written as one line. We've reverted this item to unimplemented rather than keep a guessed mapping.
+
+**Question:** is "Request source" a distinct piece of information from the requester who filed the request (e.g. *where* the request originated — internal proposal, customer feedback, distributor request, market research, regulatory change, etc.)? If yes, please confirm the exact wording of the field/options you'd want recorded, the same way the existing rows were transcribed verbatim from the workbook.
+
+### Q2. "Initial product scope" — no matching field exists
 
 The only other Key Gate Check at Gate 1 is **"Initial constraints, known deadlines and risk flags recorded"**. That is not the same thing as "scope" — a team member could tick it (constraints/deadlines/risks captured) without ever having recorded what the product actually *is*. Using it as a stand-in would create a false "ready" signal: the gate could show as passed while nobody has actually written down the initial product scope.
 
 **Question:** should we add a **new** Key Gate Check row for Gate 1, e.g. *"Initial product scope defined"*, alongside the existing 3? If yes, please confirm the exact wording you'd want recorded (we'd transcribe it verbatim, the same way the existing 3 rows were transcribed from the workbook).
 
-### Q2. "Initial target market and user" — the only matching data belongs to Gate 2, not Gate 1
+### Q3. "Initial target market and user" — the only matching data belongs to Gate 2, not Gate 1
 
 The app's only target-market/target-user data (`checklists['targetMarkets']`, `checklists['targetUsers']`) is explicitly tagged **Gate 02** in the phase config (`packages/shared/src/config/phases.ts`), not Gate 01 — it's the fuller "Target User & Brief" selection (life stage, body area, full market list). The F1 Appendix calls Gate 1's version "**initial**" target market and user, which reads as a distinct, rougher capture at the opportunity stage — not the same data as Gate 2's refined selection.
 
@@ -36,12 +91,9 @@ The app's only target-market/target-user data (`checklists['targetMarkets']`, `c
 
 ## Gate 2 — Target User & Brief
 
-3 of 6 F1 items implemented (`SG02` in `gateReadiness.ts`), reusing the same "Key Gate Check" mechanism as Gate 1 — plus one extra row ("Commercial planning inputs entered or marked N/A") wired for the same reason as Gate 1's "constraints/deadlines/risk" row: it was already mandatory-in-effect via phase close (B3), just not yet enforced at Gate 2 itself.
+4 of 6 F1 items implemented (`SG02` in `gateReadiness.ts`): "Target user and life stage", "Intended use and body area" and "Selected markets" each read BOTH the matching Key Gate Check row done+Y/NA AND the underlying detail checklist actually having a real selection (merged into one visible line per item, 2026-07-26, user-requested — see the "detailed selection recorded" discussion). "Vulnerable-user flags" reuses the same evidence as "Target user and life stage" — see **Q2 below, reopened for confirmation**.
 
-- "Target user and life stage" and "Intended use and body area" → both read the check row **"Target user / life stage / use context selected"**
-- "Selected markets" → reads **"Target markets and success criteria linked"**
-
-3 items are not implemented:
+2 items are still not implemented (`manual`):
 
 ### Q1. "Approved development brief" — no matching field exists anywhere
 
@@ -49,21 +101,15 @@ Checked every candidate: not a Key Gate Check row (the 3 Gate-02 rows are about 
 
 **Question:** does "approved development brief" mean a **separate document/link** we should add a field for (e.g. on the Project Identification card, or a new Key Gate Check row), or does it mean **the combination of the 4 Phase 1 checklist sections** (Target Area, Product Type, Target Users, Target Markets) — i.e., once those are filled in, that collectively *is* the brief, and no new field is needed, just an aggregate check that all 4 sections have at least one selection?
 
-### Q2. ~~"Vulnerable-user flags" — ambiguous against the same evidence as "Target user and life stage"~~ — **NO LONGER NEEDED (2026-07-26)**
+### Q2. "Vulnerable-user flags" — reopened for confirmation (interim decision in place, not yet SME-confirmed)
 
-> **Resolved without an SME round.** The vulnerable-user flags genuinely *are* the target-user checklist entries (Pregnancy / Breastfeeding / Postpartum / Infant 0+ / Sensitive skin / Cancer patient support / Kidney disease support …), so the item is now wired to `checklistHasSelection: targetUsers` — the same evidence as "Target user and life stage". Reusing one piece of evidence for two appendix items is an established pattern here (Gate 1's "Product request record" and "Request source" already share a Key Gate Check). The alternative reading — a per-flag cardinality rule ("which flags must each be answered") — was NOT adopted, because that would be inventing a rule nobody confirmed. Raise it again only if the team wants per-flag enforcement.
+**Currently implemented as an interim decision, 2026-07-26 — reopened by the project owner to get this exactly right rather than leave it as our own call.** The only vulnerable-user data in the app is the `targetUsers` checklist itself (`Pregnancy`, `Breastfeeding`, `Postpartum`, `Infant 0+`, `Child 2+/3+`, `Sensitive skin`, `Cancer patient support`, `Kidney disease support`, etc. — the same list `skincareForTwoTriggers()` already reads for the C1 safety screen), mixed in the same table alongside plain life-stage options (`General adult`, `Family use`, `Swimmers`, …) — there is no separate "vulnerable flags" table in the workbook. So today "Vulnerable-user flags" is wired to `checklistHasSelection: targetUsers` — the same evidence as "Target user and life stage" (they share one Key Gate Check and this one checklist). Reusing one piece of evidence for two appendix items has precedent here (Gate 1's "Product request record" and "Request source" also share one Key Gate Check), but that precedent is itself a judgment call, not something the team confirmed either — so treat this whole pattern as still open, not settled.
 
-<details><summary>Original question (kept for the record)</summary>
+**What this means concretely:** the item is satisfied as soon as the `targetUsers` checklist has ANY selection at all — even a plain "General adult" product with no vulnerable flag ticked counts as satisfied. There is no distinct signal for "we specifically considered whether this product touches a vulnerable-use group."
 
-
-
-The only vulnerable-user data in the app is the `targetUsers` checklist itself (`Pregnancy`, `Breastfeeding`, `Postpartum`, `Infant 0+`, `Child 2+/3+`, `Sensitive skin`, etc. — the same list `skincareForTwoTriggers()` already reads for the C1 safety screen). Mapping "Vulnerable-user flags" to the same Key Gate Check as "Target user and life stage" would make 3 different F1 wordings ("target user and life stage", "intended use and body area", "vulnerable-user flags") all resolve to one identical signal, which stops being meaningful as a distinct mandatory item.
-
-**Question:** should this item instead check the **`targetUsers` checklist data directly** — and if so, satisfied by what condition? Two candidates:
-- (a) At least one `targetUsers` item is `selected`, regardless of which one (i.e., "the question was considered" — satisfied even for a plain "General adult" product with no vulnerable flag), or
-- (b) Something stricter tied to whether a vulnerable label is selected — e.g. once a vulnerable label is selected, some additional acknowledgement/note is required before Gate 2 can proceed.
-
-</details>
+**Question:** is that acceptable, or do you want something stricter tied to whether a vulnerable label is actually selected? Two candidates if stricter:
+- (a) Keep it as-is — satisfied once the `targetUsers` checklist has any selection, regardless of which option (current behavior); or
+- (b) Require a distinct step once a vulnerable label IS selected — e.g. an additional acknowledgement/note — before Gate 2 can proceed, so the two ideas ("a life stage was picked" vs. "a vulnerable-use group was flagged") are no longer collapsed into one signal.
 
 ### Q3. "Project requirements and exclusions" — Phase 1 has no requirement-table data at all
 
@@ -89,6 +135,22 @@ The only vulnerable-user data in the app is the `targetUsers` checklist itself (
 
 This is the Gate 3 instance of the same gap `Business_Rules_Followup_Round2.md` §A1 already flags for "critical" — we don't yet have a confirmed definition of what makes a claim high-risk/borderline, so there's nothing to trigger this Conditional item on. Once Q1 (or Round 2's A1) is answered, this item likely follows directly.
 
+### Q3. Claim-support hard block on Published Information — the whole design is a dev/project-owner decision, not yet put to the SME team
+
+Gate 3's list is followed by one more sentence, outside the numbered items: *"A claim may remain under development, but unsupported wording must not be marked as approved."* Previously this was only tracked (a "Supporting" register note, not enforced — see `Business_Rules_Confirmation_EN.md`'s NPD Front-End Roadmap section). **2026-07-27, the project owner asked to make this a real hard block**, explicitly flagging (per standing instruction) that every dev-made call along the way — even ones the project owner personally signed off on in the moment — should be written up here for the SME team to confirm, not left implicit in code comments.
+
+**What was actually built**, so the team can review the whole shape of it, not just the headline rule:
+
+1. **Published Information Approval** rows gained an optional **Claim ID** field, referencing a row in **Claim → Evidence Traceability**. Left blank, the row is treated as not making a specific claim (e.g. plain company information) and none of the below applies to it.
+2. The Claim ID field is a **picker showing only claims already marked `Supported`** in Claim → Evidence Traceability — a still-`Pending` claim cannot be selected at all, even to note "this is the claim we intend to use once it's ready."
+3. Selecting a Claim ID **auto-fills "Exact wording / technical statement" from that claim's own approved wording, and locks the field** — it can no longer be hand-typed while linked (to change it: unlink the claim, or edit the source wording on Claim → Evidence Traceability itself).
+4. A row cannot be **saved** with its workflow state at "Approved for Release" or "Released" while its linked claim is not `Supported` — enforced both in the UI (Save disabled with a reason) and, authoritatively, in the API (a direct API call is rejected too).
+
+**Questions for the team, on each design point above:**
+- **(1)** Should linking a Claim ID be optional (today's behaviour), or should every row that states any product benefit be required to link one?
+- **(2)** Should the picker really be restricted to `Supported` claims only, or should a still-developing (`Pending`) claim be linkable too — so the intended claim is documented early — with the hard block applying only at the point of actually reaching a released state (which is where rule (4) already bites)? Restricting the picker itself is stricter than the sentence strictly requires ("may remain under development" arguably means it should be *linkable* while developing, just not *releasable*).
+- **(3)** Is auto-fill-and-lock the right level of strictness, or should content owners be allowed to adapt the wording per channel (e.g. shorten for a social media caption) as long as the underlying meaning is unchanged, with a save-time check that it still matches closely enough rather than a byte-for-byte lock?
+
 ---
 
 ## Gate 4 — Ingredient & RM Screening
@@ -110,6 +172,20 @@ This is the Gate 3 instance of the same gap `Business_Rules_Followup_Round2.md` 
 ---
 
 </details>
+
+### Q2. "An unresolved possible match may permit Proceed with Conditions only where a qualified reviewer has assessed it as non-critical and created a controlled action" — not implemented at all, only just noticed (2026-07-27)
+
+This sentence follows Gate 4's Required list in the appendix but was never analysed or wired — it isn't in `F1_Gate_Readiness_Mapping_Proposal.md` either. It describes a specific escape-valve rule for the Prohibited Ingredient Watch-list's `"REVIEW - possible formula match"` status (distinct from `"Prohibited - remove"`, which `sg04-no-remove` already hard-blocks unconditionally): an unresolved possible match should **block a plain Proceed**, and be passable only via **Proceed with Conditions**, and only when a qualified reviewer has assessed it as non-critical **and** a controlled action has been created for it.
+
+**Current behaviour:** `sg04-no-remove`'s bad-values list only checks for `"Prohibited - remove"` — a row sitting at `"REVIEW - possible formula match"` does not block Gate 4 at all today, plain Proceed included. That is looser than the appendix describes.
+
+**Why this isn't simply wired like the other items:** the two conditions in the sentence have no matching field yet —
+- "a qualified reviewer has assessed it as non-critical" — the register has an `owner` (free text) and `evidenceLink`, but no explicit critical/non-critical assessment column.
+- "created a controlled action" — is this a real linked `NextAction` record (the app's existing F8 workflow), or just a note in the register's own `notes` column?
+
+**Question:** how should each of these be represented in the data model — e.g., a new `reviewerAssessment` (Critical/Non-critical) column on `Prohibited_Ingredients`, and should "controlled action" require an actual open `NextAction` linked to that row, or is a free-text note sufficient? Once that's answered, the enforcement itself follows the same soft-lock pattern already used for open Change Control records (F9/C4: blocks plain Proceed, requires acknowledgement, allowed only via Proceed with Conditions).
+
+---
 
 ## Gate 5 — Formula Design & Development
 
@@ -145,6 +221,8 @@ None of Phase 2's requirement rows are preservative-specific. Even if they were,
 
 - *"At Gate 7, does the Pregnancy/Breastfeeding caution screen apply to **every** project, or only Skincare-for-Two ones?"* → The F1 appendix lists the Gate 7 item as **Mandatory and unconditional**, unlike the Gate 4 version which is Conditional on the trigger. It is now enforced unconditionally at Gate 7. Tell us if that reading is wrong.
 - *"Is a separate **gate-level** safety sign-off needed, or is the phase-level Prepared/Reviewed/Approved block sufficient at Gate 7?"* → The workbook already ships a gate-level one: the Final Safety Sign-off sheet has an owner and a decision date against each of its 10 safety questions. That is now what the gate checks, and the phase-level sign-off remains a separate condition. Tell us if you intended only one of the two.
+
+**Also resolved without an SME round (2026-07-26): every gate's own Key Gate Check rows are now enforced at the gate level, not just at phase close.** Rule **B3(b)** — already confirmed by the team ("All Key Gate Checks for the phase = Done/Y (or N/A)" is mandatory) — applies to *every* Key Gate Check row, not a curated subset. A completeness sweep found 3 of the 36 Key Gate Check rows (12 gates × 3 rows each) had never been given their own gate-level check, even though B3(b) already made them mandatory in effect: Gate 7's "Pregnancy/breastfeeding and baby-contact screen completed where triggered", and all three of Gate 10's rows ("Evidence hierarchy applied and claims wording checked", "Countries/regulatory pathway matched and PIF/evidence file mapped", "Approved wording / limitations recorded") — Gate 10 was the widest gap, having none of its three rows wired — plus Gate 11's "Launch sign-off completed and blockers recorded". These are now wired the same way as the earlier `sg01-constraints`/`sg02-commercial`/`sg03-decision`/`sg05-decision` rows: moving an already-confirmed requirement earlier (gate-level instead of phase-level), not inventing a new one, so no SME question was needed.
 
 ### Q1. "No unresolved critical safety finding" (Gate 7) — no separate field exists for it
 

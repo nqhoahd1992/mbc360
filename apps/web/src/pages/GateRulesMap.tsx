@@ -294,7 +294,13 @@ export default function GateRulesMap() {
 
   // Per gate: what blocks it (live) and what becomes read-only once it passes.
   const gateRows = GATES.map((meta) => {
-    const enforced = gateReadinessChecklist(project, meta.id);
+    // gateReadinessChecklist now also carries `pending` (Mandatory, still
+    // `manual`) and `advisory` (Conditional/Supporting tier) items for the
+    // Gate Flow panel's benefit — this page already has its own, richer
+    // bucket for those (`notYetEnforced`, built independently below with
+    // tier/evaluable detail), so exclude them here to keep "enforced"/"unmet"
+    // meaning what they say: checks that actually hard-block today.
+    const enforced = gateReadinessChecklist(project, meta.id).filter((i) => !i.pending && !i.advisory);
     const declared = evaluateReadinessRequirements(project, meta.id);
     const notYetEnforced = declared.filter((r) => !r.evaluable || r.tier !== 'Mandatory');
     const locking = REGISTER_CONFIGS.filter((c) => c.gate && locksAfterGateId(c.gate) === meta.id);

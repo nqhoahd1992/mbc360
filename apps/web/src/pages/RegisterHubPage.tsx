@@ -9,6 +9,7 @@ import {
   getNavGroup,
   getRegisterConfig,
   navItemHref,
+  RELEASED_INFO_STATES,
   type NavItem,
   type RegisterConfig,
 } from '@mbc360/shared/config/registers';
@@ -17,6 +18,7 @@ import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import DynamicTable from '../components/DynamicTable';
 import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
+import PublishedInfoApprovalTable from '../components/PublishedInfoApprovalTable';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
 
 // Content transcribed verbatim from the source workbook's front-matter sheets
@@ -107,7 +109,6 @@ export default function RegisterHubPage() {
     // reaches Approved for Release". A row violates if any step is not Y OR its
     // workflow state is not a released/approved state.
     const C6_STEPS = ['terminologyChecked', 'evidenceVerified', 'technicalReview', 'regulatoryReview', 'finalApproval'];
-    const RELEASED_STATES = ['Approved for Release', 'Released'];
     const publishViolations =
       registerKey === 'publishedInfoApproval'
         ? (project.registers[registerKey] ?? []).filter(
@@ -115,9 +116,16 @@ export default function RegisterHubPage() {
               typeof row.finalPublishedLink === 'string' &&
               row.finalPublishedLink.trim() !== '' &&
               (C6_STEPS.some((step) => row[step] !== 'Y') ||
-                !RELEASED_STATES.includes(String(row.workflowState))),
+                !RELEASED_INFO_STATES.includes(String(row.workflowState))),
           )
         : [];
+
+    // Gate 3 rule, hard-blocked 2026-07-27 (user-requested): "a claim may
+    // remain under development, but unsupported wording must not be marked
+    // as approved" — enforced by PublishedInfoApprovalTable below (Claim ID
+    // picker + auto-filled/locked wording + Save-guard) and, authoritatively,
+    // by the API in ProjectsService.setRegisterRows.
+    const claimEvidenceRows = project.registers['claimEvidenceTraceability'] ?? [];
 
     // Gate-level edit lock: read-only once every gate this register is tied to
     // has passed (config `gate`, e.g. '04' or '04/07'). Editing requires Backtrack.
@@ -177,6 +185,16 @@ export default function RegisterHubPage() {
             config={config}
             rows={project.registers[registerKey] ?? []}
             bom={project.bom}
+            onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
+            readOnly={locked}
+          />
+        ) : registerKey === 'publishedInfoApproval' ? (
+          // Claim ID picker (Supported claims only) + auto-filled/locked
+          // wording — see PublishedInfoApprovalTable.tsx.
+          <PublishedInfoApprovalTable
+            config={config}
+            rows={project.registers[registerKey] ?? []}
+            claimEvidenceRows={claimEvidenceRows}
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
             readOnly={locked}
           />

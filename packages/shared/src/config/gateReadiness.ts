@@ -95,7 +95,39 @@ export type ReadinessCheck =
   // 01 F1 item duplicates data the project can never actually be missing
   // (e.g. Project Lead/owner, required to create the project in the first
   // place — see 2026-07-25 sg01-owner fix).
-  | { kind: 'identityFieldFilled'; field: 'projectLead' };
+  | { kind: 'identityFieldFilled'; field: 'projectLead' }
+  // AND-composite: satisfied only when EVERY sub-check is satisfied. Merges
+  // several signals into ONE readiness item so the panel shows exactly one
+  // line per F1 appendix item, instead of a separate visible row per signal
+  // (2026-07-26, user-requested — e.g. Gate 2's "Target user and life stage"
+  // needs both the Key Gate Check ticked AND the underlying checklist
+  // actually touched, but the appendix lists it as one item, not two).
+  | { kind: 'allOf'; checks: ReadinessCheck[] };
+
+// Where a requirement came from, when it ISN'T one of the SME's own named
+// items in the confirmed F1 appendix (docs/Response.txt). Left undefined for
+// the ~90 items that ARE named there — only the exceptions get tagged, so
+// this stays true to the file's existing "flag it when it's not F1" comment
+// convention rather than requiring every single item to restate the default.
+// Used to group the readiness panel (2026-07-26, user-requested): the SME's
+// own items render first, unmarked; anything else renders below a divider,
+// labelled with exactly which of these it is.
+export type ReadinessSource =
+  // Not F1-named, but an existing Key Gate Check row already mandatory via
+  // the SME-confirmed rule B3(b) ("every Key Gate Check must be Done/Y or
+  // justified N/A before the phase can close") — wiring it at gate level
+  // only enforces that same confirmed rule earlier, it invents nothing new.
+  | 'b3'
+  // From the "NPD Front-End Roadmap" sheet in the v2 workbook
+  // (`MBc360 Master Product Development System File v2.xlsx`, 2026-07-24) —
+  // expert-authored and treated as carrying the same confirmed authority as
+  // the original V18 workbook (no separate SME round needed), per the note
+  // in CLAUDE.md.
+  | 'npd-roadmap'
+  // A judgment call by the project owner, not backed by any confirmed SME
+  // rule or the newer workbook — e.g. Gate 2's Product Type requirement
+  // (2026-07-23, user-requested).
+  | 'dev-decision';
 
 export interface ReadinessRequirement {
   id: string;
@@ -105,6 +137,8 @@ export interface ReadinessRequirement {
   // Conditional requirements are only active (and only able to block) when this
   // trigger applies to the project.
   trigger?: ReadinessTrigger;
+  // See `ReadinessSource` — omit for an item named in the F1 appendix itself.
+  source?: ReadinessSource;
 }
 
 // Keyed by gate id (SG01..SG12). Every gate additionally requires a
@@ -120,26 +154,35 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'gateCheckDone', gate: '01', check: 'Product request, opportunity and requester captured' },
     },
     {
-      // Project Lead is a REQUIRED field on the Create New Project form
-      // itself (ProjectList.tsx) — a project cannot exist without one, so
-      // this can never actually be missing by the time Gate 01 is being
-      // worked. Previously reused the "Initial project record opened and
-      // owner assigned" Key Gate Check row, which made the user manually
-      // re-confirm something the project creation flow already guarantees.
+      // Reversed 2026-07-26 (user-requested) back to its pre-2025-07-25
+      // mapping: F1's "Project owner" IS the "Initial project record opened
+      // and owner assigned" Key Gate Check row — not a separate concept.
+      // The 2026-07-25 change (see git history) swapped this to
+      // `identityFieldFilled: projectLead`, reasoning that Project Lead is a
+      // REQUIRED field on the Create New Project form so the row could never
+      // really be unmet — but that conflated "the underlying fact is
+      // guaranteed" with "the confirmation step is redundant". Every other
+      // Key Gate Check row requires an explicit tick regardless of how
+      // obvious the fact behind it is (e.g. "Product request... captured"
+      // above); singling this one out to auto-pass was inconsistent. Reverted
+      // to requiring the row itself to be Done+Y or NA+justified, exactly
+      // like its two sibling rows — the `identityFieldFilled` check kind is
+      // left in place in case a genuinely field-only check is needed
+      // elsewhere later, just unused here now.
       id: 'sg01-owner',
       label: 'Project owner',
       tier: 'Mandatory',
-      check: { kind: 'identityFieldFilled', field: 'projectLead' },
+      check: { kind: 'gateCheckDone', gate: '01', check: 'Initial project record opened and owner assigned' },
     },
-    {
-      id: 'sg01-source',
-      label: 'Request source',
-      tier: 'Mandatory',
-      // Reuses the same Key Gate Check as sg01-request — "...requester
-      // captured" already covers where the request came from. No separate
-      // data source exists for this item alone (see the mapping doc).
-      check: { kind: 'gateCheckDone', gate: '01', check: 'Product request, opportunity and requester captured' },
-    },
+    // sg01-source: back to `manual` (2026-07-26, user-challenged). Previously
+    // reused sg01-request's Key Gate Check on the theory that "...requester
+    // captured" already covers the request's source — but that was our own
+    // guess, not backed by the workbook or the F1 appendix (which lists
+    // "Product request record" and "Request source" as two separate lines
+    // with no elaboration). Correctly challenged: if the team meant one
+    // piece of evidence, they would have written one line. Reopened as a
+    // question — see docs/F1_Per_Gate_Open_Questions.md.
+    { id: 'sg01-source', label: 'Request source', tier: 'Mandatory', check: { kind: 'manual' } },
     {
       // Not one of the 5 named items in the F1 Appendix, but this row was
       // ALREADY mandatory before F1 existed — rule B3 requires every Key Gate
@@ -151,6 +194,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg01-constraints',
       label: 'Initial constraints, known deadlines and risk flags recorded',
       tier: 'Mandatory',
+      source: 'b3',
       check: { kind: 'gateCheckDone', gate: '01', check: 'Initial constraints, known deadlines and risk flags recorded' },
     },
     // sg01-scope / sg01-market-user: still `manual` — no matching field exists
@@ -167,55 +211,52 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // Identification). Open question — see docs/F1_Per_Gate_Open_Questions.md.
     { id: 'sg02-brief', label: 'Approved development brief', tier: 'Mandatory', check: { kind: 'manual' } },
     {
+      // Merged 2026-07-26 (user-requested) from two separate rows
+      // (sg02-user + sg02-user-detail) into one, so the panel shows exactly
+      // one line per F1 item, matching the appendix's own count and order.
+      // Requires BOTH signals — same rigor as before, just one visible row:
+      // the coarse Key Gate Check row AND the underlying Target Users
+      // checklist actually having a real selection (guards against the
+      // checkbox being ticked without the detail table ever being touched).
       id: 'sg02-user',
       label: 'Target user and life stage',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '02', check: 'Target user / life stage / use context selected' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '02', check: 'Target user / life stage / use context selected' },
+          { kind: 'checklistHasSelection', section: 'targetUsers' },
+        ],
+      },
     },
     {
-      // Extra guard alongside sg02-user: the coarse Key Gate Check row could be
-      // marked done without the detailed Target Users checklist ever being
-      // touched. This does not replace sg02-user — both must be satisfied.
-      id: 'sg02-user-detail',
-      label: 'Target user and life stage — detailed selection recorded',
-      tier: 'Mandatory',
-      check: { kind: 'checklistHasSelection', section: 'targetUsers' },
-    },
-    {
+      // Merged 2026-07-26 (user-requested), same reasoning as sg02-user
+      // above. Shares the same Key Gate Check as sg02-user — "...use context
+      // selected" already covers this; no separate Key Gate Check row exists
+      // for "intended use" alone.
       id: 'sg02-use',
       label: 'Intended use and body area',
       tier: 'Mandatory',
-      // Shares the same Key Gate Check as sg02-user — "...use context
-      // selected" already covers this; no separate signal exists.
-      check: { kind: 'gateCheckDone', gate: '02', check: 'Target user / life stage / use context selected' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '02', check: 'Target user / life stage / use context selected' },
+          { kind: 'checklistHasSelection', section: 'targetArea' },
+        ],
+      },
     },
     {
-      id: 'sg02-use-detail',
-      label: 'Intended use and body area — detailed selection recorded',
-      tier: 'Mandatory',
-      check: { kind: 'checklistHasSelection', section: 'targetArea' },
-    },
-    {
+      // Merged 2026-07-26 (user-requested), same reasoning as sg02-user above.
       id: 'sg02-markets',
       label: 'Selected markets',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '02', check: 'Target markets and success criteria linked' },
-    },
-    {
-      id: 'sg02-markets-detail',
-      label: 'Selected markets — detailed selection recorded',
-      tier: 'Mandatory',
-      check: { kind: 'checklistHasSelection', section: 'targetMarkets' },
-    },
-    {
-      // Gate 02 brief must name the product type — at least one Product Type
-      // option selected (2026-07-23, user-requested). Mandatory, so it hard-
-      // blocks the gate decision (Proceed / Proceed with Conditions alike),
-      // like the other core brief selections above.
-      id: 'sg02-product-type',
-      label: 'Product type — at least one selected',
-      tier: 'Mandatory',
-      check: { kind: 'checklistHasSelection', section: 'productType' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '02', check: 'Target markets and success criteria linked' },
+          { kind: 'checklistHasSelection', section: 'targetMarkets' },
+        ],
+      },
     },
     {
       id: 'sg02-vulnerable',
@@ -235,6 +276,20 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // for Phase 1, unlike Phases 2-4. Open question — see
     // docs/F1_Per_Gate_Open_Questions.md.
     { id: 'sg02-requirements', label: 'Project requirements and exclusions', tier: 'Mandatory', check: { kind: 'manual' } },
+    // --- End of the 6 F1-named Gate 2 items (order matches the appendix
+    // exactly, 2026-07-26, user-requested) — everything below is NOT one of
+    // the SME's named items, so its order among itself doesn't carry meaning.
+    {
+      // Gate 02 brief must name the product type — at least one Product Type
+      // option selected (2026-07-23, user-requested). Mandatory, so it hard-
+      // blocks the gate decision (Proceed / Proceed with Conditions alike),
+      // like the other core brief selections above.
+      id: 'sg02-product-type',
+      label: 'Product type — at least one selected',
+      tier: 'Mandatory',
+      source: 'dev-decision',
+      check: { kind: 'checklistHasSelection', section: 'productType' },
+    },
     {
       // Not an F1-named item — same generalizable rule as sg01-constraints:
       // this Key Gate Check row was already mandatory-in-effect via B3
@@ -242,6 +297,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg02-commercial',
       label: 'Commercial planning inputs entered or marked N/A',
       tier: 'Mandatory',
+      source: 'b3',
       check: { kind: 'gateCheckDone', gate: '02', check: 'Commercial planning inputs entered or marked N/A' },
     },
     // NPD Front-End Roadmap (v2 workbook, 2026-07-24, expert-authored, treated
@@ -253,12 +309,14 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg02-npd-needs-content',
       label: 'Needs & Scientific Basis — research questions recorded',
       tier: 'Mandatory',
+      source: 'npd-roadmap',
       check: { kind: 'registerHasRows', register: 'needsResearchQuestions' },
     },
     {
       id: 'sg02-npd-needs-signoff',
       label: 'Needs & Scientific Basis dossier signed off (name + date, all 3 roles)',
       tier: 'Mandatory',
+      source: 'npd-roadmap',
       check: { kind: 'registerRowsComplete', register: 'needsSignOff', columns: ['name', 'date'] },
     },
   ],
@@ -270,16 +328,21 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'gateCheckDone', gate: '03', check: 'Concept direction and benchmark/competitor review recorded' },
     },
     {
+      // Merged 2026-07-27 (user-requested, same treatment as Gate 2's
+      // "detailed selection recorded" pairs) from sg03-claims +
+      // sg03-claims-detail — requires BOTH the Key Gate Check row done+Y/NA
+      // AND the underlying Claim Areas checklist actually having a real
+      // selection, shown as one line instead of two.
       id: 'sg03-claims',
       label: 'Proposed claims list',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '03', check: 'Claim/benefit areas selected and evidence route identified' },
-    },
-    {
-      id: 'sg03-claims-detail',
-      label: 'Proposed claims list — detailed selection recorded',
-      tier: 'Mandatory',
-      check: { kind: 'checklistHasSelection', section: 'claimAreas' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '03', check: 'Claim/benefit areas selected and evidence route identified' },
+          { kind: 'checklistHasSelection', section: 'claimAreas' },
+        ],
+      },
     },
     // sg03-classification: still `manual` — no field represents a claim's
     // classification (e.g. cosmetic / functional / medical-adjacent) anywhere;
@@ -287,27 +350,39 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // Open question — see docs/F1_Per_Gate_Open_Questions.md.
     { id: 'sg03-classification', label: 'Preliminary claim classification', tier: 'Mandatory', check: { kind: 'manual' } },
     {
+      // Merged 2026-07-27 (user-requested), same reasoning as sg03-claims
+      // above. Shares the same Key Gate Check as sg03-claims — "...evidence
+      // route identified" already covers this; the Evidence Route checklist
+      // is the distinct detail signal.
       id: 'sg03-evidence-reqs',
       label: 'Evidence requirements identified for each proposed claim',
       tier: 'Mandatory',
-      // Shares the same Key Gate Check as sg03-claims — "...evidence route
-      // identified" already covers this.
-      check: { kind: 'gateCheckDone', gate: '03', check: 'Claim/benefit areas selected and evidence route identified' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '03', check: 'Claim/benefit areas selected and evidence route identified' },
+          { kind: 'checklistHasSelection', section: 'evidenceRoute' },
+        ],
+      },
     },
     {
-      id: 'sg03-evidence-reqs-detail',
-      label: 'Evidence requirements identified for each proposed claim — detailed selection recorded',
-      tier: 'Mandatory',
-      check: { kind: 'checklistHasSelection', section: 'evidenceRoute' },
-    },
-    {
+      // Tier methodology reaffirmed 2026-07-27 (briefly reverted to Mandatory
+      // when challenged, then the project owner reviewed and kept Conditional
+      // on purpose): the F1 appendix (docs/Response.txt) lists every gate's
+      // items under one flat "Required:" heading with no per-item
+      // Mandatory/Conditional/Supporting tag — the team's own tiering had to
+      // be inferred by applying the SME's general 3-tier definitions to each
+      // item's wording. This item's own text ("...where applicable") matches
+      // the SME's own definition of Conditional verbatim ("becomes mandatory
+      // when triggered by product type, user, market, claim or change") —
+      // formalized as a cross-cutting rule, not a one-off guess. See the
+      // "Cross-cutting: tier assignment from 'where applicable' wording"
+      // section in docs/F1_Per_Gate_Open_Questions.md for the full rule, the
+      // complete list of items it applies to, and the confirmation being
+      // requested from the SME team.
       id: 'sg03-benchmark',
       label: 'Competitor or benchmark review where applicable',
       tier: 'Conditional',
-      // Shares the same Key Gate Check as sg03-concept — the row's own
-      // wording already bundles "benchmark/competitor review". Conditional
-      // tier means this only ever warns, never hard-blocks, so reusing the
-      // same evidence carries no extra risk.
       check: { kind: 'gateCheckDone', gate: '03', check: 'Concept direction and benchmark/competitor review recorded' },
     },
     // NPD Front-End Roadmap (v2 workbook, 2026-07-24): Step 2 ("Map
@@ -319,6 +394,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg03-npd-competitor-content',
       label: 'Competitor & current-solution landscape recorded',
       tier: 'Mandatory',
+      source: 'npd-roadmap',
       check: { kind: 'registerHasRows', register: 'competitorLandscape' },
     },
     // Step 3 (Target Product Profile + Backbone Technology) is only a
@@ -329,6 +405,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg03-npd-target-product-progress',
       label: 'Target Product Profile in progress',
       tier: 'Supporting',
+      source: 'npd-roadmap',
       // targetProductProfile is a `mode:'fixed'` register — its 7 attribute
       // rows are seeded at project creation regardless of user input, so
       // `registerHasRows` would be vacuously always true. `registerColumnFilled`
@@ -338,9 +415,10 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     },
     // sg03-reg-claims: still `manual` — depends on a "high-risk/borderline
     // claim" flag that doesn't exist yet (same open question as Round 2's A1
-    // "critical" definition). Low priority: Conditional tier means this can
-    // never hard-block even once wired. Open question — see
-    // docs/F1_Per_Gate_Open_Questions.md.
+    // "critical" definition). Tier methodology reaffirmed 2026-07-27, same
+    // reasoning as sg03-benchmark above ("high-risk or borderline" is itself
+    // a conditional qualifier — only applies to some claims, not all) — see
+    // the cross-cutting section in docs/F1_Per_Gate_Open_Questions.md.
     { id: 'sg03-reg-claims', label: 'Regulatory review of high-risk or borderline claims', tier: 'Conditional', check: { kind: 'manual' } },
     {
       // Not an F1-named item — same generalizable rule as sg01-constraints /
@@ -348,6 +426,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg03-decision',
       label: 'Gate 1-3 decision and open actions recorded',
       tier: 'Mandatory',
+      source: 'b3',
       check: { kind: 'gateCheckDone', gate: '03', check: 'Gate 1-3 decision and open actions recorded' },
     },
   ],
@@ -368,43 +447,44 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // to sg04-supplier-detail below (both read Supplier_RM_Evidence), since
     // this app has no separate "candidate ingredient list" data structure.
     {
+      // Merged 2026-07-27 (user-requested, same treatment as Gates 2-3) from
+      // sg04-identity + sg04-identity-detail — requires BOTH the Key Gate
+      // Check row done+Y/NA AND every Supplier/RM Evidence row actually
+      // having an identity (inciName) recorded. Cosmetri reference
+      // deliberately NOT required here — F14 allows manual reconciliation
+      // pre-Gate 7.
       id: 'sg04-identity',
       label: 'Ingredient identity and Cosmetri reference where available',
       tier: 'Mandatory',
-      // Shares the same Key Gate Check as sg04-ingredients — no separate
-      // signal for "identity" specifically exists.
-      check: { kind: 'gateCheckDone', gate: '04', check: 'Ingredient functions identified and RM document pack requested' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '04', check: 'Ingredient functions identified and RM document pack requested' },
+          { kind: 'registerColumnFilled', register: 'supplierRmEvidence', column: 'inciName' },
+        ],
+      },
     },
     {
-      id: 'sg04-identity-detail',
-      label: 'Ingredient identity — every Supplier/RM Evidence row has an identity recorded',
-      tier: 'Mandatory',
-      // Cosmetri reference deliberately NOT required here — F14 allows manual
-      // reconciliation pre-Gate 7. Just checks an identity (inciName) exists
-      // per candidate ingredient row.
-      check: { kind: 'registerColumnFilled', register: 'supplierRmEvidence', column: 'inciName' },
-    },
-    {
+      // Merged 2026-07-27 (user-requested) from sg04-supplier +
+      // sg04-supplier-detail + sg04-supplier-detail-docs — three signals for
+      // one F1 item: the Key Gate Check row, at least one Supplier/RM
+      // Evidence record, AND the Raw Material Document Pack checklist
+      // (phases.ts, gate '04' — which document TYPES exist, e.g.
+      // Specification/CoA/SDS/TDS) actually touched. All three must hold.
       id: 'sg04-supplier',
       label: 'Supplier and raw-material evidence status',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '04', check: 'Ingredient evidence / registry links added or gap actions opened' },
-    },
-    {
-      id: 'sg04-supplier-detail',
-      label: 'Supplier and raw-material evidence — at least one record added',
-      tier: 'Mandatory',
-      check: { kind: 'registerHasRows', register: 'supplierRmEvidence' },
-    },
-    {
-      // Second detail guard on the same F1 item — Raw Material Document Pack
-      // (phases.ts, gate '04') is a separate checklist from Supplier_RM_Evidence
-      // (which document TYPES exist, e.g. Specification/CoA/SDS/TDS) and was
-      // missed when Gate 4 was first wired; both must show real engagement.
-      id: 'sg04-supplier-detail-docs',
-      label: 'Supplier and raw-material evidence — Raw Material Document Pack has at least one selection',
-      tier: 'Mandatory',
-      check: { kind: 'checklistHasSelection', section: 'rmDocPack' },
+      // Order matters for resolveCheckLink's "last check = link target"
+      // convention — registerHasRows (the main data-entry register) is the
+      // most useful destination, so it goes last.
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '04', check: 'Ingredient evidence / registry links added or gap actions opened' },
+          { kind: 'checklistHasSelection', section: 'rmDocPack' },
+          { kind: 'registerHasRows', register: 'supplierRmEvidence' },
+        ],
+      },
     },
     {
       id: 'sg04-prohibited-screen',
@@ -460,44 +540,41 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // `linkedGate: '05_Formula_BOM_Costing'` in registers.ts ("Formula_BOM
       // must be current"), i.e. the locked recipe belongs to Gate 5, not
       // Gate 4's candidate-ingredient screening.
+      // Merged 2026-07-27 (user-requested) from sg05-composition +
+      // sg05-composition-detail. Cosmetri reference not required here —
+      // F14 allows manual lines pre-Gate 7.
       id: 'sg05-composition',
       label: 'Formula composition or controlled Cosmetri formula reference',
       tier: 'Mandatory',
-      check: { kind: 'bomHasLines' },
+      check: { kind: 'allOf', checks: [{ kind: 'bomHasLines' }, { kind: 'bomIdentityComplete' }] },
     },
     {
-      id: 'sg05-composition-detail',
-      label: 'Formula composition — every BOM line has an identity recorded',
-      tier: 'Mandatory',
-      // Cosmetri reference not required here either — F14 allows manual
-      // lines pre-Gate 7.
-      check: { kind: 'bomIdentityComplete' },
-    },
-    {
+      // Merged 2026-07-27 (user-requested) from sg05-ph + sg05-ph-detail.
       id: 'sg05-ph',
       label: 'Target pH and acceptable pH range',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '05', check: 'Sensory target, pH/process limits and compatibility risks logged' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '05', check: 'Sensory target, pH/process limits and compatibility risks logged' },
+          { kind: 'requirementDone', section: 'formulationDesign', requirement: 'Target pH / pH range' },
+        ],
+      },
     },
     {
-      id: 'sg05-ph-detail',
-      label: 'Target pH and acceptable pH range — requirement row completed',
-      tier: 'Mandatory',
-      check: { kind: 'requirementDone', section: 'formulationDesign', requirement: 'Target pH / pH range' },
-    },
-    {
+      // Merged 2026-07-27 (user-requested) from sg05-process +
+      // sg05-process-detail. Shares the same Key Gate Check as sg05-ph — its
+      // own wording already bundles "pH/process limits".
       id: 'sg05-process',
       label: 'Manufacturing/process requirements affecting product function',
       tier: 'Mandatory',
-      // Shares the same Key Gate Check as sg05-ph — its own wording already
-      // bundles "pH/process limits".
-      check: { kind: 'gateCheckDone', gate: '05', check: 'Sensory target, pH/process limits and compatibility risks logged' },
-    },
-    {
-      id: 'sg05-process-detail',
-      label: 'Manufacturing/process requirements — requirement row completed',
-      tier: 'Mandatory',
-      check: { kind: 'requirementDone', section: 'formulationDesign', requirement: 'Scale-up or manufacturing notes' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '05', check: 'Sensory target, pH/process limits and compatibility risks logged' },
+          { kind: 'requirementDone', section: 'formulationDesign', requirement: 'Scale-up or manufacturing notes' },
+        ],
+      },
     },
     // sg05-preservative: still `manual` — none of Phase 2's requirement rows
     // are preservative-specific, and the trigger ("where applicable") has no
@@ -506,17 +583,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // docs/F1_Per_Gate_Open_Questions.md.
     { id: 'sg05-preservative', label: 'Preservative strategy where applicable', tier: 'Conditional', check: { kind: 'manual' } },
     {
+      // Merged 2026-07-27 (user-requested) from sg05-compatibility +
+      // sg05-compatibility-detail. Shares the same Key Gate Check as
+      // sg05-ph/sg05-process.
       id: 'sg05-compatibility',
       label: 'Formula compatibility assessment',
       tier: 'Mandatory',
-      // Shares the same Key Gate Check as sg05-ph/sg05-process.
-      check: { kind: 'gateCheckDone', gate: '05', check: 'Sensory target, pH/process limits and compatibility risks logged' },
-    },
-    {
-      id: 'sg05-compatibility-detail',
-      label: 'Formula compatibility assessment — requirement row completed',
-      tier: 'Mandatory',
-      check: { kind: 'requirementDone', section: 'formulationDesign', requirement: 'Compatibility / use-with constraints' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '05', check: 'Sensory target, pH/process limits and compatibility risks logged' },
+          { kind: 'requirementDone', section: 'formulationDesign', requirement: 'Compatibility / use-with constraints' },
+        ],
+      },
     },
     {
       id: 'sg05-efficacy',
@@ -535,6 +614,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg05-decision',
       label: 'Development decision recorded with evidence or conditions',
       tier: 'Mandatory',
+      source: 'b3',
       check: { kind: 'gateCheckDone', gate: '05', check: 'Development decision recorded with evidence or conditions' },
     },
     // NPD Front-End Roadmap (v2 workbook, 2026-07-24, expert-authored, treated
@@ -549,18 +629,21 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg05-npd-needs-signoff',
       label: 'Needs & Scientific Basis dossier signed off (name + date, all 3 roles)',
       tier: 'Mandatory',
+      source: 'npd-roadmap',
       check: { kind: 'registerRowsComplete', register: 'needsSignOff', columns: ['name', 'date'] },
     },
     {
       id: 'sg05-npd-competitor-content',
       label: 'Competitor & current-solution landscape recorded',
       tier: 'Mandatory',
+      source: 'npd-roadmap',
       check: { kind: 'registerHasRows', register: 'competitorLandscape' },
     },
     {
       id: 'sg05-npd-target-product-content',
       label: 'Target Product Profile recorded',
       tier: 'Mandatory',
+      source: 'npd-roadmap',
       // Same registerColumnFilled reasoning as sg03-npd-target-product-progress
       // above — targetProductProfile's fixed rows always exist, so `target`
       // (blank until answered) is the real signal, not registerHasRows.
@@ -570,12 +653,14 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg05-npd-target-product-signoff',
       label: 'Target Product & Tech Platform signed off (name + date, all 3 roles)',
       tier: 'Mandatory',
+      source: 'npd-roadmap',
       check: { kind: 'registerRowsComplete', register: 'targetProductSignOff', columns: ['name', 'date'] },
     },
     {
       id: 'sg05-npd-evidence-plan',
       label: 'Prospective evidence plan recorded (agree before formula lock)',
       tier: 'Mandatory',
+      source: 'npd-roadmap',
       check: { kind: 'registerHasRows', register: 'evidencePlanProspective' },
     },
   ],
@@ -587,55 +672,65 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   // No new cardinality rules invented.
   SG06: [
     {
+      // Merged 2026-07-27 (user-requested) from sg06-pack-spec +
+      // sg06-pack-spec-detail.
       id: 'sg06-pack-spec',
       label: 'Proposed pack specification',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '06', check: 'Packaging format and component requirements selected' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '06', check: 'Packaging format and component requirements selected' },
+          { kind: 'registerHasRows', register: 'packagingSpecsArtwork' },
+        ],
+      },
     },
     {
-      id: 'sg06-pack-spec-detail',
-      label: 'Proposed pack specification — at least one component recorded',
-      tier: 'Mandatory',
-      check: { kind: 'registerHasRows', register: 'packagingSpecsArtwork' },
-    },
-    {
+      // Merged 2026-07-27 (user-requested) from sg06-compatibility +
+      // sg06-compatibility-detail. The Key Gate Check's own wording bundles
+      // "pack compatibility triggers".
       id: 'sg06-compatibility',
       label: 'Packaging compatibility requirements',
       tier: 'Mandatory',
-      // The row's own wording bundles "pack compatibility triggers".
-      check: { kind: 'gateCheckDone', gate: '06', check: 'Artwork/label needs and pack compatibility triggers identified' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '06', check: 'Artwork/label needs and pack compatibility triggers identified' },
+          { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'compatibilityEvidence' },
+        ],
+      },
     },
     {
-      id: 'sg06-compatibility-detail',
-      label: 'Packaging compatibility — compatibility evidence recorded per component',
-      tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'compatibilityEvidence' },
-    },
-    {
+      // Merged 2026-07-27 (user-requested) from sg06-artwork +
+      // sg06-artwork-version. Shares the Key Gate Check used by
+      // sg06-compatibility above ("Artwork/label needs …") — not repeated
+      // here as a 3rd sub-check to avoid over-counting the same row twice
+      // across two merged items; the artwork trigger checklist + the
+      // per-component artwork version are this item's own distinct signals.
       id: 'sg06-artwork',
       label: 'Label and artwork requirements',
       tier: 'Mandatory',
-      // Shares the Key Gate Check above ("Artwork/label needs …"); the distinct
-      // signal is the artwork trigger checklist below.
-      check: { kind: 'checklistHasSelection', section: 'artworkTriggers' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'checklistHasSelection', section: 'artworkTriggers' },
+          { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'artworkVersion' },
+        ],
+      },
     },
     {
-      id: 'sg06-artwork-version',
-      label: 'Label and artwork — artwork version recorded per component',
-      tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'artworkVersion' },
-    },
-    {
+      // Merged 2026-07-27 (user-requested) from sg06-supplier +
+      // sg06-supplier-detail.
       id: 'sg06-supplier',
       label: 'Component supplier status',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '06', check: 'Packaging cost, lead time and supplier approval requirements entered' },
-    },
-    {
-      id: 'sg06-supplier-detail',
-      label: 'Component supplier — supplier named for every component',
-      tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'supplier' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '06', check: 'Packaging cost, lead time and supplier approval requirements entered' },
+          { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'supplier' },
+        ],
+      },
     },
     {
       id: 'sg06-market-pack',
@@ -687,6 +782,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg07-safety-questions',
       label: 'Safety/tolerance questions defined and vulnerable-user risks reviewed',
       tier: 'Mandatory',
+      source: 'b3',
       // Not an F1-named item — already mandatory-in-effect via B3, same pattern
       // as sg01-constraints.
       check: { kind: 'gateCheckDone', gate: '07', check: 'Safety/tolerance questions defined and vulnerable-user risks reviewed' },
@@ -696,6 +792,20 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Restrictions, conditions and safety evidence linked',
       tier: 'Mandatory',
       check: { kind: 'gateCheckDone', gate: '07', check: 'Restrictions, conditions and safety evidence linked' },
+    },
+    {
+      // Not an F1-named item — same generalizable rule as sg01-constraints:
+      // B3(b) already confirms EVERY Key Gate Check row is mandatory before
+      // its phase can close; this is the third of Gate 7's three rows and
+      // was missed when Gate 7 was first wired (2026-07-26 completeness
+      // pass). `sg07-maternal-infant` below is a DIFFERENT, Conditional item
+      // (the C1 Skincare-for-Two auto-check) — it does not substitute for
+      // this Key Gate Check row being confirmed done/justified.
+      id: 'sg07-screen-check',
+      label: 'Pregnancy/breastfeeding and baby-contact screen completed where triggered',
+      tier: 'Mandatory',
+      source: 'b3',
+      check: { kind: 'gateCheckDone', gate: '07', check: 'Pregnancy/breastfeeding and baby-contact screen completed where triggered' },
     },
     {
       id: 'sg07-bom-reconciled',
@@ -813,16 +923,18 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'registerColumnFilled', register: 'evidenceTestProtocol', column: 'testMethod' },
     },
     {
+      // Merged 2026-07-27 (user-requested) from sg08-acceptance +
+      // sg08-acceptance-detail.
       id: 'sg08-acceptance',
       label: 'Acceptance criteria',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '08', check: 'Acceptance criteria, results and CAPA pathway defined' },
-    },
-    {
-      id: 'sg08-acceptance-detail',
-      label: 'Acceptance criteria — an acceptance limit on every planned test',
-      tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'evidenceTestProtocol', column: 'acceptanceLimit' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '08', check: 'Acceptance criteria, results and CAPA pathway defined' },
+          { kind: 'registerColumnFilled', register: 'evidenceTestProtocol', column: 'acceptanceLimit' },
+        ],
+      },
     },
     {
       id: 'sg08-required-tests',
@@ -839,16 +951,18 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'requirementDone', section: 'humanStudy', requirement: 'Approval trail' },
     },
     {
+      // Merged 2026-07-27 (user-requested) from sg08-reports +
+      // sg08-reports-detail.
       id: 'sg08-reports',
       label: 'Test reports or controlled actions for tests still in progress',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '08', check: 'Validation report linked or placeholder/action used' },
-    },
-    {
-      id: 'sg08-reports-detail',
-      label: 'Test reports — a report link on every planned test',
-      tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'evidenceTestProtocol', column: 'reportLink' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '08', check: 'Validation report linked or placeholder/action used' },
+          { kind: 'registerColumnFilled', register: 'evidenceTestProtocol', column: 'reportLink' },
+        ],
+      },
     },
     // NPD Front-End Roadmap (v2 workbook, 2026-07-24): Step 4's detailed test
     // protocol ("complete once prototype exists — Gate 8"), distinct from
@@ -857,6 +971,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg08-npd-evidence-protocol',
       label: 'Detailed test protocol recorded',
       tier: 'Mandatory',
+      source: 'npd-roadmap',
       check: { kind: 'registerHasRows', register: 'evidenceTestProtocol' },
     },
   ],
@@ -866,22 +981,20 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   // items map to a specific requirement row rather than a coarse gate check.
   SG09: [
     {
+      // Merged 2026-07-27 (user-requested) from sg09-stability +
+      // sg09-stability-detail + sg09-stability-evidence — three signals for
+      // one F1 item.
       id: 'sg09-stability',
       label: 'Stability status',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '09', check: 'Stability, preservation/micro and pack compatibility program selected' },
-    },
-    {
-      id: 'sg09-stability-detail',
-      label: 'Stability status — stability program requirement completed',
-      tier: 'Mandatory',
-      check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Stability program selected' },
-    },
-    {
-      id: 'sg09-stability-evidence',
-      label: 'Stability status — at least one stability/release result recorded',
-      tier: 'Mandatory',
-      check: { kind: 'registerHasRows', register: 'stabilityRelease' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '09', check: 'Stability, preservation/micro and pack compatibility program selected' },
+          { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Stability program selected' },
+          { kind: 'registerHasRows', register: 'stabilityRelease' },
+        ],
+      },
     },
     {
       id: 'sg09-pack-compat',
@@ -896,16 +1009,18 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Preservation / microbiology checks selected' },
     },
     {
+      // Merged 2026-07-27 (user-requested) from sg09-acceptance +
+      // sg09-acceptance-detail.
       id: 'sg09-acceptance',
       label: 'Physical, chemical and microbiological acceptance criteria',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '09', check: 'Pilot/scale-up and release criteria assessed' },
-    },
-    {
-      id: 'sg09-acceptance-detail',
-      label: 'Acceptance criteria — recorded against every stability/release row',
-      tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'stabilityRelease', column: 'acceptanceCriteria' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '09', check: 'Pilot/scale-up and release criteria assessed' },
+          { kind: 'registerColumnFilled', register: 'stabilityRelease', column: 'acceptanceCriteria' },
+        ],
+      },
     },
     {
       id: 'sg09-scaleup',
@@ -930,6 +1045,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg09-retest-pathway',
       label: 'Retest or CAPA pathway defined',
       tier: 'Mandatory',
+      source: 'b3',
       // Not an F1-named item — same generalizable rule as sg01-constraints: this
       // requirement row was already mandatory-in-effect via B3 (phase close).
       check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Retest or CAPA pathway defined' },
@@ -938,6 +1054,33 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   // Gate 10 is a market-specific hard block (requirements repeat per market).
   SG10: [
     { id: 'sg10-checklist', label: 'Applicable regulatory checklist (per market)', tier: 'Mandatory', check: { kind: 'manual' } },
+    // sg10-evidence-hierarchy / sg10-regulatory-mapped / sg10-approved-wording:
+    // not F1-named items — same generalizable rule as sg01-constraints: B3(b)
+    // already confirms every Key Gate Check row is mandatory before its phase
+    // can close. Gate 10 had all three of its own rows unwired until this
+    // completeness pass (2026-07-26) — the widest such gap found; every other
+    // gate had at most one row missing.
+    {
+      id: 'sg10-evidence-hierarchy',
+      label: 'Evidence hierarchy applied and claims wording checked',
+      tier: 'Mandatory',
+      source: 'b3',
+      check: { kind: 'gateCheckDone', gate: '10', check: 'Evidence hierarchy applied and claims wording checked' },
+    },
+    {
+      id: 'sg10-regulatory-mapped',
+      label: 'Countries/regulatory pathway matched and PIF/evidence file mapped',
+      tier: 'Mandatory',
+      source: 'b3',
+      check: { kind: 'gateCheckDone', gate: '10', check: 'Countries/regulatory pathway matched and PIF/evidence file mapped' },
+    },
+    {
+      id: 'sg10-approved-wording',
+      label: 'Approved wording / limitations recorded',
+      tier: 'Mandatory',
+      source: 'b3',
+      check: { kind: 'gateCheckDone', gate: '10', check: 'Approved wording / limitations recorded' },
+    },
     {
       id: 'sg10-cosmetri-formula',
       label: 'Uses the controlled Cosmetri formula (no unreconciled manual BOM lines)',
@@ -961,6 +1104,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg10-pif-mapped',
       label: 'ASEAN PIF mapped',
       tier: 'Mandatory',
+      source: 'b3',
       // Not an F1-named item — already mandatory-in-effect via B3, same as
       // sg01-constraints; wiring it here only enforces it earlier.
       check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'ASEAN PIF mapped' },
@@ -1011,16 +1155,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // sg10-reg-approval below it.
     { id: 'sg11-gate10', label: 'Gate 10 complete for the relevant market', tier: 'Mandatory', check: { kind: 'manual' } },
     {
+      // Merged 2026-07-27 (user-requested) from sg11-gmp + sg11-gmp-link.
       id: 'sg11-gmp',
       label: 'GMP document links',
       tier: 'Mandatory',
-      check: { kind: 'registerHasRows', register: 'gmpLinks' },
-    },
-    {
-      id: 'sg11-gmp-link',
-      label: 'GMP document links — a link recorded on every entry',
-      tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'gmpLinks', column: 'link' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'registerHasRows', register: 'gmpLinks' },
+          { kind: 'registerColumnFilled', register: 'gmpLinks', column: 'link' },
+        ],
+      },
     },
     {
       id: 'sg11-formula',
@@ -1042,22 +1187,35 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'registerHasRows', register: 'releasedLabelRegister' },
     },
     {
+      // Merged 2026-07-27 (user-requested) from sg11-production +
+      // sg11-production-detail.
       id: 'sg11-production',
       label: 'Production readiness',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '11', check: 'Production records ready and GMP links added' },
-    },
-    {
-      id: 'sg11-production-detail',
-      label: 'Production readiness — production/launch records selected',
-      tier: 'Mandatory',
-      check: { kind: 'checklistHasSelection', section: 'productionRecords' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '11', check: 'Production records ready and GMP links added' },
+          { kind: 'checklistHasSelection', section: 'productionRecords' },
+        ],
+      },
     },
     {
       id: 'sg11-release-pathway',
       label: 'Quality release pathway',
       tier: 'Mandatory',
       check: { kind: 'registerColumnFilled', register: 'stabilityRelease', column: 'releaseDecision' },
+    },
+    {
+      // Not an F1-named item — same generalizable rule as sg01-constraints:
+      // B3(b) already confirms every Key Gate Check row is mandatory before
+      // its phase can close. Gate 11's third row, missed when Gate 11 was
+      // first wired (2026-07-26 completeness pass).
+      id: 'sg11-launch-signoff',
+      label: 'Launch sign-off completed and blockers recorded',
+      tier: 'Mandatory',
+      source: 'b3',
+      check: { kind: 'gateCheckDone', gate: '11', check: 'Launch sign-off completed and blockers recorded' },
     },
     // sg11-changes-closed: still `manual`. An open change control record already
     // soft-locks the gate through a DIFFERENT mechanism (F9/C4 — openChangesForGate

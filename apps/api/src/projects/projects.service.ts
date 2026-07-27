@@ -9,6 +9,7 @@ import { GATES } from '@mbc360/shared/config/gates';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
+import { unsupportedClaimRows } from '@mbc360/shared/utils/claimEvidence';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import {
   gateBlockers,
@@ -594,6 +595,21 @@ export class ProjectsService {
         throw new ForbiddenException(
           `Register "${registerKey}" belongs to gate ${config.gate}, which has passed — it is read-only (use Backtrack)`,
         );
+      }
+      // Gate 3 rule (F1 appendix): "A claim may remain under development, but
+      // unsupported wording must not be marked as approved" — hard-blocked
+      // 2026-07-27 (user-requested). A Published Info row linked to a claim
+      // (claimId) cannot be saved in a released workflow state unless that
+      // claim is 'Supported' in Claim -> Evidence Traceability. Checked here
+      // (not just in the UI) per BACKEND_PLAN's server-is-authoritative rule.
+      if (registerKey === 'publishedInfoApproval') {
+        const claimRows = project.registers['claimEvidenceTraceability'] ?? [];
+        const bad = unsupportedClaimRows(rows, claimRows);
+        if (bad.length > 0) {
+          throw new BadRequestException(
+            `${bad.length} Published Information row(s) reference a claim that is not yet 'Supported' in Claim -> Evidence Traceability — cannot save in a released workflow state until the claim is supported (Gate 3 rule).`,
+          );
+        }
       }
       await tx.registerRow.deleteMany({ where: { projectId: id, registerKey } });
       if (rows.length > 0) {

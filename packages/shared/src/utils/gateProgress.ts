@@ -5,6 +5,7 @@ import {
   GATE_READINESS,
   type ReadinessCheck,
   type ReadinessRequirement,
+  type ReadinessSource,
   type ReadinessTier,
   type ReadinessTrigger,
 } from '../config/gateReadiness';
@@ -101,6 +102,13 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
   }
 }
 
+// Why a trigger isn't currently active, in plain language for the readiness
+// panel (2026-07-27) — keyed so a new ReadinessTrigger can't silently ship
+// without updating this message too.
+const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
+  skincareForTwo: 'no Pregnancy/Breastfeeding/Postpartum target user selected',
+};
+
 // Evaluate a requirement's check against live project data. `evaluable` is false
 // for `manual` checks (no linked data source yet — shown for confirmation, never
 // hard-blocks); when false, `satisfied` is meaningless (reported as false/pending).
@@ -165,6 +173,10 @@ function evaluateReadinessCheck(
     }
     case 'identityFieldFilled':
       return { evaluable: true, satisfied: !!project.identity[check.field]?.trim() };
+    case 'allOf': {
+      const results = check.checks.map((c) => evaluateReadinessCheck(project, c));
+      return { evaluable: results.every((r) => r.evaluable), satisfied: results.every((r) => r.satisfied) };
+    }
     default:
       return { evaluable: false, satisfied: false };
   }
@@ -177,14 +189,25 @@ function evaluateReadinessCheck(
 // on a required-but-empty field, regardless of which project is open.
 // ---------------------------------------------------------------------------
 
+// `allOf` merges several signals into ONE readiness item (e.g. Gate 2's
+// "Target user and life stage" needs both the Key Gate Check ticked AND the
+// underlying checklist actually touched, but the F1 appendix lists it as one
+// item — 2026-07-26, user-requested). Expand it to its constituents so the
+// mandatory-field UX helpers below still find every check a composite item
+// is backed by, not just its top-level `allOf` wrapper.
+function flattenChecks(check: ReadinessCheck): ReadinessCheck[] {
+  return check.kind === 'allOf' ? check.checks.flatMap(flattenChecks) : [check];
+}
+
+const MANDATORY_CHECKS = Object.values(GATE_READINESS)
+  .flat()
+  .filter((r) => r.tier === 'Mandatory')
+  .flatMap((r) => flattenChecks(r.check));
+
 const MANDATORY_GATE_CHECK_KEYS = new Set(
-  Object.values(GATE_READINESS)
-    .flat()
-    .filter(
-      (r): r is ReadinessRequirement & { check: { kind: 'gateCheckDone'; gate: string; check: string } } =>
-        r.tier === 'Mandatory' && r.check.kind === 'gateCheckDone',
-    )
-    .map((r) => `${r.check.gate}|${r.check.check}`),
+  MANDATORY_CHECKS.filter(
+    (c): c is { kind: 'gateCheckDone'; gate: string; check: string } => c.kind === 'gateCheckDone',
+  ).map((c) => `${c.gate}|${c.check}`),
 );
 
 export function isMandatoryGateCheck(gate: string, check: string): boolean {
@@ -194,13 +217,9 @@ export function isMandatoryGateCheck(gate: string, check: string): boolean {
 // Same idea for `checklistHasSelection` requirements — which checklist
 // section keys (e.g. 'targetUsers') back a Mandatory F1/C7 item.
 const MANDATORY_CHECKLIST_SECTIONS = new Set(
-  Object.values(GATE_READINESS)
-    .flat()
-    .filter(
-      (r): r is ReadinessRequirement & { check: { kind: 'checklistHasSelection'; section: string } } =>
-        r.tier === 'Mandatory' && r.check.kind === 'checklistHasSelection',
-    )
-    .map((r) => r.check.section),
+  MANDATORY_CHECKS.filter(
+    (c): c is { kind: 'checklistHasSelection'; section: string } => c.kind === 'checklistHasSelection',
+  ).map((c) => c.section),
 );
 
 export function isMandatoryChecklistSection(section: string): boolean {
@@ -210,13 +229,9 @@ export function isMandatoryChecklistSection(section: string): boolean {
 // Same idea for `requirementDone` requirements — which (section, requirement)
 // pairs back a Mandatory F1/C7 item.
 const MANDATORY_REQUIREMENT_KEYS = new Set(
-  Object.values(GATE_READINESS)
-    .flat()
-    .filter(
-      (r): r is ReadinessRequirement & { check: { kind: 'requirementDone'; section: string; requirement: string } } =>
-        r.tier === 'Mandatory' && r.check.kind === 'requirementDone',
-    )
-    .map((r) => `${r.check.section}|${r.check.requirement}`),
+  MANDATORY_CHECKS.filter(
+    (c): c is { kind: 'requirementDone'; section: string; requirement: string } => c.kind === 'requirementDone',
+  ).map((c) => `${c.section}|${c.requirement}`),
 );
 
 export function isMandatoryRequirementRow(section: string, requirement: string): boolean {
@@ -328,6 +343,41 @@ export interface GateBlocker {
 // just this list filtered to `!satisfied`, so the two can never drift.
 export interface GateReadinessItem extends GateBlocker {
   satisfied: boolean;
+  // True for a Mandatory item whose check is still `manual` (no wired data
+  // source yet). Shown on the readiness panel for visibility — the team
+  // asked to see these too, not just the ones we can actually verify — but
+  // rendered distinctly (amber, "not yet enforced") and NEVER treated as a
+  // blocker: `hardGateBlockers`/`gateBlockers` explicitly exclude it, so a
+  // manual item can never silently start blocking Proceed just by being
+  // listed here. Only ever true when `satisfied` is false and `hardBlock` is
+  // false.
+  pending?: boolean;
+  // See `ReadinessSource` on the config side — undefined for an item named in
+  // the SME's own F1 appendix. Items grouped below the F1 ones (2026-07-26,
+  // user-requested), so the panel visibly separates "what the SME asked for"
+  // from everything else, instead of interleaving them with no distinction.
+  source?: ReadinessSource;
+  // True for a Conditional or Supporting tier item (2026-07-27) — these are
+  // named in the F1 appendix same as Mandatory ones, but the confirmed rule
+  // is they may be incomplete WITHOUT blocking the gate (Conditional: only
+  // blocks once its trigger applies — the one real trigger, Skincare for Two,
+  // already gets its own dedicated hard-blocking item above, so a plain
+  // `advisory` item here never actually has trigger-driven teeth; Supporting:
+  // never blocks at all). Previously these tiers were silently left off the
+  // panel entirely (`gateReadinessChecklist` only walked Mandatory items),
+  // which made several of the SME's own named Gate 3 items (e.g. "Competitor
+  // or benchmark review where applicable") vanish rather than show as
+  // non-blocking. Like `pending`, `hardGateBlockers`/`gateBlockers` exclude
+  // it so it can never silently start blocking Proceed.
+  advisory?: boolean;
+  // The F1/C7 tier this item was declared at (2026-07-27) — lets the UI badge
+  // each line with the SME's own 3-way classification (Mandatory/Conditional/
+  // Supporting) rather than just implying it through color. Undefined for the
+  // two Next Actions rows (rule B2/F8, not F1 evidence at all — no tier
+  // applies). The Skincare for Two dedicated line is tagged 'Conditional'
+  // since it stands in for the matching Conditional config item it replaces
+  // in the loop below (a more specific message, same underlying tier).
+  tier?: ReadinessTier;
 }
 
 // Resolve a per-gate phase-page anchor link for the phase that owns `gateId`.
@@ -362,6 +412,11 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return phaseSectionLink(gateId, 'sec-requirement-skincareForTwo');
     case 'identityFieldFilled':
       return phaseSectionLink(gateId, 'sec-identification');
+    case 'allOf':
+      // By convention the composite's LAST check is the more specific one
+      // (e.g. [gateCheckDone, checklistHasSelection] — the detail checklist,
+      // not the coarse Key Gate Check row) — link there.
+      return resolveCheckLink(gateId, check.checks[check.checks.length - 1]);
     case 'manual':
     default:
       return undefined;
@@ -387,13 +442,92 @@ export function gateReadinessChecklist(
 ): GateReadinessItem[] {
   const items: GateReadinessItem[] = [];
 
-  // Next Actions (B2 + F8) — two separate items, kept next to each other,
-  // because they differ in severity: Critical ones hard-block regardless of
-  // decision, while the rest only block a plain Proceed and are specifically
-  // allowed to stay open under Proceed with Conditions. Merging them into one
-  // item would hide which severity is actually the problem and make the
-  // "clears with Proceed with Conditions" note (only true for the non-
-  // critical item) ambiguous.
+  // C1: Skincare for Two hard-blocks Gate 07 until the mandatory maternal and
+  // infant-contact safety sections are fully completed — only shown at all
+  // when actually triggered for this project (otherwise it isn't part of
+  // this gate's readiness). Gives a detailed per-section message; the
+  // equivalent F1 readiness check is skipped in the loop below to avoid a
+  // duplicate, less specific line.
+  if (gateId === 'SG07' && isSkincareForTwoTriggered(project)) {
+    const incomplete = skincareForTwoIncompleteSections(project);
+    items.push({
+      id: 'skincare-for-two',
+      label:
+        incomplete.length > 0
+          ? `Skincare for Two safety screen incomplete: ${incomplete.join('; ')}`
+          : 'Skincare for Two safety screen complete',
+      satisfied: incomplete.length === 0,
+      hardBlock: true,
+      tier: 'Conditional',
+      link: phaseSectionLink(gateId, 'sec-requirement-skincareForTwo'),
+    });
+  }
+
+  // F1 / C7: every item declared for this gate, always shown (2026-07-27:
+  // previously a Conditional item whose trigger wasn't active was left off
+  // the panel entirely — user-reported as confusing, since it looked like
+  // the item was simply missing rather than "checked, and not applicable
+  // here". Every item now shows; an inactive trigger reads as satisfied with
+  // an explanation, not as absent). Mandatory ones always evaluated for
+  // real; Conditional/Supporting ones are marked `advisory` (never blocks —
+  // see that field's doc on GateReadinessItem). Two groups, each preserving
+  // its own declared order (2026-07-26, user-requested): items the SME
+  // actually named in the F1 appendix (`source` omitted) first, exactly as
+  // they read it; anything else (`source` set — B3-derived, NPD Roadmap, or
+  // a dev decision — see `ReadinessSource`) after. `manual` items (no data
+  // source yet) are shown as `pending` instead (also never blocks). The
+  // skincareForTwo check is already covered by the dedicated C1 item above,
+  // at every tier.
+  const relevantReqs = (GATE_READINESS[gateId] ?? []).filter((req) => req.check.kind !== 'skincareForTwo');
+  const orderedReqs = [
+    ...relevantReqs.filter((req) => !req.source),
+    ...relevantReqs.filter((req) => req.source),
+  ];
+  for (const req of orderedReqs) {
+    const advisory = req.tier !== 'Mandatory' || undefined; // omit (not `false`) when Mandatory, to keep satisfied items tidy
+    // A Conditional item tied to a named trigger (only `skincareForTwo`
+    // today, e.g. Gate 4's "Pregnancy/breastfeeding caution screen") that
+    // ISN'T currently active for this project: automatically satisfied, with
+    // the label saying exactly why, rather than being hidden — "not shown"
+    // used to read as "forgotten", not "checked and not applicable here".
+    if (req.trigger && !isReadinessTriggerActive(project, req.trigger)) {
+      items.push({
+        id: req.id,
+        label: `${req.label} — not triggered for this project (${TRIGGER_INACTIVE_EXPLANATIONS[req.trigger]}), so this passes automatically`,
+        satisfied: true,
+        hardBlock: false,
+        advisory,
+        source: req.source,
+        tier: req.tier,
+      });
+      continue;
+    }
+    if (req.check.kind === 'manual') {
+      items.push({ id: req.id, label: req.label, satisfied: false, hardBlock: false, pending: true, advisory, source: req.source, tier: req.tier });
+      continue;
+    }
+    items.push({
+      id: req.id,
+      label: req.label,
+      satisfied: evaluateReadinessCheck(project, req.check).satisfied,
+      hardBlock: req.tier === 'Mandatory',
+      advisory,
+      link: resolveCheckLink(gateId, req.check),
+      source: req.source,
+      tier: req.tier,
+    });
+  }
+
+  // Next Actions (B2 + F8) — kept last (user-requested, 2026-07-26): every
+  // other item above is specific evidence tied to this gate's own subject
+  // matter, while Next Actions are a general project-management backstop
+  // that applies at every gate the same way. Two separate items, kept next
+  // to each other, because they differ in severity: Critical ones hard-block
+  // regardless of decision, while the rest only block a plain Proceed and
+  // are specifically allowed to stay open under Proceed with Conditions.
+  // Merging them into one item would hide which severity is actually the
+  // problem and make the "clears with Proceed with Conditions" note (only
+  // true for the non-critical item) ambiguous.
   const criticalOpen = openNextActions(project, gateId).filter((a) => a.priority === 'Critical');
   items.push({
     id: 'critical-next-actions',
@@ -420,44 +554,6 @@ export function gateReadinessChecklist(
     link: phaseSectionLink(gateId, 'sec-next-actions'),
   });
 
-  // C1: Skincare for Two hard-blocks Gate 07 until the mandatory maternal and
-  // infant-contact safety sections are fully completed — only shown at all
-  // when actually triggered for this project (otherwise it isn't part of
-  // this gate's readiness). Gives a detailed per-section message; the
-  // equivalent F1 readiness check is skipped in the loop below to avoid a
-  // duplicate, less specific line.
-  if (gateId === 'SG07' && isSkincareForTwoTriggered(project)) {
-    const incomplete = skincareForTwoIncompleteSections(project);
-    items.push({
-      id: 'skincare-for-two',
-      label:
-        incomplete.length > 0
-          ? `Skincare for Two safety screen incomplete: ${incomplete.join('; ')}`
-          : 'Skincare for Two safety screen complete',
-      satisfied: incomplete.length === 0,
-      hardBlock: true,
-      link: phaseSectionLink(gateId, 'sec-requirement-skincareForTwo'),
-    });
-  }
-
-  // F1 / C7: Mandatory evidence requirements with a wired data source hard-
-  // block the gate when unsatisfied. Manual (unwired) and inactive
-  // Conditional requirements are left off this checklist entirely — they
-  // never hard-block today, so there's nothing to turn green/red for. The
-  // skincareForTwo check is already covered by the dedicated C1 item above.
-  for (const req of evaluateReadinessRequirements(project, gateId)) {
-    if (!req.active || !req.evaluable || req.tier !== 'Mandatory') continue;
-    const check = GATE_READINESS[gateId]?.find((r) => r.id === req.id)?.check;
-    if (check?.kind === 'skincareForTwo') continue;
-    items.push({
-      id: req.id,
-      label: req.label,
-      satisfied: req.satisfied,
-      hardBlock: true,
-      link: check ? resolveCheckLink(gateId, check) : undefined,
-    });
-  }
-
   return items;
 }
 
@@ -468,7 +564,7 @@ export function gateReadinessChecklist(
 // PwC-clearable open-next-action case this deliberately excludes.
 export function hardGateBlockers(project: ProjectData, gateId: string): GateBlocker[] {
   return gateReadinessChecklist(project, gateId)
-    .filter((item) => item.hardBlock && !item.satisfied)
+    .filter((item) => item.hardBlock && !item.satisfied && !item.pending && !item.advisory)
     .map(({ satisfied: _satisfied, ...blocker }) => blocker);
 }
 
@@ -484,7 +580,7 @@ export function gateBlockers(
   decisionOverride?: GateRecord['decision'],
 ): GateBlocker[] {
   return gateReadinessChecklist(project, gateId, decisionOverride)
-    .filter((item) => !item.satisfied)
+    .filter((item) => !item.satisfied && !item.pending && !item.advisory)
     .map(({ satisfied: _satisfied, ...blocker }) => blocker);
 }
 
