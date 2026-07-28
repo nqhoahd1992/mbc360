@@ -393,7 +393,11 @@ async function seedDemoProject(reviewers: NewProjectReviewer[]): Promise<void> {
       // human project code shown in the UI instead of an opaque cuid.
       id: 'MBC-2026-001',
       productCode,
-      projectLead: 'Anna Tran',
+      // Temporary placeholder (user-requested): Chris (Project Manager) until
+      // a real project lead is assigned — was a free-text 'Anna Tran' before
+      // projectLead became a user-picker sourced from the same active-user
+      // list as the review owners.
+      projectLead: 'Chris',
       productGroup: 'Mother & Baby Care',
       brandCustomer: 'Max Biocare',
       dateOpened: new Date('2026-03-02'),

@@ -342,23 +342,36 @@ export default function ProjectList() {
             <Form.Item name="productSku" label="Product / SKU" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="productGroup" label="Product Group">
+            <Form.Item name="productGroup" label="Product Group" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
             <Form.Item name="projectLead" label="Project Lead" rules={[{ required: true }]}>
+              <Select
+                showSearch
+                placeholder="Select a user"
+                optionFilterProp="label"
+                popupMatchSelectWidth={false}
+                notFoundContent={users.length === 0 ? 'No users found' : 'No match'}
+                options={userOptions}
+                optionRender={(opt) => (
+                  <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <span>{opt.data.label}</span>
+                    <Tag style={{ marginInlineEnd: 0 }}>{(opt.data as { roleName?: string }).roleName}</Tag>
+                  </span>
+                )}
+              />
+            </Form.Item>
+            <Form.Item name="ownerDepartment" label="Owner / Department" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="ownerDepartment" label="Owner / Department">
+            <Form.Item name="brandCustomer" label="Brand / Customer" rules={[{ required: true }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="brandCustomer" label="Brand / Customer">
-              <Input />
-            </Form.Item>
-            <Form.Item name="targetLaunchDate" label="Target launch date">
+            <Form.Item name="targetLaunchDate" label="Target launch date" rules={[{ required: true }]}>
               <DatePicker style={{ width: '100%' }} />
             </Form.Item>
           </div>
-          <Form.Item name="markets" label="Countries / Markets">
+          <Form.Item name="markets" label="Countries / Markets" rules={[{ required: true }]}>
             <Select mode="multiple" options={marketOptions} placeholder="Select markets" />
           </Form.Item>
 

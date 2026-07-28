@@ -1,9 +1,9 @@
 # F1/C7 — Per-Gate Open Questions for the Subject-Matter Team
 
-**Date:** 2026-07-22
-**Companion to:** `F1_Gate_Readiness_Mapping_Proposal.md` (the full per-gate mapping proposal) and `Business_Rules_Followup_Round2.md` §B ("we will map your per-gate lists to the specific registers in the app and tag each as Mandatory/Conditional/Supporting — we will send that mapping back to you to confirm").
+**Date:** 2026-07-22 (last updated 2026-07-28)
+**Companion to:** `F1_Gate_Readiness_Mapping_Proposal.md` (the full per-gate mapping proposal — now superseded/stale, kept only as historical reference; do not send it to the team) and `Business_Rules_Followup_Round2.md` §B ("we will map your per-gate lists to the specific registers in the app and tag each as Mandatory/Conditional/Supporting — we will send that mapping back to you to confirm").
 
-**How this file works:** as each gate's F1 items get implemented, most turn out to be a mechanical mapping to a register/field that already exists — those are coded directly (no team input needed) and are **not** listed here. This file collects only the items that turned out to be **genuinely ambiguous or missing data** once we tried to wire them — one section per gate, added as we go. Right now it only covers Gate 1 (Gates 2–12 not analyzed yet).
+**How this file works:** as each gate's F1 items get implemented, most turn out to be a mechanical mapping to a register/field that already exists — those are coded directly (no team input needed) and are **not** listed here. This file collects only the items that turned out to be **genuinely ambiguous or missing data** once we tried to wire them — one section per gate, added as we go. **All 12 gates have now been analyzed** — every remaining open item across Gates 1–12 is listed below, plus three cross-cutting sections (tier-assignment methodology; the Supplier & RM Evidence / Formula BOM gating design; and "Prepared, reviewed and approved sign-off" applying to all 12 gates). This is the file to send to the subject-matter team for confirmation.
 
 ---
 
@@ -155,7 +155,7 @@ Gate 3's list is followed by one more sentence, outside the numbered items: *"A 
 
 ## Gate 4 — Ingredient & RM Screening
 
-6 of 7 F1 items implemented (`SG04` in `gateReadiness.ts`) — same Key-Gate-Check + detail-guard pattern as Gates 1-3, plus two new detail-guard kinds (`registerHasRows`, `bomHasLines`/`bomIdentityComplete`) that generalize cleanly to later gates too. Only 1 item open, and it's low priority (Conditional — never hard-blocks even once wired):
+6 of 7 F1 items implemented (`SG04` in `gateReadiness.ts`) — same Key-Gate-Check + detail-guard pattern as Gates 1-3, plus two new detail-guard kinds (`registerHasRows`, `bomHasLines`/`bomIdentityComplete`) that generalize cleanly to later gates too. 2 items open: Q2 (low priority — Conditional-adjacent escape valve, not yet enforced either way) and Q3 (a Mandatory item's mapping, added 2026-07-28 after review found it was never actually sent for confirmation):
 
 ### Q1. ~~"Allergen, impurity and contaminant review where relevant" — no checkable data exists~~ — **NO LONGER NEEDED (2026-07-26)**
 
@@ -187,6 +187,16 @@ This sentence follows Gate 4's Required list in the appendix but was never analy
 
 ---
 
+### Q3. "Prohibited and restricted ingredient screen" → Key Gate Check "Restrictions, exclusions and supplier risks screened" — mapping assumed, never sent for confirmation (2026-07-28)
+
+`sg04-prohibited-screen` (`gateReadiness.ts`) reads the `gateChecks` row **"Restrictions, exclusions and supplier risks screened"** (gate '04') as the sole signal for the F1 appendix item **"Prohibited and restricted ingredient screen"**. `F1_Gate_Readiness_Mapping_Proposal.md` marks this row "✅ Implemented" with no "Needs confirmation" note, unlike most other Gate 4 rows — the mapping was judged obvious from wording alone and wired directly, the same shortcut already reverted once for `sg01-owner` (see the "Gate readiness panel rebuilt" note, 2026-07-27: a dev-made interpretive call is not exempt from SME confirmation just because it looks obvious in the moment).
+
+**Why it might not actually be a clean match:** the Key Gate Check's own wording bundles three distinct things — "restrictions," "exclusions," and "supplier risks" — screened together as one row. "Prohibited and restricted ingredient screen" in the F1 appendix could mean specifically the ingredient-level watch-list screen (`Prohibited_Ingredients`/`PB_Caution_Limits`, already separately enforced by `sg04-no-remove` and `sg04-pb-screen`), in which case this Key Gate Check row would be evidence of a *broader* screening step (including supplier risk, which is not an ingredient-prohibition matter at all), not a dedicated confirmation of the prohibited-ingredient screen specifically.
+
+**Question:** does "Restrictions, exclusions and supplier risks screened" fully cover what the appendix means by "Prohibited and restricted ingredient screen," or is a narrower/separate signal needed (e.g. a Key Gate Check row split into an ingredient-screen-specific line, or relying only on `sg04-no-remove`/`sg04-pb-screen` for this item and dropping the `gateCheckDone` mapping)?
+
+---
+
 ## Gate 5 — Formula Design & Development
 
 6 of 8 F1 items implemented (`SG05` in `gateReadiness.ts`) — same Key-Gate-Check + detail-guard pattern as Gates 1-4, but the detail guard is new: a `requirementDone` check reading `ProjectData.requirements` (PHASE_2's `formulationDesign`/`efficacyProcess` requirement-table rows already matched most F1 wording almost verbatim). Plus the BOM checks relocated from Gate 4 (see that gate's note above). 2 items open, both low priority (never hard-block regardless of the answer):
@@ -215,12 +225,31 @@ None of Phase 2's requirement rows are preservative-specific. Even if they were,
 
 ---
 
+## Cross-cutting (2026-07-28): "Prepared, reviewed and approved sign-off" — applies to all 12 gates, not one
+
+**Not specific to any single gate — pulled out of the Gate 7 section because it turned out to affect every gate equally.** The F1 appendix (`docs/Response.txt`) closes **every one of the 12 gates'** Required lists with the same line: "Prepared, reviewed and approved sign-off." (worded "...review closure" for Gate 12 only). This had previously been read as referring to the app's existing PHASE-closure sign-off (`phaseCompletionChecklist`'s Prepared/Reviewed/Approved roles, `SignOffBlock`) and was deliberately left un-duplicated per gate — see the note above `GATE_READINESS` in `gateReadiness.ts` for that history.
+
+**Decision (made by the project owner, not yet seen by the SME team):** this is a **per-GATE** requirement, distinct from the existing per-PHASE sign-off block. Concretely:
+
+- It is satisfied when that gate's own **Phase Gate Flow row** has both **Owner** and **Evidence link** filled in — i.e. a named person has taken responsibility for the gate and left a link to their review evidence.
+- Wired as a Mandatory hard-block item on **all 12 gates** (`sg01-signoff` … `sg12-signoff` in `gateReadiness.ts`).
+- **Enforcement consequence:** a gate's decision can only be recorded as **Proceed** (or **Proceed with Conditions**) once Owner + Evidence link are filled in, same as any other Mandatory item.
+- This is separate from, and does not replace, the existing PHASE-level sign-off (`SignOffBlock` — Prepared by / Reviewed by / Approved by, 3 named roles) that already gates a whole Phase's completion (B3). That phase-level block is unchanged.
+
+**Two other readings were considered and rejected before landing on this one:**
+- Checking a field that's guaranteed non-empty elsewhere (the way `sg01-owner` once, briefly, used `identityFieldFilled`) — rejected as vacuous; `Owner`/`Evidence link` on a gate record start blank, so this isn't that case.
+- Adding a new Key Gate Check row per gate instead (the Gates-1-6 pattern for "an explicit confirmation action") — rejected in favor of the gate row's own fields, which already exist and don't require a new tick-box.
+
+**Question for the team: is this reading correct — yes or no?** Specifically: (1) is "Owner + Evidence link filled in on the gate's own row" the right evidence for this item, across all 12 gates equally, and (2) should it truly hard-block the gate decision (no Proceed until both are filled), or did you intend something looser (e.g. a warning, not a hard block)? If the reading is wrong, please describe what evidence you actually meant.
+
+---
+
 ## Gates 6–12 (added 2026-07-26)
 
 **Status:** Gates 6, 7, 8, 9 and 12 are now **fully wired** (every Mandatory item hard-blocks), and Gates 10–11 are wired except the items below. Nothing in this section was previously asked, because when this document was written Gates 6–12 had not been analysed yet. Two questions that *were* raised in `F1_Gate_Readiness_Mapping_Proposal.md`'s "Needs confirmation" column for Gate 7 have since been answered from the workbook itself and need no SME round:
 
 - *"At Gate 7, does the Pregnancy/Breastfeeding caution screen apply to **every** project, or only Skincare-for-Two ones?"* → The F1 appendix lists the Gate 7 item as **Mandatory and unconditional**, unlike the Gate 4 version which is Conditional on the trigger. It is now enforced unconditionally at Gate 7. Tell us if that reading is wrong.
-- *"Is a separate **gate-level** safety sign-off needed, or is the phase-level Prepared/Reviewed/Approved block sufficient at Gate 7?"* → The workbook already ships a gate-level one: the Final Safety Sign-off sheet has an owner and a decision date against each of its 10 safety questions. That is now what the gate checks, and the phase-level sign-off remains a separate condition. Tell us if you intended only one of the two.
+- ~~*"Is a separate **gate-level** safety sign-off needed, or is the phase-level Prepared/Reviewed/Approved block sufficient at Gate 7?"*~~ — **Answered by the SME's own Gate 7 item order (2026-07-28): both are wanted.** The list the team provided names "Prepared, reviewed and approved sign-off" as its own, 10th, distinct line — separate from "Required safety reviewer approval" (the gate-level Final Safety Sign-off `owner`/`decisionDate`, already wired as `sg07-reviewer`). So the original guess (gate-level Final Safety Sign-off substitutes for the phase-level block) was wrong — this turned out to affect all 12 gates, not just Gate 7, so it's now its own cross-cutting section below ("Prepared, reviewed and approved sign-off" applies to every gate) rather than a Gate-7-only note.
 
 **Also resolved without an SME round (2026-07-26): every gate's own Key Gate Check rows are now enforced at the gate level, not just at phase close.** Rule **B3(b)** — already confirmed by the team ("All Key Gate Checks for the phase = Done/Y (or N/A)" is mandatory) — applies to *every* Key Gate Check row, not a curated subset. A completeness sweep found 3 of the 36 Key Gate Check rows (12 gates × 3 rows each) had never been given their own gate-level check, even though B3(b) already made them mandatory in effect: Gate 7's "Pregnancy/breastfeeding and baby-contact screen completed where triggered", and all three of Gate 10's rows ("Evidence hierarchy applied and claims wording checked", "Countries/regulatory pathway matched and PIF/evidence file mapped", "Approved wording / limitations recorded") — Gate 10 was the widest gap, having none of its three rows wired — plus Gate 11's "Launch sign-off completed and blockers recorded". These are now wired the same way as the earlier `sg01-constraints`/`sg02-commercial`/`sg03-decision`/`sg05-decision` rows: moving an already-confirmed requirement earlier (gate-level instead of phase-level), not inventing a new one, so no SME question was needed.
 

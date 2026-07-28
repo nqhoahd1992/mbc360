@@ -96,6 +96,14 @@ export type ReadinessCheck =
   // (e.g. Project Lead/owner, required to create the project in the first
   // place — see 2026-07-25 sg01-owner fix).
   | { kind: 'identityFieldFilled'; field: 'projectLead' }
+  // A specific field on the Phase Gate Flow row itself (`ProjectData.gates`
+  // entry for `gate`) is non-empty. Unlike `identityFieldFilled`, this is NOT
+  // vacuous: `owner`/`dueDate`/`evidenceLink`/`notes` on a gate record start
+  // blank and are only filled in when someone actually does so — added
+  // 2026-07-28 for Gate 7's "Prepared, reviewed and approved sign-off" (the
+  // SME's own item), which the user confirmed means completing these fields
+  // on the Gate 07 row itself, not a separate sign-off mechanism.
+  | { kind: 'gateFieldFilled'; gate: string; field: 'owner' | 'dueDate' | 'evidenceLink' | 'notes' }
   // AND-composite: satisfied only when EVERY sub-check is satisfied. Merges
   // several signals into ONE readiness item so the panel shows exactly one
   // line per F1 appendix item, instead of a separate visible row per signal
@@ -141,10 +149,18 @@ export interface ReadinessRequirement {
   source?: ReadinessSource;
 }
 
-// Keyed by gate id (SG01..SG12). Every gate additionally requires a
-// Prepared / Reviewed / Approved sign-off — that is enforced at PHASE-closure
-// level (see phaseCompletionChecklist in utils/gateProgress.ts), so it is not
-// duplicated as a per-gate row here.
+// Keyed by gate id (SG01..SG12). Every gate's own F1 appendix list (docs/
+// Response.txt) ends with the same line, "Prepared, reviewed and approved
+// sign-off" — for years (until 2026-07-28) this was read as referring to the
+// existing PHASE-closure sign-off (phaseCompletionChecklist's Prepared/
+// Reviewed/Approved roles) and deliberately NOT duplicated as a per-gate row.
+// User-corrected 2026-07-28: that phase-level block is per-PHASE (shared
+// across several gates), which is a different thing from a per-GATE
+// confirmation, and the appendix repeats the line at every single gate, not
+// just once per phase — so each gate now gets its own `sgXX-signoff` item,
+// checking that the GATE's own Phase Gate Flow row (Owner + Evidence link)
+// has actually been filled in. The phase-level sign-off block is unchanged
+// and remains a separate B3 condition.
 export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   SG01: [
     {
@@ -204,6 +220,21 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // docs/F1_Per_Gate_Open_Questions.md.
     { id: 'sg01-scope', label: 'Initial product scope', tier: 'Mandatory', check: { kind: 'manual' } },
     { id: 'sg01-market-user', label: 'Initial target market and user', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      // Added 2026-07-28 — every gate's F1 list ends with this same line (see
+      // the note above GATE_READINESS). Checks the Gate 01 Phase Gate Flow
+      // row's own Owner + Evidence link fields, not the phase-level sign-off.
+      id: 'sg01-signoff',
+      label: 'Prepared, reviewed and approved sign-off',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateFieldFilled', gate: '01', field: 'owner' },
+          { kind: 'gateFieldFilled', gate: '01', field: 'evidenceLink' },
+        ],
+      },
+    },
   ],
   SG02: [
     // sg02-brief: still `manual` — no field represents "the brief" anywhere
@@ -319,6 +350,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       source: 'npd-roadmap',
       check: { kind: 'registerRowsComplete', register: 'needsSignOff', columns: ['name', 'date'] },
     },
+    {
+      // Added 2026-07-28 (see the note above GATE_READINESS).
+      id: 'sg02-signoff',
+      label: 'Prepared, reviewed and approved sign-off',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateFieldFilled', gate: '02', field: 'owner' },
+          { kind: 'gateFieldFilled', gate: '02', field: 'evidenceLink' },
+        ],
+      },
+    },
   ],
   SG03: [
     {
@@ -429,6 +473,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       source: 'b3',
       check: { kind: 'gateCheckDone', gate: '03', check: 'Gate 1-3 decision and open actions recorded' },
     },
+    {
+      // Added 2026-07-28 (see the note above GATE_READINESS).
+      id: 'sg03-signoff',
+      label: 'Prepared, reviewed and approved sign-off',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateFieldFilled', gate: '03', field: 'owner' },
+          { kind: 'gateFieldFilled', gate: '03', field: 'evidenceLink' },
+        ],
+      },
+    },
   ],
   SG04: [
     {
@@ -460,7 +517,12 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'allOf',
         checks: [
           { kind: 'gateCheckDone', gate: '04', check: 'Ingredient functions identified and RM document pack requested' },
-          { kind: 'registerColumnFilled', register: 'supplierRmEvidence', column: 'inciName' },
+          // registerRowsComplete, not registerColumnFilled: sg04-supplier's
+          // registerHasRows on this same register only guards the GATE
+          // overall — this item's own satisfied flag was still vacuously
+          // true on an empty register (found 2026-07-28, same class of bug
+          // as the Gate 06 packagingSpecsArtwork items).
+          { kind: 'registerRowsComplete', register: 'supplierRmEvidence', columns: ['inciName'] },
         ],
       },
     },
@@ -523,6 +585,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // inventing a rule). registerRowsComplete is non-vacuous, so an untouched
       // register does not pass. Conditional tier: warns, never hard-blocks.
       check: { kind: 'registerRowsComplete', register: 'supplierRmEvidence', columns: ['allergenStatement', 'impurities'] },
+    },
+    {
+      // Added 2026-07-28 (see the note above GATE_READINESS).
+      id: 'sg04-signoff',
+      label: 'Prepared, reviewed and approved sign-off',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateFieldFilled', gate: '04', field: 'owner' },
+          { kind: 'gateFieldFilled', gate: '04', field: 'evidenceLink' },
+        ],
+      },
     },
   ],
   SG05: [
@@ -663,6 +738,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       source: 'npd-roadmap',
       check: { kind: 'registerHasRows', register: 'evidencePlanProspective' },
     },
+    {
+      // Added 2026-07-28 (see the note above GATE_READINESS).
+      id: 'sg05-signoff',
+      label: 'Prepared, reviewed and approved sign-off',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateFieldFilled', gate: '05', field: 'owner' },
+          { kind: 'gateFieldFilled', gate: '05', field: 'evidenceLink' },
+        ],
+      },
+    },
   ],
   // Gate 6 wired 2026-07-26 (previously 0 of 5 Mandatory items enforced — the
   // gate could be passed with no packaging evidence at all). Same method as
@@ -696,7 +784,10 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'allOf',
         checks: [
           { kind: 'gateCheckDone', gate: '06', check: 'Artwork/label needs and pack compatibility triggers identified' },
-          { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'compatibilityEvidence' },
+          // registerRowsComplete, not registerColumnFilled: an empty register
+          // must not vacuously satisfy this (found 2026-07-28 — the register
+          // had 0 rows and this still showed satisfied).
+          { kind: 'registerRowsComplete', register: 'packagingSpecsArtwork', columns: ['compatibilityEvidence'] },
         ],
       },
     },
@@ -714,7 +805,8 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'allOf',
         checks: [
           { kind: 'checklistHasSelection', section: 'artworkTriggers' },
-          { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'artworkVersion' },
+          // registerRowsComplete (see sg06-compatibility note above).
+          { kind: 'registerRowsComplete', register: 'packagingSpecsArtwork', columns: ['artworkVersion'] },
         ],
       },
     },
@@ -728,7 +820,8 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'allOf',
         checks: [
           { kind: 'gateCheckDone', gate: '06', check: 'Packaging cost, lead time and supplier approval requirements entered' },
-          { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'supplier' },
+          // registerRowsComplete (see sg06-compatibility note above).
+          { kind: 'registerRowsComplete', register: 'packagingSpecsArtwork', columns: ['supplier'] },
         ],
       },
     },
@@ -742,7 +835,23 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg06-evidence-link',
       label: 'Link to controlled packaging evidence',
       tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'specLink' },
+      // registerRowsComplete, not registerColumnFilled: an empty register must
+      // not vacuously satisfy this (found 2026-07-28 — user reported this item
+      // showing satisfied with 0 rows in packagingSpecsArtwork).
+      check: { kind: 'registerRowsComplete', register: 'packagingSpecsArtwork', columns: ['specLink'] },
+    },
+    {
+      // Added 2026-07-28 (see the note above GATE_READINESS).
+      id: 'sg06-signoff',
+      label: 'Prepared, reviewed and approved sign-off',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateFieldFilled', gate: '06', field: 'owner' },
+          { kind: 'gateFieldFilled', gate: '06', field: 'evidenceLink' },
+        ],
+      },
     },
   ],
   // Gate 7 is a safety-critical hard block.
@@ -755,6 +864,11 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   // Label warnings / directions, Final safety release) plus a per-ingredient
   // `formulationSafetyMatrix`. Because that register is `fixed` with 10 seeded
   // rows it can never be vacuously satisfied.
+  // Order below (2026-07-28) matches the exact sequence the SME provided for
+  // Gate 7's "What's blocking" panel — the 10 named items first (untagged, no
+  // `source`, so `gateReadinessChecklist` groups them together and in this
+  // order), then the dev-added extras below a divider (each now carries a
+  // `source` so it never interleaves with the SME's own list).
   SG07: [
     {
       id: 'sg07-final-safety',
@@ -769,50 +883,6 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         column: 'status',
         badValues: ['Not Started', 'In Progress', 'On Hold', 'Backtracked'],
       },
-    },
-    {
-      id: 'sg07-matrix-rows',
-      label: 'Formulation safety matrix — every formula ingredient assessed',
-      tier: 'Mandatory',
-      // Guards the three per-column matrix checks below: `.every()` over an empty
-      // register is vacuously true, so the row-count check has to be Mandatory too.
-      check: { kind: 'registerHasRows', register: 'formulationSafetyMatrix' },
-    },
-    {
-      id: 'sg07-safety-questions',
-      label: 'Safety/tolerance questions defined and vulnerable-user risks reviewed',
-      tier: 'Mandatory',
-      source: 'b3',
-      // Not an F1-named item — already mandatory-in-effect via B3, same pattern
-      // as sg01-constraints.
-      check: { kind: 'gateCheckDone', gate: '07', check: 'Safety/tolerance questions defined and vulnerable-user risks reviewed' },
-    },
-    {
-      id: 'sg07-restrictions-linked',
-      label: 'Restrictions, conditions and safety evidence linked',
-      tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '07', check: 'Restrictions, conditions and safety evidence linked' },
-    },
-    {
-      // Not an F1-named item — same generalizable rule as sg01-constraints:
-      // B3(b) already confirms EVERY Key Gate Check row is mandatory before
-      // its phase can close; this is the third of Gate 7's three rows and
-      // was missed when Gate 7 was first wired (2026-07-26 completeness
-      // pass). `sg07-maternal-infant` below is a DIFFERENT, Conditional item
-      // (the C1 Skincare-for-Two auto-check) — it does not substitute for
-      // this Key Gate Check row being confirmed done/justified.
-      id: 'sg07-screen-check',
-      label: 'Pregnancy/breastfeeding and baby-contact screen completed where triggered',
-      tier: 'Mandatory',
-      source: 'b3',
-      check: { kind: 'gateCheckDone', gate: '07', check: 'Pregnancy/breastfeeding and baby-contact screen completed where triggered' },
-    },
-    {
-      id: 'sg07-bom-reconciled',
-      label: 'Formula BOM reconciled to a controlled Cosmetri formula (no "Draft - Not Reconciled" lines)',
-      tier: 'Mandatory',
-      // F14: manual composition must be reconciled before Gate 7 final safety.
-      check: { kind: 'bomReconciled' },
     },
     {
       id: 'sg07-prohibited-closed',
@@ -852,7 +922,10 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg07-exposure',
       label: 'Exposure and intended-use assessment',
       tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'formulationSafetyMatrix', column: 'exposureRationale' },
+      // registerRowsComplete, not registerColumnFilled: sg07-matrix-rows'
+      // registerHasRows only guards the GATE overall, not this item's own
+      // satisfied flag (found 2026-07-28 — same class as the Gate 06 fix).
+      check: { kind: 'registerRowsComplete', register: 'formulationSafetyMatrix', columns: ['exposureRationale'] },
     },
     {
       id: 'sg07-allergen',
@@ -874,7 +947,8 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg07-conclusion',
       label: 'Safety conclusion and identified limitations',
       tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'formulationSafetyMatrix', column: 'safetyDecision' },
+      // registerRowsComplete (see sg07-exposure note above).
+      check: { kind: 'registerRowsComplete', register: 'formulationSafetyMatrix', columns: ['safetyDecision'] },
     },
     {
       id: 'sg07-reviewer',
@@ -904,6 +978,81 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         badValues: ['Not Started', 'In Progress', 'On Hold', 'Backtracked'],
       },
     },
+    {
+      // Added 2026-07-28 — the SME's own Gate 7 list names this as a DISTINCT
+      // 10th item, separate from "Required safety reviewer approval" above.
+      // User-confirmed reading (2026-07-28): unlike sg07-reviewer (a separate
+      // Final Safety Sign-off register) or the Phase 3 SignOffBlock
+      // (Prepared/Reviewed/Approved roles, evaluated per-PHASE, not per-gate),
+      // this item is the act of completing the Gate 07 row itself in the
+      // Phase Gate Flow table — Owner and Evidence link filled in, i.e. a
+      // named person has taken responsibility and left a review trail. Not
+      // vacuous: both fields start blank on a gate record and are only
+      // filled in when someone actually does so.
+      id: 'sg07-signoff',
+      label: 'Prepared, reviewed and approved sign-off',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateFieldFilled', gate: '07', field: 'owner' },
+          { kind: 'gateFieldFilled', gate: '07', field: 'evidenceLink' },
+        ],
+      },
+    },
+    {
+      id: 'sg07-matrix-rows',
+      label: 'Formulation safety matrix — every formula ingredient assessed',
+      tier: 'Mandatory',
+      source: 'dev-decision',
+      // Not an F1-named item. Guards the three per-column matrix checks above:
+      // `.every()` over an empty register is vacuously true, so the row-count
+      // check has to be Mandatory too.
+      check: { kind: 'registerHasRows', register: 'formulationSafetyMatrix' },
+    },
+    {
+      id: 'sg07-safety-questions',
+      label: 'Safety/tolerance questions defined and vulnerable-user risks reviewed',
+      tier: 'Mandatory',
+      source: 'b3',
+      // Not an F1-named item — already mandatory-in-effect via B3, same pattern
+      // as sg01-constraints.
+      check: { kind: 'gateCheckDone', gate: '07', check: 'Safety/tolerance questions defined and vulnerable-user risks reviewed' },
+    },
+    {
+      id: 'sg07-restrictions-linked',
+      label: 'Restrictions, conditions and safety evidence linked',
+      tier: 'Mandatory',
+      source: 'dev-decision',
+      // Not an F1-named item (not in the SME's 10-item Gate 7 list either) —
+      // tagged 2026-07-28 so it groups with the other extras instead of
+      // interleaving with the SME list above.
+      check: { kind: 'gateCheckDone', gate: '07', check: 'Restrictions, conditions and safety evidence linked' },
+    },
+    {
+      // Not an F1-named item — same generalizable rule as sg01-constraints:
+      // B3(b) already confirms EVERY Key Gate Check row is mandatory before
+      // its phase can close; this is the third of Gate 7's three rows and
+      // was missed when Gate 7 was first wired (2026-07-26 completeness
+      // pass). `sg07-maternal-infant` above is a DIFFERENT, Conditional item
+      // (the C1 Skincare-for-Two auto-check) — it does not substitute for
+      // this Key Gate Check row being confirmed done/justified.
+      id: 'sg07-screen-check',
+      label: 'Pregnancy/breastfeeding and baby-contact screen completed where triggered',
+      tier: 'Mandatory',
+      source: 'b3',
+      check: { kind: 'gateCheckDone', gate: '07', check: 'Pregnancy/breastfeeding and baby-contact screen completed where triggered' },
+    },
+    {
+      id: 'sg07-bom-reconciled',
+      label: 'Formula BOM reconciled to a controlled Cosmetri formula (no "Draft - Not Reconciled" lines)',
+      tier: 'Mandatory',
+      source: 'dev-decision',
+      // F14: manual composition must be reconciled before Gate 7 final safety.
+      // Not in the SME's 10-item Gate 7 list — tagged 2026-07-28 (see note on
+      // sg07-restrictions-linked above).
+      check: { kind: 'bomReconciled' },
+    },
   ],
   // Gate 8 wired 2026-07-26. `evidenceTestProtocol` (gate '08') carries
   // testMethod / acceptanceLimit / reportLink per test, and the existing
@@ -920,7 +1069,11 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg08-methods',
       label: 'Test methods or method references',
       tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'evidenceTestProtocol', column: 'testMethod' },
+      // registerRowsComplete, not registerColumnFilled: sg08-npd-evidence-
+      // protocol's registerHasRows only guards the GATE overall, not this
+      // item's own satisfied flag (found 2026-07-28 — same class as the
+      // Gate 06 fix).
+      check: { kind: 'registerRowsComplete', register: 'evidenceTestProtocol', columns: ['testMethod'] },
     },
     {
       // Merged 2026-07-27 (user-requested) from sg08-acceptance +
@@ -932,7 +1085,8 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'allOf',
         checks: [
           { kind: 'gateCheckDone', gate: '08', check: 'Acceptance criteria, results and CAPA pathway defined' },
-          { kind: 'registerColumnFilled', register: 'evidenceTestProtocol', column: 'acceptanceLimit' },
+          // registerRowsComplete (see sg08-methods note above).
+          { kind: 'registerRowsComplete', register: 'evidenceTestProtocol', columns: ['acceptanceLimit'] },
         ],
       },
     },
@@ -960,7 +1114,8 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'allOf',
         checks: [
           { kind: 'gateCheckDone', gate: '08', check: 'Validation report linked or placeholder/action used' },
-          { kind: 'registerColumnFilled', register: 'evidenceTestProtocol', column: 'reportLink' },
+          // registerRowsComplete (see sg08-methods note above).
+          { kind: 'registerRowsComplete', register: 'evidenceTestProtocol', columns: ['reportLink'] },
         ],
       },
     },
@@ -973,6 +1128,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Mandatory',
       source: 'npd-roadmap',
       check: { kind: 'registerHasRows', register: 'evidenceTestProtocol' },
+    },
+    {
+      // Added 2026-07-28 (see the note above GATE_READINESS).
+      id: 'sg08-signoff',
+      label: 'Prepared, reviewed and approved sign-off',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateFieldFilled', gate: '08', field: 'owner' },
+          { kind: 'gateFieldFilled', gate: '08', field: 'evidenceLink' },
+        ],
+      },
     },
   ],
   // Gate 9 wired 2026-07-26 (previously 0 of 5 Mandatory items enforced). Phase 3
@@ -1018,7 +1186,10 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'allOf',
         checks: [
           { kind: 'gateCheckDone', gate: '09', check: 'Pilot/scale-up and release criteria assessed' },
-          { kind: 'registerColumnFilled', register: 'stabilityRelease', column: 'acceptanceCriteria' },
+          // registerRowsComplete, not registerColumnFilled: sg09-stability's
+          // registerHasRows only guards the GATE overall, not this item's own
+          // satisfied flag (found 2026-07-28 — same class as the Gate 06 fix).
+          { kind: 'registerRowsComplete', register: 'stabilityRelease', columns: ['acceptanceCriteria'] },
         ],
       },
     },
@@ -1049,6 +1220,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // Not an F1-named item — same generalizable rule as sg01-constraints: this
       // requirement row was already mandatory-in-effect via B3 (phase close).
       check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Retest or CAPA pathway defined' },
+    },
+    {
+      // Added 2026-07-28 (see the note above GATE_READINESS).
+      id: 'sg09-signoff',
+      label: 'Prepared, reviewed and approved sign-off',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateFieldFilled', gate: '09', field: 'owner' },
+          { kind: 'gateFieldFilled', gate: '09', field: 'evidenceLink' },
+        ],
+      },
     },
   ],
   // Gate 10 is a market-specific hard block (requirements repeat per market).
@@ -1119,7 +1303,10 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg10-claim-evidence',
       label: 'Evidence attached or linked for every approved product claim',
       tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'skuClaimsPifRegister', column: 'evidenceLink' },
+      // registerRowsComplete, not registerColumnFilled: sg10-claims-register's
+      // registerHasRows only guards the GATE overall, not this item's own
+      // satisfied flag (found 2026-07-28 — same class as the Gate 06 fix).
+      check: { kind: 'registerRowsComplete', register: 'skuClaimsPifRegister', columns: ['evidenceLink'] },
     },
     {
       id: 'sg10-safety-evidence',
@@ -1137,7 +1324,11 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg10-artwork',
       label: 'Label and artwork review',
       tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'packagingSpecsArtwork', column: 'approval' },
+      // registerRowsComplete, not registerColumnFilled: the only registerHasRows
+      // on this register is sg06-pack-spec at an EARLIER gate, so this item's
+      // own satisfied flag was vacuously true if viewed before Gate 06 is
+      // actually passed (found 2026-07-28 — same class as the Gate 06 fix).
+      check: { kind: 'registerRowsComplete', register: 'packagingSpecsArtwork', columns: ['approval'] },
     },
     {
       id: 'sg10-published-info',
@@ -1148,6 +1339,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // sg10-reg-approval: still `manual` — per-market (marketTracks.regulatoryStatus),
     // needs F4. See docs/F1_Per_Gate_Open_Questions.md.
     { id: 'sg10-reg-approval', label: 'Regulatory approval', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      // Added 2026-07-28 (see the note above GATE_READINESS).
+      id: 'sg10-signoff',
+      label: 'Prepared, reviewed and approved sign-off',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateFieldFilled', gate: '10', field: 'owner' },
+          { kind: 'gateFieldFilled', gate: '10', field: 'evidenceLink' },
+        ],
+      },
+    },
   ],
   // Gate 11 is a market-specific hard block.
   SG11: [
@@ -1204,7 +1408,11 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg11-release-pathway',
       label: 'Quality release pathway',
       tier: 'Mandatory',
-      check: { kind: 'registerColumnFilled', register: 'stabilityRelease', column: 'releaseDecision' },
+      // registerRowsComplete, not registerColumnFilled: the only registerHasRows
+      // on this register is sg09-stability at an EARLIER gate, so this item's
+      // own satisfied flag was vacuously true if viewed before Gate 09 is
+      // actually passed (found 2026-07-28 — same class as the Gate 06 fix).
+      check: { kind: 'registerRowsComplete', register: 'stabilityRelease', columns: ['releaseDecision'] },
     },
     {
       // Not an F1-named item — same generalizable rule as sg01-constraints:
@@ -1244,6 +1452,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // sg11-launch: still `manual` — per-market (marketTracks.launchApproval, already
     // hard-blocked per market by C5 in MarketTrackingCard/setMarketTracks). F4.
     { id: 'sg11-launch', label: 'Launch approval', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      // Added 2026-07-28 (see the note above GATE_READINESS).
+      id: 'sg11-signoff',
+      label: 'Prepared, reviewed and approved sign-off',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateFieldFilled', gate: '11', field: 'owner' },
+          { kind: 'gateFieldFilled', gate: '11', field: 'evidenceLink' },
+        ],
+      },
+    },
   ],
   // Gate 12 wired 2026-07-26 (previously 0 of 2 Mandatory items enforced).
   // Deliberately NOT requiring a CAPA record to exist: a product with no
@@ -1290,6 +1511,22 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Change-control links',
       tier: 'Supporting',
       check: { kind: 'gateCheckDone', gate: '12', check: 'Loopback to NPD or change control recorded where needed' },
+    },
+    {
+      // Added 2026-07-28 (see the note above GATE_READINESS). Gate 12's own
+      // closing line is worded slightly differently from every other gate's
+      // ("review closure" vs "sign-off") — transcribed verbatim from
+      // docs/Response.txt rather than reusing the other gates' exact wording.
+      id: 'sg12-signoff',
+      label: 'Prepared, reviewed and approved review closure',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateFieldFilled', gate: '12', field: 'owner' },
+          { kind: 'gateFieldFilled', gate: '12', field: 'evidenceLink' },
+        ],
+      },
     },
   ],
 };

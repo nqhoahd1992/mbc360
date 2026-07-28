@@ -116,10 +116,20 @@ export class ProjectsController {
     @Headers('idempotency-key') key: string | undefined,
   ): Promise<ProjectEnvelope> {
     const idempotencyKey = this.idempotency.requireKey(key);
-    for (const field of ['productCode', 'projectLead', 'productSku', 'ownerDepartment'] as const) {
+    for (const field of [
+      'productCode',
+      'projectLead',
+      'productSku',
+      'ownerDepartment',
+      'productGroup',
+      'brandCustomer',
+    ] as const) {
       if (!body[field]?.trim()) throw new BadRequestException(`${field} is required`);
     }
     if (!body.targetLaunchDate) throw new BadRequestException('targetLaunchDate is required');
+    if (!body.markets || body.markets.length === 0) {
+      throw new BadRequestException('markets is required');
+    }
     return this.projects.create(
       user.id,
       {

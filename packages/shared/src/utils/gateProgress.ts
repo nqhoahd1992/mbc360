@@ -173,6 +173,10 @@ function evaluateReadinessCheck(
     }
     case 'identityFieldFilled':
       return { evaluable: true, satisfied: !!project.identity[check.field]?.trim() };
+    case 'gateFieldFilled': {
+      const record = project.gates.find((g) => g.gateId === `SG${check.gate}`);
+      return { evaluable: true, satisfied: !!record?.[check.field]?.trim() };
+    }
     case 'allOf': {
       const results = check.checks.map((c) => evaluateReadinessCheck(project, c));
       return { evaluable: results.every((r) => r.evaluable), satisfied: results.every((r) => r.satisfied) };
@@ -412,6 +416,8 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return phaseSectionLink(gateId, 'sec-requirement-skincareForTwo');
     case 'identityFieldFilled':
       return phaseSectionLink(gateId, 'sec-identification');
+    case 'gateFieldFilled':
+      return phaseSectionLink(gateId, 'sec-gate-flow');
     case 'allOf':
       // By convention the composite's LAST check is the more specific one
       // (e.g. [gateCheckDone, checklistHasSelection] — the detail checklist,
