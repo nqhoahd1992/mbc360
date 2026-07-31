@@ -35,3 +35,6 @@ apps/api/src/generated/
 
 # Excel lock files (created while a workbook in docs/ is open)
 ~$*
+
+# Outlook-ready HTML rendered from a Markdown draft by scripts/md-to-email-html.mjs
+*.email.html
