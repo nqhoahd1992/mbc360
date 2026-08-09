@@ -380,7 +380,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q6 | 3 trigger Gate 12 ↔ option nào của checklist Post-Market Sources | 🟡 | 10 |
 | R4-Q7 | Gate 3 — "purely administrative change" gồm những loại nào | 🟡 | 11 |
 | R4-Q8 | Gate 9 — "major reformulation" và "process/site change" đọc từ đâu | 🟡 | 12 |
-| R4-Q9 | Gate 3 — claim ở `Pending classification` tính là đã trigger hay chưa | 🟡 | 7 |
+| R4-Q9 | **Cross-cutting** — dữ liệu của trigger *chưa được ghi* thì tính là đã trigger hay chưa | 🔴 | 7 |
 | R4-Q10 | Gate 12 — mốc "scheduled post-launch review", và "đã launch" khi nhiều thị trường | 🟡 | 13 + 14 |
 | R4-Q11 | Gate 12 — "product category / market / company policy" nào bắt buộc PV/PMS | 🟡 | 4 |
 | R4-Q12 | Gate 12 — tier của "Product-performance feedback" và "Market feedback" | 🟡 | 15 |
@@ -537,7 +537,27 @@ Chúng tôi định đọc từ ba nguồn:
 
 **Nếu (a) là không:** cần tiêu chí riêng cho "major reformulation" ở Gate 9, tách khỏi `MAJOR_CHANGE_CRITERIA`.
 
-#### R4-Q9 · Gate 3 — claim ở `Pending classification` tính là đã trigger hay chưa 🟡
+#### R4-Q9 · Cross-cutting — dữ liệu của trigger *chưa được ghi* thì tính là đã trigger hay chưa 🔴
+
+**Mở rộng 2026-08-09 từ một câu riêng của Gate 3 thành câu cross-cutting**, sau khi cài trigger `microbiologicallySusceptible` làm lộ ra **cùng một câu hỏi ở chỗ thứ hai**. Đây là một quyết định chính sách, không phải hai ca lẻ.
+
+**Vấn đề chung:** một item Conditional chỉ chặn khi trigger active. Nhưng khi **chưa ai ghi dữ liệu mà trigger đọc**, trigger trả về "không active" → item **tự thoả**. Tức là *chưa đánh giá* đang được đối xử giống *đã đánh giá và kết luận không áp dụng*.
+
+Hai chỗ đang như vậy:
+
+| Item | Trigger đọc | Khi chưa ghi gì |
+|---|---|---|
+| Gate 5 `sg05-preservative` · Gate 9 `sg09-pet` | phân loại nhạy cảm vi sinh của công thức | **đã ship** — cả hai gate tự pass |
+| Gate 3 `sg03-reg-claims` | Claim risk của B7 | chưa build; `Pending classification` là ca tương tự |
+
+**Câu hỏi:** khi dữ liệu mà trigger đọc **chưa được ghi**, item Conditional nên **(a)** tự thoả như hiện nay — chưa phân loại thì coi như chưa trigger; hay **(b)** coi như **đã trigger** — chưa biết thì phải giả định là có, cho tới khi ai đó phân loại và nói không?
+
+Chúng tôi nghiêng về **(b)** cho những item liên quan an toàn (bảo quản, claim rủi ro): chưa biết không phải là an toàn. Nhưng (b) nghĩa là mọi dự án mới đều chặn ở Gate 5 cho tới khi có người phân loại công thức — một bước bắt buộc thêm, nên đó là quyết định của các anh chứ không phải của chúng tôi.
+
+**Nếu chọn (b):** `isReadinessTriggerActive()` trong `gateProgress.ts` — nhánh `microbiologicallySusceptible` trả `true` khi giá trị rỗng, và nhánh claim risk làm tương tự.
+
+<details><summary>Câu hỏi gốc (chỉ Gate 3), giữ để tra lịch sử</summary>
+
 
 B7 cấp 5 giá trị cho **Claim risk**: `Low` · `Medium` · `High` · `Prohibited / not acceptable` · `Pending classification`. C1 nói regulatory review bắt buộc khi `risk = High` (cùng các điều kiện khác), nhưng **không nói** `Pending classification` xử lý thế nào.
 
@@ -546,6 +566,8 @@ Chúng tôi nghiêng về **tính là đã trigger** — chưa phân loại thì
 **Câu hỏi:** một claim còn ở `Pending classification` có bắt buộc Regulatory review không?
 
 **Nếu là "không":** `gateProgress.ts` → `isReadinessTriggerActive()`, nhánh `claimNeedsRegulatoryReview`.
+
+</details>
 
 #### R4-Q10 · Gate 12 — mốc "scheduled post-launch review", và "đã launch" khi nhiều thị trường 🟡
 

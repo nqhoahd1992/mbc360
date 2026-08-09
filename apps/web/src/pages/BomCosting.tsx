@@ -6,6 +6,7 @@ import { useAppStore } from '../store/useAppStore';
 import type { BomLine, CostingInputs, PackagingBomLine, RegisterRow } from '@mbc360/shared/types';
 import PhaseDependencyAlert from '../components/PhaseDependencyAlert';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
+import FormulaPropertiesCard from '../components/FormulaPropertiesCard';
 import CosmetriImportModal from '../components/CosmetriImportModal';
 import FormulaVersionModal from '../components/FormulaVersionModal';
 import FormulaVersionCompareModal, { type FormulaVersionOption } from '../components/FormulaVersionCompareModal';
@@ -263,6 +264,7 @@ export default function BomCosting() {
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <ProjectIdentificationCard project={project} />
+      <FormulaPropertiesCard project={project} />
 
       <PhaseDependencyAlert
         reached={hasReachedPhase(project, 2)}

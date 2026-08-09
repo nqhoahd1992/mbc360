@@ -110,6 +110,7 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     phaseClosures,
     bom: [],
     packagingBom: [],
+    formulaProperties: {},
     costing: {
       batchSizeKg: 100,
       fillSizeG: 100,

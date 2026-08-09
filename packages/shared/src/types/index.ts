@@ -179,6 +179,21 @@ export interface CostingInputs {
   targetSellPrice: number;
 }
 
+// Properties of the formula itself that gate readiness has to reason about,
+// as opposed to its composition (BomLine) or its cost (CostingInputs). Kept as
+// its own singleton so a future trigger needing another formula property has an
+// obvious home rather than widening CostingInputs.
+//
+// Project-level, not per formula version: a version-specific value would need
+// the readiness engine to know which version it is evaluating, which it does
+// not today. Worth revisiting alongside the per-market work.
+export interface FormulaProperties {
+  // MICROBIOLOGICAL_SUSCEPTIBILITY_OPTIONS. Empty until someone records it.
+  microSusceptibility?: string;
+  // Required by A3 whenever the answer is anything but 'Susceptible'.
+  microRationale?: string;
+}
+
 export interface EvidenceItem {
   area: string;
   required: 'Y' | 'Conditional';
@@ -458,6 +473,7 @@ export interface ProjectData {
   bom: BomLine[];
   packagingBom: PackagingBomLine[];
   costing: CostingInputs;
+  formulaProperties: FormulaProperties;
   evidence: EvidenceItem[];
   capa: CapaRecord[];
   feedback: FeedbackEntry[];

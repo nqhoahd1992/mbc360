@@ -35,7 +35,8 @@ export type ReadinessTier = 'Mandatory' | 'Conditional' | 'Supporting';
 export type ReadinessTrigger =
   | 'skincareForTwo'
   | 'humanStudyPlanned'
-  | 'newOrRepositionedProject';
+  | 'newOrRepositionedProject'
+  | 'microbiologicallySusceptible';
 
 export type ReadinessCheck =
   // No linked data source yet — displayed for confirmation, never hard-blocks.
@@ -111,6 +112,9 @@ export type ReadinessCheck =
   // this field ever actually be empty on a real project? If not, the check is
   // decoration, not enforcement.
   | { kind: 'identityFieldFilled'; field: 'requestOrigin' | 'projectNature' | 'initialScope' | 'initialTargetUsers' | 'initialTargetMarkets' }
+  // A `FormulaProperties` field is non-empty. Same non-vacuity test as
+  // `identityFieldFilled`: these fields start empty and only a person fills them.
+  | { kind: 'formulaPropertyFilled'; field: 'microSusceptibility' | 'microRationale' }
   // A specific field on the Phase Gate Flow row itself (`ProjectData.gates`
   // entry for `gate`) is non-empty. This is NOT vacuous:
   // `owner`/`dueDate`/`evidenceLink`/`notes` on a gate record start
@@ -785,7 +789,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // defined condition (same open gap as Gates 5/9's preservative items in
     // the mapping doc). Conditional — never hard-blocks. Open question — see
     // docs/rules/F1_Per_Gate_Open_Questions.md.
-    { id: 'sg05-preservative', label: 'Preservative strategy where applicable', tier: 'Conditional', check: { kind: 'manual' } },
+    {
+      // Wired 2026-08-09. A3's condition is a property of the formula, not of a
+      // register — see FormulaProperties. The check is that a rationale exists
+      // alongside the classification: for a susceptible product that rationale
+      // IS the preservative strategy, which is what the item asks for.
+      id: 'sg05-preservative',
+      label: 'Preservative strategy where applicable',
+      tier: 'Conditional',
+      trigger: 'microbiologicallySusceptible',
+      check: { kind: 'formulaPropertyFilled', field: 'microRationale' },
+    },
     {
       // Merged 2026-07-27 (user-requested) from sg05-compatibility +
       // sg05-compatibility-detail. Shares the same Key Gate Check as
@@ -1322,6 +1336,8 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg09-pet',
       label: 'Preservative efficacy status where applicable',
       tier: 'Conditional',
+      // Same formula property as sg05-preservative — modelled once, read twice.
+      trigger: 'microbiologicallySusceptible',
       check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Preservation / microbiology checks selected' },
     },
     {

@@ -112,6 +112,12 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
     // is named. Not mandatory for a purely administrative change." Three
     // independent limbs, any one of which fires. Which project natures count as
     // administrative is our reading [ASSUMPTION: R4-Q7].
+    // A3, Gates 5 and 9. Only 'Susceptible' triggers; the other four values are
+    // the N/A route the team allowed, and each already demands a rationale
+    // before it can be saved.
+    case 'microbiologicallySusceptible':
+      return project.formulaProperties.microSusceptibility === 'Susceptible';
+
     case 'newOrRepositionedProject': {
       const nature = project.identity.projectNature ?? '';
       const origin = project.identity.requestOrigin ?? '';
@@ -144,6 +150,8 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   humanStudyPlanned: 'no human study is planned — the Study Protocol has no planned values recorded',
   newOrRepositionedProject:
     'not a new product, claim change or market extension, not a customer or distributor request, and no benchmark product named',
+  microbiologicallySusceptible:
+    'the formula is recorded as anhydrous, self-preserving, sterile or single-use, with a rationale',
 };
 
 // Evaluate a requirement's check against live project data. `evaluable` is false
@@ -210,6 +218,8 @@ function evaluateReadinessCheck(
     }
     case 'identityFieldFilled':
       return { evaluable: true, satisfied: !!project.identity[check.field]?.trim() };
+    case 'formulaPropertyFilled':
+      return { evaluable: true, satisfied: !!project.formulaProperties[check.field]?.trim() };
     case 'gateFieldFilled': {
       const record = project.gates.find((g) => g.gateId === `SG${check.gate}`);
       return { evaluable: true, satisfied: !!record?.[check.field]?.trim() };
@@ -459,6 +469,8 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return phaseSectionLink(gateId, 'sec-requirement-skincareForTwo');
     case 'identityFieldFilled':
       return phaseSectionLink(gateId, 'sec-identification');
+    case 'formulaPropertyFilled':
+      return { href: '/bom' };
     case 'gateFieldFilled':
       return phaseSectionLink(gateId, 'sec-gate-flow');
     case 'allOf':

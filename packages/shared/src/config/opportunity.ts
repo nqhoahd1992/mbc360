@@ -47,3 +47,29 @@ export const PROJECT_NATURE_OPTIONS = [
 
 export type RequestOrigin = (typeof REQUEST_ORIGIN_OPTIONS)[number];
 export type ProjectNature = (typeof PROJECT_NATURE_OPTIONS)[number];
+
+// Gate 5 / Gate 9 — microbiological susceptibility of the formula (2026-08-09).
+// Two Conditional triggers read this one property: A3's preservative strategy
+// at Gate 5 and preservative efficacy at Gate 9, so it is modelled once.
+//
+// The five values are lifted almost verbatim from A3's own sentence: "mandatory
+// for water-containing, water-available, multi-use or otherwise
+// microbiologically susceptible products. N/A may be used for genuinely
+// anhydrous, self-preserving, sterile or single-use products with documented
+// rationale."
+//
+// Deliberately a recorded human judgement rather than a value derived from the
+// BOM. "Contains water" IS derivable — an INCI line of Aqua/Water — and the UI
+// uses that as a suggestion. But "water-available, multi-use" is not: an
+// anhydrous balm in a jar, opened with wet hands, is still susceptible, and no
+// composition data says so. A3 also asks for a documented rationale, which only
+// a person can supply.
+export const MICROBIOLOGICAL_SUSCEPTIBILITY_OPTIONS = [
+  'Susceptible',
+  'Anhydrous',
+  'Self-preserving',
+  'Sterile',
+  'Single-use',
+] as const;
+
+export type MicrobiologicalSusceptibility = (typeof MICROBIOLOGICAL_SUSCEPTIBILITY_OPTIONS)[number];

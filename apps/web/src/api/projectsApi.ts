@@ -212,6 +212,9 @@ export const setBom = (id: string, lines: ProjectData['bom'], v: number) => put(
 export const setPackagingBom = (id: string, lines: ProjectData['packagingBom'], v: number) =>
   put(id, 'packaging-bom', { lines }, v);
 
+export const setFormulaProperties = (id: string, patch: ProjectData['formulaProperties'], v: number) =>
+  put(id, 'formula-properties', { patch }, v);
+
 export const setCosting = (id: string, patch: Partial<CostingInputs>, v: number) =>
   put(id, 'costing', { patch }, v);
 

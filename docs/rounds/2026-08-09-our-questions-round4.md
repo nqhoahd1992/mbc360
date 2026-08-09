@@ -84,13 +84,24 @@ In other words, Gate 4 asks *"did screening surface a problem?"* and Gate 7 asks
 
 **Question:** is that split what you intended, or should Gate 4 also require every row to be assessed before it can pass?
 
-### Question 7 — Should a claim awaiting classification be treated as requiring regulatory review?
+### Question 7 — When the information a condition depends on has not been recorded yet, does the condition apply?
 
 Your Round 3 answer (B7) gives each claim a risk level: Low, Medium, High, Prohibited, or **Pending classification**. Your review trigger names High risk, borderline and therapeutic-adjacent categories, but does not say what happens to a claim still marked Pending.
 
 We have assumed **Pending counts as requiring review** — if the risk has not been assessed yet, we cannot know it is low.
 
-**Question:** is that right, or should a claim awaiting classification pass without review until someone classifies it?
+This is not only about claims. The same question has just come up in a second place, which is why we are asking it as one policy rather than two cases.
+
+A conditional item only blocks when its condition applies. But when **nobody has recorded the information the condition depends on**, the system currently reads that as "the condition does not apply", and the item passes on its own. In other words, *not yet assessed* is being treated the same as *assessed and found not to apply*.
+
+| Item | Depends on | Today, when nothing has been recorded |
+|---|---|---|
+| Gate 5 preservative strategy, Gate 9 preservative efficacy | whether the formula is microbiologically susceptible | both pass automatically |
+| Gate 3 regulatory review of claims | the claim's risk level | the same, once claim classification is built |
+
+**Question:** when that information has not been recorded, should the item **(a)** pass automatically, as it does now; or **(b)** be treated as applying — on the basis that "we have not checked" is not the same as "it does not apply"?
+
+We lean towards (b) for the safety-related ones, since not knowing is not the same as being safe. But (b) means every new project is blocked at Gate 5 until someone classifies the formula — an extra required step — so it is your call rather than ours.
 
 ---
 

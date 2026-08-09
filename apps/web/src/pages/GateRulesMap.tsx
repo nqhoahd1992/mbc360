@@ -109,6 +109,7 @@ function checkSheetName(check: ReadinessCheck, gateId: string): string | undefin
     case 'bomHasLines':
     case 'bomIdentityComplete':
     case 'bomReconciled':
+    case 'formulaPropertyFilled':
       return BOM_SHEET_NAME;
     case 'gateCheckDone':
     case 'checklistHasSelection':

@@ -729,6 +729,32 @@ export class ProjectsService {
     });
   }
 
+  // Gate 5 / Gate 9 formula property. Gate-locked on '05' — the formula is
+  // locked at Gate 5, and this is part of what "the formula" means for
+  // preservation. Gate 9 reads the same value but must not be able to change it
+  // after Gate 5 has passed.
+  async setFormulaProperties(
+    user: SessionUser,
+    id: string,
+    patch: ProjectData['formulaProperties'],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'formula-properties.updated', async (tx, _row, project) => {
+      if (isGateRefLocked(project, '05')) {
+        throw new ForbiddenException(
+          'Formula properties belong to gate 05, which has passed — they are read-only (use Backtrack to reopen).',
+        );
+      }
+      const data: Record<string, string | null> = {};
+      for (const field of ['microSusceptibility', 'microRationale'] as const) {
+        if (field in patch) data[field] = (patch[field] ?? '').trim() || null;
+      }
+      if (Object.keys(data).length === 0) return { fields: [] };
+      await tx.project.update({ where: { id }, data });
+      return { fields: Object.keys(data) };
+    });
+  }
+
   async setCosting(
     user: SessionUser,
     id: string,

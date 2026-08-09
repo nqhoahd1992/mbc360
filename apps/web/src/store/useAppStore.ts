@@ -122,6 +122,7 @@ interface AppState {
 
   setBom: (id: string, lines: BomLine[]) => void;
   setCosting: (id: string, patch: Partial<CostingInputs>) => void;
+  setFormulaProperties: (id: string, patch: ProjectData['formulaProperties']) => void;
   // Gate 1 opportunity capture (B1/B2/B3) — only those 8 fields are writable.
   setIdentity: (id: string, patch: Partial<ProjectData['identity']>) => void;
   setPackagingBomBulk: (id: string, lines: PackagingBomLine[]) => void;
@@ -379,6 +380,8 @@ export const useAppStore = create<AppState>()(
 
         setBom: (id, lines) => writeSection(id, (v) => projectsApi.setBom(id, lines, v)),
         setCosting: (id, patch) => writeSection(id, (v) => projectsApi.setCosting(id, patch, v)),
+        setFormulaProperties: (id, patch) =>
+          writeSection(id, (v) => projectsApi.setFormulaProperties(id, patch, v)),
         setIdentity: (id, patch) => writeSection(id, (v) => projectsApi.setIdentity(id, patch, v)),
         setPackagingBomBulk: (id, lines) =>
           writeSection(id, (v) => projectsApi.setPackagingBom(id, lines, v)),
@@ -434,7 +437,7 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: 'mbc360-demo-store',
-      version: 15,
+      version: 16,
       // `permissionGrid` is server state, always loaded fresh on startup — never
       // persist a stale copy to localStorage. (Functions and everything else are
       // handled as before; this only strips the grid.)

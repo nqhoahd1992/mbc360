@@ -298,6 +298,10 @@ export function toProjectData(p: ProjectWithAll, gateChangeLog: GateChangeLogEnt
       notes: opt(l.notes),
       approval: opt(l.approval),
     })),
+    formulaProperties: {
+      ...(p.microSusceptibility ? { microSusceptibility: p.microSusceptibility } : {}),
+      ...(p.microRationale ? { microRationale: p.microRationale } : {}),
+    },
     costing: {
       batchSizeKg: p.costing?.batchSizeKg ?? 0,
       fillSizeG: p.costing?.fillSizeG ?? 0,

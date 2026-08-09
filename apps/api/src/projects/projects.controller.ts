@@ -300,6 +300,15 @@ export class ProjectsController {
     return this.projects.setPackagingBom(user, id, body.lines ?? [], body.expectedVersion);
   }
 
+  @Put(':id/formula-properties')
+  setFormulaProperties(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { patch: ProjectData['formulaProperties']; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.setFormulaProperties(user, id, body.patch ?? {}, body.expectedVersion);
+  }
+
   @Put(':id/costing')
   setCosting(
     @CurrentUser() user: SessionUser,
