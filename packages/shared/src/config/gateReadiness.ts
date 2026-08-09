@@ -1,5 +1,5 @@
 // Per-gate mandatory evidence & sign-offs (confirmed rule F1 / C7, 2026-07-21 —
-// see docs/Business_Rules_Confirmation_EN.md appendix and docs/Response.txt).
+// see docs/rules/Business_Rules_Confirmation_EN.md appendix and docs/rounds/2026-07-21-sme-reply-F1-F14.txt).
 //
 // The team confirmed a RISK-BASED, 3-tier model instead of "all 37 registers
 // must be complete for every project":
@@ -45,7 +45,7 @@ export type ReadinessCheck =
   // Reads a specific `ProjectData.gateChecks` row (Key Gate Checks table) by
   // its exact (gate, check) pair — satisfied when that row is done+Y, or
   // NA+justified (same rule already used for phase-level keyChecksDone).
-  // Mapping confirmed 2026-07-22: see docs/F1_Gate_Readiness_Mapping_Proposal.md.
+  // Mapping confirmed 2026-07-22: see docs/archive/F1_Gate_Readiness_Mapping_Proposal.md.
   | { kind: 'gateCheckDone'; gate: string; check: string }
   // Minimum-bar guard on a Phase checklist section (`ProjectData.checklists[section]`,
   // e.g. targetUsers/targetMarkets/targetArea): satisfied once at least one row
@@ -89,16 +89,9 @@ export type ReadinessCheck =
   // every role" as ONE clean Mandatory item instead of two awkwardly-split
   // single-column items.
   | { kind: 'registerRowsComplete'; register: string; columns: string[] }
-  // A `ProjectIdentity` field is non-empty — for fields that are REQUIRED on
-  // the Create New Project form (ProjectList.tsx), so this is really "was the
-  // project created at all" rather than a per-gate task; used where a Gate
-  // 01 F1 item duplicates data the project can never actually be missing
-  // (e.g. Project Lead/owner, required to create the project in the first
-  // place — see 2026-07-25 sg01-owner fix).
-  | { kind: 'identityFieldFilled'; field: 'projectLead' }
   // A specific field on the Phase Gate Flow row itself (`ProjectData.gates`
-  // entry for `gate`) is non-empty. Unlike `identityFieldFilled`, this is NOT
-  // vacuous: `owner`/`dueDate`/`evidenceLink`/`notes` on a gate record start
+  // entry for `gate`) is non-empty. This is NOT vacuous:
+  // `owner`/`dueDate`/`evidenceLink`/`notes` on a gate record start
   // blank and are only filled in when someone actually does so — added
   // 2026-07-28 for Gate 7's "Prepared, reviewed and approved sign-off" (the
   // SME's own item), which the user confirmed means completing these fields
@@ -113,7 +106,7 @@ export type ReadinessCheck =
   | { kind: 'allOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
-// items in the confirmed F1 appendix (docs/Response.txt). Left undefined for
+// items in the confirmed F1 appendix (docs/rounds/2026-07-21-sme-reply-F1-F14.txt). Left undefined for
 // the ~90 items that ARE named there — only the exceptions get tagged, so
 // this stays true to the file's existing "flag it when it's not F1" comment
 // convention rather than requiring every single item to restate the default.
@@ -173,18 +166,22 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // Reversed 2026-07-26 (user-requested) back to its pre-2025-07-25
       // mapping: F1's "Project owner" IS the "Initial project record opened
       // and owner assigned" Key Gate Check row — not a separate concept.
-      // The 2026-07-25 change (see git history) swapped this to
-      // `identityFieldFilled: projectLead`, reasoning that Project Lead is a
-      // REQUIRED field on the Create New Project form so the row could never
-      // really be unmet — but that conflated "the underlying fact is
-      // guaranteed" with "the confirmation step is redundant". Every other
-      // Key Gate Check row requires an explicit tick regardless of how
+      // The 2026-07-25 change (see git history) swapped this to a
+      // `ProjectIdentity.projectLead` field check, reasoning that Project
+      // Lead is a REQUIRED field on the Create New Project form so the row
+      // could never really be unmet — but that conflated "the underlying
+      // fact is guaranteed" with "the confirmation step is redundant". Every
+      // other Key Gate Check row requires an explicit tick regardless of how
       // obvious the fact behind it is (e.g. "Product request... captured"
       // above); singling this one out to auto-pass was inconsistent. Reverted
       // to requiring the row itself to be Done+Y or NA+justified, exactly
-      // like its two sibling rows — the `identityFieldFilled` check kind is
-      // left in place in case a genuinely field-only check is needed
-      // elsewhere later, just unused here now.
+      // like its two sibling rows. The `identityFieldFilled` check kind that
+      // change introduced was deleted outright on 2026-08-07 once nothing
+      // used it: reading a field the create form makes mandatory is
+      // vacuously satisfied by construction, which is precisely the failure
+      // mode the F1 verification passes exist to catch — leaving the kind
+      // available invited a future item to reintroduce it. Use
+      // `gateFieldFilled` for a genuinely field-only check.
       id: 'sg01-owner',
       label: 'Project owner',
       tier: 'Mandatory',
@@ -197,7 +194,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // "Product request record" and "Request source" as two separate lines
     // with no elaboration). Correctly challenged: if the team meant one
     // piece of evidence, they would have written one line. Reopened as a
-    // question — see docs/F1_Per_Gate_Open_Questions.md.
+    // question — see docs/rules/F1_Per_Gate_Open_Questions.md.
     { id: 'sg01-source', label: 'Request source', tier: 'Mandatory', check: { kind: 'manual' } },
     {
       // Not one of the 5 named items in the F1 Appendix, but this row was
@@ -217,7 +214,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // yet (the closest Key Gate Check row is semantically different, and the
     // only market/user checklist is tagged Gate 02, not Gate 01). Open
     // questions for the subject-matter team — see
-    // docs/F1_Per_Gate_Open_Questions.md.
+    // docs/rules/F1_Per_Gate_Open_Questions.md.
     { id: 'sg01-scope', label: 'Initial product scope', tier: 'Mandatory', check: { kind: 'manual' } },
     { id: 'sg01-market-user', label: 'Initial target market and user', tier: 'Mandatory', check: { kind: 'manual' } },
     {
@@ -239,7 +236,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   SG02: [
     // sg02-brief: still `manual` — no field represents "the brief" anywhere
     // (not a Key Gate Check, not a checklist section, not on Project
-    // Identification). Open question — see docs/F1_Per_Gate_Open_Questions.md.
+    // Identification). Open question — see docs/rules/F1_Per_Gate_Open_Questions.md.
     { id: 'sg02-brief', label: 'Approved development brief', tier: 'Mandatory', check: { kind: 'manual' } },
     {
       // Merged 2026-07-26 (user-requested) from two separate rows
@@ -305,7 +302,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // sg02-requirements: still `manual` — PHASE_1.requirementSections is
     // empty (config/phases.ts), so there is no requirement-table data at all
     // for Phase 1, unlike Phases 2-4. Open question — see
-    // docs/F1_Per_Gate_Open_Questions.md.
+    // docs/rules/F1_Per_Gate_Open_Questions.md.
     { id: 'sg02-requirements', label: 'Project requirements and exclusions', tier: 'Mandatory', check: { kind: 'manual' } },
     // --- End of the 6 F1-named Gate 2 items (order matches the appendix
     // exactly, 2026-07-26, user-requested) — everything below is NOT one of
@@ -391,7 +388,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // sg03-classification: still `manual` — no field represents a claim's
     // classification (e.g. cosmetic / functional / medical-adjacent) anywhere;
     // `claimAreas` only lists benefit wording, not a risk/classification tier.
-    // Open question — see docs/F1_Per_Gate_Open_Questions.md.
+    // Open question — see docs/rules/F1_Per_Gate_Open_Questions.md.
     { id: 'sg03-classification', label: 'Preliminary claim classification', tier: 'Mandatory', check: { kind: 'manual' } },
     {
       // Merged 2026-07-27 (user-requested), same reasoning as sg03-claims
@@ -412,7 +409,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     {
       // Tier methodology reaffirmed 2026-07-27 (briefly reverted to Mandatory
       // when challenged, then the project owner reviewed and kept Conditional
-      // on purpose): the F1 appendix (docs/Response.txt) lists every gate's
+      // on purpose): the F1 appendix (docs/rounds/2026-07-21-sme-reply-F1-F14.txt) lists every gate's
       // items under one flat "Required:" heading with no per-item
       // Mandatory/Conditional/Supporting tag — the team's own tiering had to
       // be inferred by applying the SME's general 3-tier definitions to each
@@ -421,7 +418,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // when triggered by product type, user, market, claim or change") —
       // formalized as a cross-cutting rule, not a one-off guess. See the
       // "Cross-cutting: tier assignment from 'where applicable' wording"
-      // section in docs/F1_Per_Gate_Open_Questions.md for the full rule, the
+      // section in docs/rules/F1_Per_Gate_Open_Questions.md for the full rule, the
       // complete list of items it applies to, and the confirmation being
       // requested from the SME team.
       id: 'sg03-benchmark',
@@ -462,7 +459,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // "critical" definition). Tier methodology reaffirmed 2026-07-27, same
     // reasoning as sg03-benchmark above ("high-risk or borderline" is itself
     // a conditional qualifier — only applies to some claims, not all) — see
-    // the cross-cutting section in docs/F1_Per_Gate_Open_Questions.md.
+    // the cross-cutting section in docs/rules/F1_Per_Gate_Open_Questions.md.
     { id: 'sg03-reg-claims', label: 'Regulatory review of high-risk or borderline claims', tier: 'Conditional', check: { kind: 'manual' } },
     {
       // Not an F1-named item — same generalizable rule as sg01-constraints /
@@ -566,8 +563,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Pregnancy/breastfeeding caution screen',
       tier: 'Conditional',
       trigger: 'skincareForTwo',
-      // Conditional tier — only ever warns, never hard-blocks, so reusing the
-      // same registerNoBadRows pattern as sg04-no-remove carries low risk.
+      // [ASSUMPTION: R4-Q3] — the Gate 4 vs Gate 7 threshold split below is
+      // our reading, not something the appendix states.
+      // 2026-08-07: this now HARD-BLOCKS Gate 4 once the trigger is active
+      // (Conditional items with a live trigger stopped being advisory — see
+      // `advisory` in gateProgress.ts). Deliberately conservative badValues:
+      // 'Not assessed' is NOT one of them, so a maternal project whose rows
+      // are still at their seeded default is not blocked on day one — only a
+      // row someone has explicitly escalated to "Needs ... Review" blocks.
+      // Full closure of every row is Gate 7's job (sg07-caution-closed, whose
+      // badValues DO include 'Not assessed'), matching the workbook's own
+      // Gate 4 = screen / Gate 7 = close split.
       check: {
         kind: 'registerNoBadRows',
         register: 'pbCautionLimits',
@@ -655,7 +661,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // are preservative-specific, and the trigger ("where applicable") has no
     // defined condition (same open gap as Gates 5/9's preservative items in
     // the mapping doc). Conditional — never hard-blocks. Open question — see
-    // docs/F1_Per_Gate_Open_Questions.md.
+    // docs/rules/F1_Per_Gate_Open_Questions.md.
     { id: 'sg05-preservative', label: 'Preservative strategy where applicable', tier: 'Conditional', check: { kind: 'manual' } },
     {
       // Merged 2026-07-27 (user-requested) from sg05-compatibility +
@@ -899,13 +905,27 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     {
       id: 'sg07-caution-closed',
       label: 'Restricted/caution ingredient assessment closed',
-      tier: 'Mandatory',
-      // Resolves the open question in F1_Per_Gate_Open_Questions.md ("at Gate 7
-      // should this apply to EVERY project, not just Skincare-for-Two ones?") by
-      // following the appendix literally: the Gate 7 item is Mandatory and
-      // unconditional, unlike sg04-pb-screen which is Conditional on the
-      // skincareForTwo trigger. Every row must be resolved to "Not present" or
-      // "Within limit - evidence linked".
+      tier: 'Conditional',
+      trigger: 'skincareForTwo',
+      // [ASSUMPTION: R4-Q1] [ASSUMPTION: R4-Q2] — shipped on our own reading;
+      // see docs/rules/F1_Per_Gate_Open_Questions.md -> Round 4.
+      // Corrected 2026-08-07 (SME Round 3, Response2 E1). This was Mandatory
+      // and UNCONDITIONAL, on the reading that the Gate 7 appendix item
+      // carries no qualifier (unlike sg04-pb-screen) — the open question in
+      // F1_Per_Gate_Open_Questions.md was answered the other way: "the
+      // pregnancy/breastfeeding assessment at Gate 7 should not be
+      // unconditional for every project. It is mandatory when Pregnancy,
+      // Breastfeeding or Postpartum is selected." Because `pbCautionLimits` is
+      // `mode: 'fixed'` and seeds all 12 rows at 'Not assessed' (a badValue),
+      // the old tiering hard-blocked Gate 7 on EVERY project — a plain
+      // general-adult product had to walk the whole maternal caution register
+      // to pass. Now Conditional on the same trigger as Gate 4's screen, and
+      // it still hard-blocks once that trigger is active. Every row must be
+      // resolved to "Not present" or "Within limit - evidence linked".
+      // STILL TO DO from the same answer (needs Round-2 A2 content first):
+      // infant-only products should route to the Infant/Baby Safety pathway
+      // instead, and a general product should record N/A with a rationale —
+      // today the `sg07-screen-check` Key Gate Check row is the only N/A route.
       check: {
         kind: 'registerNoBadRows',
         register: 'pbCautionLimits',
@@ -1337,7 +1357,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'registerHasRows', register: 'publishedInfoApproval' },
     },
     // sg10-reg-approval: still `manual` — per-market (marketTracks.regulatoryStatus),
-    // needs F4. See docs/F1_Per_Gate_Open_Questions.md.
+    // needs F4. See docs/rules/F1_Per_Gate_Open_Questions.md.
     { id: 'sg10-reg-approval', label: 'Regulatory approval', tier: 'Mandatory', check: { kind: 'manual' } },
     {
       // Added 2026-07-28 (see the note above GATE_READINESS).
@@ -1516,7 +1536,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // Added 2026-07-28 (see the note above GATE_READINESS). Gate 12's own
       // closing line is worded slightly differently from every other gate's
       // ("review closure" vs "sign-off") — transcribed verbatim from
-      // docs/Response.txt rather than reusing the other gates' exact wording.
+      // docs/rounds/2026-07-21-sme-reply-F1-F14.txt rather than reusing the other gates' exact wording.
       id: 'sg12-signoff',
       label: 'Prepared, reviewed and approved review closure',
       tier: 'Mandatory',

@@ -4,7 +4,7 @@
 #
 # Run this ON THE PRODUCTION SERVER, from the repo root (e.g. ~/mbc360_app),
 # where the untracked `.env` sits next to docker-compose.prod.yml.
-# It mirrors docs/DEPLOY.md §9 (redeploy) + §5 (migrate/seed) but automated:
+# It mirrors docs/guides/DEPLOY.md §9 (redeploy) + §5 (migrate/seed) but automated:
 #
 #   1. git pull            (skip with --no-pull)
 #   2. docker compose up -d --build
@@ -22,7 +22,7 @@
 #
 # Migrations do NOT run at container start by design, and the api image ships
 # only dist/ (no Prisma CLI), so migrate/seed run in a one-off node:22-alpine
-# container attached to the compose network — exactly as docs/DEPLOY.md §5.
+# container attached to the compose network — exactly as docs/guides/DEPLOY.md §5.
 
 set -euo pipefail
 
@@ -51,8 +51,8 @@ done
 cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 [ -f "$COMPOSE_FILE" ] || die "$COMPOSE_FILE not found — run this from the repo root on the server."
-[ -f ".env" ] || die ".env not found next to $COMPOSE_FILE — copy .env.example to .env first (see docs/DEPLOY.md §3)."
-command -v docker >/dev/null 2>&1 || die "docker not found (or user not in the 'docker' group — see docs/DEPLOY.md §2)."
+[ -f ".env" ] || die ".env not found next to $COMPOSE_FILE — copy .env.example to .env first (see docs/guides/DEPLOY.md §3)."
+command -v docker >/dev/null 2>&1 || die "docker not found (or user not in the 'docker' group — see docs/guides/DEPLOY.md §2)."
 
 dc() { docker compose -f "$COMPOSE_FILE" "$@"; }
 
@@ -98,7 +98,7 @@ if [ "$DO_MIGRATE" -eq 1 ] || [ "$DO_SEED" -eq 1 ]; then
 
   # Reproduce the exact DATABASE_URL the api uses: read the real password from
   # the postgres container's env (avoids parsing/escaping .env — see the '$$'
-  # trap in docs/DEPLOY.md §3). Assumes a hex password (no URL-special chars),
+  # trap in docs/guides/DEPLOY.md §3). Assumes a hex password (no URL-special chars),
   # which .env.example recommends.
   PGPASS="$(dc exec -T postgres printenv POSTGRES_PASSWORD | tr -d '\r\n')"
   [ -n "$PGPASS" ] || die "Could not read POSTGRES_PASSWORD from the postgres container."

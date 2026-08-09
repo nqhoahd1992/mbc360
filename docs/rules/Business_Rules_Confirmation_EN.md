@@ -6,7 +6,9 @@
 
 > **Status (2026-07-16):** Subject-matter team decisions have been received and recorded below for **all items except C7** (still open). Two new requirements were added by the team (GMP Documentation, Published Information Approval workflow). Remaining open points are consolidated in **"Outstanding follow-up questions"** at the end of this document.
 >
-> **Status (2026-07-21):** The subject-matter team has now answered **all 14 follow-up questions (F1–F14)**, plus the three previously-unanswered items **A5, B5 and C7** (source: `docs/Response.txt`). Their answers are recorded inline at each item below and summarised in the outstanding-questions table. **Only one point remains genuinely open: F12** (Cosmetri's compliance coverage of ASEAN/Vietnam — must be confirmed by Cosmetri, not by our team). Everything else is now a matter of **supplying data/content** (see the "Remaining implementation inputs" note at the end), not of deciding a rule.
+> **Status (2026-07-21):** The subject-matter team has now answered **all 14 follow-up questions (F1–F14)**, plus the three previously-unanswered items **A5, B5 and C7** (source: `docs/rounds/2026-07-21-sme-reply-F1-F14.txt`). Their answers are recorded inline at each item below and summarised in the outstanding-questions table. **Only one point remains genuinely open: F12** (Cosmetri's compliance coverage of ASEAN/Vietnam — must be confirmed by Cosmetri, not by our team). Everything else is now a matter of **supplying data/content** (see the "Remaining implementation inputs" note at the end), not of deciding a rule.
+>
+> **Status (2026-08-07) — Round 3 answered.** While wiring the F1 gate-readiness panel we accumulated 19 open questions (tier assignment, items with nowhere to be recorded, mappings we had assumed, decisions we had made on our own reading, and the market-specific items) and sent them as Parts A–E. **The team has answered every one** (source: `docs/rounds/2026-08-07-sme-reply-round3.txt`). They are recorded in full in **"Appendix 2 (2026-08-07)"** near the end of this document, and every question in `docs/rules/F1_Per_Gate_Open_Questions.md` is now closed. This round is **not** cosmetic: it **overturns four things already built** (the per-gate sign-off, two of the four Published-Information claim rules, the unconditional pregnancy screen at Gate 7, and the project-level treatment of Gates 10–11), and it adds a substantial amount of new capture — a Gate 1 request-origin field, a Gate 1 initial scope/market/user capture, a controlled Development Brief record, an explicit vulnerable-user flag, a Phase 1 requirements table, per-claim classification, a watch-list reviewer assessment, and a critical-safety-finding control.
 
 ---
 
@@ -77,7 +79,7 @@
 
 *Open follow-up: → F12 (Cosmetri API technical details; handling of raw materials not yet present in Cosmetri).*
 
-**Update (2026-07-16) — Cosmetri API documentation received (`docs/swagger-init.json`, OpenAPI 3.0, base `https://app1-env.cosmetri.com/api/v1`):**
+**Update (2026-07-16) — Cosmetri API documentation received (`docs/reference/swagger-init.json`, OpenAPI 3.0, base `https://app1-env.cosmetri.com/api/v1`):**
 - **Auth:** OAuth2 password grant via `/oauth/token` → JWT bearer + refresh token (with expiry timestamps). Rate limiting documented (429) on every endpoint; list endpoints support `page`/`limit` and **`since_updated_at`** for incremental sync (no webhooks — polling model).
 - **Raw materials** (`/raw-material/{id}`, `/list`, `/details` batch ≤100): trade name, category, **supplier ID + supplier name** (`inf_sup_id`, `supplier_name`), quality status ("Approved"/quarantine), batch no. (`inf_code` — per the official field mapping this is the **Batch No.**, not a CAS number), MOQ, lead time, stock, location, cost.
 - **Formulas** (`/formula/*`): formula **version** ("2.1.0"), reference, status, production mode, and full `formula_composition` (RM id/trade name/code + `%`), directly usable to populate MBc360's Formula BOM.
@@ -457,9 +459,13 @@ Read-only is a property of the **project's state**, not of the user's permission
 
 ✅ **Any signed-in user may create a project.** Restricting this would block ordinary business use (a Project Owner opening a new project), and creating a project destroys nothing — a mistake can be archived or deleted.
 
-### D5. "Project owner" is no longer a gate condition at Gate 1
+### D5. Gate 1's "Project owner" — an explicit tick, not an automatic pass
 
-✅ **Gate 1's "Project owner" requirement is now satisfied automatically.** The Project Lead is a **required field on the Create New Project form**, so a project cannot exist without one. Previously this item was tied to a Key Gate Check, which made the team re-confirm something the creation form already guarantees.
+✅ **Gate 1's "Project owner" item is satisfied by ticking the Key Gate Check "Initial project record opened and owner assigned"**, exactly like its two sibling rows at that gate.
+
+> **Corrected 2026-08-07.** This section previously recorded the opposite decision — that the item was *satisfied automatically*, on the reasoning that Project Lead is a required field on the Create New Project form, so a project cannot exist without one and re-confirming it is redundant. **That reasoning was withdrawn in the code on 2026-07-26 but never written back into this document**, so the paragraph here has been stating a rule the system does not follow. The withdrawal reason: it conflated *"the underlying fact is guaranteed"* with *"the confirmation step is redundant."* Every other Key Gate Check row requires an explicit tick however obvious the fact behind it is — "Product request, opportunity and requester captured" is equally guaranteed by the creation form — so singling this one row out to auto-pass was inconsistent, and it removed the only place a reviewer records that they actually looked.
+
+**This particular item was never put to the subject-matter team** — it was our own call in both directions, so it is recorded here rather than in the confirmed-rules sections above. The team's Round 3 reply does not mention it. It does, however, twice reject the same *shape* of reasoning, which is why the correction is being left as it stands rather than reopened: **B4** — the four Phase 1 checklist sections "should contribute to the brief but should not substitute for formal brief approval"; and **B5** — a general-adult project "should still record *No vulnerable-user group identified* rather than satisfying the requirement by default." **D1** points the same way, requiring three explicitly recorded sign-offs per gate rather than anything inferred. If the team later says an auto-satisfied item is acceptable where the underlying field is mandatory, this is the row to revisit first.
 
 ---
 
@@ -485,7 +491,7 @@ Instead, MBc360 contains a **"GMP Links"** section which stores references/hyper
 
 ## Outstanding follow-up questions
 
-> **Update (2026-07-21): all 14 follow-ups have been answered** (source: `docs/Response.txt`). The table below now records the confirmed answer for each. **Only F12 remains genuinely open** — it depends on Cosmetri confirming its ASEAN/Vietnam compliance coverage, which is outside our team's control. The full per-gate mandatory-evidence list for F1 is in the appendix section that follows this table.
+> **Update (2026-07-21): all 14 follow-ups have been answered** (source: `docs/rounds/2026-07-21-sme-reply-F1-F14.txt`). The table below now records the confirmed answer for each. **Only F12 remains genuinely open** — it depends on Cosmetri confirming its ASEAN/Vietnam compliance coverage, which is outside our team's control. The full per-gate mandatory-evidence list for F1 is in the appendix section that follows this table.
 >
 > Legend: ✅ = answered/closed · ⏳ = still open.
 
@@ -527,6 +533,127 @@ Applying the 3-tier model (**Mandatory** hard-blocks · **Conditional** hard-blo
 
 ---
 
+## Appendix 2 (2026-08-07) — Round 3: gate-readiness answers
+
+**Source:** `docs/rounds/2026-08-07-sme-reply-round3.txt`. **What was asked:** the 19 questions consolidated in `docs/rules/F1_Per_Gate_Open_Questions.md`, sent as five parts — A (how the three tiers are assigned), B (items with no place to record them), C (mappings we had assumed), D (decisions we had already made on our own reading), E (market-specific items). **All are answered; that file is now closed.** Items marked ⚠️ **overturn behaviour already built** and require rework, not just new work.
+
+### Part A — Tier assignment
+
+**A1 — the tiering rule is confirmed, with two changes.** Our rule (qualifier wording such as "where applicable"/"where relevant"/"high-risk or borderline" → **Conditional**; soft business/lifecycle context → **Supporting**; everything else → **Mandatory**) is "broadly correct" and the tier table is accepted, with the definitions restated as:
+
+- **Mandatory** — always hard-blocks the gate.
+- **Conditional** — hard-blocks **only when its defined trigger applies**.
+- **Supporting** — does not automatically block, but unresolved risk or missing context may require a warning, an action, or a Proceed-with-Conditions decision.
+
+Two reassignments:
+
+| Gate | Item | Was | Now |
+|---|---|---|---|
+| 12 | Change-control links | Supporting | **Conditional** — mandatory where a complaint, post-market finding, CAPA, formula change, artwork change, safety signal or improvement action has generated a Change Control record. |
+| 12 | Market feedback | Supporting | **Supporting for routine lifecycle review, Conditional once the project has launched and a scheduled post-market review is due.** |
+
+**A2 — Gate 6 "Market-specific pack requirements" = Conditional.** It becomes mandatory where the selected market imposes a specific requirement affecting: language · mandatory warnings · ingredient declaration · responsible-party details · notification or registration numbers · pack size · tamper evidence · barcode or traceability · recycling or environmental markings · primary or secondary packaging information. **Where no market-specific requirement applies, the user must record N/A with a rationale** — leaving it blank is not the same as "not applicable".
+
+**A3 — every Conditional item now has a defined trigger.** This was the most important question in the round: previously only 2 of 11 Conditional items had a working trigger, so 9 of them could never hard-block whatever the project actually was. The team supplied all of them:
+
+| Gate | Conditional item | Trigger that makes it mandatory |
+|---|---|---|
+| 3 | Competitor or benchmark review | New product, claim extension, repositioning project, customer/distributor-led request, or where a benchmark/reference product is named. **Not** mandatory for a purely administrative change. |
+| 3 | Regulatory review of high-risk or borderline claims | Any proposed claim classified as Borderline, Therapeutic-adjacent, High Risk, market-restricted, pregnancy/breastfeeding-related, infant-related, disease-related, medical-professional-facing, or otherwise outside the approved claims library. |
+| 4 | Pregnancy/breastfeeding caution screen | Pregnancy, Breastfeeding or Postpartum selected *(already implemented — rule C1)*. |
+| 4 | Allergen, impurity and contaminant review | The ingredient or raw material contains fragrance, essential oils, botanical extracts, proteins, known allergens, residual solvents, heavy-metal risk, microbiological risk, restricted impurities, processing residues, or variable natural-source composition. |
+| 5 | Preservative strategy | Water-containing, water-available, multi-use or otherwise microbiologically susceptible products. N/A permitted for genuinely anhydrous, self-preserving, sterile or single-use products **with a documented rationale**. |
+| 7 | Maternal and infant-contact assessment | Pregnancy, Breastfeeding or Postpartum selected *(already implemented — rule C1)*. |
+| 8 | Human-study approval workflow | Before **any** internal or external study involving human participants, volunteers, consumer testing, patch testing, in-use trials, image collection, questionnaires, or other identifiable participant data. |
+| 9 | Preservative efficacy status | Microbiologically susceptible products requiring a preservation system. |
+| 9 | Scale-up or pilot status | New formulas, major reformulations, new manufacturing processes, manufacturing-site transfers, meaningful equipment/process changes, or products with identified scale-up risk. |
+| 10 | Product-performance evidence | Any external claim that depends on product-level efficacy, performance, sensory, clinical, instrumental, in vitro, in vivo, consumer-use or comparative evidence. |
+| 12 | PV/PMS review | Required by product category, market, company policy, safety signal, vulnerable-user population, complaint trend, or scheduled surveillance plan. |
+| 12 | Change-control links | A Change Control record has been opened, **or should be opened** because of the post-market finding. |
+| 12 | Market feedback | The scheduled post-launch review milestone is reached, or a complaint, customer issue, distributor request, claim challenge or recurring performance concern is recorded. |
+| 12 | Product-performance feedback | Product efficacy, consumer experience, product failure or claim performance is part of the post-market review scope. |
+
+**Costing / commercial feasibility (Gate 5) stays Supporting** — but the accountable project owner may still place the project on **Hold** where commercial feasibility is essential to continuation.
+
+> **Implementation note:** several of these triggers need data the app does not capture yet, so the trigger itself is a build item, not just a config flag — a project-type/change-type classification (Gates 3, 9), a raw-material composition-risk flag (Gate 4), a "microbiologically susceptible / contains water" formula property (Gates 5, 9), a claim-classification field (Gate 3 — supplied by B7 below), and a per-claim evidence-dependency flag (Gate 10).
+
+### Part B — Items with no place to record them (all seven confirmed: add the field)
+
+| # | Item | Answer |
+|---|---|---|
+| **B1** | Gate 1 — Request source | **Distinct from the requester.** Add a field **"Request Origin / Source"** with these options: Internal product-development proposal · Management request · Sales request · Marketing request · Customer request · Distributor request · Healthcare-professional request · Consumer feedback · Complaint or post-market signal · Market research or identified opportunity · Competitor or benchmark response · Regulatory change · Supplier or ingredient opportunity · Manufacturing or quality improvement · Reformulation or lifecycle improvement · Other — specify. **The requester's name and department remain separate fields.** |
+| **B2** | Gate 1 — Initial product scope | **Add a new Key Gate Check: "Initial product scope defined".** Its supporting field briefly captures: proposed product type · intended purpose · whether it is new development, reformulation, claim change, packaging change, market extension or lifecycle improvement · known boundaries of the request. |
+| **B3** | Gate 1 — Initial target market and user | **Option (a).** Add a lightweight Gate 1 capture — **"Initial target user / life-stage"** and **"Initial target market(s)"**. These are preliminary and **do not replace** the full Gate 2 assessment; Gate 2 confirms, refines and formally approves them. |
+| **B4** | Gate 2 — Approved development brief | **Option (a).** The brief is a **discrete controlled record or linked document**, not an inference from completed checklists. Add: **Development Brief status · Development Brief link · Brief version · Brief owner · Approval date.** The four Phase 1 checklist sections *contribute to* the brief but do **not** substitute for formal brief approval. |
+| **B5** | Gate 2 — Vulnerable-user flags | **Option (b).** The system must distinguish "a target user was selected" from "a vulnerable-use context was explicitly recognised". Where any vulnerable group is selected, require: **explicit vulnerable-user flag · applicable safety pathway · responsible reviewer · notes on additional assessments required.** Vulnerable triggers: Pregnancy · Breastfeeding · Postpartum · Infant 0+ · Young child · Sensitive or compromised skin · Oncology or medically vulnerable support context · Renal or other health-related support context · any population identified by Safety or Regulatory as requiring enhanced review. **A general-adult project must still record "No vulnerable-user group identified"** rather than satisfying the requirement by default. |
+| **B6** | Gate 2 — Project requirements and exclusions | **Add a Phase 1 requirements section**, as a structured table (category · requirement · priority · owner · notes), containing: Must-have product requirements · Must-not-have ingredients or features · Intended claims · Claims not to pursue · Target pH or physical requirements where known · Sensory requirements · Packaging requirements · Target cost or commercial boundary · Target timeline · Target markets · Regulatory constraints · User/life-stage constraints · Benchmark or reference product · Known technical risks · Explicit exclusions · Other project assumptions. |
+| **B7** | Gate 3 — Preliminary claim classification | **Option (a) — classification per selected claim**, because different claims within one project can carry different risk (a single project-level judgement would be too broad). Two controlled dropdowns per claim: **Claim category** = Cosmetic · Product performance · Sensory · Ingredient-level · Safety/tolerance · Environmental or sustainability · Professional or technical information · Borderline / therapeutic-adjacent · Therapeutic — not permitted within the cosmetic claim pathway · Other — Regulatory review required. **Claim risk** = Low · Medium · High · Prohibited / not acceptable · Pending classification. Also capture: exact proposed wording · applicable SKU · applicable market · intended channel · evidence required · evidence status · Regulatory review required Y/N · approved wording · limitations or mandatory qualifiers. |
+
+### Part C — Mappings we had assumed
+
+**C1 — Regulatory review of high-risk or borderline claims: confirmed**, and it keys off the per-claim classification from B7. The review is mandatory where: category = Borderline / therapeutic-adjacent · category = Therapeutic — not permitted · risk = High · the wording is not in the approved Claims Library · the claim varies from previously approved wording · the market imposes a specific restriction · the claim relates to pregnancy, breastfeeding, infant use, disease, treatment, prevention, healing or medical endorsement.
+
+**C2 — our mapping was too broad.** The existing Key Gate Check *"Restrictions, exclusions and supplier risks screened"* **stays** as the broader Gate 4 check, but a **separate, narrow Mandatory item must be added: "Prohibited, restricted and caution ingredient screen completed"**, drawing directly from the automated watch-list results and the associated qualified review.
+
+### Part D — Decisions we had made, now reviewed
+
+**D1 ⚠️ — our per-gate sign-off implementation is rejected.** "Owner + Evidence link on the gate row" is **not** equivalent to Prepared / Reviewed / Approved. Each gate must have **three distinct recorded sign-offs** — Prepared by, Reviewed by, Approved by — and each one must capture: **authenticated user · role · date/time · decision · record version · comment where required.** This **hard-blocks the gate decision.** The phase-level sign-off block **remains as an additional phase-closure approval and is not replaced.** Where risk is low the same person may prepare multiple gate records, but **the reviewer or approver must be independent for safety-, regulatory-, claims- or release-critical decisions.**
+
+**D2 ⚠️ — two of our four Published-Information claim rules are changed.**
+
+1. **Claim ID linkage becomes required**, not optional: every external product-benefit, safety, efficacy, performance or suitability statement must link to a Claim ID. It stays optional **only** for genuinely non-product corporate information containing no product claim or technical statement.
+2. **The picker must offer Developing/Pending claims too** — the purpose is to document the intended claim early. What Pending claims must *not* allow is: Approved for Release · Released · final artwork approval · external publication.
+3. **No absolute character-for-character lock.** The system must hold **master approved wording** and **proposed channel wording** side by side, plus a comparison/review status and reviewer approval. Minor adaptation is allowed where meaning, scope, qualifiers and evidence burden are unchanged; any material change must create a new or revised claim record. Automated similarity checking may be used **as a warning**, but final equivalence is confirmed by an authorised reviewer.
+4. **The release block is confirmed, and widened:** a linked claim must be Supported **and approved for the relevant SKU, formula version, market and channel** before content can reach Approved for Release or Released.
+
+**D3 — Gate 4 "unresolved possible match": confirmed, and now specified.** Each flagged watch-list result gains: **Reviewer assessment** (Critical · Non-critical · Not a true match · Further information required) · Reviewer · Review date · Rationale · Evidence link · **Linked Next Action ID** · Resolution status. **A genuine controlled Next Action is required — a note alone is not sufficient.** Enforcement:
+
+| Assessment | Effect on Gate 4 |
+|---|---|
+| Critical | Hard-blocks **both** Proceed and Proceed with Conditions. |
+| Further information required | Blocks Proceed; Proceed with Conditions only with authorised acceptance **and** a linked controlled action. |
+| Non-critical | Blocks plain Proceed until the assessment, rationale and action are recorded; may then permit Proceed with Conditions. |
+| Not a true match | May be closed once reviewer rationale and evidence are recorded. |
+
+**D4 — the Cosmetri import stub is accepted and preferred.** A formula import must not fail merely because the MBc360 evidence record has not been populated yet. Conditions: the stub must be clearly labelled **"Incomplete — evidence review required"** · it must **not** default to Approved for Use · missing evidence must appear in Gate Readiness · **Gate 4 must not pass until all applicable raw materials are adequately reviewed or formally accepted through a controlled conditional decision** · Gate 7 final safety approval must use the completed evidence status · **Gates 10 and 11 must not rely on unresolved identity-only stubs.**
+
+### Part E — Market-specific and safety items
+
+**E1 ⚠️ — Gate 7, on both counts.**
+- A **distinct safety-finding control** is required rather than relying solely on the Final Safety Sign-off: **Critical safety finding identified (Yes/No) · Finding description · Affected ingredient/formula/use context · Severity · Required action · Owner · Status · Safety reviewer conclusion · Evidence link.** **Gate 7 cannot pass while any critical safety finding is open.**
+- **Our reading was wrong:** the Gate 7 pregnancy/breastfeeding assessment is **not** unconditional. It is mandatory **when Pregnancy, Breastfeeding or Postpartum is selected**; **infant-only products trigger the Infant/Baby Safety pathway instead** (consistent with F2); general products **record N/A with a rationale** where neither pathway applies.
+
+**E2 — Gate 10 regulatory checklist: option (b), plus a temporary record.** Enforce the ASEAN checklist **only where an ASEAN market is selected**. For non-ASEAN markets, require a temporary **Regulatory Checklist Status** capturing: applicable market · required dossier type · owner · checklist or evidence link · status · Regulatory approval. **The absence of a built-in country template must not mean the item is unenforced** — Regulatory may use an approved linked external checklist until the app profile is configured.
+
+**E3(a) ⚠️ — Gates 10 and 11 become per-market**, as previously confirmed under A1/F4. Each active market carries its own: Gate 10 readiness · dossier/PIF status · claims approval · Regulatory approval · Gate 11 readiness · launch approval · approval dates · **applicable formula version** · **applicable artwork version**. The overall project status shows one of: *No market approved · Some markets approved · All active markets approved · Market transition in progress*. **One approved market must not cause all markets to appear ready.**
+
+**E3(b) — Gate 11 needs more than the existing soft lock.** The current C4/F9 mechanism is suitable for low- or medium-risk open changes, but Gate 11 must evaluate each open Change Control's **impact classification and closure status**:
+
+| Open change | Effect at Gate 11 |
+|---|---|
+| Critical or launch-impacting | **Hard-blocks launch.** |
+| Formula, artwork, claims, safety, regulatory, packaging or release-impacting | **Hard-blocks unless implementation and verification are complete.** |
+| Low-risk administrative | May permit Proceed with Conditions following authorised acknowledgement. |
+| Completed, rejected, cancelled or superseded | Does not block, provided the final disposition is recorded. |
+
+### What this round changes in the application
+
+**Rework of behaviour already shipped (4)** — status as of 2026-08-07:
+1. ❌ **Per-gate sign-off** — replace "Owner + Evidence link" with a real 3-role, 6-field electronic sign-off per gate (D1). This touches all 12 gates and is the largest single item.
+2. 🟡 **Published Information / claims** — the picker now accepts Pending claims (**done**; the release-state block was already a separate mechanism, so nothing was weakened). Still to do: Claim ID becoming required for product statements, fill-and-lock becoming master-wording vs channel-wording with reviewer-confirmed equivalence, and the release block widening to SKU + formula version + market + channel (D2).
+3. 🟡 **Gate 7 pregnancy screen** — **done:** no longer unconditional, now conditional on Pregnancy/Breastfeeding/Postpartum. It had been blocking *every* project, including general-adult ones, on the 12-row maternal caution register. Still to do: the infant-only pathway (waiting on Round-2 **A2**) and a dedicated N/A-with-rationale route (E1).
+4. ❌ **Gates 10–11** — move from project-level to per-market readiness (E3a). This is the F4 work, now unblocked.
+
+> **Two questions arose while making changes 2 and 3** and are recorded in `F1_Per_Gate_Open_Questions.md` → "Round 4": whether the Gate 7 line *"restricted/caution assessment closed"* means the pregnancy/breastfeeding assessment specifically (as we read it) or a broader assessment that should still apply to every project; and whether an infant-only product should keep blocking Gate 7 on something in the interim, since the maternal trigger no longer fires for it and the Infant pathway does not exist yet.
+
+**New capture required (11):** Request Origin/Source (B1) · "Initial product scope defined" Key Gate Check (B2) · initial target user + market at Gate 1 (B3) · controlled Development Brief record (B4) · explicit vulnerable-user flag block (B5) · Phase 1 requirements table (B6) · per-claim classification, category + risk + 9 attributes (B7) · a dedicated prohibited/restricted/caution ingredient-screen item (C2) · watch-list reviewer assessment with a linked Next Action (D3) · critical-safety-finding control (E1) · temporary Regulatory Checklist Status for non-ASEAN markets (E2).
+
+**Trigger wiring (A3):** 12 Conditional triggers are now specified; each becomes a real hard block once the data it reads exists. Several depend on the new capture above (notably B7 → Gate 3, and the microbiological-susceptibility property → Gates 5 and 9).
+
+**Confirmed as already correct, no change:** the tiering rule itself (A1), the Cosmetri import stub (D4, with its five conditions to verify), and the Gate 4 possible-match enforcement pattern (D3 follows the F9 soft-lock shape we already use).
+
+---
+
 ## Remaining implementation inputs (2026-07-21)
 
 The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **supplying data/content** the answers now call for — these are inputs to gather, not decisions to make:
@@ -537,6 +664,12 @@ The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **
 - **F10** — the concrete per-market checklist content for each Market Dossier Profile (EU CPSR items, AU, US, …), supplied by Regulatory.
 - **F11** — the Published Product Information Guideline / Claims Library content (approved terms, required evidence per claim).
 - **F12** — Cosmetri's confirmation of ASEAN/Vietnam compliance coverage (external dependency).
+
+**Update (2026-08-07):** the F1/C7 line above is now largely discharged — Appendix 2 supplies the per-item trigger conditions and the missing fields, so the mapping work is no longer waiting on the team. What Round 3 **adds** to this list, still as content rather than decisions:
+
+- **B7 / C1 / F11** — the approved **Claims Library** content becomes a harder dependency than before: the Gate 3 regulatory-review trigger fires partly on "wording not in the approved Claims Library", which cannot be evaluated until that library exists.
+- **A3** — the trigger conditions reference product/formula properties the app does not record (project/change type, microbiological susceptibility, raw-material composition risk). Whether these are captured as new fields or derived from existing data is ours to design; the *rule* is settled.
+- **E2** — unchanged in substance from F10, but now with an interim requirement: a temporary Regulatory Checklist Status record for non-ASEAN markets, so the item is never simply unenforced.
 
 ## NPD Front-End Roadmap (v2 workbook, 2026-07-24)
 
@@ -553,10 +686,13 @@ The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **
 
 **Update (2026-07-27) — now hard-blocked, but this is a project-owner/dev decision, not yet put to the SME team — see the open question in `F1_Per_Gate_Open_Questions.md` (Gate 3 section) for the exact design being confirmed:** the source sheet also states that no claim may appear on packaging, HCP material or sales material unless it has an approved "Claim ID" on file — the same idea as Gate 3's own rule, *"a claim may remain under development, but unsupported wording must not be marked as approved."* Previously this was tracked on a register but not enforced, since doing so meant touching the existing Published Information approval workflow (F11). That has now been done: Published Information Approval rows can optionally link to a specific Claim ID (Claim → Evidence Traceability); a row cannot be saved in a released workflow state ("Approved for Release" / "Released") unless that claim's own status is "Supported". A row with no linked claim (e.g. plain company information) is unaffected. Enforced both in the app and on the server, so it cannot be bypassed by a direct API call either.
 
+> **Answered (2026-08-07) — see Appendix 2, D2.** The team confirmed the release block but changed three of the four design choices: linking a Claim ID becomes **required** for any product statement (optional only for genuinely non-product corporate information), a still-developing **Pending claim must be selectable** (so the intended claim is documented early — the block belongs at release, not at linking), and the fill-and-lock is replaced by **master approved wording held alongside proposed channel wording**, with reviewer-confirmed equivalence instead of a byte-for-byte lock. The release block itself is also widened: the claim must be Supported **and** approved for the relevant SKU, formula version, market and channel.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*
 - Groups B and C are business rules that can be refined progressively during development without necessarily breaking the architecture, but early confirmation is still recommended to avoid reworking UI/logic already built.
 - The 2026-07-16 answers **overturn three core demo assumptions**: (1) gate passing must also read sign-offs, Next Actions and evidence registers — not just Stage status + Gate decision; (2) backtrack must never delete — event-log/snapshot model required; (3) Gates 10–12 become per-market instead of a single shared flow.
 - The 2026-07-21 answers add three further **demo-changing** points: (4) **concurrent formula versions** — a major change keeps the old version's closed market tracks and opens a new per-market track (F4), overturning the demo's "market tracks fixed at creation"; (5) **"Infant 0+" gets its own Infant & Baby Safety workflow**, separate from Skincare for Two (F2); (6) manual Formula BOM lines must be **reconciled to Cosmetri before Gate 7**, and Gates 10/11 must use the controlled Cosmetri formula (F14).
-- Reference materials: `MBc360 Master Product Development System File.xlsx` (55 sheets), the current ReactJS demo (`mbc360-app/`), and the subject-matter team's full 2026-07-21 reply (`docs/Response.txt`).
+- The 2026-08-07 answers (Appendix 2) add four further **demo-changing** points: (7) **the per-gate sign-off is a real 3-role electronic sign-off**, not the Owner + Evidence link we implemented (D1); (8) **Published Information claim linking is required, Pending claims are linkable, and wording is compared rather than locked** (D2); (9) **the Gate 7 pregnancy/breastfeeding assessment is conditional, not unconditional**, with a separate infant pathway (E1); (10) **Gates 10 and 11 become per-market**, so a single approved market no longer makes the gate look ready (E3a).
+- Reference materials: `MBc360 Master Product Development System File.xlsx` (55 sheets), the current ReactJS demo (`mbc360-app/`), the subject-matter team's full 2026-07-21 reply (`docs/rounds/2026-07-21-sme-reply-F1-F14.txt`), and their 2026-08-07 Round 3 reply (`docs/rounds/2026-08-07-sme-reply-round3.txt`).

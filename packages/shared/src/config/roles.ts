@@ -44,7 +44,7 @@ export const VIEW_ROLES: ViewRole[] = [
 ];
 
 // F6 (confirmed 2026-07-21): the real, SSO-facing role list — "At least 17
-// roles are defined" (docs/Business_Rules_Confirmation_EN.md, A4/F6). This is
+// roles are defined" (docs/rules/Business_Rules_Confirmation_EN.md, A4/F6). This is
 // now the SINGLE source for: (1) real role assignment on the Users & Roles
 // page (`GET /api/admin/roles` filters to this list), (2) the header's "View
 // as" demo simulator, and (3) the gate/phase/market-track keyword-match

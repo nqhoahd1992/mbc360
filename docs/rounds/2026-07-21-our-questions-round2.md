@@ -21,6 +21,15 @@ Before we implement, two things remain:
 
 ---
 
+> ## Update (2026-08-07) — what the Round 3 reply changed here
+>
+> The team's Round 3 reply (`docs/rounds/2026-08-07-sme-reply-round3.txt`, recorded in `Business_Rules_Confirmation_{EN,VN}.md` → Appendix 2) answered the F1 gate-readiness questions and, along the way, moved three items on this page:
+>
+> - **A1 ("critical") — partially answered, per category rather than in general.** There is still no single cross-cutting definition or owner, but three of the places that were waiting on one now have a concrete mechanism: watch-list findings get an explicit **Reviewer assessment** (Critical / Non-critical / Not a true match / Further information required) recorded by a named reviewer with a rationale and a linked Next Action (D3); safety findings get a dedicated **Critical safety finding: Yes/No + severity + status** control that must be cleared before Gate 7 (E1); and Change Controls are classified at Gate 11 by **impact** — critical/launch-impacting hard-blocks, release-impacting hard-blocks until implementation and verification are complete, low-risk administrative may proceed with conditions (E3b). In each case "critical" is a **reviewer's recorded judgement on a controlled field**, not a predefined list — which effectively answers the "judgement or list?" half of A1. **Still open:** F7's "critical gap → Hold/Backtrack" branch has no equivalent field yet.
+> - **A3 (concurrent versions, same market) — partially answered.** E3(a) confirms Gates 10–11 operate per market and that each market track carries its own **applicable formula version and artwork version**, with an overall project status that includes *"Market transition in progress"*. That settles the presentation question (per-market state, with version carried on the track). **Still open:** what formally ends the old version — a manual "superseded" action, or the new version's launch approval.
+> - **A2 (Infant & Baby Safety content) — unchanged, still blocking F2**, and now slightly more urgent: E1 makes infant-only products route to the Infant/Baby Safety pathway *instead of* the pregnancy/breastfeeding assessment at Gate 7, so that pathway is no longer a self-contained addition — Gate 7's readiness depends on it.
+> - **Section B, "per-gate evidence classification (F1/C7)" — delivered and confirmed.** The mapping was sent as Parts A–E and answered in full; the remaining Section B items (CAS watch-lists, Market Dossier checklists, Claims Library, role→AD mapping) are unchanged. The **Claims Library** is now a harder dependency than it was: the Gate 3 regulatory-review trigger fires partly on "wording not in the approved Claims Library", which cannot be evaluated until that content exists.
+
 ## A. Clarifications needed
 
 ### A1. Definition of "critical" (drives many hard-blocks)

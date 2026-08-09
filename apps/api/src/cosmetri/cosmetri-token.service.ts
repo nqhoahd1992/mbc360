@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
-// Response shape of POST/PUT https://.../oauth/token per docs/swagger-init.json
+// Response shape of POST/PUT https://.../oauth/token per docs/reference/swagger-init.json
 // (schemas getAccessTokenRequestPayload / refreshTokenRequestPayload).
 interface CosmetriTokenResponse {
   success: boolean;

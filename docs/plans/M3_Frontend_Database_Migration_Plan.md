@@ -1,7 +1,7 @@
 # M3 — Kế hoạch chuyển dữ liệu project từ localStorage sang Database thật
 
 **Ngày:** 2026-07-22
-**Bối cảnh:** Dự án đã đến giai đoạn triển khai thật — từ nay dữ liệu project **không còn lưu ở `localStorage` để demo nữa**, mà phải lưu vào Postgres qua API thật. Đây chính xác là milestone **M3** đã nêu trong `docs/BACKEND_PLAN.md` ("core API + rule engine server-side + switch the frontend from localStorage to the API") — theo `CLAUDE.md`, M0–M2 đã xong (monorepo skeleton, Prisma schema + migration, auth/RBAC) nhưng **M3 chưa bắt đầu**. Tài liệu này là kế hoạch triển khai chi tiết cho M3, bổ sung cho phần mô tả còn ngắn gọn ở §3/§4/§5 của `BACKEND_PLAN.md`.
+**Bối cảnh:** Dự án đã đến giai đoạn triển khai thật — từ nay dữ liệu project **không còn lưu ở `localStorage` để demo nữa**, mà phải lưu vào Postgres qua API thật. Đây chính xác là milestone **M3** đã nêu trong `docs/plans/BACKEND_PLAN.md` ("core API + rule engine server-side + switch the frontend from localStorage to the API") — theo `CLAUDE.md`, M0–M2 đã xong (monorepo skeleton, Prisma schema + migration, auth/RBAC) nhưng **M3 chưa bắt đầu**. Tài liệu này là kế hoạch triển khai chi tiết cho M3, bổ sung cho phần mô tả còn ngắn gọn ở §3/§4/§5 của `BACKEND_PLAN.md`.
 
 ## Hiện trạng (đã khảo sát code thực tế trước khi lên kế hoạch)
 
@@ -136,4 +136,4 @@ Không còn gì về dữ liệu project. Hai mục cuối của quyết định
 
 ## Tài liệu liên quan
 
-`docs/BACKEND_PLAN.md` §3 (nguyên tắc kiến trúc), §4 (thiết kế DB), §5 (danh sách endpoint) — tài liệu này là kế hoạch triển khai cụ thể cho M3 dựa trên các mục đó. Sau khi Phase 1 hoàn thành, cập nhật lại dòng M3 trong bảng milestone của `BACKEND_PLAN.md` §6 và cập nhật `CLAUDE.md`'s phần "Status & pending work" cho khớp.
+`docs/plans/BACKEND_PLAN.md` §3 (nguyên tắc kiến trúc), §4 (thiết kế DB), §5 (danh sách endpoint) — tài liệu này là kế hoạch triển khai cụ thể cho M3 dựa trên các mục đó. Sau khi Phase 1 hoàn thành, cập nhật lại dòng M3 trong bảng milestone của `BACKEND_PLAN.md` §6 và cập nhật `CLAUDE.md`'s phần "Status & pending work" cho khớp.

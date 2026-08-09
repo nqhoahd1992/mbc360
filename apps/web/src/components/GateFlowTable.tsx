@@ -32,7 +32,7 @@ const READINESS_SOURCE_LABELS: Record<ReadinessSource, string> = {
   'dev-decision': "not in the SME's F1 list — added by internal decision, not SME-confirmed",
 };
 
-// Verbatim from the F1 appendix (docs/Response.txt) — shown as a tooltip on
+// Verbatim from the F1 appendix (docs/rounds/2026-07-21-sme-reply-F1-F14.txt) — shown as a tooltip on
 // each item's tier badge (2026-07-27, user-requested) so the definition is
 // one hover away instead of only living in a config comment.
 const READINESS_TIER_DEFINITIONS: Record<ReadinessTier, string> = {

@@ -14,11 +14,13 @@
     "dev:clean": "node -e \"require('fs').rmSync('apps/web/node_modules/.vite',{recursive:true,force:true})\" && npm run dev",
     "build": "npm run build -w @mbc360/shared && npm run build -w @mbc360/api && npm run build -w @mbc360/web",
     "lint": "oxlint",
+    "verify:readiness": "tsx packages/shared/scripts/verify-readiness.ts",
     "preview": "npm run preview -w @mbc360/web"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
     "kill-port": "^2.0.1",
-    "oxlint": "^1.71.0"
+    "oxlint": "^1.71.0",
+    "tsx": "^4.23.1"
   }
 }

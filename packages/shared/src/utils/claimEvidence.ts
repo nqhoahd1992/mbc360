@@ -1,4 +1,4 @@
-// Gate 3 rule (F1 appendix, docs/Response.txt): "A claim may remain under
+// Gate 3 rule (F1 appendix, docs/rounds/2026-07-21-sme-reply-F1-F14.txt): "A claim may remain under
 // development, but unsupported wording must not be marked as approved."
 // Hard-blocked 2026-07-27 (user-requested) at the point that rule actually
 // bites — Published Information Approval (rules C6/F11), which already

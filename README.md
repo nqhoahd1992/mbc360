@@ -33,12 +33,12 @@ npm run lint       # oxlint across the whole repo
 
 Images are built from the repo root (`apps/api/Dockerfile`, `apps/web/Dockerfile`) and orchestrated with `docker-compose.prod.yml`. The host nginx terminates TLS and routes `/` to the web container and `/api` to the api container (host ports default to 8080/3000, overridable via `WEB_HOST_PORT`/`API_HOST_PORT`). Secrets live in an untracked `.env` next to the compose file — start from `.env.example` at the repo root.
 
-Step-by-step deploy guide (Vietnamese, includes migrate/seed and the host nginx + certbot setup): `docs/DEPLOY.md`. Nginx server blocks: `deploy/nginx.host.example.conf` (generic single-tenant example) and `deploy/nginx.mbcstaging.conf` (the real block for the shared mbcstaging.com VPS, ports 8086/3004).
+Step-by-step deploy guide (Vietnamese, includes migrate/seed and the host nginx + certbot setup): `docs/guides/DEPLOY.md`. Nginx server blocks: `deploy/nginx.host.example.conf` (generic single-tenant example) and `deploy/nginx.mbcstaging.conf` (the real block for the shared mbcstaging.com VPS, ports 8086/3004).
 
 ## Documentation
 
-- `docs/APP_PLAN.md` — source-of-truth spec (Vietnamese)
-- `docs/Business_Rules_Confirmation_{EN,VN}.md` — confirmed business-rule decisions + open follow-ups (F1–F12)
-- `docs/BACKEND_PLAN.md` — backend build plan (Vietnamese)
-- `docs/DEPLOY.md` — production deploy guide (Vietnamese)
+- `docs/plans/APP_PLAN.md` — source-of-truth spec (Vietnamese)
+- `docs/rules/Business_Rules_Confirmation_{EN,VN}.md` — confirmed business-rule decisions + open follow-ups (F1–F12)
+- `docs/plans/BACKEND_PLAN.md` — backend build plan (Vietnamese)
+- `docs/guides/DEPLOY.md` — production deploy guide (Vietnamese)
 - `CLAUDE.md` — architecture guide for AI-assisted development

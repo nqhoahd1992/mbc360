@@ -1,7 +1,7 @@
 import { BadGatewayException, Injectable } from '@nestjs/common';
 import { CosmetriTokenService } from './cosmetri-token.service';
 
-// Real Cosmetri BOM-import data proxy (M4). Shapes follow docs/swagger-init.json
+// Real Cosmetri BOM-import data proxy (M4). Shapes follow docs/reference/swagger-init.json
 // (OpenAPI 3.0, bearer-authenticated):
 //  - POST /formula/list                       (paginated IDs only)
 //  - POST /formula/details                    (batch: inf_reference, customer_group_label)
@@ -125,7 +125,7 @@ export class CosmetriDataService {
     }));
   }
 
-  // Cosmetri caps both endpoints involved here (per docs/swagger-init.json):
+  // Cosmetri caps both endpoints involved here (per docs/reference/swagger-init.json):
   // /raw-material/list's `limit` at 100, and /raw-material/details' `id`
   // array at 100 — both enforced below, not just assumed.
   private static readonly RAW_MATERIAL_LIST_PAGE_SIZE = 100;

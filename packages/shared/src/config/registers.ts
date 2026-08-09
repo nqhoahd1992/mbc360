@@ -1450,7 +1450,7 @@ const systemFeedback: RegisterConfig = {
 // ---------------------------------------------------------------------------
 // NPD Front-End Roadmap (v2 workbook, 2026-07-24) — see CLAUDE.md for the
 // full rationale. Every register below is transcribed from the new sheets in
-// `docs/MBc360 Master Product Development System File v2.xlsx`. `gate` is the
+// `docs/reference/MBc360 Master Product Development System File v2.xlsx`. `gate` is the
 // LOCKING gate(s) — set to cover every gate whose Mandatory readiness check
 // (gateReadiness.ts) reads that register, same rule `ingredientSubstitution`
 // already follows with '04/07'.

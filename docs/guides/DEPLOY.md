@@ -46,7 +46,7 @@ cp .env.example .env
 nano .env
 ```
 
-Điền theo chú thích trong [`.env.example`](../.env.example). Ba bẫy đã gặp thật, đừng lặp lại:
+Điền theo chú thích trong [`.env.example`](../../.env.example). Ba bẫy đã gặp thật, đừng lặp lại:
 
 1. **Giá trị chứa `$` bị Compose cắt mất**: Compose nội suy `$xyz` trong `.env` thành biến (thường rỗng) và chỉ in một dòng `WARN ... variable is not set` dễ bỏ qua — mật khẩu thực tế đưa vào container khác với cái bạn gõ. Sinh secret bằng `openssl rand -hex 32` (hex không bao giờ có ký tự đặc biệt), hoặc escape `$` thành `$$`.
 2. **`AUTH_CLIENT_SECRET` phải là secret Value, không phải Secret ID** (xem mục 2).
@@ -76,7 +76,7 @@ curl http://127.0.0.1:3004/api/health    # {"status":"ok",...}
 curl -I http://127.0.0.1:8086            # HTTP/1.1 200
 ```
 
-**Migration KHÔNG tự chạy khi container khởi động** (chủ đích — xem `docs/BACKEND_PLAN.md` mục hạ tầng) và image api chỉ chứa `dist/` (không có Prisma CLI/schema). Postgres cũng không mở port ra host, nên chạy migrate/seed bằng container một-lần trên cùng Docker network. Tên network = `<tên-thư-mục>_default` (clone thành `mbc360_app` → `mbc360_app_default`; xác nhận bằng `docker network ls`):
+**Migration KHÔNG tự chạy khi container khởi động** (chủ đích — xem `docs/plans/BACKEND_PLAN.md` mục hạ tầng) và image api chỉ chứa `dist/` (không có Prisma CLI/schema). Postgres cũng không mở port ra host, nên chạy migrate/seed bằng container một-lần trên cùng Docker network. Tên network = `<tên-thư-mục>_default` (clone thành `mbc360_app` → `mbc360_app_default`; xác nhận bằng `docker network ls`):
 
 ```bash
 # Migrate — tạo toàn bộ bảng (bỏ qua bước này thì api lỗi "table does not exist"
@@ -99,7 +99,7 @@ docker run --rm --network mbc360_app_default \
 
 ## 6. nginx trên host
 
-VPS mbcstaging gom mọi project vào một file `/etc/nginx/sites-available/mbc` (đã được symlink sẵn trong `sites-enabled` — kiểm tra bằng `ls -l /etc/nginx/sites-enabled/`, **không cần** `ln -s` thêm). Thêm block mbc360 vào cuối file đó, lấy nội dung từ [`deploy/nginx.mbcstaging.conf`](../deploy/nginx.mbcstaging.conf) — nhưng lần đầu **chỉ thêm phần `listen 80`** (bỏ block 443 và các dòng `ssl_certificate`, vì cert chưa tồn tại — để nguyên sẽ làm `nginx -t` fail).
+VPS mbcstaging gom mọi project vào một file `/etc/nginx/sites-available/mbc` (đã được symlink sẵn trong `sites-enabled` — kiểm tra bằng `ls -l /etc/nginx/sites-enabled/`, **không cần** `ln -s` thêm). Thêm block mbc360 vào cuối file đó, lấy nội dung từ [`deploy/nginx.mbcstaging.conf`](../../deploy/nginx.mbcstaging.conf) — nhưng lần đầu **chỉ thêm phần `listen 80`** (bỏ block 443 và các dòng `ssl_certificate`, vì cert chưa tồn tại — để nguyên sẽ làm `nginx -t` fail).
 
 ```bash
 sudo nano /etc/nginx/sites-available/mbc
@@ -158,7 +158,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 ## Phụ lục: hai file trong `deploy/` dùng làm gì
 
-- [`deploy/nginx.host.example.conf`](../deploy/nginx.host.example.conf) — **mẫu generic** cho bất kỳ server đơn-tenant nào: giả định port mặc định 8080/3000 và server chỉ chạy mỗi MBc360. Dùng làm điểm xuất phát khi deploy lên một máy mới hoàn toàn; không phản ánh môi trường thật nào.
-- [`deploy/nginx.mbcstaging.conf`](../deploy/nginx.mbcstaging.conf) — **block thật cho VPS mbcstaging.com hiện tại**: port 8086/3004 (vì port mặc định bị chiếm), log path, layout cert Certbot và idiom redirect đúng theo phong cách các project khác trên máy đó. Đây là nội dung để chép vào `sites-available/mbc`.
+- [`deploy/nginx.host.example.conf`](../../deploy/nginx.host.example.conf) — **mẫu generic** cho bất kỳ server đơn-tenant nào: giả định port mặc định 8080/3000 và server chỉ chạy mỗi MBc360. Dùng làm điểm xuất phát khi deploy lên một máy mới hoàn toàn; không phản ánh môi trường thật nào.
+- [`deploy/nginx.mbcstaging.conf`](../../deploy/nginx.mbcstaging.conf) — **block thật cho VPS mbcstaging.com hiện tại**: port 8086/3004 (vì port mặc định bị chiếm), log path, layout cert Certbot và idiom redirect đúng theo phong cách các project khác trên máy đó. Đây là nội dung để chép vào `sites-available/mbc`.
 
 Hai file tách nhau để mẫu generic không bị "nhiễm" chi tiết riêng của một VPS cụ thể, còn cấu hình thật của môi trường staging thì được version-control thay vì chỉ tồn tại trên server.

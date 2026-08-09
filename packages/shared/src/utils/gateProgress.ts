@@ -11,7 +11,7 @@ import {
 } from '../config/gateReadiness';
 
 // Progression rules (confirmed by the subject-matter team — see
-// docs/Business_Rules_Confirmation_EN.md, decisions B1-B4/C1):
+// docs/rules/Business_Rules_Confirmation_EN.md, decisions B1-B4/C1):
 //  - A gate is PASSED only when (B1): Stage status is Complete, a positive gate
 //    decision (Proceed / Proceed with Conditions) is recorded, AND no blockers
 //    remain — open next actions block a plain Proceed (they may stay open only
@@ -171,8 +171,6 @@ function evaluateReadinessCheck(
       const row = (project.requirements[check.section] ?? []).find((r) => r.requirement === check.requirement);
       return { evaluable: true, satisfied: row?.status === 'Completed' };
     }
-    case 'identityFieldFilled':
-      return { evaluable: true, satisfied: !!project.identity[check.field]?.trim() };
     case 'gateFieldFilled': {
       const record = project.gates.find((g) => g.gateId === `SG${check.gate}`);
       return { evaluable: true, satisfied: !!record?.[check.field]?.trim() };
@@ -364,10 +362,16 @@ export interface GateReadinessItem extends GateBlocker {
   // True for a Conditional or Supporting tier item (2026-07-27) — these are
   // named in the F1 appendix same as Mandatory ones, but the confirmed rule
   // is they may be incomplete WITHOUT blocking the gate (Conditional: only
-  // blocks once its trigger applies — the one real trigger, Skincare for Two,
-  // already gets its own dedicated hard-blocking item above, so a plain
-  // `advisory` item here never actually has trigger-driven teeth; Supporting:
-  // never blocks at all). Previously these tiers were silently left off the
+  // blocks once its trigger applies; Supporting: never blocks at all).
+  // **2026-08-07:** a Conditional item that declares a `trigger` and whose
+  // trigger is ACTIVE is no longer advisory — it blocks exactly like a
+  // Mandatory item, which is what the confirmed definition always said. This
+  // became enforceable only once the SME supplied a trigger condition per
+  // item; before that no Conditional item had anything to evaluate, so all of
+  // them were advisory and the only trigger-driven teeth in the system came
+  // from the dedicated Skincare-for-Two item pushed above. A Conditional item
+  // that still declares no `trigger` remains advisory for the same reason as
+  // before. Previously these tiers were silently left off the
   // panel entirely (`gateReadinessChecklist` only walked Mandatory items),
   // which made several of the SME's own named Gate 3 items (e.g. "Competitor
   // or benchmark review where applicable") vanish rather than show as
@@ -414,8 +418,6 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: '/bom' };
     case 'skincareForTwo':
       return phaseSectionLink(gateId, 'sec-requirement-skincareForTwo');
-    case 'identityFieldFilled':
-      return phaseSectionLink(gateId, 'sec-identification');
     case 'gateFieldFilled':
       return phaseSectionLink(gateId, 'sec-gate-flow');
     case 'allOf':
@@ -490,7 +492,18 @@ export function gateReadinessChecklist(
     ...relevantReqs.filter((req) => req.source),
   ];
   for (const req of orderedReqs) {
-    const advisory = req.tier !== 'Mandatory' || undefined; // omit (not `false`) when Mandatory, to keep satisfied items tidy
+    // Which items actually block (2026-08-07, rule A1/A3): Mandatory always;
+    // Conditional ONLY once its declared trigger is active — which is what the
+    // confirmed definition says ("hard-blocks only when its defined trigger
+    // applies") and is now enforceable because the SME supplied a trigger
+    // condition for every Conditional item. Until then no trigger condition
+    // existed at all, so every Conditional item was left advisory; a
+    // Conditional item that still declares no `trigger` keeps that treatment,
+    // since there is nothing to evaluate. Supporting never blocks.
+    // The inactive-trigger branch below returns early, so reaching the
+    // evaluated push with a declared trigger means the trigger IS active.
+    const blocks = req.tier === 'Mandatory' || (req.tier === 'Conditional' && !!req.trigger);
+    const advisory = !blocks || undefined; // omit (not `false`) when it blocks, to keep satisfied items tidy
     // A Conditional item tied to a named trigger (only `skincareForTwo`
     // today, e.g. Gate 4's "Pregnancy/breastfeeding caution screen") that
     // ISN'T currently active for this project: automatically satisfied, with
@@ -502,7 +515,11 @@ export function gateReadinessChecklist(
         label: `${req.label} — not triggered for this project (${TRIGGER_INACTIVE_EXPLANATIONS[req.trigger]}), so this passes automatically`,
         satisfied: true,
         hardBlock: false,
-        advisory,
+        // Deliberately NOT `advisory` from `blocks` above: an item whose
+        // trigger is inactive is genuinely non-blocking here, whatever its
+        // tier, and rendering it as an ordinary blocking item that happens to
+        // be satisfied would overstate what was checked.
+        advisory: true,
         source: req.source,
         tier: req.tier,
       });
@@ -516,7 +533,7 @@ export function gateReadinessChecklist(
       id: req.id,
       label: req.label,
       satisfied: evaluateReadinessCheck(project, req.check).satisfied,
-      hardBlock: req.tier === 'Mandatory',
+      hardBlock: blocks,
       advisory,
       link: resolveCheckLink(gateId, req.check),
       source: req.source,

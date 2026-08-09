@@ -180,7 +180,7 @@ export default function RegisterHubPage() {
         )}
         {registerKey === 'supplierRmEvidence' ? (
           // F14-style Cosmetri raw-material picker for rmCode/grade/supplier —
-          // see the tradeoffs noted in docs/F1_Per_Gate_Open_Questions.md.
+          // see the tradeoffs noted in docs/rules/F1_Per_Gate_Open_Questions.md.
           <SupplierRmEvidenceTable
             config={config}
             rows={project.registers[registerKey] ?? []}

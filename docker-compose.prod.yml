@@ -9,7 +9,7 @@
 # Secrets/overrides live in an untracked .env file next to this compose file
 # (NOT apps/api/.env, which only local `npm run dev` reads — the container
 # only gets what's listed in the `environment:` block below). Start from
-# .env.example at the repo root; full deploy walkthrough: docs/DEPLOY.md.
+# .env.example at the repo root; full deploy walkthrough: docs/guides/DEPLOY.md.
 #   POSTGRES_PASSWORD=...     (required)
 #   WEB_HOST_PORT / API_HOST_PORT (optional, default 8080 / 3000 — change
 #                              only if those ports are already taken on the

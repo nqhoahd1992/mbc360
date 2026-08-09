@@ -11,16 +11,26 @@ import { createEmptyRegisterRow } from '../store/factory';
 import SaveBar from './SaveBar';
 
 // Published_Info_Approval-specific variant of DynamicTable (2026-07-27,
-// user-requested): "Claim ID" is picked from Claim -> Evidence Traceability's
-// 'Supported' claims instead of typed free text, and selecting one auto-fills
-// + locks "Exact wording / technical statement" to that claim's own approved
-// wording — mirrors the Cosmetri raw-material picker's auto-fill-and-lock
-// pattern in SupplierRmEvidenceTable.tsx (Supplier is a reliable source field,
-// locked; here the approved wording is the reliable source, locked the same
-// way). This is what makes the Gate 3 rule ("a claim may remain under
-// development, but unsupported wording must not be marked as approved") a
-// real hard block in practice: a linked row can never show wording other
-// than the one that was actually approved.
+// user-requested): "Claim ID" is picked from Claim -> Evidence Traceability
+// instead of typed free text, and linking a claim that is already 'Supported'
+// auto-fills + locks "Exact wording / technical statement" to that claim's own
+// approved wording — mirrors the Cosmetri raw-material picker's
+// auto-fill-and-lock pattern in SupplierRmEvidenceTable.tsx (Supplier is a
+// reliable source field, locked; here the approved wording is the reliable
+// source, locked the same way). This is what makes the Gate 3 rule ("a claim
+// may remain under development, but unsupported wording must not be marked as
+// approved") a real hard block in practice.
+//
+// The picker originally offered 'Supported' claims ONLY; corrected 2026-08-07
+// per SME Round 3 (Response2 D2) to offer every claim, so an intended claim
+// can be documented while still under development. The rule is enforced at
+// RELEASE instead — `unsupportedClaimRows` blocks saving a row at "Approved
+// for Release"/"Released" while its claim is not Supported, in the UI and
+// authoritatively in the API. Two further D2 changes are NOT done here and
+// belong to the claims rework: Claim ID becoming mandatory for any row stating
+// a product benefit, and replacing the wording lock with master-approved
+// wording held alongside proposed channel wording plus a reviewer equivalence
+// check.
 export default function PublishedInfoApprovalTable({
   config,
   rows,
@@ -48,21 +58,41 @@ export default function PublishedInfoApprovalTable({
     () => new Map(claimEvidenceRows.filter((c) => typeof c.claimId === 'string' && c.claimId).map((c) => [String(c.claimId), c])),
     [claimEvidenceRows],
   );
-  // Only 'Supported' claims are offered — a claim still under development has
-  // nothing approved yet to lock the wording to (2026-07-27, user-requested).
+  // EVERY claim is offered, whatever its status (corrected 2026-08-07, SME
+  // Round 3 / Response2 D2). It used to list 'Supported' claims only, on the
+  // reasoning that a claim still under development has no approved wording to
+  // lock to — the team answered the other way: "Developing or Pending claims
+  // should be selectable. The purpose is to document the intended claim
+  // early." The restriction was also stricter than the Gate 3 rule requires,
+  // since that rule bites at RELEASE, not at linking — and that block is a
+  // separate mechanism (`unsupportedClaimRows` below, enforced in the API
+  // too), so nothing is weakened by removing it here. A non-Supported claim
+  // is labelled as such in the dropdown rather than hidden.
   const claimOptions = useMemo(
     () =>
       claimEvidenceRows
-        .filter((c) => c.status === 'Supported' && typeof c.claimId === 'string' && c.claimId)
+        .filter((c) => typeof c.claimId === 'string' && c.claimId)
         .map((c) => {
           const wording = String(c.approvedWording ?? '').trim();
+          const status = String(c.status ?? '').trim();
+          const detail = wording || (status && status !== 'Supported' ? `${status} — no approved wording yet` : '');
           return {
             value: String(c.claimId),
-            label: wording ? `${c.claimId} — ${wording.slice(0, 60)}${wording.length > 60 ? '…' : ''}` : String(c.claimId),
+            label: detail ? `${c.claimId} — ${detail.slice(0, 60)}${detail.length > 60 ? '…' : ''}` : String(c.claimId),
           };
         }),
     [claimEvidenceRows],
   );
+  // A linked claim only drives auto-fill-and-lock of the wording once it is
+  // actually 'Supported' — a Pending claim has no approved wording, so locking
+  // the cell to its empty value would make the row unusable. (D2 also replaces
+  // this lock outright with master-wording vs channel-wording plus a reviewer
+  // equivalence check; that is the larger rework, not this correction.)
+  const lockedClaimFor = (row: RegisterRow) => {
+    const claimId = typeof row.claimId === 'string' ? row.claimId.trim() : '';
+    const claim = claimId ? claimById.get(claimId) : undefined;
+    return claim?.status === 'Supported' ? claim : undefined;
+  };
 
   const hasBlankRows = draft.some((r) => isRegisterRowBlank(config, r));
   // Gate 3 rule, hard-blocked (2026-07-27): even though a linked row's wording
@@ -79,9 +109,11 @@ export default function PublishedInfoApprovalTable({
     // wording right before saving — covers the edge case where the claim's
     // approvedWording text was edited after this row picked it, so what gets
     // persisted is never stale.
+    // Only rows locked to a 'Supported' claim are resynced — a row linked to a
+    // still-Pending claim keeps whatever wording its owner typed, since there
+    // is no approved text to resync from.
     const resynced = draft.map((row) => {
-      const claimId = typeof row.claimId === 'string' ? row.claimId.trim() : '';
-      const claim = claimId ? claimById.get(claimId) : undefined;
+      const claim = lockedClaimFor(row);
       return claim ? { ...row, exactWording: claim.approvedWording } : row;
     });
     onSave(resynced);
@@ -164,21 +196,24 @@ export default function PublishedInfoApprovalTable({
                   placeholder="Not claim-linked"
                   value={claimId || undefined}
                   options={
-                    // Never silently hide an existing link, even one that's
-                    // no longer 'Supported' — same principle as the Cosmetri
-                    // raw-material picker keeping an off-catalogue value visible.
+                    // Never silently hide an existing link, even one pointing
+                    // at a claim that has since been deleted — same principle
+                    // as the Cosmetri raw-material picker keeping an
+                    // off-catalogue value visible. (Every existing claim is in
+                    // `claimOptions` now, whatever its status, so this only
+                    // fires for an id with no claim behind it at all.)
                     claimId && !claimOptions.some((o) => o.value === claimId)
-                      ? [{ value: claimId, label: `${claimId} — not currently Supported` }, ...claimOptions]
+                      ? [{ value: claimId, label: `${claimId} — no matching claim record` }, ...claimOptions]
                       : claimOptions
                   }
                   onChange={(value: string | undefined) => {
                     patch(index, 'claimId', value ?? '');
                     const claim = value ? claimById.get(value) : undefined;
-                    // Auto-fill + lock (2026-07-27, user-requested): the
-                    // "Exact wording" cell below renders read-only whenever
-                    // claimId is set, so this is the only place that value
-                    // can ever be written while linked.
-                    if (claim) patch(index, 'exactWording', claim.approvedWording);
+                    // Auto-fill + lock: only for a 'Supported' claim, which is
+                    // the same condition the "Exact wording" cell locks on —
+                    // linking a still-Pending claim leaves that cell editable
+                    // and does not overwrite what is already there.
+                    if (claim?.status === 'Supported') patch(index, 'exactWording', claim.approvedWording);
                   }}
                 />
               </Tooltip>
@@ -191,8 +226,7 @@ export default function PublishedInfoApprovalTable({
           title: col.label,
           width: col.width ?? 220,
           render: (_: unknown, row: RegisterRow, index: number) => {
-            const claimId = String(row.claimId ?? '');
-            const claim = claimId ? claimById.get(claimId) : undefined;
+            const claim = lockedClaimFor(row);
             if (claim) {
               return (
                 <Tooltip title="Locked — auto-filled from the linked Claim ID's approved wording. Unlink the claim, or edit the wording on Claim -> Evidence Traceability, to change it.">

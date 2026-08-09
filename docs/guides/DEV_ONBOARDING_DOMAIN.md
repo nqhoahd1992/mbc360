@@ -2,7 +2,7 @@
 
 > **Mục đích:** tài liệu này dạy **nghiệp vụ** đứng sau MBc360 cho một developer chưa từng làm ngành mỹ phẩm / quản lý chất lượng. Đọc xong bạn phải trả lời được: *"Cái app này đang mô hình hoá quy trình gì, tại sao nó phức tạp như vậy, và khi tôi sửa một dòng code thì tôi đang động vào luật nghiệp vụ nào?"*
 >
-> **Không phải** tài liệu kiến trúc kỹ thuật — cái đó nằm ở `CLAUDE.md`, `docs/APP_PLAN.md`, `docs/BACKEND_PLAN.md`.
+> **Không phải** tài liệu kiến trúc kỹ thuật — cái đó nằm ở `CLAUDE.md`, `docs/plans/APP_PLAN.md`, `docs/plans/BACKEND_PLAN.md`.
 >
 > Mọi con số/tên trong tài liệu này được trích trực tiếp từ code và từ 2 file workbook trong `docs/`, không phải trí nhớ. Chỗ nào là suy luận hoặc còn mở, tôi ghi rõ.
 
@@ -101,7 +101,7 @@ Trong `docs/` có **hai** file workbook, và cả hai đều có hiệu lực:
 File `.xlsx` thực chất là file **zip**. Kỹ thuật này dùng thường xuyên trong repo (và đã từng phát hiện ra bug thật):
 
 ```bash
-cp "docs/MBc360 Master Product Development System File v2.xlsx" /tmp/wb.zip
+cp "docs/reference/MBc360 Master Product Development System File v2.xlsx" /tmp/wb.zip
 unzip -o /tmp/wb.zip -d /tmp/wb
 # Thứ tự sheet theo đúng thứ tự tài liệu:
 grep -o '<sheet name="[^"]*"' /tmp/wb/xl/workbook.xml
@@ -323,7 +323,7 @@ Một change đang mở sẽ **soft-lock** gate liên quan (luật C4/F9): hiệ
 
 ## 5. Bộ luật vận hành (A / B / C rules)
 
-Đây là phần **bắt buộc thuộc** nếu bạn định sửa code nghiệp vụ. Nguồn: `docs/Business_Rules_Confirmation_{EN,VN}.md`. Mã rule (A1, B3, C1…) được trích dẫn khắp nơi trong code comment.
+Đây là phần **bắt buộc thuộc** nếu bạn định sửa code nghiệp vụ. Nguồn: `docs/rules/Business_Rules_Confirmation_{EN,VN}.md`. Mã rule (A1, B3, C1…) được trích dẫn khắp nơi trong code comment.
 
 ### Nhóm A — Kiến trúc dữ liệu
 
@@ -359,11 +359,27 @@ Một change đang mở sẽ **soft-lock** gate liên quan (luật C4/F9): hiệ
 
 ### Nhóm D — Thẩm quyền vòng đời project (do project owner quyết, không hỏi SME)
 
-**D1** chỉ System Administrator được xoá project (xoá luôn audit trail, chừa lại một tombstone record) · **D2** chỉ Project Owner được archive/restore · **D3** project đã archive là **read-only với tất cả mọi người**, kể cả admin · **D4** bất kỳ user đăng nhập nào cũng được tạo project · **D5** yêu cầu "Project owner" của Gate 1 được thoả mãn tự động.
+**D1** chỉ System Administrator được xoá project (xoá luôn audit trail, chừa lại một tombstone record) · **D2** chỉ Project Owner được archive/restore · **D3** project đã archive là **read-only với tất cả mọi người**, kể cả admin · **D4** bất kỳ user đăng nhập nào cũng được tạo project · **D5** yêu cầu "Project owner" của Gate 1 phải **tick tường minh** dòng Key Gate Check *"Initial project record opened and owner assigned"*, giống hai dòng anh em cùng gate.
+
+> D5 từng được ghi ngược lại ("tự động thoả mãn", vì Project Lead là trường bắt buộc trên form tạo project). Rút lại trong code 26/07/2026, sửa trong tài liệu 07/08/2026: nó đánh đồng *"dữ kiện nền đã được bảo đảm"* với *"bước xác nhận là thừa"*. Xem `Business_Rules_Confirmation_EN.md` → D5.
 
 ### 14 follow-up F1–F14 (trạng thái)
 
 13/14 đã đóng. Chỉ **F12** còn thực sự mở (phụ thuộc Cosmetri xác nhận có phủ compliance ASEAN/Việt Nam hay không — ngoài tầm kiểm soát của team).
+
+### Vòng 3 (07/08/2026) — đáp án mới nhất của SME, `docs/rounds/2026-08-07-sme-reply-round3.txt`
+
+19 câu hỏi tồn đọng khi wire Gate Readiness đã được trả lời hết (ghi tại `Business_Rules_Confirmation_{EN,VN}.md` → **Phụ lục 2**). **Đọc mục này trước khi động vào `gateReadiness.ts`** — nó nói cho bạn biết chỗ nào trong code hiện tại đang sai so với luật, chứ không phải chỉ là việc chưa làm:
+
+| Cái đang có trong code | SME nói | Trạng thái |
+|---|---|---|
+| 12 item `sgXX-signoff` đọc `owner` + `evidenceLink` trên dòng gate | **Không đủ.** Phải là 3 chữ ký riêng (Prepared/Reviewed/Approved), mỗi chữ ký ghi user đã xác thực · vai trò · ngày giờ · quyết định · phiên bản bản ghi · comment | ❌ chưa làm |
+| `sg07-caution-closed` chặn **không điều kiện** → mọi project, kể cả general-adult, phải đi hết 12 dòng sổ PB Caution Limits mới qua Gate 7 | **Sai.** Chỉ bắt buộc khi chọn Pregnancy/Breastfeeding/Postpartum; sản phẩm chỉ cho trẻ sơ sinh đi Infant/Baby Safety pathway; còn lại ghi N/A kèm lý do | ✅ đã hạ xuống `Conditional` + `trigger: 'skincareForTwo'` (07/08). Còn thiếu: Infant pathway (chờ A2) và đường N/A-kèm-lý-do riêng |
+| Published Info: Claim ID tuỳ chọn, picker chỉ cho claim `Supported`, khoá cứng wording | **3/4 sai.** Claim ID bắt buộc với mọi phát ngôn về sản phẩm · claim `Pending` phải chọn được · giữ song song master wording và channel wording, tương đương do reviewer xác nhận | 🟡 picker đã mở cho mọi claim (07/08); Claim ID bắt buộc và master↔channel wording chưa làm |
+| Gate 10/11 đánh giá ở cấp project | **Phải theo từng thị trường** (chính là F4, nay hết vướng) | ❌ chưa làm |
+| 9 item Conditional không có trigger nên không bao giờ chặn | **Đã cấp đủ 12 trigger** — xem bảng A3 | 🟡 cơ chế đã chạy (mục 8.3); mới cài 1/12 trigger (`skincareForTwo`) |
+
+Ngoài ra SME yêu cầu thêm 11 chỗ ghi nhận dữ liệu mới (Request Origin, Development Brief, cờ vulnerable-user, bảng requirements Phase 1, phân loại từng claim, critical safety finding…). Danh sách đầy đủ ở cuối Phụ lục 2.
 
 Đáng chú ý nhất với dev:
 - **F1** → đẻ ra toàn bộ `gateReadiness.ts` (danh sách bắt buộc theo từng gate 1–12, phụ lục cuối file `Business_Rules_Confirmation_EN.md`)
@@ -424,7 +440,7 @@ Tương tự, `RegisterHubPage.tsx` + `DynamicTable.tsx` dựng bất kỳ regis
 
 ## 7. Mô hình dữ liệu
 
-Canonical: `packages/shared/src/types/index.ts`. (⚠️ Data model trong `docs/APP_PLAN.md` §3 là bản demo giai đoạn 1 **đã lỗi thời** — nó còn ghi decision là `Go`/`Conditional Go`, không còn đúng.)
+Canonical: `packages/shared/src/types/index.ts`. (⚠️ Data model trong `docs/plans/APP_PLAN.md` §3 là bản demo giai đoạn 1 **đã lỗi thời** — nó còn ghi decision là `Go`/`Conditional Go`, không còn đúng.)
 
 ```ts
 ProjectData {
@@ -512,23 +528,38 @@ Panel "What's blocking Gate X" hiển thị **cả item đã thoả** (màu xanh
 | Cờ | Nghĩa | Có chặn không |
 |---|---|---|
 | `pending` | check `kind: 'manual'` — chưa có nguồn dữ liệu để tự đánh giá | **Không** |
-| `advisory` | tier là `Conditional` hoặc `Supporting` | **Không** |
+| `advisory` | `Supporting`, hoặc `Conditional` mà trigger không active / không khai báo trigger | **Không** |
 | *(không cờ)* | tier `Mandatory`, đã wire vào dữ liệu thật | **Có** |
 
-> ⚠️ **Điểm dev hay hiểu sai:** theo luật C7, `Conditional` *đáng lẽ* phải hard-block khi trigger của nó active. Nhưng trong code hiện tại, mọi item Conditional đều bị gắn `advisory: true` và bị lọc khỏi blocker → **Conditional hiện KHÔNG bao giờ hard-block**. Trường hợp duy nhất thực sự có "răng" là Skincare for Two, vì nó được push riêng ở SG07 bằng một item chuyên biệt (`id: 'skincare-for-two'`, `hardBlock: true`) **không** đi qua vòng lặp config.
+**Conditional có chặn hay không — luật quyết định ở [`gateProgress.ts`](../../packages/shared/src/utils/gateProgress.ts), biến `blocks`:**
+
+```
+Mandatory                          → luôn chặn
+Conditional CÓ khai báo `trigger`  → chặn khi trigger active; trigger không active thì item tự thoả (advisory)
+Conditional KHÔNG khai báo trigger → advisory (không có gì để đánh giá)
+Supporting                         → không bao giờ chặn
+```
+
+> ⚠️ **Lịch sử, để hiểu vì sao code từng khác:** tới 07/08/2026, **mọi** item Conditional đều bị gắn `advisory` cứng → Conditional **không bao giờ** hard-block, và thứ duy nhất có "răng" là Skincare for Two nhờ một item chuyên biệt (`id: 'skincare-for-two'`, `hardBlock: true`) push riêng ở SG07, **không** đi qua vòng lặp config. Lúc đó làm vậy là đúng — SME chưa cấp điều kiện trigger nào nên không có gì để đánh giá. Vòng 3 cấp đủ **12 trigger** (Phụ lục 2 → A3), nên luật ở trên nay được thực thi thật.
+>
+> **Hiện mới có đúng 1 trigger được cài: `skincareForTwo`** (Pregnancy/Breastfeeding/Postpartum, luật C1) — dùng bởi `sg04-pb-screen` và `sg07-caution-closed`. 12 item còn lại chưa có trigger vì đọc dữ liệu app chưa thu thập. Thêm một trigger = thêm giá trị vào `ReadinessTrigger` + `isReadinessTriggerActive()` + `TRIGGER_INACTIVE_EXPLANATIONS`, rồi gắn `trigger:` vào item — không phải sửa vòng lặp.
+
+📋 **Danh mục đầy đủ 13 trigger + bộ test case: [`docs/rules/F1_Conditional_Triggers.md`](../rules/F1_Conditional_Triggers.md).** Với mỗi trigger: tên đề xuất · đọc từ mục UI nào · dữ liệu đã có hay phải xây · cặp kịch bản bật/tắt kèm kết quả mong đợi. Đọc file đó **trước** khi cài bất kỳ trigger nào, và chạy đúng cặp test của nó sau khi cài.
 
 ### 8.4 Các loại check (`ReadinessCheck.kind`)
 
-16 kind. Nhóm theo nguồn dữ liệu:
+15 kind. Nhóm theo nguồn dữ liệu:
 
 | Nhóm | Kind | Ghi chú |
 |---|---|---|
 | Trang phase | `gateCheckDone`, `checklistHasSelection`, `requirementDone` | `gateCheckDone` là tín hiệu chính của Gate 1–5 |
 | Register | `registerHasRows`, `registerColumnFilled`, `registerNoBadRows`, `registerRowsComplete` | xem cảnh báo bên dưới |
 | BOM | `bomHasLines`, `bomIdentityComplete`, `bomReconciled` | |
-| Gate record | `gateFieldFilled` | dùng cho 12 item `sgXX-signoff` |
+| Gate record | `gateFieldFilled` | dùng cho 12 item `sgXX-signoff` — **cách dùng này đã bị SME bác**, xem Vòng 3 ở mục 5 |
 | Đặc biệt | `skincareForTwo`, `allOf`, `manual` | `allOf` gộp nhiều check thành **một** dòng hiển thị |
-| Chưa dùng | `nextActionsClosed`, `identityFieldFilled` | định nghĩa sẵn nhưng hiện không item nào dùng |
+| Chưa dùng | `nextActionsClosed` | định nghĩa sẵn nhưng không entry `GATE_READINESS` nào dùng: 2 item Next Action (`critical-next-actions`, `open-next-actions`) được push thẳng trong `gateReadinessChecklist()` với logic riêng, không đi qua kind này |
+
+> Từng có kind thứ 16, `identityFieldFilled` (đọc một trường trên `ProjectIdentity`). **Xoá 07/08/2026.** Trường duy nhất nó đọc — `projectLead` — là trường bắt buộc trên form tạo project, nên nó **luôn luôn trả về `satisfied: true`**: không đo tiến độ, chỉ đo "project có tồn tại không". Đúng loại vacuous mà cảnh báo màu đỏ bên dưới nói tới, nên để nó nằm sẵn là mời một item tương lai dùng lại. Cần check chỉ-đọc-field thì dùng `gateFieldFilled` (`owner`/`dueDate`/`evidenceLink`/`notes` trên dòng gate khởi tạo rỗng nên đo được thật).
 
 🔴 **Cảnh báo vacuous truth — đọc kỹ chỗ này:**
 
@@ -560,6 +591,8 @@ Tổng **124 item** trên 12 gate: **107 Mandatory** / 12 Conditional / 5 Suppor
 | SG12 | 7 | 3 | 0 |
 
 14 item còn `manual` **không phải do lười** — mỗi cái là một trong ba tình huống: (a) không có field nào trong hệ thống đại diện cho nó (Gate 1/2 — Phase 1 không có requirement table); (b) cần một khái niệm dữ liệu chưa tồn tại (Gate 3 — "claim risk tier"); (c) bản chất là **per-market** nên một check ở cấp project sẽ hoặc pass sai hoặc block sai (Gate 10/11 — đó là follow-up F4).
+
+> **Cập nhật 07/08/2026 — cả ba tình huống nay đã có đáp án**, nên 14 item này chuyển từ "đang chờ SME" sang "đang chờ mình xây": (a) SME yêu cầu thêm **bảng requirements cho Phase 1** (16 dòng, có cột category/priority/owner — shape *khác* với requirement table của Phase 2–4), trường **Request Origin/Source**, Key Gate Check **"Initial product scope defined"**, và ghi nhận **Development Brief** như một bản ghi riêng; (b) "claim risk tier" nay có định nghĩa cụ thể — **2 dropdown cho từng claim** (Claim category 10 giá trị, Claim risk 5 giá trị) chứ không phải một phán đoán ở cấp project; (c) F4 đã được chốt — **Gate 10/11 chuyển sang per-market**. Chi tiết ở Phụ lục 2 của `Business_Rules_Confirmation_{EN,VN}.md`.
 
 ### 8.6 Khoá & mở khoá
 
@@ -660,9 +693,9 @@ Câu chốt định vị hệ thống, đáng thuộc:
 ### Ngày 1 — Nghiệp vụ (không mở code)
 
 1. Đọc mục 1–5 của tài liệu này.
-2. Mở `docs/MBc360 Master Product Development System File v2.xlsx` bằng Excel/Numbers. Đọc kỹ 3 sheet: `Introduction`, `Guide To Using This Document`, `Stage_Map`.
+2. Mở `docs/reference/MBc360 Master Product Development System File v2.xlsx` bằng Excel/Numbers. Đọc kỹ 3 sheet: `Introduction`, `Guide To Using This Document`, `Stage_Map`.
 3. Mở sheet `PHASE1 G1-3 MKTG`, cuộn từ trên xuống dưới. Nhận ra 7 khối ở mục 3.3.
-4. Đọc `docs/Business_Rules_Confirmation_VN.md` — **cả file**. Đây là hợp đồng nghiệp vụ.
+4. Đọc `docs/rules/Business_Rules_Confirmation_VN.md` — **cả file**. Đây là hợp đồng nghiệp vụ. Riêng **Phụ lục 2** (Vòng 3, 07/08/2026) đọc kỹ hai lần: đó là phần mới nhất và là chỗ duy nhất nói rõ code hiện tại đang lệch luật ở đâu.
 
 ### Ngày 2 — Code, theo thứ tự này
 
@@ -697,12 +730,13 @@ Mở trang **Gate Rules & Sheet Map** (nhóm System Guide & Reference) — nó l
 
 ### Trước mỗi PR động vào nghiệp vụ — checklist
 
-- [ ] Thay đổi này ứng với mã rule nào (A/B/C/D/F)? Nếu không ứng với cái nào → đó là **dev decision**, phải ghi vào `docs/F1_Per_Gate_Open_Questions.md` để SME xác nhận sau. *(Đây là chỉ đạo thường trực từ user: một phán đoán do dev tự đưa ra không được miễn xác nhận chỉ vì user đã duyệt tại chỗ.)*
+- [ ] Thay đổi này ứng với mã rule nào (A/B/C/D/F)? Nếu không ứng với cái nào → đó là **dev decision**, phải ghi vào `docs/rules/F1_Per_Gate_Open_Questions.md` để SME xác nhận sau. *(Đây là chỉ đạo thường trực từ user: một phán đoán do dev tự đưa ra không được miễn xác nhận chỉ vì user đã duyệt tại chỗ.)*
 - [ ] Luật mới có được enforce ở **cả** UI và server bằng **cùng một hàm** trong `packages/shared` không?
-- [ ] Nếu thêm check Mandatory: có bị **vacuous** trên dữ liệu rỗng không? Mọi chuỗi tên có tồn tại thật trong config không?
+- [ ] Đã chạy `npm run verify:readiness` chưa? Nó bắt sai tên tham chiếu (S1), vacuous trên register rỗng (S2), giá trị seed của register `mode:'fixed'` quyết định check (S3 — đúng con bug đã ship ở Gate 7), và `[ASSUMPTION: R4-Qn]` trỏ sai (TAG).
+- [ ] Nếu có suy đoán: đã thêm câu hỏi vào `F1_Per_Gate_Open_Questions.md` → Round 4, lấy ID, và gắn `[ASSUMPTION: R4-Qn]` **ngay tại điểm quyết định** trong code/doc chưa? Sweep sẽ fail nếu thiếu một trong hai chiều.
 - [ ] Nếu đụng thứ tự hiển thị: đã đối chiếu `xl/workbook.xml` chưa?
 - [ ] Nếu đổi shape `ProjectData`: đã bump persist version chưa? (`migrate` re-seed chứ không migrate)
-- [ ] Đã cập nhật **cả** code **và** `docs/Business_Rules_Confirmation_{EN,VN}.md` chưa? (bảng follow-up trong đó do đội nghiên cứu đọc — không dùng thuật ngữ code)
+- [ ] Đã cập nhật **cả** code **và** `docs/rules/Business_Rules_Confirmation_{EN,VN}.md` chưa? (bảng follow-up trong đó do đội nghiên cứu đọc — không dùng thuật ngữ code)
 
 ---
 
@@ -810,4 +844,6 @@ ReadinessResult      'Not Ready' | 'Ready with Conditions' | 'Ready for Decision
 
 ---
 
-*Tài liệu này mô tả trạng thái code tại thời điểm 2026-08-01. Khi luật nghiệp vụ thay đổi, cập nhật **cả** code, **cả** `docs/Business_Rules_Confirmation_{EN,VN}.md`, **cả** file này.*
+*Tài liệu này mô tả trạng thái code tại thời điểm 2026-08-07. Khi luật nghiệp vụ thay đổi, cập nhật **cả** code, **cả** `docs/rules/Business_Rules_Confirmation_{EN,VN}.md`, **cả** file này.*
+
+*Lưu ý khi đọc: các con số ở mục 8.5 (124 item / 107 Mandatory / 14 `manual`) và bảng kind ở 8.4 mô tả **code hiện tại**, chưa phản ánh những gì Vòng 3 yêu cầu. Bảng đối chiếu "code đang có ↔ SME nói" ở cuối mục 5 mới là chỗ cho biết cái gì sẽ đổi.*

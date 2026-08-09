@@ -114,8 +114,7 @@ function checkSheetName(check: ReadinessCheck, gateId: string): string | undefin
     case 'checklistHasSelection':
     case 'requirementDone':
     case 'skincareForTwo':
-    case 'nextActionsClosed':
-    case 'identityFieldFilled': {
+    case 'nextActionsClosed': {
       const phase = GATES.find((g) => g.id === gateId)?.phase;
       return phase ? PHASE_SHEET_NAMES[phase] : undefined;
     }

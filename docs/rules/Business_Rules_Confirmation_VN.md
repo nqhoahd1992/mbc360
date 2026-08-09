@@ -6,7 +6,9 @@
 
 > **Trạng thái (16/07/2026):** Đã nhận và ghi lại quyết định của bộ phận chuyên môn cho **tất cả các mục trừ C7** (vẫn còn mở). Đội ngũ bổ sung thêm 2 yêu cầu mới (Tài liệu GMP, quy trình Published Information Approval). Các điểm còn mở được tổng hợp tại mục **"Danh sách câu hỏi cần làm rõ tiếp (follow-up)"** ở cuối tài liệu.
 >
-> **Trạng thái (21/07/2026):** Bộ phận chuyên môn nay đã trả lời **toàn bộ 14 câu follow-up (F1–F14)**, cùng ba mục trước đó chưa trả lời **A5, B5 và C7** (nguồn: `docs/Response.txt`). Đáp án được ghi ngay tại mỗi mục bên dưới và tóm tắt trong bảng follow-up cuối tài liệu. **Chỉ còn đúng một điểm thực sự mở: F12** (phạm vi phủ compliance ASEAN/Việt Nam của Cosmetri — phải do Cosmetri xác nhận, không thuộc quyền quyết định của nhóm ta). Mọi thứ còn lại giờ chỉ là việc **cung cấp dữ liệu/nội dung** (xem mục "Đầu vào còn cần cho triển khai" ở cuối), không còn là quyết định quy tắc nữa.
+> **Trạng thái (21/07/2026):** Bộ phận chuyên môn nay đã trả lời **toàn bộ 14 câu follow-up (F1–F14)**, cùng ba mục trước đó chưa trả lời **A5, B5 và C7** (nguồn: `docs/rounds/2026-07-21-sme-reply-F1-F14.txt`). Đáp án được ghi ngay tại mỗi mục bên dưới và tóm tắt trong bảng follow-up cuối tài liệu. **Chỉ còn đúng một điểm thực sự mở: F12** (phạm vi phủ compliance ASEAN/Việt Nam của Cosmetri — phải do Cosmetri xác nhận, không thuộc quyền quyết định của nhóm ta). Mọi thứ còn lại giờ chỉ là việc **cung cấp dữ liệu/nội dung** (xem mục "Đầu vào còn cần cho triển khai" ở cuối), không còn là quyết định quy tắc nữa.
+>
+> **Trạng thái (07/08/2026) — đã có đáp án Vòng 3.** Trong quá trình đấu nối Gate Readiness panel theo F1, chúng tôi tích lũy 19 câu hỏi mở (cách gán tier, những mục không có chỗ ghi nhận, các mapping tự suy đoán, các quyết định tự đưa ra theo cách hiểu riêng, và nhóm mục theo từng thị trường) và gửi đi theo 5 phần A–E. **Đội chuyên môn đã trả lời toàn bộ** (nguồn: `docs/rounds/2026-08-07-sme-reply-round3.txt`). Đáp án được ghi đầy đủ tại **"Phụ lục 2 (07/08/2026)"** gần cuối tài liệu, và mọi câu hỏi trong `docs/rules/F1_Per_Gate_Open_Questions.md` nay đã đóng. Vòng này **không** mang tính hình thức: nó **đảo ngược 4 thứ đã xây xong** (sign-off theo từng gate, 2 trong 4 quy tắc claim của Published Information, màn hình quét thai kỳ không điều kiện ở Gate 7, và cách xử lý Gate 10–11 ở cấp dự án), đồng thời bổ sung khá nhiều dữ liệu cần thu thập mới — trường nguồn yêu cầu ở Gate 1, phần ghi nhận scope/thị trường/người dùng ban đầu ở Gate 1, bản ghi Development Brief được kiểm soát, cờ vulnerable-user tường minh, bảng requirements cho Phase 1, phân loại theo từng claim, đánh giá của reviewer trên watch-list, và bộ kiểm soát critical safety finding.
 
 ---
 
@@ -77,7 +79,7 @@
 
 *Còn mở: → F12 (chi tiết kỹ thuật API Cosmetri; xử lý khi nguyên liệu chưa có trong Cosmetri).*
 
-**Cập nhật (16/07/2026) — Đã nhận tài liệu API Cosmetri (`docs/swagger-init.json`, OpenAPI 3.0, base `https://app1-env.cosmetri.com/api/v1`):**
+**Cập nhật (16/07/2026) — Đã nhận tài liệu API Cosmetri (`docs/reference/swagger-init.json`, OpenAPI 3.0, base `https://app1-env.cosmetri.com/api/v1`):**
 - **Xác thực:** OAuth2 password grant qua `/oauth/token` → JWT bearer + refresh token (có thời hạn). Mọi endpoint đều có rate limit (429); các endpoint list hỗ trợ `page`/`limit` và **`since_updated_at`** để đồng bộ tăng dần (không có webhook — mô hình polling).
 - **Raw materials** (`/raw-material/{id}`, `/list`, `/details` batch ≤100): trade name, danh mục, **ID + tên nhà cung cấp** (`inf_sup_id`, `supplier_name`), trạng thái chất lượng ("Approved"/quarantine), số lô (`inf_code` — theo field mapping chính thức đây là **Batch No.**, không phải số CAS), MOQ, lead time, tồn kho, vị trí, chi phí.
 - **Formulas** (`/formula/*`): **version** công thức ("2.1.0"), reference, trạng thái, production mode, và toàn bộ `formula_composition` (RM id/trade name/code + `%`) — dùng trực tiếp để đổ dữ liệu Formula BOM của MBc360.
@@ -457,9 +459,13 @@ System Administrator cũng archive được — vốn đã xoá được (việc
 
 ✅ **Bất kỳ người dùng đã đăng nhập đều tạo được dự án.** Thắt lại sẽ chặn nghiệp vụ bình thường (Project Owner mở dự án mới), mà tạo dự án thì không phá huỷ gì — sai thì archive hoặc xoá.
 
-### D5. "Project owner" không còn là điều kiện chặn ở Gate 1
+### D5. "Project owner" ở Gate 1 — phải tick tường minh, không tự động thoả
 
-✅ **Điều kiện "Project owner" của Gate 1 nay tự động được thoả mãn.** Project Lead là **trường bắt buộc trên form Tạo dự án mới**, nên dự án không thể tồn tại mà thiếu người này. Trước đây mục này gắn vào một dòng Key Gate Check, khiến đội ngũ phải xác nhận lại điều mà form tạo dự án đã bảo đảm.
+✅ **Mục "Project owner" của Gate 1 được thoả bằng cách tick dòng Key Gate Check "Initial project record opened and owner assigned"**, đúng như hai dòng anh em cùng gate.
+
+> **Đã sửa 07/08/2026.** Mục này trước đây ghi quyết định ngược lại — rằng nó *tự động được thoả*, với lý do Project Lead là trường bắt buộc trên form Tạo dự án mới nên dự án không thể tồn tại mà thiếu, và xác nhận lại là thừa. **Lập luận đó đã bị rút lại trong code từ 26/07/2026 nhưng chưa được ghi ngược về tài liệu này**, nên đoạn ở đây suốt thời gian qua mô tả một quy tắc mà hệ thống không hề chạy. Lý do rút lại: nó đánh đồng *"dữ kiện nền đã được bảo đảm"* với *"bước xác nhận là thừa"*. Mọi dòng Key Gate Check khác đều đòi tick tường minh bất kể dữ kiện phía sau hiển nhiên tới đâu — "Product request, opportunity and requester captured" cũng được form tạo dự án bảo đảm y hệt — nên tách riêng đúng dòng này ra cho tự pass là không nhất quán, và nó xoá mất chỗ duy nhất ghi nhận rằng có người thực sự đã kiểm tra.
+
+**Riêng mục này chưa bao giờ được đưa cho bộ phận chuyên môn** — cả hai chiều đều là quyết định của ta, nên nó nằm ở đây chứ không nằm trong các phần quy tắc đã xác nhận phía trên. Đáp án Vòng 3 không nhắc tới nó. Tuy vậy họ hai lần bác đúng *kiểu* lập luận này, và đó là lý do giữ nguyên cách sửa thay vì mở lại: **B4** — bốn checklist Phase 1 "đóng góp vào brief nhưng không thay thế việc phê duyệt brief chính thức"; và **B5** — dự án cho người lớn thông thường "vẫn phải ghi *No vulnerable-user group identified* chứ không mặc nhiên coi là đã thoả". **D1** cũng cùng hướng: đòi 3 chữ ký ghi nhận tường minh cho mỗi gate thay vì suy ra. Nếu sau này đội chuyên môn nói rằng một mục được tự động thoả là chấp nhận được khi trường nền đã bắt buộc, thì đây là dòng cần xem lại đầu tiên.
 
 ---
 
@@ -485,7 +491,7 @@ Thay vào đó, MBc360 có mục **"GMP Links"** lưu tham chiếu/hyperlink t�
 
 ## Danh sách câu hỏi cần làm rõ tiếp (follow-up)
 
-> **Cập nhật (21/07/2026): cả 14 câu follow-up đã được trả lời** (nguồn: `docs/Response.txt`). Bảng dưới đây nay ghi đáp án đã chốt cho từng câu. **Chỉ còn F12 thực sự mở** — phụ thuộc vào việc Cosmetri xác nhận độ phủ compliance ASEAN/Việt Nam, nằm ngoài quyền kiểm soát của nhóm ta. Danh sách bằng chứng bắt buộc theo từng gate đầy đủ cho F1 nằm ở phần phụ lục ngay sau bảng này.
+> **Cập nhật (21/07/2026): cả 14 câu follow-up đã được trả lời** (nguồn: `docs/rounds/2026-07-21-sme-reply-F1-F14.txt`). Bảng dưới đây nay ghi đáp án đã chốt cho từng câu. **Chỉ còn F12 thực sự mở** — phụ thuộc vào việc Cosmetri xác nhận độ phủ compliance ASEAN/Việt Nam, nằm ngoài quyền kiểm soát của nhóm ta. Danh sách bằng chứng bắt buộc theo từng gate đầy đủ cho F1 nằm ở phần phụ lục ngay sau bảng này.
 >
 > Chú thích: ✅ = đã trả lời/đóng · ⏳ = vẫn mở.
 
@@ -527,6 +533,127 @@ Thay vào đó, MBc360 có mục **"GMP Links"** lưu tham chiếu/hyperlink t�
 
 ---
 
+## Phụ lục 2 (07/08/2026) — Vòng 3: đáp án về Gate Readiness
+
+**Nguồn:** `docs/rounds/2026-08-07-sme-reply-round3.txt`. **Nội dung đã hỏi:** 19 câu hỏi tổng hợp trong `docs/rules/F1_Per_Gate_Open_Questions.md`, gửi theo 5 phần — A (cách gán 3 tier), B (mục không có chỗ ghi nhận), C (mapping tự suy đoán), D (quyết định đã tự đưa ra theo cách hiểu riêng), E (mục theo từng thị trường). **Tất cả đã được trả lời; file đó nay đã đóng.** Mục có dấu ⚠️ là **đảo ngược hành vi đã xây xong**, tức phải làm lại chứ không chỉ làm thêm.
+
+### Phần A — Gán tier
+
+**A1 — quy tắc gán tier được xác nhận, kèm 2 điều chỉnh.** Quy tắc của ta (từ ngữ có định ngữ như "where applicable"/"where relevant"/"high-risk or borderline" → **Conditional**; thông tin nghiệp vụ/vòng đời mềm → **Supporting**; còn lại → **Mandatory**) là "về cơ bản đúng", bảng phân tier được chấp nhận, và định nghĩa được phát biểu lại:
+
+- **Mandatory** — luôn luôn chặn cứng gate.
+- **Conditional** — **chỉ** chặn cứng khi trigger đã định nghĩa của nó xảy ra.
+- **Supporting** — không tự động chặn, nhưng rủi ro chưa xử lý hoặc thiếu bối cảnh có thể đòi hỏi cảnh báo, action, hoặc quyết định Proceed with Conditions.
+
+Hai mục đổi tier:
+
+| Gate | Mục | Trước | Nay |
+|---|---|---|---|
+| 12 | Change-control links | Supporting | **Conditional** — bắt buộc khi có khiếu nại, phát hiện hậu thị trường, CAPA, thay đổi công thức, thay đổi artwork, tín hiệu an toàn hoặc action cải tiến đã sinh ra một bản ghi Change Control. |
+| 12 | Market feedback | Supporting | **Supporting cho review vòng đời định kỳ, chuyển thành Conditional khi dự án đã launch và tới kỳ post-market review theo lịch.** |
+
+**A2 — Gate 6 "Market-specific pack requirements" = Conditional.** Trở thành bắt buộc khi thị trường đã chọn có yêu cầu cụ thể ảnh hưởng tới: ngôn ngữ · cảnh báo bắt buộc · khai báo thành phần · thông tin bên chịu trách nhiệm · số công bố/đăng ký · pack size · niêm phong chống giả (tamper evidence) · barcode hoặc truy vết · ký hiệu tái chế/môi trường · thông tin bao bì sơ cấp hoặc thứ cấp. **Nếu không có yêu cầu đặc thù nào, người dùng phải ghi N/A kèm lý do** — để trống không đồng nghĩa với "không áp dụng".
+
+**A3 — mọi mục Conditional nay đều có trigger cụ thể.** Đây là câu quan trọng nhất của vòng này: trước đó chỉ 2/11 mục Conditional có trigger hoạt động, nên 9 mục còn lại không bao giờ chặn cứng được dù dự án thực tế là gì. Đội chuyên môn đã cung cấp đủ:
+
+| Gate | Mục Conditional | Trigger khiến nó trở thành bắt buộc |
+|---|---|---|
+| 3 | Review đối thủ / benchmark | Sản phẩm mới, mở rộng claim, tái định vị, yêu cầu do khách hàng/nhà phân phối khởi xướng, hoặc khi có nêu tên sản phẩm benchmark/tham chiếu. **Không** bắt buộc với thay đổi thuần hành chính. |
+| 3 | Regulatory review cho claim rủi ro cao/ranh giới | Bất kỳ claim nào được phân loại Borderline, Therapeutic-adjacent, High Risk, bị hạn chế theo thị trường, liên quan thai kỳ/cho con bú, liên quan trẻ sơ sinh, liên quan bệnh lý, hướng tới nhân viên y tế, hoặc nằm ngoài Claims Library đã duyệt. |
+| 4 | Quét caution thai kỳ/cho con bú | Có chọn Pregnancy, Breastfeeding hoặc Postpartum *(đã triển khai — rule C1)*. |
+| 4 | Review allergen, tạp chất và chất nhiễm | Nguyên liệu chứa hương liệu, tinh dầu, chiết xuất thực vật, protein, chất gây dị ứng đã biết, dung môi tồn dư, rủi ro kim loại nặng, rủi ro vi sinh, tạp chất bị hạn chế, tồn dư quá trình chế biến, hoặc thành phần nguồn tự nhiên biến động. |
+| 5 | Chiến lược bảo quản | Sản phẩm chứa nước, có nước sẵn dùng, dùng nhiều lần, hoặc nhạy cảm vi sinh. Được ghi N/A cho sản phẩm thực sự khan (anhydrous), tự bảo quản, vô trùng hoặc dùng một lần **kèm lý do được ghi nhận**. |
+| 7 | Đánh giá tiếp xúc mẹ và trẻ sơ sinh | Có chọn Pregnancy, Breastfeeding hoặc Postpartum *(đã triển khai — rule C1)*. |
+| 8 | Quy trình phê duyệt human-study | Trước **bất kỳ** nghiên cứu nội bộ hay bên ngoài nào có người tham gia, tình nguyện viên, consumer testing, patch testing, thử nghiệm sử dụng thực tế, thu thập hình ảnh, bảng hỏi, hoặc dữ liệu định danh người tham gia khác. |
+| 9 | Trạng thái hiệu quả bảo quản | Sản phẩm nhạy cảm vi sinh cần hệ bảo quản. |
+| 9 | Trạng thái scale-up / pilot | Công thức mới, tái công thức lớn, quy trình sản xuất mới, chuyển nhà máy, thay đổi thiết bị/quy trình đáng kể, hoặc sản phẩm đã xác định có rủi ro scale-up. |
+| 10 | Bằng chứng hiệu năng sản phẩm | Bất kỳ claim đối ngoại nào phụ thuộc vào bằng chứng hiệu quả, hiệu năng, cảm quan, lâm sàng, đo bằng thiết bị, in vitro, in vivo, sử dụng thực tế hoặc so sánh ở cấp sản phẩm. |
+| 12 | Review PV/PMS | Khi được yêu cầu bởi nhóm sản phẩm, thị trường, chính sách công ty, tín hiệu an toàn, nhóm người dùng dễ tổn thương, xu hướng khiếu nại, hoặc kế hoạch giám sát theo lịch. |
+| 12 | Change-control links | Đã mở một bản ghi Change Control, **hoặc lẽ ra phải mở** vì phát hiện hậu thị trường. |
+| 12 | Market feedback | Tới mốc review sau launch theo lịch, hoặc có ghi nhận khiếu nại, sự cố khách hàng, yêu cầu nhà phân phối, phản bác claim, hoặc vấn đề hiệu năng lặp lại. |
+| 12 | Phản hồi hiệu năng sản phẩm | Khi hiệu quả sản phẩm, trải nghiệm người dùng, lỗi sản phẩm hoặc hiệu năng claim nằm trong phạm vi review hậu thị trường. |
+
+**Costing / khả thi thương mại (Gate 5) vẫn là Supporting** — nhưng chủ dự án chịu trách nhiệm vẫn có thể đưa dự án về **Hold** khi tính khả thi thương mại là điều kiện sống còn để đi tiếp.
+
+> **Ghi chú triển khai:** một số trigger trên cần dữ liệu app chưa thu thập, nên bản thân trigger là việc phải xây chứ không chỉ là bật cấu hình — phân loại loại dự án/loại thay đổi (Gate 3, 9), cờ rủi ro thành phần nguyên liệu (Gate 4), thuộc tính "nhạy cảm vi sinh / chứa nước" của công thức (Gate 5, 9), trường phân loại claim (Gate 3 — do B7 bên dưới cung cấp), và cờ claim phụ thuộc bằng chứng (Gate 10).
+
+### Phần B — Các mục chưa có chỗ ghi nhận (cả 7 đều được chốt: thêm trường mới)
+
+| # | Mục | Đáp án |
+|---|---|---|
+| **B1** | Gate 1 — Nguồn yêu cầu | **Khác với người gửi yêu cầu.** Thêm trường **"Request Origin / Source"** với các lựa chọn: Internal product-development proposal · Management request · Sales request · Marketing request · Customer request · Distributor request · Healthcare-professional request · Consumer feedback · Complaint or post-market signal · Market research or identified opportunity · Competitor or benchmark response · Regulatory change · Supplier or ingredient opportunity · Manufacturing or quality improvement · Reformulation or lifecycle improvement · Other — specify. **Tên và phòng ban người yêu cầu vẫn là trường riêng.** |
+| **B2** | Gate 1 — Phạm vi sản phẩm ban đầu | **Thêm Key Gate Check mới: "Initial product scope defined".** Trường bổ trợ ghi ngắn gọn: loại sản phẩm đề xuất · mục đích dự kiến · đây là phát triển mới, tái công thức, đổi claim, đổi bao bì, mở rộng thị trường hay cải tiến vòng đời · ranh giới đã biết của yêu cầu. |
+| **B3** | Gate 1 — Thị trường & người dùng mục tiêu ban đầu | **Phương án (a).** Thêm phần ghi nhận nhẹ ở Gate 1 — **"Initial target user / life-stage"** và **"Initial target market(s)"**. Đây là thông tin sơ bộ, **không thay thế** đánh giá đầy đủ ở Gate 2; Gate 2 xác nhận, tinh chỉnh và phê duyệt chính thức. |
+| **B4** | Gate 2 — Development brief đã duyệt | **Phương án (a).** Brief là **một bản ghi được kiểm soát riêng hoặc tài liệu được liên kết**, không phải suy ra từ các checklist đã điền. Thêm: **Development Brief status · Development Brief link · Brief version · Brief owner · Approval date.** Bốn checklist Phase 1 *đóng góp vào* brief nhưng **không** thay thế việc phê duyệt brief chính thức. |
+| **B5** | Gate 2 — Cờ người dùng dễ tổn thương | **Phương án (b).** Hệ thống phải phân biệt "đã chọn target user" với "đã nhận diện tường minh bối cảnh dễ tổn thương". Khi chọn bất kỳ nhóm dễ tổn thương nào, bắt buộc có: **cờ vulnerable-user tường minh · safety pathway áp dụng · reviewer chịu trách nhiệm · ghi chú các đánh giá bổ sung cần làm.** Nhóm trigger: Pregnancy · Breastfeeding · Postpartum · Infant 0+ · Trẻ nhỏ · Da nhạy cảm hoặc da tổn thương · Bối cảnh hỗ trợ ung bướu/dễ tổn thương về y tế · Bối cảnh hỗ trợ liên quan thận hoặc sức khỏe đặc thù khác · Bất kỳ nhóm nào Safety hoặc Regulatory xác định cần review tăng cường. **Dự án cho người lớn thông thường vẫn phải ghi "No vulnerable-user group identified"** chứ không mặc nhiên coi là đã thỏa. |
+| **B6** | Gate 2 — Yêu cầu & loại trừ của dự án | **Thêm một requirements section cho Phase 1**, dạng bảng có cấu trúc (category · requirement · priority · owner · notes), gồm: Must-have product requirements · Must-not-have ingredients or features · Intended claims · Claims not to pursue · pH mục tiêu/yêu cầu vật lý nếu đã biết · Yêu cầu cảm quan · Yêu cầu bao bì · Chi phí mục tiêu hoặc ranh giới thương mại · Tiến độ mục tiêu · Thị trường mục tiêu · Ràng buộc pháp lý · Ràng buộc người dùng/life-stage · Sản phẩm benchmark/tham chiếu · Rủi ro kỹ thuật đã biết · Loại trừ tường minh · Giả định khác của dự án. |
+| **B7** | Gate 3 — Phân loại claim sơ bộ | **Phương án (a) — phân loại theo từng claim**, vì các claim trong cùng một dự án có thể mang mức rủi ro khác nhau (một đánh giá ở cấp dự án là quá thô). Mỗi claim có 2 dropdown được kiểm soát: **Claim category** = Cosmetic · Product performance · Sensory · Ingredient-level · Safety/tolerance · Environmental or sustainability · Professional or technical information · Borderline / therapeutic-adjacent · Therapeutic — not permitted within the cosmetic claim pathway · Other — Regulatory review required. **Claim risk** = Low · Medium · High · Prohibited / not acceptable · Pending classification. Đồng thời ghi nhận: từ ngữ đề xuất chính xác · SKU áp dụng · thị trường áp dụng · kênh dự kiến · bằng chứng cần có · trạng thái bằng chứng · cần Regulatory review Y/N · từ ngữ đã duyệt · giới hạn hoặc định ngữ bắt buộc. |
+
+### Phần C — Các mapping ta tự suy đoán
+
+**C1 — Regulatory review cho claim rủi ro cao/ranh giới: đã xác nhận**, và lấy trigger từ phân loại theo từng claim ở B7. Review là bắt buộc khi: category = Borderline / therapeutic-adjacent · category = Therapeutic — not permitted · risk = High · từ ngữ không nằm trong Claims Library đã duyệt · claim khác với từ ngữ đã duyệt trước đó · thị trường áp đặt hạn chế cụ thể · claim liên quan thai kỳ, cho con bú, dùng cho trẻ sơ sinh, bệnh lý, điều trị, phòng ngừa, chữa lành hoặc chứng thực y khoa.
+
+**C2 — mapping của ta quá rộng.** Dòng Key Gate Check hiện có *"Restrictions, exclusions and supplier risks screened"* **vẫn giữ** như một check rộng ở Gate 4, nhưng **phải thêm một mục Mandatory riêng, hẹp: "Prohibited, restricted and caution ingredient screen completed"**, lấy trực tiếp từ kết quả watch-list tự động và phần review có chuyên môn đi kèm.
+
+### Phần D — Các quyết định ta đã tự đưa ra, nay được review
+
+**D1 ⚠️ — cách triển khai sign-off theo từng gate của ta bị bác.** "Owner + Evidence link trên dòng gate" **không** tương đương với Prepared / Reviewed / Approved. Mỗi gate phải có **3 chữ ký riêng biệt được ghi nhận** — Prepared by, Reviewed by, Approved by — và mỗi chữ ký ghi: **người dùng đã xác thực · vai trò · ngày/giờ · quyết định · phiên bản bản ghi · comment khi cần.** Điều này **chặn cứng quyết định gate.** Khối sign-off cấp phase **vẫn giữ như một lớp phê duyệt đóng phase bổ sung, không bị thay thế.** Khi rủi ro thấp, cùng một người có thể prepare nhiều bản ghi gate, nhưng **reviewer hoặc approver phải độc lập với các quyết định tới hạn về an toàn, pháp lý, claim hoặc release.**
+
+**D2 ⚠️ — 2 trong 4 quy tắc claim của Published Information bị thay đổi.**
+
+1. **Liên kết Claim ID trở thành bắt buộc**, không còn tùy chọn: mọi phát ngôn đối ngoại về lợi ích sản phẩm, an toàn, hiệu quả, hiệu năng hoặc mức độ phù hợp đều phải gắn Claim ID. Chỉ giữ tùy chọn **với** thông tin doanh nghiệp thuần túy không chứa claim hay phát biểu kỹ thuật nào về sản phẩm.
+2. **Bộ chọn phải cho chọn cả claim Developing/Pending** — mục đích là ghi nhận sớm claim dự định dùng. Cái mà claim Pending **không** được phép là: Approved for Release · Released · duyệt artwork cuối · xuất bản ra bên ngoài.
+3. **Không khóa cứng từng ký tự.** Hệ thống phải giữ song song **từ ngữ master đã duyệt** và **từ ngữ đề xuất theo kênh**, cùng trạng thái so sánh/review và phê duyệt của reviewer. Cho phép điều chỉnh nhỏ khi ý nghĩa, phạm vi, định ngữ và mức bằng chứng không đổi; mọi thay đổi mang tính thực chất phải tạo bản ghi claim mới hoặc bản sửa đổi. Kiểm tra tương đồng tự động chỉ dùng **như một cảnh báo**, kết luận tương đương cuối cùng do reviewer có thẩm quyền xác nhận.
+4. **Chặn release được xác nhận, và mở rộng thêm:** claim được gắn phải ở trạng thái Supported **và đã được duyệt cho đúng SKU, formula version, thị trường và kênh** trước khi nội dung được lên Approved for Release hoặc Released.
+
+**D3 — Gate 4 "possible match chưa xử lý": đã xác nhận, và nay được đặc tả.** Mỗi kết quả watch-list bị flag sẽ có thêm: **Reviewer assessment** (Critical · Non-critical · Not a true match · Further information required) · Reviewer · Review date · Rationale · Evidence link · **Linked Next Action ID** · Resolution status. **Bắt buộc phải có Next Action thật được kiểm soát — chỉ ghi note là không đủ.** Cách thực thi:
+
+| Đánh giá | Tác động lên Gate 4 |
+|---|---|
+| Critical | Chặn cứng **cả** Proceed lẫn Proceed with Conditions. |
+| Further information required | Chặn Proceed; chỉ cho Proceed with Conditions khi có chấp thuận của người có thẩm quyền **và** có action được kiểm soát gắn kèm. |
+| Non-critical | Chặn Proceed thường cho tới khi ghi nhận xong đánh giá, lý do và action; sau đó có thể cho Proceed with Conditions. |
+| Not a true match | Có thể đóng sau khi ghi nhận lý do và bằng chứng của reviewer. |
+
+**D4 — stub khi import từ Cosmetri được chấp nhận và là cách ưa thích.** Việc import công thức không được thất bại chỉ vì bản ghi bằng chứng trong MBc360 chưa được điền. Điều kiện kèm theo: stub phải gắn nhãn rõ **"Incomplete — evidence review required"** · **không** được mặc định Approved for Use · bằng chứng còn thiếu phải hiện trong Gate Readiness · **Gate 4 không được pass tới khi mọi nguyên liệu áp dụng đã được review đầy đủ hoặc được chấp nhận chính thức qua một quyết định có điều kiện được kiểm soát** · phê duyệt an toàn cuối ở Gate 7 phải dùng trạng thái bằng chứng đã hoàn tất · **Gate 10 và 11 không được dựa vào stub chỉ có định danh mà chưa xử lý.**
+
+### Phần E — Các mục theo thị trường và an toàn
+
+**E1 ⚠️ — Gate 7, sai ở cả hai điểm.**
+- Cần **một bộ kiểm soát safety finding riêng** thay vì chỉ dựa vào Final Safety Sign-off: **Critical safety finding identified (Yes/No) · Mô tả phát hiện · Nguyên liệu/công thức/bối cảnh sử dụng bị ảnh hưởng · Mức độ nghiêm trọng · Action bắt buộc · Owner · Trạng thái · Kết luận của safety reviewer · Evidence link.** **Gate 7 không thể pass khi còn bất kỳ critical safety finding nào đang mở.**
+- **Cách hiểu của ta là sai:** đánh giá thai kỳ/cho con bú ở Gate 7 **không** phải không điều kiện. Nó bắt buộc **khi có chọn Pregnancy, Breastfeeding hoặc Postpartum**; **sản phẩm chỉ dành cho trẻ sơ sinh kích hoạt Infant/Baby Safety pathway** (nhất quán với F2); sản phẩm thông thường **ghi N/A kèm lý do** khi không thuộc pathway nào.
+
+**E2 — Checklist pháp lý Gate 10: phương án (b), kèm một bản ghi tạm.** Chỉ enforce checklist ASEAN **khi có chọn thị trường ASEAN**. Với thị trường ngoài ASEAN, bắt buộc có **Regulatory Checklist Status** tạm thời gồm: thị trường áp dụng · loại hồ sơ yêu cầu · owner · link checklist hoặc bằng chứng · trạng thái · phê duyệt Regulatory. **Việc chưa có template quốc gia dựng sẵn không đồng nghĩa mục này được bỏ trống không enforce** — Regulatory có thể dùng checklist bên ngoài đã duyệt được liên kết vào, cho tới khi profile trong app được cấu hình.
+
+**E3(a) ⚠️ — Gate 10 và 11 chuyển sang theo từng thị trường**, đúng như đã chốt ở A1/F4. Mỗi thị trường đang hoạt động có riêng: Gate 10 readiness · trạng thái hồ sơ/PIF · phê duyệt claims · phê duyệt Regulatory · Gate 11 readiness · phê duyệt launch · ngày phê duyệt · **formula version áp dụng** · **artwork version áp dụng**. Trạng thái tổng thể của dự án hiển thị một trong: *No market approved · Some markets approved · All active markets approved · Market transition in progress*. **Một thị trường được duyệt không được làm cho tất cả thị trường trông như đã sẵn sàng.**
+
+**E3(b) — Gate 11 cần hơn cả soft lock hiện tại.** Cơ chế C4/F9 hiện có phù hợp cho change đang mở ở mức rủi ro thấp/trung bình, nhưng Gate 11 phải đánh giá **phân loại tác động và trạng thái đóng** của từng Change Control đang mở:
+
+| Change đang mở | Tác động ở Gate 11 |
+|---|---|
+| Critical hoặc ảnh hưởng launch | **Chặn cứng launch.** |
+| Ảnh hưởng công thức, artwork, claim, an toàn, pháp lý, bao bì hoặc release | **Chặn cứng trừ khi đã hoàn tất triển khai và verify.** |
+| Thay đổi hành chính rủi ro thấp | Có thể cho Proceed with Conditions sau khi có acknowledgement của người có thẩm quyền. |
+| Đã hoàn tất, bị từ chối, bị hủy hoặc bị thay thế | Không chặn, miễn là đã ghi nhận disposition cuối cùng. |
+
+### Vòng này thay đổi gì trong ứng dụng
+
+**Phải làm lại phần đã ship (4)** — trạng thái tới 07/08/2026:
+1. ❌ **Sign-off theo từng gate** — thay "Owner + Evidence link" bằng một e-signature 3 vai trò, 6 trường thật cho mỗi gate (D1). Chạm cả 12 gate và là hạng mục lớn nhất.
+2. 🟡 **Published Information / claims** — bộ chọn nay đã nhận claim Pending (**xong**; điều kiện chặn ở trạng thái release vốn là cơ chế riêng nên không bị yếu đi). Còn lại: Claim ID thành bắt buộc với phát ngôn về sản phẩm, fill-and-lock chuyển thành master wording vs channel wording với tương đương do reviewer xác nhận, và mở rộng điều kiện chặn release theo SKU + formula version + thị trường + kênh (D2).
+3. 🟡 **Màn hình quét thai kỳ ở Gate 7** — **xong:** không còn không-điều-kiện, nay Conditional theo Pregnancy/Breastfeeding/Postpartum. Trước đó nó chặn **mọi** project, kể cả sản phẩm cho người lớn thông thường, trên sổ caution 12 dòng dành cho maternal. Còn lại: pathway riêng cho trẻ sơ sinh (chờ **A2** của Vòng 2) và một đường ghi N/A kèm lý do riêng (E1).
+4. ❌ **Gate 10–11** — chuyển từ cấp dự án sang readiness theo từng thị trường (E3a). Đây chính là phần việc F4, nay đã hết vướng.
+
+> **Hai câu hỏi mới phát sinh khi làm mục 2 và 3**, đã ghi vào `F1_Per_Gate_Open_Questions.md` → mục "Round 4": dòng *"restricted/caution assessment closed"* ở Gate 7 nghĩa là riêng đánh giá thai kỳ/cho con bú (cách ta đang đọc) hay là một đánh giá rộng hơn vẫn phải áp cho mọi project; và sản phẩm chỉ-cho-trẻ-sơ-sinh có nên tiếp tục bị chặn ở Gate 7 bằng thứ gì đó trong lúc chờ, vì trigger maternal nay không còn kích hoạt cho nó mà Infant pathway thì chưa có.
+
+**Dữ liệu cần thu thập mới:** Request Origin/Source (B1) · Key Gate Check "Initial product scope defined" (B2) · người dùng & thị trường mục tiêu ban đầu ở Gate 1 (B3) · bản ghi Development Brief được kiểm soát (B4) · khối cờ vulnerable-user tường minh (B5) · bảng requirements Phase 1 (B6) · phân loại theo từng claim, category + risk + 9 thuộc tính (B7) · mục kiểm tra riêng cho prohibited/restricted/caution ingredient screen (C2) · đánh giá của reviewer trên watch-list kèm Next Action liên kết (D3) · bộ kiểm soát critical safety finding (E1) · Regulatory Checklist Status tạm cho thị trường ngoài ASEAN (E2).
+
+**Đấu nối trigger (A3):** 12 trigger Conditional nay đã có đặc tả; mỗi cái trở thành chặn cứng thật khi dữ liệu nó đọc đã tồn tại. Một số phụ thuộc vào phần thu thập mới ở trên (đáng chú ý B7 → Gate 3, và thuộc tính nhạy cảm vi sinh → Gate 5 và 9).
+
+**Được xác nhận là đã đúng, không phải sửa:** bản thân quy tắc gán tier (A1), stub khi import Cosmetri (D4, kèm 5 điều kiện cần kiểm chứng), và mẫu thực thi possible-match ở Gate 4 (D3 đi theo đúng hình dạng soft-lock F9 ta đang dùng).
+
+---
+
 ## Đầu vào còn cần cho triển khai (21/07/2026)
 
 Các **câu hỏi về quy tắc đã đóng** (chỉ F12 còn chờ Cosmetri). Việc còn lại là **cung cấp dữ liệu/nội dung** mà các đáp án nay yêu cầu — đây là đầu vào cần thu thập, không phải quyết định cần chốt:
@@ -537,6 +664,12 @@ Các **câu hỏi về quy tắc đã đóng** (chỉ F12 còn chờ Cosmetri). 
 - **F10** — nội dung checklist cụ thể theo từng Market Dossier Profile (mục EU CPSR, Úc, Mỹ, …) do Regulatory cung cấp.
 - **F11** — nội dung Published Product Information Guideline / Claims Library (từ ngữ đã duyệt, bằng chứng bắt buộc theo claim).
 - **F12** — Cosmetri xác nhận độ phủ compliance ASEAN/Việt Nam (phụ thuộc bên ngoài).
+
+**Cập nhật (07/08/2026):** dòng F1/C7 ở trên nay về cơ bản đã được giải quyết — Phụ lục 2 cung cấp điều kiện trigger cho từng mục và các trường còn thiếu, nên phần ánh xạ không còn phải chờ đội chuyên môn nữa. Những gì Vòng 3 **bổ sung** vào danh sách này, vẫn là nội dung chứ không phải quyết định:
+
+- **B7 / C1 / F11** — nội dung **Claims Library** đã duyệt trở thành phụ thuộc nặng hơn trước: trigger regulatory review ở Gate 3 có một vế là "từ ngữ không nằm trong Claims Library đã duyệt", không thể đánh giá được khi thư viện đó chưa tồn tại.
+- **A3** — các điều kiện trigger tham chiếu tới thuộc tính sản phẩm/công thức mà app chưa ghi nhận (loại dự án/loại thay đổi, mức nhạy cảm vi sinh, rủi ro thành phần nguyên liệu). Việc lưu chúng thành trường mới hay suy ra từ dữ liệu sẵn có là phần thiết kế của ta; *quy tắc* thì đã chốt.
+- **E2** — về bản chất không khác F10, nhưng nay có thêm yêu cầu tạm thời: một bản ghi Regulatory Checklist Status cho thị trường ngoài ASEAN, để mục này không bao giờ ở trạng thái không được enforce.
 
 ## NPD Front-End Roadmap (workbook v2, 24/07/2026)
 
@@ -553,10 +686,13 @@ Các **câu hỏi về quy tắc đã đóng** (chỉ F12 còn chờ Cosmetri). 
 
 **Cập nhật (27/07/2026) — nay đã chặn cứng, nhưng đây là quyết định của chủ dự án/dev, chưa đưa cho đội SME xác nhận — xem câu hỏi mở tương ứng ở `F1_Per_Gate_Open_Questions.md` (mục Gate 3) để biết chính xác thiết kế đang chờ xác nhận:** sheet nguồn cũng nêu rằng không tuyên bố (claim) nào được xuất hiện trên bao bì, tài liệu HCP hay tài liệu bán hàng nếu chưa có "Claim ID" đã duyệt lưu hồ sơ — cùng ý với rule của Gate 3: *"claim có thể vẫn đang phát triển, nhưng từ ngữ chưa có bằng chứng không được đánh dấu approved."* Trước đây điều này chỉ được theo dõi trên 1 register mà chưa chặn cứng, vì làm vậy phải sửa quy trình duyệt Published Information hiện có (F11). Nay đã làm: mỗi dòng trong Published Information Approval có thể liên kết (tuỳ chọn) tới 1 Claim ID cụ thể (Claim → Evidence Traceability); dòng đó không thể lưu ở trạng thái đã phát hành ("Approved for Release" / "Released") trừ khi claim đó đã có status "Supported". Dòng không gắn claim nào (ví dụ thông tin công ty thuần tuý) không bị ảnh hưởng. Được chặn ở cả app lẫn server, nên không thể lách qua bằng cách gọi thẳng API.
 
+> **Đã có đáp án (07/08/2026) — xem Phụ lục 2, mục D2.** Đội chuyên môn xác nhận việc chặn release nhưng thay đổi 3 trong 4 lựa chọn thiết kế: gắn Claim ID trở thành **bắt buộc** với mọi phát ngôn về sản phẩm (chỉ tùy chọn với thông tin doanh nghiệp thuần túy), claim **Pending đang phát triển phải chọn được** (để ghi nhận sớm claim dự định dùng — chỗ chặn nằm ở thời điểm release, không phải lúc gắn liên kết), và fill-and-lock được thay bằng **từ ngữ master đã duyệt giữ song song với từ ngữ đề xuất theo kênh**, tương đương do reviewer xác nhận thay vì khóa cứng từng ký tự. Bản thân điều kiện chặn release cũng mở rộng: claim phải Supported **và** đã duyệt cho đúng SKU, formula version, thị trường và kênh.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*
 - Nhóm B và C là quy tắc nghiệp vụ có thể tinh chỉnh dần trong quá trình phát triển mà không nhất thiết phá vỡ kiến trúc, nhưng vẫn cần xác nhận sớm để tránh phải làm lại UI/logic đã xây.
 - Đợt trả lời 16/07/2026 **đảo ngược 3 giả định nền của demo**: (1) pass gate phải đọc thêm sign-off, Next Actions và evidence registers — không chỉ Stage status + Gate decision; (2) backtrack không bao giờ được xóa dữ liệu — cần mô hình event-log/snapshot; (3) Gate 10–12 chuyển thành theo từng thị trường thay vì một luồng chung.
 - Đợt trả lời 21/07/2026 bổ sung thêm 3 điểm **thay đổi demo**: (4) **nhiều version công thức song song** — thay đổi major giữ nguyên track thị trường đã đóng của version cũ và mở track mới theo từng thị trường (F4), đảo ngược giả định "market track cố định từ lúc tạo"; (5) **"Infant 0+" có workflow Infant & Baby Safety riêng**, tách khỏi Skincare for Two (F2); (6) dòng Formula BOM nhập tay phải được **đối chiếu về Cosmetri trước Gate 7**, và Gate 10/11 phải dùng formula Cosmetri được kiểm soát (F14).
-- Tài liệu tham chiếu: `MBc360 Master Product Development System File.xlsx` (55 sheets), bản demo ReactJS hiện tại (`mbc360-app/`), và phản hồi đầy đủ ngày 21/07/2026 của bộ phận chuyên môn (`docs/Response.txt`).
+- Đợt trả lời 07/08/2026 (Phụ lục 2) bổ sung 4 điểm **thay đổi demo** nữa: (7) **sign-off theo từng gate là e-signature 3 vai trò thật**, không phải Owner + Evidence link như ta đã làm (D1); (8) **gắn Claim ID là bắt buộc, claim Pending vẫn chọn được, và từ ngữ được so sánh chứ không khóa cứng** (D2); (9) **đánh giá thai kỳ/cho con bú ở Gate 7 là có điều kiện, không phải không điều kiện**, kèm pathway riêng cho trẻ sơ sinh (E1); (10) **Gate 10 và 11 chuyển sang theo từng thị trường**, nên một thị trường được duyệt không còn làm gate trông như đã sẵn sàng (E3a).
+- Tài liệu tham chiếu: `MBc360 Master Product Development System File.xlsx` (55 sheets), bản demo ReactJS hiện tại (`mbc360-app/`), phản hồi đầy đủ ngày 21/07/2026 của bộ phận chuyên môn (`docs/rounds/2026-07-21-sme-reply-F1-F14.txt`), và phản hồi Vòng 3 ngày 07/08/2026 (`docs/rounds/2026-08-07-sme-reply-round3.txt`).

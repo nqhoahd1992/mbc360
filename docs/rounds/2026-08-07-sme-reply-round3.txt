@@ -1,0 +1,338 @@
+Part A — Tier assignment
+A1. Tiering rule
+Your rule is broadly correct.
+Please retain the following interpretation:
+Mandatory: always hard-blocks the gate.
+Conditional: hard-blocks only when its defined trigger applies.
+Supporting: does not automatically block, but unresolved risk or missing context may require a warning, action or Proceed with Conditions decision.
+The tier assignments in your table are accepted, with two adjustments:
+Gate 12 – Change-control links: change from Supporting to Conditional. It becomes mandatory where a complaint, post-market finding, CAPA, formula change, artwork change, safety signal or improvement action has generated a Change Control record.
+Gate 12 – Market feedback: may remain Supporting for routine lifecycle review, but becomes Conditional where the project has launched and a scheduled post-market review is due.
+All other assignments are accepted.
+A2. Gate 6 — Market-specific pack requirements
+Conditional.
+It becomes mandatory where the selected market has specific requirements affecting:
+language;
+mandatory warnings;
+ingredient declaration;
+responsible-party details;
+notification or registration numbers;
+pack size;
+tamper evidence;
+barcode or traceability;
+recycling or environmental markings;
+primary or secondary packaging information.
+Where no market-specific requirement applies, the user should record N/A with rationale.
+A3. Conditional-item triggers
+Please use the following triggers:
+Gate
+Conditional item
+Trigger
+3
+Competitor or benchmark review
+Mandatory where the project is a new product, claim extension, repositioning project, customer/distributor-led request, or where a benchmark/reference product is named. Not mandatory for a purely administrative change.
+3
+Regulatory review of high-risk or borderline claims
+Mandatory where any proposed claim is classified as Borderline, Therapeutic-adjacent, High Risk, market-restricted, pregnancy/breastfeeding-related, infant-related, disease-related, medical-professional-facing, or otherwise outside the approved claims library.
+4
+Pregnancy/breastfeeding caution screen
+Mandatory when Pregnancy, Breastfeeding or Postpartum is selected.
+4
+Allergen, impurity and contaminant review
+Mandatory where the ingredient or raw material contains fragrance, essential oils, botanical extracts, proteins, known allergens, residual solvents, heavy-metal risk, microbiological risk, restricted impurities, processing residues or variable natural-source composition.
+5
+Preservative strategy
+Mandatory for water-containing, water-available, multi-use or otherwise microbiologically susceptible products. N/A may be used for genuinely anhydrous, self-preserving, sterile or single-use products with documented rationale.
+7
+Maternal and infant-contact assessment
+Mandatory when Pregnancy, Breastfeeding or Postpartum is selected.
+8
+Human-study approval workflow
+Mandatory before any internal or external study involving human participants, volunteers, consumer testing, patch testing, in-use trials, image collection, questionnaires or other identifiable participant data.
+9
+Preservative efficacy status
+Mandatory for microbiologically susceptible products requiring a preservation system.
+9
+Scale-up or pilot status
+Mandatory for new formulas, major reformulations, new manufacturing processes, manufacturing-site transfers, meaningful equipment/process changes, or products with identified scale-up risk.
+10
+Product-performance evidence
+Mandatory where any external claim depends on product-level efficacy, performance, sensory, clinical, instrumental, in vitro, in vivo, consumer-use or comparative evidence.
+12
+PV/PMS review
+Mandatory where required by product category, market, company policy, safety signal, vulnerable-user population, complaint trend or scheduled surveillance plan.
+12
+Change-control links
+Mandatory where a Change Control record has been opened or should be opened because of the post-market finding.
+12
+Market feedback
+Mandatory when the scheduled post-launch review milestone is reached, or when a complaint, customer issue, distributor request, claim challenge or recurring performance concern is recorded.
+12
+Product-performance feedback
+Mandatory where product efficacy, consumer experience, product failure or claim performance is part of the post-market review scope.
+Costing or commercial feasibility may remain Supporting, although the accountable project owner may still place the project on Hold where commercial feasibility is essential to continuation.
+Part B — Missing recording fields
+B1. Gate 1 — Request source
+Yes, this is distinct from the person who submitted the request.
+Please add the field:
+Request Origin / Source
+Suggested options:
+Internal product-development proposal
+Management request
+Sales request
+Marketing request
+Customer request
+Distributor request
+Healthcare-professional request
+Consumer feedback
+Complaint or post-market signal
+Market research or identified opportunity
+Competitor or benchmark response
+Regulatory change
+Supplier or ingredient opportunity
+Manufacturing or quality improvement
+Reformulation or lifecycle improvement
+Other — specify
+The requester’s name and department should remain separate fields.
+B2. Gate 1 — Initial product scope
+Yes. Please add a new Key Gate Check:
+Initial product scope defined
+The supporting field should briefly capture:
+proposed product type;
+intended purpose;
+whether it is new development, reformulation, claim change, packaging change, market extension or lifecycle improvement;
+known boundaries of the request.
+B3. Gate 1 — Initial target market and user
+Please use option (a).
+Add a lightweight Gate 1 capture:
+Initial target user / life-stage
+Initial target market(s)
+These are preliminary fields and do not replace the complete Gate 2 assessment.
+Gate 2 should confirm, refine and formally approve them.
+B4. Gate 2 — Approved development brief
+Please use option (a).
+The development brief should be a discrete controlled record or linked document, not merely an inference from completed checklists.
+Add:
+Development Brief status
+Development Brief link
+Brief version
+Brief owner
+Approval date
+The four Phase 1 checklist sections should contribute to the brief but should not substitute for formal brief approval.
+B5. Gate 2 — Vulnerable-user flags
+Please use option (b).
+The system should distinguish between selecting a target user and explicitly recognising a vulnerable-use context.
+Where any vulnerable group is selected, require:
+explicit vulnerable-user flag;
+applicable safety pathway;
+responsible reviewer;
+notes on additional assessments required.
+Suggested vulnerable triggers include:
+Pregnancy
+Breastfeeding
+Postpartum
+Infant 0+
+Young child
+Sensitive or compromised skin
+Oncology or medically vulnerable support context
+Renal or other specific health-related support context
+Any user population identified by Safety or Regulatory as requiring enhanced review
+A general-adult project should still record No vulnerable-user group identified rather than satisfying the requirement by default.
+B6. Gate 2 — Project requirements and exclusions
+Yes. Please add a Phase 1 requirements section containing:
+Must-have product requirements
+Must-not-have ingredients or features
+Intended claims
+Claims not to pursue
+Target pH or physical requirements, where known
+Sensory requirements
+Packaging requirements
+Target cost or commercial boundary
+Target timeline
+Target markets
+Regulatory constraints
+User/life-stage constraints
+Benchmark or reference product
+Known technical risks
+Explicit exclusions
+Other project assumptions
+This may be a structured table with category, requirement, priority, owner and notes.
+B7. Gate 3 — Preliminary claim classification
+Please use option (a): classification per selected claim.
+Each proposed claim should have two controlled dropdowns.
+Claim category
+Cosmetic
+Product performance
+Sensory
+Ingredient-level
+Safety/tolerance
+Environmental or sustainability
+Professional or technical information
+Borderline / therapeutic-adjacent
+Therapeutic — not permitted within the cosmetic claim pathway
+Other — Regulatory review required
+Claim risk
+Low
+Medium
+High
+Prohibited / not acceptable
+Pending classification
+The system should also capture:
+exact proposed wording;
+applicable SKU;
+applicable market;
+intended channel;
+evidence required;
+evidence status;
+Regulatory review required Y/N;
+approved wording;
+limitations or mandatory qualifiers.
+A single project-level classification would be too broad because different claims within one project can carry different risk.
+Part C — Assumed mappings
+C1. Regulatory review of high-risk or borderline claims
+Confirmed.
+The trigger should use the per-claim classification defined under B7.
+A Regulatory review is mandatory where:
+category = Borderline / therapeutic-adjacent;
+category = Therapeutic — not permitted;
+risk = High;
+wording is not in the approved Claims Library;
+the claim varies from previously approved wording;
+the market imposes a specific restriction;
+the claim relates to pregnancy, breastfeeding, infant use, disease, treatment, prevention, healing or medical endorsement.
+C2. Prohibited and restricted ingredient screen
+Please create a narrow, dedicated confirmation for the ingredient-level screen.
+The existing row, “Restrictions, exclusions and supplier risks screened,” should remain as a broader Gate 4 check.
+Add a separate mandatory item:
+Prohibited, restricted and caution ingredient screen completed
+This should draw directly from the automated watch-list results and associated qualified review.
+Part D — Decisions already built
+D1. Prepared, reviewed and approved sign-off
+The current implementation is not sufficient.
+Owner + Evidence link is not equivalent to Prepared, Reviewed and Approved sign-off.
+Each gate should have distinct recorded roles:
+Prepared by
+Reviewed by
+Approved by
+For each sign-off, capture:
+authenticated user;
+role;
+date/time;
+decision;
+record version;
+comment where required.
+This should hard-block the gate decision.
+The phase-level sign-off should remain as an additional phase-closure approval and should not be replaced by the per-gate sign-offs.
+Where risk is low, the same person may prepare multiple gate records, but the reviewer or approver should be independent for safety-, regulatory-, claims- or release-critical decisions.
+D2. Claim-support and Published Information Approval rules
+Claim ID linkage
+Every external product-benefit, safety, efficacy, performance or suitability statement should be required to link to a Claim ID.
+Linkage may remain optional only for genuinely non-product corporate information that contains no product claim or technical statement.
+Picker restrictions
+Developing or Pending claims should be selectable.
+The purpose is to document the intended claim early.
+However, Pending claims must not allow:
+Approved for Release;
+Released;
+final artwork approval;
+external publication.
+Wording adaptation
+Do not enforce an absolute character-for-character lock across every channel.
+The system should retain:
+master approved wording;
+proposed channel wording;
+comparison/review status;
+reviewer approval.
+Minor adaptation may be allowed where the meaning, scope, qualifiers and evidence burden remain unchanged.
+Any material change must create a new or revised claim record.
+Automated similarity checking may be used as a warning, but final equivalence must be confirmed by an authorised reviewer.
+Release block
+Confirmed. A linked claim must be Supported and approved for the relevant SKU, formula version, market and channel before content can reach Approved for Release or Released.
+D3. Possible formula match at Gate 4
+Please add the following fields to each flagged watch-list result:
+Reviewer assessment:
+Critical
+Non-critical
+Not a true match
+Further information required
+Reviewer
+Review date
+Rationale
+Evidence link
+Linked Next Action ID
+Resolution status
+A genuine controlled Next Action must be used. A note alone is not sufficient.
+Rules:
+Critical: hard-blocks Proceed and Proceed with Conditions.
+Further information required: blocks Proceed; may allow Proceed with Conditions only with authorised acceptance and a linked controlled action.
+Non-critical: blocks plain Proceed until the assessment, rationale and action are recorded; may permit Proceed with Conditions.
+Not a true match: may be closed after reviewer rationale and evidence are recorded.
+D4. Supplier and RM Evidence stub on Cosmetri import
+Creating an identity-only stub record on import is acceptable and preferred.
+A formula import should not fail merely because the MBc360 evidence record has not yet been populated.
+However:
+The stub must be clearly labelled Incomplete — evidence review required.
+It must not default to Approved for Use.
+Missing evidence must appear in Gate Readiness.
+Gate 4 must not pass until all applicable raw materials are adequately reviewed or formally accepted through a controlled conditional decision.
+Gate 7 final safety approval must use the completed evidence status.
+Gates 10 and 11 must not rely on unresolved identity-only stubs.
+Part E — Market-specific and safety items
+E1. Gate 7 — Critical safety findings and pregnancy/breastfeeding scope
+Please add a distinct safety-finding control rather than relying solely on the Final Safety Sign-off.
+Suggested fields:
+Critical safety finding identified: Yes / No
+Finding description
+Affected ingredient/formula/use context
+Severity
+Required action
+Owner
+Status
+Safety reviewer conclusion
+Evidence link
+Gate 7 cannot pass while any critical safety finding is open.
+The pregnancy/breastfeeding assessment at Gate 7 should not be unconditional for every project.
+It is mandatory when Pregnancy, Breastfeeding or Postpartum is selected.
+Infant-only products should trigger the Infant/Baby Safety pathway instead.
+General products should record N/A with rationale where neither pathway applies.
+E2. Gate 10 — Regulatory checklist before all market profiles exist
+Please use option (b).
+Until the additional market profiles have been developed:
+Enforce the ASEAN checklist only where an ASEAN market is selected.
+For non-ASEAN markets, require a temporary Regulatory Checklist Status with:
+applicable market;
+required dossier type;
+owner;
+checklist or evidence link;
+status;
+Regulatory approval.
+The absence of a built-in country template should not mean the item is unenforced.
+Regulatory may use an approved linked external checklist until the relevant app profile is configured.
+E3. Gates 10 and 11 per-market readiness and Change Control
+E3(a) Per-market gates
+Gate 10 and Gate 11 should operate per market, as previously confirmed.
+Each active market should have its own:
+Gate 10 readiness;
+dossier/PIF status;
+claims approval;
+Regulatory approval;
+Gate 11 readiness;
+launch approval;
+approval dates;
+applicable formula version;
+applicable artwork version.
+Overall project status may show:
+No market approved
+Some markets approved
+All active markets approved
+Market transition in progress
+One approved market must not cause all markets to appear ready.
+E3(b) Gate 11 Change Control
+The existing soft-lock mechanism is suitable for low- or medium-risk open changes.
+At Gate 11, apply the following:
+Critical or launch-impacting open Change Control: hard-block launch.
+Formula, artwork, claims, safety, regulatory, packaging or release-impacting change: hard-block unless implementation and verification are complete.
+Low-risk administrative change: may permit Proceed with Conditions following authorised acknowledgement.
+Completed, rejected, cancelled or superseded change: does not block if final disposition is recorded.
+Therefore, Gate 11 requires more than a duplicate warning. It must evaluate the impact classification and closure status of each open Change Control.
+These decisions should complete the current readiness-rule questions.
