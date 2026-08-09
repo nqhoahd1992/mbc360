@@ -389,6 +389,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q15 | Gate 10/11 — chữ ký 3 vai trò là mỗi thị trường một bộ hay một bộ chung; Phase 4 đóng thế nào | 🟡 | 18 |
 | R4-Q16 | Cột `Claim category` sẵn có trên SKU Claims / PIF Register vốn ghi gì | 🟡 | 19 |
 | R4-Q17 | Trường Gate 1 để tuỳ chọn lúc tạo dự án, bắt buộc ở Gate 1 | 🔴 | 20 |
+| R4-Q18 | Bảng requirements Phase 1 — giá trị của cột Priority, và bao nhiêu dòng phải xong | 🔴 | 21 |
 
 ---
 
@@ -653,3 +654,15 @@ Tám trường mới của Gate 1 (nguồn yêu cầu · người yêu cầu + p
 **Câu hỏi:** có đúng là các trường này thuộc về **Gate 1** chứ không phải điều kiện để mở dự án không? Nếu các anh muốn bắt buộc ngay lúc tạo, chúng tôi sẽ chuyển — nhưng khi đó ba mục Gate 1 tương ứng sẽ luôn xanh và không còn ý nghĩa kiểm soát; lúc đó nên bỏ chúng khỏi danh sách readiness thay vì giữ một mục không bao giờ chặn.
 
 **Nếu trả lời khác:** `ProjectList.tsx` (form tạo dự án) đặt các trường thành bắt buộc, và bỏ 3 item `sg01-source` / `sg01-scope` / `sg01-market-user` khỏi `gateReadiness.ts` hoặc chuyển chúng về chỉ đọc dòng Key Gate Check.
+
+#### R4-Q18 · Bảng requirements Phase 1 — giá trị cột Priority, và bao nhiêu dòng phải xong 🔴
+
+**Đã build 2026-08-09** cùng B6. Hai chỗ B6 không nói, chúng tôi phải tự chọn:
+
+**(a) Giá trị của cột Priority.** B6 yêu cầu bảng có cột `priority` nhưng **không đưa giá trị nào**. Chúng tôi dùng lại đúng danh sách đã được xác nhận ở F8 cho Next Action: **Low / Medium / High / Critical**. Dùng lại một danh sách đã chốt là suy đoán nhẹ hơn nhiều so với bịa ra danh sách mới, nhưng vẫn là suy đoán.
+
+**(b) Bao nhiêu trong 16 dòng phải hoàn tất thì Gate 2 mới qua.** B6 cho danh sách 16 dòng nhưng không nói cần bao nhiêu. Bắt cả 16 là **bịa ra một quy tắc** — vài dòng thật sự không áp dụng cho một số dự án ("Benchmark or reference product" trên dự án không có benchmark nào). Nên hiện chỉ kiểm **2 dòng**, đúng hai vế mà chính phụ lục gọi tên trong tiêu đề *"requirements **and** exclusions"*: `Must-have product requirements` và `Explicit exclusions`. Các dòng còn lại vẫn hiện trên bảng và vẫn đóng được bằng trạng thái, chỉ là không chặn gate.
+
+**Câu hỏi:** (a) Low / Medium / High / Critical có đúng ý cho Priority không, hay các anh muốn thang khác (ví dụ Must / Should / Could)? (b) Có dòng nào trong 16 dòng **bắt buộc** phải hoàn tất trước khi Gate 2 qua ngoài hai dòng trên không?
+
+**Nếu trả lời khác:** (a) `NEXT_ACTION_PRIORITIES` trong `types/index.ts`, hoặc tách một danh sách riêng cho requirement; (b) thêm/bớt `requirementDone` trong `sg02-requirements` ở `gateReadiness.ts`.

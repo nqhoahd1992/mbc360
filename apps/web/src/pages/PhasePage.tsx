@@ -229,6 +229,7 @@ export default function PhasePage() {
             items={project.requirements[section.key] ?? []}
             currentGateNumber={currentGateNum}
             isRowLocked={(item) => isGateRefLocked(project, item.gate)}
+            columns={section.columns}
           />
         </div>
       ))}

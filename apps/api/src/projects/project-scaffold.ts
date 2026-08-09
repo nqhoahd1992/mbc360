@@ -124,6 +124,7 @@ function requirementItemCreates(): Prisma.RequirementItemCreateWithoutProjectInp
           gate: row.gate,
           requirement: row.requirement,
           minimumRequirement: row.minimum,
+        priority: undefined,
           rationale: row.rationale,
           owner: row.owner,
         });

@@ -57,6 +57,13 @@ export interface ChecklistItem {
 export interface RequirementItem {
   gate: string;
   requirement: string;
+  // Phase 1 only (2026-08-09, SME Round 3 B6). Optional rather than a separate
+  // type: the difference from Phases 2-4 is one column, and this repo's rule is
+  // to drive columns from config rather than fork the table. Values reuse the
+  // NextAction priority vocabulary confirmed under F8 — B6 asks for a priority
+  // column but names no values, and reusing an already-confirmed list is a much
+  // weaker assumption than inventing one [ASSUMPTION: R4-Q18].
+  priority?: string;
   minimumRequirement: string;
   rationale: string;
   owner: string;
@@ -259,7 +266,8 @@ export type NextActionStatus =
   | 'Ready for Verification'
   | 'Closed'
   | 'Cancelled';
-export type NextActionPriority = 'Low' | 'Medium' | 'High' | 'Critical';
+export const NEXT_ACTION_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'] as const;
+export type NextActionPriority = (typeof NEXT_ACTION_PRIORITIES)[number];
 
 // Terminal statuses — an action in one of these no longer blocks a gate.
 export const NEXT_ACTION_TERMINAL_STATUSES: NextActionStatus[] = ['Closed', 'Cancelled'];

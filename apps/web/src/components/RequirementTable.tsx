@@ -1,6 +1,9 @@
 import { Card, Input, Select, Table, Tag, Tooltip } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import type { RequirementItem, WorkStatus } from '@mbc360/shared/types';
+import type { ColumnsType } from 'antd/es/table';
+import type { RequirementColumnKey } from '@mbc360/shared/config/phases';
+import { NEXT_ACTION_PRIORITIES } from '@mbc360/shared/types';
 import { WORK_STATUSES } from '@mbc360/shared/config/gates';
 import { isMandatoryRequirementRow } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
@@ -14,6 +17,7 @@ export default function RequirementTable({
   items,
   currentGateNumber,
   isRowLocked,
+  columns: visibleColumns,
 }: {
   projectId: string;
   sectionKey: string;
@@ -25,7 +29,16 @@ export default function RequirementTable({
   // read-only (inputs disabled). A requirement section can span several gates,
   // so this is per-row, not per-table.
   isRowLocked?: (item: RequirementItem) => boolean;
+  // Which columns this section shows (RequirementSectionConfig.columns).
+  // Omitted = the Phases 2-4 default set. Added 2026-08-09 so Phase 1's B6
+  // table can drop the columns that mean nothing at the opportunity stage and
+  // add `priority`, without forking this component.
+  columns?: RequirementColumnKey[];
 }) {
+  const shows = (key: RequirementColumnKey) => !visibleColumns || visibleColumns.includes(key);
+  // Owner is config-set (from the workbook) on Phases 2-4 and read-only there;
+  // on a section that declares its own columns it is the user's to fill in.
+  const ownerEditable = !!visibleColumns;
   const setSection = useAppStore((s) => s.setRequirementSection);
   const { draft, dirty, update, markSaved, discard } = useDraft(items);
 
@@ -35,21 +48,12 @@ export default function RequirementTable({
     markSaved();
   };
 
-  return (
-    <Card size="small" title={title}>
-      <Table
-        size="small"
-        rowKey={(r) => r.requirement}
-        dataSource={draft}
-        pagination={false}
-        scroll={{ x: 1100 }}
-        onRow={(r) => {
-          const required = isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';
-          const isCurrentGate = r.gate === currentGateNumber;
-          return required && isCurrentGate ? { style: { background: '#fffbe6' } } : {};
-        }}
-        columns={[
+  // Every column carries its `key` so a section can select a subset; the
+  // annotation keeps antd's render callbacks typed (an `as const` array
+  // widens them to `any`).
+  const allColumns: (ColumnsType<RequirementItem>[number] & { key: RequirementColumnKey })[] = [
           {
+            key: 'gate',
             title: 'Gate',
             width: 60,
             render: (_, r) => (
@@ -57,6 +61,7 @@ export default function RequirementTable({
             ),
           },
           {
+            key: 'requirement',
             title: 'Requirement / field',
             width: 200,
             dataIndex: 'requirement',
@@ -74,15 +79,48 @@ export default function RequirementTable({
               );
             },
           },
-          { title: 'Minimum requirement', width: 260, dataIndex: 'minimumRequirement' },
+          { key: 'minimum', title: 'Minimum requirement', width: 260, dataIndex: 'minimumRequirement' },
           {
+            key: 'rationale',
             title: 'Rationale / control reason',
             width: 260,
             dataIndex: 'rationale',
             render: (v) => <span style={{ color: '#666' }}>{v}</span>,
           },
-          { title: 'Owner', width: 150, dataIndex: 'owner' },
           {
+            key: 'priority',
+            title: 'Priority',
+            width: 130,
+            render: (_, r, i) => (
+              <Select
+                size="small"
+                style={{ width: '100%' }}
+                allowClear
+                disabled={isRowLocked?.(r)}
+                value={r.priority || undefined}
+                options={NEXT_ACTION_PRIORITIES.map((o) => ({ value: o, label: o }))}
+                onChange={(v?: string) => patch(i, { priority: v ?? '' })}
+              />
+            ),
+          },
+          {
+            key: 'owner',
+            title: 'Owner',
+            width: 150,
+            dataIndex: 'owner',
+            render: ownerEditable
+              ? (_, r, i) => (
+                  <Input
+                    size="small"
+                    disabled={isRowLocked?.(r)}
+                    value={r.owner}
+                    onChange={(e) => patch(i, { owner: e.target.value })}
+                  />
+                )
+              : undefined,
+          },
+          {
+            key: 'status',
             title: 'Status',
             width: 140,
             render: (_, r, i) => (
@@ -97,6 +135,7 @@ export default function RequirementTable({
             ),
           },
           {
+            key: 'evidenceLink',
             title: 'Evidence link',
             width: 160,
             render: (_, r, i) => (
@@ -110,13 +149,29 @@ export default function RequirementTable({
             ),
           },
           {
+            key: 'notes',
             title: 'Notes / action',
             width: 200,
             render: (_, r, i) => (
               <Input size="small" value={r.notes} disabled={isRowLocked?.(r)} onChange={(e) => patch(i, { notes: e.target.value })} />
             ),
           },
-        ]}
+        ];
+
+  return (
+    <Card size="small" title={title}>
+      <Table
+        size="small"
+        rowKey={(r) => r.requirement}
+        dataSource={draft}
+        pagination={false}
+        scroll={{ x: 1100 }}
+        onRow={(r) => {
+          const required = isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';
+          const isCurrentGate = r.gate === currentGateNumber;
+          return required && isCurrentGate ? { style: { background: '#fffbe6' } } : {};
+        }}
+        columns={allColumns.filter((c) => shows(c.key))}
       />
       <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
     </Card>

@@ -81,6 +81,7 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
         gate: row.gate,
         requirement: row.requirement,
         minimumRequirement: row.minimum,
+        priority: undefined,
         rationale: row.rationale,
         owner: row.owner,
         status: 'Not Started',

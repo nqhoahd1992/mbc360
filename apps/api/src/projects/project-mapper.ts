@@ -163,6 +163,7 @@ export function toProjectData(p: ProjectWithAll, gateChangeLog: GateChangeLogEnt
     (requirements[item.sectionKey] ??= []).push({
       gate: item.gate,
       requirement: item.requirement,
+      ...(item.priority ? { priority: item.priority } : {}),
       minimumRequirement: item.minimumRequirement,
       rationale: item.rationale,
       owner: item.owner,

@@ -386,6 +386,7 @@ model RequirementItem {
   itemOrder          Int
   gate               String
   requirement        String
+  priority           String? // Phase 1 only (SME Round 3 B6)
   minimumRequirement String
   rationale          String
   owner              String

@@ -20,7 +20,23 @@ export interface RequirementSectionConfig {
   key: string;
   title: string;
   rows: RequirementRowConfig[];
+  // Which columns this section shows. Omitted = the Phases 2-4 default. Added
+  // 2026-08-09 so Phase 1's B6 table can drop the three columns that have no
+  // meaning at the opportunity stage and add `priority`, without forking
+  // RequirementTable (see docs/plans/Post_Round3_Design_Decisions.md #4).
+  columns?: RequirementColumnKey[];
 }
+
+export type RequirementColumnKey =
+  | 'gate'
+  | 'requirement'
+  | 'minimum'
+  | 'rationale'
+  | 'priority'
+  | 'owner'
+  | 'status'
+  | 'evidenceLink'
+  | 'notes';
 
 export interface KeyGateCheckConfig {
   gate: string;
@@ -126,7 +142,40 @@ export const PHASE_1: PhaseConfig = {
       ],
     },
   ],
-  requirementSections: [],
+  requirementSections: [
+    {
+      // Added 2026-08-09, SME Round 3 B6 — the 16 rows are transcribed verbatim
+      // from their reply. Phase 1 had NO requirement section at all, which is
+      // why sg02-requirements could never be checked against anything.
+      //
+      // Each row is a category the team must respond to; the actual requirement
+      // text goes in Notes, the same way Phases 2-4 use their fixed rows. The
+      // three columns dropped below have no meaning at the opportunity stage:
+      // "minimum requirement" and "rationale / control reason" are downstream
+      // engineering concepts, and evidence links belong to later gates.
+      key: 'projectRequirements',
+      title: 'Project Requirements & Exclusions',
+      columns: ['requirement', 'notes', 'priority', 'owner', 'status'],
+      rows: [
+      { gate: '02', requirement: 'Must-have product requirements', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Must-not-have ingredients or features', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Intended claims', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Claims not to pursue', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Target pH or physical requirements, where known', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Sensory requirements', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Packaging requirements', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Target cost or commercial boundary', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Target timeline', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Target markets', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Regulatory constraints', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'User/life-stage constraints', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Benchmark or reference product', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Known technical risks', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Explicit exclusions', minimum: '', rationale: '', owner: '' },
+      { gate: '02', requirement: 'Other project assumptions', minimum: '', rationale: '', owner: '' },
+      ],
+    },
+  ],
   keyGateChecks: [
     { gate: '01', check: 'Product request, opportunity and requester captured' },
     { gate: '01', check: 'Initial project record opened and owner assigned' },
@@ -238,6 +287,11 @@ export const PHASE_2: PhaseConfig = {
   ],
   keyGateChecks: [
     { gate: '04', check: 'Ingredient functions identified and RM document pack requested' },
+    // Added 2026-08-09, SME Round 3 C2 — verbatim from their reply. The row
+    // below ("Restrictions, exclusions and supplier risks screened") stays as
+    // the broader Gate 4 check; this one is the narrow, dedicated confirmation
+    // of the ingredient-level watch-list screen they asked for.
+    { gate: '04', check: 'Prohibited, restricted and caution ingredient screen completed' },
     { gate: '04', check: 'Restrictions, exclusions and supplier risks screened' },
     { gate: '04', check: 'Ingredient evidence / registry links added or gap actions opened' },
     { gate: '05', check: 'Formula route, BOM and costing started' },

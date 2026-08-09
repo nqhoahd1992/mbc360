@@ -283,10 +283,25 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     },
   ],
   SG02: [
-    // sg02-brief: still `manual` — no field represents "the brief" anywhere
-    // (not a Key Gate Check, not a checklist section, not on Project
-    // Identification). Open question — see docs/rules/F1_Per_Gate_Open_Questions.md.
-    { id: 'sg02-brief', label: 'Approved development brief', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      // Wired 2026-08-09 (SME Round 3 B4, option a): the brief is "a discrete
+      // controlled record or linked document, not merely an inference from
+      // completed checklists", so this reads the new Development Brief register
+      // and NOT the four Phase 1 checklist sections — the team ruled that
+      // substitution out explicitly. registerRowsComplete is non-vacuous by
+      // design, so an untouched register does not pass.
+      id: 'sg02-brief',
+      label: 'Approved development brief',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'registerHasRows', register: 'developmentBrief' },
+          { kind: 'registerRowsComplete', register: 'developmentBrief', columns: ['briefStatus', 'briefLink', 'briefOwner'] },
+          { kind: 'registerNoBadRows', register: 'developmentBrief', column: 'briefStatus', badValues: ['Draft', 'In Review'] },
+        ],
+      },
+    },
     {
       // Merged 2026-07-26 (user-requested) from two separate rows
       // (sg02-user + sg02-user-detail) into one, so the panel shows exactly
@@ -339,20 +354,51 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg02-vulnerable',
       label: 'Vulnerable-user flags',
       tier: 'Mandatory',
-      // Wired 2026-07-26 to the target-user checklist, which IS where the
-      // vulnerable-user flags live (Pregnancy / Breastfeeding / Postpartum /
-      // Infant 0+ / Sensitive skin / Cancer patient support / …). The open
-      // question was whether this is a 3rd reuse of sg02-user's evidence or a
-      // distinct per-item check; reusing it is the same shared-evidence pattern
-      // already used at sg01-request / sg01-source, and a per-item cardinality
-      // rule ("which flags must be answered") is not something to invent.
-      check: { kind: 'checklistHasSelection', section: 'targetUsers' },
+      // Rewired 2026-08-09 (SME Round 3 B5, option b). It used to read the
+      // targetUsers checklist — the same evidence as sg02-user — so it was
+      // satisfied the moment ANY target user was picked, including a plain
+      // General adult. The team rejected that outright: "the system should
+      // distinguish between selecting a target user and explicitly recognising
+      // a vulnerable-use context ... a general-adult project should still
+      // record 'No vulnerable-user group identified' rather than satisfying the
+      // requirement by default."
+      //
+      // Only `vulnerableGroup` is required on every row: the other three
+      // columns (pathway / reviewer / additional assessments) are meaningless
+      // on the "No vulnerable-user group identified" row, and requiring them
+      // there would be inventing a rule. B5 asks for them "where any vulnerable
+      // group is selected" — that per-row conditional is not expressible with
+      // the current check kinds and is left for the trigger work.
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'registerHasRows', register: 'vulnerableUserAssessment' },
+          { kind: 'registerRowsComplete', register: 'vulnerableUserAssessment', columns: ['vulnerableGroup'] },
+        ],
+      },
     },
-    // sg02-requirements: still `manual` — PHASE_1.requirementSections is
-    // empty (config/phases.ts), so there is no requirement-table data at all
-    // for Phase 1, unlike Phases 2-4. Open question — see
-    // docs/rules/F1_Per_Gate_Open_Questions.md.
-    { id: 'sg02-requirements', label: 'Project requirements and exclusions', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      // Wired 2026-08-09 (SME Round 3 B6), replacing `manual`. Phase 1 had NO
+      // requirement section at all, which is why this could never be checked.
+      //
+      // Deliberately NOT requiring all 16 rows Completed: the team gave the row
+      // list but no cardinality rule, and several rows genuinely will not apply
+      // to a given project ("Benchmark or reference product" on a project with
+      // no benchmark). Requiring every row would be inventing a rule. Two rows
+      // are checked instead — the two the appendix names in its own wording,
+      // "requirements AND exclusions" — and the WorkStatus rules already let a
+      // row be closed as not-applicable.
+      id: 'sg02-requirements',
+      label: 'Project requirements and exclusions',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'requirementDone', section: 'projectRequirements', requirement: 'Must-have product requirements' },
+          { kind: 'requirementDone', section: 'projectRequirements', requirement: 'Explicit exclusions' },
+        ],
+      },
+    },
     // --- End of the 6 F1-named Gate 2 items (order matches the appendix
     // exactly, 2026-07-26, user-requested) — everything below is NOT one of
     // the SME's named items, so its order among itself doesn't carry meaning.
@@ -595,10 +641,24 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       },
     },
     {
+      // Narrowed 2026-08-09 (SME Round 3 C2). The Key Gate Check row alone was
+      // too broad — it bundles restrictions, exclusions AND supplier risks into
+      // one tick, and supplier risk is not an ingredient-prohibition matter at
+      // all. The team asked for "a narrow, dedicated confirmation for the
+      // ingredient-level screen", keeping the existing row "as a broader Gate 4
+      // check". So both are now required, and the new dedicated row draws on the
+      // automated watch-list results (sg04-no-remove / sg04-pb-screen enforce
+      // the results themselves; this is the qualified review of them).
       id: 'sg04-prohibited-screen',
       label: 'Prohibited and restricted ingredient screen',
       tier: 'Mandatory',
-      check: { kind: 'gateCheckDone', gate: '04', check: 'Restrictions, exclusions and supplier risks screened' },
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '04', check: 'Restrictions, exclusions and supplier risks screened' },
+          { kind: 'gateCheckDone', gate: '04', check: 'Prohibited, restricted and caution ingredient screen completed' },
+        ],
+      },
     },
     {
       id: 'sg04-no-remove',

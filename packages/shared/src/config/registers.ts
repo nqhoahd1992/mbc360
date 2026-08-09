@@ -1049,6 +1049,76 @@ const changeTemplates: RegisterConfig = {
   ],
 };
 
+// Gate 2 "Approved development brief" (2026-08-09, SME Round 3 B4, option a).
+// Modelled as a register rather than fields on the project, because the team
+// asked for "a discrete controlled record or linked document, not merely an
+// inference from completed checklists" — and because a register brings its own
+// CRUD, gate lock and API route for free. `mode: 'register'` (not 'fixed') so
+// the check on it cannot be vacuously satisfied by seeded rows: an untouched
+// brief register is genuinely empty.
+const developmentBrief: RegisterConfig = {
+  key: 'developmentBrief',
+  title: 'Development Brief',
+  sheetName: 'Development_Brief',
+  description:
+    'The approved development brief as a controlled record. The four Phase 1 checklist sections contribute to the brief but do not substitute for formal brief approval.',
+  mode: 'register',
+  gate: '02',
+  reviewOwner: REVIEW_SPECS.salesMarketing,
+  columns: [
+    { key: 'briefStatus', label: 'Brief status', type: 'select', width: 150, options: ['Draft', 'In Review', 'Approved', 'Superseded'] },
+    { key: 'briefLink', label: 'Brief link', type: 'text', width: 200 },
+    { key: 'briefVersion', label: 'Brief version', type: 'text', width: 110 },
+    { key: 'briefOwner', label: 'Brief owner', type: 'text', width: 140 },
+    { key: 'approvalDate', label: 'Approval date', type: 'text', width: 120 },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
+  ],
+};
+
+// Gate 2 "Vulnerable-user flags" (2026-08-09, SME Round 3 B5, option b).
+// The team rejected the previous behaviour outright: the item used to be
+// satisfied as soon as the Target Users checklist had ANY selection, so a plain
+// General adult product counted as "vulnerable users considered". They asked for
+// "selecting a target user" and "explicitly recognising a vulnerable-use
+// context" to stop being the same signal — and for a general-adult project to
+// still have to record "No vulnerable-user group identified" rather than
+// passing by default.
+const vulnerableUserAssessment: RegisterConfig = {
+  key: 'vulnerableUserAssessment',
+  title: 'Vulnerable-User Assessment',
+  sheetName: 'Vulnerable_User_Assessment',
+  description:
+    'Explicit recognition of whether this product touches a vulnerable-use group. A general-adult product must still record "No vulnerable-user group identified".',
+  mode: 'register',
+  gate: '02',
+  reviewOwner: REVIEW_SPECS.quality,
+  columns: [
+    {
+      key: 'vulnerableGroup',
+      label: 'Vulnerable group',
+      type: 'select',
+      width: 200,
+      // Transcribed from B5's own list, plus the explicit "none" value the team
+      // asked for so an absence is recorded rather than inferred from silence.
+      options: [
+        'No vulnerable-user group identified',
+        'Pregnancy',
+        'Breastfeeding',
+        'Postpartum',
+        'Infant 0+',
+        'Young child',
+        'Sensitive or compromised skin',
+        'Oncology or medically vulnerable support context',
+        'Renal or other health-related support context',
+        'Other population identified by Safety or Regulatory',
+      ],
+    },
+    { key: 'safetyPathway', label: 'Applicable safety pathway', type: 'text', width: 190 },
+    { key: 'responsibleReviewer', label: 'Responsible reviewer', type: 'text', width: 160 },
+    { key: 'additionalAssessments', label: 'Additional assessments required', type: 'textarea', width: 230 },
+  ],
+};
+
 const gmpLinks: RegisterConfig = {
   key: 'gmpLinks',
   title: 'GMP Manufacturing Links',
@@ -2084,6 +2154,8 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   productFamilyRegister,
   formulationChangeRegister,
   changeTemplates,
+  developmentBrief,
+  vulnerableUserAssessment,
   gmpLinks,
   campaignsSocialMedia,
   productDevelopmentProfile,
@@ -2308,6 +2380,7 @@ const DEPARTMENTS: RawDept[] = [
     description: 'Test-report index, eye safety, evidence summary, formulation safety and R&I efficacy/claims evidence.',
     reviewOwner: REVIEW_SPECS.quality,
     items: [
+      'vulnerableUserAssessment',
       'testReportIndex',
       'eyeSafetyEvidence',
       { title: 'Product Evidence Summary', sheetName: 'George-Product_Evid_Summ', page: 'evidence', gate: 'ALL' },
@@ -2370,6 +2443,7 @@ const DEPARTMENTS: RawDept[] = [
     description: 'Campaign declarations, HCP/distributor answer packs, panel feedback, change control and templates.',
     reviewOwner: REVIEW_SPECS.salesMarketing,
     items: [
+      'developmentBrief',
       'campaignsSocialMedia',
       'hcpEfficacyAnswer',
       'hcpTestReportPack',

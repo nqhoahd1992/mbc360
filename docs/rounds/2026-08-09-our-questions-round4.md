@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has twenty questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has twenty-one questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Question 20** — a choice we made while building the Gate 1 fields you asked for.
+5. **Questions 20–21** — choices we made while building the Gate 1 and Gate 2 fields you asked for.
 
 ---
 
@@ -217,6 +217,16 @@ The trade-off is that a newly created project shows three outstanding items at G
 
 **Question:** is that right — these belong to Gate 1 rather than to opening a project? If you would rather they were mandatory at creation, we will move them; but the three Gate 1 items reading them would then always pass, and we would recommend removing them from the readiness list rather than keeping a check that can never block.
 
+### Question 21 — The Phase 1 requirements table: priority values, and how many rows must be complete
+
+We have built the Phase 1 requirements table from your B6 list, with all sixteen rows. Two things your answer did not specify, so we chose:
+
+**Priority values.** You asked for a priority column but did not name the values. We reused the ones you already confirmed for Next Actions: **Low, Medium, High, Critical**. Reusing a list you have already approved seemed safer than inventing a new one.
+
+**How many rows must be complete for Gate 2 to pass.** You gave the sixteen rows but not how many are required. Requiring all sixteen would be inventing a rule — some genuinely will not apply to a given project, such as "Benchmark or reference product" where there is no benchmark. So we check only two, the two your own heading names: **Must-have product requirements** and **Explicit exclusions**. The other fourteen still appear and can still be closed, but they do not block the gate.
+
+**Question:** (a) are Low / Medium / High / Critical the right priority values, or would you prefer a different scale such as Must / Should / Could? (b) Are there rows beyond those two that must be complete before Gate 2 can pass?
+
 ---
 
 ## Summary
@@ -227,6 +237,6 @@ The trade-off is that a newly created project shows three outstanding items at G
 | 2–4 | Superseding a formula version · defining "critical" gaps · PV/PMS scope | Open since 21 July; 2 and 4 block work we are ready to start |
 | 5–7 | Gate 7 scope · Gate 4 threshold · unclassified claims | Already built on our reading — rework if wrong |
 | 8–19 | Which record represents each of your trigger conditions, and two data-model points | Redesign if wrong, no rework |
-| 20 | Whether the new Gate 1 fields are required at project creation | Already built — rework if wrong |
+| 20–21 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table | Already built — rework if wrong |
 
-Questions 5 to 20 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
+Questions 5 to 21 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
