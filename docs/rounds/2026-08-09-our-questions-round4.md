@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has nineteen questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has twenty questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,6 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
+5. **Question 20** — a choice we made while building the Gate 1 fields you asked for.
 
 ---
 
@@ -204,6 +205,20 @@ If these are the same thing, adding a second column would create two places reco
 
 ---
 
+## Question 20 — Are the Gate 1 fields required to open a project, or required to pass Gate 1?
+
+We have built the fields you asked for in B1, B2 and B3 — request origin, requester, project nature, initial scope, and the preliminary target user and markets.
+
+We made them **optional when a project is first created**, and mandatory only for Gate 1 to pass. Two reasons: your appendix lists them as Gate 1 requirements rather than creation requirements, and at the opportunity stage some genuinely are not known yet.
+
+There is also a mechanical reason worth stating, because it has bitten us before. If a field is mandatory on the creation form, then a Gate 1 check that reads it is always satisfied — it can never block anything, and becomes decoration. We made exactly that mistake earlier with the project owner field and had to undo it.
+
+The trade-off is that a newly created project shows three outstanding items at Gate 1 until someone fills them in. We think that is correct: Gate 1 is work to be done, not a step that completes itself.
+
+**Question:** is that right — these belong to Gate 1 rather than to opening a project? If you would rather they were mandatory at creation, we will move them; but the three Gate 1 items reading them would then always pass, and we would recommend removing them from the readiness list rather than keeping a check that can never block.
+
+---
+
 ## Summary
 
 | # | Topic | Why it matters |
@@ -212,5 +227,6 @@ If these are the same thing, adding a second column would create two places reco
 | 2–4 | Superseding a formula version · defining "critical" gaps · PV/PMS scope | Open since 21 July; 2 and 4 block work we are ready to start |
 | 5–7 | Gate 7 scope · Gate 4 threshold · unclassified claims | Already built on our reading — rework if wrong |
 | 8–19 | Which record represents each of your trigger conditions, and two data-model points | Redesign if wrong, no rework |
+| 20 | Whether the new Gate 1 fields are required at project creation | Already built — rework if wrong |
 
-Questions 5 to 19 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
+Questions 5 to 20 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

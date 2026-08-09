@@ -47,7 +47,7 @@ export default function EvidenceClaimSupport() {
         description="The prospective evidence plan hard-blocks Formula BOM (Gate 05); the detailed test protocol hard-blocks Gate 08 once a prototype exists."
       />
 
-      <ProjectIdentificationCard identity={project.identity} />
+      <ProjectIdentificationCard project={project} />
 
       <DynamicTable
         config={evidencePlanProspective}

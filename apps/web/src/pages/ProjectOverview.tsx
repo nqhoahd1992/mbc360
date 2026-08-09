@@ -25,7 +25,7 @@ export default function ProjectOverview() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <ProjectIdentificationCard identity={project.identity} />
+      <ProjectIdentificationCard project={project} editable />
 
       <Card
         size="small"

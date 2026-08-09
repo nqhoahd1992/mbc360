@@ -199,7 +199,7 @@ export default function PhasePage() {
       )}
 
       <div id="sec-identification">
-        <ProjectIdentificationCard identity={project.identity} />
+        <ProjectIdentificationCard project={project} editable={phase === 1} />
       </div>
 
       <div id="sec-gate-flow">

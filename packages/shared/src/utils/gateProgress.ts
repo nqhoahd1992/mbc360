@@ -171,6 +171,8 @@ function evaluateReadinessCheck(
       const row = (project.requirements[check.section] ?? []).find((r) => r.requirement === check.requirement);
       return { evaluable: true, satisfied: row?.status === 'Completed' };
     }
+    case 'identityFieldFilled':
+      return { evaluable: true, satisfied: !!project.identity[check.field]?.trim() };
     case 'gateFieldFilled': {
       const record = project.gates.find((g) => g.gateId === `SG${check.gate}`);
       return { evaluable: true, satisfied: !!record?.[check.field]?.trim() };
@@ -418,6 +420,8 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: '/bom' };
     case 'skincareForTwo':
       return phaseSectionLink(gateId, 'sec-requirement-skincareForTwo');
+    case 'identityFieldFilled':
+      return phaseSectionLink(gateId, 'sec-identification');
     case 'gateFieldFilled':
       return phaseSectionLink(gateId, 'sec-gate-flow');
     case 'allOf':

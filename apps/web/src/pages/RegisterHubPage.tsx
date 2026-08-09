@@ -143,7 +143,7 @@ export default function RegisterHubPage() {
             {config.title}
           </Typography.Title>
         </div>
-        <ProjectIdentificationCard identity={project.identity} />
+        <ProjectIdentificationCard project={project} />
         {/* Prominent, dedicated "Review owner" section right under Project
             Identification (2026-07-23). Composed from the project's own
             assigned people (identity.reviewers) via composeReviewOwner —
@@ -298,7 +298,7 @@ export default function RegisterHubPage() {
         )}
       </div>
 
-      <ProjectIdentificationCard identity={project.identity} />
+      <ProjectIdentificationCard project={project} />
 
       {group.key === 'dept-system' ? (
         <Tabs

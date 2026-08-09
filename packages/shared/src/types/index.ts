@@ -404,6 +404,35 @@ export interface ProjectIdentity {
   // hides the project from the default list; only a role holding
   // `project|archive` may set it. Absent = active.
   archived?: { at: string; by?: string };
+  // ---------------------------------------------------------------------
+  // Gate 1 "Opportunity & Request" capture (2026-08-09, SME Round 3 B1/B2/B3).
+  // Deliberately OPTIONAL here and NOT required on the Create New Project form,
+  // even though they are Mandatory at Gate 1: the appendix lists them as GATE 1
+  // requirements, not creation requirements, and at the opportunity stage some
+  // genuinely are not known yet. Making them create-form-mandatory would repeat
+  // the sg01-owner mistake — a check that reads a field the form guarantees is
+  // vacuously satisfied by construction and can never actually block. Someone
+  // must go and fill these in for Gate 1 to pass. [ASSUMPTION: R4-Q17]
+  // ---------------------------------------------------------------------
+  // B1 — where the request originated (REQUEST_ORIGIN_OPTIONS). Distinct from
+  // the requester below: "the requester's name and department should remain
+  // separate fields".
+  requestOrigin?: string;
+  requestOriginOther?: string; // free text, only when requestOrigin is 'Other — specify'
+  requesterName?: string;
+  requesterDepartment?: string;
+  // B2 — supporting detail for the "Initial product scope defined" Key Gate
+  // Check. `projectNature` is a controlled value rather than part of the prose
+  // because two Conditional triggers have to read it (see PROJECT_NATURE_OPTIONS).
+  projectNature?: string;
+  initialScope?: string;
+  // B3 — deliberately lightweight and SEPARATE from the Gate 02 target-user /
+  // target-market checklists: "These are preliminary fields and do not replace
+  // the complete Gate 2 assessment. Gate 2 should confirm, refine and formally
+  // approve them." Wiring Gate 1 to the Gate 02 checklists would have forced the
+  // team to finish Gate 2's work before Gate 1 could close.
+  initialTargetUsers?: string;
+  initialTargetMarkets?: string;
 }
 
 // Generic evidence-register row (Supplier_RM_Evidence, Prohibited_Ingredients,

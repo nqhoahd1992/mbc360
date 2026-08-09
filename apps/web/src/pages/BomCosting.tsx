@@ -262,7 +262,7 @@ export default function BomCosting() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <ProjectIdentificationCard identity={project.identity} />
+      <ProjectIdentificationCard project={project} />
 
       <PhaseDependencyAlert
         reached={hasReachedPhase(project, 2)}

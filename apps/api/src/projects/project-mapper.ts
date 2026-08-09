@@ -247,6 +247,17 @@ export function toProjectData(p: ProjectWithAll, gateChangeLog: GateChangeLogEnt
       productSku: p.productSku,
       ownerDepartment: p.ownerDepartment,
       markets: p.markets.map((m) => m.market),
+      // Gate 1 opportunity capture (B1/B2/B3) — nullable in the database,
+      // omitted rather than sent as null so the readiness check's `?.trim()`
+      // treats "never filled" and "cleared" identically.
+      ...(p.requestOrigin ? { requestOrigin: p.requestOrigin } : {}),
+      ...(p.requestOriginOther ? { requestOriginOther: p.requestOriginOther } : {}),
+      ...(p.requesterName ? { requesterName: p.requesterName } : {}),
+      ...(p.requesterDepartment ? { requesterDepartment: p.requesterDepartment } : {}),
+      ...(p.projectNature ? { projectNature: p.projectNature } : {}),
+      ...(p.initialScope ? { initialScope: p.initialScope } : {}),
+      ...(p.initialTargetUsers ? { initialTargetUsers: p.initialTargetUsers } : {}),
+      ...(p.initialTargetMarkets ? { initialTargetMarkets: p.initialTargetMarkets } : {}),
       reviewers,
       ...(p.archivedAt
         ? { archived: { at: p.archivedAt.toISOString().slice(0, 10), by: p.archivedBy?.displayName } }

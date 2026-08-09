@@ -46,7 +46,7 @@ export default function EvidenceSearchRules() {
         description="No need or claim may progress to formula or label without an assigned evidence Grade, a passed transferability check (or explicit inference flag), and a complete, dated, linked search record."
       />
 
-      <ProjectIdentificationCard identity={project.identity} />
+      <ProjectIdentificationCard project={project} />
 
       <DynamicTable
         config={evidenceHierarchyGrades}

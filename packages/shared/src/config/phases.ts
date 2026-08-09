@@ -131,6 +131,13 @@ export const PHASE_1: PhaseConfig = {
     { gate: '01', check: 'Product request, opportunity and requester captured' },
     { gate: '01', check: 'Initial project record opened and owner assigned' },
     { gate: '01', check: 'Initial constraints, known deadlines and risk flags recorded' },
+    // Added 2026-08-09, SME Round 3 B2 — the only Key Gate Check row in this
+    // config that does NOT come from the source workbook. The team confirmed
+    // our proposed wording verbatim ("Yes. Please add a new Key Gate Check:
+    // Initial product scope defined"). It exists because the three rows above
+    // could all be ticked without anyone having recorded what the product
+    // actually IS — "constraints, deadlines and risks" is not scope.
+    { gate: '01', check: 'Initial product scope defined' },
     { gate: '02', check: 'Target user / life stage / use context selected' },
     { gate: '02', check: 'Target markets and success criteria linked' },
     { gate: '02', check: 'Commercial planning inputs entered or marked N/A' },

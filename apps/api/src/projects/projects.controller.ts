@@ -309,6 +309,15 @@ export class ProjectsController {
     return this.projects.setCosting(user, id, body.patch ?? {}, body.expectedVersion);
   }
 
+  @Put(':id/identity')
+  setIdentity(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { patch: Partial<ProjectData['identity']>; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.setIdentity(user, id, body.patch ?? {}, body.expectedVersion);
+  }
+
   @Put(':id/next-actions')
   setNextActions(
     @CurrentUser() user: SessionUser,

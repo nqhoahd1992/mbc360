@@ -126,6 +126,17 @@ model Project {
   targetLaunchDate DateTime @db.Date
   productSku       String
   ownerDepartment  String
+  // Gate 1 "Opportunity & Request" capture (2026-08-09, SME Round 3 B1/B2/B3).
+  // All nullable on purpose: these are Gate 1 requirements, not creation
+  // requirements — see the comment on ProjectIdentity in @mbc360/shared.
+  requestOrigin       String?
+  requestOriginOther  String?
+  requesterName       String?
+  requesterDepartment String?
+  projectNature       String? // PROJECT_NATURE_OPTIONS — read by two Conditional triggers
+  initialScope        String?
+  initialTargetUsers  String?
+  initialTargetMarkets String?
   // Optimistic lock (BACKEND_PLAN §3 principle 8). Every mutation bumps it
   // inside the same transaction that reads it; a client sending a stale
   // expectedVersion gets 409 Conflict instead of silently overwriting the

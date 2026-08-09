@@ -215,6 +215,10 @@ export const setPackagingBom = (id: string, lines: ProjectData['packagingBom'], 
 export const setCosting = (id: string, patch: Partial<CostingInputs>, v: number) =>
   put(id, 'costing', { patch }, v);
 
+// Only the Gate 1 opportunity fields are writable — see setIdentity in the API.
+export const setIdentity = (id: string, patch: Partial<ProjectData['identity']>, v: number) =>
+  put(id, 'identity', { patch }, v);
+
 export const setNextActions = (
   id: string,
   gateIds: string[],

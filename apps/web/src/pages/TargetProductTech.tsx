@@ -42,7 +42,7 @@ export default function TargetProductTech() {
         description="Step 3 of the NPD Front-End Roadmap — hard-blocks Formula BOM (Gate 05) until signed off."
       />
 
-      <ProjectIdentificationCard identity={project.identity} />
+      <ProjectIdentificationCard project={project} />
 
       <DynamicTable
         config={targetProductProfile}

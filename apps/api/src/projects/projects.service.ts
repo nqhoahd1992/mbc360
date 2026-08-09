@@ -741,6 +741,48 @@ export class ProjectsService {
     });
   }
 
+  // Gate 1 opportunity capture (2026-08-09, SME Round 3 B1/B2/B3). The FIRST
+  // identity-mutation path in the system: identity was previously write-once at
+  // POST /projects and had no update route at all.
+  //
+  // Only the eight Gate-1 fields are writable. The identifying fields
+  // (productCode, projectLead, productSku, markets, reviewers, ...) stay
+  // write-once deliberately — changing them is a different, larger question
+  // than "record where this request came from", and nothing in Round 3 asked
+  // for it. Gate-locked on gate '01' like every other gate-1 evidence surface,
+  // so correcting it after Gate 1 passes requires Backtrack (rule B4).
+  async setIdentity(
+    user: SessionUser,
+    id: string,
+    patch: Partial<ProjectData['identity']>,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'identity.updated', async (tx, _row, project) => {
+      if (isGateRefLocked(project, '01')) {
+        throw new ForbiddenException(
+          'The opportunity and request record belongs to gate 01, which has passed — it is read-only (use Backtrack to reopen it).',
+        );
+      }
+      const writable = [
+        'requestOrigin',
+        'requestOriginOther',
+        'requesterName',
+        'requesterDepartment',
+        'projectNature',
+        'initialScope',
+        'initialTargetUsers',
+        'initialTargetMarkets',
+      ] as const;
+      const data: Record<string, string | null> = {};
+      for (const field of writable) {
+        if (field in patch) data[field] = (patch[field] ?? '').trim() || null;
+      }
+      if (Object.keys(data).length === 0) return { fields: [] };
+      await tx.project.update({ where: { id }, data });
+      return { fields: Object.keys(data) };
+    });
+  }
+
   // --- Phase 5: next actions / market tracks / study approvals ---
 
   // Replaces the actions for the given gates only — the card shows a per-phase

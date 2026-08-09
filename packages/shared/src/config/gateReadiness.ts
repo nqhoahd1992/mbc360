@@ -89,6 +89,19 @@ export type ReadinessCheck =
   // every role" as ONE clean Mandatory item instead of two awkwardly-split
   // single-column items.
   | { kind: 'registerRowsComplete'; register: string; columns: string[] }
+  // A `ProjectIdentity` field is non-empty (2026-08-09, SME Round 3 B1/B2/B3).
+  //
+  // An earlier `identityFieldFilled` kind was DELETED on 2026-08-07 because its
+  // only field, `projectLead`, is required on the Create New Project form — so
+  // the check was vacuously satisfied by construction and could never block.
+  // This kind is the same shape, and is only safe because the fields it reads
+  // are deliberately OPTIONAL at creation (see the comment on those fields in
+  // types/index.ts): someone has to go and fill them in for Gate 1 to pass.
+  //
+  // Before adding a field here, ask the question that killed the last one: can
+  // this field ever actually be empty on a real project? If not, the check is
+  // decoration, not enforcement.
+  | { kind: 'identityFieldFilled'; field: 'requestOrigin' | 'projectNature' | 'initialScope' | 'initialTargetUsers' | 'initialTargetMarkets' }
   // A specific field on the Phase Gate Flow row itself (`ProjectData.gates`
   // entry for `gate`) is non-empty. This is NOT vacuous:
   // `owner`/`dueDate`/`evidenceLink`/`notes` on a gate record start
@@ -195,7 +208,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // with no elaboration). Correctly challenged: if the team meant one
     // piece of evidence, they would have written one line. Reopened as a
     // question — see docs/rules/F1_Per_Gate_Open_Questions.md.
-    { id: 'sg01-source', label: 'Request source', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      // Wired 2026-08-09 (SME Round 3 B1). The team confirmed this IS distinct
+      // from the requester, and supplied the exact 16-option list now in
+      // REQUEST_ORIGIN_OPTIONS — closing the guess that had been reverted here.
+      id: 'sg01-source',
+      label: 'Request source',
+      tier: 'Mandatory',
+      check: { kind: 'identityFieldFilled', field: 'requestOrigin' },
+    },
     {
       // Not one of the 5 named items in the F1 Appendix, but this row was
       // ALREADY mandatory before F1 existed — rule B3 requires every Key Gate
@@ -210,13 +231,41 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       source: 'b3',
       check: { kind: 'gateCheckDone', gate: '01', check: 'Initial constraints, known deadlines and risk flags recorded' },
     },
-    // sg01-scope / sg01-market-user: still `manual` — no matching field exists
-    // yet (the closest Key Gate Check row is semantically different, and the
-    // only market/user checklist is tagged Gate 02, not Gate 01). Open
-    // questions for the subject-matter team — see
-    // docs/rules/F1_Per_Gate_Open_Questions.md.
-    { id: 'sg01-scope', label: 'Initial product scope', tier: 'Mandatory', check: { kind: 'manual' } },
-    { id: 'sg01-market-user', label: 'Initial target market and user', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      // Wired 2026-08-09 (SME Round 3 B2), replacing `manual`. Three signals in
+      // one line: the new Key Gate Check row must be ticked, AND the two pieces
+      // of scope detail behind it must actually be recorded. The Key Gate Check
+      // alone would be a bare tick; the fields alone would skip the explicit
+      // confirmation every sibling row requires. `projectNature` is listed last
+      // by the allOf link convention (most specific check last).
+      id: 'sg01-scope',
+      label: 'Initial product scope',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '01', check: 'Initial product scope defined' },
+          { kind: 'identityFieldFilled', field: 'initialScope' },
+          { kind: 'identityFieldFilled', field: 'projectNature' },
+        ],
+      },
+    },
+    {
+      // Wired 2026-08-09 (SME Round 3 B3, option (a)): a lightweight Gate 1
+      // capture that is deliberately NOT the Gate 02 checklists. Pointing this
+      // at those would have forced Gate 2's full target-user and market work to
+      // finish before Gate 1 could close — collapsing two gates into one.
+      id: 'sg01-market-user',
+      label: 'Initial target market and user',
+      tier: 'Mandatory',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'identityFieldFilled', field: 'initialTargetUsers' },
+          { kind: 'identityFieldFilled', field: 'initialTargetMarkets' },
+        ],
+      },
+    },
     {
       // Added 2026-07-28 — every gate's F1 list ends with this same line (see
       // the note above GATE_READINESS). Checks the Gate 01 Phase Gate Flow

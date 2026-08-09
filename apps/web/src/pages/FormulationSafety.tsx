@@ -41,7 +41,7 @@ export default function FormulationSafety() {
         description="This is the main evidence used to close Gate 07 (Maternal & Baby-Contact Safety), and is reused again at Gate 10 (PIF-03 Safety assessment)."
       />
 
-      <ProjectIdentificationCard identity={project.identity} />
+      <ProjectIdentificationCard project={project} />
 
       <DynamicTable
         config={formulationSafetyProfile}

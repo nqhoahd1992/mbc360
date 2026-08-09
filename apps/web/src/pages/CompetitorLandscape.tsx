@@ -47,7 +47,7 @@ export default function CompetitorLandscape() {
         description="Step 2 of the NPD Front-End Roadmap — sign-off gate SG03, and reused as a hard block on Formula BOM (Gate 05)."
       />
 
-      <ProjectIdentificationCard identity={project.identity} />
+      <ProjectIdentificationCard project={project} />
 
       <DynamicTable
         config={competitorLandscape}

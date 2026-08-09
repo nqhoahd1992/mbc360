@@ -388,6 +388,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q14 | Cờ rủi ro thành phần là thuộc tính của nguyên liệu hay của dự án | 🟡 | 17 |
 | R4-Q15 | Gate 10/11 — chữ ký 3 vai trò là mỗi thị trường một bộ hay một bộ chung; Phase 4 đóng thế nào | 🟡 | 18 |
 | R4-Q16 | Cột `Claim category` sẵn có trên SKU Claims / PIF Register vốn ghi gì | 🟡 | 19 |
+| R4-Q17 | Trường Gate 1 để tuỳ chọn lúc tạo dự án, bắt buộc ở Gate 1 | 🔴 | 20 |
 
 ---
 
@@ -638,3 +639,17 @@ Nếu hai cái là một, tạo cột thứ hai sẽ sinh ra hai chỗ ghi cùng
 **Câu hỏi:** cột `Claim category` sẵn có trên sổ đó vốn dùng để ghi gì, và nó có phải chính là "Claim category" trong đáp án B7 (Cosmetic · Product performance · Sensory · Ingredient-level · Safety/tolerance · Environmental · Professional/technical · Borderline · Therapeutic — not permitted · Other) không?
 
 **Nếu là một:** mở rộng cột sẵn có thành dropdown 10 giá trị, không tạo cột mới.
+
+#### R4-Q17 · Trường Gate 1 để tuỳ chọn lúc tạo dự án, bắt buộc ở Gate 1 🔴
+
+**Đã build 2026-08-09** cùng lúc với B1/B2/B3.
+
+Tám trường mới của Gate 1 (nguồn yêu cầu · người yêu cầu + phòng ban · loại dự án · phạm vi ban đầu · người dùng và thị trường mục tiêu ban đầu) **không** bắt buộc trên form Tạo dự án mới, dù chúng là Mandatory ở Gate 1.
+
+**Lý do:** phụ lục liệt kê chúng là yêu cầu **của Gate 1**, không phải yêu cầu để tạo dự án; và ở giai đoạn cơ hội, vài trường thật sự chưa biết (thị trường ban đầu chẳng hạn). Quan trọng hơn: nếu bắt buộc lúc tạo thì check đọc chúng trở thành **vacuous** — luôn luôn thoả, không bao giờ chặn được. Đó đúng là lỗi `sg01-owner` đã mắc và phải hoàn nguyên: một check đọc trường mà form đã bảo đảm thì chỉ là trang trí.
+
+Đánh đổi: dự án vừa tạo xong sẽ hiện 3 mục chưa đạt ở Gate 1 cho tới khi có người vào điền. Chúng tôi coi đó là đúng — Gate 1 là bước phải làm, không phải bước tự xong.
+
+**Câu hỏi:** có đúng là các trường này thuộc về **Gate 1** chứ không phải điều kiện để mở dự án không? Nếu các anh muốn bắt buộc ngay lúc tạo, chúng tôi sẽ chuyển — nhưng khi đó ba mục Gate 1 tương ứng sẽ luôn xanh và không còn ý nghĩa kiểm soát; lúc đó nên bỏ chúng khỏi danh sách readiness thay vì giữ một mục không bao giờ chặn.
+
+**Nếu trả lời khác:** `ProjectList.tsx` (form tạo dự án) đặt các trường thành bắt buộc, và bỏ 3 item `sg01-source` / `sg01-scope` / `sg01-market-user` khỏi `gateReadiness.ts` hoặc chuyển chúng về chỉ đọc dòng Key Gate Check.
