@@ -14,7 +14,9 @@ Luật C7 định nghĩa **Conditional** là *"hard-blocks only when its defined
 
 Nhưng "có luật" ≠ "cài được". Mỗi trigger cần **dữ liệu có cấu trúc** để máy đánh giá, và phần lớn dữ liệu đó app chưa thu thập. File này liệt kê từng trigger: tên đề xuất, đọc từ mục UI nào, hiện thiếu gì.
 
-**Trạng thái tổng: 15 điều kiện được cấp · 1 trigger đã cài (`skincareForTwo`, phủ 3 item) · 12 item còn chờ dữ liệu.**
+**Trạng thái tổng (cập nhật 09/08): 15 điều kiện được cấp · 3 trigger đã cài (`skincareForTwo`, `humanStudyPlanned`, `newOrRepositionedProject`) phủ 5 item · 9 item còn chờ.**
+
+> **Một trigger bị chặn vì lý do kiến trúc, không phải vì thiếu dữ liệu:** `openChangeControl` cần đọc bản ghi Change Control, mà **`ChangeRecord` không nằm trong `ProjectData`** — nó là một slice riêng ở store và trong envelope của API, vì trang Change Control hiển thị xuyên nhiều dự án. Engine readiness chỉ nhận đúng `ProjectData`. Chép `changes` vào `ProjectData` để một trigger chạy được sẽ tạo bản sao thứ hai của một danh sách đã có chủ — đúng kiểu trùng lặp rồi sẽ lệch. Làm đúng thì phải hoặc chuyển hẳn `changes` vào `ProjectData`, hoặc cho engine nhận thêm một tham số; cả hai đều lớn hơn bản thân item này. Tier của `sg12-change-links` đã sửa đúng theo A1 (Supporting → Conditional), hành vi giữ nguyên advisory như trước.
 
 Cách một trigger được cài (3 chỗ, không phải sửa engine):
 
@@ -33,13 +35,13 @@ Cách một trigger được cài (3 chỗ, không phải sửa engine):
 | # | Trigger đề xuất | Item áp dụng | Gate | UI | Nguồn | Trạng thái |
 |---|---|---|---|---|---|---|
 | 1 | `skincareForTwo` | `sg04-pb-screen`, `sg07-caution-closed`, `sg07-maternal-infant` | 4, 7 | 1 | b | ✅ **đã cài** |
-| 2 | `openChangeControl` | `sg12-change-links` | 12 | 1 | b | 🟢 cài được ngay |
-| 3 | `humanStudyPlanned` | `sg08-human-study` | 8 | 1–3 | b | 🟢 cài được ngay (cần chốt tín hiệu) |
+| 2 | `openChangeControl` | `sg12-change-links` | 12 | 1 | b | ⛔ **bị chặn** — `changes` không nằm trong `ProjectData` (xem dưới); tier đã sửa Supporting → Conditional |
+| 3 | `humanStudyPlanned` | `sg08-human-study` | 8 | 1 | b | ✅ **đã cài** 09/08 — đọc `studyProtocolSetup.plannedValue` |
 | 4 | `postMarketPerformanceScope` | `sg12-performance` | 12 | 1 | b | 🟢 cài được ngay |
 | 5 | `microbiologicallySusceptible` | `sg05-preservative`, `sg09-pet` | 5, 9 | 2 | a + b | 🟡 1 ô mới, dùng cho 2 item |
 | 6 | `postMarketSignal` | `sg12-feedback` | 12 | 3 | a + b | 🟡 thiếu mốc review theo lịch |
 | 7 | `pvPmsRequired` | `sg12-pv-pms` | 12 | 3–4 | a + b + c | 🟡 phần lớn suy được |
-| 8 | `newOrRepositionedProject` | `sg03-benchmark` | 3 | 2 | a | 🟠 chờ Tranche 1 (B2 + B6) |
+| 8 | `newOrRepositionedProject` | `sg03-benchmark` | 3 | 3 | a | ✅ **đã cài** 09/08 — Tranche 1 đã cấp đủ 3 vế |
 | 9 | `scaleUpOrProcessChange` | `sg09-scaleup` | 9 | 3 | a + b | 🟠 chờ Tranche 1 (B2) |
 | 10 | `rmCompositionRisk` | `sg04-allergen` | 4 | 1 | a | 🟠 cần cột mới |
 | 11 | `claimNeedsRegulatoryReview` | `sg03-reg-claims` | 3 | 2 | a + c | 🔴 chờ B7 + Claims Library |

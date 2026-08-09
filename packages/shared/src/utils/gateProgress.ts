@@ -97,16 +97,53 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
   switch (trigger) {
     case 'skincareForTwo':
       return isSkincareForTwoTriggered(project);
-    default:
-      return false;
+
+    // A3: mandatory "before ANY study involving human participants". Study
+    // Protocol Setup is `mode: 'fixed'`, so its rows are seeded — the signal is
+    // a row someone has actually filled a planned value into, never row count,
+    // which would be true from creation [ASSUMPTION: R4-Q5].
+    case 'humanStudyPlanned':
+      return (project.registers['studyProtocolSetup'] ?? []).some(
+        (r) => String(r.plannedValue ?? '').trim() !== '',
+      );
+
+    // A3: "new product, claim extension, repositioning project,
+    // customer/distributor-led request, or where a benchmark/reference product
+    // is named. Not mandatory for a purely administrative change." Three
+    // independent limbs, any one of which fires. Which project natures count as
+    // administrative is our reading [ASSUMPTION: R4-Q7].
+    case 'newOrRepositionedProject': {
+      const nature = project.identity.projectNature ?? '';
+      const origin = project.identity.requestOrigin ?? '';
+      const benchmark = (project.requirements['projectRequirements'] ?? []).find(
+        (r) => r.requirement === 'Benchmark or reference product',
+      );
+      return (
+        NEW_OR_REPOSITIONED_NATURES.includes(nature) ||
+        CUSTOMER_LED_ORIGINS.includes(origin) ||
+        !!benchmark?.notes?.trim()
+      );
+    }
   }
 }
+
+// The three project natures we read as NOT "a purely administrative change".
+// `Packaging change` and `Lifecycle improvement` are treated as administrative;
+// `Reformulation` is the genuinely unclear one and is currently excluded, so it
+// does NOT force a competitor review [ASSUMPTION: R4-Q7].
+const NEW_OR_REPOSITIONED_NATURES = ['New development', 'Claim change', 'Market extension'];
+
+// A3's "customer/distributor-led request" limb, against B1's option list.
+const CUSTOMER_LED_ORIGINS = ['Customer request', 'Distributor request'];
 
 // Why a trigger isn't currently active, in plain language for the readiness
 // panel (2026-07-27) — keyed so a new ReadinessTrigger can't silently ship
 // without updating this message too.
 const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   skincareForTwo: 'no Pregnancy/Breastfeeding/Postpartum target user selected',
+  humanStudyPlanned: 'no human study is planned — the Study Protocol has no planned values recorded',
+  newOrRepositionedProject:
+    'not a new product, claim change or market extension, not a customer or distributor request, and no benchmark product named',
 };
 
 // Evaluate a requirement's check against live project data. `evaluable` is false

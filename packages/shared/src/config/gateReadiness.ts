@@ -26,7 +26,16 @@
 export type ReadinessTier = 'Mandatory' | 'Conditional' | 'Supporting';
 
 // Named triggers that turn a Conditional requirement on for a given project.
-export type ReadinessTrigger = 'skincareForTwo';
+// Conditional items only hard-block once their trigger applies (rule A1/A3).
+// Adding one means: a value here, a branch in isReadinessTriggerActive(), a
+// message in TRIGGER_INACTIVE_EXPLANATIONS (TypeScript enforces that one), and
+// `trigger:` on the item. See docs/rules/F1_Conditional_Triggers.md for the
+// full catalogue of 13, including the 9 still waiting on data the app does not
+// capture yet.
+export type ReadinessTrigger =
+  | 'skincareForTwo'
+  | 'humanStudyPlanned'
+  | 'newOrRepositionedProject';
 
 export type ReadinessCheck =
   // No linked data source yet — displayed for confirmation, never hard-blocks.
@@ -519,6 +528,11 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg03-benchmark',
       label: 'Competitor or benchmark review where applicable',
       tier: 'Conditional',
+      // Trigger wired 2026-08-09, now that B1/B2/B6 supply all three of A3's
+      // limbs: project nature, request origin, and whether a benchmark product
+      // is named. Which project natures count as the "purely administrative
+      // change" A3 exempts is our reading [ASSUMPTION: R4-Q7].
+      trigger: 'newOrRepositionedProject',
       check: { kind: 'gateCheckDone', gate: '03', check: 'Concept direction and benchmark/competitor review recorded' },
     },
     // NPD Front-End Roadmap (v2 workbook, 2026-07-24): Step 2 ("Map
@@ -1229,6 +1243,11 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg08-human-study',
       label: 'Human-study approval workflow completed before participant recruitment, where applicable',
       tier: 'Conditional',
+      // Trigger wired 2026-08-09. A3 requires the approval workflow "before any
+      // study involving human participants", so the signal has to catch the
+      // INTENT to run one — studyApprovals appear only once approvals are being
+      // recorded, which is already too late [ASSUMPTION: R4-Q5].
+      trigger: 'humanStudyPlanned',
       // Phase 3's humanStudy requirement section is tagged gate '08' and has an
       // "Approval trail" row — the C2 study-approval workflow's own checkpoint.
       check: { kind: 'requirementDone', section: 'humanStudy', requirement: 'Approval trail' },
@@ -1638,7 +1657,25 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     {
       id: 'sg12-change-links',
       label: 'Change-control links',
-      tier: 'Supporting',
+      // Supporting -> Conditional 2026-08-09: A1 says so in as many words
+      // ("change from Supporting to Conditional"). Behaviour is unchanged for
+      // now — a Conditional item with no trigger stays advisory — but the tier
+      // is at least no longer wrong.
+      //
+      // The trigger is NOT wired, and deliberately not faked: A3's condition is
+      // "a Change Control record has been opened", and Change Control records
+      // are NOT part of `ProjectData`. They live in a store-level slice (and in
+      // the API envelope) beside it, because the Change Control page shows them
+      // across projects. The readiness engine only ever receives `ProjectData`,
+      // so it cannot see them.
+      //
+      // Copying changes into `ProjectData` to make this one trigger work would
+      // create a second copy of a list that already has an owner — exactly the
+      // duplication that drifts. Wiring it properly means either moving changes
+      // into `ProjectData` outright or giving the engine a second argument, and
+      // both are bigger than this item. Until then it stays advisory, which is
+      // what it already was as Supporting.
+      tier: 'Conditional',
       check: { kind: 'gateCheckDone', gate: '12', check: 'Loopback to NPD or change control recorded where needed' },
     },
     {
