@@ -368,22 +368,24 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-| ID | Chủ đề | Trạng thái |
-|---|---|---|
-| R4-Q1 | Gate 7 — "restricted/caution assessment closed" nghĩa hẹp hay rộng | 🔴 |
-| R4-Q2 | Gate 7 — sản phẩm chỉ cho trẻ sơ sinh hiện không có đánh giá nào | 🔴 |
-| R4-Q3 | Ngưỡng chặn Gate 4 vs Gate 7 của cùng một sổ caution | 🔴 |
-| R4-Q4 | `openChangeControl` — bỏ vế *"or should be opened"* | 🟡 |
-| R4-Q5 | `humanStudyPlanned` — cái gì đánh dấu "đã dự định làm study" | 🟡 |
-| R4-Q6 | 3 trigger Gate 12 ↔ option nào của checklist Post-Market Sources | 🟡 |
-| R4-Q7 | Gate 3 — "purely administrative change" gồm những loại nào | 🟡 |
-| R4-Q8 | Gate 9 — "major reformulation" và "process/site change" đọc từ đâu | 🟡 |
-| R4-Q9 | Gate 3 — claim ở `Pending classification` tính là đã trigger hay chưa | 🟡 |
-| R4-Q10 | Gate 12 — mốc "scheduled post-launch review", và "đã launch" khi nhiều thị trường | 🟡 |
-| R4-Q11 | Gate 12 — "product category / market / company policy" nào bắt buộc PV/PMS | 🟡 |
-| R4-Q12 | Gate 12 — tier của "Product-performance feedback" và "Market feedback" | 🟡 |
-| R4-Q13 | Ghi N/A kèm lý do có bắt buộc cả khi trigger không kích hoạt? | 🟡 |
-| R4-Q14 | Cờ rủi ro thành phần là thuộc tính của nguyên liệu hay của dự án | 🟡 |
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–17, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+
+| ID | Chủ đề | Trạng thái | Gửi số |
+|---|---|---|---|
+| R4-Q1 | Gate 7 — "restricted/caution assessment closed" nghĩa hẹp hay rộng | 🔴 | 5 |
+| R4-Q2 | Gate 7 — sản phẩm chỉ cho trẻ sơ sinh hiện không có đánh giá nào | 🔴 | **1** |
+| R4-Q3 | Ngưỡng chặn Gate 4 vs Gate 7 của cùng một sổ caution | 🔴 | 6 |
+| R4-Q4 | `openChangeControl` — bỏ vế *"or should be opened"* | 🟡 | 8 |
+| R4-Q5 | `humanStudyPlanned` — cái gì đánh dấu "đã dự định làm study" | 🟡 | 9 |
+| R4-Q6 | 3 trigger Gate 12 ↔ option nào của checklist Post-Market Sources | 🟡 | 10 |
+| R4-Q7 | Gate 3 — "purely administrative change" gồm những loại nào | 🟡 | 11 |
+| R4-Q8 | Gate 9 — "major reformulation" và "process/site change" đọc từ đâu | 🟡 | 12 |
+| R4-Q9 | Gate 3 — claim ở `Pending classification` tính là đã trigger hay chưa | 🟡 | 7 |
+| R4-Q10 | Gate 12 — mốc "scheduled post-launch review", và "đã launch" khi nhiều thị trường | 🟡 | 13 + 14 |
+| R4-Q11 | Gate 12 — "product category / market / company policy" nào bắt buộc PV/PMS | 🟡 | 4 |
+| R4-Q12 | Gate 12 — tier của "Product-performance feedback" và "Market feedback" | 🟡 | 15 |
+| R4-Q13 | Ghi N/A kèm lý do có bắt buộc cả khi trigger không kích hoạt? | 🟡 | 16 |
+| R4-Q14 | Cờ rủi ro thành phần là thuộc tính của nguyên liệu hay của dự án | 🟡 | 17 |
 
 ---
 

@@ -21,6 +21,7 @@ YYYY-MM-DD-<ai gửi>-<nội dung>.<ext>
 | `2026-07-21-sme-reply-F1-F14.txt` | 21/07 | Đáp án **F1–F14** + A5 / B5 / C7. Sinh ra engine 3 tầng Mandatory/Conditional/Supporting và toàn bộ `gateReadiness.ts` | ✅ đóng, trừ **F12** |
 | `2026-07-21-our-questions-round2.md` | 21/07 | 3 câu làm rõ (A1 định nghĩa "critical" · A2 nội dung Infant & Baby Safety · A3 hai version song song cùng thị trường) + danh sách dữ liệu cần cung cấp | ⏳ **còn mở** |
 | `2026-08-07-sme-reply-round3.txt` | 07/08 | Đáp án Parts A–E: quy tắc gán tier, **12 điều kiện trigger**, 7 trường còn thiếu, và **bác 4 thứ đã xây** | ✅ đóng |
+| `2026-08-09-our-questions-round4.md` | 09/08 | **17 câu**: 1 lỗ hổng an toàn đang mở · 3 câu tồn từ 21/07 · 3 giả định đã ship · 10 câu ánh xạ trigger sang dữ liệu | 📤 **soạn xong, chưa gửi** |
 
 ## Còn nợ
 
@@ -31,6 +32,6 @@ YYYY-MM-DD-<ai gửi>-<nội dung>.<ext>
 - **A3** (vòng 21/07) — cái gì chính thức kết thúc version công thức cũ. Trả lời một phần ở E3(a)
 
 **Ta chưa gửi:**
-- **Round 4** — 14 câu (`R4-Q1`…`R4-Q14`), soạn 09/08, nằm ở [`../rules/F1_Per_Gate_Open_Questions.md`](../rules/F1_Per_Gate_Open_Questions.md). Ba câu 🔴 là giả định **đã ship** (trả lời khác nghĩa là phải làm lại); 11 câu 🟡 mới ở mức thiết kế.
+- **Round 4** — [`2026-08-09-our-questions-round4.md`](2026-08-09-our-questions-round4.md), **soạn xong nhưng chưa gửi**. Đã gộp sẵn 3 câu A1/A2/A3 còn tồn của vòng 21/07 (chúng treo qua hai vòng rồi, và A2 nay nằm trên đường găng), nên chỉ cần gửi đúng một file này.
 
-Khi gửi Round 4, kèm luôn 3 câu A1/A2/A3 còn tồn của vòng 21/07 — chúng đã treo qua hai vòng rồi, và A2 nay nằm trên đường găng.
+**Hai bản của cùng một vòng, đừng nhầm:** file trong `rounds/` là **bản gửi đi** — ngôn ngữ nghiệp vụ, đánh số 1–17, không có tên file hay định danh code. Bản làm việc nội bộ nằm ở [`../rules/F1_Per_Gate_Open_Questions.md`](../rules/F1_Per_Gate_Open_Questions.md) → mục Round 4, giữ ID cố định `R4-Q1`…`R4-Q14` và nêu rõ *nếu trả lời khác thì sửa ở file/hàm nào*. Bảng ở đó có cột **Gửi số** nối hai bên với nhau.
