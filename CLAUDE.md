@@ -8,6 +8,20 @@ MBc360 is a Product Development & Quality "Phase-Gate" system, modeled 1:1 on a 
 
 The frontend started as a backend-less demo UI (state in localStorage) and still behaves that way; the production backend is being built per `docs/plans/BACKEND_PLAN.md` (milestone M0 — monorepo + API skeleton + Docker packaging — is done).
 
+## Working agreements (read before changing any business rule)
+
+**Do not speculate.** This system encodes a lot of externally-owned rules, so the default is: if the workbook or the SME's own words do not say it, do not decide it silently. Speculate only where the signal is overwhelming — and then it goes on the question list, kept if the SME confirms it and fixed if not. The user's own words (2026-08-09): *"suy đoán chỉ xảy ra khi nó có dấu hiệu quá rõ ràng, và suy đoán sẽ được liệt kê vào câu hỏi cho SME để họ confirm. SME confirm đúng giữ nguyên, sai thì sửa."* The user approving something in conversation authorises **building** it; it does not make the underlying interpretation a confirmed rule.
+
+**Every speculation gets an ID and a tag.** Add it to the newest round in `docs/rules/F1_Per_Gate_Open_Questions.md`, give it a stable ID (`R4-Q7`, …) and a line naming the file/function to change if the answer differs, then tag the decision site — in code comments **and** docs — with `[ASSUMPTION: R4-Q7]`. `npm run verify:readiness` fails if a tag points at no question, or a question is untagged, so this does not depend on anyone remembering. The sendable, jargon-free version of each round lives in `docs/rounds/`; that folder is evidence and is never edited after sending.
+
+**The two speculations that have actually cost us**, both worth recognising before repeating:
+- *One that looks mechanical.* Mapping an SME's prose onto specific dropdown options, or picking one of several plausible signals, feels like plumbing but is interpretation. `sg01-source` and `sg01-owner` were each wired to a plausible-looking nearby field and both had to be reverted.
+- *One that quietly narrows a rule.* Dropping the half of a condition you cannot evaluate (e.g. "a Change Control record has been opened **or should be opened**") and recording only the half you implemented makes the rule look fully covered.
+
+**Run `npm run verify:readiness` after touching gate-readiness config.** It catches the three failure modes that are invisible at runtime — a mistyped reference that makes a check unsatisfiable forever, a check vacuously satisfied on an empty register, and a `mode: 'fixed'` register whose seeded values decide the check (that last one shipped as the Gate 7 bug).
+
+**Never kill the dev server.** The user runs their own `npm run dev`; `npm run dev` (its `predev` runs `kill-port`) and any port-based kill both tear theirs down.
+
 ## Monorepo layout (npm workspaces)
 
 - `apps/web` — `@mbc360/web`: the React + Vite frontend (all the original demo code).
