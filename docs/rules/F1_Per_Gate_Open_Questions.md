@@ -386,6 +386,8 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q12 | Gate 12 — tier của "Product-performance feedback" và "Market feedback" | 🟡 | 15 |
 | R4-Q13 | Ghi N/A kèm lý do có bắt buộc cả khi trigger không kích hoạt? | 🟡 | 16 |
 | R4-Q14 | Cờ rủi ro thành phần là thuộc tính của nguyên liệu hay của dự án | 🟡 | 17 |
+| R4-Q15 | Gate 10/11 — chữ ký 3 vai trò là mỗi thị trường một bộ hay một bộ chung; Phase 4 đóng thế nào | 🟡 | 18 |
+| R4-Q16 | Cột `Claim category` sẵn có trên SKU Claims / PIF Register vốn ghi gì | 🟡 | 19 |
 
 ---
 
@@ -612,3 +614,27 @@ Các cột hiện có (`allergenStatement`, `impurities`, `microInfo`) đều l�
 **Câu hỏi:** phân loại này nên nằm ở đâu — trong Cosmetri (nếu Cosmetri hỗ trợ và các anh chấp nhận nhập ở đó), hay chấp nhận nhập lại theo từng dự án trong MBc360? Có cách thứ ba là MBc360 giữ một bảng tra riêng theo nguyên liệu, không đồng bộ với Cosmetri — nhưng như vậy sinh ra master data thứ hai, điều luật A3 cố tránh.
 
 **Nếu chọn "trong Cosmetri":** phụ thuộc bên ngoài, cần xác nhận Cosmetri có trường tương ứng — cùng loại phụ thuộc với F12.
+
+#### R4-Q15 · Gate 10/11 — chữ ký 3 vai trò là mỗi thị trường một bộ hay một bộ chung 🟡
+
+**Phát sinh khi:** chốt shape dữ liệu cho D1, xem [`../plans/Post_Round3_Design_Decisions.md`](../plans/Post_Round3_Design_Decisions.md) → Quyết định 1.
+
+D1 nói mỗi gate cần **Prepared / Reviewed / Approved**. E3(a) nói mỗi thị trường có Gate 10 readiness, regulatory approval và launch approval **riêng**. Ghép hai điều đó lại thì Gate 10 và 11 cần **3 chữ ký cho mỗi thị trường** — dự án 4 thị trường là 24 chữ ký chỉ cho hai gate. Có thể đúng (mỗi thị trường là một quyết định pháp lý độc lập), nhưng không câu trả lời nào nói ra.
+
+**Hệ quả thứ hai chưa ai xét:** Gate 10 và 11 nằm trong **Phase 4**, mà sign-off cấp phase (`phase_closures`) không có chiều thị trường. Nếu Gate 10–11 thành per-market thì Phase 4 đóng khi nào?
+
+**Câu hỏi:** (a) ở Gate 10 và 11, bộ Prepared/Reviewed/Approved là mỗi thị trường một bộ hay một bộ chung cho cả gate? (b) Phase 4 đóng khi **mọi** thị trường hoàn tất, hay đóng riêng theo từng thị trường?
+
+**Nếu là per-market:** bảng chữ ký gate cần cột `market` nullable ngay từ đầu (`@@unique([projectId, gateId, market, role])`) — thêm sau khi đã có chữ ký thật là migration trên dữ liệu không được phép sai. Nếu là (b) per-market thì `phase_closures` cũng phải đổi khoá.
+
+#### R4-Q16 · Cột `Claim category` sẵn có trên SKU Claims / PIF Register vốn ghi gì 🟡
+
+**Phát sinh khi:** tìm chỗ đặt phân loại claim của B7 — xem [`../plans/Post_Round3_Design_Decisions.md`](../plans/Post_Round3_Design_Decisions.md) → Quyết định 3.
+
+Register **SKU Claims / PIF** (gate 03/10) **đã có sẵn** một cột tên `Claim category`, có từ trước Vòng 3. B7 lại yêu cầu thêm một dropdown cũng tên "Claim category" với 10 giá trị cụ thể.
+
+Nếu hai cái là một, tạo cột thứ hai sẽ sinh ra hai chỗ ghi cùng một thứ — đúng loại trùng lặp mà rồi sẽ lệch nhau. Nếu là hai khái niệm khác nhau, cần đổi tên một trong hai để người dùng không nhầm.
+
+**Câu hỏi:** cột `Claim category` sẵn có trên sổ đó vốn dùng để ghi gì, và nó có phải chính là "Claim category" trong đáp án B7 (Cosmetic · Product performance · Sensory · Ingredient-level · Safety/tolerance · Environmental · Professional/technical · Borderline · Therapeutic — not permitted · Other) không?
+
+**Nếu là một:** mở rộng cột sẵn có thành dropdown 10 giá trị, không tạo cột mới.

@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has seventeen questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has nineteen questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -14,7 +14,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 1. **Question 1** — a safety gap that is open right now. It cannot be closed without content from you.
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
-4. **Questions 8–17** — designed but not yet built. A wrong answer here costs a redesign, not rework.
+4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
 
 ---
 
@@ -93,7 +93,7 @@ We have assumed **Pending counts as requiring review** — if the risk has not b
 
 ---
 
-## Questions 8–17 — Designed, not yet built
+## Questions 8–19 — Designed, not yet built
 
 These are all the same kind of question: your Round 3 answer gives the **condition**, and we have had to choose **which record in the system represents it**. That choice looks mechanical but is interpretation, and twice before we have got exactly this kind of mapping wrong, so we are asking rather than assuming.
 
@@ -184,6 +184,24 @@ To act on that, someone has to classify each raw material against those eleven c
 
 **Question:** should this classification be captured in Cosmetri, or accepted as per-project entry in MBc360? A third option is for MBc360 to keep its own raw-material reference table, but that creates a second master list, which the read-only decision was designed to avoid.
 
+### Question 18 — At Gates 10 and 11, is the sign-off per market or per gate?
+
+You told us in Round 3 that each gate needs Prepared, Reviewed and Approved sign-offs, and separately that Gates 10 and 11 operate per market, each with its own regulatory and launch approval.
+
+Put together, that implies Gates 10 and 11 need **three signatures for every market** — a project selling into four markets would carry twenty-four signatures across those two gates alone. That may well be right, since each market is an independent regulatory decision. But neither answer says so directly, and it is not the kind of thing to assume.
+
+There is a second consequence nobody has raised yet. Gates 10 and 11 sit inside **Phase 4**, and the phase closure sign-off has no market dimension at all.
+
+**Question:** (a) at Gates 10 and 11, is the Prepared/Reviewed/Approved set recorded once per market, or once for the gate as a whole? (b) Does Phase 4 close when **all** markets are complete, or does it close separately for each market?
+
+### Question 19 — What does the existing "Claim category" column record?
+
+The SKU Claims / PIF register already has a column called **Claim category**, in use before this round. Your Round 3 answer (B7) asks us to add a per-claim classification dropdown, also called Claim category, with ten specific values.
+
+If these are the same thing, adding a second column would create two places recording one fact — which will eventually disagree. If they are different concepts, one of them should be renamed so users are not misled.
+
+**Question:** what does the existing Claim category column record, and is it the same as the Claim category in your B7 answer (Cosmetic · Product performance · Sensory · Ingredient-level · Safety/tolerance · Environmental or sustainability · Professional or technical information · Borderline / therapeutic-adjacent · Therapeutic — not permitted · Other)?
+
 ---
 
 ## Summary
@@ -193,6 +211,6 @@ To act on that, someone has to classify each raw material against those eleven c
 | 1 | Infant & Baby Safety content | **A safety gap is open now** |
 | 2–4 | Superseding a formula version · defining "critical" gaps · PV/PMS scope | Open since 21 July; 2 and 4 block work we are ready to start |
 | 5–7 | Gate 7 scope · Gate 4 threshold · unclassified claims | Already built on our reading — rework if wrong |
-| 8–17 | Which record represents each of your trigger conditions | Redesign if wrong, no rework |
+| 8–19 | Which record represents each of your trigger conditions, and two data-model points | Redesign if wrong, no rework |
 
-Questions 5 to 17 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
+Questions 5 to 19 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
