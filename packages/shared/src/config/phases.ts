@@ -1,3 +1,4 @@
+import { PROJECT_NATURE_OPTIONS, REQUEST_ORIGIN_OPTIONS } from './opportunity';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
 export interface ChecklistSectionConfig {
@@ -62,6 +63,40 @@ export const PHASE_1: PhaseConfig = {
   reviewOwner: PHASE_REVIEW_OWNER,
   gateIds: ['SG01', 'SG02', 'SG03'],
   checklistSections: [
+    // The two gate-01 sections below are the ONLY checklist sections in this
+    // config that do not exist as a table in the source workbook — Gate 01 has
+    // no data-entry surface there at all, just three Key Gate Check rows. They
+    // hold the option lists SME Round 3 B1/B2 asked for.
+    //
+    // They are modelled as checklist sections rather than the dropdowns first
+    // built on 2026-08-09, because a checklist table is the shape the workbook
+    // itself uses for every "pick from a list" question (verified against
+    // `PHASE1 G1-3 MKTG` cells A20/A35/A65/A85/A109/A144: all six share
+    // `Gate │ option │ Select │ Owner/function │ Status Y-N-NA │ Evidence │
+    // Free-type notes`). A dropdown had no home for the per-option owner,
+    // status, evidence link and rationale those four columns carry, and it
+    // silently forced a single answer where the workbook's shape allows several
+    // (a project can be a reformulation AND a market extension).
+    //
+    // The layout, the multi-select consequence and the two ownerFunction values
+    // are all our reading — B1/B2 gave the option lists and nothing else
+    // [ASSUMPTION: R4-Q19].
+    {
+      key: 'requestOrigin',
+      title: 'Request Origin / Source',
+      gate: '01',
+      // Derived from GATES['SG01'].primaryOwner rather than invented, since the
+      // workbook has no owner cell for a table it does not contain.
+      ownerFunction: 'Project owner / Sales / NPD',
+      options: [...REQUEST_ORIGIN_OPTIONS],
+    },
+    {
+      key: 'projectNature',
+      title: 'Project Nature',
+      gate: '01',
+      ownerFunction: 'Project owner / NPD',
+      options: [...PROJECT_NATURE_OPTIONS],
+    },
     {
       key: 'targetArea',
       title: 'Target Area of Body',

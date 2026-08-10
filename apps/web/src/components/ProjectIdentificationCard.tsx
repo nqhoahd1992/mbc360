@@ -1,22 +1,23 @@
 import { useMemo } from 'react';
-import { Alert, Card, Descriptions, Input, Select, Tag } from 'antd';
+import { Alert, Card, Descriptions, Input, Tag } from 'antd';
 import type { ProjectData, ProjectIdentity } from '@mbc360/shared/types';
-import { PROJECT_NATURE_OPTIONS, REQUEST_ORIGIN_OPTIONS } from '@mbc360/shared/config/opportunity';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 
-// The eight Gate 1 opportunity fields (SME Round 3 B1/B2/B3) are the ONLY
-// editable part of project identity — everything above them is write-once at
-// project creation. Follows the repo-wide editable-table rule: local draft plus
-// an explicit Save, never a per-keystroke store write.
+// The five free-text Gate 1 opportunity fields (SME Round 3 B1/B2/B3) are the
+// ONLY editable part of project identity — everything above them is write-once
+// at project creation. Follows the repo-wide editable-table rule: local draft
+// plus an explicit Save, never a per-keystroke store write.
+//
+// The two OPTION LISTS B1/B2 also asked for (request origin, project nature)
+// are not here: they are gate-01 checklist sections rendered further down the
+// Phase 1 page, matching the workbook's own shape for a pick-from-a-list
+// question. See the comment on those sections in config/phases.ts.
 const OPPORTUNITY_FIELDS = [
-  'requestOrigin',
-  'requestOriginOther',
   'requesterName',
   'requesterDepartment',
-  'projectNature',
   'initialScope',
   'initialTargetUsers',
   'initialTargetMarkets',
@@ -54,12 +55,8 @@ export default function ProjectIdentificationCard({
     update((prev: OpportunityPatch) => ({ ...prev, [field]: value }));
 
   const hasAnyOpportunityData = OPPORTUNITY_FIELDS.some((f) => (identity[f] ?? '').trim() !== '');
-  const isOther = draft.requestOrigin === 'Other — specify';
-  // B1's list ends with "Other — specify", so the free-text box is the specify.
-  const originIncomplete = isOther && !draft.requestOriginOther?.trim();
 
   const save = () => {
-    if (originIncomplete) return;
     setIdentity(identity.id, draft);
     markSaved();
   };
@@ -106,8 +103,9 @@ export default function ProjectIdentificationCard({
       <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid #f0f0f0' }}>
         <div style={{ fontWeight: 600, marginBottom: 4 }}>Opportunity &amp; Request (Gate 01)</div>
         <div style={{ color: '#888', fontSize: 12, marginBottom: 12 }}>
-          Where this request came from, and the initial scope, market and user. These are preliminary — Gate 02 confirms,
-          refines and formally approves the target user and markets.
+          Who filed the request, and the initial scope, market and user. These are preliminary — Gate 02 confirms, refines
+          and formally approves the target user and markets. Where the request came from, and the nature of the project,
+          are recorded in the Request Origin / Source and Project Nature sections below.
         </div>
 
         {editable && locked && (
@@ -120,50 +118,9 @@ export default function ProjectIdentificationCard({
         )}
 
         <Descriptions size="small" column={{ xs: 1, sm: 2, md: 3 }} bordered>
-          <Descriptions.Item label="Request origin / source">
-            {locked ? (
-              <span style={{ color: '#666' }}>{draft.requestOrigin || '—'}</span>
-            ) : (
-              <Select
-                size="small"
-                style={{ width: '100%' }}
-                allowClear
-                showSearch
-                placeholder="Where did this request come from?"
-                value={draft.requestOrigin || undefined}
-                options={REQUEST_ORIGIN_OPTIONS.map((o) => ({ value: o, label: o }))}
-                onChange={(v?: string) => {
-                  set('requestOrigin', v ?? '');
-                  if (v !== 'Other — specify') set('requestOriginOther', '');
-                }}
-              />
-            )}
-          </Descriptions.Item>
           <Descriptions.Item label="Requester name">{text('requesterName', 'Who filed the request')}</Descriptions.Item>
           <Descriptions.Item label="Requester department">
             {text('requesterDepartment', 'Their department')}
-          </Descriptions.Item>
-
-          {isOther && (
-            <Descriptions.Item label="Origin — specify" span={3}>
-              {text('requestOriginOther', 'Describe the source')}
-            </Descriptions.Item>
-          )}
-
-          <Descriptions.Item label="Project nature">
-            {locked ? (
-              <span style={{ color: '#666' }}>{draft.projectNature || '—'}</span>
-            ) : (
-              <Select
-                size="small"
-                style={{ width: '100%' }}
-                allowClear
-                placeholder="New development, reformulation, …"
-                value={draft.projectNature || undefined}
-                options={PROJECT_NATURE_OPTIONS.map((o) => ({ value: o, label: o }))}
-                onChange={(v?: string) => set('projectNature', v ?? '')}
-              />
-            )}
           </Descriptions.Item>
           <Descriptions.Item label="Initial target user / life-stage">
             {text('initialTargetUsers', 'e.g. general adult, pregnancy')}
@@ -177,15 +134,7 @@ export default function ProjectIdentificationCard({
           </Descriptions.Item>
         </Descriptions>
 
-        {!locked && (
-          <SaveBar
-            dirty={dirty}
-            onSave={save}
-            onDiscard={discard}
-            disabled={originIncomplete}
-            disabledReason={originIncomplete ? 'Request origin is "Other" — describe the source before saving' : undefined}
-          />
-        )}
+        {!locked && <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />}
       </div>
       )}
     </Card>

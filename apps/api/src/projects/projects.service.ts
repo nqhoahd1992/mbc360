@@ -774,7 +774,7 @@ export class ProjectsService {
   // identity-mutation path in the system: identity was previously write-once at
   // POST /projects and had no update route at all.
   //
-  // Only the eight Gate-1 fields are writable. The identifying fields
+  // Only the five Gate-1 free-text fields are writable. The identifying fields
   // (productCode, projectLead, productSku, markets, reviewers, ...) stay
   // write-once deliberately — changing them is a different, larger question
   // than "record where this request came from", and nothing in Round 3 asked
@@ -792,12 +792,12 @@ export class ProjectsService {
           'The opportunity and request record belongs to gate 01, which has passed — it is read-only (use Backtrack to reopen it).',
         );
       }
+      // Request origin and project nature are NOT here: they became gate-01
+      // checklist sections on 2026-08-10 and go through setChecklistSection,
+      // which carries the same gate-01 lock.
       const writable = [
-        'requestOrigin',
-        'requestOriginOther',
         'requesterName',
         'requesterDepartment',
-        'projectNature',
         'initialScope',
         'initialTargetUsers',
         'initialTargetMarkets',

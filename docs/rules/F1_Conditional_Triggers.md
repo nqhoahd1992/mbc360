@@ -203,9 +203,11 @@ Checklist này đã có sẵn 16 option và khớp gần như một-một với 
 
 | Vế của luật | Đọc từ | Có chưa |
 |---|---|---|
-| new product / claim extension / repositioning / administrative change `[ASSUMPTION: R4-Q7]` | trường bổ trợ của Key Gate Check **"Initial product scope defined"** (**B2**) — nó ghi đúng *"whether it is new development, reformulation, claim change, packaging change, market extension or lifecycle improvement"* | 🟠 Tranche 1 |
-| customer / distributor-led request | trường **Request Origin / Source** (**B1**), option `Customer request` · `Distributor request` | 🟠 Tranche 1 |
-| "a benchmark/reference product is named" | dòng **Benchmark or reference product** trong bảng requirements Phase 1 (**B6**) | 🟠 Tranche 1 |
+| new product / claim extension / repositioning / administrative change `[ASSUMPTION: R4-Q7]` | checklist **Project Nature** gate 01 (`checklists['projectNature']`, **B2**) — 6 option đúng nguyên văn *"whether it is new development, reformulation, claim change, packaging change, market extension or lifecycle improvement"* | ✅ 10/08 |
+| customer / distributor-led request | checklist **Request Origin / Source** gate 01 (`checklists['requestOrigin']`, **B1**), option `Customer request` · `Distributor request` | ✅ 10/08 |
+| "a benchmark/reference product is named" | dòng **Benchmark or reference product** trong bảng requirements Phase 1 (**B6**) | ✅ 09/08 |
+
+Hai vế đầu đọc cột `selected` của checklist (giống `skincareForTwoTriggers`), **không** phải một trường đơn giá trị — hai option list này ban đầu (09/08) là 2 dropdown trên thẻ Project Identification, chuyển sang dạng bảng checklist ngày 10/08 để khớp shape workbook `[ASSUMPTION: R4-Q19]`. Hệ quả với trigger: một dự án có thể mang **nhiều** loại cùng lúc, nên vế 1 là `natures.some(...)` chứ không phải so sánh bằng.
 
 ⚠️ **Đừng nhầm với checklist `Product Type` đã có** (gate 02): nó là **dạng bào chế** — Cream, Lotion, Balm, Serum, Oil, Wash… — hoàn toàn không nói gì về *dự án này là mới hay là sửa cái cũ*. Đây đúng là ví dụ đã nêu ở tình huống 2: hôm nay hệ thống đối xử "serum mới hoàn toàn" và "đổi font chữ trên nhãn SKU cũ" **giống hệt nhau**, vì không có trường nào phân biệt.
 
@@ -522,12 +524,13 @@ Ba cột cần đọc trong output: `satisfied` (đã đạt chưa) · `advisory
 
 | # | Kịch bản | Gate | Kỳ vọng |
 |---|---|---|---|
-| 8a | Loại dự án (B2) = `lifecycle improvement`, Request Origin (B1) = nội bộ, không nêu benchmark | SG03 | `sg03-benchmark` → `✓ (advisory)` |
-| 8b | Loại dự án = `new development` | SG03 | `✗ (BLOCKS)` |
-| 8c | Loại dự án = `lifecycle improvement` **nhưng** Request Origin = `Customer request` | SG03 | `✗ (BLOCKS)` — vế thứ 2 độc lập |
-| 8d | Loại dự án = `lifecycle improvement` **nhưng** có nêu Benchmark product (B6) | SG03 | `✗ (BLOCKS)` — vế thứ 3 độc lập |
-| 8e | Loại dự án = `packaging change`, không có vế nào khác | SG03 | `✓ (advisory)` — đây là *"purely administrative change"* SME loại trừ |
-| 8f | Hai dự án cùng `Product Type = Serum`, khác loại dự án | SG03 | Kết quả **phải khác nhau** — chứng minh trigger đọc trường loại dự án chứ không phải checklist Product Type |
+| 8a | Project Nature (B2) tick `Lifecycle improvement`, Request Origin (B1) tick một option nội bộ, không nêu benchmark | SG03 | `sg03-benchmark` → `✓ (advisory)` |
+| 8b | Project Nature tick `New development` | SG03 | `✗ (BLOCKS)` |
+| 8c | Project Nature tick `Lifecycle improvement` **nhưng** Request Origin tick `Customer request` | SG03 | `✗ (BLOCKS)` — vế thứ 2 độc lập |
+| 8d | Project Nature tick `Lifecycle improvement` **nhưng** có nêu Benchmark product (B6) | SG03 | `✗ (BLOCKS)` — vế thứ 3 độc lập |
+| 8e | Project Nature tick `Packaging change`, không có vế nào khác | SG03 | `✓ (advisory)` — đây là *"purely administrative change"* SME loại trừ |
+| 8f | Hai dự án cùng `Product Type = Serum`, khác Project Nature | SG03 | Kết quả **phải khác nhau** — chứng minh trigger đọc checklist Project Nature chứ không phải checklist Product Type |
+| 8g | Project Nature tick **hai** option: `Packaging change` + `Market extension` | SG03 | `✗ (BLOCKS)` — chỉ cần một option thoả là fire; case này chỉ tồn tại được từ 10/08, khi option list thành bảng multi-select thay cho dropdown |
 
 > 8e và 8f là cặp quan trọng nhất: chúng chứng minh đúng cái mà hệ thống hôm nay **không** phân biệt được.
 

@@ -1,12 +1,12 @@
 # F1/C7 — Per-Gate Open Questions for the Subject-Matter Team
 
-**Date:** 2026-07-22 (last updated 2026-08-07)
+**Date:** 2026-07-22 (last updated 2026-08-10)
 
-> # ✅ ROUND 3 CLOSED — 14 new questions open (R4-Q1 … R4-Q14)
+> # ✅ ROUND 3 CLOSED — 19 new questions open (R4-Q1 … R4-Q19)
 >
 > The subject-matter team answered every question here in their Round 3 reply (`docs/rounds/2026-08-07-sme-reply-round3.txt`), sent as Parts A–E. **The answers are recorded in full in `Business_Rules_Confirmation_{EN,VN}.md` → "Appendix 2 (2026-08-07)"** — that appendix, not this file, is the authoritative record. Each section below now carries a short ✅ resolution note pointing at the part of the reply that answers it, so the question and its answer stay together for anyone re-reading the history.
 >
-> **The Round-3 questions are closed; the file is not.** Fourteen new questions — raised *while implementing* those answers and *while designing* the Conditional triggers — are in the final section, **"Round 4"**, each with a stable ID (`R4-Q1` … `R4-Q14`). Everything above that section is settled history.
+> **The Round-3 questions are closed; the file is not.** Nineteen new questions — raised *while implementing* those answers and *while designing* the Conditional triggers — are in the final section, **"Round 4"**, each with a stable ID (`R4-Q1` … `R4-Q19`). Everything above that section is settled history.
 >
 > **This file is the only question list.** Other documents (notably `F1_Conditional_Triggers.md`) reference these IDs instead of keeping a parallel list, and every decision site — code and docs alike — carries a grep-able `[ASSUMPTION: R4-Qn]` tag, so "show me every unconfirmed assumption" is a search rather than a manual audit.
 >
@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–17, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–22, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -390,6 +390,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q16 | Cột `Claim category` sẵn có trên SKU Claims / PIF Register vốn ghi gì | 🟡 | 19 |
 | R4-Q17 | Trường Gate 1 để tuỳ chọn lúc tạo dự án, bắt buộc ở Gate 1 | 🔴 | 20 |
 | R4-Q18 | Bảng requirements Phase 1 — giá trị của cột Priority, và bao nhiêu dòng phải xong | 🔴 | 21 |
+| R4-Q19 | Hai option list của B1/B2 trình bày dạng bảng checklist như 6 bảng sẵn có của workbook, và được chọn nhiều giá trị | 🔴 | 22 |
 
 ---
 
@@ -667,7 +668,7 @@ Nếu hai cái là một, tạo cột thứ hai sẽ sinh ra hai chỗ ghi cùng
 
 **Đã build 2026-08-09** cùng lúc với B1/B2/B3.
 
-Tám trường mới của Gate 1 (nguồn yêu cầu · người yêu cầu + phòng ban · loại dự án · phạm vi ban đầu · người dùng và thị trường mục tiêu ban đầu) **không** bắt buộc trên form Tạo dự án mới, dù chúng là Mandatory ở Gate 1.
+Mọi chỗ ghi mới của Gate 1 — 5 trường trên thẻ Project Identification (người yêu cầu + phòng ban · phạm vi ban đầu · người dùng và thị trường mục tiêu ban đầu) và 2 bảng checklist gate 01 (nguồn yêu cầu · loại dự án, xem `R4-Q19`) — **không** bắt buộc trên form Tạo dự án mới, dù chúng là Mandatory ở Gate 1.
 
 **Lý do:** phụ lục liệt kê chúng là yêu cầu **của Gate 1**, không phải yêu cầu để tạo dự án; và ở giai đoạn cơ hội, vài trường thật sự chưa biết (thị trường ban đầu chẳng hạn). Quan trọng hơn: nếu bắt buộc lúc tạo thì check đọc chúng trở thành **vacuous** — luôn luôn thoả, không bao giờ chặn được. Đó đúng là lỗi `sg01-owner` đã mắc và phải hoàn nguyên: một check đọc trường mà form đã bảo đảm thì chỉ là trang trí.
 
@@ -688,3 +689,27 @@ Tám trường mới của Gate 1 (nguồn yêu cầu · người yêu cầu + p
 **Câu hỏi:** (a) Low / Medium / High / Critical có đúng ý cho Priority không, hay các anh muốn thang khác (ví dụ Must / Should / Could)? (b) Có dòng nào trong 16 dòng **bắt buộc** phải hoàn tất trước khi Gate 2 qua ngoài hai dòng trên không?
 
 **Nếu trả lời khác:** (a) `NEXT_ACTION_PRIORITIES` trong `types/index.ts`, hoặc tách một danh sách riêng cho requirement; (b) thêm/bớt `requirementDone` trong `sg02-requirements` ở `gateReadiness.ts`.
+
+#### R4-Q19 · Hai option list của B1/B2 trình bày dạng bảng checklist, và được chọn nhiều giá trị 🔴
+
+**Đã build 2026-08-10**, thay cho bản 09/08. Đây là câu hỏi về **cách trình bày**, nhưng vế (b) là câu hỏi về **luật**.
+
+B1 đưa 16 option cho Request Origin / Source, B2 đưa 6 option cho loại dự án. Cả hai lần SME chỉ đưa *danh sách*, không nói nó hiện lên như thế nào. Bản 09/08 làm 2 **dropdown một giá trị** trên thẻ Project Identification. Bản 10/08 chuyển thành **2 bảng checklist gate 01** (`checklists['requestOrigin']` · `checklists['projectNature']` trong `config/phases.ts`).
+
+**Vì sao đổi.** Đối chiếu trực tiếp với file `.xlsx` (sheet `PHASE1 G1-3 MKTG`, các ô `A20` · `A35` · `A65` · `A85` · `A109` · `A144`): cả **6** bảng chọn-từ-danh-sách của workbook dùng đúng một shape 7 cột — `Gate │ option │ Select │ Owner/function │ Status Y-N-NA │ Evidence/internal link │ Free-type notes/rationale`, **mỗi option một dòng**. Workbook không dùng dropdown cho danh sách option ở bất kỳ đâu. Dropdown làm mất 4 cột cuối, tức mất chỗ ghi *ai xác nhận option này* và *bằng chứng nào* (ví dụ số ticket của một `Sales request`).
+
+Cần nói rõ một dữ kiện: Gate 01 trong workbook **không có bảng nhập liệu nào** — chỉ 3 dòng Key Gate Check, mọi checklist trong PHASE1 đều tag gate 02/03. Nên hai bảng này là **hai bảng đầu tiên của Gate 01**; chúng không sao chép một tab nào có sẵn, chỉ đi theo shape của 6 bảng anh em.
+
+**Ba thứ chúng tôi tự quyết, không có trong B1/B2:**
+
+**(a) Layout** — bảng option như 6 bảng kia, thay vì dropdown.
+
+**(b) Chọn nhiều giá trị.** Đây là **hệ quả về luật**, không phải thẩm mỹ: shape bảng cho tick nhiều dòng, nên một dự án giờ có thể vừa `Reformulation` vừa `Market extension`. Dropdown cũ ép đúng một giá trị — mà chính việc ép đó cũng là suy đoán, chỉ là suy đoán ngầm, chưa bao giờ được ghi ra. Câu B2 (*"whether it is new development, reformulation, claim change, …"*) đọc theo cả hai cách đều được.
+
+**(c) Cột `Owner / function`.** Workbook có cột này cho cả 6 bảng, và nó phải có giá trị. Không bịa: lấy từ `GATES['SG01'].primaryOwner` = **Project owner / Sales / NPD** cho Request Origin, và **Project owner / NPD** cho Project Nature.
+
+Một hệ quả kỹ thuật đáng ghi: trigger `newOrRepositionedProject` (điều kiện competitor review ở Gate 3) đọc 2 bảng này, nên vế 1 thành `natures.some(...)` — một dự án tick `Packaging change` + `Market extension` sẽ **fire**, vì `Market extension` nằm trong nhóm không-phải-administrative `[ASSUMPTION: R4-Q7]`.
+
+**Câu hỏi:** (a) hai danh sách này nên là bảng option như 6 bảng sẵn có của workbook, hay các anh thực sự muốn một ô chọn nhanh một giá trị? (b) một dự án có được mang **nhiều** loại cùng lúc không (ví dụ vừa cải tiến công thức vừa mở rộng thị trường), hay bắt buộc chọn đúng một? (c) hai giá trị `Owner / function` trên có đúng người chịu trách nhiệm ở Gate 1 không?
+
+**Nếu trả lời khác:** (a)+(b) bỏ 2 section trong `PHASE_1.checklistSections` (`config/phases.ts`), trả `requestOrigin`/`projectNature` về `ProjectIdentity` + cột `projects` (migration `20260810041500_gate1_origin_nature_checklists` là bản mẫu để đảo chiều, gồm cả bước chuyển dữ liệu), đổi `sg01-source`/`sg01-scope` về `identityFieldFilled` trong `gateReadiness.ts`, và sửa `newOrRepositionedProject` trong `gateProgress.ts` về so sánh bằng; (c) sửa `ownerFunction` của 2 section trong `config/phases.ts`.

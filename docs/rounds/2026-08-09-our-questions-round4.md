@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has twenty-one questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has twenty-two questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Questions 20–21** — choices we made while building the Gate 1 and Gate 2 fields you asked for.
+5. **Questions 20–22** — choices we made while building the Gate 1 and Gate 2 fields you asked for.
 
 ---
 
@@ -238,6 +238,26 @@ We have built the Phase 1 requirements table from your B6 list, with all sixteen
 
 **Question:** (a) are Low / Medium / High / Critical the right priority values, or would you prefer a different scale such as Must / Should / Could? (b) Are there rows beyond those two that must be complete before Gate 2 can pass?
 
+### Question 22 — How the two Gate 1 option lists are presented, and whether a project can have more than one nature
+
+In B1 you gave us sixteen options for Request Origin / Source, and in B2 six options for whether the project is new development, reformulation, claim change, packaging change, market extension or lifecycle improvement. Both times you gave the list, which is what we needed — but not how it should appear on screen, so we chose, and then changed our choice.
+
+**What we built first, and why we changed it.** Our first version made each list a single-answer picker sitting in the project identification block at the top of the Phase 1 sheet. We then went back to your workbook and compared. Every place your Phase 1 sheet asks someone to choose from a list — Target Area of Body, Product Type, Target Users / Life Stage, Target Countries / Markets, Claim / Benefit Areas, Initial Evidence / Proof Route — uses the same table: **one row per option**, with columns for Select, Owner / function, Status Y-N-NA, Evidence / internal link, and Free-type notes / rationale. There is no single-answer picker anywhere in the sheet.
+
+So we rebuilt both lists as tables in that same shape. The practical difference is not cosmetic: a single-answer picker had nowhere to record **who confirmed that origin** or **what evidence supports it** — for example the ticket number behind a Sales request, or the complaint reference behind a post-market signal. Your own four columns exist precisely to hold that, and we were discarding them.
+
+One thing worth stating plainly: Gate 1 has no data-entry table in your workbook at all — only the three Key Gate Checks. Every checklist on the Phase 1 sheet belongs to Gate 2 or Gate 3. So these are the first two tables at Gate 1. They copy no existing tab; they follow the shape of the six that surround them.
+
+**Three choices we made that your answers did not cover:**
+
+1. **The table layout described above**, rather than a single-answer picker.
+2. **A project may now record more than one nature.** This follows from the table shape — rows are ticked, and nothing stops two being ticked. So a project can be both a reformulation and a market extension. Our first version silently forced exactly one, which was also an assumption, just an unstated one. We think several is closer to reality, but you are the ones who know.
+3. **The "Owner / function" value**, which your six tables all carry and therefore cannot be left empty. We did not invent one: we used the owner already recorded for Gate 1 elsewhere in your workbook — **Project owner / Sales / NPD** for request origin, and **Project owner / NPD** for project nature.
+
+There is one consequence for a rule you gave us in A3. The competitor/benchmark review at Gate 3 is mandatory for "a new product, claim extension, repositioning project" and not for "a purely administrative change". Because a project can now carry several natures, a project marked as both a packaging change and a market extension **will** require the competitor review, on the strength of the market extension alone.
+
+**Question:** (a) should these two lists be tables in the same shape as your six existing ones, or did you intend a quick single-answer field? (b) May a project have more than one nature at the same time, or must exactly one be chosen? (c) Are those two "Owner / function" values the right people to hold these at Gate 1?
+
 ---
 
 ## Summary
@@ -248,6 +268,6 @@ We have built the Phase 1 requirements table from your B6 list, with all sixteen
 | 2–4 | Superseding a formula version · defining "critical" gaps · PV/PMS scope | Open since 21 July; 2 and 4 block work we are ready to start |
 | 5–7 | Gate 7 scope · Gate 4 threshold · unclassified claims | Already built on our reading — rework if wrong |
 | 8–19 | Which record represents each of your trigger conditions, and two data-model points | Redesign if wrong, no rework |
-| 20–21 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table | Already built — rework if wrong |
+| 20–22 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several project natures may apply | Already built — rework if wrong |
 
-Questions 5 to 21 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
+Questions 5 to 22 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

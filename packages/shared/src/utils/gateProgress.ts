@@ -107,30 +107,40 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
         (r) => String(r.plannedValue ?? '').trim() !== '',
       );
 
-    // A3: "new product, claim extension, repositioning project,
-    // customer/distributor-led request, or where a benchmark/reference product
-    // is named. Not mandatory for a purely administrative change." Three
-    // independent limbs, any one of which fires. Which project natures count as
-    // administrative is our reading [ASSUMPTION: R4-Q7].
     // A3, Gates 5 and 9. Only 'Susceptible' triggers; the other four values are
     // the N/A route the team allowed, and each already demands a rationale
     // before it can be saved.
     case 'microbiologicallySusceptible':
       return project.formulaProperties.microSusceptibility === 'Susceptible';
 
+    // A3: "new product, claim extension, repositioning project,
+    // customer/distributor-led request, or where a benchmark/reference product
+    // is named. Not mandatory for a purely administrative change." Three
+    // independent limbs, any one of which fires. Which project natures count as
+    // administrative is our reading [ASSUMPTION: R4-Q7].
+    //
+    // The first two limbs read gate-01 CHECKLIST sections (2026-08-10, moved off
+    // two single-valued identity fields — see config/phases.ts). Both use
+    // `selected`, matching skincareForTwoTriggers above; ChecklistSection sets
+    // status Y from the same tick, so the two signals move together.
     case 'newOrRepositionedProject': {
-      const nature = project.identity.projectNature ?? '';
-      const origin = project.identity.requestOrigin ?? '';
+      const natures = selectedChecklistLabels(project, 'projectNature');
+      const origins = selectedChecklistLabels(project, 'requestOrigin');
       const benchmark = (project.requirements['projectRequirements'] ?? []).find(
         (r) => r.requirement === 'Benchmark or reference product',
       );
       return (
-        NEW_OR_REPOSITIONED_NATURES.includes(nature) ||
-        CUSTOMER_LED_ORIGINS.includes(origin) ||
+        natures.some((n) => NEW_OR_REPOSITIONED_NATURES.includes(n)) ||
+        origins.some((o) => CUSTOMER_LED_ORIGINS.includes(o)) ||
         !!benchmark?.notes?.trim()
       );
     }
   }
+}
+
+// Labels a project has ticked in a checklist section.
+function selectedChecklistLabels(project: ProjectData, section: string): string[] {
+  return (project.checklists[section] ?? []).filter((i) => i.selected).map((i) => i.label);
 }
 
 // The three project natures we read as NOT "a purely administrative change".

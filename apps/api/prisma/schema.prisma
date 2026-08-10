@@ -129,11 +129,14 @@ model Project {
   // Gate 1 "Opportunity & Request" capture (2026-08-09, SME Round 3 B1/B2/B3).
   // All nullable on purpose: these are Gate 1 requirements, not creation
   // requirements — see the comment on ProjectIdentity in @mbc360/shared.
-  requestOrigin       String?
-  requestOriginOther  String?
+  //
+  // B1's request origin and B2's project nature are NOT columns here: they are
+  // option lists, and 2026-08-10 moved them to gate-01 checklist sections
+  // (`checklist_items`, sectionKey 'requestOrigin' / 'projectNature') so each
+  // chosen option carries its own owner, status, evidence link and rationale —
+  // the shape the source workbook uses for every pick-from-a-list question.
   requesterName       String?
   requesterDepartment String?
-  projectNature       String? // PROJECT_NATURE_OPTIONS — read by two Conditional triggers
   initialScope        String?
   initialTargetUsers  String?
   initialTargetMarkets String?

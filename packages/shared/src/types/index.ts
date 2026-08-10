@@ -437,17 +437,18 @@ export interface ProjectIdentity {
   // vacuously satisfied by construction and can never actually block. Someone
   // must go and fill these in for Gate 1 to pass. [ASSUMPTION: R4-Q17]
   // ---------------------------------------------------------------------
-  // B1 — where the request originated (REQUEST_ORIGIN_OPTIONS). Distinct from
-  // the requester below: "the requester's name and department should remain
-  // separate fields".
-  requestOrigin?: string;
-  requestOriginOther?: string; // free text, only when requestOrigin is 'Other — specify'
+  // B1 — the requester, kept as separate fields per "the requester's name and
+  // department should remain separate fields". Where the request ORIGINATED is
+  // NOT here: it is the `requestOrigin` checklist section (gate 01), because an
+  // option list belongs in the workbook's option-table shape, with a per-option
+  // owner / status / evidence link / rationale a single field cannot hold.
   requesterName?: string;
   requesterDepartment?: string;
-  // B2 — supporting detail for the "Initial product scope defined" Key Gate
-  // Check. `projectNature` is a controlled value rather than part of the prose
-  // because two Conditional triggers have to read it (see PROJECT_NATURE_OPTIONS).
-  projectNature?: string;
+  // B2 — the prose half of the "Initial product scope defined" Key Gate Check:
+  // proposed product type, intended purpose and the known boundaries of the
+  // request. The fourth thing B2 asks for (new development / reformulation /
+  // claim change / …) is the `projectNature` checklist section, for the same
+  // reason as above plus the trigger that must read it. [ASSUMPTION: R4-Q19]
   initialScope?: string;
   // B3 — deliberately lightweight and SEPARATE from the Gate 02 target-user /
   // target-market checklists: "These are preliminary fields and do not replace

@@ -5,6 +5,13 @@
 // B1: "Yes, this is distinct from the person who submitted the request." The
 // requester's own name and department stay as separate fields — this records
 // where the request ORIGINATED, not who filed it.
+//
+// Consumed by the `requestOrigin` checklist section in phases.ts (gate 01), not
+// by a dropdown: see the comment there for why the workbook's option-table
+// shape was chosen over the dropdown this list originally fed. "Other —
+// specify" therefore behaves like the workbook's own "Other - specify" rows —
+// the free text goes in that row's Notes / rationale cell, which is why there
+// is no separate `requestOriginOther` field any more.
 export const REQUEST_ORIGIN_OPTIONS = [
   'Internal product-development proposal',
   'Management request',
@@ -30,12 +37,17 @@ export const REQUEST_ORIGIN_OPTIONS = [
 // extension / lifecycle improvement, and the known boundaries of the request.
 //
 // Three of those four are prose and live in `initialScope` free text. The third
-// is deliberately a controlled dropdown instead, because a trigger has to read
-// it: A3's competitor-review condition is "mandatory where the project is a new
-// product, claim extension, repositioning project ... NOT mandatory for a purely
-// administrative change", and Gate 9's scale-up condition reads the same
-// property. A free-text blob cannot drive either. Which of these values counts
-// as "purely administrative" is Round 4 question 11 [ASSUMPTION: R4-Q7].
+// is a controlled option list instead, because a trigger has to read it: A3's
+// competitor-review condition is "mandatory where the project is a new product,
+// claim extension, repositioning project ... NOT mandatory for a purely
+// administrative change", and Gate 9's scale-up condition (not wired yet, see
+// R4-Q8) will read the same property. A free-text blob cannot drive either.
+// Which of these values counts as "purely administrative" is Round 4 question
+// 11 [ASSUMPTION: R4-Q7].
+//
+// Like the list above, this feeds the `projectNature` checklist section (gate
+// 01) — so a project may record SEVERAL natures, which the earlier dropdown
+// could not [ASSUMPTION: R4-Q19].
 export const PROJECT_NATURE_OPTIONS = [
   'New development',
   'Reformulation',
@@ -45,8 +57,10 @@ export const PROJECT_NATURE_OPTIONS = [
   'Lifecycle improvement',
 ] as const;
 
-export type RequestOrigin = (typeof REQUEST_ORIGIN_OPTIONS)[number];
-export type ProjectNature = (typeof PROJECT_NATURE_OPTIONS)[number];
+// No `RequestOrigin` / `ProjectNature` union types: both lists are now checklist
+// options, and a ChecklistItem's label is a plain string like every other
+// section's. A union that nothing can be assigned to would only invite someone
+// to reintroduce a single-valued field.
 
 // Gate 5 / Gate 9 — microbiological susceptibility of the formula (2026-08-09).
 // Two Conditional triggers read this one property: A3's preservative strategy

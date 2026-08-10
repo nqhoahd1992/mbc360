@@ -111,7 +111,7 @@ export type ReadinessCheck =
   // Before adding a field here, ask the question that killed the last one: can
   // this field ever actually be empty on a real project? If not, the check is
   // decoration, not enforcement.
-  | { kind: 'identityFieldFilled'; field: 'requestOrigin' | 'projectNature' | 'initialScope' | 'initialTargetUsers' | 'initialTargetMarkets' }
+  | { kind: 'identityFieldFilled'; field: 'initialScope' | 'initialTargetUsers' | 'initialTargetMarkets' }
   // A `FormulaProperties` field is non-empty. Same non-vacuity test as
   // `identityFieldFilled`: these fields start empty and only a person fills them.
   | { kind: 'formulaPropertyFilled'; field: 'microSusceptibility' | 'microRationale' }
@@ -225,10 +225,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // Wired 2026-08-09 (SME Round 3 B1). The team confirmed this IS distinct
       // from the requester, and supplied the exact 16-option list now in
       // REQUEST_ORIGIN_OPTIONS — closing the guess that had been reverted here.
+      //
+      // Reads the `requestOrigin` CHECKLIST section (2026-08-10), not an identity
+      // field: B1 gave an option list, and the workbook records an option list as
+      // a table with per-option owner / status / evidence / rationale. Satisfied
+      // by one row at status Y, the same bar as every other checklist-backed item
+      // [ASSUMPTION: R4-Q19].
       id: 'sg01-source',
       label: 'Request source',
       tier: 'Mandatory',
-      check: { kind: 'identityFieldFilled', field: 'requestOrigin' },
+      check: { kind: 'checklistHasSelection', section: 'requestOrigin' },
     },
     {
       // Not one of the 5 named items in the F1 Appendix, but this row was
@@ -251,6 +257,10 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // alone would be a bare tick; the fields alone would skip the explicit
       // confirmation every sibling row requires. `projectNature` is listed last
       // by the allOf link convention (most specific check last).
+      //
+      // `projectNature` became a checklist section on 2026-08-10 for the reason
+      // given on sg01-source; the link therefore now lands on that section rather
+      // than the identification card [ASSUMPTION: R4-Q19].
       id: 'sg01-scope',
       label: 'Initial product scope',
       tier: 'Mandatory',
@@ -259,7 +269,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         checks: [
           { kind: 'gateCheckDone', gate: '01', check: 'Initial product scope defined' },
           { kind: 'identityFieldFilled', field: 'initialScope' },
-          { kind: 'identityFieldFilled', field: 'projectNature' },
+          { kind: 'checklistHasSelection', section: 'projectNature' },
         ],
       },
     },
