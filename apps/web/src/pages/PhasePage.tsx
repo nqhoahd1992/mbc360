@@ -15,6 +15,7 @@ import { PHASES } from '@mbc360/shared/config/gates';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
 import OpportunityRequestCard from '../components/OpportunityRequestCard';
+import PhaseKeyLinksCard from '../components/PhaseKeyLinksCard';
 import GateFlowTable from '../components/GateFlowTable';
 import ChecklistSection from '../components/ChecklistSection';
 import RequirementTable from '../components/RequirementTable';
@@ -94,6 +95,7 @@ export default function PhasePage() {
     .filter((c) => phaseGateNumbers.includes(c.check.gate) || (phase === 4 && c.check.gate === 'ALL'));
 
   const jumpSections = [
+    { id: 'sec-key-links', label: 'Key records for this phase' },
     { id: 'sec-identification', label: 'Project Identification' },
     { id: 'sec-gate-flow', label: 'Phase Gate Flow' },
     ...(phase === 1 ? [{ id: 'sec-opportunity', label: 'Opportunity & Request (Gate 01)' }] : []),
@@ -199,6 +201,10 @@ export default function PhasePage() {
           }
         />
       )}
+
+      <div id="sec-key-links">
+        <PhaseKeyLinksCard links={config.keyLinks} projectId={project.identity.id} />
+      </div>
 
       <div id="sec-identification">
         <ProjectIdentificationCard project={project} />

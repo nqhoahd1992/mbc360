@@ -44,9 +44,31 @@ export interface KeyGateCheckConfig {
   check: string;
 }
 
+// The four shortcuts every phase sheet carries in its banner, cells E3/G3/I3/K3
+// with "(provide link here)" underneath in E4/G4/I4/K4 (added 2026-08-11,
+// user-requested). In the workbook they are where the phase's real work lives —
+// some inside the company drive, some in another tab.
+//
+// `href` is this app's equivalent, using the same convention as
+// resolveCheckLink(): relative to `/projects/:id` unless `absolute`. Only
+// unambiguous targets carry one. Four of the sixteen have no in-app equivalent
+// (Success Criteria Package · Marketing Campaign Brief · Project Evidence Folder
+// · Ingredient Registry) and one is a judgement we would rather not make blind
+// (Evidence Register — the app has an Evidence Summary board and a Product
+// Evidence Summary register, and "Evidence Register" is neither name); those
+// render as external documents rather than pointing somewhere plausible but
+// wrong. `externalUrl` is only ever transcribed from the workbook, never guessed.
+export interface PhaseKeyLinkConfig {
+  label: string;
+  href?: string;
+  absolute?: boolean;
+  externalUrl?: string;
+}
+
 export interface PhaseConfig {
   phase: number;
   gateIds: string[];
+  keyLinks: PhaseKeyLinkConfig[];
   checklistSections: ChecklistSectionConfig[];
   requirementSections: RequirementSectionConfig[];
   keyGateChecks: KeyGateCheckConfig[];
@@ -62,6 +84,17 @@ export const PHASE_1: PhaseConfig = {
   phase: 1,
   reviewOwner: PHASE_REVIEW_OWNER,
   gateIds: ['SG01', 'SG02', 'SG03'],
+  // Banner shortcuts, cells E3/G3/I3/K3 (2026-08-11). Three of Phase 1's four
+  // are documents that live outside this app.
+  keyLinks: [
+    { label: 'Success Criteria Package' },
+    // The v2 workbook's "2. Competitor Landscape" sheet is this app's home for
+    // competitor work; the V18 banner calls it "Competitor Analysis". Our
+    // mapping, not the SME's wording.
+    { label: 'Competitor Analysis', href: '/competitor-landscape' },
+    { label: 'Marketing Campaign Brief' },
+    { label: 'Project Evidence Folder' },
+  ],
   checklistSections: [
     // The two gate-01 sections below are the ONLY checklist sections in this
     // config that do not exist as a table in the source workbook — Gate 01 has
@@ -266,6 +299,19 @@ export const PHASE_2: PhaseConfig = {
   phase: 2,
   reviewOwner: PHASE_REVIEW_OWNER,
   gateIds: ['SG04', 'SG05', 'SG06'],
+  keyLinks: [
+    // The one banner cell in the whole workbook carrying a real hyperlink
+    // (PHASE2!E4, displayed as "Clink for link" — the workbook's own typo).
+    // Transcribed, not invented.
+    {
+      label: 'Ingredient Registry',
+      externalUrl:
+        'https://maxbiocare.sharepoint.com/:x:/s/cosmetics/IQB0XybrTyBNSq2Qof1KIQy8Aa3hu34JulCRsdlu1Co0qfA?e=YB2Hbr&nav=MTVfezAwMDAwMDAwLTAwMDEtMDAwMC0wNjAwLTAwMDAwMDAwMDAwMH0',
+    },
+    { label: 'Formula BOM', href: '/bom/formula' },
+    { label: 'Packaging BOM', href: '/bom/packaging' },
+    { label: 'Costing Calculator', href: '/bom/costing' },
+  ],
   checklistSections: [
     {
       key: 'rmDocPack',
@@ -373,6 +419,15 @@ export const PHASE_3: PhaseConfig = {
   phase: 3,
   reviewOwner: PHASE_REVIEW_OWNER,
   gateIds: ['SG07', 'SG08', 'SG09'],
+  keyLinks: [
+    { label: 'Study Protocol', href: '/registers/reg/studyProtocolSetup' },
+    // Deliberately unmapped: neither the Evidence Summary board nor the Product
+    // Evidence Summary register is called "Evidence Register", and pointing at
+    // the wrong one is worse than pointing nowhere.
+    { label: 'Evidence Register' },
+    { label: 'Test Report Index', href: '/registers/reg/testReportIndex' },
+    { label: 'GMP Links', href: '/registers/reg/gmpLinks' },
+  ],
   checklistSections: [
     {
       key: 'testingFamilies',
@@ -506,6 +561,13 @@ export const PHASE_4: PhaseConfig = {
   phase: 4,
   reviewOwner: PHASE_REVIEW_OWNER,
   gateIds: ['SG10', 'SG11', 'SG12'],
+  keyLinks: [
+    { label: 'PIF Checklist', href: '/registers/reg/pifChecklistAsean' },
+    { label: 'Published Info Approval', href: '/registers/reg/publishedInfoApproval' },
+    // Change Control is a cross-project page, so it is not under /projects/:id.
+    { label: 'Change Control', href: '/change-control', absolute: true },
+    { label: 'Post-Market Log', href: '/post-market' },
+  ],
   checklistSections: [
     {
       key: 'regulatoryClosure',
