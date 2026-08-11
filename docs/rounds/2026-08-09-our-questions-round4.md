@@ -212,7 +212,22 @@ The SKU Claims / PIF register already has a column called **Claim category**, in
 
 If these are the same thing, adding a second column would create two places recording one fact — which will eventually disagree. If they are different concepts, one of them should be renamed so users are not misled.
 
-**Question:** what does the existing Claim category column record, and is it the same as the Claim category in your B7 answer (Cosmetic · Product performance · Sensory · Ingredient-level · Safety/tolerance · Environmental or sustainability · Professional or technical information · Borderline / therapeutic-adjacent · Therapeutic — not permitted · Other)?
+We have gone ahead on the reading that they ARE the same thing, so that B7 is usable rather than waiting, and we would like that confirmed. What is now built:
+
+- the existing **Claim category** column is that dropdown, with your ten values as written — not a second column beside it;
+- **Claim risk** alongside it, with your five values (Low · Medium · High · Prohibited / not acceptable · Pending classification);
+- both of those on the **Claim → Evidence Traceability** register as well, because a claim that is borderline is borderline wherever it is used;
+- **Intended channel** and **Regulatory review required** on the SKU register — the two of your nine attributes that had nowhere to be recorded.
+
+Three judgements inside that we would rather you correct now than later:
+
+**The classification sits on both registers, and they can disagree.** The SKU register has no Claim ID column, so nothing ties its classification back to the claim's own. We have accepted that knowingly rather than by accident. The clean fix is for the SKU register to reference a Claim ID and inherit the classification — the way the Published Information register already inherits approved wording — but that changes the data model rather than adding a column, so we have not done it unasked.
+
+**Intended channel and Regulatory review required are on the SKU register** because both describe the USE of a claim rather than the claim: the same wording is held to a different standard on-pack than in a social caption, and review may be required in one market or channel and not another.
+
+**Gate 3 does not yet enforce classification.** There is now somewhere to record it, but we do not know how much Gate 3 requires: that register spans Gates 3 and 10, and most of its PIF content belongs to Gate 10. Inventing a number ("every row must be classified") is the mistake we describe in Question 21.
+
+**Question:** (a) is the existing Claim category column the same thing as your B7 classification, as we have assumed? (b) Where should Intended channel and Regulatory review required live? (c) When the classification on the two registers disagrees, which is authoritative — or would you rather the SKU register referenced a Claim ID so it cannot? (d) At Gate 3, how many claims must be classified before the gate can pass?
 
 ---
 

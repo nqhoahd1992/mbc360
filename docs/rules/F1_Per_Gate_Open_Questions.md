@@ -667,6 +667,29 @@ Nếu hai cái là một, tạo cột thứ hai sẽ sinh ra hai chỗ ghi cùng
 
 **Nếu là một:** mở rộng cột sẵn có thành dropdown 10 giá trị, không tạo cột mới.
 
+---
+
+**✅ ĐÃ QUYẾT (2026-08-11, project owner) — build luôn, chờ SME xác nhận sau.** Đọc theo hướng "hai cái là một": cột `Claim category` sẵn có **chính là** thứ B7 nói, nên nó **được mở rộng thành dropdown 10 giá trị** thay vì sinh cột thứ hai. Cụ thể đã build:
+
+| Thay đổi | Ở đâu |
+|---|---|
+| `claimCategory`: free text → **select 10 giá trị** của B7 (nguyên văn) | `skuClaimsPifRegister` |
+| `claimRisk`: **select 5 giá trị** — Low · Medium · High · Prohibited / not acceptable · Pending classification | `skuClaimsPifRegister` |
+| `claimCategory` + `claimRisk` cùng bộ giá trị | `claimEvidenceTraceability` |
+| `intendedChannel` (text) và `regulatoryReviewRequired` (Y/N/NA) — 2 trong 9 thuộc tính B7 chưa có chỗ ghi | `skuClaimsPifRegister` |
+
+**Ba phán định của dev nằm trong đó, cần SME xác nhận:**
+
+**(a) Phân loại đặt ở CẢ HAI register.** Lý lẽ: phân loại là thuộc tính của **bản thân claim** ("Borderline / therapeutic-adjacent" thì borderline ở mọi SKU), nên nó phải có ở `claimEvidenceTraceability`; nhưng `skuClaimsPifRegister` đã mang sẵn một cột đúng tên đó từ trước, và nó là register **gate 03** — nơi Gate 3 thực sự làm việc phân loại — nên không thể bỏ trống.
+
+⚠️ **Hệ quả phải nói rõ:** hai register giờ cùng ghi category/risk, mà `skuClaimsPifRegister` **không có cột `claimId`** để tham chiếu về claim gốc. Nên hai bên **có thể lệch nhau và hệ thống không biết**. Đây đúng loại trùng lặp mà chính R4-Q16 cảnh báo, và ta đang chấp nhận nó có ý thức, không phải vô tình. Cách sửa tận gốc là thêm `claimId` vào `skuClaimsPifRegister` rồi cho category/risk **kế thừa** từ claim (giống cách `publishedInfoApproval` đã làm với Claim ID + wording), nhưng đó là thay đổi mô hình dữ liệu, không phải thêm cột.
+
+**(b) Chỗ đặt 2 thuộc tính còn thiếu.** `intendedChannel` và `regulatoryReviewRequired` đặt ở `skuClaimsPifRegister` vì cả hai thuộc **cách dùng** claim, không thuộc claim: cùng một câu chữ bị soi khác nhau giữa nhãn on-pack và một caption social, và yêu cầu review có thể có ở thị trường/kênh này mà không ở kênh khác.
+
+**(c) `sg03-classification` vẫn để `manual`, chưa wire thành check thật.** Đã có chỗ ghi rồi, nhưng còn thiếu **quy tắc số lượng**: Gate 3 đòi *bao nhiêu* dòng phải được phân loại? Nếu đòi "mọi dòng của `skuClaimsPifRegister` phải có category + risk" thì phải trả lời trước: dự án ở Gate 3 đã buộc phải có dòng nào trong sổ đó chưa (sổ này là gate 03/10, phần lớn nội dung PIF thuộc Gate 10). Bịa ra cardinality là đúng sai lầm đã mắc ở `sg02-requirements`. Câu hỏi này gộp vào (d) dưới đây.
+
+**Câu hỏi bổ sung:** (b) 2 thuộc tính `intended channel` / `Regulatory review required` đặt ở register nào là đúng? (c) khi category/risk ở hai sổ lệch nhau thì sổ nào là gốc — hay các anh muốn `skuClaimsPifRegister` tham chiếu Claim ID để khỏi lệch? (d) ở Gate 3, **bao nhiêu** claim phải được phân loại xong thì gate qua được?
+
 #### R4-Q17 · Trường Gate 1 để tuỳ chọn lúc tạo dự án, bắt buộc ở Gate 1 🔴
 
 **Đã build 2026-08-09** cùng lúc với B1/B2/B3.

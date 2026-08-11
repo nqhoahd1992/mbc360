@@ -47,6 +47,34 @@ export function isRegisterRowBlank(config: RegisterConfig, row: RegisterRow): bo
 }
 
 const WORK_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Backtracked'] as const;
+
+// SME Round 3 B7, transcribed verbatim. Two axes, because the team asked for both
+// and said explicitly why a single project-level label will not do: "different
+// claims within one project can carry different risk" — Moisturising is cosmetic
+// and low risk while Itch relief support may be borderline and high risk, so one
+// label per project would either miss the risky claim or drag the whole project
+// into review.
+//
+// Applied to BOTH claim registers (dev decision 2026-08-11, project owner):
+// skuClaimsPifRegister already had a column literally named "Claim category" as
+// free text, so it becomes this dropdown rather than gaining a second, competing
+// one; claimEvidenceTraceability gets the same two columns because the
+// classification is a property of the CLAIM, not of one SKU/market use of it.
+// See the duplication caveat in docs/rules/F1_Per_Gate_Open_Questions.md R4-Q16.
+const CLAIM_CATEGORY_OPTIONS = [
+  'Cosmetic',
+  'Product performance',
+  'Sensory',
+  'Ingredient-level',
+  'Safety/tolerance',
+  'Environmental or sustainability',
+  'Professional or technical information',
+  'Borderline / therapeutic-adjacent',
+  'Therapeutic — not permitted within the cosmetic claim pathway',
+  'Other — Regulatory review required',
+] as const;
+
+const CLAIM_RISK_OPTIONS = ['Low', 'Medium', 'High', 'Prohibited / not acceptable', 'Pending classification'] as const;
 const YNNA = ['Y', 'N', 'N/A'] as const;
 
 // Published Information Approval workflow states (confirmed rule F11), in
@@ -779,7 +807,15 @@ const skuClaimsPifRegister: RegisterConfig = {
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
     { key: 'market', label: 'Market', type: 'text', width: 110 },
     { key: 'claimWording', label: 'Claim / wording', type: 'textarea', width: 180 },
-    { key: 'claimCategory', label: 'Claim category', type: 'text', width: 130 },
+    { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS },
+    { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS },
+    // B7's "intended channel" and "Regulatory review required Y/N" — the two of
+    // its nine attributes that had no home. Both belong to the USE of a claim
+    // rather than the claim itself: the same wording is held to a different
+    // standard on-pack than in a social caption, and review may be required for
+    // one market/channel and not another.
+    { key: 'intendedChannel', label: 'Intended channel', type: 'text', width: 150 },
+    { key: 'regulatoryReviewRequired', label: 'Regulatory review required', type: 'select', width: 150, options: YNNA },
     { key: 'evidenceType', label: 'Evidence type', type: 'text', width: 130 },
     { key: 'evidenceSource', label: 'Evidence source', type: 'text', width: 140 },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 130 },
@@ -1907,6 +1943,11 @@ export const claimEvidenceTraceability: RegisterConfig = {
   columns: [
     { key: 'claimId', label: 'Claim ID', type: 'text', width: 100 },
     { key: 'approvedWording', label: 'Approved claim wording', type: 'textarea', width: 240 },
+    // B7 (2026-08-11). Same two vocabularies as the SKU register: a claim that is
+    // "Borderline / therapeutic-adjacent" is borderline wherever it is used, so
+    // the classification lives with the claim.
+    { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS },
+    { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS },
     { key: 'mechanism', label: 'Mechanism', type: 'text', width: 160 },
     { key: 'evidenceGrade', label: 'Evidence grade', type: 'select', width: 110, options: ['A', 'B', 'C', 'D', 'E'] },
     { key: 'supportingEvidence', label: 'Supporting evidence / report', type: 'text', width: 200 },
