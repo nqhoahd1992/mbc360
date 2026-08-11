@@ -277,7 +277,9 @@ The Phase 1 sheet has four option tables that belong to Gate 2. Your Gate 2 list
 
 Leaving one out of a set of four you otherwise named individually looks deliberate rather than accidental — and in Question 12 of our last round we put all four to you by name, as a possible definition of the brief; you answered that the brief is its own controlled record and that these tables contribute to it without substituting for it.
 
-So we may have added a block you deliberately did not ask for. The case we can see for that being right: a project can legitimately reach Gate 2 with the form still open — "an infant barrier product, cream or balm to be decided at formulation" — and today that project cannot pass Gate 2 at all, however complete its brief is.
+To be straightforward about where we stand: we think the requirement is probably right, because a brief that does not say whether the product is a cream or a serum is hard to call complete. What we cannot explain is the gap in your list, and that is what we are asking about — not whether the rule sounds sensible, since you would reasonably say yes to that.
+
+If the omission was deliberate, there is presumably a reason we do not know: perhaps the form is settled later, at concept or formulation, and recorded elsewhere; or perhaps the Product Type table serves a different purpose for you. The one case we can construct ourselves is a project that legitimately reaches Gate 2 with the form still open — "an infant barrier product, cream or balm to be decided at formulation" — which today cannot pass Gate 2 at all, however complete its brief is.
 
 **(b) Gate 7 — "Formulation safety matrix: every formula ingredient assessed".** Today Gate 7 requires the safety matrix to contain rows. Part of that is a technical safeguard we are confident about — a check that reads "every row is assessed" would otherwise pass on an empty table, which is worse than failing. What we are not confident about is the coverage the item claims: that the matrix must carry a row for **every** ingredient in the formula. Nobody has told us that.
 
