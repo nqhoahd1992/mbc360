@@ -27,6 +27,7 @@ import MarketTrackingCard from '../components/MarketTrackingCard';
 import SectionJumpButton from '../components/SectionJumpButton';
 import { roleLabel } from '../utils/roles';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
+import { targetUsersPinnedByAssessment } from '@mbc360/shared/utils/vulnerableUsers';
 
 // Transcribed verbatim from cell A20 of each phase's source workbook sheet
 // (PHASE1 G1-3 MKTG has no equivalent cell — its A20 is a table header, not a
@@ -226,6 +227,16 @@ export default function PhasePage() {
       {config.checklistSections.map((section) => (
         <div key={section.key} id={`sec-checklist-${section.key}`}>
           <ChecklistSection
+            untickBlockedReason={
+              section.key === 'targetUsers'
+                ? (label) => {
+                    const pin = targetUsersPinnedByAssessment(project).find((p) => p.label === label);
+                    return pin
+                      ? `The Vulnerable-User Assessment has a "${pin.group}" row because this is selected. Remove that row first.`
+                      : undefined;
+                  }
+                : undefined
+            }
             projectId={project.identity.id}
             sectionKey={section.key}
             title={section.title}

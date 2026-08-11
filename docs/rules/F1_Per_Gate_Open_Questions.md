@@ -796,3 +796,15 @@ Hệ quả của mức 3: dự án **chỉ** nhắm `Dry / eczema-prone skin` v�
 **Câu hỏi:** (a) 5 cặp ở mức 2 có đúng là cùng một nhóm dân số không? (b) `Dry / eczema-prone skin` có thuộc *"sensitive or compromised skin"* không? (c) `Family use`, `Intimate area`, `Swimmers` có ngụ ý nhóm dễ tổn thương nào không?
 
 **Nếu trả lời khác:** thêm/bớt cặp trong `TARGET_USER_TO_VULNERABLE_GROUP` (`packages/shared/src/config/vulnerableGroups.ts`) — sweep S1 đã kiểm cả hai đầu của mỗi cặp phải tồn tại trong config, nên gõ sai tên sẽ fail build chứ không âm thầm vô hiệu hoá.
+
+**Bổ sung 2026-08-11 (cùng ngày, project owner yêu cầu 4 việc):** ràng buộc nay đi **cả hai chiều**, và chỗ đáng chú ý là **mức cứng không đồng đều — có chủ ý**:
+
+| Quy tắc | Mức | Vì sao |
+|---|---|---|
+| Một group chỉ một dòng | **chặn lưu** | 2 dòng Pregnancy không phải 2 đánh giá, mà là 1 đánh giá nhập 2 lần — sẽ lệch nhau ngay khi sửa một bên |
+| Dòng "none" không đứng cạnh dòng nào khác | **chặn lưu** | "không xác định nhóm nào" là một khẳng định vắng mặt, mâu thuẫn trực tiếp |
+| Ghi group **trùng chữ** với target user (Pregnancy · Breastfeeding · Postpartum · Infant 0+) mà target user đó chưa tick | **chặn lưu** | cùng một chữ, ai đọc cũng thấy mâu thuẫn — không cần map gì |
+| Ghi group thuộc **map mức 2** (Young child · Sensitive or compromised skin · Oncology… · Renal…) mà không target user nào tương ứng | **chỉ cảnh báo** | các group này có thể đến hợp lệ từ một target user ta **chưa map** (Family use → trẻ nhỏ; Dry/eczema-prone → compromised skin) hoặc từ phán định của Safety/Regulatory — chính là chỗ B5 để sẵn option *"Other population identified by Safety or Regulatory"*. Chặn cứng ở đây là biến **cách đọc chưa xác nhận của ta** thành luật người dùng không lách được — đúng sai lầm mà màn hình caution thai kỳ đã mắc một lần |
+| Bỏ tick target user đang có dòng assessment tham chiếu | **chặn** (UI disable + API từ chối) | cùng dạng với "không xoá được dòng Supplier & RM Evidence khi Formula BOM còn tham chiếu". Hai target user chung một group (`Child 2+`/`Child 3+` → `Young child`) thì chỉ **cái cuối cùng** bị ghim |
+
+**Câu hỏi bổ sung (d):** hướng ngược lại có nên chặn cứng cho **cả** 4 cặp mức 2 không, hay giữ cảnh báo như hiện tại vì một nhóm dễ tổn thương có thể được Safety/Regulatory nhận diện mà không cần target user tương ứng?

@@ -322,7 +322,11 @@ Doing that meant deciding which of the seventeen target-user options implies whi
 
 The consequence of that last row: a project aimed only at, say, dry or eczema-prone skin can still record "no vulnerable group" and pass Gate 2. We would rather ask than quietly decide it either way.
 
-**Question:** (a) are the five "same population" pairs right? (b) Does dry or eczema-prone skin count as *sensitive or compromised skin*? (c) Do family use, intimate area or swimmers imply a vulnerable group — a family product reaching children, for instance?
+The check now runs both ways, and we have deliberately made the two directions different strengths. Recording **Breastfeeding** in the assessment while Breastfeeding is not a target user is refused outright — it is the same word in both places, so it is a plain contradiction. Recording **Young child** or **Sensitive or compromised skin** with no matching target user only raises a warning, because those can legitimately come from somewhere we did not map (a family product reaching children, eczema-prone skin) or from a Safety or Regulatory judgement, which your own "Other population identified by Safety or Regulatory" option exists for. Refusing those would turn our mapping into a rule nobody can work around, and we have made that mistake once already with the pregnancy caution screen.
+
+Two smaller rules came with it: one row per group, since two Pregnancy rows are one assessment entered twice; and a target user cannot be un-ticked while an assessment row depends on it — the row must be removed first.
+
+**Question:** (a) are the five "same population" pairs right? (b) Does dry or eczema-prone skin count as *sensitive or compromised skin*? (c) Do family use, intimate area or swimmers imply a vulnerable group — a family product reaching children, for instance? (d) Should recording one of those four renamed groups without its matching target user be refused outright rather than warned about?
 
 ---
 

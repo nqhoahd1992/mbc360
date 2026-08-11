@@ -10,6 +10,11 @@ import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTrig
 import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
 import { unsupportedClaimRows } from '@mbc360/shared/utils/claimEvidence';
+import {
+  VULNERABLE_REGISTER,
+  targetUsersPinnedByAssessment,
+  vulnerableSaveBlockers,
+} from '@mbc360/shared/utils/vulnerableUsers';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import {
   gateBlockers,
@@ -369,6 +374,24 @@ export class ProjectsService {
           `Checklist "${section}" belongs to gate ${cfg.gate}, which has passed — it is read-only (use Backtrack)`,
         );
       }
+      // 2026-08-11: un-ticking a target user that the Vulnerable-User Assessment
+      // depends on would orphan that row — the same dependency guard as a
+      // Supplier & RM Evidence row a Formula BOM line still references. Remove
+      // the assessment row first.
+      if (section === 'targetUsers') {
+        const pinned = targetUsersPinnedByAssessment(project);
+        const removed = pinned.filter((pin) => !items.some((i) => i.label === pin.label && i.selected));
+        if (removed.length > 0) {
+          throw new BadRequestException(
+            removed
+              .map(
+                (pin) =>
+                  `Cannot un-select "${pin.label}": the Vulnerable-User Assessment has a "${pin.group}" row that depends on it — remove that row first`,
+              )
+              .join('; '),
+          );
+        }
+      }
       const existing = row.checklistItems.filter((i) => i.sectionKey === section);
       if (items.length !== existing.length) {
         throw new BadRequestException(
@@ -638,6 +661,17 @@ export class ProjectsService {
           throw new BadRequestException(
             `${bad.length} Published Information row(s) reference a claim that is not yet 'Supported' in Claim -> Evidence Traceability — cannot save in a released workflow state until the claim is supported (Gate 3 rule).`,
           );
+        }
+      }
+      // 2026-08-11: one row per vulnerable group, and no group that contradicts
+      // the Gate 02 target-user selection outright. The soft half of that rule
+      // (groups our mapping only GUESSES at) deliberately stays a UI warning —
+      // see vulnerableUsers.ts for why hard-blocking it would enforce our own
+      // unconfirmed reading.
+      if (registerKey === VULNERABLE_REGISTER) {
+        const blockers = vulnerableSaveBlockers(project, rows);
+        if (blockers.length > 0) {
+          throw new BadRequestException(`Vulnerable-User Assessment: ${blockers.join('; ')}.`);
         }
       }
       await tx.registerRow.deleteMany({ where: { projectId: id, registerKey } });

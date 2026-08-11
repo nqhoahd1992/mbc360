@@ -1,7 +1,8 @@
-import { Alert, Card, Descriptions, Empty, Progress, Table, Tabs, Tag, Typography } from 'antd';
-import { RightOutlined, UserOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Descriptions, Empty, Progress, Table, Tabs, Tag, Tooltip, Typography } from 'antd';
+import { RightOutlined, ThunderboltOutlined, UserOutlined } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
+import { createEmptyRegisterRow } from '../store/factory';
 import StudyApprovalCard from '../components/StudyApprovalCard';
 import {
   findNavGroupForRegister,
@@ -19,6 +20,13 @@ import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import DynamicTable from '../components/DynamicTable';
 import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
 import PublishedInfoApprovalTable from '../components/PublishedInfoApprovalTable';
+import { NO_VULNERABLE_GROUP } from '@mbc360/shared/config/vulnerableGroups';
+import {
+  VULNERABLE_REGISTER,
+  expectedVulnerableGroups,
+  vulnerableRowProblems,
+  vulnerableSaveBlockers,
+} from '@mbc360/shared/utils/vulnerableUsers';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
 
 // Content transcribed verbatim from the source workbook's front-matter sheets
@@ -197,6 +205,62 @@ export default function RegisterHubPage() {
             claimEvidenceRows={claimEvidenceRows}
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
             readOnly={locked}
+          />
+        ) : registerKey === VULNERABLE_REGISTER ? (
+          // B5 keeps the target-user selection and the vulnerable-use
+          // recognition separate, but they must not contradict each other:
+          // one-click rows for the groups Gate 02 implies, one row per group,
+          // and a check both ways — see vulnerableUsers.ts for what blocks a
+          // save and what only warns.
+          <DynamicTable
+            config={config}
+            rows={project.registers[registerKey] ?? []}
+            onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
+            readOnly={locked}
+            extraActions={(draft, update) => {
+              const missing = expectedVulnerableGroups(project).filter(
+                (g) => !draft.some((r) => String(r.vulnerableGroup ?? '').trim() === g),
+              );
+              const noneMissing = expectedVulnerableGroups(project).length === 0
+                && !draft.some((r) => String(r.vulnerableGroup ?? '').trim() === NO_VULNERABLE_GROUP);
+              const presets = missing.length > 0 ? missing : noneMissing ? [NO_VULNERABLE_GROUP] : [];
+              if (presets.length === 0) return null;
+              return (
+                <Tooltip
+                  title={
+                    missing.length > 0
+                      ? `Adds a row for each vulnerable group the Gate 02 target users imply: ${missing.join(', ')}. You still record the pathway, reviewer and notes.`
+                      : 'No target user implies a vulnerable group, so the assessment records that explicitly.'
+                  }
+                >
+                  <Button
+                    size="small"
+                    type="primary"
+                    ghost
+                    icon={<ThunderboltOutlined />}
+                    onClick={() =>
+                      update((prev) => [
+                        ...prev,
+                        ...presets.map((group) => ({
+                          ...createEmptyRegisterRow(VULNERABLE_REGISTER),
+                          vulnerableGroup: group,
+                        })),
+                      ])
+                    }
+                  >
+                    {missing.length > 0
+                      ? `Add ${missing.length} row${missing.length > 1 ? 's' : ''} from target users`
+                      : 'Record "no vulnerable group identified"'}
+                  </Button>
+                </Tooltip>
+              );
+            }}
+            saveBlockers={(draft) => vulnerableSaveBlockers(project, draft)}
+            warnings={(draft) =>
+              vulnerableRowProblems(project, draft)
+                .filter((problem) => !problem.hard)
+                .map((problem) => `"${problem.group}" ${problem.reason}.`)
+            }
           />
         ) : (
           <DynamicTable

@@ -26,6 +26,18 @@ export default function DynamicTable({
   // Add/Delete/Save) — editing a passed gate's evidence requires Backtrack.
   readOnly,
   readOnlyReason,
+  // Register-specific extras (2026-08-11), so a register with its own
+  // consistency rules does not have to fork the whole table the way
+  // SupplierRmEvidenceTable did — those needed different CELL renderers, these
+  // only need to add to the frame around them:
+  //   extraActions — a control beside "Add row" (e.g. a preset quick-add);
+  //   saveBlockers — reasons Save must stay disabled, on top of the blank-row
+  //     guard every register already has;
+  //   warnings     — inconsistencies worth flagging that must NOT block, because
+  //     the rule behind them is our reading rather than a confirmed one.
+  extraActions,
+  saveBlockers,
+  warnings,
 }: {
   config: RegisterConfig;
   rows: RegisterRow[];
@@ -33,6 +45,9 @@ export default function DynamicTable({
   reviewOwnerText?: string;
   readOnly?: boolean;
   readOnlyReason?: string;
+  extraActions?: (draft: RegisterRow[], update: (fn: (prev: RegisterRow[]) => RegisterRow[]) => void) => React.ReactNode;
+  saveBlockers?: (draft: RegisterRow[]) => string[];
+  warnings?: (draft: RegisterRow[]) => string[];
 }) {
   const isRegister = config.mode === 'register' && !readOnly;
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
@@ -42,8 +57,10 @@ export default function DynamicTable({
   const addRow = () => update((prev) => [...prev, createEmptyRegisterRow(config.key)]);
   const removeRow = (index: number) => update((prev) => prev.filter((_, i) => i !== index));
   const hasBlankRows = isRegister && draft.some((r) => isRegisterRowBlank(config, r));
+  const blockers = readOnly ? [] : (saveBlockers?.(draft) ?? []);
+  const softWarnings = readOnly ? [] : (warnings?.(draft) ?? []);
   const save = () => {
-    if (hasBlankRows) return;
+    if (hasBlankRows || blockers.length > 0) return;
     onSave(draft);
     markSaved();
   };
@@ -170,6 +187,21 @@ export default function DynamicTable({
           description={readOnlyReason ?? 'This evidence belongs to a gate that has already passed. To correct it, Backtrack to reopen that gate first.'}
         />
       )}
+      {softWarnings.length > 0 && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message="Check this against the Gate 02 target users"
+          description={
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {softWarnings.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          }
+        />
+      )}
       <Table
         size="small"
         // RegisterRow has no natural id, so key by array position. antd
@@ -186,23 +218,23 @@ export default function DynamicTable({
       {/* Below the table, right after the last row, rather than in the card
           header — the add affordance belongs next to the rows it appends to. */}
       {isRegister && (
-        <Button
-          size="small"
-          type="dashed"
-          block
-          icon={<PlusOutlined />}
-          onClick={addRow}
-          style={{ marginTop: 8 }}
-        >
-          Add row
-        </Button>
+        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+          <Button size="small" type="dashed" block icon={<PlusOutlined />} onClick={addRow}>
+            Add row
+          </Button>
+          {extraActions?.(draft, update)}
+        </div>
       )}
       <SaveBar
         dirty={dirty}
         onSave={save}
         onDiscard={discard}
-        disabled={hasBlankRows}
-        disabledReason="One or more rows have no data entered — fill in at least one field or remove the row before saving."
+        disabled={hasBlankRows || blockers.length > 0}
+        disabledReason={
+          hasBlankRows
+            ? 'One or more rows have no data entered — fill in at least one field or remove the row before saving.'
+            : blockers.join(' · ')
+        }
       />
     </Card>
   );

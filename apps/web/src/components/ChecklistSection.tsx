@@ -16,6 +16,13 @@ export default function ChecklistSection({
   items,
   currentGateNumber,
   readOnly,
+  // Why a given option cannot be UN-ticked right now (2026-08-11). Returns a
+  // reason to show in a tooltip, or undefined when the tick is free to remove.
+  // Used for Target Users, where un-ticking Pregnancy would orphan the
+  // Vulnerable-User Assessment row that exists because of it — the same
+  // dependency guard as a Supplier & RM Evidence row the Formula BOM still
+  // references. Ticking something ON is never restricted.
+  untickBlockedReason,
 }: {
   projectId: string;
   sectionKey: string;
@@ -27,6 +34,7 @@ export default function ChecklistSection({
   // Gate-level edit lock (2026-07-23): true once this section's gate has
   // passed — inputs disabled, no Save; edit requires Backtrack.
   readOnly?: boolean;
+  untickBlockedReason?: (label: string) => string | undefined;
 }) {
   const setSection = useAppStore((s) => s.setChecklistSection);
   const { draft, dirty, update, markSaved, discard } = useDraft(items);
@@ -72,13 +80,22 @@ export default function ChecklistSection({
           {
             title: '',
             width: 40,
-            render: (_, r, i) => (
-              <Checkbox
-                checked={r.selected}
-                disabled={readOnly}
-                onChange={(e) => patch(i, { selected: e.target.checked, status: e.target.checked ? 'Y' : 'NA' })}
-              />
-            ),
+            render: (_, r, i) => {
+              const blocked = r.selected ? untickBlockedReason?.(r.label) : undefined;
+              const box = (
+                <Checkbox
+                  checked={r.selected}
+                  disabled={readOnly || !!blocked}
+                  onChange={(e) => {
+                    // Defence in depth: the box is disabled, and the handler
+                    // refuses anyway. The API refuses too.
+                    if (blocked && !e.target.checked) return;
+                    patch(i, { selected: e.target.checked, status: e.target.checked ? 'Y' : 'NA' });
+                  }}
+                />
+              );
+              return blocked ? <Tooltip title={blocked}>{box}</Tooltip> : box;
+            },
           },
           {
             title: 'Option',
