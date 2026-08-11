@@ -1,4 +1,5 @@
 import { Alert, Card, DatePicker, Input, Select, Table, Tag } from 'antd';
+import UserSelect from './UserSelect';
 import { CheckCircleFilled, SafetyCertificateOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { StudyApproval } from '@mbc360/shared/types';
@@ -84,7 +85,7 @@ export default function StudyApprovalCard({
             title: 'Name',
             width: 170,
             render: (_, a, i) => (
-              <Input size="small" value={a.name} onChange={(e) => patch(i, { name: e.target.value })} />
+              <UserSelect value={a.name} onChange={(v) => patch(i, { name: v ?? '' })} />
             ),
           },
           {

@@ -21,6 +21,7 @@ import { roleLabel } from '../utils/roles';
 import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import UserSelect from './UserSelect';
 import { ApiError } from '../api/projectsApi';
 import { useSession } from '../auth/useSession';
 
@@ -559,12 +560,11 @@ export default function GateFlowTable({
             title: 'Owner',
             width: 140,
             render: (_, r) => (
-              <Input
-                size="small"
+              <UserSelect
                 value={r.draftRecord.owner}
                 placeholder={r.meta.primaryOwner}
                 disabled={r.locked}
-                onChange={(e) => patch(r.draftIndex, { owner: e.target.value })}
+                onChange={(v) => patch(r.draftIndex, { owner: v })}
               />
             ),
           },

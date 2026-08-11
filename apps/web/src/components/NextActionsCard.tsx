@@ -6,6 +6,7 @@ import { GATES } from '@mbc360/shared/config/gates';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import UserSelect from './UserSelect';
 
 // F8: full controlled-record workflow + Critical priority.
 const STATUS_OPTIONS: NextActionStatus[] = [
@@ -126,7 +127,7 @@ export default function NextActionsCard({
             title: 'Owner',
             width: 140,
             render: (_, a, i) => (
-              <Input size="small" value={a.owner} onChange={(e) => patch(i, { owner: e.target.value })} />
+              <UserSelect value={a.owner} onChange={(v) => patch(i, { owner: v ?? '' })} />
             ),
           },
           {
@@ -181,11 +182,10 @@ export default function NextActionsCard({
             title: 'Verified by',
             width: 130,
             render: (_, a, i) => (
-              <Input
-                size="small"
+              <UserSelect
                 placeholder="Reviewer"
                 value={a.verifiedBy}
-                onChange={(e) => patch(i, { verifiedBy: e.target.value })}
+                onChange={(v) => patch(i, { verifiedBy: v })}
               />
             ),
           },

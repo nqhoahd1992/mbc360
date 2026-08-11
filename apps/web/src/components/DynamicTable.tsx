@@ -7,6 +7,7 @@ import type { RegisterRow } from '@mbc360/shared/types';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { createEmptyRegisterRow } from '../store/factory';
 import SaveBar from './SaveBar';
+import UserSelect from './UserSelect';
 
 export default function DynamicTable({
   config,
@@ -60,6 +61,13 @@ export default function DynamicTable({
       case 'checkbox':
         return (
           <Checkbox checked={!!value} onChange={(e) => patch(index, column.key, e.target.checked)} />
+        );
+      case 'user':
+        return (
+          <UserSelect
+            value={value as string | undefined}
+            onChange={(v) => patch(index, column.key, v)}
+          />
         );
       case 'select':
         return (

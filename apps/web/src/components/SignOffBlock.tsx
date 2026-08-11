@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import UserSelect from './UserSelect';
 import { Alert, Card, DatePicker, Input, Select, Table } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -109,11 +110,10 @@ export default function SignOffBlock({
             title: 'Name',
             width: 180,
             render: (_, r, i) => (
-              <Input
-                size="small"
+              <UserSelect
                 value={r.name}
                 disabled={rowDisabled(r)}
-                onChange={(e) => patchSignOff(i, { name: e.target.value })}
+                onChange={(v) => patchSignOff(i, { name: v })}
               />
             ),
           },

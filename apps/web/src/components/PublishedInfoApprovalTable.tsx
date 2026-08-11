@@ -9,6 +9,7 @@ import { unsupportedClaimRows } from '@mbc360/shared/utils/claimEvidence';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { createEmptyRegisterRow } from '../store/factory';
 import SaveBar from './SaveBar';
+import UserSelect from './UserSelect';
 
 // Published_Info_Approval-specific variant of DynamicTable (2026-07-27,
 // user-requested): "Claim ID" is picked from Claim -> Evidence Traceability
@@ -125,6 +126,13 @@ export default function PublishedInfoApprovalTable({
     const value = row[column.key];
     if (!editable) return <span style={{ color: '#666' }}>{value != null ? String(value) : ''}</span>;
     switch (column.type) {
+      case 'user':
+        return (
+          <UserSelect
+            value={value as string | undefined}
+            onChange={(v) => patch(index, column.key, v)}
+          />
+        );
       case 'checkbox':
         return <Checkbox checked={!!value} onChange={(e) => patch(index, column.key, e.target.checked)} />;
       case 'select':

@@ -1,7 +1,12 @@
 import type { RegisterRow } from '../types';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
-export type ColumnType = 'text' | 'textarea' | 'select' | 'date' | 'checkbox' | 'number';
+// `user` = a person, picked from the app's active users (UserSelect); the
+// stored value is their displayName, exactly what these columns held as free
+// text before 2026-08-11. Deliberately NOT applied to the seeded owner cells of
+// mode: 'fixed' registers: those carry a FUNCTION ("Regulatory", "Safety / R&I"),
+// not a person, and are read-only reference text copied from the source sheet.
+export type ColumnType = 'text' | 'textarea' | 'select' | 'date' | 'checkbox' | 'number' | 'user';
 
 export interface RegisterColumn {
   key: string;
@@ -91,7 +96,7 @@ const supplierRmEvidence: RegisterConfig = {
     { key: 'microInfo', label: 'Micro / preservative info', type: 'text', width: 150 },
     { key: 'originProof', label: 'Origin / vegan / natural proof', type: 'text', width: 160 },
     { key: 'regulatoryStatus', label: 'Regulatory status', type: 'text', width: 150 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 130 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 130 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
   ],
@@ -126,7 +131,7 @@ const prohibitedIngredients: RegisterConfig = {
     },
     { key: 'formulaMatchCount', label: 'Formula match count', type: 'number', width: 90 },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 110 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 110 },
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 130, editable: false },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
   ],
@@ -175,7 +180,7 @@ const pbCautionLimits: RegisterConfig = {
     },
     { key: 'formulaExposure', label: 'Formula % / exposure', type: 'text', width: 130 },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 130 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 130 },
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 150, editable: false },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
   ],
@@ -214,7 +219,7 @@ const ingredientSubstitution: RegisterConfig = {
     { key: 'costImpact', label: 'Cost impact', type: 'text', width: 120 },
     { key: 'evidenceLinks', label: 'Evidence links', type: 'text', width: 140 },
     { key: 'decision', label: 'Decision', type: 'text', width: 130 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
@@ -243,7 +248,7 @@ const eyeSafetyEvidence: RegisterConfig = {
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130 },
     { key: 'rawDataLink', label: 'Raw data link', type: 'text', width: 130 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
 };
@@ -313,7 +318,7 @@ const microPetEvidence: RegisterConfig = {
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130 },
     { key: 'rawDataLink', label: 'Raw data link', type: 'text', width: 130 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
 };
@@ -338,7 +343,7 @@ const stabilityRelease: RegisterConfig = {
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130 },
     { key: 'releaseDecision', label: 'Release decision', type: 'text', width: 140 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
 };
@@ -461,7 +466,7 @@ const functionalEfficacy: RegisterConfig = {
     { key: 'rawDataLink', label: 'Raw data link', type: 'text', width: 130 },
     { key: 'approvedWording', label: 'Approved wording', type: 'textarea', width: 180 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
 };
@@ -486,7 +491,7 @@ const clinicalHumanEvidence: RegisterConfig = {
     { key: 'safetyFindings', label: 'Safety findings', type: 'text', width: 150 },
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
 };
@@ -580,7 +585,7 @@ const testReportIndex: RegisterConfig = {
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130 },
     { key: 'rawDataLink', label: 'Raw data link', type: 'text', width: 130 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 100 },
     { key: 'pifAttached', label: 'PIF attached?', type: 'select', width: 90, options: YNNA },
   ],
@@ -609,7 +614,7 @@ const packagingSpecsArtwork: RegisterConfig = {
     { key: 'market', label: 'Market', type: 'text', width: 110 },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 130 },
     { key: 'approval', label: 'Approval', type: 'text', width: 120 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
@@ -722,7 +727,7 @@ const pifChecklistAsean: RegisterConfig = {
     { key: 'owner', label: 'Owner', type: 'text', width: 150, editable: false },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
     { key: 'gate', label: 'Gate', type: 'text', width: 80, editable: false },
-    { key: 'reviewer', label: 'Reviewer', type: 'text', width: 130 },
+    { key: 'reviewer', label: 'Reviewer', type: 'user', width: 130 },
     { key: 'closureDate', label: 'Closure date', type: 'date', width: 130 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
@@ -758,7 +763,7 @@ const pifEvidenceExport: RegisterConfig = {
     { key: 'pifFolderLink', label: 'PIF folder link', type: 'text', width: 140 },
     { key: 'versionDate', label: 'Version / date', type: 'text', width: 110 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
 };
@@ -781,7 +786,7 @@ const skuClaimsPifRegister: RegisterConfig = {
     { key: 'approvedLimitation', label: 'Approved limitation', type: 'text', width: 160 },
     { key: 'pifLink', label: 'PIF link', type: 'text', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
 };
@@ -869,9 +874,9 @@ const publishedInfoApproval: RegisterConfig = {
     { key: 'finalApproval', label: '5. Final approval before publication', type: 'select', width: 120, options: YNNA },
     { key: 'allowed', label: 'Allowed?', type: 'select', width: 90, options: YNNA },
     // F11: the required reviewer roles per record.
-    { key: 'contentOwner', label: 'Content owner / author', type: 'text', width: 150 },
-    { key: 'technicalReviewer', label: 'Technical reviewer', type: 'text', width: 140 },
-    { key: 'regulatoryReviewer', label: 'Regulatory reviewer', type: 'text', width: 140 },
+    { key: 'contentOwner', label: 'Content owner / author', type: 'user', width: 150 },
+    { key: 'technicalReviewer', label: 'Technical reviewer', type: 'user', width: 140 },
+    { key: 'regulatoryReviewer', label: 'Regulatory reviewer', type: 'user', width: 140 },
     { key: 'finalApprover', label: 'Final authorised approver', type: 'text', width: 150 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'dateApproved', label: 'Date approved', type: 'date', width: 120 },
@@ -922,7 +927,7 @@ const hcpEfficacyAnswer: RegisterConfig = {
     { key: 'approvedWordingLink', label: 'Approved wording link', type: 'text', width: 150 },
     { key: 'doNotSay', label: 'Do-not-say / limitation', type: 'textarea', width: 180 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 150 },
   ],
 };
@@ -942,7 +947,7 @@ const hcpTestReportPack: RegisterConfig = {
     { key: 'approvedLimitation', label: 'Approved limitation', type: 'text', width: 160 },
     { key: 'pifLink', label: 'PIF / PMF link', type: 'text', width: 130 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 150 },
   ],
 };
@@ -970,7 +975,7 @@ const batchFormulaTrace: RegisterConfig = {
     { key: 'stabilitySampleLink', label: 'Stability sample link', type: 'text', width: 150 },
     { key: 'pifLink', label: 'PIF / PMF link', type: 'text', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
 };
@@ -994,7 +999,7 @@ const productFamilyRegister: RegisterConfig = {
     { key: 'changeRegisterId', label: 'Change register ID', type: 'text', width: 130 },
     { key: 'marketCommNeeded', label: 'Market communication needed?', type: 'checkbox', width: 100 },
     { key: 'communicatedToMarket', label: 'Communicated to market?', type: 'checkbox', width: 100 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 170 },
   ],
 };
@@ -1009,7 +1014,7 @@ const formulationChangeRegister: RegisterConfig = {
   columns: [
     { key: 'changeId', label: 'Change ID', type: 'text', width: 100 },
     { key: 'productFamilySku', label: 'Product Family / SKU', type: 'text', width: 150 },
-    { key: 'requestedByNpd', label: 'Change requested by NPD team', type: 'text', width: 160 },
+    { key: 'requestedByNpd', label: 'Change requested by NPD team', type: 'user', width: 160 },
     { key: 'dateRequested', label: 'Date change requested', type: 'date', width: 120 },
     { key: 'approvedByNp', label: 'Approved by NP? (commercial)', type: 'checkbox', width: 100 },
     { key: 'changeTitle', label: 'Change title', type: 'text', width: 160 },
@@ -1069,7 +1074,7 @@ const developmentBrief: RegisterConfig = {
     { key: 'briefStatus', label: 'Brief status', type: 'select', width: 150, options: ['Draft', 'In Review', 'Approved', 'Superseded'] },
     { key: 'briefLink', label: 'Brief link', type: 'text', width: 200 },
     { key: 'briefVersion', label: 'Brief version', type: 'text', width: 110 },
-    { key: 'briefOwner', label: 'Brief owner', type: 'text', width: 140 },
+    { key: 'briefOwner', label: 'Brief owner', type: 'user', width: 140 },
     { key: 'approvalDate', label: 'Approval date', type: 'text', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
   ],
@@ -1114,7 +1119,7 @@ const vulnerableUserAssessment: RegisterConfig = {
       ],
     },
     { key: 'safetyPathway', label: 'Applicable safety pathway', type: 'text', width: 190 },
-    { key: 'responsibleReviewer', label: 'Responsible reviewer', type: 'text', width: 160 },
+    { key: 'responsibleReviewer', label: 'Responsible reviewer', type: 'user', width: 160 },
     { key: 'additionalAssessments', label: 'Additional assessments required', type: 'textarea', width: 230 },
   ],
 };
@@ -1162,7 +1167,7 @@ const campaignsSocialMedia: RegisterConfig = {
     { key: 'link', label: 'Link (URL / asset)', type: 'text', width: 150 },
     { key: 'startDate', label: 'Start date', type: 'date', width: 110 },
     { key: 'endDate', label: 'End date', type: 'date', width: 110 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'linkedChangeId', label: 'Linked Change ID', type: 'text', width: 130 },
     { key: 'claimsApproved', label: 'Claims approved? (Reg)', type: 'checkbox', width: 100 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
@@ -1205,7 +1210,7 @@ const productDevelopmentIterations: RegisterConfig = {
     { key: 'resultObservation', label: 'Result / observation', type: 'textarea', width: 180 },
     { key: 'decision', label: 'Decision', type: 'text', width: 130 },
     { key: 'nextAction', label: 'Next action', type: 'text', width: 150 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'linkedChangeId', label: 'Linked Change ID', type: 'text', width: 130 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
   ],
@@ -1225,7 +1230,7 @@ const productDevelopmentFeedback: RegisterConfig = {
     { key: 'competitor', label: 'Competitor (if any)', type: 'text', width: 140 },
     { key: 'ourPosition', label: 'Our position vs competitor', type: 'text', width: 170 },
     { key: 'actionTaken', label: 'Action taken / planned', type: 'text', width: 170 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
   ],
 };
@@ -1342,7 +1347,7 @@ const releasedLabelRegister: RegisterConfig = {
     { key: 'assetExists', label: '3D asset exists?', type: 'select', width: 110, options: YNNA },
     { key: 'assetLink', label: '3D asset link', type: 'text', width: 130 },
     { key: 'artworkChangeRef', label: 'Artwork_Change_Control ref', type: 'text', width: 160 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes / action', type: 'textarea', width: 200 },
   ],
@@ -1365,13 +1370,13 @@ const labelPlatformRollout: RegisterConfig = {
     { key: 'currentImage', label: 'Current image on platform', type: 'text', width: 160 },
     { key: 'correctArtwork', label: 'Correct new artwork file', type: 'text', width: 160 },
     { key: 'stockAvailable', label: 'New-label stock available?', type: 'select', width: 120, options: YNNA },
-    { key: 'stockConfirmedBy', label: 'Stock confirmed by', type: 'text', width: 140 },
+    { key: 'stockConfirmedBy', label: 'Stock confirmed by', type: 'user', width: 140 },
     { key: 'oldImageRemoved', label: 'Old image removed?', type: 'select', width: 110, options: YNNA },
     { key: 'imageUpdated', label: 'Image updated on platform?', type: 'select', width: 120, options: YNNA },
     { key: 'dateUpdated', label: 'Date updated', type: 'date', width: 120 },
-    { key: 'verifiedBy', label: 'Verified by', type: 'text', width: 130 },
+    { key: 'verifiedBy', label: 'Verified by', type: 'user', width: 130 },
     { key: 'screenshotLink', label: 'Screenshot / evidence link', type: 'text', width: 160 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
     { key: 'followUpDate', label: 'Follow-up date', type: 'date', width: 120 },
@@ -1398,10 +1403,10 @@ const labelShipmentVerification: RegisterConfig = {
     { key: 'labelFileLink', label: 'Label artwork file / proof link', type: 'text', width: 170 },
     { key: 'artworkMatches', label: 'Artwork matches current released label?', type: 'select', width: 130, options: YNNA },
     { key: 'batchMatches', label: 'Batch details match physical stock?', type: 'select', width: 130, options: YNNA },
-    { key: 'verifiedBy', label: 'Verified by', type: 'text', width: 130 },
+    { key: 'verifiedBy', label: 'Verified by', type: 'user', width: 130 },
     { key: 'batchTraceRef', label: 'Batch_Formula_Trace ref', type: 'text', width: 160 },
     { key: 'photoLink', label: 'Photo / evidence link', type: 'text', width: 150 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 120 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'holdRelease', label: 'Hold / release', type: 'text', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
@@ -1887,7 +1892,7 @@ export const evidenceTestProtocol: RegisterConfig = {
     { key: 'conditionsTimepoints', label: 'Conditions / timepoints', type: 'textarea', width: 200 },
     { key: 'acceptanceLimit', label: 'Acceptance limit', type: 'text', width: 150 },
     { key: 'reportLink', label: 'Report / evidence link', type: 'text', width: 180 },
-    { key: 'owner', label: 'Owner', type: 'text', width: 140 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 140 },
   ],
 };
 

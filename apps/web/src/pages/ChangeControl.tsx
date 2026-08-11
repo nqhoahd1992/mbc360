@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import UserSelect from '../components/UserSelect';
 import { Alert, Button, Card, DatePicker, Form, Input, Modal, Select, Space, Switch, Table, Tag, message } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
@@ -317,7 +318,7 @@ export default function ChangeControl() {
               <DatePicker style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="owner" label="Owner" rules={[{ required: true }]}>
-              <Input />
+              <UserSelect onChange={() => {}} />
             </Form.Item>
             <Form.Item name="requiredSignOffs" label="Required sign-offs">
               <Input placeholder="e.g. R&I, Safety, Regulatory" />

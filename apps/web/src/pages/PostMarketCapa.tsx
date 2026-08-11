@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import UserSelect from '../components/UserSelect';
 import { Button, Card, Empty, Form, Input, Modal, Select, Table, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
@@ -127,7 +128,7 @@ export default function PostMarketCapa() {
               <Select options={['Low', 'Medium', 'High'].map((r) => ({ value: r, label: r }))} />
             </Form.Item>
             <Form.Item name="owner" label="Owner" rules={[{ required: true }]}>
-              <Input />
+              <UserSelect onChange={() => {}} />
             </Form.Item>
           </div>
           <Form.Item name="summary" label="Complaint / AE summary" rules={[{ required: true }]}>

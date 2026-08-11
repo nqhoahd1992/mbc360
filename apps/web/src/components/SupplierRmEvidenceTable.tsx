@@ -10,6 +10,7 @@ import { createEmptyRegisterRow } from '../store/factory';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
 import { cosmetriListRawMaterials, type CosmetriRawMaterialSummary } from '../integrations/cosmetri';
 import SaveBar from './SaveBar';
+import UserSelect from './UserSelect';
 
 // Supplier_RM_Evidence-specific variant of DynamicTable: `rmCode` is picked
 // from Cosmetri's raw-material catalogue instead of typed free text, mirroring
@@ -117,6 +118,13 @@ export default function SupplierRmEvidenceTable({
     const value = row[column.key];
     if (!editable) return <span style={{ color: '#666' }}>{value != null ? String(value) : ''}</span>;
     switch (column.type) {
+      case 'user':
+        return (
+          <UserSelect
+            value={value as string | undefined}
+            onChange={(v) => patch(index, column.key, v)}
+          />
+        );
       case 'checkbox': {
         // Same "remove it from the BOM first" rule as row deletion above,
         // applied to revoking approval instead of deleting the row outright:
