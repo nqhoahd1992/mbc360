@@ -294,6 +294,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // capture that is deliberately NOT the Gate 02 checklists. Pointing this
       // at those would have forced Gate 2's full target-user and market work to
       // finish before Gate 1 could close — collapsing two gates into one.
+      //
+      // The `initialTargetMarkets` half duplicates `identity.markets`, the
+      // workbook's own Countries / Markets parameter, which the create-project
+      // form already requires — and B3 was answered on our statement that no
+      // such field existed, which was wrong. Reading `identity.markets` instead
+      // would make this half vacuous (the form guarantees a value), so it stays
+      // as it is until the SME answers [ASSUMPTION: R4-Q21].
       id: 'sg01-market-user',
       label: 'Initial target market and user',
       tier: 'Mandatory',
