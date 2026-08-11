@@ -98,7 +98,18 @@ export type ReadinessCheck =
   // (e.g. needsSignOff/targetProductSignOff) has name AND date filled for
   // every role" as ONE clean Mandatory item instead of two awkwardly-split
   // single-column items.
-  | { kind: 'registerRowsComplete'; register: string; columns: string[] }
+  //
+  // `when` narrows it to the rows the requirement actually applies to (added
+  // 2026-08-11 for B5's vulnerable-user rule, which is conditional PER ROW: a row
+  // naming a vulnerable group needs the safety pathway, reviewer and notes, while
+  // the "No vulnerable-user group identified" row needs none of them). Rows whose
+  // `when.column` holds one of `notIn` are skipped.
+  //
+  // ⚠️ With `when`, this check IS vacuously satisfiable — a register where every
+  // row is skipped has nothing left to fail on — so it needs a Mandatory
+  // `registerHasRows` alongside it, exactly like registerColumnFilled. Sweep S2
+  // enforces that; without `when` the check stays non-vacuous and needs no pair.
+  | { kind: 'registerRowsComplete'; register: string; columns: string[]; when?: { column: string; notIn: string[] } }
   // A `ProjectIdentity` field is non-empty (2026-08-09, SME Round 3 B1/B2/B3).
   //
   // An earlier `identityFieldFilled` kind was DELETED on 2026-08-07 because its
@@ -409,17 +420,32 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // record 'No vulnerable-user group identified' rather than satisfying the
       // requirement by default."
       //
-      // Only `vulnerableGroup` is required on every row: the other three
-      // columns (pathway / reviewer / additional assessments) are meaningless
-      // on the "No vulnerable-user group identified" row, and requiring them
-      // there would be inventing a rule. B5 asks for them "where any vulnerable
-      // group is selected" — that per-row conditional is not expressible with
-      // the current check kinds and is left for the trigger work.
+      // B5 lists four things to require "where any vulnerable group is
+      // selected": the flag itself, the applicable safety pathway, the
+      // responsible reviewer, and notes on additional assessments. That is a
+      // PER-ROW conditional — the "No vulnerable-user group identified" row
+      // needs only the flag, since a pathway and a reviewer for a group nobody
+      // identified would be nonsense.
+      //
+      // Until 2026-08-11 only the flag was enforced, on the grounds that the
+      // conditional could not be expressed; the project owner read B5 again and
+      // was right that the other three are required, not optional. The gap was
+      // real: a row naming Pregnancy with no reviewer and no pathway passed
+      // Gate 2. `registerRowsComplete` gained a `when` clause rather than the
+      // rule being left unenforced.
       check: {
         kind: 'allOf',
         checks: [
           { kind: 'registerHasRows', register: 'vulnerableUserAssessment' },
+          // Every row names a group — including the explicit "none".
           { kind: 'registerRowsComplete', register: 'vulnerableUserAssessment', columns: ['vulnerableGroup'] },
+          // Rows that name a real vulnerable group carry all three follow-ups.
+          {
+            kind: 'registerRowsComplete',
+            register: 'vulnerableUserAssessment',
+            columns: ['safetyPathway', 'responsibleReviewer', 'additionalAssessments'],
+            when: { column: 'vulnerableGroup', notIn: ['No vulnerable-user group identified'] },
+          },
         ],
       },
     },

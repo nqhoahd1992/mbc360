@@ -173,7 +173,15 @@ function verifyVacuity(): void {
   for (const entry of entries) {
     const { gate, req, check } = entry;
     if (req.tier !== 'Mandatory') continue;
-    if (check.kind !== 'registerColumnFilled' && check.kind !== 'registerNoBadRows') continue;
+    // `registerRowsComplete` is normally non-vacuous (an empty register fails it
+    // by construction) — EXCEPT with a `when` clause, added 2026-08-11, where a
+    // register whose rows are all skipped has nothing left to fail on. That
+    // variant needs the same pairing as the two below.
+    const vacuous =
+      check.kind === 'registerColumnFilled' ||
+      check.kind === 'registerNoBadRows' ||
+      (check.kind === 'registerRowsComplete' && !!check.when);
+    if (!vacuous) continue;
 
     if (getRegisterConfig(check.register)?.mode === 'fixed') continue; // rows seeded at creation
 

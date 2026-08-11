@@ -218,8 +218,16 @@ function evaluateReadinessCheck(
       // Unlike registerColumnFilled, an empty register must NOT vacuously
       // satisfy this — it backs sign-off-style hard blocks (NPD Front-End
       // Roadmap, 2026-07-24) where "no rows yet" must read as incomplete.
-      const satisfied =
-        rows.length > 0 && rows.every((r) => check.columns.every((c) => String(r[c] ?? '').trim() !== ''));
+      if (rows.length === 0) return { evaluable: true, satisfied: false };
+      // `when` (2026-08-11) narrows the check to the rows it applies to, so a
+      // register whose rows are ALL skipped reports satisfied — correct, because
+      // the requirement genuinely does not apply, and the paired registerHasRows
+      // (required by sweep S2 whenever `when` is used) still guarantees the
+      // register is not simply untouched.
+      const scoped = check.when
+        ? rows.filter((r) => !check.when!.notIn.includes(String(r[check.when!.column] ?? '').trim()))
+        : rows;
+      const satisfied = scoped.every((r) => check.columns.every((c) => String(r[c] ?? '').trim() !== ''));
       return { evaluable: true, satisfied };
     }
     case 'requirementDone': {
