@@ -30,6 +30,11 @@ export interface RequirementSectionConfig {
 
 export type RequirementColumnKey =
   | 'gate'
+  // 'requirement' renders the row's own fixed label. Phase 1 shows it as
+  // 'category' instead — same data, different heading — because B6's 16 rows
+  // are categories, and 'detail' is where the project's actual requirement goes.
+  | 'category'
+  | 'detail'
   | 'requirement'
   | 'minimum'
   | 'rationale'
@@ -255,7 +260,10 @@ export const PHASE_1: PhaseConfig = {
       // engineering concepts, and evidence links belong to later gates.
       key: 'projectRequirements',
       title: 'Project Requirements & Exclusions',
-      columns: ['requirement', 'notes', 'priority', 'owner', 'status'],
+      // B6: "a structured table with category, requirement, priority, owner and
+      // notes". `status` is ours — it is how a row is closed and what the Gate
+      // 02 check reads [ASSUMPTION: R4-Q18].
+      columns: ['category', 'detail', 'priority', 'owner', 'notes', 'status'],
       rows: [
       { gate: '02', requirement: 'Must-have product requirements', minimum: '', rationale: '', owner: '' },
       { gate: '02', requirement: 'Must-not-have ingredients or features', minimum: '', rationale: '', owner: '' },

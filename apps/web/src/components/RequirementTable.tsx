@@ -79,6 +79,43 @@ export default function RequirementTable({
               );
             },
           },
+          {
+            // Same data as 'requirement' above, different heading: B6's 16 rows
+            // ARE categories, so Phase 1 labels the column that way and puts the
+            // project's own requirement in 'detail' beside it.
+            key: 'category',
+            title: 'Category',
+            width: 210,
+            dataIndex: 'requirement',
+            render: (v, r) => {
+              const required = isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';
+              return (
+                <b>
+                  {v}
+                  {required && (
+                    <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
+                      <span style={{ color: '#ff4d4f' }}> *</span>
+                    </Tooltip>
+                  )}
+                </b>
+              );
+            },
+          },
+          {
+            key: 'detail',
+            title: 'Requirement',
+            width: 280,
+            render: (_, r, i) => (
+              <Input.TextArea
+                autoSize={{ minRows: 1, maxRows: 4 }}
+                size="small"
+                placeholder="What this category means for this project"
+                value={r.requirementText}
+                disabled={isRowLocked?.(r)}
+                onChange={(e) => patch(i, { requirementText: e.target.value })}
+              />
+            ),
+          },
           { key: 'minimum', title: 'Minimum requirement', width: 260, dataIndex: 'minimumRequirement' },
           {
             key: 'rationale',

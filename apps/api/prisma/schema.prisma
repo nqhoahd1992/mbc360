@@ -416,6 +416,11 @@ model RequirementItem {
   gate               String
   requirement        String
   priority           String? // Phase 1 only (SME Round 3 B6)
+  // Phase 1 only. B6's shape is "category, requirement, priority, owner, notes":
+  // the `requirement` column above holds the CATEGORY (one of the team's 16
+  // rows), and this holds what that category means for this project. Added
+  // 2026-08-11 — until then it had nowhere to go and was typed into `notes`.
+  requirementText    String?
   minimumRequirement String
   rationale          String
   owner              String

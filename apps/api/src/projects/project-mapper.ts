@@ -164,6 +164,7 @@ export function toProjectData(p: ProjectWithAll, gateChangeLog: GateChangeLogEnt
       gate: item.gate,
       requirement: item.requirement,
       ...(item.priority ? { priority: item.priority } : {}),
+      ...(item.requirementText ? { requirementText: item.requirementText } : {}),
       minimumRequirement: item.minimumRequirement,
       rationale: item.rationale,
       owner: item.owner,

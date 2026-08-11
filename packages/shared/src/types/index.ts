@@ -64,6 +64,12 @@ export interface RequirementItem {
   // column but names no values, and reusing an already-confirmed list is a much
   // weaker assumption than inventing one [ASSUMPTION: R4-Q18].
   priority?: string;
+  // Phase 1 only (2026-08-11). B6's own shape is "category, requirement,
+  // priority, owner and notes": the 16 rows the team listed ARE the categories,
+  // so `requirement` above holds the CATEGORY and this holds what that category
+  // means for this project. Until now there was nowhere to write it, and it was
+  // being typed into Notes, which then did double duty.
+  requirementText?: string;
   minimumRequirement: string;
   rationale: string;
   owner: string;

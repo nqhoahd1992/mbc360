@@ -452,6 +452,7 @@ export class ProjectsService {
             // Phase 1 only (B6); undefined on every other section, and Prisma
             // skips undefined, so those rows are untouched.
             priority: item.priority ?? undefined,
+            requirementText: item.requirementText ?? undefined,
             evidenceLink: item.evidenceLink ?? null,
             notes: item.notes ?? null,
           },
