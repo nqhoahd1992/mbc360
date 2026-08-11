@@ -394,10 +394,18 @@ export default function GateFlowTable({
                                 </Tag>
                               </Tooltip>
                             )}
+                            {/* Written for whoever is working the gate, not for
+                                whoever maintains the config (2026-08-11): the
+                                information — "this will not block you, and the
+                                system cannot judge it for you" — is the same, but
+                                "wired to a data source" and "Conditional/
+                                Supporting tier" were our vocabulary, not theirs.
+                                The tier badge above still carries the SME's own
+                                definition on hover for anyone who wants it. */}
                             {b.pending
-                              ? ' — not yet wired to a data source; shown for confirmation only, never blocks'
+                              ? ' — the system cannot check this one; confirm it yourself before passing the gate'
                               : !b.satisfied && b.advisory
-                                ? ' — Conditional/Supporting tier, advisory only, never blocks the gate'
+                                ? ' — applies only in certain cases; it will not block this gate'
                                 : !b.satisfied && !b.hardBlock && ' — clears with Proceed with Conditions'}
                             {b.source === 'dev-decision' && UNCONFIRMED_SOURCE_NOTE}
                         </li>
