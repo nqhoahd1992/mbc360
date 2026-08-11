@@ -264,7 +264,20 @@ We keep a note against every readiness item saying where it came from — your F
 
 The other two are genuinely ours, and both currently hard-block a gate. We would rather ask than leave them running unasked:
 
-**(a) Gate 2 — "Product type: at least one selected".** Today Gate 2 cannot be passed until at least one product type has been ticked. This is not on your Gate 2 list. It seemed self-evident to us that a brief naming no product type is incomplete, but that is our judgement, not yours.
+**(a) Gate 2 — "Product type: at least one selected".** Today Gate 2 cannot be passed until at least one product type has been ticked. It seemed self-evident to us that a brief naming no product type is incomplete — but on checking your Gate 2 list against the workbook, we are no longer sure, and the reason is worth showing you.
+
+The Phase 1 sheet has four option tables that belong to Gate 2. Your Gate 2 list names three of them and not the fourth:
+
+| Phase 1 table | Named in your Gate 2 list |
+|---|---|
+| Target Users / Life Stage | "Target user and life stage" |
+| Target Area of Body | "Intended use and body area" |
+| Target Countries / Markets | "Selected markets" |
+| **Product Type** | **not named** |
+
+Leaving one out of a set of four you otherwise named individually looks deliberate rather than accidental — and in Question 12 of our last round we put all four to you by name, as a possible definition of the brief; you answered that the brief is its own controlled record and that these tables contribute to it without substituting for it.
+
+So we may have added a block you deliberately did not ask for. The case we can see for that being right: a project can legitimately reach Gate 2 with the form still open — "an infant barrier product, cream or balm to be decided at formulation" — and today that project cannot pass Gate 2 at all, however complete its brief is.
 
 **(b) Gate 7 — "Formulation safety matrix: every formula ingredient assessed".** Today Gate 7 requires the safety matrix to contain rows. Part of that is a technical safeguard we are confident about — a check that reads "every row is assessed" would otherwise pass on an empty table, which is worse than failing. What we are not confident about is the coverage the item claims: that the matrix must carry a row for **every** ingredient in the formula. Nobody has told us that.
 
