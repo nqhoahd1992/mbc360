@@ -714,7 +714,17 @@ Và "chỗ đầu tiên" cũng không phải một khai báo đúng nghĩa: mộ
 2. `skuClaimsPifRegister` thêm cột **`Claim ID`** (kiểu `claimRef`, picker đọc sổ claim của chính dự án).
 3. `Claim category` + `Claim risk` ở `skuClaimsPifRegister` chuyển thành **kế thừa** (`inheritFromClaim`): có link thì hiện giá trị của claim, read-only, kèm tooltip "sửa ở Claim → Evidence Traceability"; chưa link thì **khoá** kèm chữ *"Link a Claim ID first"* — vì để một dòng chưa link tự phân loại chính là cách hai bản sao lệch nhau.
 
-**Phán định của dev nằm trong đó, cần SME xác nhận:** (e) claim có nên được **cấp ID ngay từ Gate 3** không, hay ID chỉ nên tồn tại sau khi có bằng chứng (nếu vậy thì Gate 3 phân loại **cái gì**)? (f) picker Claim ID **không** giới hạn ở claim `Supported` — theo đúng D2 vòng 3 (*"claim đang phát triển vẫn phải chọn được"*), chặn nằm ở khâu phát hành; đúng ý các anh chứ? (g) 4 bảng còn lại (mechanism map, evidence plan, efficacy study plan, clinical evidence) hiện **vẫn gõ tay câu claim** — có nên cùng chuyển sang tham chiếu Claim ID không?
+**Thêm 2026-08-11 (cùng ngày, project owner):** *"một dòng claim hình thành qua gate 3/10/11, vậy để qua Gate 3 chỉ cần Claim ID + Approved wording + Claim category là đủ đúng không — và cột cũng nên chia theo gate"*. Đúng, và mô hình cũ không diễn đạt được: `gate` chỉ có ở **cấp register**, không có ở **cấp cột**.
+
+Đã thêm `RegisterColumn.gate` và gán cho 9 cột của sổ claim: **Gate 03** = `claimId` · `approvedWording` · `claimCategory` · `claimRisk` — đây là "khai báo claim"; **Gate 05** = `mechanism` (đến từ Target Product & Tech); **Gate 08** = `evidenceGrade` · `supportingEvidence` (chỉ tồn tại khi đã test); **Gate 10** = `status` (Supported — thứ `unsupportedClaimRows()` đọc trước khi cho phát hành) · `approvedByDate`.
+
+`sg03-classification` do đó **hết `manual`**: nay kiểm `registerRowsComplete` trên **đúng 4 cột gate 03**. Bắt cả dòng sẽ chặn Gate 3 bằng evidence grade và trạng thái Supported — những thứ không thể tồn tại trước Gate 8/10.
+
+`claimRisk` nằm trong nhóm Gate 3 vì chính bộ giá trị của nó đã có câu trả lời "chưa biết" (`Pending classification`), nên đòi cột này không phải đòi một phán định non.
+
+**Việc gán cột→gate là cách đọc của ta** — sheet không ghi gate cho từng cột. Với **33 sổ đa gate còn lại**, tag gate **tự suy từ `GATE_READINESS`** (check ở gate N đọc cột nào thì cột đó hiện G-N) chứ không gán tay: hiện 25 cột có tag, phần còn lại **cố ý để trống** vì gán tay ~380 cột là bịa ra một lịch trình không ai xác nhận.
+
+**Phán định của dev nằm trong đó, cần SME xác nhận:** (h) 4 cột nào thuộc Gate 3 của sổ claim (danh sách trên) có đúng không, và (i) `mechanism` thuộc Gate 5 hay Gate 3? (e) claim có nên được **cấp ID ngay từ Gate 3** không, hay ID chỉ nên tồn tại sau khi có bằng chứng (nếu vậy thì Gate 3 phân loại **cái gì**)? (f) picker Claim ID **không** giới hạn ở claim `Supported` — theo đúng D2 vòng 3 (*"claim đang phát triển vẫn phải chọn được"*), chặn nằm ở khâu phát hành; đúng ý các anh chứ? (g) 4 bảng còn lại (mechanism map, evidence plan, efficacy study plan, clinical evidence) hiện **vẫn gõ tay câu claim** — có nên cùng chuyển sang tham chiếu Claim ID không?
 
 
 #### R4-Q17 · Trường Gate 1 để tuỳ chọn lúc tạo dự án, bắt buộc ở Gate 1 🔴

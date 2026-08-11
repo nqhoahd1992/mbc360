@@ -247,6 +247,8 @@ The effect is that a claim is classified once, where it is declared, and every l
 
 **(f)** The Claim ID picker offers **every** declared claim, not only Supported ones — following your D2 correction that a developing claim must still be selectable, with release blocked separately. Same intent here?
 
+**(h)** A claim row is now filled in across three gates, so we have said which column is due when: **Gate 3** — Claim ID, approved wording, category and risk, i.e. declaring the claim; **Gate 5** — mechanism; **Gate 8** — evidence grade and supporting report, which cannot exist before testing; **Gate 10** — Supported status and the approval. Gate 3 therefore checks only those first four, rather than blocking on evidence nobody could have yet. Is that split right, and does mechanism belong at Gate 5 or already at Gate 3?
+
 **(g)** Four registers still ask people to type the claim wording by hand — the mechanism map, prospective evidence plan, efficacy study plan and clinical evidence. Should they all reference a Claim ID too? We have not touched them yet, because that is a larger change and we would rather do it once, with your answer, than twice.
 
 

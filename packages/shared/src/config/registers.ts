@@ -26,6 +26,14 @@ export interface RegisterColumn {
   // Without a link the cell is disabled rather than free: classifying an
   // unlinked row is how the two copies drifted apart in the first place.
   inheritFromClaim?: boolean;
+  // Which gate this COLUMN belongs to, for a register whose own gate spans
+  // several (2026-08-11, user-raised: "a claim row is formed across 3/10/11, so
+  // to pass Gate 3 only some columns are needed — the columns should be split by
+  // gate too"). RegisterConfig.gate answers "when does this table freeze";
+  // this answers "which part of it is due when". Shown as a tag on the column
+  // header, and it is what a per-gate readiness check should reference so Gate 3
+  // is not blocked on evidence that cannot exist until Gate 8.
+  gate?: string;
 }
 
 export interface RegisterConfig {
@@ -1976,18 +1984,30 @@ export const claimEvidenceTraceability: RegisterConfig = {
   gate: '03/10/11',
   reviewOwner: REVIEW_SPECS.npdEvidence,
   columns: [
-    { key: 'claimId', label: 'Claim ID', type: 'text', width: 100 },
-    { key: 'approvedWording', label: 'Approved claim wording', type: 'textarea', width: 240 },
-    // B7 (2026-08-11). Same two vocabularies as the SKU register: a claim that is
-    // "Borderline / therapeutic-adjacent" is borderline wherever it is used, so
-    // the classification lives with the claim.
-    { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS },
-    { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS },
-    { key: 'mechanism', label: 'Mechanism', type: 'text', width: 160 },
-    { key: 'evidenceGrade', label: 'Evidence grade', type: 'select', width: 110, options: ['A', 'B', 'C', 'D', 'E'] },
-    { key: 'supportingEvidence', label: 'Supporting evidence / report', type: 'text', width: 200 },
-    { key: 'status', label: 'Status', type: 'select', width: 120, options: ['Pending', 'Supported'] },
-    { key: 'approvedByDate', label: 'Approved by / date', type: 'text', width: 160 },
+    // Per-column gates (2026-08-11). A claim row is filled in over three gates, so
+    // requiring the whole row at Gate 3 would block on evidence that cannot exist
+    // yet. Which column belongs to which gate is OUR reading — the sheet states no
+    // per-column gate — so it is [ASSUMPTION: R4-Q16] like the rest of B7.
+    //
+    // Gate 03 — declaring the claim: it has an id, wording, and B7's
+    // classification. `claimRisk` is included because its own vocabulary carries
+    // the "not yet" answer ("Pending classification"), so requiring the column is
+    // not requiring a premature judgement.
+    { key: 'claimId', label: 'Claim ID', type: 'text', width: 100, gate: '03' },
+    { key: 'approvedWording', label: 'Approved claim wording', type: 'textarea', width: 240, gate: '03' },
+    { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS, gate: '03' },
+    { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS, gate: '03' },
+    // The mechanism comes from the Target Product & Technology work (sheet 3),
+    // which the NPD roadmap places at Gate 3 heading into formula lock at Gate 5.
+    { key: 'mechanism', label: 'Mechanism', type: 'text', width: 160, gate: '05' },
+    // Gate 08 — the evidence itself exists: a grade can be assigned and a report
+    // linked only once testing has produced one.
+    { key: 'evidenceGrade', label: 'Evidence grade', type: 'select', width: 110, options: ['A', 'B', 'C', 'D', 'E'], gate: '08' },
+    { key: 'supportingEvidence', label: 'Supporting evidence / report', type: 'text', width: 200, gate: '08' },
+    // Gate 10 — release: "Supported" is what unsupportedClaimRows() reads before
+    // anything may be published, and the approval is the act of releasing it.
+    { key: 'status', label: 'Status', type: 'select', width: 120, options: ['Pending', 'Supported'], gate: '10' },
+    { key: 'approvedByDate', label: 'Approved by / date', type: 'text', width: 160, gate: '10' },
   ],
 };
 

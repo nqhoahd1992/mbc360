@@ -584,11 +584,24 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         ],
       },
     },
-    // sg03-classification: still `manual` — no field represents a claim's
-    // classification (e.g. cosmetic / functional / medical-adjacent) anywhere;
-    // `claimAreas` only lists benefit wording, not a risk/classification tier.
-    // Open question — see docs/rules/F1_Per_Gate_Open_Questions.md.
-    { id: 'sg03-classification', label: 'Preliminary claim classification', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      // Wired 2026-08-11, replacing `manual`: B7's classification now has a home,
+      // and the claim ledger opens at Gate 3 so it can be filled in here.
+      //
+      // Checks ONLY the columns marked gate '03' on that register — id, wording,
+      // category, risk. Requiring the whole row would block Gate 3 on an evidence
+      // grade and a "Supported" status that cannot exist until Gates 8 and 10.
+      // `registerRowsComplete` is non-vacuous, so it also means at least one claim
+      // must be declared; how many is R4-Q16(d), still open.
+      id: 'sg03-classification',
+      label: 'Preliminary claim classification',
+      tier: 'Mandatory',
+      check: {
+        kind: 'registerRowsComplete',
+        register: 'claimEvidenceTraceability',
+        columns: ['claimId', 'approvedWording', 'claimCategory', 'claimRisk'],
+      },
+    },
     {
       // Merged 2026-07-27 (user-requested), same reasoning as sg03-claims
       // above. Shares the same Key Gate Check as sg03-claims — "...evidence

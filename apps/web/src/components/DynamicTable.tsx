@@ -10,6 +10,7 @@ import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
 import MarketSelect from './MarketSelect';
 import ClaimSelect, { findClaim, useClaimRows } from './ClaimSelect';
+import { derivedColumnGate, spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
 
 export default function DynamicTable({
   config,
@@ -170,11 +171,26 @@ export default function DynamicTable({
   };
 
   const columns = [
-    ...config.columns.map((col) => ({
-      title: col.label,
-      width: col.width ?? 140,
-      render: (_: unknown, row: RegisterRow, index: number) => renderCell(col, row, index),
-    })),
+    ...config.columns.map((col) => {
+      // A per-column gate is only worth showing on a register that spans several —
+      // elsewhere the card's own gate tag already says it.
+      const columnGate = spansSeveralGates(config.gate)
+        ? (col.gate ?? derivedColumnGate(config.key, col.key))
+        : undefined;
+      return {
+        title: columnGate ? (
+          <Tooltip title={`Due at gate ${columnGate} — the rest of this row is filled in at the register's other gates (${config.gate}).`}>
+            <span>
+              {col.label} <Tag style={{ marginInlineEnd: 0 }}>G{columnGate}</Tag>
+            </span>
+          </Tooltip>
+        ) : (
+          col.label
+        ),
+        width: col.width ?? 140,
+        render: (_: unknown, row: RegisterRow, index: number) => renderCell(col, row, index),
+      };
+    }),
     ...(isRegister
       ? [
           {
