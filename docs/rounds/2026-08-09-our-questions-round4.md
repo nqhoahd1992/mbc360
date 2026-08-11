@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has twenty-three questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has twenty-four questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Questions 20–23** — choices we made while building the Gate 1 and Gate 2 fields you asked for, and two requirements we added ourselves.
+5. **Questions 20–24** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, and one premise of ours that was wrong.
 
 ---
 
@@ -293,6 +293,18 @@ If the omission was deliberate, there is presumably a reason we do not know: per
 
 We have also added an automatic check on our side so that this cannot recur: any requirement that exists only on our own reading, and that blocks a gate, must now be linked to a question on this list, or our build fails.
 
+### Question 24 — We gave you an inaccurate premise in B3, and "initial target markets" may be a duplicate
+
+When we asked B3 last round, we told you that *"the only target-market and target-user information in the system is the Gate 2 selection"*. That was not accurate, and we would rather correct it than leave your answer resting on it.
+
+The Project Identification table has a **Countries / Markets** parameter — your own, from the workbook — and it is **required** when a project is first opened, chosen from a controlled list. So markets are already recorded before Gate 1 starts. Your B3 answer then added an "Initial target market(s)" field, which now sits two rows below the markets the same person already selected, asking them to type it again as free text. That reads as duplication, and it is our reporting that led you there.
+
+For the target **user** our statement was correct — there is no such field anywhere else, so "Initial target user / life-stage" has no equivalent overlap. This is specifically about markets.
+
+We are not proposing a fix without your view, because the obvious one has a flaw worth stating. If we simply delete the new field and let the Gate 1 check read the markets captured at project creation, that check can never fail — the creation form guarantees the value — so it would become decoration rather than control, which is the mistake we describe in Question 20.
+
+**Question:** where should the initial market be recorded — in the Countries / Markets parameter that already exists when a project is opened, or in a separate "initial" field as it is now? And if the existing parameter is enough, should selecting markets stop being required at project creation, so that recording them becomes part of the Gate 1 work rather than a precondition for it?
+
 ---
 
 ## Summary
@@ -303,6 +315,6 @@ We have also added an automatic check on our side so that this cannot recur: any
 | 2–4 | Superseding a formula version · defining "critical" gaps · PV/PMS scope | Open since 21 July; 2 and 4 block work we are ready to start |
 | 5–7 | Gate 7 scope · Gate 4 threshold · unclassified claims | Already built on our reading — rework if wrong |
 | 8–19 | Which record represents each of your trigger conditions, and two data-model points | Redesign if wrong, no rework |
-| 20–23 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several project natures may apply; two requirements we added ourselves that block Gate 2 and Gate 7 | Already built — rework if wrong |
+| 20–24 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several types may apply; two requirements we added ourselves that block Gate 2 and Gate 7; a duplicate market field arising from an inaccurate premise we gave in B3 | Already built — rework if wrong |
 
-Questions 5 to 23 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
+Questions 5 to 24 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

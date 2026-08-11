@@ -2,11 +2,11 @@
 
 **Date:** 2026-07-22 (last updated 2026-08-10)
 
-> # ✅ ROUND 3 CLOSED — 20 new questions open (R4-Q1 … R4-Q20)
+> # ✅ ROUND 3 CLOSED — 21 new questions open (R4-Q1 … R4-Q21)
 >
 > The subject-matter team answered every question here in their Round 3 reply (`docs/rounds/2026-08-07-sme-reply-round3.txt`), sent as Parts A–E — the questions that reply answers are `docs/rounds/2026-07-31-our-questions-round3.md` (recovered into the folder on 2026-08-11; note its `A1`/`A2`/`A3` are a different three topics from Round 2's). **The answers are recorded in full in `Business_Rules_Confirmation_{EN,VN}.md` → "Appendix 2 (2026-08-07)"** — that appendix, not this file, is the authoritative record. Each section below now carries a short ✅ resolution note pointing at the part of the reply that answers it, so the question and its answer stay together for anyone re-reading the history.
 >
-> **The Round-3 questions are closed; the file is not.** Twenty new questions — raised *while implementing* those answers and *while designing* the Conditional triggers — are in the final section, **"Round 4"**, each with a stable ID (`R4-Q1` … `R4-Q20`). Everything above that section is settled history.
+> **The Round-3 questions are closed; the file is not.** Twenty-one new questions — raised *while implementing* those answers and *while designing* the Conditional triggers — are in the final section, **"Round 4"**, each with a stable ID (`R4-Q1` … `R4-Q21`). Everything above that section is settled history.
 >
 > **This file is the only question list.** Other documents (notably `F1_Conditional_Triggers.md`) reference these IDs instead of keeping a parallel list, and every decision site — code and docs alike — carries a grep-able `[ASSUMPTION: R4-Qn]` tag, so "show me every unconfirmed assumption" is a search rather than a manual audit.
 >
@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–23, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–24, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -392,6 +392,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q18 | Bảng requirements Phase 1 — giá trị của cột Priority, và bao nhiêu dòng phải xong | 🔴 | 21 |
 | R4-Q19 | Hai option list của B1/B2 trình bày dạng bảng checklist như 6 bảng sẵn có của workbook, và được chọn nhiều giá trị | 🔴 | 22 |
 | R4-Q20 | Hai item do dev tự thêm (`sg02-product-type`, `sg07-matrix-rows`) đang hard-block gate mà chưa từng được hỏi | 🔴 | 23 |
+| R4-Q21 | `initialTargetMarkets` trùng `Countries / Markets` bắt buộc lúc tạo dự án; B3 trả lời trên tiền đề ta nêu sai | 🔴 | 24 |
 
 ---
 
@@ -748,3 +749,27 @@ Một hệ quả kỹ thuật đáng ghi: trigger `newOrRepositionedProject` (đ
 **Nếu trả lời khác:** (a) bỏ `sg02-product-type` khỏi `GATE_READINESS.SG02` trong `gateReadiness.ts`, hoặc hạ `tier` xuống `Supporting`; (b) đổi `sg07-matrix-rows` từ `registerHasRows` sang một check hẹp hơn, hoặc giữ nguyên và sửa `label` cho khỏi khẳng định quá.
 
 **Luật mới để chuyện này không lặp lại:** `npm run verify:readiness` sweep **S4** — item nào mang `source: 'dev-decision'` mà không khai `assumption` trỏ tới một câu hỏi thật thì fail. Nghĩa là từ nay không thể ship một quyết định của dev đang chặn gate mà chưa đưa vào danh sách hỏi.
+
+#### R4-Q21 · `initialTargetMarkets` trùng với `Countries / Markets` đã bắt buộc lúc tạo dự án — và B3 được trả lời trên tiền đề ta nêu sai 🔴
+
+**Phát hiện 2026-08-11 (project owner: "Initial target market(s) có cảm giác thừa, dưới đã có Target Countries / Markets rồi").**
+
+Vế Gate 1 vs Gate 2 thì **không** thừa và đã được SME xác nhận: B3 chọn phương án (a), *"These are preliminary fields and do not replace the complete Gate 2 assessment"* — hai mốc thời gian khác nhau, và nếu Gate 1 đọc checklist Gate 2 thì hai gate gộp thành một.
+
+**Chỗ trùng thật là với `ProjectIdentity.markets`:** parameter `Countries / Markets` của workbook (ô `D12` sheet PHASE1), **bắt buộc** trên form Tạo dự án (`ProjectList.tsx`, `rules={[{ required: true }]}`), chọn từ danh sách có kiểm soát, và hiển thị ngay trong cùng thẻ Project Identification — cách ô `Initial target market(s)` hai dòng. Người dùng chọn thị trường một lần lúc tạo, rồi gõ tay lần nữa.
+
+⚠️ **Và email B3 của ta nói sai tiền đề:** *"The only target-market and target-user information in the system is the Gate 2 selection"* (`docs/rounds/2026-07-31-our-questions-round3.md` dòng 113). `identity.markets` đã tồn tại từ trước. SME trả lời B3 mà không biết điều đó — riêng phần **thị trường**; phần **người dùng** thì câu đó đúng (không có field identity nào cho target user), nên `initialTargetUsers` không mắc vấn đề này.
+
+**Vì sao không sửa bằng cách hiển nhiên:** bỏ `initialTargetMarkets` rồi cho check đọc `identity.markets` sẽ làm check **vacuous** — form bắt buộc nên nó luôn thoả, không bao giờ chặn. Đúng lỗi `sg01-owner` đã phải hoàn nguyên (xem `R4-Q17`).
+
+| | Cách | Đánh đổi |
+|---|---|---|
+| (i) | Giữ nguyên | Gõ trùng; check Gate 1 chặn được thật |
+| (ii) | Bỏ field, đọc `identity.markets` | Hết trùng; item Gate 1 không bao giờ chặn → phải gỡ khỏi readiness thay vì giữ một mục trang trí |
+| (iii) | Bỏ `markets` khỏi diện bắt buộc lúc tạo dự án | Hết trùng **và** check vẫn chặn được; nhưng đổi form tạo dự án và đổi ý nghĩa một parameter của workbook |
+
+Hiện đang ở **(i)**, không đổi hành vi khi chưa có trả lời.
+
+**Câu hỏi:** thị trường ban đầu nên ghi ở đâu — ô `Countries / Markets` đã có sẵn lúc mở dự án, hay một ô "initial" riêng như hiện nay? Nếu ô sẵn có là đủ thì thị trường có nên thôi bắt buộc lúc tạo dự án, để việc ghi nó trở thành một phần công việc của Gate 1?
+
+**Nếu trả lời khác:** (ii) bỏ `initialTargetMarkets` khỏi `ProjectIdentity` + `projects` + `OPPORTUNITY_FIELDS` trong `ProjectIdentificationCard.tsx`, và gỡ vế `initialTargetMarkets` khỏi `sg01-market-user` trong `gateReadiness.ts`; (iii) bỏ `required` của field `markets` trên form `ProjectList.tsx` rồi trỏ `sg01-market-user` sang `identity.markets`.
