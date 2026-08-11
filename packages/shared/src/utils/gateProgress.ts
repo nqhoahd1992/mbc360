@@ -1,6 +1,7 @@
 import type { GateRecord, NextAction, ProjectData } from '../types';
 import { NEXT_ACTION_TERMINAL_STATUSES } from '../types';
 import { GATES } from '../config/gates';
+import { TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
 import {
   GATE_READINESS,
   type ReadinessCheck,
@@ -229,6 +230,25 @@ function evaluateReadinessCheck(
         : rows;
       const satisfied = scoped.every((r) => check.columns.every((c) => String(r[c] ?? '').trim() !== ''));
       return { evaluable: true, satisfied };
+    }
+    case 'vulnerableGroupsCovered': {
+      const expected = new Set(
+        (project.checklists['targetUsers'] ?? [])
+          .filter((i) => i.selected)
+          .map((i) => TARGET_USER_TO_VULNERABLE_GROUP[i.label])
+          .filter((g): g is string => !!g),
+      );
+      const recorded = new Set(
+        (project.registers['vulnerableUserAssessment'] ?? []).map((r) =>
+          String(r['vulnerableGroup'] ?? '').trim(),
+        ),
+      );
+      // Vacuously satisfied when no selected target user implies a vulnerable
+      // group, which is correct — a general-adult project has nothing to cover.
+      // The paired registerHasRows in the same item still forces the explicit
+      // "none" row B5 demands, so this can never be the only thing standing
+      // between an untouched register and a passed gate.
+      return { evaluable: true, satisfied: [...expected].every((g) => recorded.has(g)) };
     }
     case 'requirementDone': {
       const row = (project.requirements[check.section] ?? []).find((r) => r.requirement === check.requirement);
@@ -479,6 +499,8 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'registerNoBadRows':
     case 'registerRowsComplete':
       return { href: `/registers/reg/${check.register}` };
+    case 'vulnerableGroupsCovered':
+      return { href: '/registers/reg/vulnerableUserAssessment' };
     case 'bomHasLines':
     case 'bomIdentityComplete':
     case 'bomReconciled':

@@ -32,6 +32,8 @@ export type ReadinessTier = 'Mandatory' | 'Conditional' | 'Supporting';
 // `trigger:` on the item. See docs/rules/F1_Conditional_Triggers.md for the
 // full catalogue of 13, including the 9 still waiting on data the app does not
 // capture yet.
+import { NO_VULNERABLE_GROUP } from './vulnerableGroups';
+
 export type ReadinessTrigger =
   | 'skincareForTwo'
   | 'humanStudyPlanned'
@@ -110,6 +112,12 @@ export type ReadinessCheck =
   // `registerHasRows` alongside it, exactly like registerColumnFilled. Sweep S2
   // enforces that; without `when` the check stays non-vacuous and needs no pair.
   | { kind: 'registerRowsComplete'; register: string; columns: string[]; when?: { column: string; notIn: string[] } }
+  // The Vulnerable-User Assessment agrees with the Gate 02 target users: every
+  // selected target user that implies a vulnerable group (see
+  // TARGET_USER_TO_VULNERABLE_GROUP) has a row naming that group. Bespoke rather
+  // than generic, following the skincareForTwo precedent — it reads a mapping
+  // between two specific surfaces, which no generic kind expresses.
+  | { kind: 'vulnerableGroupsCovered' }
   // A `ProjectIdentity` field is non-empty (2026-08-09, SME Round 3 B1/B2/B3).
   //
   // An earlier `identityFieldFilled` kind was DELETED on 2026-08-07 because its
@@ -444,8 +452,12 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
             kind: 'registerRowsComplete',
             register: 'vulnerableUserAssessment',
             columns: ['safetyPathway', 'responsibleReviewer', 'additionalAssessments'],
-            when: { column: 'vulnerableGroup', notIn: ['No vulnerable-user group identified'] },
+            when: { column: 'vulnerableGroup', notIn: [NO_VULNERABLE_GROUP] },
           },
+          // ...and the two records agree: a target user implying a vulnerable
+          // group cannot sit next to an assessment naming a different group, or
+          // next to "none" (2026-08-11, user-proposed) [ASSUMPTION: R4-Q22].
+          { kind: 'vulnerableGroupsCovered' },
         ],
       },
     },

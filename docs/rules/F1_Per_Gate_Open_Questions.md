@@ -2,11 +2,11 @@
 
 **Date:** 2026-07-22 (last updated 2026-08-10)
 
-> # ✅ ROUND 3 CLOSED — 21 new questions open (R4-Q1 … R4-Q21)
+> # ✅ ROUND 3 CLOSED — 22 new questions open (R4-Q1 … R4-Q22)
 >
 > The subject-matter team answered every question here in their Round 3 reply (`docs/rounds/2026-08-07-sme-reply-round3.txt`), sent as Parts A–E — the questions that reply answers are `docs/rounds/2026-07-31-our-questions-round3.md` (recovered into the folder on 2026-08-11; note its `A1`/`A2`/`A3` are a different three topics from Round 2's). **The answers are recorded in full in `Business_Rules_Confirmation_{EN,VN}.md` → "Appendix 2 (2026-08-07)"** — that appendix, not this file, is the authoritative record. Each section below now carries a short ✅ resolution note pointing at the part of the reply that answers it, so the question and its answer stay together for anyone re-reading the history.
 >
-> **The Round-3 questions are closed; the file is not.** Twenty-one new questions — raised *while implementing* those answers and *while designing* the Conditional triggers — are in the final section, **"Round 4"**, each with a stable ID (`R4-Q1` … `R4-Q21`). Everything above that section is settled history.
+> **The Round-3 questions are closed; the file is not.** Twenty-two new questions — raised *while implementing* those answers and *while designing* the Conditional triggers — are in the final section, **"Round 4"**, each with a stable ID (`R4-Q1` … `R4-Q22`). Everything above that section is settled history.
 >
 > **This file is the only question list.** Other documents (notably `F1_Conditional_Triggers.md`) reference these IDs instead of keeping a parallel list, and every decision site — code and docs alike — carries a grep-able `[ASSUMPTION: R4-Qn]` tag, so "show me every unconfirmed assumption" is a search rather than a manual audit.
 >
@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–24, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–25, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -393,6 +393,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q19 | Hai option list của B1/B2 trình bày dạng bảng checklist như 6 bảng sẵn có của workbook, và được chọn nhiều giá trị | 🔴 | 22 |
 | R4-Q20 | Hai item do dev tự thêm (`sg02-product-type`, `sg07-matrix-rows`) đang hard-block gate mà chưa từng được hỏi | 🔴 | 23 |
 | R4-Q21 | `initialTargetMarkets` trùng `Countries / Markets` bắt buộc lúc tạo dự án; B3 trả lời trên tiền đề ta nêu sai | 🔴 | 24 |
+| R4-Q22 | Map option Target Users sang Vulnerable group — 5 cặp đổi tên + 8 option không map | 🔴 | 25 |
 
 ---
 
@@ -773,3 +774,25 @@ Hiện đang ở **(i)**, không đổi hành vi khi chưa có trả lời.
 **Câu hỏi:** thị trường ban đầu nên ghi ở đâu — ô `Countries / Markets` đã có sẵn lúc mở dự án, hay một ô "initial" riêng như hiện nay? Nếu ô sẵn có là đủ thì thị trường có nên thôi bắt buộc lúc tạo dự án, để việc ghi nó trở thành một phần công việc của Gate 1?
 
 **Nếu trả lời khác:** (ii) bỏ `initialTargetMarkets` khỏi `ProjectIdentity` + `projects` + `OPPORTUNITY_FIELDS` trong `ProjectIdentificationCard.tsx`, và gỡ vế `initialTargetMarkets` khỏi `sg01-market-user` trong `gateReadiness.ts`; (iii) bỏ `required` của field `markets` trên form `ProjectList.tsx` rồi trỏ `sg01-market-user` sang `identity.markets`.
+
+#### R4-Q22 · Map option Target Users (Gate 02) sang Vulnerable group — mức chắc chắn không đều 🔴
+
+**Đã build 2026-08-11, do project owner đề xuất** ("map tương ứng với các đối tượng trong target user phase 2, ứng dụng sẽ logic và đỡ sai sót hơn").
+
+**Lỗ hổng nó bịt:** B5 cố ý tách hai bản ghi — *"distinguish between selecting a target user and explicitly recognising a vulnerable-use context"* — nhưng **không ai kiểm hai bản ghi có KHỚP nhau**. Trước 11/08, một dự án tick `Pregnancy` ở Target Users mà ghi `No vulnerable-user group identified` ở Vulnerable-User Assessment thì **Gate 2 vẫn qua**. Đó không phải hai phán định độc lập, đó là tự mâu thuẫn.
+
+Check mới `vulnerableGroupsCovered` (`gateProgress.ts`) đọc bảng `TARGET_USER_TO_VULNERABLE_GROUP` (`config/vulnerableGroups.ts`): mọi target user đã tick mà có map thì phải có một dòng assessment mang đúng group đó. Nó chỉ **thêm** yêu cầu, không bao giờ tự thoả hộ — dòng đó vẫn phải đủ safety pathway + reviewer + notes.
+
+**Ba mức chắc chắn của bảng map — đây là phần cần xác nhận:**
+
+| Mức | Cặp map | Ghi chú |
+|---|---|---|
+| 1 · trùng chữ | `Pregnancy` · `Breastfeeding` · `Postpartum` · `Infant 0+` | không có suy luận nào |
+| 2 · đổi tên cùng một nhóm dân số | `Child 2+` / `Child 3+` → **Young child** · `Cancer patient support` → **Oncology or medically vulnerable support context** · `Kidney disease support` → **Renal or other health-related support context** · `Sensitive skin` → **Sensitive or compromised skin** | gần như nguyên văn danh sách B5 |
+| 3 · **KHÔNG map** | `Dry / eczema-prone skin` (da eczema có phải "compromised skin"? y học đọc là có, nhưng B5 không nói) · `Intimate area` · `Swimmers` · `Family use` (sản phẩm gia đình có thể tới tay trẻ nhỏ — workbook không nói) · `Oily skin` · `General adult` · `Professional / HCP recommendation` · `Other - specify` | map là cách đọc của ta, không phải đổi tên |
+
+Hệ quả của mức 3: dự án **chỉ** nhắm `Dry / eczema-prone skin` vẫn ghi được "none" và qua Gate 2.
+
+**Câu hỏi:** (a) 5 cặp ở mức 2 có đúng là cùng một nhóm dân số không? (b) `Dry / eczema-prone skin` có thuộc *"sensitive or compromised skin"* không? (c) `Family use`, `Intimate area`, `Swimmers` có ngụ ý nhóm dễ tổn thương nào không?
+
+**Nếu trả lời khác:** thêm/bớt cặp trong `TARGET_USER_TO_VULNERABLE_GROUP` (`packages/shared/src/config/vulnerableGroups.ts`) — sweep S1 đã kiểm cả hai đầu của mỗi cặp phải tồn tại trong config, nên gõ sai tên sẽ fail build chứ không âm thầm vô hiệu hoá.

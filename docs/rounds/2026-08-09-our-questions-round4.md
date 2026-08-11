@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has twenty-four questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has twenty-five questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Questions 20–24** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, and one premise of ours that was wrong.
+5. **Questions 20–25** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
 
 ---
 
@@ -305,6 +305,25 @@ We are not proposing a fix without your view, because the obvious one has a flaw
 
 **Question:** where should the initial market be recorded — in the Countries / Markets parameter that already exists when a project is opened, or in a separate "initial" field as it is now? And if the existing parameter is enough, should selecting markets stop being required at project creation, so that recording them becomes part of the Gate 1 work rather than a precondition for it?
 
+### Question 25 — Which target users imply a vulnerable-use group?
+
+Your B5 answer deliberately keeps two records apart: the target user selected at Gate 2, and the explicit recognition of a vulnerable-use context. We had not checked that the two **agree**, and they could contradict each other: a project could select Pregnancy as a target user and record "No vulnerable-user group identified" in the assessment, and Gate 2 would pass. We have now made a selected target user require an assessment row naming the matching group.
+
+Doing that meant deciding which of the seventeen target-user options implies which of your vulnerable groups, and our confidence is not the same across the list:
+
+| | Target user | Vulnerable group | Basis |
+|---|---|---|---|
+| Same words | Pregnancy · Breastfeeding · Postpartum · Infant 0+ | identical | nothing to decide |
+| Same population, your words | Child 2+ · Child 3+ | Young child | your list's own term |
+| | Cancer patient support | Oncology or medically vulnerable support context | " |
+| | Kidney disease support | Renal or other health-related support context | " |
+| | Sensitive skin | Sensitive or compromised skin | " |
+| Not mapped | Dry / eczema-prone skin · Intimate area · Swimmers · Family use · Oily skin · General adult · Professional or HCP recommendation · Other | — | would be our reading, not a rename |
+
+The consequence of that last row: a project aimed only at, say, dry or eczema-prone skin can still record "no vulnerable group" and pass Gate 2. We would rather ask than quietly decide it either way.
+
+**Question:** (a) are the five "same population" pairs right? (b) Does dry or eczema-prone skin count as *sensitive or compromised skin*? (c) Do family use, intimate area or swimmers imply a vulnerable group — a family product reaching children, for instance?
+
 ---
 
 ## Summary
@@ -315,6 +334,6 @@ We are not proposing a fix without your view, because the obvious one has a flaw
 | 2–4 | Superseding a formula version · defining "critical" gaps · PV/PMS scope | Open since 21 July; 2 and 4 block work we are ready to start |
 | 5–7 | Gate 7 scope · Gate 4 threshold · unclassified claims | Already built on our reading — rework if wrong |
 | 8–19 | Which record represents each of your trigger conditions, and two data-model points | Redesign if wrong, no rework |
-| 20–24 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several types may apply; two requirements we added ourselves that block Gate 2 and Gate 7; a duplicate market field arising from an inaccurate premise we gave in B3 | Already built — rework if wrong |
+| 20–25 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several types may apply; two requirements we added ourselves that block Gate 2 and Gate 7;  a duplicate market field arising from an inaccurate premise we gave in B3; which target users imply a vulnerable group | Already built — rework if wrong |
 
-Questions 5 to 24 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
+Questions 5 to 25 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

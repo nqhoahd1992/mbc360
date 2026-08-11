@@ -39,6 +39,7 @@ import { join, relative } from 'node:path';
 import { GATE_READINESS, type ReadinessCheck, type ReadinessRequirement } from '../src/config/gateReadiness';
 import { PHASE_CONFIGS } from '../src/config/phases';
 import { getRegisterConfig } from '../src/config/registers';
+import { NO_VULNERABLE_GROUP, TARGET_USER_TO_VULNERABLE_GROUP } from '../src/config/vulnerableGroups';
 
 const REPO_ROOT = join(__dirname, '..', '..', '..');
 const QUESTIONS_DOC = 'docs/rules/F1_Per_Gate_Open_Questions.md';
@@ -147,6 +148,32 @@ function verifyNames({ gate, req, check }: Entry): void {
         fail('S1', gate, id, `gate "${check.gate}" không hợp lệ`);
       }
       return;
+    case 'vulnerableGroupsCovered': {
+      // The mapping is two lists of strings joined by hand, so a rename on either
+      // side silently disables it — exactly the S1 failure class. Both ends must
+      // resolve: the key against the Gate 02 target-user options, the value
+      // against the register column's own options.
+      const targetUsers = new Set(
+        Object.values(PHASE_CONFIGS)
+          .flatMap((c) => c.checklistSections)
+          .find((s) => s.key === 'targetUsers')?.options ?? [],
+      );
+      const groups = new Set(
+        getRegisterConfig('vulnerableUserAssessment')?.columns.find((c) => c.key === 'vulnerableGroup')?.options ?? [],
+      );
+      for (const [user, group] of Object.entries(TARGET_USER_TO_VULNERABLE_GROUP)) {
+        if (!targetUsers.has(user)) {
+          fail('S1', gate, id, `map: target user "${user}" không tồn tại trong checklist targetUsers`);
+        }
+        if (!groups.has(group)) {
+          fail('S1', gate, id, `map: vulnerable group "${group}" không nằm trong options của cột vulnerableGroup`);
+        }
+      }
+      if (!groups.has(NO_VULNERABLE_GROUP)) {
+        fail('S1', gate, id, `NO_VULNERABLE_GROUP "${NO_VULNERABLE_GROUP}" không nằm trong options của cột vulnerableGroup`);
+      }
+      return;
+    }
     default:
       return; // manual / skincareForTwo / nextActionsClosed / bom* — no names to check
   }
