@@ -258,7 +258,9 @@ One thing worth stating plainly: Gate 1 has no data-entry table in your workbook
 
 There is one consequence for a rule you gave us in A3. The competitor/benchmark review at Gate 3 is mandatory for "a new product, claim extension, repositioning project" and not for "a purely administrative change". Because a project can now carry several natures, a project marked as both a packaging change and a market extension **will** require the competitor review, on the strength of the market extension alone.
 
-**Question:** (a) should these two lists be tables in the same shape as your six existing ones, or did you intend a quick single-answer field? (b) May a project have more than one nature at the same time, or must exactly one be chosen? (c) Are those two "Owner / function" values the right people to hold these at Gate 1?
+4. **The name of the second table.** B1 gave us its field name outright — "Request Origin / Source" — so that table carries your words. B2 gave a description rather than a name, so we had to invent one. We have called it **Development / Change Type**, taking every word from your own sentence ("new *development* … packaging *change*, claim *change*") and matching the way your other titles read. It is still our wording, so please rename it if you have a term you use.
+
+**Question:** (a) should these two lists be tables in the same shape as your six existing ones, or did you intend a quick single-answer field? (b) May a project be more than one of those six types at the same time, or must exactly one be chosen? (c) Are those two "Owner / function" values the right people to hold these at Gate 1? (d) What should the second table be called?
 
 ### Question 23 — Two requirements we added ourselves that currently block a gate
 

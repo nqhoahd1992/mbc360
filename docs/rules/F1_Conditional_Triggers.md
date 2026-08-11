@@ -203,7 +203,7 @@ Checklist này đã có sẵn 16 option và khớp gần như một-một với 
 
 | Vế của luật | Đọc từ | Có chưa |
 |---|---|---|
-| new product / claim extension / repositioning / administrative change `[ASSUMPTION: R4-Q7]` | checklist **Project Nature** gate 01 (`checklists['projectNature']`, **B2**) — 6 option đúng nguyên văn *"whether it is new development, reformulation, claim change, packaging change, market extension or lifecycle improvement"* | ✅ 10/08 |
+| new product / claim extension / repositioning / administrative change `[ASSUMPTION: R4-Q7]` | checklist **Development / Change Type** gate 01 (`checklists['projectNature']`, **B2**) — 6 option đúng nguyên văn *"whether it is new development, reformulation, claim change, packaging change, market extension or lifecycle improvement"* | ✅ 10/08 |
 | customer / distributor-led request | checklist **Request Origin / Source** gate 01 (`checklists['requestOrigin']`, **B1**), option `Customer request` · `Distributor request` | ✅ 10/08 |
 | "a benchmark/reference product is named" | dòng **Benchmark or reference product** trong bảng requirements Phase 1 (**B6**) | ✅ 09/08 |
 
@@ -524,13 +524,13 @@ Ba cột cần đọc trong output: `satisfied` (đã đạt chưa) · `advisory
 
 | # | Kịch bản | Gate | Kỳ vọng |
 |---|---|---|---|
-| 8a | Project Nature (B2) tick `Lifecycle improvement`, Request Origin (B1) tick một option nội bộ, không nêu benchmark | SG03 | `sg03-benchmark` → `✓ (advisory)` |
-| 8b | Project Nature tick `New development` | SG03 | `✗ (BLOCKS)` |
-| 8c | Project Nature tick `Lifecycle improvement` **nhưng** Request Origin tick `Customer request` | SG03 | `✗ (BLOCKS)` — vế thứ 2 độc lập |
-| 8d | Project Nature tick `Lifecycle improvement` **nhưng** có nêu Benchmark product (B6) | SG03 | `✗ (BLOCKS)` — vế thứ 3 độc lập |
-| 8e | Project Nature tick `Packaging change`, không có vế nào khác | SG03 | `✓ (advisory)` — đây là *"purely administrative change"* SME loại trừ |
-| 8f | Hai dự án cùng `Product Type = Serum`, khác Project Nature | SG03 | Kết quả **phải khác nhau** — chứng minh trigger đọc checklist Project Nature chứ không phải checklist Product Type |
-| 8g | Project Nature tick **hai** option: `Packaging change` + `Market extension` | SG03 | `✗ (BLOCKS)` — chỉ cần một option thoả là fire; case này chỉ tồn tại được từ 10/08, khi option list thành bảng multi-select thay cho dropdown |
+| 8a | Development / Change Type (B2) tick `Lifecycle improvement`, Request Origin (B1) tick một option nội bộ, không nêu benchmark | SG03 | `sg03-benchmark` → `✓ (advisory)` |
+| 8b | Development / Change Type tick `New development` | SG03 | `✗ (BLOCKS)` |
+| 8c | Development / Change Type tick `Lifecycle improvement` **nhưng** Request Origin tick `Customer request` | SG03 | `✗ (BLOCKS)` — vế thứ 2 độc lập |
+| 8d | Development / Change Type tick `Lifecycle improvement` **nhưng** có nêu Benchmark product (B6) | SG03 | `✗ (BLOCKS)` — vế thứ 3 độc lập |
+| 8e | Development / Change Type tick `Packaging change`, không có vế nào khác | SG03 | `✓ (advisory)` — đây là *"purely administrative change"* SME loại trừ |
+| 8f | Hai dự án cùng `Product Type = Serum`, khác Development / Change Type | SG03 | Kết quả **phải khác nhau** — chứng minh trigger đọc checklist Development / Change Type chứ không phải checklist Product Type |
+| 8g | Development / Change Type tick **hai** option: `Packaging change` + `Market extension` | SG03 | `✗ (BLOCKS)` — chỉ cần một option thoả là fire; case này chỉ tồn tại được từ 10/08, khi option list thành bảng multi-select thay cho dropdown |
 
 > 8e và 8f là cặp quan trọng nhất: chúng chứng minh đúng cái mà hệ thống hôm nay **không** phân biệt được.
 

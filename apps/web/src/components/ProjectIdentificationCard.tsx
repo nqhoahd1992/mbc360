@@ -105,7 +105,7 @@ export default function ProjectIdentificationCard({
         <div style={{ color: '#888', fontSize: 12, marginBottom: 12 }}>
           Who filed the request, and the initial scope, market and user. These are preliminary — Gate 02 confirms, refines
           and formally approves the target user and markets. Where the request came from, and the nature of the project,
-          are recorded in the Request Origin / Source and Project Nature sections below.
+          are recorded in the Request Origin / Source and Development / Change Type sections below.
         </div>
 
         {editable && locked && (

@@ -108,8 +108,20 @@ export const PHASE_1: PhaseConfig = {
       options: [...REQUEST_ORIGIN_OPTIONS],
     },
     {
+      // `key` stays `projectNature` while the title does not say "nature": the key
+      // is the DB `sectionKey` plus the name used across gateReadiness.ts,
+      // gateProgress.ts and the docs, so renaming it would need a data migration
+      // for no user-visible gain. The TITLE was renamed 2026-08-11 (user-raised):
+      // "Project Nature" was a phrase of ours — the word "nature" appears in no
+      // SME reply and nowhere in the workbook except "denatured alcohol". B1 gave
+      // us its field name verbatim ("Request Origin / Source"); B2 gave only a
+      // clause, so something had to be invented, and inventing it silently was
+      // the mistake. Every word of the replacement comes from B2's own clause
+      // ("new DEVELOPMENT … packaging CHANGE, claim CHANGE") plus "Type", which
+      // mirrors the sibling PRODUCT TYPE. Still our wording, not theirs, so B2's
+      // missing field name is question (d) of [ASSUMPTION: R4-Q19].
       key: 'projectNature',
-      title: 'Project Nature',
+      title: 'Development / Change Type',
       gate: '01',
       // NPD, because new development vs reformulation vs claim change is a
       // development-scope judgement, not a commercial one.
