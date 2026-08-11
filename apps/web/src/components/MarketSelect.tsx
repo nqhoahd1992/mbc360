@@ -14,9 +14,13 @@ import { useAppStore } from '../store/useAppStore';
 // property of the project in the URL either way. If no project resolves — a
 // context we do not have today — it degrades to a plain text input rather than
 // showing an empty dropdown nobody can get past.
+// Stable fallback — see the note on NO_CLAIMS in ClaimSelect.tsx: a fresh `[]`
+// from a store selector makes every render look like a state change.
+const NO_MARKETS: string[] = [];
+
 function useProjectMarkets(): string[] {
   const { projectId } = useParams();
-  return useAppStore((s) => s.projects.find((p) => p.identity.id === projectId)?.identity.markets ?? []);
+  return useAppStore((s) => s.projects.find((p) => p.identity.id === projectId)?.identity.markets ?? NO_MARKETS);
 }
 
 export default function MarketSelect({

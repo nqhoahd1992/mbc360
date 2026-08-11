@@ -11,10 +11,17 @@ import { useAppStore } from '../store/useAppStore';
 // Reads the project from the route for the same reason MarketSelect does: the
 // ledger belongs to the project in the URL, and these tables render from many
 // call sites.
+// Stable empty fallback. Returning `?? []` from a store selector allocates a new
+// array on every call, so useSyncExternalStore compares snapshots by reference,
+// sees a change every render and loops until React throws "Maximum update depth
+// exceeded" — which is exactly what this did on first run. Same fix, and same
+// reason, as EMPTY_GRANTS in utils/permissions.ts.
+const NO_CLAIMS: RegisterRow[] = [];
+
 export function useClaimRows(): RegisterRow[] {
   const { projectId } = useParams();
   return useAppStore(
-    (s) => s.projects.find((p) => p.identity.id === projectId)?.registers['claimEvidenceTraceability'] ?? [],
+    (s) => s.projects.find((p) => p.identity.id === projectId)?.registers['claimEvidenceTraceability'] ?? NO_CLAIMS,
   );
 }
 
