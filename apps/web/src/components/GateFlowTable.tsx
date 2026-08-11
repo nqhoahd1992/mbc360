@@ -16,7 +16,7 @@ import { GATE_FIELD_LABELS, GATES, GATE_DECISIONS, STAGE_STATUSES } from '@mbc36
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useAppStore } from '../store/useAppStore';
 import { currentGateIndex, gateIndex, gateReadinessChecklist, isAwaitingDecision, isGatePassed } from '@mbc360/shared/utils/gateProgress';
-import type { ReadinessSource, ReadinessTier } from '@mbc360/shared/config/gateReadiness';
+import type { ReadinessTier } from '@mbc360/shared/config/gateReadiness';
 import { roleLabel } from '../utils/roles';
 import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -24,14 +24,23 @@ import SaveBar from './SaveBar';
 import { ApiError } from '../api/projectsApi';
 import { useSession } from '../auth/useSession';
 
-// Why an item below the divider isn't in the SME's own F1 appendix — see
-// `ReadinessSource` in packages/shared/src/config/gateReadiness.ts.
-const READINESS_SOURCE_LABELS: Record<ReadinessSource, string> = {
-  b3: "not in the SME's F1 list — already mandatory via the confirmed phase-close rule B3",
-  'npd-roadmap': "not in the SME's F1 list — from the NPD Front-End Roadmap (v2 workbook, expert-authored)",
-  'f-series': "not in the SME's F1 list — confirmed separately in the F1-F14 round (2026-07-21)",
-  'dev-decision': "not in the SME's F1 list — added by internal decision, not SME-confirmed",
-};
+// Of the four `ReadinessSource` values (see packages/shared/src/config/
+// gateReadiness.ts) only ONE still earns a place on screen, as of 2026-08-11.
+//
+// Until then the panel printed all four, under a divider reading "Additional
+// requirements (not in the SME's F1 list)". That was written while the F1 wiring
+// was in progress and the tier methodology itself was unconfirmed, when "is this
+// item the team's or ours?" was a live question for every row. It is no longer:
+// `b3` (13 items), `npd-roadmap` (10) and `f-series` (1) are all CONFIRMED
+// requirements that simply live in a different document than the F1 appendix, so
+// for 24 of the 26 tagged items the divider was telling a reader "this is
+// binding, but recorded elsewhere" — bookkeeping that matters to whoever
+// maintains the config, not to someone working a gate.
+//
+// What does matter to that person is the remaining 2: a requirement blocking
+// their gate on nothing but our own reading. `source` stays in config for all
+// four — the S4 verification sweep reads it, and it is how we track provenance.
+const UNCONFIRMED_SOURCE_NOTE = ' — added on our own reading; not yet confirmed by the review team';
 
 // Verbatim from the F1 appendix (docs/rounds/2026-07-21-sme-reply-F1-F14.txt) — shown as a tooltip on
 // each item's tier badge (2026-07-27, user-requested) so the definition is
@@ -343,7 +352,7 @@ export default function GateFlowTable({
                       : `Gate ${r.meta.number} readiness — all requirements met:`}
                   </span>
                   <ul style={{ margin: '2px 0 0', paddingLeft: 18 }}>
-                    {r.readinessChecklist.map((b, idx) => {
+                    {r.readinessChecklist.map((b) => {
                       // Green = satisfied, red = an actual blocker, amber =
                       // never blocks (either no data source wired yet, or a
                       // Conditional/Supporting tier item that's advisory only
@@ -362,20 +371,8 @@ export default function GateFlowTable({
                       // already auto-expands its sidebar parent group (App.tsx
                       // derives `openKeys` from the route on mount).
                       const isSamePage = targetPath === location.pathname;
-                      // gateReadinessChecklist groups the SME's own F1-appendix
-                      // items first (no `source`), then everything else — the
-                      // divider marks that boundary (2026-07-26, user-requested)
-                      // so it's never mistaken for part of the SME's own list.
-                      const prevSource = idx > 0 ? r.readinessChecklist[idx - 1].source : undefined;
-                      const showDivider = !!b.source && !prevSource;
                       return (
-                        <>
-                          {showDivider && (
-                            <li key={`${b.id}-divider`} style={{ listStyle: 'none', margin: '4px 0 2px -18px', color: '#8c8c8c', fontWeight: 600 }}>
-                              — Additional requirements (not in the SME's F1 list) —
-                            </li>
-                          )}
-                          <li key={b.id} style={{ color }}>
+                        <li key={b.id} style={{ color }}>
                             {b.satisfied && '✓ '}
                             {targetHref ? (
                               isSamePage ? (
@@ -402,9 +399,8 @@ export default function GateFlowTable({
                               : !b.satisfied && b.advisory
                                 ? ' — Conditional/Supporting tier, advisory only, never blocks the gate'
                                 : !b.satisfied && !b.hardBlock && ' — clears with Proceed with Conditions'}
-                            {b.source && ` (${READINESS_SOURCE_LABELS[b.source]})`}
-                          </li>
-                        </>
+                            {b.source === 'dev-decision' && UNCONFIRMED_SOURCE_NOTE}
+                        </li>
                       );
                     })}
                   </ul>
