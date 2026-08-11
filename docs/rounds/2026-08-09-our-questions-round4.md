@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has twenty-two questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has twenty-three questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Questions 20–22** — choices we made while building the Gate 1 and Gate 2 fields you asked for.
+5. **Questions 20–23** — choices we made while building the Gate 1 and Gate 2 fields you asked for, and two requirements we added ourselves.
 
 ---
 
@@ -258,6 +258,20 @@ There is one consequence for a rule you gave us in A3. The competitor/benchmark 
 
 **Question:** (a) should these two lists be tables in the same shape as your six existing ones, or did you intend a quick single-answer field? (b) May a project have more than one nature at the same time, or must exactly one be chosen? (c) Are those two "Owner / function" values the right people to hold these at Gate 1?
 
+### Question 23 — Two requirements we added ourselves that currently block a gate
+
+We keep a note against every readiness item saying where it came from — your F1 list, an earlier answer of yours, the newer expert-authored workbook, or an internal decision of ours. Reviewing those notes, we found four items marked as internal decisions. Two turned out to be mislabelled and are corrected: one reads a Key Gate Check row straight from your workbook, and one is your own F14 rule about reconciling a hand-entered formula to the controlled Cosmetri formula before Gate 7 — that one was being displayed as "not confirmed" when in fact you confirmed it on 21 July, which we have fixed.
+
+The other two are genuinely ours, and both currently hard-block a gate. We would rather ask than leave them running unasked:
+
+**(a) Gate 2 — "Product type: at least one selected".** Today Gate 2 cannot be passed until at least one product type has been ticked. This is not on your Gate 2 list. It seemed self-evident to us that a brief naming no product type is incomplete, but that is our judgement, not yours.
+
+**(b) Gate 7 — "Formulation safety matrix: every formula ingredient assessed".** Today Gate 7 requires the safety matrix to contain rows. Part of that is a technical safeguard we are confident about — a check that reads "every row is assessed" would otherwise pass on an empty table, which is worse than failing. What we are not confident about is the coverage the item claims: that the matrix must carry a row for **every** ingredient in the formula. Nobody has told us that.
+
+**Question:** (a) can Gate 2 be passed with no product type recorded, or is that requirement right? (b) At Gate 7, must the safety matrix cover **every** ingredient in the formula, or only those that warrant an assessment (actives, preservatives, fragrance, and so on)? If only some, what marks an ingredient as needing one?
+
+We have also added an automatic check on our side so that this cannot recur: any requirement that exists only on our own reading, and that blocks a gate, must now be linked to a question on this list, or our build fails.
+
 ---
 
 ## Summary
@@ -268,6 +282,6 @@ There is one consequence for a rule you gave us in A3. The competitor/benchmark 
 | 2–4 | Superseding a formula version · defining "critical" gaps · PV/PMS scope | Open since 21 July; 2 and 4 block work we are ready to start |
 | 5–7 | Gate 7 scope · Gate 4 threshold · unclassified claims | Already built on our reading — rework if wrong |
 | 8–19 | Which record represents each of your trigger conditions, and two data-model points | Redesign if wrong, no rework |
-| 20–22 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several project natures may apply | Already built — rework if wrong |
+| 20–23 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several project natures may apply; two requirements we added ourselves that block Gate 2 and Gate 7 | Already built — rework if wrong |
 
-Questions 5 to 22 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
+Questions 5 to 23 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

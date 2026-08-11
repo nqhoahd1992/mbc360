@@ -2,11 +2,11 @@
 
 **Date:** 2026-07-22 (last updated 2026-08-10)
 
-> # ✅ ROUND 3 CLOSED — 19 new questions open (R4-Q1 … R4-Q19)
+> # ✅ ROUND 3 CLOSED — 20 new questions open (R4-Q1 … R4-Q20)
 >
 > The subject-matter team answered every question here in their Round 3 reply (`docs/rounds/2026-08-07-sme-reply-round3.txt`), sent as Parts A–E — the questions that reply answers are `docs/rounds/2026-07-31-our-questions-round3.md` (recovered into the folder on 2026-08-11; note its `A1`/`A2`/`A3` are a different three topics from Round 2's). **The answers are recorded in full in `Business_Rules_Confirmation_{EN,VN}.md` → "Appendix 2 (2026-08-07)"** — that appendix, not this file, is the authoritative record. Each section below now carries a short ✅ resolution note pointing at the part of the reply that answers it, so the question and its answer stay together for anyone re-reading the history.
 >
-> **The Round-3 questions are closed; the file is not.** Nineteen new questions — raised *while implementing* those answers and *while designing* the Conditional triggers — are in the final section, **"Round 4"**, each with a stable ID (`R4-Q1` … `R4-Q19`). Everything above that section is settled history.
+> **The Round-3 questions are closed; the file is not.** Twenty new questions — raised *while implementing* those answers and *while designing* the Conditional triggers — are in the final section, **"Round 4"**, each with a stable ID (`R4-Q1` … `R4-Q20`). Everything above that section is settled history.
 >
 > **This file is the only question list.** Other documents (notably `F1_Conditional_Triggers.md`) reference these IDs instead of keeping a parallel list, and every decision site — code and docs alike — carries a grep-able `[ASSUMPTION: R4-Qn]` tag, so "show me every unconfirmed assumption" is a search rather than a manual audit.
 >
@@ -18,7 +18,7 @@
 
 ---
 
-## Cross-cutting (2026-07-27): tier assignment from "where applicable" / "where relevant" wording — decided by the project owner, needs SME confirmation
+## Cross-cutting (2026-07-27): tier assignment from "where applicable" / "where relevant" wording — ✅ CONFIRMED 2026-08-07 (Round 3 A1: *"Your rule is broadly correct … The tier assignments in your table are accepted, with two adjustments … All other assignments are accepted"*)
 
 **What we found:** re-reading the F1 appendix (`docs/rounds/2026-07-21-sme-reply-F1-F14.txt`) closely, every gate's item list sits under one flat **"Required:"** heading — the appendix does not tag any individual item as Mandatory, Conditional or Supporting. Those three tiers are only defined once, up front, as a general framework:
 
@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–22, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–23, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -391,6 +391,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q17 | Trường Gate 1 để tuỳ chọn lúc tạo dự án, bắt buộc ở Gate 1 | 🔴 | 20 |
 | R4-Q18 | Bảng requirements Phase 1 — giá trị của cột Priority, và bao nhiêu dòng phải xong | 🔴 | 21 |
 | R4-Q19 | Hai option list của B1/B2 trình bày dạng bảng checklist như 6 bảng sẵn có của workbook, và được chọn nhiều giá trị | 🔴 | 22 |
+| R4-Q20 | Hai item do dev tự thêm (`sg02-product-type`, `sg07-matrix-rows`) đang hard-block gate mà chưa từng được hỏi | 🔴 | 23 |
 
 ---
 
@@ -713,3 +714,17 @@ Một hệ quả kỹ thuật đáng ghi: trigger `newOrRepositionedProject` (đ
 **Câu hỏi:** (a) hai danh sách này nên là bảng option như 6 bảng sẵn có của workbook, hay các anh thực sự muốn một ô chọn nhanh một giá trị? (b) một dự án có được mang **nhiều** loại cùng lúc không (ví dụ vừa cải tiến công thức vừa mở rộng thị trường), hay bắt buộc chọn đúng một? (c) hai giá trị `Owner / function` trên có đúng người chịu trách nhiệm ở Gate 1 không?
 
 **Nếu trả lời khác:** (a)+(b) bỏ 2 section trong `PHASE_1.checklistSections` (`config/phases.ts`), trả `requestOrigin`/`projectNature` về `ProjectIdentity` + cột `projects` (migration `20260810041500_gate1_origin_nature_checklists` là bản mẫu để đảo chiều, gồm cả bước chuyển dữ liệu), đổi `sg01-source`/`sg01-scope` về `identityFieldFilled` trong `gateReadiness.ts`, và sửa `newOrRepositionedProject` trong `gateProgress.ts` về so sánh bằng; (c) sửa `ownerFunction` của 2 section trong `config/phases.ts`.
+
+#### R4-Q20 · Hai item do dev tự thêm đang hard-block gate mà chưa từng được hỏi 🔴
+
+**Phát hiện 2026-08-11 khi rà nhãn `source` trên panel.** Bốn item trong `GATE_READINESS` mang `source: 'dev-decision'` — panel in đúng chữ *"not SME-confirmed"* bên cạnh từng cái — nhưng **không cái nào từng xuất hiện trong bất kỳ vòng nào** gửi SME. Rà lại thì 2 trong 4 là dán nhãn sai và đã sửa (`sg07-restrictions-linked` → `b3`, vì nó đọc một dòng Key Gate Check của workbook y như `sg07-safety-questions`; `sg07-bom-reconciled` → `f-series` mới, vì F14 đã confirm luật này từ 21/07). Còn lại đúng 2 item là quyết định của dev, và cả hai đều **Mandatory**:
+
+**(a) Gate 2 — `sg02-product-type`: "Product type — at least one selected".** Thêm 2026-07-23 theo yêu cầu của project owner. Hôm nay nó chặn cứng quyết định Gate 02 trên mọi dự án. Phụ lục F1 của SME **không** có item này; trong 19 câu vòng 31/07, chữ "Product type" xuất hiện đúng **một lần**, nằm trong phương án **(b)** của B4 (*"the combination of the four Phase 1 checklist sections"*) — mà B4 được trả lời là **(a)**, tức brief là một record riêng, không phải tổ hợp 4 checklist. Nên không thể coi câu trả lời B4 là đã xác nhận item này; nếu có, nó nghiêng về phía ngược lại.
+
+**(b) Gate 7 — `sg07-matrix-rows`: "Formulation safety matrix — every formula ingredient assessed".** Cần tách hai vế: bản thân việc **phải có ít nhất một dòng** là guard kỹ thuật của ta và không cần ai xác nhận (`.every()` trên register rỗng là vacuously true — chính là hạng lỗi S2 tồn tại để bắt). Vế cần xác nhận là **cardinality** mà nhãn item đang khẳng định: matrix phải có một dòng cho **mọi** ingredient trong công thức. Con số đó chưa ai nói.
+
+**Câu hỏi:** (a) Gate 2 có được phép qua khi chưa chọn loại sản phẩm nào không? (b) Ở Gate 7, safety matrix có bắt buộc phủ **mọi** ingredient của công thức, hay chỉ những ingredient thuộc diện cần đánh giá (hoạt chất, chất bảo quản, hương…) — và nếu chỉ một phần thì tiêu chí là gì?
+
+**Nếu trả lời khác:** (a) bỏ `sg02-product-type` khỏi `GATE_READINESS.SG02` trong `gateReadiness.ts`, hoặc hạ `tier` xuống `Supporting`; (b) đổi `sg07-matrix-rows` từ `registerHasRows` sang một check hẹp hơn, hoặc giữ nguyên và sửa `label` cho khỏi khẳng định quá.
+
+**Luật mới để chuyện này không lặp lại:** `npm run verify:readiness` sweep **S4** — item nào mang `source: 'dev-decision'` mà không khai `assumption` trỏ tới một câu hỏi thật thì fail. Nghĩa là từ nay không thể ship một quyết định của dev đang chặn gate mà chưa đưa vào danh sách hỏi.

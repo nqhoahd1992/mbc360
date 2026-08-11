@@ -151,9 +151,17 @@ export type ReadinessSource =
   // the original V18 workbook (no separate SME round needed), per the note
   // in CLAUDE.md.
   | 'npd-roadmap'
+  // Not in the F1 appendix, but confirmed by the team in an EARLIER round — the
+  // F1–F14 answers of 2026-07-21 (e.g. F14, "manual composition must be
+  // reconciled to the controlled Cosmetri formula before Gate 7"). Added
+  // 2026-08-11: the F1 appendix is one document, not the whole rule set, and
+  // labelling an F14 rule "not SME-confirmed" understated its authority.
+  | 'f-series'
   // A judgment call by the project owner, not backed by any confirmed SME
   // rule or the newer workbook — e.g. Gate 2's Product Type requirement
-  // (2026-07-23, user-requested).
+  // (2026-07-23, user-requested). Every item carrying this MUST also declare
+  // `assumption` — see the field below; `npm run verify:readiness` fails
+  // otherwise, so an unconfirmed decision cannot sit in the panel unasked.
   | 'dev-decision';
 
 export interface ReadinessRequirement {
@@ -166,6 +174,14 @@ export interface ReadinessRequirement {
   trigger?: ReadinessTrigger;
   // See `ReadinessSource` — omit for an item named in the F1 appendix itself.
   source?: ReadinessSource;
+  // The open question this item's existence depends on (`'R4-Q20'`), defined in
+  // docs/rules/F1_Per_Gate_Open_Questions.md. REQUIRED whenever
+  // `source: 'dev-decision'`: such an item hard-blocks a gate on nothing but our
+  // own reading, so it has to be on the list the SME can answer. Enforced by
+  // `npm run verify:readiness` (sweep S4) rather than left to memory — the four
+  // dev-decision items shipped for weeks with the panel truthfully labelling
+  // them "not SME-confirmed" while none of them had ever been put to the team.
+  assumption?: string;
 }
 
 // Keyed by gate id (SG01..SG12). Every gate's own F1 appendix list (docs/
@@ -434,6 +450,10 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Product type — at least one selected',
       tier: 'Mandatory',
       source: 'dev-decision',
+      // Never put to the team in any round: "Product type" appears exactly once
+      // in the Round 3 questions, inside option (b) of B4 — and B4 was answered
+      // (a) [ASSUMPTION: R4-Q20].
+      assumption: 'R4-Q20',
       check: { kind: 'checklistHasSelection', section: 'productType' },
     },
     {
@@ -1172,9 +1192,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Formulation safety matrix — every formula ingredient assessed',
       tier: 'Mandatory',
       source: 'dev-decision',
+      assumption: 'R4-Q20',
       // Not an F1-named item. Guards the three per-column matrix checks above:
       // `.every()` over an empty register is vacuously true, so the row-count
       // check has to be Mandatory too.
+      //
+      // The GUARD is ours and needs no confirmation — an empty register must not
+      // satisfy a check. What does need it is the cardinality this implies: that
+      // the matrix must carry a row for EVERY formula ingredient, which the SME
+      // has never been asked [ASSUMPTION: R4-Q20].
       check: { kind: 'registerHasRows', register: 'formulationSafetyMatrix' },
     },
     {
@@ -1190,10 +1216,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg07-restrictions-linked',
       label: 'Restrictions, conditions and safety evidence linked',
       tier: 'Mandatory',
-      source: 'dev-decision',
+      source: 'b3',
       // Not an F1-named item (not in the SME's 10-item Gate 7 list either) —
       // tagged 2026-07-28 so it groups with the other extras instead of
       // interleaving with the SME list above.
+      //
+      // Relabelled from 'dev-decision' to 'b3' on 2026-08-11: this reads one of
+      // the workbook's own Gate 7 Key Gate Check rows, exactly like
+      // `sg07-safety-questions` two entries above, so B3(b) already makes it
+      // mandatory before the phase can close. Same shape, same rule — the two
+      // had different provenance labels for no reason.
       check: { kind: 'gateCheckDone', gate: '07', check: 'Restrictions, conditions and safety evidence linked' },
     },
     {
@@ -1214,10 +1246,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg07-bom-reconciled',
       label: 'Formula BOM reconciled to a controlled Cosmetri formula (no "Draft - Not Reconciled" lines)',
       tier: 'Mandatory',
-      source: 'dev-decision',
+      source: 'f-series',
       // F14: manual composition must be reconciled before Gate 7 final safety.
       // Not in the SME's 10-item Gate 7 list — tagged 2026-07-28 (see note on
       // sg07-restrictions-linked above).
+      //
+      // Relabelled from 'dev-decision' to 'f-series' on 2026-08-11: F14 IS a
+      // confirmed SME answer (2026-07-21), so the panel was calling a confirmed
+      // rule "not SME-confirmed". The old enum simply had no value for
+      // "confirmed elsewhere, just not in the F1 appendix".
       check: { kind: 'bomReconciled' },
     },
   ],

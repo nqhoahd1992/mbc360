@@ -29,6 +29,7 @@ import { useSession } from '../auth/useSession';
 const READINESS_SOURCE_LABELS: Record<ReadinessSource, string> = {
   b3: "not in the SME's F1 list — already mandatory via the confirmed phase-close rule B3",
   'npd-roadmap': "not in the SME's F1 list — from the NPD Front-End Roadmap (v2 workbook, expert-authored)",
+  'f-series': "not in the SME's F1 list — confirmed separately in the F1-F14 round (2026-07-21)",
   'dev-decision': "not in the SME's F1 list — added by internal decision, not SME-confirmed",
 };
 

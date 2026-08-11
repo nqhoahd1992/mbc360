@@ -25,6 +25,11 @@
  *        fail. S2 deliberately exempts fixed registers, which is exactly why S3
  *        has to exist — 8 of the 10 checks in scope sit on fixed registers.
  *
+ *   S4 — an item whose `source` is `'dev-decision'` (it exists only on our own
+ *        reading, yet hard-blocks a gate) must declare the `assumption` question
+ *        it rests on. Added 2026-08-11, after all four such items were found to
+ *        have shipped without ever being put to the team.
+ *
  * It also prints two debt counters (`manual` checks, open `[ASSUMPTION: R4-Qn]`
  * tags) and verifies that every assumption tag points at a question that
  * actually exists in docs/rules/F1_Per_Gate_Open_Questions.md.
@@ -260,11 +265,43 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// S4 — every `source: 'dev-decision'` item must declare the open question it
+// rests on. Such an item hard-blocks a gate on nothing but our own reading, so
+// leaving it unasked contradicts the standing working agreement. Found
+// 2026-08-11: all four dev-decision items had shipped for weeks, with the panel
+// truthfully printing "not SME-confirmed" next to each, while none of them
+// appeared in any round sent to the team.
+// ---------------------------------------------------------------------------
+
+function verifyDevDecisionsAsked(defined: Set<string>): void {
+  for (const { gate, req } of Object.entries(GATE_READINESS).flatMap(([gate, reqs]) =>
+    reqs.map((req) => ({ gate, req })),
+  )) {
+    if (req.source !== 'dev-decision') continue;
+    if (!req.assumption) {
+      fail('S4', gate, req.id, "source: 'dev-decision' nhưng thiếu `assumption` — quyết định của dev đang chặn gate mà chưa hỏi SME");
+    } else if (!defined.has(req.assumption)) {
+      fail('S4', gate, req.id, `assumption: '${req.assumption}' không tồn tại trong ${QUESTIONS_DOC}`);
+    }
+  }
+}
+
 function verifyAssumptions(): { tagged: number; ids: Set<string> } {
   const doc = readFileSync(join(REPO_ROOT, QUESTIONS_DOC), 'utf8');
   const defined = new Set(doc.match(/^#### (R4-Q\d+)/gm)?.map((m) => m.replace('#### ', '')) ?? []);
   const used = new Set<string>();
   let tagged = 0;
+
+  verifyDevDecisionsAsked(defined);
+  // An id declared only through a `assumption` field still counts as tagged, so
+  // the "every question is referenced somewhere" rule below stays satisfiable
+  // without a duplicate comment tag.
+  for (const reqs of Object.values(GATE_READINESS)) {
+    for (const req of reqs) {
+      if (req.assumption) used.add(req.assumption);
+    }
+  }
 
   for (const dir of TAG_SCAN_DIRS) {
     for (const file of walk(join(REPO_ROOT, dir))) {
@@ -317,7 +354,7 @@ if (notes.length > 0) {
 }
 
 if (failures.length === 0) {
-  console.log('\n✅ S1 (tên tham chiếu) · S2 (register rỗng) · S3 (giá trị seed) · TAG (giả định): sạch\n');
+  console.log('\n✅ S1 (tên tham chiếu) · S2 (register rỗng) · S3 (giá trị seed) · S4 (dev-decision đã hỏi) · TAG (giả định): sạch\n');
   process.exit(0);
 }
 
