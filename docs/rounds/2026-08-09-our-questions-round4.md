@@ -260,7 +260,9 @@ There is one consequence for a rule you gave us in A3. The competitor/benchmark 
 
 4. **The name of the second table.** B1 gave us its field name outright — "Request Origin / Source" — so that table carries your words. B2 gave a description rather than a name, so we had to invent one. We have called it **Development / Change Type**, taking every word from your own sentence ("new *development* … packaging *change*, claim *change*") and matching the way your other titles read. It is still our wording, so please rename it if you have a term you use.
 
-**Question:** (a) should these two lists be tables in the same shape as your six existing ones, or did you intend a quick single-answer field? (b) May a project be more than one of those six types at the same time, or must exactly one be chosen? (c) Are those two "Owner / function" values the right people to hold these at Gate 1? (d) What should the second table be called?
+5. **Where the five free-text fields sit.** Requester name, requester department, initial product scope, and the initial target user and markets are in a small block we added directly beneath Project Identification, titled "Opportunity & Request (Gate 01)". Your Project Identification table has ten parameters, all in use, so there was no free row to put them in — the block is our layout, not yours.
+
+**Question:** (a) should these two lists be tables in the same shape as your six existing ones, or did you intend a quick single-answer field? (b) May a project be more than one of those six types at the same time, or must exactly one be chosen? (c) Are those two "Owner / function" values the right people to hold these at Gate 1? (d) What should the second table be called? (e) Should the five free-text fields stay in their own block, or become additional parameters of the Project Identification table itself?
 
 ### Question 23 — Two requirements we added ourselves that currently block a gate
 
