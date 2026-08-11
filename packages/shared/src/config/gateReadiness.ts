@@ -468,19 +468,35 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // Deliberately NOT requiring all 16 rows Completed: the team gave the row
       // list but no cardinality rule, and several rows genuinely will not apply
       // to a given project ("Benchmark or reference product" on a project with
-      // no benchmark). Requiring every row would be inventing a rule. Two rows
-      // are checked instead — the two the appendix names in its own wording,
-      // "requirements AND exclusions" — and the WorkStatus rules already let a
-      // row be closed as not-applicable.
+      // no benchmark). Requiring every row would be inventing a rule.
+      //
+      // ONE row is checked: "Must-have product requirements", which every
+      // project has by definition — a project with no must-have requirement is
+      // not a project.
+      //
+      // "Explicit exclusions" was checked too until 2026-08-11, on the reading
+      // that the appendix's own title says "requirements AND exclusions". The
+      // user pointed out that not every project HAS an exclusion, and the
+      // justification written here for it — that a row can be closed as
+      // not-applicable — was simply false: `WorkStatus` is Not Started / In
+      // Progress / Completed / On Hold / Backtracked, with no N/A the way
+      // GateCheck's `ynna` and ChecklistItem's `status` have. So a project with
+      // nothing to exclude had two bad options: mark Completed for work that
+      // does not exist, or stay blocked at Gate 02 forever. That is the rule
+      // docs/archive/F1_Gate_Readiness_Mapping_Proposal.md already stated —
+      // only put `requirementDone` on rows universally applicable at that gate —
+      // and this row broke it.
+      //
+      // The underlying gap (requirement rows cannot be closed as N/A with a
+      // justification) is a known limitation, not something to work around by
+      // requiring less than the SME asked [ASSUMPTION: R4-Q18].
       id: 'sg02-requirements',
       label: 'Project requirements and exclusions',
       tier: 'Mandatory',
       check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'requirementDone', section: 'projectRequirements', requirement: 'Must-have product requirements' },
-          { kind: 'requirementDone', section: 'projectRequirements', requirement: 'Explicit exclusions' },
-        ],
+        kind: 'requirementDone',
+        section: 'projectRequirements',
+        requirement: 'Must-have product requirements',
       },
     },
     // --- End of the 6 F1-named Gate 2 items (order matches the appendix

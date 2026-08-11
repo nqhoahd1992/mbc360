@@ -234,9 +234,13 @@ We have built the Phase 1 requirements table from your B6 list, with all sixteen
 
 **Priority values.** You asked for a priority column but did not name the values. We reused the ones you already confirmed for Next Actions: **Low, Medium, High, Critical**. Reusing a list you have already approved seemed safer than inventing a new one.
 
-**How many rows must be complete for Gate 2 to pass.** You gave the sixteen rows but not how many are required. Requiring all sixteen would be inventing a rule — some genuinely will not apply to a given project, such as "Benchmark or reference product" where there is no benchmark. So we check only two, the two your own heading names: **Must-have product requirements** and **Explicit exclusions**. The other fourteen still appear and can still be closed, but they do not block the gate.
+**How many rows must be complete for Gate 2 to pass.** You gave the sixteen rows but not how many are required. Requiring all sixteen would be inventing a rule — some genuinely will not apply to a given project, such as "Benchmark or reference product" where there is no benchmark. So we check **one**: *Must-have product requirements*, which every project has by definition. The other fifteen still appear and can still be closed, but they do not block the gate.
 
-**Question:** (a) are Low / Medium / High / Critical the right priority values, or would you prefer a different scale such as Must / Should / Could? (b) Are there rows beyond those two that must be complete before Gate 2 can pass?
+We had briefly required *Explicit exclusions* as well, on the reading that your own heading says "requirements **and** exclusions". We have taken it back out, because not every project has something to exclude, and this table has no way to say so: a requirement row can be Not Started, In Progress, Completed, On Hold or Backtracked — there is no "not applicable, and here is why", the way your Key Gate Checks have Y/N/N/A with a justification. A project with nothing to exclude was left choosing between marking work Completed that does not exist, or being blocked at Gate 2 indefinitely.
+
+So if you do want exclusions — or any other row that will not apply to every project — to be required, the missing piece is a way to close a row as not applicable with a reason. We would rather build that than have people tick Completed on an empty row, which teaches everyone that the tick means nothing.
+
+**Question:** (a) are Low / Medium / High / Critical the right priority values, or would you prefer a different scale such as Must / Should / Could? (b) Beyond *Must-have product requirements*, which rows must be complete before Gate 2 can pass — and for a row that does not apply to a given project, how would you like it closed?
 
 ### Question 22 — How the two Gate 1 option lists are presented, and whether a project can have more than one nature
 

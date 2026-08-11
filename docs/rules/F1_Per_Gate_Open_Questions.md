@@ -687,9 +687,17 @@ Mọi chỗ ghi mới của Gate 1 — 5 trường trên thẻ Project Identific
 
 **(a) Giá trị của cột Priority.** B6 yêu cầu bảng có cột `priority` nhưng **không đưa giá trị nào**. Chúng tôi dùng lại đúng danh sách đã được xác nhận ở F8 cho Next Action: **Low / Medium / High / Critical**. Dùng lại một danh sách đã chốt là suy đoán nhẹ hơn nhiều so với bịa ra danh sách mới, nhưng vẫn là suy đoán.
 
-**(b) Bao nhiêu trong 16 dòng phải hoàn tất thì Gate 2 mới qua.** B6 cho danh sách 16 dòng nhưng không nói cần bao nhiêu. Bắt cả 16 là **bịa ra một quy tắc** — vài dòng thật sự không áp dụng cho một số dự án ("Benchmark or reference product" trên dự án không có benchmark nào). Nên hiện chỉ kiểm **2 dòng**, đúng hai vế mà chính phụ lục gọi tên trong tiêu đề *"requirements **and** exclusions"*: `Must-have product requirements` và `Explicit exclusions`. Các dòng còn lại vẫn hiện trên bảng và vẫn đóng được bằng trạng thái, chỉ là không chặn gate.
+**(b) Bao nhiêu trong 16 dòng phải hoàn tất thì Gate 2 mới qua.** B6 cho danh sách 16 dòng nhưng không nói cần bao nhiêu. Bắt cả 16 là **bịa ra một quy tắc** — vài dòng thật sự không áp dụng cho một số dự án ("Benchmark or reference product" trên dự án không có benchmark nào). Các dòng còn lại vẫn hiện trên bảng và vẫn đóng được bằng trạng thái, chỉ là không chặn gate.
 
-**Câu hỏi:** (a) Low / Medium / High / Critical có đúng ý cho Priority không, hay các anh muốn thang khác (ví dụ Must / Should / Could)? (b) Có dòng nào trong 16 dòng **bắt buộc** phải hoàn tất trước khi Gate 2 qua ngoài hai dòng trên không?
+Bản 09/08 kiểm **2 dòng**, theo hai vế trong chính tiêu đề của phụ lục (*"requirements **and** exclusions"*): `Must-have product requirements` và `Explicit exclusions`.
+
+⚠️ **Sửa 2026-08-11 (project owner phản biện: "đâu phải dự án nào cũng có Explicit exclusions").** Đúng, và lý lẽ biện minh viết trong config lúc đó — *"WorkStatus đã cho phép đóng dòng không áp dụng"* — **là sai sự thật**: `WorkStatus` chỉ có `Not Started / In Progress / Completed / On Hold / Backtracked`, **không có N/A**, khác hẳn `GateCheck.ynna` và `ChecklistItem.status` vốn có Y/N/NA kèm lý do. Mà `requirementDone` chỉ chấp nhận đúng `Completed`. Nên dự án không có exclusion nào chỉ còn hai đường, đều sai: đánh `Completed` cho việc không tồn tại, hoặc bị chặn Gate 02 vĩnh viễn.
+
+`docs/archive/F1_Gate_Readiness_Mapping_Proposal.md` đã ghi sẵn quy tắc này từ trước — *"`requirementDone` chỉ hard-block trên dòng **universally applicable** ở gate đó"* — và dòng exclusions vi phạm nó. Nay chỉ còn kiểm **1 dòng**: `Must-have product requirements`, thứ mọi dự án đều có theo định nghĩa.
+
+**Khoảng trống nền vẫn còn, ghi nhận chứ không lách:** dòng requirement **không có** cách đóng "không áp dụng, kèm lý do". Nếu SME muốn `Explicit exclusions` (hay dòng nào khác không phổ quát) là bắt buộc, việc cần làm là **thêm đường N/A + lý do cho requirement row** rồi mới bật check — chứ không phải bắt người dùng đánh `Completed` cho một ô trống.
+
+**Câu hỏi:** (a) Low / Medium / High / Critical có đúng ý cho Priority không, hay các anh muốn thang khác (ví dụ Must / Should / Could)? (b) ngoài `Must-have product requirements`, còn dòng nào **bắt buộc** phải hoàn tất trước khi Gate 2 qua không — và nếu có dòng không áp dụng cho một dự án cụ thể, các anh muốn đóng nó bằng cách nào (hiện chưa có trạng thái "N/A kèm lý do" cho bảng này)?
 
 **Nếu trả lời khác:** (a) `NEXT_ACTION_PRIORITIES` trong `types/index.ts`, hoặc tách một danh sách riêng cho requirement; (b) thêm/bớt `requirementDone` trong `sg02-requirements` ở `gateReadiness.ts`.
 
