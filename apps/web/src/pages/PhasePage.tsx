@@ -14,6 +14,7 @@ import { useAppStore } from '../store/useAppStore';
 import { PHASES } from '@mbc360/shared/config/gates';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
+import OpportunityRequestCard from '../components/OpportunityRequestCard';
 import GateFlowTable from '../components/GateFlowTable';
 import ChecklistSection from '../components/ChecklistSection';
 import RequirementTable from '../components/RequirementTable';
@@ -95,6 +96,7 @@ export default function PhasePage() {
   const jumpSections = [
     { id: 'sec-identification', label: 'Project Identification' },
     { id: 'sec-gate-flow', label: 'Phase Gate Flow' },
+    ...(phase === 1 ? [{ id: 'sec-opportunity', label: 'Opportunity & Request (Gate 01)' }] : []),
     ...config.checklistSections.map((s) => ({ id: `sec-checklist-${s.key}`, label: s.title })),
     ...config.requirementSections.map((s) => ({ id: `sec-requirement-${s.key}`, label: s.title })),
     { id: 'sec-gate-checks', label: 'Key Gate Checks' },
@@ -199,12 +201,21 @@ export default function PhasePage() {
       )}
 
       <div id="sec-identification">
-        <ProjectIdentificationCard project={project} editable={phase === 1} />
+        <ProjectIdentificationCard project={project} />
       </div>
 
       <div id="sec-gate-flow">
         <GateFlowTable project={project} gateIds={config.gateIds} />
       </div>
+
+      {/* Gate 01 capture (SME Round 3 B1/B2/B3) — Phase 1 only, and placed here so
+          it runs straight into the two gate-01 option tables that open
+          config.checklistSections below it. */}
+      {phase === 1 && (
+        <div id="sec-opportunity">
+          <OpportunityRequestCard project={project} />
+        </div>
+      )}
 
       {config.checklistSections.map((section) => (
         <div key={section.key} id={`sec-checklist-${section.key}`}>

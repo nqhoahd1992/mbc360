@@ -13,6 +13,7 @@ import { GATE_FIELD_LABELS, GATES, PHASES } from '@mbc360/shared/config/gates';
 import { isGatePassed, phaseProgress } from '@mbc360/shared/utils/gateProgress';
 import PhaseStepper from '../components/PhaseStepper';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
+import OpportunityRequestCard from '../components/OpportunityRequestCard';
 import StatusBadge from '../components/StatusBadge';
 
 export default function ProjectOverview() {
@@ -25,7 +26,8 @@ export default function ProjectOverview() {
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <ProjectIdentificationCard project={project} editable />
+      <ProjectIdentificationCard project={project} />
+      <OpportunityRequestCard project={project} />
 
       <Card
         size="small"

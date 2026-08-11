@@ -478,7 +478,9 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'skincareForTwo':
       return phaseSectionLink(gateId, 'sec-requirement-skincareForTwo');
     case 'identityFieldFilled':
-      return phaseSectionLink(gateId, 'sec-identification');
+      // The Gate 01 opportunity fields moved out of Project Identification into
+      // their own card on 2026-08-11, so the blocker link follows them.
+      return phaseSectionLink(gateId, 'sec-opportunity');
     case 'formulaPropertyFilled':
       return { href: '/bom' };
     case 'gateFieldFilled':
