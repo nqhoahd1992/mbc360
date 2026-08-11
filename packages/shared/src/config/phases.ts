@@ -81,19 +81,38 @@ export const PHASE_1: PhaseConfig = {
     // The layout, the multi-select consequence and the two ownerFunction values
     // are all our reading — B1/B2 gave the option lists and nothing else
     // [ASSUMPTION: R4-Q19].
+    // `ownerFunction` on both: Gate 01 has no table in the workbook, so there is
+    // no owner cell to copy. The rule followed instead (revised 2026-08-11, user
+    // decision) is to name TWO functions, both taken from the three the workbook
+    // does give Gate 01 — `Stage_Map!F8`, "Primary owner" = "Project owner /
+    // Sales / NPD" — picking whichever two suit that table's content.
+    //
+    // Two names, not three, because `Owner / function` is a different column from
+    // Stage_Map's `Primary owner`: it records who ticks and evidences a row, and
+    // all six of the workbook's own option tables put exactly two functions there
+    // (`Marketing / Project owner`, `Marketing / NPD`, `Marketing / Regulatory`,
+    // `Regulatory / Scientific Review`), as do all 14 pre-existing sections here.
+    // The first version of these two sections copied Stage_Map's three-name gate
+    // owner into that column, which made `requestOrigin` the only section of 16
+    // reading differently from every sibling.
+    //
+    // Which two per table is our choice, not the SME's — no new function name is
+    // invented, but the split is a judgement [ASSUMPTION: R4-Q19].
     {
       key: 'requestOrigin',
       title: 'Request Origin / Source',
       gate: '01',
-      // Derived from GATES['SG01'].primaryOwner rather than invented, since the
-      // workbook has no owner cell for a table it does not contain.
-      ownerFunction: 'Project owner / Sales / NPD',
+      // Sales, because most of B1's options arrive through it — a Sales,
+      // Customer or Distributor request.
+      ownerFunction: 'Project owner / Sales',
       options: [...REQUEST_ORIGIN_OPTIONS],
     },
     {
       key: 'projectNature',
       title: 'Project Nature',
       gate: '01',
+      // NPD, because new development vs reformulation vs claim change is a
+      // development-scope judgement, not a commercial one.
       ownerFunction: 'Project owner / NPD',
       options: [...PROJECT_NATURE_OPTIONS],
     },

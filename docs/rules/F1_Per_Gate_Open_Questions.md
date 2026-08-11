@@ -707,7 +707,11 @@ Cần nói rõ một dữ kiện: Gate 01 trong workbook **không có bảng nh�
 
 **(b) Chọn nhiều giá trị.** Đây là **hệ quả về luật**, không phải thẩm mỹ: shape bảng cho tick nhiều dòng, nên một dự án giờ có thể vừa `Reformulation` vừa `Market extension`. Dropdown cũ ép đúng một giá trị — mà chính việc ép đó cũng là suy đoán, chỉ là suy đoán ngầm, chưa bao giờ được ghi ra. Câu B2 (*"whether it is new development, reformulation, claim change, …"*) đọc theo cả hai cách đều được.
 
-**(c) Cột `Owner / function`.** Workbook có cột này cho cả 6 bảng, và nó phải có giá trị. Không bịa: lấy từ `GATES['SG01'].primaryOwner` = **Project owner / Sales / NPD** cho Request Origin, và **Project owner / NPD** cho Project Nature.
+**(c) Cột `Owner / function`.** Workbook có cột này cho cả 6 bảng, và nó phải có giá trị. Gate 01 không có bảng nào trong workbook nên **không có ô nào để tra** → phải tự chọn.
+
+Bản 10/08 lấy `GATES['SG01'].primaryOwner` = `Project owner / Sales / NPD` (nguyên văn ô `Stage_Map!F8`) cho cả hai. **Sửa 11/08 sau khi project owner phát hiện nó lệch:** đó là copy từ **sai cột**. `Stage_Map!F8` là cột *"Primary owner"* — ai sở hữu cả gate, và ở sheet đó mọi gate đều 3 tên (F9 `Project owner / Marketing / Regulatory`, F10 `Marketing / Regulatory / R&I`, F11 `R&I / Regulatory / Procurement`…). Còn cột `Owner / function` trong các bảng option ghi *ai tick và chứng minh dòng này*, và cả 6 bảng của workbook đều **2 tên** (`Marketing / Project owner` · `Marketing / NPD` · `Marketing / Regulatory` · `Regulatory / Scientific Review`), y như 14 section có sẵn trong config. Hệ quả: `requestOrigin` từng là section duy nhất trong 16 cái đọc khác mọi anh em của nó.
+
+Nay theo quy tắc: **2 tên, cả hai đều nằm trong 3 chức năng mà chính workbook cấp cho Gate 01**, chọn theo nội dung bảng — `Project owner / Sales` cho Request Origin (phần lớn option của B1 đến qua Sales: Sales/Customer/Distributor request) và `Project owner / NPD` cho Project Nature (mới/tái công thức/đổi claim là phán định phạm vi phát triển, không phải thương mại). Không thêm chức năng mới nào, nhưng **cách chia là phán định của ta**. Giá trị lưu theo từng dòng nên đã kèm migration `20260811033000_gate1_owner_function_two_names` để cập nhật các dòng đã tạo.
 
 Một hệ quả kỹ thuật đáng ghi: trigger `newOrRepositionedProject` (điều kiện competitor review ở Gate 3) đọc 2 bảng này, nên vế 1 thành `natures.some(...)` — một dự án tick `Packaging change` + `Market extension` sẽ **fire**, vì `Market extension` nằm trong nhóm không-phải-administrative `[ASSUMPTION: R4-Q7]`.
 
