@@ -11,6 +11,7 @@ import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
 import { cosmetriListRawMaterials, type CosmetriRawMaterialSummary } from '../integrations/cosmetri';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
+import MarketSelect from './MarketSelect';
 
 // Supplier_RM_Evidence-specific variant of DynamicTable: `rmCode` is picked
 // from Cosmetri's raw-material catalogue instead of typed free text, mirroring
@@ -118,6 +119,15 @@ export default function SupplierRmEvidenceTable({
     const value = row[column.key];
     if (!editable) return <span style={{ color: '#666' }}>{value != null ? String(value) : ''}</span>;
     switch (column.type) {
+      case 'market':
+      case 'markets':
+        return (
+          <MarketSelect
+            value={value as string | undefined}
+            multiple={column.type === 'markets'}
+            onChange={(v) => patch(index, column.key, v)}
+          />
+        );
       case 'user':
         return (
           <UserSelect

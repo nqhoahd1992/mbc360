@@ -6,7 +6,12 @@ import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 // text before 2026-08-11. Deliberately NOT applied to the seeded owner cells of
 // mode: 'fixed' registers: those carry a FUNCTION ("Regulatory", "Safety / R&I"),
 // not a person, and are read-only reference text copied from the source sheet.
-export type ColumnType = 'text' | 'textarea' | 'select' | 'date' | 'checkbox' | 'number' | 'user';
+// `market` / `markets` = one (or several) of THIS project's markets, picked from
+// ProjectIdentity.markets rather than typed (2026-08-11). Typed values made
+// "Vietnam", "VN" and "vietnam" three different markets, and let a row name a
+// market the project does not sell into. `markets` stores a comma-joined
+// string, which is what those columns already held as free text.
+export type ColumnType = 'text' | 'textarea' | 'select' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets';
 
 export interface RegisterColumn {
   key: string;
@@ -639,7 +644,7 @@ const packagingSpecsArtwork: RegisterConfig = {
     { key: 'migrationRisk', label: 'Migration/contact risk', type: 'text', width: 160 },
     { key: 'artworkVersion', label: 'Artwork / label version', type: 'text', width: 150 },
     { key: 'packCodeBarcode', label: 'Pack code / barcode', type: 'text', width: 140 },
-    { key: 'market', label: 'Market', type: 'text', width: 110 },
+    { key: 'market', label: 'Market', type: 'market', width: 110 },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 130 },
     { key: 'approval', label: 'Approval', type: 'text', width: 120 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
@@ -783,7 +788,7 @@ const pifEvidenceExport: RegisterConfig = {
   gate: '10/11',
   columns: [
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 150 },
-    { key: 'market', label: 'Market', type: 'text', width: 110 },
+    { key: 'market', label: 'Market', type: 'market', width: 110 },
     { key: 'pifSection', label: 'PIF section', type: 'text', width: 140 },
     { key: 'evidenceItem', label: 'Evidence item', type: 'text', width: 160 },
     { key: 'sourceTemplate', label: 'Source template', type: 'text', width: 140 },
@@ -805,7 +810,7 @@ const skuClaimsPifRegister: RegisterConfig = {
   gate: '03/10',
   columns: [
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
-    { key: 'market', label: 'Market', type: 'text', width: 110 },
+    { key: 'market', label: 'Market', type: 'market', width: 110 },
     { key: 'claimWording', label: 'Claim / wording', type: 'textarea', width: 180 },
     { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS },
     { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS },
@@ -890,7 +895,7 @@ const publishedInfoApproval: RegisterConfig = {
     { key: 'formulaVersion', label: 'Formula version', type: 'text', width: 110 },
     { key: 'materialType', label: 'Material type', type: 'text', width: 130 },
     { key: 'channel', label: 'Channel', type: 'text', width: 130 },
-    { key: 'market', label: 'Market', type: 'text', width: 100 },
+    { key: 'market', label: 'Market', type: 'market', width: 100 },
     { key: 'publishedItem', label: 'Published information item', type: 'text', width: 180 },
     { key: 'audience', label: 'Audience', type: 'text', width: 120 },
     { key: 'claimCategory', label: 'Claim / terminology category', type: 'text', width: 160 },
@@ -1169,7 +1174,7 @@ const gmpLinks: RegisterConfig = {
   gate: '11',
   columns: [
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 130 },
-    { key: 'market', label: 'Market', type: 'text', width: 100 },
+    { key: 'market', label: 'Market', type: 'market', width: 100 },
     { key: 'manufacturingSite', label: 'Manufacturing site', type: 'text', width: 130 },
     { key: 'gmpSystemRef', label: 'GMP system reference', type: 'text', width: 150 },
     { key: 'gmpFileType', label: 'GMP file type', type: 'text', width: 150 },
@@ -1379,7 +1384,7 @@ const releasedLabelRegister: RegisterConfig = {
     { key: 'newArtworkFile', label: 'New artwork file', type: 'text', width: 150 },
     { key: 'newLabelReleased', label: 'New label released to market?', type: 'select', width: 120, options: YNNA },
     { key: 'marketReleaseDate', label: 'Market release date', type: 'date', width: 130 },
-    { key: 'marketsAffected', label: 'Markets affected', type: 'text', width: 150 },
+    { key: 'marketsAffected', label: 'Markets affected', type: 'markets', width: 190 },
     { key: 'assetExists', label: '3D asset exists?', type: 'select', width: 110, options: YNNA },
     { key: 'assetLink', label: '3D asset link', type: 'text', width: 130 },
     { key: 'artworkChangeRef', label: 'Artwork_Change_Control ref', type: 'text', width: 160 },

@@ -10,6 +10,7 @@ import { patchArray, useDraft } from '../hooks/useDraft';
 import { createEmptyRegisterRow } from '../store/factory';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
+import MarketSelect from './MarketSelect';
 
 // Published_Info_Approval-specific variant of DynamicTable (2026-07-27,
 // user-requested): "Claim ID" is picked from Claim -> Evidence Traceability
@@ -126,6 +127,15 @@ export default function PublishedInfoApprovalTable({
     const value = row[column.key];
     if (!editable) return <span style={{ color: '#666' }}>{value != null ? String(value) : ''}</span>;
     switch (column.type) {
+      case 'market':
+      case 'markets':
+        return (
+          <MarketSelect
+            value={value as string | undefined}
+            multiple={column.type === 'markets'}
+            onChange={(v) => patch(index, column.key, v)}
+          />
+        );
       case 'user':
         return (
           <UserSelect

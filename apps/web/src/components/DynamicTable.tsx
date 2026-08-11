@@ -8,6 +8,7 @@ import { patchArray, useDraft } from '../hooks/useDraft';
 import { createEmptyRegisterRow } from '../store/factory';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
+import MarketSelect from './MarketSelect';
 
 export default function DynamicTable({
   config,
@@ -78,6 +79,15 @@ export default function DynamicTable({
       case 'checkbox':
         return (
           <Checkbox checked={!!value} onChange={(e) => patch(index, column.key, e.target.checked)} />
+        );
+      case 'market':
+      case 'markets':
+        return (
+          <MarketSelect
+            value={value as string | undefined}
+            multiple={column.type === 'markets'}
+            onChange={(v) => patch(index, column.key, v)}
+          />
         );
       case 'user':
         return (
