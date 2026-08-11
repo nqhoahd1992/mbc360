@@ -690,6 +690,32 @@ Nếu hai cái là một, tạo cột thứ hai sẽ sinh ra hai chỗ ghi cùng
 **(c) `sg03-classification` vẫn để `manual`, chưa wire thành check thật.** Đã có chỗ ghi rồi, nhưng còn thiếu **quy tắc số lượng**: Gate 3 đòi *bao nhiêu* dòng phải được phân loại? Nếu đòi "mọi dòng của `skuClaimsPifRegister` phải có category + risk" thì phải trả lời trước: dự án ở Gate 3 đã buộc phải có dòng nào trong sổ đó chưa (sổ này là gate 03/10, phần lớn nội dung PIF thuộc Gate 10). Bịa ra cardinality là đúng sai lầm đã mắc ở `sg02-requirements`. Câu hỏi này gộp vào (d) dưới đây.
 
 **Câu hỏi bổ sung:** (b) 2 thuộc tính `intended channel` / `Regulatory review required` đặt ở register nào là đúng? (c) khi category/risk ở hai sổ lệch nhau thì sổ nào là gốc — hay các anh muốn `skuClaimsPifRegister` tham chiếu Claim ID để khỏi lệch? (d) ở Gate 3, **bao nhiêu** claim phải được phân loại xong thì gate qua được?
+---
+
+**✅ QUYẾT ĐỊNH TIẾP (2026-08-11, cùng ngày, project owner) — vế (c) tự trả lời bằng cách sửa mô hình, không chờ.** Project owner đặt đúng câu hỏi: *"hai select đó có ổn không nếu hai bảng không nằm trong nhau — nếu nằm trong nhau thì thậm chí không cần chọn lại"*, và *"chỗ nào khai báo claim đầu tiên thì chỗ đó cần 2 select"*.
+
+**Rà lại thì app không có chỗ khai báo claim nào cả** — cùng một claim bị gõ tay ở **6 bảng** trước khi được cấp ID:
+
+| Gate | Nơi | Ghi gì |
+|---|---|---|
+| 03 | checklist `claimAreas` | vùng lợi ích, chưa phải câu claim |
+| 03/10 | `skuClaimsPifRegister` | **câu chữ claim đầu tiên**, theo SKU × thị trường |
+| 03/10 | `mechanismClaimsMap` | claim/benefit gõ lại |
+| 05 | `evidencePlanProspective` | "Claim / benefit to prove" gõ lại |
+| 08 | `efficacyStudyPlan` | "Claim / endpoint" gõ lại |
+| 08/10 | `functionalEfficacy`, `clinicalHumanEvidence` | gõ lại |
+| **10/11** | `claimEvidenceTraceability` | **Claim ID** — định danh duy nhất, lại nằm CUỐI |
+
+Và "chỗ đầu tiên" cũng không phải một khai báo đúng nghĩa: một claim dùng cho 3 SKU × 2 thị trường là **6 dòng**, phân loại từng dòng thì lệch ngay trong nội bộ một bảng.
+
+**Đã sửa gốc:**
+
+1. `claimEvidenceTraceability` thành **nơi khai báo claim duy nhất**, gate `10/11` → **`03/10/11`** — Claim ID được cấp ngay ở Gate 3 khi claim mới được đề xuất. (Khoá vẫn cần **mọi** gate trong danh sách đã qua, nên nó vẫn viết được suốt PIF/Published Information như trước.)
+2. `skuClaimsPifRegister` thêm cột **`Claim ID`** (kiểu `claimRef`, picker đọc sổ claim của chính dự án).
+3. `Claim category` + `Claim risk` ở `skuClaimsPifRegister` chuyển thành **kế thừa** (`inheritFromClaim`): có link thì hiện giá trị của claim, read-only, kèm tooltip "sửa ở Claim → Evidence Traceability"; chưa link thì **khoá** kèm chữ *"Link a Claim ID first"* — vì để một dòng chưa link tự phân loại chính là cách hai bản sao lệch nhau.
+
+**Phán định của dev nằm trong đó, cần SME xác nhận:** (e) claim có nên được **cấp ID ngay từ Gate 3** không, hay ID chỉ nên tồn tại sau khi có bằng chứng (nếu vậy thì Gate 3 phân loại **cái gì**)? (f) picker Claim ID **không** giới hạn ở claim `Supported` — theo đúng D2 vòng 3 (*"claim đang phát triển vẫn phải chọn được"*), chặn nằm ở khâu phát hành; đúng ý các anh chứ? (g) 4 bảng còn lại (mechanism map, evidence plan, efficacy study plan, clinical evidence) hiện **vẫn gõ tay câu claim** — có nên cùng chuyển sang tham chiếu Claim ID không?
+
 
 #### R4-Q17 · Trường Gate 1 để tuỳ chọn lúc tạo dự án, bắt buộc ở Gate 1 🔴
 

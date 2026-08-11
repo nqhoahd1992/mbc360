@@ -11,7 +11,7 @@ import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 // "Vietnam", "VN" and "vietnam" three different markets, and let a row name a
 // market the project does not sell into. `markets` stores a comma-joined
 // string, which is what those columns already held as free text.
-export type ColumnType = 'text' | 'textarea' | 'select' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets';
+export type ColumnType = 'text' | 'textarea' | 'select' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef';
 
 export interface RegisterColumn {
   key: string;
@@ -20,6 +20,12 @@ export interface RegisterColumn {
   width?: number;
   options?: readonly string[];
   editable?: boolean; // default true; false = static reference text from the source sheet
+  // Read from the linked claim (Claim -> Evidence Traceability) instead of being
+  // entered here, once the row's `claimRef` column names one — added 2026-08-11 so a
+  // claim is classified ONCE, where it is declared, and every later use inherits.
+  // Without a link the cell is disabled rather than free: classifying an
+  // unlinked row is how the two copies drifted apart in the first place.
+  inheritFromClaim?: boolean;
 }
 
 export interface RegisterConfig {
@@ -811,9 +817,13 @@ const skuClaimsPifRegister: RegisterConfig = {
   columns: [
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
     { key: 'market', label: 'Market', type: 'market', width: 110 },
+    // 2026-08-11: this register records where a claim is USED (SKU x market x
+    // channel). What the claim IS — its wording, category and risk — belongs to
+    // the claim itself, so the row points at one instead of restating it.
+    { key: 'claimId', label: 'Claim ID (Claim -> Evidence Traceability)', type: 'claimRef', width: 220 },
     { key: 'claimWording', label: 'Claim / wording', type: 'textarea', width: 180 },
-    { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS },
-    { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS },
+    { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS, inheritFromClaim: true },
+    { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS, inheritFromClaim: true },
     // B7's "intended channel" and "Regulatory review required Y/N" — the two of
     // its nine attributes that had no home. Both belong to the USE of a claim
     // rather than the claim itself: the same wording is held to a different
@@ -1956,7 +1966,14 @@ export const claimEvidenceTraceability: RegisterConfig = {
   //
   // A register's gate drives isGateRefLocked — i.e. WHEN this freezes — so this
   // is a user-visible judgement, not a detail [ASSUMPTION: R4-Q23].
-  gate: '10/11',
+  //
+  // Widened to 03/10/11 on 2026-08-11 (project owner's decision) when this became
+  // the SINGLE place a claim is declared: a Claim ID is now minted at Gate 3,
+  // when the claim is first proposed, rather than at Gate 10 after five other
+  // registers have already re-typed its wording. Locking still needs EVERY listed
+  // gate passed, so the ledger stays writable through PIF and Published
+  // Information work exactly as before.
+  gate: '03/10/11',
   reviewOwner: REVIEW_SPECS.npdEvidence,
   columns: [
     { key: 'claimId', label: 'Claim ID', type: 'text', width: 100 },

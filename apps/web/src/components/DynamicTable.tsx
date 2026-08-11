@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Checkbox, DatePicker, Input, InputNumber, Popconfirm, Select, Table, Tag } from 'antd';
+import { Alert, Button, Card, Checkbox, DatePicker, Input, InputNumber, Popconfirm, Select, Table, Tag, Tooltip } from 'antd';
 import { PlusOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
@@ -9,6 +9,7 @@ import { createEmptyRegisterRow } from '../store/factory';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
 import MarketSelect from './MarketSelect';
+import ClaimSelect, { findClaim, useClaimRows } from './ClaimSelect';
 
 export default function DynamicTable({
   config,
@@ -51,6 +52,9 @@ export default function DynamicTable({
   warnings?: (draft: RegisterRow[]) => string[];
 }) {
   const isRegister = config.mode === 'register' && !readOnly;
+  // Only read when a column actually inherits from a claim; the hook is cheap
+  // (a store selector) and keeps DynamicTable free of a project prop.
+  const claimRows = useClaimRows();
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
 
   const patch = (index: number, key: string, value: string | number | boolean | undefined) =>
@@ -70,6 +74,22 @@ export default function DynamicTable({
     const editable = column.editable !== false && !readOnly;
     const value = row[column.key];
 
+    // A column marked `inheritFromClaim` is not entered here at all: it shows
+    // what the linked claim says, so a claim carries one classification wherever
+    // it is used. With no claim linked the cell is disabled rather than free —
+    // an unlinked row classifying itself is how two copies drift apart.
+    if (column.inheritFromClaim) {
+      const claim = findClaim(claimRows, row.claimId);
+      if (claim) {
+        return (
+          <Tooltip title={`From claim ${String(row.claimId)} — change it on Claim -> Evidence Traceability`}>
+            <span style={{ color: '#666' }}>{String(claim[column.key] ?? '—')}</span>
+          </Tooltip>
+        );
+      }
+      return <span style={{ color: '#bfbfbf' }}>Link a Claim ID first</span>;
+    }
+
     if (!editable) {
       if (column.type === 'checkbox') return <Checkbox checked={!!value} disabled />;
       return <span style={{ color: '#666' }}>{value != null ? String(value) : ''}</span>;
@@ -79,6 +99,13 @@ export default function DynamicTable({
       case 'checkbox':
         return (
           <Checkbox checked={!!value} onChange={(e) => patch(index, column.key, e.target.checked)} />
+        );
+      case 'claimRef':
+        return (
+          <ClaimSelect
+            value={value as string | undefined}
+            onChange={(v) => patch(index, column.key, v)}
+          />
         );
       case 'market':
       case 'markets':

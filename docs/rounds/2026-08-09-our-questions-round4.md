@@ -229,6 +229,27 @@ Three judgements inside that we would rather you correct now than later:
 
 **Question:** (a) is the existing Claim category column the same thing as your B7 classification, as we have assumed? (b) Where should Intended channel and Regulatory review required live? (c) When the classification on the two registers disagrees, which is authoritative — or would you rather the SKU register referenced a Claim ID so it cannot? (d) At Gate 3, how many claims must be classified before the gate can pass?
 
+**Since writing the above we have gone further, and this is the part we most want checked.** Looking for the right home for the classification, we found that MBc360 has no single place where a claim is declared at all. The same claim is typed out again in six registers — the SKU register at Gate 3, the mechanism map, the evidence plan at Gate 5, the study plan at Gate 8, the efficacy and clinical evidence registers — and the only thing carrying a **Claim ID** is the traceability ledger, which until today did not open until Gate 10. So an identifier existed, but only after most of the typing had already happened.
+
+Nor is the SKU register a declaration: one claim used on three SKUs in two markets is six rows there, so classifying each row separately would drift within a single table, never mind between two.
+
+**What we have changed:**
+
+- **Claim → Evidence Traceability is now the one place a claim is declared**, and it opens at **Gate 3** instead of Gate 10 — a Claim ID is issued when the claim is first proposed, which is also when your B7 classification is meant to happen.
+- The **SKU Claims / PIF register now has a Claim ID column** and points at that claim rather than restating it.
+- **Claim category and Claim risk on the SKU register are now inherited**, shown read-only from the linked claim. With no claim linked they are locked, with the note "Link a Claim ID first" — because a row classifying itself is exactly how two copies of one fact come to disagree.
+
+The effect is that a claim is classified once, where it is declared, and every later use reads it.
+
+**Three judgements in that we would like confirmed or corrected:**
+
+**(e)** Should a Claim ID exist from **Gate 3**, when the claim is proposed, or only once evidence supports it? If IDs are only meant to appear later, tell us what Gate 3 classifies instead.
+
+**(f)** The Claim ID picker offers **every** declared claim, not only Supported ones — following your D2 correction that a developing claim must still be selectable, with release blocked separately. Same intent here?
+
+**(g)** Four registers still ask people to type the claim wording by hand — the mechanism map, prospective evidence plan, efficacy study plan and clinical evidence. Should they all reference a Claim ID too? We have not touched them yet, because that is a larger change and we would rather do it once, with your answer, than twice.
+
+
 ---
 
 ## Question 20 — Are the Gate 1 fields required to open a project, or required to pass Gate 1?
