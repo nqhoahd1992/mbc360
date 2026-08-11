@@ -253,6 +253,16 @@ export class ProjectsController {
     return this.projects.setEvidenceSummary(user, id, Number(phase), body.value ?? '', body.expectedVersion);
   }
 
+  @Put(':id/phases/:phase/key-links')
+  setPhaseKeyLinks(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('phase') phase: string,
+    @Body() body: { links: Record<string, string>; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.setPhaseKeyLinks(user, id, Number(phase), body.links ?? {}, body.expectedVersion);
+  }
+
   @Post(':id/phases/:phase/accept-pre-work')
   acceptPreWork(
     @CurrentUser() user: SessionUser,

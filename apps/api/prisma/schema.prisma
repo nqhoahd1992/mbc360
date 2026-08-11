@@ -304,9 +304,30 @@ model PhaseClosure {
 
   signOffs SignOff[]
   angles   AngleRow[]
+  keyLinks PhaseKeyLink[]
 
   @@unique([projectId, phase])
   @@map("phase_closures")
+}
+
+// The links a project records against its phase sheet's banner shortcuts — the
+// workbook prints "(provide link here)" under each of the four (cells E4/G4/I4/
+// K4). Only shortcuts with no in-app equivalent are entered here; the rest link
+// straight to the page that replaced them (see PhaseKeyLinkConfig in
+// @mbc360/shared/config/phases).
+//
+// A child table rather than a JSON column on PhaseClosure, following the same
+// reasoning as preWorkAcceptedBy above: this is real per-project data, so it
+// stays queryable.
+model PhaseKeyLink {
+  id             String       @id @default(cuid())
+  closure        PhaseClosure @relation(fields: [phaseClosureId], references: [id], onDelete: Cascade)
+  phaseClosureId String
+  label          String // PhaseKeyLinkConfig.label — the workbook's own banner text
+  url            String
+
+  @@unique([phaseClosureId, label])
+  @@map("phase_key_links")
 }
 
 // Phase sign-off (Prepared / Reviewed / Approved by). Immutable once signed:

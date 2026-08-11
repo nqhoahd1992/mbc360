@@ -562,6 +562,32 @@ export class ProjectsService {
     });
   }
 
+  // The phase banner's "(provide link here)" shortcuts. Replaces the whole set
+  // for that phase — the card saves every row at once, like every other table.
+  // No gate lock: these point at where the work lives, they are not gate
+  // evidence, so an old phase's link can still be corrected. `assertMutable`
+  // (inside mutate) still refuses an archived project.
+  async setPhaseKeyLinks(
+    user: SessionUser,
+    id: string,
+    phase: number,
+    links: Record<string, string>,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'phase_key_links.updated', async (tx) => {
+      const closure = await tx.phaseClosure.findUniqueOrThrow({
+        where: { projectId_phase: { projectId: id, phase } },
+        select: { id: true },
+      });
+      await tx.phaseKeyLink.deleteMany({ where: { phaseClosureId: closure.id } });
+      const rows = Object.entries(links)
+        .map(([label, url]) => ({ phaseClosureId: closure.id, label, url: url.trim() }))
+        .filter((r) => r.url !== '');
+      if (rows.length > 0) await tx.phaseKeyLink.createMany({ data: rows });
+      return { phase, links: rows.length };
+    });
+  }
+
   // F13: the responsible owner accepts a phase's pre-work. The acceptor is the
   // session user, not a client-supplied name.
   async acceptPreWork(

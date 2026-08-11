@@ -203,7 +203,7 @@ export default function PhasePage() {
       )}
 
       <div id="sec-key-links">
-        <PhaseKeyLinksCard links={config.keyLinks} projectId={project.identity.id} />
+        <PhaseKeyLinksCard links={config.keyLinks} project={project} phase={phase} />
       </div>
 
       <div id="sec-identification">

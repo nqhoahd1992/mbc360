@@ -118,6 +118,11 @@ export interface PhaseClosure {
   // allowed, but once the phase opens the responsible owner must review and
   // accept it before it contributes to completion. This records that acceptance.
   preWork?: { acceptedBy?: string; acceptedDate?: string };
+  // Links recorded against this phase's banner shortcuts, keyed by the workbook's
+  // own label (`PhaseKeyLinkConfig.label`). Only the shortcuts with no in-app
+  // equivalent are stored — the workbook prints "(provide link here)" under each
+  // of the four, and for the rest this app IS the destination.
+  keyLinks?: Record<string, string>;
 }
 
 export interface BomLine {

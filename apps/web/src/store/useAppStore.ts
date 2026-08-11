@@ -119,6 +119,8 @@ interface AppState {
   // F13: the responsible owner accepts a phase's pre-work once it has opened.
   acceptPhasePreWork: (id: string, phase: number, acceptedBy: string) => void;
   setEvidenceSummary: (id: string, phase: number, value: string) => void;
+  // The phase banner's "(provide link here)" shortcuts, keyed by workbook label.
+  setPhaseKeyLinks: (id: string, phase: number, links: Record<string, string>) => void;
 
   setBom: (id: string, lines: BomLine[]) => void;
   setCosting: (id: string, patch: Partial<CostingInputs>) => void;
@@ -373,6 +375,8 @@ export const useAppStore = create<AppState>()(
           writeSection(id, (v) => projectsApi.setSignOffs(id, phase, signOffs, v)),
         setEvidenceSummary: (id, phase, value) =>
           writeSection(id, (v) => projectsApi.setEvidenceSummary(id, phase, value, v)),
+        setPhaseKeyLinks: (id, phase, links) =>
+          writeSection(id, (v) => projectsApi.setPhaseKeyLinks(id, phase, links, v)),
         // F13: the acceptor is taken from the session server-side, so the
         // `acceptedBy` argument is no longer trusted (kept for signature parity).
         acceptPhasePreWork: (id, phase) =>

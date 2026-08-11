@@ -38,7 +38,7 @@ export const PROJECT_INCLUDE = {
   checklistItems: { orderBy: [{ sectionKey: 'asc' }, { itemOrder: 'asc' }] },
   requirementItems: { orderBy: [{ sectionKey: 'asc' }, { itemOrder: 'asc' }] },
   gateChecks: { orderBy: { id: 'asc' } },
-  phaseClosures: { include: { signOffs: true, angles: true }, orderBy: { phase: 'asc' } },
+  phaseClosures: { include: { signOffs: true, angles: true, keyLinks: true }, orderBy: { phase: 'asc' } },
   nextActions: { orderBy: { createdAt: 'asc' } },
   backtrackEvents: { orderBy: { occurredAt: 'asc' } },
   marketTracks: { orderBy: { market: 'asc' } },
@@ -182,6 +182,7 @@ export function toProjectData(p: ProjectWithAll, gateChangeLog: GateChangeLogEnt
   for (const closure of p.phaseClosures) {
     phaseClosures[closure.phase] = {
       evidenceSummary: opt(closure.evidenceSummary),
+      keyLinks: Object.fromEntries(closure.keyLinks.map((l) => [l.label, l.url])),
       signOffs: closure.signOffs.map(toSignOff),
       angles: closure.angles.map((a) => ({
         angle: a.angle,

@@ -195,6 +195,9 @@ export const setSignOffs = (id: string, phase: number, signOffs: SignOff[], v: n
 export const setEvidenceSummary = (id: string, phase: number, value: string, v: number) =>
   put(id, `phases/${phase}/evidence-summary`, { value }, v);
 
+export const setPhaseKeyLinks = (id: string, phase: number, links: Record<string, string>, v: number) =>
+  put(id, `phases/${phase}/key-links`, { links }, v);
+
 export const acceptPreWork = (id: string, phase: number, expectedVersion: number) =>
   request<ProjectEnvelope>(
     `/projects/${encodeURIComponent(id)}/phases/${phase}/accept-pre-work`,
