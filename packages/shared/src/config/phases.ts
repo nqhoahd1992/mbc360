@@ -57,12 +57,13 @@ export interface KeyGateCheckConfig {
 // (Evidence Register — the app has an Evidence Summary board and a Product
 // Evidence Summary register, and "Evidence Register" is neither name); those
 // render as external documents rather than pointing somewhere plausible but
-// wrong. `externalUrl` is only ever transcribed from the workbook, never guessed.
+// wrong; the link to each of those is recorded per project (PhaseClosure.keyLinks),
+// which is what the workbook's "(provide link here)" asks for. No default URL
+// ships here — see the note on Phase 2's Ingredient Registry below.
 export interface PhaseKeyLinkConfig {
   label: string;
   href?: string;
   absolute?: boolean;
-  externalUrl?: string;
 }
 
 export interface PhaseConfig {
@@ -300,14 +301,14 @@ export const PHASE_2: PhaseConfig = {
   reviewOwner: PHASE_REVIEW_OWNER,
   gateIds: ['SG04', 'SG05', 'SG06'],
   keyLinks: [
-    // The one banner cell in the whole workbook carrying a real hyperlink
-    // (PHASE2!E4, displayed as "Clink for link" — the workbook's own typo).
-    // Transcribed, not invented.
-    {
-      label: 'Ingredient Registry',
-      externalUrl:
-        'https://maxbiocare.sharepoint.com/:x:/s/cosmetics/IQB0XybrTyBNSq2Qof1KIQy8Aa3hu34JulCRsdlu1Co0qfA?e=YB2Hbr&nav=MTVfezAwMDAwMDAwLTAwMDEtMDAwMC0wNjAwLTAwMDAwMDAwMDAwMH0',
-    },
+    // PHASE2!E4 is the one banner cell in the whole workbook carrying a real
+    // hyperlink — a company SharePoint file, its cell text reading "Clink for
+    // link" (the workbook's own typo). It was shipped here as a default URL on
+    // 2026-08-11 and removed the same day: one project's document does not
+    // belong hardcoded in config, it made this the only one of the sixteen rows
+    // behaving differently, and a link that rots is worse than an empty field
+    // someone fills in. Each project records its own, like the other four.
+    { label: 'Ingredient Registry' },
     { label: 'Formula BOM', href: '/bom/formula' },
     { label: 'Packaging BOM', href: '/bom/packaging' },
     { label: 'Costing Calculator', href: '/bom/costing' },

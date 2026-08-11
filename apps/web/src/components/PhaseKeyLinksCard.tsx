@@ -19,9 +19,8 @@ import SaveBar from './SaveBar';
 //     Marketing Campaign Brief, …) gets the input the workbook draws as
 //     "(provide link here)", stored per project on the phase closure.
 //
-// The one workbook cell carrying a real hyperlink (Phase 2's Ingredient Registry)
-// uses that URL until a project records its own, so the company file is one click
-// away without anyone re-pasting it.
+// No row ships with a default URL, including Phase 2's Ingredient Registry, whose
+// workbook cell does carry one — see the note on it in config/phases.ts.
 export default function PhaseKeyLinksCard({
   links,
   project,
@@ -66,8 +65,7 @@ export default function PhaseKeyLinksCard({
             );
           }
 
-          const recorded = draft[link.label]?.trim();
-          const target = recorded || link.externalUrl;
+          const target = draft[link.label]?.trim();
           return (
             <div key={link.label} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
               <Tooltip title="Kept outside MBc360 — record the link to it here, as the workbook's own sheet does.">
@@ -76,7 +74,7 @@ export default function PhaseKeyLinksCard({
               <Input
                 size="small"
                 style={{ maxWidth: 520 }}
-                placeholder={link.externalUrl ? 'Workbook link in use — paste a project-specific one to override' : 'Provide link here'}
+                placeholder="Provide link here"
                 value={draft[link.label] ?? ''}
                 disabled={archived}
                 onChange={(e) => update((prev) => ({ ...prev, [link.label]: e.target.value }))}
