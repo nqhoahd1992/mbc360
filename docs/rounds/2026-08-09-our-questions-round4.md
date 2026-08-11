@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has twenty-five questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has twenty-six questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Questions 20–25** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
+5. **Questions 20–26** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
 
 ---
 
@@ -347,6 +347,16 @@ Two smaller rules came with it: one row per group, since two Pregnancy rows are 
 
 **Question:** (a) are the five "same population" pairs right? (b) Does dry or eczema-prone skin count as *sensitive or compromised skin*? (c) Do family use, intimate area or swimmers imply a vulnerable group — a family product reaching children, for instance? (d) Should recording one of those four renamed groups without its matching target user be refused outright rather than warned about?
 
+### Question 26 — When should the claim traceability register freeze?
+
+Your NPD Front-End Roadmap gives step 4, "Evidence Plan & Claim Support", the sign-off gate **SG05 / SG08**. That sheet becomes three tables in MBc360, and two of them follow it exactly: the prospective evidence plan closes at Gate 5, the detailed test protocol at Gate 8, matching each section's own heading.
+
+The third — Section 3, the permanent Claim IDs — we have left open until Gates 10 and 11 instead, and we would like that checked. Section 3's heading names no gate, and unlike the other two it is not a step with a sign-off: it is a ledger that keeps being added to. Claims are still being created at Gate 10, while the PIF and Published Information work is done, and the Published Information register links to a Claim ID in it.
+
+This matters because a record in MBc360 becomes read-only once its gate has passed, and correcting it afterwards requires a Backtrack. If the claim ledger closed at Gate 8, adding a claim during Gate 10 would mean reopening a gate that is already closed, just to write one line.
+
+**Question:** should the Claim → Evidence Traceability ledger freeze after **SG08**, as the roadmap line for that sheet suggests, or stay open through **SG10/SG11** because claims are still being created during PIF and Published Information work? If SG08, we will make it so — but adding a claim later will then require a Backtrack, and we want that to be your decision rather than a surprise.
+
 ---
 
 ## Summary
@@ -357,6 +367,6 @@ Two smaller rules came with it: one row per group, since two Pregnancy rows are 
 | 2–4 | Superseding a formula version · defining "critical" gaps · PV/PMS scope | Open since 21 July; 2 and 4 block work we are ready to start |
 | 5–7 | Gate 7 scope · Gate 4 threshold · unclassified claims | Already built on our reading — rework if wrong |
 | 8–19 | Which record represents each of your trigger conditions, and two data-model points | Redesign if wrong, no rework |
-| 20–25 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several types may apply; two requirements we added ourselves that block Gate 2 and Gate 7;  a duplicate market field arising from an inaccurate premise we gave in B3; which target users imply a vulnerable group | Already built — rework if wrong |
+| 20–26 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several types may apply; two requirements we added ourselves that block Gate 2 and Gate 7;  a duplicate market field arising from an inaccurate premise we gave in B3; which target users imply a vulnerable group | Already built — rework if wrong |
 
-Questions 5 to 25 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
+Questions 5 to 26 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

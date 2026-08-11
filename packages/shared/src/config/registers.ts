@@ -1943,6 +1943,19 @@ export const claimEvidenceTraceability: RegisterConfig = {
   sheetName: '4. Evidence & Claim Support',
   description: 'Permanent claim IDs. No claim may appear on artwork, HCP material or sales material unless it has a Claim ID here with status \'Supported\'.',
   mode: 'register',
+  // ⚠️ The NPD Front-End Roadmap gives this whole sheet "Sign-off gate SG05 /
+  // SG08", and its two sibling registers match exactly (evidencePlanProspective
+  // = 05, evidenceTestProtocol = 08). This one says 10/11, which is OUR
+  // assignment: Section 3's own header names no gate, and unlike its siblings it
+  // is not a step with a sign-off — it is a living ledger of claim IDs that keeps
+  // being written to. Claims are still created at Gate 10 during PIF and
+  // Published Information work (publishedInfoApproval links to a Claim ID here,
+  // and unsupportedClaimRows blocks release on the claim's status), so locking it
+  // after Gate 8 would mean no claim could be added at Gate 10 without a
+  // Backtrack.
+  //
+  // A register's gate drives isGateRefLocked — i.e. WHEN this freezes — so this
+  // is a user-visible judgement, not a detail [ASSUMPTION: R4-Q23].
   gate: '10/11',
   reviewOwner: REVIEW_SPECS.npdEvidence,
   columns: [

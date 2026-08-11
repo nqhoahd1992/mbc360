@@ -2,11 +2,11 @@
 
 **Date:** 2026-07-22 (last updated 2026-08-10)
 
-> # ✅ ROUND 3 CLOSED — 22 new questions open (R4-Q1 … R4-Q22)
+> # ✅ ROUND 3 CLOSED — 23 new questions open (R4-Q1 … R4-Q23)
 >
 > The subject-matter team answered every question here in their Round 3 reply (`docs/rounds/2026-08-07-sme-reply-round3.txt`), sent as Parts A–E — the questions that reply answers are `docs/rounds/2026-07-31-our-questions-round3.md` (recovered into the folder on 2026-08-11; note its `A1`/`A2`/`A3` are a different three topics from Round 2's). **The answers are recorded in full in `Business_Rules_Confirmation_{EN,VN}.md` → "Appendix 2 (2026-08-07)"** — that appendix, not this file, is the authoritative record. Each section below now carries a short ✅ resolution note pointing at the part of the reply that answers it, so the question and its answer stay together for anyone re-reading the history.
 >
-> **The Round-3 questions are closed; the file is not.** Twenty-two new questions — raised *while implementing* those answers and *while designing* the Conditional triggers — are in the final section, **"Round 4"**, each with a stable ID (`R4-Q1` … `R4-Q22`). Everything above that section is settled history.
+> **The Round-3 questions are closed; the file is not.** Twenty-three new questions — raised *while implementing* those answers and *while designing* the Conditional triggers — are in the final section, **"Round 4"**, each with a stable ID (`R4-Q1` … `R4-Q23`). Everything above that section is settled history.
 >
 > **This file is the only question list.** Other documents (notably `F1_Conditional_Triggers.md`) reference these IDs instead of keeping a parallel list, and every decision site — code and docs alike — carries a grep-able `[ASSUMPTION: R4-Qn]` tag, so "show me every unconfirmed assumption" is a search rather than a manual audit.
 >
@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–25, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–26, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -394,6 +394,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q20 | Hai item do dev tự thêm (`sg02-product-type`, `sg07-matrix-rows`) đang hard-block gate mà chưa từng được hỏi | 🔴 | 23 |
 | R4-Q21 | `initialTargetMarkets` trùng `Countries / Markets` bắt buộc lúc tạo dự án; B3 trả lời trên tiền đề ta nêu sai | 🔴 | 24 |
 | R4-Q22 | Map option Target Users sang Vulnerable group — 5 cặp đổi tên + 8 option không map | 🔴 | 25 |
+| R4-Q23 | Sổ Claim → Evidence Traceability thuộc gate nào — lệch với dòng SG05/SG08 của roadmap | 🔴 | 26 |
 
 ---
 
@@ -839,3 +840,23 @@ Hệ quả của mức 3: dự án **chỉ** nhắm `Dry / eczema-prone skin` v�
 | Bỏ tick target user đang có dòng assessment tham chiếu | **chặn** (UI disable + API từ chối) | cùng dạng với "không xoá được dòng Supplier & RM Evidence khi Formula BOM còn tham chiếu". Hai target user chung một group (`Child 2+`/`Child 3+` → `Young child`) thì chỉ **cái cuối cùng** bị ghim |
 
 **Câu hỏi bổ sung (d):** hướng ngược lại có nên chặn cứng cho **cả** 4 cặp mức 2 không, hay giữ cảnh báo như hiện tại vì một nhóm dễ tổn thương có thể được Safety/Regulatory nhận diện mà không cần target user tương ứng?
+
+#### R4-Q23 · Sổ Claim → Evidence Traceability thuộc gate nào (quyết định lúc nào nó khoá) 🔴
+
+**Project owner phát hiện 2026-08-11:** NPD Front-End Roadmap ghi bước 4 — *"Evidence Plan & Claim Support"* — có **Sign-off gate: SG05 / SG08**. Nhưng trong app, ba register sinh ra từ sheet đó không cùng một hướng:
+
+| Register | Mục của sheet | Gate trong app | Khớp roadmap? |
+|---|---|---|---|
+| `evidencePlanProspective` | §1 *"agree BEFORE formula lock — Gate 3/5"* | `05` | ✅ |
+| `evidenceTestProtocol` | §2 *"complete once prototype exists — Gate 8"* | `08` | ✅ |
+| `claimEvidenceTraceability` | §3 *"CLAIM → EVIDENCE TRACEABILITY (permanent claim IDs)"* — **header không ghi gate nào** | **`10/11`** | ❌ |
+
+**Vì sao chuyện này không nhỏ:** `RegisterConfig.gate` điều khiển `isGateRefLocked`, tức **thời điểm bảng đóng băng**. `10/11` = còn sửa được đến khi qua cả Gate 10 lẫn 11. Nếu theo roadmap thành `05/08` thì nó khoá ngay sau Gate 8.
+
+**Lý lẽ giữ `10/11` (cách đọc của ta):** §1 và §2 là **hai bước có sign-off**; §3 là **sổ cái sống**, không phải một bước. Claim vẫn phát sinh ở Gate 10 khi làm PIF và Published Information — `publishedInfoApproval` (gate 10) link tới Claim ID ở đây, và `unsupportedClaimRows()` chặn phát hành dựa trên trạng thái claim. Khoá sau Gate 8 nghĩa là **không thêm được claim ở Gate 10 nếu không Backtrack**, tức bắt người dùng mở lại một gate đã đóng chỉ để ghi một claim mới.
+
+**Lý lẽ ngược lại:** roadmap là văn bản do chuyên gia soạn và nói rõ SG05/SG08 cho cả sheet; ta đang để một trong ba bảng lệch khỏi con số đó mà chưa ai xác nhận.
+
+**Câu hỏi:** sổ Claim → Evidence Traceability nên đóng băng ở đâu — sau **SG08** như dòng roadmap của sheet, hay giữ mở tới **SG10/SG11** vì claim còn được tạo trong lúc làm PIF và Published Information? Nếu chọn SG08 thì việc thêm claim ở Gate 10 sẽ phải Backtrack — các anh chấp nhận điều đó chứ?
+
+**Nếu trả lời khác:** đổi `gate` của `claimEvidenceTraceability` trong `packages/shared/src/config/registers.ts` (chỉ một chuỗi; `isGateRefLocked` và badge gate tự theo).
