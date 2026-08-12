@@ -209,6 +209,27 @@ export default function PublishedInfoApprovalTable({
       if (readOnly) {
         return { title: col.label, width: col.width ?? 140, render: (_: unknown, row: RegisterRow) => staticCell(col, row) };
       }
+      // No input by design: the API stamps this from the signed-in account when
+      // the box is ticked, so it cannot be typed or edited (a declaration anyone
+      // can retype attributes nothing). It rendered as a bare empty cell before
+      // 2026-08-12, which reads as a broken column rather than a derived one —
+      // hence the explicit states below, including "recorded when you save", since
+      // the name only exists after the server has seen the tick.
+      if (col.key === 'noProductClaimBy') {
+        return {
+          title: col.label,
+          width: col.width ?? 150,
+          render: (_: unknown, row: RegisterRow) => {
+            const declared = String(row.noProductClaimBy ?? '').trim();
+            if (declared) return <span style={{ color: '#666' }}>{declared}</span>;
+            return (
+              <span style={{ color: '#bbb', fontSize: 12 }}>
+                {row.noProductClaim ? 'recorded when you save' : 'no exemption declared'}
+              </span>
+            );
+          },
+        };
+      }
       // The prior question, so it comes first in config order too: a record that
       // makes no product statement has nothing to link. Ticking is blocked while a
       // claim IS linked — the person unlinks it deliberately rather than the app
