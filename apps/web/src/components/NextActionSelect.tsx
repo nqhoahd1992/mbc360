@@ -74,8 +74,15 @@ export default function NextActionSelect({
         return (
           <span>
             {action.description || '(no description)'}{' '}
+            <Tag>{action.gateId}</Tag>
             <Tag color={action.priority === 'Critical' ? 'red' : undefined}>{action.priority}</Tag>
-            <Tag color={open ? 'blue' : 'default'}>{action.status}</Tag>
+            {/* Cancelled is called out because it does not count as the controlled
+                action D3 requires — see isControlledAction. Picking one leaves the
+                gate blocked, so say so at the point of choosing. */}
+            <Tag color={action.status === 'Cancelled' ? 'red' : open ? 'blue' : 'default'}>
+              {action.status}
+              {action.status === 'Cancelled' ? ' — not a controlled action' : ''}
+            </Tag>
           </span>
         );
       }}

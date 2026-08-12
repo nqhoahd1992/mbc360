@@ -1090,7 +1090,14 @@ Khác biệt thực tế giữa hai cách đọc rất hẹp nhưng có thật: 
 
 **"A genuine controlled Next Action must be used. A note alone is not sufficient."** → `linkedNextActionId` là **picker** trỏ tới bản ghi thật (`NextActionSelect`, khuôn `ClaimSelect`), và API **từ chối** id không resolve được (`brokenNextActionLinks`) — một id gõ tay chính là "a note", đúng thứ câu đó cấm.
 
-**Câu hỏi:** (a) "flagged" có gồm `Needs Regulatory Review` không, hay chỉ `REVIEW - possible formula match`? (b) `Resolution status` gồm những giá trị nào? (c) *"authorised acceptance"* là gì — cùng cơ chế acknowledge của F9, một phép kiểm quyền riêng, hay ghi PwC là đủ? (d) dòng flagged **chưa ai đánh giá** thì PwC có gỡ được không (ta đang chặn)? (e) `PB_Caution_Limits` — watch-list thứ hai — có cần cùng bộ 7 trường không? D3 viết *"each flagged watch-list result"* nhưng tiêu đề chỉ nói possible formula match.
+
+**Hai chỗ nữa lộ ra khi project owner hỏi *"Linked Next Action ID trỏ tới đâu?"* (2026-08-12):**
+
+**(i) Một action `Cancelled` từng tính là hợp lệ — đã sửa.** Bản đầu của `verdictDocumented` chỉ kiểm id **resolve được**, nên một finding `Non-critical` có thể dựa trên một action đã bị **huỷ** — không theo dõi gì cả, đúng thứ câu *"a note alone is not sufficient"* muốn chặn. Nay có `isControlledAction()`: mọi status **trừ `Cancelled`** đều tính. `Closed` **vẫn tính** — action đã hoàn tất và được verify nghĩa là finding đã xử lý xong, tốt hơn action đang mở chứ không tệ hơn. Cố ý **không** dùng lại `NEXT_ACTION_TERMINAL_STATUSES` (gộp `Closed` + `Cancelled`), vì hằng số đó trả lời câu khác: *"action này còn chặn gate không"*. Picker cũng gắn tag đỏ *"not a controlled action"* lên dòng `Cancelled` để người chọn biết trước.
+
+**(ii) Picker offer action của MỌI gate, không lọc theo Gate 4** — chưa tag, ghi lại ở đây. Cân nhắc rồi để nguyên: một controlled action hợp lệ có thể nằm ở gate sau (*"verify lại ở Gate 7"*), nên lọc cứng về SG04 sẽ chặn việc đúng; còn không lọc thì chỉ rủi ro link cẩu thả, mà `gateId` đã hiện thành tag trong picker. Nếu SME muốn buộc cùng gate: sửa `NextActionSelect` (lọc `options`) + `linkedNextAction()`.
+
+**Câu hỏi:** (a) "flagged" có gồm `Needs Regulatory Review` không, hay chỉ `REVIEW - possible formula match`? (b) `Resolution status` gồm những giá trị nào? (c) *"authorised acceptance"* là gì — cùng cơ chế acknowledge của F9, một phép kiểm quyền riêng, hay ghi PwC là đủ? (d) dòng flagged **chưa ai đánh giá** thì PwC có gỡ được không (ta đang chặn)? (e) `PB_Caution_Limits` — watch-list thứ hai — có cần cùng bộ 7 trường không? D3 viết *"each flagged watch-list result"* nhưng tiêu đề chỉ nói possible formula match. (f) action linked có buộc phải cùng gate với finding không, hay được nằm ở gate sau?
 
 **Không cần migration:** `prohibitedIngredients` là `mode:'fixed'` — thêm **cột** không đổi số dòng, và 12 dòng seed đều ở `No formula match recorded` nên **không dòng nào flagged** trên dự án mới → check tự thoả, không chặn oan (đúng chiều S3 muốn).
 

@@ -47,6 +47,21 @@ export function linkedNextAction(project: ProjectData, row: RegisterRow): NextAc
   return id ? project.nextActions.find((a) => a.id === id) : undefined;
 }
 
+// A Cancelled action does not count as the controlled action D3 requires
+// (2026-08-12, found while answering "where does the link point?"). The first cut
+// only checked that the id resolved, so a Non-critical finding could rest on an
+// action somebody had since abandoned — tracking nothing, which is precisely what
+// "a note alone is not sufficient" is guarding against.
+//
+// `Closed` DOES count: a completed and verified action means the finding was dealt
+// with, which is better than an open one, not worse. Only `Cancelled` is the
+// abandonment case, so it is named rather than reusing
+// NEXT_ACTION_TERMINAL_STATUSES, which lumps the two together for a different
+// purpose (whether an action still blocks a gate).
+export function isControlledAction(action: NextAction | undefined): boolean {
+  return !!action && action.status !== 'Cancelled';
+}
+
 // The reviewer trail every flagged row needs, whatever the verdict: who, when,
 // why. D3 lists Reviewer, Review date and Rationale for every flagged result, not
 // only for some verdicts.
@@ -63,7 +78,7 @@ function hasReviewTrail(row: RegisterRow): boolean {
 function verdictDocumented(project: ProjectData, row: RegisterRow): boolean {
   const verdict = text(row.reviewerAssessment);
   if (verdict === WATCHLIST_ASSESSMENT_NON_CRITICAL || verdict === WATCHLIST_ASSESSMENT_MORE_INFO) {
-    return !!linkedNextAction(project, row);
+    return isControlledAction(linkedNextAction(project, row));
   }
   if (verdict === WATCHLIST_ASSESSMENT_NOT_A_MATCH) return text(row.evidenceLink) !== '';
   return true;
