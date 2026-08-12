@@ -54,6 +54,29 @@ export function conditionallyAcceptedRmRows(rows: RegisterRow[]): RegisterRow[] 
   return rows.filter(isRmConditionallyAccepted);
 }
 
+// At least one material the formula could actually be built from.
+//
+// Project owner spotted the hole this closes (2026-08-12): a register where EVERY
+// row is "Considered — not used" satisfies both checks above — every row has a
+// conclusion, and none is conditional — so Gate 4 would pass having screened
+// everything and cleared nothing. Screening that concluded "nothing is usable" is
+// not finished screening.
+//
+// "Usable" deliberately includes a conditional acceptance. The obvious form of the
+// rule — at least one row ticked Approved for use — would contradict D4, which
+// allows a material through Gate 4 on the conditional route alone; a project whose
+// materials are all conditionally accepted has zero approved rows and is
+// nevertheless exactly what D4 describes.
+//
+// This is a cardinality rule, which is a thing this config normally avoids
+// inventing — but `sg04-supplier` already requires at least one ROW at this gate,
+// so the precedent for "Gate 4 needs some materials" is pre-existing; this only
+// says they cannot all be rejected [ASSUMPTION: R4-Q28]. Non-vacuous by
+// construction: an empty register fails it, unlike the two `.every()` checks above.
+export function hasUsableRmRow(rows: RegisterRow[]): boolean {
+  return rows.some((row) => isRmApproved(row) || isRmConditionallyAccepted(row));
+}
+
 // Guard, not a readiness check: a row cannot be approved for use while also
 // saying its evidence review has not happened, or that the material is not used.
 // Enforced in the UI (the two cells disable each other) and in the API, because

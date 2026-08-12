@@ -9,7 +9,7 @@ import {
   CLAIM_WORDING_COLUMN,
 } from '../config/claimReview';
 import { TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
-import { RM_EVIDENCE_REGISTER, conditionallyAcceptedRmRows, unresolvedRmRows } from './rmEvidence';
+import { RM_EVIDENCE_REGISTER, conditionallyAcceptedRmRows, hasUsableRmRow, unresolvedRmRows } from './rmEvidence';
 import {
   GATE_READINESS,
   type ReadinessCheck,
@@ -241,6 +241,8 @@ function evaluateReadinessCheck(
         evaluable: true,
         satisfied: conditionallyAcceptedRmRows(project.registers[RM_EVIDENCE_REGISTER] ?? []).length === 0,
       };
+    case 'rmEvidenceHasUsable':
+      return { evaluable: true, satisfied: hasUsableRmRow(project.registers[RM_EVIDENCE_REGISTER] ?? []) };
     case 'gateCheckDone': {
       const row = project.gateChecks.find((c) => c.gate === check.gate && c.check === check.check);
       // Same rule as the existing phase-level keyChecksDone: done+Y, or
@@ -573,6 +575,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: '/registers/reg/vulnerableUserAssessment' };
     case 'rmEvidenceDispositioned':
     case 'rmEvidenceNoneConditional':
+    case 'rmEvidenceHasUsable':
       return { href: `/registers/reg/${RM_EVIDENCE_REGISTER}` };
     case 'claimsRegulatoryReviewed':
       return { href: '/evidence-claim-support' };

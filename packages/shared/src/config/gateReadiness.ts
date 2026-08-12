@@ -162,6 +162,10 @@ export type ReadinessCheck =
   // Rule D4: no material is resting on the conditional route. Separate from the
   // check above because the two differ in severity — see `clearedByConditions`.
   | { kind: 'rmEvidenceNoneConditional' }
+  // Rule D4, the hole the two above leave: a register where every row is
+  // "Considered — not used" satisfies both of them, so Gate 4 would pass with
+  // nothing the formula can be built from.
+  | { kind: 'rmEvidenceHasUsable' }
   | { kind: 'allOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
@@ -878,6 +882,23 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       assumption: 'R4-Q28',
       clearedByConditions: true,
       check: { kind: 'rmEvidenceNoneConditional' },
+    },
+    {
+      // Project owner, 2026-08-12: the two checks above are both "every row
+      // satisfies P", and a register whose rows are ALL "Considered — not used"
+      // satisfies each of them while leaving nothing to formulate with — Gate 4
+      // would pass having screened everything and cleared nothing.
+      //
+      // Deliberately NOT "at least one row Approved for use", which would
+      // contradict D4's own conditional route: a project whose materials are all
+      // conditionally accepted has zero approved rows and is exactly what D4
+      // describes. See `hasUsableRmRow` [ASSUMPTION: R4-Q28].
+      id: 'sg04-rm-usable',
+      label: 'At least one raw material is usable in the formula',
+      tier: 'Mandatory',
+      source: 'f-series',
+      assumption: 'R4-Q28',
+      check: { kind: 'rmEvidenceHasUsable' },
     },
     {
       id: 'sg04-no-remove',
