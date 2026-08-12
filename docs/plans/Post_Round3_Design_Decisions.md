@@ -41,6 +41,18 @@ Còn một hệ quả nữa chưa được xét: **sign-off cấp phase**. Gate 
 
 → Đã thêm vào Vòng 4 là **câu 18** (`R4-Q15`).
 
+**Khoá bảng không phải thứ duy nhất còn thiếu [ASSUMPTION: R4-Q26].** Rà lại nguyên văn D1 ngày 2026-08-12 thì còn **5 điểm** nữa phải có đáp án trước khi viết dòng code đầu tiên, vì mỗi điểm đều là một chỗ dễ "lặng lẽ thu hẹp quy tắc":
+
+1. *record version* — version **của cái gì**? `projects.version` là bộ đếm optimistic-lock (tăng mỗi lần lưu bất kỳ), nên chữ ký trích nó không nói được "tôi ký nội dung nào". Ứng viên khác: `formulaVersion`, hoặc một số revision riêng của gate record.
+2. *comment where required* — **khi nào** là required? Đoán được là khi decision ≠ Proceed thuần.
+3. *safety-, regulatory-, claims-, release-critical* — họ nêu **loại**, ta cần **gate số**. Rõ: SG07/SG10/SG11. Tranh cãi được: SG04, SG03, SG08, **SG09**.
+4. *independent* — khác **người** hay khác **phòng ban**? Tiền lệ C2 trong app là khác phòng ban.
+5. *hard-block the gate decision* — chặn lúc **ghi** decision hay lúc **pass** gate? Có vòng lặp: mỗi chữ ký ghi `decision`, mà `GateRecord` cũng có `decision` — nếu decision của người Approved by chính là quyết định của gate thì "ký đủ 3 rồi mới quyết định" tự mâu thuẫn. Câu này quyết định `GateSignOff.decision` là enum riêng hay dùng lại `GateDecision`.
+
+→ Gửi cùng câu 18 trong một email, vì trả lời riêng câu 18 vẫn chưa đủ để bắt đầu. Vòng 4 **câu 29** (`R4-Q26`).
+
+Điểm **3 và 4 là cấu hình, không phải logic** — khi build, đặt chúng thành hằng số cạnh nhau (danh sách gate critical + phép kiểm độc lập) để đổi được bằng một dòng khi đáp án về.
+
 ---
 
 ## Quyết định 2 — Thuộc tính "nhạy cảm vi sinh" lưu ở đâu?

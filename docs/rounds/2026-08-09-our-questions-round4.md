@@ -414,6 +414,24 @@ This is the one dependency still standing between C1 and being fully enforced, a
 
 This also settles a question left open in Question 27: if "previously approved wording" means wording approved anywhere in the company rather than on this claim, then it is the library that has to answer it, and the two questions are really one.
 
+### Question 29 — Five things the sign-off answer does not yet say
+
+Your D1 answer settles the shape: three recorded sign-offs per gate — prepared, reviewed, approved — each carrying the signed-in user, their role, the time, the decision, the record version and a comment where required; the phase-level approval stays as well; and the reviewer or approver must be independent for safety-, regulatory-, claims- or release-critical decisions. We are not questioning any of that.
+
+But building it means answering five things the wording leaves open, and we would rather ask than choose for you. Question 18 asks about one of them; these are the rest.
+
+**1. "Record version" — a version of what?** The point of recording it is so a signature says "I signed *this* content", which means it has to be something that changes when the signed content changes. Three candidates read very differently: an internal save counter (it moves every time anyone edits anything, so it would tell a later reader almost nothing), the formula version (meaningful at Gates 4 to 9, less so at Gate 1), or a revision number for the gate record itself that we would have to create. Which did you mean?
+
+**2. When is a comment required?** You wrote "comment where required". Our guess would be: whenever the decision is anything other than a clean approval — Proceed with Conditions, Hold, or a rejection. We would rather have your rule than our guess.
+
+**3. Which gates are safety-, regulatory-, claims- or release-critical?** You named categories; the system needs gate numbers. Gate 7 (safety), Gate 10 (regulatory and claims) and Gate 11 (release) seem clear. Four others are arguable and we do not want to decide them silently: Gate 4 (prohibited and restricted ingredients — both a safety and a regulatory decision), Gate 3 (claim classification), Gate 8 (claim evidence), and Gate 9 (release criteria — the word "release" appears in its own name). Which of the twelve carry the independence requirement?
+
+**4. What does "independent" mean?** Two readings, both reasonable. Either it means a different person from whoever prepared the record, or it means someone from a different function — which is the test you yourself set for study reviewers, where the independent reviewer must not share the study author's department. The second is stricter and would block more often. Which applies here?
+
+**5. When exactly does it block?** You wrote that the sign-offs should hard-block the gate decision. Must all three signatures exist before a decision can be recorded at all, or before the gate can pass with that decision? This matters because of something the wording leaves circular: each sign-off records a decision, and the gate itself also has a decision. If the approver's decision *is* the gate's decision, then "sign first, decide second" cannot work — the third signature is the decision. If they are two different things, what is each signer deciding?
+
+**Question:** please answer 1 to 5. Until they are settled we have not built the per-gate sign-off at all, and the twelve gates still show the old Owner + Evidence link check — now labelled on screen as not being the sign-off you asked for, so nobody mistakes it for one.
+
 ---
 
 ## Summary
@@ -426,5 +444,6 @@ This also settles a question left open in Question 27: if "previously approved w
 | 8–19 | Which record represents each of your trigger conditions, and two data-model points | Redesign if wrong, no rework |
 | 20–27 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several types may apply; two requirements we added ourselves that block Gate 2 and Gate 7;  a duplicate market field arising from an inaccurate premise we gave in B3; which target users imply a vulnerable group | Already built — rework if wrong |
 | 28 | What kind of thing the Claims Library is, before we build it | Not built — the last dependency holding C1 back |
+| 29 | Five points the per-gate sign-off answer leaves open | Not built — needed together with 18 before we can start |
 
 Questions 5 to 27 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

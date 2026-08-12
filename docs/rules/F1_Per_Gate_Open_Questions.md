@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–28, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–29, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -397,6 +397,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q23 | Sổ Claim → Evidence Traceability thuộc gate nào — lệch với dòng SG05/SG08 của roadmap | 🔴 | 26 |
 | R4-Q24 | C1 — bằng chứng nào là "đã Regulatory review"; 4/7 điều kiện chưa kiểm được | 🔴 | 27 |
 | R4-Q25 | Claims Library ở cấp công ty hay cấp dự án, và claim có bắt buộc trỏ tới entry không | 🔴 | 28 |
+| R4-Q26 | D1 — 5 điểm chưa nói: record version của cái gì · comment bắt buộc khi nào · gate nào là "critical" · độc lập nghĩa là gì · chặn ở thời điểm nào | 🔴 | 29 |
 
 ---
 
@@ -950,3 +951,25 @@ Ba vế đó **hiện thẳng trên item** qua trường mới `coverageNote` (*
 **Liên đới:** (b) quyết định vế *"not in the approved Claims Library"* của C1 có bao giờ rời khỏi `UNEVALUATED_C1_CONDITIONS` hay không. Câu (e) của `R4-Q24` (*"previously approved"* là của claim này hay của dự án khác) nếu trả lời là "dự án khác" thì cũng chỉ library mới trả lời được — lúc đó hai câu nhập làm một.
 
 **Nếu trả lời khác:** chưa có code nào để sửa — đó là lý do hỏi trước. Nơi sẽ chịu ảnh hưởng: bảng Prisma mới + trang admin (nếu cấp công ty) **hoặc** một `RegisterConfig` mới trong `packages/shared/src/config/registers.ts` (nếu hoá ra là per-project); và `UNEVALUATED_C1_CONDITIONS` trong `packages/shared/src/config/claimReview.ts` bớt một vế nếu (b) là "bắt buộc trỏ".
+
+#### R4-Q26 · D1 — 5 điểm đặc tả chữ ký gate chưa nói tới 🔴
+
+**Chưa build gì cả** — cùng loại với `R4-Q25`: hỏi **trước khi** xây. Nêu ra 2026-08-12 khi project owner xác nhận lại rằng D1 là đặc tả của SME (không phải ta đề xuất rồi họ không phản đối) và hỏi phạm vi của nó.
+
+**Phần KHÔNG cần hỏi, đã chốt:** D1 mở đầu *"The current implementation is not sufficient"* rồi tự viết ra cấu trúc thay thế — nên "mỗi gate 3 chữ ký riêng" và "6 trường mỗi chữ ký" là **đặc tả**, không phải suy đoán, không cần tag. Cũng đã rõ: chữ ký gate **cộng thêm** chữ ký phase chứ không thay (*"should not be replaced by the per-gate sign-offs"*) — 12 bộ gate + 4 bộ phase, không phải chuyển từ cái này sang cái kia. Và `R4-Q15` (câu 18) **không** phải chờ họ đồng ý per-gate; nó chỉ hỏi khoá bảng ở Gate 10/11.
+
+**5 chỗ để hở — đều phải trả lời trước khi viết dòng code đầu tiên:**
+
+| # | Nguyên văn D1 | Chưa nói | Hệ quả nếu đoán sai |
+|---|---|---|---|
+| 1 | *record version* | version **của cái gì** | `projects.version` là bộ đếm optimistic-lock, tăng mỗi lần lưu bất kỳ trường nào — chữ ký trích số đó thì không nói lên "tôi đã ký nội dung nào". Ứng viên khác: `formulaVersion` (có nghĩa ở Gate 4–9) hoặc một số revision riêng của gate record mà ta phải tạo |
+| 2 | *comment **where required*** | required **khi nào** | Đoán: khi decision ≠ Proceed thuần (PwC / Hold / Not approved). Đoán sai theo hướng lỏng thì mất lý do của một quyết định có điều kiện |
+| 3 | *safety-, regulatory-, claims- hoặc release-critical decisions* | **gate số mấy** | Họ nêu LOẠI, hệ thống cần SỐ. Rõ: SG07 / SG10 / SG11. Tranh cãi được: SG04 (prohibited ingredients — vừa safety vừa regulatory), SG03 (phân loại claim), SG08 (bằng chứng claim), **SG09** (release criteria — chữ "release" nằm trong chính tên gate). Chọn hẹp = bỏ mất tính độc lập ở gate cần nó |
+| 4 | *independent* | khác **người** hay khác **phòng ban** | Tiền lệ trong app là C2 (`setStudyApprovalsBulk`): Independent Reviewer ≠ phòng ban của Study Author. Nếu D1 chỉ cần khác người thì ta đang siết quá tay; nếu cần khác phòng ban mà ta chỉ kiểm khác người thì ta đang nới |
+| 5 | *This should hard-block the gate decision* | chặn **lúc nào** | Đủ 3 chữ ký mới **ghi được** decision, hay mới **pass** được gate? |
+
+**Vòng lặp ở điểm 5, đáng nêu riêng:** D1 nói mỗi chữ ký ghi `decision`, mà `GateRecord` cũng có `decision`. Nếu decision của người *Approved by* **chính là** quyết định của gate thì "ký đủ 3 rồi mới quyết định" tự mâu thuẫn — chữ ký thứ ba **là** quyết định. Còn nếu là hai thứ khác nhau thì mỗi người đang quyết định điều gì? Câu này quyết định luôn `GateSignOff.decision` là enum riêng hay dùng lại `GateDecision`.
+
+**Câu hỏi:** trả lời 1–5 ở trên (bản gửi: câu 29).
+
+**Nếu trả lời khác:** chưa có code. Nơi sẽ chịu ảnh hưởng khi build: bảng `gate_sign_offs` mới (`schema.prisma`), 12 item `sgNN-signoff` trong `packages/shared/src/config/gateReadiness.ts` (bỏ luôn `GATE_SIGNOFF_COVERAGE_NOTE`), guard ở `ProjectsService.setGate`/`setGatesBulk`, và một `ReadinessCheck` kind mới cho "đủ 3 chữ ký hợp lệ". Điểm 3 và 4 là **cấu hình**, không phải logic — nên đặt thành hằng số cạnh nhau để sửa được khi họ trả lời.
