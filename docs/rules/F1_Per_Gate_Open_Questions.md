@@ -1047,7 +1047,11 @@ Hai chữ ký về hai nội dung khác nhau, không gì trên bản ghi lộ ra
 
 **"Adequately reviewed" đọc là `approvedForUse`, không phải phép đếm ô đã điền** — chính câu *"It must not default to Approved for Use"* nói ô đó là thứ dòng chưa review **không được** có. Tính adequacy từ các cột sẽ buộc ta quyết định cột nào bắt buộc cho loại nguyên liệu nào, thứ chưa ai nói: `Micro / preservative info` và `Origin / vegan proof` rõ ràng không áp cho mọi material.
 
-**Câu hỏi:** (a) một nguyên liệu **đã cân nhắc rồi không dùng** ghi thế nào — trạng thái riêng như ta làm, hay cách khác? (b) *"controlled conditional decision"* có phải `Proceed with Conditions` + controlled action như F9/D3, hay một trường riêng trên từng dòng? (c) ở Gate 7/10/11, conditional acceptance có phải đóng hết không, hay được mang theo?
+**Một hệ quả của (1) chỉ lộ ra khi giải thích lại cho project owner (2026-08-12), nên ghi thêm:** lý lẽ *"sổ chính là tập ứng viên"* chỉ đúng **ở Gate 4** — vì ở đó BOM chưa tồn tại. Đến **Gate 7/10/11 thì BOM đã có**, nên ở ba gate ấy tồn tại một cách đọc **hẹp hơn**: chỉ tính material đang thực sự nằm trong công thức. Ta đang áp cách đọc rộng (mọi dòng) ở cả bốn gate, vì nhất quán và vì trạng thái `Considered — not used` đã làm nó thoả được.
+
+Khác biệt thực tế giữa hai cách đọc rất hẹp nhưng có thật: **một dòng để ở `Incomplete` cho material KHÔNG nằm trong công thức** sẽ chặn Gate 7/10/11 theo cách đọc rộng, và không chặn theo cách đọc hẹp. Lý lẽ cho cách rộng: một dòng chưa dispositioned là việc sàng lọc còn dở. Lý lẽ cho cách hẹp: chính chữ của D4 là *"must not **rely on** unresolved identity-only stubs"* — mà material không có trong công thức thì gate không "rely on" nó. Chưa ai xác nhận vế nào → câu 31(e).
+
+**Câu hỏi:** (a) một nguyên liệu **đã cân nhắc rồi không dùng** ghi thế nào — trạng thái riêng như ta làm, hay cách khác? (b) *"controlled conditional decision"* có phải `Proceed with Conditions` + controlled action như F9/D3, hay một trường riêng trên từng dòng? (c) ở Gate 7/10/11, conditional acceptance có phải đóng hết không, hay được mang theo? (d) ở Gate 7/10/11 — nơi BOM đã tồn tại — "applicable" là **mọi dòng trong sổ** hay **chỉ material trong công thức**?
 
 **Không cần migration:** dòng cũ trong DB không có `evidenceStatus`. Dòng đã `approvedForUse` vẫn resolved (approval thắng); dòng chưa approve thì **đúng là chưa được dispositioned** nên chặn là đúng — backfill một disposition mà không ai ghi mới là bịa.
 

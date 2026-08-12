@@ -479,7 +479,11 @@ Your D4 answer is implemented. Before it, only the parts you said were *acceptab
 
 **One further reading, at Gate 7.** You wrote that Gate 7 must use the *completed* evidence status. A conditional acceptance has an open action by definition, so we have not treated it as completed: at Gates 7, 10 and 11 a conditional acceptance blocks, and unlike Gate 4 it cannot be cleared by Proceed with Conditions. If you intended a conditional acceptance to be carried through to launch, say so and we will loosen it.
 
-**Question:** (a) is "every row in the register" the right reading of "applicable" at Gate 4? (b) Is a status the right way to record a material considered and not used, or would you rather that be recorded somewhere else? (c) Is the conditional route the Proceed with Conditions mechanism you already specified, or a separate per-material approval? (d) Must a conditional acceptance be closed before Gate 7, as we have assumed?
+**One consequence of choice 1 that we should put to you separately.** The argument that "the register is the candidate set" holds *at Gate 4*, because the formula does not exist there yet. By Gates 7, 10 and 11 it does — so at those three gates a narrower reading is available: count only the materials actually in the formula. We have applied the wider reading at all four, for consistency and because the "not used" status makes it satisfiable.
+
+The practical difference is narrow but real: a record left at "Incomplete" for a material that is **not** in the formula blocks Gates 7, 10 and 11 under our reading, and would not under the narrower one. The case for ours is that an undispositioned record is unfinished screening work. The case against is your own wording — "must not **rely on** unresolved identity-only stubs" — and a gate arguably does not rely on a material the product does not contain.
+
+**Question:** (a) is "every row in the register" the right reading of "applicable" at Gate 4? (b) Is a status the right way to record a material considered and not used, or would you rather that be recorded somewhere else? (c) Is the conditional route the Proceed with Conditions mechanism you already specified, or a separate per-material approval? (d) Must a conditional acceptance be closed before Gate 7, as we have assumed? (e) At Gates 7, 10 and 11, where the formula does exist, does "applicable" mean every record in the register or only the materials in the formula?
 
 ---
 
