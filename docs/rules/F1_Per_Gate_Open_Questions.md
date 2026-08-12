@@ -962,11 +962,32 @@ Ba vế đó **hiện thẳng trên item** qua trường mới `coverageNote` (*
 
 | # | Nguyên văn D1 | Chưa nói | Hệ quả nếu đoán sai |
 |---|---|---|---|
-| 1 | *record version* | version **của cái gì** | `projects.version` là bộ đếm optimistic-lock, tăng mỗi lần lưu bất kỳ trường nào — chữ ký trích số đó thì không nói lên "tôi đã ký nội dung nào". Ứng viên khác: `formulaVersion` (có nghĩa ở Gate 4–9) hoặc một số revision riêng của gate record mà ta phải tạo |
+| 1 | *record version* | version **của cái gì**, và phủ **bao nhiêu** | xem phân tích riêng ngay dưới bảng — đây là điểm sâu nhất trong 5 điểm |
 | 2 | *comment **where required*** | required **khi nào** | Đoán: khi decision ≠ Proceed thuần (PwC / Hold / Not approved). Đoán sai theo hướng lỏng thì mất lý do của một quyết định có điều kiện |
 | 3 | *safety-, regulatory-, claims- hoặc release-critical decisions* | **gate số mấy** | Họ nêu LOẠI, hệ thống cần SỐ. Rõ: SG07 / SG10 / SG11. Tranh cãi được: SG04 (prohibited ingredients — vừa safety vừa regulatory), SG03 (phân loại claim), SG08 (bằng chứng claim), **SG09** (release criteria — chữ "release" nằm trong chính tên gate). Chọn hẹp = bỏ mất tính độc lập ở gate cần nó |
 | 4 | *independent* | khác **người** hay khác **phòng ban** | Tiền lệ trong app là C2 (`setStudyApprovalsBulk`): Independent Reviewer ≠ phòng ban của Study Author. Nếu D1 chỉ cần khác người thì ta đang siết quá tay; nếu cần khác phòng ban mà ta chỉ kiểm khác người thì ta đang nới |
 | 5 | *This should hard-block the gate decision* | chặn **lúc nào** | Đủ 3 chữ ký mới **ghi được** decision, hay mới **pass** được gate? |
+
+**Điểm 1 nói rõ hơn (2026-08-12) — vì sao `projects.version` không dùng được, và khe hở nó để lộ:**
+
+Chữ ký ghi version để trả lời hai câu: *người ký đã nhìn thấy nội dung nào* và *nội dung đó có đổi kể từ lúc ký không*. `projects.version` không trả lời được câu nào: `mutate()` gọi `bumpVersion()` ở **mọi** lần ghi trong cả 19 endpoint section, nên thêm một dòng CAPA ở Gate 12 cũng tăng đúng bộ đếm mà chữ ký Gate 3 trích. Chữ ký ghi `412`, ba tuần sau dự án ở `900` — nội dung Gate 3 có đổi không thì không suy ra được.
+
+Hỏng theo **cả hai** hướng dùng: làm cờ vô hiệu hoá thì mọi sửa đổi không liên quan đều huỷ mọi chữ ký (và dạy người ta ký lại theo phản xạ, tức giết luôn ý nghĩa của việc ký); chỉ lưu để đó thì con số không so được với cái gì. Một số **hoặc luôn đổi, hoặc không so được** thì không phải version của thứ được ký.
+
+**Câu hỏi nằm dưới: "the record" là (i) chỉ dòng `GateRecord` (status/decision/owner/evidenceLink/notes), hay (ii) toàn bộ bằng chứng của gate (gate checks + checklist + register gắn gate đó)?** (i) → một bộ đếm revision cho riêng dòng đó là đủ và chính xác. (ii) → version phải phủ nhiều bảng, tức hash một snapshot, hoặc một quy tắc định nghĩa bảng nào tính. Và (ii) mới là thứ **biện minh** cho quyết định.
+
+**Khe hở cụ thể, hôm nay không phát hiện được.** `isGateRefLocked` chỉ khoá bằng chứng khi gate đã **PASS**. D1 lại nói chữ ký **chặn** quyết định — nên cả 3 chữ ký nằm **trước** thời điểm pass, đúng lúc bằng chứng còn sửa được:
+
+> Prepared-by ký → có người sửa bằng chứng → Approved-by ký.
+
+Hai chữ ký về hai nội dung khác nhau, không gì trên bản ghi lộ ra. Có thể đó là bình thường (bằng chứng vẫn đang hoàn thiện trong lúc ký) — nhưng nếu không bình thường thì version phải đủ mịn để lộ ra, tức **loại bỏ luôn bộ đếm cấp dự án**. Hình dạng bài toán **giống hệt** vế *"varies from previously approved wording"* của C1 vừa giải bằng `reviewedWording` (chụp nội dung tại thời điểm review, so lại sau) — nếu SME trả lời theo hướng (ii) thì đã có sẵn khuôn.
+
+| Ứng viên | Nói được gì |
+|---|---|
+| `projects.version` | ❌ không gì |
+| `formulaVersion` | có nghĩa Gate 4–9, vô nghĩa Gate 1–3 |
+| bộ đếm revision riêng của gate record | ✅ *"chữ ký này thuộc lần thứ mấy của Gate 4"* — hữu ích vì gate có thể ký → backtrack → mở lại → ký lại |
+| hash nội dung được ký | ✅ mạnh nhất, lộ được cả khe hở giữa chữ ký 1 và 3 — nhưng phải định nghĩa "nội dung" gồm bảng nào |
 
 **Vòng lặp ở điểm 5, đáng nêu riêng:** D1 nói mỗi chữ ký ghi `decision`, mà `GateRecord` cũng có `decision`. Nếu decision của người *Approved by* **chính là** quyết định của gate thì "ký đủ 3 rồi mới quyết định" tự mâu thuẫn — chữ ký thứ ba **là** quyết định. Còn nếu là hai thứ khác nhau thì mỗi người đang quyết định điều gì? Câu này quyết định luôn `GateSignOff.decision` là enum riêng hay dùng lại `GateDecision`.
 

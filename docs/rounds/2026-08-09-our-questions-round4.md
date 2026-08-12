@@ -420,7 +420,17 @@ Your D1 answer settles the shape: three recorded sign-offs per gate — prepared
 
 But building it means answering five things the wording leaves open, and we would rather ask than choose for you. Question 18 asks about one of them; these are the rest.
 
-**1. "Record version" — a version of what?** The point of recording it is so a signature says "I signed *this* content", which means it has to be something that changes when the signed content changes. Three candidates read very differently: an internal save counter (it moves every time anyone edits anything, so it would tell a later reader almost nothing), the formula version (meaningful at Gates 4 to 9, less so at Gate 1), or a revision number for the gate record itself that we would have to create. Which did you mean?
+**1. "Record version" — a version of what, and of how much?** The point of recording it is so a signature says "I approved *this*", which means it has to be something that changes when the thing approved changes. The candidates read very differently: an internal save counter (it moves every time anyone edits anything anywhere on the project, so a signature quoting it would tell a later reader nothing about whether the gate's own content changed), the formula version (meaningful at Gates 4 to 9, much less so at Gate 1), or a revision number for the gate record that we would create for this purpose.
+
+Underneath that is a bigger question: **what is "the record"?** Just the gate's own line — status, decision, owner, evidence link, notes — or the evidence behind it, its gate checks, checklists and registers? The second is what actually justifies a decision: nobody approves a gate because of what its notes field says.
+
+**A case that makes this concrete, and that we cannot currently detect.** Your answer says the sign-offs block the gate decision, so all three signatures happen *before* the gate passes. But a gate's evidence only becomes read-only once it has passed. So this sequence is possible today:
+
+> the preparer signs → someone edits the evidence → the approver signs.
+
+Those two signatures are about different content, and nothing on the record would show it. Whether that matters is your call — it may be perfectly normal for evidence to keep improving while a gate is being signed off — but if it does matter, the version has to be granular enough to expose it, which rules out a project-wide counter. We have solved the same shape of problem once already, for claim wording: the wording is snapshotted when a review is recorded, and a later edit shows up as a mismatch.
+
+**Question:** which of the candidates did you mean, is "the record" the gate line or the evidence behind it, and should a signature still stand if the evidence changed after it was given?
 
 **2. When is a comment required?** You wrote "comment where required". Our guess would be: whenever the decision is anything other than a clean approval — Proceed with Conditions, Hold, or a rejection. We would rather have your rule than our guess.
 
