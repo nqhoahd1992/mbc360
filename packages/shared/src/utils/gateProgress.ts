@@ -65,6 +65,8 @@ export function openNextActions(project: ProjectData, gateId: string): NextActio
 // Auto-trigger: the confirmed maternal life-stage selections on the Gate 02
 // target-user checklist. ("Infant 0+" alone is follow-up question F2.)
 const SKINCARE_FOR_TWO_TRIGGERS = ['Pregnancy', 'Breastfeeding', 'Postpartum'];
+// E1's infant pathway keys off this one option, separately from the three above.
+const INFANT_TARGET_USER = 'Infant 0+';
 
 export function skincareForTwoTriggers(project: ProjectData): string[] {
   const targetUsers = project.checklists['targetUsers'] ?? [];
@@ -108,6 +110,15 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
   switch (trigger) {
     case 'skincareForTwo':
       return isSkincareForTwoTriggered(project);
+
+    // E1's third line, "Infant-only products should trigger the Infant/Baby Safety
+    // pathway instead". Deliberately independent of skincareForTwo: a maternal
+    // project already reaches the same section through
+    // skincareForTwoIncompleteSections, while an infant-only one reached nothing.
+    case 'infantContact':
+      return (project.checklists['targetUsers'] ?? []).some(
+        (item) => item.selected && item.label === INFANT_TARGET_USER,
+      );
 
     // A3: mandatory "before ANY study involving human participants". Study
     // Protocol Setup is `mode: 'fixed'`, so its rows are seeded — the signal is
@@ -201,6 +212,7 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
     'not a new product, claim change or market extension, not a customer or distributor request, and no benchmark product named',
   microbiologicallySusceptible:
     'the formula is recorded as anhydrous, self-preserving, sterile or single-use, with a rationale',
+  infantContact: 'no Infant 0+ target user selected, so no infant or baby-contact use is intended',
   claimNeedsRegulatoryReview:
     'no declared claim is borderline, therapeutic-adjacent, high risk, still unclassified, or reworded since its last review',
 };
@@ -243,6 +255,10 @@ function evaluateReadinessCheck(
         evaluable: true,
         satisfied: conditionallyAcceptedRmRows(project.registers[RM_EVIDENCE_REGISTER] ?? []).length === 0,
       };
+    case 'requirementSectionComplete': {
+      const rows = project.requirements[check.section] ?? [];
+      return { evaluable: true, satisfied: rows.every((r) => r.status === 'Completed') };
+    }
     case 'noOpenCriticalSafetyFinding':
       return { evaluable: true, satisfied: openCriticalSafetyFindings(project).length === 0 };
     case 'watchlistReviewed':
@@ -258,8 +274,11 @@ function evaluateReadinessCheck(
       // the row declares a trigger that makes N/A untrue. See
       // `naInvalidWhenTrigger`: on a project the trigger touches, "not applicable"
       // is a statement the app can see is wrong, so only done+Y counts.
-      const naAllowed =
-        !check.naInvalidWhenTrigger || !isReadinessTriggerActive(project, check.naInvalidWhenTrigger);
+      // Any one active trigger is enough to make "not applicable" untrue — Gate 7's
+      // row names two subjects, pregnancy/breastfeeding AND baby contact.
+      const naAllowed = !(check.naInvalidWhenTrigger ?? []).some((t) =>
+        isReadinessTriggerActive(project, t),
+      );
       const satisfied =
         !!row && ((row.done && row.ynna === 'Y') || (naAllowed && row.ynna === 'NA' && !!row.notes?.trim()));
       return { evaluable: true, satisfied };

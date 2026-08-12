@@ -40,7 +40,15 @@ export type ReadinessTrigger =
   | 'humanStudyPlanned'
   | 'newOrRepositionedProject'
   | 'claimNeedsRegulatoryReview'
-  | 'microbiologicallySusceptible';
+  | 'microbiologicallySusceptible'
+  // E1: "Infant-only products should trigger the Infant/Baby Safety pathway
+  // instead." Added 2026-08-12 after the project owner asked whether Gate 7 was
+  // finished: the pathway CONTENT turned out to be in the app already — Phase 3's
+  // 8-row "Compartment 3 - Infant / Baby-Contact Safety & Characteristics"
+  // (INF-01…INF-08, every row gate 07, from the V18 workbook) — but it was only
+  // ever evaluated for MATERNAL projects, through skincareForTwoIncompleteSections.
+  // So an infant-only product was required to complete nothing.
+  | 'infantContact';
 
 export type ReadinessCheck =
   // No linked data source yet — displayed for confirmation, never hard-blocks.
@@ -68,7 +76,7 @@ export type ReadinessCheck =
   // But the app can evaluate the condition, and was letting NA satisfy the row on
   // projects where it demonstrably applies. With this set, an active trigger
   // narrows the row to done+Y only; NA no longer counts.
-  | { kind: 'gateCheckDone'; gate: string; check: string; naInvalidWhenTrigger?: ReadinessTrigger }
+  | { kind: 'gateCheckDone'; gate: string; check: string; naInvalidWhenTrigger?: ReadinessTrigger[] }
   // Minimum-bar guard on a Phase checklist section (`ProjectData.checklists[section]`,
   // e.g. targetUsers/targetMarkets/targetArea): satisfied once at least one row
   // has `status === 'Y'` — i.e. the section has actually been engaged with, not
@@ -188,6 +196,10 @@ export type ReadinessCheck =
   // project to invent one. The "did anyone look?" half is sg07-final-safety,
   // which E1 keeps ("not SOLELY the Final Safety Sign-off").
   | { kind: 'noOpenCriticalSafetyFinding' }
+  // Every row of a requirement section is Completed. Used for E1's infant
+  // pathway; the section's rows are scaffolded at project creation (and
+  // verify:scaffold guards that), so this is not vacuous in practice.
+  | { kind: 'requirementSectionComplete'; section: string }
   | { kind: 'allOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
@@ -1489,6 +1501,24 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'gateCheckDone', gate: '07', check: 'Restrictions, conditions and safety evidence linked' },
     },
     {
+      // E1: "Infant-only products should trigger the Infant/Baby Safety pathway
+      // instead." Built 2026-08-12 — NOT from new content, but by requiring the
+      // workbook's own Compartment 3 for the projects it is plainly about. It was
+      // reachable before only via skincareForTwoIncompleteSections, i.e. only when a
+      // MATERNAL user was selected, so an infant-only product completed nothing at
+      // Gate 7 at all.
+      //
+      // This does NOT close Round-2 A2: the team's own pathway may cover more than
+      // these eight rows, and until they send it we are enforcing the workbook's
+      // version rather than theirs [ASSUMPTION: R4-Q2].
+      id: 'sg07-infant-safety',
+      label: 'Infant / baby-contact safety compartment completed (INF-01 to INF-08)',
+      tier: 'Conditional',
+      trigger: 'infantContact',
+      assumption: 'R4-Q2',
+      check: { kind: 'requirementSectionComplete', section: 'infantSafety' },
+    },
+    {
       // Not an F1-named item — same generalizable rule as sg01-constraints:
       // B3(b) already confirms EVERY Key Gate Check row is mandatory before
       // its phase can close; this is the third of Gate 7's three rows and
@@ -1514,7 +1544,11 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'gateCheckDone',
         gate: '07',
         check: 'Pregnancy/breastfeeding and baby-contact screen completed where triggered',
-        naInvalidWhenTrigger: 'skincareForTwo',
+      // Both triggers, because the row's own label covers BOTH subjects —
+      // "Pregnancy/breastfeeding AND baby-contact". An infant-only project could
+      // previously dismiss it as not applicable, which is exactly the product for
+      // which baby contact is the whole point.
+        naInvalidWhenTrigger: ['skincareForTwo', 'infantContact'],
       },
     },
     {

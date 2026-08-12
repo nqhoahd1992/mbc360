@@ -1141,3 +1141,15 @@ Dòng đánh `No` **không chặn gì**, bất kể status — luật E1 nói v�
 **Không cần migration:** `mode:'register'` nên không có dòng nào được seed; dự án cũ có sổ rỗng và **không bị chặn thêm** — đúng, vì họ chưa từng ghi finding nào.
 
 **Nếu trả lời khác:** `SAFETY_FINDING_*` trong `packages/shared/src/config/registers.ts`; `openCriticalSafetyFindings()` trong `packages/shared/src/utils/safetyFindings.ts`; cột của `criticalSafetyFindings`.
+
+**Cập nhật `R4-Q2` (2026-08-12) — lỗ hổng an toàn infant-only đã đóng phần lớn, KHÔNG bằng nội dung do dev viết.**
+
+Project owner hỏi *"E1 Gate 7 hoàn thiện rồi chứ"*. Rà lại thì phát hiện: **nội dung pathway cho trẻ sơ sinh đã có trong app từ trước** — Phase 3, section `infantSafety`, *"Compartment 3 — Infant / Baby-Contact Safety & Characteristics"*, **8 dòng INF-01…INF-08, mọi dòng gate 07** (use context · MOS điều chỉnh cho infant · hand-to-mouth · sensitiser screen · pH/barrier · eye safety · claim wording · label/PIF). Đến từ workbook V18, không phải ta viết.
+
+**Nó bị gác sau trigger sai:** section đó chỉ được đánh giá qua `skincareForTwoIncompleteSections()`, tức **chỉ khi có target user maternal**. Dự án chỉ-cho-trẻ-sơ-sinh (chọn `Infant 0+`, không chọn Pregnancy/Breastfeeding/Postpartum) **không bị đòi hoàn thành gì** ở Gate 7.
+
+**Đã sửa:** trigger mới `infantContact` (đọc `Infant 0+` trên checklist Target Users), check kind mới `requirementSectionComplete`, và item `sg07-infant-safety` (Conditional, trigger `infantContact`). Cộng với việc `sg07-screen-check` giờ **không cho đánh N/A** khi trigger nào trong `['skincareForTwo','infantContact']` đang bật — dòng đó mang chữ *"and baby-contact"*, mà sản phẩm cho trẻ sơ sinh chính là baby contact.
+
+Test 5 nhánh: general adult → item tự pass (advisory), không chặn · **Infant 0+ → chặn cả `sg07-infant-safety` lẫn `sg07-screen-check`** · Infant 0+ với 8 dòng Completed → item thoả · Pregnancy → item advisory (đã phủ qua `skincare-for-two`, không chặn trùng) · Pregnancy + Infant 0+ → chặn.
+
+**Câu hỏi vẫn MỞ, và lý do đổi:** ta đang cưỡng chế **assessment của workbook**, không phải của SME. Họ nói `Infant 0+` kích hoạt một pathway riêng và liệt kê các chủ đề nó phải phủ; 8 dòng này **có thể hẹp hơn**, có thể thuộc gate khác, hoặc cần bằng chứng mà các dòng đó không đòi. Nên câu 1 đổi từ *"xin nội dung, hiện chưa có gì"* thành *"Compartment 3 có đúng là thứ các anh muốn, hay pathway còn rộng hơn"*.

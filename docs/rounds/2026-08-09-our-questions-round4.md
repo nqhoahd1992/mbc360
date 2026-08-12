@@ -5,13 +5,13 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has thirty-three questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has thirty-three questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them concerns infant safety, where we have closed most of a gap ourselves and need you to confirm we closed it with the right content.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
 ## What we need most, in order
 
-1. **Question 1** — a safety gap that is open right now. It cannot be closed without content from you.
+1. **Question 1** — an infant-safety gap, now largely closed using content already in the workbook. We need you to confirm that content is the right content.
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
@@ -19,7 +19,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 
 ---
 
-## Question 1 — Infant-only products currently receive no Gate 7 safety assessment
+## Question 1 — Infant-only products: we found your own content and wired it, but the pathway is still yours to define
 
 **This is the one item in this list we would ask you to answer even if you answer nothing else.**
 
@@ -29,11 +29,15 @@ We have made the first half of that change, and it was necessary: before it, **e
 
 The second half we cannot make, because the Infant & Baby Safety pathway does not exist yet. Its content is question **A2 from our 21 July list**, which has not been answered. You confirmed in an earlier round that "Infant 0+" activates a dedicated infant safety workflow separate from Skincare for Two, and you listed the topics it should cover — but we have never received the workflow itself.
 
-**The consequence today, stated plainly:** a product intended **only** for infants, with no maternal user selected, passes Gate 7 without either assessment. The maternal screen no longer applies to it, and the infant pathway it is supposed to be routed to does not exist.
+**That left a gap we reported to you plainly: an infant-only product, with no maternal user selected, passed Gate 7 without either assessment.** It has now largely been closed, and how is worth explaining, because it was not by us writing safety content.
 
-We want to be clear this was a choice between two wrong states, not an oversight. The alternative was to keep blocking every general-adult project on a maternal caution list, which your own answer rejects. We chose the state that does not obstruct correct work, and are reporting the gap rather than leaving it hidden.
+Going back through the workbook we found that the content already exists in it: Phase 3 carries **"Compartment 3 — Infant / Baby-Contact Safety & Characteristics"**, eight rows INF-01 to INF-08, every one tagged Gate 7 — infant-contact use context, infant-adjusted margin of safety, hand-to-mouth ingestion risk, infant sensitiser screen, pH and barrier compatibility, eye safety, claim wording, label and PIF statement. It was only ever *required* for maternal projects, because the system reached it through the Skincare-for-Two logic. An infant-only product was asked to complete none of it.
 
-**Question:** can you supply the Infant & Baby Safety assessment content — the items it must cover, the evidence required for each, and the gate at which it must be complete? If that will take time, please tell us what an infant-only product should be blocked on in the meantime, and we will wire that as a temporary measure.
+Selecting **Infant 0+** now requires that compartment to be complete before Gate 7 passes. And the Gate 7 record "Pregnancy/breastfeeding and baby-contact screen completed where triggered" can no longer be closed as *not applicable* on an infant product — its own wording covers baby contact, which is precisely what such a product is.
+
+**What we are still not doing, and why this question stays open:** we are enforcing the **workbook's** infant assessment, not yours. You told us Infant 0+ activates a dedicated pathway and listed the topics it should cover; those eight rows may be narrower than what you have in mind, may sit at a different gate, or may need evidence the rows do not ask for. We would rather you told us than have us treat the workbook as your answer.
+
+**Question:** is Compartment 3 the infant assessment you meant, or does the Infant & Baby Safety pathway cover more? If more, please give the items, the evidence required for each, and the gate at which it must be complete — we will replace what is wired now rather than add to it.
 
 ---
 
@@ -536,7 +540,7 @@ A finding marked **not** critical blocks nothing, whatever its status.
 
 | # | Topic | Why it matters |
 |---|---|---|
-| 1 | Infant & Baby Safety content | **A safety gap is open now** |
+| 1 | Infant & Baby Safety content | Gap largely closed with the workbook's own Compartment 3 — confirm it is the right content |
 | 2–4 | Superseding a formula version · defining "critical" gaps · PV/PMS scope | Open since 21 July; 2 and 4 block work we are ready to start |
 | 5–7 | Gate 7 scope · Gate 4 threshold · unclassified claims | Already built on our reading — rework if wrong |
 | 8–19 | Which record represents each of your trigger conditions, and two data-model points | Redesign if wrong, no rework |
