@@ -658,6 +658,8 @@ D1 nói mỗi gate cần **Prepared / Reviewed / Approved**. E3(a) nói mỗi th
 
 **Nếu là per-market:** bảng chữ ký gate cần cột `market` nullable ngay từ đầu (`@@unique([projectId, gateId, market, role])`) — thêm sau khi đã có chữ ký thật là migration trên dữ liệu không được phép sai. Nếu là (b) per-market thì `phase_closures` cũng phải đổi khoá.
 
+**Quyết định của project owner 2026-08-12: D1 CHỜ câu trả lời này rồi mới triển khai** — không đoán khoá rồi migrate chữ ký sau. Nhưng phần "12 item đang xanh trên bằng chứng sai" **không phụ thuộc** câu trả lời (khoá kiểu nào thì `owner + evidenceLink` vẫn không phải chữ ký), nên đã xử lý ngay bằng `coverageNote` trên cả 12 item `sgNN-signoff` — cùng cơ chế đã dùng cho C1. Item **vẫn chặn y như cũ**, không nới không siết; chỉ thôi trình bày Owner + Evidence link như thể đó là bộ ba chữ ký. Khi câu này có đáp án: bỏ `GATE_SIGNOFF_COVERAGE_NOTE` cùng lúc với việc thay `check` của 12 item đó.
+
 #### R4-Q16 · Cột `Claim category` sẵn có trên SKU Claims / PIF Register vốn ghi gì 🟡
 
 **Phát sinh khi:** tìm chỗ đặt phân loại claim của B7 — xem [`../plans/Post_Round3_Design_Decisions.md`](../plans/Post_Round3_Design_Decisions.md) → Quyết định 3.

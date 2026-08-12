@@ -226,6 +226,28 @@ export interface ReadinessRequirement {
 // checking that the GATE's own Phase Gate Flow row (Owner + Evidence link)
 // has actually been filled in. The phase-level sign-off block is unchanged
 // and remains a separate B3 condition.
+//
+// ⚠️ Round 3 D1 (2026-08-07) rejected that reading in its own words: "Owner +
+// Evidence link is not equivalent to Prepared, Reviewed and Approved sign-off."
+// The replacement — three separately recorded sign-offs per gate, each carrying
+// an authenticated user, role, timestamp, decision, record version and comment,
+// plus an independent reviewer on safety-, regulatory-, claims- or
+// release-critical gates — is NOT built. It waits on one decision the team has to
+// make first: whether a gate sign-off keys on (project, gate) or (project, gate,
+// market), which is where D1 meets E3(a)'s per-market Gates 10-11 (Round 4
+// question 18 / R4-Q15). Project owner's call, 2026-08-12: wait for the answer
+// rather than build on a guess and migrate signatures afterwards.
+//
+// Until then these 12 items still block on owner+evidenceLink, and the note below
+// keeps the panel from presenting that as the sign-off D1 asks for — 12 green
+// ticks reading as "three roles have signed" is worse than a red one, because
+// nobody goes looking for what a green tick is hiding.
+const GATE_SIGNOFF_COVERAGE_NOTE =
+  'the app checks only that the gate has an Owner and an Evidence link. The review team have said that is not a sign-off: ' +
+  'three separate records are required (prepared / reviewed / approved), each with the signed-in user, their role, the time, ' +
+  'the decision, the record version and a comment — and an independent reviewer for safety, regulatory, claims or release ' +
+  'decisions. Not built yet.';
+
 export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   SG01: [
     {
@@ -349,6 +371,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg01-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
+      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
       check: {
         kind: 'allOf',
         checks: [
@@ -562,6 +585,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg02-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
+      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
       check: {
         kind: 'allOf',
         checks: [
@@ -712,6 +736,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg03-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
+      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
       check: {
         kind: 'allOf',
         checks: [
@@ -848,6 +873,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg04-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
+      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
       check: {
         kind: 'allOf',
         checks: [
@@ -1010,6 +1036,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg05-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
+      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
       check: {
         kind: 'allOf',
         checks: [
@@ -1112,6 +1139,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg06-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
+      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
       check: {
         kind: 'allOf',
         checks: [
@@ -1273,6 +1301,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg07-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
+      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
       check: {
         kind: 'allOf',
         checks: [
@@ -1437,6 +1466,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg08-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
+      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
       check: {
         kind: 'allOf',
         checks: [
@@ -1531,6 +1561,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg09-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
+      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
       check: {
         kind: 'allOf',
         checks: [
@@ -1649,6 +1680,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg10-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
+      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
       check: {
         kind: 'allOf',
         checks: [
@@ -1762,6 +1794,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg11-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
+      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
       check: {
         kind: 'allOf',
         checks: [
@@ -1843,6 +1876,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg12-signoff',
       label: 'Prepared, reviewed and approved review closure',
       tier: 'Mandatory',
+      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
       check: {
         kind: 'allOf',
         checks: [
