@@ -442,6 +442,27 @@ Those two signatures are about different content, and nothing on the record woul
 
 **Question:** please answer 1 to 5. Until they are settled we have not built the per-gate sign-off at all, and the twelve gates still show the old Owner + Evidence link check — now labelled on screen as not being the sign-off you asked for, so nobody mistakes it for one.
 
+### Question 30 — The claim-linkage rules are now built; four choices inside them are ours
+
+Your D2 answer has been implemented. Two things it rejected are gone, and we would like the four judgement calls we had to make checked.
+
+**What changed.** The wording lock is removed. The claim's approved text now sits in its own read-only column, "Master approved wording"; the wording actually going out sits beside it in "Proposed wording as published" and can be edited freely. Where the two differ, the row cannot be released until someone records the comparison and their name against it. The system shows how far apart the two texts are as a percentage, and nothing in the software acts on that number — it is there to inform the reviewer, exactly as you specified.
+
+The old behaviour was worse than a lock in practice: the only way to shorten a sentence for a social caption was to edit the claim itself, which meant one caption could rewrite the approved wording for the whole project.
+
+Blank Claim ID no longer means "this record makes no claim". A record with no Claim ID cannot be released unless someone ticks **"No product claim or technical statement"**, and the system records who ticked it — that name is written from the signed-in account and cannot be typed or altered afterwards. Your exemption is narrow, so we made claiming it a deliberate act with an owner rather than an empty field.
+
+**The four choices we made:**
+
+1. **All of this bites at release, not at first entry.** A row at Draft or in review can have no claim and no wording comparison. We read your own picker rule that way — a developing claim must be selectable "to document the intended claim early", which only makes sense if early work is not blocked. But it does mean a record can sit half-finished for a long time with no claim attached.
+2. **Three comparison values**, since you name the two outcomes but no vocabulary: *Identical to master wording · Minor adaptation — meaning, scope, qualifiers and evidence burden unchanged · Material change — a new or revised claim record is required*. The middle one is your own test, quoted.
+3. **Differences in spacing only are not differences.** A double space or a trailing space does not ask anyone to classify anything. Everything else does, including a change of capitalisation or punctuation — we did not want the software deciding that "helps soothe" and "soothes" mean the same thing, since that judgement is the one you reserved for a reviewer.
+4. **"Material change" blocks release rather than creating the new claim itself.** You wrote that a material change must create a new or revised claim record. Marking a row as a material change now stops it being released and says a new claim is needed, but the system does not create it — we do not know whether a revised claim should be a **new Claim ID**, or the **same ID at a higher revision** with the old wording kept. That choice decides whether history lives in one row or several, so we would rather you set it.
+
+**And two parts of D2 we have NOT built, because there is nothing to attach them to yet.** You wrote that a Pending claim must not allow *final artwork approval* or *external publication*. Released and Approved for Release are both blocked. But artwork approval is recorded on the packaging and artwork register, which has no concept of a claim at all — connecting the two is a design decision, not plumbing, and we did not want to invent it. Likewise "external publication" as an act distinct from reaching a released state: if it is separate, which record shows it happened?
+
+**Question:** (a) are the four choices right? (b) Should a revised claim be a new Claim ID or a new revision of the same one? (c) Which record represents final artwork approval, and should it require the linked claim to be Supported? (d) Is external publication a separate step from the released workflow state, and if so where is it recorded? (e) Who may tick the non-product exemption — the content owner, or must Regulatory confirm it? Right now anyone who can edit the register can, and their name is recorded.
+
 ---
 
 ## Summary
@@ -455,5 +476,6 @@ Those two signatures are about different content, and nothing on the record woul
 | 20–27 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several types may apply; two requirements we added ourselves that block Gate 2 and Gate 7;  a duplicate market field arising from an inaccurate premise we gave in B3; which target users imply a vulnerable group | Already built — rework if wrong |
 | 28 | What kind of thing the Claims Library is, before we build it | Not built — the last dependency holding C1 back |
 | 29 | Five points the per-gate sign-off answer leaves open | Not built — needed together with 18 before we can start |
+| 30 | The claim-linkage and wording-adaptation rules, now built | Already built — rework if wrong; 2 parts deliberately left out |
 
 Questions 5 to 27 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

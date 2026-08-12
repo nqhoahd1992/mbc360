@@ -73,7 +73,7 @@ export default function ClaimSelect({
       // Deliberately NOT restricted to 'Supported' claims: a claim may be
       // proposed and used in planning while its evidence is still being built —
       // Round 3 D2 corrected us on exactly that. Release is blocked separately,
-      // by unsupportedClaimRows().
+      // by publishedInfoViolations().
       placeholder={declared.length > 0 ? 'Link a declared claim' : 'No claims declared yet'}
       style={{ width: '100%', minWidth: 140 }}
       value={current || undefined}

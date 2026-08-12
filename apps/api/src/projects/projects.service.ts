@@ -9,7 +9,7 @@ import { GATES } from '@mbc360/shared/config/gates';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
-import { unsupportedClaimRows } from '@mbc360/shared/utils/claimEvidence';
+import { publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
 import {
   VULNERABLE_REGISTER,
   targetUsersPinnedByAssessment,
@@ -105,6 +105,53 @@ export function snapshotReviewedWording(project: ProjectData, rows: RegisterRow[
     const neverSnapshotted = String(row.reviewedWording ?? '').trim() === '';
     if (!dateChanged && !neverSnapshotted) return row;
     return { ...row, reviewedWording: String(row.approvedWording ?? '').trim() };
+  });
+}
+
+// D2's two derived Published Info fields, computed server-side for the same
+// reason `reviewedWording` is: a value the record depends on must not be
+// something the person the record is about can type.
+//
+//   masterWording    — the linked claim's own approved wording. Stored so the row
+//                      shows what its channel wording was compared against, and
+//                      re-read from the claim on every save so it cannot go stale.
+//   noProductClaimBy — who asserted "this record contains no product claim or
+//                      technical statement". Carried over from the stored row
+//                      while the box stays ticked (so an existing declaration is
+//                      not reattributed to whoever next edits an unrelated cell),
+//                      stamped with the current user when it goes from unticked to
+//                      ticked, cleared when unticked. The client's own value for
+//                      this field is ALWAYS discarded — an earlier version kept it
+//                      whenever the box was already ticked, which let a second
+//                      save replace the real declarer with any name at all.
+export function syncPublishedInfoDerived(
+  project: ProjectData,
+  rows: RegisterRow[],
+  actorName: string,
+): RegisterRow[] {
+  const claimById = new Map(
+    (project.registers['claimEvidenceTraceability'] ?? [])
+      .filter((r) => String(r.claimId ?? '').trim() !== '')
+      .map((r) => [String(r.claimId).trim(), r]),
+  );
+  // Rows are replace-the-whole-section, so identity comes from recordId where
+  // there is one; a row without it is treated as new (worst case the declarer is
+  // re-stamped, never dropped).
+  const before = new Map(
+    (project.registers['publishedInfoApproval'] ?? [])
+      .filter((r) => String(r.recordId ?? '').trim() !== '')
+      .map((r) => [String(r.recordId).trim(), r]),
+  );
+  return rows.map((row) => {
+    const claimId = String(row.claimId ?? '').trim();
+    const next: RegisterRow = {
+      ...row,
+      masterWording: claimId ? String(claimById.get(claimId)?.approvedWording ?? '') : '',
+    };
+    const stored = before.get(String(row.recordId ?? '').trim());
+    const storedDeclarer = stored?.noProductClaim ? String(stored.noProductClaimBy ?? '').trim() : '';
+    next.noProductClaimBy = row.noProductClaim ? storedDeclarer || actorName : '';
+    return next;
   });
 }
 
@@ -676,12 +723,18 @@ export class ProjectsService {
       // (claimId) cannot be saved in a released workflow state unless that
       // claim is 'Supported' in Claim -> Evidence Traceability. Checked here
       // (not just in the UI) per BACKEND_PLAN's server-is-authoritative rule.
+      //
+      // Widened 2026-08-12 to the whole of D2 (claim linkage mandatory unless
+      // declared non-product; wording equivalence classified by a reviewer),
+      // evaluated by the same shared function the UI's save-guard calls.
       if (registerKey === 'publishedInfoApproval') {
         const claimRows = project.registers['claimEvidenceTraceability'] ?? [];
-        const bad = unsupportedClaimRows(rows, claimRows);
+        const bad = publishedInfoViolations(rows, claimRows);
         if (bad.length > 0) {
           throw new BadRequestException(
-            `${bad.length} Published Information row(s) reference a claim that is not yet 'Supported' in Claim -> Evidence Traceability — cannot save in a released workflow state until the claim is supported (Gate 3 rule).`,
+            `${bad.length} Published Information row(s) cannot sit at a released workflow state: ${bad
+              .map((v) => `${String(v.row.recordId ?? '(no record id)')} — ${v.reason}`)
+              .join('; ')}`,
           );
         }
       }
@@ -701,7 +754,14 @@ export class ProjectsService {
       // stops matching and the claim needs reviewing again. Derived server-side
       // rather than typed — a snapshot someone can edit proves nothing.
       const rowsToWrite =
-        registerKey === 'claimEvidenceTraceability' ? snapshotReviewedWording(project, rows) : rows;
+        registerKey === 'claimEvidenceTraceability'
+          ? snapshotReviewedWording(project, rows)
+          : registerKey === 'publishedInfoApproval'
+            // displayName, not the user id — every `user`-typed register column
+            // stores a display name (see UserSelect), so the exemption declarer
+            // renders like every other person field.
+            ? syncPublishedInfoDerived(project, rows, user.displayName)
+            : rows;
       await tx.registerRow.deleteMany({ where: { projectId: id, registerKey } });
       if (rows.length > 0) {
         await tx.registerRow.createMany({

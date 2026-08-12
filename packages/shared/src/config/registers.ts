@@ -119,6 +119,30 @@ export const PUBLISHED_INFO_STATES = [
 // hard block (utils/claimEvidence.ts) so the two checks can't drift apart.
 export const RELEASED_INFO_STATES: readonly string[] = ['Approved for Release', 'Released'];
 
+// D2 (SME Round 3): "Do not enforce an absolute character-for-character lock
+// across every channel… Minor adaptation may be allowed where the meaning,
+// scope, qualifiers and evidence burden remain unchanged. Any material change
+// must create a new or revised claim record. Automated similarity checking may
+// be used as a warning, but final equivalence must be confirmed by an
+// authorised reviewer."
+//
+// So the app compares master wording against the proposed channel wording,
+// warns when they differ, and requires a person to say WHICH of the two it is.
+// The three values are ours — D2 names the two outcomes (minor adaptation /
+// material change) but gives no vocabulary [ASSUMPTION: R4-Q27].
+export const WORDING_EQUIVALENCE_OPTIONS = [
+  'Identical to master wording',
+  'Minor adaptation — meaning, scope, qualifiers and evidence burden unchanged',
+  'Material change — a new or revised claim record is required',
+] as const;
+
+export const WORDING_EQUIVALENT_VALUES: readonly string[] = [
+  'Identical to master wording',
+  'Minor adaptation — meaning, scope, qualifiers and evidence burden unchanged',
+];
+
+export const WORDING_MATERIAL_CHANGE = 'Material change — a new or revised claim record is required';
+
 // ---------------------------------------------------------------------------
 // Category 1: Ingredient & Supplier Safety (Gate 04/07)
 // ---------------------------------------------------------------------------
@@ -903,7 +927,7 @@ const publishedInfoApproval: RegisterConfig = {
   title: 'Published Information Approval',
   sheetName: 'Published_Info_Approval',
   description:
-    'Mandatory approval workflow (confirmed rules C6 / F11) for ANY information intended for public release — websites, social media, brochures, catalogues, presentations, distributor/pharmacy & HCP documents, training, advertisements, AI-generated content, label/artwork text and external technical summaries. No public information may be released until the workflow reaches "Approved for Release". Acceptable terminology comes from the controlled Claims Library (maintained by Technical + Regulatory — content pending, F11/§B). If "Claim ID" is filled in, that claim must be \'Supported\' in Claim -> Evidence Traceability before this row can reach a released state (Gate 3 rule: "a claim may remain under development, but unsupported wording must not be marked as approved" — hard-blocked, 2026-07-27).',
+    'Mandatory approval workflow (confirmed rules C6 / F11) for ANY information intended for public release — websites, social media, brochures, catalogues, presentations, distributor/pharmacy & HCP documents, training, advertisements, AI-generated content, label/artwork text and external technical summaries. No public information may be released until the workflow reaches "Approved for Release". Acceptable terminology comes from the controlled Claims Library (maintained by Technical + Regulatory — content pending, F11/§B). If "Claim ID" is filled in, that claim must be \'Supported\' in Claim -> Evidence Traceability before this row can reach a released state (Gate 3 rule: "a claim may remain under development, but unsupported wording must not be marked as approved" — hard-blocked, 2026-07-27). Rule D2, enforced 2026-08-12: every row stating a product benefit, safety, efficacy, performance or suitability point MUST link a Claim ID — leaving it blank is only allowed for genuinely non-product corporate information, and then only by ticking "No product claim or technical statement", which records who declared it. Proposed channel wording may differ from the claim\'s master wording (there is no character-for-character lock), but a difference must be classified by an authorised reviewer before release, and a material change requires a new or revised claim record rather than a re-worded row.',
   mode: 'register',
   gate: '10/11',
   columns: [
@@ -920,10 +944,35 @@ const publishedInfoApproval: RegisterConfig = {
     { key: 'claimCategory', label: 'Claim / terminology category', type: 'text', width: 160 },
     // Links this row to a specific row in Claim -> Evidence Traceability
     // (claimEvidenceTraceability.claimId) — hard-blocks release until that
-    // claim's own status is 'Supported'. Leave blank for non-claim content
-    // (e.g. plain company/product info with no substantiated benefit claim).
+    // claim's own status is 'Supported'.
     { key: 'claimId', label: 'Claim ID (Claim -> Evidence Traceability)', type: 'text', width: 150 },
-    { key: 'exactWording', label: 'Exact wording / technical statement', type: 'textarea', width: 220 },
+    // D2: "Every external product-benefit, safety, efficacy, performance or
+    // suitability statement should be required to link to a Claim ID. Linkage
+    // may remain optional ONLY for genuinely non-product corporate information
+    // that contains no product claim or technical statement."
+    //
+    // Blank used to be the default AND the exemption, so any row escaped the
+    // whole rule by leaving Claim ID empty (claimEvidence.ts read blank as
+    // "makes no claim"). The exemption is now something a person asserts and
+    // owns: unticked + no Claim ID blocks release. `noProductClaimBy` is filled
+    // server-side from the session, never typed — the same reason
+    // `reviewedWording` is derived rather than entered.
+    { key: 'noProductClaim', label: 'No product claim or technical statement', type: 'checkbox', width: 130 },
+    { key: 'noProductClaimBy', label: 'Exemption declared by', type: 'user', width: 150, editable: false },
+    // D2's "master approved wording" — the linked claim's own approved text,
+    // mirrored here so the record shows what the channel wording is being
+    // compared against. Derived, never typed.
+    { key: 'masterWording', label: 'Master approved wording (from claim)', type: 'textarea', width: 200, editable: false },
+    // D2's "proposed channel wording". Keeps its original key so no existing
+    // data moves; it is no longer locked to the claim's text (see D2: "do not
+    // enforce an absolute character-for-character lock across every channel").
+    { key: 'exactWording', label: 'Proposed wording as published', type: 'textarea', width: 220 },
+    // D2's "comparison/review status" + "reviewer approval". A row whose
+    // proposed wording differs from master cannot be released until an
+    // authorised reviewer has recorded which kind of difference it is.
+    { key: 'wordingEquivalence', label: 'Wording comparison', type: 'select', width: 200, options: [...WORDING_EQUIVALENCE_OPTIONS] },
+    { key: 'equivalenceConfirmedBy', label: 'Equivalence confirmed by', type: 'user', width: 150 },
+    { key: 'equivalenceConfirmedDate', label: 'Equivalence confirmed date', type: 'date', width: 130 },
     { key: 'evidenceTypeRequired', label: 'Evidence type required', type: 'text', width: 150 },
     { key: 'evidenceLink', label: 'Evidence / PMF / PIF link', type: 'text', width: 150 },
     // C6/F11 workflow steps — all must be Y before final approval / release.
@@ -1969,7 +2018,7 @@ export const claimEvidenceTraceability: RegisterConfig = {
   // is not a step with a sign-off — it is a living ledger of claim IDs that keeps
   // being written to. Claims are still created at Gate 10 during PIF and
   // Published Information work (publishedInfoApproval links to a Claim ID here,
-  // and unsupportedClaimRows blocks release on the claim's status), so locking it
+  // and publishedInfoViolations blocks release on the claim's status), so locking it
   // after Gate 8 would mean no claim could be added at Gate 10 without a
   // Backtrack.
   //
@@ -2020,7 +2069,7 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // wording above no longer matches this, the review no longer covers it.
     { key: 'reviewedWording', label: 'Wording at review', type: 'textarea', width: 220, gate: '03', editable: false },
     { key: 'regulatoryReviewEvidence', label: 'Review evidence link', type: 'text', width: 160, gate: '03' },
-    // Gate 10 — release: "Supported" is what unsupportedClaimRows() reads before
+    // Gate 10 — release: "Supported" is what publishedInfoViolations() reads before
     // anything may be published, and the approval is the act of releasing it.
     { key: 'status', label: 'Status', type: 'select', width: 120, options: ['Pending', 'Supported'], gate: '10' },
     { key: 'approvedByDate', label: 'Approved by / date', type: 'text', width: 160, gate: '10' },

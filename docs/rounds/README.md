@@ -22,7 +22,7 @@ YYYY-MM-DD-<ai gửi>-<nội dung>.<ext>
 | `2026-07-21-our-questions-round2.md` | 21/07 | 3 câu làm rõ (A1 định nghĩa "critical" · A2 nội dung Infant & Baby Safety · A3 hai version song song cùng thị trường) + danh sách dữ liệu cần cung cấp | ⏳ **còn mở** |
 | `2026-07-31-our-questions-round3.md` | 31/07 | **19 câu** Parts A–E: quy tắc gán tier + 15 item ta tự gán (A1–A2) · điều kiện trigger còn thiếu (A3) · 7 item không có chỗ ghi (B1–B7) · 2 mapping đã đoán (C1–C2) · 4 quyết định đã xây (D1–D4) · 3 item theo thị trường (E1–E3) | ✅ được trả lời trọn ở vòng 07/08 |
 | `2026-08-07-sme-reply-round3.txt` | 07/08 | Đáp án Parts A–E: quy tắc gán tier, **12 điều kiện trigger**, 7 trường còn thiếu, và **bác 4 thứ đã xây** | ✅ đóng |
-| `2026-08-09-our-questions-round4.md` | 09/08 | **29 câu**: 1 lỗ hổng an toàn đang mở · 3 câu tồn từ 21/07 · 4 giả định đã ship · 12 câu ánh xạ trigger sang dữ liệu · 4 câu về quyết định thiết kế Gate 1–2 (gồm 1 tiền đề ta từng nêu sai với SME) · **2 câu hỏi TRƯỚC khi build** (Claims Library ở cấp nào · 5 điểm D1 để hở) | 📤 **soạn xong, chưa gửi** — vẫn đang bổ sung câu khi phát hiện thêm giả định, ngày trong tên file là ngày soạn |
+| `2026-08-09-our-questions-round4.md` | 09/08 | **30 câu**: 1 lỗ hổng an toàn đang mở · 3 câu tồn từ 21/07 · 4 giả định đã ship · 12 câu ánh xạ trigger sang dữ liệu · 4 câu về quyết định thiết kế Gate 1–2 (gồm 1 tiền đề ta từng nêu sai với SME) · **2 câu hỏi TRƯỚC khi build** (Claims Library ở cấp nào · 5 điểm D1 để hở) · 1 câu về phần D2 vừa xây | 📤 **soạn xong, chưa gửi** — vẫn đang bổ sung câu khi phát hiện thêm giả định, ngày trong tên file là ngày soạn |
 
 ## Còn nợ
 
@@ -47,4 +47,4 @@ Comment trong code và [`../rules/F1_Conditional_Triggers.md`](../rules/F1_Condi
 
 **File `2026-07-31-our-questions-round3.md` được bổ sung muộn (11/08).** Trước đó folder chỉ có bản trả lời vòng 3 mà không có bộ câu hỏi sinh ra nó — nên bảng 15 item ở A1 (thứ SME chấp nhận kèm 2 điều chỉnh) không tồn tại ở đâu trong repo, và việc truy "item nào đã được SME xác nhận" phải suy ngược từ bản trả lời. Bài học: lưu bản gửi đi **ngay khi gửi**, đừng đợi bản trả lời về.
 
-**Hai bản của cùng một vòng, đừng nhầm:** file trong `rounds/` là **bản gửi đi** — ngôn ngữ nghiệp vụ, đánh số 1–29, không có tên file hay định danh code. Bản làm việc nội bộ nằm ở [`../rules/F1_Per_Gate_Open_Questions.md`](../rules/F1_Per_Gate_Open_Questions.md) → mục Round 4, giữ ID cố định `R4-Q1`…`R4-Q26` và nêu rõ *nếu trả lời khác thì sửa ở file/hàm nào*. Bảng ở đó có cột **Gửi số** nối hai bên với nhau.
+**Hai bản của cùng một vòng, đừng nhầm:** file trong `rounds/` là **bản gửi đi** — ngôn ngữ nghiệp vụ, đánh số 1–30, không có tên file hay định danh code. Bản làm việc nội bộ nằm ở [`../rules/F1_Per_Gate_Open_Questions.md`](../rules/F1_Per_Gate_Open_Questions.md) → mục Round 4, giữ ID cố định `R4-Q1`…`R4-Q27` và nêu rõ *nếu trả lời khác thì sửa ở file/hàm nào*. Bảng ở đó có cột **Gửi số** nối hai bên với nhau.

@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–29, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–30, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -398,6 +398,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q24 | C1 — bằng chứng nào là "đã Regulatory review"; 4/7 điều kiện chưa kiểm được | 🔴 | 27 |
 | R4-Q25 | Claims Library ở cấp công ty hay cấp dự án, và claim có bắt buộc trỏ tới entry không | 🔴 | 28 |
 | R4-Q26 | D1 — 5 điểm chưa nói: record version của cái gì · comment bắt buộc khi nào · gate nào là "critical" · độc lập nghĩa là gì · chặn ở thời điểm nào | 🔴 | 29 |
+| R4-Q27 | D2 — 4 quyết định trong phần vừa xây (ngưỡng chặn ở release · 3 giá trị so sánh wording · khác biệt nào tính · "material change" chỉ chặn chứ không tự tạo claim mới) + 2 vế chưa có chỗ gắn (artwork approval · external publication) | 🔴 | 30 |
 
 ---
 
@@ -994,3 +995,29 @@ Hai chữ ký về hai nội dung khác nhau, không gì trên bản ghi lộ ra
 **Câu hỏi:** trả lời 1–5 ở trên (bản gửi: câu 29).
 
 **Nếu trả lời khác:** chưa có code. Nơi sẽ chịu ảnh hưởng khi build: bảng `gate_sign_offs` mới (`schema.prisma`), 12 item `sgNN-signoff` trong `packages/shared/src/config/gateReadiness.ts` (bỏ luôn `GATE_SIGNOFF_COVERAGE_NOTE`), guard ở `ProjectsService.setGate`/`setGatesBulk`, và một `ReadinessCheck` kind mới cho "đủ 3 chữ ký hợp lệ". Điểm 3 và 4 là **cấu hình**, không phải logic — nên đặt thành hằng số cạnh nhau để sửa được khi họ trả lời.
+
+#### R4-Q27 · D2 — 4 quyết định trong phần vừa xây, và 2 vế chưa có chỗ gắn 🔴
+
+**Đã build 2026-08-12** sau khi project owner rà D2 và yêu cầu *"sửa cả các vấn đề trong D2"*. Trước đó **1 trong 4 quy tắc** của D2 được thực hiện, và **1 quy tắc đang chạy ngược đặc tả**.
+
+**Hai hành vi D2 bác bỏ, nay đã bỏ:**
+
+1. **Khoá wording tuyệt đối.** `exactWording` bị auto-fill rồi **lock** từ claim, và `save()` **ghi đè** lại mỗi lần lưu. D2: *"Do not enforce an absolute character-for-character lock across every channel."* Trên thực tế còn tệ hơn một cái lock: muốn rút gọn câu cho caption mạng xã hội thì chỉ còn cách sửa chính claim gốc — tức để một bài đăng viết lại wording đã duyệt của toàn dự án. Nay: cột `masterWording` (**read-only**, do API ghi từ claim) đứng cạnh `exactWording` (sửa tự do, nhãn mới *"Proposed wording as published"*); khác nhau thì phải có `wordingEquivalence` + `equivalenceConfirmedBy` + `equivalenceConfirmedDate` mới release được.
+2. **Claim ID trống = "dòng này không claim gì".** `claimEvidence.ts` đọc trống là miễn trừ, nên **mọi dòng thoát toàn bộ luật bằng cách không điền gì** — ngoại lệ hẹp của D2 đang là mặc định của phần mềm. Nay trống chỉ được release khi tick `noProductClaim`, và `noProductClaimBy` do **server đóng dấu** từ session.
+
+**Một cơ chế mới, cố ý chỉ là cảnh báo:** `wordingSimilarity()` (Jaccard trên từ) hiện % trùng từ. **Không chỗ nào rẽ nhánh theo con số này** — D2 nói rõ *"similarity checking may be used as a warning, but final equivalence must be confirmed by an authorised reviewer"*.
+
+**Bốn quyết định của dev [ASSUMPTION: R4-Q27]:**
+
+| # | Quyết định | Vì sao chọn thế, và rủi ro |
+|---|---|---|
+| 1 | **Mọi điều kiện chỉ bật ở `RELEASED_INFO_STATES`**, không bật lúc nhập | Chính luật picker của D2 (*"Developing or Pending claims should be selectable… to document the intended claim early"*) chỉ có nghĩa nếu việc nhập sớm không bị chặn. Rủi ro: một dòng có thể nằm dở dang rất lâu mà không có claim nào |
+| 2 | **3 giá trị** `WORDING_EQUIVALENCE_OPTIONS` | D2 nêu hai kết cục (minor adaptation / material change) nhưng không cấp từ vựng. Giá trị giữa **trích nguyên** phép thử của họ |
+| 3 | **Chỉ khác nhau về khoảng trắng thì không tính** (`normaliseWording` gộp whitespace) | Hai dấu cách liền không đáng bắt ai phân loại. Chữ hoa/dấu câu **vẫn tính** — coi *"helps soothe"* = *"soothes"* là để **máy** phán tương đương, đúng thứ D2 giao cho người |
+| 4 | **`Material change` chỉ CHẶN release, không tự tạo claim mới** | D2 nói *"must create a new or revised claim record"* nhưng không nói "revised" là **Claim ID mới** hay **cùng ID ở revision cao hơn**. Chọn hộ = quyết định lịch sử claim nằm trong một dòng hay nhiều dòng |
+
+**Hai vế của D2 CHƯA xây, cố ý không đoán:** *"final artwork approval"* — `packagingSpecsArtwork` không có khái niệm claim nào, nối vào là quyết định thiết kế; và *"external publication"* như một hành vi tách khỏi việc đạt trạng thái released — nếu tách thì bản ghi nào thể hiện? Cả hai nằm ở câu 30 (c)(d).
+
+**Một lỗ hổng tự tạo, tự phát hiện và đã bít trong cùng lượt:** bản đầu của `syncPublishedInfoDerived` chỉ đóng dấu `noProductClaimBy` khi ô **chuyển từ chưa tick sang tick**, và giữ nguyên giá trị client gửi trong các lần lưu sau — nên lưu lần hai với tên bất kỳ là **thay được người đã khai**. Nay giá trị client **luôn bị bỏ**: đang tick thì lấy giá trị đã lưu, chưa có thì đóng dấu người đang đăng nhập, bỏ tick thì xoá. Đã test bằng cách gửi thẳng `"Someone Else Entirely"` — server giữ tên thật.
+
+**Nếu trả lời khác:** `WORDING_EQUIVALENCE_OPTIONS` / `WORDING_MATERIAL_CHANGE` trong `packages/shared/src/config/registers.ts`; ngưỡng release và 3 nhánh kiểm trong `publishedInfoViolations()` (`packages/shared/src/utils/claimEvidence.ts`); `normaliseWording` cho câu 3; `syncPublishedInfoDerived` (`apps/api/src/projects/projects.service.ts`) cho phần đóng dấu. Cả UI và API gọi **cùng một** `publishedInfoViolations`, nên sửa luật ở một chỗ là cả hai lớp theo.
