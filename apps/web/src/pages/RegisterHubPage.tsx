@@ -128,11 +128,13 @@ export default function RegisterHubPage() {
           )
         : [];
 
-    // Gate 3 rule, hard-blocked 2026-07-27 (user-requested): "a claim may
-    // remain under development, but unsupported wording must not be marked
-    // as approved" — enforced by PublishedInfoApprovalTable below (Claim ID
-    // picker + auto-filled/locked wording + Save-guard) and, authoritatively,
-    // by the API in ProjectsService.setRegisterRows.
+    // Note the different signal: the C6 check above reads `finalPublishedLink`
+    // and the five step columns and only WARNS, after the fact. Rule D2's guards
+    // read `workflowState` and BLOCK the save — `publishedInfoViolations` in
+    // PublishedInfoApprovalTable below and, authoritatively, in
+    // ProjectsService.setRegisterRows. The two are separate mechanisms answering
+    // separate questions ("did something go out unapproved?" vs "may this be
+    // released?"), which is why they do not share a predicate.
     const claimEvidenceRows = project.registers['claimEvidenceTraceability'] ?? [];
 
     // Gate-level edit lock: read-only once every gate this register is tied to

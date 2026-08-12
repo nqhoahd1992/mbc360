@@ -384,7 +384,7 @@ export default function PublishedInfoApprovalTable({
           showIcon
           icon={<LockOutlined />}
           style={{ marginBottom: 12 }}
-          message="Read-only — gate passed"
+          title="Read-only — gate passed"
           description={readOnlyReason ?? 'This evidence belongs to a gate that has already passed. To correct it, Backtrack to reopen that gate first.'}
         />
       )}
@@ -393,7 +393,7 @@ export default function PublishedInfoApprovalTable({
           type="error"
           showIcon
           style={{ marginBottom: 12 }}
-          message={`${violations.length} row(s) cannot sit at a released workflow state`}
+          title={`${violations.length} row(s) cannot sit at a released workflow state`}
           description={
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {violations.map((v, i) => (
@@ -410,7 +410,7 @@ export default function PublishedInfoApprovalTable({
           type="warning"
           showIcon
           style={{ marginBottom: 12 }}
-          message="Proposed wording differs from the claim's master wording on some rows"
+          title="Proposed wording differs from the claim's master wording on some rows"
           description="That is allowed — a channel may adapt wording where the meaning, scope, qualifiers and evidence burden are unchanged. Record the comparison in 'Wording comparison' and who confirmed it; a material change needs a new or revised claim record instead. The word-overlap figure is guidance only, never a decision."
         />
       )}
