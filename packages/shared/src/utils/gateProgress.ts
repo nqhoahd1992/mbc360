@@ -3,8 +3,10 @@ import { NEXT_ACTION_TERMINAL_STATUSES } from '../types';
 import { GATES } from '../config/gates';
 import {
   CLAIM_CATEGORIES_NEEDING_REVIEW,
+  CLAIM_REVIEWED_WORDING_COLUMN,
   CLAIM_REVIEW_COLUMNS,
   CLAIM_RISKS_NEEDING_REVIEW,
+  CLAIM_WORDING_COLUMN,
 } from '../config/claimReview';
 import { TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
 import {
@@ -155,7 +157,21 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
 function claimNeedsReview(row: RegisterRow): boolean {
   const category = String(row.claimCategory ?? '').trim();
   const risk = String(row.claimRisk ?? '').trim();
-  return CLAIM_CATEGORIES_NEEDING_REVIEW.includes(category) || CLAIM_RISKS_NEEDING_REVIEW.includes(risk);
+  return (
+    CLAIM_CATEGORIES_NEEDING_REVIEW.includes(category) ||
+    CLAIM_RISKS_NEEDING_REVIEW.includes(risk) ||
+    claimWordingChangedSinceReview(row)
+  );
+}
+
+// C1's "varies from previously approved wording": the wording no longer matches
+// the snapshot taken when the review was recorded. Only meaningful once a review
+// exists — before that there is nothing it could vary FROM, which is exactly why
+// this condition cannot be about the moment a claim is declared.
+function claimWordingChangedSinceReview(row: RegisterRow): boolean {
+  const reviewed = String(row[CLAIM_REVIEWED_WORDING_COLUMN] ?? '').trim();
+  if (reviewed === '') return false;
+  return String(row[CLAIM_WORDING_COLUMN] ?? '').trim() !== reviewed;
 }
 
 // Labels a project has ticked in a checklist section.
@@ -183,7 +199,7 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   microbiologicallySusceptible:
     'the formula is recorded as anhydrous, self-preserving, sterile or single-use, with a rationale',
   claimNeedsRegulatoryReview:
-    'no declared claim is borderline, therapeutic-adjacent, high risk or still unclassified',
+    'no declared claim is borderline, therapeutic-adjacent, high risk, still unclassified, or reworded since its last review',
 };
 
 // Evaluate a requirement's check against live project data. `evaluable` is false
@@ -259,8 +275,13 @@ function evaluateReadinessCheck(
       // one claim IS reviewable.
       return {
         evaluable: true,
-        satisfied: reviewable.every((row) =>
-          CLAIM_REVIEW_COLUMNS.every((column) => String(row[column] ?? '').trim() !== ''),
+        // Recorded AND still current: a review whose wording has since been
+        // edited does not count, or approving a safe wording and quietly
+        // rewriting it afterwards would pass unnoticed.
+        satisfied: reviewable.every(
+          (row) =>
+            CLAIM_REVIEW_COLUMNS.every((column) => String(row[column] ?? '').trim() !== '') &&
+            !claimWordingChangedSinceReview(row),
         ),
       };
     }

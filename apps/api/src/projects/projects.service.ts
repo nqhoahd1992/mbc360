@@ -87,6 +87,27 @@ export interface ProjectEnvelope {
 
 const GATE_ENTITY = 'gate_record';
 
+// Copies the current wording into `reviewedWording` on any claim row whose review
+// date has just been set or changed. Matching is by Claim ID; a row with no id
+// (still being typed) is left alone.
+export function snapshotReviewedWording(project: ProjectData, rows: RegisterRow[]): RegisterRow[] {
+  const previous = new Map(
+    (project.registers['claimEvidenceTraceability'] ?? [])
+      .filter((r) => String(r.claimId ?? '').trim() !== '')
+      .map((r) => [String(r.claimId).trim(), r]),
+  );
+  return rows.map((row) => {
+    const id = String(row.claimId ?? '').trim();
+    const reviewDate = String(row.regulatoryReviewDate ?? '').trim();
+    if (id === '' || reviewDate === '') return row;
+    const before = previous.get(id);
+    const dateChanged = String(before?.regulatoryReviewDate ?? '').trim() !== reviewDate;
+    const neverSnapshotted = String(row.reviewedWording ?? '').trim() === '';
+    if (!dateChanged && !neverSnapshotted) return row;
+    return { ...row, reviewedWording: String(row.approvedWording ?? '').trim() };
+  });
+}
+
 @Injectable()
 export class ProjectsService {
   constructor(
@@ -675,10 +696,16 @@ export class ProjectsService {
           throw new BadRequestException(`Vulnerable-User Assessment: ${blockers.join('; ')}.`);
         }
       }
+      // C1's "varies from previously approved wording": snapshot the wording each
+      // time a review DATE is recorded or changed, so a later edit to the wording
+      // stops matching and the claim needs reviewing again. Derived server-side
+      // rather than typed — a snapshot someone can edit proves nothing.
+      const rowsToWrite =
+        registerKey === 'claimEvidenceTraceability' ? snapshotReviewedWording(project, rows) : rows;
       await tx.registerRow.deleteMany({ where: { projectId: id, registerKey } });
       if (rows.length > 0) {
         await tx.registerRow.createMany({
-          data: rows.map((data, rowOrder) => ({
+          data: rowsToWrite.map((data, rowOrder) => ({
             projectId: id,
             registerKey,
             rowOrder,

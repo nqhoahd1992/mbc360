@@ -2014,6 +2014,11 @@ export const claimEvidenceTraceability: RegisterConfig = {
     { key: 'regulatoryReviewer', label: 'Regulatory reviewer', type: 'user', width: 150, gate: '03' },
     { key: 'regulatoryReviewDate', label: 'Review date', type: 'date', width: 130, gate: '03' },
     { key: 'regulatoryReviewRationale', label: 'Review rationale', type: 'textarea', width: 220, gate: '03' },
+    // Snapshot of the wording as it stood when the review was recorded — written
+    // by the API, never typed, which is why it is not editable. Its only job is to
+    // make C1's "varies from previously approved wording" checkable: if the
+    // wording above no longer matches this, the review no longer covers it.
+    { key: 'reviewedWording', label: 'Wording at review', type: 'textarea', width: 220, gate: '03', editable: false },
     { key: 'regulatoryReviewEvidence', label: 'Review evidence link', type: 'text', width: 160, gate: '03' },
     // Gate 10 — release: "Supported" is what unsupportedClaimRows() reads before
     // anything may be published, and the approval is the act of releasing it.

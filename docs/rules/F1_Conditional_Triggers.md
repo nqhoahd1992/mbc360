@@ -44,7 +44,7 @@ Cách một trigger được cài (3 chỗ, không phải sửa engine):
 | 8 | `newOrRepositionedProject` | `sg03-benchmark` | 3 | 3 | a | ✅ **đã cài** 09/08 — Tranche 1 đã cấp đủ 3 vế |
 | 9 | `scaleUpOrProcessChange` | `sg09-scaleup` | 9 | 3 | a + b | 🟠 chờ Tranche 1 (B2) |
 | 10 | `rmCompositionRisk` | `sg04-allergen` | 4 | 1 | a | 🟠 cần cột mới |
-| 11 | `claimNeedsRegulatoryReview` | `sg03-reg-claims` | 3 | 2 | a + c | 🟡 **đã cài 11/08 — 3/7 vế**; 4 vế còn lại chờ Claims Library (F11) + Market Profiles (F10) |
+| 11 | `claimNeedsRegulatoryReview` | `sg03-reg-claims` | 3 | 2 | a + c | 🟡 **đã cài 11/08 — 4/7 vế**; 4 vế còn lại chờ Claims Library (F11) + Market Profiles (F10) |
 | 12 | `claimNeedsPerformanceEvidence` | `sg10-performance-evidence` | 10 | 1 | a | 🔴 chờ B7 |
 | 13 | `marketPackRequirement` | `sg06-market-pack` | 6 | 2 | a/c | 🔴 chờ F10 |
 
@@ -254,7 +254,7 @@ Cột hiện có: `rmCode, inciName, approvedForUse, supplier, grade, sdsLink, c
 
 ---
 
-### 11. `claimNeedsRegulatoryReview` — 🟡 đã cài 3/7 vế (11/08)
+### 11. `claimNeedsRegulatoryReview` — 🟡 đã cài 4/7 vế (11/08)
 
 > **Luật (C1):** review bắt buộc khi *category = Borderline / therapeutic-adjacent · category = Therapeutic — not permitted · risk = High · wording không nằm trong approved Claims Library · claim khác với wording đã duyệt trước đó · thị trường áp hạn chế cụ thể · claim liên quan pregnancy, breastfeeding, infant use, disease, treatment, prevention, healing hoặc medical endorsement.*
 

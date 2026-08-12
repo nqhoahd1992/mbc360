@@ -910,7 +910,17 @@ Hệ quả của mức 3: dự án **chỉ** nhắm `Dry / eczema-prone skin` v�
 
 **(b) Bộ giá trị của Outcome là của ta:** `Approved` · `Approved with conditions` · `Not approved` · `Further information required`. Bốn giá trị của D3 nói về việc một hit watch-list có thật hay không, không chuyển sang claim được.
 
-**(c) Chỉ 3/7 điều kiện của C1 đánh giá được.** Ba vế đọc phân loại B7 (category = Borderline / category = Therapeutic — not permitted / risk = High) đã chạy. Bốn vế còn lại **không có nguồn dữ liệu**: wording không nằm trong Claims Library (F11 chưa có nội dung) · claim khác wording đã duyệt (không lưu lịch sử wording) · thị trường áp hạn chế (F10 chưa có) · claim liên quan pregnancy/breastfeeding/infant/disease… (đọc từ wording là phán định).
+**(c-bis) Vế *"varies from previously approved wording"* — cài được sau khi project owner phản biện.** Project owner chỉ ra: *"đến Evidence Plan & Claim Support mới bắt đầu khai báo claim thì làm gì có claim nào trước đó"*. Đúng ở thời điểm khai báo — và chính điều đó nói lên vế này **không nói về lúc khai báo**, mà về **thay đổi theo thời gian**. Thêm nữa, C1 đã có vế riêng *"not in the approved Claims Library"*, nên vế này không thể lại là chuyện thư viện claim, nếu không hai vế trùng nhau.
+
+Đọc là: **câu chữ bị sửa SAU khi đã được duyệt**. Kịch bản thật nó chặn: Gate 3 duyệt *"helps soothe the **appearance** of dry skin"*, ba tuần sau thành *"soothes irritated skin"* — chữ ký cũ nằm dưới một câu chưa ai duyệt.
+
+Đã cài: cột `reviewedWording` (**read-only**, do API ghi trong `snapshotReviewedWording`) chụp lại câu chữ **mỗi khi ngày review được ghi hoặc đổi**. Trigger bật lại — và item ngừng thoả — khi `approvedWording` khác `reviewedWording`. Snapshot do server tính chứ không phải người gõ: một ảnh chụp mà ai cũng sửa được thì không chứng minh gì.
+
+Nhờ vậy **4/7** vế của C1 đã cưỡng chế được, không còn 3.
+
+**Hai điểm mờ mới, vẫn là cách đọc:** (e) *"previously approved"* là lần duyệt trước **của chính claim này** (cách đọc trên) hay một claim đã duyệt ở **dự án/SKU khác** — nếu là vế sau thì lại phải chờ Claims Library; (f) sửa **chính tả hoặc rút gọn** có tính là "varies" không? Hiện so sánh **chuỗi thuần**, tức mọi khác biệt đều tính. D2 vòng 3 có tinh thần ngược lại cho nội dung published (*"Minor adaptation may be allowed where the meaning, scope, qualifiers and evidence burden remain unchanged"*), nhưng áp tinh thần đó ở đây cần một người xác nhận "khác nhưng cùng nghĩa", không phải một phép so chuỗi.
+
+**(c) Chỉ 4/7 điều kiện của C1 đánh giá được (3 vế phân loại + vế wording ở trên).** Ba vế đọc phân loại B7 (category = Borderline / category = Therapeutic — not permitted / risk = High) đã chạy. Bốn vế còn lại **không có nguồn dữ liệu**: wording không nằm trong Claims Library (F11 chưa có nội dung) · claim khác wording đã duyệt (không lưu lịch sử wording) · thị trường áp hạn chế (F10 chưa có) · claim liên quan pregnancy/breastfeeding/infant/disease… (đọc từ wording là phán định).
 
 Bốn vế đó **hiện thẳng trên item** qua trường mới `coverageNote` (*"Partly checked: …"*) thay vì im lặng — vì bỏ vế không đánh giá được rồi báo cáo như đã phủ hết luật đúng là một trong hai sai lầm CLAUDE.md ghi tên.
 
