@@ -254,8 +254,14 @@ function evaluateReadinessCheck(
     case 'gateCheckDone': {
       const row = project.gateChecks.find((c) => c.gate === check.gate && c.check === check.check);
       // Same rule as the existing phase-level keyChecksDone: done+Y, or
-      // NA+justified (a note explaining why it's not applicable).
-      const satisfied = !!row && ((row.done && row.ynna === 'Y') || (row.ynna === 'NA' && !!row.notes?.trim()));
+      // NA+justified (a note explaining why it's not applicable) — except where
+      // the row declares a trigger that makes N/A untrue. See
+      // `naInvalidWhenTrigger`: on a project the trigger touches, "not applicable"
+      // is a statement the app can see is wrong, so only done+Y counts.
+      const naAllowed =
+        !check.naInvalidWhenTrigger || !isReadinessTriggerActive(project, check.naInvalidWhenTrigger);
+      const satisfied =
+        !!row && ((row.done && row.ynna === 'Y') || (naAllowed && row.ynna === 'NA' && !!row.notes?.trim()));
       return { evaluable: true, satisfied };
     }
     case 'checklistHasSelection': {

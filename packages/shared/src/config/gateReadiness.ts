@@ -60,7 +60,15 @@ export type ReadinessCheck =
   // its exact (gate, check) pair — satisfied when that row is done+Y, or
   // NA+justified (same rule already used for phase-level keyChecksDone).
   // Mapping confirmed 2026-07-22: see docs/archive/F1_Gate_Readiness_Mapping_Proposal.md.
-  | { kind: 'gateCheckDone'; gate: string; check: string }
+  // `naInvalidWhenTrigger` (2026-08-12, project owner: "the project already knows
+  // whether pregnancy/breastfeeding applies"): for a row whose own wording is
+  // conditional — Gate 7's "…screen completed **where triggered**" — closing it as
+  // NA is the right answer on a project the condition does not touch, and E1
+  // asks for exactly that ("General products should record N/A with rationale").
+  // But the app can evaluate the condition, and was letting NA satisfy the row on
+  // projects where it demonstrably applies. With this set, an active trigger
+  // narrows the row to done+Y only; NA no longer counts.
+  | { kind: 'gateCheckDone'; gate: string; check: string; naInvalidWhenTrigger?: ReadinessTrigger }
   // Minimum-bar guard on a Phase checklist section (`ProjectData.checklists[section]`,
   // e.g. targetUsers/targetMarkets/targetArea): satisfied once at least one row
   // has `status === 'Y'` — i.e. the section has actually been engaged with, not
@@ -1492,7 +1500,22 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Pregnancy/breastfeeding and baby-contact screen completed where triggered',
       tier: 'Mandatory',
       source: 'b3',
-      check: { kind: 'gateCheckDone', gate: '07', check: 'Pregnancy/breastfeeding and baby-contact screen completed where triggered' },
+      // This row is E1's fourth line in practice — "General products should record
+      // N/A with rationale where neither pathway applies" — which is why it stays
+      // Mandatory and unconditional: the N/A itself is the required record, so
+      // auto-passing it would remove the very statement E1 asks for.
+      //
+      // What was missing (2026-08-12, project owner): the row's own wording is
+      // "where triggered", the app can evaluate that trigger, and NA was accepted
+      // regardless. So on a project with Pregnancy selected, this row could be
+      // dismissed as not applicable while `sg07-maternal-infant` blocked the same
+      // gate for the opposite reason. Now an active trigger requires done+Y.
+      check: {
+        kind: 'gateCheckDone',
+        gate: '07',
+        check: 'Pregnancy/breastfeeding and baby-contact screen completed where triggered',
+        naInvalidWhenTrigger: 'skincareForTwo',
+      },
     },
     {
       id: 'sg07-bom-reconciled',

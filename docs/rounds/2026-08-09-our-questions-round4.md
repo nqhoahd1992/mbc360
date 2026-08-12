@@ -524,7 +524,9 @@ Your E1 answer had four parts. Only one of them was in place, and the first sent
 
 A finding marked **not** critical blocks nothing, whatever its status.
 
-**Still not done, and it is the same gap as Question 1:** infant-only products have no pathway to be routed to, and general products are auto-passed with an explanation rather than being asked to record N/A with a rationale (that second point is Question 16).
+**Your fourth line is met, and we tightened its opposite.** "General products should record N/A with rationale where neither pathway applies" is the Gate 7 Key Gate Check row "Pregnancy/breastfeeding and baby-contact screen completed where triggered": it stays mandatory, and marking it N/A requires a written justification — so the N/A itself is the record you asked for. What was missing is that the system already knows whether the condition applies, and was accepting N/A regardless. On a project with Pregnancy selected, that row can no longer be dismissed as not applicable; only a completed screen satisfies it.
+
+**Still not done, and it is the same gap as Question 1:** infant-only products have no pathway to be routed to.
 
 **Question:** (a) what values should Severity have? (b) What values should Status have? (c) Should "Required action" be a controlled Next Action, as in D3, or is free text right? (d) Should an unjudged finding block Gate 7? (e) Should closing a critical finding require the reviewer conclusion and evidence link?
 

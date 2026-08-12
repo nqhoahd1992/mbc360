@@ -1113,7 +1113,7 @@ Khác biệt thực tế giữa hai cách đọc rất hẹp nhưng có thật: 
 | Safety-finding control **riêng** (9 trường) + *"Gate 7 cannot pass while any critical safety finding is open"* | ❌ | ✅ sổ `criticalSafetyFindings` |
 | Pregnancy/breastfeeding ở Gate 7 **không** unconditional | ✅ 07/08 | ✅ |
 | Infant-only → Infant/Baby Safety pathway | ❌ chờ A2 | ❌ **vẫn là lỗ hổng an toàn** (câu 1) |
-| General products **ghi N/A kèm lý do** | 🟡 tự pass | 🟡 vẫn vậy — `R4-Q13` / câu 16 |
+| General products **ghi N/A kèm lý do** | ✅ (đã đúng từ trước, tôi đánh giá sai) | ✅ + siết chiều ngược |
 
 **E1 bác thẳng thứ đang chạy:** `sg07-no-critical` **dùng chung check** với `sg07-final-safety` (cả hai đọc *"10 câu Final Safety Sign-off đều Completed"*), tức đúng thứ câu đầu của E1 phủ định — *"rather than relying **solely** on the Final Safety Sign-off"*. Comment trong code còn đoán trước: *"if the team wants a distinct critical-finding field, that is a config addition, not a rule change"*. Họ muốn.
 
@@ -1129,6 +1129,12 @@ Khác biệt thực tế giữa hai cách đọc rất hẹp nhưng có thật: 
 | 4 | Dòng **chưa phán định** (`criticalFinding` trống) **chặn**; và dòng `Yes` + `Closed` mà **thiếu** reviewer conclusion hoặc evidence cũng chặn | E1 nói *open critical finding* làm gì, không nói dòng **chưa ai phán** làm gì — để pass được thì có thể park một finding vô thời hạn, ngược hẳn nghĩa "control". Vế thứ hai **mượn khuôn D3**, nơi SME **đã** nói cho tình huống tương tự: *"may be closed after reviewer rationale and evidence are recorded"* |
 
 Dòng đánh `No` **không chặn gì**, bất kể status — luật E1 nói về *critical* finding.
+
+**Tự sửa nhận định, 2026-08-12 (project owner hỏi *"dòng Key Gate Check đó chưa xử lý à?"*):** tôi đã báo vế 4 là 🟡 *"app tự pass"*. Sai — điều đó chỉ đúng với `sg07-caution-closed`. Dòng **`sg07-screen-check`** là Mandatory và `gateCheckDone` chỉ thoả khi `done+Y` **hoặc** `NA + có notes`, tức nó **chính là** đường N/A-kèm-lý-do E1 đòi. Comment cũ trong code cũng đã ghi *"the only N/A route"*. Vế 4 **đã đạt từ trước**.
+
+**Nhưng có lỗ hổng ở chiều ngược lại, và đã sửa:** dòng đó mang chữ *"where triggered"*, app **biết** trigger bật hay không, mà **NA vẫn được nhận bất kể**. Nên trên dự án đã chọn Pregnancy, dòng này có thể bị đánh `NA` + ghi bừa một chữ là qua — tuyên bố "không áp dụng" cho đúng thứ đang áp dụng, trong khi `sg07-maternal-infant` chặn cùng gate vì lý do ngược lại. Thêm `naInvalidWhenTrigger` trên `gateCheckDone`: trigger bật thì **chỉ `done+Y`** mới thoả.
+
+**Không thành câu hỏi mới:** E1 nói thẳng *"It is mandatory when Pregnancy, Breastfeeding or Postpartum is selected"* — chặn N/A ở đó là **thi hành** câu đó, không phải diễn giải. Đã test 8 nhánh: general + NA-có-lý-do → qua (đúng vế 4); maternal + NA-có-lý-do → **chặn**; cả hai đều cần notes nếu dùng NA.
 
 **Câu hỏi:** (a) `Severity` gồm giá trị nào? (b) `Status` gồm giá trị nào? (c) `Required action` có phải là một Next Action có kiểm soát như D3 đòi ở Gate 4, hay free text là đủ? (d) một finding **chưa ai phán định critical hay không** thì Gate 7 có được qua không (ta đang chặn)? (e) đóng một critical finding có buộc phải có reviewer conclusion + evidence link không (ta đang buộc, mượn khuôn D3)?
 
