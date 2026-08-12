@@ -4,24 +4,32 @@
  *
  *   npm run verify:scaffold          (needs the dev Postgres running)
  *
- * Why this exists: checklist sections, requirement rows and `mode: 'fixed'`
- * register rows are materialised ONCE, when a project is created. Adding a
- * section to config therefore gives it to future projects only — every existing
- * project shows that table empty, and any readiness check reading it can never
- * be satisfied there. Nothing fails, nothing logs; the table just looks like a
- * feature nobody built.
+ * Why this exists: checklist sections, requirement rows, Key Gate Check rows and
+ * `mode: 'fixed'` register rows are materialised ONCE, when a project is created.
+ * Adding a section to config therefore gives it to future projects only — every
+ * existing project shows that table empty, and any readiness check reading it can
+ * never be satisfied there. Nothing fails, nothing logs; the table just looks like
+ * a feature nobody built.
  *
- * It has now happened twice in a day, both caught by a person noticing an empty
- * table rather than by any tooling:
+ * It has now happened four times, every one caught by a person rather than by
+ * tooling:
  *   - 2026-08-10, the two gate-01 checklists (Request Origin, Development /
  *     Change Type), fixed by migration 20260810041500;
  *   - 2026-08-11, Phase 1's 16-row Project Requirements & Exclusions (SME B6,
- *     shipped 2026-08-09), fixed by migration 20260811071500.
+ *     shipped 2026-08-09), fixed by migration 20260811071500;
+ *   - 2026-08-12, two Key Gate Check rows (SME B2 and C2, both shipped
+ *     2026-08-09), fixed by migration 20260812043000 — and by widening this
+ *     script, which until then did not look at gate checks at all and reported
+ *     clean while two gates were unsatisfiable.
  *
- * The fix in both cases is the same shape: a migration that backfills the rows
- * for existing projects, generated from the same config a new project reads. Run
- * this after any change to PHASE_CONFIGS' checklistSections/requirementSections
- * or to a fixed register's rows.
+ * That last one is the argument for checking identity and not only counts: it hid
+ * better than the first two, which showed an EMPTY table, because a table short
+ * one row out of four looks populated.
+ *
+ * The fix is always the same shape: a migration that backfills the rows for
+ * existing projects, generated from the same config a new project reads. Run this
+ * after any change to PHASE_CONFIGS' checklistSections / requirementSections /
+ * keyGateChecks, or to a fixed register's rows.
  */
 import { execSync } from 'node:child_process';
 import { PHASE_CONFIGS } from '../src/config/phases';
@@ -45,6 +53,9 @@ interface Drift {
   key: string;
   config: number;
   db: number;
+  // Gate checks are compared by identity, not just count, so the report can name
+  // the rows that are actually missing.
+  missing?: string[];
 }
 
 const projects = query('select "id" from projects order by "id"').map(([id]) => id);
@@ -64,8 +75,36 @@ const checklistCounts = counts('checklist_items', 'sectionKey');
 const requirementCounts = counts('requirement_items', 'sectionKey');
 const registerCounts = counts('register_rows', 'registerKey');
 
+// Key Gate Checks are scaffolded once too, and were the third and fourth case of
+// this defect (2026-08-12, migration 20260812043000): two rows added to config on
+// 2026-08-09 never reached the existing project, so `gateCheckDone` — which reads
+// satisfied=false for a row that does not exist — blocked Gates 01 and 04 with no
+// row on screen to tick. Compared by IDENTITY rather than by count, because a
+// renamed check leaves the count equal while breaking the item that reads it.
+const gateCheckKeys = new Map<string, Set<string>>();
+for (const [projectId, gate, check] of query('select "projectId", gate, "check" from gate_checks')) {
+  const set = gateCheckKeys.get(projectId) ?? new Set<string>();
+  set.add(`${gate}|${check}`);
+  gateCheckKeys.set(projectId, set);
+}
+const wantedGateChecks = Object.values(PHASE_CONFIGS).flatMap((phase) =>
+  phase.keyGateChecks.map((kc) => `${kc.gate}|${kc.check}`),
+);
+
 const drifts: Drift[] = [];
 for (const project of projects) {
+  const have = gateCheckKeys.get(project) ?? new Set<string>();
+  const missing = wantedGateChecks.filter((key) => !have.has(key));
+  if (missing.length > 0) {
+    drifts.push({
+      project,
+      kind: 'gate check',
+      key: `${missing.length} dòng`,
+      config: wantedGateChecks.length,
+      db: have.size,
+      missing,
+    });
+  }
   for (const phase of Object.values(PHASE_CONFIGS)) {
     for (const section of phase.checklistSections) {
       const db = checklistCounts.get(`${project}::${section.key}`) ?? 0;
@@ -100,6 +139,7 @@ if (drifts.length === 0) {
 
 for (const d of drifts) {
   console.log(`  ${d.project}  ${d.kind.padEnd(11)} ${d.key.padEnd(26)} config ${String(d.config).padStart(3)} · db ${String(d.db).padStart(3)}`);
+  for (const key of d.missing ?? []) console.log(`      thiếu: ${key}`);
 }
 console.log(
   `\n❌ ${drifts.length} chỗ lệch. Viết một migration bù dữ liệu, sinh các dòng TỪ CHÍNH config` +
