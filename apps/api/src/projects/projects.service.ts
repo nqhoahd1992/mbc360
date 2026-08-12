@@ -11,6 +11,7 @@ import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
 import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
 import { RM_EVIDENCE_REGISTER, rmEvidenceContradictions } from '@mbc360/shared/utils/rmEvidence';
+import { WATCHLIST_REGISTER, brokenNextActionLinks, watchlistLabel } from '@mbc360/shared/utils/watchlistReview';
 import {
   VULNERABLE_REGISTER,
   targetUsersPinnedByAssessment,
@@ -762,6 +763,19 @@ export class ProjectsService {
             `${bad.length} Supplier & RM Evidence row(s) are marked approved for use while still carrying an evidence review status: ${bad
               .map((r) => `${String(r.rmCode ?? '(no RM code)')} -> ${String(r.evidenceStatus)}`)
               .join(', ')}. Clear the status, or un-approve the row.`,
+          );
+        }
+      }
+      // D3: "A genuine controlled Next Action must be used. A note alone is not
+      // sufficient." A reference that resolves to nothing is the same thing as a
+      // note — it looks like a controlled action and is not one.
+      if (registerKey === WATCHLIST_REGISTER) {
+        const broken = brokenNextActionLinks(project, rows);
+        if (broken.length > 0) {
+          throw new BadRequestException(
+            `${broken.length} watch-list row(s) link a Next Action that does not exist: ${broken
+              .map((r) => `${watchlistLabel(r)} -> ${String(r.linkedNextActionId)}`)
+              .join(', ')}. Raise the action first, then link it.`,
           );
         }
       }

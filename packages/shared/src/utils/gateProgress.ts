@@ -10,6 +10,7 @@ import {
 } from '../config/claimReview';
 import { TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
 import { RM_EVIDENCE_REGISTER, conditionallyAcceptedRmRows, hasUsableRmRow, unresolvedRmRows } from './rmEvidence';
+import { WATCHLIST_REGISTER, watchlistConditionalRows, watchlistHardBlockers } from './watchlistReview';
 import {
   GATE_READINESS,
   type ReadinessCheck,
@@ -241,6 +242,10 @@ function evaluateReadinessCheck(
         evaluable: true,
         satisfied: conditionallyAcceptedRmRows(project.registers[RM_EVIDENCE_REGISTER] ?? []).length === 0,
       };
+    case 'watchlistReviewed':
+      return { evaluable: true, satisfied: watchlistHardBlockers(project).length === 0 };
+    case 'watchlistNoneConditional':
+      return { evaluable: true, satisfied: watchlistConditionalRows(project).length === 0 };
     case 'rmEvidenceHasUsable':
       return { evaluable: true, satisfied: hasUsableRmRow(project.registers[RM_EVIDENCE_REGISTER] ?? []) };
     case 'gateCheckDone': {
@@ -577,6 +582,9 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'rmEvidenceNoneConditional':
     case 'rmEvidenceHasUsable':
       return { href: `/registers/reg/${RM_EVIDENCE_REGISTER}` };
+    case 'watchlistReviewed':
+    case 'watchlistNoneConditional':
+      return { href: `/registers/reg/${WATCHLIST_REGISTER}` };
     case 'claimsRegulatoryReviewed':
       return { href: '/evidence-claim-support' };
     case 'bomHasLines':

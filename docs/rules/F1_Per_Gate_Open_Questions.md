@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–31, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–32, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -398,6 +398,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q24 | C1 — bằng chứng nào là "đã Regulatory review"; 4/7 điều kiện chưa kiểm được | 🔴 | 27 |
 | R4-Q25 | Claims Library ở cấp công ty hay cấp dự án, và claim có bắt buộc trỏ tới entry không | 🔴 | 28 |
 | R4-Q26 | D1 — 5 điểm chưa nói: record version của cái gì · comment bắt buộc khi nào · gate nào là "critical" · độc lập nghĩa là gì · chặn ở thời điểm nào | 🔴 | 29 |
+| R4-Q29 | D3 — "flagged" gồm status nào · giá trị Resolution status · "authorised acceptance" là gì · dòng chưa đánh giá có được PwC gỡ · có áp cho PB Caution Limits | 🔴 | 32 |
 | R4-Q28 | D4 — "applicable" gồm nguyên liệu nào · trạng thái "đã cân nhắc, không dùng" · "controlled conditional decision" là PwC hay trường riêng | 🔴 | 31 |
 | R4-Q27 | D2 — 4 quyết định trong phần vừa xây (ngưỡng chặn ở release · 3 giá trị so sánh wording · khác biệt nào tính · "material change" chỉ chặn chứ không tự tạo claim mới) + 2 vế chưa có chỗ gắn (artwork approval · external publication) | 🔴 | 30 |
 
@@ -1059,3 +1060,38 @@ Khác biệt thực tế giữa hai cách đọc rất hẹp nhưng có thật: 
 **Không cần migration:** dòng cũ trong DB không có `evidenceStatus`. Dòng đã `approvedForUse` vẫn resolved (approval thắng); dòng chưa approve thì **đúng là chưa được dispositioned** nên chặn là đúng — backfill một disposition mà không ai ghi mới là bịa.
 
 **Nếu trả lời khác:** `RM_EVIDENCE_*` trong `packages/shared/src/config/registers.ts`; `packages/shared/src/utils/rmEvidence.ts` (4 predicate); `clearedByConditions` trong `gateReadiness.ts` + nhánh của nó trong `gateReadinessChecklist()`; 5 item `sg04-rm-*` / `sgNN-rm-evidence-complete`.
+
+#### R4-Q29 · D3 — "flagged" gồm status nào, giá trị Resolution status, và "authorised acceptance" là gì 🔴
+
+**Đã build 2026-08-12.** Trước đó D3 **chưa có gì cả** — chính ta đã báo điều đó với SME ở vòng 3 (*"we have to report that it is not implemented at all"*), và họ trả lời bằng một đặc tả đầy hơn thứ ta đề xuất: **7 trường** + **4 giá trị** assessment + **4 luật chặn** riêng cho từng giá trị.
+
+**Lỗ hổng nó đóng:** một dòng ở `REVIEW - possible formula match` đi qua Gate 4 bằng **`Proceed` thuần**, không cần ai đánh giá. Cùng giá trị đó chỉ bị chặn ở **Gate 7** (`sg07-prohibited-closed`) — mà tới đó công thức đã chốt ở Gate 5. Tức app đang xử lý "có thể trùng chất cấm" bằng cách bỏ qua ở đúng gate sinh ra để sàng nó.
+
+**Phần lớn là chép lại, không phải suy đoán:** 7 cột (`reviewerAssessment` · `reviewer` · `reviewDate` · `reviewRationale` · `evidenceLink` (đã có) · `linkedNextActionId` · `resolutionStatus`), 4 giá trị **nguyên văn và đúng thứ tự** của SME, và 4 luật map vào cơ chế `hardBlock` / `clearedByConditions` vừa dựng cho D4.
+
+**Bốn quyết định của dev:**
+
+| # | Quyết định | Vì sao |
+|---|---|---|
+| 1 | **"flagged" = `REVIEW - possible formula match` + `Needs Regulatory Review`** | D3 chỉ đặt tên vế đầu (tiêu đề là *"Possible formula match"*). Gộp vế sau vào vì **cùng tình huống** (đã đẩy cho người có chuyên môn, chưa xong) và bỏ ra thì escalation đó **không chặn gì ở Gate 4**. Hướng sai an toàn hơn: reviewer luôn gỡ được bằng `Not a true match` + rationale. `Prohibited - remove` **không** thuộc đây — nó không phải "possible", và `sg04-no-remove` đã chặn thẳng |
+| 2 | **`Resolution status` = `Open` / `Closed`** | D3 nêu trường, không nêu giá trị. Suy từ chính câu *"Not a true match **may be closed** after…"* |
+| 3 | **Dòng flagged CHƯA ai đánh giá → chặn cả PwC** | D3 nói từng *giá trị* làm gì, không nói dòng **chưa có giá trị** làm gì. Nếu "chưa đánh giá" mà PwC gỡ được thì cả cơ chế thành tùy chọn — chọn PwC là khỏi cần đánh giá — điều không thể là ý của một quy tắc mà mọi câu đều mở đầu *"blocks Proceed until…"* |
+| 4 | *"authorised acceptance"* của mức `Further information required` **chưa cài riêng** | Ghi decision PwC đã là hành vi có audit của một role được phép quyết gate, nhưng **không phải một bước acceptance riêng**. Không im lặng: item mang `coverageNote` nói đúng chỗ chưa cài |
+
+**Map 4 luật của D3:**
+
+| Assessment | D3 nói | Cài thế nào |
+|---|---|---|
+| `Critical` | chặn cả Proceed và PwC | `watchlistReviewed` → `hardBlock` |
+| chưa đánh giá / thiếu hồ sơ | *(D3 không nói)* | cùng check trên → `hardBlock` **[quyết định 3]** |
+| `Non-critical` | chặn Proceed thuần tới khi có assessment + rationale + action; cho PwC | `watchlistNoneConditional` → `clearedByConditions` |
+| `Further information required` | chặn Proceed; cho PwC **chỉ khi** có authorised acceptance + linked action | như trên + `coverageNote` **[quyết định 4]** |
+| `Not a true match` | đóng được sau khi có rationale + evidence | không chặn gì khi đã đủ hai thứ đó |
+
+**"A genuine controlled Next Action must be used. A note alone is not sufficient."** → `linkedNextActionId` là **picker** trỏ tới bản ghi thật (`NextActionSelect`, khuôn `ClaimSelect`), và API **từ chối** id không resolve được (`brokenNextActionLinks`) — một id gõ tay chính là "a note", đúng thứ câu đó cấm.
+
+**Câu hỏi:** (a) "flagged" có gồm `Needs Regulatory Review` không, hay chỉ `REVIEW - possible formula match`? (b) `Resolution status` gồm những giá trị nào? (c) *"authorised acceptance"* là gì — cùng cơ chế acknowledge của F9, một phép kiểm quyền riêng, hay ghi PwC là đủ? (d) dòng flagged **chưa ai đánh giá** thì PwC có gỡ được không (ta đang chặn)? (e) `PB_Caution_Limits` — watch-list thứ hai — có cần cùng bộ 7 trường không? D3 viết *"each flagged watch-list result"* nhưng tiêu đề chỉ nói possible formula match.
+
+**Không cần migration:** `prohibitedIngredients` là `mode:'fixed'` — thêm **cột** không đổi số dòng, và 12 dòng seed đều ở `No formula match recorded` nên **không dòng nào flagged** trên dự án mới → check tự thoả, không chặn oan (đúng chiều S3 muốn).
+
+**Nếu trả lời khác:** `WATCHLIST_*` trong `packages/shared/src/config/registers.ts`; 5 hàm trong `packages/shared/src/utils/watchlistReview.ts`; 2 item `sg04-watchlist-*`.

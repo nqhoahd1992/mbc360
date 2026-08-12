@@ -10,6 +10,7 @@ import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
 import MarketSelect from './MarketSelect';
 import ClaimSelect, { findClaim, useClaimRows } from './ClaimSelect';
+import NextActionSelect from './NextActionSelect';
 import { derivedColumnGate, spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
 
 export default function DynamicTable({
@@ -104,6 +105,15 @@ export default function DynamicTable({
       case 'claimRef':
         return (
           <ClaimSelect
+            value={value as string | undefined}
+            onChange={(v) => patch(index, column.key, v)}
+          />
+        );
+      // D3: a flagged watch-list row must link a REAL controlled Next Action, so
+      // this is a picker over the project's own actions rather than a text field.
+      case 'nextActionRef':
+        return (
+          <NextActionSelect
             value={value as string | undefined}
             onChange={(v) => patch(index, column.key, v)}
           />

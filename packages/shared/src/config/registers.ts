@@ -12,7 +12,7 @@ import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 // "Vietnam", "VN" and "vietnam" three different markets, and let a row name a
 // market the project does not sell into. `markets` stores a comma-joined
 // string, which is what those columns already held as free text.
-export type ColumnType = 'text' | 'textarea' | 'select' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef';
+export type ColumnType = 'text' | 'textarea' | 'select' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef' | 'nextActionRef';
 
 export interface RegisterColumn {
   key: string;
@@ -109,6 +109,44 @@ export const RM_EVIDENCE_CONDITIONAL = 'Conditionally accepted — controlled ac
 // — deleting it would destroy the evidence that the material was screened
 // [ASSUMPTION: R4-Q28].
 export const RM_EVIDENCE_NOT_USED = 'Considered — not used in this formula';
+
+// Rule D3 (SME Round 3) on a flagged watch-list result at Gate 4. Transcribed:
+// "Please add the following fields to each flagged watch-list result: Reviewer
+// assessment: Critical / Non-critical / Not a true match / Further information
+// required; Reviewer; Review date; Rationale; Evidence link; Linked Next Action
+// ID; Resolution status. A genuine controlled Next Action must be used. A note
+// alone is not sufficient."
+//
+// The four values are theirs, verbatim and in their order.
+export const WATCHLIST_ASSESSMENT_CRITICAL = 'Critical';
+export const WATCHLIST_ASSESSMENT_NON_CRITICAL = 'Non-critical';
+export const WATCHLIST_ASSESSMENT_NOT_A_MATCH = 'Not a true match';
+export const WATCHLIST_ASSESSMENT_MORE_INFO = 'Further information required';
+export const WATCHLIST_ASSESSMENT_OPTIONS = [
+  WATCHLIST_ASSESSMENT_CRITICAL,
+  WATCHLIST_ASSESSMENT_NON_CRITICAL,
+  WATCHLIST_ASSESSMENT_NOT_A_MATCH,
+  WATCHLIST_ASSESSMENT_MORE_INFO,
+] as const;
+
+// D3 names "Resolution status" as a field but gives no values. Two is enough to
+// express what its own rules need — "Not a true match may be CLOSED after
+// reviewer rationale and evidence are recorded" [ASSUMPTION: R4-Q29].
+export const WATCHLIST_RESOLUTION_OPTIONS = ['Open', 'Closed'] as const;
+
+// Which `productStatus` values make a row "a flagged watch-list result" — i.e.
+// which rows D3's fields and rules apply to. `REVIEW - possible formula match` is
+// the case D3's own heading names. `Needs Regulatory Review` is included because
+// it is the same situation (a row escalated to a qualified reviewer and not yet
+// resolved) and excluding it would leave that escalation blocking nothing at Gate
+// 4 at all — but D3 does not name it [ASSUMPTION: R4-Q29].
+//
+// `Prohibited - remove` is deliberately NOT here: it is not a *possible* match,
+// and `sg04-no-remove` already hard-blocks it outright.
+export const WATCHLIST_FLAGGED_STATUSES: readonly string[] = [
+  'REVIEW - possible formula match',
+  'Needs Regulatory Review',
+];
 
 export const RM_EVIDENCE_STATUS_OPTIONS = [
   RM_EVIDENCE_INCOMPLETE,
@@ -262,6 +300,18 @@ const prohibitedIngredients: RegisterConfig = {
       ],
     },
     { key: 'formulaMatchCount', label: 'Formula match count', type: 'number', width: 90 },
+    // Rule D3 — the reviewer trail a flagged result must carry before Gate 4 can
+    // move. Every field here is one D3 names; only the Resolution status VALUES
+    // and the flagged-status scope are ours (see WATCHLIST_* in this file).
+    { key: 'reviewerAssessment', label: 'Reviewer assessment', type: 'select', width: 190, options: WATCHLIST_ASSESSMENT_OPTIONS },
+    { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140 },
+    { key: 'reviewDate', label: 'Review date', type: 'date', width: 120 },
+    { key: 'reviewRationale', label: 'Rationale', type: 'textarea', width: 220 },
+    // "A genuine controlled Next Action must be used. A note alone is not
+    // sufficient." So this is a picker over the project's real Next Actions, and
+    // an id that resolves to nothing is rejected — not free text.
+    { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 220 },
+    { key: 'resolutionStatus', label: 'Resolution status', type: 'select', width: 120, options: WATCHLIST_RESOLUTION_OPTIONS },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
     { key: 'owner', label: 'Owner', type: 'user', width: 110 },
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 130, editable: false },

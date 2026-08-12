@@ -166,6 +166,12 @@ export type ReadinessCheck =
   // "Considered — not used" satisfies both of them, so Gate 4 would pass with
   // nothing the formula can be built from.
   | { kind: 'rmEvidenceHasUsable' }
+  // Rule D3: no flagged watch-list row is Critical, unassessed, or assessed
+  // without the record that verdict requires. Blocks Proceed with Conditions too.
+  | { kind: 'watchlistReviewed' }
+  // Rule D3: no flagged row is resting on Non-critical / Further information
+  // required — both of which D3 allows only under Proceed with Conditions.
+  | { kind: 'watchlistNoneConditional' }
   | { kind: 'allOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
@@ -899,6 +905,43 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       source: 'f-series',
       assumption: 'R4-Q28',
       check: { kind: 'rmEvidenceHasUsable' },
+    },
+    {
+      // Rule D3, built 2026-08-12. Until then a row at "REVIEW - possible formula
+      // match" blocked NOTHING at Gate 4 — plain Proceed included — and only bit at
+      // Gate 7, after the formula had been locked at Gate 5. We reported that
+      // ourselves in Round 3 D3; this is the answer being implemented.
+      //
+      // Covers three of D3's four rules at once, because all three end the gate
+      // outright: a Critical verdict, a flagged row with no verdict, and a verdict
+      // missing the record it requires (a linked controlled action for Non-critical
+      // and Further information required; the evidence link for Not a true match).
+      id: 'sg04-watchlist-reviewed',
+      label: 'Every possible watch-list match has a qualified reviewer assessment on record',
+      tier: 'Mandatory',
+      source: 'f-series',
+      assumption: 'R4-Q29',
+      check: { kind: 'watchlistReviewed' },
+    },
+    {
+      // D3's fourth rule: Non-critical "may permit Proceed with Conditions", and
+      // Further information required "may allow Proceed with Conditions only with
+      // authorised acceptance and a linked controlled action". Same severity as an
+      // open Change Control under F9, so the same treatment.
+      id: 'sg04-watchlist-conditional',
+      label: 'No watch-list match is resting on a reviewer assessment that needs conditions',
+      tier: 'Mandatory',
+      source: 'f-series',
+      assumption: 'R4-Q29',
+      clearedByConditions: true,
+      // D3 asks for "authorised acceptance" on Further information required
+      // specifically. Recording the Proceed with Conditions decision is an audited
+      // act by a role permitted to decide the gate, but it is not a separate
+      // acceptance step, so the difference is disclosed rather than implied.
+      coverageNote:
+        'the app requires the reviewer assessment, rationale and a linked controlled action, then lets Proceed with Conditions clear it. ' +
+        'For "Further information required" the review team also asked for authorised acceptance as a distinct step; that is not built.',
+      check: { kind: 'watchlistNoneConditional' },
     },
     {
       id: 'sg04-no-remove',

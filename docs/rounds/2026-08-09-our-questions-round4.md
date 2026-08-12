@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has thirty-one questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has thirty-two questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Questions 20–31** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
+5. **Questions 20–32** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
 
 ---
 
@@ -487,6 +487,23 @@ The practical difference is narrow but real: a record left at "Incomplete" for a
 
 **Question:** (a) is "every row in the register" the right reading of "applicable" at Gate 4? (b) Is a status the right way to record a material considered and not used, or would you rather that be recorded somewhere else? (c) Is the conditional route the Proceed with Conditions mechanism you already specified, or a separate per-material approval? (d) Must a conditional acceptance be closed before Gate 7, as we have assumed? (e) Is "at least one usable material" right, or can Gate 4 legitimately pass with every candidate rejected? (f) At Gates 7, 10 and 11, where the formula does exist, does "applicable" mean every record in the register or only the materials in the formula?
 
+### Question 32 — The watch-list reviewer trail is built; four choices inside it are ours
+
+Your D3 answer is implemented, and it closes the gap we reported to you ourselves — that a possible formula match blocked nothing at Gate 4.
+
+**What it was doing.** A row reading "REVIEW – possible formula match" passed Gate 4 on a plain Proceed with nobody having looked at it. The same value did block at Gate 7 — but by then the formula has been locked at Gate 5, so the system was ignoring a possible prohibited-ingredient match at precisely the gate that exists to catch it.
+
+**What is built.** Every flagged row now carries the seven fields you listed, with your four assessment values exactly as you wrote them, and each of your four rules is enforced: Critical stops the gate outright; Non-critical and Further information required stop a plain Proceed and allow Proceed with Conditions once the assessment, rationale and a linked action are on record; Not a true match closes once the rationale and evidence are recorded. The linked action is a picker over the project's real Next Actions, and a reference that resolves to nothing is refused — an id typed into a box *is* the note your sentence rules out.
+
+**The four choices we made:**
+
+1. **Which rows count as "flagged".** Your heading says possible formula match, and that status is certainly one. We have also included **"Needs Regulatory Review"**, because it is the same situation — escalated to a qualified reviewer, not yet resolved — and leaving it out would mean that escalation blocks nothing at Gate 4 at all. "Prohibited – remove" is not included: it is not a *possible* match, and it is already blocked outright.
+2. **Resolution status values: Open and Closed.** You name the field but not its values; these come from your own sentence about Not a true match being closed.
+3. **A flagged row nobody has assessed yet blocks Proceed with Conditions too.** Your four rules say what each *verdict* does, not what an unassessed row does. We could not read it as clearable by Proceed with Conditions, because then the whole mechanism becomes optional — choose Proceed with Conditions and no assessment is ever needed.
+4. **"Authorised acceptance" is not built as a separate step.** For Further information required you asked for authorised acceptance *and* a linked action before Proceed with Conditions. We enforce the assessment, rationale and linked action; recording Proceed with Conditions is itself an audited act by someone permitted to decide the gate, but it is not a distinct acceptance. The item says so on screen rather than implying we have covered it.
+
+**Question:** (a) does "flagged" include Needs Regulatory Review, or only possible formula match? (b) What values should Resolution status have? (c) What is "authorised acceptance" — the acknowledgement step you specified for an open change control under F9, a permission check, or is recording Proceed with Conditions enough? (d) Should an unassessed flagged row be clearable by Proceed with Conditions, or blocked as we have it? (e) Does the pregnancy and breastfeeding caution list — the other watch-list — need the same seven fields? Your wording says "each flagged watch-list result", but the heading names only the formula match.
+
 ---
 
 ## Summary
@@ -502,5 +519,6 @@ The practical difference is narrow but real: a record left at "Incomplete" for a
 | 29 | Five points the per-gate sign-off answer leaves open | Not built — needed together with 18 before we can start |
 | 30 | The claim-linkage and wording-adaptation rules, now built | Already built — rework if wrong; 2 parts deliberately left out |
 | 31 | The import-stub and raw-material review rules, now built | Already built — rework if wrong |
+| 32 | The watch-list reviewer trail at Gate 4, now built | Already built — closes a gap we reported ourselves |
 
 Questions 5 to 27 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
