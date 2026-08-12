@@ -388,11 +388,31 @@ C1 confirmed that a Regulatory review is mandatory for a claim that is borderlin
 
 **One more condition became checkable while writing this.** You list "the claim varies from previously approved wording" separately from "not in the approved Claims Library", so the two cannot mean the same thing — and at the moment a claim is first declared there is nothing for it to vary from. Read as a change over time it becomes concrete: the wording was approved, and then someone edited it. We now snapshot the wording whenever a review is recorded, and a claim whose wording no longer matches its snapshot needs reviewing again. The case it catches is real — "helps soothe the appearance of dry skin" is approved, and three weeks later reads "soothes irritated skin", still carrying the old signature.
 
-**Four of your seven conditions can now be checked automatically.** The three reading the classification work. The other four have no data behind them yet: wording not in the approved Claims Library (that library does not exist yet), the claim varying from previously approved wording (no wording history is kept), a market imposing a specific restriction (per-market restriction lists do not exist yet), and the claim relating to pregnancy, breastfeeding, infant use or disease (reading that from the wording is a judgement, not a lookup).
+**Four of your seven conditions can now be checked automatically** — the three reading the classification, plus the wording change just described. The other three have no data behind them yet: wording not in the approved Claims Library (that library does not exist yet — see Question 28), a market imposing a specific restriction (per-market restriction lists do not exist yet), and the claim relating to pregnancy, breastfeeding, infant use or disease (reading that from the wording is a judgement, not a lookup).
 
-We have not quietly dropped those four. The item on screen now carries the line "Partly checked: …" listing them, so nobody reads a green tick as "all seven conditions were met". Reporting a half-enforced rule as covered is a mistake we have made before and would rather not repeat.
+We have not quietly dropped those three. The item on screen now carries the line "Partly checked: …" listing them, so nobody reads a green tick as "all seven conditions were met". Reporting a half-enforced rule as covered is a mistake we have made before and would rather not repeat.
 
 **Question:** (a) are those five review fields the right record, or would you rather it looked different? (b) Are the four outcome values right? (c) If a claim's review outcome is **Not approved**, can Gate 3 still pass while that claim sits in the register, or must it be withdrawn first? (d) Is the review **per claim**, or **per market** — your own condition about a market imposing a restriction suggests it could be the latter. (e) Does "previously approved wording" mean this claim's own last approval, as we have read it, or wording approved on another project? (f) Does correcting a typo count as varying? We treat any difference as varying, which is stricter than the "minor adaptation" allowance you gave for published content in D2.
+
+### Question 28 — Is the Claims Library a company-level list that projects point at, and who keeps it?
+
+This is the one dependency still standing between C1 and being fully enforced, and before asking you for its content we would rather check that we have understood **what kind of thing it is**.
+
+**What you have already told us.** Under F11 you specified what one entry holds: approved term or claim · prohibited or discouraged alternatives · required evidence type · applicable products · applicable markets · approved context or channel · limitations or mandatory qualifiers · owner. You also said it is maintained jointly by Technical and Regulatory. So the shape of an entry is settled — this question is only about where it lives.
+
+**What we think it is.** We have read the Claims Library as a **company-level** list that sits above projects: one controlled vocabulary of wording the company may use, which every project consults and none of them owns. Two things point that way. Your own C1 condition is "wording is **not in** the approved Claims Library" — a test a project runs against something outside itself. And the master workbook, which we have checked in both versions, has no Claims Library tab: the four claim-related sheets in it (Mechanism & Claims, Twinkle 5 Claims, SKU Claims / PIF, and Claim → Evidence Traceability) all record what **this** product claims, not what the company is permitted to claim. A workbook is one project's file, so a shared library could not have lived in it even in principle.
+
+**Why the answer changes what we build.** Everything in MBc360 today is copied into a project when that project is created. A company-level library cannot work that way — it has to be one list, maintained in one place, that every project reads and no project can edit while working. That is a different piece of software from the thirty-odd registers, closer to the user administration screens, so we would rather build it once in the right shape.
+
+**Question:**
+
+1. Is the Claims Library company-level as we have read it, or is it maintained per brand, per market, or per product family?
+2. When a project proposes a claim, must its wording **point at a library entry** — so that "not in the library" is a fact the system knows rather than a judgement someone makes — or is the library guidance a reviewer consults, with the link left optional?
+3. Who may add or change an entry, and does an entry go through an approval of its own before it becomes usable? You have said Technical and Regulatory maintain it jointly; we would like to know whether that means both must agree on each entry.
+4. If a claim is approved on a project using wording that is not yet in the library, should that wording be **promoted into** the library so the next project can reuse it, or do the two stay separate?
+5. When an entry is later changed or withdrawn — a market tightens its rules, say — what should happen to claims already approved from it on products that are on sale? We can flag them for re-review, but that is a decision with commercial consequences and we do not want to invent it.
+
+This also settles a question left open in Question 27: if "previously approved wording" means wording approved anywhere in the company rather than on this claim, then it is the library that has to answer it, and the two questions are really one.
 
 ---
 
@@ -405,5 +425,6 @@ We have not quietly dropped those four. The item on screen now carries the line 
 | 5–7 | Gate 7 scope · Gate 4 threshold · unclassified claims | Already built on our reading — rework if wrong |
 | 8–19 | Which record represents each of your trigger conditions, and two data-model points | Redesign if wrong, no rework |
 | 20–27 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several types may apply; two requirements we added ourselves that block Gate 2 and Gate 7;  a duplicate market field arising from an inaccurate premise we gave in B3; which target users imply a vulnerable group | Already built — rework if wrong |
+| 28 | What kind of thing the Claims Library is, before we build it | Not built — the last dependency holding C1 back |
 
 Questions 5 to 27 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

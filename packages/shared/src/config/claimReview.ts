@@ -5,8 +5,9 @@
 // restriction; the claim relates to pregnancy, breastfeeding, infant use,
 // disease, treatment, prevention, healing or medical endorsement."
 //
-// Seven conditions. FOUR are evaluable today — the ones reading B7's per-claim
-// classification, built 2026-08-11. The other four are listed in
+// Seven conditions. FOUR are evaluable today — the three reading B7's per-claim
+// classification, plus the wording-drift check (CLAIM_REVIEWED_WORDING_COLUMN
+// below), all built 2026-08-11. The other THREE are listed in
 // UNEVALUATED_C1_CONDITIONS below and are shown to the user on the readiness
 // item, because silently enforcing half a rule and reporting it as covered is one
 // of the two mistakes this project has already made once (see CLAUDE.md).
@@ -24,7 +25,12 @@ export const CLAIM_RISKS_NEEDING_REVIEW = ['High', 'Pending classification'];
 // The three conditions C1 names that the app cannot evaluate yet, in C1's own
 // words, with what each is waiting for. Rendered on the readiness item.
 export const UNEVALUATED_C1_CONDITIONS = [
-  'wording is not in the approved Claims Library (the Claims Library content does not exist yet — F11)',
+  // Waiting on more than content: whether the library is a company-level list
+  // that a claim POINTS AT (making "not in the library" a fact the system knows)
+  // or reference material a reviewer consults (making it a judgement, and this
+  // condition permanently unevaluable) is itself unconfirmed
+  // [ASSUMPTION: R4-Q25]. Neither workbook has a Claims Library tab — checked.
+  'wording is not in the approved Claims Library (the Claims Library does not exist yet — F11)',
   'the market imposes a specific restriction (per-market restriction lists do not exist yet — F10)',
   'the claim relates to pregnancy, breastfeeding, infant use, disease, treatment, prevention, healing or medical endorsement (reading that from the wording is a judgement, not a lookup)',
 ];

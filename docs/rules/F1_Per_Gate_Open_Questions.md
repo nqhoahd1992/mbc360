@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–27, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–28, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -396,6 +396,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q22 | Map option Target Users sang Vulnerable group — 5 cặp đổi tên + 8 option không map | 🔴 | 25 |
 | R4-Q23 | Sổ Claim → Evidence Traceability thuộc gate nào — lệch với dòng SG05/SG08 của roadmap | 🔴 | 26 |
 | R4-Q24 | C1 — bằng chứng nào là "đã Regulatory review"; 4/7 điều kiện chưa kiểm được | 🔴 | 27 |
+| R4-Q25 | Claims Library ở cấp công ty hay cấp dự án, và claim có bắt buộc trỏ tới entry không | 🔴 | 28 |
 
 ---
 
@@ -920,12 +921,30 @@ Nhờ vậy **4/7** vế của C1 đã cưỡng chế được, không còn 3.
 
 **Hai điểm mờ mới, vẫn là cách đọc:** (e) *"previously approved"* là lần duyệt trước **của chính claim này** (cách đọc trên) hay một claim đã duyệt ở **dự án/SKU khác** — nếu là vế sau thì lại phải chờ Claims Library; (f) sửa **chính tả hoặc rút gọn** có tính là "varies" không? Hiện so sánh **chuỗi thuần**, tức mọi khác biệt đều tính. D2 vòng 3 có tinh thần ngược lại cho nội dung published (*"Minor adaptation may be allowed where the meaning, scope, qualifiers and evidence burden remain unchanged"*), nhưng áp tinh thần đó ở đây cần một người xác nhận "khác nhưng cùng nghĩa", không phải một phép so chuỗi.
 
-**(c) Chỉ 4/7 điều kiện của C1 đánh giá được (3 vế phân loại + vế wording ở trên).** Ba vế đọc phân loại B7 (category = Borderline / category = Therapeutic — not permitted / risk = High) đã chạy. Bốn vế còn lại **không có nguồn dữ liệu**: wording không nằm trong Claims Library (F11 chưa có nội dung) · claim khác wording đã duyệt (không lưu lịch sử wording) · thị trường áp hạn chế (F10 chưa có) · claim liên quan pregnancy/breastfeeding/infant/disease… (đọc từ wording là phán định).
+**(c) Chỉ 4/7 điều kiện của C1 đánh giá được (3 vế phân loại + vế wording ở trên).** Ba vế đọc phân loại B7 (category = Borderline / category = Therapeutic — not permitted / risk = High) đã chạy. Ba vế còn lại **không có nguồn dữ liệu**: wording không nằm trong Claims Library (F11 chưa có nội dung — và trước cả nội dung là câu hỏi nó nằm ở cấp nào, `R4-Q25`) · thị trường áp hạn chế (F10 chưa có) · claim liên quan pregnancy/breastfeeding/infant/disease… (đọc từ wording là phán định).
 
-Bốn vế đó **hiện thẳng trên item** qua trường mới `coverageNote` (*"Partly checked: …"*) thay vì im lặng — vì bỏ vế không đánh giá được rồi báo cáo như đã phủ hết luật đúng là một trong hai sai lầm CLAUDE.md ghi tên.
+Ba vế đó **hiện thẳng trên item** qua trường mới `coverageNote` (*"Partly checked: …"*) thay vì im lặng — vì bỏ vế không đánh giá được rồi báo cáo như đã phủ hết luật đúng là một trong hai sai lầm CLAUDE.md ghi tên.
 
 **(d) `Pending classification` được coi là đã trigger.** C1 không nhắc giá trị này. Ta đọc: chưa phân loại thì chưa biết rủi ro, nên phải review. (Đã ghi từ trước ở `R4-Q9`.)
 
 **Câu hỏi:** (a) 5 cột review trên có đủ và đúng tên không, hay các anh muốn khuôn khác? (b) 4 giá trị Outcome có đúng không? (c) claim `Not approved` thì Gate 3 qua được nếu claim đó vẫn nằm trong sổ, hay phải xoá/đánh dấu bỏ? (d) review theo **claim** (một lần) hay theo **thị trường** — vế *"the market imposes a specific restriction"* của chính C1 hàm ý có thể phải theo thị trường?
 
 **Nếu trả lời khác:** đổi `CLAIM_REVIEW_COLUMNS` / `CLAIM_REVIEW_OUTCOMES` trong `packages/shared/src/config/claimReview.ts`, và các cột tương ứng ở `claimEvidenceTraceability`.
+
+#### R4-Q25 · Claims Library nằm ở cấp nào — và dự án tham chiếu tới nó ra sao 🔴
+
+**Chưa build gì cả.** Đây là câu hỏi hỏi **trước khi** build, khác với R4-Q20…R4-Q24 (đều là thứ đã ship rồi mới đi xác nhận). Nêu ra 2026-08-12 sau khi project owner hỏi *"Claims Library mục đích để làm gì, workbook có phần này chưa"*.
+
+**Đã kiểm, không phải phỏng đoán:** giải nén danh sách sheet của **cả hai** workbook (`MBc360 Master Product Development System File.xlsx` và bản `v2`) — **không có tab nào là Claims Library**. Bốn tab dính chữ "claim" đều ở cấp dự án: `George-Mechanism_Claims`, `George-Twinkle5_Claims`, `ChiChu-SKU_Claims_PIF`, `4. Evidence & Claim Support`. Chúng ghi *sản phẩm này nói gì*, không ghi *công ty được phép nói gì*.
+
+**Cách đọc của ta:** Claims Library ở **cấp công ty**, đứng trên mọi dự án — một bộ từ vựng đã duyệt mà mọi dự án tra vào, không dự án nào sở hữu. Hai căn cứ: (1) chính C1 viết *"wording is **not in** the approved Claims Library"* — một phép đối chiếu với thứ nằm **ngoài** dự án; (2) workbook là hồ sơ của **một** dự án, nên về nguyên tắc không chứa được thư viện dùng chung — thiếu ở đây là thiếu thật, không phải ta bỏ sót khi số hoá.
+
+**Phần SME đã nói rồi, không cần hỏi lại:** F11 (21/07) cấp đủ **8 trường** mỗi entry (approved term · prohibited alternatives · required evidence type · applicable products · applicable markets · approved context/channel · limitations/qualifiers · owner) và nói **Technical + Regulatory cùng duy trì**. Nên câu hỏi này **chỉ về cấp lưu trữ và cách tham chiếu**, không hỏi lại hình dạng entry.
+
+**Vì sao cấp lưu trữ quyết định kiến trúc:** không dựng được bằng `RegisterConfig` như ~30 sổ còn lại. Register được **scaffold cho từng dự án** lúc tạo project (`store/factory.ts` + `project-scaffold.ts`), tức mỗi dự án một bản sao — sai hoàn toàn với thứ phải là **một** danh sách dùng chung. Phải là bảng Prisma toàn cục + trang admin riêng, gần `admin-users.controller.ts` hơn là gần `registers.ts`. Xây nhầm cấp thì không sửa được bằng đổi config.
+
+**Câu hỏi:** (a) cấp công ty như ta đọc, hay theo brand / thị trường / product family? (b) claim của dự án có **bắt buộc trỏ tới một entry** không — nếu có thì *"không nằm trong library"* là dữ kiện máy biết, nếu không thì nó vẫn là phán định của người review và vế C1 này **không bao giờ tự động hoá được**; (c) ai được thêm/sửa entry, entry có quy trình duyệt riêng không, *"cùng duy trì"* có nghĩa cả hai phải đồng ý từng entry? (d) claim được duyệt trên một dự án với wording chưa có trong library thì có **đẩy ngược** vào library cho dự án sau dùng lại không? (e) entry bị sửa/thu hồi sau đó thì các claim đã duyệt từ nó trên sản phẩm **đang bán** xử lý thế nào — bật cờ review lại được, nhưng đó là quyết định có hệ quả thương mại, ta không tự đặt.
+
+**Liên đới:** (b) quyết định vế *"not in the approved Claims Library"* của C1 có bao giờ rời khỏi `UNEVALUATED_C1_CONDITIONS` hay không. Câu (e) của `R4-Q24` (*"previously approved"* là của claim này hay của dự án khác) nếu trả lời là "dự án khác" thì cũng chỉ library mới trả lời được — lúc đó hai câu nhập làm một.
+
+**Nếu trả lời khác:** chưa có code nào để sửa — đó là lý do hỏi trước. Nơi sẽ chịu ảnh hưởng: bảng Prisma mới + trang admin (nếu cấp công ty) **hoặc** một `RegisterConfig` mới trong `packages/shared/src/config/registers.ts` (nếu hoá ra là per-project); và `UNEVALUATED_C1_CONDITIONS` trong `packages/shared/src/config/claimReview.ts` bớt một vế nếu (b) là "bắt buộc trỏ".

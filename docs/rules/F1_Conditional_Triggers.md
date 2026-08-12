@@ -44,7 +44,7 @@ Cách một trigger được cài (3 chỗ, không phải sửa engine):
 | 8 | `newOrRepositionedProject` | `sg03-benchmark` | 3 | 3 | a | ✅ **đã cài** 09/08 — Tranche 1 đã cấp đủ 3 vế |
 | 9 | `scaleUpOrProcessChange` | `sg09-scaleup` | 9 | 3 | a + b | 🟠 chờ Tranche 1 (B2) |
 | 10 | `rmCompositionRisk` | `sg04-allergen` | 4 | 1 | a | 🟠 cần cột mới |
-| 11 | `claimNeedsRegulatoryReview` | `sg03-reg-claims` | 3 | 2 | a + c | 🟡 **đã cài 11/08 — 4/7 vế**; 4 vế còn lại chờ Claims Library (F11) + Market Profiles (F10) |
+| 11 | `claimNeedsRegulatoryReview` | `sg03-reg-claims` | 3 | 2 | a + c | 🟡 **đã cài 11/08 — 4/7 vế**; 3 vế còn lại chờ Claims Library (F11) + Market Profiles (F10) + phán định trên wording |
 | 12 | `claimNeedsPerformanceEvidence` | `sg10-performance-evidence` | 10 | 1 | a | 🔴 chờ B7 |
 | 13 | `marketPackRequirement` | `sg06-market-pack` | 6 | 2 | a/c | 🔴 chờ F10 |
 
@@ -266,7 +266,8 @@ Cột hiện có: `rmCode, inciName, approvedForUse, supplier, grade, sdsLink, c
 | Vế | Đọc từ | Có chưa |
 |---|---|---|
 | category / risk | 2 dropdown **theo từng claim** của **B7** trên sổ Claim → Evidence Traceability | ✅ **đã cài 11/08** |
-| "not in the approved Claims Library" / "varies from previously approved wording" | nội dung **Claims Library** (F11) | 🔴 chưa có nội dung |
+| "not in the approved Claims Library" | nội dung **Claims Library** (F11) — và trước đó là **cấp lưu trữ** của nó, xem `R4-Q25` | 🔴 chưa có nội dung |
+| "varies from previously approved wording" | `reviewedWording` — ảnh chụp câu chữ tại lần review gần nhất, do API ghi | ✅ **đã cài 11/08** |
 | pregnancy / breastfeeding / infant-related | có thể suy từ checklist **Target Users** hoặc từ chính wording của claim | 🟡 một phần |
 | market imposes a specific restriction | Market Dossier Profiles (F10) | 🔴 chưa có |
 
@@ -274,7 +275,7 @@ Cột hiện có: `rmCode, inciName, approvedForUse, supplier, grade, sdsLink, c
 
 **Đã cài 11/08:** trigger đọc `claimCategory` ∈ {Borderline / therapeutic-adjacent, Therapeutic — not permitted} hoặc `claimRisk` ∈ {High, Pending classification}. Item thoả khi **mọi claim đang trigger** có đủ `regulatoryReviewOutcome` + `regulatoryReviewer` + `regulatoryReviewDate` (bộ cột mượn khuôn D3 — xem `R4-Q24`).
 
-⚠️ **4 vế còn lại không bị bỏ im lặng:** item mang `coverageNote`, panel in dòng *"Partly checked: …"* liệt kê đúng 4 điều kiện chưa kiểm được (Claims Library · lịch sử wording · hạn chế theo thị trường · claim liên quan pregnancy/disease…). Bỏ vế không đánh giá được rồi báo cáo như đã phủ hết luật là một trong hai sai lầm CLAUDE.md ghi tên.
+⚠️ **3 vế còn lại không bị bỏ im lặng:** item mang `coverageNote`, panel in dòng *"Partly checked: …"* liệt kê đúng 3 điều kiện chưa kiểm được (Claims Library · hạn chế theo thị trường · claim liên quan pregnancy/disease…). Bỏ vế không đánh giá được rồi báo cáo như đã phủ hết luật là một trong hai sai lầm CLAUDE.md ghi tên.
 
 **Một giá trị C1 không nói tới [ASSUMPTION: R4-Q9]:** Claim risk của B7 có 5 giá trị, trong đó `Pending classification` không được C1 nhắc. Chúng tôi định coi nó là **đã trigger** — chưa phân loại thì chưa biết có rủi ro hay không, nên phải review. Nếu SME trả lời ngược lại, sửa nhánh `claimNeedsRegulatoryReview` trong `isReadinessTriggerActive()`.
 
@@ -572,7 +573,8 @@ Ba cột cần đọc trong output: `satisfied` (đã đạt chưa) · `advisory
 | 11b | 1 claim category = `Borderline / therapeutic-adjacent` | SG03 | `✗ (BLOCKS)` |
 | 11c | 1 claim risk = `High` (category vẫn `Cosmetic`) | SG03 | `✗ (BLOCKS)` — hai trục độc lập |
 | 11d | 1 claim risk = `Pending classification` | SG03 | ⚠️ `[R4-Q9]` "chưa phân loại" tính là bật hay tắt? Nghiêng về **bật** (chưa biết thì phải review) |
-| 11e | Claim wording không có trong Claims Library | SG03 | `✗ (BLOCKS)` — chỉ test được sau khi có nội dung Claims Library (F11) |
+| 11e | Claim wording không có trong Claims Library | SG03 | `✗ (BLOCKS)` — chỉ test được sau khi có nội dung Claims Library (F11), và sau khi chốt cấp lưu trữ của nó (`R4-Q25`) |
+| 11f | Claim đã review xong, rồi **sửa lại wording** | SG03 | `✗ (BLOCKS)` — `approvedWording` lệch `reviewedWording`; review lại thì thoả |
 
 ---
 
