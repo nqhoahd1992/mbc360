@@ -10,6 +10,7 @@ import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTrig
 import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
 import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
+import { RM_EVIDENCE_REGISTER, rmEvidenceContradictions } from '@mbc360/shared/utils/rmEvidence';
 import {
   VULNERABLE_REGISTER,
   targetUsersPinnedByAssessment,
@@ -751,6 +752,19 @@ export class ProjectsService {
       // (groups our mapping only GUESSES at) deliberately stays a UI warning —
       // see vulnerableUsers.ts for why hard-blocking it would enforce our own
       // unconfirmed reading.
+      // D4: the three evidence statuses all describe an unapproved row, so none
+      // can stand beside the approval tick. The UI sets the pair together, which
+      // is exactly why the server still checks it.
+      if (registerKey === RM_EVIDENCE_REGISTER) {
+        const bad = rmEvidenceContradictions(rows);
+        if (bad.length > 0) {
+          throw new BadRequestException(
+            `${bad.length} Supplier & RM Evidence row(s) are marked approved for use while still carrying an evidence review status: ${bad
+              .map((r) => `${String(r.rmCode ?? '(no RM code)')} -> ${String(r.evidenceStatus)}`)
+              .join(', ')}. Clear the status, or un-approve the row.`,
+          );
+        }
+      }
       if (registerKey === VULNERABLE_REGISTER) {
         const blockers = vulnerableSaveBlockers(project, rows);
         if (blockers.length > 0) {

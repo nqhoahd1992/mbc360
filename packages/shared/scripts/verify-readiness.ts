@@ -39,6 +39,7 @@ import { join, relative } from 'node:path';
 import { GATE_READINESS, type ReadinessCheck, type ReadinessRequirement } from '../src/config/gateReadiness';
 import { PHASE_CONFIGS } from '../src/config/phases';
 import { getRegisterConfig } from '../src/config/registers';
+import { RM_EVIDENCE_REGISTER } from '../src/utils/rmEvidence';
 import { NO_VULNERABLE_GROUP, TARGET_USER_TO_VULNERABLE_GROUP } from '../src/config/vulnerableGroups';
 
 const REPO_ROOT = join(__dirname, '..', '..', '..');
@@ -204,17 +205,31 @@ function verifyVacuity(): void {
     // by construction) — EXCEPT with a `when` clause, added 2026-08-11, where a
     // register whose rows are all skipped has nothing left to fail on. That
     // variant needs the same pairing as the two below.
+    // The two D4 kinds (2026-08-12) filter a register and assert the result is
+    // empty, so they are vacuous in exactly the same way — and they carry their
+    // register in the kind rather than in a field, which is why they have to be
+    // named here. Without this the sweep reported clean on them while all three
+    // gate-7/10/11 items passed on an empty Supplier & RM Evidence register; the
+    // pairing that saves them is `sg04-supplier`'s registerHasRows at the earlier
+    // gate, which is exactly the relationship S2 exists to check rather than leave
+    // to whoever wrote the check having thought about it.
+    const impliedRegister =
+      check.kind === 'rmEvidenceDispositioned' || check.kind === 'rmEvidenceNoneConditional'
+        ? RM_EVIDENCE_REGISTER
+        : undefined;
     const vacuous =
+      !!impliedRegister ||
       check.kind === 'registerColumnFilled' ||
       check.kind === 'registerNoBadRows' ||
       (check.kind === 'registerRowsComplete' && !!check.when);
     if (!vacuous) continue;
 
-    if (getRegisterConfig(check.register)?.mode === 'fixed') continue; // rows seeded at creation
+    const register = impliedRegister ?? (check as { register: string }).register;
+    if (getRegisterConfig(register)?.mode === 'fixed') continue; // rows seeded at creation
 
     const guarded = guards.some(
       (g) =>
-        (g.check as { register: string }).register === check.register &&
+        (g.check as { register: string }).register === register &&
         gateOrder(g.gate) <= gateOrder(gate),
     );
     if (!guarded) {
@@ -222,7 +237,7 @@ function verifyVacuity(): void {
         'S2',
         gate,
         req.id,
-        `${check.kind}("${check.register}") không có Mandatory registerHasRows đi kèm ` +
+        `${check.kind}("${register}") không có Mandatory registerHasRows đi kèm ` +
           `(cùng gate hoặc sớm hơn) — sẽ tự thoả trên register rỗng`,
       );
     }

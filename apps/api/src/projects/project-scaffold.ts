@@ -82,7 +82,8 @@ function seedRegisterRowCreates(): Prisma.RegisterRowCreateWithoutProjectInput[]
       const seeded: RegisterRow = { ...row };
       for (const col of config.columns) {
         if (seeded[col.key] !== undefined) continue;
-        if (col.type === 'checkbox') seeded[col.key] = false;
+        if (col.defaultValue !== undefined) seeded[col.key] = col.defaultValue;
+        else if (col.type === 'checkbox') seeded[col.key] = false;
         else if (col.key === 'status') seeded[col.key] = 'Not Started';
       }
       creates.push({

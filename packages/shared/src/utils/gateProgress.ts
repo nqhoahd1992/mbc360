@@ -9,6 +9,7 @@ import {
   CLAIM_WORDING_COLUMN,
 } from '../config/claimReview';
 import { TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
+import { RM_EVIDENCE_REGISTER, conditionallyAcceptedRmRows, unresolvedRmRows } from './rmEvidence';
 import {
   GATE_READINESS,
   type ReadinessCheck,
@@ -227,6 +228,18 @@ function evaluateReadinessCheck(
       return {
         evaluable: true,
         satisfied: !project.bom.some((l) => !l.fromCosmetri && !l.reconciled),
+      };
+    // D4. Both read the same register; they are separate checks because Gate 4
+    // treats them at different severities (see `clearedByConditions`).
+    case 'rmEvidenceDispositioned':
+      return {
+        evaluable: true,
+        satisfied: unresolvedRmRows(project.registers[RM_EVIDENCE_REGISTER] ?? []).length === 0,
+      };
+    case 'rmEvidenceNoneConditional':
+      return {
+        evaluable: true,
+        satisfied: conditionallyAcceptedRmRows(project.registers[RM_EVIDENCE_REGISTER] ?? []).length === 0,
       };
     case 'gateCheckDone': {
       const row = project.gateChecks.find((c) => c.gate === check.gate && c.check === check.check);
@@ -558,6 +571,9 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: `/registers/reg/${check.register}` };
     case 'vulnerableGroupsCovered':
       return { href: '/registers/reg/vulnerableUserAssessment' };
+    case 'rmEvidenceDispositioned':
+    case 'rmEvidenceNoneConditional':
+      return { href: `/registers/reg/${RM_EVIDENCE_REGISTER}` };
     case 'claimsRegulatoryReviewed':
       return { href: '/evidence-claim-support' };
     case 'bomHasLines':
@@ -684,11 +700,20 @@ export function gateReadinessChecklist(
       items.push({ id: req.id, label: req.label, satisfied: false, hardBlock: false, pending: true, advisory, source: req.source, tier: req.tier, coverageNote: req.coverageNote });
       continue;
     }
+    // `clearedByConditions` (D4's conditional-acceptance route) gets exactly the
+    // treatment the open-non-critical-next-action item below has always had:
+    // hardBlock false, and satisfied once Proceed with Conditions is the decision
+    // on the table. `decisionOverride` is what makes the Save-guard able to ask
+    // "would the decision I am about to record be rejected?".
+    const satisfiedNow = evaluateReadinessCheck(project, req.check).satisfied;
+    const decisionOnTable =
+      decisionOverride !== undefined ? decisionOverride : project.gates.find((g) => g.gateId === gateId)?.decision;
     items.push({
       id: req.id,
-      label: req.label,
-      satisfied: evaluateReadinessCheck(project, req.check).satisfied,
-      hardBlock: blocks,
+      label: req.clearedByConditions && !satisfiedNow ? `${req.label} — or record Proceed with Conditions` : req.label,
+      satisfied:
+        satisfiedNow || (req.clearedByConditions === true && decisionOnTable === 'Proceed with Conditions'),
+      hardBlock: blocks && !req.clearedByConditions,
       advisory,
       link: resolveCheckLink(gateId, req.check),
       source: req.source,

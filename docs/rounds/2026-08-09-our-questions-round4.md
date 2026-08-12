@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has twenty-seven questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has thirty-one questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Questions 20–27** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
+5. **Questions 20–31** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
 
 ---
 
@@ -463,6 +463,24 @@ Blank Claim ID no longer means "this record makes no claim". A record with no Cl
 
 **Question:** (a) are the four choices right? (b) Should a revised claim be a new Claim ID or a new revision of the same one? (c) Which record represents final artwork approval, and should it require the linked claim to be Supported? (d) Is external publication a separate step from the released workflow state, and if so where is it recorded? (e) Who may tick the non-product exemption — the content owner, or must Regulatory confirm it? Right now anyone who can edit the register can, and their name is recorded.
 
+### Question 31 — The import-stub rules are built; three choices inside them are ours
+
+Your D4 answer is implemented. Before it, only the parts you said were *acceptable* were true — the stub gets created, the import does not fail, and it does not default to Approved for Use. The five conditions that followed your "However" were not.
+
+**What was wrong, plainly.** A formula imported from Cosmetri could create twenty identity-only records that nobody had looked at, and Gate 4 still showed ready. Not merely unchecked — the identity check actively **passed** on them, because it asks for the INCI name and the import fills exactly that. And nothing anywhere read the "Approved for use" tick; it only controlled which materials a hand-typed formula line could point at.
+
+**What changed.** Every raw-material record now carries an evidence review status, starting at **"Incomplete — evidence review required"** — your words — from the moment it exists, whether an import created it or a person did. A person adding a row and abandoning it half-filled is exactly as unreviewed as an import stub, and previously both read the same as a finished record awaiting its tick. Gate 4 cannot pass while any material is still at that status, Gate 7 requires the review to be finished, and Gates 10 and 11 will not pass on an unresolved stub.
+
+**The three choices we made:**
+
+1. **"All applicable raw materials" means every row in the register.** At Gate 4 there is no formula yet — that is Gate 5 — so the register itself *is* the candidate ingredient set being screened. We could not read "applicable" as "in the formula" without making the rule unevaluable at the gate it belongs to.
+2. **We added a status you did not mention: "Considered — not used in this formula".** Choice 1 makes it necessary. Without it, a material that was screened and then dropped would block Gate 4 for ever, with no way out. We deliberately made it a status rather than deleting the row, because deleting it would destroy the evidence that the material was ever screened.
+3. **"Formally accepted through a controlled conditional decision" is implemented as a Proceed with Conditions decision plus a controlled action**, not as a new approval field on the row. That phrase matches the mechanism you specified yourself twice — for an open Change Control under F9, and for an unresolved watch-list match at this same Gate 4 under D3. So a conditionally accepted material blocks a plain Proceed but allows Proceed with Conditions.
+
+**One further reading, at Gate 7.** You wrote that Gate 7 must use the *completed* evidence status. A conditional acceptance has an open action by definition, so we have not treated it as completed: at Gates 7, 10 and 11 a conditional acceptance blocks, and unlike Gate 4 it cannot be cleared by Proceed with Conditions. If you intended a conditional acceptance to be carried through to launch, say so and we will loosen it.
+
+**Question:** (a) is "every row in the register" the right reading of "applicable" at Gate 4? (b) Is a status the right way to record a material considered and not used, or would you rather that be recorded somewhere else? (c) Is the conditional route the Proceed with Conditions mechanism you already specified, or a separate per-material approval? (d) Must a conditional acceptance be closed before Gate 7, as we have assumed?
+
 ---
 
 ## Summary
@@ -477,5 +495,6 @@ Blank Claim ID no longer means "this record makes no claim". A record with no Cl
 | 28 | What kind of thing the Claims Library is, before we build it | Not built — the last dependency holding C1 back |
 | 29 | Five points the per-gate sign-off answer leaves open | Not built — needed together with 18 before we can start |
 | 30 | The claim-linkage and wording-adaptation rules, now built | Already built — rework if wrong; 2 parts deliberately left out |
+| 31 | The import-stub and raw-material review rules, now built | Already built — rework if wrong |
 
 Questions 5 to 27 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

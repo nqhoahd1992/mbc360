@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–30, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–31, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -398,6 +398,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q24 | C1 — bằng chứng nào là "đã Regulatory review"; 4/7 điều kiện chưa kiểm được | 🔴 | 27 |
 | R4-Q25 | Claims Library ở cấp công ty hay cấp dự án, và claim có bắt buộc trỏ tới entry không | 🔴 | 28 |
 | R4-Q26 | D1 — 5 điểm chưa nói: record version của cái gì · comment bắt buộc khi nào · gate nào là "critical" · độc lập nghĩa là gì · chặn ở thời điểm nào | 🔴 | 29 |
+| R4-Q28 | D4 — "applicable" gồm nguyên liệu nào · trạng thái "đã cân nhắc, không dùng" · "controlled conditional decision" là PwC hay trường riêng | 🔴 | 31 |
 | R4-Q27 | D2 — 4 quyết định trong phần vừa xây (ngưỡng chặn ở release · 3 giá trị so sánh wording · khác biệt nào tính · "material change" chỉ chặn chứ không tự tạo claim mới) + 2 vế chưa có chỗ gắn (artwork approval · external publication) | 🔴 | 30 |
 
 ---
@@ -1023,3 +1024,31 @@ Hai chữ ký về hai nội dung khác nhau, không gì trên bản ghi lộ ra
 **Nếu trả lời khác:** `WORDING_EQUIVALENCE_OPTIONS` / `WORDING_MATERIAL_CHANGE` trong `packages/shared/src/config/registers.ts`; ngưỡng release và 3 nhánh kiểm trong `publishedInfoViolations()` (`packages/shared/src/utils/claimEvidence.ts`); `normaliseWording` cho câu 3; `syncPublishedInfoDerived` (`apps/api/src/projects/projects.service.ts`) cho phần đóng dấu. Cả UI và API gọi **cùng một** `publishedInfoViolations`, nên sửa luật ở một chỗ là cả hai lớp theo.
 
 **Bổ sung cùng ngày (project owner):** cột `noProductClaim` **đứng trước** `claimId` — nó là câu hỏi có trước (*bản ghi này có phát biểu gì về sản phẩm không?*), chỉ khi có thì Claim ID mới là thứ điền tiếp. Và hai cái **loại trừ nhau**, nên chặn **cả hai chiều**: tick rồi thì picker Claim ID disable; đang có Claim ID thì **không tick được** (tooltip "unlink the claim first"). Cố ý **không** tự xoá `claimId` khi tick — âm thầm bỏ một liên kết ai đó đã ghi đúng là lỗi "no silent corrections" (B4); người dùng tự unlink. Guard nằm ở `contradictoryClaimRows()` và được API từ chối ở **mọi** workflow state (khác 3 điều kiện release kia) vì dữ liệu đó vô nghĩa ở bất kỳ trạng thái nào. Đã test: gửi thẳng row có cả hai → 400.
+
+#### R4-Q28 · D4 — "applicable" gồm những nguyên liệu nào, và "controlled conditional decision" là gì 🔴
+
+**Đã build 2026-08-12.** Trước đó **3 trong 8 điều của D4** được thực hiện — và cả 3 là những điều D4 nói *"được phép"* (stub identity-only là acceptable/preferred; import không fail; không default Approved for Use). **4 trong 5 điều ở phần "However:"** — tức phần yêu cầu thật — thì chưa.
+
+**Lỗ hổng nặng nhất, và nó không phải "chưa chặn" mà là "đang PASS":** `sg04-identity` đòi mọi dòng `supplierRmEvidence` có `inciName`. Import stub điền đúng `rmCode`/`inciName`/`supplier`/`grade`. Nên một sổ **toàn stub** vẫn thoả `sg04-identity`, thoả luôn `sg04-supplier` (chỉ đòi *có dòng*), còn `sg04-allergen` — cái duy nhất đọc evidence thật — là Conditional không trigger, tức advisory. **Import 20 nguyên liệu, không ai xem xét gì, Gate 4 hiện xanh.** Và **không một `ReadinessCheck` nào đọc `approvedForUse`** (nó chỉ được dùng ở BOM picker + guard xoá/thu hồi).
+
+**Đã cài:** cột `evidenceStatus` (3 giá trị, giá trị đầu là **nguyên văn D4**), `defaultValue` trên `RegisterColumn` để mọi dòng mới bắt đầu ở `Incomplete — evidence review required`, 2 check kind mới (`rmEvidenceDispositioned` / `rmEvidenceNoneConditional`), cờ `clearedByConditions` trên `ReadinessRequirement`, và 5 item mới ở SG04 (2) / SG07 / SG10 / SG11.
+
+**Ba quyết định của dev:**
+
+| # | Quyết định | Vì sao |
+|---|---|---|
+| 1 | **"applicable" = mọi dòng trong sổ** | Ở Gate 4 **chưa có BOM** (BOM là Gate 5), nên sổ *chính là* tập ứng viên đang sàng — đúng như comment của `sg04-ingredients` đã ghi từ trước |
+| 2 | Thêm trạng thái **`Considered — not used in this formula`**, thứ D4 **không** nhắc | Không có nó thì quyết định (1) làm một nguyên liệu đã loại **chặn Gate 4 vĩnh viễn** — đúng kiểu check-không-bao-giờ-thoả mà sweep S1 sinh ra để bắt. Cố ý là **một trạng thái, không phải xoá dòng**: xoá là mất bằng chứng đã sàng lọc |
+| 3 | *"formally accepted through a controlled conditional decision"* = **`Proceed with Conditions` + controlled action**, không phải một trường mới | Cụm đó trùng khớp cơ chế F9 (Change Control đang mở) và D3 (*"assessed it as non-critical and created a controlled action"*, cùng Gate 4) mà SME đã tự viết. Cài bằng `clearedByConditions`: chặn `Proceed` thuần, không chặn PwC |
+
+**Vì sao không được chỉ hard-block trên `approvedForUse`:** D4 cho **hai** đường (*"adequately reviewed" **hoặc** "formally accepted"*). Bỏ đường thứ hai là **lặng lẽ thu hẹp quy tắc** — đúng sai lầm CLAUDE.md ghi tên (vụ *"has been opened **or should be opened**"*). Nên đường thứ hai phải có chỗ ghi **trước** khi bật chặn.
+
+**Một cách đọc nữa, ở Gate 7:** *"Gate 7 final safety approval must use the **completed** evidence status"* — một conditional acceptance có controlled action **đang mở** theo định nghĩa, nên không phải "completed". Vì thế SG07 (và SG10/SG11) đòi **cả hai** vế và **không** clear được bằng PwC, khác Gate 4.
+
+**"Adequately reviewed" đọc là `approvedForUse`, không phải phép đếm ô đã điền** — chính câu *"It must not default to Approved for Use"* nói ô đó là thứ dòng chưa review **không được** có. Tính adequacy từ các cột sẽ buộc ta quyết định cột nào bắt buộc cho loại nguyên liệu nào, thứ chưa ai nói: `Micro / preservative info` và `Origin / vegan proof` rõ ràng không áp cho mọi material.
+
+**Câu hỏi:** (a) một nguyên liệu **đã cân nhắc rồi không dùng** ghi thế nào — trạng thái riêng như ta làm, hay cách khác? (b) *"controlled conditional decision"* có phải `Proceed with Conditions` + controlled action như F9/D3, hay một trường riêng trên từng dòng? (c) ở Gate 7/10/11, conditional acceptance có phải đóng hết không, hay được mang theo?
+
+**Không cần migration:** dòng cũ trong DB không có `evidenceStatus`. Dòng đã `approvedForUse` vẫn resolved (approval thắng); dòng chưa approve thì **đúng là chưa được dispositioned** nên chặn là đúng — backfill một disposition mà không ai ghi mới là bịa.
+
+**Nếu trả lời khác:** `RM_EVIDENCE_*` trong `packages/shared/src/config/registers.ts`; `packages/shared/src/utils/rmEvidence.ts` (4 predicate); `clearedByConditions` trong `gateReadiness.ts` + nhánh của nó trong `gateReadinessChecklist()`; 5 item `sg04-rm-*` / `sgNN-rm-evidence-complete`.

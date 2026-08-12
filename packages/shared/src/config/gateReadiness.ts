@@ -154,6 +154,14 @@ export type ReadinessCheck =
   // (2026-07-26, user-requested — e.g. Gate 2's "Target user and life stage"
   // needs both the Key Gate Check ticked AND the underlying checklist
   // actually touched, but the appendix lists it as one item, not two).
+  // Rule D4: every Supplier & RM Evidence row has reached a conclusion — approved
+  // for use, conditionally accepted, or screened and not used. A row still at
+  // "Incomplete — evidence review required" (or with no status at all) is what D4
+  // calls an unresolved identity-only stub.
+  | { kind: 'rmEvidenceDispositioned' }
+  // Rule D4: no material is resting on the conditional route. Separate from the
+  // check above because the two differ in severity — see `clearedByConditions`.
+  | { kind: 'rmEvidenceNoneConditional' }
   | { kind: 'allOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
@@ -204,6 +212,14 @@ export interface ReadinessRequirement {
   // 2026-08-11 for C1, whose seven conditions include four the app cannot
   // evaluate — the failure mode CLAUDE.md names as having already cost us once.
   coverageNote?: string;
+  // Blocks a plain Proceed but is explicitly allowed to stay open under Proceed
+  // with Conditions — the treatment the open-non-critical-next-action blocker has
+  // always had, now available to a config item. Added 2026-08-12 for D4's second
+  // route through Gate 4 ("formally accepted through a controlled conditional
+  // decision"): a conditionally accepted material must not let the gate pass
+  // outright, but must not make it impassable either, which is the whole point of
+  // the conditional route. Without this a config item is all-or-nothing.
+  clearedByConditions?: boolean;
   // The open question this item's existence depends on (`'R4-Q20'`), defined in
   // docs/rules/F1_Per_Gate_Open_Questions.md. REQUIRED whenever
   // `source: 'dev-decision'`: such an item hard-blocks a gate on nothing but our
@@ -828,6 +844,42 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       },
     },
     {
+      // D4: "Missing evidence must appear in Gate Readiness. Gate 4 must not pass
+      // until all applicable raw materials are adequately reviewed or formally
+      // accepted through a controlled conditional decision." Before 2026-08-12
+      // nothing in the engine read `approvedForUse` at all, so a formula imported
+      // from Cosmetri could produce twenty identity-only stubs and Gate 4 still
+      // showed green — `sg04-identity` even PASSED on them, since it only asks for
+      // `inciName` and the import fills exactly that.
+      //
+      // "Applicable" is read as every row in the register: at Gate 4 there is no
+      // BOM yet (that is Gate 5), so the register IS the candidate ingredient set
+      // — which is also what the sg04-ingredients note above says. A material
+      // screened and then dropped is excluded by dispositioning it "Considered —
+      // not used", not by deleting the row [ASSUMPTION: R4-Q28].
+      id: 'sg04-rm-dispositioned',
+      label: 'Every raw material has an evidence review outcome recorded',
+      tier: 'Mandatory',
+      source: 'f-series',
+      assumption: 'R4-Q28',
+      check: { kind: 'rmEvidenceDispositioned' },
+    },
+    {
+      // The softer half of the same D4 sentence: a conditionally accepted material
+      // is "formally accepted", so it must not make Gate 4 impassable — but it is
+      // not "adequately reviewed" either, so it must not let a plain Proceed
+      // through. That is precisely the F9 treatment of an open Change Control the
+      // team already specified, reused here rather than invented
+      // [ASSUMPTION: R4-Q28].
+      id: 'sg04-rm-conditional',
+      label: 'No raw material is resting on a conditional acceptance',
+      tier: 'Mandatory',
+      source: 'f-series',
+      assumption: 'R4-Q28',
+      clearedByConditions: true,
+      check: { kind: 'rmEvidenceNoneConditional' },
+    },
+    {
       id: 'sg04-no-remove',
       label: 'No unresolved "Prohibited - remove" findings',
       tier: 'Mandatory',
@@ -1165,6 +1217,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   // order), then the dev-added extras below a divider (each now carries a
   // `source` so it never interleaves with the SME's own list).
   SG07: [
+    {
+      // Rule D4. "Gate 7 final safety approval must use the completed evidence status." Both legs: nothing left undispositioned, AND nothing still resting on a conditional acceptance — a conditional acceptance has an open controlled action by definition, so it is not a COMPLETED evidence status. Unlike Gate 4 this does not clear with Proceed with Conditions [ASSUMPTION: R4-Q28].
+      id: 'sg07-rm-evidence-complete',
+      label: 'Raw-material evidence review complete for every material',
+      tier: 'Mandatory',
+      source: 'f-series',
+      assumption: 'R4-Q28',
+      check: { kind: 'allOf', checks: [{ kind: 'rmEvidenceDispositioned' }, { kind: 'rmEvidenceNoneConditional' }] },
+    },
     {
       id: 'sg07-final-safety',
       label: 'Final formulation safety review completed',
@@ -1602,6 +1663,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'gateCheckDone', gate: '10', check: 'Approved wording / limitations recorded' },
     },
     {
+      // Rule D4. "Gates 10 and 11 must not rely on unresolved identity-only stubs." Same pairing as Gate 7 — an unresolved stub blocks, and so does a still-open conditional acceptance, since releasing a dossier that rests on one would be relying on unfinished evidence [ASSUMPTION: R4-Q28].
+      id: 'sg10-rm-evidence-complete',
+      label: 'No unresolved raw-material evidence stub',
+      tier: 'Mandatory',
+      source: 'f-series',
+      assumption: 'R4-Q28',
+      check: { kind: 'allOf', checks: [{ kind: 'rmEvidenceDispositioned' }, { kind: 'rmEvidenceNoneConditional' }] },
+    },
+    {
       id: 'sg10-cosmetri-formula',
       label: 'Uses the controlled Cosmetri formula (no unreconciled manual BOM lines)',
       tier: 'Mandatory',
@@ -1713,6 +1783,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Approved current formula version',
       tier: 'Mandatory',
       check: { kind: 'gateCheckDone', gate: '11', check: 'Final formula/version, packaging and artwork approved' },
+    },
+    {
+      // Rule D4. "Gates 10 and 11 must not rely on unresolved identity-only stubs." Repeated at Gate 11 rather than assumed from Gate 10: a gate is evaluated on its own list, and Gate 10 could have passed under Proceed with Conditions [ASSUMPTION: R4-Q28].
+      id: 'sg11-rm-evidence-complete',
+      label: 'No unresolved raw-material evidence stub',
+      tier: 'Mandatory',
+      source: 'f-series',
+      assumption: 'R4-Q28',
+      check: { kind: 'allOf', checks: [{ kind: 'rmEvidenceDispositioned' }, { kind: 'rmEvidenceNoneConditional' }] },
     },
     {
       id: 'sg11-cosmetri-formula',

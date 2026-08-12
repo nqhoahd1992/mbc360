@@ -35,6 +35,14 @@ export interface RegisterColumn {
   // header, and it is what a per-gate readiness check should reference so Gate 3
   // is not blocked on evidence that cannot exist until Gate 8.
   gate?: string;
+  // Value a brand-new row starts at (`createEmptyRegisterRow`), for a column whose
+  // empty state would be misleading. Added 2026-08-12 for D4: an unreviewed
+  // Supplier & RM Evidence row must read "Incomplete — evidence review required"
+  // from the moment it exists, whether a person added it or a Cosmetri import did.
+  // Generic rather than special-cased on import, because a half-filled manual row
+  // is exactly as unreviewed as a stub — the old code gave both `Not Started`,
+  // which is also what a finished-but-unapproved row showed.
+  defaultValue?: string | boolean;
 }
 
 export interface RegisterConfig {
@@ -67,6 +75,46 @@ export function isRegisterRowBlank(config: RegisterConfig, row: RegisterRow): bo
 }
 
 const WORK_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Backtracked'] as const;
+
+// Rule D4 (SME Round 3) on the identity-only Supplier & RM Evidence record a
+// Cosmetri formula import creates: "The stub must be clearly labelled Incomplete
+// — evidence review required. It must not default to Approved for Use. Missing
+// evidence must appear in Gate Readiness. Gate 4 must not pass until all
+// applicable raw materials are adequately reviewed or formally accepted through a
+// controlled conditional decision. Gate 7 final safety approval must use the
+// completed evidence status. Gates 10 and 11 must not rely on unresolved
+// identity-only stubs."
+//
+// Why a column of its own rather than a value added to WORK_STATUS_OPTIONS: that
+// list is shared by ~30 registers, so a Supplier-RM-specific value would appear
+// on all of them. And why a DISPOSITION column rather than reusing `status`:
+// before this, a freshly imported stub, a manually added row somebody abandoned
+// half-filled, and a fully reviewed row awaiting its approval tick all read
+// `Not Started`. Three different situations, one label.
+//
+// `approvedForUse` stays exactly as it was — it is the approval act, read by the
+// Formula BOM picker and its delete/un-approve guards. This column describes where
+// an UNAPPROVED row stands, which is what D4 needs and the checkbox cannot say.
+export const RM_EVIDENCE_INCOMPLETE = 'Incomplete — evidence review required'; // D4's own words
+// D4's second route through Gate 4. The wording ("controlled conditional
+// decision") is theirs; that we implement it as this value plus a Proceed with
+// Conditions decision — rather than a bespoke per-row approval field — reuses the
+// F9/D3 mechanism they already specified for the same situation
+// [ASSUMPTION: R4-Q28].
+export const RM_EVIDENCE_CONDITIONAL = 'Conditionally accepted — controlled action open';
+// Not in D4 at all, and required to make its Gate 4 rule satisfiable: a candidate
+// material that was screened and then not used would otherwise block Gate 4
+// forever, since at Gate 4 the register IS the candidate ingredient set (the BOM
+// does not exist until Gate 5). Deliberately a state rather than deleting the row
+// — deleting it would destroy the evidence that the material was screened
+// [ASSUMPTION: R4-Q28].
+export const RM_EVIDENCE_NOT_USED = 'Considered — not used in this formula';
+
+export const RM_EVIDENCE_STATUS_OPTIONS = [
+  RM_EVIDENCE_INCOMPLETE,
+  RM_EVIDENCE_CONDITIONAL,
+  RM_EVIDENCE_NOT_USED,
+] as const;
 
 // SME Round 3 B7, transcribed verbatim. Two axes, because the team asked for both
 // and said explicitly why a single project-level label will not do: "different
@@ -158,6 +206,18 @@ const supplierRmEvidence: RegisterConfig = {
     { key: 'rmCode', label: 'RM code', type: 'text', width: 90 },
     { key: 'inciName', label: 'Ingredient / INCI', type: 'text', width: 180 },
     { key: 'approvedForUse', label: 'Approved for use?', type: 'checkbox', width: 90 },
+    // D4. Starts at "Incomplete — evidence review required" for every new row, so
+    // an unreviewed material says so from the moment it exists. Cleared by ticking
+    // Approved for use (the reviewed-and-usable outcome), or set to one of the
+    // other two dispositions.
+    {
+      key: 'evidenceStatus',
+      label: 'Evidence review status',
+      type: 'select',
+      width: 220,
+      options: RM_EVIDENCE_STATUS_OPTIONS,
+      defaultValue: RM_EVIDENCE_INCOMPLETE,
+    },
     { key: 'supplier', label: 'Supplier', type: 'text', width: 140 },
     { key: 'grade', label: 'Grade / trade name', type: 'text', width: 140 },
     { key: 'sdsLink', label: 'SDS link', type: 'text', width: 120 },

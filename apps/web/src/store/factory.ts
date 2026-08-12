@@ -18,7 +18,12 @@ export function createEmptyRegisterRow(registerKey: string): RegisterRow {
   const row: RegisterRow = {};
   if (!config) return row;
   for (const col of config.columns) {
-    if (col.type === 'checkbox') row[col.key] = false;
+    // An explicit config default wins: D4 needs a new Supplier & RM Evidence row
+    // to read "Incomplete — evidence review required" from the moment it exists,
+    // and that has to hold for a row a person adds as much as for a Cosmetri
+    // import stub — both are equally unreviewed.
+    if (col.defaultValue !== undefined) row[col.key] = col.defaultValue;
+    else if (col.type === 'checkbox') row[col.key] = false;
     else if (col.key === 'status') row[col.key] = 'Not Started';
   }
   return row;
@@ -35,7 +40,8 @@ function seedRegisters(): Record<string, RegisterRow[]> {
       const seeded: RegisterRow = { ...row };
       for (const col of config.columns) {
         if (seeded[col.key] !== undefined) continue;
-        if (col.type === 'checkbox') seeded[col.key] = false;
+        if (col.defaultValue !== undefined) seeded[col.key] = col.defaultValue;
+        else if (col.type === 'checkbox') seeded[col.key] = false;
         else if (col.key === 'status') seeded[col.key] = 'Not Started';
       }
       return seeded;

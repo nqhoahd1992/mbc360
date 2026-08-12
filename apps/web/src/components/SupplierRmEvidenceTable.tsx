@@ -3,7 +3,7 @@ import { Alert, Button, Card, Checkbox, DatePicker, Input, InputNumber, Popconfi
 import { PlusOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
-import { isRegisterRowBlank } from '@mbc360/shared/config/registers';
+import { RM_EVIDENCE_INCOMPLETE, isRegisterRowBlank } from '@mbc360/shared/config/registers';
 import type { BomLine, RegisterRow } from '@mbc360/shared/types';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { createEmptyRegisterRow } from '../store/factory';
@@ -163,13 +163,36 @@ export default function SupplierRmEvidenceTable({
                 // this case, but never silently revoke approval on an in-use
                 // material even if that's somehow bypassed.
                 if (blockedFromUnchecking && !e.target.checked) return;
+                if (column.key === 'approvedForUse') {
+                  // D4: all three evidence statuses describe an UNapproved row, so
+                  // approving clears it and un-approving puts the row back to
+                  // "Incomplete — evidence review required". Both halves of one
+                  // deliberate action, not a silent correction of something else:
+                  // the alternative is a row that says both "approved for use" and
+                  // "evidence review required", which `rmEvidenceContradictions`
+                  // rejects at the API anyway.
+                  update((prev) =>
+                    patchArray(prev, index, {
+                      approvedForUse: e.target.checked,
+                      evidenceStatus: e.target.checked ? '' : RM_EVIDENCE_INCOMPLETE,
+                    }),
+                  );
+                  return;
+                }
                 patch(index, column.key, e.target.checked);
               }}
             />
           </Tooltip>
         );
       }
-      case 'select':
+      case 'select': {
+        // The other half of the pair above: an approved row has no evidence
+        // disposition to set, so the cell says so rather than offering three
+        // values that would all contradict the tick.
+        const approvedRow = column.key === 'evidenceStatus' && row.approvedForUse === true;
+        if (approvedRow) {
+          return <span style={{ color: '#bbb', fontSize: 12 }}>approved for use — no outstanding review</span>;
+        }
         return (
           <Select
             size="small"
@@ -180,6 +203,7 @@ export default function SupplierRmEvidenceTable({
             onChange={(v) => patch(index, column.key, v)}
           />
         );
+      }
       case 'date':
         return (
           <DatePicker
