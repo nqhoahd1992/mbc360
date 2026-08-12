@@ -1,6 +1,11 @@
-import type { GateRecord, NextAction, ProjectData } from '../types';
+import type { GateRecord, NextAction, ProjectData, RegisterRow } from '../types';
 import { NEXT_ACTION_TERMINAL_STATUSES } from '../types';
 import { GATES } from '../config/gates';
+import {
+  CLAIM_CATEGORIES_NEEDING_REVIEW,
+  CLAIM_REVIEW_COLUMNS,
+  CLAIM_RISKS_NEEDING_REVIEW,
+} from '../config/claimReview';
 import { TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
 import {
   GATE_READINESS,
@@ -124,6 +129,12 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
     // two single-valued identity fields — see config/phases.ts). Both use
     // `selected`, matching skincareForTwoTriggers above; ChecklistSection sets
     // status Y from the same tick, so the two signals move together.
+    // C1: three of its seven conditions, the ones reading B7's per-claim
+    // classification. The other four have no data source — they are listed on the
+    // item itself (coverageNote) so a green tick never claims more than it checked.
+    case 'claimNeedsRegulatoryReview':
+      return (project.registers['claimEvidenceTraceability'] ?? []).some(claimNeedsReview);
+
     case 'newOrRepositionedProject': {
       const natures = selectedChecklistLabels(project, 'projectNature');
       const origins = selectedChecklistLabels(project, 'requestOrigin');
@@ -137,6 +148,14 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
       );
     }
   }
+}
+
+// A claim C1 makes reviewable: borderline/therapeutic category, high risk, or
+// still unclassified (the last is our reading — see CLAIM_RISKS_NEEDING_REVIEW).
+function claimNeedsReview(row: RegisterRow): boolean {
+  const category = String(row.claimCategory ?? '').trim();
+  const risk = String(row.claimRisk ?? '').trim();
+  return CLAIM_CATEGORIES_NEEDING_REVIEW.includes(category) || CLAIM_RISKS_NEEDING_REVIEW.includes(risk);
 }
 
 // Labels a project has ticked in a checklist section.
@@ -163,6 +182,8 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
     'not a new product, claim change or market extension, not a customer or distributor request, and no benchmark product named',
   microbiologicallySusceptible:
     'the formula is recorded as anhydrous, self-preserving, sterile or single-use, with a rationale',
+  claimNeedsRegulatoryReview:
+    'no declared claim is borderline, therapeutic-adjacent, high risk or still unclassified',
 };
 
 // Evaluate a requirement's check against live project data. `evaluable` is false
@@ -230,6 +251,18 @@ function evaluateReadinessCheck(
         : rows;
       const satisfied = scoped.every((r) => check.columns.every((c) => String(r[c] ?? '').trim() !== ''));
       return { evaluable: true, satisfied };
+    }
+    case 'claimsRegulatoryReviewed': {
+      const reviewable = (project.registers['claimEvidenceTraceability'] ?? []).filter(claimNeedsReview);
+      // Satisfied when nothing is reviewable — correct, and not vacuous in
+      // practice: the item only becomes mandatory when its trigger says at least
+      // one claim IS reviewable.
+      return {
+        evaluable: true,
+        satisfied: reviewable.every((row) =>
+          CLAIM_REVIEW_COLUMNS.every((column) => String(row[column] ?? '').trim() !== ''),
+        ),
+      };
     }
     case 'vulnerableGroupsCovered': {
       const expected = new Set(
@@ -473,6 +506,9 @@ export interface GateReadinessItem extends GateBlocker {
   // since it stands in for the matching Conditional config item it replaces
   // in the loop below (a more specific message, same underlying tier).
   tier?: ReadinessTier;
+  // Set when the app enforces only part of the rule (C1 today): the conditions it
+  // cannot evaluate, so a green tick never reads as "the whole rule is met".
+  coverageNote?: string;
 }
 
 // Resolve a per-gate phase-page anchor link for the phase that owns `gateId`.
@@ -501,6 +537,8 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: `/registers/reg/${check.register}` };
     case 'vulnerableGroupsCovered':
       return { href: '/registers/reg/vulnerableUserAssessment' };
+    case 'claimsRegulatoryReviewed':
+      return { href: '/evidence-claim-support' };
     case 'bomHasLines':
     case 'bomIdentityComplete':
     case 'bomReconciled':
@@ -617,11 +655,12 @@ export function gateReadinessChecklist(
         advisory: true,
         source: req.source,
         tier: req.tier,
+        coverageNote: req.coverageNote,
       });
       continue;
     }
     if (req.check.kind === 'manual') {
-      items.push({ id: req.id, label: req.label, satisfied: false, hardBlock: false, pending: true, advisory, source: req.source, tier: req.tier });
+      items.push({ id: req.id, label: req.label, satisfied: false, hardBlock: false, pending: true, advisory, source: req.source, tier: req.tier, coverageNote: req.coverageNote });
       continue;
     }
     items.push({
@@ -633,6 +672,7 @@ export function gateReadinessChecklist(
       link: resolveCheckLink(gateId, req.check),
       source: req.source,
       tier: req.tier,
+      coverageNote: req.coverageNote,
     });
   }
 

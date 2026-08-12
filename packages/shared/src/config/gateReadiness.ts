@@ -32,12 +32,14 @@ export type ReadinessTier = 'Mandatory' | 'Conditional' | 'Supporting';
 // `trigger:` on the item. See docs/rules/F1_Conditional_Triggers.md for the
 // full catalogue of 13, including the 9 still waiting on data the app does not
 // capture yet.
+import { UNEVALUATED_C1_CONDITIONS } from './claimReview';
 import { NO_VULNERABLE_GROUP } from './vulnerableGroups';
 
 export type ReadinessTrigger =
   | 'skincareForTwo'
   | 'humanStudyPlanned'
   | 'newOrRepositionedProject'
+  | 'claimNeedsRegulatoryReview'
   | 'microbiologicallySusceptible';
 
 export type ReadinessCheck =
@@ -118,6 +120,10 @@ export type ReadinessCheck =
   // than generic, following the skincareForTwo precedent — it reads a mapping
   // between two specific surfaces, which no generic kind expresses.
   | { kind: 'vulnerableGroupsCovered' }
+  // Every claim that C1 makes reviewable carries a recorded Regulatory review
+  // (outcome + reviewer + date). Bespoke for the same reason as the one above: it
+  // filters rows by a condition spanning two columns, which no generic kind says.
+  | { kind: 'claimsRegulatoryReviewed' }
   // A `ProjectIdentity` field is non-empty (2026-08-09, SME Round 3 B1/B2/B3).
   //
   // An earlier `identityFieldFilled` kind was DELETED on 2026-08-07 because its
@@ -193,6 +199,11 @@ export interface ReadinessRequirement {
   trigger?: ReadinessTrigger;
   // See `ReadinessSource` — omit for an item named in the F1 appendix itself.
   source?: ReadinessSource;
+  // Shown after the label when the app enforces only PART of what the rule says,
+  // so a satisfied item never reads as "the whole rule is covered". Added
+  // 2026-08-11 for C1, whose seven conditions include four the app cannot
+  // evaluate — the failure mode CLAUDE.md names as having already cost us once.
+  coverageNote?: string;
   // The open question this item's existence depends on (`'R4-Q20'`), defined in
   // docs/rules/F1_Per_Gate_Open_Questions.md. REQUIRED whenever
   // `source: 'dev-decision'`: such an item hard-blocks a gate on nothing but our
@@ -671,13 +682,22 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // real signal.
       check: { kind: 'registerColumnFilled', register: 'targetProductProfile', column: 'target' },
     },
-    // sg03-reg-claims: still `manual` — depends on a "high-risk/borderline
-    // claim" flag that doesn't exist yet (same open question as Round 2's A1
-    // "critical" definition). Tier methodology reaffirmed 2026-07-27, same
-    // reasoning as sg03-benchmark above ("high-risk or borderline" is itself
-    // a conditional qualifier — only applies to some claims, not all) — see
-    // the cross-cutting section in docs/rules/F1_Per_Gate_Open_Questions.md.
-    { id: 'sg03-reg-claims', label: 'Regulatory review of high-risk or borderline claims', tier: 'Conditional', check: { kind: 'manual' } },
+    {
+      // Wired 2026-08-11, replacing `manual`. C1 was confirmed long ago but had
+      // nothing to read: the per-claim classification did not exist, and neither
+      // did anywhere to record that a review happened. Both now do.
+      //
+      // Enforces THREE of C1's seven conditions — the ones reading B7's
+      // classification. The other four are named on the item itself via
+      // `coverageNote` rather than left implied, because quietly enforcing half a
+      // rule and reporting it as met is the mistake this repo has already made.
+      id: 'sg03-reg-claims',
+      label: 'Regulatory review of high-risk or borderline claims',
+      tier: 'Conditional',
+      trigger: 'claimNeedsRegulatoryReview',
+      coverageNote: `the app checks the claim's category and risk; it cannot yet check: ${UNEVALUATED_C1_CONDITIONS.join('; ')}`,
+      check: { kind: 'claimsRegulatoryReviewed' },
+    },
     {
       // Not an F1-named item — same generalizable rule as sg01-constraints /
       // sg02-commercial.

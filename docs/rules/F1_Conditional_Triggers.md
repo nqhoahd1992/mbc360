@@ -44,7 +44,7 @@ Cách một trigger được cài (3 chỗ, không phải sửa engine):
 | 8 | `newOrRepositionedProject` | `sg03-benchmark` | 3 | 3 | a | ✅ **đã cài** 09/08 — Tranche 1 đã cấp đủ 3 vế |
 | 9 | `scaleUpOrProcessChange` | `sg09-scaleup` | 9 | 3 | a + b | 🟠 chờ Tranche 1 (B2) |
 | 10 | `rmCompositionRisk` | `sg04-allergen` | 4 | 1 | a | 🟠 cần cột mới |
-| 11 | `claimNeedsRegulatoryReview` | `sg03-reg-claims` | 3 | 2 | a + c | 🔴 chờ B7 + Claims Library |
+| 11 | `claimNeedsRegulatoryReview` | `sg03-reg-claims` | 3 | 2 | a + c | 🟡 **đã cài 11/08 — 3/7 vế**; 4 vế còn lại chờ Claims Library (F11) + Market Profiles (F10) |
 | 12 | `claimNeedsPerformanceEvidence` | `sg10-performance-evidence` | 10 | 1 | a | 🔴 chờ B7 |
 | 13 | `marketPackRequirement` | `sg06-market-pack` | 6 | 2 | a/c | 🔴 chờ F10 |
 
@@ -254,7 +254,7 @@ Cột hiện có: `rmCode, inciName, approvedForUse, supplier, grade, sdsLink, c
 
 ---
 
-### 11. `claimNeedsRegulatoryReview` — 🔴 chờ B7 + Claims Library
+### 11. `claimNeedsRegulatoryReview` — 🟡 đã cài 3/7 vế (11/08)
 
 > **Luật (C1):** review bắt buộc khi *category = Borderline / therapeutic-adjacent · category = Therapeutic — not permitted · risk = High · wording không nằm trong approved Claims Library · claim khác với wording đã duyệt trước đó · thị trường áp hạn chế cụ thể · claim liên quan pregnancy, breastfeeding, infant use, disease, treatment, prevention, healing hoặc medical endorsement.*
 
@@ -265,12 +265,16 @@ Cột hiện có: `rmCode, inciName, approvedForUse, supplier, grade, sdsLink, c
 
 | Vế | Đọc từ | Có chưa |
 |---|---|---|
-| category / risk | 2 dropdown mới **theo từng claim** của **B7** (Claim category 10 giá trị, Claim risk 5 giá trị) | 🔴 chưa xây |
+| category / risk | 2 dropdown **theo từng claim** của **B7** trên sổ Claim → Evidence Traceability | ✅ **đã cài 11/08** |
 | "not in the approved Claims Library" / "varies from previously approved wording" | nội dung **Claims Library** (F11) | 🔴 chưa có nội dung |
 | pregnancy / breastfeeding / infant-related | có thể suy từ checklist **Target Users** hoặc từ chính wording của claim | 🟡 một phần |
 | market imposes a specific restriction | Market Dossier Profiles (F10) | 🔴 chưa có |
 
-Đây là trigger phụ thuộc nhiều nhất. Nhưng B7 cấp hai vế đầu và đó là hai vế mạnh nhất — cài được B7 là trigger này chạy được phần lớn.
+Đây là trigger phụ thuộc nhiều nhất. B7 cấp hai vế đầu và đó là hai vế mạnh nhất — cài B7 xong (11/08) là trigger chạy được phần lớn.
+
+**Đã cài 11/08:** trigger đọc `claimCategory` ∈ {Borderline / therapeutic-adjacent, Therapeutic — not permitted} hoặc `claimRisk` ∈ {High, Pending classification}. Item thoả khi **mọi claim đang trigger** có đủ `regulatoryReviewOutcome` + `regulatoryReviewer` + `regulatoryReviewDate` (bộ cột mượn khuôn D3 — xem `R4-Q24`).
+
+⚠️ **4 vế còn lại không bị bỏ im lặng:** item mang `coverageNote`, panel in dòng *"Partly checked: …"* liệt kê đúng 4 điều kiện chưa kiểm được (Claims Library · lịch sử wording · hạn chế theo thị trường · claim liên quan pregnancy/disease…). Bỏ vế không đánh giá được rồi báo cáo như đã phủ hết luật là một trong hai sai lầm CLAUDE.md ghi tên.
 
 **Một giá trị C1 không nói tới [ASSUMPTION: R4-Q9]:** Claim risk của B7 có 5 giá trị, trong đó `Pending classification` không được C1 nhắc. Chúng tôi định coi nó là **đã trigger** — chưa phân loại thì chưa biết có rủi ro hay không, nên phải review. Nếu SME trả lời ngược lại, sửa nhánh `claimNeedsRegulatoryReview` trong `isReadinessTriggerActive()`.
 

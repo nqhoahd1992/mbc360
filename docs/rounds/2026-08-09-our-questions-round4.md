@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has twenty-six questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has twenty-seven questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Questions 20–26** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
+5. **Questions 20–27** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
 
 ---
 
@@ -380,6 +380,18 @@ This matters because a record in MBc360 becomes read-only once its gate has pass
 
 **Question:** should the Claim → Evidence Traceability ledger freeze after **SG08**, as the roadmap line for that sheet suggests, or stay open through **SG10/SG11** because claims are still being created during PIF and Published Information work? If SG08, we will make it so — but adding a claim later will then require a Backtrack, and we want that to be your decision rather than a surprise.
 
+### Question 27 — What proves a claim has been through Regulatory review, and the four conditions we cannot check
+
+C1 confirmed that a Regulatory review is mandatory for a claim that is borderline or therapeutic-adjacent, high risk, or caught by four further conditions. Until today that rule did nothing in MBc360: there was no per-claim classification to read it from, and nowhere to record that a review had happened. Both now exist, so the rule is live at Gate 3 — and two parts of it are ours rather than yours.
+
+**What proves the review happened.** C1 does not say. We have borrowed the shape you specified for the same situation at Gate 4 in D3 — reviewer assessment, reviewer, date, rationale, evidence link — and put it on the claim itself: **Regulatory review outcome · Regulatory reviewer · Review date · Review rationale · Review evidence link**. Gate 3 is satisfied when every claim that triggers the rule carries the first three. The outcome values are ours too: **Approved · Approved with conditions · Not approved · Further information required**, since D3's four values are about whether a watch-list hit is real and do not transfer to a claim.
+
+**Only three of your seven conditions can be checked automatically.** The three reading the classification work. The other four have no data behind them yet: wording not in the approved Claims Library (that library does not exist yet), the claim varying from previously approved wording (no wording history is kept), a market imposing a specific restriction (per-market restriction lists do not exist yet), and the claim relating to pregnancy, breastfeeding, infant use or disease (reading that from the wording is a judgement, not a lookup).
+
+We have not quietly dropped those four. The item on screen now carries the line "Partly checked: …" listing them, so nobody reads a green tick as "all seven conditions were met". Reporting a half-enforced rule as covered is a mistake we have made before and would rather not repeat.
+
+**Question:** (a) are those five review fields the right record, or would you rather it looked different? (b) Are the four outcome values right? (c) If a claim's review outcome is **Not approved**, can Gate 3 still pass while that claim sits in the register, or must it be withdrawn first? (d) Is the review **per claim**, or **per market** — your own condition about a market imposing a restriction suggests it could be the latter.
+
 ---
 
 ## Summary
@@ -390,6 +402,6 @@ This matters because a record in MBc360 becomes read-only once its gate has pass
 | 2–4 | Superseding a formula version · defining "critical" gaps · PV/PMS scope | Open since 21 July; 2 and 4 block work we are ready to start |
 | 5–7 | Gate 7 scope · Gate 4 threshold · unclassified claims | Already built on our reading — rework if wrong |
 | 8–19 | Which record represents each of your trigger conditions, and two data-model points | Redesign if wrong, no rework |
-| 20–26 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several types may apply; two requirements we added ourselves that block Gate 2 and Gate 7;  a duplicate market field arising from an inaccurate premise we gave in B3; which target users imply a vulnerable group | Already built — rework if wrong |
+| 20–27 | Whether the new Gate 1 fields are required at creation; priority values and required rows on the Phase 1 requirements table; how the two Gate 1 option lists are presented and whether several types may apply; two requirements we added ourselves that block Gate 2 and Gate 7;  a duplicate market field arising from an inaccurate premise we gave in B3; which target users imply a vulnerable group | Already built — rework if wrong |
 
-Questions 5 to 26 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
+Questions 5 to 27 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

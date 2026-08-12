@@ -2,11 +2,11 @@
 
 **Date:** 2026-07-22 (last updated 2026-08-10)
 
-> # ✅ ROUND 3 CLOSED — 23 new questions open (R4-Q1 … R4-Q23)
+> # ✅ ROUND 3 CLOSED — 24 new questions open (R4-Q1 … R4-Q24)
 >
 > The subject-matter team answered every question here in their Round 3 reply (`docs/rounds/2026-08-07-sme-reply-round3.txt`), sent as Parts A–E — the questions that reply answers are `docs/rounds/2026-07-31-our-questions-round3.md` (recovered into the folder on 2026-08-11; note its `A1`/`A2`/`A3` are a different three topics from Round 2's). **The answers are recorded in full in `Business_Rules_Confirmation_{EN,VN}.md` → "Appendix 2 (2026-08-07)"** — that appendix, not this file, is the authoritative record. Each section below now carries a short ✅ resolution note pointing at the part of the reply that answers it, so the question and its answer stay together for anyone re-reading the history.
 >
-> **The Round-3 questions are closed; the file is not.** Twenty-three new questions — raised *while implementing* those answers and *while designing* the Conditional triggers — are in the final section, **"Round 4"**, each with a stable ID (`R4-Q1` … `R4-Q23`). Everything above that section is settled history.
+> **The Round-3 questions are closed; the file is not.** Twenty-four new questions — raised *while implementing* those answers and *while designing* the Conditional triggers — are in the final section, **"Round 4"**, each with a stable ID (`R4-Q1` … `R4-Q24`). Everything above that section is settled history.
 >
 > **This file is the only question list.** Other documents (notably `F1_Conditional_Triggers.md`) reference these IDs instead of keeping a parallel list, and every decision site — code and docs alike — carries a grep-able `[ASSUMPTION: R4-Qn]` tag, so "show me every unconfirmed assumption" is a search rather than a manual audit.
 >
@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–26, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–27, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -395,6 +395,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q21 | `initialTargetMarkets` trùng `Countries / Markets` bắt buộc lúc tạo dự án; B3 trả lời trên tiền đề ta nêu sai | 🔴 | 24 |
 | R4-Q22 | Map option Target Users sang Vulnerable group — 5 cặp đổi tên + 8 option không map | 🔴 | 25 |
 | R4-Q23 | Sổ Claim → Evidence Traceability thuộc gate nào — lệch với dòng SG05/SG08 của roadmap | 🔴 | 26 |
+| R4-Q24 | C1 — bằng chứng nào là "đã Regulatory review"; 4/7 điều kiện chưa kiểm được | 🔴 | 27 |
 
 ---
 
@@ -896,3 +897,25 @@ Hệ quả của mức 3: dự án **chỉ** nhắm `Dry / eczema-prone skin` v�
 **Câu hỏi:** sổ Claim → Evidence Traceability nên đóng băng ở đâu — sau **SG08** như dòng roadmap của sheet, hay giữ mở tới **SG10/SG11** vì claim còn được tạo trong lúc làm PIF và Published Information? Nếu chọn SG08 thì việc thêm claim ở Gate 10 sẽ phải Backtrack — các anh chấp nhận điều đó chứ?
 
 **Nếu trả lời khác:** đổi `gate` của `claimEvidenceTraceability` trong `packages/shared/src/config/registers.ts` (chỉ một chuỗi; `isGateRefLocked` và badge gate tự theo).
+
+#### R4-Q24 · C1 — bằng chứng nào chứng minh "đã Regulatory review", và 4/7 điều kiện chưa kiểm được 🔴
+
+**Đã build 2026-08-11** sau khi project owner hỏi *"cơ chế này đã làm chưa"* và *"regulatory review đánh giá ở màn hình nào"*.
+
+**Phần luật thì SME đã nói đủ, không phải suy đoán:** phụ lục F1 (21/07) liệt kê *"Regulatory review of high-risk or borderline claims"* trong mục **Required** của Gate 3; A1 vòng 3 xác nhận *"Conditional: hard-blocks only when its defined trigger applies"* và chấp nhận tier Conditional của item này; C1 cấp 7 điều kiện kích hoạt. Ghép lại: claim rơi vào diện đó thì review là **bắt buộc** và item **chặn Gate 3**.
+
+**Phần SME chưa nói — ta phải bù, và đây là chỗ cần xác nhận:**
+
+**(a) Bằng chứng nào tính là "đã review".** C1 không nói. Trước hôm nay app **không có ô nào** ghi ai review claim, ngày nào, kết luận gì — nên nếu chỉ wire trigger thì Gate 3 sẽ bị chặn mà không có cách nào gỡ. Đã thêm 5 cột vào sổ claim (nhóm gate 03), **mượn nguyên khuôn D3** — khuôn chính SME viết cho tình huống y hệt ở Gate 4 (*Reviewer assessment · Reviewer · Review date · Rationale · Evidence link*): `regulatoryReviewOutcome` · `regulatoryReviewer` · `regulatoryReviewDate` · `regulatoryReviewRationale` · `regulatoryReviewEvidence`. Item thoả khi **mọi claim đang trigger** có đủ 3 cột đầu.
+
+**(b) Bộ giá trị của Outcome là của ta:** `Approved` · `Approved with conditions` · `Not approved` · `Further information required`. Bốn giá trị của D3 nói về việc một hit watch-list có thật hay không, không chuyển sang claim được.
+
+**(c) Chỉ 3/7 điều kiện của C1 đánh giá được.** Ba vế đọc phân loại B7 (category = Borderline / category = Therapeutic — not permitted / risk = High) đã chạy. Bốn vế còn lại **không có nguồn dữ liệu**: wording không nằm trong Claims Library (F11 chưa có nội dung) · claim khác wording đã duyệt (không lưu lịch sử wording) · thị trường áp hạn chế (F10 chưa có) · claim liên quan pregnancy/breastfeeding/infant/disease… (đọc từ wording là phán định).
+
+Bốn vế đó **hiện thẳng trên item** qua trường mới `coverageNote` (*"Partly checked: …"*) thay vì im lặng — vì bỏ vế không đánh giá được rồi báo cáo như đã phủ hết luật đúng là một trong hai sai lầm CLAUDE.md ghi tên.
+
+**(d) `Pending classification` được coi là đã trigger.** C1 không nhắc giá trị này. Ta đọc: chưa phân loại thì chưa biết rủi ro, nên phải review. (Đã ghi từ trước ở `R4-Q9`.)
+
+**Câu hỏi:** (a) 5 cột review trên có đủ và đúng tên không, hay các anh muốn khuôn khác? (b) 4 giá trị Outcome có đúng không? (c) claim `Not approved` thì Gate 3 qua được nếu claim đó vẫn nằm trong sổ, hay phải xoá/đánh dấu bỏ? (d) review theo **claim** (một lần) hay theo **thị trường** — vế *"the market imposes a specific restriction"* của chính C1 hàm ý có thể phải theo thị trường?
+
+**Nếu trả lời khác:** đổi `CLAIM_REVIEW_COLUMNS` / `CLAIM_REVIEW_OUTCOMES` trong `packages/shared/src/config/claimReview.ts`, và các cột tương ứng ở `claimEvidenceTraceability`.

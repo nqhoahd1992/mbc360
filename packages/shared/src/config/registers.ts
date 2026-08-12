@@ -1,4 +1,5 @@
 import type { RegisterRow } from '../types';
+import { CLAIM_REVIEW_OUTCOMES } from './claimReview';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
 // `user` = a person, picked from the app's active users (UserSelect); the
@@ -2004,6 +2005,16 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // linked only once testing has produced one.
     { key: 'evidenceGrade', label: 'Evidence grade', type: 'select', width: 110, options: ['A', 'B', 'C', 'D', 'E'], gate: '08' },
     { key: 'supportingEvidence', label: 'Supporting evidence / report', type: 'text', width: 200, gate: '08' },
+    // Gate 03 — the Regulatory review C1 makes mandatory for a borderline,
+    // therapeutic-adjacent or high-risk claim. The shape is borrowed from D3, the
+    // one the team specified themselves for the same situation at Gate 4
+    // (assessment + reviewer + date + rationale + evidence); C1 gives no
+    // equivalent list [ASSUMPTION: R4-Q24].
+    { key: 'regulatoryReviewOutcome', label: 'Regulatory review outcome', type: 'select', width: 190, options: CLAIM_REVIEW_OUTCOMES, gate: '03' },
+    { key: 'regulatoryReviewer', label: 'Regulatory reviewer', type: 'user', width: 150, gate: '03' },
+    { key: 'regulatoryReviewDate', label: 'Review date', type: 'date', width: 130, gate: '03' },
+    { key: 'regulatoryReviewRationale', label: 'Review rationale', type: 'textarea', width: 220, gate: '03' },
+    { key: 'regulatoryReviewEvidence', label: 'Review evidence link', type: 'text', width: 160, gate: '03' },
     // Gate 10 — release: "Supported" is what unsupportedClaimRows() reads before
     // anything may be published, and the approval is the act of releasing it.
     { key: 'status', label: 'Status', type: 'select', width: 120, options: ['Pending', 'Supported'], gate: '10' },

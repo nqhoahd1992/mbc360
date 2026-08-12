@@ -409,6 +409,11 @@ export default function GateFlowTable({
                                 ? ' — applies only in certain cases; it will not block this gate'
                                 : !b.satisfied && !b.hardBlock && ' — clears with Proceed with Conditions'}
                             {b.source === 'dev-decision' && UNCONFIRMED_SOURCE_NOTE}
+                            {b.coverageNote && (
+                              <div style={{ color: '#8c8c8c', fontSize: 11, marginTop: 2 }}>
+                                Partly checked: {b.coverageNote}
+                              </div>
+                            )}
                         </li>
                       );
                     })}
