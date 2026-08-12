@@ -110,6 +110,28 @@ export const RM_EVIDENCE_CONDITIONAL = 'Conditionally accepted — controlled ac
 // [ASSUMPTION: R4-Q28].
 export const RM_EVIDENCE_NOT_USED = 'Considered — not used in this formula';
 
+// Rule E1 (SME Round 3), Gate 7: "Please add a distinct safety-finding control
+// rather than relying solely on the Final Safety Sign-off… Gate 7 cannot pass
+// while any critical safety finding is open."
+//
+// Note "solely": the Final Safety Sign-off stays exactly as it was and remains
+// Mandatory. It answers "has the safety review been done?"; the register below
+// answers "is anything still open?" — which is why a project with no findings
+// legitimately has an empty register and is not blocked by it. Before this,
+// sg07-no-critical shared sg07-final-safety's check, so a green tick reading "no
+// unresolved critical safety finding" was really only saying the ten sign-off
+// questions were Completed.
+//
+// The nine field names are E1's. The two value lists are ours — E1 names
+// "Severity" and "Status" without enumerating either [ASSUMPTION: R4-Q30].
+export const SAFETY_FINDING_YES = 'Yes';
+export const SAFETY_FINDING_SEVERITY_OPTIONS = ['Low', 'Medium', 'High'] as const;
+// Two values, because E1's rule turns on exactly one distinction: open or not.
+// WORK_STATUS_OPTIONS was the alternative and was rejected — "Backtracked" means
+// nothing for a safety finding.
+export const SAFETY_FINDING_STATUS_OPEN = 'Open';
+export const SAFETY_FINDING_STATUS_OPTIONS = [SAFETY_FINDING_STATUS_OPEN, 'Closed'] as const;
+
 // Rule D3 (SME Round 3) on a flagged watch-list result at Gate 4. Transcribed:
 // "Please add the following fields to each flagged watch-list result: Reviewer
 // assessment: Critical / Non-critical / Not a true match / Further information
@@ -1510,6 +1532,37 @@ export const formulationSafetyMatrix: RegisterConfig = {
   ],
 };
 
+// Rule E1 — the distinct safety-finding control. Free-form (`mode: 'register'`)
+// because a project may legitimately have no critical safety finding at all; the
+// confirmation that someone LOOKED is the Final Safety Sign-off, per E1's "not
+// solely".
+export const criticalSafetyFindings: RegisterConfig = {
+  key: 'criticalSafetyFindings',
+  title: 'Critical Safety Findings',
+  sheetName: 'Formulation_Safety',
+  description:
+    'One row per safety finding raised during the safety review (rule E1). Gate 7 cannot pass while any finding marked critical is still open, and closing one requires the safety reviewer\'s conclusion and an evidence link. A project with no findings leaves this empty — the confirmation that the review happened is the Final Safety Sign-off below.',
+  mode: 'register',
+  gate: '07',
+  columns: [
+    // E1's own first field, verbatim as a two-value list rather than a checkbox:
+    // an unticked box cannot be told apart from "nobody has judged this yet",
+    // which is the state that has to block.
+    { key: 'criticalFinding', label: 'Critical safety finding identified', type: 'select', width: 170, options: ['Yes', 'No'] },
+    { key: 'findingDescription', label: 'Finding description', type: 'textarea', width: 240 },
+    { key: 'affectedContext', label: 'Affected ingredient / formula / use context', type: 'textarea', width: 220 },
+    { key: 'severity', label: 'Severity', type: 'select', width: 110, options: SAFETY_FINDING_SEVERITY_OPTIONS },
+    // E1 says "Required action" and, unlike D3, does NOT say a controlled Next
+    // Action must be used — so this stays free text rather than borrowing D3's
+    // picker. Flagged as a difference worth confirming [ASSUMPTION: R4-Q30].
+    { key: 'requiredAction', label: 'Required action', type: 'textarea', width: 220 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 140 },
+    { key: 'findingStatus', label: 'Status', type: 'select', width: 110, options: SAFETY_FINDING_STATUS_OPTIONS },
+    { key: 'safetyReviewerConclusion', label: 'Safety reviewer conclusion', type: 'textarea', width: 220 },
+    { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 150 },
+  ],
+};
+
 export const formulationSafetyFinalSignOff: RegisterConfig = {
   key: 'formulationSafetyFinalSignOff',
   title: 'Final Safety Sign-off',
@@ -2398,6 +2451,7 @@ export const npdRoadmapGapRegister: RegisterConfig = {
 export const REGISTER_CONFIGS: RegisterConfig[] = [
   formulationSafetyProfile,
   formulationSafetyMatrix,
+  criticalSafetyFindings,
   formulationSafetyFinalSignOff,
   supplierRmEvidence,
   prohibitedIngredients,

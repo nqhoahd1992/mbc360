@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has thirty-two questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
+This round has thirty-three questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them is a safety gap we want to report to you plainly rather than leave in a document.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Questions 20–32** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
+5. **Questions 20–33** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
 
 ---
 
@@ -506,6 +506,28 @@ Your D3 answer is implemented, and it closes the gap we reported to you ourselve
 
 **Question:** (a) does "flagged" include Needs Regulatory Review, or only possible formula match? (b) What values should Resolution status have? (c) What is "authorised acceptance" — the acknowledgement step you specified for an open change control under F9, a permission check, or is recording Proceed with Conditions enough? (d) Should an unassessed flagged row be clearable by Proceed with Conditions, or blocked as we have it? (e) Does the pregnancy and breastfeeding caution list — the other watch-list — need the same seven fields? Your wording says "each flagged watch-list result", but the heading names only the formula match. (f) Must the linked action belong to the same gate as the finding, or may it sit at a later gate?
 
+### Question 33 — The critical safety finding control is built; five choices inside it are ours
+
+Your E1 answer had four parts. Only one of them was in place, and the first sentence of your answer rejected what we had.
+
+**What we had.** The Gate 7 item "No unresolved critical safety finding" read the *Final Safety Sign-off* — the same evidence as the item next to it. So a green tick saying no critical finding was unresolved only ever meant the ten sign-off questions were marked Completed. There was no record of a finding anywhere in the system.
+
+**What is built.** A Critical Safety Findings register with the nine fields you listed, on the Formulation Safety page, and Gate 7 cannot pass while a finding marked critical is open. The Final Safety Sign-off is unchanged and still required — we read your "not **solely**" as meaning both, each answering a different question: the sign-off says the review happened, the register says whether anything is still open. That also settles what an empty register means: a project with no findings is not blocked by this, because the confirmation that someone looked comes from the sign-off.
+
+**The five choices we made:**
+
+1. **Severity: Low / Medium / High.** You name the field without values.
+2. **Status: Open / Closed.** Your rule turns on exactly one distinction, so two values carry it. We considered reusing the general work-status list used elsewhere and rejected it — one of its values is "Backtracked", which means nothing for a safety finding.
+3. **"Required action" is free text**, not a link to a controlled Next Action. This is the one place we may have under-built deliberately: in D3, for the watch-list at Gate 4, you wrote that *"a genuine controlled Next Action must be used. A note alone is not sufficient."* Here you wrote "Required action" with no such sentence, so we did not raise the bar on your behalf. If a critical safety finding should also require a controlled action, say so and we will make it the same picker.
+4. **A finding nobody has yet judged critical or not blocks the gate.** Your rule says what an open critical finding does; it does not say what an unjudged row does. If those passed, a finding could be parked indefinitely without a verdict and the gate close over it, which is the opposite of a control.
+5. **Closing a critical finding requires the safety reviewer conclusion and an evidence link.** Ours by analogy: in D3 you specified exactly that for the equivalent verdict — "may be closed after reviewer rationale and evidence are recorded".
+
+A finding marked **not** critical blocks nothing, whatever its status.
+
+**Still not done, and it is the same gap as Question 1:** infant-only products have no pathway to be routed to, and general products are auto-passed with an explanation rather than being asked to record N/A with a rationale (that second point is Question 16).
+
+**Question:** (a) what values should Severity have? (b) What values should Status have? (c) Should "Required action" be a controlled Next Action, as in D3, or is free text right? (d) Should an unjudged finding block Gate 7? (e) Should closing a critical finding require the reviewer conclusion and evidence link?
+
 ---
 
 ## Summary
@@ -522,5 +544,6 @@ Your D3 answer is implemented, and it closes the gap we reported to you ourselve
 | 30 | The claim-linkage and wording-adaptation rules, now built | Already built — rework if wrong; 2 parts deliberately left out |
 | 31 | The import-stub and raw-material review rules, now built | Already built — rework if wrong |
 | 32 | The watch-list reviewer trail at Gate 4, now built | Already built — closes a gap we reported ourselves |
+| 33 | The critical safety finding control at Gate 7, now built | Already built — replaces an item that read the wrong evidence |
 
 Questions 5 to 27 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

@@ -172,6 +172,14 @@ export type ReadinessCheck =
   // Rule D3: no flagged row is resting on Non-critical / Further information
   // required — both of which D3 allows only under Proceed with Conditions.
   | { kind: 'watchlistNoneConditional' }
+  // Rule E1: no critical safety finding is open (nor left unjudged, nor closed
+  // without the reviewer's conclusion and evidence). Deliberately vacuous on an
+  // EMPTY register — a project with no findings has nothing open — which is why
+  // it is NOT paired with a registerHasRows the way verify:readiness S2 requires
+  // of the .every() checks: demanding at least one finding row would force every
+  // project to invent one. The "did anyone look?" half is sg07-final-safety,
+  // which E1 keeps ("not SOLELY the Final Safety Sign-off").
+  | { kind: 'noOpenCriticalSafetyFinding' }
   | { kind: 'allOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
@@ -1396,21 +1404,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'registerRowsComplete', register: 'formulationSafetyFinalSignOff', columns: ['owner', 'decisionDate'] },
     },
     {
+      // E1 answered this one against us: "Please add a distinct safety-finding
+      // control rather than relying solely on the Final Safety Sign-off." It used
+      // to share sg07-final-safety's check, on the reasoning that no separate
+      // critical-finding field existed anywhere — true at the time, and the comment
+      // said a distinct field would be "a config addition, not a rule change". The
+      // team asked for the addition, so here it is, reading its own register.
       id: 'sg07-no-critical',
       label: 'No unresolved critical safety finding',
       tier: 'Mandatory',
-      // Shares sg07-final-safety's check on purpose: there is no separate
-      // "critical finding" flag anywhere, and "every safety question Completed —
-      // including the 'Final safety release' row" IS the absence of an unresolved
-      // critical finding. Same shared-evidence pattern as sg01-request /
-      // sg01-source. Flagged rather than hidden: if the team wants a distinct
-      // critical-finding field, that is a config addition, not a rule change.
-      check: {
-        kind: 'registerNoBadRows',
-        register: 'formulationSafetyFinalSignOff',
-        column: 'status',
-        badValues: ['Not Started', 'In Progress', 'On Hold', 'Backtracked'],
-      },
+      assumption: 'R4-Q30',
+      check: { kind: 'noOpenCriticalSafetyFinding' },
     },
     {
       // Added 2026-07-28 — the SME's own Gate 7 list names this as a DISTINCT

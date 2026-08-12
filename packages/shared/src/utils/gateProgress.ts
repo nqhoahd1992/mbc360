@@ -11,6 +11,7 @@ import {
 import { TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
 import { RM_EVIDENCE_REGISTER, conditionallyAcceptedRmRows, hasUsableRmRow, unresolvedRmRows } from './rmEvidence';
 import { WATCHLIST_REGISTER, watchlistConditionalRows, watchlistHardBlockers } from './watchlistReview';
+import { openCriticalSafetyFindings } from './safetyFindings';
 import {
   GATE_READINESS,
   type ReadinessCheck,
@@ -242,6 +243,8 @@ function evaluateReadinessCheck(
         evaluable: true,
         satisfied: conditionallyAcceptedRmRows(project.registers[RM_EVIDENCE_REGISTER] ?? []).length === 0,
       };
+    case 'noOpenCriticalSafetyFinding':
+      return { evaluable: true, satisfied: openCriticalSafetyFindings(project).length === 0 };
     case 'watchlistReviewed':
       return { evaluable: true, satisfied: watchlistHardBlockers(project).length === 0 };
     case 'watchlistNoneConditional':
@@ -585,6 +588,8 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'watchlistReviewed':
     case 'watchlistNoneConditional':
       return { href: `/registers/reg/${WATCHLIST_REGISTER}` };
+    case 'noOpenCriticalSafetyFinding':
+      return { href: '/formulation-safety' };
     case 'claimsRegulatoryReviewed':
       return { href: '/evidence-claim-support' };
     case 'bomHasLines':

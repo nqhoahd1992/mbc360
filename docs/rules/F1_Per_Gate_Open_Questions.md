@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–32, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–33, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -398,6 +398,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q24 | C1 — bằng chứng nào là "đã Regulatory review"; 4/7 điều kiện chưa kiểm được | 🔴 | 27 |
 | R4-Q25 | Claims Library ở cấp công ty hay cấp dự án, và claim có bắt buộc trỏ tới entry không | 🔴 | 28 |
 | R4-Q26 | D1 — 5 điểm chưa nói: record version của cái gì · comment bắt buộc khi nào · gate nào là "critical" · độc lập nghĩa là gì · chặn ở thời điểm nào | 🔴 | 29 |
+| R4-Q30 | E1 — sổ Critical Safety Findings: giá trị Severity/Status · "Required action" có phải controlled action · dòng chưa phán định có chặn | 🔴 | 33 |
 | R4-Q29 | D3 — "flagged" gồm status nào · giá trị Resolution status · "authorised acceptance" là gì · dòng chưa đánh giá có được PwC gỡ · có áp cho PB Caution Limits | 🔴 | 32 |
 | R4-Q28 | D4 — "applicable" gồm nguyên liệu nào · trạng thái "đã cân nhắc, không dùng" · "controlled conditional decision" là PwC hay trường riêng | 🔴 | 31 |
 | R4-Q27 | D2 — 4 quyết định trong phần vừa xây (ngưỡng chặn ở release · 3 giá trị so sánh wording · khác biệt nào tính · "material change" chỉ chặn chứ không tự tạo claim mới) + 2 vế chưa có chỗ gắn (artwork approval · external publication) | 🔴 | 30 |
@@ -1102,3 +1103,35 @@ Khác biệt thực tế giữa hai cách đọc rất hẹp nhưng có thật: 
 **Không cần migration:** `prohibitedIngredients` là `mode:'fixed'` — thêm **cột** không đổi số dòng, và 12 dòng seed đều ở `No formula match recorded` nên **không dòng nào flagged** trên dự án mới → check tự thoả, không chặn oan (đúng chiều S3 muốn).
 
 **Nếu trả lời khác:** `WATCHLIST_*` trong `packages/shared/src/config/registers.ts`; 5 hàm trong `packages/shared/src/utils/watchlistReview.ts`; 2 item `sg04-watchlist-*`.
+
+#### R4-Q30 · E1 — bộ giá trị Severity / Status, "Required action" có phải controlled action, và dòng chưa phán định 🔴
+
+**Đã build 2026-08-12.** E1 có **4 vế**; trước hôm nay chỉ **1** vế được làm.
+
+| Vế E1 | Trước | Sau |
+|---|---|---|
+| Safety-finding control **riêng** (9 trường) + *"Gate 7 cannot pass while any critical safety finding is open"* | ❌ | ✅ sổ `criticalSafetyFindings` |
+| Pregnancy/breastfeeding ở Gate 7 **không** unconditional | ✅ 07/08 | ✅ |
+| Infant-only → Infant/Baby Safety pathway | ❌ chờ A2 | ❌ **vẫn là lỗ hổng an toàn** (câu 1) |
+| General products **ghi N/A kèm lý do** | 🟡 tự pass | 🟡 vẫn vậy — `R4-Q13` / câu 16 |
+
+**E1 bác thẳng thứ đang chạy:** `sg07-no-critical` **dùng chung check** với `sg07-final-safety` (cả hai đọc *"10 câu Final Safety Sign-off đều Completed"*), tức đúng thứ câu đầu của E1 phủ định — *"rather than relying **solely** on the Final Safety Sign-off"*. Comment trong code còn đoán trước: *"if the team wants a distinct critical-finding field, that is a config addition, not a rule change"*. Họ muốn.
+
+**Chữ "solely" tự trả lời một câu thiết kế:** sổ mới là `mode:'register'` (dự án có thể **không có** finding nào), nên sổ rỗng → check tự thoả. Đúng nghiệp vụ, nhưng ai xác nhận *"đã soi và không thấy gì"*? → **`sg07-final-safety` vẫn Mandatory, giữ nguyên**. Hai cơ chế, hai câu hỏi: *"đã review chưa"* vs *"còn finding nào mở không"*. Vì thế check này **cố ý không** đi kèm `registerHasRows` như S2 đòi ở các check `.every()` — đòi ≥1 dòng finding sẽ buộc mọi dự án bịa ra một cái. Đã ghi lý do ngay tại kind để người sau không "sửa" ngược.
+
+**9 tên trường là của E1.** Bốn chỗ là của dev:
+
+| # | Quyết định | Vì sao |
+|---|---|---|
+| 1 | `Severity` = `Low` / `Medium` / `High` | E1 nêu trường, không nêu giá trị |
+| 2 | `Status` = `Open` / `Closed` | E1 chỉ hàm ý phải có `Open` (*"while any … is open"*). Đã cân nhắc dùng `WORK_STATUS_OPTIONS` và **loại** — `Backtracked` vô nghĩa với một safety finding |
+| 3 | **`Required action` là free text**, không phải picker Next Action như D3 | E1 viết *"Required action"* và **không** nói *"a genuine controlled Next Action must be used"* như D3 đã nói. Không tự nâng chuẩn — nhưng đây là **khác biệt giữa hai luật cùng vòng**, đáng hỏi |
+| 4 | Dòng **chưa phán định** (`criticalFinding` trống) **chặn**; và dòng `Yes` + `Closed` mà **thiếu** reviewer conclusion hoặc evidence cũng chặn | E1 nói *open critical finding* làm gì, không nói dòng **chưa ai phán** làm gì — để pass được thì có thể park một finding vô thời hạn, ngược hẳn nghĩa "control". Vế thứ hai **mượn khuôn D3**, nơi SME **đã** nói cho tình huống tương tự: *"may be closed after reviewer rationale and evidence are recorded"* |
+
+Dòng đánh `No` **không chặn gì**, bất kể status — luật E1 nói về *critical* finding.
+
+**Câu hỏi:** (a) `Severity` gồm giá trị nào? (b) `Status` gồm giá trị nào? (c) `Required action` có phải là một Next Action có kiểm soát như D3 đòi ở Gate 4, hay free text là đủ? (d) một finding **chưa ai phán định critical hay không** thì Gate 7 có được qua không (ta đang chặn)? (e) đóng một critical finding có buộc phải có reviewer conclusion + evidence link không (ta đang buộc, mượn khuôn D3)?
+
+**Không cần migration:** `mode:'register'` nên không có dòng nào được seed; dự án cũ có sổ rỗng và **không bị chặn thêm** — đúng, vì họ chưa từng ghi finding nào.
+
+**Nếu trả lời khác:** `SAFETY_FINDING_*` trong `packages/shared/src/config/registers.ts`; `openCriticalSafetyFindings()` trong `packages/shared/src/utils/safetyFindings.ts`; cột của `criticalSafetyFindings`.

@@ -1,7 +1,7 @@
 import { Alert, Empty, Typography } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { formulationSafetyFinalSignOff, formulationSafetyMatrix, formulationSafetyProfile } from '@mbc360/shared/config/registers';
+import { criticalSafetyFindings, formulationSafetyFinalSignOff, formulationSafetyMatrix, formulationSafetyProfile } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import DynamicTable from '../components/DynamicTable';
@@ -57,6 +57,18 @@ export default function FormulationSafety() {
         onSave={(rows) => setRegisterRowsBulk(id, formulationSafetyMatrix.key, rows)}
         reviewOwnerText={reviewOwnerText}
         readOnly={locked}
+      />
+
+      {/* Rule E1. Sits ABOVE the Final Safety Sign-off deliberately: E1 asks for a
+          distinct control rather than reliance on the sign-off, and a finding has to
+          be raised and closed before the sign-off means anything. Its own gate ('07',
+          not '07/10' like its siblings) so the lock follows Gate 7 alone. */}
+      <DynamicTable
+        config={criticalSafetyFindings}
+        rows={project.registers[criticalSafetyFindings.key] ?? []}
+        onSave={(rows) => setRegisterRowsBulk(id, criticalSafetyFindings.key, rows)}
+        reviewOwnerText={reviewOwnerText}
+        readOnly={isGateRefLocked(project, criticalSafetyFindings.gate)}
       />
 
       <DynamicTable
