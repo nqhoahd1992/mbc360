@@ -594,6 +594,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'checklistHasSelection':
       return phaseSectionLink(gateId, `sec-checklist-${check.section}`);
     case 'requirementDone':
+    case 'requirementSectionComplete':
       return phaseSectionLink(gateId, `sec-requirement-${check.section}`);
     case 'gateCheckDone':
       return phaseSectionLink(gateId, 'sec-gate-checks');
