@@ -84,6 +84,20 @@ export function wordingSimilarity(master: unknown, proposed: unknown): number {
   return shared / (a.size + b.size - shared);
 }
 
+// "This record makes no product claim" and "this record's claim is CL-01" cannot
+// both be true. Unlike everything in `publishedInfoViolations`, this is not a
+// release condition — it is incoherent at any workflow state, so it is checked on
+// every save.
+//
+// The UI prevents it structurally (ticking is disabled while a claim is linked,
+// and the picker is disabled once ticked) and this is the API's matching refusal.
+// Deliberately NOT resolved by clearing the Claim ID when the box is ticked:
+// silently dropping a link someone recorded is the "no silent corrections"
+// failure (B4). The person unlinks it themselves, or leaves the box alone.
+export function contradictoryClaimRows(publishedInfoRows: RegisterRow[]): RegisterRow[] {
+  return publishedInfoRows.filter((row) => !!row.noProductClaim && text(row.claimId) !== '');
+}
+
 // Every reason a Published Info row may not sit at a released state. Non-empty
 // and never mutates its inputs, so both layers can call it on the same data and
 // agree.

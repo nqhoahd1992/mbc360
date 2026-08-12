@@ -9,7 +9,7 @@ import { GATES } from '@mbc360/shared/config/gates';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
-import { publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
+import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
 import {
   VULNERABLE_REGISTER,
   targetUsersPinnedByAssessment,
@@ -728,6 +728,14 @@ export class ProjectsService {
       // declared non-product; wording equivalence classified by a reviewer),
       // evaluated by the same shared function the UI's save-guard calls.
       if (registerKey === 'publishedInfoApproval') {
+        const contradictory = contradictoryClaimRows(rows);
+        if (contradictory.length > 0) {
+          throw new BadRequestException(
+            `${contradictory.length} Published Information row(s) are declared as containing no product claim while also linking a Claim ID: ${contradictory
+              .map((r) => `${String(r.recordId ?? '(no record id)')} -> ${String(r.claimId)}`)
+              .join(', ')}. Unlink the claim, or clear the declaration.`,
+          );
+        }
         const claimRows = project.registers['claimEvidenceTraceability'] ?? [];
         const bad = publishedInfoViolations(rows, claimRows);
         if (bad.length > 0) {

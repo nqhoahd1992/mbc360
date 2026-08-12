@@ -942,10 +942,6 @@ const publishedInfoApproval: RegisterConfig = {
     { key: 'publishedItem', label: 'Published information item', type: 'text', width: 180 },
     { key: 'audience', label: 'Audience', type: 'text', width: 120 },
     { key: 'claimCategory', label: 'Claim / terminology category', type: 'text', width: 160 },
-    // Links this row to a specific row in Claim -> Evidence Traceability
-    // (claimEvidenceTraceability.claimId) — hard-blocks release until that
-    // claim's own status is 'Supported'.
-    { key: 'claimId', label: 'Claim ID (Claim -> Evidence Traceability)', type: 'text', width: 150 },
     // D2: "Every external product-benefit, safety, efficacy, performance or
     // suitability statement should be required to link to a Claim ID. Linkage
     // may remain optional ONLY for genuinely non-product corporate information
@@ -957,8 +953,17 @@ const publishedInfoApproval: RegisterConfig = {
     // owns: unticked + no Claim ID blocks release. `noProductClaimBy` is filled
     // server-side from the session, never typed — the same reason
     // `reviewedWording` is derived rather than entered.
+    //
+    // Sits BEFORE Claim ID (2026-08-12, user-requested) because it is the prior
+    // question: does this record make a product statement at all? Only if it does
+    // is a Claim ID the next thing to fill in. The two are mutually exclusive and
+    // guarded both ways — see `contradictoryClaimRows`.
     { key: 'noProductClaim', label: 'No product claim or technical statement', type: 'checkbox', width: 130 },
     { key: 'noProductClaimBy', label: 'Exemption declared by', type: 'user', width: 150, editable: false },
+    // Links this row to a specific row in Claim -> Evidence Traceability
+    // (claimEvidenceTraceability.claimId) — hard-blocks release until that
+    // claim's own status is 'Supported'.
+    { key: 'claimId', label: 'Claim ID (Claim -> Evidence Traceability)', type: 'text', width: 150 },
     // D2's "master approved wording" — the linked claim's own approved text,
     // mirrored here so the record shows what the channel wording is being
     // compared against. Derived, never typed.

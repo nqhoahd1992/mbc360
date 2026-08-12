@@ -5,7 +5,7 @@ import dayjs from 'dayjs';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
 import { isRegisterRowBlank } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
-import { publishedInfoViolations, wordingDiffers, wordingSimilarity } from '@mbc360/shared/utils/claimEvidence';
+import { contradictoryClaimRows, publishedInfoViolations, wordingDiffers, wordingSimilarity } from '@mbc360/shared/utils/claimEvidence';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { createEmptyRegisterRow } from '../store/factory';
 import SaveBar from './SaveBar';
@@ -102,7 +102,12 @@ export default function PublishedInfoApprovalTable({
   // All three D2 release conditions, from the same function the API calls.
   const violations = publishedInfoViolations(draft, claimEvidenceRows);
   const violationFor = (row: RegisterRow) => violations.find((v) => v.row === row);
-  const saveBlocked = hasBlankRows || violations.length > 0;
+  // Both cells below are disabled to keep this impossible, so a row can only
+  // reach this state through data that arrived from somewhere else — but the
+  // guard exists at both layers regardless, because "the UI disables it" is not
+  // enforcement (BACKEND_PLAN §3 principle 7).
+  const contradictory = contradictoryClaimRows(draft);
+  const saveBlocked = hasBlankRows || violations.length > 0 || contradictory.length > 0;
 
   // D2: "Automated similarity checking may be used as a warning, but final
   // equivalence must be confirmed by an authorised reviewer." Nothing branches
@@ -204,6 +209,40 @@ export default function PublishedInfoApprovalTable({
       if (readOnly) {
         return { title: col.label, width: col.width ?? 140, render: (_: unknown, row: RegisterRow) => staticCell(col, row) };
       }
+      // The prior question, so it comes first in config order too: a record that
+      // makes no product statement has nothing to link. Ticking is blocked while a
+      // claim IS linked — the person unlinks it deliberately rather than the app
+      // dropping the link for them.
+      if (col.key === 'noProductClaim') {
+        return {
+          title: col.label,
+          width: col.width ?? 130,
+          render: (_: unknown, row: RegisterRow, index: number) => {
+            const linked = String(row.claimId ?? '').trim() !== '';
+            const blocked = linked && !row.noProductClaim;
+            return (
+              <Tooltip
+                title={
+                  blocked
+                    ? 'A Claim ID is linked, so this record does make a product statement — unlink the claim first if that is wrong'
+                    : undefined
+                }
+              >
+                <Checkbox
+                  checked={!!row.noProductClaim}
+                  disabled={blocked}
+                  onChange={(e) => {
+                    // Defence in depth for the same rule the `disabled` above
+                    // expresses — a stale render must not be able to set it.
+                    if (e.target.checked && linked) return;
+                    patch(index, 'noProductClaim', e.target.checked);
+                  }}
+                />
+              </Tooltip>
+            );
+          },
+        };
+      }
       if (col.key === 'claimId') {
         return {
           title: col.label,
@@ -212,9 +251,19 @@ export default function PublishedInfoApprovalTable({
             const claimId = String(row.claimId ?? '');
             const violation = violationFor(row);
             const isViolation = violation?.kind === 'unlinked' || violation?.kind === 'unsupported';
+            const exempt = !!row.noProductClaim;
             return (
-              <Tooltip title={isViolation ? violation?.reason : undefined}>
+              <Tooltip
+                title={
+                  exempt
+                    ? 'Declared as containing no product claim or technical statement — untick that to link a claim'
+                    : isViolation
+                      ? violation?.reason
+                      : undefined
+                }
+              >
                 <Select
+                  disabled={exempt}
                   size="small"
                   style={{ width: '100%' }}
                   showSearch
@@ -391,7 +440,9 @@ export default function PublishedInfoApprovalTable({
           disabledReason={
             hasBlankRows
               ? 'One or more rows have no data entered — fill in at least one field or remove the row before saving.'
-              : `${violations.length} row(s) cannot sit at a released workflow state — see the reasons above.`
+              : contradictory.length > 0
+                ? `${contradictory.length} row(s) are declared as containing no product claim while also linking a Claim ID — unlink the claim, or clear the declaration.`
+                : `${violations.length} row(s) cannot sit at a released workflow state — see the reasons above.`
           }
         />
       )}
