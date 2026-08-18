@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import UserSelect from '../components/UserSelect';
-import { Alert, Button, Card, DatePicker, Form, Input, Modal, Select, Space, Switch, Table, Tag, message } from 'antd';
+import { Alert, AutoComplete, Button, Card, DatePicker, Form, Input, Modal, Select, Space, Switch, Table, Tag, message } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
@@ -91,6 +91,25 @@ export default function ChangeControl() {
   const [form] = Form.useForm<ChangeForm>();
   const selectedTriggerId = Form.useWatch('triggerId', form);
   const selectedTrigger = getChangeTrigger(selectedTriggerId);
+  // "Old version" is what this change supersedes. The project's real versions are
+  // known — the formula's from its version history, artwork's from the Packaging
+  // Specs & Artwork register — so offer them rather than making someone remember
+  // the exact string. AutoComplete, not Select: the field is descriptive, and a
+  // change may supersede something neither list holds (a supplier spec revision,
+  // a document rev). Suggesting is right here; constraining would not be.
+  const selectedProjectId = Form.useWatch('projectId', form);
+  const oldVersionOptions = useMemo(() => {
+    const p = projects.find((x) => x.identity.id === selectedProjectId);
+    if (!p) return [];
+    const formula = [p.formulaVersion, ...p.formulaVersionHistory.map((v) => v.version)];
+    const artwork = (p.registers['packagingSpecsArtwork'] ?? []).map((r) => String(r.artworkVersion ?? ''));
+    const uniq = (xs: string[]) => [...new Set(xs.map((x) => x.trim()).filter(Boolean))];
+    return [
+      { label: 'Formula version', options: uniq(formula).map((v) => ({ value: v })) },
+      { label: 'Artwork / label version', options: uniq(artwork).map((v) => ({ value: v })) },
+    ].filter((g) => g.options.length > 0);
+  }, [projects, selectedProjectId]);
+
   // Default is Yes (see initialValues); only hide the message when explicitly No.
   const commRequired = Form.useWatch('communicationRequired', form) !== false;
 
@@ -350,7 +369,23 @@ export default function ChangeControl() {
               <Select options={['Low', 'Medium', 'High'].map((r) => ({ value: r, label: r }))} />
             </Form.Item>
             <Form.Item name="oldVersion" label="Old version">
-              <Input placeholder="e.g. F1.0 / AW-03" />
+              <AutoComplete
+                options={oldVersionOptions}
+                placeholder={
+                  selectedProjectId
+                    ? oldVersionOptions.length > 0
+                      ? 'Pick a version, or type another'
+                      : 'No versions recorded on this project yet — type one'
+                    : 'Select a project first, or type a version'
+                }
+                filterOption={(input, option) => {
+                  // Options are grouped, so antd passes group nodes here too — a group
+                  // has no `value` and must not be filtered out by it, or its whole
+                  // section disappears while typing.
+                  const value = (option as { value?: string } | undefined)?.value;
+                  return value === undefined || value.toLowerCase().includes(input.toLowerCase());
+                }}
+              />
             </Form.Item>
             <Form.Item name="dueDate" label="Due date">
               <DatePicker style={{ width: '100%' }} />
