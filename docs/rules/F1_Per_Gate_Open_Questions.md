@@ -373,7 +373,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
 | R4-Q1 | Gate 7 — "restricted/caution assessment closed" nghĩa hẹp hay rộng | 🔴 | 5 |
-| R4-Q2 | Gate 7 — sản phẩm chỉ cho trẻ sơ sinh hiện không có đánh giá nào | 🔴 | **1** |
+| R4-Q2 | Gate 7 — Compartment 3 có đúng là Infant pathway SME muốn không (lỗ hổng đã đóng 12/08) | 🔴 | **1** |
 | R4-Q3 | Ngưỡng chặn Gate 4 vs Gate 7 của cùng một sổ caution | 🔴 | 6 |
 | R4-Q4 | `openChangeControl` — bỏ vế *"or should be opened"* | 🟡 | 8 |
 | R4-Q5 | `humanStudyPlanned` — cái gì đánh dấu "đã dự định làm study" | 🟡 | 9 |
