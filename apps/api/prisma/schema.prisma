@@ -649,6 +649,9 @@ model ChangeRecord {
   affectedArea          String
   oldVersion            String?
   riskLevel             String // Low | Medium | High
+  // Rule E3(b): Gate 11 evaluates each open change by impact, not just by status.
+  // Values from CHANGE_IMPACT_AREAS in @mbc360/shared/config/changeTriggers.
+  impactAreas           String[]  @default([])
   requiredAction        String?
   evidenceLink          String?
   requiredSignOffs      String?

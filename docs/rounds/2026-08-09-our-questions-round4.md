@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has thirty-three questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them concerns infant safety, where we have closed most of a gap ourselves and need you to confirm we closed it with the right content.
+This round has thirty-four questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them concerns infant safety, where we have closed most of a gap ourselves and need you to confirm we closed it with the right content.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Questions 20–33** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
+5. **Questions 20–34** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
 
 ---
 
@@ -27,7 +27,7 @@ In Round 3 (E1) you corrected our reading of Gate 7: the pregnancy/breastfeeding
 
 We have made the first half of that change, and it was necessary: before it, **every** project — including a plain adult face serum — was blocked at Gate 7 until someone worked through all twelve rows of the maternal caution list, including rows that could not possibly apply.
 
-The second half we cannot make, because the Infant & Baby Safety pathway does not exist yet. Its content is question **A2 from our 21 July list**, which has not been answered. You confirmed in an earlier round that "Infant 0+" activates a dedicated infant safety workflow separate from Skincare for Two, and you listed the topics it should cover — but we have never received the workflow itself.
+The second half we could not make at the time, because the Infant & Baby Safety pathway you describe has never reached us. Its content is question **A2 from our 21 July list**, still unanswered: you confirmed that "Infant 0+" activates a dedicated infant safety workflow separate from Skincare for Two, and listed the topics it should cover, but we never received the workflow itself.
 
 **That left a gap we reported to you plainly: an infant-only product, with no maternal user selected, passed Gate 7 without either assessment.** It has now largely been closed, and how is worth explaining, because it was not by us writing safety content.
 
@@ -534,6 +534,21 @@ A finding marked **not** critical blocks nothing, whatever its status.
 
 **Question:** (a) what values should Severity have? (b) What values should Status have? (c) Should "Required action" be a controlled Next Action, as in D3, or is free text right? (d) Should an unjudged finding block Gate 7? (e) Should closing a critical finding require the reviewer conclusion and evidence link?
 
+### Question 34 — Gate 11 now grades open changes; four choices inside it are ours
+
+Your E3(b) answer settled a question we had left open with a comment saying a readiness check here "would either duplicate or contradict" the existing soft lock. You answered that it would do neither: *"Gate 11 requires more than a duplicate warning. It must evaluate the impact classification and closure status of each open Change Control."* The old soft lock treats every open change alike, whatever it touches — which is exactly the duplicate warning you were describing.
+
+**What changed.** Every change control now carries an **impact classification** — your own list: formula, artwork, claims, safety, regulatory, packaging, release, plus launch-impacting and administrative-only. Neither field we had was that classification: risk level is Low/Medium/High, and "affected area" is free text. Gate 11 now reads it: a launch-impacting or high-risk open change stops the gate outright; one affecting any of your seven subjects stops it too; an administrative-only one stops a plain Proceed but can be carried under Proceed with Conditions.
+
+**The four choices we made:**
+
+1. **"Critical" is read as High risk.** Our risk scale is Low / Medium / High with no Critical on it. If Critical is meant to be a distinct level above High, tell us and we will add it rather than fold the two together.
+2. **A change with no impact classification blocks Gate 11.** You ask the gate to *evaluate* the classification; there is nothing to evaluate on a change nobody has classified. Letting those through would make the rule optional. It does mean existing changes need classifying before Gate 11 will pass.
+3. **"Final disposition is recorded" means a closure evidence note or a closing date.** Your fourth line lets a completed, rejected, cancelled or superseded change stop blocking *if the final disposition is recorded* — and the second half of that sentence was not being enforced: a change marked Completed with nothing recorded about how counted as closed. It no longer does.
+4. **"Authorised acknowledgement" is the acknowledgement step that already exists** on the gate row for open changes, not a new approval with its own permission check. The item says so on screen rather than leaving you to assume we built one.
+
+**Question:** (a) is Critical the same as High, or a level of its own? (b) Should an unclassified open change block Gate 11? (c) What counts as the final disposition being recorded? (d) Is "authorised acknowledgement" the existing acknowledgement, or an approval restricted to particular roles?
+
 ---
 
 ## Summary
@@ -551,5 +566,6 @@ A finding marked **not** critical blocks nothing, whatever its status.
 | 31 | The import-stub and raw-material review rules, now built | Already built — rework if wrong |
 | 32 | The watch-list reviewer trail at Gate 4, now built | Already built — closes a gap we reported ourselves |
 | 33 | The critical safety finding control at Gate 7, now built | Already built — replaces an item that read the wrong evidence |
+| 34 | Gate 11 grading open changes by impact, now built | Already built — replaces the duplicate warning you rejected |
 
 Questions 5 to 27 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

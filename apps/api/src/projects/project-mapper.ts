@@ -130,6 +130,7 @@ export function toChangeRecords(p: ProjectWithAll) {
     affectedArea: c.affectedArea,
     oldVersion: opt(c.oldVersion),
     riskLevel: c.riskLevel,
+    impactAreas: c.impactAreas,
     requiredAction: opt(c.requiredAction),
     evidenceLink: opt(c.evidenceLink),
     requiredSignOffs: opt(c.requiredSignOffs),
@@ -358,6 +359,10 @@ export function toProjectData(p: ProjectWithAll, gateChangeLog: GateChangeLogEnt
       raisedBy: opt(a.raisedBy),
       verifiedBy: opt(a.verifiedBy),
     })),
+    // E3(b): the readiness engine evaluates each open change's impact at Gate 11,
+    // so the changes have to travel with the project rather than only in the
+    // envelope's separate slice.
+    changes: toChangeRecords(p) as ProjectData['changes'],
     backtrackEvents: p.backtrackEvents.map(
       (e): BacktrackEvent => ({
         id: e.id,

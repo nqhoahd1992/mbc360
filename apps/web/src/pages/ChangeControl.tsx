@@ -9,6 +9,7 @@ import {
   CHANGE_RACI,
   CHANGE_STATUSES,
   CHANGE_TRIGGERS,
+  CHANGE_IMPACT_AREAS,
   getChangeTrigger,
   phaseShortLabel,
   triggerPhases,
@@ -307,6 +308,21 @@ export default function ChangeControl() {
             </Form.Item>
             <Form.Item name="affectedArea" label="Affected area" rules={[{ required: true }]}>
               <Select options={AFFECTED_AREAS.map((a) => ({ value: a, label: a }))} />
+            </Form.Item>
+            {/* Rule E3(b): Gate 11 "must evaluate the impact classification … of each
+                open Change Control". Required, because an unclassified open change
+                blocks Gate 11 — there is nothing for the gate to evaluate. */}
+            <Form.Item
+              name="impactAreas"
+              label="Impact classification"
+              rules={[{ required: true, message: 'Classify the impact — Gate 11 evaluates this' }]}
+              extra="What this change affects. Launch-impacting or high risk hard-blocks Gate 11; administrative only may pass with conditions."
+            >
+              <Select
+                mode="multiple"
+                allowClear
+                options={CHANGE_IMPACT_AREAS.map((a) => ({ value: a, label: a }))}
+              />
             </Form.Item>
             <Form.Item name="riskLevel" label="Risk level" rules={[{ required: true }]}>
               <Select options={['Low', 'Medium', 'High'].map((r) => ({ value: r, label: r }))} />

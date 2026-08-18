@@ -200,6 +200,14 @@ export type ReadinessCheck =
   // pathway; the section's rows are scaffolded at project creation (and
   // verify:scaffold guards that), so this is not vacuous in practice.
   | { kind: 'requirementSectionComplete'; section: string }
+  // Rule E3(b): no open Change Control at Gate 11 is launch-impacting, High risk,
+  // impacting formula/artwork/claims/safety/regulatory/packaging/release, or
+  // unclassified. Blocks Proceed with Conditions too.
+  | { kind: 'changeControlNoHardImpact' }
+  // Rule E3(b)'s third line: no open low-risk ADMINISTRATIVE change remains —
+  // which Proceed with Conditions may clear "following authorised
+  // acknowledgement" (the existing F9 acknowledgement on the gate row).
+  | { kind: 'changeControlNoAdminImpact' }
   | { kind: 'allOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
@@ -1966,11 +1974,34 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       source: 'b3',
       check: { kind: 'gateCheckDone', gate: '11', check: 'Launch sign-off completed and blockers recorded' },
     },
-    // sg11-changes-closed: still `manual`. An open change control record already
-    // soft-locks the gate through a DIFFERENT mechanism (F9/C4 — openChangesForGate
-    // in the gate-decision guard), so adding a readiness check here would either
-    // duplicate it or contradict it. Left for the SME round.
-    { id: 'sg11-changes-closed', label: 'Change controls closed or formally accepted', tier: 'Mandatory', check: { kind: 'manual' } },
+    // E3(b) answered the question the old comment was waiting for, and answered it
+    // against the old design: "Therefore, Gate 11 requires more than a duplicate
+    // warning. It must evaluate the impact classification and closure status of
+    // each open Change Control." The F9/C4 soft lock treats every open change
+    // alike; these two items grade them, which is what makes them not a duplicate.
+    {
+      id: 'sg11-changes-blocking',
+      label: 'No open change control that is launch-impacting, high risk, or affects formula, artwork, claims, safety, regulatory, packaging or release',
+      tier: 'Mandatory',
+      source: 'f-series',
+      assumption: 'R4-Q31',
+      check: { kind: 'changeControlNoHardImpact' },
+    },
+    {
+      id: 'sg11-changes-admin',
+      label: 'No open low-risk administrative change control',
+      tier: 'Mandatory',
+      source: 'f-series',
+      assumption: 'R4-Q31',
+      clearedByConditions: true,
+      // E3(b) allows this one through "following authorised acknowledgement". The
+      // acknowledgement is F9's existing confirm step on the Phase Gate Flow row,
+      // not a second one built here — recorded so the difference is not implied away.
+      coverageNote:
+        'the app requires the change to be classified as administrative only and lets Proceed with Conditions clear it, using the existing open-change acknowledgement. ' +
+        'Whether that acknowledgement is the "authorised acceptance" the review team meant is question 34.',
+      check: { kind: 'changeControlNoAdminImpact' },
+    },
     {
       id: 'sg11-published-approved',
       label: 'Published product information approved',

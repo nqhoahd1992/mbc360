@@ -26,6 +26,32 @@ export const CHANGE_CLOSED_STATUSES: ChangeStatus[] = [
   'Superseded',
 ];
 
+// Rule E3(b), Gate 11. The seven impacted subjects are transcribed from the
+// team's own sentence — "Formula, artwork, claims, safety, regulatory, packaging
+// or release-impacting change" — plus the two ends of their scale: the
+// launch-impacting case that hard-blocks even Proceed with Conditions, and the
+// low-risk administrative case that Proceed with Conditions may clear.
+export const CHANGE_IMPACT_LAUNCH = 'Launch-impacting';
+export const CHANGE_IMPACT_ADMIN = 'Administrative only';
+export const CHANGE_IMPACT_AREAS = [
+  CHANGE_IMPACT_LAUNCH,
+  'Formula',
+  'Artwork',
+  'Claims',
+  'Safety',
+  'Regulatory',
+  'Packaging',
+  'Release',
+  CHANGE_IMPACT_ADMIN,
+] as const;
+
+// The seven that hard-block at Gate 11 while the change is open — everything
+// except the launch case (which blocks harder) and the administrative one
+// (which blocks softer).
+export const CHANGE_IMPACT_BLOCKING_AREAS: readonly string[] = CHANGE_IMPACT_AREAS.filter(
+  (a) => a !== CHANGE_IMPACT_LAUNCH && a !== CHANGE_IMPACT_ADMIN,
+);
+
 export function isChangeOpen(status: ChangeStatus): boolean {
   return !CHANGE_CLOSED_STATUSES.includes(status);
 }

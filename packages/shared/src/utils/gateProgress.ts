@@ -12,6 +12,7 @@ import { TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
 import { RM_EVIDENCE_REGISTER, conditionallyAcceptedRmRows, hasUsableRmRow, unresolvedRmRows } from './rmEvidence';
 import { WATCHLIST_REGISTER, watchlistConditionalRows, watchlistHardBlockers } from './watchlistReview';
 import { openCriticalSafetyFindings } from './safetyFindings';
+import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
 import {
   GATE_READINESS,
   type ReadinessCheck,
@@ -259,6 +260,10 @@ function evaluateReadinessCheck(
       const rows = project.requirements[check.section] ?? [];
       return { evaluable: true, satisfied: rows.every((r) => r.status === 'Completed') };
     }
+    case 'changeControlNoHardImpact':
+      return { evaluable: true, satisfied: gate11HardBlockingChanges(project, project.changes).length === 0 };
+    case 'changeControlNoAdminImpact':
+      return { evaluable: true, satisfied: gate11ConditionalChanges(project, project.changes).length === 0 };
     case 'noOpenCriticalSafetyFinding':
       return { evaluable: true, satisfied: openCriticalSafetyFindings(project).length === 0 };
     case 'watchlistReviewed':
@@ -515,6 +520,10 @@ export function gateReadiness(project: ProjectData, gateId: string): GateReadine
 export interface GateBlockerLink {
   href: string;
   scrollToId?: string;
+  // Every other link is relative to /projects/:id. Change Control is a GLOBAL
+  // page, so its link must not be prefixed — without this the UI would build
+  // /projects/MBC-2026-001/change-control, which does not exist.
+  absolute?: boolean;
 }
 
 export interface GateBlocker {
@@ -616,6 +625,10 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: `/registers/reg/${WATCHLIST_REGISTER}` };
     case 'noOpenCriticalSafetyFinding':
       return { href: '/formulation-safety' };
+    case 'changeControlNoHardImpact':
+    case 'changeControlNoAdminImpact':
+      // Change Control is a GLOBAL page, not per project — no project prefix.
+      return { href: '/change-control', absolute: true };
     case 'claimsRegulatoryReviewed':
       return { href: '/evidence-claim-support' };
     case 'bomHasLines':

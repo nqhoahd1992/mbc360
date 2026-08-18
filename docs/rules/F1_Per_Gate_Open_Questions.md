@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–33, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–34, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -398,6 +398,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q24 | C1 — bằng chứng nào là "đã Regulatory review"; 4/7 điều kiện chưa kiểm được | 🔴 | 27 |
 | R4-Q25 | Claims Library ở cấp công ty hay cấp dự án, và claim có bắt buộc trỏ tới entry không | 🔴 | 28 |
 | R4-Q26 | D1 — 5 điểm chưa nói: record version của cái gì · comment bắt buộc khi nào · gate nào là "critical" · độc lập nghĩa là gì · chặn ở thời điểm nào | 🔴 | 29 |
+| R4-Q31 | E3(b) — "Critical" là High? · change chưa phân loại có chặn? · "final disposition" gồm gì · "authorised acknowledgement" là bước nào | 🔴 | 34 |
 | R4-Q30 | E1 — sổ Critical Safety Findings: giá trị Severity/Status · "Required action" có phải controlled action · dòng chưa phán định có chặn | 🔴 | 33 |
 | R4-Q29 | D3 — "flagged" gồm status nào · giá trị Resolution status · "authorised acceptance" là gì · dòng chưa đánh giá có được PwC gỡ · có áp cho PB Caution Limits | 🔴 | 32 |
 | R4-Q28 | D4 — "applicable" gồm nguyên liệu nào · trạng thái "đã cân nhắc, không dùng" · "controlled conditional decision" là PwC hay trường riêng | 🔴 | 31 |
@@ -1153,3 +1154,40 @@ Project owner hỏi *"E1 Gate 7 hoàn thiện rồi chứ"*. Rà lại thì phá
 Test 5 nhánh: general adult → item tự pass (advisory), không chặn · **Infant 0+ → chặn cả `sg07-infant-safety` lẫn `sg07-screen-check`** · Infant 0+ với 8 dòng Completed → item thoả · Pregnancy → item advisory (đã phủ qua `skincare-for-two`, không chặn trùng) · Pregnancy + Infant 0+ → chặn.
 
 **Câu hỏi vẫn MỞ, và lý do đổi:** ta đang cưỡng chế **assessment của workbook**, không phải của SME. Họ nói `Infant 0+` kích hoạt một pathway riêng và liệt kê các chủ đề nó phải phủ; 8 dòng này **có thể hẹp hơn**, có thể thuộc gate khác, hoặc cần bằng chứng mà các dòng đó không đòi. Nên câu 1 đổi từ *"xin nội dung, hiện chưa có gì"* thành *"Compartment 3 có đúng là thứ các anh muốn, hay pathway còn rộng hơn"*.
+
+#### R4-Q31 · E3(b) — "Critical" ánh xạ sang thang rủi ro nào, và "authorised acknowledgement" là gì 🔴
+
+**Đã build 2026-08-12.** `sg11-changes-closed` trước đó là `manual` với comment: *"adding a readiness check here would either duplicate it or contradict it. Left for the SME round."* Vòng đó đã trả lời — và trả lời **ngược lại**:
+
+> *"Therefore, Gate 11 requires more than a duplicate warning. It must evaluate the impact classification and closure status of each open Change Control."*
+
+Soft-lock F9/C4 đối xử **mọi** open change như nhau; E3(b) đòi **phân hạng**. Nên nó không phải trùng lặp — nó là thứ soft-lock không làm.
+
+**Trường mới, vì không trường nào sẵn có là "impact classification":** `riskLevel` là Low/Medium/High, `affectedArea` là text tự do. Thêm `ChangeRecord.impactAreas: string[]` (cột Postgres `TEXT[]`, migration `20260812120000`), giá trị **chép nguyên câu của SME**: *Formula · Artwork · Claims · Safety · Regulatory · Packaging · Release*, cộng hai đầu thang họ nêu riêng — `Launch-impacting` và `Administrative only`.
+
+**Và `changes` phải vào `ProjectData`.** Trước đây nó chỉ nằm ở một slice global của store (di sản thời demo) — API **đã** load per project nhưng không gắn vào `ProjectData`, nên engine readiness không **nhìn thấy** thứ E3(b) bảo nó đánh giá. Đã thêm.
+
+**Map 4 mức:**
+
+| E3(b) | Cài thế nào |
+|---|---|
+| *Critical hoặc launch-impacting → hard-block* | `impactAreas` chứa `Launch-impacting` **hoặc** `riskLevel === 'High'` → `changeControlNoHardImpact`, PwC không gỡ |
+| *Formula/artwork/claims/safety/regulatory/packaging/release → hard-block unless implementation and verification are complete* | cùng check trên. *"Implementation và verification xong"* trên lifecycle này **chính là** đạt trạng thái terminal, nên một change **đang mở** với các impact đó luôn chặn |
+| *Low-risk administrative → PwC sau authorised acknowledgement* | `changeControlNoAdminImpact` + `clearedByConditions` |
+| *Completed/rejected/cancelled/superseded → không chặn **nếu final disposition được ghi*** | `isChangeDispositionRecorded()` — xem dưới |
+
+**Ba quyết định của dev:**
+
+| # | Quyết định | Vì sao |
+|---|---|---|
+| 1 | *"Critical"* đọc là **`riskLevel === 'High'`** | thang rủi ro của app là Low/Medium/High, **không có** `Critical`. Cần một ánh xạ, và High là ứng viên duy nhất |
+| 2 | Change **chưa phân loại** (`impactAreas` rỗng) → **chặn** | E3(b) đòi Gate 11 *"must evaluate the impact classification"*; không có gì để evaluate thì không đánh giá được. Cho qua sẽ biến cả luật thành tuỳ chọn — cùng lập luận với D3 và E1 |
+| 3 | *"final disposition is recorded"* = có `closureEvidence` **hoặc** `closedDate` | `isChangeOpen()` chỉ đọc **status**, nên một change `Completed` mà không ghi gì về cách đóng vẫn tính là đã đóng — tức **vế thứ hai của câu đó bị bỏ từ F9**. Nay bổ sung |
+
+**Một chỗ chưa cài, đã ghi rõ trên item:** *"authorised acknowledgement"* ở mức administrative — đang dùng lại bước acknowledge sẵn có của F9 trên hàng Phase Gate Flow, **không** dựng bước riêng. `coverageNote` nói thẳng điều đó.
+
+**Câu hỏi:** (a) *"Critical"* có phải là `High` trên thang Low/Medium/High không, hay cần thêm giá trị `Critical`? (b) change **chưa phân loại impact** thì Gate 11 có được qua không (ta đang chặn)? (c) *"final disposition is recorded"* gồm những gì — closure evidence, ngày đóng, hay cả hai? (d) *"authorised acknowledgement"* có phải bước acknowledge của F9, hay là một phê duyệt riêng có kiểm tra quyền?
+
+**Test 11 nhánh:** không có change → qua · chưa phân loại → chặn · launch-impacting → chặn · High + admin-only → chặn (rủi ro thắng) · Formula → chặn, **PwC cũng không gỡ** · admin-only low risk → chặn `Proceed` thuần, **PwC gỡ** · Completed + có disposition → qua · Completed **không** disposition → chặn · change của dự án khác → không ảnh hưởng. Link blocker trỏ `/change-control` với `absolute: true` (trang global, không có prefix `/projects/:id`).
+
+**Nếu trả lời khác:** `CHANGE_IMPACT_*` trong `packages/shared/src/config/changeTriggers.ts`; 4 hàm trong `packages/shared/src/utils/changeImpact.ts`; 2 item `sg11-changes-*`.

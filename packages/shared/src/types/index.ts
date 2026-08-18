@@ -404,6 +404,12 @@ export interface ChangeRecord {
   affectedArea: string;
   oldVersion?: string;
   riskLevel: RiskLevel;
+  // Rule E3(b): "Gate 11 requires more than a duplicate warning. It must evaluate
+  // the impact classification and closure status of each open Change Control."
+  // Neither riskLevel (Low/Medium/High) nor the free-text affectedArea is that
+  // classification, so this holds it — values are E3(b)'s own list of impacted
+  // subjects (see CHANGE_IMPACT_AREAS). Several may apply at once.
+  impactAreas?: string[];
   requiredAction?: string;
   evidenceLink?: string;
   requiredSignOffs?: string;
@@ -491,6 +497,12 @@ export interface ProjectData {
   feedback: FeedbackEntry[];
   registers: Record<string, RegisterRow[]>; // keyed by RegisterConfig.key
   nextActions: NextAction[]; // controlled per-gate follow-up actions (rule B2)
+  // Change Control records for THIS project. Added 2026-08-12 for rule E3(b),
+  // which makes Gate 11 evaluate each open change's impact classification — a
+  // rule the readiness engine cannot apply to data it cannot see. Until then
+  // changes lived only in a global store slice (a leftover from the demo), and
+  // the API already loaded them per project without putting them here.
+  changes: ChangeRecord[];
   backtrackEvents: BacktrackEvent[]; // immutable backtrack audit log (rule B4)
   gateChangeLog: GateChangeLogEntry[]; // immutable log of ordinary Phase Gate Flow field edits
   marketTracks: MarketTrack[]; // per-market Gate 10-12 tracking (rules A1/C5)

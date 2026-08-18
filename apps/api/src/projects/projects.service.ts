@@ -1349,6 +1349,8 @@ export class ProjectsService {
             affectedArea: c.affectedArea,
             oldVersion: c.oldVersion ?? null,
             riskLevel: c.riskLevel,
+            // E3(b): Gate 11 evaluates this, so it must round-trip.
+            impactAreas: c.impactAreas ?? [],
             requiredAction: c.requiredAction ?? null,
             evidenceLink: c.evidenceLink ?? null,
             requiredSignOffs: c.requiredSignOffs ?? null,

@@ -1,0 +1,11 @@
+-- Rule E3(b) (SME Round 3): "Gate 11 requires more than a duplicate warning. It
+-- must evaluate the impact classification and closure status of each open Change
+-- Control." Neither `riskLevel` (Low/Medium/High) nor the free-text `affectedArea`
+-- is that classification, so this column holds it — several values may apply to
+-- one change.
+--
+-- No backfill: an existing change has no recorded classification, and inventing
+-- one would be asserting an impact assessment nobody made. An unclassified OPEN
+-- change blocks Gate 11 until someone classifies it, which is the safe direction
+-- and what E3(b)'s "must evaluate" implies.
+ALTER TABLE "change_records" ADD COLUMN "impactAreas" TEXT[] NOT NULL DEFAULT '{}';

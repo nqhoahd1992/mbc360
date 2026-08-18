@@ -360,7 +360,11 @@ export default function GateFlowTable({
                       // by definition — see `pending`/`advisory` on
                       // GateReadinessItem).
                       const color = b.satisfied ? '#389e0d' : b.pending || b.advisory ? '#d48806' : '#cf1322';
-                      const targetPath = b.link ? `/projects/${projectId}${b.link.href}` : undefined;
+                      const targetPath = b.link
+                        ? b.link.absolute
+                          ? b.link.href
+                          : `/projects/${projectId}${b.link.href}`
+                        : undefined;
                       const targetHref = targetPath
                         ? `${targetPath}${b.link?.scrollToId ? `?scrollTo=${b.link.scrollToId}` : ''}`
                         : undefined;

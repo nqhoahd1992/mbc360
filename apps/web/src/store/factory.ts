@@ -131,6 +131,7 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     feedback: [],
     registers: seedRegisters(),
     nextActions: [],
+    changes: [],
     backtrackEvents: [],
     gateChangeLog: [],
     marketTracks,
