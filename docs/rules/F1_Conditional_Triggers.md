@@ -14,9 +14,11 @@ Luật C7 định nghĩa **Conditional** là *"hard-blocks only when its defined
 
 Nhưng "có luật" ≠ "cài được". Mỗi trigger cần **dữ liệu có cấu trúc** để máy đánh giá, và phần lớn dữ liệu đó app chưa thu thập. File này liệt kê từng trigger: tên đề xuất, đọc từ mục UI nào, hiện thiếu gì.
 
-**Trạng thái tổng (cập nhật 09/08): 15 điều kiện được cấp · 4 trigger đã cài (`skincareForTwo`, `humanStudyPlanned`, `newOrRepositionedProject`, `microbiologicallySusceptible`) phủ 7 item · 7 item còn chờ.**
+**Trạng thái tổng (cập nhật 12/08): 15 điều kiện được cấp · 10 trigger đã cài phủ 13 item · 3 item còn chờ** (`sg04-allergen` · `sg06-market-pack` · `sg09-scaleup`), và cả 3 đều chờ một câu đã nằm trong Vòng 4 (câu 17 · F10 · câu 12).
 
-> **Một trigger bị chặn vì lý do kiến trúc, không phải vì thiếu dữ liệu:** `openChangeControl` cần đọc bản ghi Change Control, mà **`ChangeRecord` không nằm trong `ProjectData`** — nó là một slice riêng ở store và trong envelope của API, vì trang Change Control hiển thị xuyên nhiều dự án. Engine readiness chỉ nhận đúng `ProjectData`. Chép `changes` vào `ProjectData` để một trigger chạy được sẽ tạo bản sao thứ hai của một danh sách đã có chủ — đúng kiểu trùng lặp rồi sẽ lệch. Làm đúng thì phải hoặc chuyển hẳn `changes` vào `ProjectData`, hoặc cho engine nhận thêm một tham số; cả hai đều lớn hơn bản thân item này. Tier của `sg12-change-links` đã sửa đúng theo A1 (Supporting → Conditional), hành vi giữ nguyên advisory như trước.
+> **~~Một trigger bị chặn vì lý do kiến trúc~~ — đã gỡ 12/08.** `openChangeControl` cần đọc bản ghi Change Control, mà `ChangeRecord` không nằm trong `ProjectData` — nó là slice riêng ở store và trong envelope API, vì trang Change Control hiển thị xuyên nhiều dự án. Ghi chú cũ kết luận: chuyển hẳn `changes` vào `ProjectData` là *"lớn hơn bản thân item này"*, nên để treo.
+>
+> Điều đó đúng khi chỉ xét một item. Nhưng **E3(b) sau đó buộc phải làm chính việc ấy** vì lý do độc lập — Gate 11 phải đánh giá impact của từng open change, và engine không thể đánh giá dữ liệu nó không thấy. Chuyển xong thì trigger này thành **miễn phí**. Bài học: một việc "quá lớn so với lợi ích" đo theo **một** item có thể là việc bắt buộc của item khác — nên ghi lý do treo, đừng chỉ ghi kết luận treo.
 
 Cách một trigger được cài (3 chỗ, không phải sửa engine):
 
@@ -77,7 +79,7 @@ Ngưỡng chặn cố ý khác nhau giữa hai gate: Gate 4 chỉ chặn khi có
 
 ---
 
-### 2. `openChangeControl` — 🟢 cài được ngay, không cần UI mới
+### 2. `openChangeControl` — ✅ đã cài 12/08
 
 > **Luật (A3):** *"Mandatory where a Change Control record has been opened or should be opened because of the post-market finding."*
 
@@ -87,7 +89,7 @@ Ngưỡng chặn cố ý khác nhau giữa hai gate: Gate 4 chỉ chặn khi có
 | **Đọc từ UI** | **1 mục** — trang **Change Control** (`/change-control`); không cần nhập gì thêm ở dự án |
 | **Dữ liệu** | `ProjectData.changes` + `isChangeOpen()` (đã có, luật F9) |
 
-**Việc phải làm trước:** A1 đổi tier item này từ **Supporting → Conditional**. Chưa đổi trong code.
+**Đã cài 12/08.** Tier đã là Conditional; trigger đọc `project.changes` + `isChangeOpen()`, và chỉ tính change **của chính dự án này** (`projectId` khớp hoặc trống) — một change của dự án khác không được chặn Gate 12 ở đây.
 
 Vế *"or **should be** opened"* không máy nào đánh giá được — đó là phán định của con người. **[ASSUMPTION: R4-Q4]** Đề xuất: trigger chỉ đọc vế thứ nhất (có record đang mở), còn vế thứ hai để item hiện ra như một lời nhắc khi Gate 12 có ghi nhận post-market finding.
 
@@ -172,7 +174,7 @@ Checklist này đã có sẵn 16 option và khớp gần như một-một với 
 
 ---
 
-### 7. `pvPmsRequired` — 🟡 phần lớn suy được
+### 7. `pvPmsRequired` — 🟡 đã cài 3/7 vế (12/08)
 
 > **Luật (A3):** *"Mandatory where required by product category, market, company policy, safety signal, vulnerable-user population, complaint trend or scheduled surveillance plan."*
 
@@ -188,7 +190,9 @@ Checklist này đã có sẵn 16 option và khớp gần như một-một với 
 | product category | checklist **Product Type** (gate 02) — nhưng cần biết *loại nào* thì bắt buộc | 🟠 cần danh sách từ SME |
 | market / company policy / surveillance plan `[ASSUMPTION: R4-Q11]` | dữ liệu tham chiếu, Regulatory bảo trì | 🔴 chưa có |
 
-Đây là trigger "nhiều vế" nhất. Có thể cài **từng phần**: bật theo safety signal + complaint trend trước (đã có dữ liệu), rồi bổ sung vế vulnerable-user khi B5 xong. Một trigger OR nhiều vế thì cài dần vẫn đúng — chỉ là chưa bắt hết trường hợp.
+Đây là trigger "nhiều vế" nhất. **Đã cài 12/08 đúng theo cách đó:** 3 vế đọc được — `Adverse event / PV signal` · `PMS trend` · `Complaint` trên checklist Post-Market Sources, cộng vế vulnerable-user (B5 xong 11/08 nên sổ Vulnerable-User Assessment có dòng là tính). Một trigger OR nhiều vế cài dần vẫn **đúng** — chỉ là bắt được ít trường hợp hơn.
+
+4 vế còn lại (product category · market · company policy · scheduled surveillance plan) nằm ở `coverageNote` của item, không im lặng bỏ. Chúng là **câu 4** của Vòng 4.
 
 ---
 
@@ -281,7 +285,7 @@ Cột hiện có: `rmCode, inciName, approvedForUse, supplier, grade, sdsLink, c
 
 ---
 
-### 12. `claimNeedsPerformanceEvidence` — 🔴 chờ B7
+### 12. `claimNeedsPerformanceEvidence` — ✅ đã cài 12/08
 
 > **Luật (A3):** *"Mandatory where any external claim depends on product-level efficacy, performance, sensory, clinical, instrumental, in vitro, in vivo, consumer-use or comparative evidence."*
 
@@ -290,7 +294,9 @@ Cột hiện có: `rmCode, inciName, approvedForUse, supplier, grade, sdsLink, c
 | **Item** | `sg10-performance-evidence` (G10) |
 | **Đọc từ UI** | **1 mục** — trường **evidence required** trong bộ 9 thuộc tính per-claim của **B7** |
 
-B7 yêu cầu mỗi claim ghi *"evidence required"* và *"evidence status"* — đúng thứ trigger này cần. Không cần gì thêm ngoài B7.
+**Đã cài 12/08.** B7 xong 11/08 nên mở khoá — nhưng tín hiệu thực dùng là **`claimCategory`**, không phải *"evidence required"*: đọc thẳng phân loại claim đúng hơn là đọc một trường mô tả bằng chứng cần có.
+
+Chọn category nào là phán định duy nhất ở đây. `Product performance` và `Sensory` **trùng nguyên văn** hai chữ A3 dùng; `Ingredient-level` bị loại vì A3 nói **product-level**. `Cosmetic` là ranh giới thật và **để ngoài** — xem `CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE`, và là **câu 36** của Vòng 4.
 
 ---
 
