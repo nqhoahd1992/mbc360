@@ -1,6 +1,6 @@
 # MBc360 — Follow-up questions, Round 4
 
-**Date:** 2026-08-09
+**Date:** 2026-08-12
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.

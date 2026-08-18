@@ -22,7 +22,7 @@ YYYY-MM-DD-<ai gửi>-<nội dung>.<ext>
 | `2026-07-21-our-questions-round2.md` | 21/07 | 3 câu làm rõ (A1 định nghĩa "critical" · A2 nội dung Infant & Baby Safety · A3 hai version song song cùng thị trường) + danh sách dữ liệu cần cung cấp | ⏳ **còn mở** |
 | `2026-07-31-our-questions-round3.md` | 31/07 | **19 câu** Parts A–E: quy tắc gán tier + 15 item ta tự gán (A1–A2) · điều kiện trigger còn thiếu (A3) · 7 item không có chỗ ghi (B1–B7) · 2 mapping đã đoán (C1–C2) · 4 quyết định đã xây (D1–D4) · 3 item theo thị trường (E1–E3) | ✅ được trả lời trọn ở vòng 07/08 |
 | `2026-08-07-sme-reply-round3.txt` | 07/08 | Đáp án Parts A–E: quy tắc gán tier, **12 điều kiện trigger**, 7 trường còn thiếu, và **bác 4 thứ đã xây** | ✅ đóng |
-| `2026-08-09-our-questions-round4.md` | 09/08 | **36 câu**: 1 lỗ hổng an toàn đang mở · 3 câu tồn từ 21/07 · 4 giả định đã ship · 12 câu ánh xạ trigger sang dữ liệu · 4 câu về quyết định thiết kế Gate 1–2 (gồm 1 tiền đề ta từng nêu sai với SME) · **2 câu hỏi TRƯỚC khi build** (Claims Library ở cấp nào · 5 điểm D1 để hở) · 6 câu về phần D2, D3, D4, E1, E2, E3(b) vừa xây | 📤 **soạn xong, chưa gửi** — vẫn đang bổ sung câu khi phát hiện thêm giả định, ngày trong tên file là ngày soạn |
+| `2026-08-12-our-questions-round4.md` | 12/08 | **36 câu**: 1 lỗ hổng an toàn đang mở · 3 câu tồn từ 21/07 · 4 giả định đã ship · 12 câu ánh xạ trigger sang dữ liệu · 4 câu về quyết định thiết kế Gate 1–2 (gồm 1 tiền đề ta từng nêu sai với SME) · **2 câu hỏi TRƯỚC khi build** (Claims Library ở cấp nào · 5 điểm D1 để hở) · 6 câu về phần D2, D3, D4, E1, E2, E3(b) vừa xây | 📨 **đã gửi 12/08** — soạn từ 09/08, chốt và gửi ngày 12/08 sau khi làm xong mọi phần không phụ thuộc đáp án |
 
 ## Còn nợ
 
@@ -32,8 +32,12 @@ YYYY-MM-DD-<ai gửi>-<nội dung>.<ext>
 - **A2** (vòng 21/07) — nội dung Infant & Baby Safety pathway. **Lỗ hổng an toàn đã đóng phần lớn 12/08** bằng chính Compartment 3 của workbook (8 dòng INF-01…INF-08); còn chờ SME xác nhận đó có đúng là pathway họ muốn hay còn rộng hơn (xem `R4-Q2`)
 - **A3** (vòng 21/07) — cái gì chính thức kết thúc version công thức cũ. Trả lời một phần ở E3(a)
 
-**Ta chưa gửi:**
-- **Round 4** — [`2026-08-09-our-questions-round4.md`](2026-08-09-our-questions-round4.md), **soạn xong nhưng chưa gửi**. Đã gộp sẵn 3 câu A1/A2/A3 còn tồn của vòng 21/07 (chúng treo qua hai vòng rồi, và A2 nay nằm trên đường găng), nên chỉ cần gửi đúng một file này.
+**Đang chờ trả lời:**
+- **Round 4** — [`2026-08-12-our-questions-round4.md`](2026-08-12-our-questions-round4.md), **36 câu, gửi 12/08**. Đã gộp sẵn 3 câu A1/A2/A3 còn tồn của vòng 21/07 (chúng treo qua hai vòng rồi), nên chỉ một file này là đủ.
+
+  **Vì sao gửi 12/08 chứ không phải 09/08 khi soạn xong:** trong ba ngày đó, việc dựng D2 · D3 · D4 · E1 · E2 · E3(b) và nối 3 trigger cuối **tự sinh thêm 9 câu** — mỗi lần xây một luật lại lộ ra một chỗ SME chưa nói. Gửi lúc soạn xong thì đã phải gửi tiếp 9 câu nữa. Chốt bộ câu hỏi **sau khi** làm hết phần không phụ thuộc đáp án là lý do bộ này gửi đúng một lần.
+
+  Còn **7 chỗ phải chờ đáp án mới làm được** (4 item `manual` + 3 Conditional chưa có trigger), tất cả đều chờ một câu trong chính file này: câu 12 · 17 · 18 · 36, và F10 cho market profiles.
 
 **Trùng nhãn A1/A2/A3 giữa hai vòng, đừng nhầm:**
 
