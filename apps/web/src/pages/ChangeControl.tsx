@@ -166,6 +166,28 @@ export default function ChangeControl() {
               dataIndex: 'riskLevel',
               render: (v) => <StatusBadge value={v} />,
             },
+            {
+              // Editable in the table, not only on the create form: rule E3(b) makes an
+              // UNCLASSIFIED open change block Gate 11, and every change that existed
+              // before this column did is unclassified. Without an inline editor those
+              // would block the gate with nowhere to fix them — an unsatisfiable blocker,
+              // the exact failure the readiness sweeps exist to catch.
+              title: 'Impact (Gate 11)',
+              width: 260,
+              render: (_, c) => (
+                <Select
+                  size="small"
+                  mode="multiple"
+                  allowClear
+                  style={{ width: 245 }}
+                  placeholder="Not classified — blocks Gate 11"
+                  status={(c.impactAreas ?? []).length === 0 ? 'warning' : undefined}
+                  value={c.impactAreas ?? []}
+                  options={CHANGE_IMPACT_AREAS.map((a) => ({ value: a, label: a }))}
+                  onChange={(v: string[]) => patchChange(c.changeId, { impactAreas: v })}
+                />
+              ),
+            },
             { title: 'Required action', width: 240, dataIndex: 'requiredAction', ellipsis: true },
             { title: 'Evidence link', width: 130, dataIndex: 'evidenceLink', ellipsis: true, render: (v) => v || '—' },
             { title: 'Sign-offs', width: 160, dataIndex: 'requiredSignOffs', ellipsis: true },
