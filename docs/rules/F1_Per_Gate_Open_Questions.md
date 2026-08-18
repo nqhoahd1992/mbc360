@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–35, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–36, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -398,6 +398,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q24 | C1 — bằng chứng nào là "đã Regulatory review"; 4/7 điều kiện chưa kiểm được | 🔴 | 27 |
 | R4-Q25 | Claims Library ở cấp công ty hay cấp dự án, và claim có bắt buộc trỏ tới entry không | 🔴 | 28 |
 | R4-Q26 | D1 — 5 điểm chưa nói: record version của cái gì · comment bắt buộc khi nào · gate nào là "critical" · độc lập nghĩa là gì · chặn ở thời điểm nào | 🔴 | 29 |
+| R4-Q33 | A3 — claim `Cosmetic` có cần bằng chứng product-level không · trạng thái costing đọc từ đâu | 🔴 | 36 |
 | R4-Q32 | E2 — giá trị Status/Regulatory approval của sổ per-market · "Other - specify" là ASEAN hay không · có buộc đủ 6 trường | 🔴 | 35 |
 | R4-Q31 | E3(b) — "Critical" là High? · change chưa phân loại có chặn? · "final disposition" gồm gì · "authorised acknowledgement" là bước nào | 🔴 | 34 |
 | R4-Q30 | E1 — sổ Critical Safety Findings: giá trị Severity/Status · "Required action" có phải controlled action · dòng chưa phán định có chặn | 🔴 | 33 |
@@ -1225,3 +1226,26 @@ Danh sách `ASEAN_MARKETS` là **10 nước thành viên** — dữ kiện, khô
 **Câu hỏi:** (a) `Status` và `Regulatory approval` nên có giá trị gì — dùng lại như trên có ổn không? (b) một thị trường ghi là `Other - specify` xử lý thế nào? (c) dòng có buộc đủ cả 6 trường mới tính không, hay chỉ cần link + approval?
 
 **Nếu trả lời khác:** `ASEAN_MARKETS` và `regulatoryChecklistStatus` trong `packages/shared/src/config/registers.ts`; 5 hàm trong `packages/shared/src/utils/marketDossier.ts`; 2 item `sg10-checklist*`.
+
+#### R4-Q33 · A3 — claim loại `Cosmetic` có phụ thuộc bằng chứng product-level không, và trạng thái costing 🔴
+
+**Hai chuyện nhỏ, gộp một câu vì cùng là "SME chưa nói gì".**
+
+**(a) Ranh giới của `claimNeedsPerformanceEvidence` (Gate 10).** A3: *"Mandatory where any external claim depends on **product-level** efficacy, performance, sensory, clinical, instrumental, in vitro, in vivo, consumer-use or comparative evidence."* Catalogue ghi item này *"chờ B7"*; B7 đã xong 11/08 nên mở khoá — nhưng phải chọn **category nào của B7 thì tính**:
+
+| Category | Tính? | Vì sao |
+|---|---|---|
+| `Product performance` · `Sensory` | ✅ | **trùng nguyên văn** hai chữ A3 dùng |
+| `Ingredient-level` | ❌ | A3 nói **product-level**, đây là ingredient-level |
+| `Borderline` · `Therapeutic` | ❌ | nói về rủi ro pháp lý, không phải loại bằng chứng |
+| **`Cosmetic`** | ❌ **(đang để ngoài)** | đây là ranh giới thật: *"moisturising"* là claim cosmetic nhưng vẫn dựa trên bằng chứng hiệu năng. Lấy đúng chữ của họ là cách đọc **hẹp hơn**; nới rộng bằng phán đoán của mình là cách một gate bắt đầu đòi bằng chứng không ai yêu cầu |
+
+Đã ghi `coverageNote` nói rõ `Cosmetic` hiện không kích hoạt.
+
+**(b) `sg05-costing` — chưa từng hỏi ai.** Item Mandatory *"Costing or commercial feasibility status"* vẫn là `manual` vì `CostingInputs` **không có trường status nào**: nó luôn có sẵn số liệu từ lúc tạo dự án, nên không có tín hiệu "đã xong chưa". Muốn cưỡng chế thì phải **tự bịa** một trường status + bộ giá trị.
+
+Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **chặn** gate; item `manual` thì chưa chặn gì nên không bị soi. Đây là giới hạn của S4, không phải lỗi của nó — nhưng đáng ghi lại.
+
+**Câu hỏi:** (a) claim loại `Cosmetic` có được coi là phụ thuộc bằng chứng product-level không? (b) *"Costing or commercial feasibility status"* nên đọc từ đâu — thêm một trường trạng thái vào phần Costing (nếu vậy thì giá trị gồm những gì, ai chốt), hay nó đã nằm ở chỗ nào khác mà ta chưa thấy?
+
+**Nếu trả lời khác:** `CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE` trong `packages/shared/src/config/registers.ts`; `sg05-costing` trong `gateReadiness.ts` (hiện `manual`).

@@ -50,7 +50,19 @@ export type ReadinessTrigger =
   // So an infant-only product was required to complete nothing.
   | 'infantContact'
   // Rule E2: the ASEAN checklist is enforced only where an ASEAN market is sold into.
-  | 'aseanMarket';
+  | 'aseanMarket'
+  // A3, Gate 12: "Mandatory where a Change Control record has been opened or
+  // should be opened because of the post-market finding." Only the first limb is
+  // machine-readable; the second is a human judgement, disclosed on the item
+  // rather than dropped [ASSUMPTION: R4-Q4].
+  | 'openChangeControl'
+  // A3, Gate 12: "Mandatory where required by product category, market, company
+  // policy, safety signal, vulnerable-user population, complaint trend or
+  // scheduled surveillance plan." Three of those seven are readable today.
+  | 'pvPmsRequired'
+  // A3, Gate 10: a declared claim is categorised as depending on product-level
+  // performance or sensory evidence.
+  | 'claimNeedsPerformanceEvidence';
 
 export type ReadinessCheck =
   // No linked data source yet — displayed for confirmation, never hard-blocks.
@@ -1888,9 +1900,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'Product Safety Summary' },
     },
     {
+      // Wired 2026-08-12. The catalogue had this "waiting on B7"; B7 landed on
+      // 11/08 as the per-claim category, so the trigger became readable. Which
+      // categories count is the one judgement — see
+      // CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE.
       id: 'sg10-performance-evidence',
       label: 'Product-performance evidence attached where relevant',
       tier: 'Conditional',
+      trigger: 'claimNeedsPerformanceEvidence',
+      assumption: 'R4-Q33',
+      coverageNote:
+        'triggered by a claim categorised Product performance or Sensory — the two words A3 uses. Whether a plain Cosmetic claim also depends on product-level evidence is not settled, so it does not trigger this today.',
       check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'Efficacy evidence summary' },
     },
     {
@@ -2092,7 +2112,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'gateCheckDone', gate: '12', check: 'Complaints/issues triaged and CAPA/improvement actions assigned' },
     },
     {
+      // Wired 2026-08-12. Three of A3's seven limbs are readable: a safety signal
+      // or complaint trend ticked on Post-Market Sources, and a vulnerable-user
+      // population (B5's assessment register, which exists since 11/08). The other
+      // four need reference data nobody has supplied — product category list,
+      // market and company policy, surveillance plan — so the item says so.
       id: 'sg12-pv-pms',
+      trigger: 'pvPmsRequired',
+      assumption: 'R4-Q11',
+      coverageNote:
+        'the app checks three of the seven conditions — a safety signal or complaint trend recorded on Post-Market Sources, and a vulnerable-user population assessed. It cannot yet check: required by product category, by market, by company policy, or by a scheduled surveillance plan.',
       label: 'PV/PMS review where applicable',
       tier: 'Conditional',
       check: { kind: 'gateCheckDone', gate: '12', check: 'Feedback sources monitored and PV/PMS signals classified' },
@@ -2114,7 +2143,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'gateCheckDone', gate: '12', check: 'Complaints/issues triaged and CAPA/improvement actions assigned' },
     },
     {
+      // Wired 2026-08-12, unblocked by E3(b) putting `changes` on ProjectData —
+      // until then the engine could not see whether a change control existed.
       id: 'sg12-change-links',
+      trigger: 'openChangeControl',
+      assumption: 'R4-Q4',
+      coverageNote:
+        'the app checks whether a change control record is open. It cannot check the other half of the rule — whether one SHOULD be opened because of a post-market finding, which is a judgement.',
       label: 'Change-control links',
       // Supporting -> Conditional 2026-08-09: A1 says so in as many words
       // ("change from Supporting to Conditional"). Behaviour is unchanged for

@@ -229,6 +229,22 @@ const CLAIM_CATEGORY_OPTIONS = [
   'Other — Regulatory review required',
 ] as const;
 
+// A3, Gate 10: "Mandatory where any external claim depends on PRODUCT-LEVEL
+// efficacy, performance, sensory, clinical, instrumental, in vitro, in vivo,
+// consumer-use or comparative evidence."
+//
+// Read literally against B7's category list: "performance" and "sensory" appear
+// in both, word for word. 'Ingredient-level' is excluded because A3 says
+// PRODUCT-level. 'Cosmetic' is the genuine boundary — a cosmetic claim such as
+// "moisturising" arguably depends on performance evidence too — and it is left
+// OUT rather than guessed in: taking their words at face value is the narrower
+// reading, and widening a rule on our own is how a gate starts demanding
+// evidence nobody asked for [ASSUMPTION: R4-Q33].
+export const CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE: readonly string[] = [
+  'Product performance',
+  'Sensory',
+];
+
 const CLAIM_RISK_OPTIONS = ['Low', 'Medium', 'High', 'Prohibited / not acceptable', 'Pending classification'] as const;
 const YNNA = ['Y', 'N', 'N/A'] as const;
 

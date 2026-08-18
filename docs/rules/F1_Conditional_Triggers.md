@@ -35,17 +35,17 @@ Cách một trigger được cài (3 chỗ, không phải sửa engine):
 | # | Trigger đề xuất | Item áp dụng | Gate | UI | Nguồn | Trạng thái |
 |---|---|---|---|---|---|---|
 | 1 | `skincareForTwo` | `sg04-pb-screen`, `sg07-caution-closed`, `sg07-maternal-infant` | 4, 7 | 1 | b | ✅ **đã cài** |
-| 2 | `openChangeControl` | `sg12-change-links` | 12 | 1 | b | ⛔ **bị chặn** — `changes` không nằm trong `ProjectData` (xem dưới); tier đã sửa Supporting → Conditional |
+| 2 | `openChangeControl` | `sg12-change-links` | 12 | 1 | b | ✅ **đã cài 12/08** — mở khoá nhờ E3(b) đưa `changes` vào `ProjectData`; vế "or should be opened" ghi ở coverageNote |
 | 3 | `humanStudyPlanned` | `sg08-human-study` | 8 | 1 | b | ✅ **đã cài** 09/08 — đọc `studyProtocolSetup.plannedValue` |
 | 4 | `postMarketPerformanceScope` | `sg12-performance` | 12 | 1 | b | 🟢 cài được ngay |
 | 5 | `microbiologicallySusceptible` | `sg05-preservative`, `sg09-pet` | 5, 9 | 2 | a + b | ✅ **đã cài** 09/08 — `FormulaProperties`, gợi ý từ BOM nhưng người chốt |
 | 6 | `postMarketSignal` | `sg12-feedback` | 12 | 3 | a + b | 🟡 thiếu mốc review theo lịch |
-| 7 | `pvPmsRequired` | `sg12-pv-pms` | 12 | 3–4 | a + b + c | 🟡 phần lớn suy được |
+| 7 | `pvPmsRequired` | `sg12-pv-pms` | 12 | 3–4 | a + b + c | 🟡 **đã cài 12/08 — 3/7 vế** (safety signal · complaint trend · vulnerable population); 4 vế còn lại ở coverageNote, chờ câu 4 |
 | 8 | `newOrRepositionedProject` | `sg03-benchmark` | 3 | 3 | a | ✅ **đã cài** 09/08 — Tranche 1 đã cấp đủ 3 vế |
 | 9 | `scaleUpOrProcessChange` | `sg09-scaleup` | 9 | 3 | a + b | 🟠 chờ Tranche 1 (B2) |
 | 10 | `rmCompositionRisk` | `sg04-allergen` | 4 | 1 | a | 🟠 cần cột mới |
 | 11 | `claimNeedsRegulatoryReview` | `sg03-reg-claims` | 3 | 2 | a + c | 🟡 **đã cài 11/08 — 4/7 vế**; 3 vế còn lại chờ Claims Library (F11) + Market Profiles (F10) + phán định trên wording |
-| 12 | `claimNeedsPerformanceEvidence` | `sg10-performance-evidence` | 10 | 1 | a | 🔴 chờ B7 |
+| 12 | `claimNeedsPerformanceEvidence` | `sg10-performance-evidence` | 10 | 1 | a | ✅ **đã cài 12/08** — B7 xong 11/08 nên mở khoá; ranh giới `Cosmetic` là câu 36 |
 | 13 | `marketPackRequirement` | `sg06-market-pack` | 6 | 2 | a/c | 🔴 chờ F10 |
 
 Hai item Conditional/Supporting **không** có trigger, cố ý:

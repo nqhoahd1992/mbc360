@@ -1,6 +1,8 @@
 import type { GateRecord, NextAction, ProjectData, RegisterRow } from '../types';
 import { NEXT_ACTION_TERMINAL_STATUSES } from '../types';
 import { GATES } from '../config/gates';
+import { isChangeOpen } from '../config/changeTriggers';
+import { CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE } from '../config/registers';
 import {
   CLAIM_CATEGORIES_NEEDING_REVIEW,
   CLAIM_REVIEWED_WORDING_COLUMN,
@@ -75,6 +77,11 @@ export function openNextActions(project: ProjectData, gateId: string): NextActio
 const SKINCARE_FOR_TWO_TRIGGERS = ['Pregnancy', 'Breastfeeding', 'Postpartum'];
 // E1's infant pathway keys off this one option, separately from the three above.
 const INFANT_TARGET_USER = 'Infant 0+';
+// A3's "safety signal … complaint trend" limbs, as they appear on the Gate 12
+// Post-Market Sources checklist [ASSUMPTION: R4-Q6].
+const PV_PMS_SOURCE_LABELS = ['Adverse event / PV signal', 'PMS trend', 'Complaint'];
+// B5's register — a row here means a vulnerable-user population was assessed.
+const VULNERABLE_REGISTER = 'vulnerableUserAssessment';
 
 export function skincareForTwoTriggers(project: ProjectData): string[] {
   const targetUsers = project.checklists['targetUsers'] ?? [];
@@ -125,6 +132,28 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
     // skincareForTwoIncompleteSections, while an infant-only one reached nothing.
     // E2: the built-in ASEAN checklist applies only where an ASEAN market is sold
     // into. Everything else is covered by the per-market register instead.
+    // A3, Gate 12, first limb only: a change control record IS open. The second
+    // limb — "or should be opened because of the post-market finding" — is a
+    // judgement no rule can make, and dropping it silently is the mistake CLAUDE.md
+    // names, so the item carries a coverageNote saying which half is checked.
+    case 'openChangeControl':
+      return project.changes.some((c) => (!c.projectId || c.projectId === project.identity.id) && isChangeOpen(c.status));
+
+    // A3, Gate 12: three of seven limbs. The Post-Market Sources checklist carries
+    // the safety-signal and complaint-trend limbs; B5's Vulnerable-User Assessment
+    // carries the vulnerable-population one. An OR-trigger can be wired limb by
+    // limb and stay correct — it just catches fewer cases until the rest arrive.
+    case 'pvPmsRequired': {
+      const sources = selectedChecklistLabels(project, 'postMarketSources');
+      if (sources.some((s) => PV_PMS_SOURCE_LABELS.includes(s))) return true;
+      return (project.registers[VULNERABLE_REGISTER] ?? []).length > 0;
+    }
+
+    case 'claimNeedsPerformanceEvidence':
+      return (project.registers['claimEvidenceTraceability'] ?? []).some((c) =>
+        CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE.includes(String(c.claimCategory ?? '').trim()),
+      );
+
     case 'aseanMarket':
       return projectHasAseanMarket(project);
 
@@ -227,6 +256,11 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
     'the formula is recorded as anhydrous, self-preserving, sterile or single-use, with a rationale',
   infantContact: 'no Infant 0+ target user selected, so no infant or baby-contact use is intended',
   aseanMarket: 'no ASEAN market selected, so the ASEAN PIF checklist does not apply',
+  openChangeControl: 'no change control record is open for this project',
+  claimNeedsPerformanceEvidence:
+    'no declared claim is categorised as depending on product performance or sensory evidence',
+  pvPmsRequired:
+    'no safety signal, complaint or PMS trend recorded on Post-Market Sources, and no vulnerable-user population assessed',
   claimNeedsRegulatoryReview:
     'no declared claim is borderline, therapeutic-adjacent, high risk, still unclassified, or reworded since its last review',
 };

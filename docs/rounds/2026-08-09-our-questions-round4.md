@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has thirty-five questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them concerns infant safety, where we have closed most of a gap ourselves and need you to confirm we closed it with the right content.
+This round has thirty-six questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them concerns infant safety, where we have closed most of a gap ourselves and need you to confirm we closed it with the right content.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Questions 20–35** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
+5. **Questions 20–36** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
 
 ---
 
@@ -565,6 +565,18 @@ It is two items rather than one because the two halves differ: the ASEAN half ap
 
 **Question:** (a) are those value lists right? (b) How should a market entered as "Other — specify" be handled? (c) Must all six fields be present, or is a checklist link plus Regulatory approval enough?
 
+### Question 36 — Two small things nobody has been asked
+
+Both surfaced while wiring the last of the conditional rules, and neither has ever been put to you.
+
+**(a) Does a plain cosmetic claim depend on product-level evidence?** Your Gate 10 rule reads: *"mandatory where any external claim depends on **product-level** efficacy, performance, sensory, clinical, instrumental, in vitro, in vivo, consumer-use or comparative evidence."* Read against the claim categories you gave us under B7, two match your words exactly — **Product performance** and **Sensory** — and those now trigger the rule. **Ingredient-level** does not, because you wrote *product*-level.
+
+The boundary is **Cosmetic**. A claim like "moisturising" is categorised cosmetic but arguably rests on performance evidence all the same. We have left it out, because taking your words at face value is the narrower reading and widening a rule on our own is how a gate starts demanding evidence nobody asked for. The item says on screen that cosmetic claims do not trigger it.
+
+**(b) Where does "costing or commercial feasibility status" come from?** This Gate 5 item of yours is the last one in the system with no data behind it at all. The costing screen holds numbers — batch size, unit costs, target price — but nothing that says whether the costing is *finished*, and the numbers are present from the moment a project is created, so their existence proves nothing. To enforce this we would have to invent a status field and its values, which we would rather not do silently.
+
+**Question:** (a) should a claim categorised Cosmetic trigger the product-performance evidence requirement, or only Product performance and Sensory? (b) What should "costing or commercial feasibility status" read from — a new status on the costing screen (and if so, which values, and who sets it), or something that already exists that we have missed?
+
 ---
 
 ## Summary
@@ -584,5 +596,6 @@ It is two items rather than one because the two halves differ: the ASEAN half ap
 | 33 | The critical safety finding control at Gate 7, now built | Already built — replaces an item that read the wrong evidence |
 | 34 | Gate 11 grading open changes by impact, now built | Already built — replaces the duplicate warning you rejected |
 | 35 | The per-market regulatory checklist at Gate 10, now built | Already built — replaces an item we had left unenforced |
+| 36 | Cosmetic claims and evidence; where costing status lives | Two small gaps never put to you |
 
 Questions 5 to 27 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
