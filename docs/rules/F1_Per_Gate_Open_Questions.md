@@ -368,7 +368,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 **Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
 
-**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–34, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
+**Bản gửi đi:** [`../rounds/2026-08-09-our-questions-round4.md`](../rounds/2026-08-09-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–35, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
 | ID | Chủ đề | Trạng thái | Gửi số |
 |---|---|---|---|
@@ -398,6 +398,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 | R4-Q24 | C1 — bằng chứng nào là "đã Regulatory review"; 4/7 điều kiện chưa kiểm được | 🔴 | 27 |
 | R4-Q25 | Claims Library ở cấp công ty hay cấp dự án, và claim có bắt buộc trỏ tới entry không | 🔴 | 28 |
 | R4-Q26 | D1 — 5 điểm chưa nói: record version của cái gì · comment bắt buộc khi nào · gate nào là "critical" · độc lập nghĩa là gì · chặn ở thời điểm nào | 🔴 | 29 |
+| R4-Q32 | E2 — giá trị Status/Regulatory approval của sổ per-market · "Other - specify" là ASEAN hay không · có buộc đủ 6 trường | 🔴 | 35 |
 | R4-Q31 | E3(b) — "Critical" là High? · change chưa phân loại có chặn? · "final disposition" gồm gì · "authorised acknowledgement" là bước nào | 🔴 | 34 |
 | R4-Q30 | E1 — sổ Critical Safety Findings: giá trị Severity/Status · "Required action" có phải controlled action · dòng chưa phán định có chặn | 🔴 | 33 |
 | R4-Q29 | D3 — "flagged" gồm status nào · giá trị Resolution status · "authorised acceptance" là gì · dòng chưa đánh giá có được PwC gỡ · có áp cho PB Caution Limits | 🔴 | 32 |
@@ -1191,3 +1192,36 @@ Soft-lock F9/C4 đối xử **mọi** open change như nhau; E3(b) đòi **phân
 **Test 11 nhánh:** không có change → qua · chưa phân loại → chặn · launch-impacting → chặn · High + admin-only → chặn (rủi ro thắng) · Formula → chặn, **PwC cũng không gỡ** · admin-only low risk → chặn `Proceed` thuần, **PwC gỡ** · Completed + có disposition → qua · Completed **không** disposition → chặn · change của dự án khác → không ảnh hưởng. Link blocker trỏ `/change-control` với `absolute: true` (trang global, không có prefix `/projects/:id`).
 
 **Nếu trả lời khác:** `CHANGE_IMPACT_*` trong `packages/shared/src/config/changeTriggers.ts`; 4 hàm trong `packages/shared/src/utils/changeImpact.ts`; 2 item `sg11-changes-*`.
+
+#### R4-Q32 · E2 — giá trị Status/Regulatory approval, và "Other - specify" xử lý ra sao 🔴
+
+**Đã build 2026-08-12.** `sg10-checklist` trước đó là `manual`, với lý do đã ghi trong config: *"deliberately not enforced the ASEAN checklist for all projects, because that would wrongly block a product not being sold in ASEAN."*
+
+**Tiền đề đúng, kết luận sai.** E2 chọn option (b) và nói thẳng: *"The absence of a built-in country template should not mean the item is unenforced."* Đáp án là cưỡng chế **theo từng thị trường**, không phải không cưỡng chế gì.
+
+**Đã cài:**
+
+| Thị trường | Yêu cầu |
+|---|---|
+| Thuộc ASEAN | sổ **ASEAN PIF Checklist** phải xong — item `sg10-checklist-asean`, **Conditional** trigger `aseanMarket` |
+| Không thuộc ASEAN | phải có dòng trong sổ mới **Regulatory Checklist Status** với đủ 6 trường E2 liệt kê — item `sg10-checklist`, **Mandatory** |
+
+Sổ mới `regulatoryChecklistStatus` — 6 cột **đúng tên E2**: applicable market · required dossier type · owner · checklist or evidence link · status · Regulatory approval.
+
+**Tách làm 2 item vì hai vế có tier khác nhau:** dự án chỉ bán ngoài ASEAN **không được** bị đòi checklist ASEAN, và dự án chỉ bán trong ASEAN **không cần** dòng per-market nào. Gộp một item thì không diễn đạt được điều đó.
+
+**Ba quyết định của dev:**
+
+| # | Quyết định | Vì sao |
+|---|---|---|
+| 1 | `Status` dùng lại `WORK_STATUS_OPTIONS`, `Regulatory approval` dùng lại `MARKET_APPROVAL_STATUSES` | E2 nêu hai trường, **không nêu giá trị**. Dùng lại từ vựng app đã có thay vì bịa thêm hai bộ nữa |
+| 2 | **`Other - specify` tính là NON-ASEAN** | một thị trường chưa đặt tên thì không thể mặc định coi là đã được template ASEAN phủ. Hướng an toàn: đòi một dòng ghi nhận |
+| 3 | Dòng chỉ tính là đủ khi có **cả 6** trường | E2 liệt kê đủ 6; thiếu một là placeholder, không phải bản ghi họ đòi |
+
+Danh sách `ASEAN_MARKETS` là **10 nước thành viên** — dữ kiện, không phải phán định. Chỉ 6 nước có mặt trong danh sách thị trường của workbook; 4 nước còn lại liệt kê sẵn để sau này thêm vào danh sách đó không phải sửa chỗ này.
+
+**Test 8 nhánh:** chỉ ASEAN + checklist xong → qua · chỉ ASEAN + checklist dở → chặn · chỉ EU, chưa ghi → chặn (item ASEAN hiện **advisory "không trigger"**) · chỉ EU, ghi đủ → qua · chỉ EU, ghi thiếu → chặn · Vietnam+EU → hai vế độc lập · `Other - specify` chưa ghi → chặn.
+
+**Câu hỏi:** (a) `Status` và `Regulatory approval` nên có giá trị gì — dùng lại như trên có ổn không? (b) một thị trường ghi là `Other - specify` xử lý thế nào? (c) dòng có buộc đủ cả 6 trường mới tính không, hay chỉ cần link + approval?
+
+**Nếu trả lời khác:** `ASEAN_MARKETS` và `regulatoryChecklistStatus` trong `packages/shared/src/config/registers.ts`; 5 hàm trong `packages/shared/src/utils/marketDossier.ts`; 2 item `sg10-checklist*`.

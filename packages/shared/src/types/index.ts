@@ -333,7 +333,10 @@ export interface BacktrackEvent {
 // Per-market regulatory/launch tracking for Gates 10-12 (confirmed rule A1).
 // Launch approval is hard-blocked until the market's PIF status is Approved
 // (confirmed rule C5).
-export type MarketApprovalStatus = 'Not Started' | 'In Progress' | 'Approved' | 'Blocked' | 'N/A';
+// Runtime list as well as a type, so a register column can offer these values
+// (rule E2's per-market Regulatory approval) without a second copy going stale.
+export const MARKET_APPROVAL_STATUSES = ['Not Started', 'In Progress', 'Approved', 'Blocked', 'N/A'] as const;
+export type MarketApprovalStatus = (typeof MARKET_APPROVAL_STATUSES)[number];
 
 export interface MarketTrack {
   market: string;

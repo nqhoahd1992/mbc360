@@ -1,4 +1,4 @@
-import type { RegisterRow } from '../types';
+import { MARKET_APPROVAL_STATUSES, type RegisterRow } from '../types';
 import { CLAIM_REVIEW_OUTCOMES } from './claimReview';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
@@ -109,6 +109,33 @@ export const RM_EVIDENCE_CONDITIONAL = 'Conditionally accepted — controlled ac
 // — deleting it would destroy the evidence that the material was screened
 // [ASSUMPTION: R4-Q28].
 export const RM_EVIDENCE_NOT_USED = 'Considered — not used in this formula';
+
+// Rule E2 (SME Round 3), Gate 10. The team chose option (b): "Enforce the ASEAN
+// checklist only where an ASEAN market is selected. For non-ASEAN markets,
+// require a temporary Regulatory Checklist Status with: applicable market;
+// required dossier type; owner; checklist or evidence link; status; Regulatory
+// approval. The absence of a built-in country template should not mean the item
+// is unenforced. Regulatory may use an approved linked external checklist until
+// the relevant app profile is configured."
+//
+// The ten ASEAN member states. A fact, not a judgement — but only six of them
+// appear in the workbook's own market list (Malaysia, Vietnam, Singapore,
+// Thailand, Indonesia, Philippines); the rest are listed so that adding one to
+// that list later needs no change here. A market recorded as "Other - specify"
+// is treated as non-ASEAN, which is the safe direction: it requires a row in the
+// register below rather than silently falling under the ASEAN checklist.
+export const ASEAN_MARKETS: readonly string[] = [
+  'Brunei',
+  'Cambodia',
+  'Indonesia',
+  'Laos',
+  'Malaysia',
+  'Myanmar',
+  'Philippines',
+  'Singapore',
+  'Thailand',
+  'Vietnam',
+];
 
 // Rule E1 (SME Round 3), Gate 7: "Please add a distinct safety-finding control
 // rather than relying solely on the Final Safety Sign-off… Gate 7 cannot pass
@@ -914,6 +941,29 @@ const aseanPifMap: RegisterConfig = {
     { requirement: 'Packaging and artwork', requiredDocument: 'Label, carton, component specs and artwork approval', owner: 'Packaging / Regulatory', linkedGate: '06_Packaging_Artwork', notes: 'Country-specific label checks' },
     { requirement: 'Claim substantiation', requiredDocument: 'Claim matrix, clinical/literature/internal evidence', owner: 'Marketing / Regulatory / R&I', linkedGate: '03_Concept_Claims', notes: 'Do not approve unsupported claims' },
     { requirement: 'Adverse event / post-market system', requiredDocument: 'Complaint, AE, PV/PMS and CAPA pathway', owner: 'Quality / PV-PMS', linkedGate: '12_PostMarket_Improve', notes: 'Must be live after launch' },
+  ],
+};
+
+// Rule E2 — the temporary per-market record for markets with no built-in profile.
+// Six columns, all named by E2. Status and Regulatory approval reuse vocabularies
+// the app already has (WorkStatus and the market-track approval scale) rather than
+// inventing two more; E2 names neither set of values [ASSUMPTION: R4-Q32].
+const regulatoryChecklistStatus: RegisterConfig = {
+  key: 'regulatoryChecklistStatus',
+  title: 'Regulatory Checklist Status (per market)',
+  sheetName: 'PIF_Checklist_ASEAN',
+  description:
+    'One row per market that has no built-in dossier profile in MBc360 yet (rule E2). Regulatory may point at an approved external checklist here; Gate 10 will not pass while a non-ASEAN market on this project has no row, or has one that is incomplete. Markets covered by the ASEAN PIF checklist below do not need a row.',
+  mode: 'register',
+  gate: '10',
+  columns: [
+    { key: 'market', label: 'Applicable market', type: 'market', width: 140 },
+    { key: 'dossierType', label: 'Required dossier type', type: 'text', width: 200 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 140 },
+    { key: 'checklistLink', label: 'Checklist or evidence link', type: 'text', width: 200 },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'regulatoryApproval', label: 'Regulatory approval', type: 'select', width: 140, options: MARKET_APPROVAL_STATUSES },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
 };
 
@@ -2476,6 +2526,7 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   artworkChangeControl,
   formulaChangeControl,
   aseanPifMap,
+  regulatoryChecklistStatus,
   pifChecklistAsean,
   pifEvidenceExport,
   skuClaimsPifRegister,

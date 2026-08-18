@@ -5,7 +5,7 @@
 
 Thank you for the Round 3 answers. They were detailed enough to act on immediately, and most of the work is now mechanical. Two of the corrections you gave us are already built and live; the rest are in progress.
 
-This round has thirty-four questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them concerns infant safety, where we have closed most of a gap ourselves and need you to confirm we closed it with the right content.
+This round has thirty-five questions in total. **Three are outstanding from 21 July and have now become urgent** — one of them concerns infant safety, where we have closed most of a gap ourselves and need you to confirm we closed it with the right content.
 
 You can reply by number, for example "1 — option (b)". Anything you leave unanswered stays in its current state and we will re-raise it.
 
@@ -15,7 +15,7 @@ You can reply by number, for example "1 — option (b)". Anything you leave unan
 2. **Questions 2–4** — the three items from 21 July that are still open, two of which now block work we are ready to start.
 3. **Questions 5–7** — decisions we have already built on our own reading of your Round 3 answer. If we read you wrongly, these need rework, so we would rather know early.
 4. **Questions 8–19** — designed but not yet built. A wrong answer here costs a redesign, not rework.
-5. **Questions 20–34** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
+5. **Questions 20–35** — choices we made while building the Gate 1 and Gate 2 fields you asked for, two requirements we added ourselves, one premise of ours that was wrong, and a mapping between two of your own lists.
 
 ---
 
@@ -549,6 +549,22 @@ Your E3(b) answer settled a question we had left open with a comment saying a re
 
 **Question:** (a) is Critical the same as High, or a level of its own? (b) Should an unclassified open change block Gate 11? (c) What counts as the final disposition being recorded? (d) Is "authorised acknowledgement" the existing acknowledgement, or an approval restricted to particular roles?
 
+### Question 35 — The per-market regulatory checklist is built; three choices inside it are ours
+
+Your E2 answer corrected a decision of ours that had the right reason and the wrong conclusion. We had left this item unenforced because requiring the ASEAN checklist of every project would wrongly block a product not sold in ASEAN. Your answer: *"The absence of a built-in country template should not mean the item is unenforced."* Enforce it **per market**.
+
+**What is built.** A market inside ASEAN is checked against the built-in ASEAN PIF checklist, and only then — a project selling nowhere near ASEAN is not asked for it, and the panel says so rather than hiding the item. A market outside ASEAN needs a row in a new **Regulatory Checklist Status** register carrying the six things you listed: applicable market, required dossier type, owner, checklist or evidence link, status, and Regulatory approval. Gate 10 will not pass while a market has no row or an incomplete one, which is what lets Regulatory point at an approved external checklist in the meantime.
+
+It is two items rather than one because the two halves differ: the ASEAN half applies only to projects with an ASEAN market, the per-market half only to markets without a built-in profile. A project selling into both gets both, independently.
+
+**The three choices we made:**
+
+1. **Status and Regulatory approval reuse values the system already has** — the general work status, and the same approval scale as market tracking (Not Started / In Progress / Approved / Blocked / N/A). You name both fields without saying what goes in them, and we would rather reuse than invent two more vocabularies.
+2. **A market recorded as "Other — specify" is treated as outside ASEAN**, so it needs its own row. A market nobody has named cannot be assumed to be covered by the ASEAN template.
+3. **A row counts only when all six fields are filled.** You listed six; a row with two of them is a placeholder rather than the record you asked for.
+
+**Question:** (a) are those value lists right? (b) How should a market entered as "Other — specify" be handled? (c) Must all six fields be present, or is a checklist link plus Regulatory approval enough?
+
 ---
 
 ## Summary
@@ -567,5 +583,6 @@ Your E3(b) answer settled a question we had left open with a comment saying a re
 | 32 | The watch-list reviewer trail at Gate 4, now built | Already built — closes a gap we reported ourselves |
 | 33 | The critical safety finding control at Gate 7, now built | Already built — replaces an item that read the wrong evidence |
 | 34 | Gate 11 grading open changes by impact, now built | Already built — replaces the duplicate warning you rejected |
+| 35 | The per-market regulatory checklist at Gate 10, now built | Already built — replaces an item we had left unenforced |
 
 Questions 5 to 27 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

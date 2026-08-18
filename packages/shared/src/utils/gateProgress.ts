@@ -14,6 +14,13 @@ import { WATCHLIST_REGISTER, watchlistConditionalRows, watchlistHardBlockers } f
 import { openCriticalSafetyFindings } from './safetyFindings';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
 import {
+  ASEAN_CHECKLIST_REGISTER,
+  MARKET_DOSSIER_REGISTER,
+  aseanChecklistIncomplete,
+  marketsWithoutChecklist,
+  projectHasAseanMarket,
+} from './marketDossier';
+import {
   GATE_READINESS,
   type ReadinessCheck,
   type ReadinessRequirement,
@@ -116,6 +123,11 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
     // pathway instead". Deliberately independent of skincareForTwo: a maternal
     // project already reaches the same section through
     // skincareForTwoIncompleteSections, while an infant-only one reached nothing.
+    // E2: the built-in ASEAN checklist applies only where an ASEAN market is sold
+    // into. Everything else is covered by the per-market register instead.
+    case 'aseanMarket':
+      return projectHasAseanMarket(project);
+
     case 'infantContact':
       return (project.checklists['targetUsers'] ?? []).some(
         (item) => item.selected && item.label === INFANT_TARGET_USER,
@@ -214,6 +226,7 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   microbiologicallySusceptible:
     'the formula is recorded as anhydrous, self-preserving, sterile or single-use, with a rationale',
   infantContact: 'no Infant 0+ target user selected, so no infant or baby-contact use is intended',
+  aseanMarket: 'no ASEAN market selected, so the ASEAN PIF checklist does not apply',
   claimNeedsRegulatoryReview:
     'no declared claim is borderline, therapeutic-adjacent, high risk, still unclassified, or reworded since its last review',
 };
@@ -260,6 +273,10 @@ function evaluateReadinessCheck(
       const rows = project.requirements[check.section] ?? [];
       return { evaluable: true, satisfied: rows.every((r) => r.status === 'Completed') };
     }
+    case 'marketChecklistRecorded':
+      return { evaluable: true, satisfied: marketsWithoutChecklist(project).length === 0 };
+    case 'aseanChecklistComplete':
+      return { evaluable: true, satisfied: !aseanChecklistIncomplete(project) };
     case 'changeControlNoHardImpact':
       return { evaluable: true, satisfied: gate11HardBlockingChanges(project, project.changes).length === 0 };
     case 'changeControlNoAdminImpact':
@@ -625,6 +642,10 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: `/registers/reg/${WATCHLIST_REGISTER}` };
     case 'noOpenCriticalSafetyFinding':
       return { href: '/formulation-safety' };
+    case 'marketChecklistRecorded':
+      return { href: `/registers/reg/${MARKET_DOSSIER_REGISTER}` };
+    case 'aseanChecklistComplete':
+      return { href: `/registers/reg/${ASEAN_CHECKLIST_REGISTER}` };
     case 'changeControlNoHardImpact':
     case 'changeControlNoAdminImpact':
       // Change Control is a GLOBAL page, not per project — no project prefix.

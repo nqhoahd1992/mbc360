@@ -48,7 +48,9 @@ export type ReadinessTrigger =
   // (INF-01…INF-08, every row gate 07, from the V18 workbook) — but it was only
   // ever evaluated for MATERNAL projects, through skincareForTwoIncompleteSections.
   // So an infant-only product was required to complete nothing.
-  | 'infantContact';
+  | 'infantContact'
+  // Rule E2: the ASEAN checklist is enforced only where an ASEAN market is sold into.
+  | 'aseanMarket';
 
 export type ReadinessCheck =
   // No linked data source yet — displayed for confirmation, never hard-blocks.
@@ -208,6 +210,14 @@ export type ReadinessCheck =
   // which Proceed with Conditions may clear "following authorised
   // acknowledgement" (the existing F9 acknowledgement on the gate row).
   | { kind: 'changeControlNoAdminImpact' }
+  // Rule E2: every market with no built-in dossier profile has a complete
+  // Regulatory Checklist Status row. Vacuous only when the project sells into
+  // nothing but ASEAN, which is correct — those markets are covered by the
+  // checklist below instead.
+  | { kind: 'marketChecklistRecorded' }
+  // Rule E2: the built-in ASEAN PIF checklist is complete. Conditional on an
+  // ASEAN market being selected.
+  | { kind: 'aseanChecklistComplete' }
   | { kind: 'allOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
@@ -1767,7 +1777,31 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   ],
   // Gate 10 is a market-specific hard block (requirements repeat per market).
   SG10: [
-    { id: 'sg10-checklist', label: 'Applicable regulatory checklist (per market)', tier: 'Mandatory', check: { kind: 'manual' } },
+    {
+      // E2 answered the reasoning that kept this `manual`. It was left unenforced
+      // because requiring the ASEAN checklist of every project would wrongly block a
+      // product not sold in ASEAN — right premise, wrong conclusion. The team's
+      // answer is to enforce it PER MARKET: "The absence of a built-in country
+      // template should not mean the item is unenforced."
+      id: 'sg10-checklist',
+      label: 'Applicable regulatory checklist recorded for every market without a built-in profile',
+      tier: 'Mandatory',
+      source: 'f-series',
+      assumption: 'R4-Q32',
+      check: { kind: 'marketChecklistRecorded' },
+    },
+    {
+      // The other half of E2, split out because it is Conditional and the half above
+      // is not — a project selling only outside ASEAN must not be asked for this,
+      // and a project selling only inside it needs no per-market rows.
+      id: 'sg10-checklist-asean',
+      label: 'ASEAN PIF checklist complete',
+      tier: 'Conditional',
+      trigger: 'aseanMarket',
+      source: 'f-series',
+      assumption: 'R4-Q32',
+      check: { kind: 'aseanChecklistComplete' },
+    },
     // sg10-evidence-hierarchy / sg10-regulatory-mapped / sg10-approved-wording:
     // not F1-named items — same generalizable rule as sg01-constraints: B3(b)
     // already confirms every Key Gate Check row is mandatory before its phase
