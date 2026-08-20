@@ -377,8 +377,10 @@ export default function ProjectList() {
 
           {/* Review owners / co-signers — assigned per project (2026-07-23).
               Each page's "Review owner · Co-sign: …" caption is composed from
-              these people. All required; the placeholder is the workbook's
-              reference name for that responsibility. */}
+              these people. All 13 are required and there is no default: every
+              field is an empty user picker, so a project never inherits the
+              workbook's reference names (REVIEW_ROLES[].workbookName) — those
+              only seed the 13 user ACCOUNTS. */}
           <div style={{ fontWeight: 600, margin: '4px 0 12px' }}>
             Review owners &amp; co-signers
             <span style={{ fontWeight: 400, color: '#999', fontSize: 12, marginLeft: 8 }}>

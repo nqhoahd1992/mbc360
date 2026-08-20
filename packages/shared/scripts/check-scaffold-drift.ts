@@ -131,10 +131,32 @@ for (const project of projects) {
   }
 }
 
+// Since 2026-08-20 a phase sign-off's signers are nominated by the project's
+// LEAD, matched against `projects.projectLead` (a displayName — see R5-Q1). A
+// project whose lead is not an active account therefore has nobody who can
+// nominate a signer except an admin, and nothing anywhere says so. Found the
+// hard way: the demo project still carried a pre-user-picker free-text lead
+// ("Anna Tran") months after the seeder started using a real account.
+const activeUsers = new Set(
+  query('select "displayName" from users where active').map(([displayName]) => displayName.trim()),
+);
+const orphanLeads = query('select "id", "projectLead" from projects order by "id"').filter(
+  ([, lead]) => !activeUsers.has((lead ?? '').trim()),
+);
+
 console.log(`\n=== Scaffold drift: ${projects.length} dự án ===`);
-if (drifts.length === 0) {
-  console.log('✅ Mọi section/register trong config đều có đủ dòng trong DB.\n');
+if (orphanLeads.length > 0) {
+  console.log('\n⚠️  Project Lead không khớp user đang hoạt động nào — chỉ admin chỉ định được người ký:');
+  for (const [id, lead] of orphanLeads) console.log(`  ${id}  projectLead "${lead}"`);
+  console.log('');
+}
+if (drifts.length === 0 && orphanLeads.length === 0) {
+  console.log('✅ Mọi section/register trong config đều có đủ dòng trong DB, và mọi Project Lead là user thật.\n');
   process.exit(0);
+}
+if (drifts.length === 0) {
+  console.log('✅ Mọi section/register trong config đều có đủ dòng trong DB (xem cảnh báo Project Lead ở trên).\n');
+  process.exit(1);
 }
 
 for (const d of drifts) {

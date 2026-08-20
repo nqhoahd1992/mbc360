@@ -121,7 +121,7 @@ export default function CommandPalette({
             title: item.title,
             group: g,
             path: navItemHref(item, id),
-            keywords: `${grp.title} ${item.sheetName ?? ''}`,
+            keywords: `${grp.title} ${item.sheetName ?? ''} ${item.workbookTab ?? ''}`,
           });
         }
       }

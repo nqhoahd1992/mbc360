@@ -256,7 +256,9 @@ async function seedDemoUsers(): Promise<void> {
 // hardcoded name: the Create New Project form's user pickers list active users
 // from GET /api/rbac/users, so these people become selectable there, and the
 // demo project below is assigned from these rows instead of a config constant.
-// REVIEW_ROLES[].defaultName stays in config only as the form placeholder.
+// REVIEW_ROLES[].workbookName is ONLY the name of the account created here (the
+// name the workbook prints for that area) — it is not a default value anywhere:
+// the Create form starts every reviewer field empty and required.
 //
 // Departments reuse the existing demo department names where one fits, so this
 // does not sprawl a new Department row per person.
@@ -326,14 +328,14 @@ async function seedReviewOwnerUsers(): Promise<NewProjectReviewer[]> {
   }
   const assigned: NewProjectReviewer[] = [];
   for (const role of REVIEW_ROLES) {
-    const email = reviewOwnerEmail(role.defaultName);
+    const email = reviewOwnerEmail(role.workbookName);
     const departmentName = REVIEW_OWNER_DEPARTMENTS[role.key] ?? 'Management';
     const user = await prisma.user.upsert({
       where: { email },
       update: {},
       create: {
         email,
-        displayName: role.defaultName,
+        displayName: role.workbookName,
         department: {
           connectOrCreate: { where: { name: departmentName }, create: { name: departmentName } },
         },
@@ -349,7 +351,7 @@ async function seedReviewOwnerUsers(): Promise<NewProjectReviewer[]> {
         create: { userId: user.id, roleId: dbRole.id },
       });
     } else if (roleKey) {
-      console.warn(`  ! review owner ${role.defaultName}: role "${roleKey}" not found — left without a role`);
+      console.warn(`  ! review owner ${role.workbookName}: role "${roleKey}" not found — left without a role`);
     }
 
     assigned.push({ roleKey: role.key, userId: user.id, name: user.displayName });
@@ -358,6 +360,78 @@ async function seedReviewOwnerUsers(): Promise<NewProjectReviewer[]> {
     `Seeded ${assigned.length} review-owner users with roles (${assigned.map((a) => a.name).join(', ')})`,
   );
   return assigned;
+}
+
+// The demo project's stand-in lead. One constant, because it is written in two
+// places (create, and the repair path below) and they must not drift.
+const DEMO_PROJECT_LEAD = 'Chris';
+
+// Who is NOMINATED to sign each phase's three sign-off rows on the demo project
+// (D1: only the nominated person may sign, and the project's Lead nominates).
+//
+// Seeded by ROLE, never by name: the two rows below resolve through
+// `project_reviewers`, so reassigning a review area on the project moves the
+// nomination with it. The workbook has no worked example to copy — every sheet
+// ships blank — so this is a temporary assignment to real accounts, in the
+// project owner's own words: "seed vai trò thôi, nếu excel workbook không có
+// thì cứ gán tạm 1 user trong app".
+//
+// Prepared by = the area the workbook's own phase sheet belongs to (PHASE1
+// MKTG, PHASE2 NPD, PHASE3 QUAL, PHASE4 REG). Reviewed by = Quality, except on
+// Phase 3 where Quality already prepares, so Quality & GMP reviews and the two
+// rows stay two different people.
+const DEMO_SIGNOFF_AREAS: Record<number, { preparedBy: string; reviewedBy: string }> = {
+  1: { preparedBy: 'sales-marketing', reviewedBy: 'quality' },
+  2: { preparedBy: 'formulation', reviewedBy: 'quality' },
+  3: { preparedBy: 'quality', reviewedBy: 'quality-gmp' },
+  4: { preparedBy: 'regulatory', reviewedBy: 'quality' },
+};
+
+// "Approved by" additionally needs the `phase:N|approve` capability, so it
+// cannot be nominated from a review area: of the 13 workbook owners, none holds
+// it on all four phases (Chris/Project Owner has phase:1 only). The Final
+// Approver role is the one seeded with all four — which is what that role is
+// for (F6: cross-cutting sign-off authority).
+const DEMO_APPROVER_ROLE_KEY = 'sso-final-approver';
+
+// Fills the three nominations per phase, for rows that have none and are not
+// already signed. Idempotent, and it never touches a nomination somebody made.
+async function seedDemoSignOffNominations(projectId: string): Promise<void> {
+  const reviewers = await prisma.projectReviewer.findMany({
+    where: { projectId },
+    select: { roleKey: true, userId: true },
+  });
+  const byArea = new Map(reviewers.filter((r) => r.userId).map((r) => [r.roleKey, r.userId!]));
+  const approver = await prisma.user.findFirst({
+    where: { active: true, roles: { some: { role: { key: DEMO_APPROVER_ROLE_KEY } } } },
+    select: { id: true, displayName: true },
+  });
+  if (!approver) {
+    console.warn(`  ! no active user holds ${DEMO_APPROVER_ROLE_KEY} — "Approved by" left unnominated`);
+  }
+
+  let nominated = 0;
+  for (const [phase, areas] of Object.entries(DEMO_SIGNOFF_AREAS)) {
+    const closure = await prisma.phaseClosure.findUnique({
+      where: { projectId_phase: { projectId, phase: Number(phase) } },
+      select: { id: true },
+    });
+    if (!closure) continue;
+    const wanted: [string, string | undefined][] = [
+      ['Prepared by', byArea.get(areas.preparedBy)],
+      ['Reviewed by', byArea.get(areas.reviewedBy)],
+      ['Approved by', approver?.id],
+    ];
+    for (const [role, userId] of wanted) {
+      if (!userId) continue;
+      const { count } = await prisma.signOff.updateMany({
+        where: { phaseClosureId: closure.id, role, assignedToUserId: null, signedAt: null },
+        data: { assignedToUserId: userId },
+      });
+      nominated += count;
+    }
+  }
+  console.log(`Phase sign-off nominations: ${nominated} row(s) assigned by review area`);
 }
 
 async function seedDemoProject(reviewers: NewProjectReviewer[]): Promise<void> {
@@ -382,9 +456,31 @@ async function seedDemoProject(reviewers: NewProjectReviewer[]): Promise<void> {
       });
       if (result.assignedAt.getTime() > Date.now() - 5000) added++;
     }
+    // Same additive spirit for `projectLead`, and for the same reason the
+    // reviewers needed backfilling: this branch skips the scaffold, so the
+    // 2026-07-26 change from a free-text 'Anna Tran' to a real account never
+    // reached a database seeded before it. That went unnoticed until
+    // 2026-08-20, when `projectLead` became the string deciding WHO MAY
+    // NOMINATE phase sign-off signers (D1 / R5-Q1) — a lead nobody has an
+    // account for means only an admin can nominate, with nothing saying so.
+    //
+    // Repaired only when the current value matches no active user, so a lead
+    // somebody deliberately assigned is never overwritten.
+    const leadIsRealUser = await prisma.user.findFirst({
+      where: { displayName: existing.projectLead, active: true },
+      select: { id: true },
+    });
+    if (!leadIsRealUser) {
+      await prisma.project.update({
+        where: { id: existing.id },
+        data: { projectLead: DEMO_PROJECT_LEAD },
+      });
+    }
     console.log(
-      `Demo project ${productCode} already present — scaffold skipped, ${added} review owner(s) backfilled`,
+      `Demo project ${productCode} already present — scaffold skipped, ${added} review owner(s) backfilled` +
+        (leadIsRealUser ? '' : `, projectLead "${existing.projectLead}" -> ${DEMO_PROJECT_LEAD} (no such active user)`),
     );
+    await seedDemoSignOffNominations(existing.id);
     return;
   }
   await prisma.$transaction(async (tx) => {
@@ -397,7 +493,7 @@ async function seedDemoProject(reviewers: NewProjectReviewer[]): Promise<void> {
       // a real project lead is assigned — was a free-text 'Anna Tran' before
       // projectLead became a user-picker sourced from the same active-user
       // list as the review owners.
-      projectLead: 'Chris',
+      projectLead: DEMO_PROJECT_LEAD,
       productGroup: 'Mother & Baby Care',
       brandCustomer: 'Max Biocare',
       dateOpened: new Date('2026-03-02'),
@@ -418,6 +514,8 @@ async function seedDemoProject(reviewers: NewProjectReviewer[]): Promise<void> {
     });
     console.log(`Seeded demo project ${productCode} (${projectId})`);
   });
+  const created = await prisma.project.findUniqueOrThrow({ where: { productCode }, select: { id: true } });
+  await seedDemoSignOffNominations(created.id);
 }
 
 async function main(): Promise<void> {

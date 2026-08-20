@@ -273,7 +273,7 @@ export default function BomCosting() {
       />
 
       {/* Formula BOM's own review owner — specific to this section (Packaging/
-          Costing below have different owners: Lily/Hannah respectively), so
+          Costing below have different owners: Packaging / Supply Chain respectively), so
           scoped to `showFormula` rather than shown page-wide like Project
           Identification above (2026-07-23, user-requested). */}
       {showFormula && (

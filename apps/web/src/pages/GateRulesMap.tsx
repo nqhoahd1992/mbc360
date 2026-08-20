@@ -137,7 +137,14 @@ interface SheetBlockRule {
 // by a dedicated app page (Formula BOM, Formulation Safety, ...).
 interface SheetEntry {
   key: string;
-  sheetName: string;
+  sheetName: string; // owner-neutral — this is the identity rows are keyed by
+  // The literal V18 tab (e.g. `Tuan-Formula_BOM`). Shown ONLY on this page,
+  // whose whole job is comparing the app against the Excel file, and shown as
+  // provenance rather than as an owner: the person in that prefix is not who
+  // looks after the sheet on any given project (project owner's rule,
+  // 2026-08-20 — before that the prefixed string WAS the sheetName, so it
+  // reached the sidebar and My Sheets too).
+  workbookTab?: string;
   parts: { title: string; gate?: string; mode: 'register' | 'fixed' | 'page' | 'form'; registerKey?: string }[];
   groups: string[];
   href?: string;
@@ -175,6 +182,7 @@ function buildSheetIndex(): SheetEntry[] {
       entry = {
         key: sheetName,
         sheetName,
+        workbookTab: undefined,
         parts: [],
         groups: [],
         href: undefined,
@@ -203,6 +211,7 @@ function buildSheetIndex(): SheetEntry[] {
   // NPD Front-End pages, ...) — they are still real workbook content.
   for (const config of REGISTER_CONFIGS) {
     const entry = ensure(config.sheetName);
+    entry.workbookTab ??= config.workbookTab;
     entry.parts.push({ title: config.title, gate: config.gate, mode: config.mode, registerKey: config.key });
     if (config.gate && !entry.gateRefs.includes(config.gate)) entry.gateRefs.push(config.gate);
     if (config.reviewOwner) {
@@ -218,6 +227,7 @@ function buildSheetIndex(): SheetEntry[] {
     for (const item of group.items) {
       if (!item.sheetName) continue;
       const entry = ensure(item.sheetName);
+      entry.workbookTab ??= item.workbookTab;
       if (!entry.groups.includes(group.title)) entry.groups.push(group.title);
       if (!item.registerKey) {
         entry.parts.push({ title: item.title, gate: item.gate, mode: 'page' });
@@ -322,7 +332,12 @@ export default function GateRulesMap() {
   const filtered = sheets.filter((entry) => {
     const q = search.trim().toLowerCase();
     if (q) {
-      const haystack = [entry.sheetName, ...entry.parts.map((p) => p.title), ...entry.groups].join(' ').toLowerCase();
+      // The V18 tab string stays searchable so anyone who knows the workbook by
+      // its prefixed tab names can still find the sheet — searching is not the
+      // same as asserting who owns it.
+      const haystack = [entry.sheetName, entry.workbookTab ?? '', ...entry.parts.map((p) => p.title), ...entry.groups]
+        .join(' ')
+        .toLowerCase();
       if (!haystack.includes(q)) return false;
     }
     if (roleFilter && !entry.ownerRoles.includes(roleFilter)) return false;
@@ -618,6 +633,13 @@ export default function GateRulesMap() {
                       <Typography.Text type="secondary" style={{ fontSize: 11 }}>
                         {entry.parts.length} form{entry.parts.length === 1 ? '' : 's'}
                       </Typography.Text>
+                      {entry.workbookTab && entry.workbookTab !== entry.sheetName && (
+                        <div>
+                          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
+                            Excel tab: <span style={{ fontFamily: 'monospace' }}>{entry.workbookTab}</span>
+                          </Typography.Text>
+                        </div>
+                      )}
                     </div>
                   );
                 },

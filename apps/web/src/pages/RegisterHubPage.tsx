@@ -48,7 +48,9 @@ const INTRODUCTION: GuideRow[] = [
   { topic: 'Template style', instruction: 'Workbook uses the Max Biocare / MBc360 controlled document style.' },
   { topic: 'Skincare for Two', instruction: 'Maternal products must include maternal use plus baby-contact/infant exposure consideration; this is mandatory, not optional.' },
   { topic: 'Study paperwork', instruction: 'Human/consumer studies require proposal, participant plan, consent, adverse-event log and signatures before results support claims.' },
-  { topic: 'Approval route', instruction: 'Current route: Chris prepares study proposal, George/Head of Department signs off, Sekar or nominated independent reviewer signs off outside the department.' },
+  // The workbook names three people here; digitised, they are the three roles the
+  // C2 study-approval workflow already implements [ASSUMPTION: R5-Q3].
+  { topic: 'Approval route', instruction: 'Current route: the Study Author prepares the study proposal, the Department Study Reviewer (head of department) signs off, and an Independent Reviewer from outside that department signs off — recorded on the Study Protocol register\'s approval trail.' },
   { topic: 'PIF layer', instruction: 'ASEAN PIF mapping is mandatory before dossier export or market submission.' },
   { topic: 'Ingredient proof', instruction: 'Use Prohibited_Ingredients, PB_Caution_Limits and Ingredient_Substitution to answer distributor/HCP questions.' },
   { topic: 'Medical summary', instruction: 'Use Medical_Summary as the ready-to-answer HCP/distributor evidence pack.' },

@@ -12,10 +12,14 @@
 export interface ReviewRole {
   key: string;
   label: string; // responsibility shown in parentheses, e.g. "Formulation"
-  // The V18 workbook's demo name for this role — used as the Create-form
-  // placeholder and to seed the demo projects, so the app looks unchanged
-  // until someone assigns real people.
-  defaultName: string;
+  // The name the V18 workbook prints for this area. Digitised, a person is
+  // never configuration: every project picks its own people at creation
+  // (ProjectIdentity.reviewers), so this is NOT a default and nothing reads it
+  // at runtime. Its one job is `seedReviewOwnerUsers()` creating a real User
+  // account per name, so those people are selectable in the pickers.
+  // Renamed from `defaultName` on 2026-08-20 — the old name claimed exactly the
+  // behaviour this comment denies.
+  workbookName: string;
 }
 
 // The full set collected at project creation (all required).
@@ -41,21 +45,21 @@ export interface ReviewRole {
 // If DEPARTMENTS is reordered, reorder this list to match.
 export const REVIEW_ROLES: ReviewRole[] = [
   // cross-cutting
-  { key: 'project-manager', label: 'Project Manager', defaultName: 'Chris' },
+  { key: 'project-manager', label: 'Project Manager', workbookName: 'Chris' },
   // mirrors DEPARTMENTS, in order
-  { key: 'ri', label: 'R&I', defaultName: 'George' }, // dept-npd-frontend
-  { key: 'raw-material', label: 'Raw Material Operations', defaultName: 'Chidkamon' }, // dept-raw-material
-  { key: 'formulation', label: 'Formulation', defaultName: 'Tuan' }, // dept-formulation
-  { key: 'quality', label: 'Quality', defaultName: 'Sankar' }, // dept-quality
-  { key: 'quality-gmp', label: 'Quality & GMP', defaultName: 'Sekar' }, // dept-quality-gmp
-  { key: 'regulatory', label: 'Regulatory', defaultName: 'Chi Chu' }, // dept-regulatory
-  { key: 'packaging', label: 'Packaging', defaultName: 'Lily' }, // dept-packaging
-  { key: 'sales-marketing', label: 'Sales & Marketing', defaultName: 'Nguyen' }, // dept-sales-marketing
-  { key: 'supply-chain', label: 'Supply Chain', defaultName: 'Hannah' }, // dept-supply-chain
+  { key: 'ri', label: 'R&I', workbookName: 'George' }, // dept-npd-frontend
+  { key: 'raw-material', label: 'Raw Material Operations', workbookName: 'Chidkamon' }, // dept-raw-material
+  { key: 'formulation', label: 'Formulation', workbookName: 'Tuan' }, // dept-formulation
+  { key: 'quality', label: 'Quality', workbookName: 'Sankar' }, // dept-quality
+  { key: 'quality-gmp', label: 'Quality & GMP', workbookName: 'Sekar' }, // dept-quality-gmp
+  { key: 'regulatory', label: 'Regulatory', workbookName: 'Chi Chu' }, // dept-regulatory
+  { key: 'packaging', label: 'Packaging', workbookName: 'Lily' }, // dept-packaging
+  { key: 'sales-marketing', label: 'Sales & Marketing', workbookName: 'Nguyen' }, // dept-sales-marketing
+  { key: 'supply-chain', label: 'Supply Chain', workbookName: 'Hannah' }, // dept-supply-chain
   // own no sheets — co-review / co-sign only
-  { key: 'facility-pm', label: 'Facility / PM Operations', defaultName: 'Kaukab' },
-  { key: 'hr-quality', label: 'HR/Quality', defaultName: 'Lani' },
-  { key: 'digital-platforms', label: 'Digital / Platforms', defaultName: 'Anki' },
+  { key: 'facility-pm', label: 'Facility / PM Operations', workbookName: 'Kaukab' },
+  { key: 'hr-quality', label: 'HR/Quality', workbookName: 'Lani' },
+  { key: 'digital-platforms', label: 'Digital / Platforms', workbookName: 'Anki' },
 ];
 
 export const REVIEW_ROLE_KEYS = REVIEW_ROLES.map((r) => r.key);
@@ -63,12 +67,6 @@ export const REVIEW_ROLE_KEYS = REVIEW_ROLES.map((r) => r.key);
 export function reviewRoleLabel(key: string): string {
   return REVIEW_ROLES.find((r) => r.key === key)?.label ?? key;
 }
-
-// Map of role key -> workbook demo name; seeds demo projects and fills the
-// Create-form defaults so the app reads exactly as before until reassigned.
-export const DEFAULT_REVIEWERS: Record<string, string> = Object.fromEntries(
-  REVIEW_ROLES.map((r) => [r.key, r.defaultName]),
-);
 
 export interface ReviewCredit {
   role: string; // ReviewRole.key

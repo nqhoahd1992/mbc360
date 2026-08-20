@@ -48,7 +48,17 @@ export interface RegisterColumn {
 export interface RegisterConfig {
   key: string;
   title: string;
+  // The owner-NEUTRAL sheet name, and the only one the app displays. The V18
+  // workbook prefixes its tabs with a person (`Tuan-Formula_BOM`) because a
+  // spreadsheet has nowhere else to record who looks after a tab; digitised,
+  // that person is per-project data (ProjectIdentity.reviewers) and the AREA is
+  // `reviewOwner` below, so a name here would assert on every project something
+  // that is only true of the demo file (project owner's rule, 2026-08-20).
   sheetName: string;
+  // The literal tab string in the V18 file, kept ONLY so the Sheet Map can say
+  // "this is the tab to open in the Excel". Provenance, never responsibility —
+  // do not render it as an owner, and do not read a person out of it.
+  workbookTab?: string;
   description?: string;
   mode: 'register' | 'fixed'; // register = user adds/removes rows; fixed = predefined rows
   gate?: string;
@@ -1660,7 +1670,7 @@ export const formulationSafetyFinalSignOff: RegisterConfig = {
 };
 
 // ---------------------------------------------------------------------------
-// Released Label Control (new in V18) — sheet Lily-Released_Label_Ctrl.
+// Released Label Control (new in V18) — workbook tab Lily-Released_Label_Ctrl.
 // Three blocks share one sheet, mirroring the Formulation_Safety composite.
 // ---------------------------------------------------------------------------
 
@@ -1669,7 +1679,8 @@ const RELEASED_LABEL_OWNER = REVIEW_SPECS.releasedLabel;
 const releasedLabelRegister: RegisterConfig = {
   key: 'releasedLabelRegister',
   title: 'Released Label vs Current Artwork',
-  sheetName: 'Lily-Released_Label_Ctrl',
+  sheetName: 'Released_Label_Ctrl',
+  workbookTab: 'Lily-Released_Label_Ctrl',
   description: 'What changed / will change, current vs new label, market-release status and 3D asset status. No silent label changes — use Artwork_Change_Control for the formal record.',
   mode: 'register',
   gate: '06/11',
@@ -1699,8 +1710,9 @@ const releasedLabelRegister: RegisterConfig = {
 const labelPlatformRollout: RegisterConfig = {
   key: 'labelPlatformRollout',
   title: 'Platform Rollout & Stock Confirmation',
-  sheetName: 'Lily-Released_Label_Ctrl',
-  description: 'Update every platform only when correct new-label stock is available (Anki).',
+  sheetName: 'Released_Label_Ctrl',
+  workbookTab: 'Lily-Released_Label_Ctrl',
+  description: 'Update every platform only when correct new-label stock is available (Digital / Platforms).',
   mode: 'register',
   gate: '06/11',
   reviewOwner: RELEASED_LABEL_OWNER,
@@ -1729,7 +1741,8 @@ const labelPlatformRollout: RegisterConfig = {
 const labelShipmentVerification: RegisterConfig = {
   key: 'labelShipmentVerification',
   title: 'Shipment Label & Batch Verification',
-  sheetName: 'Lily-Released_Label_Ctrl',
+  sheetName: 'Released_Label_Ctrl',
+  workbookTab: 'Lily-Released_Label_Ctrl',
   description: 'Every shipment out must record exact batch details and the exact label artwork version.',
   mode: 'register',
   gate: '06/11',
@@ -1806,7 +1819,7 @@ const templateIndex: RegisterConfig = {
     { concept: '7. Change control', templateTab: 'Formulation_Change_Register', captured: 'NP-controlled log of every formulation change, reasons, actions and closure', whenToComplete: 'Per formulation change', gate: '05/07/10', owner: 'NPD / NP / Reg', notes: 'CEO-mandated. VN needs ~6 months re-registration for formula changes' },
     { concept: '8. Marketing outputs', templateTab: 'Campaigns_Social_Media', captured: 'Social media & marketing campaign declaration with links', whenToComplete: 'Per campaign/post', gate: '03/11', owner: 'Marketing / Sales', notes: 'Links approved messaging to Change IDs' },
     { concept: '9. Development records', templateTab: 'Product_Feedback_Form', captured: 'Staff/panel feedback on development samples (texture, fragrance, oiliness/slipperiness safety)', whenToComplete: 'Per sample evaluation round', gate: '07/08', owner: 'R&I / NPD / Panel', notes: 'Feeds Product_Development_Report; slip-risk safety flag for marketing' },
-    { concept: '9. Development records', templateTab: 'Product_Development_Report', captured: 'Iterative formula development record: each improved version, driving feedback and competitor benchmarking', whenToComplete: 'Per SKU under development', gate: '04/05/08', owner: 'NPD (Tuan) / Project owner', notes: 'Answers "is development being recorded?"; links Change Register + Feedback Form' },
+    { concept: '9. Development records', templateTab: 'Product_Development_Report', captured: 'Iterative formula development record: each improved version, driving feedback and competitor benchmarking', whenToComplete: 'Per SKU under development', gate: '04/05/08', owner: 'NPD / Project owner', notes: 'Answers "is development being recorded?"; links Change Register + Feedback Form' },
   ],
 };
 
@@ -1879,7 +1892,7 @@ const systemFeedback: RegisterConfig = {
 export const needsExecutiveBrief: RegisterConfig = {
   key: 'needsExecutiveBrief',
   title: 'Needs — Executive Brief',
-  sheetName: 'Chris Needs Document',
+  sheetName: 'Needs Document', workbookTab: 'Chris Needs Document',
   description: 'Executive brief: what this product must do, based on the physiology and emotional needs of the intended user(s). Dot points only; every need must be referenced. Companion to the full dossier below.',
   mode: 'register',
   gate: '02',
@@ -2003,7 +2016,7 @@ export const needsSignOff: RegisterConfig = {
 export const carrierEmollientReview: RegisterConfig = {
   key: 'carrierEmollientReview',
   title: 'Carrier / Emollient System Review',
-  sheetName: 'Chris Ingredient Review',
+  sheetName: 'Ingredient Review', workbookTab: 'Chris Ingredient Review',
   description: 'Are the carriers correct, could they be improved, and are they research-backed? (Actives are reviewed separately.) Feeds Step 3 (Backbone Technology) — no changes are written into the formula file until the Needs sheet is reviewed and signed off.',
   mode: 'register',
   gate: '02',
@@ -2022,7 +2035,7 @@ export const carrierEmollientReview: RegisterConfig = {
 export const carrierReviewSummary: RegisterConfig = {
   key: 'carrierReviewSummary',
   title: 'Carrier Review — Summary',
-  sheetName: 'Chris Ingredient Review',
+  sheetName: 'Ingredient Review', workbookTab: 'Chris Ingredient Review',
   mode: 'fixed',
   gate: '02',
   reviewOwner: REVIEW_SPECS.ri,
@@ -2450,7 +2463,7 @@ export const npdRoadmapFirstSteps: RegisterConfig = {
     { key: 'signOffGate', label: 'Sign-off gate', type: 'text', width: 110, editable: false },
   ],
   fixedRows: [
-    { step: '1', doThis: 'Define the NEEDS (physical + emotional) and the scientific basis', minimumOutput: 'Physical/physiological, emotional/developmental, caregiver & practical needs; needs -> design implications; research questions; references; open questions. Formula work HELD until reviewed.', controlledSheet: 'Chris Needs Document (brief) -> 1. Needs & Scientific Basis', owner: 'Project Manager / R&I', signOffGate: 'SG02' },
+    { step: '1', doThis: 'Define the NEEDS (physical + emotional) and the scientific basis', minimumOutput: 'Physical/physiological, emotional/developmental, caregiver & practical needs; needs -> design implications; research questions; references; open questions. Formula work HELD until reviewed.', controlledSheet: 'Needs Document (brief) -> 1. Needs & Scientific Basis', owner: 'Project Manager / R&I', signOffGate: 'SG02' },
     { step: '2', doThis: 'Map COMPETITORS & current existing solutions', minimumOutput: "Selected competitors with purchase evidence (country/retailer/date/lot), full INCI, claims, patents, disclosed testing, price/use, sensory + analytical comparison, and the Max Biocare design decision from each comparison. Also 'standard of care' / what users do now.", controlledSheet: '2. Competitor & Current-Solution Landscape', owner: 'Marketing / R&I', signOffGate: 'SG03' },
     { step: '3', doThis: 'Define the TARGET PRODUCT PROFILE + propose the BACKBONE TECHNOLOGY', minimumOutput: 'One agreed definition of success (min/target/ideal/unacceptable per attribute + measurement method). Technology platform: precise problem, routes considered, why selected, mechanism, critical attributes, evidence maturity, patent landscape, and HOW it is superior to existing products.', controlledSheet: '3. Target Product Profile & Tech Platform', owner: 'R&I / Project Manager', signOffGate: 'SG03->SG05' },
     { step: '4', doThis: 'Plan EVIDENCE / TESTING before formula lock, then FINAL FORMULA + testing to support the claim', minimumOutput: 'Prospective evidence plan (endpoint, comparator, method, minimum acceptable result, failure definition) BEFORE formula lock; detailed protocol AFTER prototype; then final formula + tests that substantiate each claim.', controlledSheet: '4. Evidence Plan & Claim Support (-> efficacy/study sheets, Formula BOM)', owner: 'R&I / Quality', signOffGate: 'SG05 / SG08' },
@@ -2473,7 +2486,7 @@ export const npdRoadmapStructure: RegisterConfig = {
     { key: 'notes', label: 'Notes', type: 'textarea', width: 260, editable: false },
   ],
   fixedRows: [
-    { part: '1', element: 'NEEDS — physical & emotional', question: 'What needs are we trying to address (body + mind, user + caregiver)?', controlledSheet: '1. Needs & Scientific Basis', status: 'New', notes: "Executive summary stays in 'Chris Needs Document'; full science here." },
+    { part: '1', element: 'NEEDS — physical & emotional', question: 'What needs are we trying to address (body + mind, user + caregiver)?', controlledSheet: '1. Needs & Scientific Basis', status: 'New', notes: "Executive summary stays in the Needs Document (brief); full science here." },
     { part: '2', element: 'COMPETITORS / existing solutions', question: 'What already exists, how well does it work, where is the real unmet gap?', controlledSheet: '2. Competitor & Current-Solution Landscape', status: 'New', notes: 'Includes purchased-sample & comparative-testing protocol.' },
     { part: '3', element: 'BACKBONE technology / structure (must be superior)', question: 'What platform will address the needs, and how is it better than the market?', controlledSheet: '3. Target Product Profile & Tech Platform', status: 'New', notes: 'Combines Target Product Profile + Technology Platform.' },
     { part: '4', element: 'FINAL formula + testing to support the claim', question: 'Does the finished product deliver, and is every claim substantiated?', controlledSheet: '4. Evidence Plan & Claim Support', status: 'New', notes: 'Feeds Formula BOM and efficacy/study sheets.' },
@@ -2496,7 +2509,7 @@ export const npdRoadmapGapRegister: RegisterConfig = {
     { key: 'status', label: 'Status', type: 'text', width: 130, editable: false },
   ],
   fixedRows: [
-    { priority: 'Highest', missingComponent: 'Human Needs & Scientific Basis Dossier', currentCoverage: 'Partly — Chris Needs Document is a good brief', action: 'Add full scientific needs standard (research questions, search method, evidence quality, traceability)', sheetOwner: '1. Needs & Scientific Basis', status: 'Template created' },
+    { priority: 'Highest', missingComponent: 'Human Needs & Scientific Basis Dossier', currentCoverage: 'Partly — the Needs Document (brief) is a good brief', action: 'Add full scientific needs standard (research questions, search method, evidence quality, traceability)', sheetOwner: '1. Needs & Scientific Basis', status: 'Template created' },
     { priority: 'Highest', missingComponent: 'Market, Competitor & Current-Solution Landscape', currentCoverage: 'Weak — link + Gate 3 note only', action: 'Add controlled competitor methodology + purchased-sample & comparative-testing protocol + standard-of-care analysis', sheetOwner: '2. Competitor & Current-Solution Landscape', status: 'Template created' },
     { priority: 'Highest', missingComponent: 'Target Product Profile + Evidence Development Plan', currentCoverage: 'Distributed across phases, not one document', action: 'Consolidate one agreed success definition; split prospective plan vs post-prototype protocol', sheetOwner: '3. Target Product Profile & Tech Platform / 4. Evidence Plan', status: 'Template created' },
     { priority: 'Highest', missingComponent: 'Technology Platform & Evidence Dossier', currentCoverage: "Largely missing ('Backbone Technology' mentioned)", action: 'Add reusable technology-platform structure (routes, mechanism, critical attributes, patent landscape, SKU transfer)', sheetOwner: '3. Target Product Profile & Tech Platform', status: 'Template created' },
@@ -2601,50 +2614,54 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
 // workbook, keyed by the historical (unprefixed) sheetName. The app does not
 // read the workbook at runtime, so sheetName is only a display/reference label.
 // `key` is unchanged to keep persisted localStorage data valid.
-const SHEET_METADATA: Record<string, { sheetName: string; reviewOwner: ReviewOwnerSpec }> = {
-  Supplier_RM_Evidence: { sheetName: 'Chidkamon-Supplier_RM', reviewOwner: REVIEW_SPECS.rawMaterial },
-  Ingredient_Substitution: { sheetName: 'Chidkamon-Ingred_Substit', reviewOwner: REVIEW_SPECS.rawMaterial },
-  Product_Family_Register: { sheetName: 'Chidkamon-Prod_Family_Reg', reviewOwner: REVIEW_SPECS.rawMaterial },
-  Prohibited_Ingredients: { sheetName: 'ChiChu-Prohibited_Ingred', reviewOwner: REVIEW_SPECS.regulatoryWithRi },
-  PB_Caution_Limits: { sheetName: 'ChiChu-PB_Caution_Limits', reviewOwner: REVIEW_SPECS.regulatory },
-  Fragrance_Safety: { sheetName: 'ChiChu-Fragrance_Safety', reviewOwner: REVIEW_SPECS.regulatory },
-  ASEAN_PIF_Map: { sheetName: 'ChiChu-ASEAN_PIF_Map', reviewOwner: REVIEW_SPECS.regulatory },
-  PIF_Checklist_ASEAN: { sheetName: 'ChiChu-PIF_Checklist', reviewOwner: REVIEW_SPECS.regulatory },
-  PIF_Evidence_Export: { sheetName: 'ChiChu-PIF_Evid_Export', reviewOwner: REVIEW_SPECS.regulatory },
-  SKU_Claims_PIF_Register: { sheetName: 'ChiChu-SKU_Claims_PIF', reviewOwner: REVIEW_SPECS.regulatory },
-  PIF_Evidence_Closure: { sheetName: 'ChiChu-PIF_Evid_Closure', reviewOwner: REVIEW_SPECS.regulatory },
-  Published_Info_Approval: { sheetName: 'ChiChu-Published_Info_Ap', reviewOwner: REVIEW_SPECS.regulatory },
-  Formulation_Safety: { sheetName: 'George-Formulation_Safety', reviewOwner: REVIEW_SPECS.formulation },
-  Formula_Change_Control: { sheetName: 'Tuan-Formula_Chg_Control', reviewOwner: REVIEW_SPECS.formulation },
-  Formulation_Change_Register: { sheetName: 'Tuan-Formulation_Chg_Reg', reviewOwner: REVIEW_SPECS.formulation },
-  Batch_Formula_Trace: { sheetName: 'Tuan-Batch_Formula_Trace', reviewOwner: REVIEW_SPECS.formulation },
-  Product_Development_Report: { sheetName: 'Tuan-Product_Dev_Report', reviewOwner: REVIEW_SPECS.formulationProductDevReport },
-  Test_Report_Index: { sheetName: 'George-Test_Report_Index', reviewOwner: REVIEW_SPECS.quality },
-  Eye_Safety_Evidence: { sheetName: 'George-Eye_Safety_Evid', reviewOwner: REVIEW_SPECS.quality },
-  Micro_PET_Evidence: { sheetName: 'Sekar-Micro_PET_Evidence', reviewOwner: REVIEW_SPECS.qualityGmpPet },
-  Stability_Release: { sheetName: 'Sankar-Stability_Release', reviewOwner: REVIEW_SPECS.qualityGmpStability },
-  GMP_Links: { sheetName: 'Sekar-GMP_Links', reviewOwner: REVIEW_SPECS.qualityGmp },
-  Mechanism_Claims_Map: { sheetName: 'George-Mechanism_Claims', reviewOwner: REVIEW_SPECS.ri },
-  Twinkle5_Claims_Map: { sheetName: 'George-Twinkle5_Claims', reviewOwner: REVIEW_SPECS.ri },
-  Efficacy_Assurance: { sheetName: 'George-Efficacy_Assur', reviewOwner: REVIEW_SPECS.ri },
-  Functional_Efficacy: { sheetName: 'George-Functional_Effic', reviewOwner: REVIEW_SPECS.ri },
-  Clinical_Human_Evidence: { sheetName: 'George-Clinical_Human_Ev', reviewOwner: REVIEW_SPECS.ri },
-  Study_Protocol: { sheetName: 'George-Study_Protocol', reviewOwner: REVIEW_SPECS.ri },
-  Efficacy_Study_Plan: { sheetName: 'George-Efficacy_Std_Plan', reviewOwner: REVIEW_SPECS.ri },
-  Potency_Process_Control: { sheetName: 'George-Potency_Proc_Ctrl', reviewOwner: REVIEW_SPECS.ri },
-  Medical_Summary: { sheetName: 'George-Medical_Summary', reviewOwner: REVIEW_SPECS.ri },
-  Packaging_Specs_Artwork: { sheetName: 'Lily-Packaging_Specs_Art', reviewOwner: REVIEW_SPECS.packaging },
-  Artwork_Change_Control: { sheetName: 'Lily-Artwork_Chg_Control', reviewOwner: REVIEW_SPECS.packaging },
-  HCP_Efficacy_Answer: { sheetName: 'Nguyen-HCP_Efficacy_Ans', reviewOwner: REVIEW_SPECS.salesMarketing },
-  HCP_Test_Report_Pack: { sheetName: 'Nguyen-HCP_Test_Rpt_Pack', reviewOwner: REVIEW_SPECS.salesMarketing },
-  Change_Templates: { sheetName: 'Nguyen-Change_Templates', reviewOwner: REVIEW_SPECS.salesMarketing },
-  Campaigns_Social_Media: { sheetName: 'Nguyen-Campaigns_Social', reviewOwner: REVIEW_SPECS.salesMarketing },
+const SHEET_METADATA: Record<string, { workbookTab: string; reviewOwner: ReviewOwnerSpec }> = {
+  Supplier_RM_Evidence: { workbookTab: 'Chidkamon-Supplier_RM', reviewOwner: REVIEW_SPECS.rawMaterial },
+  Ingredient_Substitution: { workbookTab: 'Chidkamon-Ingred_Substit', reviewOwner: REVIEW_SPECS.rawMaterial },
+  Product_Family_Register: { workbookTab: 'Chidkamon-Prod_Family_Reg', reviewOwner: REVIEW_SPECS.rawMaterial },
+  Prohibited_Ingredients: { workbookTab: 'ChiChu-Prohibited_Ingred', reviewOwner: REVIEW_SPECS.regulatoryWithRi },
+  PB_Caution_Limits: { workbookTab: 'ChiChu-PB_Caution_Limits', reviewOwner: REVIEW_SPECS.regulatory },
+  Fragrance_Safety: { workbookTab: 'ChiChu-Fragrance_Safety', reviewOwner: REVIEW_SPECS.regulatory },
+  ASEAN_PIF_Map: { workbookTab: 'ChiChu-ASEAN_PIF_Map', reviewOwner: REVIEW_SPECS.regulatory },
+  PIF_Checklist_ASEAN: { workbookTab: 'ChiChu-PIF_Checklist', reviewOwner: REVIEW_SPECS.regulatory },
+  PIF_Evidence_Export: { workbookTab: 'ChiChu-PIF_Evid_Export', reviewOwner: REVIEW_SPECS.regulatory },
+  SKU_Claims_PIF_Register: { workbookTab: 'ChiChu-SKU_Claims_PIF', reviewOwner: REVIEW_SPECS.regulatory },
+  PIF_Evidence_Closure: { workbookTab: 'ChiChu-PIF_Evid_Closure', reviewOwner: REVIEW_SPECS.regulatory },
+  Published_Info_Approval: { workbookTab: 'ChiChu-Published_Info_Ap', reviewOwner: REVIEW_SPECS.regulatory },
+  Formulation_Safety: { workbookTab: 'George-Formulation_Safety', reviewOwner: REVIEW_SPECS.formulation },
+  Formula_Change_Control: { workbookTab: 'Tuan-Formula_Chg_Control', reviewOwner: REVIEW_SPECS.formulation },
+  Formulation_Change_Register: { workbookTab: 'Tuan-Formulation_Chg_Reg', reviewOwner: REVIEW_SPECS.formulation },
+  Batch_Formula_Trace: { workbookTab: 'Tuan-Batch_Formula_Trace', reviewOwner: REVIEW_SPECS.formulation },
+  Product_Development_Report: { workbookTab: 'Tuan-Product_Dev_Report', reviewOwner: REVIEW_SPECS.formulationProductDevReport },
+  Test_Report_Index: { workbookTab: 'George-Test_Report_Index', reviewOwner: REVIEW_SPECS.quality },
+  Eye_Safety_Evidence: { workbookTab: 'George-Eye_Safety_Evid', reviewOwner: REVIEW_SPECS.quality },
+  Micro_PET_Evidence: { workbookTab: 'Sekar-Micro_PET_Evidence', reviewOwner: REVIEW_SPECS.qualityGmpPet },
+  Stability_Release: { workbookTab: 'Sankar-Stability_Release', reviewOwner: REVIEW_SPECS.qualityGmpStability },
+  GMP_Links: { workbookTab: 'Sekar-GMP_Links', reviewOwner: REVIEW_SPECS.qualityGmp },
+  Mechanism_Claims_Map: { workbookTab: 'George-Mechanism_Claims', reviewOwner: REVIEW_SPECS.ri },
+  Twinkle5_Claims_Map: { workbookTab: 'George-Twinkle5_Claims', reviewOwner: REVIEW_SPECS.ri },
+  Efficacy_Assurance: { workbookTab: 'George-Efficacy_Assur', reviewOwner: REVIEW_SPECS.ri },
+  Functional_Efficacy: { workbookTab: 'George-Functional_Effic', reviewOwner: REVIEW_SPECS.ri },
+  Clinical_Human_Evidence: { workbookTab: 'George-Clinical_Human_Ev', reviewOwner: REVIEW_SPECS.ri },
+  Study_Protocol: { workbookTab: 'George-Study_Protocol', reviewOwner: REVIEW_SPECS.ri },
+  Efficacy_Study_Plan: { workbookTab: 'George-Efficacy_Std_Plan', reviewOwner: REVIEW_SPECS.ri },
+  Potency_Process_Control: { workbookTab: 'George-Potency_Proc_Ctrl', reviewOwner: REVIEW_SPECS.ri },
+  Medical_Summary: { workbookTab: 'George-Medical_Summary', reviewOwner: REVIEW_SPECS.ri },
+  Packaging_Specs_Artwork: { workbookTab: 'Lily-Packaging_Specs_Art', reviewOwner: REVIEW_SPECS.packaging },
+  Artwork_Change_Control: { workbookTab: 'Lily-Artwork_Chg_Control', reviewOwner: REVIEW_SPECS.packaging },
+  HCP_Efficacy_Answer: { workbookTab: 'Nguyen-HCP_Efficacy_Ans', reviewOwner: REVIEW_SPECS.salesMarketing },
+  HCP_Test_Report_Pack: { workbookTab: 'Nguyen-HCP_Test_Rpt_Pack', reviewOwner: REVIEW_SPECS.salesMarketing },
+  Change_Templates: { workbookTab: 'Nguyen-Change_Templates', reviewOwner: REVIEW_SPECS.salesMarketing },
+  Campaigns_Social_Media: { workbookTab: 'Nguyen-Campaigns_Social', reviewOwner: REVIEW_SPECS.salesMarketing },
 };
 
 for (const config of REGISTER_CONFIGS) {
   const meta = SHEET_METADATA[config.sheetName];
   if (meta) {
-    config.sheetName = meta.sheetName;
+    // Only the PROVENANCE gets the prefixed tab name; `sheetName` stays neutral.
+    // Until 2026-08-20 this line overwrote `sheetName` itself, so a person's
+    // name reached the sidebar, My Sheets and the Sheet Map as though that
+    // person owned the sheet on every project.
+    config.workbookTab = meta.workbookTab;
     config.reviewOwner = meta.reviewOwner;
   }
 }
@@ -2671,7 +2688,8 @@ export function getRegisterConfig(key: string): RegisterConfig | undefined {
 //  - href set         -> opens an absolute route (e.g. the global Change Control)
 export interface NavItem {
   title: string;
-  sheetName?: string;
+  sheetName?: string; // owner-neutral, as on RegisterConfig
+  workbookTab?: string; // literal V18 tab, provenance only
   registerKey?: string;
   page?: string;
   href?: string;
@@ -2705,7 +2723,13 @@ export function navItemHref(item: NavItem, projectId: string): string {
 function registerNavItem(registerKey: string): NavItem | null {
   const config = getRegisterConfig(registerKey);
   if (!config) return null;
-  return { title: config.title, sheetName: config.sheetName, registerKey, gate: config.gate };
+  return {
+    title: config.title,
+    sheetName: config.sheetName,
+    workbookTab: config.workbookTab,
+    registerKey,
+    gate: config.gate,
+  };
 }
 
 // A department item is either a register (its key) or a dedicated page.
@@ -2717,7 +2741,7 @@ function registerNavItem(registerKey: string): NavItem | null {
 // workbook sheet that doesn't exist.
 type RawDeptItem =
   | string
-  | { title: string; sheetName?: string; page?: string; href?: string; gate?: string };
+  | { title: string; sheetName?: string; workbookTab?: string; page?: string; href?: string; gate?: string };
 
 interface RawDept {
   key: string;
@@ -2767,7 +2791,7 @@ const DEPARTMENTS: RawDept[] = [
     description: 'Formula BOM, change control/registers, batch traceability and the product development report.',
     reviewOwner: REVIEW_SPECS.formulation,
     items: [
-      { title: 'Formula BOM', sheetName: 'Tuan-Formula_BOM', page: 'bom/formula', gate: '05' },
+      { title: 'Formula BOM', sheetName: 'Formula_BOM', workbookTab: 'Tuan-Formula_BOM', page: 'bom/formula', gate: '05' },
       'batchFormulaTrace',
       'formulationChangeRegister',
       'formulaChangeControl',
@@ -2785,8 +2809,8 @@ const DEPARTMENTS: RawDept[] = [
       'vulnerableUserAssessment',
       'testReportIndex',
       'eyeSafetyEvidence',
-      { title: 'Product Evidence Summary', sheetName: 'George-Product_Evid_Summ', page: 'evidence', gate: 'ALL' },
-      { title: 'Formulation Safety', sheetName: 'George-Formulation_Safety', page: 'formulation-safety', gate: '07/10' },
+      { title: 'Product Evidence Summary', sheetName: 'Product_Evid_Summ', workbookTab: 'George-Product_Evid_Summ', page: 'evidence', gate: 'ALL' },
+      { title: 'Formulation Safety', sheetName: 'Formulation_Safety', workbookTab: 'George-Formulation_Safety', page: 'formulation-safety', gate: '07/10' },
       'mechanismClaimsMap',
       'twinkle5ClaimsMap',
       'efficacyAssurance',
@@ -2834,7 +2858,7 @@ const DEPARTMENTS: RawDept[] = [
       'releasedLabelRegister',
       'labelPlatformRollout',
       'labelShipmentVerification',
-      { title: 'Packaging BOM', sheetName: 'Lily-Packaging_BOM', page: 'bom/packaging', gate: '06' },
+      { title: 'Packaging BOM', sheetName: 'Packaging_BOM', workbookTab: 'Lily-Packaging_BOM', page: 'bom/packaging', gate: '06' },
       'packagingSpecsArtwork',
       'artworkChangeControl',
     ],
@@ -2849,8 +2873,8 @@ const DEPARTMENTS: RawDept[] = [
       'campaignsSocialMedia',
       'hcpEfficacyAnswer',
       'hcpTestReportPack',
-      { title: 'Product / Sample Feedback', sheetName: 'Nguyen-Product_Feedback', page: 'feedback', gate: '07/08' },
-      { title: 'Change Control & Communication', sheetName: 'Nguyen-Change_Ctrl_Comm', href: '/change-control', gate: 'ALL' },
+      { title: 'Product / Sample Feedback', sheetName: 'Product_Feedback', workbookTab: 'Nguyen-Product_Feedback', page: 'feedback', gate: '07/08' },
+      { title: 'Change Control & Communication', sheetName: 'Change_Ctrl_Comm', workbookTab: 'Nguyen-Change_Ctrl_Comm', href: '/change-control', gate: 'ALL' },
       'changeTemplates',
     ],
   },
@@ -2860,8 +2884,8 @@ const DEPARTMENTS: RawDept[] = [
     description: 'Costing calculator and post-market / complaint / CAPA evidence.',
     reviewOwner: REVIEW_SPECS.supplyChain,
     items: [
-      { title: 'Costing Calculator', sheetName: 'Hannah-Costing_Calc', page: 'bom/costing', gate: '05' },
-      { title: 'Post-Market / CAPA', sheetName: 'Hannah-PostMarket_CAPA', page: 'post-market', gate: '12' },
+      { title: 'Costing Calculator', sheetName: 'Costing_Calc', workbookTab: 'Hannah-Costing_Calc', page: 'bom/costing', gate: '05' },
+      { title: 'Post-Market / CAPA', sheetName: 'PostMarket_CAPA', workbookTab: 'Hannah-PostMarket_CAPA', page: 'post-market', gate: '12' },
     ],
   },
   {
@@ -2891,7 +2915,14 @@ export function getNavGroups(): NavGroup[] {
       .map((it): NavItem | null =>
         typeof it === 'string'
           ? registerNavItem(it)
-          : { title: it.title, sheetName: it.sheetName, page: it.page, href: it.href, gate: it.gate },
+          : {
+              title: it.title,
+              sheetName: it.sheetName,
+              workbookTab: it.workbookTab,
+              page: it.page,
+              href: it.href,
+              gate: it.gate,
+            },
       )
       .filter((i): i is NavItem => i !== null),
   }));
