@@ -36,7 +36,12 @@ function loadUsers(): Promise<PickerUser[]> {
   return cache;
 }
 
-export function useUserOptions(): UserOption[] {
+// The same list, unmapped. Needed by the one field that must reference a real
+// ACCOUNT rather than a name: a phase sign-off's nominated signer (D1). A
+// displayName is good enough for "who owns this"; it is not good enough for
+// "only this person may sign", where two people sharing a name would share a
+// signature — so that field stores the user id and this hook supplies it.
+export function usePickerUsers(): PickerUser[] {
   const [users, setUsers] = useState<PickerUser[]>([]);
 
   useEffect(() => {
@@ -48,6 +53,12 @@ export function useUserOptions(): UserOption[] {
       cancelled = true;
     };
   }, []);
+
+  return users;
+}
+
+export function useUserOptions(): UserOption[] {
+  const users = usePickerUsers();
 
   // Deduped by displayName (the stored value) so antd Select has unique option
   // values; each option carries its role for the tag and for text search.

@@ -1,20 +1,57 @@
-import { useMemo } from 'react';
-import UserSelect from './UserSelect';
-import { Alert, Card, DatePicker, Input, Select, Table } from 'antd';
+import { useMemo, useState } from 'react';
+import {
+  Alert,
+  Button,
+  Card,
+  Input,
+  Modal,
+  Popconfirm,
+  Select,
+  Space,
+  Table,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { PhaseClosure, SignOff } from '@mbc360/shared/types';
+import type { SignOff } from '@mbc360/shared/types';
+import { isSignedOff } from '@mbc360/shared/types';
+import type { PhaseClosure } from '@mbc360/shared/types';
 import type { PhaseCompletionChecklist } from '@mbc360/shared/utils/gateProgress';
 import { GATE_DECISIONS, PHASES } from '@mbc360/shared/config/gates';
 import { useAppStore } from '../store/useAppStore';
-import { roleLabel } from '../utils/roles';
 import { canApprovePhase, EMPTY_GRANTS } from '../utils/permissions';
-import { patchArray, useDraft } from '../hooks/useDraft';
+import { useSession } from '../auth/useSession';
+import { usePickerUsers } from '../hooks/useUserOptions';
+import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 
-interface ClosureDraft {
-  evidenceSummary: string;
-  signOffs: SignOff[];
+// Phase sign-off, rebuilt 2026-08-20 around rule D1's requirement that a
+// sign-off record an AUTHENTICATED user, the role held, date/time, decision,
+// record version and a comment.
+//
+// What it replaced: `Name` was a free-text/any-user picker and `Signature /
+// initials` a free-text box, so the row could name one person while the server
+// (which already took `signedByUserId` from the session) recorded another — and
+// no screen showed the mismatch. Nothing here writes those fields any more:
+//
+//   · the project's Lead nominates a signer for each of the three roles
+//   · only that person can sign, and they sign as themselves
+//   · who / which role / when / against which record version comes from the
+//     server; only the decision and the comment are typed
+//   · a signature is released by its own signer (or an admin), with a reason
+//
+// Everything is enforced again server-side (projects.service.ts) — the buttons
+// below only avoid offering an action the API would refuse.
+//
+// Deliberately keyed on the REAL signed-in session, never the "View as"
+// simulator: a signature is real data, so a demo role switch must not produce
+// one (same principle as project archive/delete).
+
+interface RowDraft {
+  decision?: string;
+  comments?: string;
 }
 
 export default function SignOffBlock({
@@ -22,25 +59,37 @@ export default function SignOffBlock({
   phase,
   closure,
   checklist,
+  projectLead,
 }: {
   projectId: string;
   phase: number;
   closure: PhaseClosure;
   checklist: PhaseCompletionChecklist;
+  projectLead: string;
 }) {
   const setEvidenceSummary = useAppStore((s) => s.setEvidenceSummary);
-  const setSignOffsBulk = useAppStore((s) => s.setSignOffsBulk);
-  const viewRole = useAppStore((s) => s.viewRole);
+  const setSignOffAssignees = useAppStore((s) => s.setSignOffAssignees);
+  const signSignOff = useAppStore((s) => s.signSignOff);
+  const withdrawSignOff = useAppStore((s) => s.withdrawSignOff);
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
+  const { user: me, isAdmin } = useSession();
+  const users = usePickerUsers();
 
-  // useDraft compares the committed value by reference, so this composite
-  // must stay referentially stable across renders that don't actually change
-  // evidenceSummary/signOffs.
-  const committed = useMemo<ClosureDraft>(
-    () => ({ evidenceSummary: closure.evidenceSummary ?? '', signOffs: closure.signOffs }),
-    [closure.evidenceSummary, closure.signOffs],
+  // Only the evidence summary is a free-text field with a draft; a decision and
+  // a comment are submitted WITH the signature (one act), not saved separately.
+  const committed = useMemo(
+    () => ({ evidenceSummary: closure.evidenceSummary ?? '' }),
+    [closure.evidenceSummary],
   );
   const { draft, dirty, update, markSaved, discard } = useDraft(committed);
+
+  const [rows, setRows] = useState<Record<string, RowDraft>>({});
+  const [withdrawing, setWithdrawing] = useState<SignOff['role'] | null>(null);
+  const [reason, setReason] = useState('');
+
+  const rowDraft = (role: string): RowDraft => rows[role] ?? {};
+  const patchRow = (role: string, patch: RowDraft) =>
+    setRows((prev) => ({ ...prev, [role]: { ...prev[role], ...patch } }));
 
   // B3: sign-off only becomes available once the phase's other closure
   // conditions are met. N/A items count only when justified.
@@ -53,18 +102,63 @@ export default function SignOffBlock({
     !checklist.preWorkAccepted && 'pre-work reviewed and accepted',
   ].filter(Boolean) as string[];
 
-  // A4 demo simulation: only the phase's responsible department (or admin) may
-  // sign "Approved by"; anyone may fill Prepared/Reviewed (contribute rights).
-  const canApprove = canApprovePhase(grants, viewRole, phase);
-  const rowDisabled = (r: SignOff) => locked || (r.role === 'Approved by' && !canApprove);
+  // The Lead nominates the signers. Matched by displayName because that is what
+  // ProjectIdentity.projectLead stores (the Create form's user picker writes the
+  // picked user's displayName) — the server checks the same thing.
+  const isLead = !!me && (isAdmin || me.displayName.trim() === projectLead.trim());
+  const canApprove = (me?.roles ?? []).some((r) => canApprovePhase(grants, r.key, phase));
   const phaseDept = PHASES.find((p) => p.phase === phase)?.department;
 
-  const patchSignOff = (index: number, p: Partial<SignOff>) =>
-    update((prev) => ({ ...prev, signOffs: patchArray(prev.signOffs, index, p) }));
-  const save = () => {
-    setEvidenceSummary(projectId, phase, draft.evidenceSummary);
-    setSignOffsBulk(projectId, phase, draft.signOffs);
-    markSaved();
+  const userOptions = users.map((u) => ({
+    value: u.id,
+    label: u.displayName,
+    roleName: u.roleName ?? '—',
+  }));
+
+  // D1 requires an independent reviewer/approver for safety-, regulatory-,
+  // claims- or release-critical decisions — written for GATE sign-off, so this
+  // is a visible warning rather than a block at phase level. Silence would be
+  // worse: three signatures from one person read as three people.
+  const signedByCounts = new Map<string, number>();
+  for (const row of closure.signOffs) {
+    if (isSignedOff(row) && row.signedByUserId) {
+      signedByCounts.set(row.signedByUserId, (signedByCounts.get(row.signedByUserId) ?? 0) + 1);
+    }
+  }
+  const sharedSigner = closure.signOffs.find(
+    (r) => r.signedByUserId && (signedByCounts.get(r.signedByUserId) ?? 0) > 1,
+  );
+
+  const unassigned = closure.signOffs.filter((r) => !r.assignedToUserId).map((r) => r.role);
+
+  const assign = (role: SignOff['role'], userId?: string) =>
+    setSignOffAssignees(projectId, phase, [{ role, userId: userId ?? null }]);
+
+  // Why the Sign button is unavailable — shown as a tooltip instead of an
+  // unexplained disabled button.
+  const blockedReason = (row: SignOff): string | null => {
+    if (locked) return `Phase ${phase} closure conditions are not met yet`;
+    if (row.role === 'Approved by' && !canApprove) {
+      return `Approving Phase ${phase} needs the phase:${phase}|approve capability (${phaseDept})`;
+    }
+    const d = rowDraft(row.role);
+    if (!d.decision) return 'Choose a decision first';
+    if (d.decision !== 'Proceed' && !d.comments?.trim()) {
+      return `A comment is required when the decision is "${d.decision}"`;
+    }
+    return null;
+  };
+
+  const sign = (row: SignOff) => {
+    const d = rowDraft(row.role);
+    signSignOff(projectId, phase, row.role, { decision: d.decision, comments: d.comments });
+  };
+
+  const confirmWithdraw = () => {
+    if (!withdrawing) return;
+    withdrawSignOff(projectId, phase, withdrawing, reason);
+    setWithdrawing(null);
+    setReason('');
   };
 
   return (
@@ -75,17 +169,35 @@ export default function SignOffBlock({
           showIcon
           icon={<LockOutlined />}
           style={{ marginBottom: 12 }}
-          title="Sign-off locked — closure conditions not yet met"
+          message="Sign-off locked — closure conditions not yet met"
           description={`Still required before sign-off: ${missing.join('; ')}.`}
         />
       )}
-      {!locked && !canApprove && (
+      {isLead && unassigned.length > 0 && (
         <Alert
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          title={`"Approved by" is restricted to ${phaseDept} — you are viewing as ${roleLabel(viewRole)}`}
-          description="Prepared / Reviewed rows stay open to contributors. RBAC demo simulation — the real role matrix is pending confirmation (F6)."
+          message={`You are this project's Lead — nominate a signer for: ${unassigned.join(', ')}`}
+          description="Only the person nominated for a row can sign it, and they sign as themselves."
+        />
+      )}
+      {!isLead && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message={`Signers are nominated by this project's Lead (${projectLead})`}
+          description="You can sign a row nominated to you; you cannot sign for anyone else, and no field here records a signature on somebody's behalf."
+        />
+      )}
+      {sharedSigner && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message={`${sharedSigner.name} has signed more than one role on this phase`}
+          description="Rule D1 requires an independent reviewer or approver for safety-, regulatory-, claims- or release-critical decisions. This is not blocked here — it is recorded so it is visible."
         />
       )}
       <div style={{ marginBottom: 12 }}>
@@ -95,82 +207,181 @@ export default function SignOffBlock({
         <Input.TextArea
           rows={3}
           value={draft.evidenceSummary}
-          onChange={(e) => update((prev) => ({ ...prev, evidenceSummary: e.target.value }))}
+          onChange={(e) => update({ evidenceSummary: e.target.value })}
         />
       </div>
       <Table
         size="small"
         rowKey={(r) => r.role}
-        dataSource={draft.signOffs}
+        dataSource={closure.signOffs}
         pagination={false}
-        scroll={{ x: 900 }}
+        scroll={{ x: 1000 }}
         columns={[
-          { title: 'Role', width: 120, dataIndex: 'role', render: (v) => <b>{v}</b> },
+          { title: 'Role', width: 110, dataIndex: 'role', render: (v) => <b>{v}</b> },
           {
-            title: 'Name',
-            width: 180,
-            render: (_, r, i) => (
-              <UserSelect
-                value={r.name}
-                disabled={rowDisabled(r)}
-                onChange={(v) => patchSignOff(i, { name: v })}
-              />
-            ),
+            title: 'Nominated signer',
+            width: 200,
+            render: (_, r: SignOff) =>
+              isSignedOff(r) || !isLead ? (
+                <span>{r.assignedToName ?? <Typography.Text type="secondary">Not nominated</Typography.Text>}</span>
+              ) : (
+                <Select
+                  size="small"
+                  allowClear
+                  showSearch
+                  style={{ width: '100%', minWidth: 140 }}
+                  placeholder="Select a person"
+                  optionFilterProp="label"
+                  value={r.assignedToUserId}
+                  options={userOptions}
+                  optionRender={(opt) => (
+                    <span>
+                      {opt.data.label}
+                      <Tag style={{ marginLeft: 6 }}>{opt.data.roleName}</Tag>
+                    </span>
+                  )}
+                  onChange={(v?: string) => assign(r.role, v)}
+                />
+              ),
           },
           {
-            title: 'Signature / initials',
-            width: 130,
-            render: (_, r, i) => (
-              <Input
-                size="small"
-                value={r.initials}
-                disabled={rowDisabled(r)}
-                onChange={(e) => patchSignOff(i, { initials: e.target.value })}
-              />
-            ),
-          },
-          {
-            title: 'Date',
-            width: 140,
-            render: (_, r, i) => (
-              <DatePicker
-                size="small"
-                value={r.date ? dayjs(r.date) : null}
-                disabled={rowDisabled(r)}
-                onChange={(d) => patchSignOff(i, { date: d ? d.format('YYYY-MM-DD') : undefined })}
-              />
-            ),
+            title: 'Signature',
+            width: 260,
+            render: (_, r: SignOff) => {
+              if (isSignedOff(r)) {
+                const mine = r.signedByUserId === me?.id;
+                return (
+                  <Space direction="vertical" size={0}>
+                    <span>
+                      <Tag color="green">Signed</Tag>
+                      <b>{r.name}</b>
+                    </span>
+                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      {r.roleAtSigning ?? 'role not recorded'} ·{' '}
+                      {r.signedAt ? dayjs(r.signedAt).format('YYYY-MM-DD HH:mm') : '—'} · record v
+                      {r.recordVersion ?? '—'}
+                    </Typography.Text>
+                    {(mine || isAdmin) && (
+                      <Button
+                        size="small"
+                        type="link"
+                        danger
+                        style={{ paddingLeft: 0 }}
+                        onClick={() => setWithdrawing(r.role)}
+                      >
+                        Withdraw
+                      </Button>
+                    )}
+                  </Space>
+                );
+              }
+              if (!r.assignedToUserId) {
+                return <Typography.Text type="secondary">Awaiting nomination</Typography.Text>;
+              }
+              if (r.assignedToUserId !== me?.id) {
+                return (
+                  <Typography.Text type="secondary">Awaiting {r.assignedToName}</Typography.Text>
+                );
+              }
+              const why = blockedReason(r);
+              return (
+                <Popconfirm
+                  title={`Sign "${r.role}" as ${me?.displayName}`}
+                  description={
+                    <div style={{ maxWidth: 320 }}>
+                      This records your account, the role you hold now, the server timestamp and the
+                      version of this project record. It is not editable afterwards — releasing it
+                      requires a withdrawal with a reason.
+                    </div>
+                  }
+                  okText="Sign"
+                  disabled={!!why}
+                  onConfirm={() => sign(r)}
+                >
+                  {/* The tooltip wraps a span: a disabled antd Button emits no
+                      mouse events, so a tooltip attached straight to it never
+                      shows — and the reason is the whole point here. */}
+                  <Tooltip title={why ?? ''}>
+                    <span>
+                      <Button size="small" type="primary" disabled={!!why}>
+                        Sign as me
+                      </Button>
+                    </span>
+                  </Tooltip>
+                </Popconfirm>
+              );
+            },
           },
           {
             title: 'Decision',
-            width: 150,
-            render: (_, r, i) => (
-              <Select
-                size="small"
-                allowClear
-                style={{ width: 140 }}
-                value={r.decision}
-                disabled={rowDisabled(r)}
-                options={GATE_DECISIONS.map((d) => ({ value: d, label: d }))}
-                onChange={(v) => patchSignOff(i, { decision: v })}
-              />
-            ),
+            width: 160,
+            render: (_, r: SignOff) =>
+              isSignedOff(r) ? (
+                <span>{r.decision ?? '—'}</span>
+              ) : r.assignedToUserId === me?.id ? (
+                <Select
+                  size="small"
+                  allowClear
+                  style={{ width: 150 }}
+                  value={rowDraft(r.role).decision}
+                  disabled={locked}
+                  options={GATE_DECISIONS.map((d) => ({ value: d, label: d }))}
+                  onChange={(v?: string) => patchRow(r.role, { decision: v })}
+                />
+              ) : (
+                <Typography.Text type="secondary">—</Typography.Text>
+              ),
           },
           {
             title: 'Comments / conditions',
             width: 260,
-            render: (_, r, i) => (
-              <Input
-                size="small"
-                value={r.comments}
-                disabled={rowDisabled(r)}
-                onChange={(e) => patchSignOff(i, { comments: e.target.value })}
-              />
-            ),
+            render: (_, r: SignOff) =>
+              isSignedOff(r) ? (
+                <span>{r.comments ?? '—'}</span>
+              ) : r.assignedToUserId === me?.id ? (
+                <Input
+                  size="small"
+                  value={rowDraft(r.role).comments}
+                  disabled={locked}
+                  placeholder="Required unless the decision is Proceed"
+                  onChange={(e) => patchRow(r.role, { comments: e.target.value })}
+                />
+              ) : (
+                <Typography.Text type="secondary">—</Typography.Text>
+              ),
           },
         ]}
       />
-      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
+      <SaveBar
+        dirty={dirty}
+        onSave={() => {
+          setEvidenceSummary(projectId, phase, draft.evidenceSummary);
+          markSaved();
+        }}
+        onDiscard={discard}
+      />
+      <Modal
+        open={withdrawing !== null}
+        title={`Withdraw the "${withdrawing}" signature`}
+        okText="Withdraw signature"
+        okButtonProps={{ danger: true, disabled: !reason.trim() }}
+        onOk={confirmWithdraw}
+        onCancel={() => {
+          setWithdrawing(null);
+          setReason('');
+        }}
+      >
+        <p>
+          The signature is cleared and this phase stops counting as approved. The nomination stays,
+          so the same person can sign again. B4: the reason is recorded on the audit trail.
+        </p>
+        <Input.TextArea
+          rows={3}
+          value={reason}
+          placeholder="Why is this signature being withdrawn?"
+          onChange={(e) => setReason(e.target.value)}
+        />
+      </Modal>
     </Card>
   );
 }

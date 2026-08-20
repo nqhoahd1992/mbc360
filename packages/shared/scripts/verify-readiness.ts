@@ -30,7 +30,7 @@
  *        it rests on. Added 2026-08-11, after all four such items were found to
  *        have shipped without ever being put to the team.
  *
- * It also prints two debt counters (`manual` checks, open `[ASSUMPTION: R4-Qn]`
+ * It also prints two debt counters (`manual` checks, open `[ASSUMPTION: Rn-Qm]`
  * tags) and verifies that every assumption tag points at a question that
  * actually exists in docs/rules/F1_Per_Gate_Open_Questions.md.
  */
@@ -44,7 +44,7 @@ import { NO_VULNERABLE_GROUP, TARGET_USER_TO_VULNERABLE_GROUP } from '../src/con
 
 const REPO_ROOT = join(__dirname, '..', '..', '..');
 const QUESTIONS_DOC = 'docs/rules/F1_Per_Gate_Open_Questions.md';
-// Scanned for `[ASSUMPTION: R4-Qn]` tags. Keep in sync with where decisions live.
+// Scanned for `[ASSUMPTION: Rn-Qm]` tags. Keep in sync with where decisions live.
 const TAG_SCAN_DIRS = ['docs', 'packages/shared/src', 'apps/web/src', 'apps/api/src'];
 
 interface Failure {
@@ -302,7 +302,7 @@ function verifySeededFixedRows(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Assumption tags — every [ASSUMPTION: R4-Qn] must point at a real question
+// Assumption tags — every [ASSUMPTION: Rn-Qm] must point at a real question
 // ---------------------------------------------------------------------------
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -339,7 +339,10 @@ function verifyDevDecisionsAsked(defined: Set<string>): void {
 
 function verifyAssumptions(): { tagged: number; ids: Set<string> } {
   const doc = readFileSync(join(REPO_ROOT, QUESTIONS_DOC), 'utf8');
-  const defined = new Set(doc.match(/^#### (R4-Q\d+)/gm)?.map((m) => m.replace('#### ', '')) ?? []);
+  // Any round, not just Round 4 — the sweep silently ignored an `R5-Q1` tag
+  // when this was hardcoded to R4, which is the one failure mode it exists to
+  // prevent (2026-08-20).
+  const defined = new Set(doc.match(/^#### (R\d+-Q\d+)/gm)?.map((m) => m.replace('#### ', '')) ?? []);
   const used = new Set<string>();
   let tagged = 0;
 
@@ -356,7 +359,7 @@ function verifyAssumptions(): { tagged: number; ids: Set<string> } {
   for (const dir of TAG_SCAN_DIRS) {
     for (const file of walk(join(REPO_ROOT, dir))) {
       const text = readFileSync(file, 'utf8');
-      for (const m of text.matchAll(/\[ASSUMPTION: (R4-Q\d+)\]/g)) {
+      for (const m of text.matchAll(/\[ASSUMPTION: (R\d+-Q\d+)\]/g)) {
         tagged++;
         used.add(m[1]);
         if (!defined.has(m[1])) {

@@ -189,8 +189,38 @@ export const setGateChecks = (
 export const setAngles = (id: string, phase: number, angles: AngleRow[], v: number) =>
   put(id, `phases/${phase}/angles`, { angles }, v);
 
-export const setSignOffs = (id: string, phase: number, signOffs: SignOff[], v: number) =>
-  put(id, `phases/${phase}/sign-offs`, { signOffs }, v);
+// D1: three separate acts, not one field write. Assigning is the Lead's;
+// signing and withdrawing belong to the assigned signer alone.
+export const setSignOffAssignees = (
+  id: string,
+  phase: number,
+  assignments: { role: SignOff['role']; userId?: string | null }[],
+  v: number,
+) => put(id, `phases/${phase}/sign-off-assignees`, { assignments }, v);
+
+export const signSignOff = (
+  id: string,
+  phase: number,
+  role: SignOff['role'],
+  input: { decision?: string; comments?: string },
+  expectedVersion: number,
+) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/sign`, {
+    method: 'POST',
+    body: JSON.stringify({ role, ...input, expectedVersion }),
+  });
+
+export const withdrawSignOff = (
+  id: string,
+  phase: number,
+  role: SignOff['role'],
+  reason: string,
+  expectedVersion: number,
+) =>
+  request<ProjectEnvelope>(
+    `/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/withdraw`,
+    { method: 'POST', body: JSON.stringify({ role, reason, expectedVersion }) },
+  );
 
 export const setEvidenceSummary = (id: string, phase: number, value: string, v: number) =>
   put(id, `phases/${phase}/evidence-summary`, { value }, v);

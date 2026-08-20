@@ -300,6 +300,7 @@ export default function PhasePage() {
           phase={phase}
           closure={project.phaseClosures[phase]}
           checklist={checklist}
+          projectLead={project.identity.projectLead}
         />
       </div>
     </div>

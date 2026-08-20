@@ -54,6 +54,7 @@ model User {
   registerRows RegisterRow[] @relation("RegisterRowUpdatedBy")
   attachments  Attachment[]  @relation("AttachmentUploadedBy")
   signOffs     SignOff[]     @relation("SignOffSignedBy")
+  signOffsAssigned SignOff[]  @relation("SignOffAssignedTo")
   reviewerOf   ProjectReviewer[]
   archivedProjects Project[]     @relation("ProjectArchivedBy")
 
@@ -338,6 +339,11 @@ model SignOff {
   phaseClosure         PhaseClosure  @relation(fields: [phaseClosureId], references: [id], onDelete: Cascade)
   phaseClosureId       String
   role                 String // Prepared by | Reviewed by | Approved by
+  // D1: the project's Lead nominates who signs each of the three roles, and
+  // only that person may sign it. Current state, not history — a reassignment
+  // overwrites it (the audit trail keeps the previous value).
+  assignedTo           User?         @relation("SignOffAssignedTo", fields: [assignedToUserId], references: [id])
+  assignedToUserId     String?
   name                 String?
   initials             String?
   date                 DateTime?     @db.Date
@@ -346,6 +352,11 @@ model SignOff {
   signedBy             User?         @relation("SignOffSignedBy", fields: [signedByUserId], references: [id])
   signedByUserId       String?
   signedAt             DateTime?
+  // The role label(s) the signer held at the moment of signing, snapshotted so
+  // a later role change cannot rewrite what a past signature claimed, and the
+  // projects.version the signature attests to (D1's "record version").
+  roleAtSigning        String?
+  recordVersion        Int?
   invalidatedByEvent   AuditEvent?   @relation("SignOffInvalidatedBy", fields: [invalidatedByEventId], references: [id])
   invalidatedByEventId String?
 

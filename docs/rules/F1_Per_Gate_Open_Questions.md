@@ -1249,3 +1249,56 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 **Câu hỏi:** (a) claim loại `Cosmetic` có được coi là phụ thuộc bằng chứng product-level không? (b) *"Costing or commercial feasibility status"* nên đọc từ đâu — thêm một trường trạng thái vào phần Costing (nếu vậy thì giá trị gồm những gì, ai chốt), hay nó đã nằm ở chỗ nào khác mà ta chưa thấy?
 
 **Nếu trả lời khác:** `CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE` trong `packages/shared/src/config/registers.ts`; `sg05-costing` trong `gateReadiness.ts` (hiện `manual`).
+
+---
+
+## Round 5 — raised while implementing D1 ở cấp phase (2026-08-20)
+
+**Chưa gửi.** Cùng quy ước với Round 4: ID ổn định, tag `[ASSUMPTION: Rn-Qm]` tại chỗ quyết định, và mỗi câu kết bằng "Nếu trả lời khác thì sửa ở đâu". Sweep TAG của `verify:readiness` trước đây hardcode `R4-Q…` nên **bỏ qua im lặng** tag `R5-Q1` đầu tiên vừa gắn — đã sửa thành `R\d+-Q\d+` cùng ngày; đây đúng là kiểu lỗi mà sweep đó tồn tại để bắt.
+
+| ID | Chủ đề | Trạng thái |
+|---|---|---|
+| R5-Q1 | Chữ ký phase: Lead chỉ định người ký · chỉ người đó ký được · ai được gỡ chữ ký | 🔴 |
+| R5-Q2 | D1 có áp cho khối chữ ký **phase** không, hay chỉ cho chữ ký **gate** | 🔴 |
+| R5-Q3 | Ba cái tên trong dòng "Approval route" của Guide ứng với ba vai trò nào | 🔴 |
+
+#### R5-Q1 · Chữ ký phase — ai chỉ định người ký, và ai được gỡ 🔴
+
+**Đã làm (theo quyết định của chủ dự án 20/08):** khối Prepared / Reviewed / Approved của mỗi phase giờ hoạt động như sau — **Project Lead của dự án** (field `identity.projectLead`, bắt buộc chọn khi tạo dự án) chỉ định 1 người cho từng dòng; **chỉ đúng người được chỉ định mới ký được** dòng đó; dòng `Approved by` **ngoài ra** vẫn phải có capability `phase:N|approve`. Trước đây `Name`/`Signature / initials` là ô nhập tự do nên một dòng có thể ghi tên người này trong khi server ghi nhận người khác đã lưu.
+
+**Ba điểm là suy đoán của dev, chưa hỏi ai:**
+
+**(a) Lead được so bằng TÊN.** `identity.projectLead` lưu `displayName` (giống `reviewers`), nên kiểm tra là `session.displayName === identity.projectLead`. Hai người trùng tên sẽ cùng quyền chỉ định. Cách chắc chắn hơn là lưu user id trên `projects`, nhưng đó là đổi schema của `projects`, không phải của chữ ký.
+
+**(b) Gỡ chữ ký: chỉ chính người đã ký (hoặc admin), kèm lý do bắt buộc.** Cố tình **không** cho Lead gỡ: Lead gỡ được chữ ký của reviewer thì Lead lật được kết luận mình không đồng ý. Admin được gỡ để xử lý trường hợp tài khoản đó đã rời công ty. Lý do bắt buộc theo B4.
+
+**(c) Dòng đã ký thì không đổi được người.** Muốn đổi phải gỡ chữ ký trước — nếu không, bảng sẽ hiện một chữ ký nằm cạnh tên người khác.
+
+**Câu hỏi:** (a) Người chỉ định người ký nên là **Project Lead** hay **Project Manager** (một trong 13 review role)? Hai từ này đang là hai thứ khác nhau trong hệ thống. (b) Ai được gỡ một chữ ký đã ký — chỉ chính người ký, hay Lead/Project Manager cũng được? (c) Người được chỉ định ký `Approved by` mà role không có quyền duyệt phase thì nên **chặn** (đang làm vậy) hay coi việc được chỉ định là đủ?
+
+**Nếu trả lời khác:** `assertIsProjectLead`, `signSignOff`, `withdrawSignOff` trong `apps/api/src/projects/projects.service.ts`; `isLead`/`canApprove` trong `apps/web/src/components/SignOffBlock.tsx`.
+
+#### R5-Q2 · D1 có áp cho khối chữ ký phase, hay chỉ cho chữ ký gate 🔴
+
+D1 nói *"The phase-level sign-off block remains as an additional phase-closure approval and is not replaced"* — tức là **giữ nó**, nhưng **không nói** nó có phải mang đủ 6 trường (người đã xác thực · role · thời điểm · quyết định · phiên bản bản ghi · comment) như chữ ký gate hay không. Chúng tôi đã **áp cả 6 trường cho khối phase** với lập luận: một chữ ký lỏng hơn ở cấp phase thì làm hỏng luôn ý nghĩa của cấp gate, và ô nhập tự do là lỗ hổng thật (ghi tên A, hệ thống ghi B). Đây là hướng **siết chặt**, không nới, nhưng vẫn là suy đoán.
+
+Hai hệ quả kèm theo, cũng chưa hỏi:
+
+- **Comment bắt buộc khi quyết định khác `Proceed`.** D1 chỉ viết *"comment where required"* mà không nói khi nào. Đọc là: mọi thứ khác `Proceed` đều mang theo điều kiện hoặc lý do nên phải ghi ra. Cùng một chỗ trống với `R4-Q26`, đã gắn tag ở đó.
+- **Tính độc lập ở cấp phase chỉ CẢNH BÁO, không chặn.** Điều khoản độc lập của D1 viết cho gate ("safety-, regulatory-, claims- or release-critical"), và không có định nghĩa nào cho biết phase nào là critical. Một người ký 2–3 dòng của cùng một phase hiện chỉ hiện banner vàng.
+
+**Câu hỏi:** (a) Khối chữ ký phase có phải mang đủ 6 trường như chữ ký gate không? (b) Một người có được ký nhiều hơn một trong ba dòng của cùng một phase không — nếu không thì áp cho cả 4 phase hay chỉ những phase nhất định?
+
+**Nếu trả lời khác:** `signSignOff` trong `apps/api/src/projects/projects.service.ts` (bỏ/nới các điều kiện); banner `sharedSigner` trong `apps/web/src/components/SignOffBlock.tsx`; `isSignedOff` trong `packages/shared/src/types/index.ts` và hai chỗ dùng nó trong `gateProgress.ts`.
+
+#### R5-Q3 · Ba cái tên trong dòng "Approval route" của Guide ứng với ba vai trò nào 🔴
+
+**Nguyên tắc chủ dự án nêu 20/08:** mọi tên người xuất hiện trong workbook, khi số hoá, đều là **dữ liệu động gán theo từng dự án**, không phải giá trị mặc định — Excel buộc phải viết tên cứng vào ô cho dễ hình dung, ứng dụng thì không.
+
+Áp nguyên tắc đó, một dòng trong tab Guide phải đổi cách viết. Nguyên văn workbook: *"Current route: Chris prepares study proposal, George/Head of Department signs off, Sekar or nominated independent reviewer signs off outside the department."* Đã đổi thành ba **vai trò** mà workflow C2 đang có sẵn: Study Author chuẩn bị · Department Study Reviewer (head of department) ký · Independent Reviewer ngoài phòng ban ký.
+
+**Vì sao vẫn là suy đoán:** câu gốc đúng cấu trúc 3 bước của C2 và chữ *"Head of Department"* / *"independent reviewer outside the department"* nằm ngay trong câu, nên tín hiệu rất mạnh — nhưng việc **Chris = Study Author** là suy ra từ ngữ cảnh câu, không phải từ một bảng ánh xạ nào. Trong `REVIEW_ROLES` thì Chris là **Project Manager**, không phải Study Author; nếu người viết câu đó thực sự muốn nói "Project Manager chuẩn bị proposal" thì bản dịch này sai một vai.
+
+**Câu hỏi:** trong câu Approval route, ba người được nêu ứng với ba vai trò nào — Study Author / Department Study Reviewer / Independent Reviewer (đang hiểu vậy), hay là Project Manager / R&I / Quality & GMP theo đúng vùng phụ trách của họ trong workbook?
+
+**Nếu trả lời khác:** dòng `Approval route` trong `SYSTEM_GUIDE` của `apps/web/src/pages/RegisterHubPage.tsx`.

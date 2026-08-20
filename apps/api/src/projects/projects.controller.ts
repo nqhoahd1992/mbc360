@@ -233,14 +233,62 @@ export class ProjectsController {
     return this.projects.setAngles(user, id, Number(phase), body.angles ?? [], body.expectedVersion);
   }
 
-  @Put(':id/phases/:phase/sign-offs')
-  setSignOffs(
+  // D1: sign-off is three routes, not one bulk field write — the project's Lead
+  // nominates a signer, only that signer signs, and only the signer withdraws.
+  // The role travels in the BODY, not the path: "Prepared by" contains a space.
+  @Put(':id/phases/:phase/sign-off-assignees')
+  setSignOffAssignees(
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('phase') phase: string,
-    @Body() body: { signOffs: SignOff[]; expectedVersion: number },
+    @Body()
+    body: {
+      assignments: { role: SignOff['role']; userId?: string | null }[];
+      expectedVersion: number;
+    },
   ): Promise<ProjectEnvelope> {
-    return this.projects.setSignOffs(user, id, Number(phase), body.signOffs ?? [], body.expectedVersion);
+    return this.projects.setSignOffAssignees(
+      user,
+      id,
+      Number(phase),
+      body.assignments ?? [],
+      body.expectedVersion,
+    );
+  }
+
+  @Post(':id/phases/:phase/sign-offs/sign')
+  signSignOff(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('phase') phase: string,
+    @Body()
+    body: { role: SignOff['role']; decision?: string; comments?: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.signSignOff(
+      user,
+      id,
+      Number(phase),
+      body.role,
+      { decision: body.decision, comments: body.comments },
+      body.expectedVersion,
+    );
+  }
+
+  @Post(':id/phases/:phase/sign-offs/withdraw')
+  withdrawSignOff(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('phase') phase: string,
+    @Body() body: { role: SignOff['role']; reason: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.withdrawSignOff(
+      user,
+      id,
+      Number(phase),
+      body.role,
+      body.reason,
+      body.expectedVersion,
+    );
   }
 
   @Put(':id/phases/:phase/evidence-summary')

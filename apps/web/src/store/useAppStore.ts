@@ -115,7 +115,22 @@ interface AppState {
   setRequirementSection: (id: string, section: string, items: RequirementItem[]) => void;
   setGateChecksBulk: (id: string, updates: { index: number; patch: Partial<GateCheck> }[]) => void;
   setAnglesBulk: (id: string, phase: number, angles: AngleRow[]) => void;
-  setSignOffsBulk: (id: string, phase: number, signOffs: SignOff[]) => void;
+  // D1: a signature is an act, so it is three actions, not a table write.
+  // Assigning belongs to the project's Lead; signing and withdrawing belong to
+  // the assigned signer. Everything recorded ON the signature (who, role, time,
+  // record version) comes from the server, never from here.
+  setSignOffAssignees: (
+    id: string,
+    phase: number,
+    assignments: { role: SignOff['role']; userId?: string | null }[],
+  ) => void;
+  signSignOff: (
+    id: string,
+    phase: number,
+    role: SignOff['role'],
+    input: { decision?: string; comments?: string },
+  ) => void;
+  withdrawSignOff: (id: string, phase: number, role: SignOff['role'], reason: string) => void;
   // F13: the responsible owner accepts a phase's pre-work once it has opened.
   acceptPhasePreWork: (id: string, phase: number, acceptedBy: string) => void;
   setEvidenceSummary: (id: string, phase: number, value: string) => void;
@@ -371,8 +386,12 @@ export const useAppStore = create<AppState>()(
         },
         setAnglesBulk: (id, phase, angles) =>
           writeSection(id, (v) => projectsApi.setAngles(id, phase, angles, v)),
-        setSignOffsBulk: (id, phase, signOffs) =>
-          writeSection(id, (v) => projectsApi.setSignOffs(id, phase, signOffs, v)),
+        setSignOffAssignees: (id, phase, assignments) =>
+          writeSection(id, (v) => projectsApi.setSignOffAssignees(id, phase, assignments, v)),
+        signSignOff: (id, phase, role, input) =>
+          writeSection(id, (v) => projectsApi.signSignOff(id, phase, role, input, v)),
+        withdrawSignOff: (id, phase, role, reason) =>
+          writeSection(id, (v) => projectsApi.withdrawSignOff(id, phase, role, reason, v)),
         setEvidenceSummary: (id, phase, value) =>
           writeSection(id, (v) => projectsApi.setEvidenceSummary(id, phase, value, v)),
         setPhaseKeyLinks: (id, phase, links) =>

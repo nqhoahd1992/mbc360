@@ -38,7 +38,16 @@ export const PROJECT_INCLUDE = {
   checklistItems: { orderBy: [{ sectionKey: 'asc' }, { itemOrder: 'asc' }] },
   requirementItems: { orderBy: [{ sectionKey: 'asc' }, { itemOrder: 'asc' }] },
   gateChecks: { orderBy: { id: 'asc' } },
-  phaseClosures: { include: { signOffs: true, angles: true, keyLinks: true }, orderBy: { phase: 'asc' } },
+  phaseClosures: {
+    include: {
+      // `assignedTo` is included for its displayName only — the authoritative
+      // check is on the id (see signSignOff).
+      signOffs: { include: { assignedTo: { select: { displayName: true } } } },
+      angles: true,
+      keyLinks: true,
+    },
+    orderBy: { phase: 'asc' },
+  },
   nextActions: { orderBy: { createdAt: 'asc' } },
   backtrackEvents: { orderBy: { occurredAt: 'asc' } },
   marketTracks: { orderBy: { market: 'asc' } },
@@ -88,11 +97,17 @@ function toGateRecord(g: ProjectWithAll['gates'][number]): GateRecord {
 function toSignOff(s: ProjectWithAll['phaseClosures'][number]['signOffs'][number]): SignOff {
   return {
     role: s.role as SignOff['role'],
+    assignedToUserId: opt(s.assignedToUserId),
+    assignedToName: opt(s.assignedTo?.displayName ?? null),
     name: opt(s.name),
     initials: opt(s.initials),
     date: dateOnly(s.date),
     decision: opt(s.decision) as SignOff['decision'],
     comments: opt(s.comments),
+    signedByUserId: opt(s.signedByUserId),
+    signedAt: s.signedAt ? s.signedAt.toISOString() : undefined,
+    roleAtSigning: opt(s.roleAtSigning),
+    recordVersion: s.recordVersion ?? undefined,
   };
 }
 

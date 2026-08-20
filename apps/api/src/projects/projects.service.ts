@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { GATES } from '@mbc360/shared/config/gates';
+import { GATES, GATE_DECISIONS } from '@mbc360/shared/config/gates';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
@@ -24,6 +24,7 @@ import {
   hardGateBlockers,
   isGateRefLocked,
   isGateUnlocked,
+  phaseCompletionChecklist,
 } from '@mbc360/shared/utils/gateProgress';
 import type {
   AngleRow,
@@ -604,39 +605,230 @@ export class ProjectsService {
     });
   }
 
-  // B3/A4: signing a phase off is an APPROVAL, so it needs `phase:N|approve` —
-  // the same restriction the UI applies to the "Approved by" row.
-  async setSignOffs(
+  // -------------------------------------------------------------------------
+  // Phase sign-off (D1). A signature is an authenticated ACT, not a typed name.
+  //
+  // Before this, the whole block was one bulk field write: `name` and `initials`
+  // were free text, so a row could name one person while `signedByUserId` — the
+  // one field the server did take from the session — recorded another, and no
+  // screen ever showed the mismatch. The three routes below replace it:
+  //
+  //   assignees → the project's Lead nominates who signs each of the 3 roles
+  //   sign      → only that person may sign; the server writes all 6 D1 fields
+  //   withdraw  → the signer (or an admin) releases it, with a reason
+  //
+  // Nothing about a signature is client-supplied except the decision and the
+  // comment. Who, which role, when and against which record version all come
+  // from the session and the locked project row.
+  // -------------------------------------------------------------------------
+
+  // The Lead is matched by displayName because ProjectIdentity.projectLead
+  // stores exactly that (the Create form's user picker writes the picked user's
+  // displayName, same as `reviewers`). Storing a user id there would be more
+  // robust and is the obvious later improvement, but it is a schema change to
+  // `projects`, not to sign-off. [ASSUMPTION: R5-Q1]
+  private assertIsProjectLead(user: SessionUser, project: ProjectData): void {
+    if (this.permissions.isAdmin(user)) return;
+    if (project.identity.projectLead.trim() !== user.displayName.trim()) {
+      throw new ForbiddenException(
+        `Only the project's Lead (${project.identity.projectLead}) may assign phase sign-off signers`,
+      );
+    }
+  }
+
+  // Initials are DERIVED from the account, not typed — the workbook keeps a
+  // "Signature / initials" column and this fills it without reopening the free
+  // text field that made a signature unverifiable.
+  private initialsOf(displayName: string): string {
+    return (
+      displayName
+        .trim()
+        .split(/\s+/)
+        .map((word) => word[0]?.toUpperCase() ?? '')
+        .join('')
+        .slice(0, 4) || null
+    ) as string;
+  }
+
+  async setSignOffAssignees(
     user: SessionUser,
     id: string,
     phase: number,
-    signOffs: SignOff[],
+    assignments: { role: SignOff['role']; userId?: string | null }[],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
-    if (!(await this.permissions.canApprovePhase(user, phase))) {
-      throw new ForbiddenException(
-        `Your role may not sign off Phase ${phase} (needs phase:${phase}|approve)`,
-      );
-    }
-    return this.mutate(user, id, expectedVersion, 'sign_offs.updated', async (tx) => {
+    return this.mutate(
+      user,
+      id,
+      expectedVersion,
+      'sign_off_assignees.updated',
+      async (tx, _row, project) => {
+        this.assertIsProjectLead(user, project);
+        const closureId = await this.phaseClosureId(tx, id, phase);
+        const rows = await tx.signOff.findMany({ where: { phaseClosureId: closureId } });
+        let changed = 0;
+        for (const assignment of assignments) {
+          const existing = rows.find((r) => r.role === assignment.role);
+          if (!existing) {
+            throw new NotFoundException(
+              `Sign-off row "${assignment.role}" not found on phase ${phase}`,
+            );
+          }
+          const next = assignment.userId ?? null;
+          if (existing.assignedToUserId === next) continue;
+          // A signed row keeps its signer. Reassigning it would leave a
+          // signature standing next to somebody else's name (B4).
+          if (existing.signedAt) {
+            throw new BadRequestException(
+              `"${assignment.role}" is already signed — withdraw the signature before reassigning it`,
+            );
+          }
+          if (next) {
+            const target = await tx.user.findUnique({
+              where: { id: next },
+              select: { active: true },
+            });
+            if (!target?.active) {
+              throw new BadRequestException(
+                `Cannot assign "${assignment.role}" to an unknown or deactivated user`,
+              );
+            }
+          }
+          await tx.signOff.update({
+            where: { id: existing.id },
+            data: { assignedToUserId: next },
+          });
+          changed += 1;
+        }
+        return { phase, changed };
+      },
+    );
+  }
+
+  async signSignOff(
+    user: SessionUser,
+    id: string,
+    phase: number,
+    role: SignOff['role'],
+    input: { decision?: string; comments?: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'sign_off.signed', async (tx, row, project) => {
       const closureId = await this.phaseClosureId(tx, id, phase);
-      for (const so of signOffs) {
-        const signed = !!(so.name?.trim() || so.initials?.trim());
-        await tx.signOff.updateMany({
-          where: { phaseClosureId: closureId, role: so.role },
-          data: {
-            name: so.name ?? null,
-            initials: so.initials ?? null,
-            date: this.dateOrNull(so.date),
-            decision: so.decision ?? null,
-            comments: so.comments ?? null,
-            // Who actually signed comes from the session, not the typed name.
-            signedByUserId: signed ? user.id : null,
-            signedAt: signed ? new Date() : null,
-          },
-        });
+      const existing = await tx.signOff.findFirst({ where: { phaseClosureId: closureId, role } });
+      if (!existing) throw new NotFoundException(`Sign-off row "${role}" not found on phase ${phase}`);
+      if (existing.signedAt) {
+        throw new BadRequestException(
+          `"${role}" was already signed by ${existing.name ?? 'another user'} — withdraw it first`,
+        );
       }
-      return { phase, signOffs: signOffs.length };
+      if (!existing.assignedToUserId) {
+        throw new BadRequestException(
+          `"${role}" has no assigned signer yet — the project's Lead assigns one`,
+        );
+      }
+      if (existing.assignedToUserId !== user.id) {
+        throw new ForbiddenException(
+          `"${role}" is assigned to somebody else — only the assigned signer may sign it`,
+        );
+      }
+      // The "Approved by" row is a phase APPROVAL on top of being a signature,
+      // so being assigned is necessary but not sufficient: the role must also
+      // hold `phase:N|approve` (project owner's decision, 2026-08-20).
+      if (role === 'Approved by' && !(await this.permissions.canApprovePhase(user, phase))) {
+        throw new ForbiddenException(
+          `Your role may not approve Phase ${phase} (needs phase:${phase}|approve)`,
+        );
+      }
+      // B3: the closure conditions are enforced HERE, not only by the UI lock
+      // (BACKEND_PLAN §3 principle 7). Before this, a direct API call could
+      // sign a phase whose gates had not passed at all.
+      if (!phaseCompletionChecklist(project, phase).canSignOff) {
+        throw new BadRequestException(
+          `Phase ${phase} closure conditions are not met yet — sign-off is locked`,
+        );
+      }
+
+      const decision = input.decision?.trim();
+      if (!decision) throw new BadRequestException('A decision is required to sign');
+      if (!(GATE_DECISIONS as readonly string[]).includes(decision)) {
+        throw new BadRequestException(`"${decision}" is not a valid decision`);
+      }
+      // D1 asks for "comment where required" without saying when. Read as:
+      // anything other than a plain Proceed carries a condition or a reason
+      // that must be written down. [ASSUMPTION: R4-Q26]
+      // Whether D1's field set applies to the PHASE block at all (it is written
+      // for gate sign-off) is [ASSUMPTION: R5-Q2].
+      const comments = input.comments?.trim();
+      if (decision !== 'Proceed' && !comments) {
+        throw new BadRequestException(`A comment is required when the decision is "${decision}"`);
+      }
+
+      const now = new Date();
+      await tx.signOff.update({
+        where: { id: existing.id },
+        data: {
+          name: user.displayName,
+          initials: this.initialsOf(user.displayName),
+          date: now,
+          decision,
+          comments: comments || null,
+          signedByUserId: user.id,
+          signedAt: now,
+          // Snapshotted, never re-read: a role change tomorrow must not rewrite
+          // what this signature claimed today.
+          roleAtSigning: user.roles.map((r) => r.role.name).join(', ') || null,
+          // The version the signature attests to — the row is locked FOR UPDATE
+          // in this transaction, so this is the exact state that was signed.
+          recordVersion: row.version,
+        },
+      });
+      return { phase, role, decision, recordVersion: row.version };
+    });
+  }
+
+  // Only the person who signed may release their own signature (an admin too,
+  // for the case where that account is gone). Deliberately NOT the Lead: a Lead
+  // who could clear a reviewer's signature could overturn a decision they
+  // disagree with. A reason is mandatory — B4, no silent corrections; it lands
+  // on the audit row. [ASSUMPTION: R5-Q1]
+  async withdrawSignOff(
+    user: SessionUser,
+    id: string,
+    phase: number,
+    role: SignOff['role'],
+    reason: string,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    const why = reason?.trim();
+    if (!why) throw new BadRequestException('A reason is required to withdraw a signature');
+    return this.mutate(user, id, expectedVersion, 'sign_off.withdrawn', async (tx) => {
+      const closureId = await this.phaseClosureId(tx, id, phase);
+      const existing = await tx.signOff.findFirst({ where: { phaseClosureId: closureId, role } });
+      if (!existing) throw new NotFoundException(`Sign-off row "${role}" not found on phase ${phase}`);
+      if (!existing.signedAt) throw new BadRequestException(`"${role}" is not signed`);
+      if (existing.signedByUserId !== user.id && !this.permissions.isAdmin(user)) {
+        throw new ForbiddenException(
+          `Only ${existing.name ?? 'the signer'} may withdraw this signature`,
+        );
+      }
+      await tx.signOff.update({
+        where: { id: existing.id },
+        data: {
+          name: null,
+          initials: null,
+          date: null,
+          decision: null,
+          comments: null,
+          signedByUserId: null,
+          signedAt: null,
+          roleAtSigning: null,
+          recordVersion: null,
+          // The assignment survives — the same person is still the nominated
+          // signer unless the Lead changes it.
+        },
+      });
+      return { phase, role, reason: why, previousSigner: existing.name ?? null };
     });
   }
 
@@ -1264,15 +1456,35 @@ export class ProjectsService {
             if (!closure) continue;
             previousSignOffs[phase] = closure.signOffs.map((so) => ({
               role: so.role as SignOff['role'],
+              assignedToUserId: so.assignedToUserId ?? undefined,
               name: so.name ?? undefined,
               initials: so.initials ?? undefined,
               date: so.date ? so.date.toISOString().slice(0, 10) : undefined,
               decision: (so.decision ?? undefined) as SignOff['decision'],
               comments: so.comments ?? undefined,
+              // The whole point of the snapshot is that an invalidated
+              // signature stays readable — so it must carry the fields that
+              // make it a signature, not just the typed columns.
+              signedByUserId: so.signedByUserId ?? undefined,
+              signedAt: so.signedAt ? so.signedAt.toISOString() : undefined,
+              roleAtSigning: so.roleAtSigning ?? undefined,
+              recordVersion: so.recordVersion ?? undefined,
             }));
             await tx.signOff.updateMany({
               where: { phaseClosureId: closure.id },
-              data: { name: null, initials: null, date: null, decision: null, comments: null, signedByUserId: null, signedAt: null },
+              // The nominated signers (assignedToUserId) survive — they must
+              // re-sign the reopened phase, not be re-nominated from scratch.
+              data: {
+                name: null,
+                initials: null,
+                date: null,
+                decision: null,
+                comments: null,
+                signedByUserId: null,
+                signedAt: null,
+                roleAtSigning: null,
+                recordVersion: null,
+              },
             });
           }
 
@@ -1609,11 +1821,16 @@ export class ProjectsService {
         if (!closure) continue;
         previousSignOffs[phase] = closure.signOffs.map((s) => ({
           role: s.role as SignOff['role'],
+          assignedToUserId: s.assignedToUserId ?? undefined,
           name: s.name ?? undefined,
           initials: s.initials ?? undefined,
           date: s.date ? s.date.toISOString().slice(0, 10) : undefined,
           decision: (s.decision ?? undefined) as SignOff['decision'],
           comments: s.comments ?? undefined,
+          signedByUserId: s.signedByUserId ?? undefined,
+          signedAt: s.signedAt ? s.signedAt.toISOString() : undefined,
+          roleAtSigning: s.roleAtSigning ?? undefined,
+          recordVersion: s.recordVersion ?? undefined,
         }));
       }
 
@@ -1650,6 +1867,8 @@ export class ProjectsService {
             comments: null,
             signedByUserId: null,
             signedAt: null,
+            roleAtSigning: null,
+            recordVersion: null,
           },
         });
       }

@@ -1,5 +1,5 @@
 import type { GateRecord, NextAction, ProjectData, RegisterRow } from '../types';
-import { NEXT_ACTION_TERMINAL_STATUSES } from '../types';
+import { NEXT_ACTION_TERMINAL_STATUSES, isSignedOff } from '../types';
 import { GATES } from '../config/gates';
 import { isChangeOpen } from '../config/changeTriggers';
 import { CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE } from '../config/registers';
@@ -962,8 +962,10 @@ export function isGateRefLocked(project: ProjectData, gateRef: string | undefine
 export function isPhaseApproved(project: ProjectData, phase: number): boolean {
   const closure = project.phaseClosures[phase];
   if (!closure) return false;
-  const approved = closure.signOffs.find((s) => s.role === 'Approved by');
-  return !!(approved?.name?.trim() || approved?.initials?.trim());
+  // D1: a signature is an authenticated act, so "approved" keys on the
+  // server-recorded signer + timestamp, never on typed text (a name could be
+  // typed by anyone, including for somebody else — see isSignedOff).
+  return isSignedOff(closure.signOffs.find((s) => s.role === 'Approved by'));
 }
 
 export function isLastGateOfPhase(index: number): boolean {
@@ -1016,9 +1018,8 @@ export function phaseCompletionChecklist(project: ProjectData, phase: number): P
     return open.length === 0 || record?.decision === 'Proceed with Conditions';
   });
 
-  const signOffsComplete = (closure?.signOffs ?? []).every(
-    (s) => !!(s.name?.trim() || s.initials?.trim()),
-  );
+  const signOffsComplete =
+    (closure?.signOffs ?? []).length > 0 && (closure?.signOffs ?? []).every(isSignedOff);
 
   const preWorkAccepted = phase === 1 || !!closure?.preWork?.acceptedBy;
 

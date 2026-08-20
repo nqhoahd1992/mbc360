@@ -104,13 +104,35 @@ export interface AngleRow {
 
 export type SignOffRole = 'Prepared by' | 'Reviewed by' | 'Approved by';
 
+// D1 (2026-08-07): a sign-off is an authenticated ACT, not a typed name. Every
+// signature records the six fields D1 names — authenticated user, the role that
+// user held at the moment of signing, date/time, decision, the record version
+// the signature attests to, and a comment where required.
+//
+// Everything below `comments` is written by the SERVER from the session and the
+// locked project row; a client cannot set any of it, and `name`/`initials` (the
+// workbook's own two columns) are DERIVED from the signer's account rather than
+// typed — before this they were free text, so a row could name one person while
+// the session recorded another.
 export interface SignOff {
   role: SignOffRole;
+  // Who the project's Lead nominated to sign this row. Only that person may
+  // sign it — see `signSignOff` in apps/api/src/projects/projects.service.ts.
+  assignedToUserId?: string;
+  assignedToName?: string;
   name?: string;
   initials?: string;
   date?: string;
   decision?: string;
   comments?: string;
+  signedByUserId?: string;
+  signedAt?: string; // ISO timestamp, server clock
+  roleAtSigning?: string; // role label(s) held when signed — NOT re-read later
+  recordVersion?: number; // projects.version the signature attests to
+}
+
+export function isSignedOff(signOff: SignOff | undefined): boolean {
+  return !!(signOff?.signedByUserId && signOff.signedAt);
 }
 
 // A single free-text "next action" field used to live here, but rule B2
