@@ -198,11 +198,36 @@ export const setSignOffAssignees = (
   v: number,
 ) => put(id, `phases/${phase}/sign-off-assignees`, { assignments }, v);
 
+// Step-up (2026-08-21): optional "attach my saved signature" flow, gated by a
+// one-time email code bound to this exact project/phase/role act. Absent
+// `attachSignature`, signSignOff below behaves exactly as before this
+// feature existed.
+export const requestSignOffCode = (
+  id: string,
+  phase: number,
+  role: SignOff['role'],
+): Promise<{ sent: true }> =>
+  request(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/request-code`, {
+    method: 'POST',
+    body: JSON.stringify({ role }),
+  });
+
+export const confirmSignOffCode = (
+  id: string,
+  phase: number,
+  role: SignOff['role'],
+  code: string,
+): Promise<{ stepUpToken: string }> =>
+  request(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/confirm-code`, {
+    method: 'POST',
+    body: JSON.stringify({ role, code }),
+  });
+
 export const signSignOff = (
   id: string,
   phase: number,
   role: SignOff['role'],
-  input: { decision?: string; comments?: string },
+  input: { decision?: string; comments?: string; attachSignature?: boolean; stepUpToken?: string },
   expectedVersion: number,
 ) =>
   request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/sign`, {

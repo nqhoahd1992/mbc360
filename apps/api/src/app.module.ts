@@ -9,6 +9,9 @@ import { RbacModule } from './rbac/rbac.module';
 import { AdminModule } from './admin/admin.module';
 import { CosmetriModule } from './cosmetri/cosmetri.module';
 import { ProjectsModule } from './projects/projects.module';
+import { AccountModule } from './account/account.module';
+import { VerificationModule } from './verification/verification.module';
+import { MailerModule } from './mailer/mailer.module';
 
 @Module({
   imports: [
@@ -20,6 +23,9 @@ import { ProjectsModule } from './projects/projects.module';
     AdminModule,
     CosmetriModule,
     ProjectsModule,
+    AccountModule,
+    VerificationModule,
+    MailerModule,
   ],
   controllers: [HealthController, MetaController],
 })

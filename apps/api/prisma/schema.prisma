@@ -57,6 +57,8 @@ model User {
   signOffsAssigned SignOff[]  @relation("SignOffAssignedTo")
   reviewerOf   ProjectReviewer[]
   archivedProjects Project[]     @relation("ProjectArchivedBy")
+  signature    UserSignature?
+  oneTimeCodes OneTimeCode[]
 
   @@map("users")
 }
@@ -359,9 +361,68 @@ model SignOff {
   recordVersion        Int?
   invalidatedByEvent   AuditEvent?   @relation("SignOffInvalidatedBy", fields: [invalidatedByEventId], references: [id])
   invalidatedByEventId String?
+  // Saved-signature + email step-up (2026-08-21): a snapshot of the signer's
+  // UserSignature.imageData AT THE MOMENT OF SIGNING — never a live reference,
+  // same principle as roleAtSigning/recordVersion above, so re-drawing a
+  // signature later cannot rewrite what a past signature visually showed.
+  // Both stay null on the common path (no image attached, exactly today's
+  // behavior); signatureVerifiedAt is set only when the email one-time-code
+  // step-up succeeded for this specific act.
+  signatureImage       String?
+  signatureVerifiedAt  DateTime?
 
   @@index([phaseClosureId])
   @@map("sign_offs")
+}
+
+// My Account > Signature (2026-08-21): a user's saved handwritten signature,
+// drawn once via a <canvas> popup and reused across sign-off acts. NOT
+// modeled on Attachment (evidence-by-SharePoint-reference, and unused —
+// there is no upload pipeline behind it in this codebase) because this is
+// small (capped at 150KB by the API layer) and must be readable INSIDE the
+// signing transaction so it can be snapshotted onto SignOff in the same
+// commit — a Postgres column is the honest storage choice here, not a
+// shortcut around the Attachment convention. One row per user (upsert, no
+// history) — the signed ACT is what freezes a snapshot (SignOff.signatureImage
+// above), not this row.
+model UserSignature {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @unique
+  imageData String // data:image/png;base64,... — size-capped by the API, never by the DB
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("user_signatures")
+}
+
+// Short-lived, single-use email verification code, issued only to gate
+// attaching a saved signature to a specific phase sign-off act (D1). `purpose`
+// binds a code to the exact "sign_off:<projectId>:<phase>:<role>" act, not
+// just to the user, so a code minted for one signature can never be spent on
+// another. `channel` is a discriminator seam (only "email" is implemented in
+// this pass — authenticator/TOTP was considered and explicitly deferred, see
+// docs/plans — adding it later is a new channel value + a branch in
+// OneTimeCodeService, not a schema change). Unlike idempotency_keys, this
+// table has REAL expiresAt/consumedAt: a leaked or replayed code must not be
+// reusable.
+model OneTimeCode {
+  id               String    @id @default(cuid())
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String
+  purpose          String
+  channel          String    @default("email")
+  codeHash         String
+  attempts         Int       @default(0)
+  expiresAt        DateTime
+  consumedAt       DateTime?
+  // Stamped once the resulting step-up proof is actually spent on a SignOff —
+  // makes the proof single-use even though the JWT itself is stateless.
+  usedForSignOffId String?
+  createdAt        DateTime  @default(now())
+
+  @@index([userId, purpose])
+  @@map("one_time_codes")
 }
 
 model AngleRow {

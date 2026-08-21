@@ -1,5 +1,6 @@
 import { Avatar, Button, Dropdown, Typography } from 'antd';
-import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
+import { EditOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
 import type { SessionUser } from '../auth/useSession';
 
 interface AuthStatusProps {
@@ -33,6 +34,12 @@ export default function AuthStatus({ user, onLogout }: AuthStatusProps) {
               </div>
             ),
             disabled: true,
+          },
+          { type: 'divider' },
+          {
+            key: 'account',
+            label: <Link to="/account">My account</Link>,
+            icon: <EditOutlined />,
           },
           { type: 'divider' },
           { key: 'logout', label: 'Sign out', icon: <LogoutOutlined />, onClick: onLogout },

@@ -108,6 +108,8 @@ function toSignOff(s: ProjectWithAll['phaseClosures'][number]['signOffs'][number
     signedAt: s.signedAt ? s.signedAt.toISOString() : undefined,
     roleAtSigning: opt(s.roleAtSigning),
     recordVersion: s.recordVersion ?? undefined,
+    signatureImage: opt(s.signatureImage),
+    signatureVerifiedAt: s.signatureVerifiedAt ? s.signatureVerifiedAt.toISOString() : undefined,
   };
 }
 

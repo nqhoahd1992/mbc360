@@ -39,6 +39,7 @@ import EvidenceSearchRules from './pages/EvidenceSearchRules';
 import GateRulesMap from './pages/GateRulesMap';
 import MySheets from './pages/MySheets';
 import IntegrationsPage from './pages/IntegrationsPage';
+import MyAccount from './pages/MyAccount';
 import Login from './pages/Login';
 import { PHASES } from '@mbc360/shared/config/gates';
 import { getNavGroups, findNavGroupForRegister, getRegisterConfig, navItemHref, formatGate } from '@mbc360/shared/config/registers';
@@ -505,6 +506,7 @@ function Shell() {
             <Route path="/projects/:projectId/post-market" element={<PostMarketCapa />} />
             <Route path="/change-control" element={<ChangeControl />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
+            <Route path="/account" element={<MyAccount />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/roles" element={<AdminRoles />} />
           </Routes>

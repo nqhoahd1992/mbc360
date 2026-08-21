@@ -128,7 +128,9 @@ interface AppState {
     id: string,
     phase: number,
     role: SignOff['role'],
-    input: { decision?: string; comments?: string },
+    // attachSignature/stepUpToken: the optional email step-up flow
+    // (2026-08-21) for attaching a saved signature — see SignOffBlock.tsx.
+    input: { decision?: string; comments?: string; attachSignature?: boolean; stepUpToken?: string },
   ) => void;
   withdrawSignOff: (id: string, phase: number, role: SignOff['role'], reason: string) => void;
   // F13: the responsible owner accepts a phase's pre-work once it has opened.

@@ -37,12 +37,15 @@ import type {
   RequirementItem,
   SignOff,
 } from '@mbc360/shared/types';
+import { JwtService } from '@nestjs/jwt';
 import type { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { PermissionsService } from '../rbac/permissions.service';
 import type { SessionUser } from '../auth/session-user';
 import { IdempotencyService } from './idempotency.service';
+import { OneTimeCodeService } from '../verification/one-time-code.service';
+import { MailerService } from '../mailer/mailer.service';
 import {
   PROJECT_INCLUDE,
   toChangeRecords,
@@ -165,7 +168,16 @@ export class ProjectsService {
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
     private readonly permissions: PermissionsService,
+    private readonly oneTimeCode: OneTimeCodeService,
+    private readonly mailer: MailerService,
+    private readonly jwt: JwtService,
   ) {}
+
+  // Binds a step-up code/proof to the exact act — a code minted for one
+  // sign-off can never be spent on another, even by the same user.
+  private signOffStepUpPurpose(id: string, phase: number, role: string): string {
+    return `sign_off:${id}:${phase}:${role}`;
+  }
 
   // A4 / F6: only a role granted `gate:<id>|decide` may record that gate's
   // decision (admin is unrestricted). Contributing evidence needs no permission.
@@ -705,12 +717,55 @@ export class ProjectsService {
     );
   }
 
+  // Step 1 of the optional "attach my saved signature" flow: sends a
+  // one-time email code, bound to this exact project/phase/role act. Reuses
+  // the same nomination guard signSignOff has below — don't let someone
+  // request a code for a row they're not entitled to sign.
+  async requestSignOffCode(user: SessionUser, id: string, phase: number, role: SignOff['role']) {
+    const closureId = await this.phaseClosureId(this.prisma, id, phase);
+    const existing = await this.prisma.signOff.findFirst({ where: { phaseClosureId: closureId, role } });
+    if (!existing) throw new NotFoundException(`Sign-off row "${role}" not found on phase ${phase}`);
+    if (existing.signedAt) {
+      throw new BadRequestException(`"${role}" is already signed — withdraw it first`);
+    }
+    if (existing.assignedToUserId !== user.id) {
+      throw new ForbiddenException(`"${role}" is assigned to somebody else — only the assigned signer may sign it`);
+    }
+    const signature = await this.prisma.userSignature.findUnique({ where: { userId: user.id } });
+    if (!signature) {
+      throw new BadRequestException('Save a signature in My Account before attaching one to a sign-off');
+    }
+    const code = await this.oneTimeCode.issue(user.id, this.signOffStepUpPurpose(id, phase, role));
+    await this.mailer.sendCode(user.email, code);
+    return { sent: true };
+  }
+
+  // Step 2: exchanges a correct code for a short-lived, single-use proof
+  // token. The token itself carries no privilege beyond "prove this OneTimeCode
+  // row was verified" — signSignOff below re-checks it against the DB inside
+  // the signing transaction rather than trusting the JWT alone.
+  async confirmSignOffCode(
+    user: SessionUser,
+    id: string,
+    phase: number,
+    role: SignOff['role'],
+    code: string,
+  ): Promise<{ stepUpToken: string }> {
+    const purpose = this.signOffStepUpPurpose(id, phase, role);
+    const otc = await this.oneTimeCode.confirm(user.id, purpose, code);
+    const stepUpToken = await this.jwt.signAsync(
+      { sub: user.id, typ: 'sign_off_step_up', otc: otc.id, purpose },
+      { expiresIn: '5m' },
+    );
+    return { stepUpToken };
+  }
+
   async signSignOff(
     user: SessionUser,
     id: string,
     phase: number,
     role: SignOff['role'],
-    input: { decision?: string; comments?: string },
+    input: { decision?: string; comments?: string; attachSignature?: boolean; stepUpToken?: string },
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
     return this.mutate(user, id, expectedVersion, 'sign_off.signed', async (tx, row, project) => {
@@ -764,6 +819,37 @@ export class ProjectsService {
         throw new BadRequestException(`A comment is required when the decision is "${decision}"`);
       }
 
+      // Optional: attach the signer's saved signature, gated by a one-time
+      // email code confirmed just before this call. Absent `attachSignature`,
+      // none of this runs — a plain sign-off is exactly as it was before this
+      // feature existed.
+      let signatureImage: string | null = null;
+      if (input.attachSignature) {
+        if (!input.stepUpToken) {
+          throw new BadRequestException('A verification code is required to attach your saved signature');
+        }
+        let payload: { sub?: string; typ?: string; otc?: string; purpose?: string };
+        try {
+          payload = await this.jwt.verifyAsync(input.stepUpToken);
+        } catch {
+          throw new BadRequestException('Verification expired or invalid — request a new code');
+        }
+        const expectedPurpose = this.signOffStepUpPurpose(id, phase, role);
+        if (payload.typ !== 'sign_off_step_up' || payload.sub !== user.id || payload.purpose !== expectedPurpose) {
+          throw new BadRequestException('Verification does not match this sign-off');
+        }
+        const otc = payload.otc ? await tx.oneTimeCode.findUnique({ where: { id: payload.otc } }) : null;
+        if (!otc?.consumedAt || otc.usedForSignOffId) {
+          throw new BadRequestException('Verification already used or invalid — request a new code');
+        }
+        const signature = await tx.userSignature.findUnique({ where: { userId: user.id } });
+        if (!signature) throw new BadRequestException('No saved signature on this account');
+        // Stamped inside this same row-locked transaction — makes the proof
+        // single-use even though the JWT itself is stateless.
+        await tx.oneTimeCode.update({ where: { id: otc.id }, data: { usedForSignOffId: existing.id } });
+        signatureImage = signature.imageData;
+      }
+
       const now = new Date();
       await tx.signOff.update({
         where: { id: existing.id },
@@ -781,9 +867,13 @@ export class ProjectsService {
           // The version the signature attests to — the row is locked FOR UPDATE
           // in this transaction, so this is the exact state that was signed.
           recordVersion: row.version,
+          // Signature image is likewise a snapshot at signing time (see the
+          // schema comment on SignOff) — null on the common, no-image path.
+          signatureImage,
+          signatureVerifiedAt: signatureImage ? now : null,
         },
       });
-      return { phase, role, decision, recordVersion: row.version };
+      return { phase, role, decision, recordVersion: row.version, signatureAttached: !!signatureImage };
     });
   }
 
@@ -824,6 +914,8 @@ export class ProjectsService {
           signedAt: null,
           roleAtSigning: null,
           recordVersion: null,
+          signatureImage: null,
+          signatureVerifiedAt: null,
           // The assignment survives — the same person is still the nominated
           // signer unless the Lead changes it.
         },

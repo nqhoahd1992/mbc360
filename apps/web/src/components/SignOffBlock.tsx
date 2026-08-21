@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Button,
   Card,
+  Checkbox,
   Input,
   Modal,
   Popconfirm,
@@ -25,7 +26,9 @@ import { canApprovePhase, EMPTY_GRANTS } from '../utils/permissions';
 import { useSession } from '../auth/useSession';
 import { usePickerUsers } from '../hooks/useUserOptions';
 import { useDraft } from '../hooks/useDraft';
+import { getMySignature } from '../api/accountApi';
 import SaveBar from './SaveBar';
+import SignatureStepUpModal from './SignatureStepUpModal';
 
 // Phase sign-off, rebuilt 2026-08-20 around rule D1's requirement that a
 // sign-off record an AUTHENTICATED user, the role held, date/time, decision,
@@ -86,6 +89,19 @@ export default function SignOffBlock({
   const [rows, setRows] = useState<Record<string, RowDraft>>({});
   const [withdrawing, setWithdrawing] = useState<SignOff['role'] | null>(null);
   const [reason, setReason] = useState('');
+
+  // Saved-signature + email step-up (2026-08-21). "Attach my saved
+  // signature" is opt-in per row and, when checked, replaces the plain
+  // Popconfirm-sign with a step-up modal — unchecked, signing behaves
+  // exactly as before this feature existed.
+  const [hasSignature, setHasSignature] = useState(false);
+  useEffect(() => {
+    getMySignature()
+      .then((r) => setHasSignature(r.hasSignature))
+      .catch(() => setHasSignature(false));
+  }, []);
+  const [attachSignature, setAttachSignature] = useState<Record<string, boolean>>({});
+  const [stepUpRole, setStepUpRole] = useState<SignOff['role'] | null>(null);
 
   const rowDraft = (role: string): RowDraft => rows[role] ?? {};
   const patchRow = (role: string, patch: RowDraft) =>
@@ -149,9 +165,13 @@ export default function SignOffBlock({
     return null;
   };
 
-  const sign = (row: SignOff) => {
+  const sign = (row: SignOff, stepUpToken?: string) => {
     const d = rowDraft(row.role);
-    signSignOff(projectId, phase, row.role, { decision: d.decision, comments: d.comments });
+    signSignOff(projectId, phase, row.role, {
+      decision: d.decision,
+      comments: d.comments,
+      ...(stepUpToken ? { attachSignature: true, stepUpToken } : {}),
+    });
   };
 
   const confirmWithdraw = () => {
@@ -256,6 +276,13 @@ export default function SignOffBlock({
                       <Tag color="green">Signed</Tag>
                       <b>{r.name}</b>
                     </span>
+                    {r.signatureImage && (
+                      <img
+                        src={r.signatureImage}
+                        alt={`${r.name}'s signature`}
+                        style={{ maxWidth: 160, maxHeight: 50, display: 'block', margin: '2px 0' }}
+                      />
+                    )}
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                       {r.roleAtSigning ?? 'role not recorded'} ·{' '}
                       {r.signedAt ? dayjs(r.signedAt).format('YYYY-MM-DD HH:mm') : '—'} · record v
@@ -284,31 +311,64 @@ export default function SignOffBlock({
                 );
               }
               const why = blockedReason(r);
+              const wantsSignature = hasSignature && !!attachSignature[r.role];
               return (
-                <Popconfirm
-                  title={`Sign "${r.role}" as ${me?.displayName}`}
-                  description={
-                    <div style={{ maxWidth: 320 }}>
-                      This records your account, the role you hold now, the server timestamp and the
-                      version of this project record. It is not editable afterwards — releasing it
-                      requires a withdrawal with a reason.
-                    </div>
-                  }
-                  okText="Sign"
-                  disabled={!!why}
-                  onConfirm={() => sign(r)}
-                >
-                  {/* The tooltip wraps a span: a disabled antd Button emits no
-                      mouse events, so a tooltip attached straight to it never
-                      shows — and the reason is the whole point here. */}
-                  <Tooltip title={why ?? ''}>
-                    <span>
-                      <Button size="small" type="primary" disabled={!!why}>
-                        Sign as me
-                      </Button>
-                    </span>
-                  </Tooltip>
-                </Popconfirm>
+                <Space direction="vertical" size={4}>
+                  {hasSignature && (
+                    <Checkbox
+                      checked={!!attachSignature[r.role]}
+                      onChange={(e) =>
+                        setAttachSignature((prev) => ({ ...prev, [r.role]: e.target.checked }))
+                      }
+                    >
+                      <Typography.Text style={{ fontSize: 12 }}>
+                        Attach my saved signature
+                      </Typography.Text>
+                    </Checkbox>
+                  )}
+                  {wantsSignature ? (
+                    // Attaching a drawn signature needs a one-time email code
+                    // first — the step-up modal takes the place of the plain
+                    // Popconfirm below, and calls sign() itself once verified.
+                    <Tooltip title={why ?? ''}>
+                      <span>
+                        <Button
+                          size="small"
+                          type="primary"
+                          disabled={!!why}
+                          onClick={() => setStepUpRole(r.role)}
+                        >
+                          Verify &amp; sign
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    <Popconfirm
+                      title={`Sign "${r.role}" as ${me?.displayName}`}
+                      description={
+                        <div style={{ maxWidth: 320 }}>
+                          This records your account, the role you hold now, the server timestamp
+                          and the version of this project record. It is not editable afterwards —
+                          releasing it requires a withdrawal with a reason.
+                        </div>
+                      }
+                      okText="Sign"
+                      disabled={!!why}
+                      onConfirm={() => sign(r)}
+                    >
+                      {/* The tooltip wraps a span: a disabled antd Button emits no
+                          mouse events, so a tooltip attached straight to it never
+                          shows — and the reason is the whole point here. */}
+                      <Tooltip title={why ?? ''}>
+                        <span>
+                          <Button size="small" type="primary" disabled={!!why}>
+                            Sign as me
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    </Popconfirm>
+                  )}
+                </Space>
               );
             },
           },
@@ -382,6 +442,18 @@ export default function SignOffBlock({
           onChange={(e) => setReason(e.target.value)}
         />
       </Modal>
+      <SignatureStepUpModal
+        open={stepUpRole !== null}
+        projectId={projectId}
+        phase={phase}
+        role={stepUpRole ?? 'Prepared by'}
+        onClose={() => setStepUpRole(null)}
+        onVerified={(token) => {
+          const row = closure.signOffs.find((s) => s.role === stepUpRole);
+          setStepUpRole(null);
+          if (row) sign(row, token);
+        }}
+      />
     </Card>
   );
 }

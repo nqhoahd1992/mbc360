@@ -256,20 +256,55 @@ export class ProjectsController {
     );
   }
 
+  // Step-up (2026-08-21): optional "attach my saved signature" flow. Request
+  // sends an email code bound to this exact act; confirm exchanges a correct
+  // code for a short-lived proof token, which `sign` below then requires.
+  @Post(':id/phases/:phase/sign-offs/request-code')
+  requestSignOffCode(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('phase') phase: string,
+    @Body() body: { role: SignOff['role'] },
+  ) {
+    return this.projects.requestSignOffCode(user, id, Number(phase), body.role);
+  }
+
+  @Post(':id/phases/:phase/sign-offs/confirm-code')
+  confirmSignOffCode(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('phase') phase: string,
+    @Body() body: { role: SignOff['role']; code: string },
+  ) {
+    return this.projects.confirmSignOffCode(user, id, Number(phase), body.role, body.code);
+  }
+
   @Post(':id/phases/:phase/sign-offs/sign')
   signSignOff(
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('phase') phase: string,
     @Body()
-    body: { role: SignOff['role']; decision?: string; comments?: string; expectedVersion: number },
+    body: {
+      role: SignOff['role'];
+      decision?: string;
+      comments?: string;
+      attachSignature?: boolean;
+      stepUpToken?: string;
+      expectedVersion: number;
+    },
   ): Promise<ProjectEnvelope> {
     return this.projects.signSignOff(
       user,
       id,
       Number(phase),
       body.role,
-      { decision: body.decision, comments: body.comments },
+      {
+        decision: body.decision,
+        comments: body.comments,
+        attachSignature: body.attachSignature,
+        stepUpToken: body.stepUpToken,
+      },
       body.expectedVersion,
     );
   }

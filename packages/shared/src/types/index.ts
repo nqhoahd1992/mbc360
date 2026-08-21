@@ -129,6 +129,12 @@ export interface SignOff {
   signedAt?: string; // ISO timestamp, server clock
   roleAtSigning?: string; // role label(s) held when signed — NOT re-read later
   recordVersion?: number; // projects.version the signature attests to
+  // Saved-signature + email step-up (2026-08-21): a snapshot of the signer's
+  // saved signature image AT THE MOMENT OF SIGNING — never a live reference,
+  // same principle as roleAtSigning/recordVersion above. Both stay undefined
+  // on the common path (no image attached).
+  signatureImage?: string;
+  signatureVerifiedAt?: string; // ISO timestamp — set only when the email step-up succeeded for this act
 }
 
 export function isSignedOff(signOff: SignOff | undefined): boolean {
