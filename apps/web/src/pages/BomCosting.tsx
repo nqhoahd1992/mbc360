@@ -15,7 +15,9 @@ import { bomWatchMatches } from '@mbc360/shared/utils/ingredientWatch';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
 import { composeReviewOwner, type ReviewOwnerSpec } from '@mbc360/shared/config/reviewers';
 import { patchArray, useDraft } from '../hooks/useDraft';
+import { NUMERIC_CELL, NUMERIC_COLUMN } from '../utils/numeric';
 import SaveBar from '../components/SaveBar';
+import { TEXT } from '../theme/tokens';
 
 // Formula BOM's own review-owner combo (workbook): Formulation owner, Quality
 // co-review (Formula BOM & sensory testing), Project Manager co-sign (appended
@@ -604,10 +606,11 @@ export default function BomCosting() {
             {
               title: '% w/w',
               width: 100,
+              ...NUMERIC_COLUMN,
               render: (_, l, i) =>
                 l.fromCosmetri ? (
                   <Tooltip title="From Cosmetri — read-only">
-                    <span style={{ color: '#666' }}>{money(l.percentWw)}</span>
+                    <span style={{ color: '#666', ...NUMERIC_CELL }}>{money(l.percentWw)}</span>
                   </Tooltip>
                 ) : (
                   <InputNumber
@@ -615,6 +618,7 @@ export default function BomCosting() {
                     min={0}
                     max={100}
                     step={0.1}
+                    style={NUMERIC_CELL}
                     value={l.percentWw}
                     onChange={(v) => patchBomLine(i, { percentWw: v ?? 0 })}
                   />
@@ -623,28 +627,46 @@ export default function BomCosting() {
             {
               title: 'Batch kg',
               width: 90,
+              ...NUMERIC_COLUMN,
               render: () => (
                 <Tooltip title="Set on the Costing tab (batch size), shared by every line">
-                  <span style={{ color: '#666' }}>{money(costing.batchSizeKg)}</span>
+                  <span style={{ color: '#666', ...NUMERIC_CELL }}>{money(costing.batchSizeKg)}</span>
                 </Tooltip>
               ),
             },
-            { title: 'kg needed', width: 100, render: (_, l) => money(derived(l).kgNeeded) },
+            {
+              title: 'kg needed',
+              width: 100,
+              ...NUMERIC_COLUMN,
+              render: (_, l) => <span style={NUMERIC_CELL}>{money(derived(l).kgNeeded)}</span>,
+            },
             {
               title: 'Cost / kg',
               width: 110,
+              ...NUMERIC_COLUMN,
               render: (_, l, i) => (
                 <InputNumber
                   size="small"
                   min={0}
                   step={0.1}
+                  style={NUMERIC_CELL}
                   value={l.costPerKg}
                   onChange={(v) => patchBomLine(i, { costPerKg: v ?? 0 })}
                 />
               ),
             },
-            { title: 'Cost / batch', width: 110, render: (_, l) => money(derived(l).costPerBatch) },
-            { title: 'Cost / unit', width: 100, render: (_, l) => money(derived(l).costPerUnit) },
+            {
+              title: 'Cost / batch',
+              width: 110,
+              ...NUMERIC_COLUMN,
+              render: (_, l) => <span style={NUMERIC_CELL}>{money(derived(l).costPerBatch)}</span>,
+            },
+            {
+              title: 'Cost / unit',
+              width: 100,
+              ...NUMERIC_COLUMN,
+              render: (_, l) => <span style={NUMERIC_CELL}>{money(derived(l).costPerUnit)}</span>,
+            },
             {
               title: 'Evidence link',
               width: 140,
@@ -675,7 +697,7 @@ export default function BomCosting() {
               width: 50,
               render: (_, __, i) => (
                 <Popconfirm title="Remove line?" onConfirm={() => removeBomLine(i)}>
-                  <Button size="small" danger type="text" icon={<DeleteOutlined />} />
+                  <Button size="small" danger type="text" aria-label="Remove this formula line" icon={<DeleteOutlined />} />
                 </Popconfirm>
               ),
             },
@@ -907,7 +929,7 @@ export default function BomCosting() {
               width: 50,
               render: (_, __, i) => (
                 <Popconfirm title="Remove component?" onConfirm={() => removePackagingLine(i)}>
-                  <Button size="small" danger type="text" icon={<DeleteOutlined />} />
+                  <Button size="small" danger type="text" aria-label="Remove this packaging component" icon={<DeleteOutlined />} />
                 </Popconfirm>
               ),
             },
@@ -971,11 +993,11 @@ export default function BomCosting() {
                 { title: 'Ingredient / INCI', width: 240, dataIndex: 'inciName' },
                 { title: 'Function', width: 160, dataIndex: 'functionRole' },
                 { title: 'Supplier', width: 150, dataIndex: 'supplier' },
-                { title: '% w/w', width: 90, render: (_, l) => money(l.percentWw) },
-                { title: 'Cost / kg', width: 100, render: (_, l) => money(l.costPerKg || 0) },
-                { title: 'kg needed', width: 100, render: (_, l) => money(derived(l).kgNeeded) },
-                { title: 'Cost / batch', width: 110, render: (_, l) => money(derived(l).costPerBatch) },
-                { title: 'Cost / unit', width: 100, render: (_, l) => money(derived(l).costPerUnit) },
+                { title: '% w/w', width: 90, ...NUMERIC_COLUMN, render: (_, l) => <span style={NUMERIC_CELL}>{money(l.percentWw)}</span> },
+                { title: 'Cost / kg', width: 100, ...NUMERIC_COLUMN, render: (_, l) => <span style={NUMERIC_CELL}>{money(l.costPerKg || 0)}</span> },
+                { title: 'kg needed', width: 100, ...NUMERIC_COLUMN, render: (_, l) => <span style={NUMERIC_CELL}>{money(derived(l).kgNeeded)}</span> },
+                { title: 'Cost / batch', width: 110, ...NUMERIC_COLUMN, render: (_, l) => <span style={NUMERIC_CELL}>{money(derived(l).costPerBatch)}</span> },
+                { title: 'Cost / unit', width: 100, ...NUMERIC_COLUMN, render: (_, l) => <span style={NUMERIC_CELL}>{money(derived(l).costPerUnit)}</span> },
               ]}
               summary={() =>
                 bom.length > 0 ? (
@@ -1030,7 +1052,7 @@ export default function BomCosting() {
           </Card>
         </>
       )}
-      <Row gutter={16}>
+      <Row gutter={[16, 16]}>
         <Col xs={24} md={12}>
           <Card size="small" title="Costing inputs">
             {formulaLocked && (
@@ -1057,7 +1079,7 @@ export default function BomCosting() {
                   onChange={(v) => costingDraft.update((prev) => ({ ...prev, packagingCostPerUnit: v ?? 0 }))}
                 />
                 {draftPackaging.length > 0 && (
-                  <span style={{ marginLeft: 8, fontSize: 12, color: '#999' }}>
+                  <span style={{ marginLeft: 8, fontSize: 12, color: TEXT.secondary }}>
                     Packaging BOM total: {money(packagingCostTotal)}
                   </span>
                 )}

@@ -10,8 +10,30 @@ body {
    Letting these shrink lets each table scroll within its own Card. */
 .ant-layout-content,
 .ant-card,
-.ant-card-body {
+.ant-card-body,
+/* PhasePage wraps every section in a plain <div id="sec-…"> for the
+   "what's blocking this gate" deep links. Those divs are the GRID ITEMS, and a
+   grid item defaults to `min-width: auto` — i.e. it refuses to be narrower than
+   its widest descendant — so the rule above stopped one level short of them.
+   This is why the phase pages, and only the phase pages, could push the whole
+   document sideways. */
+[id^='sec-'] {
   min-width: 0;
+}
+
+/* A table can never be wider than the card holding it — see the max-width rule
+   below, which covers the section wrappers in the same breath. */
+
+/* Backstop without touching `overflow`: a section can be no wider than the
+   column it sits in, so nothing can push the document sideways even if some
+   descendant reports a huge intrinsic width. Each wide table still scrolls
+   inside its own `scroll={{ x }}` container, which is where that width belongs.
+   (`overflow-x: clip` on the content would be the other way to do this, but
+   the clip/visible axis pairing needs checking in a real browser before it goes
+   anywhere near the element the whole page scrolls in.) */
+[id^='sec-'],
+.ant-table-wrapper {
+  max-width: 100%;
 }
 
 /* Long register/phase labels in the sidebar should wrap to multiple lines
@@ -39,5 +61,25 @@ body {
 
 .gate-row-locked td {
   background: #fafafa !important;
-  color: #bbb;
+  /* Was #bbb — 2.1:1, unreadable. A passed gate's row still holds owner,
+     date, evidence link and notes that people need to READ; the grey
+     background and the disabled controls are what say "locked", so the text
+     itself does not have to be faint to make the point. #595959 is 7:1. */
+  color: #595959;
+}
+
+/* The app header is sticky (64px) and table headers now stick under it, so
+   anything scrolled to — the "what's blocking this gate" deep links
+   (?scrollTo=), in-page anchors, and the browser's own scrolling when Tab
+   moves focus — must stop BELOW them. Without this, `scrollIntoView({block:
+   'start'})` put the target section's heading underneath the header, and a
+   keyboard user could focus a control hidden behind it (WCAG 2.2 §2.4.11). */
+html {
+  scroll-padding-top: 80px;
+}
+
+/* Belt and braces for the deep-link targets themselves: scroll-padding covers
+   the scrolling container, scroll-margin covers the element. */
+[id^='sec-'] {
+  scroll-margin-top: 80px;
 }

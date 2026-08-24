@@ -59,6 +59,8 @@ model User {
   archivedProjects Project[]     @relation("ProjectArchivedBy")
   signature    UserSignature?
   oneTimeCodes OneTimeCode[]
+  totp         UserTotp?
+  stepUpProofs StepUpProof[]
 
   @@map("users")
 }
@@ -396,6 +398,61 @@ model UserSignature {
   @@map("user_signatures")
 }
 
+// Authenticator (TOTP) enrolment — one per user, the second factor a signer
+// proves possession of before their saved signature may be attached to a
+// phase sign-off (2026-08-21, replacing the emailed one-time code: no
+// Mail.Send grant, no licensed mailbox, and the proof is generated on a
+// device the signer holds rather than in a mailbox others can reach).
+model UserTotp {
+  id String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+  // AES-256-GCM sealed base32 shared secret — see secret-box.ts for what that
+  // does and does not protect against.
+  secretEnc String
+  // Null until the user proves possession by entering a first correct code.
+  // An un-activated row is an abandoned enrolment, never a usable factor —
+  // so a half-finished enrolment can neither authorise anything nor block a
+  // fresh attempt.
+  activatedAt DateTime?
+  // Replay guard: a code stays valid for its whole 30s step, and the ±1
+  // window widens that to ~90s, so the same code must never be accepted
+  // twice. Holds the last step consumed; anything at or below it is refused.
+  lastUsedStep Int?
+  // Brute-force guard. 6 digits across a 3-step window is ~3-in-a-million per
+  // guess, which is only safe while guesses are bounded.
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("user_totp")
+}
+
+// One successful step-up verification, spent on exactly one sign-off.
+//
+// The proof handed to the browser is a short-lived JWT, which is stateless
+// and therefore replayable on its own; this row is the ledger that makes it
+// single-use, stamped inside the same row-locked transaction that writes the
+// signature. Its own table rather than OneTimeCode: that model is an emailed
+// code (codeHash / expiresAt / attempts), and none of those fields mean
+// anything for a code generated on the user's phone.
+model StepUpProof {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  // Binds the proof to one exact act, e.g. `sign_off:MBC-2026-001:2:Reviewed by`.
+  purpose String
+  // 'totp' today. Kept as a discriminator so the record still says which
+  // factor was actually used if a second channel is ever added.
+  channel          String   @default("totp")
+  verifiedAt       DateTime @default(now())
+  usedForSignOffId String?
+
+  @@index([userId, purpose])
+  @@map("step_up_proofs")
+}
+
 // Short-lived, single-use email verification code, issued only to gate
 // attaching a saved signature to a specific phase sign-off act (D1). `purpose`
 // binds a code to the exact "sign_off:<projectId>:<phase>:<role>" act, not
@@ -406,6 +463,10 @@ model UserSignature {
 // OneTimeCodeService, not a schema change). Unlike idempotency_keys, this
 // table has REAL expiresAt/consumedAt: a leaked or replayed code must not be
 // reusable.
+// RETIRED 2026-08-21 by the switch to an authenticator app (UserTotp /
+// StepUpProof above). Kept — table and all — only until TOTP is confirmed
+// working in the field; nothing references it any more, and it should be
+// dropped together with MailerService and OneTimeCodeService.
 model OneTimeCode {
   id               String    @id @default(cuid())
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)

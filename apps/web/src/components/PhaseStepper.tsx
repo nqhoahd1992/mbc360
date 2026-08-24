@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import type { ProjectData } from '@mbc360/shared/types';
 import { GATES, PHASES } from '@mbc360/shared/config/gates';
 import { gateState, type GateState } from '@mbc360/shared/utils/gateProgress';
+import { TEXT } from '../theme/tokens';
 
 const STATE_STYLE: Record<
   GateState,
@@ -46,8 +47,8 @@ const STATE_STYLE: Record<
   locked: {
     bg: '#fafafa',
     border: '#f0f0f0',
-    color: '#bfbfbf',
-    icon: <LockOutlined style={{ color: '#bfbfbf' }} />,
+    color: TEXT.disabled,
+    icon: <LockOutlined style={{ color: TEXT.disabled }} />,
     label: 'Locked',
   },
 };
@@ -75,8 +76,8 @@ export default function PhaseStepper({ project }: { project: ProjectData }) {
               }}
             >
               <span style={{ fontWeight: 600, color: phase.color }}>{phase.title}</span>
-              <span style={{ color: '#999', fontSize: 12 }}>· {phase.subtitle}</span>
-              <span style={{ marginLeft: 'auto', color: '#888', fontSize: 12 }}>
+              <span style={{ color: TEXT.secondary, fontSize: 12 }}>· {phase.subtitle}</span>
+              <span style={{ marginLeft: 'auto', color: TEXT.secondary, fontSize: 12 }}>
                 {passed}/{phaseGates.length} gates passed
               </span>
             </div>
@@ -114,7 +115,7 @@ export default function PhaseStepper({ project }: { project: ProjectData }) {
                           <div
                             style={{
                               fontWeight: 600,
-                              color: state === 'locked' ? '#bfbfbf' : '#262626',
+                              color: state === 'locked' ? TEXT.disabled : TEXT.primary,
                             }}
                           >
                             Gate {meta.number}

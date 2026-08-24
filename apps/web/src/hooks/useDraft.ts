@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { setSectionDirty } from './unsavedRegistry';
 
 // Local "draft" copy of a table/section's data that the user edits freely —
 // typing or picking a value only updates local React state, never the global
@@ -30,6 +31,17 @@ export function useDraft<T>(committed: T) {
     setDraft((prev) => (typeof updater === 'function' ? (updater as (prev: T) => T)(prev) : updater));
     setDirty(true);
   };
+
+  // Publish this section's dirty state so UnsavedChangesGuard can warn before
+  // a navigation or reload throws the edits away. Keyed by the component's own
+  // useId, so several tables on one page are counted separately, and cleared
+  // on unmount — otherwise a section left dirty and then unmounted would warn
+  // about edits that no longer exist anywhere.
+  const id = useId();
+  useEffect(() => {
+    setSectionDirty(id, dirty);
+    return () => setSectionDirty(id, false);
+  }, [id, dirty]);
 
   const markSaved = () => setDirty(false);
   const discard = () => {

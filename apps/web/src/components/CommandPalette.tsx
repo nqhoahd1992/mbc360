@@ -6,6 +6,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { PHASES } from '@mbc360/shared/config/gates';
 import { getNavGroups, navItemHref } from '@mbc360/shared/config/registers';
+import { globalNavFor } from '../config/globalNav';
+import { useSession } from '../auth/useSession';
+import { TEXT } from '../theme/tokens';
 
 interface Command {
   id: string;
@@ -39,6 +42,7 @@ export default function CommandPalette({
   const navigate = useNavigate();
   const location = useLocation();
   const projects = useAppStore((s) => s.projects);
+  const { isAdmin } = useSession();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<InputRef>(null);
@@ -71,11 +75,17 @@ export default function CommandPalette({
   }, [open]);
 
   const commands = useMemo<Command[]>(() => {
-    const list: Command[] = [
-      { id: 'dashboard', title: 'Dashboard', group: 'Pages', path: '/' },
-      { id: 'all-projects', title: 'All Projects', group: 'Pages', path: '/projects' },
-      { id: 'change-control', title: 'Change Control', group: 'Pages', path: '/change-control' },
-    ];
+    // Every non-project destination, from the one list the sidebar also reads
+    // (config/globalNav.tsx). This used to be three hardcoded entries, which is
+    // how Integrations, My Account and Users & Roles came to be unreachable
+    // here long after they existed in the menu.
+    const list: Command[] = globalNavFor(isAdmin).map((entry) => ({
+      id: `global-${entry.path}`,
+      title: entry.title,
+      group: 'Pages',
+      path: entry.path,
+      keywords: entry.keywords,
+    }));
 
     // Jump straight to any project's overview.
     for (const p of projects) {
@@ -93,6 +103,13 @@ export default function CommandPalette({
       const id = activeProject.identity.id;
       const ws = `${id} · Workspace`;
       list.push({ id: `ws-overview-${id}`, title: 'Overview', group: ws, path: `/projects/${id}` });
+      list.push({
+        id: `ws-my-sheets-${id}`,
+        title: 'My Sheets',
+        group: ws,
+        path: `/projects/${id}/my-sheets`,
+        keywords: 'mine responsibility review owner co-sign assigned to me',
+      });
       for (const ph of PHASES) {
         const label = ph.subtitle.replace(/Gates [\d-]+ /, '').replace(/[()]/g, '');
         list.push({
@@ -127,8 +144,17 @@ export default function CommandPalette({
       }
     }
 
-    return list;
-  }, [projects, activeProject]);
+    // One destination, one row: Change Control is both a global page and a
+    // workbook sheet under Sales & Marketing, and a register can sit in more
+    // than one responsibility group — searching "change" should not return the
+    // same page three times.
+    const seen = new Set<string>();
+    return list.filter((cmd) => {
+      if (seen.has(cmd.path)) return false;
+      seen.add(cmd.path);
+      return true;
+    });
+  }, [projects, activeProject, isAdmin]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -187,7 +213,7 @@ export default function CommandPalette({
           size="large"
           variant="borderless"
           prefix={<SearchOutlined style={{ color: '#999' }} />}
-          placeholder="Jump to a page, project or register…"
+          placeholder="Search pages, projects, workbook sheets…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onKeyDown}
@@ -195,7 +221,7 @@ export default function CommandPalette({
       </div>
       <div style={{ maxHeight: 420, overflowY: 'auto', padding: 8 }}>
         {results.length === 0 && (
-          <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>No matches</div>
+          <div style={{ padding: 24, textAlign: 'center', color: TEXT.secondary }}>No matches</div>
         )}
         {results.map((cmd, i) => {
           const active = i === activeIndex;

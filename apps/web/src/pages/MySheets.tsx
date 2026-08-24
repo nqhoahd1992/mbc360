@@ -18,6 +18,7 @@ import {
 import { gateRefGateIds, isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
+import { TABLE_STICKY } from '../theme/tokens';
 
 // The source workbook encoded "who is responsible" as a tab-name PREFIX
 // (Tuan-, George-, ChiChu-, …) — that is how a person found their own tabs.
@@ -191,6 +192,7 @@ export default function MySheets() {
               rowKey="key"
               dataSource={rows}
               pagination={false}
+              sticky={TABLE_STICKY}
               scroll={{ x: 900 }}
               columns={[
                 {

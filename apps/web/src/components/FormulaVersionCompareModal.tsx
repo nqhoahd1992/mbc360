@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Modal, Select, Space, Switch, Table, Tag, Typography } from 'antd';
 import type { BomLine } from '@mbc360/shared/types';
 import { diffFormulaBom, type FormulaBomDiffRow, type FormulaBomDiffStatus } from '@mbc360/shared/utils/formulaDiff';
+import { TEXT } from '../theme/tokens';
 
 export interface FormulaVersionOption {
   version: string;
@@ -30,14 +31,14 @@ function fieldCell(row: FormulaBomDiffRow, field: keyof BomLine) {
   const before = row.before?.[field];
   const after = row.after?.[field];
   if (row.status === 'removed') {
-    return <span style={{ color: '#999', textDecoration: 'line-through' }}>{fmt(before)}</span>;
+    return <span style={{ color: TEXT.secondary, textDecoration: 'line-through' }}>{fmt(before)}</span>;
   }
   if (row.status === 'added' || row.status === 'unchanged' || before === after) {
     return <span>{fmt(after ?? before)}</span>;
   }
   return (
     <span>
-      <span style={{ color: '#999', textDecoration: 'line-through' }}>{fmt(before)}</span>{' → '}
+      <span style={{ color: TEXT.secondary, textDecoration: 'line-through' }}>{fmt(before)}</span>{' → '}
       <b>{fmt(after)}</b>
     </span>
   );

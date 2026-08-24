@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Card, Checkbox, Collapse, Empty, Input, Segmented, Select, Table, Tag, Tooltip, Typography } from 'antd';
 import {
   CheckCircleFilled,
@@ -36,6 +36,7 @@ import {
 } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 // One-page map of the whole workbook against the two gate rules that govern
 // it (2026-07-25, user-requested):
@@ -284,12 +285,39 @@ export default function GateRulesMap() {
   const { projectId } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const { user } = useSession();
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<SheetFilter>('All sheets');
-  const [roleFilter, setRoleFilter] = useState<string | undefined>();
-  const [gateFilter, setGateFilter] = useState<string | undefined>();
-  const [onlyMine, setOnlyMine] = useState(false);
-  const [view, setView] = useState<'Sheet map' | 'Gate requirements'>('Sheet map');
+  // The six facets live in the URL, not in component state: this page is the
+  // one place people go to answer "which sheets block Gate 7" or "what is
+  // mine", and those answers get pasted to a colleague. In local state the
+  // link carried none of it, a reload dropped the filters, and Back after
+  // opening a sheet came back to an unfiltered page.
+  const [params, setParams] = useSearchParams();
+  const search = params.get('q') ?? '';
+  const filter = (params.get('show') as SheetFilter | null) ?? 'All sheets';
+  const roleFilter = params.get('role') ?? undefined;
+  const gateFilter = params.get('gate') ?? undefined;
+  const onlyMine = params.get('mine') === '1';
+  const view = params.get('view') === 'gates' ? 'Gate requirements' : 'Sheet map';
+
+  // One writer for all six, so a filter change never drops a sibling. Empty
+  // and default values are deleted rather than written, keeping a shared link
+  // as short as the choices it actually carries.
+  const setParam = (key: string, value?: string) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
+  const setSearch = (v: string) => setParam('q', v);
+  const setFilter = (v: SheetFilter) => setParam('show', v === 'All sheets' ? undefined : v);
+  const setRoleFilter = (v?: string) => setParam('role', v);
+  const setGateFilter = (v?: string) => setParam('gate', v);
+  const setOnlyMine = (v: boolean) => setParam('mine', v ? '1' : undefined);
+  const setView = (v: 'Sheet map' | 'Gate requirements') =>
+    setParam('view', v === 'Gate requirements' ? 'gates' : undefined);
 
   const sheets = useMemo(buildSheetIndex, []);
   // Which review areas the signed-in person holds ON THIS PROJECT — the
@@ -402,7 +430,7 @@ export default function GateRulesMap() {
           {PHASES.map((phase) => (
             <div key={phase.phase}>
               <div style={{ fontSize: 12, fontWeight: 600, color: phase.color, marginBottom: 6 }}>
-                {phase.title} <span style={{ fontWeight: 400, color: '#999' }}>· {phase.department}</span>
+                {phase.title} <span style={{ fontWeight: 400, color: TEXT.secondary }}>· {phase.department}</span>
               </div>
               <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
                 {gateRows
@@ -456,7 +484,7 @@ export default function GateRulesMap() {
                               </div>
                             </Tooltip>
                           )}
-                          <div style={{ color: frozen > 0 ? '#d48806' : '#bfbfbf' }}>
+                          <div style={{ color: frozen > 0 ? '#d48806' : TEXT.disabled }}>
                             <LockFilled style={{ marginRight: 4 }} />
                             {frozen} sheet{frozen === 1 ? '' : 's'} freeze here
                           </div>
@@ -540,6 +568,7 @@ export default function GateRulesMap() {
             rowKey="key"
             dataSource={filtered}
             pagination={false}
+            sticky={TABLE_STICKY}
             scroll={{ x: 1100 }}
             expandable={{
               expandedRowRender: (entry) => (

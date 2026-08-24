@@ -64,7 +64,7 @@ export default function ProductFeedback() {
         title="Scoring guide: 1 = Poor / unacceptable, 3 = Acceptable, 5 = Excellent. The oily/slippery question is a SAFETY flag (slip risk)."
       />
 
-      <Row gutter={16}>
+      <Row gutter={[16, 16]}>
         <Col xs={12} md={5}><Card size="small"><Statistic title="Total testers" value={entries.length} /></Card></Col>
         <Col xs={12} md={5}><Card size="small"><Statistic title="Avg texture" value={avg('texture').toFixed(1)} suffix="/5" /></Card></Col>
         <Col xs={12} md={5}><Card size="small"><Statistic title="Avg fragrance" value={avg('fragrance').toFixed(1)} suffix="/5" /></Card></Col>
@@ -89,7 +89,7 @@ export default function ProductFeedback() {
             <Tag color={recommendRate >= 70 ? 'green' : 'orange'}>
               {recommendRate.toFixed(0)}% would recommend
             </Tag>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
               Add feedback
             </Button>
           </>

@@ -17,6 +17,17 @@ interface GraphTokenResponse {
   error_description?: string;
 }
 
+// RETIRED 2026-08-21: the signature step-up moved to an authenticator app
+// (apps/api/src/verification/totp.service.ts), so NOTHING calls sendCode any
+// more. Kept, with MailerModule still registered in app.module.ts and the
+// OneTimeCode table still in the schema, only until the authenticator flow is
+// confirmed working in the field — then all three go together. Two reasons
+// the switch was worth it: sending needed a Mail.Send APPLICATION grant that
+// was never consented on the Entra app (verified: the app-only token comes
+// back with no roles at all) plus a licensed mailbox, and a code sitting in a
+// mailbox is reachable by anyone with access to that mailbox, which for a
+// signature act is the wrong property.
+//
 // Sends the signature step-up verification code via Microsoft Graph's
 // application-permission sendMail (Mail.Send) — the OAuth2 client-credentials
 // grant against the SAME Entra ID app registration used for SSO, sending

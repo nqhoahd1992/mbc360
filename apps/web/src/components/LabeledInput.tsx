@@ -12,7 +12,9 @@ interface LabeledInputProps extends Omit<InputProps, 'prefix'> {
 // without repeating the Space.Compact wrapper at every call site.
 export default function LabeledInput({
   label,
-  labelWidth = 110,
+  // 110 clipped "Refresh token" to "Refresh toker" — a disabled Input spends
+  // ~22px of its width on padding, so the usable text box was ~88px.
+  labelWidth = 132,
   password,
   style,
   ...inputProps
@@ -20,8 +22,18 @@ export default function LabeledInput({
   const Field = password ? Input.Password : Input;
   return (
     <Space.Compact style={style} block>
-      <Input disabled value={label} style={{ width: labelWidth, flexShrink: 0 }} />
-      <Field {...inputProps} />
+      {/* The label box is a disabled Input purely for the look, so it is
+          hidden from assistive tech and skipped by Tab; the real field carries
+          the name instead. Before this, a screen reader announced "disabled
+          textbox, Refresh token" and then an unnamed textbox. */}
+      <Input
+        disabled
+        value={label}
+        aria-hidden
+        tabIndex={-1}
+        style={{ width: labelWidth, flexShrink: 0 }}
+      />
+      <Field aria-label={label} {...inputProps} />
     </Space.Compact>
   );
 }

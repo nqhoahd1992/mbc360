@@ -1,6 +1,6 @@
-// My Account (2026-08-21): self-service signature storage. Same `fetch`
-// wrapper shape as projectsApi.ts, but there is no project/version envelope
-// here — this is per-user, not per-project, data.
+// My Account (2026-08-21): self-service signature storage and authenticator
+// (TOTP) enrolment. Same `fetch` wrapper shape as projectsApi.ts, but there is
+// no project/version envelope here — this is per-user, not per-project, data.
 
 export interface SignatureResponse {
   hasSignature: boolean;
@@ -43,3 +43,32 @@ export const saveMySignature = (imageData: string): Promise<SignatureResponse> =
 
 export const deleteMySignature = (): Promise<SignatureResponse> =>
   request('/signature', { method: 'DELETE' });
+
+export interface TotpStatus {
+  enrolled: boolean;
+  activatedAt?: string;
+  // Set up but never confirmed with a first code — authorises nothing.
+  pending: boolean;
+  lockedUntil?: string;
+}
+
+export interface TotpEnrollment {
+  // Rendered as the QR code the authenticator app scans.
+  otpauthUri: string;
+  // The same secret in text, for entering by hand when scanning isn't possible.
+  secret: string;
+}
+
+export const getMyTotpStatus = (): Promise<TotpStatus> => request('/totp');
+
+export const beginTotpEnrollment = (): Promise<TotpEnrollment> =>
+  request('/totp/enroll', { method: 'POST' });
+
+// Entering a first correct code is what turns the enrolment into a usable
+// factor; removing one likewise needs a current code, so a hijacked session
+// cannot strip the control that protects a signature.
+export const activateTotp = (code: string): Promise<TotpStatus> =>
+  request('/totp/activate', { method: 'POST', body: JSON.stringify({ code }) });
+
+export const removeTotp = (code: string): Promise<TotpStatus> =>
+  request('/totp/remove', { method: 'POST', body: JSON.stringify({ code }) });

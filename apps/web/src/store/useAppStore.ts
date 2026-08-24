@@ -128,9 +128,11 @@ interface AppState {
     id: string,
     phase: number,
     role: SignOff['role'],
-    // attachSignature/stepUpToken: the optional email step-up flow
+    // stepUpToken: required — a sign-off always attaches the signer's saved
+    // signature, verified by a fresh authenticator code (project owner,
+    // 2026-08-22)
     // (2026-08-21) for attaching a saved signature — see SignOffBlock.tsx.
-    input: { decision?: string; comments?: string; attachSignature?: boolean; stepUpToken?: string },
+    input: { decision?: string; comments?: string; stepUpToken: string },
   ) => void;
   withdrawSignOff: (id: string, phase: number, role: SignOff['role'], reason: string) => void;
   // F13: the responsible owner accepts a phase's pre-work once it has opened.

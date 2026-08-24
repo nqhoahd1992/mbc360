@@ -14,12 +14,16 @@ export default function SaveBar({
   // explanation.
   disabled,
   disabledReason,
+  // Set while an async save is in flight: the button shows a spinner and
+  // stops accepting a second click.
+  loading,
 }: {
   dirty: boolean;
   onSave: () => void;
   onDiscard: () => void;
   disabled?: boolean;
   disabledReason?: string;
+  loading?: boolean;
 }) {
   if (!dirty) return null;
   return (
@@ -33,12 +37,19 @@ export default function SaveBar({
           (the standard antd workaround; see Tooltip's own FAQ). */}
       <Tooltip title={disabled ? disabledReason : undefined}>
         <span>
-          <Button size="small" type="primary" icon={<SaveOutlined />} onClick={onSave} disabled={disabled}>
+          <Button
+            size="small"
+            type="primary"
+            icon={<SaveOutlined />}
+            onClick={onSave}
+            disabled={disabled}
+            loading={loading}
+          >
             Save
           </Button>
         </span>
       </Tooltip>
-      <Button size="small" icon={<UndoOutlined />} onClick={onDiscard}>
+      <Button size="small" icon={<UndoOutlined />} onClick={onDiscard} disabled={loading}>
         Discard
       </Button>
     </Space>

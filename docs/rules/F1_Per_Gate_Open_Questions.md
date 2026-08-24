@@ -1261,6 +1261,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | R5-Q1 | Chữ ký phase: Lead chỉ định người ký · chỉ người đó ký được · ai được gỡ chữ ký | 🔴 |
 | R5-Q2 | D1 có áp cho khối chữ ký **phase** không, hay chỉ cho chữ ký **gate** | 🔴 |
 | R5-Q3 | Ba cái tên trong dòng "Approval route" của Guide ứng với ba vai trò nào | 🔴 |
+| R5-Q4 | Chữ ký vẽ tay + xác thực hai bước khi ký phase — có cần, và bắt buộc tới mức nào | 🔴 |
 
 #### R5-Q1 · Chữ ký phase — ai chỉ định người ký, và ai được gỡ 🔴
 
@@ -1302,3 +1303,21 @@ Hai hệ quả kèm theo, cũng chưa hỏi:
 **Câu hỏi:** trong câu Approval route, ba người được nêu ứng với ba vai trò nào — Study Author / Department Study Reviewer / Independent Reviewer (đang hiểu vậy), hay là Project Manager / R&I / Quality & GMP theo đúng vùng phụ trách của họ trong workbook?
 
 **Nếu trả lời khác:** dòng `Approval route` trong `SYSTEM_GUIDE` của `apps/web/src/pages/RegisterHubPage.tsx`.
+
+#### R5-Q4 · Chữ ký vẽ tay + xác thực hai bước khi ký phase 🔴
+
+**Đã làm (20–21/08):** ngoài 6 trường D1 yêu cầu, người ký có thể **đính thêm ảnh chữ ký vẽ tay** của mình vào dòng sign-off. Chữ ký được vẽ một lần ở My Account; mỗi lần đính vào một lần ký thì phải nhập **mã 6 số từ app authenticator** (TOTP) — mã được ràng buộc vào đúng một hành vi `(dự án, phase, vai trò)` và chỉ dùng được một lần. Ảnh được **chụp lại tại thời điểm ký**, không phải tham chiếu sống, nên sửa chữ ký sau này không làm thay đổi thứ một chữ ký cũ đã hiện. Gỡ chữ ký thì xoá cả ảnh.
+
+Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển từ mã gửi email sang app authenticator — không cần quyền `Mail.Send` cũng không cần mailbox có license, và yếu tố xác thực nằm trên thiết bị người ký giữ thay vì trong một hộp thư người khác cũng vào được. Cái **chưa hỏi ai** là ba điểm dưới đây.
+
+**(a) D1 không hề nhắc tới ảnh chữ ký.** Danh sách 6 trường của D1 là: người đã xác thực · role · thời điểm · quyết định · phiên bản bản ghi · comment. Ảnh vẽ tay là **thứ chúng tôi thêm**, với lập luận: bản giấy/PDF xuất ra cho hồ sơ đọc như một chữ ký thật, và nó không thay thế bất cứ trường nào trong 6 trường kia. Nhưng nếu đội duyệt coi ảnh vẽ tay là **hình thức**, thậm chí gây nhầm là bằng chứng mạnh hơn thực tế, thì nên bỏ.
+
+**(b) ~~Đính chữ ký là TÙY CHỌN~~ — ĐÃ CHỐT 22/08 bởi chủ dự án: BẮT BUỘC.** Bản đầu (21/08) để đính ảnh là tùy chọn qua một checkbox, nên ký "trơn" không hỏi mã và hai bước chỉ bảo vệ *cái ảnh*, không bảo vệ *hành vi ký*. Chủ dự án chỉ ra rằng đính chữ ký là việc bắt buộc để ký, nên đường ký "trơn" đã bị bỏ: **mọi** lần ký phase giờ đều đính chữ ký đã lưu và đều đòi mã authenticator mới. Ép ở **cả hai lớp** — UI chỉ còn một nút, và `signSignOff` ở API từ chối request không có proof (đã kiểm bằng curl: ký không token → 400, token bịa → 400, xin step-up khi chưa lưu chữ ký → 400).
+
+**Hệ quả có chủ ý:** một người được chỉ định ký mà **chưa lưu chữ ký hoặc chưa đăng ký authenticator thì không ký được gì** — nút hiện lý do và link sang My Account, và phase không đóng được cho tới khi người đó tự thiết lập.
+
+**(c) Mất điện thoại thì admin reset, không có backup code.** Người dùng tự gỡ authenticator phải nhập mã hiện hành (để session bị chiếm không gỡ được lớp bảo vệ). Mất thiết bị thì nhờ admin reset ở Users & Roles — admin không bao giờ thấy secret, người dùng tự đăng ký lại. Cố tình **không** làm backup code: một tờ mã in ra để trong ngăn bàn thì mở đúng cái cửa mà lớp này vừa khoá.
+
+**Câu hỏi còn lại:** (a) Chữ ký vẽ tay có cần trong hồ sơ không, hay 6 trường D1 là đủ? Nếu đội duyệt trả lời "không cần" thì mức bắt buộc ở (b) phải xem lại theo, vì lớp thứ hai hiện gắn với việc đính ảnh. (b) ~~tùy chọn hay bắt buộc~~ — chủ dự án đã chốt BẮT BUỘC; phần còn mở là ở cấp **gate** sau này có áp cùng mức không. (c) Hai lớp có cần cho cả `Prepared by` / `Reviewed by`, hay chỉ `Approved by`? (Hiện áp cho cả ba.)
+
+**Nếu trả lời khác:** khối `input.attachSignature` trong `signSignOff` và `verifySignOffStepUp` ở `apps/api/src/projects/projects.service.ts`; `apps/api/src/verification/totp.service.ts` (bỏ hẳn yếu tố thứ hai); `TotpEnrollCard.tsx` + thẻ Signature trong `apps/web/src/pages/MyAccount.tsx` (bỏ chỗ đăng ký); `wantsSignature`/`SignatureStepUpModal` trong `apps/web/src/components/SignOffBlock.tsx`.

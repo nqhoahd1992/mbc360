@@ -1,19 +1,38 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Empty, Select, Space, Spin, Typography, message } from 'antd';
+import { useEffect, useId, useMemo, useState } from 'react';
+import { Alert, Button, Card, Checkbox, Empty, Modal, Select, Space, Spin, Typography, message } from 'antd';
 import { GATES, PHASES } from '@mbc360/shared/config/gates';
 import { ADMIN_ROLE, SSO_ROLES } from '../utils/roles';
 import type { PermissionDef, PermissionGrid } from '../utils/permissions';
 import { useAppStore } from '../store/useAppStore';
+import { setSectionDirty } from '../hooks/unsavedRegistry';
+import { TEXT } from '../theme/tokens';
+import SaveBar from './SaveBar';
 
 // Role x capability editor (F6), modeled loosely on the WordPress "User Role
 // Editor" grid but scoped to this app's actual capabilities: per-gate decide,
-// per-phase approve, and market-track approve. Reads/writes the DB permission
-// grid via /api/rbac/*; on save it also reloads the store's grid so the
-// header "View as" simulation reflects the change live.
+// per-phase approve, market-track approve and project archive. Reads/writes the
+// DB permission grid via /api/rbac/*; on save it also reloads the store's grid
+// so the header "View as" simulation reflects the change live.
+//
+// Layout rework (2026-08-22) — what was wrong, since it is all still visible in
+// the diff: (1) the page opened with ~7 lines of prose that said the same
+// sentence twice ("which gate decisions ... which phase Approved by rows ...")
+// before the first control; (2) the ROLE being edited — the subject of the
+// whole screen — was a small dropdown in the card's top-right corner while the
+// title read the generic "Role Editor"; (3) the columns were
+// `minmax(320px, 1fr)`, and "Gate 11 — Production, Launch & Sales Support
+// Sign-Off" does not fit 320px, so that one cell wrapped and knocked the whole
+// row out of alignment; (4) each group's select-all was a tri-state checkbox
+// sitting in front of its bold title, so a click meant to read as a heading
+// toggled twelve gates at once; (5) the two single-capability groups carried
+// that same apparatus plus a "(0/1)" counter for one checkbox; and (6) the only
+// sign of unsaved work was a disabled button, with no way to discard and no
+// warning when switching role threw the edits away.
 
 interface CapGroup {
   key: string;
   title: string;
+  hint?: string;
   caps: { id: string; label: string }[];
 }
 
@@ -37,8 +56,12 @@ function buildGroups(defs: PermissionDef[]): CapGroup[] {
     }
   }
   const groups: CapGroup[] = [];
-  if (gate.length) groups.push({ key: 'gate', title: 'Gate decisions', caps: gate });
-  if (phase.length) groups.push({ key: 'phase', title: 'Phase approvals', caps: phase });
+  if (gate.length) {
+    groups.push({ key: 'gate', title: 'Gate decisions', hint: 'Record the decision that passes a gate', caps: gate });
+  }
+  if (phase.length) {
+    groups.push({ key: 'phase', title: 'Phase approvals', hint: 'Sign the "Approved by" row that closes a phase', caps: phase });
+  }
   if (market.length) groups.push({ key: 'market', title: 'Market tracking', caps: market });
   // Project-level authority (archive). Deleting a project is deliberately NOT
   // here: it is an isAdmin() check in the API, not a grantable capability, so it
@@ -48,6 +71,12 @@ function buildGroups(defs: PermissionDef[]): CapGroup[] {
 }
 
 const sortedKey = (ids: string[]) => [...ids].sort().join('\n');
+
+// A module-level constant, not `?? []`: the fallback is a dependency of two
+// memos below, and a fresh array every render makes them recompute every
+// render — the same allocate-in-a-selector trap CLAUDE.md records for zustand
+// selectors and useDraft's `committed`.
+const NO_GRANTS: string[] = [];
 
 export default function RoleCapabilityEditor() {
   const loadPermissionGrid = useAppStore((s) => s.loadPermissionGrid);
@@ -84,17 +113,56 @@ export default function RoleCapabilityEditor() {
   }, [grid, selectedRole, isAdminRole, allCapIds]);
 
   const draftSet = useMemo(() => new Set(draft), [draft]);
-  const baseline = grid?.grants[selectedRole] ?? [];
+  const baseline = useMemo(
+    () => grid?.grants[selectedRole] ?? NO_GRANTS,
+    [grid, selectedRole],
+  );
   const dirty = !isAdminRole && sortedKey(draft) !== sortedKey(baseline);
+
+  // Publish to the app-wide unsaved registry, so leaving the page (or closing
+  // the tab) warns exactly like leaving a half-edited table does.
+  const sectionId = useId();
+  useEffect(() => {
+    setSectionDirty(sectionId, dirty);
+    return () => setSectionDirty(sectionId, false);
+  }, [sectionId, dirty]);
+
+  // How many capabilities this edit adds and removes — "Unsaved changes" alone
+  // does not say whether you are about to grant or revoke authority.
+  const delta = useMemo(() => {
+    const before = new Set(baseline);
+    return {
+      added: draft.filter((id) => !before.has(id)).length,
+      removed: baseline.filter((id) => !draftSet.has(id)).length,
+    };
+  }, [baseline, draft, draftSet]);
 
   const toggle = (capId: string, checked: boolean) => {
     setDraft((prev) => (checked ? [...prev, capId] : prev.filter((id) => id !== capId)));
   };
-  const toggleGroup = (group: CapGroup, checked: boolean) => {
+  const setGroupAll = (group: CapGroup, checked: boolean) => {
     const ids = group.caps.map((c) => c.id);
     setDraft((prev) =>
       checked ? Array.from(new Set([...prev, ...ids])) : prev.filter((id) => !ids.includes(id)),
     );
+  };
+
+  // Switching role rebuilds the draft from that role's grants, so unsaved edits
+  // to the current one would vanish without a word.
+  const changeRole = (next: string) => {
+    if (!dirty) {
+      setSelectedRole(next);
+      return;
+    }
+    const current = SSO_ROLES.find((r) => r.key === selectedRole)?.label ?? selectedRole;
+    Modal.confirm({
+      title: `Discard unsaved changes to ${current}?`,
+      content: 'Switching role reloads its saved capabilities. Your edits here have not been saved.',
+      okText: 'Discard and switch',
+      okButtonProps: { danger: true },
+      cancelText: 'Keep editing',
+      onOk: () => setSelectedRole(next),
+    });
   };
 
   const save = async () => {
@@ -113,39 +181,53 @@ export default function RoleCapabilityEditor() {
       // Reflect locally, then refresh the app-wide grid so "View as" updates.
       setGrid((prev) => (prev ? { ...prev, grants: { ...prev.grants, [selectedRole]: draft } } : prev));
       await loadPermissionGrid();
-      message.success('Capabilities saved');
+      message.success('Capabilities saved — "View as" now uses them');
     } finally {
       setSaving(false);
     }
   };
 
+  const roleLabel = SSO_ROLES.find((r) => r.key === selectedRole)?.label ?? selectedRole;
+  // Showing each role's grant count in the picker answers "which roles can
+  // actually do anything?" without clicking through all seventeen.
+  const roleOptions = SSO_ROLES.map((r) => {
+    const count = r.key === ADMIN_ROLE ? allCapIds.length : (grid?.grants[r.key]?.length ?? 0);
+    return {
+      value: r.key,
+      label: (
+        <span style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+          <span>{r.label}</span>
+          <span style={{ color: TEXT.secondary, fontSize: 12 }}>
+            {r.key === ADMIN_ROLE ? 'all' : count === 0 ? 'none' : count}
+          </span>
+        </span>
+      ),
+    };
+  });
+
   return (
     <Card
       size="small"
-      title="Role Editor"
+      // The role is the subject of this screen, so it names the card instead of
+      // hiding in a corner control.
+      title={<span>Capabilities — {roleLabel}</span>}
       extra={
-        <Space>
+        <Space size={8}>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Select role and change its capabilities
+            Role
           </Typography.Text>
           <Select
             size="small"
-            style={{ width: 260 }}
+            style={{ width: 300 }}
             value={selectedRole}
-            onChange={setSelectedRole}
+            onChange={changeRole}
             popupMatchSelectWidth={false}
-            options={SSO_ROLES.map((r) => ({ value: r.key, label: r.label }))}
+            labelRender={() => <span>{roleLabel}</span>}
+            options={roleOptions}
           />
         </Space>
       }
     >
-      <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: -4 }}>
-        Capabilities are this project's own permissions: which gate decisions a role may record, which
-        phase "Approved by" rows it may sign, and market-track approval. Saving updates the real
-        permission grid and the header "View as" simulation immediately. The initial grants are the
-        F6 keyword-match defaults — the confirmed role×gate/phase matrix will replace them here.
-      </Typography.Paragraph>
-
       {loading ? (
         <div style={{ textAlign: 'center', padding: 24 }}>
           <Spin />
@@ -154,42 +236,92 @@ export default function RoleCapabilityEditor() {
         <Empty description="No capabilities defined" />
       ) : (
         <>
-          {isAdminRole && (
+          {isAdminRole ? (
             <Alert
               type="info"
               showIcon
               style={{ marginBottom: 12 }}
-              message="System Administrator is unrestricted"
+              title="System Administrator is unrestricted"
               description="This role always has every capability and cannot be edited — that's what makes it the admin role."
             />
+          ) : (
+            <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginBottom: 12 }}>
+              Starting point is the F6 keyword-match default, not the confirmed role×gate/phase
+              matrix — that will replace these grants when the review team answers.
+            </Typography.Paragraph>
           )}
-          <div style={{ display: 'grid', gap: 16 }}>
+
+          <div style={{ display: 'grid', gap: 20 }}>
             {groups.map((group) => {
               const groupIds = group.caps.map((c) => c.id);
               const checkedCount = groupIds.filter((id) => draftSet.has(id)).length;
+              const single = groupIds.length === 1;
+              const headingId = `cap-group-${group.key}`;
               return (
-                <div key={group.key}>
-                  <div style={{ marginBottom: 6 }}>
-                    <Checkbox
-                      indeterminate={checkedCount > 0 && checkedCount < groupIds.length}
-                      checked={checkedCount === groupIds.length}
-                      disabled={isAdminRole}
-                      onChange={(e) => toggleGroup(group, e.target.checked)}
-                    >
-                      <b>
-                        {group.title}{' '}
-                        <Typography.Text type="secondary" style={{ fontWeight: 400, fontSize: 12 }}>
-                          ({checkedCount}/{groupIds.length})
-                        </Typography.Text>
-                      </b>
-                    </Checkbox>
+                <section key={group.key} role="group" aria-labelledby={headingId}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      gap: 12,
+                      borderBottom: '1px solid #f0f0f0',
+                      paddingBottom: 6,
+                      marginBottom: single ? 8 : 10,
+                    }}
+                  >
+                    <Typography.Text id={headingId} strong>
+                      {group.title}
+                    </Typography.Text>
+                    {group.hint && (
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        {group.hint}
+                      </Typography.Text>
+                    )}
+                    <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {/* A count for a group of one is noise; so is a
+                          select-all that governs a single checkbox. */}
+                      {!single && (
+                        <>
+                          <Typography.Text style={{ fontSize: 12, color: TEXT.secondary }}>
+                            {checkedCount} of {groupIds.length}
+                          </Typography.Text>
+                          {/* Explicit buttons rather than a tri-state checkbox
+                              in front of the title: granting or revoking twelve
+                              gates at once should read as an action, not as a
+                              click on a heading. */}
+                          <Button
+                            size="small"
+                            type="link"
+                            style={{ padding: 0 }}
+                            disabled={isAdminRole || checkedCount === groupIds.length}
+                            onClick={() => setGroupAll(group, true)}
+                          >
+                            Select all
+                          </Button>
+                          <Button
+                            size="small"
+                            type="link"
+                            style={{ padding: 0 }}
+                            disabled={isAdminRole || checkedCount === 0}
+                            onClick={() => setGroupAll(group, false)}
+                          >
+                            Clear
+                          </Button>
+                        </>
+                      )}
+                    </span>
                   </div>
                   <div
                     style={{
                       display: 'grid',
-                      gap: 4,
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                      paddingLeft: 24,
+                      // 400px fits the longest label ("Gate 11 — Production,
+                      // Launch & Sales Support Sign-Off") on one line, so rows
+                      // stay aligned instead of one cell wrapping and pushing
+                      // its neighbours out of rhythm.
+                      gridTemplateColumns: single ? '1fr' : 'repeat(auto-fill, minmax(400px, 1fr))',
+                      alignItems: 'start',
+                      columnGap: 24,
+                      rowGap: 6,
                     }}
                   >
                     {group.caps.map((cap) => (
@@ -198,21 +330,35 @@ export default function RoleCapabilityEditor() {
                         checked={draftSet.has(cap.id)}
                         disabled={isAdminRole}
                         onChange={(e) => toggle(cap.id, e.target.checked)}
+                        // 32px keeps a two-line label's row the same height as
+                        // its neighbours and gives the control a comfortable
+                        // hit area.
+                        style={{ minHeight: 32, alignItems: 'center', display: 'flex' }}
                       >
                         {cap.label}
                       </Checkbox>
                     ))}
                   </div>
-                </div>
+                </section>
               );
             })}
           </div>
 
-          <div style={{ marginTop: 16 }}>
-            <Button type="primary" onClick={() => void save()} loading={saving} disabled={!dirty}>
-              Save Changes
-            </Button>
-          </div>
+          {/* Same save affordance as every editable table in the app, instead of
+              a lone disabled button that never explained itself. */}
+          <SaveBar
+            dirty={dirty}
+            loading={saving}
+            onSave={() => void save()}
+            onDiscard={() => setDraft(baseline)}
+          />
+          {dirty && (
+            <Typography.Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+              {delta.added > 0 && `+${delta.added} granted`}
+              {delta.added > 0 && delta.removed > 0 && ' · '}
+              {delta.removed > 0 && `−${delta.removed} revoked`}
+            </Typography.Text>
+          )}
         </>
       )}
     </Card>

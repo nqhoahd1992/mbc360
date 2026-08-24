@@ -9,6 +9,7 @@ import { isMandatoryRequirementRow } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import { TABLE_STICKY } from '../theme/tokens';
 
 export default function RequirementTable({
   projectId,
@@ -35,7 +36,14 @@ export default function RequirementTable({
   // add `priority`, without forking this component.
   columns?: RequirementColumnKey[];
 }) {
-  const shows = (key: RequirementColumnKey) => !visibleColumns || visibleColumns.includes(key);
+  // 'category' is an ALTERNATIVE heading for the same data as 'requirement'
+  // (Phase 1's B6 rows are categories, and the project's own requirement goes
+  // in 'detail'). It is opt-in, so it must not appear in the default set —
+  // otherwise Phases 2-4 print the row label twice, in bold, in adjacent
+  // columns, which is what they were doing.
+  const OPT_IN_ONLY: RequirementColumnKey[] = ['category'];
+  const shows = (key: RequirementColumnKey) =>
+    visibleColumns ? visibleColumns.includes(key) : !OPT_IN_ONLY.includes(key);
   // Owner is config-set (from the workbook) on Phases 2-4 and read-only there;
   // on a section that declares its own columns it is the user's to fill in.
   const ownerEditable = !!visibleColumns;
@@ -68,21 +76,22 @@ export default function RequirementTable({
             render: (v, r) => {
               const required = isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';
               return (
-                <b>
+                <span style={{ fontWeight: 600 }}>
                   {v}
                   {required && (
                     <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
                       <span style={{ color: '#ff4d4f' }}> *</span>
                     </Tooltip>
                   )}
-                </b>
+                </span>
               );
             },
           },
           {
             // Same data as 'requirement' above, different heading: B6's 16 rows
             // ARE categories, so Phase 1 labels the column that way and puts the
-            // project's own requirement in 'detail' beside it.
+            // project's own requirement in 'detail' beside it. Opt-in only —
+            // see OPT_IN_ONLY above.
             key: 'category',
             title: 'Category',
             width: 210,
@@ -90,14 +99,14 @@ export default function RequirementTable({
             render: (v, r) => {
               const required = isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';
               return (
-                <b>
+                <span style={{ fontWeight: 600 }}>
                   {v}
                   {required && (
                     <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
                       <span style={{ color: '#ff4d4f' }}> *</span>
                     </Tooltip>
                   )}
-                </b>
+                </span>
               );
             },
           },
@@ -202,6 +211,7 @@ export default function RequirementTable({
         rowKey={(r) => r.requirement}
         dataSource={draft}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: 1100 }}
         onRow={(r) => {
           const required = isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';

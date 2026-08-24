@@ -44,8 +44,7 @@ import { AuditService } from '../audit/audit.service';
 import { PermissionsService } from '../rbac/permissions.service';
 import type { SessionUser } from '../auth/session-user';
 import { IdempotencyService } from './idempotency.service';
-import { OneTimeCodeService } from '../verification/one-time-code.service';
-import { MailerService } from '../mailer/mailer.service';
+import { TotpService } from '../verification/totp.service';
 import {
   PROJECT_INCLUDE,
   toChangeRecords,
@@ -168,8 +167,7 @@ export class ProjectsService {
     private readonly audit: AuditService,
     private readonly idempotency: IdempotencyService,
     private readonly permissions: PermissionsService,
-    private readonly oneTimeCode: OneTimeCodeService,
-    private readonly mailer: MailerService,
+    private readonly totp: TotpService,
     private readonly jwt: JwtService,
   ) {}
 
@@ -717,11 +715,24 @@ export class ProjectsService {
     );
   }
 
-  // Step 1 of the optional "attach my saved signature" flow: sends a
-  // one-time email code, bound to this exact project/phase/role act. Reuses
-  // the same nomination guard signSignOff has below — don't let someone
-  // request a code for a row they're not entitled to sign.
-  async requestSignOffCode(user: SessionUser, id: string, phase: number, role: SignOff['role']) {
+  // The optional "attach my saved signature" flow, in one step: a code from
+  // the signer's authenticator app is exchanged for a short-lived, single-use
+  // proof token (2026-08-21, replacing an emailed code — the factor now lives
+  // on a device the signer holds rather than in a mailbox other people can
+  // reach, and it needs no Mail.Send grant or licensed mailbox to work).
+  //
+  // The same nomination guards signSignOff applies are re-applied here, so a
+  // user cannot even spend a code against a row they are not entitled to
+  // sign. The token itself carries no privilege beyond "this StepUpProof row
+  // was created" — signSignOff re-checks it against the DB inside the signing
+  // transaction rather than trusting the JWT alone.
+  async verifySignOffStepUp(
+    user: SessionUser,
+    id: string,
+    phase: number,
+    role: SignOff['role'],
+    code: string,
+  ): Promise<{ stepUpToken: string }> {
     const closureId = await this.phaseClosureId(this.prisma, id, phase);
     const existing = await this.prisma.signOff.findFirst({ where: { phaseClosureId: closureId, role } });
     if (!existing) throw new NotFoundException(`Sign-off row "${role}" not found on phase ${phase}`);
@@ -735,26 +746,13 @@ export class ProjectsService {
     if (!signature) {
       throw new BadRequestException('Save a signature in My Account before attaching one to a sign-off');
     }
-    const code = await this.oneTimeCode.issue(user.id, this.signOffStepUpPurpose(id, phase, role));
-    await this.mailer.sendCode(user.email, code);
-    return { sent: true };
-  }
-
-  // Step 2: exchanges a correct code for a short-lived, single-use proof
-  // token. The token itself carries no privilege beyond "prove this OneTimeCode
-  // row was verified" — signSignOff below re-checks it against the DB inside
-  // the signing transaction rather than trusting the JWT alone.
-  async confirmSignOffCode(
-    user: SessionUser,
-    id: string,
-    phase: number,
-    role: SignOff['role'],
-    code: string,
-  ): Promise<{ stepUpToken: string }> {
+    await this.totp.verifyForStepUp(user.id, code);
     const purpose = this.signOffStepUpPurpose(id, phase, role);
-    const otc = await this.oneTimeCode.confirm(user.id, purpose, code);
+    const proof = await this.prisma.stepUpProof.create({
+      data: { userId: user.id, purpose, channel: 'totp' },
+    });
     const stepUpToken = await this.jwt.signAsync(
-      { sub: user.id, typ: 'sign_off_step_up', otc: otc.id, purpose },
+      { sub: user.id, typ: 'sign_off_step_up', proof: proof.id, purpose },
       { expiresIn: '5m' },
     );
     return { stepUpToken };
@@ -765,7 +763,7 @@ export class ProjectsService {
     id: string,
     phase: number,
     role: SignOff['role'],
-    input: { decision?: string; comments?: string; attachSignature?: boolean; stepUpToken?: string },
+    input: { decision?: string; comments?: string; stepUpToken?: string },
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
     return this.mutate(user, id, expectedVersion, 'sign_off.signed', async (tx, row, project) => {
@@ -819,34 +817,48 @@ export class ProjectsService {
         throw new BadRequestException(`A comment is required when the decision is "${decision}"`);
       }
 
-      // Optional: attach the signer's saved signature, gated by a one-time
-      // email code confirmed just before this call. Absent `attachSignature`,
-      // none of this runs — a plain sign-off is exactly as it was before this
-      // feature existed.
+      // MANDATORY since 2026-08-22 (project owner): every sign-off carries the
+      // signer's saved signature and a fresh authenticator code. It was opt-in
+      // for one day, which left a weaker no-image path in place and meant the
+      // second factor protected the IMAGE rather than the signing act. Enforced
+      // HERE and not only in the browser — the UI hiding a path is not the same
+      // as the API refusing it (BACKEND_PLAN §3 principle 7).
+      //
+      // D1 itself asks for six fields and mentions no drawn signature, so
+      // whether the review team wants one at all is still open:
+      // [ASSUMPTION: R5-Q4]
       let signatureImage: string | null = null;
-      if (input.attachSignature) {
+      {
         if (!input.stepUpToken) {
-          throw new BadRequestException('A verification code is required to attach your saved signature');
+          throw new BadRequestException(
+            'An authenticator code is required to sign — enter the code from your authenticator app',
+          );
         }
-        let payload: { sub?: string; typ?: string; otc?: string; purpose?: string };
+        let payload: { sub?: string; typ?: string; proof?: string; purpose?: string };
         try {
           payload = await this.jwt.verifyAsync(input.stepUpToken);
         } catch {
-          throw new BadRequestException('Verification expired or invalid — request a new code');
+          throw new BadRequestException('Verification expired or invalid — enter a new code');
         }
         const expectedPurpose = this.signOffStepUpPurpose(id, phase, role);
         if (payload.typ !== 'sign_off_step_up' || payload.sub !== user.id || payload.purpose !== expectedPurpose) {
           throw new BadRequestException('Verification does not match this sign-off');
         }
-        const otc = payload.otc ? await tx.oneTimeCode.findUnique({ where: { id: payload.otc } }) : null;
-        if (!otc?.consumedAt || otc.usedForSignOffId) {
-          throw new BadRequestException('Verification already used or invalid — request a new code');
+        const proof = payload.proof
+          ? await tx.stepUpProof.findUnique({ where: { id: payload.proof } })
+          : null;
+        if (!proof || proof.userId !== user.id || proof.usedForSignOffId) {
+          throw new BadRequestException('Verification already used or invalid — enter a new code');
         }
         const signature = await tx.userSignature.findUnique({ where: { userId: user.id } });
-        if (!signature) throw new BadRequestException('No saved signature on this account');
+        if (!signature) {
+          throw new BadRequestException(
+            'Save a signature in My Account before signing — every sign-off attaches it',
+          );
+        }
         // Stamped inside this same row-locked transaction — makes the proof
         // single-use even though the JWT itself is stateless.
-        await tx.oneTimeCode.update({ where: { id: otc.id }, data: { usedForSignOffId: existing.id } });
+        await tx.stepUpProof.update({ where: { id: proof.id }, data: { usedForSignOffId: existing.id } });
         signatureImage = signature.imageData;
       }
 

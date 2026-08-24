@@ -70,7 +70,7 @@ export default function PostMarketCapa() {
         size="small"
         title={`Post-Market / Complaint & CAPA Log — ${project.identity.productSku}`}
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
             New record
           </Button>
         }

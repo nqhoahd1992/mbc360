@@ -5,6 +5,7 @@ import { isMandatoryChecklistSection } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import { TABLE_STICKY, TEXT } from '../theme/tokens';
 
 const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v }));
 
@@ -68,13 +69,14 @@ export default function ChecklistSection({
           )}
         </span>
       }
-      extra={<span style={{ color: '#999' }}>{selectedCount} selected</span>}
+      extra={<span style={{ color: TEXT.secondary }}>{selectedCount} selected</span>}
     >
       <Table
         size="small"
         rowKey={(r) => r.label}
         dataSource={draft}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: 900 }}
         columns={[
           {

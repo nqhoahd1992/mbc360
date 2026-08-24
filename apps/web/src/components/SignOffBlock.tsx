@@ -3,10 +3,8 @@ import {
   Alert,
   Button,
   Card,
-  Checkbox,
   Input,
   Modal,
-  Popconfirm,
   Select,
   Space,
   Table,
@@ -26,9 +24,10 @@ import { canApprovePhase, EMPTY_GRANTS } from '../utils/permissions';
 import { useSession } from '../auth/useSession';
 import { usePickerUsers } from '../hooks/useUserOptions';
 import { useDraft } from '../hooks/useDraft';
-import { getMySignature } from '../api/accountApi';
+import { getMySignature, getMyTotpStatus } from '../api/accountApi';
 import SaveBar from './SaveBar';
 import SignatureStepUpModal from './SignatureStepUpModal';
+import { Link } from 'react-router-dom';
 
 // Phase sign-off, rebuilt 2026-08-20 around rule D1's requirement that a
 // sign-off record an AUTHENTICATED user, the role held, date/time, decision,
@@ -90,17 +89,25 @@ export default function SignOffBlock({
   const [withdrawing, setWithdrawing] = useState<SignOff['role'] | null>(null);
   const [reason, setReason] = useState('');
 
-  // Saved-signature + email step-up (2026-08-21). "Attach my saved
-  // signature" is opt-in per row and, when checked, replaces the plain
-  // Popconfirm-sign with a step-up modal — unchecked, signing behaves
-  // exactly as before this feature existed.
+  // Saved signature + authenticator step-up. MANDATORY as of 2026-08-22
+  // (project owner): a sign-off attaches the signer's saved signature and needs
+  // a fresh authenticator code every time, so the second factor now protects
+  // the signing ACT rather than just the image. It was opt-in via a checkbox
+  // for one day; that made a plain no-image signature possible, which is the
+  // weaker of the two paths and had no reason to exist beside the other.
+  // Consequence to keep in mind: a nominated signer with no saved signature or
+  // no authenticator cannot sign at all — the button says which one is missing
+  // and links to My Account.
   const [hasSignature, setHasSignature] = useState(false);
+  const [totpEnrolled, setTotpEnrolled] = useState(false);
   useEffect(() => {
     getMySignature()
       .then((r) => setHasSignature(r.hasSignature))
       .catch(() => setHasSignature(false));
+    getMyTotpStatus()
+      .then((r) => setTotpEnrolled(r.enrolled))
+      .catch(() => setTotpEnrolled(false));
   }, []);
-  const [attachSignature, setAttachSignature] = useState<Record<string, boolean>>({});
   const [stepUpRole, setStepUpRole] = useState<SignOff['role'] | null>(null);
 
   const rowDraft = (role: string): RowDraft => rows[role] ?? {};
@@ -157,6 +164,8 @@ export default function SignOffBlock({
     if (row.role === 'Approved by' && !canApprove) {
       return `Approving Phase ${phase} needs the phase:${phase}|approve capability (${phaseDept})`;
     }
+    if (!hasSignature) return 'Save a signature in My Account first — every sign-off attaches it';
+    if (!totpEnrolled) return 'Set up an authenticator app in My Account first';
     const d = rowDraft(row.role);
     if (!d.decision) return 'Choose a decision first';
     if (d.decision !== 'Proceed' && !d.comments?.trim()) {
@@ -165,12 +174,14 @@ export default function SignOffBlock({
     return null;
   };
 
-  const sign = (row: SignOff, stepUpToken?: string) => {
+  // Always signed WITH the signature and a verified step-up — there is no
+  // second, weaker path any more.
+  const sign = (row: SignOff, stepUpToken: string) => {
     const d = rowDraft(row.role);
     signSignOff(projectId, phase, row.role, {
       decision: d.decision,
       comments: d.comments,
-      ...(stepUpToken ? { attachSignature: true, stepUpToken } : {}),
+      stepUpToken,
     });
   };
 
@@ -274,13 +285,24 @@ export default function SignOffBlock({
                   <Space direction="vertical" size={0}>
                     <span>
                       <Tag color="green">Signed</Tag>
-                      <b>{r.name}</b>
+                      {/* Not bold: the Role column already carries this row's
+                          weight, and the green tag marks the state. */}
+                      <span>{r.name}</span>
                     </span>
                     {r.signatureImage && (
                       <img
                         src={r.signatureImage}
                         alt={`${r.name}'s signature`}
-                        style={{ maxWidth: 160, maxHeight: 50, display: 'block', margin: '2px 0' }}
+                        width={160}
+                        height={50}
+                        style={{
+                          maxWidth: 160,
+                          maxHeight: 50,
+                          width: 'auto',
+                          display: 'block',
+                          margin: '2px 0',
+                          objectFit: 'contain',
+                        }}
                       />
                     )}
                     <Typography.Text type="secondary" style={{ fontSize: 12 }}>
@@ -311,62 +333,32 @@ export default function SignOffBlock({
                 );
               }
               const why = blockedReason(r);
-              const wantsSignature = hasSignature && !!attachSignature[r.role];
               return (
                 <Space direction="vertical" size={4}>
-                  {hasSignature && (
-                    <Checkbox
-                      checked={!!attachSignature[r.role]}
-                      onChange={(e) =>
-                        setAttachSignature((prev) => ({ ...prev, [r.role]: e.target.checked }))
-                      }
-                    >
-                      <Typography.Text style={{ fontSize: 12 }}>
-                        Attach my saved signature
-                      </Typography.Text>
-                    </Checkbox>
-                  )}
-                  {wantsSignature ? (
-                    // Attaching a drawn signature needs a one-time email code
-                    // first — the step-up modal takes the place of the plain
-                    // Popconfirm below, and calls sign() itself once verified.
-                    <Tooltip title={why ?? ''}>
-                      <span>
-                        <Button
-                          size="small"
-                          type="primary"
-                          disabled={!!why}
-                          onClick={() => setStepUpRole(r.role)}
-                        >
-                          Verify &amp; sign
-                        </Button>
-                      </span>
-                    </Tooltip>
-                  ) : (
-                    <Popconfirm
-                      title={`Sign "${r.role}" as ${me?.displayName}`}
-                      description={
-                        <div style={{ maxWidth: 320 }}>
-                          This records your account, the role you hold now, the server timestamp
-                          and the version of this project record. It is not editable afterwards —
-                          releasing it requires a withdrawal with a reason.
-                        </div>
-                      }
-                      okText="Sign"
-                      disabled={!!why}
-                      onConfirm={() => sign(r)}
-                    >
-                      {/* The tooltip wraps a span: a disabled antd Button emits no
-                          mouse events, so a tooltip attached straight to it never
-                          shows — and the reason is the whole point here. */}
-                      <Tooltip title={why ?? ''}>
-                        <span>
-                          <Button size="small" type="primary" disabled={!!why}>
-                            Sign as me
-                          </Button>
-                        </span>
-                      </Tooltip>
-                    </Popconfirm>
+                  {/* One path only. The old opt-in checkbox and the plain
+                      "Sign as me" beside it are gone: a sign-off always carries
+                      the signer's saved signature and always asks for a fresh
+                      authenticator code (project owner, 2026-08-22), so the
+                      second factor covers the act and not just the image. */}
+                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                    Signs with your saved signature
+                  </Typography.Text>
+                  <Tooltip title={why ?? ''}>
+                    <span>
+                      <Button
+                        size="small"
+                        type="primary"
+                        disabled={!!why}
+                        onClick={() => setStepUpRole(r.role)}
+                      >
+                        Sign as me
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  {(!hasSignature || !totpEnrolled) && (
+                    <Link to="/account" style={{ fontSize: 12 }}>
+                      {!hasSignature ? 'Add a signature' : 'Set up an authenticator'} in My Account
+                    </Link>
                   )}
                 </Space>
               );

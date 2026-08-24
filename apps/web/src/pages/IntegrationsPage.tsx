@@ -37,6 +37,9 @@ export default function IntegrationsPage() {
   const { powerApps, graph } = integrations;
   const graphDraft = useDraft(graph);
 
+  // The eight-line token explanation is setup-time detail: true, but read once
+  // and then in the way of the fields it describes.
+  const [showTokenMechanics, setShowTokenMechanics] = useState(false);
   const [baseUrl, setBaseUrl] = useState(COSMETRI_DEFAULT_BASE_URL);
   const [accessToken, setAccessToken] = useState('');
   const [refreshToken, setRefreshToken] = useState('');
@@ -131,8 +134,8 @@ export default function IntegrationsPage() {
   const isPlaceholderUrl = powerApps.newRawMaterialUrl.includes('REPLACE-');
 
   return (
-    <div style={{ display: 'grid', gap: 16, maxWidth: 980 }}>
-      <div>
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div style={{ maxWidth: 900 }}>
         <Typography.Title level={4} style={{ margin: 0 }}>
           <ApiOutlined style={{ marginRight: 8 }} />
           Integrations
@@ -142,6 +145,28 @@ export default function IntegrationsPage() {
           systems (Cosmetri, GMP Manufacturing, Power Apps, SharePoint) rather than replacing them.
         </Typography.Text>
       </div>
+
+      {/* Two EQUAL columns from ~1000px up: Cosmetri on the left, the two
+          smaller integrations stacked on the right. The page used to be a
+          single 980px-wide column, so on any normal desktop window the right
+          ~40% of the screen was empty while the Cosmetri explanation wrapped
+          into an eight-line block. Stretching the cards to full width instead
+          would have been worse: the prose would run to 150+ characters a line.
+          `flex-wrap` collapses this to one column on a narrow window, keeping
+          the reading order.
+
+          Equal, not weighted, and that is measured rather than felt: the widest
+          thing in the left column is the 680px-capped token-reveal block, and
+          in the right column the 640px-capped App URL row — near enough
+          identical, so there is nothing for extra width on one side to do. The
+          left column is TALLER (more stacked blocks), which needs no extra
+          width at all. A first pass used 620/420 on the reasoning that Cosmetri
+          "carries more"; besides being unmeasured, `flex-grow: 1` on both sides
+          splits the surplus EQUALLY, so that ratio quietly decayed toward 1:1
+          as the window widened — the basis numbers only ever set the wrap
+          threshold. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 16 }}>
+        <div style={{ flex: '1 1 480px', minWidth: 0, display: 'grid', gap: 16 }}>
 
       {/* --- Cosmetri ---------------------------------------------------- */}
       <Card
@@ -183,15 +208,22 @@ export default function IntegrationsPage() {
           title="Read-only integration (confirmed decision A3)"
           description={
             <span>
-              The connection is held entirely by the MBc360 backend, never the browser: paste in an{' '}
-              <b>access_token</b> and <b>refresh_token</b> obtained out-of-band (e.g. from Cosmetri's
-              own admin console), and the backend validates them immediately by exchanging the
-              refresh token (<code>PUT /oauth/token</code>, grant_type=refresh_token) — which also
-              returns a freshly-rotated pair, so you don't need to type expiry dates by hand. From
-              then on a scheduled job keeps the access token refreshed automatically, well before its
-              1-hour expiry, so the Cosmetri account password is never needed again unless the
-              refresh chain lapses entirely. Master data editing stays in Cosmetri — MBc360 never
-              writes back.
+              The connection is held entirely by the MBc360 backend, never the browser. Master data
+              editing stays in Cosmetri — MBc360 never writes back.{' '}
+              <Typography.Link onClick={() => setShowTokenMechanics((open) => !open)}>
+                {showTokenMechanics ? 'Hide how the tokens work' : 'How the tokens work'}
+              </Typography.Link>
+              {showTokenMechanics && (
+                <Typography.Paragraph style={{ marginTop: 8, marginBottom: 0 }}>
+                  Paste in an <b>access_token</b> and <b>refresh_token</b> obtained out-of-band (e.g.
+                  from Cosmetri's own admin console). The backend validates them immediately by
+                  exchanging the refresh token (<code>PUT /oauth/token</code>,
+                  grant_type=refresh_token), which also returns a freshly-rotated pair — so you never
+                  type an expiry date by hand. A scheduled job then keeps the access token refreshed
+                  well before its 1-hour expiry, so the Cosmetri account password is not needed again
+                  unless the refresh chain lapses entirely.
+                </Typography.Paragraph>
+              )}
             </span>
           }
         />
@@ -303,6 +335,9 @@ export default function IntegrationsPage() {
           </>
         )}
       </Card>
+        </div>
+
+        <div style={{ flex: '1 1 480px', minWidth: 0, display: 'grid', gap: 16 }}>
 
       {/* --- Power Apps ---------------------------------------------------- */}
       <Card
@@ -402,6 +437,8 @@ export default function IntegrationsPage() {
           onDiscard={graphDraft.discard}
         />
       </Card>
+        </div>
+      </div>
     </div>
   );
 }

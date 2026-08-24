@@ -256,27 +256,18 @@ export class ProjectsController {
     );
   }
 
-  // Step-up (2026-08-21): optional "attach my saved signature" flow. Request
-  // sends an email code bound to this exact act; confirm exchanges a correct
-  // code for a short-lived proof token, which `sign` below then requires.
-  @Post(':id/phases/:phase/sign-offs/request-code')
-  requestSignOffCode(
-    @CurrentUser() user: SessionUser,
-    @Param('id') id: string,
-    @Param('phase') phase: string,
-    @Body() body: { role: SignOff['role'] },
-  ) {
-    return this.projects.requestSignOffCode(user, id, Number(phase), body.role);
-  }
-
-  @Post(':id/phases/:phase/sign-offs/confirm-code')
-  confirmSignOffCode(
+  // Step-up (2026-08-21): the optional "attach my saved signature" flow.
+  // A code from the signer's authenticator app is exchanged for a short-lived
+  // proof token, which `sign` below then requires. One route, not two —
+  // unlike the emailed code this replaced, there is nothing to request.
+  @Post(':id/phases/:phase/sign-offs/step-up')
+  verifySignOffStepUp(
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('phase') phase: string,
     @Body() body: { role: SignOff['role']; code: string },
   ) {
-    return this.projects.confirmSignOffCode(user, id, Number(phase), body.role, body.code);
+    return this.projects.verifySignOffStepUp(user, id, Number(phase), body.role, body.code);
   }
 
   @Post(':id/phases/:phase/sign-offs/sign')
@@ -289,7 +280,6 @@ export class ProjectsController {
       role: SignOff['role'];
       decision?: string;
       comments?: string;
-      attachSignature?: boolean;
       stepUpToken?: string;
       expectedVersion: number;
     },
@@ -302,7 +292,6 @@ export class ProjectsController {
       {
         decision: body.decision,
         comments: body.comments,
-        attachSignature: body.attachSignature,
         stepUpToken: body.stepUpToken,
       },
       body.expectedVersion,

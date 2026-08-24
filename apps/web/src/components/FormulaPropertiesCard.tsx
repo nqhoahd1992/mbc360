@@ -5,6 +5,7 @@ import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import { TEXT } from '../theme/tokens';
 
 // Does the composition contain water? Derivable, and only that much: it is a
 // SUGGESTION, never the answer. A3's condition is "water-containing,
@@ -39,7 +40,7 @@ export default function FormulaPropertiesCard({ project }: { project: ProjectDat
         )
       }
     >
-      <div style={{ color: '#888', fontSize: 12, marginBottom: 12 }}>
+      <div style={{ color: TEXT.secondary, fontSize: 12, marginBottom: 12 }}>
         Read by Gate 05 (preservative strategy) and Gate 09 (preservative efficacy). Both become mandatory only when the
         formula is recorded as susceptible.
       </div>

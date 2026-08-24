@@ -6,6 +6,7 @@ import type { StudyApproval } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import { TEXT } from '../theme/tokens';
 
 const DEPARTMENTS = [
   'NPD / Formulation',
@@ -55,7 +56,7 @@ export default function StudyApprovalCard({
         <span>
           <SafetyCertificateOutlined style={{ marginRight: 8 }} />
           Study Approval Workflow{' '}
-          <span style={{ fontWeight: 400, color: '#999', fontSize: 12 }}>
+          <span style={{ fontWeight: 400, color: TEXT.secondary, fontSize: 12 }}>
             — dedicated approval trail for human/consumer studies, separate from gate sign-offs
           </span>
           {complete && (

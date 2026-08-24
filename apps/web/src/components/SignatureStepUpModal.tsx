@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Alert, Button, Input, Modal, Typography } from 'antd';
+import { Alert, Input, Modal, Typography } from 'antd';
 import type { SignOff } from '@mbc360/shared/types';
-import { confirmSignOffCode, requestSignOffCode } from '../api/projectsApi';
+import { verifySignOffStepUp } from '../api/projectsApi';
 
-// Step-up (2026-08-21): the one-time email code required to attach a saved
-// signature to a phase sign-off act. Two steps, one modal: send a code bound
-// to this exact project/phase/role, then confirm it for a short-lived proof
-// token that the caller passes into signSignOff.
+// Step-up (2026-08-21): the authenticator code required to attach a saved
+// signature to a phase sign-off act. One step — the app on the signer's phone
+// is already generating codes, so unlike the emailed code this replaced there
+// is nothing to request first. The code is verified against this exact
+// project/phase/role, and the proof token it returns is spent by the caller's
+// signSignOff call.
 export default function SignatureStepUpModal({
   open,
   projectId,
@@ -22,51 +24,32 @@ export default function SignatureStepUpModal({
   onClose: () => void;
   onVerified: (stepUpToken: string) => void;
 }) {
-  const [sent, setSent] = useState(false);
   const [code, setCode] = useState('');
-  const [sending, setSending] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const reset = () => {
-    setSent(false);
+  const handleClose = () => {
     setCode('');
     setError(null);
-  };
-
-  const handleClose = () => {
-    reset();
     onClose();
   };
 
-  const send = async () => {
-    setSending(true);
-    setError(null);
-    try {
-      await requestSignOffCode(projectId, phase, role);
-      setSent(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to send verification code');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const confirm = async () => {
-    if (!code.trim()) {
-      setError('Enter the code from your email');
+  const submit = async () => {
+    if (code.length !== 6) {
+      setError('Enter the 6 digits currently shown in your authenticator app');
       return;
     }
-    setConfirming(true);
+    setVerifying(true);
     setError(null);
     try {
-      const { stepUpToken } = await confirmSignOffCode(projectId, phase, role, code.trim());
+      const { stepUpToken } = await verifySignOffStepUp(projectId, phase, role, code);
+      setCode('');
+      setError(null);
       onVerified(stepUpToken);
-      reset();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verification failed');
     } finally {
-      setConfirming(false);
+      setVerifying(false);
     }
   };
 
@@ -75,51 +58,30 @@ export default function SignatureStepUpModal({
       open={open}
       title={`Verify it's you — "${role}"`}
       onCancel={handleClose}
+      onOk={submit}
+      okText="Verify & sign"
+      okButtonProps={{ loading: verifying, disabled: code.length !== 6 }}
       destroyOnHidden
-      footer={
-        sent
-          ? [
-              <Button key="resend" onClick={send} loading={sending}>
-                Resend code
-              </Button>,
-              <Button key="cancel" onClick={handleClose}>
-                Cancel
-              </Button>,
-              <Button key="confirm" type="primary" loading={confirming} onClick={confirm}>
-                Confirm
-              </Button>,
-            ]
-          : [
-              <Button key="cancel" onClick={handleClose}>
-                Cancel
-              </Button>,
-              <Button key="send" type="primary" loading={sending} onClick={send}>
-                Send code to my email
-              </Button>,
-            ]
-      }
     >
       {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 12 }} />}
-      {sent ? (
-        <>
-          <Typography.Paragraph type="secondary">
-            Enter the 6-digit code we just emailed you. It expires in 10 minutes.
-          </Typography.Paragraph>
-          <Input
-            size="large"
-            maxLength={6}
-            placeholder="000000"
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-            onPressEnter={confirm}
-          />
-        </>
-      ) : (
-        <Typography.Paragraph type="secondary">
-          Attaching your saved signature to this sign-off needs a one-time code sent to your
-          account email.
-        </Typography.Paragraph>
-      )}
+      <Typography.Paragraph type="secondary">
+        Attaching your saved signature needs the current code from your authenticator app. Signing
+        records your account, the role you hold now, the server timestamp and the version of this
+        project record.
+      </Typography.Paragraph>
+      <Input
+        size="large"
+        maxLength={6}
+        placeholder="000000"
+        autoFocus
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        spellCheck={false}
+        name="signOffOtp"
+        value={code}
+        onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+        onPressEnter={submit}
+      />
     </Modal>
   );
 }

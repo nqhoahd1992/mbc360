@@ -5,6 +5,7 @@ import type { WorkStatus } from '@mbc360/shared/types';
 import { WORK_STATUSES } from '@mbc360/shared/config/gates';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from '../components/SaveBar';
+import { TABLE_STICKY } from '../theme/tokens';
 
 export default function EvidenceSummary() {
   const { projectId } = useParams();
@@ -39,6 +40,7 @@ export default function EvidenceSummary() {
         rowKey={(e) => e.area}
         dataSource={draft}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: 1200 }}
         columns={[
           { title: 'Evidence area', width: 220, dataIndex: 'area', render: (v) => <b>{v}</b> },

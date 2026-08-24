@@ -5,6 +5,7 @@ import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import { TEXT } from '../theme/tokens';
 
 // Gate 01 "Opportunity & Request" — the five free-text fields SME Round 3 asked
 // for: the requester (B1), the initial product scope (B2, the supporting field
@@ -22,6 +23,13 @@ import SaveBar from './SaveBar';
 // Rendered only where the data is OWNED: the Phase 1 page (between the Phase Gate
 // Flow table and the two gate-01 option tables, so all Gate 01 capture reads in
 // one run) and Project Overview.
+//
+// WRITEABLE on Phase 1 only. Project Overview passes `readOnly` — the project
+// owner's rule (2026-08-22): project data is written in the Create Project
+// form, on the phase pages and in the ledgers, never on Overview. Overview is a
+// summary of state; an editable field there means the same five fields have two
+// owners, two drafts and no obvious answer to "which one is the real place to
+// fill this in".
 const OPPORTUNITY_FIELDS = [
   'requesterName',
   'requesterDepartment',
@@ -72,7 +80,7 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
 
   return (
     <Card size="small" title="Opportunity &amp; Request (Gate 01)">
-      <div style={{ color: '#888', fontSize: 12, marginBottom: 12 }}>
+      <div style={{ color: TEXT.secondary, fontSize: 12, marginBottom: 12 }}>
         Who filed the request, and the initial scope, market and user. These are preliminary — Gate 02 confirms, refines
         and formally approves the target user and markets. Where the request came from, and the type of development or
         change, are recorded in the two Gate 01 tables below.
@@ -83,7 +91,7 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          message="Gate 01 has passed — this record is read-only. Use Backtrack to reopen it."
+          title="Gate 01 has passed — this record is read-only. Use Backtrack to reopen it."
         />
       )}
 

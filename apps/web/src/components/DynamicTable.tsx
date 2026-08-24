@@ -5,6 +5,8 @@ import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/regis
 import { isRegisterRowBlank } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
 import { patchArray, useDraft } from '../hooks/useDraft';
+import { NUMERIC_CELL, NUMERIC_COLUMN } from '../utils/numeric';
+import { columnsTotalWidth, columnWidth } from '../utils/columnWidth';
 import { createEmptyRegisterRow } from '../store/factory';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
@@ -12,6 +14,7 @@ import MarketSelect from './MarketSelect';
 import ClaimSelect, { findClaim, useClaimRows } from './ClaimSelect';
 import NextActionSelect from './NextActionSelect';
 import { derivedColumnGate, spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 export default function DynamicTable({
   config,
@@ -89,12 +92,16 @@ export default function DynamicTable({
           </Tooltip>
         );
       }
-      return <span style={{ color: '#bfbfbf' }}>Link a Claim ID first</span>;
+      return <span style={{ color: TEXT.secondary }}>Link a Claim ID first</span>;
     }
 
     if (!editable) {
       if (column.type === 'checkbox') return <Checkbox checked={!!value} disabled />;
-      return <span style={{ color: '#666' }}>{value != null ? String(value) : ''}</span>;
+      return (
+        <span style={{ color: '#666', ...(column.type === 'number' ? NUMERIC_CELL : null) }}>
+          {value != null ? String(value) : ''}
+        </span>
+      );
     }
 
     switch (column.type) {
@@ -158,7 +165,7 @@ export default function DynamicTable({
         return (
           <InputNumber
             size="small"
-            style={{ width: '100%' }}
+            style={{ width: '100%', ...NUMERIC_CELL }}
             value={value as number | undefined}
             onChange={(v) => patch(index, column.key, v ?? 0)}
           />
@@ -197,7 +204,8 @@ export default function DynamicTable({
         ) : (
           col.label
         ),
-        width: col.width ?? 140,
+        width: columnWidth(col),
+        ...(col.type === 'number' ? NUMERIC_COLUMN : null),
         render: (_: unknown, row: RegisterRow, index: number) => renderCell(col, row, index),
       };
     }),
@@ -208,7 +216,7 @@ export default function DynamicTable({
             width: 44,
             render: (_: unknown, __: RegisterRow, index: number) => (
               <Popconfirm title="Remove this row?" onConfirm={() => removeRow(index)}>
-                <Button size="small" danger type="text" icon={<DeleteOutlined />} />
+                <Button size="small" danger type="text" aria-label="Remove this row" icon={<DeleteOutlined />} />
               </Popconfirm>
             ),
           },
@@ -216,7 +224,7 @@ export default function DynamicTable({
       : []),
   ];
 
-  const totalWidth = config.columns.reduce((sum, c) => sum + (c.width ?? 140), 0) + (isRegister ? 44 : 0);
+  const totalWidth = columnsTotalWidth(config.columns, isRegister ? 44 : 0);
 
   return (
     <Card
@@ -227,18 +235,18 @@ export default function DynamicTable({
         </span>
       }
       extra={
-        <span style={{ color: '#999', fontSize: 12 }}>
+        <span style={{ color: TEXT.secondary, fontSize: 12 }}>
           {draft.length} {isRegister ? (draft.length === 1 ? 'row' : 'rows') : 'items'}
         </span>
       }
     >
       {config.description && (
-        <p style={{ color: '#888', fontSize: 12, marginTop: -4, marginBottom: reviewOwnerText ? 4 : 12 }}>
+        <p style={{ color: TEXT.secondary, fontSize: 12, marginTop: -4, marginBottom: reviewOwnerText ? 4 : 12 }}>
           {config.description}
         </p>
       )}
       {reviewOwnerText && (
-        <p style={{ color: '#999', fontSize: 12, marginTop: 0, marginBottom: 12 }}>Review owner: {reviewOwnerText}</p>
+        <p style={{ color: TEXT.secondary, fontSize: 12, marginTop: 0, marginBottom: 12 }}>Review owner: {reviewOwnerText}</p>
       )}
       {readOnly && (
         <Alert
@@ -275,6 +283,7 @@ export default function DynamicTable({
         dataSource={draft}
         columns={columns}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: totalWidth }}
         onRow={(row) => (isRegister && isRegisterRowBlank(config, row) ? { style: { background: '#fff1f0' } } : {})}
       />

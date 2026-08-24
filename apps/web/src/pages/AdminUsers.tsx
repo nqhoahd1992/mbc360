@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Popconfirm, Select, Switch, Table, Tooltip, Typography, message } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
+import { DeleteOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { TABLE_STICKY } from '../theme/tokens';
 
 interface AdminUser {
   id: string;
@@ -9,6 +11,8 @@ interface AdminUser {
   active: boolean;
   department: string | null;
   roles: { key: string; name: string }[];
+  // An ACTIVATED authenticator enrolment (a pending one authorises nothing).
+  totpEnrolled: boolean;
 }
 
 interface AdminRole {
@@ -92,6 +96,21 @@ export default function AdminUsers() {
     setUsers((prev) => prev.filter((u) => u.id !== id));
   };
 
+  // Recovery for a lost or replaced device: the user cannot produce a code, so
+  // they cannot remove their own enrolment. This removes it; they re-enrol
+  // themselves in My Account, so no secret ever passes through an admin's
+  // hands. Audited with the admin as actor.
+  const resetTotp = async (id: string) => {
+    const res = await fetch(`/api/admin/users/${id}/totp`, { method: 'DELETE' });
+    if (!res.ok) {
+      const body = await res.json().catch(() => undefined);
+      message.error(body?.message ?? 'Could not reset the authenticator');
+      return;
+    }
+    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, totpEnrolled: false } : u)));
+    message.success('Authenticator reset — the user can set up a new one in My Account');
+  };
+
   if (forbidden) {
     return (
       <Alert
@@ -104,19 +123,29 @@ export default function AdminUsers() {
   }
 
   return (
-    <>
-      <Typography.Title level={4}>Users</Typography.Title>
-      <Typography.Paragraph type="secondary">
-        Assign each signed-in user a role — this is the only place a role is granted; it is
-        never inferred from Microsoft Entra ID or department data. A user with no role can
-        contribute evidence but cannot decide, approve or sign anything (rule A4). Edit what each
-        role can do under Users &amp; Roles → Roles.
-      </Typography.Paragraph>
+    <div style={{ display: 'grid', gap: 16 }}>
+      <div>
+        <Typography.Title level={4} style={{ margin: 0 }}>
+          Users
+        </Typography.Title>
+        <Typography.Text type="secondary">
+          Assign each signed-in user a role — this is the only place a role is granted; it is never
+          inferred from Microsoft Entra ID or department data. A user with no role can contribute
+          evidence but cannot decide, approve or sign anything (rule A4). Edit what each role can do
+          under <Link to="/admin/roles">Roles</Link>.
+        </Typography.Text>
+      </div>
       <Table
         rowKey="id"
         loading={loading}
         dataSource={users}
         pagination={false}
+        sticky={TABLE_STICKY}
+        // The only table in the app that had no horizontal scroll: with the
+        // Authenticator column added it now carries 6 columns plus actions, so
+        // on a narrow window it pushed the PAGE sideways instead of scrolling
+        // itself.
+        scroll={{ x: 1000 }}
         columns={[
           { title: 'Email', dataIndex: 'email' },
           { title: 'Name', dataIndex: 'displayName' },
@@ -153,6 +182,27 @@ export default function AdminUsers() {
             ),
           },
           {
+            title: 'Authenticator',
+            key: 'totp',
+            width: 130,
+            render: (_, record) =>
+              record.totpEnrolled ? (
+                <Popconfirm
+                  title="Reset this user's authenticator?"
+                  description="Use this when they have lost the device. They must set up a new one before they can attach a signature again."
+                  onConfirm={() => void resetTotp(record.id)}
+                  okText="Reset"
+                  okButtonProps={{ danger: true }}
+                >
+                  <Button size="small" type="link" icon={<SafetyCertificateOutlined />}>
+                    Reset
+                  </Button>
+                </Popconfirm>
+              ) : (
+                <Typography.Text type="secondary">Not set up</Typography.Text>
+              ),
+          },
+          {
             title: '',
             key: 'delete',
             width: 44,
@@ -165,13 +215,13 @@ export default function AdminUsers() {
                   okText="Delete"
                   okButtonProps={{ danger: true }}
                 >
-                  <Button size="small" danger type="text" icon={<DeleteOutlined />} />
+                  <Button size="small" danger type="text" aria-label="Delete this user" icon={<DeleteOutlined />} />
                 </Popconfirm>
               </Tooltip>
             ),
           },
         ]}
       />
-    </>
+    </div>
   );
 }

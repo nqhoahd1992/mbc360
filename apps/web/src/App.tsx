@@ -1,18 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ConfigProvider, Divider, Layout, Menu, Button, Select, Spin, Tooltip, Typography } from 'antd';
+import { Alert, ConfigProvider, Divider, Layout, Menu, Button, Grid, Select, Spin, Tooltip, Typography } from 'antd';
 import {
-  ApiOutlined,
-  AppstoreOutlined,
   CheckCircleFilled,
   EyeOutlined,
-  FolderOpenOutlined,
   LockOutlined,
+  MenuOutlined,
   RightCircleFilled,
   SearchOutlined,
   StarOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { HashRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { HashRouter, Link, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { useAppStore } from './store/useAppStore';
 import { SSO_ROLES } from './utils/roles';
 import { useSession } from './auth/useSession';
@@ -30,6 +28,8 @@ import PostMarketCapa from './pages/PostMarketCapa';
 import ProductFeedback from './pages/ProductFeedback';
 import RegisterHubPage from './pages/RegisterHubPage';
 import CommandPalette from './components/CommandPalette';
+import UnsavedChangesGuard from './components/UnsavedChangesGuard';
+import PageSkeleton from './components/PageSkeleton';
 import FormulationSafety from './pages/FormulationSafety';
 import NeedsScientificBasis from './pages/NeedsScientificBasis';
 import CompetitorLandscape from './pages/CompetitorLandscape';
@@ -42,9 +42,11 @@ import IntegrationsPage from './pages/IntegrationsPage';
 import MyAccount from './pages/MyAccount';
 import Login from './pages/Login';
 import { PHASES } from '@mbc360/shared/config/gates';
+import { ADMIN_SUBMENU, globalNavFor } from './config/globalNav';
 import { getNavGroups, findNavGroupForRegister, getRegisterConfig, navItemHref, formatGate } from '@mbc360/shared/config/registers';
 import { ownerName, reviewRoleLabel } from '@mbc360/shared/config/reviewers';
 import { phaseProgress } from '@mbc360/shared/utils/gateProgress';
+import { TEXT } from './theme/tokens';
 
 const { Sider, Header, Content } = Layout;
 
@@ -77,6 +79,16 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
     if (urlProjectId) setActiveProjectId(urlProjectId);
   }, [urlProjectId]);
 
+  // Now that the menu scrolls inside its own column, the highlighted item can
+  // sit outside it — arriving via ⌘K, a gate-blocker deep link or a bookmark
+  // would show a sidebar scrolled somewhere else entirely, with nothing marking
+  // where you are. `block: 'nearest'` is a no-op when the item is already
+  // visible, so ordinary clicking never moves the menu.
+  useEffect(() => {
+    const selected = document.querySelector('.ant-layout-sider .ant-menu-item-selected');
+    selected?.scrollIntoView({ block: 'nearest' });
+  }, [location.pathname]);
+
   const projectId =
     activeProjectId && projects.some((p) => p.identity.id === activeProjectId)
       ? activeProjectId
@@ -91,27 +103,31 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
     navigate(`/projects/${id}${subPath}`);
   };
 
-  const globalItems = useMemo(
-    () => [
-      { key: '/', icon: <AppstoreOutlined />, label: <Link to="/">Dashboard</Link> },
-      { key: '/projects', icon: <FolderOpenOutlined />, label: <Link to="/projects">All Projects</Link> },
-      { key: '/integrations', icon: <ApiOutlined />, label: <Link to="/integrations">Integrations</Link> },
-      ...(isAdmin
-        ? [
-            {
-              key: 'admin-users-roles',
-              icon: <TeamOutlined />,
-              label: 'Users & Roles',
-              children: [
-                { key: '/admin/users', label: <Link to="/admin/users">Users</Link> },
-                { key: '/admin/roles', label: <Link to="/admin/roles">Roles</Link> },
-              ],
-            },
-          ]
-        : []),
-    ],
-    [isAdmin],
-  );
+  // Built from the same GLOBAL_NAV the ⌘K palette reads, so a page added in one
+  // place cannot go missing from the other (which is exactly what had happened
+  // to Integrations, My Account and Users & Roles).
+  const globalItems = useMemo(() => {
+    const entries = globalNavFor(isAdmin);
+    const top = entries
+      .filter((e) => e.sidebar === 'top')
+      .map((e) => ({ key: e.path, icon: e.icon, label: <Link to={e.path}>{e.title}</Link> }));
+    const nested = entries.filter(
+      (e) => typeof e.sidebar === 'object' && e.sidebar !== null,
+    );
+    if (nested.length === 0) return top;
+    return [
+      ...top,
+      {
+        key: 'admin-users-roles',
+        icon: <TeamOutlined />,
+        label: ADMIN_SUBMENU,
+        children: nested.map((e) => ({
+          key: e.path,
+          label: <Link to={e.path}>{e.title}</Link>,
+        })),
+      },
+    ];
+  }, [isAdmin]);
 
   const activeProject = projects.find((p) => p.identity.id === projectId);
 
@@ -119,13 +135,11 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
     if (!projectId || !activeProject) return [];
     const items = [
       { key: `/projects/${projectId}`, label: <Link to={`/projects/${projectId}`}>Overview</Link> },
-      {
-        // The digital replacement for the workbook's owner tab-prefix: which
-        // sheets THIS signed-in person is responsible for on THIS project.
-        key: `/projects/${projectId}/my-sheets`,
-        icon: <StarOutlined style={{ color: '#faad14' }} />,
-        label: <Link to={`/projects/${projectId}/my-sheets`}>My Sheets</Link>,
-      },
+      // My Sheets used to sit here, between Overview and Phase 1. It is a LENS
+      // over the workbook groups, not a step in the process, so it broke the
+      // one sequence this block exists to show — Overview → Phase 1 → 2 → 3 → 4.
+      // It now heads the WORKBOOK BY RESPONSIBILITY section instead, which is
+      // the thing it filters.
       ...PHASES.map((ph) => {
         const progress = phaseProgress(activeProject, ph.phase);
         const icon =
@@ -160,7 +174,15 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
   const registerItems = useMemo(() => {
     if (!projectId) return [];
     const reviewers = activeProject?.identity.reviewers;
-    return getNavGroups().map((group) => {
+    // "Everything below, filtered to me" — the digital replacement for the
+    // workbook's owner tab-prefix, so it belongs at the top of the groups it
+    // narrows rather than in the phase sequence above.
+    const mySheets = {
+      key: `/projects/${projectId}/my-sheets`,
+      icon: <StarOutlined style={{ color: '#faad14' }} />,
+      label: <Link to={`/projects/${projectId}/my-sheets`}>My Sheets</Link>,
+    };
+    return [mySheets, ...getNavGroups().map((group) => {
       // The group is labelled with the person actually assigned to it on THIS
       // project (the workbook's tab-name prefix digitised — see reviewers.ts),
       // not a name baked into config.
@@ -213,13 +235,19 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
           }),
         ],
       };
-    });
+    })];
   }, [projectId, activeProject]);
 
   // Highlight every leaf whose route matches the current path.
   const registerSelectedKeys = useMemo(() => {
     if (!projectId) return [];
     const keys: string[] = [];
+    // My Sheets now lives in this menu (see registerItems), and its key is the
+    // route itself rather than a `group:index` pair — without this it would
+    // render unhighlighted while you are standing on it.
+    if (location.pathname === `/projects/${projectId}/my-sheets`) {
+      keys.push(`/projects/${projectId}/my-sheets`);
+    }
     for (const group of getNavGroups()) {
       if (location.pathname === `/projects/${projectId}/registers/cat/${group.key}`) {
         keys.push(`cat:${group.key}`);
@@ -325,36 +353,66 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
 }
 
 // Keeps the sidebar visible while the (window-level) page scrolls.
-// - Sidebar shorter than the viewport → sticks to the top (top: 0).
-// - Sidebar taller than the viewport → scrolls with the page until its bottom
-//   is reached, then pins bottom-aligned (top: viewportHeight - sidebarHeight),
-//   letting the main content keep scrolling.
+// The sidebar is its own scroll region, pinned to the viewport.
+//
+// It used to be a sticky block whose full height (60+ register links across ten
+// groups) participated in the PAGE scroll, bottom-pinning once you had scrolled
+// past it. That made the MENU the tallest thing on the page, so the document
+// stayed scrollable even on a screen with two cards on it — and since router
+// navigation does not reset scroll, arriving from a long page left the window
+// scrolled far past the whole of a short one: a blank content area with the
+// menu's tail beside it (reported 2026-08-22 with a screenshot of exactly
+// that). Now the document is only as tall as the CONTENT, and the menu scrolls
+// inside its own 100vh column.
+//
+// Scroll chaining is deliberately LEFT ON (no `overscroll-behavior: contain`):
+// a contained scroll port blocks chaining as soon as it is at a boundary, and a
+// menu shorter than the viewport is always at its boundary — so containing it
+// would turn the whole left column into a dead zone for the wheel. Chaining is
+// also harmless now that the page itself is short.
 function StickySidebar({ children }: { children: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [top, setTop] = useState(0);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const update = () => {
-      const overflow = el.offsetHeight - window.innerHeight;
-      setTop(overflow > 0 ? -overflow : 0);
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    window.addEventListener('resize', update);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', update);
-    };
-  }, []);
-
   return (
-    <div ref={ref} style={{ position: 'sticky', top }}>
+    <div
+      style={{
+        position: 'sticky',
+        top: 0,
+        // Pinned on BOTH axes. `top` alone leaves the menu free to scroll off
+        // to the left the moment anything makes the document wider than the
+        // viewport — reported with a screenshot of exactly that. The page
+        // should not scroll sideways at all now (see index.css), so this is the
+        // second line of defence rather than the fix.
+        left: 0,
+        height: '100vh',
+        overflowY: 'auto',
+      }}
+    >
       {children}
     </div>
   );
+}
+
+// Router navigation leaves window.scrollY where it was, which is right for
+// Back and wrong for everything else.
+//
+// Deliberately narrow: only a PATHNAME change resets — a query-string change
+// must not, or every keystroke in the Sheet Map's search box (it writes filters
+// to the URL) would yank the page to the top. A POP is left alone so Back
+// returns you where you were, and a `?scrollTo=` deep link is left alone
+// because that page is about to scroll to a section itself.
+function ScrollToTopOnNavigate() {
+  const { pathname, search } = useLocation();
+  const navigationType = useNavigationType();
+  const lastPathname = useRef(pathname);
+
+  useEffect(() => {
+    if (lastPathname.current === pathname) return;
+    lastPathname.current = pathname;
+    if (navigationType === 'POP') return;
+    if (new URLSearchParams(search).has('scrollTo')) return;
+    window.scrollTo({ top: 0, left: 0 });
+  }, [pathname, search, navigationType]);
+
+  return null;
 }
 
 function Shell() {
@@ -365,6 +423,34 @@ function Shell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   const session = useSession();
+  const projectsLoading = useAppStore((s) => s.projectsLoading);
+  const projectsError = useAppStore((s) => s.projectsError);
+  const projectCount = useAppStore((s) => s.projects.length);
+  const location = useLocation();
+  // Only the project-scoped screens (and the dashboard, which aggregates them)
+  // are meaningless before the fetch resolves — My Account, Users & Roles and
+  // Integrations read none of it and must not wait for it.
+  const needsProjects = location.pathname === '/' || location.pathname.startsWith('/projects');
+
+  // Below `lg` the sidebar collapses to zero width. Until now nothing could
+  // bring it back — no trigger, no drawer — so on a phone or a narrow window
+  // every link in the app became unreachable and the only way around was the
+  // ⌘K palette, which needs a keyboard. The Header now carries a nav toggle at
+  // those widths.
+  const screens = Grid.useBreakpoint();
+  // antd's `lg` is 992px. Reading matchMedia for the INITIAL value avoids a
+  // first-render flash: Grid.useBreakpoint() returns {} before it measures,
+  // which would read as "narrow" and briefly collapse the desktop sidebar.
+  const [navOpen, setNavOpen] = useState(
+    () => typeof window === 'undefined' || window.matchMedia('(min-width: 992px)').matches,
+  );
+  const wideScreen = screens.lg ?? navOpen;
+  useEffect(() => setNavOpen(wideScreen), [wideScreen]);
+  // On a narrow screen the expanded sidebar covers most of the viewport, so a
+  // link tap should close it rather than leave the content hidden behind it.
+  useEffect(() => {
+    if (!wideScreen) setNavOpen(false);
+  }, [location.pathname, wideScreen]);
 
   // Load the role x capability grid once a session exists — it drives the
   // "View as" gate/phase/market-track permission checks (utils/permissions.ts)
@@ -388,8 +474,27 @@ function Shell() {
   // stop; nothing in the app is reachable while unauthenticated.
   if (session.loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Spin size="large" />
+      // The very first thing anyone sees. A lone spinner on white reads as a
+      // page that failed to load; naming the app says "this is starting".
+      <div
+        role="status"
+        aria-live="polite"
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 16,
+          background: '#f5f5f5',
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontWeight: 700, fontSize: 20, letterSpacing: 0.2 }}>MBc360</div>
+          <div style={{ color: TEXT.secondary, fontSize: 13 }}>Development &amp; Quality System</div>
+        </div>
+        <Spin />
+        <span style={{ color: TEXT.secondary, fontSize: 12 }}>Signing you in…</span>
       </div>
     );
   }
@@ -399,7 +504,41 @@ function Shell() {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider breakpoint="lg" collapsedWidth={0} width={250}>
+      {/* Keyboard users otherwise tab through the entire sidebar — ~10 groups
+          and dozens of register links — before reaching the page itself.
+          Off-screen until focused; antd's Content renders a real <main>. */}
+      <a
+        href="#main-content"
+        style={{
+          position: 'absolute',
+          left: -9999,
+          top: 0,
+          // Above the header (100) it lets you skip past; below antd's modal
+          // layer (1000).
+          zIndex: 200,
+          padding: '8px 12px',
+          background: '#fff',
+          border: '1px solid #d9d9d9',
+          borderRadius: 4,
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.left = '8px';
+          e.currentTarget.style.top = '8px';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.left = '-9999px';
+        }}
+      >
+        Skip to content
+      </a>
+      <Sider
+        breakpoint="lg"
+        collapsedWidth={0}
+        width={250}
+        collapsible
+        trigger={null}
+        collapsed={!navOpen}
+      >
         <StickySidebar>
           <div style={{ color: '#fff', padding: 16, fontWeight: 700, fontSize: 16 }}>
             MBc360
@@ -421,9 +560,27 @@ function Shell() {
             borderBottom: '1px solid #f0f0f0',
             position: 'sticky',
             top: 0,
-            zIndex: 10,
+            // Must outrank antd's sticky TABLE header, which computes its own
+            // z-index as `columns-count * 2 + zIndexTableFixed + 1` (table
+            // style/sticky.js) — 21 for the 9-column Phase Gate Flow, and more
+            // for a wide register. At the old value of 10 the table header
+            // painted OVER this bar as it was pushed up past the top of its
+            // container at the end of the table's scroll. 100 clears every
+            // realistic column count and still sits far below antd's modal
+            // layer (1000), so dialogs keep covering the header as before.
+            zIndex: 100,
           }}
         >
+          {!wideScreen && (
+            <Button
+              type="text"
+              icon={<MenuOutlined />}
+              aria-label={navOpen ? 'Hide navigation' : 'Show navigation'}
+              aria-expanded={navOpen}
+              onClick={() => setNavOpen((open) => !open)}
+              style={{ marginRight: 8, flexShrink: 0 }}
+            />
+          )}
           <Typography.Text
             strong
             style={{
@@ -461,7 +618,7 @@ function Shell() {
             <Button
               icon={<SearchOutlined />}
               onClick={() => setPaletteOpen(true)}
-              style={{ color: '#888' }}
+              style={{ color: TEXT.secondary }}
             >
               <span style={{ marginRight: 8 }}>Search</span>
               <kbd
@@ -471,7 +628,7 @@ function Shell() {
                   border: '1px solid #d9d9d9',
                   borderRadius: 4,
                   background: '#fafafa',
-                  color: '#888',
+                  color: TEXT.secondary,
                 }}
               >
                 {isMac ? '⌘' : 'Ctrl'} K
@@ -483,7 +640,30 @@ function Shell() {
             <AuthStatus user={session.user} onLogout={session.logout} />
           </div>
         </Header>
-        <Content style={{ padding: 16 }}>
+        <Content id="main-content" style={{ padding: 16 }}>
+          {/* The store has tracked `projectsLoading`/`projectsError` since M3
+              Phase 1, but no screen ever read them: a slow load rendered
+              "Active projects 0" and an empty table, and a FAILED load looked
+              identical to an empty database — the exact thing the store's own
+              comment claims it prevents. Both are surfaced here, once, rather
+              than in each of the ~20 project pages. */}
+          {projectsError && (
+            <Alert
+              type="error"
+              showIcon
+              style={{ marginBottom: 16 }}
+              title="Could not load projects"
+              description={projectsError}
+              action={
+                <Button size="small" onClick={() => void loadProjects()}>
+                  Try again
+                </Button>
+              }
+            />
+          )}
+          {projectsLoading && projectCount === 0 && !projectsError && needsProjects ? (
+            <PageSkeleton label="Loading projects…" />
+          ) : (
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/projects" element={<ProjectList />} />
@@ -510,9 +690,12 @@ function Shell() {
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/roles" element={<AdminRoles />} />
           </Routes>
+          )}
         </Content>
       </Layout>
       <CommandPalette open={paletteOpen} setOpen={setPaletteOpen} />
+      <UnsavedChangesGuard />
+      <ScrollToTopOnNavigate />
     </Layout>
   );
 }

@@ -12,6 +12,8 @@ import { cosmetriListRawMaterials, type CosmetriRawMaterialSummary } from '../in
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
 import MarketSelect from './MarketSelect';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
+import { columnWidth } from '../utils/columnWidth';
 
 // Supplier_RM_Evidence-specific variant of DynamicTable: `rmCode` is picked
 // from Cosmetri's raw-material catalogue instead of typed free text, mirroring
@@ -191,7 +193,7 @@ export default function SupplierRmEvidenceTable({
         // values that would all contradict the tick.
         const approvedRow = column.key === 'evidenceStatus' && row.approvedForUse === true;
         if (approvedRow) {
-          return <span style={{ color: '#bbb', fontSize: 12 }}>approved for use — no outstanding review</span>;
+          return <span style={{ color: TEXT.disabled, fontSize: 12 }}>approved for use — no outstanding review</span>;
         }
         return (
           <Select
@@ -249,7 +251,7 @@ export default function SupplierRmEvidenceTable({
   const columns = [
     ...config.columns.map((col) => {
       if (readOnly) {
-        return { title: col.label, width: col.key === 'rmCode' ? 260 : col.width ?? 140, render: (_: unknown, row: RegisterRow) => staticCell(col, row) };
+        return { title: col.label, width: Math.max(col.key === 'rmCode' ? 260 : col.width ?? 140, columnWidth(col)), render: (_: unknown, row: RegisterRow) => staticCell(col, row) };
       }
       if (col.key === 'rmCode') {
         return {
@@ -299,7 +301,7 @@ export default function SupplierRmEvidenceTable({
       if (col.key === 'grade') {
         return {
           title: col.label,
-          width: col.width ?? 140,
+          width: Math.max(col.width ?? 140, columnWidth(col)),
           render: (_: unknown, row: RegisterRow, index: number) => {
             const match = matchedRawMaterial(row);
             return match ? (
@@ -319,7 +321,7 @@ export default function SupplierRmEvidenceTable({
       if (col.key === 'supplier') {
         return {
           title: col.label,
-          width: col.width ?? 140,
+          width: Math.max(col.width ?? 140, columnWidth(col)),
           render: (_: unknown, row: RegisterRow, index: number) => {
             const match = matchedRawMaterial(row);
             return match ? (
@@ -339,7 +341,7 @@ export default function SupplierRmEvidenceTable({
       if (col.key === 'inciName') {
         return {
           title: col.label,
-          width: col.width ?? 180,
+          width: Math.max(col.width ?? 180, columnWidth(col)),
           render: (_: unknown, row: RegisterRow, index: number) => (
             <Input
               size="small"
@@ -355,7 +357,7 @@ export default function SupplierRmEvidenceTable({
       }
       return {
         title: col.label,
-        width: col.width ?? 140,
+        width: Math.max(col.width ?? 140, columnWidth(col)),
         render: (_: unknown, row: RegisterRow, index: number) => renderGeneric(col, row, index),
       };
     }),
@@ -384,7 +386,13 @@ export default function SupplierRmEvidenceTable({
     }]),
   ];
 
-  const totalWidth = config.columns.reduce((sum, c) => sum + (c.key === 'rmCode' ? 260 : c.width ?? 140), 0) + 44;
+  // Mirrors the per-column floor above, so the horizontal scroll matches what
+  // is actually rendered.
+  const totalWidth =
+    config.columns.reduce(
+      (sum, c) => sum + Math.max(c.key === 'rmCode' ? 260 : c.width ?? 140, columnWidth(c)),
+      0,
+    ) + 44;
 
   return (
     <Card
@@ -394,10 +402,10 @@ export default function SupplierRmEvidenceTable({
           {config.title} {config.gate && <Tag>Gate {config.gate}</Tag>}
         </span>
       }
-      extra={<span style={{ color: '#999', fontSize: 12 }}>{draft.length} rows</span>}
+      extra={<span style={{ color: TEXT.secondary, fontSize: 12 }}>{draft.length} rows</span>}
     >
       {config.description && (
-        <p style={{ color: '#888', fontSize: 12, marginTop: -4, marginBottom: 12 }}>{config.description}</p>
+        <p style={{ color: TEXT.secondary, fontSize: 12, marginTop: -4, marginBottom: 12 }}>{config.description}</p>
       )}
       {readOnly ? (
         <Alert
@@ -421,6 +429,7 @@ export default function SupplierRmEvidenceTable({
         dataSource={draft}
         columns={columns}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: totalWidth }}
         onRow={(row) => {
           const code = String(row.rmCode ?? '');

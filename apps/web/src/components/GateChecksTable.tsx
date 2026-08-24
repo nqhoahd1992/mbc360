@@ -6,6 +6,7 @@ import { isMandatoryGateCheck } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v }));
 
@@ -48,7 +49,7 @@ export default function GateChecksTable({
       size="small"
       title={title}
       extra={
-        <span style={{ color: '#999' }}>
+        <span style={{ color: TEXT.secondary }}>
           {doneCount}/{checks.length} done
         </span>
       }
@@ -58,6 +59,7 @@ export default function GateChecksTable({
         rowKey={(r) => `${r.gate}-${r.check}`}
         dataSource={draft}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: 1100 }}
         onRow={(r) => {
           const required = isMandatoryGateCheck(r.gate, r.check) && !r.done;

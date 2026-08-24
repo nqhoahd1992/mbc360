@@ -198,27 +198,19 @@ export const setSignOffAssignees = (
   v: number,
 ) => put(id, `phases/${phase}/sign-off-assignees`, { assignments }, v);
 
-// Step-up (2026-08-21): optional "attach my saved signature" flow, gated by a
-// one-time email code bound to this exact project/phase/role act. Absent
-// `attachSignature`, signSignOff below behaves exactly as before this
-// feature existed.
-export const requestSignOffCode = (
-  id: string,
-  phase: number,
-  role: SignOff['role'],
-): Promise<{ sent: true }> =>
-  request(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/request-code`, {
-    method: 'POST',
-    body: JSON.stringify({ role }),
-  });
-
-export const confirmSignOffCode = (
+// Step-up (2026-08-21): optional "attach my saved signature" flow, gated by an
+// authenticator code bound to this exact project/phase/role act. Absent
+// `attachSignature`, signSignOff below behaves exactly as before this feature
+// existed. One step, not two: a code read off the signer's authenticator app is
+// exchanged for the short-lived proof token signSignOff requires. There is
+// nothing to "request" — the app is already generating codes.
+export const verifySignOffStepUp = (
   id: string,
   phase: number,
   role: SignOff['role'],
   code: string,
 ): Promise<{ stepUpToken: string }> =>
-  request(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/confirm-code`, {
+  request(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/step-up`, {
     method: 'POST',
     body: JSON.stringify({ role, code }),
   });
@@ -227,7 +219,9 @@ export const signSignOff = (
   id: string,
   phase: number,
   role: SignOff['role'],
-  input: { decision?: string; comments?: string; attachSignature?: boolean; stepUpToken?: string },
+  // The step-up token is required: a sign-off always attaches the signer's
+  // saved signature (project owner, 2026-08-22).
+  input: { decision?: string; comments?: string; stepUpToken: string },
   expectedVersion: number,
 ) =>
   request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/sign`, {

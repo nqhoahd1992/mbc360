@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Checkbox, DatePicker, Form, Input, Modal, Popconfirm, Popover, Progress, Select, Table, Tag, Tooltip, message } from 'antd';
-import { PlusOutlined, DeleteOutlined, InboxOutlined, UndoOutlined } from '@ant-design/icons';
+import { Button, Card, Checkbox, DatePicker, Empty, Form, Input, Modal, Popconfirm, Popover, Progress, Select, Table, Tag, Tooltip, message } from 'antd';
+import { ArrowRightOutlined, PlusOutlined, DeleteOutlined, InboxOutlined, UndoOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
@@ -10,6 +10,7 @@ import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useSession } from '../auth/useSession';
 import { canArchiveProject, EMPTY_GRANTS } from '../utils/permissions';
+import { TEXT } from '../theme/tokens';
 
 interface NewProjectForm {
   id: string;
@@ -115,6 +116,7 @@ export default function ProjectList() {
       extra={
         <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Checkbox
+            style={{ fontSize: 13 }}
             checked={showArchived}
             onChange={(e) =>
               setShowArchived(e.target.checked).catch((err: unknown) =>
@@ -124,7 +126,14 @@ export default function ProjectList() {
           >
             Show archived
           </Checkbox>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+          {/* `size="small"` to match the Card: a default 32px button inside a
+              small card's ~38px header leaves 3px of breathing room top and
+              bottom and reads as if it is bursting out of the strip. Every
+              other card-header action in the app (Refresh now, Disconnect,
+              Select all…) is small for the same reason. The full-size button
+              stays on the empty state, where it is the page's only call to
+              action rather than a header control. */}
+          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
             New Project
           </Button>
         </span>
@@ -135,6 +144,25 @@ export default function ProjectList() {
         rowKey={(p) => p.identity.id}
         dataSource={projects}
         scroll={{ x: 1290 }}
+        // antd's default empty state is the words "No data", which on the
+        // first-run screen of the whole app says nothing about what to do.
+        locale={{
+          emptyText: (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={
+                <span>
+                  No projects yet. Creating one scaffolds all four phase forms, the twelve gates
+                  and every evidence register.
+                </span>
+              }
+            >
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+                Create New Project
+              </Button>
+            </Empty>
+          ),
+        }}
         columns={[
           {
             title: 'Project ID',
@@ -185,7 +213,7 @@ export default function ProjectList() {
               const reviewers = p.identity.reviewers ?? {};
               const assigned = REVIEW_ROLES.filter((role) => !!reviewers[role.key]?.trim());
               if (assigned.length === 0) {
-                return <span style={{ color: '#bbb' }}>Not assigned</span>;
+                return <span style={{ color: TEXT.disabled }}>Not assigned</span>;
               }
               // Distinct people, in role order, each with every area they hold.
               const byPerson = new Map<string, string[]>();
@@ -209,9 +237,9 @@ export default function ProjectList() {
                         const name = reviewers[role.key]?.trim();
                         return (
                           <div key={role.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                            <span style={{ color: '#888' }}>{role.label}</span>
+                            <span style={{ color: TEXT.secondary }}>{role.label}</span>
                             <span style={{ fontWeight: name && isMe(name) ? 700 : 400 }}>
-                              {name || <span style={{ color: '#bbb' }}>unassigned</span>}
+                              {name || <span style={{ color: TEXT.disabled }}>unassigned</span>}
                               {name && isMe(name) && <Tag color="gold" style={{ marginInlineStart: 6 }}>You</Tag>}
                             </span>
                           </div>
@@ -244,7 +272,7 @@ export default function ProjectList() {
             width: 150,
             render: (_, p) => {
               const list = changes.filter((c) => c.projectId === p.identity.id);
-              if (list.length === 0) return <span style={{ color: '#bbb' }}>0</span>;
+              if (list.length === 0) return <span style={{ color: TEXT.disabled }}>0</span>;
               const openCount = list.filter((c) => isChangeOpen(c.status)).length;
               return (
                 <Link to="/change-control">
@@ -276,11 +304,25 @@ export default function ProjectList() {
             // Both are re-checked on the server; hiding is only about not
             // offering an action that would be refused.
             title: '',
-            width: 92,
+            // Three actions now, so the column needs the room the two icons
+            // did not.
+            width: 150,
             render: (_, p) => {
               const archived = !!p.identity.archived;
               return (
                 <span style={{ whiteSpace: 'nowrap' }}>
+                  {/* The Project ID cell is already a link, but nothing in the
+                      action group said "open this" — the only two controls there
+                      were archive and delete, i.e. both destructive. A real
+                      <Link> (not an onClick) so ⌘-click and middle-click open it
+                      in a new tab like any other link. */}
+                  <Link to={`/projects/${p.identity.id}`}>
+                    <Tooltip title="Open this project's workspace">
+                      <Button size="small" type="link" style={{ paddingInline: 4 }}>
+                        View <ArrowRightOutlined />
+                      </Button>
+                    </Tooltip>
+                  </Link>
                   {canArchive && (
                     <Popconfirm
                       title={archived ? 'Restore this project?' : 'Archive this project?'}
@@ -296,7 +338,12 @@ export default function ProjectList() {
                       }
                     >
                       <Tooltip title={archived ? 'Restore' : 'Archive (reversible)'}>
-                        <Button size="small" type="text" icon={archived ? <UndoOutlined /> : <InboxOutlined />} />
+                        <Button
+                          size="small"
+                          type="text"
+                          aria-label={archived ? 'Restore this project' : 'Archive this project'}
+                          icon={archived ? <UndoOutlined /> : <InboxOutlined />}
+                        />
                       </Tooltip>
                     </Popconfirm>
                   )}
@@ -312,7 +359,7 @@ export default function ProjectList() {
                       }
                     >
                       <Tooltip title="Delete permanently (System Administrator only)">
-                        <Button size="small" danger type="text" icon={<DeleteOutlined />} />
+                        <Button size="small" danger type="text" aria-label="Delete this project permanently" icon={<DeleteOutlined />} />
                       </Tooltip>
                     </Popconfirm>
                   )}
@@ -383,7 +430,7 @@ export default function ProjectList() {
               only seed the 13 user ACCOUNTS. */}
           <div style={{ fontWeight: 600, margin: '4px 0 12px' }}>
             Review owners &amp; co-signers
-            <span style={{ fontWeight: 400, color: '#999', fontSize: 12, marginLeft: 8 }}>
+            <span style={{ fontWeight: 400, color: TEXT.secondary, fontSize: 12, marginLeft: 8 }}>
               — the person responsible for each area on this project
             </span>
           </div>

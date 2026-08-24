@@ -7,6 +7,7 @@ import { roleLabel } from '../utils/roles';
 import { canEditMarketTrack, EMPTY_GRANTS } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import { TEXT } from '../theme/tokens';
 
 const STATUS_OPTIONS: MarketApprovalStatus[] = [
   'Not Started',
@@ -79,7 +80,7 @@ export default function MarketTrackingCard({
       title={
         <span>
           Market Regulatory & Launch Tracking (Gates 10-12){' '}
-          <span style={{ fontWeight: 400, color: '#999', fontSize: 12 }}>
+          <span style={{ fontWeight: 400, color: TEXT.secondary, fontSize: 12 }}>
             — tracked per market; launch approval is hard-blocked until the market's PIF is Approved
           </span>
         </span>
@@ -141,12 +142,12 @@ export default function MarketTrackingCard({
           {
             title: 'PIF approved',
             width: 110,
-            render: (_, t) => <span style={{ color: '#888' }}>{t.pifApprovedDate ?? '—'}</span>,
+            render: (_, t) => <span style={{ color: TEXT.secondary }}>{t.pifApprovedDate ?? '—'}</span>,
           },
           {
             title: 'Launch approved',
             width: 110,
-            render: (_, t) => <span style={{ color: '#888' }}>{t.launchApprovedDate ?? '—'}</span>,
+            render: (_, t) => <span style={{ color: TEXT.secondary }}>{t.launchApprovedDate ?? '—'}</span>,
           },
           {
             title: 'Regulatory notes',

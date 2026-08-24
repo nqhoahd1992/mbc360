@@ -4,6 +4,7 @@ import type { AngleRow, YNNA } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import { TEXT } from '../theme/tokens';
 
 const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v }));
 
@@ -31,7 +32,7 @@ export default function EightAnglesTable({
       size="small"
       title="8 Angles Coverage — apply to the phase before gate closure"
       extra={
-        <span style={{ color: '#999' }}>
+        <span style={{ color: TEXT.secondary }}>
           {covered}/8 covered
         </span>
       }

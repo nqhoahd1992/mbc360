@@ -11,6 +11,8 @@ import { createEmptyRegisterRow } from '../store/factory';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
 import MarketSelect from './MarketSelect';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
+import { columnWidth } from '../utils/columnWidth';
 
 // Published_Info_Approval-specific variant of DynamicTable (2026-07-27,
 // user-requested): "Claim ID" is picked from Claim -> Evidence Traceability
@@ -207,7 +209,7 @@ export default function PublishedInfoApprovalTable({
   const columns = [
     ...config.columns.map((col) => {
       if (readOnly) {
-        return { title: col.label, width: col.width ?? 140, render: (_: unknown, row: RegisterRow) => staticCell(col, row) };
+        return { title: col.label, width: Math.max(col.width ?? 140, columnWidth(col)), render: (_: unknown, row: RegisterRow) => staticCell(col, row) };
       }
       // No input by design: the API stamps this from the signed-in account when
       // the box is ticked, so it cannot be typed or edited (a declaration anyone
@@ -218,12 +220,12 @@ export default function PublishedInfoApprovalTable({
       if (col.key === 'noProductClaimBy') {
         return {
           title: col.label,
-          width: col.width ?? 150,
+          width: Math.max(col.width ?? 150, columnWidth(col)),
           render: (_: unknown, row: RegisterRow) => {
             const declared = String(row.noProductClaimBy ?? '').trim();
             if (declared) return <span style={{ color: '#666' }}>{declared}</span>;
             return (
-              <span style={{ color: '#bbb', fontSize: 12 }}>
+              <span style={{ color: TEXT.disabled, fontSize: 12 }}>
                 {row.noProductClaim ? 'recorded when you save' : 'no exemption declared'}
               </span>
             );
@@ -237,7 +239,7 @@ export default function PublishedInfoApprovalTable({
       if (col.key === 'noProductClaim') {
         return {
           title: col.label,
-          width: col.width ?? 130,
+          width: Math.max(col.width ?? 130, columnWidth(col)),
           render: (_: unknown, row: RegisterRow, index: number) => {
             const linked = String(row.claimId ?? '').trim() !== '';
             const blocked = linked && !row.noProductClaim;
@@ -267,7 +269,7 @@ export default function PublishedInfoApprovalTable({
       if (col.key === 'claimId') {
         return {
           title: col.label,
-          width: col.width ?? 150,
+          width: Math.max(col.width ?? 150, columnWidth(col)),
           render: (_: unknown, row: RegisterRow, index: number) => {
             const claimId = String(row.claimId ?? '');
             const violation = violationFor(row);
@@ -327,12 +329,12 @@ export default function PublishedInfoApprovalTable({
       if (col.key === 'masterWording') {
         return {
           title: col.label,
-          width: col.width ?? 200,
+          width: Math.max(col.width ?? 200, columnWidth(col)),
           render: (_: unknown, row: RegisterRow) => {
             const master = masterWordingFor(row);
             if (!master) {
               return (
-                <span style={{ color: '#bbb', fontSize: 12 }}>
+                <span style={{ color: TEXT.disabled, fontSize: 12 }}>
                   {row.claimId ? 'claim has no approved wording yet' : 'no claim linked'}
                 </span>
               );
@@ -344,7 +346,7 @@ export default function PublishedInfoApprovalTable({
       if (col.key === 'exactWording') {
         return {
           title: col.label,
-          width: col.width ?? 220,
+          width: Math.max(col.width ?? 220, columnWidth(col)),
           render: (_: unknown, row: RegisterRow, index: number) => {
             const adaptation = wordingAdaptations.find((a) => a.row === row);
             return (
@@ -367,7 +369,7 @@ export default function PublishedInfoApprovalTable({
           },
         };
       }
-      return { title: col.label, width: col.width ?? 140, render: (_: unknown, row: RegisterRow, index: number) => renderGeneric(col, row, index) };
+      return { title: col.label, width: Math.max(col.width ?? 140, columnWidth(col)), render: (_: unknown, row: RegisterRow, index: number) => renderGeneric(col, row, index) };
     }),
     ...(readOnly
       ? []
@@ -377,14 +379,17 @@ export default function PublishedInfoApprovalTable({
             width: 44,
             render: (_: unknown, __: RegisterRow, index: number) => (
               <Popconfirm title="Remove this row?" onConfirm={() => removeRow(index)}>
-                <Button size="small" danger type="text" icon={<DeleteOutlined />} />
+                <Button size="small" danger type="text" aria-label="Remove this row" icon={<DeleteOutlined />} />
               </Popconfirm>
             ),
           },
         ]),
   ];
 
-  const totalWidth = config.columns.reduce((sum, c) => sum + (c.width ?? 140), 0) + 44;
+  // Mirrors the per-column floor above, so the horizontal scroll matches
+  // what is actually rendered.
+  const totalWidth =
+    config.columns.reduce((sum, c) => sum + Math.max(c.width ?? 140, columnWidth(c)), 0) + 44;
 
   return (
     <Card
@@ -394,10 +399,10 @@ export default function PublishedInfoApprovalTable({
           {config.title} {config.gate && <Tag>Gate {config.gate}</Tag>}
         </span>
       }
-      extra={<span style={{ color: '#999', fontSize: 12 }}>{draft.length} rows</span>}
+      extra={<span style={{ color: TEXT.secondary, fontSize: 12 }}>{draft.length} rows</span>}
     >
       {config.description && (
-        <p style={{ color: '#888', fontSize: 12, marginTop: -4, marginBottom: 12 }}>{config.description}</p>
+        <p style={{ color: TEXT.secondary, fontSize: 12, marginTop: -4, marginBottom: 12 }}>{config.description}</p>
       )}
       {readOnly && (
         <Alert
@@ -441,6 +446,7 @@ export default function PublishedInfoApprovalTable({
         dataSource={draft}
         columns={columns}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: totalWidth }}
         onRow={(row) => {
           const isBlank = isRegisterRowBlank(config, row);

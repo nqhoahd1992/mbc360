@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Alert, Button, Card, DatePicker, Empty, Input, message, Modal, Select, Table, Tag, Tooltip, Typography } from 'antd';
+import { useLocation } from 'react-router-dom';
+import {Alert, Button, Card, DatePicker, Empty, Input, message, Modal, Select, Table, Tooltip, Typography} from 'antd';
 import {
   CheckCircleFilled,
   ExclamationCircleFilled,
@@ -16,47 +16,18 @@ import { GATE_FIELD_LABELS, GATES, GATE_DECISIONS, STAGE_STATUSES } from '@mbc36
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useAppStore } from '../store/useAppStore';
 import { currentGateIndex, gateIndex, gateReadinessChecklist, isAwaitingDecision, isGatePassed } from '@mbc360/shared/utils/gateProgress';
-import type { ReadinessTier } from '@mbc360/shared/config/gateReadiness';
 import { roleLabel } from '../utils/roles';
 import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import GateReadinessPanel from './GateReadinessPanel';
 import UserSelect from './UserSelect';
 import { ApiError } from '../api/projectsApi';
 import { useSession } from '../auth/useSession';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
-// Of the four `ReadinessSource` values (see packages/shared/src/config/
-// gateReadiness.ts) only ONE still earns a place on screen, as of 2026-08-11.
-//
-// Until then the panel printed all four, under a divider reading "Additional
-// requirements (not in the SME's F1 list)". That was written while the F1 wiring
-// was in progress and the tier methodology itself was unconfirmed, when "is this
-// item the team's or ours?" was a live question for every row. It is no longer:
-// `b3` (13 items), `npd-roadmap` (10) and `f-series` (1) are all CONFIRMED
-// requirements that simply live in a different document than the F1 appendix, so
-// for 24 of the 26 tagged items the divider was telling a reader "this is
-// binding, but recorded elsewhere" — bookkeeping that matters to whoever
-// maintains the config, not to someone working a gate.
-//
-// What does matter to that person is the remaining 2: a requirement blocking
-// their gate on nothing but our own reading. `source` stays in config for all
-// four — the S4 verification sweep reads it, and it is how we track provenance.
-const UNCONFIRMED_SOURCE_NOTE = ' — added on our own reading; not yet confirmed by the review team';
 
-// Verbatim from the F1 appendix (docs/rounds/2026-07-21-sme-reply-F1-F14.txt) — shown as a tooltip on
-// each item's tier badge (2026-07-27, user-requested) so the definition is
-// one hover away instead of only living in a config comment.
-const READINESS_TIER_DEFINITIONS: Record<ReadinessTier, string> = {
-  Mandatory: 'Mandatory: hard-blocks gate passage.',
-  Conditional: 'Conditional: becomes mandatory when triggered by product type, user, market, claim or change.',
-  Supporting: 'Supporting: may be incomplete without blocking the gate, provided any resulting risk is documented.',
-};
 
-const READINESS_TIER_COLORS: Record<ReadinessTier, string> = {
-  Mandatory: 'red',
-  Conditional: 'orange',
-  Supporting: 'blue',
-};
 
 export default function GateFlowTable({
   project,
@@ -96,6 +67,9 @@ export default function GateFlowTable({
         .reverse()
     : [];
 
+  // Per gate: whether the satisfied requirements are expanded (collapsed by
+  // default — see GateReadinessPanel for why).
+  const [showSatisfied, setShowSatisfied] = useState<Record<string, boolean>>({});
   const [backtrackFrom, setBacktrackFrom] = useState<string | null>(null);
   const [backtrackTo, setBacktrackTo] = useState<string | undefined>();
   const [backtrackReason, setBacktrackReason] = useState('');
@@ -282,7 +256,7 @@ export default function GateFlowTable({
       size="small"
       title="Phase Gate Flow"
       extra={
-        <span style={{ color: '#999' }}>
+        <span style={{ color: TEXT.secondary }}>
           A gate passes only when status is Complete, a Proceed / Proceed with Conditions decision
           is recorded, and no blockers remain (open next actions, mandatory safety screens)
         </span>
@@ -317,6 +291,7 @@ export default function GateFlowTable({
         rowKey={(r) => r.meta.id}
         dataSource={rows}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: 1250 }}
         rowClassName={(r) => (r.passed ? 'gate-row-passed' : r.locked ? 'gate-row-locked' : '')}
         expandable={{
@@ -330,7 +305,7 @@ export default function GateFlowTable({
           expandedRowRender: (r) => (
             <div style={{ display: 'grid', gap: 4 }}>
               {!r.canDecide && !r.locked && (
-                <div style={{ fontSize: 12, color: '#999' }}>
+                <div style={{ fontSize: 12, color: TEXT.secondary }}>
                   Decision restricted to {r.meta.primaryOwner}
                 </div>
               )}
@@ -346,83 +321,16 @@ export default function GateFlowTable({
                 <div style={{ fontSize: 12, color: '#d48806' }}>Pending — decision required to pass</div>
               )}
               {r.readinessChecklist.length > 0 && (
-                <div style={{ fontSize: 12 }}>
-                  <span style={{ fontWeight: 600, color: r.liveBlockers.length > 0 ? '#cf1322' : '#389e0d' }}>
-                    {r.liveBlockers.length > 0
-                      ? `What's blocking Gate ${r.meta.number}: `
-                      : `Gate ${r.meta.number} readiness — all requirements met:`}
-                  </span>
-                  <ul style={{ margin: '2px 0 0', paddingLeft: 18 }}>
-                    {r.readinessChecklist.map((b) => {
-                      // Green = satisfied, red = an actual blocker, amber =
-                      // never blocks (either no data source wired yet, or a
-                      // Conditional/Supporting tier item that's advisory only
-                      // by definition — see `pending`/`advisory` on
-                      // GateReadinessItem).
-                      const color = b.satisfied ? '#389e0d' : b.pending || b.advisory ? '#d48806' : '#cf1322';
-                      const targetPath = b.link
-                        ? b.link.absolute
-                          ? b.link.href
-                          : `/projects/${projectId}${b.link.href}`
-                        : undefined;
-                      const targetHref = targetPath
-                        ? `${targetPath}${b.link?.scrollToId ? `?scrollTo=${b.link.scrollToId}` : ''}`
-                        : undefined;
-                      // A link to a section on the phase page already open here
-                      // navigates + scrolls in place; a link to a different
-                      // page (a register, the BOM page, ...) opens in a new
-                      // browser tab instead, so the Gate Flow view the user is
-                      // reading isn't replaced. Landing directly on that page
-                      // already auto-expands its sidebar parent group (App.tsx
-                      // derives `openKeys` from the route on mount).
-                      const isSamePage = targetPath === location.pathname;
-                      return (
-                        <li key={b.id} style={{ color }}>
-                            {b.satisfied && '✓ '}
-                            {targetHref ? (
-                              isSamePage ? (
-                                <Link to={targetHref} style={{ color }}>
-                                  {b.label}
-                                </Link>
-                              ) : (
-                                <a href={`#${targetHref}`} target="_blank" rel="noopener noreferrer" style={{ color }}>
-                                  {b.label}
-                                </a>
-                              )
-                            ) : (
-                              b.label
-                            )}
-                            {b.tier && (
-                              <Tooltip title={READINESS_TIER_DEFINITIONS[b.tier]}>
-                                <Tag color={READINESS_TIER_COLORS[b.tier]} style={{ marginLeft: 6, cursor: 'default' }}>
-                                  {b.tier}
-                                </Tag>
-                              </Tooltip>
-                            )}
-                            {/* Written for whoever is working the gate, not for
-                                whoever maintains the config (2026-08-11): the
-                                information — "this will not block you, and the
-                                system cannot judge it for you" — is the same, but
-                                "wired to a data source" and "Conditional/
-                                Supporting tier" were our vocabulary, not theirs.
-                                The tier badge above still carries the SME's own
-                                definition on hover for anyone who wants it. */}
-                            {b.pending
-                              ? ' — the system cannot check this one; confirm it yourself before passing the gate'
-                              : !b.satisfied && b.advisory
-                                ? ' — applies only in certain cases; it will not block this gate'
-                                : !b.satisfied && !b.hardBlock && ' — clears with Proceed with Conditions'}
-                            {b.source === 'dev-decision' && UNCONFIRMED_SOURCE_NOTE}
-                            {b.coverageNote && (
-                              <div style={{ color: '#8c8c8c', fontSize: 11, marginTop: 2 }}>
-                                Partly checked: {b.coverageNote}
-                              </div>
-                            )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
+                <GateReadinessPanel
+                  gateNumber={r.meta.number}
+                  items={r.readinessChecklist}
+                  projectId={projectId}
+                  currentPath={location.pathname}
+                  showSatisfied={!!showSatisfied[r.meta.id]}
+                  onToggleSatisfied={() =>
+                    setShowSatisfied((prev) => ({ ...prev, [r.meta.id]: !prev[r.meta.id] }))
+                  }
+                />
               )}
             </div>
           ),

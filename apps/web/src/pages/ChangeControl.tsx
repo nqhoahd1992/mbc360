@@ -19,6 +19,7 @@ import {
 import StatusBadge from '../components/StatusBadge';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from '../components/SaveBar';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 const AFFECTED_AREAS = [
   'Artwork', 'Formula', 'Label', 'Claim', 'Supplier', 'Process', 'Packaging', 'Market',
@@ -151,10 +152,10 @@ export default function ChangeControl() {
         title="Change Control & Communication Log"
         extra={
           <Space>
-            <Button icon={<SearchOutlined />} onClick={() => setRefOpen(true)}>
+            <Button size="small" icon={<SearchOutlined />} onClick={() => setRefOpen(true)}>
               Trigger reference
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
               Open Change Request
             </Button>
           </Space>
@@ -173,7 +174,7 @@ export default function ChangeControl() {
               width: 260,
               render: (_, c) => {
                 const t = getChangeTrigger(c.triggerId);
-                return t ? <AffectedTags gates={t.gates} /> : <span style={{ color: '#bbb' }}>—</span>;
+                return t ? <AffectedTags gates={t.gates} /> : <span style={{ color: TEXT.disabled }}>—</span>;
               },
             },
             { title: 'Product / SKU', width: 200, dataIndex: 'productSku' },
@@ -259,7 +260,13 @@ export default function ChangeControl() {
           rowKey={(t) => t.id}
           dataSource={CHANGE_TRIGGERS}
           pagination={false}
-          scroll={{ x: 1200 }}
+          // NOT `sticky`: inside a Modal the scroll container is the modal
+          // body, while antd's sticky header pins against the VIEWPORT at
+          // offsetHeader — so the header detached and floated across the middle
+          // of the list. `scroll.y` is the in-modal equivalent: the table gets
+          // its own scroll area with the header pinned to the top of it, and
+          // the 19-row reference stops making the modal taller than the screen.
+          scroll={{ x: 1200, y: '58vh' }}
           columns={[
             {
               title: 'Category',
@@ -287,6 +294,7 @@ export default function ChangeControl() {
           rowKey={(r) => r.functionName}
           dataSource={CHANGE_RACI}
           pagination={false}
+          sticky={TABLE_STICKY}
           scroll={{ x: 900 }}
           columns={[
             { title: 'Function', width: 160, dataIndex: 'functionName', render: (v) => <b>{v}</b> },

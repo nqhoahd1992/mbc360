@@ -14,6 +14,7 @@ import type { SessionUser } from '../auth/session-user';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionsService } from '../rbac/permissions.service';
 import { SSO_ROLES } from '@mbc360/shared/config/roles';
+import { TotpService } from '../verification/totp.service';
 
 const SSO_ROLE_KEYS = new Set(SSO_ROLES.map((r) => r.key));
 
@@ -27,6 +28,7 @@ export class AdminUsersController {
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionsService,
     private readonly audit: AuditService,
+    private readonly totp: TotpService,
   ) {}
 
   private async requireAdmin(user: SessionUser): Promise<void> {
@@ -42,6 +44,7 @@ export class AdminUsersController {
     active: boolean;
     department: { name: string } | null;
     roles: { role: { key: string; name: string } }[];
+    totp?: { activatedAt: Date | null } | null;
   }) {
     return {
       id: user.id,
@@ -50,6 +53,10 @@ export class AdminUsersController {
       active: user.active,
       department: user.department?.name ?? null,
       roles: user.roles.map((r) => ({ key: r.role.key, name: r.role.name })),
+      // Only an ACTIVATED enrolment counts as having an authenticator — a
+      // pending one authorises nothing, so offering to reset it would be
+      // offering to undo nothing.
+      totpEnrolled: !!user.totp?.activatedAt,
     };
   }
 
@@ -69,7 +76,11 @@ export class AdminUsersController {
   async listUsers(@CurrentUser() currentUser: SessionUser) {
     await this.requireAdmin(currentUser);
     const users = await this.prisma.user.findMany({
-      include: { department: true, roles: { include: { role: true } } },
+      include: {
+        department: true,
+        roles: { include: { role: true } },
+        totp: { select: { activatedAt: true } },
+      },
       orderBy: { email: 'asc' },
     });
     return users.map((u) => this.toUserResponse(u));
@@ -107,7 +118,11 @@ export class AdminUsersController {
       }
       const record = await tx.user.findUniqueOrThrow({
         where: { id },
-        include: { department: true, roles: { include: { role: true } } },
+        include: {
+          department: true,
+          roles: { include: { role: true } },
+          totp: { select: { activatedAt: true } },
+        },
       });
       await this.audit.record(
         {
@@ -147,7 +162,11 @@ export class AdminUsersController {
       const record = await tx.user.update({
         where: { id },
         data: { active: body.active },
-        include: { department: true, roles: { include: { role: true } } },
+        include: {
+          department: true,
+          roles: { include: { role: true } },
+          totp: { select: { activatedAt: true } },
+        },
       });
       await this.audit.record(
         {
@@ -214,5 +233,16 @@ export class AdminUsersController {
     });
 
     return { ok: true };
+  }
+
+  // Recovery for a lost or replaced device: without it, a user who cannot
+  // produce a code could never attach a signature to a sign-off again. It
+  // removes the enrolment only — the user re-enrols themselves in My Account,
+  // so an admin never sees or handles anybody's secret. Audited with the
+  // admin as actor, so a reset can never be mistaken for the user's own act.
+  @Delete('users/:id/totp')
+  async resetUserTotp(@CurrentUser() currentUser: SessionUser, @Param('id') id: string) {
+    await this.requireAdmin(currentUser);
+    return this.totp.resetFor(currentUser, id);
   }
 }

@@ -28,6 +28,7 @@ import SectionJumpButton from '../components/SectionJumpButton';
 import { roleLabel } from '../utils/roles';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { targetUsersPinnedByAssessment } from '@mbc360/shared/utils/vulnerableUsers';
+import { TEXT } from '../theme/tokens';
 
 // Transcribed verbatim from cell A20 of each phase's source workbook sheet
 // (PHASE1 G1-3 MKTG has no equivalent cell — its A20 is a table header, not a
@@ -56,7 +57,10 @@ export default function PhasePage() {
     if (!targetId) return;
     const el = document.getElementById(targetId);
     if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Smooth scrolling is motion: honour the OS setting rather than animating
+    // the viewport for someone who asked us not to.
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
     const prevBackground = el.style.backgroundColor;
     const prevTransition = el.style.transition;
     el.style.transition = 'background-color 0.4s';
@@ -114,7 +118,7 @@ export default function PhasePage() {
       <SectionJumpButton sections={jumpSections} />
       <div>
         <Typography.Title level={4} style={{ margin: 0, color: meta.color }}>
-          {meta.title} <span style={{ color: '#999', fontWeight: 400 }}>({meta.subtitle})</span>{' '}
+          {meta.title} <span style={{ color: TEXT.secondary, fontWeight: 400 }}>({meta.subtitle})</span>{' '}
           {progress.state === 'completed' && (
             <Tag icon={<CheckCircleFilled />} color="success">
               Phase passed

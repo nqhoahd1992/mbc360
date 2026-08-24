@@ -7,6 +7,7 @@ import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 // F8: full controlled-record workflow + Critical priority.
 const STATUS_OPTIONS: NextActionStatus[] = [
@@ -74,14 +75,14 @@ export default function NextActionsCard({
       title={
         <span>
           Next Actions{' '}
-          <span style={{ fontWeight: 400, color: '#999', fontSize: 12 }}>
+          <span style={{ fontWeight: 400, color: TEXT.secondary, fontSize: 12 }}>
             — open actions block a plain Proceed (allowed only under Proceed with Conditions); a
             Critical action blocks the gate even under Proceed with Conditions
           </span>
         </span>
       }
       extra={
-        <span style={{ color: openCount > 0 ? '#d48806' : '#999', fontSize: 12 }}>
+        <span style={{ color: openCount > 0 ? '#d48806' : TEXT.secondary, fontSize: 12 }}>
           {openCount} open / {draft.length} total
           {openCriticalCount > 0 && (
             <span style={{ color: '#cf1322', fontWeight: 600 }}> · {openCriticalCount} Critical</span>
@@ -94,6 +95,7 @@ export default function NextActionsCard({
         rowKey={(a) => a.id}
         dataSource={draft}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: 1180 }}
         locale={{ emptyText: 'No next actions recorded for this phase' }}
         columns={[
@@ -192,14 +194,14 @@ export default function NextActionsCard({
           {
             title: 'Date completed',
             width: 120,
-            render: (_, a) => <span style={{ color: '#888' }}>{a.dateCompleted ?? '—'}</span>,
+            render: (_, a) => <span style={{ color: TEXT.secondary }}>{a.dateCompleted ?? '—'}</span>,
           },
           {
             title: '',
             width: 50,
             render: (_, a) => (
               <Popconfirm title="Remove action?" onConfirm={() => removeAction(a.id)}>
-                <Button size="small" danger type="text" icon={<DeleteOutlined />} />
+                <Button size="small" danger type="text" aria-label="Remove this next action" icon={<DeleteOutlined />} />
               </Popconfirm>
             ),
           },
