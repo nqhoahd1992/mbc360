@@ -24,6 +24,16 @@ import {
 } from '../config/registers';
 
 export const WATCHLIST_REGISTER = 'prohibitedIngredients';
+// Round 4 question 32(e) (2026-08-24): "The Pregnancy/Breastfeeding Caution list
+// uses the same reviewer-trail fields for flagged findings." We raised this
+// ourselves — D3 said "each flagged watch-list result" while its heading named only
+// the formula match — and the answer is yes, both registers.
+//
+// Both carry the same column keys, so every function below serves both without a
+// branch. That is why the columns were added to `pbCautionLimits` with identical
+// keys rather than parallel names.
+export const PB_CAUTION_REGISTER = 'pbCautionLimits';
+export const WATCHLIST_REGISTERS: readonly string[] = [WATCHLIST_REGISTER, PB_CAUTION_REGISTER];
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
@@ -31,8 +41,14 @@ export function isFlaggedWatchlistRow(row: RegisterRow): boolean {
   return WATCHLIST_FLAGGED_STATUSES.includes(text(row.productStatus));
 }
 
+// Flagged rows across BOTH watch-lists. Note the two registers use different
+// `productStatus` vocabularies — the prohibited list has "REVIEW - possible formula
+// match", the caution list has "Exceeds limit - reformulate" — and only the three
+// values in WATCHLIST_FLAGGED_STATUSES count as flagged on either. That is
+// deliberate: `Prohibited - remove` and `Exceeds limit - reformulate` are direct
+// hard blocks handled by their own readiness items, not findings awaiting a verdict.
 export function flaggedWatchlistRows(project: ProjectData): RegisterRow[] {
-  return (project.registers[WATCHLIST_REGISTER] ?? []).filter(isFlaggedWatchlistRow);
+  return WATCHLIST_REGISTERS.flatMap((key) => (project.registers[key] ?? []).filter(isFlaggedWatchlistRow));
 }
 
 export function watchlistLabel(row: RegisterRow): string {
@@ -91,7 +107,9 @@ function verdictDocumented(project: ProjectData, row: RegisterRow): boolean {
 // not what an unassessed row does. Treating "no verdict yet" as PwC-clearable
 // would make the whole mechanism optional — pick Proceed with Conditions and no
 // assessment is ever needed — which cannot be the intent of a rule whose own
-// sentences all begin "blocks Proceed until…" [ASSUMPTION: R4-Q29].
+// sentences all begin "blocks Proceed until…". CONFIRMED by Round 4 question
+// 32(d), 2026-08-24: "An unassessed flagged row must block both Proceed and
+// Proceed with Conditions."
 export function watchlistHardBlockers(project: ProjectData): RegisterRow[] {
   return flaggedWatchlistRows(project).filter(
     (row) =>

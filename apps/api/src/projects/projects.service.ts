@@ -9,9 +9,16 @@ import { GATES, GATE_DECISIONS } from '@mbc360/shared/config/gates';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
+import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
+import { gate11ConditionalChanges } from '@mbc360/shared/utils/changeImpact';
 import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
 import { RM_EVIDENCE_REGISTER, rmEvidenceContradictions } from '@mbc360/shared/utils/rmEvidence';
-import { WATCHLIST_REGISTER, brokenNextActionLinks, watchlistLabel } from '@mbc360/shared/utils/watchlistReview';
+import {
+  WATCHLIST_REGISTERS,
+  brokenNextActionLinks,
+  watchlistConditionalRows,
+  watchlistLabel,
+} from '@mbc360/shared/utils/watchlistReview';
 import {
   VULNERABLE_REGISTER,
   targetUsersPinnedByAssessment,
@@ -33,6 +40,8 @@ import type {
   GateCheck,
   GateRecord,
   ProjectData,
+  ProjectReferenceData,
+  RawMaterialRisk,
   RegisterRow,
   RequirementItem,
   SignOff,
@@ -53,6 +62,44 @@ import {
   type ProjectWithAll,
 } from './project-mapper';
 import { createProjectWithScaffold, type NewProjectInput } from './project-scaffold';
+
+// Writable columns of `ProjectAssessments` (Round 4 questions 8, 9, 11, 12). An
+// explicit allowlist rather than `Object.keys(patch)`, so a client cannot smuggle
+// an arbitrary column name into the `project.update` data object. `satisfies`
+// makes the compiler reject a name that is not a real field on the type, which is
+// the typo guard this list would otherwise need a test for.
+const ASSESSMENT_FIELDS = [
+  'changeControlRequired',
+  'changeControlReviewer',
+  'changeControlReviewDate',
+  'changeControlRationale',
+  'changeControlRecordId',
+  'changeControlEvidenceLink',
+  'humanStudyPlanned',
+  'administrativeOnly',
+  'administrativeOnlyConfirmedBy',
+  'scaleUpRiskIdentified',
+  'scaleUpRiskDescription',
+  'scaleUpRiskAssessor',
+  'scaleUpRiskAssessmentDate',
+  'scaleUpRiskRationale',
+  'scaleUpRiskActivity',
+  'scaleUpRiskEvidenceLink',
+] as const satisfies readonly (keyof ProjectData['assessments'])[];
+
+// The eight gap-assessment columns (Round 4 question 3). Same allowlist discipline
+// as ASSESSMENT_FIELDS above, and `satisfies` makes the compiler reject a name that
+// is not a real field on GateRecord.
+const GAP_ASSESSMENT_FIELDS = [
+  'gapCriticality',
+  'gapImpactCategory',
+  'gapAssessor',
+  'gapAssessmentDate',
+  'gapRationale',
+  'gapEvidenceLink',
+  'gapRequiredAction',
+  'gapActionOwner',
+] as const satisfies readonly (keyof GateRecord)[];
 
 // M3 Phase 1 (2026-07-26). Every guard here is the SAME shared pure function the
 // browser store calls — never a re-implementation (BACKEND_PLAN §3 principle 1
@@ -194,6 +241,41 @@ export class ProjectsService {
     }
   }
 
+  // Round 4 questions 32(c) and 34(d) (2026-08-24). Being allowed to decide a gate
+  // is not the same as being allowed to CARRY something under that decision.
+  //
+  // Both answers say Proceed with Conditions may serve as the authorised
+  // acceptance — no separate acknowledgement step is required — but both attach an
+  // authority condition to it. So the check belongs exactly here: only when the
+  // decision being recorded is Proceed with Conditions, and only when there is
+  // actually something for it to carry. A gate with no flagged finding and no open
+  // change needs neither grant, which is why this is not folded into
+  // `assertCanDecide`.
+  private async assertCanCarryConditions(
+    user: SessionUser,
+    project: ProjectData,
+    gateId: string,
+    decision: GateRecord['decision'],
+  ): Promise<void> {
+    if (decision !== 'Proceed with Conditions') return;
+
+    if (watchlistConditionalRows(project).length > 0 && !(await this.permissions.canAcceptWatchlistFinding(user))) {
+      throw new ForbiddenException(
+        `Gate ${gateId}: carrying a flagged watch-list finding under Proceed with Conditions needs Safety or Regulatory authority ` +
+          `(watchlist-finding|accept-safety or |accept-regulatory)`,
+      );
+    }
+    if (
+      gate11ConditionalChanges(project, project.changes).length > 0 &&
+      !(await this.permissions.canAcknowledgeChangeImpact(user))
+    ) {
+      throw new ForbiddenException(
+        `Gate ${gateId}: acknowledging an open change control needs authority to approve its Gate 11 impact ` +
+          `(change-impact|acknowledge)`,
+      );
+    }
+  }
+
   // ---------------------------------------------------------------- reads ----
 
   // Archived projects are hidden by default — archiving exists to get a retired
@@ -236,9 +318,60 @@ export class ProjectsService {
       orderBy: { occurredAt: 'asc' },
     });
     return {
-      project: toProjectData(row, toGateChangeLog(events)),
+      project: toProjectData(row, toGateChangeLog(events), await this.loadReference(this.prisma)),
       version: row.version,
       changes: toChangeRecords(row) as ChangeRecord[],
+    };
+  }
+
+  // The company reference datasets the rule engine reads (Round 4 questions 4 and
+  // 17, 2026-08-24). Loaded on every read and inside every mutation transaction,
+  // because the guards evaluate the SAME readiness rules the browser does and a
+  // guard running against an empty overlay would be weaker than the UI it is meant
+  // to be the authority over (BACKEND_PLAN principle 7).
+  //
+  // Taken with the caller's client so a guard sees the reference data as of its own
+  // transaction, not a value read before the row lock was taken.
+  private async loadReference(tx: Prisma.TransactionClient): Promise<ProjectReferenceData> {
+    const [marketProfiles, rmRisk] = await Promise.all([
+      tx.marketProfile.findMany({
+        orderBy: { market: 'asc' },
+        include: { updatedBy: { select: { displayName: true } } },
+      }),
+      tx.rawMaterialRisk.findMany({
+        orderBy: { rmCode: 'asc' },
+        include: { updatedBy: { select: { displayName: true } } },
+      }),
+    ]);
+    return {
+      marketProfiles: marketProfiles.map((p) => ({
+        id: p.id,
+        market: p.market,
+        adverseEventReporting: p.adverseEventReporting,
+        pmsRecordsRequired: p.pmsRecordsRequired,
+        reviewIntervalMonths: p.reviewIntervalMonths ?? undefined,
+        enhancedSurveillance: p.enhancedSurveillance,
+        dossierType: p.dossierType ?? undefined,
+        claimRestrictions: p.claimRestrictions ?? undefined,
+        evidenceLink: p.evidenceLink ?? undefined,
+        reviewDate: p.reviewDate ?? undefined,
+        notes: p.notes ?? undefined,
+        revision: p.revision,
+        updatedBy: p.updatedBy?.displayName,
+        updatedAt: p.updatedAt.toISOString(),
+      })),
+      rmRisk: rmRisk.map((r) => ({
+        id: r.id,
+        rmCode: r.rmCode,
+        displayName: r.displayName ?? undefined,
+        flags: r.flags as RawMaterialRisk['flags'],
+        evidenceLink: r.evidenceLink ?? undefined,
+        reviewDate: r.reviewDate ?? undefined,
+        notes: r.notes ?? undefined,
+        revision: r.revision,
+        updatedBy: r.updatedBy?.displayName,
+        updatedAt: r.updatedAt.toISOString(),
+      })),
     };
   }
 
@@ -413,7 +546,7 @@ export class ProjectsService {
   ): Promise<ProjectEnvelope> {
     await this.prisma.$transaction(async (tx) => {
       const row = await this.loadVersionLocked(tx, id, expectedVersion);
-      const after = await write(tx, row, toProjectData(row, []));
+      const after = await write(tx, row, toProjectData(row, [], await this.loadReference(tx)));
       await this.bumpVersion(tx, id);
       await this.audit.record(
         {
@@ -807,9 +940,19 @@ export class ProjectsService {
       if (!(GATE_DECISIONS as readonly string[]).includes(decision)) {
         throw new BadRequestException(`"${decision}" is not a valid decision`);
       }
-      // D1 asks for "comment where required" without saying when. Read as:
+      // D1 asked for "comment where required" without saying when. Read as:
       // anything other than a plain Proceed carries a condition or a reason
-      // that must be written down. [ASSUMPTION: R4-Q26]
+      // that must be written down.
+      //
+      // Round 4 question 29(2) (2026-08-24) confirms the shape of that reading and
+      // names the ten decisions: Proceed with Conditions · Hold · Backtrack ·
+      // Reject/Stop · Approved with Conditions · Not Approved · Further
+      // Information Required · N/A where a human rationale is required ·
+      // Delegated approval · Override or exception. The four extra values are
+      // ones this enum does not carry yet, so the `!== 'Proceed'` test stays
+      // correct for the decisions that CAN be recorded here — but it must be
+      // replaced by the explicit list when the gate sign-off lands, so the two
+      // surfaces cannot drift [R4-REWORK: câu 29(2)].
       // Whether D1's field set applies to the PHASE block at all (it is written
       // for gate sign-off) is [ASSUMPTION: R5-Q2].
       const comments = input.comments?.trim();
@@ -1065,7 +1208,11 @@ export class ProjectsService {
       // D3: "A genuine controlled Next Action must be used. A note alone is not
       // sufficient." A reference that resolves to nothing is the same thing as a
       // note — it looks like a controlled action and is not one.
-      if (registerKey === WATCHLIST_REGISTER) {
+      // Both watch-lists since Round 4 question 32(e) (2026-08-24) — the caution
+      // list now carries the same reviewer-trail columns, so it needs the same
+      // guard. Scoping this to one register while the other has an identical
+      // `linkedNextActionId` column would leave half the rule enforced.
+      if (WATCHLIST_REGISTERS.includes(registerKey)) {
         const broken = brokenNextActionLinks(project, rows);
         if (broken.length > 0) {
           throw new BadRequestException(
@@ -1230,6 +1377,69 @@ export class ProjectsService {
         if (field in patch) data[field] = (patch[field] ?? '').trim() || null;
       }
       if (Object.keys(data).length === 0) return { fields: [] };
+      await tx.project.update({ where: { id }, data });
+      return { fields: Object.keys(data) };
+    });
+  }
+
+  // Round 4 questions 8, 9, 11 and 12 (2026-08-24): the explicit assessment
+  // answers that give question 7's "not yet assessed" state somewhere to live.
+  //
+  // Deliberately NOT gate-locked, unlike formula properties and costing above. The
+  // four answers belong to different gates (12, 8, 3 and 9), so a single gate ref
+  // would be wrong for three of them; and each one is read by a Conditional item
+  // that BLOCKS while unanswered, so locking it behind a passed gate could strand a
+  // project with no way to satisfy the very item demanding the answer. B4 still
+  // covers correcting a recorded answer: the change is audited like every other.
+  async setAssessments(
+    user: SessionUser,
+    id: string,
+    patch: ProjectData['assessments'],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'assessments.updated', async (tx, _row, project) => {
+      const data: Record<string, string | null> = {};
+      for (const field of ASSESSMENT_FIELDS) {
+        // An empty string is stored as NULL, so clearing an answer returns the
+        // project to "not yet assessed" rather than leaving a blank that reads as
+        // an answer. Only fields actually present in the patch are touched.
+        if (field in patch) data[field] = (patch[field] ?? '').trim() || null;
+      }
+      if (Object.keys(data).length === 0) return { fields: [] };
+
+      // Questions 8 and 11 each attach a condition to one of the answers, and both
+      // are enforced here rather than only in the card — BACKEND_PLAN §3 principle
+      // 7: the server is the sole authority, and "the UI disables it" is not
+      // enforcement. Merged against the stored row, not read from the patch alone,
+      // so a partial PUT cannot satisfy a condition by simply omitting the field
+      // that fails it.
+      const merged = { ...project.assessments, ...patch };
+      const value = (k: keyof ProjectData['assessments']) => (merged[k] ?? '').trim();
+
+      // Question 8: "If Yes, a valid Change Control record must be linked. If No,
+      // the rationale and reviewer must be recorded."
+      if (value('changeControlRequired') === 'Yes' && value('changeControlRecordId') === '') {
+        throw new BadRequestException(
+          'Change Control required = "Yes" needs a linked Change Control record (Round 4, question 8)',
+        );
+      }
+      if (
+        value('changeControlRequired') === 'No' &&
+        (value('changeControlRationale') === '' || value('changeControlReviewer') === '')
+      ) {
+        throw new BadRequestException(
+          'Change Control required = "No" needs both the reviewer and the rationale recorded (Round 4, question 8)',
+        );
+      }
+      // Question 11: "The classification must be confirmed by an authorised
+      // reviewer." An unconfirmed Yes is not an exemption, so it must not be
+      // storable as one — the competitor-review trigger reads both fields.
+      if (value('administrativeOnly') === 'Yes' && value('administrativeOnlyConfirmedBy') === '') {
+        throw new BadRequestException(
+          'An administrative-only classification must name the authorised reviewer who confirmed it (Round 4, question 11)',
+        );
+      }
+
       await tx.project.update({ where: { id }, data });
       return { fields: Object.keys(data) };
     });
@@ -1676,6 +1886,12 @@ export class ProjectsService {
             status: c.status,
             closureEvidence: c.closureEvidence ?? null,
             closedDate: this.dateOrNull(c.closedDate),
+            // Round 4 question 34(c) — the other five parts of a final disposition.
+            closureOutcome: c.closureOutcome ?? null,
+            closureImplementation: c.closureImplementation ?? null,
+            closureImpactedVersions: c.closureImpactedVersions ?? null,
+            closureVerifier: c.closureVerifier ?? null,
+            closureRemainingAction: c.closureRemainingAction ?? null,
             owner: c.owner,
             notes: c.notes ?? null,
           })),
@@ -1697,7 +1913,12 @@ export class ProjectsService {
     gateId: string,
     existing: GateRecord,
     requested: GateRecord['decision'],
-    status: GateRecord['status'],
+    // The gate as it will be AFTER this patch — status and the eight gap-assessment
+    // fields included. Passing the merged record rather than the stored one plus a
+    // status matters for question 3: a save that records the criticality and the
+    // decision together must be judged on the criticality it is writing, not the
+    // one that happened to be stored a moment ago.
+    nextGate: GateRecord,
     openChangeGateNumbers: Set<string>,
     strict: boolean,
   ): GateRecord['decision'] {
@@ -1708,11 +1929,28 @@ export class ProjectsService {
       return existing.decision;
     };
 
+    // B1 as graded by Round 4 question 3 (2026-08-24). A Gap used to block only a
+    // plain Proceed; now what it blocks depends on the criticality a reviewer
+    // recorded, and an UNGRADED gap blocks both decisions — the grading is the
+    // reviewer's act, so "nobody graded it" is not a state the gate passes in.
+    //
+    // Evaluated against the gate as it will be after this patch (`status` is the
+    // requested status, the gap fields come from the merged record), so changing the
+    // status and the decision in one save cannot slip past it.
+    const gapVerdict = gapBlocksDecision(nextGate, requested);
+    if (gapVerdict) {
+      // `missing` means the decision becomes valid once those fields are recorded,
+      // so the message must not tell the caller to pick a different decision — the
+      // same wording bug the Gate Flow table had, and a message from the API is the
+      // one a script or another client sees.
+      const fix = gapVerdict.missing?.length
+        ? `Record ${gapVerdict.missing.join(', ')} on the gap assessment, or choose ` +
+          `${gapVerdict.allowed.map((d) => `"${d}"`).join(' or ')} instead`
+        : `Record ${gapVerdict.allowed.map((d) => `"${d}"`).join(' or ')} instead`;
+      return reject(`Gate ${gateId}: "${requested}" is not valid — ${gapVerdict.reason}. ${fix}`);
+    }
+
     if (requested === 'Proceed') {
-      // B1: a Gap prevents a normal Proceed.
-      if (status === 'Gap') {
-        return reject(`Gate ${gateId}: "Proceed" is not valid while the stage status is Gap`);
-      }
       // F9: an open change control record affecting this gate soft-locks it.
       const gateNumber = GATES.find((g) => g.id === gateId)?.number;
       if (gateNumber && openChangeGateNumbers.has(gateNumber)) {
@@ -1769,7 +2007,7 @@ export class ProjectsService {
     if ('decision' in patch) await this.assertCanDecide(user, gateId);
     const projectId = await this.prisma.$transaction(async (tx) => {
       const row = await this.loadVersionLocked(tx, id, expectedVersion);
-      const project = toProjectData(row, []);
+      const project = toProjectData(row, [], await this.loadReference(tx));
       const existing = project.gates.find((g) => g.gateId === gateId);
       if (!existing) throw new NotFoundException(`Gate ${gateId} not found on project ${id}`);
       // B4: only the single gate currently open for work may be edited directly.
@@ -1779,13 +2017,19 @@ export class ProjectsService {
         );
       }
 
+      // Round 4 questions 32(c) / 34(d). Inside the transaction because it reads
+      // the project's flagged findings and open changes, which `assertCanDecide`
+      // above cannot see — that runs before the row is loaded.
+      if ('decision' in patch) {
+        await this.assertCanCarryConditions(user, project, gateId, patch.decision);
+      }
       const decision = this.resolveDecision(
         project,
         [],
         gateId,
         existing,
         'decision' in patch ? patch.decision : existing.decision,
-        patch.status ?? existing.status,
+        { ...existing, ...patch },
         await this.openChangeGateNumbers(tx, id),
         true,
       );
@@ -1834,20 +2078,28 @@ export class ProjectsService {
     }
     await this.prisma.$transaction(async (tx) => {
       const row = await this.loadVersionLocked(tx, id, expectedVersion);
-      const project = toProjectData(row, []);
+      const project = toProjectData(row, [], await this.loadReference(tx));
       const openChanges = await this.openChangeGateNumbers(tx, id);
       let wrote = false;
 
       for (const update of gates) {
         const existing = project.gates.find((g) => g.gateId === update.gateId);
         if (!existing || !isGateUnlocked(project, update.gateId)) continue;
+        // Round 4 questions 32(c) / 34(d) — same check as the single-gate path.
+        // Deliberately THROWS rather than skipping the row, unlike the `strict:
+        // false` treatment `resolveDecision` gets here: a missing grant is an
+        // authorisation failure, not a rule the bulk save can quietly decline to
+        // apply. Silently dropping it would tell the user their save succeeded.
+        if ('decision' in update) {
+          await this.assertCanCarryConditions(user, project, update.gateId, update.decision);
+        }
         const decision = this.resolveDecision(
           project,
           [],
           update.gateId,
           existing,
           'decision' in update ? update.decision : existing.decision,
-          update.status ?? existing.status,
+          { ...existing, ...update },
           openChanges,
           false,
         );
@@ -1907,7 +2159,7 @@ export class ProjectsService {
 
     await this.prisma.$transaction(async (tx) => {
       const row = await this.loadVersionLocked(tx, id, expectedVersion);
-      const project = toProjectData(row, []);
+      const project = toProjectData(row, [], await this.loadReference(tx));
       const inRange = (gid: string) => {
         const idx = gateIndex(gid);
         return idx >= toIdx && idx <= fromIdx;
@@ -2055,6 +2307,12 @@ export class ProjectsService {
     if ('dueDate' in next) data.dueDate = next.dueDate ? new Date(next.dueDate) : null;
     if ('evidenceLink' in next) data.evidenceLink = next.evidenceLink ?? null;
     if ('notes' in next) data.notes = next.notes ?? null;
+    // Round 4 question 3. Empty string stores as NULL so clearing a grade returns
+    // the gap to "not assessed" — which blocks — rather than leaving a blank that
+    // the engine would have to guess about.
+    for (const field of GAP_ASSESSMENT_FIELDS) {
+      if (field in next) data[field] = (next[field] ?? '').trim() || null;
+    }
     return data;
   }
 }

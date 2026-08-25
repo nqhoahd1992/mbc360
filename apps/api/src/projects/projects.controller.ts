@@ -391,6 +391,16 @@ export class ProjectsController {
     return this.projects.setFormulaProperties(user, id, body.patch ?? {}, body.expectedVersion);
   }
 
+  // Round 4 questions 8, 9, 11 and 12 (2026-08-24).
+  @Put(':id/assessments')
+  setAssessments(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { patch: ProjectData['assessments']; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.setAssessments(user, id, body.patch ?? {}, body.expectedVersion);
+  }
+
   @Put(':id/costing')
   setCosting(
     @CurrentUser() user: SessionUser,

@@ -52,9 +52,12 @@ export type ReadinessTrigger =
   // Rule E2: the ASEAN checklist is enforced only where an ASEAN market is sold into.
   | 'aseanMarket'
   // A3, Gate 12: "Mandatory where a Change Control record has been opened or
-  // should be opened because of the post-market finding." Only the first limb is
-  // machine-readable; the second is a human judgement, disclosed on the item
-  // rather than dropped [ASSUMPTION: R4-Q4].
+  // should be opened because of the post-market finding."
+  //
+  // ✅ Round 4 question 8 (2026-08-24) made the second limb machine-readable by
+  // recording the judgement instead of inferring it, and it is built: the trigger
+  // reads an OPEN record OR `assessments.changeControlRequired`, whose "Pending
+  // assessment" — and unanswered — both resolve to `notAssessed` and block.
   | 'openChangeControl'
   // A3, Gate 12: "Mandatory where required by product category, market, company
   // policy, safety signal, vulnerable-user population, complaint trend or
@@ -62,7 +65,71 @@ export type ReadinessTrigger =
   | 'pvPmsRequired'
   // A3, Gate 10: a declared claim is categorised as depending on product-level
   // performance or sensory evidence.
-  | 'claimNeedsPerformanceEvidence';
+  | 'claimNeedsPerformanceEvidence'
+  // Round 4 question 12, Gate 9. `sg09-scaleup` had no trigger at all until
+  // 2026-08-24, so it could never block whatever the project was. Fires on a Major
+  // formula change ("A formula change classified Major also counts as a major
+  // reformulation for the Gate 9 scale-up trigger") or on the reviewer's own
+  // Yes / No / Pending answer.
+  | 'scaleUpRiskIdentified'
+  // A3, Gate 4: "The ingredient or raw material contains fragrance, essential
+  // oils, botanical extracts, proteins, known allergens, residual solvents,
+  // heavy-metal risk, microbiological risk, restricted impurities, processing
+  // residues, or variable natural-source composition."
+  //
+  // Round 4 question 17 (2026-08-24) supplied the missing half — WHERE that is
+  // recorded. It is company data, not project data ("Do not re-enter this per
+  // project"), so the trigger reads the shared Raw Material Risk Overlay through
+  // `ProjectData.reference.rmRisk` against the materials this project uses. Before
+  // this, `sg04-allergen` was Conditional with no trigger at all: it could never
+  // hard-block whatever the formula contained.
+  | 'rmRiskFlagged';
+
+// Round 4 question 7 (2026-08-24), option (b): "A missing assessment must never be
+// treated as meaning the condition does not apply." A trigger therefore has THREE
+// answers, not two, and the third one BLOCKS:
+//
+//   applies       — assessed, and the condition holds. The Conditional item
+//                   becomes mandatory and hard-blocks until satisfied.
+//   doesNotApply  — assessed, and the condition does not hold. The item is
+//                   auto-satisfied with the reason stated (question 16 permits the
+//                   system to generate that reason).
+//   notAssessed   — nobody has recorded the information the condition reads.
+//                   Blocks a Mandatory or Conditional item; on a Supporting item it
+//                   warns instead, which is question 7's own carve-out.
+//
+// The distinction that matters is between the last two. Before this, an unset field
+// returned `false` and the item passed — "we have not checked" being read as "it
+// does not apply", which is exactly what the answer rejects.
+export type TriggerState = 'applies' | 'doesNotApply' | 'notAssessed';
+
+// Triggers that CANNOT yet return `notAssessed`, because the data they read has
+// nowhere for a person to say "I checked, it does not apply" — an empty checklist
+// or register is indistinguishable from a considered no [ASSUMPTION: R5-Q5].
+//
+// They keep two-state behaviour until that question is answered, which is a known
+// and deliberate shortfall against question 7, not an oversight: guessing that
+// "empty table = not assessed" would block several gates on every existing project
+// on our own reading of a rule whose whole point is not to guess.
+//
+// `microbiologicallySusceptible` is deliberately NOT here — its field is empty
+// until a person picks one of five values, so it already expresses all three
+// states, and it is the case question 7 names outright. It is the shape the seven
+// below should copy; `openChangeControl` and `humanStudyPlanned` left this list
+// when questions 8 and 9 gave them an explicit Yes/No/Pending field.
+//
+// The count is printed by `npm run verify:readiness` every run. No typo sweep is
+// needed: the array is typed, so the compiler already catches a bad name. An empty
+// list means R5-Q5 is fully discharged.
+export const TRIGGERS_WITHOUT_UNASSESSED_STATE: readonly ReadinessTrigger[] = [
+  'skincareForTwo',
+  'infantContact',
+  'aseanMarket',
+  'claimNeedsRegulatoryReview',
+  'claimNeedsPerformanceEvidence',
+  'newOrRepositionedProject',
+  'pvPmsRequired',
+];
 
 export type ReadinessCheck =
   // No linked data source yet — displayed for confirmation, never hard-blocks.
@@ -210,6 +277,11 @@ export type ReadinessCheck =
   // project to invent one. The "did anyone look?" half is sg07-final-safety,
   // which E1 keeps ("not SOLELY the Final Safety Sign-off").
   | { kind: 'noOpenCriticalSafetyFinding' }
+  // Round 4 question 33's middle band: "A Medium finding may permit Proceed with
+  // Conditions where formally accepted and controlled." Split from the check above
+  // because the two clear differently — see `clearedByConditions` on
+  // `sg07-medium-findings`.
+  | { kind: 'noOpenMediumSafetyFinding' }
   // Every row of a requirement section is Completed. Used for E1's infant
   // pathway; the section's rows are scaffolded at project creation (and
   // verify:scaffold guards that), so this is not vacuous in practice.
@@ -252,11 +324,17 @@ export type ReadinessSource =
   // the original V18 workbook (no separate SME round needed), per the note
   // in CLAUDE.md.
   | 'npd-roadmap'
-  // Not in the F1 appendix, but confirmed by the team in an EARLIER round — the
+  // Not in the F1 appendix, but confirmed by the team in ANOTHER round — the
   // F1–F14 answers of 2026-07-21 (e.g. F14, "manual composition must be
   // reconciled to the controlled Cosmetri formula before Gate 7"). Added
   // 2026-08-11: the F1 appendix is one document, not the whole rule set, and
   // labelling an F14 rule "not SME-confirmed" understated its authority.
+  //
+  // Widened 2026-08-24 from "an EARLIER round" to any round, when Round 4
+  // confirmed the last two `dev-decision` items (`sg02-product-type`,
+  // `sg07-matrix-rows` — question 23). The distinction this value carries is
+  // confirmed-elsewhere versus not-confirmed-at-all, and which round supplied the
+  // confirmation was never what it meant.
   | 'f-series'
   // A judgment call by the project owner, not backed by any confirmed SME
   // rule or the newer workbook — e.g. Gate 2's Product Type requirement
@@ -316,11 +394,21 @@ export interface ReadinessRequirement {
 // The replacement — three separately recorded sign-offs per gate, each carrying
 // an authenticated user, role, timestamp, decision, record version and comment,
 // plus an independent reviewer on safety-, regulatory-, claims- or
-// release-critical gates — is NOT built. It waits on one decision the team has to
+// release-critical gates — is NOT built. It waited on one decision the team had to
 // make first: whether a gate sign-off keys on (project, gate) or (project, gate,
-// market), which is where D1 meets E3(a)'s per-market Gates 10-11 (Round 4
-// question 18 / R4-Q15). Project owner's call, 2026-08-12: wait for the answer
-// rather than build on a guess and migrate signatures afterwards.
+// market), which is where D1 meets E3(a)'s per-market Gates 10-11. Project owner's
+// call, 2026-08-12: wait for the answer rather than build on a guess and migrate
+// signatures afterwards.
+//
+// ✅ Both answers arrived 2026-08-24 (Round 4 questions 18 and 29), so the wait is
+// over. The key is `(project, gate, market?, role)` with `market` used only at
+// Gates 10-11 — option C of docs/plans/Post_Round3_Design_Decisions.md §1 — and
+// all five open points of D1 are settled there. One thing question 29(1) asks for
+// is still ours to scope: the gate-specific evidence snapshot names three
+// components that are open-ended ("applicable checklist results", "mandatory and
+// triggered evidence-register states", "evidence links and document revisions"),
+// so how much of a register the snapshot covers is [ASSUMPTION: R5-Q7]
+// [R4-REWORK: câu 18+29].
 //
 // Until then these 12 items still block on owner+evidenceLink, and the note below
 // keeps the panel from presenting that as the sign-off D1 asks for — 12 green
@@ -382,7 +470,9 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // field: B1 gave an option list, and the workbook records an option list as
       // a table with per-option owner / status / evidence / rationale. Satisfied
       // by one row at status Y, the same bar as every other checklist-backed item
-      // [ASSUMPTION: R4-Q19].
+      // CONFIRMED by Round 4 question 22(a), 2026-08-24: "Table layout accepted;
+      // provides owner, status, evidence and rationale fields" — accepted on
+      // exactly the grounds argued above.
       id: 'sg01-source',
       label: 'Request source',
       tier: 'Mandatory',
@@ -412,7 +502,8 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       //
       // `projectNature` became a checklist section on 2026-08-10 for the reason
       // given on sg01-source; the link therefore now lands on that section rather
-      // than the identification card [ASSUMPTION: R4-Q19].
+      // than the identification card. Same confirmation as sg01-source above
+      // (Round 4 question 22(a)).
       id: 'sg01-scope',
       label: 'Initial product scope',
       tier: 'Mandatory',
@@ -436,7 +527,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // form already requires — and B3 was answered on our statement that no
       // such field existed, which was wrong. Reading `identity.markets` instead
       // would make this half vacuous (the form guarantees a value), so it stays
-      // as it is until the SME answers [ASSUMPTION: R4-Q21].
+      // as it was until the SME answered.
+      //
+      // ⚠️ Round 4 question 24 (2026-08-24) resolves both halves at once, and the
+      // vacuity objection with them: "Use the existing Countries / Markets
+      // parameter as the single source of truth. Remove the separate free-text
+      // Initial target market field. The Countries / Markets parameter is not
+      // mandatory to create the initial project shell, but becomes mandatory
+      // before Gate 1 passes." So this check reads `identity.markets` and is NOT
+      // vacuous, because creation stops guaranteeing it. `initialTargetUsers`
+      // stays as-is — it duplicates nothing [R4-REWORK: câu 24].
       id: 'sg01-market-user',
       label: 'Initial target market and user',
       tier: 'Mandatory',
@@ -574,7 +674,10 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
           },
           // ...and the two records agree: a target user implying a vulnerable
           // group cannot sit next to an assessment naming a different group, or
-          // next to "none" (2026-08-11, user-proposed) [ASSUMPTION: R4-Q22].
+          // next to "none" (2026-08-11, user-proposed). CONFIRMED by Round 4
+          // questions 25(a) and 25(d), 2026-08-24 — the nine mapped pairs and the
+          // deliberate asymmetry (an exact contradiction refused, a renamed or
+          // broader group warned with a rationale) are both accepted.
           { kind: 'vulnerableGroupsCovered' },
         ],
       },
@@ -607,7 +710,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       //
       // The underlying gap (requirement rows cannot be closed as N/A with a
       // justification) is a known limitation, not something to work around by
-      // requiring less than the SME asked [ASSUMPTION: R4-Q18].
+      // requiring less than the SME asked.
+      //
+      // ⚠️ Round 4 question 21(b) (2026-08-24) closes the gap rather than the
+      // question: **"N/A with rationale" becomes a valid disposition** on a
+      // requirement row — "The system must not require users to mark an empty
+      // requirement as Completed", the exact objection raised here. Once it
+      // exists, the Gate 2 rule is no longer "one row": every row must be
+      // reviewed, every applicable row completed or formally deferred, every
+      // non-applicable one marked N/A with rationale, and **every Must
+      // requirement complete**, with Should/Could deferrable only under Proceed
+      // with Conditions [R4-REWORK: câu 21(b)].
       id: 'sg02-requirements',
       label: 'Project requirements and exclusions',
       tier: 'Mandatory',
@@ -628,11 +741,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg02-product-type',
       label: 'Product type — at least one selected',
       tier: 'Mandatory',
-      source: 'dev-decision',
-      // Never put to the team in any round: "Product type" appears exactly once
-      // in the Round 3 questions, inside option (b) of B4 — and B4 was answered
-      // (a) [ASSUMPTION: R4-Q20].
-      assumption: 'R4-Q20',
+      source: 'f-series',
+      // Was `dev-decision` until 2026-08-24: never put to the team in any round,
+      // since "Product type" appears exactly once in the Round 3 questions, inside
+      // option (b) of B4 — and B4 was answered (a). CONFIRMED by Round 4 question
+      // 23(a): "Gate 2 requires at least one product type or form status", so this
+      // requirement was right.
+      //
+      // ⚠️ With one addition: "the exact final form may legitimately remain open",
+      // so `productType` gains the option **"Product form under evaluation — to be
+      // confirmed by Gate 5"**. Without it a legitimate early brief ("infant
+      // barrier product — cream or balm to be determined") cannot pass Gate 2 at
+      // all, which is the one failing case we could construct ourselves when we
+      // asked [R4-REWORK: câu 23(a)].
       check: { kind: 'checklistHasSelection', section: 'productType' },
     },
     {
@@ -758,7 +879,22 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // Trigger wired 2026-08-09, now that B1/B2/B6 supply all three of A3's
       // limbs: project nature, request origin, and whether a benchmark product
       // is named. Which project natures count as the "purely administrative
-      // change" A3 exempts is our reading [ASSUMPTION: R4-Q7].
+      // change" A3 exempts was our reading.
+      //
+      // ✅ Round 4 question 11 (2026-08-24) removed that reading entirely — "None
+      // of the six project types is automatically administrative" — and it is
+      // built: `NEW_OR_REPOSITIONED_NATURES` is gone, and the only exemption is a
+      // recorded Administrative-only = Yes CONFIRMED by a named reviewer.
+      //
+      // One half of the answer is deliberately not enforced, and cannot be: the
+      // exemption also requires that "no claim, formula, market positioning,
+      // product performance, packaging function or customer-facing meaning
+      // changes". That is the reviewer's judgement, and it is what confirming the
+      // classification attests to — the app records who attested, not the six
+      // sub-conditions. Stated on the item rather than implied away.
+      coverageNote:
+        'the app requires a recorded Administrative-only = Yes, confirmed by a named reviewer, before it exempts a project. ' +
+        'It cannot itself verify the reviewer’s further test — that no claim, formula, market positioning, product performance, packaging function or customer-facing meaning changes.',
       trigger: 'newOrRepositionedProject',
       check: { kind: 'gateCheckDone', gate: '03', check: 'Concept direction and benchmark/competitor review recorded' },
     },
@@ -795,8 +931,10 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // nothing to read: the per-claim classification did not exist, and neither
       // did anywhere to record that a review happened. Both now do.
       //
-      // Enforces THREE of C1's seven conditions — the ones reading B7's
-      // classification. The other four are named on the item itself via
+      // Enforces FIVE of C1's seven conditions: the three reading B7's
+      // classification, the wording-drift check, and — since 2026-08-24 — "the
+      // market imposes a specific restriction", which question 4's Market profiles
+      // dataset made readable. The remaining two are named on the item itself via
       // `coverageNote` rather than left implied, because quietly enforcing half a
       // rule and reporting it as met is the mistake this repo has already made.
       id: 'sg03-reg-claims',
@@ -924,12 +1062,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // BOM yet (that is Gate 5), so the register IS the candidate ingredient set
       // — which is also what the sg04-ingredients note above says. A material
       // screened and then dropped is excluded by dispositioning it "Considered —
-      // not used", not by deleting the row [ASSUMPTION: R4-Q28].
+      // not used", not by deleting the row. CONFIRMED by Round 4 questions 31(a)
+      // and 31(b), 2026-08-24 — "every row in the candidate raw-material register
+      // must be dispositioned before Gate 4 passes", and the not-used status is
+      // retained rather than the record deleted. Note the confirmation is
+      // specifically about GATE 4; question 31(f) narrows the same check at Gates
+      // 7, 10 and 11 — see those items.
       id: 'sg04-rm-dispositioned',
       label: 'Every raw material has an evidence review outcome recorded',
       tier: 'Mandatory',
       source: 'f-series',
-      assumption: 'R4-Q28',
       check: { kind: 'rmEvidenceDispositioned' },
     },
     {
@@ -938,12 +1080,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // not "adequately reviewed" either, so it must not let a plain Proceed
       // through. That is precisely the F9 treatment of an open Change Control the
       // team already specified, reused here rather than invented
-      // [ASSUMPTION: R4-Q28].
+      // CONFIRMED by Round 4 question 31(c), 2026-08-24: the conditional route is
+      // Proceed with Conditions plus a linked controlled action, and "no separate
+      // duplicate approval field is required" provided the row carries the
+      // qualified reviewer's conclusion, the gate approver is authorised, and the
+      // condition and action are explicitly referenced in the gate decision.
       id: 'sg04-rm-conditional',
       label: 'No raw material is resting on a conditional acceptance',
       tier: 'Mandatory',
       source: 'f-series',
-      assumption: 'R4-Q28',
       clearedByConditions: true,
       check: { kind: 'rmEvidenceNoneConditional' },
     },
@@ -956,12 +1101,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // Deliberately NOT "at least one row Approved for use", which would
       // contradict D4's own conditional route: a project whose materials are all
       // conditionally accepted has zero approved rows and is exactly what D4
-      // describes. See `hasUsableRmRow` [ASSUMPTION: R4-Q28].
+      // describes. See `hasUsableRmRow`. CONFIRMED by Round 4 question 31(e),
+      // 2026-08-24, including the "at least one suitable OR CONDITIONALLY suitable
+      // route must remain" wording this counting rule was built on.
       id: 'sg04-rm-usable',
       label: 'At least one raw material is usable in the formula',
       tier: 'Mandatory',
       source: 'f-series',
-      assumption: 'R4-Q28',
       check: { kind: 'rmEvidenceHasUsable' },
     },
     {
@@ -978,7 +1124,6 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Every possible watch-list match has a qualified reviewer assessment on record',
       tier: 'Mandatory',
       source: 'f-series',
-      assumption: 'R4-Q29',
       check: { kind: 'watchlistReviewed' },
     },
     {
@@ -990,7 +1135,6 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'No watch-list match is resting on a reviewer assessment that needs conditions',
       tier: 'Mandatory',
       source: 'f-series',
-      assumption: 'R4-Q29',
       clearedByConditions: true,
       // D3 asks for "authorised acceptance" on Further information required
       // specifically. Recording the Proceed with Conditions decision is an audited
@@ -998,7 +1142,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // acceptance step, so the difference is disclosed rather than implied.
       coverageNote:
         'the app requires the reviewer assessment, rationale and a linked controlled action, then lets Proceed with Conditions clear it. ' +
-        'For "Further information required" the review team also asked for authorised acceptance as a distinct step; that is not built.',
+        // ✅ Round 4 question 32(c), fully built 2026-08-24. Proceed with Conditions
+        // IS the acceptance — "a separate duplicate acknowledgement is not
+        // required" — and its authority condition is now enforced server-side by
+        // `assertCanCarryConditions`, via the two new `watchlist-finding`
+        // capabilities. Which of the two is "required" for a machine-flagged row is
+        // the one part still open [ASSUMPTION: R5-Q14].
+        'The review team confirmed that is enough, provided the person deciding the gate holds Safety or Regulatory authority — which the app now checks. Either authority satisfies it; which one a machine-flagged row requires is not yet settled.',
       check: { kind: 'watchlistNoneConditional' },
     },
     {
@@ -1013,8 +1163,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Pregnancy/breastfeeding caution screen',
       tier: 'Conditional',
       trigger: 'skincareForTwo',
-      // [ASSUMPTION: R4-Q3] — the Gate 4 vs Gate 7 threshold split below is
-      // our reading, not something the appendix states.
+      // ⚠️ The Gate 4 vs Gate 7 threshold split below was our reading, not
+      // something the appendix states, and Round 4 question 6 (2026-08-24)
+      // corrects it: "Gate 4 screens and DISPOSITIONS every relevant candidate"
+      // and "must not pass with unassessed rows". So the deliberately
+      // conservative badValues below — which let a maternal project sail through
+      // Gate 4 with every row still at its seeded 'Not assessed' — are too loose.
+      // Gate 4 keeps its lighter close-out (the full final close-out stays a Gate
+      // 7 matter) but every row must carry one of six dispositions: No issue
+      // identified · Needs Safety Review · Needs Regulatory Review · Prohibited —
+      // remove · Considered — not selected · Further information required
+      // [R4-REWORK: câu 6].
       // 2026-08-07: this now HARD-BLOCKS Gate 4 once the trigger is active
       // (Conditional items with a live trigger stopped being advisory — see
       // `advisory` in gateProgress.ts). Deliberately conservative badValues:
@@ -1039,7 +1198,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // are NOT EMPTY for every screened material — a minimum-bar "has this been
       // filled in" guard, not a judgement on the content (that would be
       // inventing a rule). registerRowsComplete is non-vacuous, so an untouched
-      // register does not pass. Conditional tier: warns, never hard-blocks.
+      // register does not pass.
+      //
+      // ✅ Round 4 question 17 (2026-08-24) gave the "where relevant" in the label a
+      // data source, so this stopped being a Conditional item that could never
+      // block: the trigger reads the company Raw Material Risk Overlay against the
+      // materials this project uses. It now hard-blocks Gate 4 when any of them
+      // carries a risk classification — and also when any of them is unclassified,
+      // which is question 7's third state rather than a silent pass.
+      trigger: 'rmRiskFlagged',
       check: { kind: 'registerRowsComplete', register: 'supplierRmEvidence', columns: ['allergenStatement', 'impurities'] },
     },
     {
@@ -1340,12 +1507,21 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   // `source` so it never interleaves with the SME's own list).
   SG07: [
     {
-      // Rule D4. "Gate 7 final safety approval must use the completed evidence status." Both legs: nothing left undispositioned, AND nothing still resting on a conditional acceptance — a conditional acceptance has an open controlled action by definition, so it is not a COMPLETED evidence status. Unlike Gate 4 this does not clear with Proceed with Conditions [ASSUMPTION: R4-Q28].
+      // Rule D4. "Gate 7 final safety approval must use the completed evidence status." Both legs: nothing left undispositioned, AND nothing still resting on a conditional acceptance — a conditional acceptance has an open controlled action by definition, so it is not a COMPLETED evidence status. Unlike Gate 4 this does not clear with Proceed with Conditions. The second half is CONFIRMED by Round 4 question 31(d), 2026-08-24: "A conditionally accepted material included in the final formula must be fully closed before Gate 7 final safety approval."
+      //
+      // ⚠️ But question 31(f) narrows the SCOPE, which is the half we got wrong.
+      // We applied the Gate 4 reading ("applicable" = every row in the register) at
+      // all four gates, for consistency. The answer: at Gates 7, 10 and 11 the
+      // formula exists, so "the hard block applies to materials ACTUALLY PRESENT in
+      // the current formula. Materials formally dispositioned as not used should
+      // not block those gates. An incomplete non-formula candidate may produce a
+      // warning but should not block release where the product does not rely on
+      // it." So both legs here must be scoped to the BOM, and the out-of-formula
+      // remainder becomes a warning [R4-REWORK: câu 31(f)].
       id: 'sg07-rm-evidence-complete',
       label: 'Raw-material evidence review complete for every material',
       tier: 'Mandatory',
       source: 'f-series',
-      assumption: 'R4-Q28',
       check: { kind: 'allOf', checks: [{ kind: 'rmEvidenceDispositioned' }, { kind: 'rmEvidenceNoneConditional' }] },
     },
     {
@@ -1379,8 +1555,21 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Restricted/caution ingredient assessment closed',
       tier: 'Conditional',
       trigger: 'skincareForTwo',
-      // [ASSUMPTION: R4-Q1] [ASSUMPTION: R4-Q2] — shipped on our own reading;
-      // see docs/rules/F1_Per_Gate_Open_Questions.md -> Round 4.
+      // ⚠️ Round 4 question 5 (2026-08-24) answers **option (b)**, and this item as
+      // it stands is the wrong shape for it. Gate 7 requires a GENERAL
+      // restricted-and-caution ingredient assessment for **every product**; the
+      // Pregnancy/Breastfeeding Caution assessment is "an additional conditional
+      // layer", and the Infant/Baby Safety screen is a third. So one Conditional
+      // item on `skincareForTwo` becomes three:
+      //
+      //   general prohibited/restricted/caution → Mandatory, all products
+      //   maternal caution                      → Conditional, skincareForTwo
+      //   infant / baby safety                  → Conditional, infantContact
+      //
+      // Where both intended-use contexts are selected, both pathways apply. The
+      // general layer has no register today — `prohibitedIngredients` and
+      // `pbCautionLimits` are the only two — so it is a build, not a re-tier
+      // [R4-REWORK: câu 5].
       // Corrected 2026-08-07 (SME Round 3, Response2 E1). This was Mandatory
       // and UNCONDITIONAL, on the reading that the Gate 7 appendix item
       // carries no qualifier (unlike sg04-pb-screen) — the open question in
@@ -1460,11 +1649,34 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // critical-finding field existed anywhere — true at the time, and the comment
       // said a distinct field would be "a config addition, not a rule change". The
       // team asked for the addition, so here it is, reading its own register.
+      // ✅ Round 4 question 33 (2026-08-24) graded what was one binary check.
+      // Split into two items because they differ in severity, exactly like the two
+      // Next Actions items and the two raw-material ones: this one cannot be
+      // cleared by any decision, the next one can.
       id: 'sg07-no-critical',
-      label: 'No unresolved critical safety finding',
+      label: 'No unresolved critical or high safety finding',
       tier: 'Mandatory',
-      assumption: 'R4-Q30',
+      coverageNote:
+        'the app checks the reviewer conclusion, the evidence link and a completed controlled action before a High or Critical finding counts as closed. ' +
+        'It cannot yet check the remaining three the review team named — verification, the verifier and a closure date — as the register has no columns for them.',
       check: { kind: 'noOpenCriticalSafetyFinding' },
+    },
+    {
+      // Question 33's middle band: "A Medium finding may permit Proceed with
+      // Conditions where formally accepted and controlled." `clearedByConditions`
+      // is that mechanism — the same one D4 uses for a conditionally accepted
+      // material and F9 for an open change control — so recording the decision IS
+      // the formal acceptance, with no separate step invented.
+      //
+      // A Low finding blocks nothing, but `warningSafetyFindings()` surfaces it, so
+      // it is not silently dropped: "A finding assessed as non-critical must still
+      // be appropriately dispositioned."
+      id: 'sg07-medium-findings',
+      label: 'No open medium safety finding',
+      tier: 'Mandatory',
+      source: 'f-series',
+      clearedByConditions: true,
+      check: { kind: 'noOpenMediumSafetyFinding' },
     },
     {
       // Added 2026-07-28 — the SME's own Gate 7 list names this as a DISTINCT
@@ -1493,16 +1705,25 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg07-matrix-rows',
       label: 'Formulation safety matrix — every formula ingredient assessed',
       tier: 'Mandatory',
-      source: 'dev-decision',
-      assumption: 'R4-Q20',
+      source: 'f-series',
       // Not an F1-named item. Guards the three per-column matrix checks above:
       // `.every()` over an empty register is vacuously true, so the row-count
       // check has to be Mandatory too.
       //
-      // The GUARD is ours and needs no confirmation — an empty register must not
-      // satisfy a check. What does need it is the cardinality this implies: that
-      // the matrix must carry a row for EVERY formula ingredient, which the SME
-      // has never been asked [ASSUMPTION: R4-Q20].
+      // The GUARD was ours and needed no confirmation — an empty register must not
+      // satisfy a check. What did need it was the cardinality this implies: that
+      // the matrix must carry a row for EVERY formula ingredient. CONFIRMED by
+      // Round 4 question 23(b), 2026-08-24: "At Gate 7, every ingredient in the
+      // final formula must have a safety disposition… Every formula line must show
+      // it has been covered and linked to the relevant assessment."
+      //
+      // ⚠️ With a proportionality rule this row-count check cannot express:
+      // "low-risk excipients do not each need a lengthy monograph", and coverage
+      // may be shown four ways — individual assessment · reference to an existing
+      // approved ingredient assessment · group or class assessment where
+      // scientifically justified · reference to an accepted regulatory/safety
+      // conclusion. Relevant mixture components, impurities and residuals must
+      // also be assessed where required [R4-REWORK: câu 23(b)].
       check: { kind: 'registerHasRows', register: 'formulationSafetyMatrix' },
     },
     {
@@ -1538,14 +1759,28 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // MATERNAL user was selected, so an infant-only product completed nothing at
       // Gate 7 at all.
       //
-      // This does NOT close Round-2 A2: the team's own pathway may cover more than
-      // these eight rows, and until they send it we are enforcing the workbook's
-      // version rather than theirs [ASSUMPTION: R4-Q2].
+      // This did NOT close Round-2 A2: the team's own pathway might cover more than
+      // these eight rows, and until they sent it we were enforcing the workbook's
+      // version rather than theirs.
+      //
+      // Round 4 question 1 (2026-08-24) answers it: "Retain Compartment 3 as the
+      // core Gate 7 Infant & Baby Safety assessment… Existing controls INF-01 to
+      // INF-08 remain appropriate." So this item is right, and the hard block is
+      // confirmed in their own words: "Gate 7 must hard-block if the Infant 0+
+      // pathway is triggered and this assessment is incomplete."
+      //
+      // ⚠️ But Compartment 3 is "the FINAL COMPONENT of a broader pathway spanning
+      // multiple gates — not the entire pathway by itself". Six other gates carry
+      // requirements that do not exist in the app at all: Gate 2 (10 items of
+      // intended infant-use context) · Gate 4 (8 ingredient-suitability items) ·
+      // Gate 5 (7 formula-level items) · Gate 6 (7 packaging and instruction items)
+      // · Gates 8–9 (testing triggered by use context and risk) · Gate 10 (6 PIF
+      // content items). Until those exist, an infant project is screened at Gate 7
+      // and nowhere earlier [R4-REWORK: câu 1].
       id: 'sg07-infant-safety',
       label: 'Infant / baby-contact safety compartment completed (INF-01 to INF-08)',
       tier: 'Conditional',
       trigger: 'infantContact',
-      assumption: 'R4-Q2',
       check: { kind: 'requirementSectionComplete', section: 'infantSafety' },
     },
     {
@@ -1646,7 +1881,14 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // Trigger wired 2026-08-09. A3 requires the approval workflow "before any
       // study involving human participants", so the signal has to catch the
       // INTENT to run one — studyApprovals appear only once approvals are being
-      // recorded, which is already too late [ASSUMPTION: R4-Q5].
+      // recorded, which is already too late.
+      //
+      // ✅ Round 4 question 9 (2026-08-24) kept that reasoning and added the field
+      // we offered as the alternative, now built: "Human-participant study planned?
+      // → Yes / No / Undecided". A started Study Protocol still counts and is
+      // checked first, so it remains one input rather than the whole trigger, and
+      // **Undecided prevents Gate 8 from closing** — it resolves to `notAssessed`,
+      // and a Conditional item with an unassessed trigger blocks.
       trigger: 'humanStudyPlanned',
       // Phase 3's humanStudy requirement section is tagged gate '08' and has an
       // "Approval trail" row — the C2 study-approval workflow's own checkpoint.
@@ -1748,6 +1990,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg09-scaleup',
       label: 'Scale-up or pilot status where applicable',
       tier: 'Conditional',
+      // Trigger wired 2026-08-24 (Round 4 question 12). Until then this was one of
+      // the three Conditional items with no trigger at all, so it could never block
+      // however risky the change — the exact "Conditional in name only" gap A3 was
+      // meant to close. Fires on a Major formula change, or on the reviewer's own
+      // answer; Pending assessment blocks, which is the answer's own instruction.
+      trigger: 'scaleUpRiskIdentified',
+      coverageNote:
+        'triggered by a Major formula change or by the reviewer’s own Yes / Pending answer. ' +
+        'The eighteen affected areas that should also trigger it — manufacturing site, equipment scale, batch size, order of addition and the rest — are not read yet; they belong on the change record, which is being restructured.',
       // Shares the Key Gate Check above — its own wording covers "Pilot/scale-up".
       check: { kind: 'gateCheckDone', gate: '09', check: 'Pilot/scale-up and release criteria assessed' },
     },
@@ -1799,7 +2050,6 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Applicable regulatory checklist recorded for every market without a built-in profile',
       tier: 'Mandatory',
       source: 'f-series',
-      assumption: 'R4-Q32',
       check: { kind: 'marketChecklistRecorded' },
     },
     {
@@ -1811,7 +2061,6 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Conditional',
       trigger: 'aseanMarket',
       source: 'f-series',
-      assumption: 'R4-Q32',
       check: { kind: 'aseanChecklistComplete' },
     },
     // sg10-evidence-hierarchy / sg10-regulatory-mapped / sg10-approved-wording:
@@ -1842,12 +2091,18 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'gateCheckDone', gate: '10', check: 'Approved wording / limitations recorded' },
     },
     {
-      // Rule D4. "Gates 10 and 11 must not rely on unresolved identity-only stubs." Same pairing as Gate 7 — an unresolved stub blocks, and so does a still-open conditional acceptance, since releasing a dossier that rests on one would be relying on unfinished evidence [ASSUMPTION: R4-Q28].
+      // Rule D4. "Gates 10 and 11 must not rely on unresolved identity-only stubs." Same pairing as Gate 7 — an unresolved stub blocks, and so does a still-open conditional acceptance, since releasing a dossier that rests on one would be relying on unfinished evidence.
+      //
+      // ⚠️ Scope narrows here exactly as at Gate 7 — Round 4 question 31(f),
+      // 2026-08-24: only materials actually present in the current formula
+      // hard-block; an incomplete candidate the product does not contain warns
+      // instead. The counter-argument we put ourselves ("a gate arguably does not
+      // rely on a material the product does not contain", quoting D4's own "must
+      // not RELY on") is the one that was accepted [R4-REWORK: câu 31(f)].
       id: 'sg10-rm-evidence-complete',
       label: 'No unresolved raw-material evidence stub',
       tier: 'Mandatory',
       source: 'f-series',
-      assumption: 'R4-Q28',
       check: { kind: 'allOf', checks: [{ kind: 'rmEvidenceDispositioned' }, { kind: 'rmEvidenceNoneConditional' }] },
     },
     {
@@ -1908,9 +2163,10 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Product-performance evidence attached where relevant',
       tier: 'Conditional',
       trigger: 'claimNeedsPerformanceEvidence',
-      assumption: 'R4-Q33',
       coverageNote:
-        'triggered by a claim categorised Product performance or Sensory — the two words A3 uses. Whether a plain Cosmetic claim also depends on product-level evidence is not settled, so it does not trigger this today.',
+        // ⚠️ Round 4 question 36(a) settles what this note used to call unsettled,
+        // and the other way round [R4-REWORK: câu 36(a)].
+        'triggered by a claim categorised Product performance or Sensory. The review team have since confirmed that a Cosmetic claim asserting an outcome of the finished product triggers it too — the app does not check that yet.',
       check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'Efficacy evidence summary' },
     },
     {
@@ -1972,12 +2228,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'gateCheckDone', gate: '11', check: 'Final formula/version, packaging and artwork approved' },
     },
     {
-      // Rule D4. "Gates 10 and 11 must not rely on unresolved identity-only stubs." Repeated at Gate 11 rather than assumed from Gate 10: a gate is evaluated on its own list, and Gate 10 could have passed under Proceed with Conditions [ASSUMPTION: R4-Q28].
+      // Rule D4. "Gates 10 and 11 must not rely on unresolved identity-only stubs." Repeated at Gate 11 rather than assumed from Gate 10: a gate is evaluated on its own list, and Gate 10 could have passed under Proceed with Conditions.
+      //
+      // ⚠️ Same narrowing as Gates 7 and 10 — Round 4 question 31(f), 2026-08-24:
+      // scope this to materials in the current formula, and warn rather than block
+      // on the rest [R4-REWORK: câu 31(f)].
       id: 'sg11-rm-evidence-complete',
       label: 'No unresolved raw-material evidence stub',
       tier: 'Mandatory',
       source: 'f-series',
-      assumption: 'R4-Q28',
       check: { kind: 'allOf', checks: [{ kind: 'rmEvidenceDispositioned' }, { kind: 'rmEvidenceNoneConditional' }] },
     },
     {
@@ -2038,7 +2297,6 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'No open change control that is launch-impacting, high risk, or affects formula, artwork, claims, safety, regulatory, packaging or release',
       tier: 'Mandatory',
       source: 'f-series',
-      assumption: 'R4-Q31',
       check: { kind: 'changeControlNoHardImpact' },
     },
     {
@@ -2046,14 +2304,26 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'No open low-risk administrative change control',
       tier: 'Mandatory',
       source: 'f-series',
-      assumption: 'R4-Q31',
       clearedByConditions: true,
       // E3(b) allows this one through "following authorised acknowledgement". The
       // acknowledgement is F9's existing confirm step on the Phase Gate Flow row,
       // not a second one built here — recorded so the difference is not implied away.
       coverageNote:
         'the app requires the change to be classified as administrative only and lets Proceed with Conditions clear it, using the existing open-change acknowledgement. ' +
-        'Whether that acknowledgement is the "authorised acceptance" the review team meant is question 34.',
+        // ✅ Round 4 question 34(d), built 2026-08-24: the existing acknowledgement
+        // is reused, and it is now role-restricted — only a role holding
+        // `change-impact|acknowledge` can record the Proceed-with-Conditions that
+        // carries an open change, enforced in `assertCanCarryConditions`.
+        //
+        // Five of the six fields the answer lists were already captured by the
+        // decision itself: the authenticated user, their role, the timestamp and
+        // the conditions accepted all live on the gate change log and (once Round 4
+        // question 29 lands) the gate sign-off. The Change Control reference is on
+        // the change record. What is NOT captured is a rationale specific to the
+        // acknowledgement, as opposed to the gate decision's own comment — stated
+        // here rather than implied away.
+        'The review team confirmed that acknowledgement may serve, and it is now restricted to a role authorised to approve the change’s Gate 11 impact. ' +
+        'The acknowledgement does not yet carry its own rationale separate from the gate decision’s comment.',
       check: { kind: 'changeControlNoAdminImpact' },
     },
     {
@@ -2119,9 +2389,14 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // market and company policy, surveillance plan — so the item says so.
       id: 'sg12-pv-pms',
       trigger: 'pvPmsRequired',
-      assumption: 'R4-Q11',
       coverageNote:
-        'the app checks three of the seven conditions — a safety signal or complaint trend recorded on Post-Market Sources, and a vulnerable-user population assessed. It cannot yet check: required by product category, by market, by company policy, or by a scheduled surveillance plan.',
+        // ⚠️ Round 4 question 4 reshapes this item rather than just filling its
+        // gaps: a BASELINE review is required for every marketed product (so the
+        // Conditional tier is about the ENHANCED one), the enhanced trigger has
+        // fourteen limbs rather than seven, and the market limb comes from the
+        // configurable Regulatory market profile — explicitly NOT a hard-coded
+        // country list [R4-REWORK: câu 4].
+        'the app checks three of the conditions — a safety signal or complaint trend recorded on Post-Market Sources, and a vulnerable-user population assessed. It does not yet check the product-category, market-profile, company-policy or surveillance-plan conditions, and does not yet require the baseline review every marketed product needs.',
       label: 'PV/PMS review where applicable',
       tier: 'Conditional',
       check: { kind: 'gateCheckDone', gate: '12', check: 'Feedback sources monitored and PV/PMS signals classified' },
@@ -2146,10 +2421,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // Wired 2026-08-12, unblocked by E3(b) putting `changes` on ProjectData —
       // until then the engine could not see whether a change control existed.
       id: 'sg12-change-links',
+      // ✅ Round 4 question 8 (2026-08-24) turned the unreadable half into a
+      // recorded one, and it is built: the trigger reads an open record OR the
+      // reviewer's explicit answer, with Pending and unanswered both blocking.
+      //
+      // What remains disclosed is the GRANULARITY: the answer is held once per
+      // project, because the app has no per-finding record to attach it to
+      // [ASSUMPTION: R5-Q11].
       trigger: 'openChangeControl',
-      assumption: 'R4-Q4',
       coverageNote:
-        'the app checks whether a change control record is open. It cannot check the other half of the rule — whether one SHOULD be opened because of a post-market finding, which is a judgement.',
+        'the app checks whether a change control record is open, or whether a reviewer has recorded an explicit Yes / No answer. ' +
+        'That answer is held once for the project, not per post-market finding — the app has no per-finding record to attach it to.',
       label: 'Change-control links',
       // Supporting -> Conditional 2026-08-09: A1 says so in as many words
       // ("change from Supporting to Conditional"). Behaviour is unchanged for

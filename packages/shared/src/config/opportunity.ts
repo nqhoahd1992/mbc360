@@ -41,13 +41,21 @@ export const REQUEST_ORIGIN_OPTIONS = [
 // competitor-review condition is "mandatory where the project is a new product,
 // claim extension, repositioning project ... NOT mandatory for a purely
 // administrative change", and Gate 9's scale-up condition (not wired yet, see
-// R4-Q8) will read the same property. A free-text blob cannot drive either.
-// Which of these values counts as "purely administrative" is Round 4 question
-// 11 [ASSUMPTION: R4-Q7].
+// question 12) will read the same property. A free-text blob cannot drive either.
+//
+// ✅ Round 4 question 11 (2026-08-24) answered "which of these values counts as
+// purely administrative" with: none of them. "A packaging change, lifecycle
+// improvement or reformulation can be technically and commercially significant."
+// Administrative-only is therefore a separate Yes/No classification confirmed by
+// an authorised reviewer — `assessments.administrativeOnly` — and NOT a subset of
+// this list. Built 2026-08-24; nothing here maps to administrative-ness any more.
 //
 // Like the list above, this feeds the `projectNature` checklist section (gate
 // 01) — so a project may record SEVERAL natures, which the earlier dropdown
-// could not [ASSUMPTION: R4-Q19].
+// could not. CONFIRMED by question 22(b) — with one addition: where several
+// apply, one must be identified as the **Primary** project type and the rest
+// recorded as secondary, which this flat option list cannot express
+// [R4-REWORK: câu 22(b)].
 export const PROJECT_NATURE_OPTIONS = [
   'New development',
   'Reformulation',

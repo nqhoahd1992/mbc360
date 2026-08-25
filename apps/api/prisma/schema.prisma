@@ -61,6 +61,10 @@ model User {
   oneTimeCodes OneTimeCode[]
   totp         UserTotp?
   stepUpProofs StepUpProof[]
+  // Company-level reference data (Round 4 questions 4, 17, 28).
+  referenceRevisions ReferenceRevision[]
+  marketProfiles     MarketProfile[]
+  rawMaterialRisks   RawMaterialRisk[]
 
   @@map("users")
 }
@@ -150,6 +154,28 @@ model Project {
   // two nullable fields do not earn their own table, join and mapper branch.
   microSusceptibility  String?
   microRationale       String?
+
+  // Round 4 questions 8, 9, 11 and 12 (2026-08-24) — explicit assessment answers,
+  // so that "not yet assessed" is a state a person sets rather than one the engine
+  // infers from other data. Every column starts NULL and that is load-bearing:
+  // NULL means nobody has answered, which BLOCKS. See ProjectAssessments in
+  // packages/shared/src/types/index.ts for why the option lists differ.
+  changeControlRequired         String?
+  changeControlReviewer         String?
+  changeControlReviewDate       String?
+  changeControlRationale        String?
+  changeControlRecordId         String?
+  changeControlEvidenceLink     String?
+  humanStudyPlanned             String?
+  administrativeOnly            String?
+  administrativeOnlyConfirmedBy String?
+  scaleUpRiskIdentified         String?
+  scaleUpRiskDescription        String?
+  scaleUpRiskAssessor           String?
+  scaleUpRiskAssessmentDate     String?
+  scaleUpRiskRationale          String?
+  scaleUpRiskActivity           String?
+  scaleUpRiskEvidenceLink       String?
   // Optimistic lock (BACKEND_PLAN §3 principle 8). Every mutation bumps it
   // inside the same transaction that reads it; a client sending a stale
   // expectedVersion gets 409 Conflict instead of silently overwriting the
@@ -248,6 +274,9 @@ model ProjectMarket {
 }
 
 // Current state of one gate (SG01..SG12). History lives in audit_events.
+// Round 4 question 3 (2026-08-24): the eight fields a gap must carry, all NULL
+// until a qualified reviewer records them. NULL is load-bearing — an ungraded gap
+// blocks both Proceed decisions, so a default would be an answer nobody gave.
 model GateRecord {
   id           String    @id @default(cuid())
   project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -259,6 +288,17 @@ model GateRecord {
   dueDate      DateTime? @db.Date
   evidenceLink String?
   notes        String?
+
+  // Gap criticality assessment — only meaningful while `status` is 'Gap'.
+  gapCriticality     String? // RiskLevel values
+  gapImpactCategory  String? // GAP_IMPACT_CATEGORIES values
+  gapAssessor        String?
+  gapAssessmentDate  String?
+  gapRationale       String?
+  gapEvidenceLink    String?
+  gapRequiredAction  String?
+  gapActionOwner     String?
+
   updatedAt    DateTime  @updatedAt
 
   @@unique([projectId, gateId])
@@ -794,6 +834,15 @@ model ChangeRecord {
   status                String    @default("Not Started") // WorkStatus values
   closureEvidence       String?
   closedDate            DateTime? @db.Date
+  // Round 4 question 34(c): a final disposition is eight things, not a closing
+  // date. Three already existed (status, closureEvidence, closedDate); these are
+  // the rest. Nullable and starting NULL, which is what makes an existing
+  // "Completed" change still block Gate 11 until someone records how it closed.
+  closureOutcome         String?
+  closureImplementation  String?
+  closureImpactedVersions String?
+  closureVerifier        String?
+  closureRemainingAction String?
   owner                 String
   notes                 String?
   createdAt             DateTime  @default(now())
@@ -871,6 +920,111 @@ model AuditEvent {
 
 // Per-gate pass requirements (rule B1 extension). Engine ships at M3; content
 // rows are seeded when follow-up F1 is answered.
+// ---------------------------------------------------------------------------
+// Company-level controlled reference data (Round 4 questions 4, 17, 28 —
+// 2026-08-24). A new KIND of thing in this app: not per-project like the ~30
+// registers, which are copied into a project when it is created. A shared list
+// cannot work that way — it has to be one list every project reads and none of
+// them can edit, which puts it architecturally closer to Users & Roles.
+//
+// Three datasets share this shape (company-scope · revision history · role-gated
+// write · evidence link + review date · read-only from a project), so the thin
+// part below is shared and each dataset keeps its own columns. Deliberately NOT a
+// single generic table with a JSON payload: these are rules people query and
+// validate, and this repo's convention is real columns holding exact values.
+// ---------------------------------------------------------------------------
+
+// Append-only revision log for every reference dataset. One table rather than one
+// per dataset, because "who changed what, when, and why" has the same shape
+// everywhere and getting it right once is the point of the shared foundation.
+//
+// `snapshot` holds the entry as it was AFTER the change, so a reader can
+// reconstruct any past state without replaying diffs. Same principle as
+// BacktrackEvent: preserve, never mutate.
+model ReferenceRevision {
+  id        String   @id @default(cuid())
+  dataset   String // 'market-profile' | 'rm-risk' | 'claims-library'
+  entryId   String // the row's own id in its dataset table
+  revision  Int // 1, 2, 3 … per entry
+  snapshot  Json
+  reason    String?
+  changedBy User?    @relation(fields: [changedById], references: [id])
+  changedById String?
+  changedAt DateTime @default(now())
+
+  @@unique([dataset, entryId, revision])
+  @@index([dataset, entryId])
+  @@map("reference_revisions")
+}
+
+// Round 4 question 4: "Do not use a permanently hard-coded country list.
+// Regulatory maintains a configurable market profile indicating whether each
+// market requires particular adverse-event reporting, PMS records or review
+// intervals."
+//
+// The same profile is what supplies the per-market claim restriction question 27
+// needs and the required dossier type question 35 needs — three answers pointing
+// at one dataset, which is why it is built first.
+model MarketProfile {
+  id      String @id @default(cuid())
+  market  String @unique // a value from the Target Countries / Markets option list
+
+  // Question 4 — what this market requires of post-market surveillance.
+  adverseEventReporting Boolean @default(false)
+  pmsRecordsRequired    Boolean @default(false)
+  // Question 13's schedule is configurable "where a particular product or market
+  // requires a different interval" — months, empty meaning "use the company
+  // default" rather than "no review".
+  reviewIntervalMonths  Int?
+  enhancedSurveillance  Boolean @default(false)
+
+  // Question 35 — "required dossier type" per market, which the per-market
+  // regulatory checklist register currently asks each project to retype.
+  dossierType String?
+
+  // Question 27 — "the market imposes a specific restriction", the second of C1's
+  // three conditions the app could not evaluate. Free text: a restriction is a
+  // sentence Regulatory writes, not an enum, and C1 only needs to know whether one
+  // EXISTS to trigger the review.
+  claimRestrictions String?
+
+  // Shared across all three datasets.
+  evidenceLink String?
+  reviewDate   String?
+  notes        String?
+  revision     Int      @default(1)
+  updatedBy    User?    @relation(fields: [updatedById], references: [id])
+  updatedById  String?
+  updatedAt    DateTime @updatedAt
+
+  @@map("market_profiles")
+}
+
+// Round 4 question 17: the Raw Material Risk Overlay. Keyed to the Cosmetri
+// raw-material id, holding ONLY the eleven MBc360-specific risk classifications
+// the Cosmetri API does not expose — "not a second raw-material master".
+//
+// `flags` is a string array rather than eleven booleans on purpose: the answer
+// gives a list of classifications, adding one is a data change not a schema
+// change, and the values are checked against RM_RISK_FLAGS at the API layer the
+// same way every other dropdown-valued column in this schema is.
+model RawMaterialRisk {
+  id          String   @id @default(cuid())
+  rmCode      String   @unique // RM-{Cosmetri id}, matching BomLine.rmCode
+  displayName String?
+  flags       String[] @default([])
+
+  evidenceLink String?
+  reviewDate   String?
+  notes        String?
+  revision     Int      @default(1)
+  updatedBy    User?    @relation(fields: [updatedById], references: [id])
+  updatedById  String?
+  updatedAt    DateTime @updatedAt
+
+  @@map("raw_material_risks")
+}
+
 model GateRequirement {
   id              String  @id @default(cuid())
   gateId          String // SG01..SG12

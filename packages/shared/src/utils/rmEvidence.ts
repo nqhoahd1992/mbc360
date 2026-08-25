@@ -71,7 +71,11 @@ export function conditionallyAcceptedRmRows(rows: RegisterRow[]): RegisterRow[] 
 // This is a cardinality rule, which is a thing this config normally avoids
 // inventing — but `sg04-supplier` already requires at least one ROW at this gate,
 // so the precedent for "Gate 4 needs some materials" is pre-existing; this only
-// says they cannot all be rejected [ASSUMPTION: R4-Q28]. Non-vacuous by
+// says they cannot all be rejected. CONFIRMED by Round 4 question 31(e),
+// 2026-08-24: "Gate 4 must not Proceed where every candidate has been rejected;
+// the project should Hold or Backtrack to ingredient sourcing. At least one
+// suitable or conditionally suitable route must remain" — including the reading
+// that a conditional acceptance counts as usable. Non-vacuous by
 // construction: an empty register fails it, unlike the two `.every()` checks above.
 export function hasUsableRmRow(rows: RegisterRow[]): boolean {
   return rows.some((row) => isRmApproved(row) || isRmConditionallyAccepted(row));

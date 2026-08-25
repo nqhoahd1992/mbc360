@@ -1,8 +1,16 @@
 # F1/C7 — Per-Gate Open Questions for the Subject-Matter Team
 
-**Date:** 2026-07-22 (last updated 2026-08-10)
+**Date:** 2026-07-22 (last updated 2026-08-24)
 
-> # ✅ ROUND 3 CLOSED — 24 new questions open (R4-Q1 … R4-Q24)
+> # ✅ ROUND 4 CLOSED — 4 questions open (R5-Q1 … R5-Q4)
+>
+> **All 33 Round-4 questions were answered on 2026-08-24** (`docs/rounds/2026-08-24-sme-reply-round4.md`, replying to the 36-question `docs/rounds/2026-08-12-our-questions-round4.md`). **The answers are recorded in full in `Business_Rules_Confirmation_{EN,VN}.md` → "Appendix 3 (2026-08-24)"** — that appendix, not this file, is the authoritative record; each question below now carries a one-block ✅ resolution note so the question and its answer stay together.
+>
+> Every `R4-Qn` heading is prefixed ✅, which is what takes it out of `verify:readiness`'s TAG sweep, and every `[ASSUMPTION: R4-Qn]` tag has been removed from the code. **Where an answer contradicts shipped behaviour, the decision site now carries `R4-REWORK: câu …` (in square brackets, with the sent question number) instead** — a marker that says "the rule is settled and this code is known to be wrong", which is a different and more useful thing than an open assumption. `npm run verify:readiness` prints the count every run. The build order for clearing them is `docs/plans/Round4_Implementation_Roadmap.md`.
+>
+> **The only open questions in this file are Round 5's four** (`R5-Q1` … `R5-Q4`, raised while implementing D1 at phase level) plus whatever the Round-4 answers themselves left ambiguous — added to that same section.
+>
+> <details><summary>Round 3 banner (settled history)</summary>
 >
 > The subject-matter team answered every question here in their Round 3 reply (`docs/rounds/2026-08-07-sme-reply-round3.txt`), sent as Parts A–E — the questions that reply answers are `docs/rounds/2026-07-31-our-questions-round3.md` (recovered into the folder on 2026-08-11; note its `A1`/`A2`/`A3` are a different three topics from Round 2's). **The answers are recorded in full in `Business_Rules_Confirmation_{EN,VN}.md` → "Appendix 2 (2026-08-07)"** — that appendix, not this file, is the authoritative record. Each section below now carries a short ✅ resolution note pointing at the part of the reply that answers it, so the question and its answer stay together for anyone re-reading the history.
 >
@@ -11,6 +19,8 @@
 > **This file is the only question list.** Other documents (notably `F1_Conditional_Triggers.md`) reference these IDs instead of keeping a parallel list, and every decision site — code and docs alike — carries a grep-able `[ASSUMPTION: R4-Qn]` tag, so "show me every unconfirmed assumption" is a search rather than a manual audit.
 >
 > Four Round-3 answers **overturn behaviour already built** — the per-gate sign-off (D1), two of the four Published-Information claim rules (D2), the unconditional pregnancy screen at Gate 7 (E1) and the project-level treatment of Gates 10–11 (E3a); see "What this round changes in the application" in Appendix 2 for the consolidated work list.
+>
+> </details>
 
 **Companion to:** `F1_Gate_Readiness_Mapping_Proposal.md` (the full per-gate mapping proposal — now superseded/stale, kept only as historical reference; do not send it to the team) and `Business_Rules_Followup_Round2.md` §B ("we will map your per-gate lists to the specific registers in the app and tag each as Mandatory/Conditional/Supporting — we will send that mapping back to you to confirm").
 
@@ -356,17 +366,23 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 ---
 
-## Round 4 — raised while implementing Round 3 (2026-08-07 → 2026-08-09)
+## ✅ Round 4 — CLOSED 2026-08-24 (raised 2026-08-07 → 2026-08-09)
 
-**Everything above this line is closed.** The entries below are new. They follow the standing rule, sharpened by the project owner on 2026-08-09: *do not speculate; speculate only where the signal is overwhelming; and put every speculation on this list for the SME to confirm — kept if confirmed, fixed if not.*
+> **Cả 33 câu đã có đáp án.** Bản trả lời: `docs/rounds/2026-08-24-sme-reply-round4.md`; bản ghi có thẩm quyền: `Business_Rules_Confirmation_{EN,VN}.md` → **Phụ lục 3 (24/08/2026)**. Mỗi câu dưới đây kết bằng một khối `> ✅ **Đã trả lời (24/08/2026)**` tóm tắt đáp án và nói nó là ✅ xác nhận, ⚠️ đảo ngược, hay 🆕 xây mới.
+>
+> **Mọi tag `[ASSUMPTION: R4-Qn]` đã được gỡ khỏi code.** Nơi nào đáp án mâu thuẫn với hành vi đã ship thì chỗ đó mang `R4-REWORK: câu …` (in square brackets, with the sent question number) — không phải một giả định đang chờ, mà một quy tắc đã chốt và một đoạn code biết là sai. Thứ tự xử lý: `docs/plans/Round4_Implementation_Roadmap.md`.
+>
+> **Con số đáng nhớ:** 20 chỗ phải làm lại · 6 mảng xây mới (chữ ký per-gate · luồng infant 6 gate · 3 tập dữ liệu cấp công ty · mô hình revision claim · vòng đời per-market · 5 trường đánh giá tường minh) · 7 mục độc lập làm song song được · 1 câu (20) không phải sửa gì.
+
+**Everything above this line is closed.** The entries below follow the standing rule, sharpened by the project owner on 2026-08-09: *do not speculate; speculate only where the signal is overwhelming; and put every speculation on this list for the SME to confirm — kept if confirmed, fixed if not.*
 
 **Conventions for this round:**
 
 - Every entry has a **stable ID** (`R4-Q1` …). This file is the **only** question list; other documents reference these IDs instead of keeping a parallel list of their own.
-- The decision site — in code and in docs — carries a grep-able tag `[ASSUMPTION: R4-Qn]`, so "list every unconfirmed assumption" is a search, not a manual audit.
-- Each entry ends with **"Nếu trả lời khác thì sửa ở đâu"** naming the file/function, because Round 3 showed that locating a shipped wrong assumption is the slow part.
+- The decision site — in code and in docs — carried a grep-able tag `[ASSUMPTION: R4-Qn]`, so "list every unconfirmed assumption" was a search, not a manual audit. On closure each tag was either removed (answer confirms the code) or replaced by `R4-REWORK: câu …` (in square brackets, with the sent question number) (answer contradicts it).
+- Each entry ends with **"Nếu trả lời khác thì sửa ở đâu"** naming the file/function, because Round 3 showed that locating a shipped wrong assumption is the slow part. That line is what made the 2026-08-24 closure pass mechanical rather than archaeological — it earned its keep and should stay a convention.
 
-**Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework).
+**Status:** 🔴 = already shipped on this assumption (wrong answer means rework) · 🟡 = designed, not yet built (wrong answer means redesign, no rework). *Retained as written on 2026-08-12 — the ✅ block on each entry carries what actually happened.*
 
 **Bản gửi đi:** [`../rounds/2026-08-12-our-questions-round4.md`](../rounds/2026-08-12-our-questions-round4.md) — viết bằng ngôn ngữ nghiệp vụ, đánh số 1–36, gộp thêm 3 câu còn tồn từ vòng 21/07 (A1 "critical" · A2 Infant pathway · A3 kết thúc version cũ). Cột **Gửi số** dưới đây là cầu nối: khi SME trả lời "5 — option (b)" thì biết ngay nó đóng câu nội bộ nào. Câu **1** trong bản gửi gộp `R4-Q2` với A2 vì hai câu là hai mặt của cùng một lỗ hổng.
 
@@ -410,7 +426,7 @@ An open Change Control record **already** soft-locks the gate today through rule
 
 ### Nhóm 1 — Phát sinh từ bản sửa Gate 7 (đã ship 2026-08-07)
 
-#### R4-Q1 · Gate 7 — "restricted/caution assessment closed" nghĩa hẹp hay rộng 🔴
+#### ✅ R4-Q1 · Gate 7 — "restricted/caution assessment closed" nghĩa hẹp hay rộng 🔴
 
 **Đã đổi gì:** `sg07-caution-closed` từ **Mandatory + không điều kiện** thành **Conditional + trigger `skincareForTwo`**, nên nay chỉ chặn Gate 7 với dự án có chọn Pregnancy / Breastfeeding / Postpartum.
 
@@ -431,7 +447,10 @@ Chúng tôi đọc cái thứ nhất là cái E1 nói tới, vì nó chính là 
 
 **Nếu trả lời (b):** `gateReadiness.ts` → `sg07-caution-closed` quay lại Mandatory, và thêm một item Conditional riêng cho phần PB; cần một register hoặc cột mới cho phần restricted/caution tổng quát, vì hiện chỉ có sổ PB.
 
-#### R4-Q2 · Gate 7 — sản phẩm chỉ cho trẻ sơ sinh hiện không có đánh giá nào 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 5.** ⚠️ **Option (b) — hành vi đã ship là sai shape.** Gate 7 đòi một đánh giá restricted-and-caution **tổng quát cho mọi sản phẩm**; màn hình Pregnancy/Breastfeeding là *lớp điều kiện bổ sung*, và Infant/Baby Safety là lớp thứ ba. Một item Conditional trên `skincareForTwo` phải tách thành ba, và lớp general chưa có register nào — `prohibitedIngredients` và `pbCautionLimits` là tất cả những gì đang có. Xem Phụ lục 3 Phần 6.
+
+#### ✅ R4-Q2 · Gate 7 — sản phẩm chỉ cho trẻ sơ sinh hiện không có đánh giá nào 🔴
 
 E1 có ba vế, mới làm được vế đầu:
 
@@ -454,7 +473,10 @@ Nên dự án chọn `Infant 0+` mà không chọn maternal thì **section an to
 
 **Nếu trả lời "phải chặn":** `gateProgress.ts` → `skincareForTwoIncompleteSections()`, bỏ điều kiện thoát sớm cho nhánh `infantSafety` và cho nó trigger riêng theo `Infant 0+`.
 
-#### R4-Q3 · Ngưỡng chặn Gate 4 vs Gate 7 của cùng một sổ caution 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 1.** ✅ **Compartment 3 đúng** — "Retain Compartment 3 as the core Gate 7 Infant & Baby Safety assessment… Existing controls INF-01 to INF-08 remain appropriate", và chặn cứng ở Gate 7 được xác nhận nguyên văn. ⚠️ **Nhưng nó là cấu phần CUỐI** của một luồng trải Gate 2, 4, 5, 6, 7, 8–9 và 10; sáu gate kia mang yêu cầu app chưa có gì cả. Xem Phụ lục 3 Phần 7.
+
+#### ✅ R4-Q3 · Ngưỡng chặn Gate 4 vs Gate 7 của cùng một sổ caution 🔴
 
 `sg04-pb-screen` trước đây là Conditional nên không bao giờ chặn được; nay chặn thật khi trigger maternal active. Ngưỡng của nó **cố ý hẹp hơn** Gate 7:
 
@@ -471,11 +493,14 @@ Nghĩa là dự án maternal **không** bị chặn ở Gate 4 ngay ngày đầu
 
 ---
 
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 6.** ⚠️ **Ngưỡng Gate 4 của ta quá lỏng.** Gate 4 vừa sàng lọc **vừa disposition** mọi ứng viên, mỗi dòng vào 1 trong 6 giá trị, và **không được pass khi còn dòng chưa đánh giá**. Phần close-out đầy đủ vẫn dành cho Gate 7. PwC ở Gate 4 được phép dưới 4 điều kiện. Xem Phụ lục 3 Phần 6.
+
 ### Nhóm 2 — Ánh xạ trigger sang dữ liệu (mới thiết kế, chưa build)
 
 > Toàn bộ nhóm này đến từ `docs/rules/F1_Conditional_Triggers.md`. A3 cấp **điều kiện** trigger; những câu dưới đây là chỗ chúng tôi phải tự chọn **dữ liệu nào trong app** đại diện cho điều kiện đó. Ánh xạ kiểu này trông như việc cơ học nhưng là diễn giải — đúng loại đã sai hai lần trước đây (`sg01-source`, `sg01-owner`).
 
-#### R4-Q4 · `openChangeControl` — bỏ vế *"or should be opened"* 🟡
+#### ✅ R4-Q4 · `openChangeControl` — bỏ vế *"or should be opened"* 🟡
 
 **Luật (A3):** *"Mandatory where a Change Control record has been opened **or should be opened** because of the post-market finding."*
 
@@ -485,7 +510,10 @@ Vế thứ hai là phán định của con người — không dữ liệu nào 
 
 **Nếu cần bước xác nhận:** thêm một dòng Key Gate Check ở Gate 12, hoặc một cột trên bảng post-market.
 
-#### R4-Q5 · `humanStudyPlanned` — cái gì đánh dấu "đã dự định làm study" 🟡
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 8.** ⚠️ **Không cắt bớt — ghi lại phán định.** Thêm bước tường minh **"Change Control required? → Yes / No / Pending assessment"** kèm reviewer · review date · rationale · Change Control ID liên kết (khi Yes) · evidence link. **Pending assessment chặn việc đóng post-market finding.** Được nêu rõ là tốt hơn "chỉ dựa vào một lời nhắc". Xem Phụ lục 3 Phần 10.
+
+#### ✅ R4-Q5 · `humanStudyPlanned` — cái gì đánh dấu "đã dự định làm study" 🟡
 
 **Luật (A3):** *"Mandatory **before** any internal or external study involving human participants…"*
 
@@ -501,7 +529,10 @@ Chữ *"before"* nghĩa là phải bắt được **ý định** làm study, kh�
 
 **Nếu muốn trường tường minh:** thêm trường vào Phase 3 hoặc `ProjectIdentity`, và `isReadinessTriggerActive()` đọc trường đó.
 
-#### R4-Q6 · Ba trigger Gate 12 ↔ option nào của checklist Post-Market Sources 🟡
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 9.** ⚠️ **Cần trường tường minh**, đúng phương án ta nêu như lựa chọn thay thế: **"Human-participant study planned? → Yes / No / Undecided"**, rà soát ở Gate 8. Tạo một Study Protocol **tự động đặt thành Yes** — nên nguồn 1 vẫn dùng, chỉ là một đầu vào chứ không phải toàn bộ trigger. **Undecided phải ngăn Gate 8 đóng.** Xem Phụ lục 3 Phần 10.
+
+#### ✅ R4-Q6 · Ba trigger Gate 12 ↔ option nào của checklist Post-Market Sources 🟡
 
 Checklist **Post-Market / PV-PMS Feedback Sources** (Gate 12) có 16 option. A3 cấp trigger cho 3 item bằng văn xuôi; chúng tôi tự ánh xạ sang option cụ thể:
 
@@ -517,7 +548,10 @@ Checklist **Post-Market / PV-PMS Feedback Sources** (Gate 12) có 16 option. A3 
 
 **Nếu ánh xạ sai:** `gateProgress.ts` → `isReadinessTriggerActive()`, sửa danh sách option của trigger tương ứng.
 
-#### R4-Q7 · Gate 3 — "purely administrative change" gồm những loại nào 🟡
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 10.** ⚠️ **Ánh xạ được chấp nhận nhưng bản thân danh sách là sai.** 16 option đang trộn ba khái niệm và nên tách thành **Feedback source** (9) · **Issue type** (8) · **Resulting action** (6). HCP, retailer, sales và social media đều tính là market feedback; **CAPA là hành động kết quả, không phải nguồn**. Xem Phụ lục 3 Phần 8.
+
+#### ✅ R4-Q7 · Gate 3 — "purely administrative change" gồm những loại nào 🟡
 
 **Luật (A3):** *"Mandatory where the project is a new product, claim extension, repositioning project, customer/distributor-led request, or where a benchmark/reference product is named. **Not mandatory for a purely administrative change.**"*
 
@@ -536,7 +570,10 @@ B2 cấp 6 giá trị cho loại dự án: `new development` · `reformulation` 
 
 **Nếu xếp sai:** `gateProgress.ts` → `isReadinessTriggerActive()`, nhánh `newOrRepositionedProject`.
 
-#### R4-Q8 · Gate 9 — "major reformulation" và "process/site change" đọc từ đâu 🟡
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 11.** ⚠️ **Tiền đề của câu hỏi bị bác.** "None of the six project types is automatically administrative" — thay đổi bao bì, cải tiến vòng đời hay tái công thức đều có thể quan trọng. Thêm phân loại riêng **"Administrative-only change: Yes / No"** do reviewer có thẩm quyền xác nhận, **và** miễn trừ chỉ áp khi không có thay đổi nào về claim, công thức, định vị, hiệu năng, chức năng bao bì hay ý nghĩa hướng khách hàng. Xem Phụ lục 3 Phần 10.
+
+#### ✅ R4-Q8 · Gate 9 — "major reformulation" và "process/site change" đọc từ đâu 🟡
 
 **Luật (A3):** *"Mandatory for new formulas, major reformulations, new manufacturing processes, manufacturing-site transfers, meaningful equipment/process changes, or products with identified scale-up risk."*
 
@@ -552,7 +589,10 @@ Chúng tôi định đọc từ ba nguồn:
 
 **Nếu (a) là không:** cần tiêu chí riêng cho "major reformulation" ở Gate 9, tách khỏi `MAJOR_CHANGE_CRITERIA`.
 
-#### R4-Q9 · Cross-cutting — dữ liệu của trigger *chưa được ghi* thì tính là đã trigger hay chưa 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 12.** ✅ **Major = major reformulation**, đúng như ta đề xuất. 🆕 Kèm 18 vùng ảnh hưởng kích hoạt review scale-up/pilot, và một trường mới **"Scale-up risk identified? → Yes / No / Pending assessment"** cùng 6 trường đi kèm. **Pending assessment chặn readiness Gate 9.** Xem Phụ lục 3 Phần 10.
+
+#### ✅ R4-Q9 · Cross-cutting — dữ liệu của trigger *chưa được ghi* thì tính là đã trigger hay chưa 🔴
 
 **Mở rộng 2026-08-09 từ một câu riêng của Gate 3 thành câu cross-cutting**, sau khi cài trigger `microbiologicallySusceptible` làm lộ ra **cùng một câu hỏi ở chỗ thứ hai**. Đây là một quyết định chính sách, không phải hai ca lẻ.
 
@@ -584,7 +624,10 @@ Chúng tôi nghiêng về **tính là đã trigger** — chưa phân loại thì
 
 </details>
 
-#### R4-Q10 · Gate 12 — mốc "scheduled post-launch review", và "đã launch" khi nhiều thị trường 🟡
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 7.** ⚠️ **Option (b), và đây là đáp án xuyên suốt toàn hệ.** Phân biệt ba trạng thái — đã xét-có áp dụng / đã xét-không áp dụng / **chưa xét** — và "chưa xét" **phải chặn** với item Mandatory hoặc Conditional. Cách đọc `Pending classification` của ta được xác nhận thành một quy tắc riêng. Trường hợp `microbiologicallySusceptible` được nêu đích danh. Xem Phụ lục 3 Phần 1.
+
+#### ✅ R4-Q10 · Gate 12 — mốc "scheduled post-launch review", và "đã launch" khi nhiều thị trường 🟡
 
 **Luật (A1/A3):** `sg12-feedback` *"becomes Conditional where the project has launched and a scheduled post-market review is due"* / *"when the scheduled post-launch review milestone is reached"*.
 
@@ -597,7 +640,10 @@ Hai chỗ không có dữ liệu:
 
 **Nếu là "mọi thị trường":** `isReadinessTriggerActive()` phải đọc toàn bộ `marketTracks`, không chỉ tìm một cái Approved.
 
-#### R4-Q11 · Gate 12 — "product category / market / company policy" nào bắt buộc PV/PMS 🟡
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 13 và 14.** 🆕 **Cả hai vế.** Lịch: **1 tháng** (sản phẩm giám sát tăng cường) · **3 tháng** (chuẩn) · **12 tháng** · hằng năm — tính từ **ngày launch thương mại thực tế**, không phải ngày phê duyệt. Launch xét **theo từng thị trường**, kèm 5 trạng thái roll-up cấp dự án; thị trường đầu launch không làm các thị trường khác trông như đã launch. Xem Phụ lục 3 Phần 8.
+
+#### ✅ R4-Q11 · Gate 12 — "product category / market / company policy" nào bắt buộc PV/PMS 🟡
 
 **Luật (A3):** *"Mandatory where required by **product category, market, company policy**, safety signal, vulnerable-user population, complaint trend or scheduled surveillance plan."*
 
@@ -607,9 +653,12 @@ Bốn vế sau đọc được (xem R4-Q6 và cờ vulnerable-user của B5). Ba
 
 ---
 
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 4.** 🆕 **Có danh sách, và có một nguyên tắc kèm theo.** PMS **baseline cho mọi sản phẩm đang bán**, cộng **enhanced** khi trúng 1 trong 14 điều kiện. Yêu cầu theo thị trường đến từ một **market profile cấu hình được** do Regulatory duy trì — *"Do not use a permanently hard-coded country list."* Xem Phụ lục 3 Phần 4.
+
 ### Nhóm 3 — Tier và cách ghi N/A
 
-#### R4-Q12 · Gate 12 — tier của "Product-performance feedback" và "Market feedback" 🟡
+#### ✅ R4-Q12 · Gate 12 — tier của "Product-performance feedback" và "Market feedback" 🟡
 
 A1 nói rõ về hai item: `Change-control links` (Supporting → **Conditional**) và `Market feedback` (Supporting cho review định kỳ, **Conditional** khi đã launch và tới kỳ review). Nhưng A3 lại cấp trigger cho **cả** `Product-performance feedback` — mà item này A1 không nhắc tới, nên trong app nó vẫn là Supporting.
 
@@ -619,7 +668,10 @@ A1 nói rõ về hai item: `Change-control links` (Supporting → **Conditional*
 
 **Nếu là Conditional:** `gateReadiness.ts` → đổi `tier` của `sg12-performance` (và làm rõ cách biểu diễn cho `sg12-feedback`).
 
-#### R4-Q13 · Ghi N/A kèm lý do có bắt buộc cả khi trigger không kích hoạt? 🟡
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 15.** ⚠️ **Đúng như ta ngờ.** Product-performance feedback → **Conditional** với 5 trigger. Market feedback **tách thành hai item** thay vì đổi tier theo thời gian: *Continuous Market Feedback Capture* (Supporting) và *Scheduled Market Feedback Review* (Conditional). Xem Phụ lục 3 Phần 8.
+
+#### ✅ R4-Q13 · Ghi N/A kèm lý do có bắt buộc cả khi trigger không kích hoạt? 🟡
 
 Ba chỗ trong Vòng 3 yêu cầu ghi N/A **kèm lý do**:
 
@@ -637,9 +689,12 @@ Ba chỗ trong Vòng 3 yêu cầu ghi N/A **kèm lý do**:
 
 ---
 
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 16.** 🆕 **Hệ thống được tự sinh lý do N/A** khi suy được từ dữ liệu có kiểm soát (ba ví dụ được nêu). Nhưng với item **safety-, regulatory-, claims- hoặc release-critical**, lý do tự sinh **vẫn phải được reviewer chịu trách nhiệm xác nhận** trước khi đóng gate; với Supporting thì lời giải thích của hệ thống là đủ. Xem Phụ lục 3 Phần 10.
+
 ### Nhóm 4 — Thiết kế lưu trữ có ảnh hưởng nghiệp vụ
 
-#### R4-Q14 · Cờ rủi ro thành phần là thuộc tính của nguyên liệu hay của dự án 🟡
+#### ✅ R4-Q14 · Cờ rủi ro thành phần là thuộc tính của nguyên liệu hay của dự án 🟡
 
 Trigger `rmCompositionRisk` (Gate 4) cần biết nguyên liệu có chứa *fragrance, essential oils, botanical extracts, proteins, known allergens, residual solvents, heavy-metal risk, microbiological risk, restricted impurities, processing residues, variable natural-source composition* hay không — 11 loại, lấy nguyên văn từ A3.
 
@@ -654,7 +709,10 @@ Các cột hiện có (`allergenStatement`, `impurities`, `microInfo`) đều l�
 
 **Nếu chọn "trong Cosmetri":** phụ thuộc bên ngoài, cần xác nhận Cosmetri có trường tương ứng — cùng loại phụ thuộc với F12.
 
-#### R4-Q15 · Gate 10/11 — chữ ký 3 vai trò là mỗi thị trường một bộ hay một bộ chung 🟡
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 17.** 🆕 **Phương án thứ ba, có điều kiện.** Không nhập lại theo dự án. Nơi lưu tốt nhất về lâu dài là Cosmetri; cho tới lúc đó MBc360 giữ một **Raw Material Risk Overlay** dùng chung, khoá theo raw-material ID của Cosmetri, chỉ chứa 11 phân loại rủi ro mà API không cung cấp — *không phải* một master nguyên liệu thứ hai. Xem Phụ lục 3 Phần 4.
+
+#### ✅ R4-Q15 · Gate 10/11 — chữ ký 3 vai trò là mỗi thị trường một bộ hay một bộ chung 🟡
 
 **Phát sinh khi:** chốt shape dữ liệu cho D1, xem [`../plans/Post_Round3_Design_Decisions.md`](../plans/Post_Round3_Design_Decisions.md) → Quyết định 1.
 
@@ -668,7 +726,10 @@ D1 nói mỗi gate cần **Prepared / Reviewed / Approved**. E3(a) nói mỗi th
 
 **Quyết định của project owner 2026-08-12: D1 CHỜ câu trả lời này rồi mới triển khai** — không đoán khoá rồi migrate chữ ký sau. Nhưng phần "12 item đang xanh trên bằng chứng sai" **không phụ thuộc** câu trả lời (khoá kiểu nào thì `owner + evidenceLink` vẫn không phải chữ ký), nên đã xử lý ngay bằng `coverageNote` trên cả 12 item `sgNN-signoff` — cùng cơ chế đã dùng cho C1. Item **vẫn chặn y như cũ**, không nới không siết; chỉ thôi trình bày Owner + Evidence link như thể đó là bộ ba chữ ký. Khi câu này có đáp án: bỏ `GATE_SIGNOFF_COVERAGE_NOTE` cùng lúc với việc thay `check` của 12 item đó.
 
-#### R4-Q16 · Cột `Claim category` sẵn có trên SKU Claims / PIF Register vốn ghi gì 🟡
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 18.** 🆕 **Per market — đúng phương án C của tài liệu thiết kế.** Prepared/Reviewed/Approved ghi theo từng thị trường ở Gate 10 và 11. Gate 12 cũng vận hành per market, và **Phase 4 có trạng thái theo từng thị trường**; bản tóm tắt cấp dự án được giữ nhưng **chỉ như roll-up**. Xem Phụ lục 3 Phần 3.
+
+#### ✅ R4-Q16 · Cột `Claim category` sẵn có trên SKU Claims / PIF Register vốn ghi gì 🟡
 
 **Phát sinh khi:** tìm chỗ đặt phân loại claim của B7 — xem [`../plans/Post_Round3_Design_Decisions.md`](../plans/Post_Round3_Design_Decisions.md) → Quyết định 3.
 
@@ -739,7 +800,10 @@ Và "chỗ đầu tiên" cũng không phải một khai báo đúng nghĩa: mộ
 **Phán định của dev nằm trong đó, cần SME xác nhận:** (h) 4 cột nào thuộc Gate 3 của sổ claim (danh sách trên) có đúng không, và (i) `mechanism` thuộc Gate 5 hay Gate 3? (e) claim có nên được **cấp ID ngay từ Gate 3** không, hay ID chỉ nên tồn tại sau khi có bằng chứng (nếu vậy thì Gate 3 phân loại **cái gì**)? (f) picker Claim ID **không** giới hạn ở claim `Supported` — theo đúng D2 vòng 3 (*"claim đang phát triển vẫn phải chọn được"*), chặn nằm ở khâu phát hành; đúng ý các anh chứ? (g) 4 bảng còn lại (mechanism map, evidence plan, efficacy study plan, clinical evidence) hiện **vẫn gõ tay câu claim** — có nên cùng chuyển sang tham chiếu Claim ID không?
 
 
-#### R4-Q17 · Trường Gate 1 để tuỳ chọn lúc tạo dự án, bắt buộc ở Gate 1 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 19.** ✅ **Cột `claimCategory` sẵn có CHÍNH LÀ phân loại B7** — đừng tạo cột thứ hai. Mô hình khai báo claim, thời điểm sinh Claim ID ở Gate 3 và picker mở cho mọi claim đều được xác nhận. ⚠️ **Bảy** register tham chiếu Claim ID chứ không phải bốn, và **mechanism là giả thuyết sơ bộ ở Gate 3**, xác nhận kỹ thuật ở Gate 5. Xem Phụ lục 3 Phần 5.
+
+#### ✅ R4-Q17 · Trường Gate 1 để tuỳ chọn lúc tạo dự án, bắt buộc ở Gate 1 🔴
 
 **Đã build 2026-08-09** cùng lúc với B1/B2/B3.
 
@@ -753,7 +817,10 @@ Mọi chỗ ghi mới của Gate 1 — 5 trường trên thẻ Project Identific
 
 **Nếu trả lời khác:** `ProjectList.tsx` (form tạo dự án) đặt các trường thành bắt buộc, và bỏ 3 item `sg01-source` / `sg01-scope` / `sg01-market-user` khỏi `gateReadiness.ts` hoặc chuyển chúng về chỉ đọc dòng Key Gate Check.
 
-#### R4-Q18 · Bảng requirements Phase 1 — giá trị cột Priority, và bao nhiêu dòng phải xong 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 20.** ✅ **Đúng y như đã xây, không đổi gì.** *"Current approach is correct — fields optional when the project shell is first created, mandatory before Gate 1 passes."* Lập luận "field bắt buộc lúc tạo ⇒ check thành trang trí" được chấp nhận cùng với nó.
+
+#### ✅ R4-Q18 · Bảng requirements Phase 1 — giá trị cột Priority, và bao nhiêu dòng phải xong 🔴
 
 **Đã build 2026-08-09** cùng B6. Hai chỗ B6 không nói, chúng tôi phải tự chọn:
 
@@ -773,7 +840,10 @@ Bản 09/08 kiểm **2 dòng**, theo hai vế trong chính tiêu đề của ph�
 
 **Nếu trả lời khác:** (a) `NEXT_ACTION_PRIORITIES` trong `types/index.ts`, hoặc tách một danh sách riêng cho requirement; (b) thêm/bớt `requirementDone` trong `sg02-requirements` ở `gateReadiness.ts`.
 
-#### R4-Q19 · Hai option list của B1/B2 trình bày dạng bảng checklist, và được chọn nhiều giá trị 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 21.** ⚠️ **Priority = Must / Should / Could**, không phải thang Next Action — "criticality remains a risk concept, not a requirements-priority value". 🆕 Và **khoảng trống nền được lấp thay vì né**: thêm **N/A kèm lý do** làm disposition hợp lệ, vì *"hệ thống không được bắt người dùng đánh Completed cho một requirement trống"*. Mọi Must phải xong; Should/Could chỉ hoãn qua PwC. Xem Phụ lục 3 Phần 9.
+
+#### ✅ R4-Q19 · Hai option list của B1/B2 trình bày dạng bảng checklist, và được chọn nhiều giá trị 🔴
 
 **Đã build 2026-08-10**, thay cho bản 09/08. Đây là câu hỏi về **cách trình bày**, nhưng vế (b) là câu hỏi về **luật**.
 
@@ -795,7 +865,7 @@ Bản 10/08 lấy `GATES['SG01'].primaryOwner` = `Project owner / Sales / NPD` (
 
 Nay theo quy tắc: **2 tên, cả hai đều nằm trong 3 chức năng mà chính workbook cấp cho Gate 01**, chọn theo nội dung bảng — `Project owner / Sales` cho Request Origin (phần lớn option của B1 đến qua Sales: Sales/Customer/Distributor request) và `Project owner / NPD` cho Project Nature (mới/tái công thức/đổi claim là phán định phạm vi phát triển, không phải thương mại). Không thêm chức năng mới nào, nhưng **cách chia là phán định của ta**. Giá trị lưu theo từng dòng nên đã kèm migration `20260811033000_gate1_owner_function_two_names` để cập nhật các dòng đã tạo.
 
-Một hệ quả kỹ thuật đáng ghi: trigger `newOrRepositionedProject` (điều kiện competitor review ở Gate 3) đọc 2 bảng này, nên vế 1 thành `natures.some(...)` — một dự án tick `Packaging change` + `Market extension` sẽ **fire**, vì `Market extension` nằm trong nhóm không-phải-administrative `[ASSUMPTION: R4-Q7]`.
+Một hệ quả kỹ thuật đáng ghi: trigger `newOrRepositionedProject` (điều kiện competitor review ở Gate 3) đọc 2 bảng này, nên vế 1 thành `natures.some(...)` — một dự án tick `Packaging change` + `Market extension` sẽ **fire**, vì `Market extension` nằm trong nhóm không-phải-administrative (nay đã có đáp án — bản gửi câu 11: **không** loại nào tự động là hành chính).
 
 **(d) Tên của bảng thứ hai — chữ của ta, không phải của SME (thêm 2026-08-11, project owner phát hiện).** B1 cho hẳn tên field (*"Please add the field: **Request Origin / Source**"*) nên bảng thứ nhất mang đúng tên SME viết. B2 **không cho tên nào** — nó là một mệnh đề (*"whether it is new development, reformulation, claim change, packaging change, market extension or lifecycle improvement"*) — nên tiêu đề buộc phải do ta đặt. Bản 10/08 đặt là **`Project Nature`**; kiểm lại thì chữ *"nature"* **không có trong bất kỳ phản hồi nào của SME** và trong toàn workbook chỉ xuất hiện ở *"de**nature**d alcohol"*. Tức hai bảng mới đứng cạnh nhau, một cái tên nguyên văn của SME, một cái ta bịa.
 
@@ -809,7 +879,10 @@ Một hệ quả kỹ thuật đáng ghi: trigger `newOrRepositionedProject` (đ
 
 **Nếu trả lời khác:** (a)+(b) bỏ 2 section trong `PHASE_1.checklistSections` (`config/phases.ts`), trả `requestOrigin`/`projectNature` về `ProjectIdentity` + cột `projects` (migration `20260810041500_gate1_origin_nature_checklists` là bản mẫu để đảo chiều, gồm cả bước chuyển dữ liệu), đổi `sg01-source`/`sg01-scope` về `identityFieldFilled` trong `gateReadiness.ts`, và sửa `newOrRepositionedProject` trong `gateProgress.ts` về so sánh bằng; (c) sửa `ownerFunction` của 2 section trong `config/phases.ts`.
 
-#### R4-Q20 · Hai item do dev tự thêm đang hard-block gate mà chưa từng được hỏi 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 22.** ✅ **(a)(d)(e)** — bố cục bảng được chấp nhận đúng trên lập luận ta nêu ("provides owner, status, evidence and rationale fields"), tên bảng được chấp nhận, và năm trường free-text giữ nguyên ở khối riêng. ⚠️ **(b)** nhiều loại thì được, nhưng phải chỉ định một loại là **Primary**. ⚠️ **(c)** cả hai giá trị owner/function đều đổi: **Requesting Function / Project Owner** và **NPD / Project Owner**. Xem Phụ lục 3 Phần 9.
+
+#### ✅ R4-Q20 · Hai item do dev tự thêm đang hard-block gate mà chưa từng được hỏi 🔴
 
 **Phát hiện 2026-08-11 khi rà nhãn `source` trên panel.** Bốn item trong `GATE_READINESS` mang `source: 'dev-decision'` — panel in đúng chữ *"not SME-confirmed"* bên cạnh từng cái — nhưng **không cái nào từng xuất hiện trong bất kỳ vòng nào** gửi SME. Rà lại thì 2 trong 4 là dán nhãn sai và đã sửa (`sg07-restrictions-linked` → `b3`, vì nó đọc một dòng Key Gate Check của workbook y như `sg07-safety-questions`; `sg07-bom-reconciled` → `f-series` mới, vì F14 đã confirm luật này từ 21/07). Còn lại đúng 2 item là quyết định của dev, và cả hai đều **Mandatory**:
 
@@ -831,7 +904,10 @@ Một hệ quả kỹ thuật đáng ghi: trigger `newOrRepositionedProject` (đ
 
 **Luật mới để chuyện này không lặp lại:** `npm run verify:readiness` sweep **S4** — item nào mang `source: 'dev-decision'` mà không khai `assumption` trỏ tới một câu hỏi thật thì fail. Nghĩa là từ nay không thể ship một quyết định của dev đang chặn gate mà chưa đưa vào danh sách hỏi.
 
-#### R4-Q21 · `initialTargetMarkets` trùng với `Countries / Markets` đã bắt buộc lúc tạo dự án — và B3 được trả lời trên tiền đề ta nêu sai 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 23.** ✅ **Cả hai yêu cầu dev tự thêm đều đúng.** Gate 2 đòi ít nhất một product type; Gate 7 đòi mọi thành phần trong công thức có safety disposition. 🆕 Kèm hai điều chỉnh: thêm option **"Product form under evaluation — to be confirmed by Gate 5"**, và matrix được phủ bằng 1 trong **4 đường** chứ không bắt mỗi thứ một monograph. Xem Phụ lục 3 Phần 6 và 9.
+
+#### ✅ R4-Q21 · `initialTargetMarkets` trùng với `Countries / Markets` đã bắt buộc lúc tạo dự án — và B3 được trả lời trên tiền đề ta nêu sai 🔴
 
 **Phát hiện 2026-08-11 (project owner: "Initial target market(s) có cảm giác thừa, dưới đã có Target Countries / Markets rồi").**
 
@@ -855,7 +931,10 @@ Hiện đang ở **(i)**, không đổi hành vi khi chưa có trả lời.
 
 **Nếu trả lời khác:** (ii) bỏ `initialTargetMarkets` khỏi `ProjectIdentity` + `projects` + `OPPORTUNITY_FIELDS` trong `ProjectIdentificationCard.tsx`, và gỡ vế `initialTargetMarkets` khỏi `sg01-market-user` trong `gateReadiness.ts`; (iii) bỏ `required` của field `markets` trên form `ProjectList.tsx` rồi trỏ `sg01-market-user` sang `identity.markets`.
 
-#### R4-Q22 · Map option Target Users (Gate 02) sang Vulnerable group — mức chắc chắn không đều 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 24.** ⚠️ **Bỏ trường trùng.** Countries / Markets là nguồn sự thật duy nhất; trường free-text *Initial target market* bị gỡ. Và phản biện "check sẽ thành trang trí" được giải quyết trực tiếp: **Countries / Markets thôi bắt buộc lúc tạo dự án**, trở thành bắt buộc trước khi Gate 1 pass. *Initial target user* giữ nguyên. Xem Phụ lục 3 Phần 9.
+
+#### ✅ R4-Q22 · Map option Target Users (Gate 02) sang Vulnerable group — mức chắc chắn không đều 🔴
 
 **Đã build 2026-08-11, do project owner đề xuất** ("map tương ứng với các đối tượng trong target user phase 2, ứng dụng sẽ logic và đỡ sai sót hơn").
 
@@ -889,7 +968,10 @@ Hệ quả của mức 3: dự án **chỉ** nhắm `Dry / eczema-prone skin` v�
 
 **Câu hỏi bổ sung (d):** hướng ngược lại có nên chặn cứng cho **cả** 4 cặp mức 2 không, hay giữ cảnh báo như hiện tại vì một nhóm dễ tổn thương có thể được Safety/Regulatory nhận diện mà không cần target user tương ứng?
 
-#### R4-Q23 · Sổ Claim → Evidence Traceability thuộc gate nào (quyết định lúc nào nó khoá) 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 25.** ✅ **Chín cặp ánh xạ và cách xử lý hai chiều đều đúng.** ⚠️ Bốn option chưa map đều KHÔNG phải "thêm vào map": **tách** Dry / eczema-prone (da khô đơn thuần không phải nhóm dễ tổn thương, da dễ chàm thì có) · family use phải **hỏi lại nhóm tuổi** · intimate area kích hoạt đánh giá use-site riêng · swimmers xác nhận là không. Xem Phụ lục 3 Phần 9 và 7.
+
+#### ✅ R4-Q23 · Sổ Claim → Evidence Traceability thuộc gate nào (quyết định lúc nào nó khoá) 🔴
 
 **Project owner phát hiện 2026-08-11:** NPD Front-End Roadmap ghi bước 4 — *"Evidence Plan & Claim Support"* — có **Sign-off gate: SG05 / SG08**. Nhưng trong app, ba register sinh ra từ sheet đó không cùng một hướng:
 
@@ -909,7 +991,10 @@ Hệ quả của mức 3: dự án **chỉ** nhắm `Dry / eczema-prone skin` v�
 
 **Nếu trả lời khác:** đổi `gate` của `claimEvidenceTraceability` trong `packages/shared/src/config/registers.ts` (chỉ một chuỗi; `isGateRefLocked` và badge gate tự theo).
 
-#### R4-Q24 · C1 — bằng chứng nào chứng minh "đã Regulatory review", và 4/7 điều kiện chưa kiểm được 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 26.** ✅ **Sổ không đóng băng ở Gate 8** — mở suốt Gate 10 và 11, đúng như đã xây, nên không có chuyện thêm claim ở Gate 10 phải Backtrack. 🆕 Cái được thêm là **kiểm soát revision**: revision đã được Regulatory hoặc Gate 10 duyệt trở thành read-only. Xem Phụ lục 3 Phần 5.
+
+#### ✅ R4-Q24 · C1 — bằng chứng nào chứng minh "đã Regulatory review", và 4/7 điều kiện chưa kiểm được 🔴
 
 **Đã build 2026-08-11** sau khi project owner hỏi *"cơ chế này đã làm chưa"* và *"regulatory review đánh giá ở màn hình nào"*.
 
@@ -941,7 +1026,10 @@ Ba vế đó **hiện thẳng trên item** qua trường mới `coverageNote` (*
 
 **Nếu trả lời khác:** đổi `CLAIM_REVIEW_COLUMNS` / `CLAIM_REVIEW_OUTCOMES` trong `packages/shared/src/config/claimReview.ts`, và các cột tương ứng ở `claimEvidenceTraceability`.
 
-#### R4-Q25 · Claims Library nằm ở cấp nào — và dự án tham chiếu tới nó ra sao 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 27.** ✅ **Năm trường và bốn outcome đều được chấp nhận**, và cơ chế snapshot wording được xác nhận ("A later change to the reviewed wording must invalidate the previous review"). 🆕 Thêm **11 cờ chủ đề claim có cấu trúc**, làm cho điều kiện C1 thứ ba hết là phán định. ⚠️ Outcome trong bản trả lời viết hoa (Approved with Conditions…). Xem Phụ lục 3 Phần 5.
+
+#### ✅ R4-Q25 · Claims Library nằm ở cấp nào — và dự án tham chiếu tới nó ra sao 🔴
 
 **Chưa build gì cả.** Đây là câu hỏi hỏi **trước khi** build, khác với R4-Q20…R4-Q24 (đều là thứ đã ship rồi mới đi xác nhận). Nêu ra 2026-08-12 sau khi project owner hỏi *"Claims Library mục đích để làm gì, workbook có phần này chưa"*.
 
@@ -959,7 +1047,10 @@ Ba vế đó **hiện thẳng trên item** qua trường mới `coverageNote` (*
 
 **Nếu trả lời khác:** chưa có code nào để sửa — đó là lý do hỏi trước. Nơi sẽ chịu ảnh hưởng: bảng Prisma mới + trang admin (nếu cấp công ty) **hoặc** một `RegisterConfig` mới trong `packages/shared/src/config/registers.ts` (nếu hoá ra là per-project); và `UNEVALUATED_C1_CONDITIONS` trong `packages/shared/src/config/claimReview.ts` bớt một vế nếu (b) là "bắt buộc trỏ".
 
-#### R4-Q26 · D1 — 5 điểm đặc tả chữ ký gate chưa nói tới 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 28.** 🆕 **Cấp công ty, đúng như ta đọc.** Technical **và** Regulatory phải cùng duyệt mỗi entry; dự án đọc nhưng không sửa; claim mới được phép không có link nhưng phải mang dấu **"New claim — not yet in Claims Library"**; thăng hạng cần hành động riêng **"Propose for Claims Library"**; đổi/thu hồi kéo theo cascade đánh giá tác động. Xem Phụ lục 3 Phần 4.
+
+#### ✅ R4-Q26 · D1 — 5 điểm đặc tả chữ ký gate chưa nói tới 🔴
 
 **Chưa build gì cả** — cùng loại với `R4-Q25`: hỏi **trước khi** xây. Nêu ra 2026-08-12 khi project owner xác nhận lại rằng D1 là đặc tả của SME (không phải ta đề xuất rồi họ không phản đối) và hỏi phạm vi của nó.
 
@@ -1002,7 +1093,10 @@ Hai chữ ký về hai nội dung khác nhau, không gì trên bản ghi lộ ra
 
 **Nếu trả lời khác:** chưa có code. Nơi sẽ chịu ảnh hưởng khi build: bảng `gate_sign_offs` mới (`schema.prisma`), 12 item `sgNN-signoff` trong `packages/shared/src/config/gateReadiness.ts` (bỏ luôn `GATE_SIGNOFF_COVERAGE_NOTE`), guard ở `ProjectsService.setGate`/`setGatesBulk`, và một `ReadinessCheck` kind mới cho "đủ 3 chữ ký hợp lệ". Điểm 3 và 4 là **cấu hình**, không phải logic — nên đặt thành hằng số cạnh nhau để sửa được khi họ trả lời.
 
-#### R4-Q27 · D2 — 4 quyết định trong phần vừa xây, và 2 vế chưa có chỗ gắn 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 29.** 🆕 **Cả năm điểm có đáp án.** (1) record version = **ảnh chụp bằng chứng riêng của gate** (8 thành phần), chữ ký thành stale khi bằng chứng đổi — *"a project-wide save counter is not sufficient"*, tức loại `projects.version`. (2) 10 loại quyết định bắt buộc comment. (3) Gate critical = **3, 4, 7, 8, 9, 10, 11**. (4) độc lập = khác **người** ở mọi gate, cộng đúng **chức năng** ở 7 gate critical. (5) **quyết định của Approver CHÍNH LÀ quyết định gate** — gỡ đúng vòng lặp ta nêu. Xem Phụ lục 3 Phần 3.
+
+#### ✅ R4-Q27 · D2 — 4 quyết định trong phần vừa xây, và 2 vế chưa có chỗ gắn 🔴
 
 **Đã build 2026-08-12** sau khi project owner rà D2 và yêu cầu *"sửa cả các vấn đề trong D2"*. Trước đó **1 trong 4 quy tắc** của D2 được thực hiện, và **1 quy tắc đang chạy ngược đặc tả**.
 
@@ -1013,7 +1107,7 @@ Hai chữ ký về hai nội dung khác nhau, không gì trên bản ghi lộ ra
 
 **Một cơ chế mới, cố ý chỉ là cảnh báo:** `wordingSimilarity()` (Jaccard trên từ) hiện % trùng từ. **Không chỗ nào rẽ nhánh theo con số này** — D2 nói rõ *"similarity checking may be used as a warning, but final equivalence must be confirmed by an authorised reviewer"*.
 
-**Bốn quyết định của dev [ASSUMPTION: R4-Q27]:**
+**Bốn quyết định của dev (cả bốn đã được xác nhận — bản gửi câu 30):**
 
 | # | Quyết định | Vì sao chọn thế, và rủi ro |
 |---|---|---|
@@ -1030,7 +1124,10 @@ Hai chữ ký về hai nội dung khác nhau, không gì trên bản ghi lộ ra
 
 **Bổ sung cùng ngày (project owner):** cột `noProductClaim` **đứng trước** `claimId` — nó là câu hỏi có trước (*bản ghi này có phát biểu gì về sản phẩm không?*), chỉ khi có thì Claim ID mới là thứ điền tiếp. Và hai cái **loại trừ nhau**, nên chặn **cả hai chiều**: tick rồi thì picker Claim ID disable; đang có Claim ID thì **không tick được** (tooltip "unlink the claim first"). Cố ý **không** tự xoá `claimId` khi tick — âm thầm bỏ một liên kết ai đó đã ghi đúng là lỗi "no silent corrections" (B4); người dùng tự unlink. Guard nằm ở `contradictoryClaimRows()` và được API từ chối ở **mọi** workflow state (khác 3 điều kiện release kia) vì dữ liệu đó vô nghĩa ở bất kỳ trạng thái nào. Đã test: gửi thẳng row có cả hai → 400.
 
-#### R4-Q28 · D4 — "applicable" gồm những nguyên liệu nào, và "controlled conditional decision" là gì 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 30.** ✅ **Cả bốn quyết định được chấp nhận**, kể cả việc mọi thứ chỉ bite ở release và việc bỏ qua khác biệt khoảng trắng. 🆕 Ba vế còn lại có đáp án: **(b)** tiêu chí revision-mới vs Claim-ID-mới, do reviewer Technical/Regulatory quyết; **(c)** artwork approval phải link mọi Claim ID và chặn cứng ở 5 trạng thái; **(d)** bản ghi **Publication / Deployment** tách khỏi Approved for Release; **(e)** miễn trừ phải do Technical hoặc Regulatory xác nhận. Xem Phụ lục 3 Phần 5.
+
+#### ✅ R4-Q28 · D4 — "applicable" gồm những nguyên liệu nào, và "controlled conditional decision" là gì 🔴
 
 **Đã build 2026-08-12.** Trước đó **3 trong 8 điều của D4** được thực hiện — và cả 3 là những điều D4 nói *"được phép"* (stub identity-only là acceptable/preferred; import không fail; không default Approved for Use). **4 trong 5 điều ở phần "However:"** — tức phần yêu cầu thật — thì chưa.
 
@@ -1065,7 +1162,10 @@ Khác biệt thực tế giữa hai cách đọc rất hẹp nhưng có thật: 
 
 **Nếu trả lời khác:** `RM_EVIDENCE_*` trong `packages/shared/src/config/registers.ts`; `packages/shared/src/utils/rmEvidence.ts` (4 predicate); `clearedByConditions` trong `gateReadiness.ts` + nhánh của nó trong `gateReadinessChecklist()`; 5 item `sg04-rm-*` / `sgNN-rm-evidence-complete`.
 
-#### R4-Q29 · D3 — "flagged" gồm status nào, giá trị Resolution status, và "authorised acceptance" là gì 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 31.** ✅ **Năm trên sáu ý đúng như đã xây** — (a) mọi dòng phải disposition trước Gate 4 · (b) giữ trạng thái "không dùng" thay vì xoá · (c) PwC + controlled action, không cần trường phê duyệt riêng · (d) chấp nhận có điều kiện phải đóng trước Gate 7 · (e) không được Proceed khi mọi ứng viên bị loại. ⚠️ **(f) đổi cách đọc**: ở Gate 7/10/11 chặn cứng chỉ áp cho nguyên liệu **có trong công thức hiện tại**; dòng ngoài công thức thì cảnh báo. Xem Phụ lục 3 Phần 6.
+
+#### ✅ R4-Q29 · D3 — "flagged" gồm status nào, giá trị Resolution status, và "authorised acceptance" là gì 🔴
 
 **Đã build 2026-08-12.** Trước đó D3 **chưa có gì cả** — chính ta đã báo điều đó với SME ở vòng 3 (*"we have to report that it is not implemented at all"*), và họ trả lời bằng một đặc tả đầy hơn thứ ta đề xuất: **7 trường** + **4 giá trị** assessment + **4 luật chặn** riêng cho từng giá trị.
 
@@ -1107,7 +1207,10 @@ Khác biệt thực tế giữa hai cách đọc rất hẹp nhưng có thật: 
 
 **Nếu trả lời khác:** `WATCHLIST_*` trong `packages/shared/src/config/registers.ts`; 5 hàm trong `packages/shared/src/utils/watchlistReview.ts`; 2 item `sg04-watchlist-*`.
 
-#### R4-Q30 · E1 — bộ giá trị Severity / Status, "Required action" có phải controlled action, và dòng chưa phán định 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 32.** ⚠️ **(a)** "Flagged" gồm **ba** status — ta thiếu **Needs Safety Review**. ⚠️ **(b)** Resolution status có **năm** giá trị, kèm trường đánh giá tách riêng. ✅ **(c)** PwC là đủ, nhưng phải kèm điều kiện **người duyệt gate có thẩm quyền Safety/Regulatory**. ✅ **(d)** dòng chưa đánh giá chặn cả PwC. 🆕 **(e)** sổ PB Caution Limits cần **cùng bộ trường**. ✅ **(f)** action được ở gate sau, nhưng phải hiện ở gate gốc và đến hạn trước gate đóng; **finding critical không được hoãn**. Xem Phụ lục 3 Phần 6.
+
+#### ✅ R4-Q30 · E1 — bộ giá trị Severity / Status, "Required action" có phải controlled action, và dòng chưa phán định 🔴
 
 **Đã build 2026-08-12.** E1 có **4 vế**; trước hôm nay chỉ **1** vế được làm.
 
@@ -1157,7 +1260,10 @@ Test 5 nhánh: general adult → item tự pass (advisory), không chặn · **I
 
 **Câu hỏi vẫn MỞ, và lý do đổi:** ta đang cưỡng chế **assessment của workbook**, không phải của SME. Họ nói `Infant 0+` kích hoạt một pathway riêng và liệt kê các chủ đề nó phải phủ; 8 dòng này **có thể hẹp hơn**, có thể thuộc gate khác, hoặc cần bằng chứng mà các dòng đó không đòi. Nên câu 1 đổi từ *"xin nội dung, hiện chưa có gì"* thành *"Compartment 3 có đúng là thứ các anh muốn, hay pathway còn rộng hơn"*.
 
-#### R4-Q31 · E3(b) — "Critical" ánh xạ sang thang rủi ro nào, và "authorised acknowledgement" là gì 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 33.** ⚠️ **(a)** Severity = Low · Medium · High · **Critical**. ⚠️ **(b)** Status = Open · Under Review · Action Pending · Verification Pending · Closed · **Superseded**. ⚠️ **(c)** "Required action" **phải** là controlled Next Action với Critical/High/Medium-cần-hành-động — free text không thay thế được. ✅ **(d)(e)** hai cách đọc của ta đều đúng, và (e) được mở rộng thêm verification/verifier/ngày đóng. Kèm luật chặn theo bậc. Xem Phụ lục 3 Phần 2.
+
+#### ✅ R4-Q31 · E3(b) — "Critical" ánh xạ sang thang rủi ro nào, và "authorised acknowledgement" là gì 🔴
 
 **Đã build 2026-08-12.** `sg11-changes-closed` trước đó là `manual` với comment: *"adding a readiness check here would either duplicate it or contradict it. Left for the SME round."* Vòng đó đã trả lời — và trả lời **ngược lại**:
 
@@ -1194,7 +1300,10 @@ Soft-lock F9/C4 đối xử **mọi** open change như nhau; E3(b) đòi **phân
 
 **Nếu trả lời khác:** `CHANGE_IMPACT_*` trong `packages/shared/src/config/changeTriggers.ts`; 4 hàm trong `packages/shared/src/utils/changeImpact.ts`; 2 item `sg11-changes-*`.
 
-#### R4-Q32 · E2 — giá trị Status/Regulatory approval, và "Other - specify" xử lý ra sao 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 34.** ⚠️ **(a)** Critical là mức riêng **trên** High — không được gộp vào High như đang làm. ✅ **(b)** change chưa phân loại chặn Gate 11, đúng như đã xây. ⚠️ **(c)** "final disposition" gồm **tám** thứ, một ngày đóng hay một ghi chú là không đủ. ✅ **(d)** acknowledgement sẵn có dùng được, **nhưng phải giới hạn theo role** và ghi 6 trường. Xem Phụ lục 3 Phần 2.
+
+#### ✅ R4-Q32 · E2 — giá trị Status/Regulatory approval, và "Other - specify" xử lý ra sao 🔴
 
 **Đã build 2026-08-12.** `sg10-checklist` trước đó là `manual`, với lý do đã ghi trong config: *"deliberately not enforced the ASEAN checklist for all projects, because that would wrongly block a product not being sold in ASEAN."*
 
@@ -1227,7 +1336,10 @@ Danh sách `ASEAN_MARKETS` là **10 nước thành viên** — dữ kiện, khô
 
 **Nếu trả lời khác:** `ASEAN_MARKETS` và `regulatoryChecklistStatus` trong `packages/shared/src/config/registers.ts`; 5 hàm trong `packages/shared/src/utils/marketDossier.ts`; 2 item `sg10-checklist*`.
 
-#### R4-Q33 · A3 — claim loại `Cosmetic` có phụ thuộc bằng chứng product-level không, và trạng thái costing 🔴
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 35.** ⚠️ **(a)** Dùng **hai bộ giá trị riêng** chứ không tái sử dụng WorkStatus và thang market-track. 🆕 **(b)** "Other — specify" phải ghi quốc gia hoặc khu vực pháp lý thật; chưa nêu tên và chưa xác định dossier type thì bản ghi là chưa đầy đủ và **chặn Gate 10**. ✅ **(c)** phải đủ sáu trường, và N/A phải kèm lý do **cùng reviewer có thẩm quyền**. Xem Phụ lục 3 Phần 8.
+
+#### ✅ R4-Q33 · A3 — claim loại `Cosmetic` có phụ thuộc bằng chứng product-level không, và trạng thái costing 🔴
 
 **Hai chuyện nhỏ, gộp một câu vì cùng là "SME chưa nói gì".**
 
@@ -1252,7 +1364,42 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 
 ---
 
-## Round 5 — raised while implementing D1 ở cấp phase (2026-08-20)
+
+> ✅ **Đã trả lời (24/08/2026) — bản gửi câu 36.** ⚠️ **(a)** Claim **Cosmetic CÓ** kích hoạt yêu cầu bằng chứng product-level khi nó khẳng định kết quả của thành phẩm — cách đọc hẹp của ta là sai. Kèm trường **Evidence basis required** (7 giá trị) để giữ ranh giới ingredient-level. 🆕 **(b)** thêm **Costing / Commercial Feasibility Status** (6 giá trị) + assessor/ngày/giả định/link; vẫn **Supporting** trừ khi dự án được chỉ định phụ thuộc thương mại. Xem Phụ lục 3 Phần 5 và 9.
+
+## Round 5 — soạn dần, GỬI SAU KHI XONG CẢ 36 CÂU VÒNG 4
+
+> **Quyết định của chủ dự án, 24/08/2026:** *"Round 5 gửi SME sẽ là sau khi đã đi qua 36 câu ở round 4, khi đó round 5 mới không có sự thay đổi gì thêm. Có thể vừa làm vừa soạn câu hỏi round 5."*
+>
+> Vòng 4 đã cho thấy vì sao: hai câu (`R4-Q15`, `R4-Q16`) phải chèn thêm **sau** khi bản gửi đã soạn, vì chúng chỉ lộ ra lúc build. Nhóm 1 vừa xong cũng đã thêm `R5-Q11`. Gửi sớm là gửi một danh sách còn động.
+>
+> **Hệ quả với cách build — quan trọng hơn cả việc gửi lúc nào.** Không nhóm nào được *chờ* một câu R5, vì có một vòng lặp không lách được: nhóm 3 cần `R5-Q7`, nhưng `R5-Q7` chỉ gửi sau khi 36 câu xong, mà **câu 18 và 29 chính là nhóm 3**. Nên từ nay: **build trên giả định có tài liệu, gắn `[ASSUMPTION: R5-Qn]` tại chỗ quyết định**. Tag không còn nghĩa "đang chờ để làm" mà là "đã làm theo cách đọc này, sẽ sửa nếu trả lời khác" — đúng cơ chế repo đã có và sweep TAG đã canh.
+>
+> Vì code sẽ chạy trên các giả định này lâu hơn Vòng 4, dòng **"Nếu trả lời khác thì sửa ở đâu"** của mỗi câu nay là phần bắt buộc, không phải phần trang trí. Ở Vòng 4 chính nó đã biến việc đóng 33 câu thành việc máy móc thay vì khảo cổ.
+>
+> **Bản gửi đi:** [`../rounds/DRAFT-our-questions-round5.md`](../rounds/DRAFT-our-questions-round5.md) — soạn song song, đánh số 1–12 theo ngôn ngữ nghiệp vụ, không có tên file hay định danh code. Đổi tên thành `YYYY-MM-DD-our-questions-round5.md` **đúng ngày gửi**, và sau đó không sửa nữa.
+>
+> *Sửa 24/08 sau khi chủ dự án hỏi lại:* trước đó tôi đã kết luận là **chưa** tạo file trong `docs/rounds/`, lấy lý do "thư mục đó là bằng chứng". Đọc lại `rounds/README.md` thì lý do đó lẫn hai việc — *không sửa sau khi gửi* ≠ *không được soạn trong đó* — và chính README nêu bài học ngược lại: *"lưu bản gửi đi ngay khi gửi, đừng đợi bản trả lời về"*, sau khi bộ câu hỏi Vòng 3 bị thiếu khỏi repo. Vòng 4 cũng đã làm đúng cách này: bản gửi tồn tại trong `rounds/` suốt ba ngày soạn (09/08 → 12/08) rồi mới đổi tên theo ngày gửi.
+
+**Cột Gửi số** là cầu nối giữa hai bản — khi SME trả lời "3 — option (b)" thì biết ngay nó đóng câu nội bộ nào.
+
+| ID | Gửi số | Chủ đề |
+|---|---|---|
+| R5-Q5 | **1** | "Chưa đánh giá" ghi ở đâu, cho 7 trigger đọc từ bảng |
+| R5-Q6 | **2** | "Responsible reviewer" của một item readiness là ai |
+| R5-Q7 | **3** | Phạm vi ảnh chụp bằng chứng theo gate |
+| R5-Q11 | **4** | Câu trả lời câu 8 — một lần cho dự án hay từng phát hiện |
+| R5-Q12 | **5** | Safety finding `Superseded` có cần bằng chứng đóng như `Closed` |
+| R5-Q10 | **6** | Sáu giá trị disposition Gate 4 thay thế hay bổ sung |
+| R5-Q8 | **7** | Ai ký quyết định supersession theo thị trường |
+| R5-Q9 | **8** | Ai phán định thay đổi Claims Library là "critical" |
+| — | **9** | 18 vùng ảnh hưởng của trigger scale-up đọc từ đâu (vế còn lại của câu 12 Vòng 4) |
+| R5-Q1 | **10** | Ai chỉ định người ký phase, ai được gỡ chữ ký |
+| R5-Q2 | **11** | D1 có áp cho khối chữ ký phase không |
+| R5-Q4 | **12** | Chữ ký vẽ tay + yếu tố thứ hai — có cần, và bắt buộc tới mức nào |
+| R5-Q3 | *chưa gửi* | Ba cái tên trong dòng "Approval route" của Guide — quá nhỏ để chiếm một số, gộp khi soạn bản cuối |
+
+### Round 5, phần 1 — raised while implementing D1 ở cấp phase (2026-08-20)
 
 **Chưa gửi.** Cùng quy ước với Round 4: ID ổn định, tag `[ASSUMPTION: Rn-Qm]` tại chỗ quyết định, và mỗi câu kết bằng "Nếu trả lời khác thì sửa ở đâu". Sweep TAG của `verify:readiness` trước đây hardcode `R4-Q…` nên **bỏ qua im lặng** tag `R5-Q1` đầu tiên vừa gắn — đã sửa thành `R\d+-Q\d+` cùng ngày; đây đúng là kiểu lỗi mà sweep đó tồn tại để bắt.
 
@@ -1321,3 +1468,217 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 **Câu hỏi còn lại:** (a) Chữ ký vẽ tay có cần trong hồ sơ không, hay 6 trường D1 là đủ? Nếu đội duyệt trả lời "không cần" thì mức bắt buộc ở (b) phải xem lại theo, vì lớp thứ hai hiện gắn với việc đính ảnh. (b) ~~tùy chọn hay bắt buộc~~ — chủ dự án đã chốt BẮT BUỘC; phần còn mở là ở cấp **gate** sau này có áp cùng mức không. (c) Hai lớp có cần cho cả `Prepared by` / `Reviewed by`, hay chỉ `Approved by`? (Hiện áp cho cả ba.)
 
 **Nếu trả lời khác:** khối `input.attachSignature` trong `signSignOff` và `verifySignOffStepUp` ở `apps/api/src/projects/projects.service.ts`; `apps/api/src/verification/totp.service.ts` (bỏ hẳn yếu tố thứ hai); `TotpEnrollCard.tsx` + thẻ Signature trong `apps/web/src/pages/MyAccount.tsx` (bỏ chỗ đăng ký); `wantsSignature`/`SignatureStepUpModal` trong `apps/web/src/components/SignOffBlock.tsx`.
+
+---
+
+### Round 5, phần 2 — phát sinh từ chính đáp án Vòng 4 (24/08/2026)
+
+**Chưa gửi.** Vòng 4 đóng cả 33 câu, nhưng vài đáp án nêu ra một yêu cầu mà không nói nó được **ghi ở đâu** hoặc **ai quyết**. Sáu câu dưới đây là những chỗ đó — không phải chỗ ta bất đồng, mà chỗ ta không đủ thông tin để build mà không đoán. Cùng quy ước: ID ổn định, `[ASSUMPTION: Rn-Qm]` tại chỗ quyết định, và mỗi câu kết bằng "Nếu trả lời khác thì sửa ở đâu".
+
+**Bảng này lớn dần theo từng nhóm được build** — cột cuối ghi nhóm nào làm nó lộ ra, để khi soạn bản gửi ở cuối biết câu nào đã chạy trên giả định bao lâu.
+
+| ID | Chủ đề | Liên quan nhóm | Lộ ra khi |
+|---|---|---|---|
+| R5-Q5 | "Chưa đánh giá" hiển thị và được ghi ở đâu, cho 10 trigger sẵn có | Nhóm 1 (nền tảng) | thiết kế nhóm 1 |
+| R5-Q6 | "Responsible reviewer" của một *item readiness* là ai | Nhóm 1 (câu 16) | thiết kế nhóm 1 |
+| R5-Q7 | Phạm vi của ảnh chụp bằng chứng theo gate | Nhóm 3 | đọc câu 29(1) |
+| R5-Q8 | Ai được ký quyết định supersession theo thị trường | Nhóm 8 | đọc câu 2 |
+| R5-Q9 | Ai phán định một thay đổi Claims Library là "critical" | Nhóm 4d | đọc câu 28(5) |
+| R5-Q10 | Gate 4 sáu giá trị disposition ↔ ba status flagged sẵn có | Nhóm 6 | đối chiếu câu 6 với câu 32(a) |
+| R5-Q11 | Câu trả lời câu 8 ghi một lần cho dự án hay từng phát hiện | Nhóm 1 (câu 8) | **build nhóm 1** |
+| R5-Q12 | Safety finding `Superseded` có cần kết luận + bằng chứng như `Closed` | Nhóm 2 (câu 33) | **build nhóm 2** |
+
+Hai câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào, Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
+
+#### R5-Q5 · "Chưa đánh giá" được ghi ở đâu, cho 10 trigger đang chạy 🔴
+
+**Đáp án Vòng 4 câu 7 (option b):** phân biệt ba trạng thái — đã xét-có áp dụng · đã xét-không áp dụng · **chưa xét** — và "chưa xét" phải chặn readiness với item Mandatory hoặc Conditional.
+
+**Cái đáp án không nói:** trạng thái thứ ba đó **người dùng ghi ở đâu**. Trong 10 trigger đang chạy ở `isReadinessTriggerActive()`, đúng **ba** cái nói được: `microbiologicallySusceptible` đã nói được sẵn (trường rỗng cho tới khi có người chọn 1 trong 5 giá trị — chính là ca đáp án nêu đích danh), còn `openChangeControl` và `humanStudyPlanned` sẽ có trường Yes/No/Pending từ câu 8 và câu 9. **Bảy cái còn lại suy ra từ một checklist, một register hoặc `identity.markets`, và không cái nào có chỗ để một người nói "tôi đã xét, không áp dụng"** — bảng nguồn rỗng không phân biệt được với một câu "không" đã cân nhắc:
+
+| Trigger | Suy từ | "Đã xét, không áp dụng" ghi ở đâu? |
+|---|---|---|
+| `skincareForTwo` · `infantContact` | checklist Target Users | chưa có — không chọn Pregnancy có thể là "không áp dụng" hoặc "chưa ai điền Target Users" |
+| `aseanMarket` | `identity.markets` | chưa có — và câu 24 vừa bỏ tính bắt buộc của trường này lúc tạo dự án, nên "rỗng" nay là trạng thái thật |
+| `microbiologicallySusceptible` | `formulaProperties` | ✅ có sẵn — 5 giá trị + rationale bắt buộc. Đây là mẫu đúng |
+| `claimNeedsRegulatoryReview` · `claimNeedsPerformanceEvidence` | register claim | một phần — `Pending classification` là "chưa xét", nhưng **register rỗng** thì sao? |
+| `newOrRepositionedProject` | checklist gate 01 | chưa có |
+| `humanStudyPlanned` | register study | câu 9 cấp trường mới, giải quyết |
+| `openChangeControl` | `project.changes` | câu 8 cấp trường mới, giải quyết |
+| `pvPmsRequired` | checklist + register | chưa có |
+
+**Suy đoán của dev nếu không có đáp án:** coi "bảng nguồn hoàn toàn trống" là **chưa xét** (chặn), và "bảng có dữ liệu nhưng không dòng nào khớp điều kiện" là **đã xét, không áp dụng** (không chặn). Cách này không cần thêm trường nào, và nó khớp với ca `microSusceptibility` mà đáp án nêu đích danh. Nhưng nó vẫn là suy đoán, và nó làm mọi dự án mới bị chặn ở vài gate cho tới khi có người mở từng bảng ra — đúng cái đánh đổi mà câu 7 nói là "your call rather than ours" nhưng theo chiều ngược lại.
+
+**Câu hỏi:** với một trigger suy ra từ một bảng, "bảng còn trống" nên tính là **chưa đánh giá** (chặn) hay vẫn cần một ô tường minh để người dùng nói đã xét? Nếu cần ô tường minh thì nó nên nằm ở đâu — một dòng Key Gate Check cho mỗi trigger, hay một trường trên chính bảng nguồn?
+
+**Nếu trả lời khác:** `isReadinessTriggerActive()` và `TRIGGER_INACTIVE_EXPLANATIONS` trong `packages/shared/src/utils/gateProgress.ts`; `gateReadinessChecklist()` cùng file.
+
+#### R5-Q6 · "Responsible reviewer" của một item readiness là ai 🔴
+
+**Đáp án Vòng 4 câu 16:** hệ thống được tự sinh lý do N/A, nhưng với item **safety-, regulatory-, claims- hoặc release-critical** thì lý do đó *"must still be acknowledged by the responsible reviewer before gate closure"*.
+
+**Cái đáp án không nói:** "responsible reviewer" của một **item readiness** là ai. Câu 29 định nghĩa vai trò rất rõ ở cấp **gate** (Preparer / Reviewer / Approver, và ở 7 gate critical thì phải đúng chức năng độc lập) — nhưng một gate có 10–20 item, và không có gì gắn một item với một người.
+
+Ba cách đọc, ba lượng công việc rất khác nhau:
+
+1. **Người Reviewer của gate** xác nhận tất cả item N/A tự sinh của gate đó, một lần. Rẻ nhất, và khớp với việc câu 29 dùng đúng bốn chữ "safety-, regulatory-, claims- or release-critical" cho gate.
+2. **Chủ sở hữu review area của register mà item đó đọc** (`identity.reviewers` + `ReviewOwnerSpec` đã có sẵn). Đúng nghĩa "responsible" hơn, nhưng một item `allOf` đọc nhiều register thì có nhiều owner.
+3. **Một người được chỉ định cho từng item.** Chính xác nhất, đắt nhất, và chưa có chỗ lưu.
+
+**Câu hỏi:** cách nào? Và "item critical" ở đây có cùng nghĩa với "gate critical" của câu 29 (tức mọi item ở Gate 3/4/7/8/9/10/11) hay là một tính chất riêng của từng item?
+
+**Nếu trả lời khác:** chỗ sẽ build là `gateReadinessChecklist()` (`gateProgress.ts`) + một bảng acknowledgement mới; hằng số danh sách gate critical đặt cạnh phép kiểm độc lập của câu 29.
+
+#### R5-Q7 · Ảnh chụp bằng chứng theo gate gồm chính xác những gì 🔴
+
+**Đáp án Vòng 4 câu 29(1)** liệt kê 8 thành phần của bản ghi được ký, và nói rõ nếu bằng chứng bên trong ảnh chụp thay đổi thì chữ ký thành stale, hệ thống phải **chỉ ra cái gì đã đổi**, và phải ký lại. Câu *"A project-wide save counter is not sufficient"* loại `projects.version`.
+
+**Cái đáp án không nói:** biên của ảnh chụp. Ba thành phần trong tám là **rộng vô định**: *"applicable checklist results"* · *"mandatory and triggered evidence-register states"* · *"evidence links and document revisions"*. Ở Gate 10, "mandatory and triggered evidence-register states" là khoảng 15 register, mỗi cái vài chục dòng.
+
+**Suy đoán của dev:** chụp đúng những gì `gateReadinessChecklist(project, gateId)` đọc — tức mọi leaf check của gate đó, và với mỗi check là giá trị nó đọc chứ không phải cả register. Ưu điểm: biên do chính engine định nghĩa nên không bao giờ lệch với "cái gì chặn gate này", và "chỉ ra cái gì đã đổi" trở thành một phép diff trên danh sách item. Nhược điểm: một dòng register nằm ngoài mọi readiness check sẽ đổi mà chữ ký không biết.
+
+**Câu hỏi:** biên như trên có đủ không, hay ảnh chụp phải phủ **toàn bộ** nội dung của những register mà gate đó dùng — kể cả cột không readiness check nào đọc?
+
+**Nếu trả lời khác:** bảng `gate_sign_offs` mới + hàm chụp ảnh trong `apps/api/src/projects/projects.service.ts`; nếu phủ toàn bộ register thì kích thước ảnh chụp và cách so sánh đều khác hẳn.
+
+#### R5-Q8 · Ai ký quyết định supersession theo thị trường 🔴
+
+**Đáp án Vòng 4 câu 2** liệt kê 10 dữ kiện phải xác nhận để một phiên bản công thức cũ chuyển từ *Transition in Progress* sang *Superseded*, và nhấn mạnh *"The supersession decision must be recorded by a person — never inferred automatically by the system."*
+
+**Cái đáp án không nói:** *"an authorised person"* là ai. Mười dữ kiện trải khắp Regulatory (thông báo/đăng ký), Quality (lô cuối được xuất xưởng), Supply Chain (xử lý tồn kho), Sales & Marketing (truyền thông) và Packaging (chuyển tiếp artwork) — nên không hiển nhiên đây là một chữ ký hay năm chữ ký.
+
+**Câu hỏi:** quyết định supersession là **một** chữ ký của một vai trò (nếu vậy: vai trò nào?), hay là một khối nhiều vai trò giống Prepared/Reviewed/Approved? Và nó có cần lớp xác thực thứ hai như chữ ký phase hiện nay không?
+
+**Nếu trả lời khác:** mô hình dữ liệu formula version (`FormulaVersionRecord` trong `types/index.ts` + bảng `formula_versions`), và nhóm 8 của lộ trình.
+
+#### R5-Q9 · Ai phán định một thay đổi Claims Library là "critical" 🔴
+
+**Đáp án Vòng 4 câu 28(5)**: khi một entry thư viện bị đổi hoặc thu hồi thì phải xác định mọi claim/SKU/thị trường/tài liệu liên quan, đánh giá tác động, tạo Change Control khi cần, và — quan trọng nhất — *"Changing/withdrawing must not automatically remove a product from the market **unless the change is critical or required by Regulatory**."*
+
+**Cái đáp án không nói:** ai quyết định một thay đổi là "critical", và điều đó có dùng lại thang bốn mức của câu 3/33/34 hay là một phán định riêng. Đây là quyết định có hệ quả thương mại trực tiếp — nó có thể kéo một sản phẩm đang bán ra khỏi thị trường — nên đúng là loại việc file này tồn tại để không đoán.
+
+**Câu hỏi:** "critical" ở đây có phải mức `Critical` trên thang Low/Medium/High/Critical mà câu 3, 33 và 34 vừa thống nhất không? Ai được ghi nó — Regulatory một mình, hay Technical và Regulatory cùng như khi duyệt entry (câu 28(3))?
+
+**Nếu trả lời khác:** phần cascade của Claims Library, nhóm 4d.
+
+#### R5-Q10 · Sáu giá trị disposition của Gate 4 quan hệ thế nào với ba status "flagged" 🔴
+
+**Hai đáp án Vòng 4 chồng lên cùng một cột.** Câu 6 nói mỗi dòng ở Gate 4 phải được phân loại vào 1 trong **sáu** giá trị: No issue identified · Needs Safety Review · Needs Regulatory Review · Prohibited — remove · Considered — not selected · Further information required. Câu 32(a) nói "flagged" gồm **ba** status: REVIEW — possible formula match · Needs Safety Review · Needs Regulatory Review.
+
+**Chỗ không khớp:** `REVIEW - possible formula match` nằm trong danh sách flagged nhưng **không** nằm trong sáu giá trị disposition; ngược lại `No issue identified`, `Considered — not selected` và `Further information required` nằm trong sáu giá trị nhưng không nằm trong flagged. Hôm nay cột `productStatus` của `prohibitedIngredients` là **một** cột giữ cả hai ý.
+
+Hai cách đọc:
+
+1. **Sáu giá trị thay thế danh sách hiện tại**, và `REVIEW — possible formula match` trở thành kết quả tự động của phép so watch-list chứ không phải một disposition người chọn — tức hai cột: *kết quả sàng lọc tự động* và *disposition của người*.
+2. **Sáu giá trị là danh sách đầy đủ mới**, `REVIEW — possible formula match` được thêm vào thành bảy, và "flagged" chỉ là một tập con của nó.
+
+Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai việc khác nhau) nhưng là một migration trên dữ liệu đã có. Cách 2 rẻ hơn nhưng để một cột tiếp tục làm hai việc.
+
+**Câu hỏi:** sáu giá trị của câu 6 là **thay thế** danh sách status hiện tại, hay **bổ sung** vào nó? Và `REVIEW — possible formula match` là kết quả máy sinh hay một lựa chọn của người?
+
+**Nếu trả lời khác:** `WATCHLIST_FLAGGED_STATUSES` và cột `productStatus` của `prohibitedIngredients` trong `packages/shared/src/config/registers.ts`; `flaggedWatchlistRows()` trong `utils/watchlistReview.ts`; `sg04-no-remove` / `sg04-pb-screen` trong `gateReadiness.ts`.
+
+#### R5-Q11 · Câu trả lời "có cần Change Control không" ghi một lần cho dự án hay từng phát hiện 🔴
+
+**Đã build 24/08/2026** cùng nhóm 1. Câu 8 yêu cầu một bước đánh giá tường minh — *"Change Control required? → Yes / No / Pending assessment"* kèm reviewer · ngày · lý do · Change Control ID liên kết (khi Yes) · evidence link — và **"Pending assessment must block closure of the post-market finding"**.
+
+**Chỗ phải chọn:** đáp án nói *"the post-market finding"* ở số ít, nghĩa là mỗi phát hiện một câu trả lời. Nhưng app **không có bản ghi "post-market finding"** nào để gắn vào:
+
+| Ứng viên | Vì sao không phải "the finding" |
+|---|---|
+| checklist `postMarketSources` | là danh sách **nguồn** nào có áp dụng (16 option), không phải từng phát hiện |
+| `project.capa` | là **hành động kết quả** — và chính câu 10 nói "CAPA là resulting action, không phải nguồn feedback" |
+| `project.feedback` | phản hồi panel nội bộ, không phải phát hiện hậu thị trường |
+
+**Đã làm:** giữ câu trả lời ở **cấp dự án** (`ProjectAssessments.changeControlRequired`), và Pending/chưa trả lời thì chặn **Gate 12**. Lập luận: `sg12-signoff` là *"Prepared, reviewed and approved review closure"* — Gate 12 **chính là** việc đóng kỳ review hậu thị trường, nên chặn Gate 12 là cách đọc sát nhất mà dữ liệu hiện có cho phép. Item mang `coverageNote` nói rõ câu trả lời là một-cho-cả-dự-án.
+
+**Cái mất khi làm vậy:** có 5 phát hiện mà chỉ 1 cần Change Control thì một ô Yes/No cấp dự án không diễn tả được. Đổi lại, làm per-finding nghĩa là **phát minh ra bản ghi "post-market finding"** — một register mới không ai yêu cầu, ở đúng vùng mà câu 10 đang bảo tách lại 16 option thành ba danh sách, nên rất dễ phải làm hai lần.
+
+**Câu hỏi:** câu trả lời này nên ghi **một lần cho cả dự án** (đang làm vậy), hay **từng phát hiện hậu thị trường một**? Nếu là từng phát hiện, xin cho biết cái gì tạo thành một "phát hiện" trong hệ thống — nó có phải là thứ sẽ ra đời khi tách ba danh sách của câu 10 không?
+
+**Nếu trả lời khác:** `ProjectAssessments` trong `packages/shared/src/types/index.ts` (chuyển 6 trường sang một register mới), nhánh `openChangeControl` trong `evaluateTrigger()` ở `utils/gateProgress.ts`, và `AssessmentsCard.tsx`.
+
+#### R5-Q12 · Một safety finding `Superseded` có cần kết luận + bằng chứng như `Closed` không 🔴
+
+**Đã build 24/08/2026** cùng nhóm 2. Câu 33(b) cấp bộ trạng thái mới cho safety finding: Open · Under Review · Action Pending · Verification Pending · Closed · **Superseded**. Câu 33(e) nói riêng về việc *đóng*: *"Closing a High or Critical finding requires: Safety reviewer conclusion · Evidence link · Linked action completed · Verification · Verifier · Closure date."*
+
+**Chỗ không có đáp án:** `Superseded` không phải `Closed`. Một finding bị thay thế bởi đánh giá sau về cùng mối nguy — bằng chứng của nó nằm ở *finding thay thế*, không phải ở chính nó. Nên câu 33(e) có áp cho `Superseded` hay không thì đáp án không nói.
+
+**Đã làm — hướng an toàn:** áp cùng yêu cầu. Một finding High/Critical **không** được trở thành qua-được-gate chỉ nhờ bị đánh dấu Superseded; và nếu nó thật sự đã bị thay thế thì viết điều đó vào ô kết luận là một câu, không phải một gánh nặng.
+
+**Cái mất khi làm vậy:** một dòng Superseded để trống ô kết luận sẽ **chặn Gate 7 vô hạn** cho tới khi có người điền. Với một finding đã bị thay thế, đòi "evidence link" nghe hơi lạ.
+
+**Câu hỏi:** một safety finding ở trạng thái `Superseded` có phải ghi kết luận và bằng chứng như khi `Closed` không? Nếu không, thì cái gì thay thế — có cần trỏ tới finding đã thay nó không (kiểu "superseded by finding X")?
+
+**Nếu trả lời khác:** `closedWithoutEvidence` và `RESOLUTION_CLOSED_STATES` trong `packages/shared/src/utils/safetyFindings.ts` + `config/registers.ts`.
+
+#### R5-Q13 · Câu 3 nói "Hold, Backtrack **hoặc Reject/Stop**" — app không có quyết định Reject/Stop 🔴
+
+**Đã build 24/08/2026** cùng nhóm 2. Câu 3 nói một gap **Critical** *"must result in **Hold, Backtrack or Reject/Stop**"*.
+
+**Chỗ không khớp:** dropdown `Gate decision` của app có 5 giá trị — `Proceed` · `Proceed with Conditions` · `Hold` · `Backtrack` · `N/A` — **không có `Reject/Stop`**. Danh sách đó chép nguyên văn từ workbook, và workbook là nguồn thẩm quyền của nó.
+
+**Đã làm:** chặn cả hai quyết định Proceed và chỉ đề xuất `Hold` hoặc `Backtrack`. Hai trong ba lối ra câu 3 nêu đều tồn tại, nên luật vẫn thi hành được — chỉ là lối thứ ba không có.
+
+**Vì sao không tự thêm:** thêm một giá trị vào dropdown mà workbook không có là đúng loại việc file này tồn tại để không làm. `Reject/Stop` cũng khác `Hold` về nghĩa nghiệp vụ — Hold là tạm dừng, Reject/Stop là kết thúc dự án — nên nó có thể kéo theo cả một trạng thái dự án (`archived`? một trạng thái mới?), không chỉ một option.
+
+**Câu hỏi:** `Reject/Stop` có phải một quyết định gate thứ sáu cần thêm vào dropdown không? Nếu có, nó khác `Hold` ở chỗ nào về hệ quả — dự án có bị đóng/lưu trữ luôn không, hay chỉ là một nhãn khác? Nếu không cần thêm, thì `Hold` và `Backtrack` có đủ cho một gap Critical không?
+
+**Nếu trả lời khác:** `GATE_DECISIONS` trong `packages/shared/src/config/gates.ts` và `GateDecision` trong `types/index.ts`; các mảng `allowed` trong `packages/shared/src/utils/gapCriticality.ts`.
+
+#### R5-Q14 · "Safety **hoặc** Regulatory authority" — bên nào cho finding nào 🔴
+
+**Đã build 24/08/2026** cùng nhóm 2. Câu 32(c) nói việc ghi Proceed with Conditions có thể là authorised acceptance của một watch-list finding bị flag, *"không cần một bước acknowledgement trùng lặp riêng"* — nhưng một trong bốn điều kiện là **"the gate approver has the required Safety or Regulatory authority"**.
+
+**Đã làm:** hai capability riêng (`watchlist-finding|accept-safety` và `|accept-regulatory`), và **một trong hai là đủ**. Seed gán theo đúng tên chức năng đáp án nêu: Safety Reviewer và Regulatory Reviewer.
+
+**Chỗ không có đáp án:** chữ *"required"* hàm ý **có một bên đúng cho từng finding**, chứ không phải bên nào cũng được. Nhưng app thường không biết bên nào:
+
+| Status bị flag | Bên nào là "required"? |
+|---|---|
+| `Needs Safety Review` | rõ — Safety |
+| `Needs Regulatory Review` | rõ — Regulatory |
+| `REVIEW - possible formula match` | **không rõ** — đây là kết quả máy so watch-list tự sinh, không ai escalate, nên không có chức năng nào được nêu tên |
+
+Nếu siết thành "phải đúng bên" thì với dòng thứ ba không biết đòi bên nào; nếu để "một trong hai" thì một finding `Needs Safety Review` có thể được người chỉ có quyền Regulatory gánh qua — lỏng hơn chữ *"required"*.
+
+**Câu hỏi:** với một dòng bị flag bởi phép so tự động (`REVIEW - possible formula match`), thẩm quyền nào là bắt buộc — Safety, Regulatory, hay bên nào cũng được? Và với `Needs Safety Review` / `Needs Regulatory Review`, có phải siết đúng bên tương ứng không?
+
+**Nếu trả lời khác:** `canAcceptWatchlistFinding` trong `apps/api/src/rbac/permissions.service.ts` và `apps/web/src/utils/permissions.ts` (đổi từ OR sang chọn theo `productStatus` của dòng); `assertCanCarryConditions` trong `projects.service.ts` phải nhận từng dòng thay vì chỉ số lượng.
+
+#### R5-Q15 · Dữ liệu tham chiếu cấp công ty — ai *thấy* trang, và ai *sửa* được 🔴
+
+**Đã build 24/08/2026** cùng nhóm 4a/4b. Câu 4 nói *"Regulatory maintains a configurable market profile"*, câu 17 nói overlay nguyên liệu do *"authorised Technical, Safety and Regulatory users"* kiểm soát, câu 28 nói Claims Library cần **Technical VÀ Regulatory cùng duyệt**. Cả ba đều nói **ai được sửa**.
+
+**Cái không đáp án nào nói:** ai được **thấy** trang quản trị các danh sách đó. Trong app hiện tại, link sidebar chỉ có một cờ `adminOnly`, và menu admin (`Users & Roles`) chỉ hiện với System Administrator.
+
+**Đã làm — và nó lệch:** link `Market profiles` để `adminOnly`, còn nút Save khoá theo capability thật (`reference:market-profile|edit`, seed cho Regulatory). Hệ quả: **admin thấy link nhưng không phải người bảo trì dữ liệu; Regulatory là người bảo trì nhưng không thấy link** — phải vào qua ô tìm kiếm hoặc URL trực tiếp.
+
+Ba cách sửa, ba mức việc:
+
+1. **Cho link hiện với bất kỳ ai giữ capability sửa** — đúng nhất về nghĩa, nhưng `GlobalNavEntry` hiện chỉ có `adminOnly` (boolean), phải đổi thành một điều kiện đọc lưới quyền.
+2. **Tách một nhóm sidebar riêng** ("Reference data") hiện với người giữ bất kỳ capability `reference:*|edit` nào — gọn hơn nếu cả ba dataset đều vào đó.
+3. **Để nguyên admin-only** và coi Regulatory sửa qua link admin gửi cho họ — rẻ nhất, nhưng biến một quy trình thường xuyên thành thao tác cần người khác dẫn đường.
+
+**Câu hỏi:** ai nên **thấy** các trang dữ liệu tham chiếu cấp công ty — chỉ admin, hay bất kỳ ai có quyền sửa dataset đó? Và ba dataset (market profile · raw material risk overlay · Claims Library) nên nằm chung một mục sidebar hay tách riêng?
+
+**Nếu trả lời khác:** `GLOBAL_NAV` trong `apps/web/src/config/globalNav.tsx` (cờ `adminOnly` phải thành điều kiện đọc `permissionGrid`), và `globalNavFor()` cùng file.
+
+#### R5-Q16 · Gap High — "a controlled action **and due date**": controlled nghĩa là gì, và due date ghi ở đâu 🔴
+
+**Do chủ dự án phát hiện 25/08/2026**, khi thử đúng luồng: đặt Gate 01 `Gap`, chấm `High`, chọn `Proceed with Conditions` — Save khoá kèm câu `Record "Hold" or "Backtrack" instead`. Chặn thì đúng (ba ô control còn trống), nhưng **câu hướng dẫn sai**: nó bảo từ bỏ PwC, trong khi câu 3 nói High *được* mang qua PwC — chỉ là chưa, cho tới khi ghi đủ control. Đã sửa: `GapVerdict` giờ có `missing` tách khỏi `allowed`, nên thông báo nói *"Record a required action, an action owner, the assessor … or choose Hold / Backtrack instead"* và chỉ liệt kê ô **thật sự** còn trống. Đó là bug hiển thị, không phải câu hỏi.
+
+**Câu hỏi thật lộ ra từ đó, hai vế của cùng một câu.** Điều kiện thứ 3 của câu 3 nguyên văn: *"A controlled action **and due date** are recorded."*
+
+1. **"Controlled action" nghĩa là gì ở đây?** Câu 33(c) — cùng vòng, cùng người trả lời — định nghĩa rõ: *"A controlled Next Action is required… Free text may describe the action but must not replace the controlled action record."* Nhưng câu 3 lại liệt kê `Required action` và `Action owner` như **hai trường thường** trong danh sách 8 trường của gap, tức đọc như bản tự-chứa. Hai cách đọc cần hai kiểu dữ liệu khác nhau:
+   - **(a) Next Action có kiểm soát** — thêm cột `linkedNextActionId` kiểu `nextActionRef`, đúng như đã làm cho safety finding ở câu 33(c). Due date đến kèm luôn vì Next Action vốn có. Khi đó `gapActionOwner` thành dư.
+   - **(b) Trường tự-chứa trên gap** — giữ `gapRequiredAction` + `gapActionOwner`, và thêm **cột thứ 9** cho due date.
+2. **Due date ghi ở đâu?** Danh sách 8 trường của chính câu 3 **không có** ô ngày cho action, nên vế "and due date" hôm nay **không được thực thi** — nửa điều kiện. Không đoán: đang thực thi phần có thật và **nói ra trên màn hình** phần chưa có (dòng cảnh báo dưới ô Criticality bảo tạm ghi ngày vào chính nội dung action).
+
+**Vì sao không tự chọn:** hai cách đọc đổi cả data model và cả bề mặt nhập liệu, mà bên nào cũng có căn cứ trong đúng vòng trả lời này. Chọn sai thì phải migrate một cột đã có dữ liệu thật của gap.
+
+**Câu hỏi:** với một gap High, "controlled action" có nghĩa là một **Next Action có kiểm soát** như câu 33(c) đã định nghĩa, hay là hai trường Required action / Action owner ngay trên gap? Và due date của action đó ghi vào đâu?
+
+**Vế phụ, cùng chỗ:** điều kiện thứ 2 — *"the relevant authorised function accepts the risk"* — hôm nay chỉ được thay thế bằng "có tên assessor", vì việc kiểm **thẩm quyền** cần bảng chữ ký per-gate của câu 29 (nhóm 3) mới có nghĩa. Nếu (a) hoặc (b) được chốt trước nhóm 3, vế này vẫn là proxy.
+
+**Nếu trả lời khác:** `HIGH_GAP_CONTROLS` + `missingHighGapControls()` trong `packages/shared/src/utils/gapCriticality.ts` · danh sách trường `gap*` trong `packages/shared/src/types/index.ts` và `GATE_RECORD_FIELDS`/`GATE_FIELD_LABELS` · `GAP_ASSESSMENT_FIELDS` trong `apps/api/src/projects/projects.service.ts` · `apps/web/src/components/GapAssessmentBlock.tsx` · và một migration trên `gate_records`.

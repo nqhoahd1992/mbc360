@@ -31,7 +31,7 @@ Nghĩa là D1 cần **bảng mới**, không mở rộng được `sign_offs` hi
 | **B** | `(project, gate, market, role)` cho mọi gate | Đồng nhất | Gate 1–9 không có chiều thị trường; phải bịa một market giả (`'*'`) cho 9/12 gate |
 | **C** | `(project, gate, market?, role)` — `market` **nullable**, chỉ dùng ở Gate 10–11 | Khớp đúng mô hình nghiệp vụ: Gate 1–9 một luồng, Gate 10–12 per-market (chính là quyết định A1 đã xác nhận từ lâu) | Cần unique index có điều kiện; hai nhánh code khi đọc |
 
-**Khuyến nghị: C [ASSUMPTION: R4-Q15].** Cột `market` nullable, `@@unique([projectId, gateId, market, role])` — Postgres coi mỗi `NULL` là khác nhau nên cần thêm partial unique index cho nhánh `market IS NULL`. Chi phí thêm cột nullable ngay bây giờ gần bằng không; chi phí thêm nó sau khi đã có chữ ký thật là một migration trên dữ liệu không được phép sai.
+**Khuyến nghị: C — ✅ XÁC NHẬN 24/08/2026** (bản gửi câu 18: Gate 10 và 11 ký theo từng thị trường, Gate 12 cũng vậy, và Phase 4 có trạng thái theo thị trường). Cột `market` nullable, `@@unique([projectId, gateId, market, role])` — Postgres coi mỗi `NULL` là khác nhau nên cần thêm partial unique index cho nhánh `market IS NULL`. Chi phí thêm cột nullable ngay bây giờ gần bằng không; chi phí thêm nó sau khi đã có chữ ký thật là một migration trên dữ liệu không được phép sai.
 
 **Vế nghiệp vụ cần SME xác nhận — chưa nằm trong Vòng 4, nên bổ sung:**
 
@@ -41,7 +41,7 @@ Còn một hệ quả nữa chưa được xét: **sign-off cấp phase**. Gate 
 
 → Đã thêm vào Vòng 4 là **câu 18** (`R4-Q15`).
 
-**Khoá bảng không phải thứ duy nhất còn thiếu [ASSUMPTION: R4-Q26].** Rà lại nguyên văn D1 ngày 2026-08-12 thì còn **5 điểm** nữa phải có đáp án trước khi viết dòng code đầu tiên, vì mỗi điểm đều là một chỗ dễ "lặng lẽ thu hẹp quy tắc":
+**Khoá bảng không phải thứ duy nhất còn thiếu — ✅ CẢ 5 ĐIỂM ĐÃ CÓ ĐÁP ÁN 24/08/2026** (bản gửi câu 29; xem khối ngay dưới danh sách). Rà lại nguyên văn D1 ngày 2026-08-12 thì còn **5 điểm** nữa phải có đáp án trước khi viết dòng code đầu tiên, vì mỗi điểm đều là một chỗ dễ "lặng lẽ thu hẹp quy tắc":
 
 1. *record version* — version **của cái gì**? `projects.version` là bộ đếm optimistic-lock (tăng mỗi lần lưu bất kỳ), nên chữ ký trích nó không nói được "tôi ký nội dung nào". Ứng viên khác: `formulaVersion`, hoặc một số revision riêng của gate record.
 2. *comment where required* — **khi nào** là required? Đoán được là khi decision ≠ Proceed thuần.
@@ -52,6 +52,20 @@ Còn một hệ quả nữa chưa được xét: **sign-off cấp phase**. Gate 
 → Gửi cùng câu 18 trong một email, vì trả lời riêng câu 18 vẫn chưa đủ để bắt đầu. Vòng 4 **câu 29** (`R4-Q26`).
 
 Điểm **3 và 4 là cấu hình, không phải logic** — khi build, đặt chúng thành hằng số cạnh nhau (danh sách gate critical + phép kiểm độc lập) để đổi được bằng một dòng khi đáp án về.
+
+> ### ✅ Đáp án cho cả 5 điểm (24/08/2026, bản gửi câu 29)
+>
+> **1. record version = ảnh chụp bằng chứng RIÊNG CỦA GATE**, gồm 8 thành phần: trạng thái gate + quyết định đề xuất · gate checks · kết quả checklist áp dụng · trạng thái register bằng chứng bắt buộc và bị trigger · evidence link + document revision · action và điều kiện đang mở · phiên bản công thức khi liên quan · thị trường + phiên bản artwork khi liên quan. Bằng chứng trong ảnh chụp đổi sau khi ký ⇒ **chữ ký thành stale, hệ thống chỉ ra cái gì đã đổi, phải ký lại**. Câu *"A project-wide save counter is not sufficient"* **loại thẳng `projects.version`** — đúng như phân tích ở trên đã ngờ. Tiền lệ có sẵn trong repo để nhân rộng: `CLAIM_REVIEWED_WORDING_COLUMN` (`config/claimReview.ts`) chụp wording lúc review và phát hiện lệch.
+>
+> **2. comment bắt buộc** với 10 loại quyết định: Proceed with Conditions · Hold · Backtrack · Reject/Stop · Approved with Conditions · Not Approved · Further Information Required · N/A khi cần lý do do người viết · Delegated approval · Override or exception. Proceed / Approved sạch thì tuỳ chọn. Phỏng đoán "≠ Proceed thuần" ở trên là đúng hướng nhưng hẹp hơn danh sách thật.
+>
+> **3. Gate critical = 3, 4, 7, 8, 9, 10, 11** — bảy gate. Cả bốn gate mà mục này gọi là "tranh cãi được" (SG03, SG04, SG08, SG09) đều **nằm trong** danh sách.
+>
+> **4. "Độc lập" = khác NGƯỜI ở mọi gate**, cộng thêm — chỉ ở bảy gate critical — ít nhất một reviewer hoặc approver phải đại diện **chức năng độc lập tương ứng** (Safety/Scientific Review · Regulatory · Quality · Technical và/hoặc Regulatory). Tiền lệ C2 (khác phòng ban) **vẫn chỉ áp cho luồng human-study**, không lan sang gate.
+>
+> **5. Trình tự Preparer → Reviewer → Approver, và quyết định của Approver CHÍNH LÀ quyết định gate** — không có bước quyết định trùng sau khi duyệt. Vòng lặp mà điểm 5 nêu được gỡ đúng theo hướng đó, và nó trả lời luôn câu hỏi kỹ thuật đi kèm: `GateSignOff.decision` **dùng lại `GateDecision`**, không phải enum riêng. Gate chỉ pass khi approver ghi Proceed hoặc Proceed with Conditions.
+>
+> **Kết luận cho quyết định 1:** cả hai vế đã đủ đáp án, nên phương án C xây được ngay. Thứ tự và phụ thuộc: `Round4_Implementation_Roadmap.md`, nhóm 3.
 
 ---
 
@@ -116,7 +130,7 @@ Tức B7 phần lớn là **mở rộng cái đã có**, không phải xây mớ
 
 **Hệ quả phải chấp nhận:** `claimEvidenceTraceability` hiện gắn gate `10/11`, mà B7 là yêu cầu của **Gate 3**. Phải mở thành `03/10/11`. Điều này cũng đổi lúc register bị khoá theo luật B4 — nó sẽ chỉ khoá khi **cả ba** gate đã pass, tức mở lâu hơn hiện tại. Đó là đúng: phân loại claim phải sửa được suốt giai đoạn phát triển.
 
-**Cần SME xác nhận [ASSUMPTION: R4-Q16]:** `skuClaimsPifRegister.claimCategory` đã tồn tại từ trước, nhưng ta không biết nó vốn dùng để ghi gì — có phải chính là "Claim category" mà B7 nói không, hay là một khái niệm khác. Nếu trùng thì đừng tạo cột thứ hai cùng nghĩa. → Đã thêm vào Vòng 4 là **câu 19** (`R4-Q16`).
+**Cần SME xác nhận — ✅ **ĐÃ XÁC NHẬN 24/08/2026** (bản gửi câu 19):** `skuClaimsPifRegister.claimCategory` đã tồn tại từ trước, nhưng ta không biết nó vốn dùng để ghi gì — có phải chính là "Claim category" mà B7 nói không, hay là một khái niệm khác. Nếu trùng thì đừng tạo cột thứ hai cùng nghĩa. → Đã thêm vào Vòng 4 là **câu 19** (`R4-Q16`).
 
 ---
 

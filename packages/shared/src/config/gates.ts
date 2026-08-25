@@ -213,4 +213,15 @@ export const GATE_FIELD_LABELS: Record<GateFieldChange['field'], string> = {
   dueDate: 'Due date',
   evidenceLink: 'Evidence link',
   notes: 'Notes',
+  // Round 4 question 3 (2026-08-24). These read in the change log exactly like the
+  // six above, which is the point: downgrading a gap from Critical shows up in the
+  // history next to the decision it unblocked, rather than being invisible.
+  gapCriticality: 'Gap criticality',
+  gapImpactCategory: 'Gap impact category',
+  gapAssessor: 'Gap assessor',
+  gapAssessmentDate: 'Gap assessment date',
+  gapRationale: 'Gap rationale',
+  gapEvidenceLink: 'Gap evidence link',
+  gapRequiredAction: 'Gap required action',
+  gapActionOwner: 'Gap action owner',
 };

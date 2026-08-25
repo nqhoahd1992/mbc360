@@ -117,6 +117,10 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     bom: [],
     packagingBom: [],
     formulaProperties: {},
+    // Round 4 questions 8/9/11/12: every answer starts absent, and that is the
+    // point — absent means "not yet assessed", which blocks. Seeding a default
+    // here would answer them on the user's behalf.
+    assessments: {},
     costing: {
       batchSizeKg: 100,
       fillSizeG: 100,
@@ -126,6 +130,12 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
       freightOtherPerUnit: 0,
       targetSellPrice: 0,
     },
+    // Company reference data is not part of a new project's shape — the API fills
+    // it on every read. Empty here rather than fetched, and empty is the SAFE
+    // direction: an unclassified raw material makes the Gate 4 allergen trigger
+    // read "not assessed", which blocks, so a project built locally can never
+    // under-report a risk this object happens not to be holding yet.
+    reference: { marketProfiles: [], rmRisk: [] },
     evidence: EVIDENCE_AREAS.map((e) => ({ ...e, status: 'Not Started' })),
     capa: [],
     feedback: [],

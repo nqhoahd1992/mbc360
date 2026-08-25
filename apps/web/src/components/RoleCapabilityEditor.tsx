@@ -41,6 +41,16 @@ function buildGroups(defs: PermissionDef[]): CapGroup[] {
   const phase: CapGroup['caps'] = [];
   const market: CapGroup['caps'] = [];
   const project: CapGroup['caps'] = [];
+  // Round 4 questions 32(c) and 34(d) (2026-08-24) added capabilities that are
+  // neither a gate, a phase, a market nor the project lifecycle — accepting a
+  // flagged watch-list finding, and acknowledging an open change at Gate 11.
+  const review: CapGroup['caps'] = [];
+  // Catch-all. Every branch above matches a KNOWN resource, so anything new was
+  // silently dropped from this screen and therefore ungrantable — the hazard
+  // CLAUDE.md already records from when the Project lifecycle group was added.
+  // Falling through to a visible "Other" group makes the next new capability
+  // appear by itself, ugly-but-present rather than invisible.
+  const other: CapGroup['caps'] = [];
   for (const d of defs) {
     if (d.resource.startsWith('gate:')) {
       const g = GATES.find((x) => x.id === d.resource.slice('gate:'.length));
@@ -53,6 +63,10 @@ function buildGroups(defs: PermissionDef[]): CapGroup[] {
       market.push({ id: d.id, label: 'Approve market PIF / regulatory / claims / launch statuses' });
     } else if (d.resource === 'project') {
       project.push({ id: d.id, label: d.description ?? d.id });
+    } else if (d.resource === 'watchlist-finding' || d.resource === 'change-impact') {
+      review.push({ id: d.id, label: d.description ?? d.id });
+    } else {
+      other.push({ id: d.id, label: d.description ?? d.id });
     }
   }
   const groups: CapGroup[] = [];
@@ -67,6 +81,15 @@ function buildGroups(defs: PermissionDef[]): CapGroup[] {
   // here: it is an isAdmin() check in the API, not a grantable capability, so it
   // cannot be handed to another role from this screen.
   if (project.length) groups.push({ key: 'project', title: 'Project lifecycle', caps: project });
+  if (review.length) {
+    groups.push({
+      key: 'review',
+      title: 'Safety / Regulatory acceptance',
+      hint: 'Carry a flagged finding or an open change under Proceed with Conditions',
+      caps: review,
+    });
+  }
+  if (other.length) groups.push({ key: 'other', title: 'Other', caps: other });
   return groups;
 }
 

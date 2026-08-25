@@ -17,6 +17,8 @@ import { useSession } from './auth/useSession';
 import AuthStatus from './components/AuthStatus';
 import AdminUsers from './pages/AdminUsers';
 import AdminRoles from './pages/AdminRoles';
+import AdminMarketProfiles from './pages/AdminMarketProfiles';
+import AdminRmRisk from './pages/AdminRmRisk';
 import Dashboard from './pages/Dashboard';
 import ProjectList from './pages/ProjectList';
 import ProjectOverview from './pages/ProjectOverview';
@@ -419,6 +421,7 @@ function Shell() {
   const viewRole = useAppStore((s) => s.viewRole);
   const setViewRole = useAppStore((s) => s.setViewRole);
   const loadPermissionGrid = useAppStore((s) => s.loadPermissionGrid);
+  const loadMarketProfiles = useAppStore((s) => s.loadMarketProfiles);
   const loadProjects = useAppStore((s) => s.loadProjects);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
@@ -457,8 +460,12 @@ function Shell() {
   // and is edited on the Users & Roles Role Editor. Reloaded there after a
   // save so "View as" reflects the change live.
   useEffect(() => {
-    if (session.user) void loadPermissionGrid();
-  }, [session.user, loadPermissionGrid]);
+    if (session.user) {
+      void loadPermissionGrid();
+      // Round 4 question 4 — Regulatory's market profiles, server state like the grid.
+      void loadMarketProfiles();
+    }
+  }, [session.user, loadPermissionGrid, loadMarketProfiles]);
 
   // M3 Phase 1: projects are server state now, so they are fetched once the
   // session resolves instead of being seeded into localStorage. Nothing renders
@@ -689,6 +696,10 @@ function Shell() {
             <Route path="/account" element={<MyAccount />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/roles" element={<AdminRoles />} />
+            {/* Round 4 question 4 — company-level reference data, beside Users & Roles
+                because it is company scope, not project scope. */}
+            <Route path="/admin/market-profiles" element={<AdminMarketProfiles />} />
+            <Route path="/admin/rm-risk" element={<AdminRmRisk />} />
           </Routes>
           )}
         </Content>

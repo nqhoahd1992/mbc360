@@ -1,4 +1,4 @@
-import { MARKET_APPROVAL_STATUSES, type RegisterRow } from '../types';
+import { MARKET_APPROVAL_STATUSES, RISK_LEVELS, type RegisterRow } from '../types';
 import { CLAIM_REVIEW_OUTCOMES } from './claimReview';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
@@ -109,15 +109,18 @@ export const RM_EVIDENCE_INCOMPLETE = 'Incomplete — evidence review required';
 // D4's second route through Gate 4. The wording ("controlled conditional
 // decision") is theirs; that we implement it as this value plus a Proceed with
 // Conditions decision — rather than a bespoke per-row approval field — reuses the
-// F9/D3 mechanism they already specified for the same situation
-// [ASSUMPTION: R4-Q28].
+// F9/D3 mechanism they already specified for the same situation. CONFIRMED by
+// Round 4 question 31(c), 2026-08-24: "Proceed with Conditions plus a linked
+// controlled action is correct. No separate duplicate approval field is required."
 export const RM_EVIDENCE_CONDITIONAL = 'Conditionally accepted — controlled action open';
 // Not in D4 at all, and required to make its Gate 4 rule satisfiable: a candidate
 // material that was screened and then not used would otherwise block Gate 4
 // forever, since at Gate 4 the register IS the candidate ingredient set (the BOM
 // does not exist until Gate 5). Deliberately a state rather than deleting the row
-// — deleting it would destroy the evidence that the material was screened
-// [ASSUMPTION: R4-Q28].
+// — deleting it would destroy the evidence that the material was screened.
+// CONFIRMED by Round 4 questions 31(a) and 31(b), 2026-08-24: every row in the
+// candidate register must be dispositioned before Gate 4 passes, and "Considered
+// — not used in this formula" is retained, with the record not deleted.
 export const RM_EVIDENCE_NOT_USED = 'Considered — not used in this formula';
 
 // Rule E2 (SME Round 3), Gate 10. The team chose option (b): "Enforce the ASEAN
@@ -159,15 +162,40 @@ export const ASEAN_MARKETS: readonly string[] = [
 // unresolved critical safety finding" was really only saying the ten sign-off
 // questions were Completed.
 //
-// The nine field names are E1's. The two value lists are ours — E1 names
-// "Severity" and "Status" without enumerating either [ASSUMPTION: R4-Q30].
+// The nine field names are E1's. The two value lists were ours — E1 names
+// "Severity" and "Status" without enumerating either — and Round 4 question 33
+// (2026-08-24) supplied both, wider than what we had. Both now come from one
+// place: the severity scale from `RISK_LEVELS` in types, and the lifecycle below.
+//
+// Every old value survives in the new lists ('Low'/'Medium'/'High' and
+// 'Open'/'Closed' are all still there), so nothing stored needed migrating — the
+// change is purely additive to four option lists.
 export const SAFETY_FINDING_YES = 'Yes';
-export const SAFETY_FINDING_SEVERITY_OPTIONS = ['Low', 'Medium', 'High'] as const;
-// Two values, because E1's rule turns on exactly one distinction: open or not.
-// WORK_STATUS_OPTIONS was the alternative and was rejected — "Backtracked" means
-// nothing for a safety finding.
+export const SAFETY_FINDING_SEVERITY_OPTIONS = RISK_LEVELS;
+
+// The resolution lifecycle questions 32(b) and 33(b) both return. Five states for
+// a watch-list finding, and the same five plus `Superseded` for a safety finding —
+// question 33(b)'s own list, and the difference is real: a safety finding can be
+// replaced by a later assessment of the same hazard, while a watch-list hit is
+// either resolved or not.
+//
+// Two values used to be enough because the only rule turned on "open or not".
+// Graded blocking needs more: an action still being worked and one awaiting
+// verification are both "not closed", but they are not the same thing to the
+// person deciding whether the gate can move.
+export const RESOLUTION_LIFECYCLE = [
+  'Open',
+  'Under Review',
+  'Action Pending',
+  'Verification Pending',
+  'Closed',
+] as const;
+// Anything other than a terminal state counts as open for blocking purposes —
+// derived rather than listed, so adding a state above cannot silently make it
+// count as closed. Same principle as NEXT_ACTION_TERMINAL_STATUSES.
+export const RESOLUTION_CLOSED_STATES: readonly string[] = ['Closed', 'Superseded'];
 export const SAFETY_FINDING_STATUS_OPEN = 'Open';
-export const SAFETY_FINDING_STATUS_OPTIONS = [SAFETY_FINDING_STATUS_OPEN, 'Closed'] as const;
+export const SAFETY_FINDING_STATUS_OPTIONS = [...RESOLUTION_LIFECYCLE, 'Superseded'] as const;
 
 // Rule D3 (SME Round 3) on a flagged watch-list result at Gate 4. Transcribed:
 // "Please add the following fields to each flagged watch-list result: Reviewer
@@ -188,22 +216,48 @@ export const WATCHLIST_ASSESSMENT_OPTIONS = [
   WATCHLIST_ASSESSMENT_MORE_INFO,
 ] as const;
 
-// D3 names "Resolution status" as a field but gives no values. Two is enough to
+// D3 names "Resolution status" as a field but gives no values. Two was enough to
 // express what its own rules need — "Not a true match may be CLOSED after
-// reviewer rationale and evidence are recorded" [ASSUMPTION: R4-Q29].
-export const WATCHLIST_RESOLUTION_OPTIONS = ['Open', 'Closed'] as const;
+// reviewer rationale and evidence are recorded".
+//
+// ✅ Round 4 question 32(b) (2026-08-24) supplied five, and they are the same
+// lifecycle question 33(b) gives safety findings, so both now read one list. The
+// reply also separates the two ideas explicitly, which this register already did:
+// resolution status is the WORKFLOW, and a separate assessment field records the
+// VERDICT (Critical / Non-critical / Not a true match / Further information
+// required — `WATCHLIST_ASSESSMENT_OPTIONS` below).
+export const WATCHLIST_RESOLUTION_OPTIONS = RESOLUTION_LIFECYCLE;
 
 // Which `productStatus` values make a row "a flagged watch-list result" — i.e.
 // which rows D3's fields and rules apply to. `REVIEW - possible formula match` is
 // the case D3's own heading names. `Needs Regulatory Review` is included because
 // it is the same situation (a row escalated to a qualified reviewer and not yet
 // resolved) and excluding it would leave that escalation blocking nothing at Gate
-// 4 at all — but D3 does not name it [ASSUMPTION: R4-Q29].
+// 4 at all — but D3 does not name it.
 //
 // `Prohibited - remove` is deliberately NOT here: it is not a *possible* match,
-// and `sg04-no-remove` already hard-blocks it outright.
+// and `sg04-no-remove` already hard-blocks it outright. CONFIRMED by Round 4
+// question 32(a), 2026-08-24: "Prohibited — remove remains a separate direct hard
+// block", and including Needs Regulatory Review was right.
+//
+// ✅ The same answer named a THIRD status this list was missing — **Needs Safety
+// Review** — which escalated to a qualified reviewer and blocked nothing at Gate 4,
+// the exact hole that including Needs Regulatory Review was meant to close. Added
+// 2026-08-24, along with the option itself on `prohibitedIngredients`, which did
+// not have it: the value existed only on the PB Caution Limits register, so a
+// Safety escalation was not even recordable on the watch-list.
+//
+// ⚠️ And question 6 lands on the SAME column from the other direction: at Gate 4
+// every row must carry one of six dispositions (No issue identified · Needs Safety
+// Review · Needs Regulatory Review · Prohibited — remove · Considered — not
+// selected · Further information required). Those six do NOT include `REVIEW -
+// possible formula match`, while the flagged list does — so `productStatus` is
+// being asked to hold both a machine screening result and a human disposition.
+// Whether the six replace the current list (two columns) or extend it (one column
+// of seven) is [ASSUMPTION: R5-Q10].
 export const WATCHLIST_FLAGGED_STATUSES: readonly string[] = [
   'REVIEW - possible formula match',
+  'Needs Safety Review',
   'Needs Regulatory Review',
 ];
 
@@ -249,7 +303,17 @@ const CLAIM_CATEGORY_OPTIONS = [
 // "moisturising" arguably depends on performance evidence too — and it is left
 // OUT rather than guessed in: taking their words at face value is the narrower
 // reading, and widening a rule on our own is how a gate starts demanding
-// evidence nobody asked for [ASSUMPTION: R4-Q33].
+// evidence nobody asked for.
+//
+// ⚠️ Round 4 question 36(a) (2026-08-24) settles the boundary the other way: a
+// **Cosmetic** claim DOES trigger product-level evidence "where it asserts an
+// outcome or performance of the finished product" — their examples are
+// Moisturises · Hydrates · Softens · Improves appearance · Supports barrier
+// function · Helps detangle · Reduces residue · Improves skin feel. It is not a
+// flat third entry in this list, though: an ingredient-level statement may still
+// rely on ingredient evidence where it is clearly presented as one, so the answer
+// also adds an **Evidence basis required** field (7 values) that carries the
+// distinction per claim [R4-REWORK: câu 36(a)].
 export const CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE: readonly string[] = [
   'Product performance',
   'Sensory',
@@ -289,8 +353,11 @@ export const RELEASED_INFO_STATES: readonly string[] = ['Approved for Release', 
 //
 // So the app compares master wording against the proposed channel wording,
 // warns when they differ, and requires a person to say WHICH of the two it is.
-// The three values are ours — D2 names the two outcomes (minor adaptation /
-// material change) but gives no vocabulary [ASSUMPTION: R4-Q27].
+// The three values were ours — D2 names the two outcomes (minor adaptation /
+// material change) but gives no vocabulary. CONFIRMED verbatim by Round 4
+// question 30(a), 2026-08-24, which also confirms that the requirements apply at
+// RELEASE rather than first entry, and that whitespace-only changes may be
+// ignored while every other difference goes to a person.
 export const WORDING_EQUIVALENCE_OPTIONS = [
   'Identical to master wording',
   'Minor adaptation — meaning, scope, qualifiers and evidence burden unchanged',
@@ -371,6 +438,14 @@ const prohibitedIngredients: RegisterConfig = {
         'Present within restriction',
         'REVIEW - possible formula match',
         'Prohibited - remove',
+        // Round 4 question 32(a) (2026-08-24) names three statuses as "flagged",
+        // and this was the missing one. It already existed on the PB Caution Limits
+        // register but not here — so an escalation to Safety could not even be
+        // recorded on the watch-list, let alone block Gate 4. Adding it to
+        // WATCHLIST_FLAGGED_STATUSES without adding it here would have produced a
+        // dead entry that never matches, which is exactly the silent failure sweep
+        // S1 exists to catch.
+        'Needs Safety Review',
         'Needs Regulatory Review',
       ],
     },
@@ -436,6 +511,20 @@ const pbCautionLimits: RegisterConfig = {
       ],
     },
     { key: 'formulaExposure', label: 'Formula % / exposure', type: 'text', width: 130 },
+    // Round 4 question 32(e) (2026-08-24): "The Pregnancy/Breastfeeding Caution
+    // list uses the same reviewer-trail fields for flagged findings." We asked
+    // this ourselves — D3's wording said "each flagged watch-list result" while
+    // its heading named only the formula match — and the answer is yes.
+    //
+    // Deliberately the SAME column keys as `prohibitedIngredients` above, not
+    // parallel ones: `watchlistReview.ts` reads rows by key, so identical keys mean
+    // one implementation serves both registers instead of two that can drift.
+    { key: 'reviewerAssessment', label: 'Reviewer assessment', type: 'select', width: 190, options: WATCHLIST_ASSESSMENT_OPTIONS },
+    { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140 },
+    { key: 'reviewDate', label: 'Review date', type: 'date', width: 120 },
+    { key: 'reviewRationale', label: 'Rationale', type: 'textarea', width: 220 },
+    { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 220 },
+    { key: 'resolutionStatus', label: 'Resolution status', type: 'select', width: 120, options: WATCHLIST_RESOLUTION_OPTIONS },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
     { key: 'owner', label: 'Owner', type: 'user', width: 130 },
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 150, editable: false },
@@ -971,9 +1060,20 @@ const aseanPifMap: RegisterConfig = {
 };
 
 // Rule E2 — the temporary per-market record for markets with no built-in profile.
-// Six columns, all named by E2. Status and Regulatory approval reuse vocabularies
-// the app already has (WorkStatus and the market-track approval scale) rather than
-// inventing two more; E2 names neither set of values [ASSUMPTION: R4-Q32].
+// Six columns, all named by E2 — CONFIRMED by Round 4 question 35(c), 2026-08-24,
+// which also adds that where N/A is used the rationale AND an authorised reviewer
+// must be recorded.
+//
+// ⚠️ Status and Regulatory approval reuse vocabularies the app already has
+// (WorkStatus and the market-track approval scale) rather than inventing two more.
+// Question 35(a) rejects the reuse and supplies both lists [R4-REWORK: câu 35(a)]:
+//   Checklist work status → Not Started · In Progress · Awaiting Information ·
+//     Complete · On Hold · Blocked · N/A — rationale required
+//   Regulatory approval   → Pending · Approved · Approved with Conditions ·
+//     Not Approved · Withdrawn · N/A — rationale required
+// And 35(b): a market entered as "Other — specify" must also record the actual
+// country or jurisdiction; until it is named and the dossier type identified, the
+// record is incomplete and must block Gate 10 [R4-REWORK: câu 35(b)].
 const regulatoryChecklistStatus: RegisterConfig = {
   key: 'regulatoryChecklistStatus',
   title: 'Regulatory Checklist Status (per market)',
@@ -1628,10 +1728,19 @@ export const criticalSafetyFindings: RegisterConfig = {
     { key: 'findingDescription', label: 'Finding description', type: 'textarea', width: 240 },
     { key: 'affectedContext', label: 'Affected ingredient / formula / use context', type: 'textarea', width: 220 },
     { key: 'severity', label: 'Severity', type: 'select', width: 110, options: SAFETY_FINDING_SEVERITY_OPTIONS },
-    // E1 says "Required action" and, unlike D3, does NOT say a controlled Next
-    // Action must be used — so this stays free text rather than borrowing D3's
-    // picker. Flagged as a difference worth confirming [ASSUMPTION: R4-Q30].
-    { key: 'requiredAction', label: 'Required action', type: 'textarea', width: 220 },
+    // E1 said "Required action" and, unlike D3, did NOT say a controlled Next
+    // Action must be used — so this stayed free text rather than borrowing D3's
+    // picker, flagged as a difference worth confirming.
+    //
+    // ✅ Round 4 question 33(c) (2026-08-24) says the bar IS the same: "A controlled
+    // Next Action is required for Critical findings · High findings · Medium
+    // findings requiring corrective activity. **Free text may describe the action
+    // but must not replace the controlled action record.**"
+    //
+    // Both columns therefore stay — the sentence explicitly permits the free text,
+    // it just refuses to let it stand alone. The picker is what Gate 7 reads.
+    { key: 'requiredAction', label: 'Required action (description)', type: 'textarea', width: 200 },
+    { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 200 },
     { key: 'owner', label: 'Owner', type: 'user', width: 140 },
     { key: 'findingStatus', label: 'Status', type: 'select', width: 110, options: SAFETY_FINDING_STATUS_OPTIONS },
     { key: 'safetyReviewerConclusion', label: 'Safety reviewer conclusion', type: 'textarea', width: 220 },
@@ -2270,7 +2379,12 @@ export const claimEvidenceTraceability: RegisterConfig = {
   // Backtrack.
   //
   // A register's gate drives isGateRefLocked — i.e. WHEN this freezes — so this
-  // is a user-visible judgement, not a detail [ASSUMPTION: R4-Q23].
+  // is a user-visible judgement, not a detail. CONFIRMED by Round 4 question 26,
+  // 2026-08-24: "The Claim → Evidence Traceability ledger does not freeze
+  // completely at Gate 8; it remains available through Gates 10 and 11." What the
+  // answer adds instead of a freeze is per-revision control — an approved claim
+  // revision becomes read-only, and new wording creates a new revision or a new
+  // Claim ID (question 30(b)) — which is a build item, not a gate change.
   //
   // Widened to 03/10/11 on 2026-08-11 (project owner's decision) when this became
   // the SINGLE place a claim is declared: a Claim ID is now minted at Gate 3,
@@ -2283,8 +2397,16 @@ export const claimEvidenceTraceability: RegisterConfig = {
   columns: [
     // Per-column gates (2026-08-11). A claim row is filled in over three gates, so
     // requiring the whole row at Gate 3 would block on evidence that cannot exist
-    // yet. Which column belongs to which gate is OUR reading — the sheet states no
-    // per-column gate — so it is [ASSUMPTION: R4-Q16] like the rest of B7.
+    // yet. Which column belongs to which gate was OUR reading — the sheet states
+    // no per-column gate. Round 4 question 19(h) (2026-08-24) supplies the real
+    // split and it matches on three gates of four; the existing `claimCategory`
+    // column is also confirmed as B7's classification, so no second column (19a).
+    //
+    // ⚠️ One difference: the mechanism "begins as a preliminary hypothesis at
+    // Gate 3 and is technically confirmed at Gate 5", so Gate 3 needs its own
+    // preliminary-mechanism column alongside the Gate 5 one below, and Gate 3's
+    // completion test needs a sixth element — "preliminary evidence requirement"
+    // (19d) [R4-REWORK: câu 19(d)(h)].
     //
     // Gate 03 — declaring the claim: it has an id, wording, and B7's
     // classification. `claimRisk` is included because its own vocabulary carries
@@ -2305,7 +2427,8 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // therapeutic-adjacent or high-risk claim. The shape is borrowed from D3, the
     // one the team specified themselves for the same situation at Gate 4
     // (assessment + reviewer + date + rationale + evidence); C1 gives no
-    // equivalent list [ASSUMPTION: R4-Q24].
+    // equivalent list. CONFIRMED by Round 4 question 27(a)(b), 2026-08-24 — all
+    // five fields and all four outcome values accepted.
     { key: 'regulatoryReviewOutcome', label: 'Regulatory review outcome', type: 'select', width: 190, options: CLAIM_REVIEW_OUTCOMES, gate: '03' },
     { key: 'regulatoryReviewer', label: 'Regulatory reviewer', type: 'user', width: 150, gate: '03' },
     { key: 'regulatoryReviewDate', label: 'Review date', type: 'date', width: 130, gate: '03' },

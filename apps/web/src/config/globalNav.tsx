@@ -2,7 +2,9 @@ import type { ReactNode } from 'react';
 import {
   ApiOutlined,
   AppstoreOutlined,
+  ExperimentOutlined,
   FolderOpenOutlined,
+  GlobalOutlined,
   SwapOutlined,
   TeamOutlined,
   UserOutlined,
@@ -58,6 +60,36 @@ export const GLOBAL_NAV: GlobalNavEntry[] = [
   },
   { path: '/admin/users', title: 'Users', icon: <TeamOutlined />, adminOnly: true, sidebar: { submenu: ADMIN_SUBMENU }, keywords: 'roles assign account deactivate authenticator reset' },
   { path: '/admin/roles', title: 'Roles', icon: <TeamOutlined />, adminOnly: true, sidebar: { submenu: ADMIN_SUBMENU }, keywords: 'capabilities permissions gate decisions phase approvals' },
+  // Round 4 question 4 (2026-08-24). Company-level reference data, so it belongs
+  // beside Users & Roles rather than in a project workspace — one list every
+  // project reads and none of them can edit.
+  //
+  // `adminOnly` controls only whether the LINK shows. The page itself is readable
+  // by anyone who reaches it and its Save is gated on the real
+  // `reference:market-profile|edit` capability, seeded to Regulatory — so an admin
+  // sees the link while Regulatory, who actually maintains the data, reaches it
+  // from search or a direct URL [ASSUMPTION: R5-Q15].
+  {
+    path: '/admin/market-profiles',
+    title: 'Market profiles',
+    icon: <GlobalOutlined />,
+    adminOnly: true,
+    sidebar: { submenu: ADMIN_SUBMENU },
+    keywords: 'regulatory market profile adverse event pms dossier claim restriction reference data',
+  },
+  // Round 4 question 17 (2026-08-24). Same shape and the same `adminOnly` caveat as
+  // Market profiles above: the link is admin-only, the Save is gated on
+  // `reference:rm-risk|edit` (Safety, R&I/Formulation, Regulatory)
+  // [ASSUMPTION: R5-Q15].
+  {
+    path: '/admin/rm-risk',
+    title: 'Raw material risk',
+    icon: <ExperimentOutlined />,
+    adminOnly: true,
+    sidebar: { submenu: ADMIN_SUBMENU },
+    keywords:
+      'raw material risk overlay allergen fragrance essential oil botanical protein residual solvent heavy metal microbiological impurity reference data cosmetri',
+  },
 ];
 
 export const globalNavFor = (isAdmin: boolean): GlobalNavEntry[] =>

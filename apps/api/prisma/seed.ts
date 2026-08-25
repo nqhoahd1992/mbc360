@@ -27,6 +27,7 @@ import {
   canEditMarketTrack,
 } from '@mbc360/shared/config/roles';
 import { REVIEW_ROLES } from '@mbc360/shared/config/reviewers';
+import { REFERENCE_DATASETS } from '@mbc360/shared/config/referenceData';
 import { createProjectWithScaffold, type NewProjectReviewer } from '../src/projects/project-scaffold';
 
 const connectionString = process.env.DATABASE_URL;
@@ -140,6 +141,42 @@ async function seedRbac(): Promise<void> {
       action: 'archive',
       description: 'Archive / restore a project (reversible; deleting is admin-only)',
     },
+    // Round 4 question 32(c) (2026-08-24). Recording Proceed with Conditions may
+    // serve as the authorised acceptance of a flagged watch-list finding — "a
+    // separate duplicate acknowledgement is not required" — but only where "the
+    // gate approver has the required Safety or Regulatory authority". Two
+    // capabilities rather than one, because the answer names the two functions
+    // separately and a finding escalated to Safety is not the same thing as one
+    // escalated to Regulatory.
+    {
+      resource: 'watchlist-finding',
+      action: 'accept-safety',
+      description: 'Carry a Safety-escalated watch-list finding under Proceed with Conditions (Round 4, q32c)',
+    },
+    {
+      resource: 'watchlist-finding',
+      action: 'accept-regulatory',
+      description: 'Carry a Regulatory-escalated watch-list finding under Proceed with Conditions (Round 4, q32c)',
+    },
+    // Round 4 question 34(d): the existing Gate 11 open-change acknowledgement
+    // "may be reused if role-restricted… Only a person authorised to approve the
+    // relevant Gate 11 impact may acknowledge it."
+    {
+      resource: 'change-impact',
+      action: 'acknowledge',
+      description: 'Acknowledge an open change control at Gate 11 (Round 4, q34d)',
+    },
+    // Company-level reference data (Round 4 questions 4, 17, 28). One capability
+    // per dataset, not one for "reference data": the answers name different
+    // authorities — Regulatory for market profiles, Technical/Safety/Regulatory for
+    // the risk overlay, Technical AND Regulatory for the Claims Library — so
+    // collapsing them into one grant would hand each dataset to everyone who can
+    // edit any of them.
+    ...REFERENCE_DATASETS.map((dataset) => ({
+      resource: `reference:${dataset}`,
+      action: 'edit',
+      description: `Maintain the company-level ${dataset} reference data (Round 4)`,
+    })),
   ];
   for (const def of permissionDefs) {
     await prisma.permission.upsert({
@@ -169,6 +206,48 @@ async function seedRbac(): Promise<void> {
     // token functions: this one authority WAS stated explicitly, so it is not a
     // guess awaiting F6 like the gate/phase grants around it.
     if (role.key === 'sso-project-owner') grantedIds.push(permissionId('project', 'archive'));
+
+    // Round 4 questions 32(c) and 34(d). Seeded to the roles whose names ARE the
+    // functions the answers name — Safety/Scientific Review and Regulatory for a
+    // watch-list finding, and the Gate 11 release authorities for the change
+    // acknowledgement. Not derived from the keyword-match token functions above,
+    // because these authorities are stated in the answers rather than inferred.
+    //
+    // Like every other grant here this is an editable STARTING POINT, not logic:
+    // the Role Editor is where it gets adjusted, and F6's confirmed role x gate
+    // matrix is still open.
+    if (role.key === 'sso-safety-reviewer') {
+      grantedIds.push(permissionId('watchlist-finding', 'accept-safety'));
+    }
+    if (role.key === 'sso-regulatory-reviewer') {
+      grantedIds.push(permissionId('watchlist-finding', 'accept-regulatory'));
+    }
+    // "Authorised to approve the relevant Gate 11 impact" — Gate 11 is production
+    // and launch release, so Quality (release) and the Final Approver. Regulatory
+    // too, since several of E3(b)'s impact subjects are regulatory.
+    if (['sso-quality-reviewer', 'sso-regulatory-reviewer', 'sso-final-approver'].includes(role.key)) {
+      grantedIds.push(permissionId('change-impact', 'acknowledge'));
+    }
+
+    // Reference data, per the function each answer names.
+    //   q4  — "Regulatory maintains a configurable market profile"
+    //   q17 — "controlled by authorised Technical, Safety and Regulatory users"
+    //   q28 — "Technical AND Regulatory must both approve an entry"; the grant is
+    //         who may EDIT, while the two-party approval is workflow inside the
+    //         dataset itself and is not built yet.
+    if (role.key === 'sso-regulatory-reviewer') {
+      grantedIds.push(permissionId('reference:market-profile', 'edit'));
+      grantedIds.push(permissionId('reference:rm-risk', 'edit'));
+      grantedIds.push(permissionId('reference:claims-library', 'edit'));
+    }
+    // "Technical" in question 17 is R&I/Formulation here — the role that owns
+    // ingredient knowledge. `sso-formulation-contributor` is its key.
+    if (['sso-safety-reviewer', 'sso-formulation-contributor'].includes(role.key)) {
+      grantedIds.push(permissionId('reference:rm-risk', 'edit'));
+    }
+    if (role.key === 'sso-published-info-technical-reviewer') {
+      grantedIds.push(permissionId('reference:claims-library', 'edit'));
+    }
 
     for (const pid of grantedIds) {
       await prisma.rolePermission.upsert({

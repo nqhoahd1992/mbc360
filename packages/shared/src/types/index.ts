@@ -12,7 +12,167 @@ export type GateDecision = 'Proceed' | 'Proceed with Conditions' | 'Hold' | 'Bac
 
 export type YNNA = 'Y' | 'N' | 'NA';
 
-export type RiskLevel = 'Low' | 'Medium' | 'High';
+// The company's one severity scale (Round 4 questions 3, 33(a) and 34(a), all
+// 2026-08-24). Three separately-asked questions returned the same four levels, and
+// all three said the same thing about the top one: "Critical remains a distinct
+// level above High" — so folding Critical into High, which `changeImpact.ts` used
+// to do, was wrong.
+//
+// Before this the repo held THREE copies of the idea: this type at three levels,
+// `SAFETY_FINDING_SEVERITY_OPTIONS` as a second three-level list, and the various
+// two-value Open/Closed lists. One scale now, defined once.
+//
+// `CapaRecord.severity` shares the type and therefore gains `Critical` as well.
+// No answer asked for that, and it is disclosed rather than silent: it changes no
+// rule (no readiness check reads CAPA severity — verified) and the alternative was
+// a fourth private vocabulary, which is the exact problem this consolidation
+// exists to remove.
+export const RISK_LEVELS = ['Low', 'Medium', 'High', 'Critical'] as const;
+export type RiskLevel = (typeof RISK_LEVELS)[number];
+
+// Graded blocking (question 33 for safety findings, question 3 for gaps, question
+// 34 for change controls). The three answers agree on the shape: the top two
+// levels stop a gate outright, `Medium` may be carried under Proceed with
+// Conditions when formally accepted and controlled, and `Low` warns.
+export const RISK_LEVELS_HARD_BLOCKING: readonly RiskLevel[] = ['Critical', 'High'];
+
+// Round 4 question 3 (2026-08-24), which also closes Round-2 A1 — the general
+// definition of "critical" that had been open since 21 July.
+//
+// "A gap must carry its own formal criticality assessment… Criticality is assessed
+// by a suitably qualified reviewer, not decided informally during the
+// gate-decision step." That last clause is the whole point: a `Gap` status used to
+// block a plain Proceed and allow Proceed with Conditions, with nothing anywhere
+// recording HOW serious the gap was — so the seriousness was decided implicitly,
+// by whoever picked the decision, and left no trace.
+export const GAP_IMPACT_CATEGORIES = [
+  'Safety',
+  'Regulatory',
+  'Claims',
+  'Quality',
+  'Efficacy',
+  'Release',
+  'Commercial',
+  'Other',
+] as const;
+
+// ---------------------------------------------------------------------------
+// Company-level controlled reference data (Round 4 questions 4, 17 and 28 —
+// 2026-08-24).
+//
+// These shapes live here, in the canonical data model, rather than beside the
+// rules that read them, because `ProjectData.reference` below carries them and
+// this file imports nothing — see the note there for why a project holds a
+// resolved copy at all. The RULES about them (who may edit, the enhanced-PMS
+// condition list, the review schedule, the risk-flag predicates) stay in
+// `config/referenceData.ts`, which re-exports these types so a caller reading
+// about reference data has one place to import from.
+// ---------------------------------------------------------------------------
+
+// Round 4 question 4. What Regulatory records per market — "whether each market
+// requires particular adverse-event reporting, PMS records or review intervals" —
+// plus the two fields other answers need from the same place: question 35(b)'s
+// required dossier type, and question 27's per-market claim restriction.
+export interface MarketProfile {
+  id: string;
+  market: string;
+  adverseEventReporting: boolean;
+  pmsRecordsRequired: boolean;
+  // Months. Undefined means "use the company default schedule" from question 13
+  // (1 / 3 / 12 then annually), NOT "no review" — every marketed product needs a
+  // baseline review, so absence can never mean none.
+  reviewIntervalMonths?: number;
+  // One of question 4's fourteen enhanced-review conditions is "market-specific
+  // vigilance requirement". This is that flag, set by Regulatory per market.
+  enhancedSurveillance: boolean;
+  dossierType?: string;
+  claimRestrictions?: string;
+  evidenceLink?: string;
+  reviewDate?: string;
+  notes?: string;
+  revision: number;
+  updatedBy?: string;
+  updatedAt?: string;
+}
+
+// Round 4 question 17 (2026-08-24). The eleven risk classifications, transcribed
+// verbatim from the answer's own list.
+export const RM_RISK_FLAGS = [
+  'Fragrance',
+  'Essential oil',
+  'Botanical extract',
+  'Protein',
+  'Known allergen',
+  'Residual-solvent risk',
+  'Heavy-metal risk',
+  'Microbiological risk',
+  'Restricted impurity',
+  'Processing residue',
+  'Variable natural-source composition',
+] as const;
+export type RmRiskFlag = (typeof RM_RISK_FLAGS)[number];
+
+// One material's entry in the shared Raw Material Risk Overlay.
+//
+// "This is not a second raw-material master. It stores only MBc360-specific risk
+// classifications the API does not expose." Hence OVERLAY: keyed to the Cosmetri
+// raw-material id, holding nothing Cosmetri already provides — no trade name, no
+// supplier, no INCI. If Cosmetri ever exposes these fields, the answer says the
+// overlay migrates there, and keying it this way is what makes that possible.
+//
+// Why this is not a per-project column: we reported to the team ourselves that a
+// per-project version would be "the most repetitive data-entry burden in anything
+// discussed so far" — whether a material contains essential oils does not change
+// from project to project. The answer agreed: "Do not re-enter this per project."
+export interface RawMaterialRisk {
+  id: string;
+  // `RM-{Cosmetri numeric id}` — the same key `BomLine.rmCode` and the Supplier &
+  // RM Evidence register already use, so the overlay joins to a material by the
+  // identifier the app already carries rather than by trade name (which the
+  // Cosmetri join is known to get wrong or blank — see the A3 notes in CLAUDE.md).
+  rmCode: string;
+  // Kept for the human reading the admin table. Display only: the authority on
+  // what this material IS remains Cosmetri, per the read-only rule A3.
+  displayName?: string;
+  // An entry with an EMPTY list is a real answer — "assessed, no risk flag" — and
+  // is not the same as having no entry at all, which means nobody has classified
+  // the material. The Gate 4 trigger depends on that distinction.
+  flags: RmRiskFlag[];
+  evidenceLink?: string;
+  reviewDate?: string;
+  notes?: string;
+  revision: number;
+  updatedBy?: string;
+  updatedAt?: string;
+}
+
+// The company reference data a rule may need while evaluating one project.
+//
+// Why a project carries this at all: the rule engine in `utils/gateProgress.ts` is
+// a set of pure functions over `ProjectData`, called from ~50 places in the web app
+// and from every server-side guard. Two Round 4 answers put company data inside
+// those rules (question 17's risk overlay at Gate 4, question 4's market
+// restriction in C1), so the engine needs to see it. Threading a second argument
+// through every call site would have been the alternative; resolving it once, where
+// both sides of the join are available, and handing the engine one object keeps the
+// functions pure and the signatures unchanged.
+//
+// It is a READ-ONLY snapshot, filled by the API when it maps a project and
+// refreshed on every read. No store action writes it, and it is deliberately not
+// somewhere a project can edit — question 28's "projects read from the library but
+// do not directly edit it" applies to all three datasets.
+// Deliberately NOT narrowed to the project's own markets and materials on the way
+// in. Every rule that reads these already does its own filtering
+// (`marketRestrictsClaims` by market, `rmCodesWithRiskFlags` by rmCode), and a
+// second narrowing step at load time would be a second copy of the same join to
+// keep correct — one of which would eventually be wrong. Both tables are
+// company-scale, so there is nothing to gain by pre-filtering.
+export interface ProjectReferenceData {
+  marketProfiles: MarketProfile[];
+  // The overlay. An rmCode the project uses that is ABSENT here has not been
+  // classified — which is not the same as carrying no risk.
+  rmRisk: RawMaterialRisk[];
+}
 
 export interface GateRecord {
   gateId: string; // SG01..SG12
@@ -22,6 +182,22 @@ export interface GateRecord {
   dueDate?: string;
   evidenceLink?: string;
   notes?: string;
+  // The eight fields question 3 lists, all only meaningful while `status` is
+  // 'Gap'. They live on the gate record rather than in a register because a gap
+  // IS a state of the gate, not an item someone adds — there is exactly one per
+  // gate, and it appears and disappears with the status.
+  //
+  // `gapCriticality` empty means NOT ASSESSED, and that blocks: question 3 says
+  // the assessment is a reviewer's act, so an unassessed gap cannot inherit the
+  // old permissive behaviour. Same principle as question 7.
+  gapCriticality?: RiskLevel;
+  gapImpactCategory?: string;
+  gapAssessor?: string;
+  gapAssessmentDate?: string;
+  gapRationale?: string;
+  gapEvidenceLink?: string;
+  gapRequiredAction?: string;
+  gapActionOwner?: string;
 }
 
 // Audit trail for ordinary Phase Gate Flow edits (status/decision/owner/due
@@ -61,8 +237,13 @@ export interface RequirementItem {
   // type: the difference from Phases 2-4 is one column, and this repo's rule is
   // to drive columns from config rather than fork the table. Values reuse the
   // NextAction priority vocabulary confirmed under F8 — B6 asks for a priority
-  // column but names no values, and reusing an already-confirmed list is a much
-  // weaker assumption than inventing one [ASSUMPTION: R4-Q18].
+  // column but names no values, and reusing an already-confirmed list seemed a
+  // much weaker assumption than inventing one.
+  //
+  // ⚠️ Round 4 question 21(a) (2026-08-24) rejects the reuse: use **Must /
+  // Should / Could**, because "criticality remains a risk concept, not a
+  // requirements-priority value". Existing rows hold Low/Medium/High/Critical,
+  // so this needs a data migration, not just a config swap [R4-REWORK: câu 21(a)].
   priority?: string;
   // Phase 1 only (2026-08-11). B6's own shape is "category, requirement,
   // priority, owner and notes": the 16 rows the team listed ARE the categories,
@@ -226,6 +407,62 @@ export interface CostingInputs {
 // Project-level, not per formula version: a version-specific value would need
 // the readiness engine to know which version it is evaluating, which it does
 // not today. Worth revisiting alongside the per-market work.
+// Explicit assessment answers (Round 4 questions 8, 9, 11 and 12, 2026-08-24).
+//
+// All four exist for the same reason — question 7's rule that "a missing
+// assessment must never be treated as meaning the condition does not apply". Each
+// records a judgement that the app was previously inferring from other data, so
+// that "not yet assessed" becomes a state a person can see and the engine can
+// block on, rather than a silent pass.
+//
+// The three option lists are deliberately NOT unified into one enum. The reply
+// writes them differently — "Pending assessment" for questions 8 and 12,
+// "Undecided" for question 9, and question 11 offers only Yes/No — and this repo
+// transcribes controlled values verbatim rather than tidying them. An empty string
+// is the fourth, unwritten answer in every case: nobody has answered yet.
+//
+// Kept as one object beside `FormulaProperties` rather than four scattered fields:
+// they share a lifecycle (a person answers them, the engine reads them) and a
+// single `PUT :id/assessments` route serves all four.
+export const CHANGE_CONTROL_REQUIRED_OPTIONS = ['Yes', 'No', 'Pending assessment'] as const;
+export const HUMAN_STUDY_PLANNED_OPTIONS = ['Yes', 'No', 'Undecided'] as const;
+export const ADMINISTRATIVE_ONLY_OPTIONS = ['Yes', 'No'] as const;
+export const SCALE_UP_RISK_OPTIONS = ['Yes', 'No', 'Pending assessment'] as const;
+
+export interface ProjectAssessments {
+  // Question 8 — "Change Control required?", with the five supporting fields the
+  // answer lists. Held at PROJECT level, not per finding, because the app has no
+  // per-finding record to hang it on: `postMarketSources` is a checklist of which
+  // sources apply and `capa` records are the resulting actions, neither of which is
+  // "the finding". Blocking Gate 12 is the nearest faithful reading of "must block
+  // closure of the post-market finding", since Gate 12 IS the post-market review
+  // closure — but the granularity is ours, not theirs [ASSUMPTION: R5-Q11].
+  changeControlRequired?: string;
+  changeControlReviewer?: string;
+  changeControlReviewDate?: string;
+  changeControlRationale?: string;
+  // Required when the answer is Yes: "a valid Change Control record must be linked".
+  changeControlRecordId?: string;
+  changeControlEvidenceLink?: string;
+  // Question 9 — set to 'Yes' automatically when a Study Protocol is started, per
+  // "Creating a Study Protocol automatically sets the answer to Yes"; a person can
+  // still answer it directly before that.
+  humanStudyPlanned?: string;
+  // Question 11 — "The classification must be confirmed by an authorised
+  // reviewer", so the answer alone is not enough; both fields are needed before
+  // the competitor-review exemption applies.
+  administrativeOnly?: string;
+  administrativeOnlyConfirmedBy?: string;
+  // Question 12 — the scale-up trigger Gate 9 has never had.
+  scaleUpRiskIdentified?: string;
+  scaleUpRiskDescription?: string;
+  scaleUpRiskAssessor?: string;
+  scaleUpRiskAssessmentDate?: string;
+  scaleUpRiskRationale?: string;
+  scaleUpRiskActivity?: string;
+  scaleUpRiskEvidenceLink?: string;
+}
+
 export interface FormulaProperties {
   // MICROBIOLOGICAL_SUSCEPTIBILITY_OPTIONS. Empty until someone records it.
   microSusceptibility?: string;
@@ -288,6 +525,16 @@ export interface StudyApproval {
 // Formula version record (confirmed rule A2): a major formulation change
 // creates a new version and reopens Gates 4-9; previous versions are preserved
 // for audit history.
+//
+// ⚠️ Round 4 question 2 (2026-08-24) gives a version a real lifecycle this shape
+// cannot hold: Active · Transition Approved · Transition in Progress · Superseded
+// · Withdrawn · Cancelled. Approving a replacement moves the old version to
+// **Transition in Progress**, NOT Superseded; it becomes Superseded only after an
+// authorised person confirms ten things **for the relevant market** — and "the
+// supersession decision must be recorded by a person, never inferred
+// automatically by the system". Those ten facts span Regulatory, Quality, Supply
+// Chain, Sales & Marketing and Packaging, so whether that is one signature or a
+// multi-role block is not settled [ASSUMPTION: R5-Q8] [R4-REWORK: câu 2].
 export interface FormulaVersionRecord {
   version: string;
   previousVersion: string;
@@ -448,8 +695,27 @@ export interface ChangeRecord {
   salesMarketingMessage?: string;
   dueDate?: string;
   status: ChangeStatus;
+  // Round 4 question 34(c) (2026-08-24): "A closing date or short note alone is
+  // insufficient. Final disposition includes: Final status · Outcome · What was
+  // implemented or why no implementation was required · Verification evidence ·
+  // Impacted formula/artwork/claim/market versions · Responsible verifier ·
+  // Closure date · Remaining action or transition requirement, if any."
+  //
+  // Three of the eight already existed — `status` is the final status,
+  // `closureEvidence` is the verification evidence, `closedDate` is the closure
+  // date. `isChangeDispositionRecorded` used to accept ANY ONE of the last two,
+  // which is exactly the "closing date alone" the answer rejects. The five below
+  // are new; all are needed before a terminal status stops blocking Gate 11.
   closureEvidence?: string;
   closedDate?: string;
+  closureOutcome?: string;
+  closureImplementation?: string;
+  closureImpactedVersions?: string;
+  closureVerifier?: string;
+  // The one field the answer marks optional — "if any" — so it is deliberately NOT
+  // required by `isChangeDispositionRecorded`. A change with nothing left to
+  // transition should not be blocked into inventing something.
+  closureRemainingAction?: string;
   owner: string;
   notes?: string;
 }
@@ -483,7 +749,13 @@ export interface ProjectIdentity {
   // genuinely are not known yet. Making them create-form-mandatory would repeat
   // the sg01-owner mistake — a check that reads a field the form guarantees is
   // vacuously satisfied by construction and can never actually block. Someone
-  // must go and fill these in for Gate 1 to pass. [ASSUMPTION: R4-Q17]
+  // must go and fill these in for Gate 1 to pass.
+  //
+  // CONFIRMED by Round 4 question 20, 2026-08-24: "Current approach is correct —
+  // fields optional when the project shell is first created, mandatory before
+  // Gate 1 passes." A project may be opened with a temporary name or identifier,
+  // creator, date and initial owner; Gate 1 then requires the substantive
+  // opportunity and request information. Nothing to change here.
   // ---------------------------------------------------------------------
   // B1 — the requester, kept as separate fields per "the requester's name and
   // department should remain separate fields". Where the request ORIGINATED is
@@ -496,7 +768,10 @@ export interface ProjectIdentity {
   // proposed product type, intended purpose and the known boundaries of the
   // request. The fourth thing B2 asks for (new development / reformulation /
   // claim change / …) is the `projectNature` checklist section, for the same
-  // reason as above plus the trigger that must read it. [ASSUMPTION: R4-Q19]
+  // reason as above plus the trigger that must read it. The checklist-table shape
+  // is CONFIRMED by Round 4 question 22(a), and keeping these five free-text
+  // fields in their own "Opportunity & Request — Gate 1" block rather than moving
+  // them into the Project Identification table is confirmed by 22(e).
   initialScope?: string;
   // B3 — deliberately lightweight and SEPARATE from the Gate 02 target-user /
   // target-market checklists: "These are preliminary fields and do not replace
@@ -504,6 +779,13 @@ export interface ProjectIdentity {
   // approve them." Wiring Gate 1 to the Gate 02 checklists would have forced the
   // team to finish Gate 2's work before Gate 1 could close.
   initialTargetUsers?: string;
+  // ⚠️ Round 4 question 24 (2026-08-24) removes this one: "Use the existing
+  // Countries / Markets parameter as the single source of truth. Remove the
+  // separate free-text Initial target market field." `markets` above stops being
+  // mandatory to create the project shell and becomes mandatory before Gate 1
+  // passes instead — which is also what keeps the Gate 1 check from becoming
+  // decoration, the concern that put this field here in the first place.
+  // `initialTargetUsers` stays: it duplicates nothing [R4-REWORK: câu 24].
   initialTargetMarkets?: string;
 }
 
@@ -523,6 +805,7 @@ export interface ProjectData {
   packagingBom: PackagingBomLine[];
   costing: CostingInputs;
   formulaProperties: FormulaProperties;
+  assessments: ProjectAssessments;
   evidence: EvidenceItem[];
   capa: CapaRecord[];
   feedback: FeedbackEntry[];
@@ -540,4 +823,7 @@ export interface ProjectData {
   studyApprovals: StudyApproval[]; // dedicated study approval workflow (rule C2)
   formulaVersion: string; // current formula version, e.g. "F1.0" (rule A2)
   formulaVersionHistory: FormulaVersionRecord[]; // prior versions, audit history (rule A2)
+  // Company reference data resolved for THIS project — read-only, refreshed on
+  // every read, never written by a store action. See ProjectReferenceData above.
+  reference: ProjectReferenceData;
 }

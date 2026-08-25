@@ -1,4 +1,5 @@
 import { ADMIN_ROLE } from '@mbc360/shared/config/roles';
+import { referenceEditCapability, type ReferenceDataset } from '@mbc360/shared/config/referenceData';
 
 // The role x capability permission grid, loaded from the backend
 // (`GET /api/rbac/permissions-grid`) into the store. A capability id is
@@ -54,4 +55,38 @@ export function canApprovePhase(grants: Record<string, string[]>, roleKey: strin
 
 export function canEditMarketTrack(grants: Record<string, string[]>, roleKey: string): boolean {
   return has(grants, roleKey, 'market-track|approve');
+}
+
+// Round 4 question 32(c) (2026-08-24): recording Proceed with Conditions serves as
+// the authorised acceptance of a flagged watch-list finding only where "the gate
+// approver has the required Safety or Regulatory authority".
+//
+// EITHER authority is enough, not both. The answer names them as alternatives —
+// "the required Safety **or** Regulatory authority" — because which one a finding
+// needs depends on how it was escalated, and the app cannot always tell: a row at
+// "REVIEW - possible formula match" was flagged by the automated screen, not by a
+// named function [ASSUMPTION: R5-Q14].
+export function canAcceptWatchlistFinding(grants: Record<string, string[]>, roleKey: string): boolean {
+  return (
+    has(grants, roleKey, 'watchlist-finding|accept-safety') ||
+    has(grants, roleKey, 'watchlist-finding|accept-regulatory')
+  );
+}
+
+// Round 4 question 34(d): "Only a person authorised to approve the relevant Gate 11
+// impact may acknowledge it."
+export function canAcknowledgeChangeImpact(grants: Record<string, string[]>, roleKey: string): boolean {
+  return has(grants, roleKey, 'change-impact|acknowledge');
+}
+
+// Company-level reference data (Round 4 questions 4, 17, 28). Takes the REAL
+// signed-in roles, not the "View as" simulator role, and any one of them is
+// enough — these lists are company-wide rules, so a demo role switch must not
+// grant the ability to change them. Same reasoning as `canArchiveProject`.
+export function canEditReferenceData(
+  grants: Record<string, string[]>,
+  roleKeys: string[],
+  dataset: ReferenceDataset,
+): boolean {
+  return roleKeys.some((key) => has(grants, key, referenceEditCapability(dataset)));
 }

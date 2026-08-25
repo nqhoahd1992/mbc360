@@ -28,11 +28,22 @@
 //      record. Automated similarity checking may be used as a warning, but
 //      final equivalence must be confirmed by an authorised reviewer."
 //
-// Two parts of D2 are deliberately NOT here, because neither has a record to
-// attach to yet and inventing one would be guessing: "final artwork approval"
-// (packagingSpecsArtwork has no claim linkage at all) and "external
-// publication" as a separate act from reaching a released state. Both are
-// Round 4 question 30 [ASSUMPTION: R4-Q27].
+// Two parts of D2 are deliberately NOT here, because neither had a record to
+// attach to and inventing one would have been guessing: "final artwork approval"
+// (packagingSpecsArtwork has no claim linkage at all) and "external publication"
+// as a separate act from reaching a released state.
+//
+// Round 4 question 30 (2026-08-24) answered both, and neither is a small addition
+// [R4-REWORK: câu 30(c)(d)]:
+//   (c) final artwork approval IS the Packaging/Artwork Approval record, which
+//       must link EVERY Claim ID on the artwork and hard-block where any linked
+//       claim is Pending · Unsupported · Not approved for the market · Superseded
+//       · Not approved for the intended wording or channel;
+//   (d) external publication is a separate event from Approval for Release, held
+//       in a new Publication/Deployment record (date · channel · market · URL,
+//       file or artwork reference · published version · person responsible ·
+//       withdrawal or supersession date). For printed packaging the equivalent
+//       event is Release to Print.
 import type { RegisterRow } from '../types';
 import { RELEASED_INFO_STATES, WORDING_EQUIVALENT_VALUES, WORDING_MATERIAL_CHANGE } from '../config/registers';
 

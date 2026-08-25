@@ -30,13 +30,33 @@
  *        it rests on. Added 2026-08-11, after all four such items were found to
  *        have shipped without ever being put to the team.
  *
- * It also prints two debt counters (`manual` checks, open `[ASSUMPTION: Rn-Qm]`
- * tags) and verifies that every assumption tag points at a question that
- * actually exists in docs/rules/F1_Per_Gate_Open_Questions.md.
+ *   S5 — a Round-4 question may not be ticked ✅ resolved in the roadmap's
+ *        tracking table while a decision site still carries an `R4-REWORK`
+ *        marker naming it. Added 2026-08-24, when the project owner asked that
+ *        finished questions be marked resolved: a tick nobody can contradict is
+ *        the same manual bookkeeping that has drifted here four times, so the
+ *        tick is checked against the markers rather than trusted.
+ *
+ * It also prints four debt counters — `manual` checks · Conditional items with no
+ * trigger · triggers that cannot yet answer "not yet assessed"
+ * (`TRIGGERS_WITHOUT_UNASSESSED_STATE`, Round 4 question 7) · open
+ * `[ASSUMPTION: Rn-Qm]` tags and unfixed `R4-REWORK` sites — verifies that every
+ * assumption tag points at a question that actually exists in
+ * docs/rules/F1_Per_Gate_Open_Questions.md, and reports Round-4 progress as
+ * resolved-out-of-36.
+ *
+ * The counters deliberately do NOT fail the build. Each one measures work that is
+ * known, disclosed and scheduled; failing on it would only motivate deleting the
+ * thing being counted, which is the opposite of what it is for.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { GATE_READINESS, type ReadinessCheck, type ReadinessRequirement } from '../src/config/gateReadiness';
+import {
+  GATE_READINESS,
+  TRIGGERS_WITHOUT_UNASSESSED_STATE,
+  type ReadinessCheck,
+  type ReadinessRequirement,
+} from '../src/config/gateReadiness';
 import { PHASE_CONFIGS } from '../src/config/phases';
 import { getRegisterConfig } from '../src/config/registers';
 import { RM_EVIDENCE_REGISTER } from '../src/utils/rmEvidence';
@@ -337,6 +357,115 @@ function verifyDevDecisionsAsked(defined: Set<string>): void {
   }
 }
 
+// Confirmed-but-not-yet-built debt. An `[ASSUMPTION: Rn-Qm]` tag says "we guessed
+// and nobody has confirmed it"; once the answer arrives that tag has to go, and if
+// the answer CONTRADICTS the code, removing it would leave a known-wrong decision
+// site with no marker at all — strictly worse than the open assumption it replaced.
+// So closure rewrites those sites to an `R4-REWORK` marker naming the sent
+// question number, and this counts them every run for the same reason the two
+// counters above exist: an unmeasured debt is one that drifts.
+//
+// A marker names the question as it was SENT (1-36), not the internal `R4-Qn` id,
+// because that is the number the reply is written against and the number the
+// roadmap's tracking table uses. Forms accepted:
+//
+//   R4-REWORK: câu 11          one question
+//   R4-REWORK: câu 31(f)       one question, sub-part named for the reader
+//   R4-REWORK: câu 18+29       one site that two questions both govern
+//
+// Anything in parentheses is a sub-part label, never a question number — `câu
+// 27(1)(2)(3)` is question 27, not questions 1, 2 and 3.
+function reworkByQuestion(): Map<number, { count: number; files: Set<string> }> {
+  const byQuestion = new Map<number, { count: number; files: Set<string> }>();
+  for (const dir of TAG_SCAN_DIRS) {
+    for (const file of walk(join(REPO_ROOT, dir))) {
+      const text = readFileSync(file, 'utf8');
+      for (const m of text.matchAll(/\[R4-REWORK: câu (\d+(?:\+\d+)*)/g)) {
+        for (const part of m[1].split('+')) {
+          const n = Number(part);
+          const entry = byQuestion.get(n) ?? { count: 0, files: new Set<string>() };
+          entry.count += 1;
+          entry.files.add(relative(REPO_ROOT, file));
+          byQuestion.set(n, entry);
+        }
+      }
+    }
+  }
+  return byQuestion;
+}
+
+// S5 — the Round-4 tracking table in the roadmap is the one place that says which
+// of the 36 questions is DONE, and this keeps that claim honest.
+//
+// Marking a question resolved is a human act, so on its own it is exactly the kind
+// of manual bookkeeping this repo has watched drift four times. What makes it
+// checkable is that the two records have to agree: a question cannot be resolved
+// while a decision site still carries an `R4-REWORK` marker naming it. That turns
+// "resolved" from a claim into a consequence — you clear the markers, then you may
+// tick the row, and ticking it early fails the build.
+//
+// The reverse is deliberately NOT enforced. A question with zero markers is not
+// automatically done: at closure 10 of the 36 had none — 3, 12, 13, 14, 15, 16,
+// 17, 20, 26, 28 — because they are new build with no existing wrong code to mark.
+// Zero markers is their starting state, not their finish line, so only a person
+// can say the work is complete.
+const ROADMAP_DOC = 'docs/plans/Round4_Implementation_Roadmap.md';
+const TRACKING_HEADING = '## Bảng theo dõi 36 câu';
+const RESOLVED_MARK = '✅';
+const SENT_QUESTION_COUNT = 36;
+
+function verifyRound4Tracking(rework: Map<number, { count: number; files: Set<string> }>): {
+  resolved: Set<number>;
+  total: number;
+} {
+  const doc = readFileSync(join(REPO_ROOT, ROADMAP_DOC), 'utf8');
+  const resolved = new Set<number>();
+  const seen = new Set<number>();
+
+  // Read ONLY the tracking section. The roadmap has other tables whose first
+  // column is also a number — the per-gate table in nhóm 7 is a list of gates, and
+  // nhóm 1's lists question numbers as examples — so a document-wide row regex
+  // picks them up and reports phantom duplicates. Scope to the section, then parse.
+  const start = doc.indexOf(TRACKING_HEADING);
+  if (start === -1) {
+    fail('S5', '—', 'bảng theo dõi', `không tìm thấy mục "${TRACKING_HEADING}" trong ${ROADMAP_DOC}`);
+    return { resolved, total: SENT_QUESTION_COUNT };
+  }
+  const rest = doc.slice(start + TRACKING_HEADING.length);
+  const end = rest.search(/^#{1,2} /m);
+  const section = end === -1 ? rest : rest.slice(0, end);
+
+  // Rows of the tracking table: `| 20 | — | ✅ resolved | … |`
+  for (const m of section.matchAll(/^\| *(\d+) *\| *([^|]*?) *\| *([^|]*?) *\|/gm)) {
+    const n = Number(m[1]);
+    if (n < 1 || n > SENT_QUESTION_COUNT) continue;
+    if (seen.has(n)) {
+      fail('S5', '—', `câu ${n}`, `xuất hiện nhiều lần trong bảng theo dõi của ${ROADMAP_DOC}`);
+      continue;
+    }
+    seen.add(n);
+    if (m[3].includes(RESOLVED_MARK)) resolved.add(n);
+  }
+
+  for (let n = 1; n <= SENT_QUESTION_COUNT; n += 1) {
+    if (!seen.has(n)) fail('S5', '—', `câu ${n}`, `thiếu trong bảng theo dõi của ${ROADMAP_DOC}`);
+  }
+
+  for (const n of resolved) {
+    const debt = rework.get(n);
+    if (debt) {
+      fail(
+        'S5',
+        '—',
+        `câu ${n}`,
+        `đánh dấu ✅ resolved nhưng còn ${debt.count} chỗ [R4-REWORK: câu ${n}] chưa sửa: ${[...debt.files].sort().join(', ')}`,
+      );
+    }
+  }
+
+  return { resolved, total: SENT_QUESTION_COUNT };
+}
+
 function verifyAssumptions(): { tagged: number; ids: Set<string> } {
   const doc = readFileSync(join(REPO_ROOT, QUESTIONS_DOC), 'utf8');
   // Any round, not just Round 4 — the sweep silently ignored an `R5-Q1` tag
@@ -399,7 +528,32 @@ console.log(`Checks     : ${entries.length} leaf (allOf đã trải phẳng)`);
 console.log('\n--- Nợ kỹ thuật (không phải lỗi) ---');
 console.log(`manual                       : ${manual.length}  ${manual.map((m) => m.req.id).join(', ')}`);
 console.log(`Conditional chưa có trigger  : ${conditionalNoTrigger.length}  ${conditionalNoTrigger.map((m) => m.req.id).join(', ')}`);
+// Round 4 question 7: a trigger that cannot answer "not yet assessed" still reads
+// an empty source as a considered no, which is the behaviour the answer rejects.
+// No sweep is needed to catch a typo here — the array is typed `ReadinessTrigger[]`,
+// so the compiler already does that. What it cannot see is the list going stale,
+// which is what printing it every run is for. Empty = R5-Q5 fully discharged.
+console.log(
+  `Trigger chưa có "chưa xét"    : ${TRIGGERS_WITHOUT_UNASSESSED_STATE.length}  ${TRIGGERS_WITHOUT_UNASSESSED_STATE.join(', ')}`,
+);
 console.log(`Giả định chờ SME             : ${assumptions.ids.size} câu hỏi, ${assumptions.tagged} chỗ được gắn dấu`);
+
+const rework = reworkByQuestion();
+const tracking = verifyRound4Tracking(rework);
+let reworkSites = 0;
+for (const { count } of rework.values()) reworkSites += count;
+const openWithDebt = [...rework.entries()]
+  .filter(([n]) => !tracking.resolved.has(n))
+  .sort((a, b) => b[1].count - a[1].count || a[0] - b[0]);
+
+console.log(
+  `Vòng 4 đã resolve            : ${tracking.resolved.size}/${tracking.total} câu` +
+    (tracking.resolved.size > 0 ? `  (${[...tracking.resolved].sort((a, b) => a - b).join(', ')})` : ''),
+);
+console.log(`Đã chốt nhưng chưa sửa       : ${reworkSites} chỗ R4-REWORK trên ${openWithDebt.length} câu`);
+if (openWithDebt.length > 0) {
+  console.log(`                               ${openWithDebt.map(([n, d]) => `câu ${n}×${d.count}`).join(' · ')}`);
+}
 
 if (notes.length > 0) {
   console.log('\n--- Ghi nhận (không phải lỗi) ---');
@@ -407,7 +561,9 @@ if (notes.length > 0) {
 }
 
 if (failures.length === 0) {
-  console.log('\n✅ S1 (tên tham chiếu) · S2 (register rỗng) · S3 (giá trị seed) · S4 (dev-decision đã hỏi) · TAG (giả định): sạch\n');
+  console.log(
+    '\n✅ S1 (tên tham chiếu) · S2 (register rỗng) · S3 (giá trị seed) · S4 (dev-decision đã hỏi) · S5 (resolve Vòng 4) · TAG (giả định): sạch\n',
+  );
   process.exit(0);
 }
 

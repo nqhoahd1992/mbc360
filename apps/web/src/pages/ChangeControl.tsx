@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import UserSelect from '../components/UserSelect';
+import ChangeDispositionBlock from '../components/ChangeDispositionBlock';
+import { isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
 import { Alert, AutoComplete, Button, Card, DatePicker, Form, Input, Modal, Select, Space, Switch, Table, Tag, message } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
@@ -11,6 +13,7 @@ import {
   CHANGE_TRIGGERS,
   CHANGE_IMPACT_AREAS,
   getChangeTrigger,
+  isChangeOpen,
   phaseShortLabel,
   triggerPhases,
   type ChangeTriggerCategory,
@@ -166,6 +169,17 @@ export default function ChangeControl() {
           rowKey={(c) => c.changeId}
           dataSource={draft}
           scroll={{ x: 2260 }}
+          // Round 4 question 34(c). Always expanded and not user-toggleable, the
+          // same pattern the Gate Flow table uses for its readiness panel: a change
+          // that silently blocks Gate 11 is exactly what should not need a click to
+          // discover.
+          expandable={{
+            showExpandColumn: false,
+            expandedRowKeys: draft.filter((c) => !isChangeOpen(c.status)).map((c) => c.changeId),
+            expandedRowRender: (c) => (
+              <ChangeDispositionBlock change={c} onChange={(p) => patchChange(c.changeId, p)} />
+            ),
+          }}
           columns={[
             { title: 'Change ID', width: 100, dataIndex: 'changeId', render: (v) => <b>{v}</b> },
             { title: 'Trigger / event', width: 240, dataIndex: 'trigger' },
@@ -239,7 +253,22 @@ export default function ChangeControl() {
                 />
               ),
             },
-            { title: 'Closure evidence', width: 160, dataIndex: 'closureEvidence', ellipsis: true, render: (v) => v || '—' },
+            // Round 4 question 34(c): the seven parts of a final disposition are
+            // edited in the expandable row below, not as seven more columns — this
+            // table is already 2260px wide. The column here reports whether the
+            // disposition is complete, which is what decides Gate 11.
+            {
+              title: 'Final disposition',
+              width: 150,
+              render: (_, c) =>
+                isChangeOpen(c.status) ? (
+                  <span style={{ color: TEXT.secondary }}>—</span>
+                ) : isChangeDispositionRecorded(c) ? (
+                  <Tag color="green">Recorded</Tag>
+                ) : (
+                  <Tag color="orange">{missingDispositionFields(c).length} missing</Tag>
+                ),
+            },
             { title: 'Closed', width: 110, dataIndex: 'closedDate' },
             { title: 'Owner', width: 130, dataIndex: 'owner' },
             { title: 'Notes', width: 200, dataIndex: 'notes', ellipsis: true, render: (v) => v || '—' },

@@ -14,6 +14,10 @@ YYYY-MM-DD-<ai gửi>-<nội dung>.<ext>
 - `our-questions` — ta gửi cho họ
 - Ngày đứng trước để `ls` tự sắp theo thời gian
 
+**Bản đang soạn thì đặt `DRAFT-` thay cho ngày**, và **đổi tên đúng ngày gửi**. Ngày trong tên file là ngày *gửi*, không phải ngày bắt đầu viết — Vòng 4 soạn từ 09/08 và mang tên 12/08. Tiền tố `DRAFT-` làm việc "chưa gửi" hiện ra ngay khi `ls`, điều đáng có vì mọi file khác trong thư mục này đều là bằng chứng đã cố định.
+
+**Soạn bản gửi ngay trong thư mục này, đừng đợi tới lúc gửi.** Quy tắc "không sửa" chỉ áp *sau khi* đã gửi; nó không có nghĩa là không được soạn ở đây. Bài học ở cuối trang này — bộ câu hỏi Vòng 3 từng thiếu khỏi repo — là bài học về **thiếu file**, không phải về có file sớm.
+
 ## Các vòng
 
 | File | Ngày | Nội dung | Trạng thái |
@@ -22,22 +26,26 @@ YYYY-MM-DD-<ai gửi>-<nội dung>.<ext>
 | `2026-07-21-our-questions-round2.md` | 21/07 | 3 câu làm rõ (A1 định nghĩa "critical" · A2 nội dung Infant & Baby Safety · A3 hai version song song cùng thị trường) + danh sách dữ liệu cần cung cấp | ⏳ **còn mở** |
 | `2026-07-31-our-questions-round3.md` | 31/07 | **19 câu** Parts A–E: quy tắc gán tier + 15 item ta tự gán (A1–A2) · điều kiện trigger còn thiếu (A3) · 7 item không có chỗ ghi (B1–B7) · 2 mapping đã đoán (C1–C2) · 4 quyết định đã xây (D1–D4) · 3 item theo thị trường (E1–E3) | ✅ được trả lời trọn ở vòng 07/08 |
 | `2026-08-07-sme-reply-round3.txt` | 07/08 | Đáp án Parts A–E: quy tắc gán tier, **12 điều kiện trigger**, 7 trường còn thiếu, và **bác 4 thứ đã xây** | ✅ đóng |
-| `2026-08-12-our-questions-round4.md` | 12/08 | **36 câu**: 1 lỗ hổng an toàn đang mở · 3 câu tồn từ 21/07 · 4 giả định đã ship · 12 câu ánh xạ trigger sang dữ liệu · 4 câu về quyết định thiết kế Gate 1–2 (gồm 1 tiền đề ta từng nêu sai với SME) · **2 câu hỏi TRƯỚC khi build** (Claims Library ở cấp nào · 5 điểm D1 để hở) · 6 câu về phần D2, D3, D4, E1, E2, E3(b) vừa xây | 📨 **đã gửi 12/08** — soạn từ 09/08, chốt và gửi ngày 12/08 sau khi làm xong mọi phần không phụ thuộc đáp án |
+| `2026-08-12-our-questions-round4.md` | 12/08 | **36 câu**: 1 lỗ hổng an toàn đang mở · 3 câu tồn từ 21/07 · 4 giả định đã ship · 12 câu ánh xạ trigger sang dữ liệu · 4 câu về quyết định thiết kế Gate 1–2 (gồm 1 tiền đề ta từng nêu sai với SME) · **2 câu hỏi TRƯỚC khi build** (Claims Library ở cấp nào · 5 điểm D1 để hở) · 6 câu về phần D2, D3, D4, E1, E2, E3(b) vừa xây | ✅ được trả lời trọn ở vòng 24/08 |
+| `2026-08-24-sme-reply-round4.md` | 24/08 | Đáp án **cả 36 câu**. Xác nhận phần lớn những gì đã xây, nhưng **bác khoảng 20 chỗ**, và mở ra 6 mảng xây mới: chữ ký per-gate theo thị trường · luồng Infant & Baby Safety trải 6 gate · **3 tập dữ liệu tham chiếu cấp công ty** (Claims Library · Raw Material Risk Overlay · Regulatory market profile) · mô hình revision của claim · vòng đời per-market · 5 trường đánh giá tường minh | ✅ đóng |
+| `DRAFT-our-questions-round5.md` | *chưa gửi* | **12 câu** (đang lớn dần): 3 câu chặn phần việc lớn nhất còn lại · 3 câu đã xây trên cách đọc của ta · 3 câu đã thiết kế chưa xây · 3 câu về chữ ký phase còn tồn từ 20/08 | ✍️ **đang soạn** — gửi sau khi đi hết 36 câu Vòng 4 |
 
 ## Còn nợ
 
 **Từ SME:**
-- **F12** — Cosmetri có phủ compliance ASEAN/Việt Nam không (phụ thuộc bên ngoài, không thuộc quyền nhóm ta)
-- **A1** (vòng 21/07) — định nghĩa "critical" nói chung. Trả lời một phần: vòng 07/08 đã cấp cơ chế riêng cho 3 chỗ (watch-list, safety finding, change control), nhưng nhánh *"critical gap → Hold/Backtrack"* của F7 vẫn chưa có chỗ ghi
-- **A2** (vòng 21/07) — nội dung Infant & Baby Safety pathway. **Lỗ hổng an toàn đã đóng phần lớn 12/08** bằng chính Compartment 3 của workbook (8 dòng INF-01…INF-08); còn chờ SME xác nhận đó có đúng là pathway họ muốn hay còn rộng hơn (xem `R4-Q2`)
-- **A3** (vòng 21/07) — cái gì chính thức kết thúc version công thức cũ. Trả lời một phần ở E3(a)
+- **F12** — Cosmetri có phủ compliance ASEAN/Việt Nam không (phụ thuộc bên ngoài, không thuộc quyền nhóm ta) — **mục duy nhất còn mở từ vòng 21/07**
+- ~~**A1** (21/07) — định nghĩa "critical"~~ ✅ **đóng 24/08, câu 3:** một gap mang đánh giá mức độ nghiêm trọng của riêng nó (8 trường), và Critical không được mang qua Proceed with Conditions. Đây chính là nhánh *"critical gap → Hold/Backtrack"* của F7 vốn không có chỗ ghi
+- ~~**A2** (21/07) — nội dung Infant & Baby Safety pathway~~ ✅ **đóng 24/08, câu 1:** Compartment 3 đúng, nhưng nó là cấu phần **cuối** của một luồng trải Gate 2, 4, 5, 6, 7, 8–9 và 10
+- ~~**A3** (21/07) — cái gì chính thức kết thúc version công thức cũ~~ ✅ **đóng 24/08, câu 2:** 6 trạng thái version + một quyết định supersession **theo từng thị trường**, do người ghi, không bao giờ máy tự suy
 
-**Đang chờ trả lời:**
-- **Round 4** — [`2026-08-12-our-questions-round4.md`](2026-08-12-our-questions-round4.md), **36 câu, gửi 12/08**. Đã gộp sẵn 3 câu A1/A2/A3 còn tồn của vòng 21/07 (chúng treo qua hai vòng rồi), nên chỉ một file này là đủ.
+**Đang chờ trả lời:** *không có.* Vòng 4 đã được trả lời trọn ngày 24/08.
 
-  **Vì sao gửi 12/08 chứ không phải 09/08 khi soạn xong:** trong ba ngày đó, việc dựng D2 · D3 · D4 · E1 · E2 · E3(b) và nối 3 trigger cuối **tự sinh thêm 9 câu** — mỗi lần xây một luật lại lộ ra một chỗ SME chưa nói. Gửi lúc soạn xong thì đã phải gửi tiếp 9 câu nữa. Chốt bộ câu hỏi **sau khi** làm hết phần không phụ thuộc đáp án là lý do bộ này gửi đúng một lần.
+**Đang soạn:**
+- **Round 5** — [`DRAFT-our-questions-round5.md`](DRAFT-our-questions-round5.md), **12 câu và còn tăng**. Chưa gửi, theo quyết định của chủ dự án ngày 24/08: gửi **sau khi** đi hết 36 câu Vòng 4, vì tới lúc đó danh sách mới đứng yên.
 
-  Còn **7 chỗ phải chờ đáp án mới làm được** (4 item `manual` + 3 Conditional chưa có trigger), tất cả đều chờ một câu trong chính file này: câu 12 · 17 · 18 · 36, và F10 cho market profiles.
+  **Cùng lý do đã khiến Vòng 4 hoãn ba ngày, nay đã có bằng chứng lần hai:** hai trong mười hai câu chỉ lộ ra **khi viết code**, không phải khi đọc đáp án — một câu khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào, một câu khi một ca kiểm hành vi cho kết quả chặn mà không quy tắc nào nói nên chặn. Bốn nhóm còn lại gần như chắc chắn còn thêm.
+
+  **Không nhóm nào chờ một câu Vòng 5.** Có một vòng lặp không lách được — phần chữ ký gate cần câu 3 của Vòng 5, nhưng Vòng 5 chỉ gửi sau khi 36 câu xong, mà chính chữ ký gate là hai trong 36 câu đó. Nên cách làm là **xây trên giả định có tài liệu, gắn tag `[ASSUMPTION: R5-Qn]` tại chỗ quyết định**, và `npm run verify:readiness` canh cho không tag nào mồ côi.
 
 **Trùng nhãn A1/A2/A3 giữa hai vòng, đừng nhầm:**
 

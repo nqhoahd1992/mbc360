@@ -9,11 +9,13 @@ import {
   CLAIM_REVIEW_COLUMNS,
   CLAIM_RISKS_NEEDING_REVIEW,
   CLAIM_WORDING_COLUMN,
+  marketRestrictsClaims,
 } from '../config/claimReview';
+import { rmCodesUnclassified, rmCodesWithRiskFlags } from '../config/referenceData';
 import { TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
 import { RM_EVIDENCE_REGISTER, conditionallyAcceptedRmRows, hasUsableRmRow, unresolvedRmRows } from './rmEvidence';
 import { WATCHLIST_REGISTER, watchlistConditionalRows, watchlistHardBlockers } from './watchlistReview';
-import { openCriticalSafetyFindings } from './safetyFindings';
+import { conditionalSafetyFindings, hardBlockingSafetyFindings } from './safetyFindings';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
 import {
   ASEAN_CHECKLIST_REGISTER,
@@ -29,6 +31,7 @@ import {
   type ReadinessSource,
   type ReadinessTier,
   type ReadinessTrigger,
+  type TriggerState,
 } from '../config/gateReadiness';
 
 // Progression rules (confirmed by the subject-matter team — see
@@ -78,7 +81,14 @@ const SKINCARE_FOR_TWO_TRIGGERS = ['Pregnancy', 'Breastfeeding', 'Postpartum'];
 // E1's infant pathway keys off this one option, separately from the three above.
 const INFANT_TARGET_USER = 'Infant 0+';
 // A3's "safety signal … complaint trend" limbs, as they appear on the Gate 12
-// Post-Market Sources checklist [ASSUMPTION: R4-Q6].
+// Post-Market Sources checklist.
+//
+// ⚠️ Round 4 question 10 (2026-08-24) confirms the mapping but says the option
+// list itself is wrong: the sixteen options mix SOURCE, ISSUE TYPE and RESULTING
+// ACTION, and should be three separate lists. It also widens this limb — a
+// complaint counts only where it has a safety component, and consumer, HCP or
+// social-media feedback tagged as a potential safety issue counts too, neither of
+// which a flat label list can express [R4-REWORK: câu 10].
 const PV_PMS_SOURCE_LABELS = ['Adverse event / PV signal', 'PMS trend', 'Complaint'];
 // B5's register — a row here means a vulnerable-user population was assessed.
 const VULNERABLE_REGISTER = 'vulnerableUserAssessment';
@@ -119,12 +129,32 @@ export function skincareForTwoIncompleteSections(project: ProjectData): string[]
 // Gate readiness — mandatory evidence per gate (rule F1 / C7)
 // ---------------------------------------------------------------------------
 
-// Is a named trigger active for this project? Conditional requirements only
-// become mandatory (and only able to hard-block) when their trigger applies.
-function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigger): boolean {
+// Which of the three states does a named trigger hold for this project?
+// (Round 4 question 7, option (b) — see `TriggerState` in config/gateReadiness.ts.)
+//
+// Of the ten triggers below, exactly THREE can return `notAssessed` today:
+//   - `microbiologicallySusceptible` — its field is empty until a person picks one
+//     of five values, so empty IS "not yet assessed". The one case question 7
+//     names outright, and the shape the other seven should copy;
+//   - `openChangeControl` and `humanStudyPlanned` — explicit Yes/No/Pending fields
+//     from questions 8 and 9.
+// The other SEVEN are inferred from a checklist, a register or `identity.markets`,
+// where an empty source is indistinguishable from a considered no; they are listed
+// in `TRIGGERS_WITHOUT_UNASSESSED_STATE` and keep two-state behaviour until R5-Q5
+// answers. That is a disclosed shortfall, not an oversight.
+//
+// Question 12 supplies a trigger for `sg09-scaleup`, which has none at all today,
+// rather than a third state for an existing one.
+// A trigger that can only answer yes-or-no. Every call site is a trigger listed in
+// `TRIGGERS_WITHOUT_UNASSESSED_STATE`, so the shortfall is visible in the code
+// rather than only in a doc — `return twoState(…)` reads as "this one cannot tell
+// an empty source from a considered no yet".
+const twoState = (applies: boolean): TriggerState => (applies ? 'applies' : 'doesNotApply');
+
+function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger): TriggerState {
   switch (trigger) {
     case 'skincareForTwo':
-      return isSkincareForTwoTriggered(project);
+      return isSkincareForTwoTriggered(project) ? 'applies' : 'doesNotApply';
 
     // E1's third line, "Infant-only products should trigger the Infant/Baby Safety
     // pathway instead". Deliberately independent of skincareForTwo: a maternal
@@ -136,8 +166,21 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
     // limb — "or should be opened because of the post-market finding" — is a
     // judgement no rule can make, and dropping it silently is the mistake CLAUDE.md
     // names, so the item carries a coverageNote saying which half is checked.
-    case 'openChangeControl':
-      return project.changes.some((c) => (!c.projectId || c.projectId === project.identity.id) && isChangeOpen(c.status));
+    // ✅ Round 4 question 8 (2026-08-24) closed the "or should be opened" half by
+    // recording the judgement instead of inferring it. Two independent limbs now:
+    // an OPEN record (the machine-readable half, unchanged), or a reviewer having
+    // answered Yes. `Pending assessment` — and no answer at all — is the third
+    // state, which blocks rather than passing.
+    case 'openChangeControl': {
+      const recordOpen = project.changes.some(
+        (c) => (!c.projectId || c.projectId === project.identity.id) && isChangeOpen(c.status),
+      );
+      if (recordOpen) return 'applies';
+      const answer = project.assessments.changeControlRequired?.trim() ?? '';
+      if (answer === '') return 'notAssessed';
+      if (answer === 'Pending assessment') return 'notAssessed';
+      return answer === 'Yes' ? 'applies' : 'doesNotApply';
+    }
 
     // A3, Gate 12: three of seven limbs. The Post-Market Sources checklist carries
     // the safety-signal and complaint-trend limbs; B5's Vulnerable-User Assessment
@@ -145,43 +188,81 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
     // limb and stay correct — it just catches fewer cases until the rest arrive.
     case 'pvPmsRequired': {
       const sources = selectedChecklistLabels(project, 'postMarketSources');
-      if (sources.some((s) => PV_PMS_SOURCE_LABELS.includes(s))) return true;
-      return (project.registers[VULNERABLE_REGISTER] ?? []).length > 0;
+      if (sources.some((s) => PV_PMS_SOURCE_LABELS.includes(s))) return 'applies';
+      return (project.registers[VULNERABLE_REGISTER] ?? []).length > 0 ? 'applies' : 'doesNotApply';
     }
 
     case 'claimNeedsPerformanceEvidence':
-      return (project.registers['claimEvidenceTraceability'] ?? []).some((c) =>
-        CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE.includes(String(c.claimCategory ?? '').trim()),
+      return twoState(
+        (project.registers['claimEvidenceTraceability'] ?? []).some((c) =>
+          CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE.includes(String(c.claimCategory ?? '').trim()),
+        ),
       );
 
     case 'aseanMarket':
-      return projectHasAseanMarket(project);
+      return twoState(projectHasAseanMarket(project));
 
     case 'infantContact':
-      return (project.checklists['targetUsers'] ?? []).some(
-        (item) => item.selected && item.label === INFANT_TARGET_USER,
+      return twoState(
+        (project.checklists['targetUsers'] ?? []).some((item) => item.selected && item.label === INFANT_TARGET_USER),
       );
 
     // A3: mandatory "before ANY study involving human participants". Study
     // Protocol Setup is `mode: 'fixed'`, so its rows are seeded — the signal is
     // a row someone has actually filled a planned value into, never row count,
-    // which would be true from creation [ASSUMPTION: R4-Q5].
-    case 'humanStudyPlanned':
-      return (project.registers['studyProtocolSetup'] ?? []).some(
+    // which would be true from creation.
+    //
+    // ✅ Round 4 question 9 (2026-08-24) keeps that reasoning but adds the explicit
+    // field we offered as the alternative. A started Study Protocol still counts —
+    // "Creating a Study Protocol automatically sets the answer to Yes" — so it
+    // remains one input rather than the whole trigger, and it is checked FIRST so a
+    // stale 'No' can never mask a protocol somebody has begun filling in.
+    //
+    // `Undecided` is `notAssessed`, which is what makes it "prevent Gate 8 from
+    // closing": Gate 8's `sg08-human-study` is Conditional, and a Conditional item
+    // whose trigger is unassessed blocks.
+    case 'humanStudyPlanned': {
+      const protocolStarted = (project.registers['studyProtocolSetup'] ?? []).some(
         (r) => String(r.plannedValue ?? '').trim() !== '',
       );
+      if (protocolStarted) return 'applies';
+      const answer = project.assessments.humanStudyPlanned?.trim() ?? '';
+      if (answer === '' || answer === 'Undecided') return 'notAssessed';
+      return answer === 'Yes' ? 'applies' : 'doesNotApply';
+    }
 
     // A3, Gates 5 and 9. Only 'Susceptible' triggers; the other four values are
     // the N/A route the team allowed, and each already demands a rationale
     // before it can be saved.
-    case 'microbiologicallySusceptible':
-      return project.formulaProperties.microSusceptibility === 'Susceptible';
+    //
+    // ✅ FIXED 2026-08-24. This is the case Round 4 question 7 names outright: "A
+    // formula with no microbiological-susceptibility assessment must not
+    // automatically bypass preservative-strategy or preservative-efficacy
+    // requirements." An unset property used to return false, so `sg05-preservative`
+    // and `sg09-pet` auto-passed on every project nobody had classified — "not yet
+    // assessed" read as "assessed and does not apply", exactly what option (b)
+    // rejects. Empty now means what it says.
+    //
+    // The other four values ARE the assessed-and-does-not-apply answer, and each
+    // already demands a rationale before it can be saved, so no second field is
+    // needed to tell "anhydrous" from "nobody looked".
+    case 'microbiologicallySusceptible': {
+      const susceptibility = project.formulaProperties.microSusceptibility?.trim() ?? '';
+      if (susceptibility === '') return 'notAssessed';
+      return susceptibility === 'Susceptible' ? 'applies' : 'doesNotApply';
+    }
 
     // A3: "new product, claim extension, repositioning project,
     // customer/distributor-led request, or where a benchmark/reference product
     // is named. Not mandatory for a purely administrative change." Three
-    // independent limbs, any one of which fires. Which project natures count as
-    // administrative is our reading [ASSUMPTION: R4-Q7].
+    // independent limbs, any one of which fires.
+    //
+    // ✅ Round 4 question 11 (2026-08-24) replaced the exemption test. Which project
+    // natures counted as administrative used to be our reading; the answer is that
+    // NONE of the six is automatically administrative, so the exemption now needs
+    // two things recorded rather than inferred — the classification, AND its
+    // confirmation by an authorised reviewer. Unconfirmed means not exempt, which
+    // is the safe direction: an unclassified project gets the competitor review.
     //
     // The first two limbs read gate-01 CHECKLIST sections (2026-08-10, moved off
     // two single-valued identity fields — see config/phases.ts). Both use
@@ -190,8 +271,21 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
     // C1: three of its seven conditions, the ones reading B7's per-claim
     // classification. The other four have no data source — they are listed on the
     // item itself (coverageNote) so a green tick never claims more than it checked.
-    case 'claimNeedsRegulatoryReview':
-      return (project.registers['claimEvidenceTraceability'] ?? []).some(claimNeedsReview);
+    case 'claimNeedsRegulatoryReview': {
+      const claims = project.registers['claimEvidenceTraceability'] ?? [];
+      // C1's per-claim conditions: category, risk, or wording reworded since its
+      // last review.
+      if (claims.some(claimNeedsReview)) return 'applies';
+      // C1's sixth condition — "the market imposes a specific restriction" — became
+      // evaluable with question 4's market profile (2026-08-24). It is a property of
+      // the PROJECT's markets, not of one claim, so it can only make the review
+      // required once at least one claim has been declared: with no claims there is
+      // nothing for a restriction to apply to.
+      if (claims.length > 0 && marketRestrictsClaims(project.identity.markets, project.reference.marketProfiles)) {
+        return 'applies';
+      }
+      return 'doesNotApply';
+    }
 
     case 'newOrRepositionedProject': {
       const natures = selectedChecklistLabels(project, 'projectNature');
@@ -199,13 +293,92 @@ function isReadinessTriggerActive(project: ProjectData, trigger: ReadinessTrigge
       const benchmark = (project.requirements['projectRequirements'] ?? []).find(
         (r) => r.requirement === 'Benchmark or reference product',
       );
-      return (
-        natures.some((n) => NEW_OR_REPOSITIONED_NATURES.includes(n)) ||
-        origins.some((o) => CUSTOMER_LED_ORIGINS.includes(o)) ||
-        !!benchmark?.notes?.trim()
-      );
+      // A3's own three limbs, unchanged: a development/change type is recorded, the
+      // request came from a customer or distributor, or a benchmark is named.
+      const limbFires =
+        natures.length > 0 || origins.some((o) => CUSTOMER_LED_ORIGINS.includes(o)) || !!benchmark?.notes?.trim();
+      if (!limbFires) return 'doesNotApply';
+      // Question 11's exemption, which is now the only way out: confirmed
+      // administrative-only, by a named reviewer. Anything less and the review
+      // applies — including "Yes" with nobody's name against it.
+      const adminOnly = project.assessments.administrativeOnly?.trim() ?? '';
+      const confirmedBy = project.assessments.administrativeOnlyConfirmedBy?.trim() ?? '';
+      if (adminOnly === 'Yes' && confirmedBy !== '') return 'doesNotApply';
+      return 'applies';
+    }
+
+    // Question 12 (2026-08-24), Gate 9. `sg09-scaleup` had NO trigger at all — it
+    // was one of the three Conditional items that could never block — so this is a
+    // new trigger rather than a third state for an existing one.
+    //
+    // A Major formula change counts on its own: "A formula change classified Major
+    // also counts as a major reformulation for the Gate 9 scale-up trigger."
+    // ⚠️ TWO of the answer's three limbs are here. The third is a list of EIGHTEEN
+    // affected areas that also trigger scale-up or pilot review — manufacturing
+    // site · equipment type or scale · batch size · order of addition · mixing
+    // speed or time · homogenisation · heating or cooling profile · maximum
+    // temperature · hold time · pre-processing · transfer method · filling method
+    // · water quality · process aid · packaging/filling interface, and more.
+    //
+    // Not built, and deliberately not guessed at: those areas belong on the change
+    // record, whose `affectedArea` is free text today and which question 34 is
+    // about to restructure (a fourth severity level, an eight-field disposition).
+    // Adding a nineteenth taxonomy to that record now would mean doing it twice.
+    // So a project whose only scale-up risk is a site transfer or a batch-size
+    // change does NOT trigger this yet unless someone answers Yes by hand
+    // [R4-REWORK: câu 12].
+    case 'scaleUpRiskIdentified': {
+      const majorChange = project.formulaVersionHistory.some((v) => v.changeType === 'Major');
+      if (majorChange) return 'applies';
+      const answer = project.assessments.scaleUpRiskIdentified?.trim() ?? '';
+      if (answer === '' || answer === 'Pending assessment') return 'notAssessed';
+      return answer === 'Yes' ? 'applies' : 'doesNotApply';
+    }
+
+    // Round 4 question 17, Gate 4. Reads the company Raw Material Risk Overlay
+    // against the materials this project uses, and is one of the few triggers that
+    // expresses all three of question 7's states from real data:
+    //
+    //   applies       at least one material carries a risk classification
+    //   notAssessed   at least one material has NO overlay entry, or the project
+    //                 has recorded no materials at all
+    //   doesNotApply  every material is classified, none carries a flag
+    //
+    // Note the order: a flagged material wins over an unclassified one. Both
+    // outcomes block, and "there IS an allergen risk here" is the more useful thing
+    // to tell the reader than "one other material is unclassified".
+    //
+    // The empty case deliberately resolves to `notAssessed`, not `doesNotApply`. A
+    // project with no materials entered has assessed nothing, and auto-satisfying
+    // the item there would be exactly the vacuous pass sweep S2 exists to catch —
+    // this is Gate 4, the gate at which materials get screened in the first place.
+    case 'rmRiskFlagged': {
+      const rmCodes = projectRmCodes(project);
+      if (rmCodes.length === 0) return 'notAssessed';
+      if (rmCodesWithRiskFlags(rmCodes, project.reference.rmRisk).length > 0) return 'applies';
+      return rmCodesUnclassified(rmCodes, project.reference.rmRisk).length > 0 ? 'notAssessed' : 'doesNotApply';
     }
   }
+}
+
+// Every raw material this project uses, by the rmCode the overlay is keyed on.
+//
+// The union of two surfaces on purpose. Supplier & RM Evidence is the Gate 4
+// screening register — where a material first appears, before the formula is locked
+// at Gate 5 — and the Formula BOM is the formula itself. A material in either is
+// one this project uses; taking the union can only make the screen stricter, never
+// let a material through unscreened.
+function projectRmCodes(project: ProjectData): string[] {
+  const codes = new Set<string>();
+  for (const row of project.registers['supplierRmEvidence'] ?? []) {
+    const code = String(row.rmCode ?? '').trim();
+    if (code !== '') codes.add(code);
+  }
+  for (const line of project.bom) {
+    const code = (line.rmCode ?? '').trim();
+    if (code !== '') codes.add(code);
+  }
+  return [...codes];
 }
 
 // A claim C1 makes reviewable: borderline/therapeutic category, high risk, or
@@ -235,11 +408,18 @@ function selectedChecklistLabels(project: ProjectData, section: string): string[
   return (project.checklists[section] ?? []).filter((i) => i.selected).map((i) => i.label);
 }
 
-// The three project natures we read as NOT "a purely administrative change".
-// `Packaging change` and `Lifecycle improvement` are treated as administrative;
-// `Reformulation` is the genuinely unclear one and is currently excluded, so it
-// does NOT force a competitor review [ASSUMPTION: R4-Q7].
-const NEW_OR_REPOSITIONED_NATURES = ['New development', 'Claim change', 'Market extension'];
+// ~~The three project natures we read as NOT "a purely administrative change".~~
+// DELETED 2026-08-24. Round 4 question 11 rejected the premise the list rested on:
+// "None of the six project types is automatically administrative. A packaging
+// change, lifecycle improvement or reformulation can be technically and
+// commercially significant." So there was nothing to re-tune — a list mapping
+// types to administrative-ness cannot exist. The exemption moved to
+// `assessments.administrativeOnly`, a recorded classification confirmed by a named
+// reviewer, which `newOrRepositionedProject` reads above.
+//
+// Worth keeping the shape of the mistake: the old list quietly decided that a
+// Packaging change project needs no competitor review, which is a business
+// judgement nobody had made. It looked like configuration and behaved like a rule.
 
 // A3's "customer/distributor-led request" limb, against B1's option list.
 const CUSTOMER_LED_ORIGINS = ['Customer request', 'Distributor request'];
@@ -261,8 +441,40 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
     'no declared claim is categorised as depending on product performance or sensory evidence',
   pvPmsRequired:
     'no safety signal, complaint or PMS trend recorded on Post-Market Sources, and no vulnerable-user population assessed',
+  scaleUpRiskIdentified:
+    'no Major formula change has been recorded and the scale-up risk assessment says no risk was identified',
   claimNeedsRegulatoryReview:
     'no declared claim is borderline, therapeutic-adjacent, high risk, still unclassified, or reworded since its last review',
+  rmRiskFlagged:
+    'every raw material in this project is classified in the Raw Material Risk Overlay and none carries a fragrance, allergen, botanical, protein, residue, heavy-metal, microbiological or variable-source classification',
+};
+
+// Why a trigger has not been evaluated yet, in plain language — the third state
+// Round 4 question 7 requires (2026-08-24). Keyed like the map above, so a new
+// ReadinessTrigger cannot ship without a message for both states.
+//
+// Every entry says what to GO AND DO, not just what is missing: this text is the
+// only thing on screen between a user and a blocked gate, and "not assessed" on
+// its own tells them nothing about where to click.
+//
+// The seven triggers in `TRIGGERS_WITHOUT_UNASSESSED_STATE` can never return
+// `notAssessed` today, so their messages are unreachable until R5-Q5 answers.
+// They are written now rather than left as TODOs, because a message written when
+// the rule is fresh is better than one written months later by whoever wires it.
+const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
+  skincareForTwo: 'nobody has recorded the target users yet, so pregnancy, breastfeeding and postpartum use are unknown',
+  humanStudyPlanned: 'nobody has answered whether this project involves a human-participant study',
+  newOrRepositionedProject: 'the development / change type has not been recorded, so it is unknown whether this is a new product, a claim change or an administrative-only change',
+  microbiologicallySusceptible: 'the formula has not been classified as susceptible, anhydrous, self-preserving, sterile or single-use',
+  infantContact: 'nobody has recorded the target users yet, so infant use is unknown',
+  aseanMarket: 'no market has been recorded for this project yet',
+  openChangeControl: 'nobody has assessed whether a change control record should be opened for this finding',
+  claimNeedsPerformanceEvidence: 'no claim has been declared yet, so no claim carries an evidence category',
+  pvPmsRequired: 'nothing has been recorded on Post-Market Sources and no vulnerable-user assessment exists, so it is unknown whether enhanced surveillance applies',
+  claimNeedsRegulatoryReview: 'no claim has been declared yet, so no claim carries a category or risk level',
+  scaleUpRiskIdentified: 'nobody has assessed whether this project carries a scale-up or pilot risk',
+  rmRiskFlagged:
+    'one or more raw materials in this project have no entry in the Raw Material Risk Overlay (Users & Roles -> Raw material risk), so their allergen, impurity and contaminant risk is unclassified',
 };
 
 // Evaluate a requirement's check against live project data. `evaluable` is false
@@ -316,7 +528,9 @@ function evaluateReadinessCheck(
     case 'changeControlNoAdminImpact':
       return { evaluable: true, satisfied: gate11ConditionalChanges(project, project.changes).length === 0 };
     case 'noOpenCriticalSafetyFinding':
-      return { evaluable: true, satisfied: openCriticalSafetyFindings(project).length === 0 };
+      return { evaluable: true, satisfied: hardBlockingSafetyFindings(project).length === 0 };
+    case 'noOpenMediumSafetyFinding':
+      return { evaluable: true, satisfied: conditionalSafetyFindings(project).length === 0 };
     case 'watchlistReviewed':
       return { evaluable: true, satisfied: watchlistHardBlockers(project).length === 0 };
     case 'watchlistNoneConditional':
@@ -332,8 +546,14 @@ function evaluateReadinessCheck(
       // is a statement the app can see is wrong, so only done+Y counts.
       // Any one active trigger is enough to make "not applicable" untrue — Gate 7's
       // row names two subjects, pregnancy/breastfeeding AND baby contact.
-      const naAllowed = !(check.naInvalidWhenTrigger ?? []).some((t) =>
-        isReadinessTriggerActive(project, t),
+      //
+      // Only `applies` invalidates N/A, deliberately not `notAssessed` (2026-08-24):
+      // an unevaluated trigger means we do not know whether the row is applicable,
+      // and refusing the user's N/A on that basis would assert the opposite. The
+      // gate is not let off either — the item that OWNS that trigger blocks in its
+      // own right, which is the correct place for "nobody has assessed this".
+      const naAllowed = !(check.naInvalidWhenTrigger ?? []).some(
+        (t) => evaluateTrigger(project, t) === 'applies',
       );
       const satisfied =
         !!row && ((row.done && row.ynna === 'Y') || (naAllowed && row.ynna === 'NA' && !!row.notes?.trim()));
@@ -515,7 +735,7 @@ export function evaluateReadinessRequirements(
 ): EvaluatedRequirement[] {
   const reqs: ReadinessRequirement[] = GATE_READINESS[gateId] ?? [];
   return reqs.map((req) => {
-    const active = req.trigger ? isReadinessTriggerActive(project, req.trigger) : true;
+    const active = req.trigger ? evaluateTrigger(project, req.trigger) === 'applies' : true;
     const { evaluable, satisfied } = evaluateReadinessCheck(project, req.check);
     return {
       id: req.id,
@@ -675,6 +895,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'watchlistNoneConditional':
       return { href: `/registers/reg/${WATCHLIST_REGISTER}` };
     case 'noOpenCriticalSafetyFinding':
+    case 'noOpenMediumSafetyFinding':
       return { href: '/formulation-safety' };
     case 'marketChecklistRecorded':
       return { href: `/registers/reg/${MARKET_DOSSIER_REGISTER}` };
@@ -784,19 +1005,51 @@ export function gateReadinessChecklist(
     // evaluated push with a declared trigger means the trigger IS active.
     const blocks = req.tier === 'Mandatory' || (req.tier === 'Conditional' && !!req.trigger);
     const advisory = !blocks || undefined; // omit (not `false`) when it blocks, to keep satisfied items tidy
-    // A Conditional item tied to a named trigger (only `skincareForTwo`
-    // today, e.g. Gate 4's "Pregnancy/breastfeeding caution screen") that
-    // ISN'T currently active for this project: automatically satisfied, with
-    // the label saying exactly why, rather than being hidden — "not shown"
-    // used to read as "forgotten", not "checked and not applicable here".
-    if (req.trigger && !isReadinessTriggerActive(project, req.trigger)) {
+    const triggerState = req.trigger ? evaluateTrigger(project, req.trigger) : undefined;
+
+    // Round 4 question 7, option (b): "not yet assessed" is NOT "does not apply".
+    // A Mandatory or Conditional item whose trigger has never been evaluated
+    // blocks — "we have not checked" cannot be a reason to pass. A Supporting one
+    // warns instead, which is the answer's own carve-out.
+    //
+    // Rendered as unsatisfied and NOT `pending`: `pending` means "we have no data
+    // source for this rule", which is a statement about the app. This is a
+    // statement about the project — the data source exists and is empty — and the
+    // fix is somebody filling it in, so it must not read as a gap in the software.
+    if (triggerState === 'notAssessed') {
       items.push({
         id: req.id,
-        label: `${req.label} — not triggered for this project (${TRIGGER_INACTIVE_EXPLANATIONS[req.trigger]}), so this passes automatically`,
+        label: `${req.label} — ${TRIGGER_UNASSESSED_EXPLANATIONS[req.trigger!]}, so this cannot be treated as not applicable`,
+        satisfied: false,
+        hardBlock: req.tier !== 'Supporting',
+        advisory: req.tier === 'Supporting' || undefined,
+        link: resolveCheckLink(gateId, req.check),
+        source: req.source,
+        tier: req.tier,
+        coverageNote: req.coverageNote,
+      });
+      continue;
+    }
+
+    // Assessed, and the condition does not hold: automatically satisfied, with the
+    // label saying exactly why, rather than being hidden — "not shown" used to read
+    // as "forgotten", not "checked and not applicable here".
+    //
+    // This auto-generated explanation is exactly what Round 4 question 16
+    // (2026-08-24) permits — "Users should not be required to retype a reason
+    // already deterministically generated by the system" — but the same answer
+    // adds that for a safety-, regulatory-, claims- or release-critical item the
+    // generated rationale "must still be acknowledged by the responsible reviewer
+    // before gate closure". Who the responsible reviewer of an ITEM is (as opposed
+    // to a gate, which question 29 defines) is not settled [ASSUMPTION: R5-Q6].
+    if (triggerState === 'doesNotApply') {
+      items.push({
+        id: req.id,
+        label: `${req.label} — not triggered for this project (${TRIGGER_INACTIVE_EXPLANATIONS[req.trigger!]}), so this passes automatically`,
         satisfied: true,
         hardBlock: false,
         // Deliberately NOT `advisory` from `blocks` above: an item whose
-        // trigger is inactive is genuinely non-blocking here, whatever its
+        // trigger does not apply is genuinely non-blocking here, whatever its
         // tier, and rendering it as an ordinary blocking item that happens to
         // be satisfied would overstate what was checked.
         advisory: true,

@@ -24,6 +24,7 @@ import type {
   SignOff,
   StudyApproval,
 } from '@mbc360/shared/types';
+import type { MarketProfile, RawMaterialRisk } from '@mbc360/shared/config/referenceData';
 import type { PermissionGrid } from '../utils/permissions';
 import * as projectsApi from '../api/projectsApi';
 
@@ -43,6 +44,12 @@ interface AppState {
   // fresh from the server on startup (see loadPermissionGrid in App.tsx).
   permissionGrid: PermissionGrid | null;
   loadPermissionGrid: () => Promise<void>;
+  // Round 4 question 4 — Regulatory's per-market profile. Null until loaded.
+  marketProfiles: MarketProfile[] | null;
+  loadMarketProfiles: () => Promise<void>;
+  // Round 4 question 17 — the shared Raw Material Risk Overlay. Null until loaded.
+  rmRisk: RawMaterialRisk[] | null;
+  loadRmRisk: () => Promise<void>;
 
   // M3 Phase 1 (2026-07-26): `projects` is no longer demo data in localStorage —
   // it is server state fetched from GET /api/projects/:id. Zustand stays the
@@ -144,6 +151,7 @@ interface AppState {
   setBom: (id: string, lines: BomLine[]) => void;
   setCosting: (id: string, patch: Partial<CostingInputs>) => void;
   setFormulaProperties: (id: string, patch: ProjectData['formulaProperties']) => void;
+  setAssessments: (id: string, patch: ProjectData['assessments']) => void;
   // Gate 1 opportunity capture (B1/B2/B3) — only those 8 fields are writable.
   setIdentity: (id: string, patch: Partial<ProjectData['identity']>) => void;
   setPackagingBomBulk: (id: string, lines: PackagingBomLine[]) => void;
@@ -250,6 +258,34 @@ export const useAppStore = create<AppState>()(
           const res = await fetch('/api/rbac/permissions-grid');
           if (!res.ok) return; // leave null; permission checks fail closed (all restricted) except admin
           set({ permissionGrid: (await res.json()) as PermissionGrid });
+        },
+
+        // Company-level reference data (Round 4 question 4). Server state like the
+        // permission grid — loaded fresh on startup, never persisted, because a
+        // stale copy of Regulatory's rules in a browser is worse than none.
+        //
+        // An EMPTY array and `null` mean different things and the readiness engine
+        // depends on the difference: null is "not loaded yet", empty is "Regulatory
+        // has configured no market". Question 4's whole instruction is that this
+        // list is configurable rather than hard-coded, so "nothing configured" has
+        // to be a state the app can show rather than guess past.
+        marketProfiles: null,
+        loadMarketProfiles: async () => {
+          const res = await fetch('/api/reference/market-profiles');
+          if (!res.ok) return;
+          set({ marketProfiles: (await res.json()) as MarketProfile[] });
+        },
+
+        // Same contract as marketProfiles above, and the null-vs-empty distinction
+        // matters here for a sharper reason: the readiness engine reads this list
+        // through `ProjectData.reference`, which the API fills server-side. This
+        // copy exists for the admin PAGE only, so a failed load leaves the page
+        // saying "not loaded" rather than showing every material as unclassified.
+        rmRisk: null,
+        loadRmRisk: async () => {
+          const res = await fetch('/api/reference/rm-risk');
+          if (!res.ok) return;
+          set({ rmRisk: (await res.json()) as RawMaterialRisk[] });
         },
 
         // The list endpoint returns summary rows only, so each project is then
@@ -409,6 +445,9 @@ export const useAppStore = create<AppState>()(
         setCosting: (id, patch) => writeSection(id, (v) => projectsApi.setCosting(id, patch, v)),
         setFormulaProperties: (id, patch) =>
           writeSection(id, (v) => projectsApi.setFormulaProperties(id, patch, v)),
+
+        setAssessments: (id, patch) =>
+          writeSection(id, (v) => projectsApi.setAssessments(id, patch, v)),
         setIdentity: (id, patch) => writeSection(id, (v) => projectsApi.setIdentity(id, patch, v)),
         setPackagingBomBulk: (id, lines) =>
           writeSection(id, (v) => projectsApi.setPackagingBom(id, lines, v)),
@@ -480,6 +519,8 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => {
         const {
           permissionGrid: _grid,
+          marketProfiles: _profiles,
+          rmRisk: _rmRisk,
           projects: _projects,
           projectVersions: _versions,
           showArchivedProjects: _showArchived,

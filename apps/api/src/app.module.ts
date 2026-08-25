@@ -12,6 +12,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { AccountModule } from './account/account.module';
 import { VerificationModule } from './verification/verification.module';
 import { MailerModule } from './mailer/mailer.module';
+import { ReferenceModule } from './reference/reference.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { MailerModule } from './mailer/mailer.module';
     AccountModule,
     VerificationModule,
     MailerModule,
+    ReferenceModule,
   ],
   controllers: [HealthController, MetaController],
 })

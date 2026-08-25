@@ -8,13 +8,42 @@
 
 ---
 
+## ⚠️ Vòng 4 (24/08/2026) đổi tiền đề của cả file — đọc mục này trước
+
+Vòng 4 trả lời mọi câu mà file này từng gắn tag, và **một trong số đó đổi cách mọi trigger phải hoạt động**, không chỉ nội dung của vài trigger.
+
+**Câu 7 (`R4-Q9`) — option (b): "chưa đánh giá" phải chặn.** Cả file này viết trên giả định trigger là **nhị phân** — đúng hoặc sai. Đáp án đòi **ba trạng thái**: đã xét-có áp dụng · đã xét-không áp dụng · **chưa xét**; và với item Mandatory hoặc Conditional thì "chưa xét" **phải chặn readiness**. Nghĩa là mọi ô "🔴 chưa có" trong các bảng dưới đây không còn nghĩa "trigger tắt, item tự pass" mà là "trigger chưa đánh giá được, item phải chặn". Đây là lý do `isReadinessTriggerActive()` phải đổi chữ ký trước khi cài thêm bất kỳ trigger nào.
+
+> Đáp án nêu đích danh một ca đang chạy sai: *"A formula with no microbiological-susceptibility assessment must not automatically bypass preservative-strategy or preservative-efficacy requirements."* Hôm nay `microSusceptibility` chưa điền ⇒ trigger trả `false` ⇒ `sg05-preservative` và `sg09-pet` **tự pass**.
+
+**Các đáp án còn lại, theo trigger:**
+
+| Trigger | Câu | Đáp án |
+|---|---|---|
+| `openChangeControl` | 8 | ⚠️ Không cắt bớt vế "should be opened" — ghi nó lại: **Change Control required? Yes / No / Pending assessment** + reviewer/ngày/lý do/link. Pending chặn đóng finding. |
+| `humanStudyPlanned` | 9 | ⚠️ Cần trường tường minh **Yes / No / Undecided**; tạo Study Protocol tự đặt Yes; **Undecided chặn Gate 8**. Nguồn 1 thành một đầu vào, không phải toàn bộ trigger. |
+| 3 trigger Gate 12 ↔ Post-Market Sources | 10 | ⚠️ Ánh xạ đúng, nhưng **danh sách 16 option là sai** — trộn source / issue type / resulting action, nên tách thành ba. CAPA là hành động, không phải nguồn. |
+| `newOrRepositionedProject` | 11 | ⚠️ **Không** loại dự án nào tự động là hành chính. Cần trường **Administrative-only: Yes/No** do reviewer xác nhận, cộng điều kiện thứ hai (không đổi claim/công thức/định vị/hiệu năng/chức năng bao bì/ý nghĩa với khách hàng). |
+| `scaleUpRisk` (Gate 9) | 12 | ✅ Major = major reformulation. 🆕 18 vùng ảnh hưởng + trường **Scale-up risk identified? Yes/No/Pending**; Pending chặn Gate 9. |
+| `claimNeedsRegulatoryReview` | 7 | ✅ Cách đọc `Pending classification` = đã trigger được xác nhận thành quy tắc riêng. |
+| mốc review sau launch | 13+14 | 🆕 **1 / 3 / 12 tháng rồi hằng năm**, tính từ **ngày launch thương mại thực tế**, theo từng thị trường. Không phải `launchApprovedDate`. |
+| `pvPmsRequired` | 4 | 🆕 Baseline cho **mọi** sản phẩm đang bán + **14** điều kiện enhanced (không phải 7) + **market profile cấu hình được**, cấm hard-code danh sách quốc gia. |
+| tier product-performance / market feedback | 15 | ⚠️ Product-performance → **Conditional**. Market feedback tách thành **hai** item (Continuous = Supporting · Scheduled = Conditional). |
+| `microbiologicallySusceptible` | 16 | 🆕 Thiết kế 5 giá trị được giữ; thêm: hệ thống được **tự sinh lý do N/A** khi suy được, nhưng item critical vẫn cần reviewer xác nhận. |
+| cờ rủi ro thành phần (Gate 4 allergen) | 17 | 🆕 **Không** nhập theo từng dự án. Một **Raw Material Risk Overlay** dùng chung, khoá theo Cosmetri RM id — đúng nỗi lo "đắt nhất trong danh sách này" mà file này nêu. |
+| hai bảng option Gate 1 | 22 | ✅ Dạng bảng và nhiều lựa chọn được chấp nhận; ⚠️ phải chỉ định một loại **Primary**, và đổi cả hai giá trị owner/function. |
+
+**Phần còn lại của file giữ nguyên như bản thiết kế 09/08** — nó là bản ghi ta đã suy nghĩ thế nào, và các đề xuất bên dưới vẫn đúng ở chỗ chúng không bị bảng trên phủ định. Bản ghi có thẩm quyền của đáp án là `Business_Rules_Confirmation_{EN,VN}.md` → Phụ lục 3; thứ tự triển khai là `docs/plans/Round4_Implementation_Roadmap.md`.
+
+---
+
 ## Vì sao có file này
 
 Luật C7 định nghĩa **Conditional** là *"hard-blocks only when its defined trigger applies"*. Tới Vòng 3, SME chưa đưa điều kiện trigger cho item nào, nên engine buộc phải coi mọi item Conditional là advisory — không bao giờ chặn. Vòng 3 đã cấp **đủ 15 điều kiện**, và engine cũng đã được sửa để một Conditional có trigger đang active thì chặn thật (2026-08-07).
 
 Nhưng "có luật" ≠ "cài được". Mỗi trigger cần **dữ liệu có cấu trúc** để máy đánh giá, và phần lớn dữ liệu đó app chưa thu thập. File này liệt kê từng trigger: tên đề xuất, đọc từ mục UI nào, hiện thiếu gì.
 
-**Trạng thái tổng (cập nhật 12/08): 15 điều kiện được cấp · 10 trigger đã cài phủ 13 item · 3 item còn chờ** (`sg04-allergen` · `sg06-market-pack` · `sg09-scaleup`), và cả 3 đều chờ một câu đã nằm trong Vòng 4 (câu 17 · F10 · câu 12).
+**Trạng thái tổng (cập nhật 25/08): 15 điều kiện được cấp · 12 trigger đã cài phủ 15 item · 1 item còn chờ** — `sg06-market-pack`, chờ nội dung checklist non-ASEAN (F10). Hai item kia đã xong: `sg09-scaleup` qua `scaleUpRiskIdentified` (câu 12, 24/08) và `sg04-allergen` qua `rmRiskFlagged` (câu 17, 25/08).
 
 > **~~Một trigger bị chặn vì lý do kiến trúc~~ — đã gỡ 12/08.** `openChangeControl` cần đọc bản ghi Change Control, mà `ChangeRecord` không nằm trong `ProjectData` — nó là slice riêng ở store và trong envelope API, vì trang Change Control hiển thị xuyên nhiều dự án. Ghi chú cũ kết luận: chuyển hẳn `changes` vào `ProjectData` là *"lớn hơn bản thân item này"*, nên để treo.
 >
@@ -45,8 +74,8 @@ Cách một trigger được cài (3 chỗ, không phải sửa engine):
 | 7 | `pvPmsRequired` | `sg12-pv-pms` | 12 | 3–4 | a + b + c | 🟡 **đã cài 12/08 — 3/7 vế** (safety signal · complaint trend · vulnerable population); 4 vế còn lại ở coverageNote, chờ câu 4 |
 | 8 | `newOrRepositionedProject` | `sg03-benchmark` | 3 | 3 | a | ✅ **đã cài** 09/08 — Tranche 1 đã cấp đủ 3 vế |
 | 9 | `scaleUpOrProcessChange` | `sg09-scaleup` | 9 | 3 | a + b | 🟠 chờ Tranche 1 (B2) |
-| 10 | `rmCompositionRisk` | `sg04-allergen` | 4 | 1 | a | 🟠 cần cột mới |
-| 11 | `claimNeedsRegulatoryReview` | `sg03-reg-claims` | 3 | 2 | a + c | 🟡 **đã cài 11/08 — 4/7 vế**; 3 vế còn lại chờ Claims Library (F11) + Market Profiles (F10) + phán định trên wording |
+| 10 | `rmRiskFlagged` | `sg04-allergen` | 4 | 2 | a | ✅ **đã cài 25/08** — câu 17 chuyển sang Raw Material Risk Overlay cấp công ty, không phải cột theo từng dự án |
+| 11 | `claimNeedsRegulatoryReview` | `sg03-reg-claims` | 3 | 3 | a + c | 🟡 **đã cài 5/7 vế** (4 vế 11/08 + vế hạn chế thị trường 24/08, đọc Market profiles); 2 vế còn lại chờ Claims Library (câu 28) + cờ chủ đề claim (câu 27) |
 | 12 | `claimNeedsPerformanceEvidence` | `sg10-performance-evidence` | 10 | 1 | a | ✅ **đã cài 12/08** — B7 xong 11/08 nên mở khoá; ranh giới `Cosmetic` là câu 36 |
 | 13 | `marketPackRequirement` | `sg06-market-pack` | 6 | 2 | a/c | 🔴 chờ F10 |
 
@@ -91,7 +120,7 @@ Ngưỡng chặn cố ý khác nhau giữa hai gate: Gate 4 chỉ chặn khi có
 
 **Đã cài 12/08.** Tier đã là Conditional; trigger đọc `project.changes` + `isChangeOpen()`, và chỉ tính change **của chính dự án này** (`projectId` khớp hoặc trống) — một change của dự án khác không được chặn Gate 12 ở đây.
 
-Vế *"or **should be** opened"* không máy nào đánh giá được — đó là phán định của con người. **[ASSUMPTION: R4-Q4]** Đề xuất: trigger chỉ đọc vế thứ nhất (có record đang mở), còn vế thứ hai để item hiện ra như một lời nhắc khi Gate 12 có ghi nhận post-market finding.
+Vế *"or **should be** opened"* không máy nào đánh giá được — đó là phán định của con người. ****✅ đã trả lời 24/08 — câu 8**** Đề xuất: trigger chỉ đọc vế thứ nhất (có record đang mở), còn vế thứ hai để item hiện ra như một lời nhắc khi Gate 12 có ghi nhận post-market finding.
 
 `ChangeRecord` đã có sẵn `riskLevel` và `affectedArea` — **chính là hai trường E3(b) cần** cho phân loại impact ở Gate 11. Cài trigger này xong thì E3(b) gần như có sẵn nguyên liệu.
 
@@ -114,7 +143,7 @@ Ba nguồn ứng cử, đều đã tồn tại:
 | `ProjectData.studyApprovals` có bản ghi | Rõ ràng | Chỉ xuất hiện **sau** khi study đã tới bước duyệt — quá muộn so với *"before any study"* |
 | Phase 3 → requirement **humanStudy** | Đúng gate | Chính là cái item này đang check, dùng làm trigger sẽ thành vòng lặp |
 
-**Đề xuất [ASSUMPTION: R4-Q5]:** dùng nguồn 1 (`studyProtocolSetup` có `plannedValue` được điền), vì luật nói *"before"* — phải bắt được ý định làm study từ sớm, không đợi tới lúc duyệt.
+**Đề xuất **✅ đã trả lời 24/08 — câu 9**:** dùng nguồn 1 (`studyProtocolSetup` có `plannedValue` được điền), vì luật nói *"before"* — phải bắt được ý định làm study từ sớm, không đợi tới lúc duyệt.
 
 ---
 
@@ -126,9 +155,9 @@ Ba nguồn ứng cử, đều đã tồn tại:
 |---|---|
 | **Item** | `sg12-performance` (G12) |
 | **Đọc từ UI** | **1 mục** — Phase 4 → checklist **Post-Market / PV-PMS Feedback Sources** (gate 12) |
-| **Option khớp** `[ASSUMPTION: R4-Q6]` | `Formula issue` · `Quality issue` · `Product optimisation` · `Claim question` |
+| **Option khớp** **✅ câu 10** | `Formula issue` · `Quality issue` · `Product optimisation` · `Claim question` |
 
-Checklist này đã có sẵn 16 option và khớp gần như một-một với ngôn ngữ của SME. Chỉ cần đổi tier Supporting → Conditional cho nhất quán **[ASSUMPTION: R4-Q12]** (A1 không nêu item này, nên đây là suy luận — nếu giữ Supporting thì trigger vô nghĩa vì Supporting không bao giờ chặn; **cần SME xác nhận**).
+Checklist này đã có sẵn 16 option và khớp gần như một-một với ngôn ngữ của SME. Chỉ cần đổi tier Supporting → Conditional cho nhất quán ****✅ đã trả lời 24/08 — câu 15**** (A1 không nêu item này, nên đây là suy luận — nếu giữ Supporting thì trigger vô nghĩa vì Supporting không bao giờ chặn; **cần SME xác nhận**).
 
 ---
 
@@ -148,7 +177,7 @@ Checklist này đã có sẵn 16 option và khớp gần như một-một với 
 - **Không suy được:** *"water-available, multi-use"* — sản phẩm **khan nhưng đựng trong hũ, dùng nhiều lần, tay ướt chọc vào** vẫn nhạy cảm vi sinh. Máy không đọc ra điều đó từ BOM. Chính vì vậy SME viết dài như trên chứ không viết gọn "contains water".
 - **Bắt buộc có UI:** SME yêu cầu **"documented rationale"** cho trường hợp N/A — đó là dấu hiệu rõ ràng rằng phải có chỗ cho một con người ghi phán định.
 
-**Thiết kế đề xuất [ASSUMPTION: R4-Q13]:** một trường trên công thức, ví dụ `Microbiological susceptibility` = `Susceptible` / `Anhydrous` / `Self-preserving` / `Sterile` / `Single-use`, kèm ô lý do bắt buộc khi chọn khác `Susceptible`. Mặc định **gợi ý** từ BOM (có Aqua → `Susceptible`) nhưng người vẫn phải xác nhận.
+**Thiết kế đề xuất **✅ đã trả lời 24/08 — câu 16**:** một trường trên công thức, ví dụ `Microbiological susceptibility` = `Susceptible` / `Anhydrous` / `Self-preserving` / `Sterile` / `Single-use`, kèm ô lý do bắt buộc khi chọn khác `Susceptible`. Mặc định **gợi ý** từ BOM (có Aqua → `Susceptible`) nhưng người vẫn phải xác nhận.
 
 **Nơi đặt:** ứng cử viên là Phase 2 → requirement `formulationDesign` (đã tồn tại, gate 05), tránh phải thêm màn hình mới.
 
@@ -166,11 +195,11 @@ Checklist này đã có sẵn 16 option và khớp gần như một-một với 
 
 | Vế của luật | Đọc từ | Có chưa |
 |---|---|---|
-| complaint / customer issue / distributor request / claim challenge `[ASSUMPTION: R4-Q6]` | checklist **Post-Market Sources**: `Complaint` · `Consumer feedback` · `Distributor feedback` · `Claim question` | ✅ có |
+| complaint / customer issue / distributor request / claim challenge **✅ câu 10** | checklist **Post-Market Sources**: `Complaint` · `Consumer feedback` · `Distributor feedback` · `Claim question` | ✅ có |
 | "dự án đã launch" | `MarketTrack.launchApproval` = Approved (+ `launchApprovedDate`) | ✅ có |
 | "scheduled post-launch review milestone is reached" | — | ❌ **không có** mốc/lịch nào trong data model |
 
-**Cần thêm [ASSUMPTION: R4-Q10]:** một trường ngày cho kỳ review sau launch. Rẻ nhất là suy từ `launchApprovedDate` + một khoảng cố định (ví dụ 6 hoặc 12 tháng), nhưng khoảng đó **SME chưa nói** → nên hỏi thay vì tự đặt.
+**Cần thêm **✅ đã trả lời 24/08 — câu 13+14**:** một trường ngày cho kỳ review sau launch. Rẻ nhất là suy từ `launchApprovedDate` + một khoảng cố định (ví dụ 6 hoặc 12 tháng), nhưng khoảng đó **SME chưa nói** → nên hỏi thay vì tự đặt.
 
 ---
 
@@ -185,10 +214,10 @@ Checklist này đã có sẵn 16 option và khớp gần như một-một với 
 
 | Vế của luật | Đọc từ | Có chưa |
 |---|---|---|
-| safety signal / complaint trend `[ASSUMPTION: R4-Q6]` | checklist **Post-Market Sources**: `Adverse event / PV signal` · `PMS trend` · `Complaint` | ✅ có |
+| safety signal / complaint trend **✅ câu 10** | checklist **Post-Market Sources**: `Adverse event / PV signal` · `PMS trend` · `Complaint` | ✅ có |
 | vulnerable-user population | cờ vulnerable-user tường minh của **B5** | 🟠 chờ Tranche 1 |
 | product category | checklist **Product Type** (gate 02) — nhưng cần biết *loại nào* thì bắt buộc | 🟠 cần danh sách từ SME |
-| market / company policy / surveillance plan `[ASSUMPTION: R4-Q11]` | dữ liệu tham chiếu, Regulatory bảo trì | 🔴 chưa có |
+| market / company policy / surveillance plan **✅ câu 4** | dữ liệu tham chiếu, Regulatory bảo trì | 🔴 chưa có |
 
 Đây là trigger "nhiều vế" nhất. **Đã cài 12/08 đúng theo cách đó:** 3 vế đọc được — `Adverse event / PV signal` · `PMS trend` · `Complaint` trên checklist Post-Market Sources, cộng vế vulnerable-user (B5 xong 11/08 nên sổ Vulnerable-User Assessment có dòng là tính). Một trigger OR nhiều vế cài dần vẫn **đúng** — chỉ là bắt được ít trường hợp hơn.
 
@@ -207,11 +236,11 @@ Checklist này đã có sẵn 16 option và khớp gần như một-một với 
 
 | Vế của luật | Đọc từ | Có chưa |
 |---|---|---|
-| new product / claim extension / repositioning / administrative change `[ASSUMPTION: R4-Q7]` | checklist **Development / Change Type** gate 01 (`checklists['projectNature']`, **B2**) — 6 option đúng nguyên văn *"whether it is new development, reformulation, claim change, packaging change, market extension or lifecycle improvement"* | ✅ 10/08 |
+| new product / claim extension / repositioning / administrative change **⚠️ câu 11** | checklist **Development / Change Type** gate 01 (`checklists['projectNature']`, **B2**) — 6 option đúng nguyên văn *"whether it is new development, reformulation, claim change, packaging change, market extension or lifecycle improvement"* | ✅ 10/08 |
 | customer / distributor-led request | checklist **Request Origin / Source** gate 01 (`checklists['requestOrigin']`, **B1**), option `Customer request` · `Distributor request` | ✅ 10/08 |
 | "a benchmark/reference product is named" | dòng **Benchmark or reference product** trong bảng requirements Phase 1 (**B6**) | ✅ 09/08 |
 
-Hai vế đầu đọc cột `selected` của checklist (giống `skincareForTwoTriggers`), **không** phải một trường đơn giá trị — hai option list này ban đầu (09/08) là 2 dropdown trên thẻ Project Identification, chuyển sang dạng bảng checklist ngày 10/08 để khớp shape workbook `[ASSUMPTION: R4-Q19]`. Hệ quả với trigger: một dự án có thể mang **nhiều** loại cùng lúc, nên vế 1 là `natures.some(...)` chứ không phải so sánh bằng.
+Hai vế đầu đọc cột `selected` của checklist (giống `skincareForTwoTriggers`), **không** phải một trường đơn giá trị — hai option list này ban đầu (09/08) là 2 dropdown trên thẻ Project Identification, chuyển sang dạng bảng checklist ngày 10/08 để khớp shape workbook **✅ câu 22**. Hệ quả với trigger: một dự án có thể mang **nhiều** loại cùng lúc, nên vế 1 là `natures.some(...)` chứ không phải so sánh bằng.
 
 ⚠️ **Đừng nhầm với checklist `Product Type` đã có** (gate 02): nó là **dạng bào chế** — Cream, Lotion, Balm, Serum, Oil, Wash… — hoàn toàn không nói gì về *dự án này là mới hay là sửa cái cũ*. Đây đúng là ví dụ đã nêu ở tình huống 2: hôm nay hệ thống đối xử "serum mới hoàn toàn" và "đổi font chữ trên nhãn SKU cũ" **giống hệt nhau**, vì không có trường nào phân biệt.
 
@@ -230,7 +259,7 @@ Hai vế đầu đọc cột `selected` của checklist (giống `skincareForTwo
 
 | Vế của luật | Đọc từ | Có chưa |
 |---|---|---|
-| new formula / major reformulation `[ASSUMPTION: R4-Q8]` | `ProjectData.formulaVersions` + `MAJOR_CHANGE_CRITERIA` (luật F5 — đã phân loại Major/Minor sẵn) | ✅ có |
+| new formula / major reformulation **✅ câu 12** | `ProjectData.formulaVersions` + `MAJOR_CHANGE_CRITERIA` (luật F5 — đã phân loại Major/Minor sẵn) | ✅ có |
 | new product vs lifecycle change | trường loại dự án của **B2** (dùng chung với trigger #8) | 🟠 Tranche 1 |
 | site transfer / equipment / process change | `ChangeRecord.affectedArea` trên trang Change Control | ✅ có (cần chốt giá trị nào tính) |
 | "identified scale-up risk" | phán định của con người | ❌ không có chỗ ghi |
@@ -239,26 +268,35 @@ Vế cuối là phán định — hoặc thêm một ô, hoặc chấp nhận tr
 
 ---
 
-### 10. `rmCompositionRisk` — 🟠 cần cột mới
+### 10. `rmRiskFlagged` — ✅ đã cài 25/08 (đề xuất cũ tên `rmCompositionRisk`)
 
 > **Luật (A3):** *"Mandatory where the ingredient or raw material contains fragrance, essential oils, botanical extracts, proteins, known allergens, residual solvents, heavy-metal risk, microbiological risk, restricted impurities, processing residues or variable natural-source composition."*
 
 | | |
 |---|---|
 | **Item** | `sg04-allergen` (G4) |
-| **Đọc từ UI** | **1 mục** — register **Supplier & RM Evidence** |
+| **Đọc từ UI** | **2 mục** — **Users & Roles → Raw material risk** (dữ liệu cấp công ty) đối chiếu với `rmCode` trong register **Supplier & RM Evidence** + Formula BOM của dự án |
+| **Code** | `case 'rmRiskFlagged'` trong `gateProgress.ts` + `rmCodesWithRiskFlags` / `rmCodesUnclassified` trong `config/referenceData.ts` |
 
-Cột hiện có: `rmCode, inciName, approvedForUse, supplier, grade, sdsLink, coaLink, tdsLink, allergenStatement, impurities, microInfo, originProof, regulatoryStatus, owner, status, notes`.
+**Câu 17 đổi hẳn chỗ lưu, và đó là điểm chính.** Phân tích cũ ở mục này định thêm một cột multi-select vào Supplier & RM Evidence, rồi tự nêu rằng như vậy là **"đắt nhất trong danh sách này"** — phải điền cho từng nguyên liệu, từng dự án. Đáp án nói thẳng: *"Do not re-enter this per project"*. Việc một nguyên liệu có chứa tinh dầu hay không **không** thay đổi theo dự án.
 
-`allergenStatement` / `impurities` / `microInfo` **là free text** — không đánh giá tự động được. Đó chính là lý do check hiện tại (`registerRowsComplete`) chỉ khẳng định *"đã điền gì đó"*, không phán xét nội dung.
+Nên nó là bảng `raw_material_risks` cấp công ty, khoá theo `rmCode` (`RM-{Cosmetri id}` — đúng khoá `BomLine` và register đang dùng, nên join theo **id** chứ không theo tên thương mại, thứ mà join Cosmetri vốn hay sai hoặc để trống). MBc360 vẫn chỉ đọc Cosmetri: bảng này chỉ giữ những gì Cosmetri **không** cung cấp, và nếu sau này API Cosmetri có các trường đó thì đúng cách khoá này là điều cho phép di trú.
 
-**Cần thêm:** một cột multi-select với đúng 11 giá trị SME liệt kê. Suy từ INCI (tên chứa "oil"/"extract"/"parfum") chỉ là heuristic — **không đủ tin cậy để hard-block**, và cũng không bắt được "heavy-metal risk" hay "variable natural-source composition".
+Ba trạng thái, đúng theo câu 7:
 
-**Lưu ý chi phí [ASSUMPTION: R4-Q14]:** đây là cột phải điền cho **từng nguyên liệu, từng dự án** — đắt nhất trong danh sách này. Cân nhắc để nó là thuộc tính của **nguyên liệu** (dùng lại giữa các dự án) thay vì của dòng evidence trong một dự án; nhưng master data nguyên liệu nằm ở Cosmetri và MBc360 chỉ đọc (luật A3 gốc), nên cần quyết định lưu ở đâu.
+| Tình trạng nguyên liệu của dự án | Trạng thái | Kết quả |
+|---|---|---|
+| ít nhất một nguyên liệu có ≥1 cờ | `applies` | item **chặn cứng** Gate 4 đến khi `allergenStatement` + `impurities` được điền đủ mọi dòng |
+| mọi nguyên liệu đã phân loại, không cờ nào | `doesNotApply` | tự thoả, nêu rõ lý do |
+| còn nguyên liệu **chưa có dòng** trong overlay, **hoặc dự án chưa ghi nguyên liệu nào** | `notAssessed` | **chặn** — "chưa ai xét" không được đọc thành "không áp dụng" |
+
+Hai chi tiết cố ý, cả hai đều là hướng an toàn: một dòng overlay với **danh sách cờ rỗng** là một câu trả lời thật ("đã xét, không có rủi ro nào trong 11 loại") — chỉ **vắng dòng** mới là chưa xét; và dự án **không có nguyên liệu nào** rơi vào `notAssessed` chứ không phải `doesNotApply`, vì auto-pass ở đó đúng là kiểu vacuous pass mà sweep S2 tồn tại để bắt — Gate 4 chính là cổng sàng lọc nguyên liệu.
+
+Suy từ INCI (tên chứa "oil"/"extract"/"parfum") đã bị loại từ đầu và vẫn bị loại: heuristic không đủ tin để hard-block, và không bắt được "heavy-metal risk" hay "variable natural-source composition".
 
 ---
 
-### 11. `claimNeedsRegulatoryReview` — 🟡 đã cài 4/7 vế (11/08)
+### 11. `claimNeedsRegulatoryReview` — 🟡 đã cài 5/7 vế (4 vế 11/08 · vế hạn chế thị trường 24/08)
 
 > **Luật (C1):** review bắt buộc khi *category = Borderline / therapeutic-adjacent · category = Therapeutic — not permitted · risk = High · wording không nằm trong approved Claims Library · claim khác với wording đã duyệt trước đó · thị trường áp hạn chế cụ thể · claim liên quan pregnancy, breastfeeding, infant use, disease, treatment, prevention, healing hoặc medical endorsement.*
 
@@ -281,7 +319,7 @@ Cột hiện có: `rmCode, inciName, approvedForUse, supplier, grade, sdsLink, c
 
 ⚠️ **3 vế còn lại không bị bỏ im lặng:** item mang `coverageNote`, panel in dòng *"Partly checked: …"* liệt kê đúng 3 điều kiện chưa kiểm được (Claims Library · hạn chế theo thị trường · claim liên quan pregnancy/disease…). Bỏ vế không đánh giá được rồi báo cáo như đã phủ hết luật là một trong hai sai lầm CLAUDE.md ghi tên.
 
-**Một giá trị C1 không nói tới [ASSUMPTION: R4-Q9]:** Claim risk của B7 có 5 giá trị, trong đó `Pending classification` không được C1 nhắc. Chúng tôi định coi nó là **đã trigger** — chưa phân loại thì chưa biết có rủi ro hay không, nên phải review. Nếu SME trả lời ngược lại, sửa nhánh `claimNeedsRegulatoryReview` trong `isReadinessTriggerActive()`.
+**Một giá trị C1 không nói tới **⚠️ đã trả lời 24/08 — câu 7**:** Claim risk của B7 có 5 giá trị, trong đó `Pending classification` không được C1 nhắc. Chúng tôi định coi nó là **đã trigger** — chưa phân loại thì chưa biết có rủi ro hay không, nên phải review. Nếu SME trả lời ngược lại, sửa nhánh `claimNeedsRegulatoryReview` trong `isReadinessTriggerActive()`.
 
 ---
 

@@ -48,4 +48,23 @@ export class PermissionsService {
   canApproveMarketTrack(user: SessionUser): Promise<boolean> {
     return this.hasPermission(user, 'market-track', 'approve');
   }
+
+  // Round 4 question 32(c) (2026-08-24): recording Proceed with Conditions serves
+  // as the authorised acceptance of a flagged watch-list finding only where "the
+  // gate approver has the required Safety **or** Regulatory authority".
+  //
+  // Either grant satisfies it. The answer names them as alternatives, and which
+  // one a given finding needs depends on how it was escalated — which for a row
+  // flagged by the automated screen ("REVIEW - possible formula match") nobody
+  // has decided [ASSUMPTION: R5-Q14].
+  async canAcceptWatchlistFinding(user: SessionUser): Promise<boolean> {
+    if (await this.hasPermission(user, 'watchlist-finding', 'accept-safety')) return true;
+    return this.hasPermission(user, 'watchlist-finding', 'accept-regulatory');
+  }
+
+  // Round 4 question 34(d): "Only a person authorised to approve the relevant
+  // Gate 11 impact may acknowledge it."
+  canAcknowledgeChangeImpact(user: SessionUser): Promise<boolean> {
+    return this.hasPermission(user, 'change-impact', 'acknowledge');
+  }
 }

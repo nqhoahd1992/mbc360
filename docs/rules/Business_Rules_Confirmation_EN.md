@@ -654,6 +654,268 @@ Two reassignments:
 
 ---
 
+## Appendix 3 (2026-08-24) — Round 4: 36 answers
+
+**Source:** `docs/rounds/2026-08-24-sme-reply-round4.md`. **What was asked:** the 36 questions in `docs/rounds/2026-08-12-our-questions-round4.md`, which consolidated the 33 internal questions `R4-Q1…R4-Q33` from `docs/rules/F1_Per_Gate_Open_Questions.md` plus three items still outstanding from 21 July (the definition of "critical", the Infant & Baby Safety pathway content, and what formally ends an older formula version). **All 36 are answered; the Round-4 list is now closed.**
+
+Items marked ⚠️ **overturn behaviour already built** and need rework, not just new work. Items marked ✅ confirm what is already running — for those the only task is retiring the `[ASSUMPTION: R4-Qn]` tags.
+
+### Index — all 36, with verdict
+
+| # | Internal | Topic | Verdict |
+|---|---|---|---|
+| 1 | `R4-Q2` + 21/07 A2 | Infant & Baby Safety pathway | ⚠️ Compartment 3 is correct but is only the **final** component of a pathway spanning 6 gates |
+| 2 | 21/07 A3 | What ends an older formula version | 🆕 Six version states + a per-market supersession decision recorded by a person |
+| 3 | 21/07 A1 | Definition of a critical gap | 🆕 A gap carries its own criticality assessment (8 new fields) |
+| 4 | `R4-Q11` | PV/PMS scope | 🆕 Baseline for every marketed product + 14 enhanced triggers + configurable market profile |
+| 5 | `R4-Q1` | Gate 7 restricted/caution scope | ⚠️ **Option (b)** — general screen for every product, maternal is an additional layer |
+| 6 | `R4-Q3` | Gate 4 vs Gate 7 caution threshold | ⚠️ Gate 4 must **disposition every row**, not just react to escalations |
+| 7 | `R4-Q9` | Trigger data not yet recorded | ⚠️ **Option (b)** — "not yet assessed" must block. Cross-cutting |
+| 8 | `R4-Q4` | Change Control "should be opened" | 🆕 Explicit Yes / No / Pending assessment step |
+| 9 | `R4-Q5` | What marks a study as planned | 🆕 Explicit Yes / No / Undecided project field |
+| 10 | `R4-Q6` | Feedback-source mapping | ⚠️ The 16-option list mixes three concepts and should be split |
+| 11 | `R4-Q7` | Purely administrative changes | ⚠️ **None** of the six project types is automatically administrative |
+| 12 | `R4-Q8` | Major reformulation, scale-up risk | ✅ Major = major reformulation · 🆕 18 affected areas + a scale-up risk field |
+| 13 | `R4-Q10` | Scheduled post-launch review | 🆕 1 / 3 / 12 months then annually, from the **actual commercial launch date** |
+| 14 | `R4-Q10` | Launch in a multi-market project | 🆕 Per market, with a 5-value project-level roll-up |
+| 15 | `R4-Q12` | Product-performance / market-feedback tiers | ⚠️ Product-performance → Conditional; market feedback becomes **two** items |
+| 16 | `R4-Q13` | N/A rationale | 🆕 System may auto-generate it; critical items still need reviewer acknowledgement |
+| 17 | `R4-Q14` | Raw-material composition risk | 🆕 A shared **Raw Material Risk Overlay**, not per-project re-entry |
+| 18 | `R4-Q15` | Gates 10/11 sign-off | 🆕 **Per market.** Phase 4 has a per-market status |
+| 19 | `R4-Q16` | Claim architecture | ✅ (a)(c)(e)(f) as built · ⚠️ (g) **seven** registers reference Claim ID · (h) mechanism starts at Gate 3 |
+| 20 | `R4-Q17` | Gate 1 fields | ✅ Confirmed exactly as built — no code change |
+| 21 | `R4-Q18` | Phase 1 requirements table | ⚠️ Priority = **Must / Should / Could** · 🆕 N/A-with-rationale disposition |
+| 22 | `R4-Q19` | Gate 1 option lists | ✅ (a)(d)(e) · ⚠️ (b) needs a **Primary** type · (c) both owner values change |
+| 23 | `R4-Q20` | Product type, safety matrix | ✅ Both requirements are right · 🆕 one new option · 4 permitted coverage routes |
+| 24 | `R4-Q21` | Duplicate initial market field | ⚠️ Remove it; Countries / Markets is the single source, non-mandatory at creation |
+| 25 | `R4-Q22` | Vulnerable-user mapping | ✅ 5 pairs and the two-way strengths · ⚠️ split Dry / eczema-prone |
+| 26 | `R4-Q23` | Claim traceability freeze | ✅ Stays open through 10/11 · 🆕 approved revisions become read-only |
+| 27 | `R4-Q24` | Regulatory review evidence | ✅ Five fields and four outcomes · 🆕 11 structured claim-subject flags |
+| 28 | `R4-Q25` | Claims Library | 🆕 Company-level, Technical **and** Regulatory approve, projects read only |
+| 29 | `R4-Q26` | Per-gate sign-off | 🆕 All five open points answered |
+| 30 | `R4-Q27` | Claim linkage, wording adaptation | ✅ All four choices · 🆕 artwork linkage, publication record, exemption approval |
+| 31 | `R4-Q28` | Raw-material import stubs | ✅ Five of six · ⚠️ (f) at Gates 7/10/11 only **materials in the formula** hard-block |
+| 32 | `R4-Q29` | Watch-list reviewer trail | ⚠️ (a) add Needs Safety Review · (b) five statuses · (e) maternal list too |
+| 33 | `R4-Q30` | Critical Safety Findings | ⚠️ 4 severities · 6 statuses · controlled action required · graded blocking |
+| 34 | `R4-Q31` | Gate 11 Change Control | ⚠️ Critical is its own level · final disposition = 8 fields |
+| 35 | `R4-Q32` | Per-market regulatory checklist | ⚠️ Two separate value lists, not the reused ones |
+| 36 | `R4-Q33` | Cosmetic claims, costing status | ⚠️ (a) Cosmetic **does** trigger product-level evidence · 🆕 (b) costing status field |
+
+---
+
+### Part 1 — The cross-cutting answer (question 7)
+
+**⚠️ Option (b): a missing assessment must never be treated as meaning the condition does not apply.** Three states must be distinguished:
+
+- **Assessed and applies**
+- **Assessed and does not apply**
+- **Not yet assessed**
+
+For a **Mandatory** or **Conditional** readiness item, **"not yet assessed" must block readiness.** A condition may be treated as not applicable only *after* the relevant trigger information has been completed and found not to apply. For a **Supporting** item, missing information may generate a warning rather than a hard block.
+
+Two consequences named explicitly:
+
+- A **Pending** claim classification must trigger Regulatory review until classified. *(This confirms the reading already shipped in `CLAIM_RISKS_NEEDING_REVIEW`.)*
+- A formula with **no microbiological-susceptibility assessment must not automatically bypass** preservative-strategy or preservative-efficacy requirements. *(This does not describe current behaviour: `isReadinessTriggerActive` returns false when the property is unset, so Gate 5 and Gate 9 both auto-pass on any project nobody has classified.)*
+
+> **Why this is first in the appendix:** trigger evaluation is a single boolean function that every Conditional item at every gate reads. Until it distinguishes three states, any Conditional item built on top of it carries the wrong semantics.
+
+### Part 2 — Severity and lifecycle vocabularies (questions 3, 32b, 33, 34)
+
+Four separately-asked questions return **the same two vocabularies**.
+
+**The severity scale is four levels: Low · Medium · High · Critical.** Critical is a distinct level *above* High — stated in question 34(a) and question 33(a), and used by question 3.
+
+**(Question 3) A gap carries its own formal criticality assessment**, not a judgement made in the moment by whoever records the gate decision. New fields: **Criticality** (Low / Medium / High / Critical) · **Impact category** (Safety · Regulatory · Claims · Quality · Efficacy · Release · Commercial · Other) · Assessor · Assessment date · Rationale · Evidence link · Required action · Action owner. Criticality is assessed by a suitably qualified reviewer.
+
+| Gap criticality | Effect |
+|---|---|
+| **Critical** | Cannot be carried under Proceed with Conditions. Must result in **Hold, Backtrack or Reject/Stop**. |
+| **High** | May be carried conditionally only where no mandatory safety, regulatory or release rule is breached, **and** the relevant authorised function accepts the risk, **and** a controlled action and due date are recorded. |
+
+**(Question 33) Critical Safety Findings.** Severity = Low · Medium · High · Critical. Status = **Open · Under Review · Action Pending · Verification Pending · Closed · Superseded**. A **controlled Next Action is required** for Critical findings, High findings, and Medium findings requiring corrective activity — free text may describe the action but must not replace the controlled record. An unjudged finding blocks Gate 7. Closing a High or Critical finding requires: Safety reviewer conclusion · Evidence link · Linked action completed · Verification · Verifier · Closure date.
+
+| Finding | Effect on Gate 7 |
+|---|---|
+| Open **Critical** or **High** | Hard-blocks. |
+| **Medium** | May permit Proceed with Conditions where formally accepted and controlled. |
+| **Low** | May generate a warning or an action per the reviewer's conclusion. |
+
+> A finding assessed as non-critical must still be appropriately dispositioned — it should not disappear merely because it is not Critical.
+
+**(Question 32b) Watch-list resolution status** = Open · Under Review · Action Pending · Verification Pending · Closed. A **separate** assessment field records whether the result is Critical, Non-critical, Not a true match or Further information required.
+
+**(Question 34) Gate 11 Change Control.** The risk scale gains Critical. An **unclassified** open Change Control blocks Gate 11. "Final disposition recorded" means eight things, not a closing date or a short note: Final status · Outcome · What was implemented or why no implementation was required · Verification evidence · Impacted formula/artwork/claim/market versions · Responsible verifier · Closure date · Remaining action or transition requirement, if any. The existing acknowledgement may be reused **if role-restricted** and recording Authenticated user · Role · Date/time · Rationale · Change Control reference · Conditions accepted — and **only a person authorised to approve the relevant Gate 11 impact may acknowledge it**.
+
+### Part 3 — Per-gate sign-off (questions 18 and 29)
+
+These two answers together unblock D1, held since 2026-08-12 pending exactly this.
+
+**(Question 18) Prepared, Reviewed and Approved must be recorded per market for Gates 10 and 11**, because each market may differ in dossier status · regulatory decision · claims · artwork · formula version · launch date. **Gate 12 post-market reviews also operate per market, and Phase 4 has a per-market status.** The overall project may show: No market complete · Some markets complete · All active markets complete · Ongoing post-market stewardship · Market withdrawal or transition. A single project-level Phase 4 summary may remain, **but only as a roll-up — it must not replace the per-market approvals.**
+
+**(Question 29) The five open points:**
+
+1. **Record version = a gate-specific evidence snapshot/revision.** The signed record includes: gate status and proposed decision · gate checks · applicable checklist results · mandatory and triggered evidence-register states · evidence links and document revisions · open actions and conditions · formula version where relevant · market and artwork version where relevant. If evidence inside the signed snapshot changes afterwards, **the signature becomes stale/invalidated, the system identifies what changed, and re-signing is required.** *"A project-wide save counter is not sufficient"* — which rules out `projects.version`.
+2. **A comment is mandatory for:** Proceed with Conditions · Hold · Backtrack · Reject/Stop · Approved with Conditions · Not Approved · Further Information Required · N/A where a human rationale is required · Delegated approval · Override or exception. A clean Proceed or Approved may have an optional comment.
+3. **Critical gates = 3, 4, 7, 8, 9, 10, 11** — claims · ingredient and regulatory screening · safety · testing, human studies and evidence · stability and release readiness · regulatory, claims and dossier · production and launch release.
+4. **Independent means:** at **all** gates, the reviewer must be a different authenticated person from the preparer. At the seven critical gates, at least one reviewer or approver must **also represent the relevant independent function** — safety decisions reviewed/approved by Safety/Scientific Review · regulatory by Regulatory · quality/release by Quality · claims by Technical and/or Regulatory. The dedicated human-study workflow keeps its stricter outside-department rule.
+5. **Sequence and decision:** Preparer confirms the record is complete and recommends a decision → Reviewer confirms the evidence and records a recommendation → **Approver records the final gate decision.** The approver's decision **is** the gate decision; there is no separate duplicate decision afterwards. All three sign-offs reference the same current snapshot, and the gate passes only when the approver records Proceed or Proceed with Conditions.
+
+### Part 4 — Three company-level reference datasets (questions 4, 17, 28)
+
+**(Question 17) Raw Material Risk Overlay.** Do not re-enter composition risk per project. The preferred long-term home is **Cosmetri**; until its API can supply these fields, MBc360 maintains a shared overlay **keyed to the Cosmetri raw-material ID**. It is *not* a second raw-material master — it stores only the MBc360-specific risk classifications the API does not expose: Fragrance · Essential oil · Botanical extract · Protein · Known allergen · Residual-solvent risk · Heavy-metal risk · Microbiological risk · Restricted impurity · Processing residue · Variable natural-source composition. It must be reusable across projects · controlled by authorised Technical, Safety and Regulatory users · retain revision history · record evidence links and review dates · and be migrated to Cosmetri if that capability arrives.
+
+**(Question 28) Claims Library — company-level.** Entries carry applicability tags for Brand · Product family · SKU · Market · Language · Channel · Consumer or professional use. **Projects read from the library but do not directly edit it.** A project claim links to a library entry where it reuses approved wording; a genuinely new claim may be proposed without a link but **must be identified as "New claim — not yet in Claims Library"**, which triggers Regulatory and Technical review. **Technical and Regulatory must both approve** an entry before it becomes Approved Library Wording; Marketing/Brand may propose wording but not give final technical or regulatory approval. Every entry retains Revision · Approval history · Evidence requirement · Market/channel applicability · Effective date · Review date · Withdrawal status. **Project approval must not auto-promote wording** — a separate controlled action, **"Propose for Claims Library"**, is required, after which Technical and Regulatory review it for broader reuse. When an entry changes or is withdrawn the system should identify all linked claims, SKUs, markets and published materials · trigger an impact assessment · create Change Control where required · flag affected material for re-review · record the effective date and transition plan. *Changing or withdrawing must not automatically remove a product from the market unless the change is critical or required by Regulatory.*
+
+**(Question 4) Regulatory market profiles.** MBc360 requires a **baseline** post-market surveillance review for **every marketed product**. An **enhanced** review is mandatory where any of these applies: infant or young-child product · pregnancy, breastfeeding or postpartum product · intimate-use product · eye-area product or foreseeable eye exposure · sensitive, eczema-prone or compromised skin · medically vulnerable population · high-risk or therapeutic-adjacent claim · new or unusual active ingredient · safety signal · adverse event · significant complaint trend · recurring quality or performance issue · market-specific vigilance requirement · requirement in an approved surveillance plan.
+
+> **Do not use a permanently hard-coded country list.** Regulatory maintains a **configurable market profile** indicating whether each market requires particular adverse-event reporting, PMS records or review intervals.
+
+The same market profile supplies the per-market claim restriction in question 27 and the required dossier type in question 35.
+
+**Required review cadence:** initial post-launch review · twelve-month review · annual review thereafter while the product remains marketed · immediate review when a significant safety or complaint signal occurs.
+
+### Part 5 — Claim architecture (questions 19, 26, 27, 30, 36a)
+
+**(Question 19) Confirmed as built:** the existing **Claim category** column *is* the B7 classification — do not create a duplicate (a); **Claim → Evidence Traceability is the source of truth** and the SKU Claims / PIF register references a Claim ID and inherits Claim category, Claim risk, Master wording, Current revision and Evidence status read-only (c); the Claim ID is **created at Gate 3** when first proposed and must not wait until evidence exists (e); the picker offers **all** declared claims including Pending and developing ones, with release controls determining external usability (f).
+
+**Changed or extended:**
+
+- **(b)** *Intended channel* and *Regulatory review required* belong on the **SKU / market / channel claim-use record** — they describe how and where the claim is used. The master claim may require Regulatory review always; a market or channel may impose an additional review requirement.
+- **(d)** Before Gate 3 passes, every claim in scope must have: Claim ID · Proposed master wording · Claim category · Claim risk · Preliminary evidence requirement · Regulatory review status where triggered. There is no arbitrary number of claims — **if no claims are proposed, this must be explicitly recorded.**
+- **(g) ⚠️ Seven registers** reference Claim ID rather than retyping wording — we asked about four: mechanism map · prospective evidence plan · efficacy study plan · clinical evidence register · **Published Information Approval** · **artwork/label claim list** · **PIF claims register**.
+- **(h) Gate ownership of claim information.** *Gate 3* — Claim ID · proposed master wording · category · risk · **preliminary mechanism or benefit rationale** · preliminary evidence requirement. *Gate 5* — confirmed formula-specific mechanism · ingredient and formula contribution · mechanism-to-claim linkage. *Gate 8* — evidence plan · study method · evidence grade · supporting report or test status. *Gate 10* — Supported status · final approved wording · market approval · PIF / Product Master File attachment · claim-release approval. **The mechanism begins as a preliminary hypothesis at Gate 3 and is technically confirmed at Gate 5** — our split placed it only at Gate 5.
+
+**(Question 26) The ledger does not freeze at Gate 8** — it stays available through Gates 10 and 11, as built. What is added is **revision control**: draft claims remain editable; **once a claim revision receives Regulatory or Gate 10 approval, that revision becomes read-only**; a new wording or evidence position creates a new revision or a new Claim ID per question 30(b). Adding a genuinely new claim after Gate 3 requires controlled change assessment and appropriate backtracking; adding a market-specific *use* of an existing approved claim does not necessarily reopen Gate 3 but does require Gate 10 market review.
+
+**(Question 27) The five Regulatory review fields are accepted** — Regulatory review outcome · reviewer · review date · review rationale · review evidence link — and all five must be completed for a triggered claim. **The four outcome values are accepted:** Approved · Approved with Conditions · Not Approved · Further Information Required. **A later change to the reviewed wording must invalidate the previous review and trigger reassessment** — confirming the snapshot mechanism already built.
+
+🆕 **Add structured claim-subject flags** rather than inferring from free text: Pregnancy · Breastfeeding · Postpartum · Infant or child · Disease or condition · Treatment or prevention · Healing or repair · Medical or HCP endorsement · Safety or tolerance · Comparative or superiority · Other sensitive topic. *(This makes evaluable the C1 condition previously recorded as "reading that from the wording is a judgement, not a lookup".)* Per-market restrictions come from the configurable Regulatory market profiles.
+
+**(Question 30) All four of our choices are accepted**, with the requirements applying **at release, not first entry**. The three comparison values are accepted: Identical to master wording · Minor adaptation — meaning, scope, qualifiers and evidence burden unchanged · Material change — new or revised claim required. Whitespace-only changes may be ignored; other changes are reviewed by a person, not auto-judged equivalent.
+
+- **(b) Revision vs new Claim ID.** A **new revision of the same Claim ID** where the underlying claim proposition remains the same, scope and intended benefit are unchanged, evidence burden is unchanged, and the wording is being refined or updated. A **new Claim ID** where meaning changes · benefit or outcome changes · scope expands · target population changes · evidence burden changes materially · the claim moves into a different risk or regulatory category. **The Technical/Regulatory reviewer decides which route applies.**
+- **(c) 🆕 Final artwork approval** is represented in the **Packaging / Artwork Approval record**, which **must link every Claim ID on the artwork** and **hard-block** where any linked claim is Pending · Unsupported · Not approved for the market · Superseded · Not approved for the intended wording or channel.
+- **(d) 🆕 External publication is a separate event** from Approval for Release. "Approved for Release" means authorised for use; a **Publication / Deployment record** then captures, where applicable, actual publication or release date · channel · market · URL, file or artwork reference · published version · person responsible · withdrawal or supersession date. For printed packaging the equivalent event may be **Release to Print**.
+- **(e)** The content owner may propose "No product claim or technical statement", but **the exemption must be confirmed by a Technical or Regulatory reviewer before release.**
+
+**(Question 36a) ⚠️ Cosmetic claims do trigger product-level evidence** where the claim asserts an outcome or performance of the finished product — examples given: Moisturises · Hydrates · Softens · Improves appearance · Supports barrier function · Helps detangle · Reduces residue · Improves skin feel. A purely ingredient-level statement may rely on ingredient evidence only where it is clearly presented as an ingredient statement and does not imply the finished product delivers the same measured result. 🆕 Add an **Evidence basis required** field: Finished-product evidence · Ingredient-level evidence · Formula/mechanism rationale · Consumer-perception evidence · Regulatory or compositional evidence · No performance claim · Combination of evidence types.
+
+### Part 6 — Ingredient and safety screening (questions 5, 6, 23b, 31, 32)
+
+**(Question 5) ⚠️ Option (b).** Gate 7 requires a **general restricted-and-caution ingredient assessment for every product**. The Pregnancy/Breastfeeding Caution assessment is an *additional conditional layer*. Screen applicability:
+
+| Screen | Applies to |
+|---|---|
+| General prohibited / restricted / caution | **All products** |
+| Maternal caution | Maternal products |
+| Infant / Baby Safety | Infant 0+ products |
+
+Where both intended-use contexts are selected, both the maternal and infant pathways apply.
+
+**(Question 6) ⚠️ Gate 4 screens *and dispositions* every relevant candidate**, but does not require the full final safety close-out reserved for Gate 7. Every row is classified as one of: No issue identified · Needs Safety Review · Needs Regulatory Review · Prohibited — remove · Considered — not selected · Further information required. **Gate 4 must not pass with unassessed rows.** Gate 4 may Proceed with Conditions where the issue is assessed as non-critical **and** a qualified reviewer has documented the preliminary conclusion **and** a controlled action is linked **and** no prohibited ingredient or mandatory restriction is breached. **Gate 7** must then formally close every restricted or caution issue relevant to the final formula.
+
+**(Question 23b) Our requirement is right, with permitted coverage routes.** At Gate 7 every ingredient in the final formula must have a safety disposition, but low-risk excipients do not each need a lengthy monograph. Permitted: individual assessment · reference to an existing approved ingredient assessment · group or class assessment where scientifically justified · reference to an accepted regulatory/safety conclusion. **Every formula line must show it has been covered and linked to the relevant assessment**, and relevant mixture components, impurities and residuals must also be assessed where required.
+
+**(Question 31) Five of six confirmed as built** — every row in the candidate raw-material register must be dispositioned before Gate 4 passes (a) · "Considered — not used in this formula" is retained and the record is not deleted (b) · the conditional route is Proceed with Conditions plus a linked controlled action, with no separate duplicate approval field, provided the row contains the qualified reviewer's conclusion, the gate approver is authorised, and the condition and action are explicitly referenced in the gate decision (c) · a conditionally accepted material *included in the final formula* must be fully closed before Gate 7 final safety approval, while a material *not used* may be closed as "Considered — not used" (d) · **Gate 4 must not Proceed where every candidate has been rejected** — at least one suitable or conditionally suitable route must remain, otherwise the project should Hold or Backtrack to ingredient sourcing (e).
+
+**⚠️ (f) changes our reading:** at Gates 7, 10 and 11 the hard block applies to materials **actually present in the current formula**. Materials formally dispositioned as not used should not block those gates; an incomplete non-formula candidate may produce a **warning** but should not block release where the product does not rely on it.
+
+**(Question 32) The watch-list reviewer trail.**
+
+- **(a) ⚠️ "Flagged" includes three statuses**, not the two we implemented: *REVIEW — possible formula match* · *Needs Safety Review* · *Needs Regulatory Review*. **Prohibited — remove** remains a separate direct hard block.
+- **(b) ⚠️ Resolution status** = Open · Under Review · Action Pending · Verification Pending · Closed, with a separate assessment field recording whether the result is Critical, Non-critical, Not a true match or Further information required.
+- **(c)** Recording Proceed with Conditions **may serve as authorised acceptance** where the qualified reviewer assessment is complete, the rationale and evidence are present, a valid controlled action is linked, and **the gate approver has the required Safety or Regulatory authority**. A separate duplicate acknowledgement is not required.
+- **(d)** An unassessed flagged row **must block both Proceed and Proceed with Conditions** — as built.
+- **(e) 🆕** The Pregnancy/Breastfeeding Caution list uses **the same reviewer-trail fields** for flagged findings.
+- **(f)** The linked action may belong to Gate 4 **or a later gate** where operationally appropriate. It must link back to the originating finding · have an owner and due date · **remain visible at the originating gate** · and be due before the gate at which final closure is required. **A critical finding cannot be deferred to a later gate.**
+
+### Part 7 — Infant & Baby Safety pathway (questions 1 and 25c)
+
+**Compartment 3 is retained as the core Gate 7 Infant & Baby Safety assessment, but it is the *final component* of a broader pathway spanning multiple gates — not the entire pathway by itself.** Existing controls INF-01 to INF-08 remain appropriate.
+
+| Gate | Required |
+|---|---|
+| **2** — intended infant-use context | Intended minimum age in months · direct infant use, incidental contact or both · leave-on or rinse-off use · body area · frequency and amount of use · nappy-area, face, eye-area or scalp use · foreseeable hand-to-mouth exposure · foreseeable accidental ingestion · whether the product may be used on damaged or compromised skin · caregiver use vs direct application to the infant |
+| **4** — ingredient and raw-material suitability | Infant suitability assessment for each proposed ingredient · restricted and prohibited ingredient review · fragrance, essential-oil and allergen review · impurity, contaminant and residual-solvent review · heavy-metal and microbiological risk review where relevant · oral-safety consideration where hand-to-mouth exposure is foreseeable · eye-exposure assessment where eye contact is reasonably foreseeable · supplier evidence links |
+| **5** — formula-level assessment | Final ingredient concentrations · formula pH and compatibility with infant skin · preservative strategy and microbiological protection · exposure assessment and infant-adjusted margin-of-safety rationale · potential degradation products or ingredient interactions · process controls needed to preserve ingredient quality and safety · intended dose or amount per use |
+| **6** — packaging and instructions | Appropriate dose delivery · control of excessive dispensing where relevant · accidental access or ingestion risk · suitable closure and packaging · age and use instructions · required warnings · directions for safe caregiver use |
+| **7** — final assessment | Complete INF-01 to INF-08, which should include or link to: infant-contact use context · infant-adjusted exposure and margin of safety · hand-to-mouth or incidental oral exposure · infant sensitiser and allergen screening · skin-barrier and pH compatibility · eye-safety assessment where applicable · final intended-use and age-suitability conclusion · approved claim, label and PIF wording · confirmation that microbiological and preservative risks have been addressed · confirmation that no critical infant-safety issue remains open |
+| **8–9** — testing and validation | Triggered by use context and risk: skin tolerance · eye safety · preservative efficacy · microbiological quality · stability · packaging compatibility · in-use or consumer testing where appropriate |
+| **10** — PIF and claims | Infant-use safety conclusion · relevant ingredient and formula assessments · applicable test reports · approved age and use statements · evidence supporting infant-related claims · label warnings and directions |
+
+> **Hard block:** Gate 7 must hard-block if the Infant 0+ pathway is triggered and this assessment is incomplete.
+
+**(Question 25c)** Family use does not automatically mean a vulnerable population, **but must prompt confirmation of the actual age groups included; if infants or young children are included, the relevant pathway activates.** Intimate-area use triggers a specialised use-site and safety assessment but does not automatically mean the user is vulnerable. Swimmers do not automatically constitute a vulnerable population.
+
+### Part 8 — Per-market lifecycle and post-market (questions 2, 10, 13, 14, 15, 35)
+
+**(Question 2) An older formula version does not automatically close when the replacement receives launch approval.** States: Active · Transition Approved · Transition in Progress · Superseded · Withdrawn · Cancelled. Approval of the new version places the old version into **Transition in Progress**, not Superseded. It becomes Superseded only after an authorised person confirms, **for the relevant market**: replacement formula version · effective transition date · last manufacturing or release date for the old version · stock disposition or sell-through arrangement · regulatory notification or registration status · applicable artwork and ingredient-list transition · PIF / Product Master File update · Sales and Marketing communication · any required distributor or customer communication · confirmation that no further batches will be released under the old version unless specifically authorised.
+
+> **The supersession decision must be recorded by a person — never inferred automatically by the system.**
+
+**(Question 14) Launch status is assessed per market.** A product has launched in a market when **the actual commercial launch date for that market is recorded.** Project-level statuses: Not launched · Partially launched · Launched in all active markets · Market transition in progress · Withdrawn. Post-market review dates run separately from each market's actual launch date, and **the launch of the first market must not cause all other markets to be treated as launched.**
+
+**(Question 13) The scheduled post-launch review uses the actual commercial launch date** for the relevant market. Recommended company schedule: **one month** — early review for infant, maternal, intimate-use, eye-area or otherwise enhanced-surveillance products · **three months** — first standard post-launch review for all products · **twelve months** — full post-market review · **annually thereafter** while the product remains marketed. A review must occur earlier if a significant adverse event, complaint trend, regulatory request or quality signal arises, and the schedule is configurable where a particular product or market requires a different interval.
+
+**(Question 10) ⚠️ The current sixteen-option list mixes source, issue type and action — these should ideally be separated:**
+
+- **Feedback source:** Consumer · HCP · Distributor · Retailer · Sales · Social media · Customer service · Regulator · Internal Quality or Manufacturing.
+- **Issue type:** Safety or adverse event · Product performance · Claim or communication question · Packaging issue · Formula issue · Quality issue · FAQ or education requirement · Product optimisation opportunity.
+- **Resulting action:** PMS review · CAPA · Change Control · FAQ update · Product optimisation · No further action.
+
+HCP, retailer, sales and social-media feedback **all count as market feedback**. Minimum mappings using the current list — *market feedback:* consumer / HCP / distributor / retailer / sales / social-media feedback, complaint, claim question, FAQ update where generated by external feedback; *product-performance feedback:* consumer / HCP / distributor / retailer feedback relating to performance, complaint relating to performance, packaging issue, formula issue, quality issue, claim question concerning actual performance, product optimisation; *PV/PMS review:* adverse event or PV signal, PMS trend, complaint with a safety component, consumer / HCP / social-media feedback tagged as a potential safety issue.
+
+> **CAPA is a resulting action, not a feedback source.** Packaging issues contribute to product-performance and market-feedback review where applicable.
+
+**(Question 15) ⚠️ Product-performance feedback should be Conditional, not Supporting.** It becomes mandatory where performance is part of the scheduled review · a performance-related complaint or question is received · a formula, packaging or quality issue affects performance · an efficacy or claim-performance concern is raised · product optimisation is proposed. For market feedback, use **two distinct concepts** rather than changing one record's tier over time: **Continuous Market Feedback Capture — Supporting** (available throughout the lifecycle) and **Scheduled Market Feedback Review — Conditional** (mandatory once the applicable post-launch review milestone is reached or a relevant signal occurs).
+
+**(Question 35) ⚠️ Use separate value lists**, not the ones we reused:
+
+- *Checklist work status:* Not Started · In Progress · Awaiting Information · Complete · On Hold · Blocked · N/A — rationale required.
+- *Regulatory approval:* Pending · Approved · Approved with Conditions · Not Approved · Withdrawn · N/A — rationale required.
+
+A market entered as **"Other — specify" must also record the actual country or jurisdiction**; until the market is named and the dossier type is identified the record is incomplete and **must block Gate 10**. All six fields must be present (applicable market · required dossier type · owner · checklist or evidence link · status · Regulatory approval), and where N/A is used the rationale **and an authorised reviewer** must also be recorded.
+
+### Part 9 — Gate 1 and Gate 2 capture (questions 20, 21, 22, 23a, 24, 25)
+
+**(Question 20) ✅ Confirmed exactly as built — no change.** Fields are optional when the project shell is first created and mandatory before Gate 1 passes. A project can be opened with a temporary project name or identifier · creator · date · initial owner; Gate 1 then requires the substantive opportunity and request information.
+
+**(Question 21) ⚠️ For project requirements, use Must / Should / Could.** Criticality remains a *risk* concept, not a requirements-priority value. 🆕 **Add "N/A with rationale" as a valid disposition.** Before Gate 2 passes: every row must be reviewed · every applicable row completed or formally deferred · every non-applicable row marked N/A with rationale · **every Must requirement complete** · a Should or Could requirement may be deferred only through Proceed with Conditions, with an owner and due date. The *Must-have product requirements* row is always mandatory; other rows become mandatory according to project scope. **The system must not require users to mark an empty requirement as Completed.**
+
+**(Question 22)** (a) ✅ the table layout is accepted — it provides owner, status, evidence and rationale fields. (b) ⚠️ a project **may** have more than one development/change type, but **one must be identified as the Primary project type**, with others recorded as secondary. (c) ⚠️ owner/function values: *Request Origin / Source* → **Requesting Function / Project Owner** (preferable to always naming Sales — a request may originate from Regulatory, Quality, Manufacturing, Management or another function); *Development / Change Type* → **NPD / Project Owner**. (d) ✅ the name "Development / Change Type" is accepted. (e) ✅ the five free-text fields stay in their separate *Opportunity & Request — Gate 1* block and are **not** added to the Project Identification table.
+
+**(Question 23a) 🆕** Gate 2 requires at least one product type or form status, but the exact final form may legitimately remain open. **Add the option "Product form under evaluation — to be confirmed by Gate 5"**, so an early brief such as "infant barrier product — cream or balm to be determined" can pass Gate 2 with a controlled action.
+
+**(Question 24) ⚠️ Use the existing Countries / Markets parameter as the single source of truth and remove the separate free-text *Initial target market* field.** The Countries / Markets parameter is **not mandatory to create the initial project shell** but becomes mandatory before Gate 1 passes. The *Initial target user / life-stage* field remains, as it does not duplicate another field.
+
+**(Question 25)** (a) ✅ all five renamed pairs are correct. (b) ⚠️ **Dry skin alone should not automatically be a vulnerable-user group; eczema-prone or compromised skin should.** Where possible split the combined option into *Dry skin* and *Eczema-prone or compromised skin*; if it cannot be split, treat the combined option as triggering the sensitive/compromised-skin review. (c) see Part 7. (d) ✅ our two-way strengths are confirmed: exact contradictions are refused, while for renamed or broader groups a **warning plus rationale is preferable to outright refusal**, since the Safety/Regulatory reviewer may identify the context independently.
+
+### Part 10 — The explicit assessment fields (questions 8, 9, 11, 12, 16)
+
+Each of these adds a field whose "not yet assessed" value blocks — the mechanism defined in Part 1.
+
+**(Question 8) 🆕 Change Control required? → Yes / No / Pending assessment**, plus reviewer · review date · rationale · linked Change Control ID (where Yes) · evidence or supporting link. If **Yes**, a valid Change Control record must be linked; if **No**, the rationale and reviewer must be recorded; **Pending assessment must block closure of the post-market finding.** *"This is preferable to relying only on a reminder."*
+
+**(Question 9) 🆕 Human-participant study planned? → Yes / No / Undecided.** Reviewed at Gate 8, and may also be raised earlier via the claim/evidence plan. **Creating a Study Protocol automatically sets the answer to Yes.** Where Yes: the dedicated study approval workflow becomes mandatory · recruitment must not begin before approval · testing or data collection must not begin before approval · participant information, consent, privacy and data-management requirements must be complete. **Undecided must prevent Gate 8 from closing.**
+
+**(Question 11) ⚠️ None of the six project types is automatically administrative.** A packaging change, lifecycle improvement or reformulation can be technically and commercially significant. 🆕 **Add the classification "Administrative-only change: Yes / No"**, confirmed by an authorised reviewer. Administrative-only examples: internal reference-code correction · file-link update · spelling correction that does not alter meaning · formatting correction · contact-detail update · document metadata update · supplier-document replacement where the material itself has not changed. **A project is exempt from competitor/benchmark review only when it is confirmed as administrative-only *and* no claim, formula, market positioning, product performance, packaging function or customer-facing meaning changes.**
+
+**(Question 12) ✅ A formula change classified Major also counts as a major reformulation for the Gate 9 scale-up trigger.** Affected areas that trigger scale-up or pilot review: formula composition · active or preservative concentration · manufacturing site · equipment type or equipment scale · batch size · order of addition · mixing speed or time · homogenisation · heating or cooling profile · maximum temperature · hold time · pre-processing or ingredient hydration · transfer method · filling method · water quality or process-water source · process aid · packaging/filling interface · **any change identified by Manufacturing, Quality or R&I as potentially affecting product performance.** 🆕 **Add "Scale-up risk identified? → Yes / No / Pending assessment"** plus risk description · assessor · assessment date · rationale · required pilot or scale-up activity · evidence link. **Pending assessment should block Gate 9 readiness.**
+
+**(Question 16) 🆕 Where the system can determine from controlled data that a condition does not apply, it may auto-generate the N/A reason** — examples given: no maternal user selected · formula confirmed anhydrous · no special market pack requirement identified. **For safety-, regulatory-, claims- or release-critical items the system-generated rationale must still be acknowledged by the responsible reviewer before gate closure**; for Supporting items the system-generated explanation alone is sufficient. *"Users should not be required to retype a reason already deterministically generated by the system."*
+
+### What this round changes in the application
+
+**Rework of behaviour already shipped (around 20 sites).** The largest are: the trigger engine becoming tri-state (7) · the Gate 7 restricted/caution screen splitting into three layers (5) · Gate 4 requiring every row dispositioned (6) · three severity/status vocabularies converging on one four-level scale and one lifecycle (3, 32b, 33, 34) · the raw-material hard block narrowing to formula materials at Gates 7/10/11 (31f) · Cosmetic claims triggering product-level evidence (36a) · the Phase 1 priority column becoming Must/Should/Could (21) · removing the duplicated initial-market field (24) · splitting the Dry / eczema-prone target-user option (25b) · both Gate 1 owner/function values (22c) · the feedback-source list splitting into three (10) · the Gate 12 feedback tiers (15) · the two per-market regulatory checklist value lists (35).
+
+**New build, largest first:** the per-gate three-role sign-off with a gate-scoped evidence snapshot, keyed per market at Gates 10–11 (18, 29) · the Infant & Baby Safety pathway across Gates 2, 4, 5, 6, 7, 8–9 and 10 (1) · three company-level controlled reference datasets — Claims Library, Raw Material Risk Overlay, Regulatory market profiles (28, 17, 4) · the claim revision model with artwork linkage and a publication record (26, 30) · per-market launch dates, supersession decisions and review schedules (2, 13, 14) · the five explicit assessment fields (8, 9, 11, 12, 16).
+
+**Confirmed as already correct, no change beyond retiring the assumption tag:** the Gate 1 field timing (20) · the claim declaration model and Claim ID timing (19a/c/e/f) · the traceability ledger staying open through Gates 10–11 (26) · the five Regulatory review fields and four outcomes (27a/b) · the four claim-linkage choices (30a) · five of the six import-stub readings (31a–e) · the unassessed-row and closure-evidence rules on safety findings (33d/e) · the two-way vulnerable-user check (25a/d) · the Gate 2 product-type and Gate 7 safety-matrix requirements we had added ourselves (23) · Major = major reformulation (12).
+
+**The build order this implies** is set out in `docs/plans/Round4_Implementation_Roadmap.md`: the tri-state trigger engine and the shared vocabularies first, because every later group sits on them.
+
+---
 ## Remaining implementation inputs (2026-07-21)
 
 The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **supplying data/content** the answers now call for — these are inputs to gather, not decisions to make:
@@ -671,6 +933,13 @@ The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **
 - **A3** — the trigger conditions reference product/formula properties the app does not record (project/change type, microbiological susceptibility, raw-material composition risk). Whether these are captured as new fields or derived from existing data is ours to design; the *rule* is settled.
 - **E2** — unchanged in substance from F10, but now with an interim requirement: a temporary Regulatory Checklist Status record for non-ASEAN markets, so the item is never simply unenforced.
 
+
+**Update (2026-08-24):** Round 4 discharges three more of these, and turns the fourth into a build item rather than a content request:
+
+- **F2** — the Infant & Baby Safety workflow **content is now supplied** (Appendix 3, Part 7). It is not a separate workflow bolted onto Gate 7 but a pathway spanning Gates 2, 4, 5, 6, 7, 8–9 and 10, with Compartment 3 as its final component.
+- **F11 / B7 / C1** — the **Claims Library is now specified** (Appendix 3, Part 4): company-level, Technical **and** Regulatory both approving each entry, projects reading but never editing, with a controlled "Propose for Claims Library" promotion action. Its *content* is still to be populated, but its shape is no longer an open question, and a project claim with no library entry is now explicitly permitted as "New claim — not yet in Claims Library".
+- **F10 / E2** — the per-market checklist content is **partly** discharged. Question 35 fixes the two value lists and the "Other — specify" handling; the configurable **Regulatory market profile** of question 4 is where the required dossier type per market now lives. The concrete per-market checklist items (EU CPSR, AU, US) are still content Regulatory must supply.
+- **F3** — unchanged as a dataset request, but question 17 adds a neighbouring one: a shared **Raw Material Risk Overlay** keyed to the Cosmetri raw-material ID, carrying the eleven composition-risk classifications the Cosmetri API does not expose. Like the watch-lists it is controlled data maintained by Technical, Safety and Regulatory — not something a project enters.
 ## NPD Front-End Roadmap (v2 workbook, 2026-07-24)
 
 **Status:** ✅ Confirmed. `MBc360 Master Product Development System File v2.xlsx` was authored directly by the expert/SME team and is treated as an already-confirmed source, the same authority as the original workbook — no additional confirmation round was needed for the rules below.

@@ -14,6 +14,7 @@ import dayjs from 'dayjs';
 import type { GateDecision, GateRecord, ProjectData, StageStatus } from '@mbc360/shared/types';
 import { GATE_FIELD_LABELS, GATES, GATE_DECISIONS, STAGE_STATUSES } from '@mbc360/shared/config/gates';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
+import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { useAppStore } from '../store/useAppStore';
 import { currentGateIndex, gateIndex, gateReadinessChecklist, isAwaitingDecision, isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { roleLabel } from '../utils/roles';
@@ -21,6 +22,7 @@ import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import GateReadinessPanel from './GateReadinessPanel';
+import GapAssessmentBlock from './GapAssessmentBlock';
 import UserSelect from './UserSelect';
 import { ApiError } from '../api/projectsApi';
 import { useSession } from '../auth/useSession';
@@ -198,15 +200,33 @@ export default function GateFlowTable({
     // Save-blocking reason instead of removing the option from the dropdown,
     // so the user can still select it and see exactly what's missing.
     .map((r) => {
-      const saveInvalidReason =
-        r.draftRecord.decision === 'Proceed' && (r.draftRecord.status === 'Gap' || r.liveBlockers.length > 0)
-          ? `Gate ${r.meta.number}: "Proceed" isn't valid yet — ${
-              r.draftRecord.status === 'Gap' ? 'stage status is Gap' : r.liveBlockers.map((b) => b.label).join('; ')
-            }`
+      // Round 4 question 3: what a Gap blocks now depends on the criticality a
+      // reviewer recorded, so the answer comes from the same shared function the
+      // API guard calls rather than being re-stated here. Checked FIRST because it
+      // is the more specific reason — "the gap is Critical" tells the user what to
+      // do, where "stage status is Gap" does not.
+      const gapVerdict = r.draftRecord.decision
+        ? gapBlocksDecision(r.draftRecord, r.draftRecord.decision)
+        : null;
+      // Two different remedies, and telling them apart matters: `missing` means the
+      // decision becomes valid once those fields are filled in (so pointing the user
+      // at Hold would send them to hold a gate that does not need holding), while
+      // `allowed` alone means this decision cannot be recorded at all.
+      const gapFix = gapVerdict
+        ? gapVerdict.missing?.length
+          ? `Record ${gapVerdict.missing.join(', ')} on the gap assessment below, or choose ${gapVerdict.allowed
+              .map((d) => `"${d}"`)
+              .join(' or ')} instead`
+          : `Record ${gapVerdict.allowed.map((d) => `"${d}"`).join(' or ')} instead`
+        : undefined;
+      const saveInvalidReason = gapVerdict
+        ? `Gate ${r.meta.number}: "${r.draftRecord.decision}" isn't valid — ${gapVerdict.reason}. ${gapFix}`
+        : r.draftRecord.decision === 'Proceed' && r.liveBlockers.length > 0
+          ? `Gate ${r.meta.number}: "Proceed" isn't valid yet — ${r.liveBlockers.map((b) => b.label).join('; ')}`
           : r.draftRecord.decision === 'Proceed with Conditions' && r.hardBlockers.length > 0
             ? `Gate ${r.meta.number}: "Proceed with Conditions" isn't valid yet — ${r.hardBlockers.map((b) => b.label).join('; ')}`
             : undefined;
-      return { ...r, saveInvalidReason };
+      return { ...r, saveInvalidReason, gapVerdict };
     });
 
   // Rows whose currently-selected (unsaved) decision would be rejected by
@@ -310,7 +330,7 @@ export default function GateFlowTable({
                 </div>
               )}
               {r.draftRecord.status === 'Gap' && (
-                <div style={{ fontSize: 12, color: '#cf1322' }}>Gap — normal Proceed blocked</div>
+                <GapAssessmentBlock gate={r.draftRecord} locked={r.locked} onChange={(p) => patch(r.draftIndex, p)} />
               )}
               {r.openChanges.length > 0 && (
                 <div style={{ fontSize: 12, color: '#d48806' }}>

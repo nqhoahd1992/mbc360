@@ -13,25 +13,32 @@
 // requirement, never satisfy one — the row still needs its safety pathway,
 // responsible reviewer and notes.
 //
-// THREE LEVELS OF CERTAINTY, worth keeping straight [ASSUMPTION: R4-Q22]:
+// The nine pairs below are CONFIRMED (Round 4 question 25(a), 2026-08-24) — four
+// identical in wording (Pregnancy · Breastfeeding · Postpartum · Infant 0+) and
+// five renames of the same population that appear near-verbatim in B5's own list
+// (Child 2+/3+ -> Young child · Cancer patient support · Kidney disease support ·
+// Sensitive skin). The two-way strengths this file feeds are confirmed too (25(d)):
+// an exact contradiction is refused outright, while a renamed or broader group
+// recorded with no matching target user warns and asks for a rationale, because
+// the Safety/Regulatory reviewer may identify that context independently.
 //
-//   1. Identical wording — no interpretation at all:
-//        Pregnancy · Breastfeeding · Postpartum · Infant 0+
-//   2. A rename of the same population, near-verbatim in B5's own list:
-//        Child 2+ / Child 3+          -> Young child
-//        Cancer patient support       -> Oncology or medically vulnerable …
-//        Kidney disease support       -> Renal or other health-related …
-//        Sensitive skin               -> Sensitive or compromised skin
-//   3. NOT mapped, because it would be our reading rather than a rename:
-//        Dry / eczema-prone skin  (is eczema-prone "compromised skin"? medically
-//          it reads that way, but B5 never says so — the closest call here)
-//        Intimate area · Swimmers · Family use  (a family product may reach
-//          children; the workbook does not say it does)
-//        Oily skin · General adult · Professional / HCP recommendation ·
-//          Other - specify  (no vulnerability implied)
+// The four options left unmapped were answered as follows, and NONE of the
+// answers is a plain "add it to the map" [R4-REWORK: câu 25(b)(c)]:
 //
-// Level 3 is the part to revisit when the SME answers: an unmapped option means a
-// project targeting ONLY that group can still record "none" and pass.
+//   Dry / eczema-prone skin — the combined option must be SPLIT. Dry skin alone
+//     is not a vulnerable-user group; eczema-prone or compromised skin is. Until
+//     the option is split in `phases.ts`, the combined option counts as
+//     triggering the sensitive/compromised-skin review, so mapping it here now
+//     would misclassify every dry-skin-only project.
+//   Family use — not automatically vulnerable, but it must PROMPT confirmation of
+//     the age groups actually included, and activate the relevant pathway when
+//     infants or young children are among them. That is a question to ask, not a
+//     row to require, so no map entry can express it.
+//   Intimate area — triggers a specialised use-site and safety assessment, which
+//     is a different control from the vulnerable-user assessment this map feeds.
+//   Swimmers — confirmed as NOT a vulnerable population. Correctly absent.
+//
+// See docs/plans/Round4_Implementation_Roadmap.md, the independent items.
 export const TARGET_USER_TO_VULNERABLE_GROUP: Record<string, string> = {
   Pregnancy: 'Pregnancy',
   Breastfeeding: 'Breastfeeding',

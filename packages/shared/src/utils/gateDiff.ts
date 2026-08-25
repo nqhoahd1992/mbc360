@@ -17,6 +17,20 @@ export const GATE_RECORD_FIELDS: GateFieldChange['field'][] = [
   'dueDate',
   'evidenceLink',
   'notes',
+  // Round 4 question 3 (2026-08-24) — the gap criticality assessment. Added here
+  // deliberately, which is what this list is for: these eight fields decide
+  // whether a gate can pass at all, so a change to one of them is exactly the
+  // kind of edit B4's "no silent corrections" is about. An unlogged change to
+  // `gapCriticality` would let someone downgrade a Critical gap and walk the gate
+  // through with no trace of the downgrade.
+  'gapCriticality',
+  'gapImpactCategory',
+  'gapAssessor',
+  'gapAssessmentDate',
+  'gapRationale',
+  'gapEvidenceLink',
+  'gapRequiredAction',
+  'gapActionOwner',
 ];
 
 // Which of `next`'s fields actually differ from `existing`. Only keys PRESENT in

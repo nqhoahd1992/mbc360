@@ -118,8 +118,10 @@ export const PHASE_1: PhaseConfig = {
     // (a project can be a reformulation AND a market extension).
     //
     // The layout, the multi-select consequence and the two ownerFunction values
-    // are all our reading — B1/B2 gave the option lists and nothing else
-    // [ASSUMPTION: R4-Q19].
+    // were all our reading — B1/B2 gave the option lists and nothing else.
+    // Round 4 question 22 (2026-08-24) CONFIRMS the table layout, (a), on exactly
+    // the grounds argued above — "provides owner, status, evidence and rationale
+    // fields" — and confirms the invented table name, (d).
     // `ownerFunction` on both: Gate 01 has no table in the workbook, so there is
     // no owner cell to copy. The rule followed instead (revised 2026-08-11, user
     // decision) is to name TWO functions, both taken from the three the workbook
@@ -135,8 +137,17 @@ export const PHASE_1: PhaseConfig = {
     // owner into that column, which made `requestOrigin` the only section of 16
     // reading differently from every sibling.
     //
-    // Which two per table is our choice, not the SME's — no new function name is
-    // invented, but the split is a judgement [ASSUMPTION: R4-Q19].
+    // Which two per table was our choice, not the SME's — no new function name
+    // was invented, but the split was a judgement.
+    //
+    // ⚠️ Round 4 question 22(c) (2026-08-24) supplies the real values, and BOTH
+    // differ from what is set below [R4-REWORK: câu 22(c)]:
+    //   Request Origin / Source  → "Requesting Function / Project Owner"
+    //     — explicitly preferable to naming Sales, because "a request may
+    //       originate from Regulatory, Quality, Manufacturing, Management or
+    //       another function", which is the reasoning our Sales choice inverted.
+    //   Development / Change Type → "NPD / Project Owner"
+    //     — same two functions we picked, written in the opposite order.
     {
       key: 'requestOrigin',
       title: 'Request Origin / Source',
@@ -157,8 +168,8 @@ export const PHASE_1: PhaseConfig = {
       // clause, so something had to be invented, and inventing it silently was
       // the mistake. Every word of the replacement comes from B2's own clause
       // ("new DEVELOPMENT … packaging CHANGE, claim CHANGE") plus "Type", which
-      // mirrors the sibling PRODUCT TYPE. Still our wording, not theirs, so B2's
-      // missing field name is question (d) of [ASSUMPTION: R4-Q19].
+      // mirrors the sibling PRODUCT TYPE. CONFIRMED by Round 4 question 22(d),
+      // 2026-08-24: "'Development / Change Type' accepted."
       key: 'projectNature',
       title: 'Development / Change Type',
       gate: '01',
@@ -262,7 +273,19 @@ export const PHASE_1: PhaseConfig = {
       title: 'Project Requirements & Exclusions',
       // B6: "a structured table with category, requirement, priority, owner and
       // notes". `status` is ours — it is how a row is closed and what the Gate
-      // 02 check reads [ASSUMPTION: R4-Q18].
+      // 02 check reads.
+      //
+      // ⚠️ Round 4 question 21 (2026-08-24) changes what goes IN two of these
+      // columns [R4-REWORK: câu 21]:
+      //   priority → **Must / Should / Could**, not the NextAction scale reused
+      //     here. "Criticality remains a risk concept, not a requirements-priority
+      //     value." Every Must must be complete before Gate 2; a Should or Could
+      //     may be deferred only through Proceed with Conditions, with an owner
+      //     and due date.
+      //   status   → gains **N/A with rationale** as a valid disposition, which is
+      //     the gap we reported ourselves: "The system must not require users to
+      //     mark an empty requirement as Completed." Every applicable row must be
+      //     completed or formally deferred; every non-applicable one marked N/A.
       columns: ['category', 'detail', 'priority', 'owner', 'notes', 'status'],
       rows: [
       { gate: '02', requirement: 'Must-have product requirements', minimum: '', rationale: '', owner: '' },

@@ -23,6 +23,7 @@ import type {
   GateCheck,
   GateRecord,
   ProjectData,
+  ProjectReferenceData,
   RegisterRow,
   RequirementItem,
   SignOff,
@@ -91,6 +92,16 @@ function toGateRecord(g: ProjectWithAll['gates'][number]): GateRecord {
     dueDate: dateOnly(g.dueDate),
     evidenceLink: opt(g.evidenceLink),
     notes: opt(g.notes),
+    // Round 4 question 3. `opt` drops nulls, so an ungraded gap arrives with these
+    // absent — which is what `gapBlocksDecision` reads as "not assessed".
+    gapCriticality: opt(g.gapCriticality) as GateRecord['gapCriticality'],
+    gapImpactCategory: opt(g.gapImpactCategory),
+    gapAssessor: opt(g.gapAssessor),
+    gapAssessmentDate: opt(g.gapAssessmentDate),
+    gapRationale: opt(g.gapRationale),
+    gapEvidenceLink: opt(g.gapEvidenceLink),
+    gapRequiredAction: opt(g.gapRequiredAction),
+    gapActionOwner: opt(g.gapActionOwner),
   };
 }
 
@@ -157,12 +168,27 @@ export function toChangeRecords(p: ProjectWithAll) {
     status: c.status,
     closureEvidence: opt(c.closureEvidence),
     closedDate: dateOnly(c.closedDate),
+    // Round 4 question 34(c) — the other five parts of a final disposition.
+    closureOutcome: opt(c.closureOutcome),
+    closureImplementation: opt(c.closureImplementation),
+    closureImpactedVersions: opt(c.closureImpactedVersions),
+    closureVerifier: opt(c.closureVerifier),
+    closureRemainingAction: opt(c.closureRemainingAction),
     owner: c.owner,
     notes: opt(c.notes),
   }));
 }
 
-export function toProjectData(p: ProjectWithAll, gateChangeLog: GateChangeLogEntry[]): ProjectData {
+// `reference` is a REQUIRED parameter, not an optional one defaulting to empty.
+// Round 4 questions 4 and 17 put company reference data inside the rule engine, and
+// a call site that forgot to supply it would evaluate those rules against nothing.
+// Making it required means the compiler catches that, rather than the gate quietly
+// behaving differently on the server than in the browser (BACKEND_PLAN principle 7).
+export function toProjectData(
+  p: ProjectWithAll,
+  gateChangeLog: GateChangeLogEntry[],
+  reference: ProjectReferenceData,
+): ProjectData {
   const checklists: Record<string, ChecklistItem[]> = {};
   for (const item of p.checklistItems) {
     (checklists[item.sectionKey] ??= []).push({
@@ -319,6 +345,28 @@ export function toProjectData(p: ProjectWithAll, gateChangeLog: GateChangeLogEnt
       ...(p.microSusceptibility ? { microSusceptibility: p.microSusceptibility } : {}),
       ...(p.microRationale ? { microRationale: p.microRationale } : {}),
     },
+    // Round 4 questions 8/9/11/12. Omitting a null column rather than mapping it to
+    // '' keeps "nobody answered" distinguishable from "answered with nothing" —
+    // the engine reads an absent value as `notAssessed` and must not be handed a
+    // blank string that looks like a considered answer.
+    assessments: {
+      ...(p.changeControlRequired ? { changeControlRequired: p.changeControlRequired } : {}),
+      ...(p.changeControlReviewer ? { changeControlReviewer: p.changeControlReviewer } : {}),
+      ...(p.changeControlReviewDate ? { changeControlReviewDate: p.changeControlReviewDate } : {}),
+      ...(p.changeControlRationale ? { changeControlRationale: p.changeControlRationale } : {}),
+      ...(p.changeControlRecordId ? { changeControlRecordId: p.changeControlRecordId } : {}),
+      ...(p.changeControlEvidenceLink ? { changeControlEvidenceLink: p.changeControlEvidenceLink } : {}),
+      ...(p.humanStudyPlanned ? { humanStudyPlanned: p.humanStudyPlanned } : {}),
+      ...(p.administrativeOnly ? { administrativeOnly: p.administrativeOnly } : {}),
+      ...(p.administrativeOnlyConfirmedBy ? { administrativeOnlyConfirmedBy: p.administrativeOnlyConfirmedBy } : {}),
+      ...(p.scaleUpRiskIdentified ? { scaleUpRiskIdentified: p.scaleUpRiskIdentified } : {}),
+      ...(p.scaleUpRiskDescription ? { scaleUpRiskDescription: p.scaleUpRiskDescription } : {}),
+      ...(p.scaleUpRiskAssessor ? { scaleUpRiskAssessor: p.scaleUpRiskAssessor } : {}),
+      ...(p.scaleUpRiskAssessmentDate ? { scaleUpRiskAssessmentDate: p.scaleUpRiskAssessmentDate } : {}),
+      ...(p.scaleUpRiskRationale ? { scaleUpRiskRationale: p.scaleUpRiskRationale } : {}),
+      ...(p.scaleUpRiskActivity ? { scaleUpRiskActivity: p.scaleUpRiskActivity } : {}),
+      ...(p.scaleUpRiskEvidenceLink ? { scaleUpRiskEvidenceLink: p.scaleUpRiskEvidenceLink } : {}),
+    },
     costing: {
       batchSizeKg: p.costing?.batchSizeKg ?? 0,
       fillSizeG: p.costing?.fillSizeG ?? 0,
@@ -425,5 +473,6 @@ export function toProjectData(p: ProjectWithAll, gateChangeLog: GateChangeLogEnt
       initiatedBy: opt(v.initiatedBy),
       previousBomSnapshot: v.bomLines.map(toBomLine),
     })),
+    reference,
   };
 }

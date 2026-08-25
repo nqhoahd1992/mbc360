@@ -20,6 +20,7 @@ import {
 } from '@mbc360/shared/utils/gateProgress';
 import PhaseStepper from '../components/PhaseStepper';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
+import AssessmentsCard from '../components/AssessmentsCard';
 import StatusBadge from '../components/StatusBadge';
 import { TEXT } from '../theme/tokens';
 
@@ -63,6 +64,12 @@ export default function ProjectOverview() {
       )}
 
       <ProjectIdentificationCard project={project} />
+
+      {/* Round 4 questions 8/9/11/12 (2026-08-24). On the overview rather than a
+          phase page because the four answers feed four different gates (03, 08,
+          09, 12) — filing them under any one phase would hide them from the other
+          three. */}
+      <AssessmentsCard project={project} />
 
       <Card size="small" title="Needs attention">
         <Space size={[24, 8]} wrap>
