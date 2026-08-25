@@ -1397,6 +1397,10 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | R5-Q1 | **10** | Ai chỉ định người ký phase, ai được gỡ chữ ký |
 | R5-Q2 | **11** | D1 có áp cho khối chữ ký phase không |
 | R5-Q4 | **12** | Chữ ký vẽ tay + yếu tố thứ hai — có cần, và bắt buộc tới mức nào |
+| R5-Q13 | **13** | Thiếu quyết định `Reject / Stop` — câu 3 và 29 đều nêu, dropdown workbook không có |
+| R5-Q14 | **14** | "Safety **hoặc** Regulatory authority" — một trong hai là đủ, hay cần cả hai |
+| R5-Q15 | **15** | Trang dữ liệu tham chiếu cấp công ty: ai *thấy*, ai *sửa* |
+| R5-Q16 | **16** | Gap High — "controlled action" nghĩa là Next Action có kiểm soát?, và due date ghi đâu |
 | R5-Q3 | *chưa gửi* | Ba cái tên trong dòng "Approval route" của Guide — quá nhỏ để chiếm một số, gộp khi soạn bản cuối |
 
 ### Round 5, phần 1 — raised while implementing D1 ở cấp phase (2026-08-20)
@@ -1479,7 +1483,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 
 | ID | Chủ đề | Liên quan nhóm | Lộ ra khi |
 |---|---|---|---|
-| R5-Q5 | "Chưa đánh giá" hiển thị và được ghi ở đâu, cho 10 trigger sẵn có | Nhóm 1 (nền tảng) | thiết kế nhóm 1 |
+| R5-Q5 | "Chưa đánh giá" hiển thị và được ghi ở đâu, cho 7 trigger đọc từ bảng | Nhóm 1 (nền tảng) | thiết kế nhóm 1 |
 | R5-Q6 | "Responsible reviewer" của một *item readiness* là ai | Nhóm 1 (câu 16) | thiết kế nhóm 1 |
 | R5-Q7 | Phạm vi của ảnh chụp bằng chứng theo gate | Nhóm 3 | đọc câu 29(1) |
 | R5-Q8 | Ai được ký quyết định supersession theo thị trường | Nhóm 8 | đọc câu 2 |
@@ -1487,8 +1491,12 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q10 | Gate 4 sáu giá trị disposition ↔ ba status flagged sẵn có | Nhóm 6 | đối chiếu câu 6 với câu 32(a) |
 | R5-Q11 | Câu trả lời câu 8 ghi một lần cho dự án hay từng phát hiện | Nhóm 1 (câu 8) | **build nhóm 1** |
 | R5-Q12 | Safety finding `Superseded` có cần kết luận + bằng chứng như `Closed` | Nhóm 2 (câu 33) | **build nhóm 2** |
+| R5-Q13 | Thiếu quyết định `Reject / Stop` mà câu 3 và 29 đều nêu | Nhóm 2 (câu 3) | **build nhóm 2** |
+| R5-Q14 | "Safety **hoặc** Regulatory authority" — một trong hai đủ, hay cần cả hai | Nhóm 2 (câu 32c) | **build nhóm 2** |
+| R5-Q15 | Trang dữ liệu tham chiếu cấp công ty: ai *thấy* khác ai *sửa* | Nhóm 4a/4b | **build nhóm 4b** |
+| R5-Q16 | Gap High — "controlled action" là Next Action có kiểm soát?, due date ghi đâu | Nhóm 2 (câu 3) | **chủ dự án thử luồng gap** |
 
-Hai câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào, Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
+Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
 
 #### R5-Q5 · "Chưa đánh giá" được ghi ở đâu, cho 10 trigger đang chạy 🔴
 

@@ -46,6 +46,10 @@ Ba câu nói gọn toàn bộ triết lý hệ thống:
 2. **"Contribute ≠ approve"** — ai cũng có thể nhập bằng chứng, nhưng chỉ đúng vai trò mới được ra quyết định/ký duyệt.
 3. **"Evidence or it didn't happen"** — mỗi mục check phải có link bằng chứng + ngày + người ký. Tick suông không tính.
 
+Và câu thứ tư, thêm sau Vòng 4 (câu 7), vì nó đổi cách đọc **mọi** điều kiện trong hệ thống:
+
+4. **"Chưa xét ≠ không áp dụng"** — dữ liệu để trống **không** được đọc thành "điều kiện này không áp dụng". Trước 24/08/2026 hệ thống đọc như vậy, và hệ quả là một công thức chưa ai phân loại thì **tự qua** cả hai yêu cầu về chất bảo quản. Xem mục 8.3.
+
 ---
 
 ## 1. Bối cảnh: công ty này làm gì, và tại sao cần một hệ thống như vậy
@@ -367,7 +371,31 @@ Một change đang mở sẽ **soft-lock** gate liên quan (luật C4/F9): hiệ
 
 13/14 đã đóng. Chỉ **F12** còn thực sự mở (phụ thuộc Cosmetri xác nhận có phủ compliance ASEAN/Việt Nam hay không — ngoài tầm kiểm soát của team).
 
-### Vòng 3 (07/08/2026) — đáp án mới nhất của SME, `docs/rounds/2026-08-07-sme-reply-round3.txt`
+> Ba cái từng "đã đóng nhưng thiếu nội dung để xây" nay có nội dung, do Vòng 4 cấp: **F2** (luồng Infant & Baby Safety) ← câu 1 · **F11** (nội dung Claims Library) ← câu 28 · **F10** (checklist non-ASEAN) ← một phần từ câu 35 cộng Market profiles. **F3** (bộ dữ liệu CAS thật) không đổi, nhưng câu 17 giờ đứng cạnh nó: Raw Material Risk Overlay là chỗ ghi phân loại rủi ro theo *nguyên liệu*, còn F3 là danh sách theo *chất*.
+
+### Vòng 4 (24/08/2026) — đáp án mới nhất, `docs/rounds/2026-08-24-sme-reply-round4.md`
+
+**Vòng lớn nhất từ trước tới nay: 36 câu, trả lời hết.** Ghi đầy đủ tại `Business_Rules_Confirmation_{EN,VN}.md` → **Phụ lục 3**; thứ tự xây ở [`docs/plans/Round4_Implementation_Roadmap.md`](../plans/Round4_Implementation_Roadmap.md). Nó xác nhận phần lớn những gì đã xây, nhưng **lật ngược khoảng 20 chỗ** và mở ba mảng hạ tầng chưa từng có.
+
+**Đọc bảng `## Bảng theo dõi 36 câu` trong roadmap trước khi bắt đầu bất cứ việc gì** — đó là bản ghi duy nhất về câu nào đã xong.
+
+Ba đáp án quyết định **thứ tự** của mọi thứ còn lại, làm sai thứ tự là xây hai lần:
+
+| # | Đáp án | Vì sao chặn phần còn lại |
+|---|---|---|
+| **7** | Trigger có ba trạng thái, "chưa xét" phải chặn | mọi item Conditional ở mọi gate ngồi trên hàm này — xem mục 8.3 |
+| **18 + 29** | là **một** quyết định: khoá bảng chữ ký gate, per-market ở Gate 10/11 | xây D1 với khoá 2 thành phần rồi migrate là migrate trên chữ ký điện tử |
+| **3 · 33(a) · 34(a)** | cùng trả về **một** thang 4 mức, `Critical` **trên** `High` | repo từng có ba bản sao của cùng ý đó |
+
+**Quy ước `R4-REWORK` — khác với `[ASSUMPTION: Rn-Qm]`, đừng lẫn.** Mọi tag `[ASSUMPTION: R4-Qn]` đã biến mất. Chỗ nào đáp án **mâu thuẫn với code đã ship** thì gắn `[R4-REWORK: câu N]` — một khẳng định khác hẳn: luật đã chốt, và code này **đã biết là sai**. Dạng marker: `câu 11` · `câu 31(f)` (ngoặc là nhãn tiểu mục, **không bao giờ** là số câu) · `câu 18+29` (một chỗ do hai câu chi phối). Lúc đóng vòng: 48 chỗ trên 26/36 câu; còn **31 chỗ trên 20 câu** (25/08).
+
+**Sweep S5 giữ cho dấu tick trung thực:** tick một câu ✅ trong bảng theo dõi mà còn marker trỏ vào nó thì **build đỏ**, kèm tên file. Chiều ngược lại cố ý không kiểm — 10 trong 36 câu chưa bao giờ có marker (thuần xây mới), nên 0 marker là điểm *bắt đầu* của chúng, không phải điểm kết thúc; chỉ người mới nói được là đã xong. **Số marker tự nó không bao giờ làm đỏ build**: làm vậy chỉ tạo động lực xoá marker, đúng thứ duy nhất phá vỡ cả cơ chế.
+
+**Tiến độ 25/08: 10/36 xong** (3, 7, 8, 9, 11, 17, 20, 32, 33, 34). Đã ship: nhóm 1 (tri-state) · nhóm 2 (thang nghiêm trọng + vòng đời disposition) · nhóm 4a–4c (nền reference data + Market profiles + RM Risk Overlay). Còn: 4d Claims Library → nhóm 3 chữ ký per-gate (lớn nhất) → nhóm 5 claim → 6 sàng lọc → 7 infant → 8 per-market, cộng 7 mục độc lập.
+
+**Round 5 gửi SAU khi đi hết 36 câu** (quyết định của chủ dự án), soạn dần ở `docs/rounds/DRAFT-our-questions-round5.md` — 16 câu tính tới 25/08. Câu mới phát sinh trong lúc xây thì vào cùng vòng đó, không tạo vòng thứ mười sáu.
+
+### Vòng 3 (07/08/2026) — `docs/rounds/2026-08-07-sme-reply-round3.txt`
 
 19 câu hỏi tồn đọng khi wire Gate Readiness đã được trả lời hết (ghi tại `Business_Rules_Confirmation_{EN,VN}.md` → **Phụ lục 2**). **Đọc mục này trước khi động vào `gateReadiness.ts`** — nó nói cho bạn biết chỗ nào trong code hiện tại đang sai so với luật, chứ không phải chỉ là việc chưa làm:
 
@@ -453,6 +481,10 @@ ProjectData {
   bom                 BomLine[]                  // công thức
   packagingBom        PackagingBomLine[]
   costing             CostingInputs
+  formulaProperties   FormulaProperties          // phân loại công thức (vd micro susceptibility)
+  assessments         ProjectAssessments         // Vòng 4 câu 8/9/11/12 — Yes/No/Pending, rỗng = CHƯA XÉT
+  reference           ProjectReferenceData       // dữ liệu tham chiếu CẤP CÔNG TY, read-only
+  changes             ChangeRecord[]             // Change Control của dự án này (E3b)
   evidence            EvidenceItem[]
   capa                CapaRecord[]
   feedback            FeedbackEntry[]
@@ -476,6 +508,26 @@ Ba nhóm dữ liệu có tính chất khác hẳn nhau, và đây là điểm qu
 | **Current state** (sửa được) | `gates`, `checklists`, `registers`, `bom` | Phản ánh hiện trạng; bị khoá read-only khi gate liên quan đã pass |
 | **Append-only** (không bao giờ sửa/xoá) | `backtrackEvents`, `gateChangeLog`, `formulaVersionHistory` | Audit trail. Đây là thứ hiện thực hoá "no silent corrections" |
 | **Per-market** | `marketTracks` | Một dòng cho mỗi thị trường; Gate 10–12 chạy song song độc lập |
+| **Company reference** (không sửa được từ dự án) | `reference` | Dữ liệu cấp công ty, nạp lại mỗi lần đọc. Xem ngay dưới |
+
+#### `reference` — dữ liệu cấp công ty đi vào luật per-project (Vòng 4 câu 4 + 17)
+
+Trường duy nhất trong `ProjectData` mà **không có store action nào ghi**. Lý do nó tồn tại: hai đáp án Vòng 4 đưa dữ liệu **công ty** vào luật **dự án** — hạn chế claim theo thị trường trong C1, và phân loại rủi ro nguyên liệu ở Gate 4 — trong khi `gateProgress.ts` là tập hàm thuần trên `ProjectData`, được gọi từ ~50 chỗ trong web và từ mọi guard server. Luồn thêm một tham số qua tất cả là phương án còn lại; giải một lần, ở chỗ có sẵn cả hai đầu của phép join, rồi trao cho engine một object — hàm vẫn thuần, chữ ký không đổi.
+
+```ts
+ProjectReferenceData {
+  marketProfiles  MarketProfile[]     // câu 4  — Regulatory bảo trì, theo thị trường
+  rmRisk          RawMaterialRisk[]   // câu 17 — Raw Material Risk Overlay, khoá theo rmCode
+}
+```
+
+Ba điều cần biết trước khi động vào:
+
+1. **`ProjectsService.loadReference()` nạp nó trong CẢ lượt đọc VÀ mỗi transaction ghi** — để một guard thấy dữ liệu tham chiếu đúng thời điểm nó khoá dòng, không phải giá trị đọc trước đó.
+2. **Tham số thứ ba của `toProjectData()` là BẮT BUỘC**, không phải optional-default-rỗng. Chỗ gọi nào quên thì đánh giá luật trên số không — đúng kiểu "server yếu hơn UI" mà nguyên tắc 7 của BACKEND_PLAN tồn tại để ngăn — và tham số bắt buộc thì compiler bắt.
+3. **Không narrow theo dự án lúc nạp.** Mọi luật đọc nó đều tự filter (`marketRestrictsClaims` theo thị trường, `rmCodesWithRiskFlags` theo rmCode); narrow thêm một lần nữa là một bản sao thứ hai của cùng phép join phải giữ cho đúng.
+
+Trên `apps/web`, `factory.ts` đặt `reference: { marketProfiles: [], rmRisk: [] }` cho dự án mới — và rỗng là **hướng an toàn**: nguyên liệu chưa phân loại làm trigger Gate 4 trả `notAssessed`, tức chặn.
 
 `RegisterRow` là `Record<string, string | number | boolean | undefined>` — cột thực do `RegisterConfig` khai báo, không có type-safety ở đây. Đó là cái giá phải trả để một component (`DynamicTable`) render được 76 sheet khác nhau.
 
@@ -528,38 +580,67 @@ Panel "What's blocking Gate X" hiển thị **cả item đã thoả** (màu xanh
 | Cờ | Nghĩa | Có chặn không |
 |---|---|---|
 | `pending` | check `kind: 'manual'` — chưa có nguồn dữ liệu để tự đánh giá | **Không** |
-| `advisory` | `Supporting`, hoặc `Conditional` mà trigger không active / không khai báo trigger | **Không** |
-| *(không cờ)* | tier `Mandatory`, đã wire vào dữ liệu thật | **Có** |
+| `advisory` | `Supporting`, hoặc `Conditional` mà điều kiện đã xét là **không áp dụng** / không khai báo trigger | **Không** |
+| *(không cờ)* | `Mandatory`, hoặc `Conditional` mà điều kiện **áp dụng** hoặc **chưa được xét** | **Có** |
 
-**Conditional có chặn hay không — luật quyết định ở [`gateProgress.ts`](../../packages/shared/src/utils/gateProgress.ts), biến `blocks`:**
+#### Trigger có BA trạng thái, không phải hai (Vòng 4, câu 7 — 24/08/2026)
+
+Đây là thay đổi nền tảng nhất của Vòng 4, và mọi item Conditional ở mọi gate đều ngồi trên nó. `isReadinessTriggerActive()` từng trả `boolean`: dữ liệu chưa ghi ⇒ `false` ⇒ item **tự pass**. Đáp án bác thẳng: *"A missing assessment must never be treated as meaning the condition does not apply."*
+
+```ts
+type TriggerState = 'applies' | 'doesNotApply' | 'notAssessed';
+```
+
+| Trạng thái | Nghĩa | Kết quả |
+|---|---|---|
+| `applies` | đã xét, điều kiện đúng | item thành bắt buộc, **chặn cứng** tới khi thoả |
+| `doesNotApply` | đã xét, điều kiện không đúng | **tự thoả**, in kèm lý do (câu 16 cho phép hệ thống tự sinh lý do đó) |
+| `notAssessed` | **chưa ai ghi** dữ liệu mà điều kiện đọc | **chặn** — trên `Supporting` thì chỉ cảnh báo, đó là ngoại lệ của chính câu 7 |
+
+Ranh giới quan trọng là giữa hai trạng thái cuối. Đáp án nêu thẳng một bug đang chạy khi đó: `microSusceptibility` để trống làm `sg05-preservative` và `sg09-pet` **tự pass trên mọi dự án chưa ai phân loại công thức**.
+
+Luật `blocks` trong [`gateProgress.ts`](../../packages/shared/src/utils/gateProgress.ts) giờ là:
 
 ```
-Mandatory                          → luôn chặn
-Conditional CÓ khai báo `trigger`  → chặn khi trigger active; trigger không active thì item tự thoả (advisory)
-Conditional KHÔNG khai báo trigger → advisory (không có gì để đánh giá)
-Supporting                         → không bao giờ chặn
+Mandatory                              → luôn chặn
+Conditional + trigger = applies        → chặn
+Conditional + trigger = notAssessed    → chặn (lý do hiển thị là "chưa xét", không phải "chưa thoả")
+Conditional + trigger = doesNotApply   → tự thoả, advisory
+Conditional KHÔNG khai báo trigger     → advisory (không có gì để đánh giá)
+Supporting                             → không bao giờ chặn
 ```
 
-> ⚠️ **Lịch sử, để hiểu vì sao code từng khác:** tới 07/08/2026, **mọi** item Conditional đều bị gắn `advisory` cứng → Conditional **không bao giờ** hard-block, và thứ duy nhất có "răng" là Skincare for Two nhờ một item chuyên biệt (`id: 'skincare-for-two'`, `hardBlock: true`) push riêng ở SG07, **không** đi qua vòng lặp config. Lúc đó làm vậy là đúng — SME chưa cấp điều kiện trigger nào nên không có gì để đánh giá. Vòng 3 cấp đủ **12 trigger** (Phụ lục 2 → A3), nên luật ở trên nay được thực thi thật.
->
-> **Hiện mới có đúng 1 trigger được cài: `skincareForTwo`** (Pregnancy/Breastfeeding/Postpartum, luật C1) — dùng bởi `sg04-pb-screen` và `sg07-caution-closed`. 12 item còn lại chưa có trigger vì đọc dữ liệu app chưa thu thập. Thêm một trigger = thêm giá trị vào `ReadinessTrigger` + `isReadinessTriggerActive()` + `TRIGGER_INACTIVE_EXPLANATIONS`, rồi gắn `trigger:` vào item — không phải sửa vòng lặp.
+Hai bảng thông điệp, **cùng khoá theo `ReadinessTrigger`** nên không thể thêm trigger mới mà quên chữ cho một trạng thái: `TRIGGER_INACTIVE_EXPLANATIONS` (vì sao không áp dụng) và `TRIGGER_UNASSESSED_EXPLANATIONS` (còn thiếu gì, **và vào đâu để điền** — đây là câu duy nhất đứng giữa người dùng và một gate bị chặn).
 
-📋 **Danh mục đầy đủ 13 trigger + bộ test case: [`docs/rules/F1_Conditional_Triggers.md`](../rules/F1_Conditional_Triggers.md).** Với mỗi trigger: tên đề xuất · đọc từ mục UI nào · dữ liệu đã có hay phải xây · cặp kịch bản bật/tắt kèm kết quả mong đợi. Đọc file đó **trước** khi cài bất kỳ trigger nào, và chạy đúng cặp test của nó sau khi cài.
+> ⚠️ **Nợ đã biết, in ra mỗi lần chạy `verify:readiness`:** 7 trigger **chưa** trả được `notAssessed` (`skincareForTwo` · `infantContact` · `aseanMarket` · `claimNeedsRegulatoryReview` · `claimNeedsPerformanceEvidence` · `newOrRepositionedProject` · `pvPmsRequired`) vì dữ liệu chúng đọc — một checklist hoặc register — **không phân biệt được "rỗng" với "đã xét và không có"**. Chúng giữ hành vi hai trạng thái tới khi `R5-Q5` được trả lời. Đây là thiếu hụt **có chủ ý và được công bố**, không phải bỏ sót: đoán "bảng rỗng = chưa xét" sẽ chặn nhiều gate trên mọi dự án đang có, dựa trên cách đọc của chính mình về một luật mà cả điểm của nó là đừng đoán.
+
+> ⚠️ **Lịch sử, để hiểu vì sao code từng khác:** tới 07/08/2026, **mọi** item Conditional đều bị gắn `advisory` cứng → Conditional **không bao giờ** hard-block, và thứ duy nhất có "răng" là Skincare for Two nhờ một item chuyên biệt push riêng ở SG07, **không** đi qua vòng lặp config. Lúc đó đúng — SME chưa cấp điều kiện trigger nào. Vòng 3 cấp đủ 12 điều kiện, Vòng 4 cấp nốt hai chỗ ghi còn thiếu.
+
+**Hiện trạng trigger (25/08/2026): 12 trigger đã cài, phủ 15 trong 16 item Conditional.** Chỉ còn `sg06-market-pack` chưa có trigger, chờ nội dung checklist non-ASEAN (F10). Hai item cuối vừa được gỡ chặn: `sg09-scaleup` (câu 12 — trước đó **không có trigger nào**, tức không bao giờ chặn được) và `sg04-allergen` (câu 17, qua Raw Material Risk Overlay).
+
+Thêm một trigger = thêm giá trị vào `ReadinessTrigger` + một `case` trong `evaluateTrigger()` + **hai** dòng thông điệp, rồi gắn `trigger:` vào item — không phải sửa vòng lặp.
+
+📋 **Danh mục đầy đủ trigger + bộ test case: [`docs/rules/F1_Conditional_Triggers.md`](../rules/F1_Conditional_Triggers.md).** Với mỗi trigger: đọc từ mục UI nào · dữ liệu đã có hay phải xây · cặp kịch bản bật/tắt kèm kết quả mong đợi. Đọc file đó **trước** khi cài bất kỳ trigger nào, và chạy đúng cặp test của nó sau khi cài.
 
 ### 8.4 Các loại check (`ReadinessCheck.kind`)
 
-15 kind. Nhóm theo nguồn dữ liệu:
+Union `ReadinessCheck` là nguồn duy nhất — đếm nó ở [`gateReadiness.ts`](../../packages/shared/src/config/gateReadiness.ts) thay vì tin con số ở đây. Nhóm theo nguồn dữ liệu:
 
 | Nhóm | Kind | Ghi chú |
 |---|---|---|
-| Trang phase | `gateCheckDone`, `checklistHasSelection`, `requirementDone` | `gateCheckDone` là tín hiệu chính của Gate 1–5 |
+| Trang phase | `gateCheckDone`, `checklistHasSelection`, `requirementDone`, `requirementSectionComplete` | `gateCheckDone` là tín hiệu chính của Gate 1–5 |
 | Register | `registerHasRows`, `registerColumnFilled`, `registerNoBadRows`, `registerRowsComplete` | xem cảnh báo bên dưới |
 | BOM | `bomHasLines`, `bomIdentityComplete`, `bomReconciled` | |
-| Gate record | `gateFieldFilled` | dùng cho 12 item `sgXX-signoff` — **cách dùng này đã bị SME bác**, xem Vòng 3 ở mục 5 |
-| Đặc biệt | `skincareForTwo`, `allOf`, `manual` | `allOf` gộp nhiều check thành **một** dòng hiển thị |
-| Chưa dùng | `nextActionsClosed` | định nghĩa sẵn nhưng không entry `GATE_READINESS` nào dùng: 2 item Next Action (`critical-next-actions`, `open-next-actions`) được push thẳng trong `gateReadinessChecklist()` với logic riêng, không đi qua kind này |
+| Gate record | `gateFieldFilled` | dùng cho 12 item `sgXX-signoff` — **cách dùng này đã bị SME bác**, xem D1 ở mục 5 |
+| Project identity | `identityFieldFilled` | chỉ 3 trường: `initialScope` · `initialTargetUsers` · `initialTargetMarkets`. Xem cảnh báo dưới bảng |
+| Nguyên liệu / RM | `rmEvidenceHasUsable`, `rmEvidenceDispositioned`, `rmEvidenceNoneConditional` | Gate 4 sàng lọc, Gate 7/10/11 đóng |
+| Watch-list & safety | `watchlistReviewed`, `watchlistNoneConditional`, `noOpenCriticalSafetyFinding`, `noOpenMediumSafetyFinding` | phân bậc theo thang 4 mức (câu 33) — Critical+High chặn cứng, Medium cho PwC |
+| Change control | `changeControlNoHardImpact`, `changeControlNoAdminImpact` | câu 34 — Gate 11 phân bậc theo impact |
+| Claims & thị trường | `claimsRegulatoryReviewed`, `marketChecklistRecorded`, `aseanChecklistComplete` | `claimsRegulatoryReviewed` phủ 5 trong 7 điều kiện của C1 |
+| Đặc biệt | `skincareForTwo`, `vulnerableGroupsCovered`, `formulaPropertyFilled`, `allOf`, `manual` | `allOf` gộp nhiều check thành **một** dòng hiển thị |
+| Chưa dùng | `nextActionsClosed` | định nghĩa sẵn nhưng không entry `GATE_READINESS` nào dùng: 2 item Next Action được push thẳng trong `gateReadinessChecklist()` với logic riêng |
 
-> Từng có kind thứ 16, `identityFieldFilled` (đọc một trường trên `ProjectIdentity`). **Xoá 07/08/2026.** Trường duy nhất nó đọc — `projectLead` — là trường bắt buộc trên form tạo project, nên nó **luôn luôn trả về `satisfied: true`**: không đo tiến độ, chỉ đo "project có tồn tại không". Đúng loại vacuous mà cảnh báo màu đỏ bên dưới nói tới, nên để nó nằm sẵn là mời một item tương lai dùng lại. Cần check chỉ-đọc-field thì dùng `gateFieldFilled` (`owner`/`dueDate`/`evidenceLink`/`notes` trên dòng gate khởi tạo rỗng nên đo được thật).
+> ⚠️ **`identityFieldFilled` bị xoá rồi được đưa lại — cả hai lần đều đúng, và đó là bài học.** Bản đầu (xoá 07/08/2026) đọc `projectLead`, một trường **bắt buộc trên form tạo project**, nên nó luôn trả `satisfied: true`: không đo tiến độ, chỉ đo "project có tồn tại không" — đúng loại vacuous mà cảnh báo đỏ dưới đây nói tới. Bản hiện tại chỉ đọc 3 trường Gate 1 **khởi tạo rỗng và chỉ người mới điền được** (câu 20 và 24 xác nhận đúng: tuỳ chọn lúc tạo project, bắt buộc trước khi Gate 1 pass). Phép thử không phải *"check này đọc field à?"* mà *"field này có thể còn trống khi item được đánh giá không?"*
 
 🔴 **Cảnh báo vacuous truth — đọc kỹ chỗ này:**
 
@@ -573,26 +654,39 @@ Và nhớ: với register `mode: 'fixed'`, `registerHasRows` cũng vacuous vì r
 
 ### 8.5 Hiện trạng: bao nhiêu đã thực sự được enforce
 
-Tổng **124 item** trên 12 gate: **107 Mandatory** / 12 Conditional / 5 Supporting. Trong đó **14 item vẫn là `kind: 'manual'`** (chưa wire) → **96/107 Mandatory đang thực sự chặn**.
+**Đừng tin con số trong tài liệu — chạy `npm run verify:readiness`.** Nó in đúng những số dưới đây mỗi lần chạy, cộng bốn bộ đếm nợ. Bảng này là ảnh chụp **25/08/2026** để bạn biết cỡ nào là bình thường.
+
+Tổng **136 item** trên 12 gate: **116 Mandatory** / 16 Conditional / 4 Supporting. Chỉ còn **4 item là `kind: 'manual'`** (chưa wire) → **112/116 Mandatory đang thực sự chặn**.
 
 | Gate | Item | Mandatory | Còn `manual` |
 |---|---|---|---|
-| SG01 | 7 | 7 | 3 |
-| SG02 | 11 | 11 | 2 |
-| SG03 | 10 | 7 | 2 |
-| SG04 | 8 | 6 | 0 |
-| SG05 | 15 | 13 | 2 |
+| SG01 | 7 | 7 | 0 |
+| SG02 | 11 | 11 | 0 |
+| SG03 | 10 | 7 | 0 |
+| SG04 | 13 | 11 | 0 |
+| SG05 | 15 | 13 | 1 |
 | SG06 | 7 | 6 | 0 |
-| SG07 | 15 | 14 | 0 |
+| SG07 | 18 | 15 | 0 |
 | SG08 | 8 | 7 | 0 |
 | SG09 | 9 | 7 | 0 |
-| SG10 | 15 | 14 | 2 |
-| SG11 | 12 | 12 | 3 |
+| SG10 | 17 | 15 | 1 |
+| SG11 | 14 | 14 | 2 |
 | SG12 | 7 | 3 | 0 |
 
-14 item còn `manual` **không phải do lười** — mỗi cái là một trong ba tình huống: (a) không có field nào trong hệ thống đại diện cho nó (Gate 1/2 — Phase 1 không có requirement table); (b) cần một khái niệm dữ liệu chưa tồn tại (Gate 3 — "claim risk tier"); (c) bản chất là **per-market** nên một check ở cấp project sẽ hoặc pass sai hoặc block sai (Gate 10/11 — đó là follow-up F4).
+4 item còn `manual` **không phải do lười** — chúng là loại (c) trong ba tình huống cũ: bản chất **per-market**, nên một check ở cấp project sẽ hoặc pass sai hoặc block sai. Đó là `sg05-costing` (SME giữ ở Supporting: cơ chế là nút Hold do người bấm, không phải trigger — xem câu 36(b)) và ba item Gate 10/11 chờ bảng chữ ký per-market của câu 18+29 (nhóm 3).
 
-> **Cập nhật 07/08/2026 — cả ba tình huống nay đã có đáp án**, nên 14 item này chuyển từ "đang chờ SME" sang "đang chờ mình xây": (a) SME yêu cầu thêm **bảng requirements cho Phase 1** (16 dòng, có cột category/priority/owner — shape *khác* với requirement table của Phase 2–4), trường **Request Origin/Source**, Key Gate Check **"Initial product scope defined"**, và ghi nhận **Development Brief** như một bản ghi riêng; (b) "claim risk tier" nay có định nghĩa cụ thể — **2 dropdown cho từng claim** (Claim category 10 giá trị, Claim risk 5 giá trị) chứ không phải một phán đoán ở cấp project; (c) F4 đã được chốt — **Gate 10/11 chuyển sang per-market**. Chi tiết ở Phụ lục 2 của `Business_Rules_Confirmation_{EN,VN}.md`.
+> Hai tình huống kia đã hết: (a) *"không có field nào đại diện"* — Vòng 3 cấp bảng requirements Phase 1 và Request Origin/Source, đã xây 09–10/08; (b) *"cần khái niệm dữ liệu chưa tồn tại"* — "claim risk tier" nay là 2 dropdown cho từng claim, đã xây 11/08. Chi tiết ở Phụ lục 2 của `Business_Rules_Confirmation_{EN,VN}.md`.
+
+**Bốn bộ đếm nợ `verify:readiness` in ra, và đọc chúng thế nào:**
+
+| Bộ đếm | 25/08/2026 | Nghĩa |
+|---|---|---|
+| `manual` | 4 | chưa có nguồn dữ liệu — không chặn |
+| `Conditional chưa có trigger` | 1 | `sg06-market-pack`, chờ F10 |
+| `Trigger chưa có "chưa xét"` | 7 | xem cảnh báo ở mục 8.3 |
+| `Vòng 4 đã resolve` | 10/36 | tiến độ Vòng 4 · `Đã chốt nhưng chưa sửa: 31 chỗ trên 20 câu` |
+
+> ⚠️ Bộ đếm là **trung thực nhưng không đầy đủ**: chúng đếm item *chưa wire*, chứ không đếm item **wire vào bằng chứng sai**. Ví dụ đang chạy: cả 12 item `sgNN-signoff` đều xanh và cả 12 đều sai — chúng đọc `owner` + `evidenceLink` trên dòng gate, trong khi D1 đòi ba chữ ký đã xác thực. Chỗ ghi lại việc "cái đã ship đang sai" là `R4-REWORK` (mục 5) và Phụ lục 3, không phải bộ đếm này.
 
 ### 8.6 Khoá & mở khoá
 
@@ -732,8 +826,10 @@ Mở trang **Gate Rules & Sheet Map** (nhóm System Guide & Reference) — nó l
 
 - [ ] Thay đổi này ứng với mã rule nào (A/B/C/D/F)? Nếu không ứng với cái nào → đó là **dev decision**, phải ghi vào `docs/rules/F1_Per_Gate_Open_Questions.md` để SME xác nhận sau. *(Đây là chỉ đạo thường trực từ user: một phán đoán do dev tự đưa ra không được miễn xác nhận chỉ vì user đã duyệt tại chỗ.)*
 - [ ] Luật mới có được enforce ở **cả** UI và server bằng **cùng một hàm** trong `packages/shared` không?
-- [ ] Đã chạy `npm run verify:readiness` chưa? Nó bắt sai tên tham chiếu (S1), vacuous trên register rỗng (S2), giá trị seed của register `mode:'fixed'` quyết định check (S3 — đúng con bug đã ship ở Gate 7), và `[ASSUMPTION: R4-Qn]` trỏ sai (TAG).
-- [ ] Nếu có suy đoán: đã thêm câu hỏi vào `F1_Per_Gate_Open_Questions.md` → Round 4, lấy ID, và gắn `[ASSUMPTION: R4-Qn]` **ngay tại điểm quyết định** trong code/doc chưa? Sweep sẽ fail nếu thiếu một trong hai chiều.
+- [ ] Đã chạy `npm run verify:readiness` chưa? Sáu sweep: sai tên tham chiếu (**S1**) · vacuous trên register rỗng (**S2**) · giá trị seed của register `mode:'fixed'` quyết định check (**S3** — đúng con bug đã ship ở Gate 7) · item `dev-decision` không trỏ tới câu hỏi thật (**S4**) · tick resolve Vòng 4 khi còn marker `R4-REWORK` (**S5**) · và `[ASSUMPTION: Rn-Qm]` trỏ sai (**TAG**).
+- [ ] Đã chạy `npm run verify:scaffold` chưa? **Bắt buộc** nếu thêm checklist section / requirement row / Key Gate Check / dòng của register `mode:'fixed'` — những dòng đó được materialise **một lần, lúc tạo project**, nên thêm vào config chỉ áp cho project tương lai. Đã xảy ra **bốn lần**, cả bốn đều do người phát hiện, không phải tooling.
+- [ ] Nếu có suy đoán: đã thêm câu hỏi vào `F1_Per_Gate_Open_Questions.md` → **vòng đang mở (Round 5)**, lấy ID, và gắn `[ASSUMPTION: R5-Qm]` **ngay tại điểm quyết định** trong code/doc chưa? Sweep TAG fail theo **cả hai chiều** — tag trỏ tới câu không tồn tại, hoặc câu hỏi không được tag ở đâu cả.
+- [ ] Nếu đang sửa một chỗ mà đáp án SME **đã lật ngược**: đó là `[R4-REWORK: câu N]`, **không** phải `[ASSUMPTION:]`. Hai thứ khác nhau — assumption là "chưa biết đúng sai", rework là "đã biết là sai". Xoá marker **rồi mới** tick câu đó trong `Round4_Implementation_Roadmap.md`; làm ngược thì S5 làm đỏ build.
 - [ ] Nếu đụng thứ tự hiển thị: đã đối chiếu `xl/workbook.xml` chưa?
 - [ ] Nếu đổi shape `ProjectData`: đã bump persist version chưa? (`migrate` re-seed chứ không migrate)
 - [ ] Đã cập nhật **cả** code **và** `docs/rules/Business_Rules_Confirmation_{EN,VN}.md` chưa? (bảng follow-up trong đó do đội nghiên cứu đọc — không dùng thuật ngữ code)
@@ -825,7 +921,21 @@ StageStatus          'Not Started' | 'In Progress' | 'Complete' | 'Gap' | 'Hold'
 WorkStatus           'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Backtracked'
 GateDecision         'Proceed' | 'Proceed with Conditions' | 'Hold' | 'Backtrack' | 'N/A'
 YNNA                 'Y' | 'N' | 'NA'
-RiskLevel            'Low' | 'Medium' | 'High'
+RiskLevel            'Low' | 'Medium' | 'High' | 'Critical'   // Vòng 4 câu 3/33a/34a — MỘT thang cho cả
+                                                             // gap · safety finding · change control.
+                                                             // RISK_LEVELS_HARD_BLOCKING = Critical + High
+GapImpactCategory    'Safety' | 'Regulatory' | 'Claims' | 'Quality'
+                   | 'Efficacy' | 'Release' | 'Commercial' | 'Other'   // câu 3
+ResolutionLifecycle  'Open' | 'Under Review' | 'Action Pending'
+                   | 'Verification Pending' | 'Closed'       // câu 32b/33b — safety finding thêm 'Superseded'
+RmRiskFlag           11 giá trị, câu 17 — xem RM_RISK_FLAGS trong types/index.ts
+                                                             // Fragrance · Essential oil · Botanical extract ·
+                                                             // Protein · Known allergen · Residual-solvent risk ·
+                                                             // Heavy-metal risk · Microbiological risk ·
+                                                             // Restricted impurity · Processing residue ·
+                                                             // Variable natural-source composition
+TriggerState         'applies' | 'doesNotApply' | 'notAssessed'   // câu 7 — xem mục 8.3
+ProjectAssessments   4 trường Yes/No/Pending (câu 8/9/11/12); RỖNG = chưa xét = CHẶN
 SignOffRole          'Prepared by' | 'Reviewed by' | 'Approved by'
 StudyApprovalRole    'Study Author' | 'Department Reviewer' | 'Independent Reviewer'
 NextActionStatus     'Open' | 'In Progress' | 'Awaiting Information'
@@ -844,6 +954,8 @@ ReadinessResult      'Not Ready' | 'Ready with Conditions' | 'Ready for Decision
 
 ---
 
-*Tài liệu này mô tả trạng thái code tại thời điểm 2026-08-07. Khi luật nghiệp vụ thay đổi, cập nhật **cả** code, **cả** `docs/rules/Business_Rules_Confirmation_{EN,VN}.md`, **cả** file này.*
+*Tài liệu này mô tả trạng thái code tại thời điểm **2026-08-25**. Khi luật nghiệp vụ thay đổi, cập nhật **cả** code, **cả** `docs/rules/Business_Rules_Confirmation_{EN,VN}.md`, **cả** file này.*
 
-*Lưu ý khi đọc: các con số ở mục 8.5 (124 item / 107 Mandatory / 14 `manual`) và bảng kind ở 8.4 mô tả **code hiện tại**, chưa phản ánh những gì Vòng 3 yêu cầu. Bảng đối chiếu "code đang có ↔ SME nói" ở cuối mục 5 mới là chỗ cho biết cái gì sẽ đổi.*
+*Lưu ý khi đọc: mọi con số ở đây là ảnh chụp và sẽ cũ đi. Ba chỗ **không** cũ, vì máy tự sinh — chạy chúng thay vì tin bảng: `npm run verify:readiness` (số item · nợ · tiến độ Vòng 4) · `npm run verify:scaffold` (drift của dòng được materialise lúc tạo project) · và chính union `ReadinessCheck` trong `gateReadiness.ts`.*
+
+*Đang có 20 hành vi đã ship mâu thuẫn với luật đã chốt — chúng **không** nằm trong tài liệu này mà ở `Business_Rules_Confirmation_EN.md` → Phụ lục 3 mục cuối, và tại chính điểm quyết định trong code dưới dạng `[R4-REWORK: câu N]`. `grep -rn "R4-REWORK" packages apps` là cách xem nhanh nhất chỗ nào còn nợ.*

@@ -4,13 +4,13 @@
 >
 > **This file is still being written and will keep growing.** It is the sendable version of the internal list in `../rules/F1_Per_Gate_Open_Questions.md` → Round 5.
 >
-> **Project owner's decision, 2026-08-24:** send this only after all 36 Round-4 answers have been worked through, because until then the list is still moving. Round 4 proved the point — it was drafted on 9 August and sent on the 12th, and in those three days the act of building the answers produced nine more questions. Two of the twelve below appeared the same way: one while writing code, one while running a test.
+> **Project owner's decision, 2026-08-24:** send this only after all 36 Round-4 answers have been worked through, because until then the list is still moving. Round 4 proved the point — it was drafted on 9 August and sent on the 12th, and in those three days the act of building the answers produced nine more questions. Six of the sixteen below appeared the same way — while writing the code, running a test, or using a page an hour after building it.
 >
 > **Rename this file to `YYYY-MM-DD-our-questions-round5.md` on the day it is sent**, and do not edit it afterwards — that is what makes this folder evidence rather than documentation.
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-Thank you for the Round 4 answers. They were complete enough to start building immediately, and five of the thirty-six are already finished. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
+Thank you for the Round 4 answers. They were complete enough to start building immediately, and ten of the thirty-six are already finished. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
 
 Every question here follows the same pattern as last time: we have made a choice so that work could continue, the choice is running in the software now, and we would rather you corrected it than have it settle in silently. Where a question is still unbuilt we say so.
 
@@ -22,6 +22,7 @@ You can reply by number, for example "3 — option (b)".
 2. **Questions 4–6** — already built on our own reading. If we read you wrongly these need rework, so we would rather know early.
 3. **Questions 7–9** — designed but not yet built. A wrong answer costs a redesign, not rework.
 4. **Questions 10–12** — the phase sign-off work from August, still open.
+5. **Questions 13–16** — smaller, but two of them name something your own answers assume exists and the software does not have.
 
 ---
 
@@ -168,6 +169,54 @@ Both are currently **mandatory**: a nominated signer who has not saved a signatu
 **Question:** (a) is a hand-drawn signature wanted in the record, or are your six fields sufficient? If it is not wanted, the second factor should be reconsidered with it, since the two are currently tied together. (b) Should the second factor apply to all three rows — Prepared, Reviewed and Approved — or only to Approved? It applies to all three today.
 
 ---
+---
+
+## Question 13 — Two of your rules name a "Reject / Stop" decision the gate dropdown does not have
+
+Your answer on critical gaps says a Critical gap **"must result in Hold, Backtrack or Reject/Stop"**, and your sign-off answer lists **Reject / Stop** among the decisions that require a mandatory comment. So it appears twice, in two separate answers.
+
+The workbook's own Gate decision dropdown has five values: Proceed · Proceed with Conditions · Hold · Backtrack · N/A. There is no Reject or Stop.
+
+We have not invented a sixth value — the workbook is the authority on that list, and adding one silently would change a control that appears on every one of the twelve gates. Today a Critical gap is refused with the message *"record Hold or Backtrack instead"*, which covers two of the three outcomes you named.
+
+**Question:** should Reject / Stop become a sixth gate decision? If yes, what does it mean operationally that Hold does not already mean — does the project close, or does it return to an earlier phase? And is it available at every gate, or only where a Critical finding forces it?
+
+---
+
+## Question 14 — "Safety or Regulatory authority": is one of the two enough?
+
+Your Gate 4 answer says a flagged watch-list row may be carried under Proceed with Conditions where, among other conditions, *"the gate approver holds Safety or Regulatory authority"*.
+
+We read "or" literally: either one is sufficient. So the software now grants that permission to whoever holds **either** capability, and it is a real permission in the role grid rather than a name typed in a box.
+
+The reason we are asking rather than assuming: at Gate 4 the two functions judge different things. Safety judges whether a material is harmful; Regulatory judges whether it is permitted in the market. A material can be safe and not permitted, or permitted and not appropriate for this product. If both judgements are needed, "or" is too weak.
+
+**Question:** for a flagged ingredient at Gate 4, is one of the two functions sufficient, or must both accept it? If one is enough, does that hold for every one of the eleven risk classifications, or are some of them specifically Safety's call?
+
+---
+
+## Question 15 — Who should be able to open the company reference-data pages?
+
+Three of your answers created company-level lists rather than per-project ones: the market profile Regulatory maintains, the raw-material risk overlay, and the Claims Library. Two of the three are now built and each has its own page.
+
+Each answer says clearly **who may edit** — Regulatory for market profiles, Technical / Safety / Regulatory for the risk overlay, Technical **and** Regulatory jointly for the Claims Library — and the software enforces exactly that on saving.
+
+What no answer covers is who may **see** the page. The software today shows the link only to a System Administrator, which produces an odd result: the administrator sees the link but is not the person who maintains the data, while Regulatory maintains it but has to be sent a direct link to reach it.
+
+**Question:** should these pages appear in the menu for anyone who is allowed to edit that list, or stay restricted to administrators with the maintainers reaching them another way? And should the three lists sit together under one heading, or separately beside the area each belongs to?
+
+---
+
+## Question 16 — For a High gap, what makes an action "controlled", and where does its due date go?
+
+Your critical-gap answer lets a High gap be carried conditionally where, among other conditions, *"a controlled action and due date are recorded"*. Two things in that sentence are not settled by the eight fields you listed for a gap.
+
+**First, "controlled".** In the same round, on critical safety findings, you wrote that *"a controlled Next Action is required… Free text may describe the action but must not replace the controlled action record"* — so there, "controlled" means a tracked action record, not a typed sentence. But the gap field list gives **Required action** and **Action owner** as ordinary fields, which reads like the self-contained version. Both readings are defensible and they need different software: either the gap points at a tracked action, or it keeps its own two fields.
+
+**Second, the due date.** The eight fields you listed do not include a date for the action, so that half of the condition is currently **not enforced** — we have not guessed a ninth field, and the screen says so, asking the user to put the date in the action text meanwhile.
+
+**Question:** for a High gap, is the required action a tracked Next Action of the kind you specified for safety findings, or two plain fields on the gap itself? And where should the action's due date be recorded?
+
 
 ## Summary
 
@@ -179,5 +228,7 @@ Both are currently **mandatory**: a nominated signer who has not saved a signatu
 | 4–6 | Change-control granularity · superseded findings · Gate 4 dispositions | Already built on our reading — rework if wrong |
 | 7–9 | Supersession signature · Claims Library criticality · scale-up areas | Designed, not built — redesign if wrong |
 | 10–12 | Phase sign-off: who nominates, whether the gate rules apply, drawn signature | Built in August, never put to you |
+| 13–14 | A "Reject / Stop" decision that does not exist · whether Safety **or** Regulatory is enough | Two of your own answers name them; we did not invent either |
+| 15–16 | Who may open the reference-data pages · what makes a gap's action "controlled" | Both surfaced by using what we had just built |
 
-Questions 4 to 6 and 10 to 12 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
+Questions 4 to 6, 10 to 12, 14 and 16 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
