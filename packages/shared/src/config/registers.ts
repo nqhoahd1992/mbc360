@@ -12,7 +12,7 @@ import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 // "Vietnam", "VN" and "vietnam" three different markets, and let a row name a
 // market the project does not sell into. `markets` stores a comma-joined
 // string, which is what those columns already held as free text.
-export type ColumnType = 'text' | 'textarea' | 'select' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef' | 'nextActionRef';
+export type ColumnType = 'text' | 'textarea' | 'select' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef' | 'nextActionRef' | 'signature';
 
 export interface RegisterColumn {
   key: string;
@@ -43,6 +43,71 @@ export interface RegisterColumn {
   // is exactly as unreviewed as a stub — the old code gave both `Not Started`,
   // which is also what a finished-but-unapproved row showed.
   defaultValue?: string | boolean;
+  // `signature` columns only: the capability a user must hold to sign, written
+  // `resource|action` (e.g. `formulation-change|approve-commercial`). A signature
+  // column with no capability would be signable by anyone, which is the free-text
+  // field it replaces wearing a different hat, so it is required in practice —
+  // `verifyRegisterSignatureColumn` on the API refuses a column that omits it.
+  signCapability?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Register-row signatures (2026-08-26)
+// ---------------------------------------------------------------------------
+//
+// The workbook records an approval as a cell someone types their name into
+// (`NP sign-off (name)`). Digitised that is not a signature: any editor can type
+// any name, and can change it afterwards with nothing recorded. D1 already
+// rejected exactly this shape for the phase block, and the same reasoning
+// applies wherever an approval is claimed — the authority does not depend on
+// which table the cell happens to sit in.
+//
+// A `signature` column is therefore never typed. It is written by the server
+// from the session, as four flat fields on the row (RegisterRow is a flat
+// Record, so a nested object is not an option):
+//
+//   <key>            the signer's display name — the existing column key, so an
+//                    already-recorded typed value stays readable
+//   <key>__userId    the authenticated account that signed
+//   <key>__role      the roles held AT SIGNING, snapshotted, never re-read
+//   <key>__at        ISO timestamp
+//   <key>__image     the signer's saved signature image at that moment
+//
+// The double underscore marks them as machine-managed: `isRegisterRowBlank` and
+// the API's carry-over both key off `SIGNATURE_FIELD_SUFFIXES` rather than a
+// per-register list that would drift.
+export const SIGNATURE_FIELD_SUFFIXES = ['__userId', '__role', '__at', '__image'] as const;
+
+export function signatureFieldKeys(columnKey: string): {
+  name: string;
+  userId: string;
+  role: string;
+  at: string;
+  image: string;
+} {
+  return {
+    name: columnKey,
+    userId: `${columnKey}__userId`,
+    role: `${columnKey}__role`,
+    at: `${columnKey}__at`,
+    image: `${columnKey}__image`,
+  };
+}
+
+export function signatureColumns(config: RegisterConfig): RegisterColumn[] {
+  return config.columns.filter((c) => c.type === 'signature');
+}
+
+// Every field on a row that only the sign/withdraw endpoints may write. The
+// bulk register save carries these over from the committed row rather than
+// trusting the client copy — otherwise a plain table save could forge or erase
+// a signature, which is the whole point of moving it off a text cell.
+export function signatureManagedKeys(config: RegisterConfig): string[] {
+  return signatureColumns(config).flatMap((c) => Object.values(signatureFieldKeys(c.key)));
+}
+
+export function isRegisterRowSigned(row: RegisterRow, columnKey: string): boolean {
+  return !!row[signatureFieldKeys(columnKey).userId];
 }
 
 export interface RegisterConfig {
@@ -78,7 +143,9 @@ export interface RegisterConfig {
 // partial entry (e.g. only a status set, or only one column filled).
 export function isRegisterRowBlank(config: RegisterConfig, row: RegisterRow): boolean {
   return config.columns.every((col) => {
-    if (col.type === 'checkbox' || col.key === 'status') return true;
+    // A signature is not typed, so it can never make a row non-blank — and a
+    // row cannot be signed before it exists in the first place.
+    if (col.type === 'checkbox' || col.type === 'signature' || col.key === 'status') return true;
     const v = row[col.key];
     return v == null || String(v).trim() === '';
   });
@@ -1438,7 +1505,11 @@ const formulationChangeRegister: RegisterConfig = {
     { key: 'productFamilySku', label: 'Product Family / SKU', type: 'text', width: 150 },
     { key: 'requestedByNpd', label: 'Change requested by NPD team', type: 'user', width: 160 },
     { key: 'dateRequested', label: 'Date change requested', type: 'date', width: 120 },
-    { key: 'approvedByNp', label: 'Approved by NP? (commercial)', type: 'checkbox', width: 100 },
+    // Derived from the signature below, never ticked by hand (2026-08-26). A
+    // tick anyone can set is not an approval, and the pair "approved" + "who"
+    // held as two independent cells is how a row comes to claim an approval no
+    // one gave. The server sets it on sign and clears it on withdraw.
+    { key: 'approvedByNp', label: 'Approved by NP? (commercial)', type: 'checkbox', width: 100, editable: false },
     { key: 'changeTitle', label: 'Change title', type: 'text', width: 160 },
     { key: 'explanation', label: 'Explanation - what changed', type: 'textarea', width: 220 },
     { key: 'reasons', label: 'Reasons', type: 'textarea', width: 180 },
@@ -1449,7 +1520,24 @@ const formulationChangeRegister: RegisterConfig = {
     { key: 'communicatedToMarket', label: 'Communicated to market?', type: 'checkbox', width: 100 },
     { key: 'closed', label: 'Closed?', type: 'checkbox', width: 80 },
     { key: 'overallStatus', label: 'Overall status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'npSignOff', label: 'NP sign-off (name)', type: 'text', width: 130 },
+    // Was a free-text name box until 2026-08-26. NP is the company's final
+    // commercial authority, which made this the worst remaining place in the app
+    // to accept a typed name: anyone could enter it, and change it afterwards
+    // with nothing recorded. Now the same act the phase block requires —
+    // authenticated identity, an authenticator code, the signer's saved
+    // signature, role and timestamp captured by the server.
+    //
+    // Whether NP's approval belongs on THIS register at all, or is an authority
+    // exercised on the one Change Control log, is a separate and still-open
+    // question [ASSUMPTION: R5-Q18] — the signature is right either way, so it
+    // is not waiting on the answer.
+    {
+      key: 'npSignOff',
+      label: 'NP sign-off',
+      type: 'signature',
+      width: 190,
+      signCapability: 'formulation-change|approve-commercial',
+    },
   ],
 };
 

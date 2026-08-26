@@ -52,6 +52,13 @@ export const CHANGE_IMPACT_BLOCKING_AREAS: readonly string[] = CHANGE_IMPACT_ARE
   (a) => a !== CHANGE_IMPACT_LAUNCH && a !== CHANGE_IMPACT_ADMIN,
 );
 
+// The 16 triggers below are a hand-made copy of the workbook's two "rule book"
+// sheets (Formula Change Control, 5 rows; Artwork Change Control, 4) plus the
+// PIF ones — and the copy has already drifted: two of the five formula labels
+// differ from their register rows by punctuation alone. Which of the nine
+// change surfaces is a rule book and which is an event log is
+// [ASSUMPTION: R5-Q19]; generating one from the other before that is answered
+// would harden the wrong direction.
 export function isChangeOpen(status: ChangeStatus): boolean {
   return !CHANGE_CLOSED_STATUSES.includes(status);
 }

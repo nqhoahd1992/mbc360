@@ -90,3 +90,17 @@ export function canEditReferenceData(
 ): boolean {
   return roleKeys.some((key) => has(grants, key, referenceEditCapability(dataset)));
 }
+
+// Signing a `signature` column on a register row (2026-08-26). The capability
+// is declared per column (`RegisterColumn.signCapability`), so this takes the id
+// rather than hard-coding one — a second signature column must not need a second
+// helper here. REAL signed-in roles, not the "View as" simulator: a signature is
+// a real act on real data, exactly like archiving a project.
+export function canSignRegisterColumn(
+  grants: Record<string, string[]>,
+  roleKeys: string[],
+  capabilityId: string | undefined,
+): boolean {
+  if (!capabilityId) return false;
+  return roleKeys.some((key) => has(grants, key, capabilityId));
+}

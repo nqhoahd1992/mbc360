@@ -355,6 +355,65 @@ export class ProjectsController {
     return this.projects.setRegisterRows(user, id, registerKey, body.rows ?? [], body.expectedVersion);
   }
 
+  // Register-row signatures (2026-08-26). A `signature` column is never part of
+  // the bulk register save above — signing is an act, not a field write, so it
+  // gets its own routes exactly like the phase sign-off does.
+  @Post(':id/registers/:registerKey/rows/:rowIndex/signature/step-up')
+  verifyRegisterSignatureStepUp(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('registerKey') registerKey: string,
+    @Param('rowIndex') rowIndex: string,
+    @Body() body: { column: string; code: string },
+  ) {
+    return this.projects.verifyRegisterSignatureStepUp(
+      user,
+      id,
+      registerKey,
+      Number(rowIndex),
+      body.column,
+      body.code,
+    );
+  }
+
+  @Post(':id/registers/:registerKey/rows/:rowIndex/signature/sign')
+  signRegisterRow(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('registerKey') registerKey: string,
+    @Param('rowIndex') rowIndex: string,
+    @Body() body: { column: string; stepUpToken: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.signRegisterRow(
+      user,
+      id,
+      registerKey,
+      Number(rowIndex),
+      body.column,
+      body.stepUpToken,
+      body.expectedVersion,
+    );
+  }
+
+  @Post(':id/registers/:registerKey/rows/:rowIndex/signature/withdraw')
+  withdrawRegisterRowSignature(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('registerKey') registerKey: string,
+    @Param('rowIndex') rowIndex: string,
+    @Body() body: { column: string; reason: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.withdrawRegisterRowSignature(
+      user,
+      id,
+      registerKey,
+      Number(rowIndex),
+      body.column,
+      body.reason,
+      body.expectedVersion,
+    );
+  }
+
   @Put(':id/evidence')
   setEvidence(
     @CurrentUser() user: SessionUser,

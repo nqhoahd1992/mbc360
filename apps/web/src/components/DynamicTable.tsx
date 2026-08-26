@@ -1,6 +1,7 @@
 import { Alert, Button, Card, Checkbox, DatePicker, Input, InputNumber, Popconfirm, Select, Table, Tag, Tooltip } from 'antd';
 import { PlusOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useParams } from 'react-router-dom';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
 import { isRegisterRowBlank } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
@@ -13,6 +14,7 @@ import UserSelect from './UserSelect';
 import MarketSelect from './MarketSelect';
 import ClaimSelect, { findClaim, useClaimRows } from './ClaimSelect';
 import NextActionSelect from './NextActionSelect';
+import RegisterSignatureCell from './RegisterSignatureCell';
 import { derivedColumnGate, spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
 import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
@@ -60,6 +62,9 @@ export default function DynamicTable({
   // Only read when a column actually inherits from a claim; the hook is cheap
   // (a store selector) and keeps DynamicTable free of a project prop.
   const claimRows = useClaimRows();
+  // Only needed by `signature` columns, which address a row by its index in
+  // this project — the same index the bulk save writes as `rowOrder`.
+  const { projectId } = useParams();
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
 
   const patch = (index: number, key: string, value: string | number | boolean | undefined) =>
@@ -93,6 +98,23 @@ export default function DynamicTable({
         );
       }
       return <span style={{ color: TEXT.secondary }}>Link a Claim ID first</span>;
+    }
+
+    // Before the !editable branch on purpose: a signature column is never
+    // "editable" in the ordinary sense — it is written by the sign endpoint —
+    // so falling through would render it as static text and hide the act.
+    if (column.type === 'signature') {
+      if (!projectId) return <span style={{ color: TEXT.secondary }}>—</span>;
+      return (
+        <RegisterSignatureCell
+          projectId={projectId}
+          registerKey={config.key}
+          column={column}
+          row={row}
+          rowIndex={index}
+          readOnly={readOnly}
+        />
+      );
     }
 
     if (!editable) {

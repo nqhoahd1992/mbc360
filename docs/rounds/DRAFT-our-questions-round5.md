@@ -4,7 +4,7 @@
 >
 > **This file is still being written and will keep growing.** It is the sendable version of the internal list in `../rules/F1_Per_Gate_Open_Questions.md` → Round 5.
 >
-> **Project owner's decision, 2026-08-24:** send this only after all 36 Round-4 answers have been worked through, because until then the list is still moving. Round 4 proved the point — it was drafted on 9 August and sent on the 12th, and in those three days the act of building the answers produced nine more questions. Six of the sixteen below appeared the same way — while writing the code, running a test, or using a page an hour after building it.
+> **Project owner's decision, 2026-08-24:** send this only after all 36 Round-4 answers have been worked through, because until then the list is still moving. Round 4 proved the point — it was drafted on 9 August and sent on the 12th, and in those three days the act of building the answers produced nine more questions. Six of the questions below appeared the same way — while writing the code, running a test, or using a page an hour after building it.
 >
 > **Rename this file to `YYYY-MM-DD-our-questions-round5.md` on the day it is sent**, and do not edit it afterwards — that is what makes this folder evidence rather than documentation.
 
@@ -23,7 +23,8 @@ You can reply by number, for example "3 — option (b)".
 3. **Questions 7–9** — designed but not yet built. A wrong answer costs a redesign, not rework.
 4. **Questions 10–12** — the phase sign-off work from August, still open.
 5. **Questions 13–16** — smaller, but two of them name something your own answers assume exists and the software does not have.
-6. **Question 17** — lowest priority: nothing is built on it yet either way, so there is no rework at stake, just a design choice worth confirming before we build it.
+6. **Questions 17–18** — design choices worth confirming before we build, with no rework at stake either way.
+7. **Question 19** — the largest structural question in this list, and the one we have deliberately stopped work on until you answer it.
 
 ---
 
@@ -230,6 +231,85 @@ Right now Change Control lets you pick any trigger for any project, whatever gat
 
 **Question:** should the trigger someone can pick be limited by how far the project has progressed? If so, is the right boundary "the highest gate passed", or something else? And should a trigger that points ahead of the project's progress be blocked outright, or just flagged as unusual and left selectable?
 
+
+---
+
+## Question 18 — Is "NP Controlled" a separate book, or an approval only NP may give?
+
+The Formulation Change Register is titled "NP Controlled" and has sixteen columns. Two of them are NP's: the commercial approval tick and the NP sign-off. The other fourteen — change ID, product, who requested it, the date, the title, the explanation, the reasons, the NPD and Regulatory actions, whether the market needs telling, whether it has been told, whether it is closed, and the overall status — are the same fourteen the Change Control log already keeps.
+
+In a spreadsheet a separate sheet is the only way to say "NP approves this". The software can say it directly: it can restrict the approval to NP's role, record NP's authenticated signature against it, and hold a gate open until that signature exists — none of which needs a second book.
+
+**What we have already changed, because it is right either way.** That NP sign-off was a box anyone could type a name into, and edit afterwards with nothing recorded. It is now a real signature: NP signs as themselves, confirms with a code from their authenticator app, and the system records the account, the role held at that moment, its own timestamp and NP's saved signature. The commercial approval tick is no longer a tick — it follows the signature. What we have **not** changed is where the record lives.
+
+**Question:** is the Formulation Change Register a book that needs to exist in its own right, or a view of the Change Control log filtered to formulation changes? If it is a view, is NP's approval an authority exercised on the shared record? And which role in the system is "NP" — we have provisionally given the approval to Final Approver, purely from the words "commercial authority", and it is one click to move it.
+
+---
+
+## Question 19 — There are nine places a change gets written down. How many should there be?
+
+This is the question we would most like answered, and the one we have stopped work on until you do.
+
+Counting through the workbook rather than going on impression, there are **nine** surfaces that deal with change, and they are not all the same kind of thing:
+
+| | What it is |
+|---|---|
+| Change Control & Communication Log | records a change that happened |
+| Formulation Change Register (NP Controlled) | records a change that happened |
+| Released Label vs Current Artwork | records a change that happened |
+| Development Iteration Log | records a change that happened |
+| Ingredient Substitution Evidence | records a change that happened |
+| Product Family & Version Register | records a change that happened |
+| Formula version history | records a change that happened |
+| Formula Change Control | lists the five **types** of formula change and who signs each |
+| Artwork Change Control | lists the four **types** of artwork change and who signs each |
+
+(A tenth, Change Templates / Forms, is a list of which form to use — clearly different again.)
+
+**Three things we can measure, rather than feel:**
+
+**1. Two of these run in parallel with two different numbering schemes.** The Change Control log numbers its records CHG-001, CHG-002. The Formulation Change Register numbers its own FC-001, FC-002, and the system writes one automatically whenever a formula version is raised. Nothing links the two.
+
+Raising a **major** formula change is far from ignored — it supersedes the previous version, reopens Gates 4 to 9 and cancels the phase approvals covering them. What it does **not** do is create a change control record, so the change-control side of the system never sees it, and four things that apply to every other change do not apply to this one:
+
+- it does not hold **Gates 10 or 11** open (those are outside the range that gets reopened);
+- **Gate 11 does not weigh its impact**, although your own answer requires Gate 11 to evaluate the impact classification of each open change — and a major formula change is the clearest case of one;
+- closing it is a single "Closed?" tick rather than the eight-part final disposition you specified in Round 4;
+- it carries no impact classification at all, so nothing can mark it launch-impacting.
+
+So the heaviest change the system knows about is the one travelling the route the change machinery cannot see.
+
+**2. Two sheets are doing two jobs at once.** Formula Change Control lists five *types* of change — one row for "ingredient added or removed", one for "pH or process changed", and so on — with who must sign each. But the same five rows also carry Old version, New version and Status, which belong to a *particular* change. So every ingredient change this product will ever have shares one Old version box. The second one overwrites the first.
+
+**3. The sheets refer to each other by typed text.** Eight columns across the workbook point from one change record at another — "Linked Change ID", "Change register ID", "Artwork Change Control ref" and so on. Every one of them is free text. Nothing checks that what is typed exists, and nothing notices when it does not.
+
+**Our reading, which we would rather you corrected than accepted.** We think the workbook has several separate sheets because a spreadsheet has no other way to say "only NP approves this" or "show me only the artwork ones" — a separate sheet **is** the permission, and it **is** the filter. The software has permissions and filtered views already, so one record shown several ways might say exactly the same thing with none of the duplication. But that is us guessing at why the workbook was built as it was, and if the sheets are separate because the *business* treats them as genuinely different records, then merging them would be a serious mistake — one much harder to undo once real data is in the merged book than the duplication is to live with now.
+
+**A second reading, which points the other way, and which we think may well be the right one.** Looking again at the three formula-related books rather than at the count, they may be describing three genuinely different stages rather than the same thing three times:
+
+| Book | What it covers | State of the formula |
+|---|---|---|
+| Development Iteration Log | trial and improvement | not yet locked |
+| Formulation Change Register | a change to a **controlled** formula | locked, and often already registered |
+| Change Control & Communication Log | any change of any kind — artwork, claims, markets | any |
+
+The middle one reads that way from its own contents: it warns that Vietnam needs about six months to re-register a formula change, and it asks whether a new registration or label is required and whether the market has been told. None of those questions mean anything about a formula still being trialled. If that is how your team sees it, these are **not** duplicates, merging them would be a serious mistake, and the real question is not whether to merge but **where the boundary between them sits**.
+
+**Question:**
+
+**(a)** In how your team actually works, is there **one** kind of change record, or **several genuinely different** kinds? If several, which are different, and what makes them different?
+
+**(b)** Of the nine above, which are meant to list the *types* of change, and which are meant to log the changes that actually happen?
+
+**(c)** Should raising a new formula version always create a change control record — and therefore hold Gates 5 and 8 open until it is closed?
+
+**(d)** When one change affects the formula, the artwork and a claim all at once, is that **one** record, or several linked records — one per area?
+
+**(e)** Should the cross-references between these sheets become real links, picked from a list, so a reference cannot point at something that does not exist?
+
+**(f)** Is the dividing line between the Development Iteration Log and the Formulation Change Register the moment the formula is **locked at Gate 5** — trials on one side, controlled changes on the other? If it is something else, what? (Today nothing enforces any line: the software will write a Formulation Change Register entry for a formula that has never been locked, which puts a development trial into the book meant for controlled changes. We have not guessed a rule, because the right fix depends on this answer.)
+
+**What we are doing meanwhile: nothing.** We could make one of these the master book tomorrow and show the others as filtered views of it, and it would look tidier immediately. We are not doing that, because if two of these records really are different things, we would then have to pull them apart again after they had been merged and filled with real data. Nothing is blocked by waiting; the duplication is visible rather than dangerous, with the single exception in point 1 above, which we will fix as soon as (c) is answered.
 ## Summary
 
 | # | Topic | Why it matters |
@@ -243,5 +323,7 @@ Right now Change Control lets you pick any trigger for any project, whatever gat
 | 13–14 | A "Reject / Stop" decision that does not exist · whether Safety **or** Regulatory is enough | Two of your own answers name them; we did not invent either |
 | 15–16 | Who may open the reference-data pages · what makes a gap's action "controlled" | Both surfaced by using what we had just built |
 | 17 | Should a change-control trigger be limited to gates the project has passed | Not built yet — raised discussing the Change Control screen, no rework at stake either way |
+| 18 | Whether "NP Controlled" is a book or an authority | The signature is already fixed; where the record lives is not |
+| 19 | **Nine places a change is written down — how many should there be** | **Work stopped until answered.** One measurable consequence: a major formula change never reaches the change-control side at all, so Gate 11 never weighs it |
 
 Questions 4 to 6, 10 to 12, 14 and 16 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

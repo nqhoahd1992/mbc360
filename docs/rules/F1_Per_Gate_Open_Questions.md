@@ -1402,6 +1402,8 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | R5-Q15 | **15** | Trang dữ liệu tham chiếu cấp công ty: ai *thấy*, ai *sửa* |
 | R5-Q16 | **16** | Gap High — "controlled action" nghĩa là Next Action có kiểm soát?, và due date ghi đâu |
 | R5-Q17 | **17** | Trigger Change Control có nên giới hạn theo gate dự án đã pass không |
+| R5-Q18 | **18** | "NP Controlled" là một cuốn sổ riêng, hay là thẩm quyền phê duyệt trên sổ chung |
+| R5-Q19 | **19** | Chín cuốn sổ change control chồng lấn nhau — cuốn nào là sổ sự kiện, cuốn nào là sách luật |
 | R5-Q3 | *chưa gửi* | Ba cái tên trong dòng "Approval route" của Guide — quá nhỏ để chiếm một số, gộp khi soạn bản cuối |
 
 ### Round 5, phần 1 — raised while implementing D1 ở cấp phase (2026-08-20)
@@ -1703,3 +1705,64 @@ Ba cách sửa, ba mức việc:
 **Câu hỏi:** trigger của Change Control có nên bị giới hạn theo tiến độ (gate đã pass) của dự án đang chọn không? Nếu có, ngưỡng đúng là "gate đã pass cao nhất" hay tiêu chí khác? Và nên chặn cứng (disable option trong dropdown, kèm tooltip) hay chỉ cảnh báo mềm, cho phép chọn vẫn được?
 
 **Nếu trả lời khác:** `apps/web/src/pages/ChangeControl.tsx` (`Form.Item name="triggerId"`, `triggerSelectOptions`) — cần đọc `project.gates`/`isGatePassed` của dự án đang chọn (`Form.useWatch('projectId', form)`) để tính gate đã pass cao nhất, rồi lọc/disable option theo đó.
+
+#### R5-Q18 · "NP Controlled" là một cuốn sổ riêng, hay một thẩm quyền trên sổ chung 🔴
+
+**Phát hiện khi chủ dự án đọc lại trang Formulation Change Register (26/08/2026):** *"NP là người quyết định tối cao ở công ty tôi, lẽ nào hệ thống cần riêng cho vai trò đấy 1 sổ"*.
+
+Sheet `Formulation_Change_Register` mang tiêu đề **(NP Controlled)** và có 16 cột, nhưng chỉ **2 cột** thật sự thuộc về NP (`Approved by NP? (commercial)` và `NP sign-off`). 14 cột còn lại — Change ID, SKU, người yêu cầu, ngày, tiêu đề, giải thích, lý do, hành động NPD/Reg, thông báo thị trường, đã đóng, trạng thái — **trùng khuôn với `ChangeRecord`**, tức sổ Change Control & Communication Log. Excel phải tách sheet vì nó không có cơ chế phân quyền: cách duy nhất để nói "cái này NP phải duyệt" là tạo một sheet do NP sở hữu. App có sẵn quyền theo vai trò, chữ ký xác thực và điều kiện chặn gate, nên "NP kiểm soát" có thể diễn đạt bằng ba thứ đó thay vì bằng một bảng.
+
+**Hệ quả đang tồn tại, không phải giả định:** hôm nay có **hai sổ ghi lần-thay-đổi song song với hai hệ mã số** — `CHG-xxx` (người dùng mở Change Request) và `FC-xxx` (hệ thống tự tạo khi `createFormulaVersion` chạy) — không liên kết với nhau. Một lần đổi công thức Major **không** hề bị bỏ qua: nó supersede phiên bản cũ, **mở lại Gate 04–09** và huỷ chữ ký của các phase phủ khoảng đó. Nhưng nó không sinh `CHG-xxx`, nên phía change control không nhìn thấy nó, và mất 4 thứ áp dụng cho mọi thay đổi khác: (1) không khoá mềm **Gate 10/11** — ngoài khoảng được mở lại; (2) **Gate 11 không xét tác động của nó** dù E3(b) bắt Gate 11 phải xét phân loại tác động của từng change đang mở; (3) đóng hồ sơ chỉ là một ô tick `Closed?` thay vì 8 trường final disposition của câu 34(c); (4) không có `impactAreas`, nên không gì đánh dấu được nó là `Launch-impacting`.
+
+**Câu hỏi:** (a) Formulation Change Register là một sổ độc lập cần tồn tại riêng, hay chỉ là một cách nhìn (lọc) của sổ Change Control? (b) Nếu là cách nhìn, phê duyệt của NP là một **quyền** trên bản ghi thay đổi chung — và có phải là chữ ký xác thực như chữ ký phase không? (c) Vai trò nào trong 17 vai trò SSO tương ứng với "NP"? Hiện quyền `formulation-change|approve-commercial` được seed cho **Final Approver**, thuần suy đoán từ nghĩa "commercial authority". (d) Một lần đổi công thức Major có phải luôn sinh một bản ghi Change Control (và do đó khoá mềm Gate 05/08) không?
+
+**Đã làm trước, vì đúng bất kể câu trả lời:** `npSignOff` đổi từ ô text tự gõ sang chữ ký xác thực (danh tính đăng nhập + mã authenticator + chữ ký đã lưu + vai trò + thời điểm, do server ghi), và `approvedByNp` thành ô dẫn xuất từ chữ ký đó thay vì tick tay.
+
+**Nếu trả lời khác:** `packages/shared/src/config/registers.ts` (`formulationChangeRegister`) — bỏ 14 cột trùng và giữ lại dạng view lọc trên `ChangeRecord`; `apps/api/src/projects/projects.service.ts` (`createFormulaVersion`, đoạn "Formulation Change Register entry (A2)") — ghi một `ChangeRecord` thay vì một register row; `apps/api/prisma/seed.ts` (`permissionDefs`, grant `formulation-change|approve-commercial`) — đổi vai trò được cấp quyền.
+
+#### R5-Q19 · Chín cuốn sổ change control chồng lấn nhau: cuốn nào ghi *sự kiện*, cuốn nào là *sách luật* 🔴
+
+**Chủ dự án nêu 26/08/2026, và yêu cầu hỏi SME TRƯỚC khi làm logic sổ mẹ/sổ con:** *"Ứng dụng có nhiều sổ change control, các sổ này còn có cảm giác bao trùm nhau và có cảm nhận rằng excel làm thế này là do không có hệ thống phân quyền chuyên biệt."*
+
+Đếm lại trong config chứ không theo cảm nhận — **9 bề mặt** liên quan tới thay đổi, thuộc ba loại khác nhau đang bị trộn:
+
+| Bề mặt | Loại | Số dòng | Ai/Cái gì tạo ra dòng |
+|---|---|---|---|
+| Change Control & Communication Log (`Change_Ctrl_Comm`) | **sự kiện** | tự do, `CHG-xxx` | người dùng bấm Open Change Request |
+| Formulation Change Register (`Formulation_Change_Register`) | **sự kiện** | tự do, `FC-xxx` | **hệ thống tự tạo** trong `createFormulaVersion` |
+| Released Label vs Current Artwork (`Released_Label_Ctrl`) | **sự kiện** | tự do | người dùng (có `changeType`, `whatChanged`) |
+| Development Iteration Log (`Product_Development_Report`) | **sự kiện** | tự do | người dùng (có `whatChanged`, `reasonTrigger`) |
+| Ingredient Substitution Evidence | **sự kiện** | tự do | người dùng (có `decision`, `owner`) |
+| Product Family & Version Register | **sự kiện** | tự do | người dùng (có `supersededDate`, `changeRegisterId`) |
+| Formula Version history (`formula_versions`) | **sự kiện** | tự do | `createFormulaVersion` |
+| Formula Change Control | **sách luật** | 5 cố định | config (5 trigger nhóm Formula) |
+| Artwork Change Control | **sách luật** | 4 cố định | config (4 trigger nhóm Artwork) |
+| Change Templates / Forms | **danh mục biểu mẫu** | 5 cố định | config |
+
+**Ba vấn đề đo được, không phải ấn tượng:**
+
+1. **Hai sổ sự kiện chạy song song với hai hệ mã số.** `CHG-xxx` và `FC-xxx` mô tả những sự kiện chồng lấn nhau và không liên kết. Hệ quả — nói cho chính xác, vì bản đầu của mục này viết quá tay thành "không khoá gate nào": đổi công thức Major **có** mở lại Gate 04–09 và huỷ chữ ký phase tương ứng, nhưng vì không sinh `CHG-xxx` nên phía change control mù hoàn toàn với nó — không khoá mềm Gate 10/11, Gate 11 không xét tác động (trái E3(b)), đóng hồ sơ chỉ bằng một ô tick thay vì 8 trường của câu 34(c), và không có phân loại `impactAreas`.
+2. **Hai sổ vừa là sách luật vừa là sổ sự kiện.** `Formula Change Control` có 5 dòng = 5 *loại* thay đổi, nhưng lại mang thêm cột `Old version` / `New version` / `Status` — dữ liệu của một *lần*. Nghĩa là mọi lần đổi nguyên liệu trong suốt vòng đời sản phẩm dùng chung **một ô duy nhất**, lần sau đè lần trước.
+3. **Tám cột tham chiếu chéo đều là text gõ tay**, không cột nào là picker và không gì kiểm tra: `productFamilyRegister.changeRegisterId` · `formulationChangeRegister.changeId` · `campaignsSocialMedia.linkedChangeId` · `productDevelopmentIterations.linkedChangeId` · `releasedLabelRegister.artworkChangeRef` · `labelPlatformRollout.linkedRecordId` · `labelShipmentVerification.linkedRecordId` · `labelShipmentVerification.batchTraceRef`.
+
+**Giả thuyết của chúng tôi (cần SME xác nhận hoặc bác):** Excel phải tách sheet vì bảng tính không có cách nào nói "chỉ người này được duyệt ô này" hay "chỉ hiện phần việc của tôi" — một sheet riêng CHÍNH LÀ cơ chế phân quyền và cơ chế lọc. App có sẵn vai trò, chữ ký xác thực và view lọc, nên **một** bản ghi với nhiều cách nhìn có thể diễn đạt đúng cùng nội dung đó. Nhưng đây là suy đoán về ý định của người soạn workbook, đúng loại suy đoán mà working agreement bắt phải hỏi thay vì tự quyết.
+
+**Cách đọc thứ hai, ngược lại — chủ dự án nêu 26/08 khi hỏi "Formulation Change Register thuộc Gate 5/7/10 tức là trong quá trình phát triển à?":** đọc kỹ mô tả và cột của ba sổ formula thì workbook **có thể đã phân biệt đúng ba giai đoạn khác nhau về bản chất**, và khi đó chúng KHÔNG trùng lặp:
+
+| Sổ | Đối tượng | Trạng thái công thức | Bằng chứng trong config |
+|---|---|---|---|
+| Development Iteration Log (gate 04/05/08) | thử nghiệm, lặp | **chưa khoá** | *"Each improved formula version and the driving feedback, benchmark or decision behind it"*; cột `iterationNo`/`whatChanged`/`reasonTrigger`/`feedbackRef` |
+| Formulation Change Register (gate 05/07/10) | đổi công thức **đã được kiểm soát** | **đã khoá / đã đăng ký** | *"Vietnam needs ~6 months to re-register formula changes"* — chỉ có nghĩa khi đã đăng ký; cột `vnRegistrationRequired`, `actionReg: new registration/label?`, `marketCommRequired`, `communicatedToMarket` |
+| Change Control & Comm Log | **mọi** loại thay đổi (artwork, claim, thị trường…) | bất kỳ | banner: *"Artwork, formula, label, claim, supplier, process and market changes must be recorded here"* |
+
+Lưu ý `gate: '05/07/10'` **không** có nghĩa "dùng trong lúc phát triển" — đó là quy tắc ĐÓNG BĂNG (`isGateRefLocked` đòi **mọi** gate trong danh sách đã pass), nên sổ này sửa được cho tới khi Gate 10 pass, tức xuyên qua cả giai đoạn hồ sơ pháp chế. Ba con số là ba điểm nó được soi, không phải khoảng thời gian nó tồn tại.
+
+Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu hỏi thật không còn là "gộp hay không" mà là **ranh giới giữa chúng nằm ở đâu**.
+
+**Sai bất kể câu trả lời:** hôm nay không gì ngăn `createFormulaVersion` ghi một dòng `FC-xxx` cho công thức **chưa hề khoá** (dự án chưa qua Gate 5) — tức ghi một iteration phát triển vào cuốn sổ dành cho thay đổi có kiểm soát. Chưa sửa, vì cách sửa đúng phụ thuộc câu (f).
+
+**Câu hỏi:** (a) Về nghiệp vụ, có **một** loại bản ghi thay đổi hay **nhiều loại khác nhau thật sự**? Nếu nhiều, cuốn nào khác nhau về bản chất và khác ở điểm nào? (b) Trong 9 bề mặt trên, cuốn nào là sách luật và cuốn nào là sổ sự kiện? (c) Một lần tăng phiên bản công thức có **bắt buộc** sinh một bản ghi Change Control (và do đó khoá mềm Gate 05/08) không? (d) Một thay đổi ảnh hưởng cùng lúc tới công thức, bao bì và claim là **một** bản ghi hay **nhiều** bản ghi liên kết? (e) Các cột tham chiếu chéo có nên thành liên kết thật (chọn từ danh sách) không? (f) Ranh giới giữa Development Iteration Log và Formulation Change Register có phải là **thời điểm công thức được khoá ở Gate 5** không? Nếu không thì là gì?
+
+**Không làm gì tới khi có trả lời**, theo quyết định của chủ dự án: gộp nhầm hai loại bản ghi thật sự khác nhau còn tệ hơn để chúng rời rạc, vì lúc đó phải tách lại một cuốn sổ đã có dữ liệu thật. Ngoại lệ duy nhất đã làm trước là chữ ký NP ([[R5-Q18]]) — nó đúng bất kể sổ nằm ở đâu.
+
+**Nếu trả lời khác:** `packages/shared/src/config/registers.ts` (`formulaChangeControl`, `artworkChangeControl`, `formulationChangeRegister`, `changeTemplates`) · `packages/shared/src/config/changeTriggers.ts` (`CHANGE_TRIGGERS`, hiện là bản chép tay của 2 sheet sách luật) · `apps/api/src/projects/projects.service.ts` (`createFormulaVersion`, đoạn "Formulation Change Register entry (A2)") · `apps/web/src/pages/ChangeControl.tsx`.

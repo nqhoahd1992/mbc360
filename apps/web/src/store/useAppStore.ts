@@ -175,6 +175,23 @@ interface AppState {
   setGraphConfig: (patch: Partial<GraphSettings>) => void;
 
   setRegisterRowsBulk: (id: string, registerKey: string, rows: RegisterRow[]) => void;
+  // A `signature` column is never part of the bulk save above — the server
+  // refuses to take one from a table write, because a value that proves who
+  // approved something cannot be a value the client sends (2026-08-26).
+  signRegisterRow: (
+    id: string,
+    registerKey: string,
+    rowIndex: number,
+    column: string,
+    stepUpToken: string,
+  ) => void;
+  withdrawRegisterSignature: (
+    id: string,
+    registerKey: string,
+    rowIndex: number,
+    column: string,
+    reason: string,
+  ) => void;
 
   setEvidenceItemsBulk: (id: string, items: EvidenceItem[]) => void;
   addCapa: (id: string, record: CapaRecord) => void;
@@ -466,6 +483,14 @@ export const useAppStore = create<AppState>()(
           writeSection(id, (v) => projectsApi.setPackagingBom(id, lines, v)),
         setRegisterRowsBulk: (id, registerKey, rows) =>
           writeSection(id, (v) => projectsApi.setRegisterRows(id, registerKey, rows, v)),
+        signRegisterRow: (id, registerKey, rowIndex, column, stepUpToken) =>
+          writeSection(id, (v) =>
+            projectsApi.signRegisterRow(id, registerKey, rowIndex, column, stepUpToken, v),
+          ),
+        withdrawRegisterSignature: (id, registerKey, rowIndex, column, reason) =>
+          writeSection(id, (v) =>
+            projectsApi.withdrawRegisterRowSignature(id, registerKey, rowIndex, column, reason, v),
+          ),
         setEvidenceItemsBulk: (id, items) =>
           writeSection(id, (v) => projectsApi.setEvidenceItems(id, items, v)),
 

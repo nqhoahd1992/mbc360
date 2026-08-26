@@ -4,6 +4,7 @@ import { Card, Checkbox, Collapse, Empty, Input, Segmented, Select, Table, Tag, 
 import {
   CheckCircleFilled,
   CloseCircleFilled,
+  ExclamationCircleOutlined,
   LockFilled,
   MinusCircleOutlined,
   RightCircleFilled,
@@ -370,12 +371,27 @@ export default function GateRulesMap() {
     // gateReadinessChecklist now also carries `pending` (Mandatory, still
     // `manual`) and `advisory` (Conditional/Supporting tier) items for the
     // Gate Flow panel's benefit — this page already has its own, richer
-    // bucket for those (`notYetEnforced`, built independently below with
-    // tier/evaluable detail), so exclude them here to keep "enforced"/"unmet"
+    // buckets for those (`notWired`/`notInForce`, built independently below
+    // with tier/evaluable detail), so exclude them here to keep "enforced"/"unmet"
     // meaning what they say: checks that actually hard-block today.
     const enforced = gateReadinessChecklist(project, meta.id).filter((i) => !i.pending && !i.advisory);
     const declared = evaluateReadinessRequirements(project, meta.id);
-    const notYetEnforced = declared.filter((r) => !r.evaluable || r.tier !== 'Mandatory');
+    // These used to be ONE number ("declared, not enforced"), which merged two
+    // unrelated things and double-counted a third. Split deliberately:
+    //  - notWired: Mandatory, so it SHOULD hard-block, but its check is still
+    //    `manual` — no data source exists yet. This is debt, and the only one
+    //    of the two that represents a gap in the system.
+    //  - notInForce: Conditional whose trigger has not fired on this project,
+    //    or Supporting. Not blocking is the CONFIRMED rule for these, not a
+    //    shortfall.
+    // A Conditional item whose trigger IS active hard-blocks exactly like a
+    // Mandatory one, so it belongs in `enforced` and nowhere else — the old
+    // `tier !== 'Mandatory'` filter listed it in both buckets at once.
+    const enforcedIds = new Set(enforced.map((i) => i.id));
+    const notWired = declared.filter((r) => !r.evaluable && r.tier === 'Mandatory');
+    const notInForce = declared.filter(
+      (r) => !enforcedIds.has(r.id) && !(!r.evaluable && r.tier === 'Mandatory'),
+    );
     const locking = REGISTER_CONFIGS.filter((c) => c.gate && locksAfterGateId(c.gate) === meta.id);
     const lockingPages = getNavGroups()
       .flatMap((g) => g.items)
@@ -385,7 +401,8 @@ export default function GateRulesMap() {
       state: gateState(project, meta.id),
       enforced,
       unmet: enforced.filter((i) => !i.satisfied),
-      notYetEnforced,
+      notWired,
+      notInForce,
       locking,
       lockingPages,
     };
@@ -510,11 +527,19 @@ export default function GateRulesMap() {
                             )}
                             {r.enforced.length - r.unmet.length}/{r.enforced.length} enforced checks met
                           </div>
-                          {r.notYetEnforced.length > 0 && (
-                            <Tooltip title="Declared in the confirmed F1/C7 appendix but not yet wired to a data source (or advisory tier) — never hard-blocks today.">
+                          {r.notWired.length > 0 && (
+                            <Tooltip title="Mandatory in the confirmed F1/C7 appendix, so it should hard-block — but nothing is wired to it yet, so today it does not. A gap in the system, not a rule.">
+                              <div style={{ color: '#d46b08' }}>
+                                <ExclamationCircleOutlined style={{ marginRight: 4 }} />
+                                {r.notWired.length} mandatory, not wired yet
+                              </div>
+                            </Tooltip>
+                          )}
+                          {r.notInForce.length > 0 && (
+                            <Tooltip title="Conditional items whose trigger has not fired on this project, plus Supporting items. Not blocking is the confirmed rule for these — a Conditional item DOES hard-block once its trigger applies, and is counted in the line above when it does.">
                               <div style={{ color: '#8c8c8c' }}>
                                 <MinusCircleOutlined style={{ marginRight: 4 }} />
-                                {r.notYetEnforced.length} declared, not enforced
+                                {r.notInForce.length} not in force here
                               </div>
                             </Tooltip>
                           )}
@@ -908,13 +933,33 @@ export default function GateRulesMap() {
                     </ul>
                   </div>
 
-                  {r.notYetEnforced.length > 0 && (
+                  {r.notWired.length > 0 && (
+                    <div>
+                      <div style={{ fontWeight: 600, color: '#d46b08' }}>
+                        Mandatory, but nothing is wired to it yet ({r.notWired.length}) — should block, does not
+                      </div>
+                      <ul style={{ margin: '4px 0 0', paddingLeft: 18, color: '#d46b08', display: 'grid', gap: 4 }}>
+                        {r.notWired.map((item) => (
+                          <li key={item.id}>
+                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
+                              <Tag color={TIER_COLOR[item.tier]} style={{ margin: 0 }}>
+                                {item.tier}
+                              </Tag>
+                              <span>{item.label} — no data source wired</span>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {r.notInForce.length > 0 && (
                     <div>
                       <div style={{ fontWeight: 600, color: '#8c8c8c' }}>
-                        Declared in F1/C7 but not enforced yet ({r.notYetEnforced.length})
+                        Not in force on this project ({r.notInForce.length}) — by the confirmed rule, not a gap
                       </div>
                       <ul style={{ margin: '4px 0 0', paddingLeft: 18, color: '#8c8c8c', display: 'grid', gap: 4 }}>
-                        {r.notYetEnforced.map((item) => (
+                        {r.notInForce.map((item) => (
                           <li key={item.id}>
                             <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
                               <Tag color={TIER_COLOR[item.tier]} style={{ margin: 0 }}>
@@ -922,8 +967,12 @@ export default function GateRulesMap() {
                               </Tag>
                               <span>
                                 {item.label}
-                                {!item.evaluable && ' — no data source wired'}
-                                {item.evaluable && item.tier !== 'Mandatory' && ' — advisory tier, warns only'}
+                                {item.tier === 'Supporting' && ' — never blocks, warns only'}
+                                {item.tier === 'Conditional' &&
+                                  !item.active &&
+                                  ' — its trigger has not applied on this project; it would hard-block if it did'}
+                                {item.tier === 'Conditional' && item.active && !item.evaluable && ' — triggered, but no data source wired'}
+                                {!item.evaluable && item.tier === 'Supporting' && ' (no data source wired)'}
                               </span>
                             </span>
                           </li>

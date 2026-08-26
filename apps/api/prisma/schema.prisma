@@ -487,7 +487,12 @@ model StepUpProof {
   // factor was actually used if a second channel is ever added.
   channel          String   @default("totp")
   verifiedAt       DateTime @default(now())
-  usedForSignOffId String?
+  // What the proof was spent on. Renamed from `usedForSignOffId` on 2026-08-26,
+  // when register-row signatures started using the same single-use mechanism:
+  // it holds a SignOff id for a phase signature, and a
+  // `register:<project>:<registerKey>:<row>:<column>` marker for a register one.
+  // A name saying "signOff" would have made the second kind look like a bug.
+  usedForId        String?
 
   @@index([userId, purpose])
   @@map("step_up_proofs")

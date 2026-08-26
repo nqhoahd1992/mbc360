@@ -7,7 +7,12 @@ import {
 } from '@nestjs/common';
 import { GATES, GATE_DECISIONS } from '@mbc360/shared/config/gates';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
-import { getRegisterConfig } from '@mbc360/shared/config/registers';
+import {
+  getRegisterConfig,
+  signatureColumns,
+  signatureFieldKeys,
+  type RegisterConfig,
+} from '@mbc360/shared/config/registers';
 import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { gate11ConditionalChanges } from '@mbc360/shared/utils/changeImpact';
@@ -990,7 +995,7 @@ export class ProjectsService {
         const proof = payload.proof
           ? await tx.stepUpProof.findUnique({ where: { id: payload.proof } })
           : null;
-        if (!proof || proof.userId !== user.id || proof.usedForSignOffId) {
+        if (!proof || proof.userId !== user.id || proof.usedForId) {
           throw new BadRequestException('Verification already used or invalid — enter a new code');
         }
         const signature = await tx.userSignature.findUnique({ where: { userId: user.id } });
@@ -1001,7 +1006,7 @@ export class ProjectsService {
         }
         // Stamped inside this same row-locked transaction — makes the proof
         // single-use even though the JWT itself is stateless.
-        await tx.stepUpProof.update({ where: { id: proof.id }, data: { usedForSignOffId: existing.id } });
+        await tx.stepUpProof.update({ where: { id: proof.id }, data: { usedForId: existing.id } });
         signatureImage = signature.imageData;
       }
 
@@ -1232,17 +1237,27 @@ export class ProjectsService {
       // time a review DATE is recorded or changed, so a later edit to the wording
       // stops matching and the claim needs reviewing again. Derived server-side
       // rather than typed — a snapshot someone can edit proves nothing.
+      // A signature is written by the sign/withdraw endpoints and by nothing
+      // else. The bulk save is a plain table write, so whatever it says about a
+      // signature field is discarded and the committed value carried over —
+      // otherwise a client could forge one, or quietly erase one, by editing the
+      // row it sits on. Same reasoning as `syncPublishedInfoDerived` below: a
+      // value that PROVES something has to be derived by the server, never sent.
+      const rowsAfterSignatureGuard =
+        signatureColumns(config).length > 0
+          ? this.carryRegisterSignatures(config, project.registers[registerKey] ?? [], rows)
+          : rows;
       const rowsToWrite =
         registerKey === 'claimEvidenceTraceability'
-          ? snapshotReviewedWording(project, rows)
+          ? snapshotReviewedWording(project, rowsAfterSignatureGuard)
           : registerKey === 'publishedInfoApproval'
             // displayName, not the user id — every `user`-typed register column
             // stores a display name (see UserSelect), so the exemption declarer
             // renders like every other person field.
-            ? syncPublishedInfoDerived(project, rows, user.displayName)
-            : rows;
+            ? syncPublishedInfoDerived(project, rowsAfterSignatureGuard, user.displayName)
+            : rowsAfterSignatureGuard;
       await tx.registerRow.deleteMany({ where: { projectId: id, registerKey } });
-      if (rows.length > 0) {
+      if (rowsToWrite.length > 0) {
         await tx.registerRow.createMany({
           data: rowsToWrite.map((data, rowOrder) => ({
             projectId: id,
@@ -1254,6 +1269,230 @@ export class ProjectsService {
         });
       }
       return { registerKey, rows: rows.length };
+    });
+  }
+
+  // -------------------------------------------------- register signatures ----
+  //
+  // A `signature` column replaces the workbook's "type your name here" approval
+  // cell. It is not a field the table can write: the managed keys are set here,
+  // from the session, or cleared by withdraw, and by nothing else.
+  //
+  // Row addressing is the row INDEX, which is what this register already runs
+  // on — setRegisterRows deletes every row and rewrites them in array order, so
+  // rowOrder IS the index. That makes deleting a signed row the one way an index
+  // could shift under a signature, so the carry-over below refuses it.
+
+  private registerSignatureColumn(config: RegisterConfig, column: string) {
+    const col = signatureColumns(config).find((c) => c.key === column);
+    if (!col) {
+      throw new BadRequestException(`"${column}" is not a signature column on register "${config.key}"`);
+    }
+    if (!col.signCapability?.includes('|')) {
+      // A signature column anyone may sign is the free-text box it replaced.
+      throw new BadRequestException(`Signature column "${column}" declares no signing capability`);
+    }
+    const [resource, action] = col.signCapability.split('|');
+    return { col, resource, action };
+  }
+
+  // Carry every signature field over from the committed rows, by index, and
+  // refuse a save that would drop a signed row. Withdrawing is how a signature
+  // goes away; a table save must never be able to do it as a side effect.
+  private carryRegisterSignatures(
+    config: RegisterConfig,
+    committed: RegisterRow[],
+    incoming: RegisterRow[],
+  ): RegisterRow[] {
+    const cols = signatureColumns(config);
+    const out = incoming.map((row) => ({ ...row }));
+    committed.forEach((prev, index) => {
+      for (const col of cols) {
+        const keys = signatureFieldKeys(col.key);
+        if (prev[keys.userId] && index >= out.length) {
+          throw new BadRequestException(
+            `Row ${index + 1} carries a signature (${col.label}) and cannot be deleted — withdraw the signature first`,
+          );
+        }
+        if (index >= out.length) continue;
+        for (const key of Object.values(keys)) {
+          if (prev[key] === undefined) delete out[index][key];
+          else out[index][key] = prev[key];
+        }
+      }
+    });
+    // Rows added in this save start unsigned, whatever the client sent.
+    for (let index = committed.length; index < out.length; index += 1) {
+      for (const col of cols) {
+        for (const key of Object.values(signatureFieldKeys(col.key))) delete out[index][key];
+      }
+    }
+    // The derived "approved?" tick that pairs with the signature. Held as its
+    // own column so the table can show it, but it states the same fact the
+    // signature does, so the signature decides it.
+    if (cols.some((c) => c.key === 'npSignOff')) {
+      for (const row of out) row.approvedByNp = !!row[signatureFieldKeys('npSignOff').userId];
+    }
+    return out;
+  }
+
+  private registerSignatureStepUpPurpose(
+    id: string,
+    registerKey: string,
+    rowIndex: number,
+    column: string,
+  ): string {
+    return `register_signature:${id}:${registerKey}:${rowIndex}:${column}`;
+  }
+
+  // One step, not two — same shape as the phase sign-off step-up: a code read
+  // off the signer's authenticator is exchanged for a short-lived, single-use
+  // proof bound to this exact row and column.
+  async verifyRegisterSignatureStepUp(
+    user: SessionUser,
+    id: string,
+    registerKey: string,
+    rowIndex: number,
+    column: string,
+    code: string,
+  ): Promise<{ stepUpToken: string }> {
+    const config = getRegisterConfig(registerKey);
+    if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    const { col, resource, action } = this.registerSignatureColumn(config, column);
+    if (!(await this.permissions.hasPermission(user, resource, action))) {
+      throw new ForbiddenException(`Your role may not sign "${col.label}" (needs ${col.signCapability})`);
+    }
+    const signature = await this.prisma.userSignature.findUnique({ where: { userId: user.id } });
+    if (!signature) {
+      throw new BadRequestException('Save a signature in My Account before signing');
+    }
+    await this.totp.verifyForStepUp(user.id, code);
+    const purpose = this.registerSignatureStepUpPurpose(id, registerKey, rowIndex, column);
+    const proof = await this.prisma.stepUpProof.create({
+      data: { userId: user.id, purpose, channel: 'totp' },
+    });
+    const stepUpToken = await this.jwt.signAsync(
+      { sub: user.id, typ: 'register_signature_step_up', proof: proof.id, purpose },
+      { expiresIn: '5m' },
+    );
+    return { stepUpToken };
+  }
+
+  async signRegisterRow(
+    user: SessionUser,
+    id: string,
+    registerKey: string,
+    rowIndex: number,
+    column: string,
+    stepUpToken: string,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    const config = getRegisterConfig(registerKey);
+    if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    const { col, resource, action } = this.registerSignatureColumn(config, column);
+    return this.mutate(user, id, expectedVersion, 'register_signature.signed', async (tx, row, project) => {
+      if (isGateRefLocked(project, config.gate)) {
+        throw new ForbiddenException(
+          `Register "${registerKey}" belongs to gate ${config.gate}, which has passed — it is read-only (use Backtrack)`,
+        );
+      }
+      if (!(await this.permissions.hasPermission(user, resource, action))) {
+        throw new ForbiddenException(`Your role may not sign "${col.label}" (needs ${col.signCapability})`);
+      }
+      const target = await tx.registerRow.findFirst({
+        where: { projectId: id, registerKey, rowOrder: rowIndex },
+      });
+      if (!target) throw new NotFoundException(`Row ${rowIndex + 1} not found on register "${registerKey}"`);
+      const data = { ...(target.data as RegisterRow) };
+      const keys = signatureFieldKeys(column);
+      if (data[keys.userId]) {
+        throw new BadRequestException(
+          `"${col.label}" was already signed by ${String(data[keys.name] ?? 'another user')} — withdraw it first`,
+        );
+      }
+
+      // The same second factor the phase block requires. Signing IS the act, so
+      // the proof is spent inside this row-locked transaction, which is what
+      // makes a stateless 5-minute JWT single-use.
+      if (!stepUpToken) {
+        throw new BadRequestException(
+          'An authenticator code is required to sign — enter the code from your authenticator app',
+        );
+      }
+      let payload: { sub?: string; typ?: string; proof?: string; purpose?: string };
+      try {
+        payload = await this.jwt.verifyAsync(stepUpToken);
+      } catch {
+        throw new BadRequestException('Verification expired or invalid — enter a new code');
+      }
+      const expectedPurpose = this.registerSignatureStepUpPurpose(id, registerKey, rowIndex, column);
+      if (
+        payload.typ !== 'register_signature_step_up' ||
+        payload.sub !== user.id ||
+        payload.purpose !== expectedPurpose
+      ) {
+        throw new BadRequestException('Verification does not match this signature');
+      }
+      const proof = payload.proof ? await tx.stepUpProof.findUnique({ where: { id: payload.proof } }) : null;
+      if (!proof || proof.userId !== user.id || proof.usedForId) {
+        throw new BadRequestException('Verification already used or invalid — enter a new code');
+      }
+      const saved = await tx.userSignature.findUnique({ where: { userId: user.id } });
+      if (!saved) throw new BadRequestException('Save a signature in My Account before signing');
+      await tx.stepUpProof.update({ where: { id: proof.id }, data: { usedForId: expectedPurpose } });
+
+      const now = new Date();
+      data[keys.name] = user.displayName;
+      data[keys.userId] = user.id;
+      // Snapshotted, never re-read — a role change tomorrow must not rewrite
+      // what this signature claimed today.
+      data[keys.role] = user.roles.map((r) => r.role.name).join(', ') || '';
+      data[keys.at] = now.toISOString();
+      data[keys.image] = saved.imageData;
+      if (column === 'npSignOff') data.approvedByNp = true;
+      await tx.registerRow.update({
+        where: { id: target.id },
+        data: { data: data as Prisma.InputJsonValue, updatedById: user.id },
+      });
+      return { registerKey, rowIndex, column, recordVersion: row.version };
+    });
+  }
+
+  // Only the signer may release their own signature (an admin too, for the case
+  // where that account is gone), and a reason is mandatory — B4, no silent
+  // corrections. Same rule as withdrawSignOff, for the same reason.
+  async withdrawRegisterRowSignature(
+    user: SessionUser,
+    id: string,
+    registerKey: string,
+    rowIndex: number,
+    column: string,
+    reason: string,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    const why = reason?.trim();
+    if (!why) throw new BadRequestException('A reason is required to withdraw a signature');
+    const config = getRegisterConfig(registerKey);
+    if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    const { col } = this.registerSignatureColumn(config, column);
+    return this.mutate(user, id, expectedVersion, 'register_signature.withdrawn', async (tx) => {
+      const target = await tx.registerRow.findFirst({
+        where: { projectId: id, registerKey, rowOrder: rowIndex },
+      });
+      if (!target) throw new NotFoundException(`Row ${rowIndex + 1} not found on register "${registerKey}"`);
+      const data = { ...(target.data as RegisterRow) };
+      const keys = signatureFieldKeys(column);
+      if (!data[keys.userId]) throw new BadRequestException(`"${col.label}" is not signed`);
+      if (data[keys.userId] !== user.id && !this.permissions.isAdmin(user)) {
+        throw new ForbiddenException(`Only ${String(data[keys.name] ?? 'the signer')} may withdraw this signature`);
+      }
+      for (const key of Object.values(keys)) delete data[key];
+      if (column === 'npSignOff') data.approvedByNp = false;
+      await tx.registerRow.update({
+        where: { id: target.id },
+        data: { data: data as Prisma.InputJsonValue, updatedById: user.id },
+      });
+      return { registerKey, rowIndex, column, reason: why };
     });
   }
 
@@ -1821,6 +2060,18 @@ export class ProjectsService {
         }
 
         // Formulation Change Register entry (A2).
+        //
+        // This writes an `FC-xxx` row into a SECOND change log, parallel to the
+        // `CHG-xxx` Change Control log and unlinked to it. The Major cascade just
+        // above is real — SG04-SG09 reopen and their phase sign-offs are cancelled
+        // — but no `CHG-` record exists, so the change-control machinery is blind
+        // to it: no soft lock at Gates 10/11 (outside the reopened range), no Gate
+        // 11 impact evaluation (E3(b) requires one per open change), closure by one
+        // `Closed?` tick rather than q34(c) eight-field disposition, and no
+        // `impactAreas` to mark it launch-impacting. Whether these are one book or two is
+        // [ASSUMPTION: R5-Q19]; deliberately not "fixed" before the review team
+        // answers, because merging two records that are genuinely different is
+        // worse than leaving them apart.
         const existingRows = await tx.registerRow.count({
           where: { projectId: id, registerKey: 'formulationChangeRegister' },
         });

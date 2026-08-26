@@ -166,6 +166,17 @@ async function seedRbac(): Promise<void> {
       action: 'acknowledge',
       description: 'Acknowledge an open change control at Gate 11 (Round 4, q34d)',
     },
+    // The Formulation Change Register's commercial approval, which the workbook
+    // calls "NP sign-off" and held as a free-text name box until 2026-08-26. It
+    // is a capability rather than a separate register because authority is not a
+    // table: the app has role grants, an authenticated signature and gate
+    // readiness, none of which a spreadsheet had. Whether that register should
+    // exist at all is [ASSUMPTION: R5-Q18].
+    {
+      resource: 'formulation-change',
+      action: 'approve-commercial',
+      description: 'Sign the commercial (NP) approval on a formulation change',
+    },
     // Company-level reference data (Round 4 questions 4, 17, 28). One capability
     // per dataset, not one for "reference data": the answers name different
     // authorities — Regulatory for market profiles, Technical/Safety/Regulatory for
@@ -227,6 +238,15 @@ async function seedRbac(): Promise<void> {
     // too, since several of E3(b)'s impact subjects are regulatory.
     if (['sso-quality-reviewer', 'sso-regulatory-reviewer', 'sso-final-approver'].includes(role.key)) {
       grantedIds.push(permissionId('change-impact', 'acknowledge'));
+    }
+
+    // "NP" is the company's final commercial authority. Which of the 17 SSO roles
+    // that IS has never been stated, so Final Approver is a reading of the words
+    // "commercial authority", not a confirmed mapping — part of [ASSUMPTION:
+    // R5-Q18]. Like every grant here it is an editable starting point: the Role
+    // Editor moves it without a code change.
+    if (role.key === 'sso-final-approver') {
+      grantedIds.push(permissionId('formulation-change', 'approve-commercial'));
     }
 
     // Reference data, per the function each answer names.
