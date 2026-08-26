@@ -82,6 +82,7 @@ export default function ChecklistSection({
           {
             title: '',
             width: 40,
+            fixed: 'left',
             render: (_, r, i) => {
               const blocked = r.selected ? untickBlockedReason?.(r.label) : undefined;
               const box = (
@@ -102,6 +103,7 @@ export default function ChecklistSection({
           {
             title: 'Option',
             width: 240,
+            fixed: 'left',
             render: (_, r) => (
               <span style={{ fontWeight: r.selected ? 600 : 400 }}>{r.label}</span>
             ),
@@ -112,7 +114,6 @@ export default function ChecklistSection({
             width: 80,
             render: (_, r, i) => (
               <Select
-                size="small"
                 style={{ width: 70 }}
                 value={r.status}
                 disabled={readOnly}
@@ -127,7 +128,6 @@ export default function ChecklistSection({
             render: (_, r, i) =>
               r.selected ? (
                 <Input
-                  size="small"
                   value={r.evidenceLink}
                   placeholder="link"
                   disabled={readOnly}
@@ -142,7 +142,7 @@ export default function ChecklistSection({
             width: 240,
             render: (_, r, i) =>
               r.selected ? (
-                <Input size="small" value={r.notes} disabled={readOnly} onChange={(e) => patch(i, { notes: e.target.value })} />
+                <Input value={r.notes} disabled={readOnly} onChange={(e) => patch(i, { notes: e.target.value })} />
               ) : (
                 <span style={{ color: '#d9d9d9' }}>—</span>
               ),

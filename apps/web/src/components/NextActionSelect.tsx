@@ -57,7 +57,6 @@ export default function NextActionSelect({
 
   return (
     <Select
-      size="small"
       style={{ width: '100%' }}
       showSearch
       allowClear

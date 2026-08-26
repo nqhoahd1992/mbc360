@@ -10,6 +10,7 @@ import {
   UnlockOutlined,
 } from '@ant-design/icons';
 import { GATES, PHASES } from '@mbc360/shared/config/gates';
+import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import { GATE_READINESS, type ReadinessCheck, type ReadinessTier } from '@mbc360/shared/config/gateReadiness';
 import {
   formatGate,
@@ -62,6 +63,10 @@ const PHASE_SHEET_NAMES: Record<number, string> = {
   3: 'PHASE3 G7-9 QUAL',
   4: 'PHASE4 G10-12 REG',
 };
+// Reverse of the map above, so buildSheetIndex can tell a phase sheet from
+// the 3 plain system-reference tabs in NON_REGISTER_SHEETS without a second
+// lookup table to keep in sync.
+const PHASE_BY_SHEET_NAME = new Map(Object.entries(PHASE_SHEET_NAMES).map(([phase, name]) => [name, Number(phase)]));
 
 // Workbook tabs the app models as something OTHER than an evidence register,
 // so they carry no RegisterConfig (and therefore no sheetName) and were
@@ -201,7 +206,36 @@ function buildSheetIndex(): SheetEntry[] {
   // attributed to a phase sheet below always finds its entry.
   for (const sheet of NON_REGISTER_SHEETS) {
     const entry = ensure(sheet.sheetName);
-    entry.parts.push({ title: sheet.title, mode: 'form' });
+    const phaseNo = PHASE_BY_SHEET_NAME.get(sheet.sheetName);
+    const phaseConfig = phaseNo ? PHASE_CONFIGS[phaseNo] : undefined;
+    if (phaseConfig) {
+      // A phase sheet is not one block — same "several distinct tables on
+      // one Excel tab" shape every multi-register sheet has (see the
+      // comment on SheetEntry.parts above), just modeled via PHASE_CONFIGS
+      // instead of RegisterConfig. Each checklist/requirement section is a
+      // real, separately-confirmed table on the source workbook sheet (see
+      // CLAUDE.md's Gate 1 option-table note: "all six pick-from-a-list
+      // questions on that sheet ... share one 7-column shape") — counting
+      // them individually here (2026-08-26, user-reported: the count was
+      // flatly 1 for every phase regardless of how many sections it holds,
+      // unlike every register-backed sheet) is what makes "N forms" mean
+      // the same thing for a phase sheet as it does everywhere else on
+      // this page.
+      for (const section of phaseConfig.checklistSections) {
+        entry.parts.push({ title: section.title, gate: section.gate, mode: 'form' });
+      }
+      for (const section of phaseConfig.requirementSections) {
+        entry.parts.push({ title: section.title, mode: 'form' });
+      }
+      // Everything else on the sheet that isn't its own confirmed table —
+      // the Stage/gate-flow columns, Key Gate Checks, 8 Angles, sign-off —
+      // stays one catch-all part rather than being split further, since
+      // (unlike the sections above) breaking those out has not been
+      // checked against the real workbook cells.
+      entry.parts.push({ title: 'Gate flow, Key Gate Checks, 8 Angles & sign-off', mode: 'form' });
+    } else {
+      entry.parts.push({ title: sheet.title, mode: 'form' });
+    }
     entry.groups.push(sheet.group);
     entry.perSectionLock = true;
     if (sheet.page) entry.href = `/projects/:id/${sheet.page}`;
@@ -720,9 +754,9 @@ export default function GateRulesMap() {
                 width: 110,
                 render: (_, entry: SheetEntry) =>
                   entry.gateRefs.length > 0 ? (
-                    <span>
+                    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
                       {entry.gateRefs.map((r) => (
-                        <Tag key={r} style={{ marginBottom: 2 }}>
+                        <Tag key={r} style={{ margin: 0 }}>
                           {formatGate(r)}
                         </Tag>
                       ))}
@@ -740,12 +774,26 @@ export default function GateRulesMap() {
                   }
                   const gatesBlocked = [...new Set(entry.blocks.map((b) => b.gateNumber))].sort();
                   return (
-                    <Tooltip title={entry.blocks.map((b) => `Gate ${b.gateNumber} (${b.tier}): ${b.label}`).join('\n')}>
-                      <span>
+                    <Tooltip
+                      title={
+                        // A plain '\n'-joined string doesn't break lines inside
+                        // antd's Tooltip (its default white-space collapses
+                        // them into one run-on sentence) — each reason needs
+                        // to be its own block element instead.
+                        <div style={{ display: 'grid', gap: 4 }}>
+                          {entry.blocks.map((b, i) => (
+                            <div key={i}>
+                              Gate {b.gateNumber} ({b.tier}): {b.label}
+                            </div>
+                          ))}
+                        </div>
+                      }
+                    >
+                      <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
                         {gatesBlocked.map((n) => {
                           const worst = entry.blocks.find((b) => b.gateNumber === n && b.tier === 'Mandatory');
                           return (
-                            <Tag key={n} color={worst ? 'red' : 'orange'} style={{ marginBottom: 2 }}>
+                            <Tag key={n} color={worst ? 'red' : 'orange'} style={{ margin: 0 }}>
                               Gate {n}
                             </Tag>
                           );
@@ -777,7 +825,7 @@ export default function GateRulesMap() {
                     );
                   }
                   return (
-                    <span>
+                    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
                       {lockable.map((r) => {
                         const after = locksAfterGateId(r);
                         const afterNumber = after ? gateNumberOf(after) : '—';
@@ -797,7 +845,7 @@ export default function GateRulesMap() {
                             <Tag
                               color={locked ? 'error' : 'success'}
                               icon={locked ? <LockFilled /> : <UnlockOutlined />}
-                              style={{ marginBottom: 2 }}
+                              style={{ margin: 0 }}
                             >
                               {locked
                                 ? `Read-only — G${afterNumber} passed`
@@ -821,15 +869,21 @@ export default function GateRulesMap() {
             return {
               key: r.meta.id,
               label: (
-                <span>
-                  <b style={{ color: phase.color }}>Gate {r.meta.number}</b> · {r.meta.name}{' '}
+                <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
+                  <span>
+                    <b style={{ color: phase.color }}>Gate {r.meta.number}</b> · {r.meta.name}
+                  </span>
                   {r.unmet.length > 0 ? (
-                    <Tag color="error">{r.unmet.length} blocking</Tag>
+                    <Tag color="error" style={{ margin: 0 }}>
+                      {r.unmet.length} blocking
+                    </Tag>
                   ) : (
-                    <Tag color="success">Nothing blocking</Tag>
+                    <Tag color="success" style={{ margin: 0 }}>
+                      Nothing blocking
+                    </Tag>
                   )}
                   {r.locking.length + r.lockingPages.length > 0 && (
-                    <Tag color="warning" icon={<LockFilled />}>
+                    <Tag color="warning" icon={<LockFilled />} style={{ margin: 0 }}>
                       {r.locking.length + r.lockingPages.length} freeze here
                     </Tag>
                   )}
@@ -843,7 +897,7 @@ export default function GateRulesMap() {
 
                   <div>
                     <div style={{ fontWeight: 600, color: '#cf1322' }}>Enforced now — the gate cannot pass until</div>
-                    <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                    <ul style={{ margin: '4px 0 0', paddingLeft: 18, display: 'grid', gap: 4 }}>
                       {r.enforced.map((item) => (
                         <li key={item.id} style={{ color: item.satisfied ? '#389e0d' : '#cf1322' }}>
                           {item.satisfied ? '✓ ' : ''}
@@ -859,13 +913,19 @@ export default function GateRulesMap() {
                       <div style={{ fontWeight: 600, color: '#8c8c8c' }}>
                         Declared in F1/C7 but not enforced yet ({r.notYetEnforced.length})
                       </div>
-                      <ul style={{ margin: '4px 0 0', paddingLeft: 18, color: '#8c8c8c' }}>
+                      <ul style={{ margin: '4px 0 0', paddingLeft: 18, color: '#8c8c8c', display: 'grid', gap: 4 }}>
                         {r.notYetEnforced.map((item) => (
                           <li key={item.id}>
-                            <Tag color={TIER_COLOR[item.tier]}>{item.tier}</Tag>
-                            {item.label}
-                            {!item.evaluable && ' — no data source wired'}
-                            {item.evaluable && item.tier !== 'Mandatory' && ' — advisory tier, warns only'}
+                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
+                              <Tag color={TIER_COLOR[item.tier]} style={{ margin: 0 }}>
+                                {item.tier}
+                              </Tag>
+                              <span>
+                                {item.label}
+                                {!item.evaluable && ' — no data source wired'}
+                                {item.evaluable && item.tier !== 'Mandatory' && ' — advisory tier, warns only'}
+                              </span>
+                            </span>
                           </li>
                         ))}
                       </ul>
@@ -880,36 +940,43 @@ export default function GateRulesMap() {
                     {r.locking.length + r.lockingPages.length === 0 ? (
                       <Typography.Text type="secondary">Nothing freezes at this gate.</Typography.Text>
                     ) : (
-                      <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                      <ul style={{ margin: '4px 0 0', paddingLeft: 18, display: 'grid', gap: 4 }}>
                         {r.lockingPages.map((p) => (
                           <li key={p.title}>
-                            {p.title} <Tag color="purple">Page</Tag>
-                            <Tag>{formatGate(p.gate)}</Tag>
-                            {isGateRefLocked(project, p.gate) && (
-                              <Tag color="error" icon={<LockFilled />}>
-                                Read-only now
+                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
+                              <span>{p.title}</span>
+                              <Tag color="purple" style={{ margin: 0 }}>
+                                Page
                               </Tag>
-                            )}
+                              <Tag style={{ margin: 0 }}>{formatGate(p.gate)}</Tag>
+                              {isGateRefLocked(project, p.gate) && (
+                                <Tag color="error" icon={<LockFilled />} style={{ margin: 0 }}>
+                                  Read-only now
+                                </Tag>
+                              )}
+                            </span>
                           </li>
                         ))}
                         {r.locking.map((c: RegisterConfig) => (
                           <li key={c.key}>
-                            <a
-                              href={`#/projects/${id}/registers/reg/${c.key}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              {c.title}
-                            </a>{' '}
-                            <Typography.Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 11 }}>
-                              {c.sheetName}
-                            </Typography.Text>{' '}
-                            <Tag>{formatGate(c.gate)}</Tag>
-                            {isGateRefLocked(project, c.gate) && (
-                              <Tag color="error" icon={<LockFilled />}>
-                                Read-only now
-                              </Tag>
-                            )}
+                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
+                              <a
+                                href={`#/projects/${id}/registers/reg/${c.key}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {c.title}
+                              </a>
+                              <Typography.Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 11 }}>
+                                {c.sheetName}
+                              </Typography.Text>
+                              <Tag style={{ margin: 0 }}>{formatGate(c.gate)}</Tag>
+                              {isGateRefLocked(project, c.gate) && (
+                                <Tag color="error" icon={<LockFilled />} style={{ margin: 0 }}>
+                                  Read-only now
+                                </Tag>
+                              )}
+                            </span>
                           </li>
                         ))}
                       </ul>

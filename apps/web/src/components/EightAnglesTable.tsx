@@ -4,7 +4,7 @@ import type { AngleRow, YNNA } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
-import { TEXT } from '../theme/tokens';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v }));
 
@@ -42,15 +42,15 @@ export default function EightAnglesTable({
         rowKey={(r) => r.angle}
         dataSource={draft}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: 900 }}
         columns={[
-          { title: 'Angle', width: 200, dataIndex: 'angle', render: (v) => <b>{v}</b> },
+          { title: 'Angle', width: 200, dataIndex: 'angle', fixed: 'left', render: (v) => <b>{v}</b> },
           {
             title: 'Y/N/NA',
             width: 80,
             render: (_, r, i) => (
               <Select
-                size="small"
                 style={{ width: 70 }}
                 value={r.ynna}
                 options={YNNA_OPTIONS}
@@ -79,7 +79,6 @@ export default function EightAnglesTable({
             width: 130,
             render: (_, r, i) => (
               <DatePicker
-                size="small"
                 value={r.date ? dayjs(r.date) : null}
                 onChange={(d) => patch(i, { date: d ? d.format('YYYY-MM-DD') : undefined })}
               />
@@ -89,21 +88,21 @@ export default function EightAnglesTable({
             title: 'Evidence / reference',
             width: 180,
             render: (_, r, i) => (
-              <Input size="small" value={r.evidenceRef} onChange={(e) => patch(i, { evidenceRef: e.target.value })} />
+              <Input value={r.evidenceRef} onChange={(e) => patch(i, { evidenceRef: e.target.value })} />
             ),
           },
           {
             title: 'Initials',
             width: 90,
             render: (_, r, i) => (
-              <Input size="small" value={r.initials} onChange={(e) => patch(i, { initials: e.target.value })} />
+              <Input value={r.initials} onChange={(e) => patch(i, { initials: e.target.value })} />
             ),
           },
           {
             title: 'Comments',
             width: 220,
             render: (_, r, i) => (
-              <Input size="small" value={r.comments} onChange={(e) => patch(i, { comments: e.target.value })} />
+              <Input value={r.comments} onChange={(e) => patch(i, { comments: e.target.value })} />
             ),
           },
         ]}

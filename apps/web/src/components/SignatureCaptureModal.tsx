@@ -109,7 +109,7 @@ export default function SignatureCaptureModal({
         </Button>,
       ]}
     >
-      {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 12 }} />}
+      {error && <Alert type="error" showIcon title={error} style={{ marginBottom: 12 }} />}
       <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
         Draw with your mouse (or finger, on a touch screen) in the box below.
       </Typography.Text>

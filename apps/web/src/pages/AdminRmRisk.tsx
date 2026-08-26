@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Empty, Input, Select, Space, Table, Tag, message } from 'antd';
+import { Alert, Button, Card, Checkbox, DatePicker, Empty, Input, Select, Space, Table, Tag, message } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import type { RawMaterialRisk, RmRiskFlag } from '@mbc360/shared/config/referenceData';
 import { RM_RISK_FLAGS } from '@mbc360/shared/config/referenceData';
 import { useAppStore } from '../store/useAppStore';
@@ -10,7 +11,7 @@ import { useDraft } from '../hooks/useDraft';
 import SaveBar from '../components/SaveBar';
 import { cosmetriListRawMaterials, type CosmetriRawMaterialSummary } from '../integrations/cosmetri';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
-import { TEXT } from '../theme/tokens';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 // Round 4 question 17 (2026-08-24): "Do not re-enter this per project… MBc360
 // maintains a shared Raw Material Risk Overlay keyed to the Cosmetri raw-material
@@ -129,7 +130,7 @@ export default function AdminRmRisk() {
       <Alert
         type="info"
         showIcon
-        message="Company-level reference data — classify a material once, every project reads it"
+        title="Company-level reference data — classify a material once, every project reads it"
         description="A material with no entry here is UNCLASSIFIED, not risk-free: Gate 4's allergen, impurity and contaminant review blocks until every material a project uses has been classified. Saving a row with no classification ticked is a real answer — it records that the material was assessed and carries none of these risks."
       />
 
@@ -145,7 +146,6 @@ export default function AdminRmRisk() {
             )}
             {canEdit && (
               <Select
-                size="small"
                 showSearch
                 allowClear
                 style={{ width: 320 }}
@@ -179,6 +179,7 @@ export default function AdminRmRisk() {
             rowKey={(r) => r.rmCode}
             dataSource={draft}
             pagination={false}
+            sticky={TABLE_STICKY}
             scroll={{ x: 1400 }}
             columns={[
               {
@@ -186,7 +187,7 @@ export default function AdminRmRisk() {
                 width: 260,
                 fixed: 'left',
                 render: (_, r) => (
-                  <Space direction="vertical" size={0}>
+                  <Space orientation="vertical" size={0}>
                     <b>{r.displayName || r.rmCode}</b>
                     <span style={{ fontSize: 12, color: TEXT.secondary }}>
                       {r.rmCode}
@@ -219,7 +220,6 @@ export default function AdminRmRisk() {
                 width: 180,
                 render: (_, r) => (
                   <Input
-                    size="small"
                     disabled={!canEdit}
                     value={r.evidenceLink}
                     onChange={(e) => patch(r.rmCode, { evidenceLink: e.target.value })}
@@ -230,12 +230,10 @@ export default function AdminRmRisk() {
                 title: 'Reviewed',
                 width: 140,
                 render: (_, r) => (
-                  <Input
-                    size="small"
-                    type="date"
+                  <DatePicker
                     disabled={!canEdit}
-                    value={r.reviewDate}
-                    onChange={(e) => patch(r.rmCode, { reviewDate: e.target.value })}
+                    value={r.reviewDate ? dayjs(r.reviewDate) : null}
+                    onChange={(d) => patch(r.rmCode, { reviewDate: d ? d.format('YYYY-MM-DD') : undefined })}
                   />
                 ),
               },
@@ -244,7 +242,6 @@ export default function AdminRmRisk() {
                 width: 220,
                 render: (_, r) => (
                   <Input.TextArea
-                    size="small"
                     autoSize={{ minRows: 1, maxRows: 3 }}
                     disabled={!canEdit}
                     value={r.notes}

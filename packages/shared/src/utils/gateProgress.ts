@@ -474,7 +474,7 @@ const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   claimNeedsRegulatoryReview: 'no claim has been declared yet, so no claim carries a category or risk level',
   scaleUpRiskIdentified: 'nobody has assessed whether this project carries a scale-up or pilot risk',
   rmRiskFlagged:
-    'one or more raw materials in this project have no entry in the Raw Material Risk Overlay (Users & Roles -> Raw material risk), so their allergen, impurity and contaminant risk is unclassified',
+    'one or more raw materials in this project have no entry in the Raw Material Risk Overlay (Company Reference Data -> Raw material risk), so their allergen, impurity and contaminant risk is unclassified',
 };
 
 // Evaluate a requirement's check against live project data. `evaluable` is false

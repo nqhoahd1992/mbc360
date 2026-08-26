@@ -1,4 +1,5 @@
-import { Alert, Card, Input, Select, Space } from 'antd';
+import { Alert, Card, DatePicker, Input, Select, Space } from 'antd';
+import dayjs from 'dayjs';
 import type { ProjectData } from '@mbc360/shared/types';
 import {
   ADMINISTRATIVE_ONLY_OPTIONS,
@@ -87,14 +88,13 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
         does not apply — it means it has not been assessed, and the gate that reads it stays blocked.
       </div>
 
-      <Space direction="vertical" style={{ width: '100%' }} size={14}>
+      <Space orientation="vertical" style={{ width: '100%' }} size={14}>
         <Field
           label="Human-participant study planned?"
           hint="Gate 08. Undecided blocks the gate."
         >
-          <Space direction="vertical" style={{ width: '100%' }} size={6}>
+          <Space orientation="vertical" style={{ width: '100%' }} size={6}>
             <Select
-              size="small"
               style={{ width: 280 }}
               allowClear
               placeholder="Not yet assessed"
@@ -111,7 +111,7 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
               <Alert
                 type="info"
                 showIcon
-                message="A Study Protocol has been started, so this already counts as Yes whatever is selected here."
+                title="A Study Protocol has been started, so this already counts as Yes whatever is selected here."
               />
             )}
           </Space>
@@ -123,7 +123,6 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
         >
           <Space wrap>
             <Select
-              size="small"
               style={{ width: 160 }}
               allowClear
               placeholder="Not yet assessed"
@@ -144,10 +143,9 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
           label="Scale-up risk identified?"
           hint="Gate 09. Pending assessment blocks the gate. A Major formula change counts as identified on its own."
         >
-          <Space direction="vertical" style={{ width: '100%' }} size={6}>
+          <Space orientation="vertical" style={{ width: '100%' }} size={6}>
             <Space wrap>
               <Select
-                size="small"
                 style={{ width: 200 }}
                 allowClear
                 placeholder="Not yet assessed"
@@ -161,23 +159,19 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
                 value={draft.scaleUpRiskAssessor}
                 onChange={(v?: string) => set('scaleUpRiskAssessor', v ?? '')}
               />
-              <Input
-                size="small"
-                type="date"
+              <DatePicker
                 style={{ width: 150 }}
-                value={draft.scaleUpRiskAssessmentDate}
-                onChange={(e) => set('scaleUpRiskAssessmentDate', e.target.value)}
+                value={draft.scaleUpRiskAssessmentDate ? dayjs(draft.scaleUpRiskAssessmentDate) : null}
+                onChange={(d) => set('scaleUpRiskAssessmentDate', d ? d.format('YYYY-MM-DD') : '')}
               />
             </Space>
             <Input.TextArea
-              size="small"
               autoSize={{ minRows: 1, maxRows: 3 }}
               placeholder="Risk description"
               value={draft.scaleUpRiskDescription}
               onChange={(e) => set('scaleUpRiskDescription', e.target.value)}
             />
             <Input.TextArea
-              size="small"
               autoSize={{ minRows: 1, maxRows: 3 }}
               placeholder="Rationale"
               value={draft.scaleUpRiskRationale}
@@ -185,14 +179,12 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
             />
             <Space wrap style={{ width: '100%' }}>
               <Input
-                size="small"
                 style={{ width: 280 }}
                 placeholder="Required pilot or scale-up activity"
                 value={draft.scaleUpRiskActivity}
                 onChange={(e) => set('scaleUpRiskActivity', e.target.value)}
               />
               <Input
-                size="small"
                 style={{ width: 220 }}
                 placeholder="Evidence link"
                 value={draft.scaleUpRiskEvidenceLink}
@@ -206,10 +198,9 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
           label="Change Control required for the post-market finding?"
           hint="Gate 12. Pending assessment blocks closure. An already-open change control counts as Yes on its own."
         >
-          <Space direction="vertical" style={{ width: '100%' }} size={6}>
+          <Space orientation="vertical" style={{ width: '100%' }} size={6}>
             <Space wrap>
               <Select
-                size="small"
                 style={{ width: 200 }}
                 allowClear
                 placeholder="Not yet assessed"
@@ -223,16 +214,13 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
                 value={draft.changeControlReviewer}
                 onChange={(v?: string) => set('changeControlReviewer', v ?? '')}
               />
-              <Input
-                size="small"
-                type="date"
+              <DatePicker
                 style={{ width: 150 }}
-                value={draft.changeControlReviewDate}
-                onChange={(e) => set('changeControlReviewDate', e.target.value)}
+                value={draft.changeControlReviewDate ? dayjs(draft.changeControlReviewDate) : null}
+                onChange={(d) => set('changeControlReviewDate', d ? d.format('YYYY-MM-DD') : '')}
               />
             </Space>
             <Input.TextArea
-              size="small"
               autoSize={{ minRows: 1, maxRows: 3 }}
               placeholder="Rationale"
               value={draft.changeControlRationale}
@@ -240,7 +228,6 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
             />
             <Space wrap>
               <Input
-                size="small"
                 style={{ width: 280 }}
                 status={ccNeedsRecord ? 'error' : undefined}
                 placeholder="Linked Change Control ID (required when Yes)"
@@ -248,7 +235,6 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
                 onChange={(e) => set('changeControlRecordId', e.target.value)}
               />
               <Input
-                size="small"
                 style={{ width: 220 }}
                 placeholder="Evidence link"
                 value={draft.changeControlEvidenceLink}
@@ -259,7 +245,7 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
         </Field>
       </Space>
 
-      {blockingReason && dirty && <Alert type="warning" showIcon style={{ marginTop: 12 }} message={blockingReason} />}
+      {blockingReason && dirty && <Alert type="warning" showIcon style={{ marginTop: 12 }} title={blockingReason} />}
 
       <SaveBar
         dirty={dirty}

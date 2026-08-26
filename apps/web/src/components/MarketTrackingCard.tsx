@@ -7,7 +7,7 @@ import { roleLabel } from '../utils/roles';
 import { canEditMarketTrack, EMPTY_GRANTS } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
-import { TEXT } from '../theme/tokens';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 const STATUS_OPTIONS: MarketApprovalStatus[] = [
   'Not Started',
@@ -56,7 +56,6 @@ export default function MarketTrackingCard({
     field: 'pifStatus' | 'regulatoryStatus' | 'claimsApproval',
   ) => (
     <Select
-      size="small"
       style={{ width: 120 }}
       value={track[field]}
       disabled={!canEdit}
@@ -100,10 +99,11 @@ export default function MarketTrackingCard({
         rowKey={(t) => t.market}
         dataSource={draft}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: 1100 }}
         locale={{ emptyText: 'No target markets recorded in the project identity' }}
         columns={[
-          { title: 'Market', width: 120, render: (_, t) => <b>{t.market}</b> },
+          { title: 'Market', width: 120, fixed: 'left', render: (_, t) => <b>{t.market}</b> },
           { title: 'PIF status', width: 140, render: (_, t, i) => statusSelect(t, i, 'pifStatus') },
           { title: 'Regulatory status', width: 140, render: (_, t, i) => statusSelect(t, i, 'regulatoryStatus') },
           { title: 'Claims approval', width: 140, render: (_, t, i) => statusSelect(t, i, 'claimsApproval') },
@@ -115,7 +115,6 @@ export default function MarketTrackingCard({
               return (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <Select
-                    size="small"
                     style={{ width: 120 }}
                     value={t.launchApproval}
                     disabled={!pifApproved || !canEdit}
@@ -154,7 +153,6 @@ export default function MarketTrackingCard({
             width: 240,
             render: (_, t, i) => (
               <Input.TextArea
-                size="small"
                 autoSize={{ minRows: 1, maxRows: 3 }}
                 value={t.regulatoryNotes}
                 onChange={(e) => patch(i, { regulatoryNotes: e.target.value })}

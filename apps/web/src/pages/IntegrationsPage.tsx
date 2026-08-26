@@ -292,7 +292,7 @@ export default function IntegrationsPage() {
                   type="warning"
                   showIcon
                   style={{ marginBottom: 8 }}
-                  message="Live credentials — admin only, viewing is audited"
+                  title="Live credentials — admin only, viewing is audited"
                   description="These are the actual Cosmetri OAuth tokens the backend uses. Anyone holding them can call Cosmetri as this account until they rotate or expire. Reveal only when needed for debugging, don't paste them elsewhere, and remember the refresh token is rotated on every refresh (a copied value goes stale)."
                 />
                 {!secrets ? (

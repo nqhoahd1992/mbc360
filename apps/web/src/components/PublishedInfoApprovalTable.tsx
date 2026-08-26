@@ -164,7 +164,6 @@ export default function PublishedInfoApprovalTable({
       case 'select':
         return (
           <Select
-            size="small"
             allowClear
             style={{ width: '100%', minWidth: 110 }}
             value={value as string | undefined}
@@ -175,7 +174,6 @@ export default function PublishedInfoApprovalTable({
       case 'date':
         return (
           <DatePicker
-            size="small"
             style={{ width: '100%' }}
             value={value ? dayjs(String(value)) : null}
             onChange={(d) => patch(index, column.key, d ? d.format('YYYY-MM-DD') : undefined)}
@@ -183,20 +181,19 @@ export default function PublishedInfoApprovalTable({
         );
       case 'number':
         return (
-          <InputNumber size="small" style={{ width: '100%' }} value={value as number | undefined} onChange={(v) => patch(index, column.key, v ?? 0)} />
+          <InputNumber style={{ width: '100%' }} value={value as number | undefined} onChange={(v) => patch(index, column.key, v ?? 0)} />
         );
       case 'textarea':
         return (
           <Input.TextArea
             autoSize={{ minRows: 1, maxRows: 4 }}
-            size="small"
             value={value as string | undefined}
             onChange={(e) => patch(index, column.key, e.target.value)}
           />
         );
       case 'text':
       default:
-        return <Input size="small" value={value as string | undefined} onChange={(e) => patch(index, column.key, e.target.value)} />;
+        return <Input value={value as string | undefined} onChange={(e) => patch(index, column.key, e.target.value)} />;
     }
   };
 
@@ -207,9 +204,12 @@ export default function PublishedInfoApprovalTable({
   };
 
   const columns = [
-    ...config.columns.map((col) => {
+    ...config.columns.map((col, i) => {
+      // Pin the identity column so it (and the row it's in) stays readable
+      // while scrolling through the rest of this wide register (2026-08-26).
+      const fixed = i === 0 ? ('left' as const) : undefined;
       if (readOnly) {
-        return { title: col.label, width: Math.max(col.width ?? 140, columnWidth(col)), render: (_: unknown, row: RegisterRow) => staticCell(col, row) };
+        return { title: col.label, width: Math.max(col.width ?? 140, columnWidth(col)), fixed, render: (_: unknown, row: RegisterRow) => staticCell(col, row) };
       }
       // No input by design: the API stamps this from the signed-in account when
       // the box is ticked, so it cannot be typed or edited (a declaration anyone
@@ -221,6 +221,7 @@ export default function PublishedInfoApprovalTable({
         return {
           title: col.label,
           width: Math.max(col.width ?? 150, columnWidth(col)),
+          fixed,
           render: (_: unknown, row: RegisterRow) => {
             const declared = String(row.noProductClaimBy ?? '').trim();
             if (declared) return <span style={{ color: '#666' }}>{declared}</span>;
@@ -240,6 +241,7 @@ export default function PublishedInfoApprovalTable({
         return {
           title: col.label,
           width: Math.max(col.width ?? 130, columnWidth(col)),
+          fixed,
           render: (_: unknown, row: RegisterRow, index: number) => {
             const linked = String(row.claimId ?? '').trim() !== '';
             const blocked = linked && !row.noProductClaim;
@@ -270,6 +272,7 @@ export default function PublishedInfoApprovalTable({
         return {
           title: col.label,
           width: Math.max(col.width ?? 150, columnWidth(col)),
+          fixed,
           render: (_: unknown, row: RegisterRow, index: number) => {
             const claimId = String(row.claimId ?? '');
             const violation = violationFor(row);
@@ -287,7 +290,6 @@ export default function PublishedInfoApprovalTable({
               >
                 <Select
                   disabled={exempt}
-                  size="small"
                   style={{ width: '100%' }}
                   showSearch
                   allowClear
@@ -330,6 +332,7 @@ export default function PublishedInfoApprovalTable({
         return {
           title: col.label,
           width: Math.max(col.width ?? 200, columnWidth(col)),
+          fixed,
           render: (_: unknown, row: RegisterRow) => {
             const master = masterWordingFor(row);
             if (!master) {
@@ -347,13 +350,13 @@ export default function PublishedInfoApprovalTable({
         return {
           title: col.label,
           width: Math.max(col.width ?? 220, columnWidth(col)),
+          fixed,
           render: (_: unknown, row: RegisterRow, index: number) => {
             const adaptation = wordingAdaptations.find((a) => a.row === row);
             return (
               <>
                 <Input.TextArea
                   autoSize={{ minRows: 1, maxRows: 4 }}
-                  size="small"
                   status={violationFor(row)?.kind === 'wording' ? 'error' : undefined}
                   value={row.exactWording as string | undefined}
                   onChange={(e) => patch(index, 'exactWording', e.target.value)}
@@ -369,7 +372,12 @@ export default function PublishedInfoApprovalTable({
           },
         };
       }
-      return { title: col.label, width: Math.max(col.width ?? 140, columnWidth(col)), render: (_: unknown, row: RegisterRow, index: number) => renderGeneric(col, row, index) };
+      return {
+        title: col.label,
+        width: Math.max(col.width ?? 140, columnWidth(col)),
+        fixed,
+        render: (_: unknown, row: RegisterRow, index: number) => renderGeneric(col, row, index),
+      };
     }),
     ...(readOnly
       ? []
@@ -377,6 +385,7 @@ export default function PublishedInfoApprovalTable({
           {
             title: '',
             width: 44,
+            fixed: 'right' as const,
             render: (_: unknown, __: RegisterRow, index: number) => (
               <Popconfirm title="Remove this row?" onConfirm={() => removeRow(index)}>
                 <Button size="small" danger type="text" aria-label="Remove this row" icon={<DeleteOutlined />} />

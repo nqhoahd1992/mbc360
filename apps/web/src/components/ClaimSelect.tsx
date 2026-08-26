@@ -66,7 +66,6 @@ export default function ClaimSelect({
 
   return (
     <Select
-      size="small"
       allowClear
       showSearch
       disabled={disabled}

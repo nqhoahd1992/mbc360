@@ -272,7 +272,7 @@ export default function MyAccount() {
         </Col>
         <Col xs={24} xl={12}>
             <Card size="small" title="Signature">
-              {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 12 }} />}
+              {error && <Alert type="error" showIcon title={error} style={{ marginBottom: 12 }} />}
               <Typography.Paragraph type="secondary">
                 Draw a signature once and reuse it when signing a phase. Attaching it to a sign-off
                 still needs a fresh code from your authenticator app each time — saving it here does
@@ -281,7 +281,7 @@ export default function MyAccount() {
               {loading ? (
                 <Spin />
               ) : signature?.hasSignature ? (
-                <Space direction="vertical" size={12}>
+                <Space orientation="vertical" size={12}>
                   <div
                     style={{
                       border: '1px solid #f0f0f0',
@@ -313,7 +313,7 @@ export default function MyAccount() {
                   </Space>
                 </Space>
               ) : (
-                <Space direction="vertical">
+                <Space orientation="vertical">
                   <Typography.Text type="secondary">No signature saved yet.</Typography.Text>
                   <Button type="primary" onClick={() => setModalOpen(true)}>
                     Add signature

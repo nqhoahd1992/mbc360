@@ -1,4 +1,5 @@
-import { Alert, Input, Select, Space } from 'antd';
+import { Alert, DatePicker, Input, Select, Space } from 'antd';
+import dayjs from 'dayjs';
 import type { GateRecord, RiskLevel } from '@mbc360/shared/types';
 import { GAP_IMPACT_CATEGORIES, RISK_LEVELS } from '@mbc360/shared/types';
 import UserSelect from './UserSelect';
@@ -48,7 +49,7 @@ export default function GapAssessmentBlock({
         <Alert
           type="error"
           showIcon
-          message="Gap not yet assessed — no Proceed decision is valid"
+          title="Gap not yet assessed — no Proceed decision is valid"
           description="A qualified reviewer must record how critical this gap is. Until then the gate can only go to Hold or Backtrack."
         />
       ) : (
@@ -62,10 +63,9 @@ export default function GapAssessmentBlock({
           {criticality || '—'} · {gate.gapImpactCategory || '—'} · assessed by {gate.gapAssessor || '—'}
         </div>
       ) : (
-        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={4} style={{ width: '100%' }}>
           <Space wrap>
             <Select
-              size="small"
               style={{ width: 150 }}
               allowClear
               status={graded ? undefined : 'error'}
@@ -75,7 +75,6 @@ export default function GapAssessmentBlock({
               onChange={(v?: RiskLevel) => onChange({ gapCriticality: v })}
             />
             <Select
-              size="small"
               style={{ width: 160 }}
               allowClear
               placeholder="Impact category"
@@ -89,16 +88,13 @@ export default function GapAssessmentBlock({
               value={gate.gapAssessor}
               onChange={(v?: string) => onChange({ gapAssessor: v ?? '' })}
             />
-            <Input
-              size="small"
-              type="date"
+            <DatePicker
               style={{ width: 140 }}
-              value={gate.gapAssessmentDate}
-              onChange={(e) => onChange({ gapAssessmentDate: e.target.value })}
+              value={gate.gapAssessmentDate ? dayjs(gate.gapAssessmentDate) : null}
+              onChange={(d) => onChange({ gapAssessmentDate: d ? d.format('YYYY-MM-DD') : undefined })}
             />
           </Space>
           <Input.TextArea
-            size="small"
             autoSize={{ minRows: 1, maxRows: 3 }}
             placeholder="Rationale"
             value={gate.gapRationale}
@@ -106,7 +102,6 @@ export default function GapAssessmentBlock({
           />
           <Space wrap style={{ width: '100%' }}>
             <Input
-              size="small"
               style={{ width: 260 }}
               placeholder="Required action"
               value={gate.gapRequiredAction}
@@ -119,7 +114,6 @@ export default function GapAssessmentBlock({
               onChange={(v?: string) => onChange({ gapActionOwner: v ?? '' })}
             />
             <Input
-              size="small"
               style={{ width: 200 }}
               placeholder="Evidence link"
               value={gate.gapEvidenceLink}

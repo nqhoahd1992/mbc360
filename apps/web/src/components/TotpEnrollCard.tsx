@@ -74,7 +74,7 @@ export default function TotpEnrollCard() {
   // up ~700px above the button that was pressed, which reads as "nothing
   // happened" — so this is rendered inside whichever step is active instead.
   const errorAlert = error ? (
-    <Alert type="error" showIcon message={error} style={{ marginTop: 4 }} />
+    <Alert type="error" showIcon title={error} style={{ marginTop: 4 }} />
   ) : null;
 
   return (
@@ -87,17 +87,17 @@ export default function TotpEnrollCard() {
       {loading ? (
         <Spin />
       ) : enrollment ? (
-        <Space direction="vertical" size={12}>
+        <Space orientation="vertical" size={12}>
           <Alert
             type="info"
             showIcon
-            message="Step 1 — scan this with your authenticator app"
+            title="Step 1 — scan this with your authenticator app"
             description="Scanning alone does not switch it on: the app will start showing a 6-digit code, and entering one below is what proves the device is yours."
           />
           <Alert
             type="warning"
             showIcon
-            message="Only this QR works"
+            title="Only this QR works"
             description="If you scanned an earlier one for MBc360, delete that entry in your app first — starting setup again replaces the key, so codes from the old entry will be rejected, and both entries look identical in the app."
           />
           <QRCode value={enrollment.otpauthUri} size={168} />
@@ -107,7 +107,7 @@ export default function TotpEnrollCard() {
               {enrollment.secret}
             </Typography.Text>
           </Typography.Text>
-          <Space direction="vertical" size={4}>
+          <Space orientation="vertical" size={4}>
             <Typography.Text strong>Step 2 — enter the code your app shows now</Typography.Text>
             <Space>
               <Input
@@ -136,7 +136,7 @@ export default function TotpEnrollCard() {
           </Space>
         </Space>
       ) : status?.enrolled ? (
-        <Space direction="vertical" size={12}>
+        <Space orientation="vertical" size={12}>
           <Space>
             <Tag color="green">Active</Tag>
             <Typography.Text type="secondary">
@@ -147,12 +147,12 @@ export default function TotpEnrollCard() {
             <Alert
               type="warning"
               showIcon
-              message={`Too many incorrect codes — locked until ${new Date(status.lockedUntil).toLocaleTimeString()}`}
+              title={`Too many incorrect codes — locked until ${new Date(status.lockedUntil).toLocaleTimeString()}`}
             />
           )}
           {!removing && errorAlert}
           {removing ? (
-            <Space direction="vertical" size={8}>
+            <Space orientation="vertical" size={8}>
               <Typography.Text type="secondary">
                 Enter a current code to confirm it is you removing it.
               </Typography.Text>
@@ -189,7 +189,7 @@ export default function TotpEnrollCard() {
           )}
         </Space>
       ) : (
-        <Space direction="vertical">
+        <Space orientation="vertical">
           {status?.pending && (
             <Typography.Text type="warning">
               A setup was started but never confirmed — it does not work yet. Start again below, and

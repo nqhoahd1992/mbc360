@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import {Alert, Button, Card, DatePicker, Empty, Input, message, Modal, Select, Table, Tooltip, Typography} from 'antd';
+import {Alert, App, Button, Card, DatePicker, Empty, Input, message, Modal, Select, Table, Tooltip, Typography} from 'antd';
 import {
   CheckCircleFilled,
   ExclamationCircleFilled,
@@ -46,6 +46,12 @@ export default function GateFlowTable({
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const { user } = useSession();
   const location = useLocation();
+  // Context-aware instance for the imperative "acknowledge open change
+  // control" confirm below — the static `Modal.confirm` it used to call
+  // renders outside React's tree and never sees ConfigProvider's theme (see
+  // the note on App.tsx's root `<App>`). The declarative `<Modal open={...}>`
+  // dialogs further down are unaffected and stay as-is.
+  const { modal } = App.useApp();
   const projectId = project.identity.id;
   const archived = !!project.identity.archived;
   const gates = project.gates;
@@ -287,7 +293,7 @@ export default function GateFlowTable({
           type="warning"
           showIcon
           style={{ marginBottom: 12 }}
-          message="This project is archived — read-only"
+          title="This project is archived — read-only"
           description="Restore it from the Projects list to make changes. Nothing has been deleted."
         />
       )}
@@ -296,7 +302,7 @@ export default function GateFlowTable({
           type="error"
           showIcon
           style={{ marginBottom: 12 }}
-          message="Decision not valid yet — cannot save"
+          title="Decision not valid yet — cannot save"
           description={
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {saveBlockedRows.map((r) => (
@@ -359,6 +365,7 @@ export default function GateFlowTable({
           {
             title: 'Gate',
             width: 90,
+            fixed: 'left',
             render: (_, r) => (
               <span style={{ whiteSpace: 'nowrap' }}>
                 {r.passed && <CheckCircleFilled style={{ color: '#52c41a', marginRight: 6 }} />}
@@ -415,7 +422,6 @@ export default function GateFlowTable({
             width: 140,
             render: (_, r) => (
               <Select
-                size="small"
                 style={{ width: 130 }}
                 value={r.draftRecord.status}
                 disabled={r.locked}
@@ -437,7 +443,6 @@ export default function GateFlowTable({
                   }
                 >
                   <Select
-                    size="small"
                     allowClear
                     placeholder="Decision"
                     style={{ width: 140 }}
@@ -471,7 +476,7 @@ export default function GateFlowTable({
                       // clobbered by a later Save.
                       if (v && r.openChanges.length > 0) {
                         const ids = r.openChanges.map((c) => c.changeId).join(', ');
-                        Modal.confirm({
+                        modal.confirm({
                           title: 'Acknowledge open change control',
                           content: `Open change control record${r.openChanges.length > 1 ? 's' : ''} affect Gate ${r.meta.number}: ${ids}. Recording "${v}" acknowledges ${r.openChanges.length > 1 ? 'them' : 'it'} as accepted for this decision.`,
                           okText: 'Acknowledge & record',
@@ -510,7 +515,6 @@ export default function GateFlowTable({
             width: 130,
             render: (_, r) => (
               <DatePicker
-                size="small"
                 value={r.draftRecord.dueDate ? dayjs(r.draftRecord.dueDate) : null}
                 disabled={r.locked}
                 onChange={(d) => patch(r.draftIndex, { dueDate: d ? d.format('YYYY-MM-DD') : undefined })}
@@ -522,7 +526,6 @@ export default function GateFlowTable({
             width: 150,
             render: (_, r) => (
               <Input
-                size="small"
                 value={r.draftRecord.evidenceLink}
                 placeholder="link"
                 disabled={r.locked}
@@ -536,7 +539,6 @@ export default function GateFlowTable({
             render: (_, r) => (
               <Input.TextArea
                 autoSize={{ minRows: 1, maxRows: 4 }}
-                size="small"
                 value={r.draftRecord.notes}
                 disabled={r.locked}
                 onChange={(e) => patch(r.draftIndex, { notes: e.target.value })}
@@ -546,6 +548,7 @@ export default function GateFlowTable({
           {
             title: 'History',
             width: 100,
+            fixed: 'right',
             render: (_, r) => (
               <Button
                 size="small"

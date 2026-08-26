@@ -56,8 +56,8 @@ export default function PhaseKeyLinksCard({
           if (link.href) {
             const to = link.absolute ? link.href : `/projects/${projectId}${link.href}`;
             return (
-              <div key={link.label} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                <span style={{ width: 220, color: '#595959' }}>{link.label}</span>
+              <div key={link.label} style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                <span style={{ width: 220, flexShrink: 0, color: '#595959' }}>{link.label}</span>
                 <Link to={to} style={{ fontWeight: 500 }}>
                   Open in MBc360
                 </Link>
@@ -67,13 +67,12 @@ export default function PhaseKeyLinksCard({
 
           const target = draft[link.label]?.trim();
           return (
-            <div key={link.label} style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div key={link.label} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
               <Tooltip title="Kept outside MBc360 — record the link to it here, as the workbook's own sheet does.">
-                <span style={{ width: 220, color: '#595959' }}>{link.label}</span>
+                <span style={{ width: 220, flexShrink: 0, color: '#595959' }}>{link.label}</span>
               </Tooltip>
               <Input
-                size="small"
-                style={{ maxWidth: 520 }}
+                style={{ flex: '1 1 320px', maxWidth: 520 }}
                 placeholder="Provide link here"
                 value={draft[link.label] ?? ''}
                 disabled={archived}

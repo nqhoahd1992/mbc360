@@ -37,6 +37,16 @@ interface AppState {
   viewRole: string;
   setViewRole: (role: string) => void;
 
+  // The project the sidebar is pinned to (2026-08-26) — moved here from local
+  // state in App.tsx's SideMenu so a global page like Change Control can read
+  // it too (used to default "Open Change Request"'s Project field). Set from
+  // the URL whenever a `/projects/:id/...` route is visited, and left as-is on
+  // a global page — see the effect in SideMenu. Not persisted: a reload
+  // re-derives it from the URL (or falls back to the first project), matching
+  // the behaviour before this moved into the store.
+  activeProjectId: string | undefined;
+  setActiveProjectId: (id: string | undefined) => void;
+
   // The role x capability permission grid, loaded from the backend
   // (`GET /api/rbac/permissions-grid`). Drives the "View as" gate/phase/
   // market-track permission checks (via apps/web/src/utils/permissions.ts) and
@@ -252,6 +262,9 @@ export const useAppStore = create<AppState>()(
 
         viewRole: 'admin',
         setViewRole: (role) => set({ viewRole: role }),
+
+        activeProjectId: undefined,
+        setActiveProjectId: (id) => set({ activeProjectId: id }),
 
         permissionGrid: null,
         loadPermissionGrid: async () => {
@@ -527,6 +540,7 @@ export const useAppStore = create<AppState>()(
           projectsLoading: _loading,
           projectsError: _error,
           changes: _changes,
+          activeProjectId: _activeProjectId,
           ...rest
         } = state;
         return rest;

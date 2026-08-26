@@ -43,7 +43,7 @@ export default function EvidenceSummary() {
         sticky={TABLE_STICKY}
         scroll={{ x: 1200 }}
         columns={[
-          { title: 'Evidence area', width: 220, dataIndex: 'area', render: (v) => <b>{v}</b> },
+          { title: 'Evidence area', width: 220, dataIndex: 'area', fixed: 'left', render: (v) => <b>{v}</b> },
           {
             title: 'Required?',
             width: 110,
@@ -59,7 +59,6 @@ export default function EvidenceSummary() {
             width: 150,
             render: (_, e, i) => (
               <Select
-                size="small"
                 style={{ width: 140 }}
                 value={e.status}
                 options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
@@ -71,14 +70,14 @@ export default function EvidenceSummary() {
             title: 'Evidence link / folder',
             width: 200,
             render: (_, e, i) => (
-              <Input size="small" value={e.evidenceLink} placeholder="link" onChange={(ev) => patch(i, { evidenceLink: ev.target.value })} />
+              <Input value={e.evidenceLink} placeholder="link" onChange={(ev) => patch(i, { evidenceLink: ev.target.value })} />
             ),
           },
           {
             title: 'Notes',
             width: 200,
             render: (_, e, i) => (
-              <Input size="small" value={e.notes} onChange={(ev) => patch(i, { notes: ev.target.value })} />
+              <Input value={e.notes} onChange={(ev) => patch(i, { notes: ev.target.value })} />
             ),
           },
         ]}

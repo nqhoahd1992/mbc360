@@ -68,14 +68,13 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
       <span style={{ color: '#666' }}>{draft[field] || '—'}</span>
     ) : rows ? (
       <Input.TextArea
-        size="small"
         autoSize={{ minRows: rows, maxRows: 6 }}
         placeholder={placeholder}
         value={draft[field]}
         onChange={(e) => set(field, e.target.value)}
       />
     ) : (
-      <Input size="small" placeholder={placeholder} value={draft[field]} onChange={(e) => set(field, e.target.value)} />
+      <Input placeholder={placeholder} value={draft[field]} onChange={(e) => set(field, e.target.value)} />
     );
 
   return (

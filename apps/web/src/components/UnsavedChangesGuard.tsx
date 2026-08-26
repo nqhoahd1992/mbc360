@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Modal } from 'antd';
+import { App } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useUnsavedCount } from '../hooks/unsavedRegistry';
 
@@ -19,6 +19,12 @@ export default function UnsavedChangesGuard() {
   const unsaved = useUnsavedCount();
   const navigate = useNavigate();
   const location = useLocation();
+  // Context-aware instance (2026-08-26) — the static `Modal.confirm` this used
+  // to call renders outside React's tree, so it can never see ConfigProvider's
+  // theme (antd's own warning: "Static function can not consume context like
+  // dynamic theme. Please use 'App' component instead."). `App.useApp()`
+  // requires an ancestor `<App>` — see App.tsx's root.
+  const { modal } = App.useApp();
 
   useEffect(() => {
     if (unsaved === 0) return;
@@ -56,7 +62,7 @@ export default function UnsavedChangesGuard() {
       // Capture phase + stopPropagation so antd's Menu never records a
       // selection for a navigation that has not happened yet.
       e.stopPropagation();
-      Modal.confirm({
+      modal.confirm({
         title: unsaved === 1 ? 'Leave with unsaved changes?' : `Leave with ${unsaved} unsaved sections?`,
         content:
           'Edits you have not saved on this page will be lost. Cancel, then use Save on the section you were editing.',
@@ -68,7 +74,7 @@ export default function UnsavedChangesGuard() {
     };
     document.addEventListener('click', onClick, true);
     return () => document.removeEventListener('click', onClick, true);
-  }, [unsaved, navigate, location.pathname]);
+  }, [unsaved, navigate, location.pathname, modal]);
 
   return null;
 }

@@ -17,7 +17,7 @@ import { composeReviewOwner, type ReviewOwnerSpec } from '@mbc360/shared/config/
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { NUMERIC_CELL, NUMERIC_COLUMN } from '../utils/numeric';
 import SaveBar from '../components/SaveBar';
-import { TEXT } from '../theme/tokens';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 // Formula BOM's own review-owner combo (workbook): Formulation owner, Quality
 // co-review (Formula BOM & sensory testing), Project Manager co-sign (appended
@@ -253,7 +253,6 @@ export default function BomCosting() {
   const numberInput = (field: keyof CostingInputs, label: string, step = 0.01) => (
     <Descriptions.Item label={label}>
       <InputNumber
-        size="small"
         min={0}
         step={step}
         value={costing[field]}
@@ -371,7 +370,7 @@ export default function BomCosting() {
             showIcon
             icon={<LockOutlined />}
             style={{ marginBottom: 12 }}
-            message="Read-only — Gate 05 passed"
+            title="Read-only — Gate 05 passed"
             description={LOCK_REASON}
           />
         )}
@@ -380,7 +379,7 @@ export default function BomCosting() {
             type="error"
             showIcon
             style={{ marginBottom: 12 }}
-            message="Raw material not selected — cannot save"
+            title="Raw material not selected — cannot save"
             description={`Every Formula BOM line needs a raw material picked from an approved Supplier & RM Evidence record before it can be saved. Affected: line${emptyRawMaterialLines.length > 1 ? 's' : ''} ${emptyRawMaterialLines.map((l) => l.line).join(', ')}.`}
           />
         )}
@@ -389,7 +388,7 @@ export default function BomCosting() {
             type="error"
             showIcon
             style={{ marginBottom: 12 }}
-            message="Duplicate raw material — cannot save"
+            title="Duplicate raw material — cannot save"
             description={
               <>
                 Each Formula BOM line must reference a different raw material — combine the % w/w
@@ -410,7 +409,7 @@ export default function BomCosting() {
             type="error"
             showIcon
             style={{ marginBottom: 12 }}
-            message="Raw material not approved for use — cannot save"
+            title="Raw material not approved for use — cannot save"
             description={`Every manually-picked Formula BOM line must reference a material whose Supplier & RM Evidence record has "Approved for use?" checked (Gate 4 screening + approval before Gate 5 locks the formula). Affected: line${unapprovedManualLines.length > 1 ? 's' : ''} ${unapprovedManualLines.map((l) => l.line).join(', ')} — check "Approved for use?" on that material's Supplier & RM Evidence record first.`}
           />
         )}
@@ -419,7 +418,7 @@ export default function BomCosting() {
             type="warning"
             showIcon
             style={{ marginBottom: 12 }}
-            message={`${unreconciledBom.length} manual BOM line${unreconciledBom.length > 1 ? 's' : ''} not reconciled to Cosmetri (Draft)`}
+            title={`${unreconciledBom.length} manual BOM line${unreconciledBom.length > 1 ? 's' : ''} not reconciled to Cosmetri (Draft)`}
             description="Manual composition must be reconciled to a controlled Cosmetri formula before Gate 7 final safety approval; Gates 10 and 11 require the controlled Cosmetri formula. Click the orange “Draft — reconcile” tag on each line once it has been matched in Cosmetri."
           />
         )}
@@ -428,15 +427,17 @@ export default function BomCosting() {
           rowKey={(l) => l.line}
           dataSource={draftBom}
           pagination={false}
+          sticky={TABLE_STICKY}
           scroll={{ x: 2070 }}
           columns={[
-            { title: '#', width: 40, dataIndex: 'line' },
+            { title: '#', width: 40, fixed: 'left', dataIndex: 'line' },
             {
               // F14: source & reconciliation state. Cosmetri lines are inherently
               // reconciled; a manual line is "Draft - Not Reconciled" until it is
               // reconciled to a controlled Cosmetri formula (blocks Gate 7 / 10 / 11).
               title: 'Source',
               width: 170,
+              fixed: 'left',
               render: (_, l, i) =>
                 l.fromCosmetri ? (
                   <Tag color="green">Cosmetri</Tag>
@@ -478,6 +479,7 @@ export default function BomCosting() {
               // Evidence.
               title: 'Raw material',
               width: 260,
+              fixed: 'left',
               render: (_, l, i) => {
                 const isDuplicate = !!l.rmCode && duplicateRawMaterials.has(l.rmCode);
                 const isEmpty = !l.rmCode;
@@ -493,7 +495,6 @@ export default function BomCosting() {
                   </Tooltip>
                 ) : (
                   <Select
-                    size="small"
                     style={{ width: '100%' }}
                     showSearch
                     allowClear
@@ -543,7 +544,6 @@ export default function BomCosting() {
                 const match = matchedRawMaterial(l);
                 return (
                   <Input
-                    size="small"
                     value={l.inciName}
                     // Always editable, even on a `fromCosmetri` (full-formula
                     // import) line: unlike Supplier, INCI here isn't a direct
@@ -567,7 +567,6 @@ export default function BomCosting() {
               width: 120,
               render: (_, l, i) => (
                 <Input
-                  size="small"
                   value={l.casNo}
                   placeholder="from Cosmetri"
                   // Same reasoning as Ingredient/INCI above — CAS comes from
@@ -581,7 +580,7 @@ export default function BomCosting() {
               title: 'Function',
               width: 160,
               render: (_, l, i) => (
-                <Input size="small" value={l.functionRole} onChange={(e) => patchBomLine(i, { functionRole: e.target.value })} />
+                <Input value={l.functionRole} onChange={(e) => patchBomLine(i, { functionRole: e.target.value })} />
               ),
             },
             {
@@ -599,7 +598,7 @@ export default function BomCosting() {
                     <span style={{ color: '#666' }}>{match ? String(match.supplier ?? '') : l.supplier}</span>
                   </Tooltip>
                 ) : (
-                  <Input size="small" value={l.supplier} onChange={(e) => patchBomLine(i, { supplier: e.target.value })} />
+                  <Input value={l.supplier} onChange={(e) => patchBomLine(i, { supplier: e.target.value })} />
                 );
               },
             },
@@ -614,7 +613,6 @@ export default function BomCosting() {
                   </Tooltip>
                 ) : (
                   <InputNumber
-                    size="small"
                     min={0}
                     max={100}
                     step={0.1}
@@ -646,7 +644,6 @@ export default function BomCosting() {
               ...NUMERIC_COLUMN,
               render: (_, l, i) => (
                 <InputNumber
-                  size="small"
                   min={0}
                   step={0.1}
                   style={NUMERIC_CELL}
@@ -672,7 +669,6 @@ export default function BomCosting() {
               width: 140,
               render: (_, l, i) => (
                 <Input
-                  size="small"
                   value={l.evidenceLink}
                   onChange={(e) => patchBomLine(i, { evidenceLink: e.target.value })}
                 />
@@ -682,19 +678,20 @@ export default function BomCosting() {
               title: 'Method ref',
               width: 120,
               render: (_, l, i) => (
-                <Input size="small" value={l.methodRef} onChange={(e) => patchBomLine(i, { methodRef: e.target.value })} />
+                <Input value={l.methodRef} onChange={(e) => patchBomLine(i, { methodRef: e.target.value })} />
               ),
             },
             {
               title: 'Notes',
               width: 160,
               render: (_, l, i) => (
-                <Input size="small" value={l.notes} onChange={(e) => patchBomLine(i, { notes: e.target.value })} />
+                <Input value={l.notes} onChange={(e) => patchBomLine(i, { notes: e.target.value })} />
               ),
             },
             {
               title: '',
               width: 50,
+              fixed: 'right',
               render: (_, __, i) => (
                 <Popconfirm title="Remove line?" onConfirm={() => removeBomLine(i)}>
                   <Button size="small" danger type="text" aria-label="Remove this formula line" icon={<DeleteOutlined />} />
@@ -759,9 +756,10 @@ export default function BomCosting() {
             rowKey={(r) => `${r.version}-${r.date}`}
             dataSource={[...project.formulaVersionHistory].reverse()}
             pagination={false}
+            sticky={TABLE_STICKY}
             scroll={{ x: 900 }}
             columns={[
-              { title: 'Date', width: 110, dataIndex: 'date' },
+              { title: 'Date', width: 110, fixed: 'left', dataIndex: 'date' },
               {
                 title: 'Version',
                 width: 160,
@@ -783,6 +781,7 @@ export default function BomCosting() {
               {
                 title: '',
                 width: 90,
+                fixed: 'right',
                 render: (_, r) => (
                   <Button size="small" type="link" onClick={() => setCompare({ from: r.previousVersion, to: r.version })}>
                     Compare
@@ -823,7 +822,7 @@ export default function BomCosting() {
             showIcon
             icon={<LockOutlined />}
             style={{ marginBottom: 12 }}
-            message="Read-only — Gate 06 passed"
+            title="Read-only — Gate 06 passed"
             description={LOCK_REASON}
           />
         )}
@@ -832,28 +831,30 @@ export default function BomCosting() {
           rowKey={(l) => l.line}
           dataSource={draftPackaging}
           pagination={false}
+          sticky={TABLE_STICKY}
           scroll={{ x: 1300 }}
           columns={[
-            { title: '#', width: 40, dataIndex: 'line' },
+            { title: '#', width: 40, fixed: 'left', dataIndex: 'line' },
             {
               title: 'Component',
               width: 160,
+              fixed: 'left',
               render: (_, l, i) => (
-                <Input size="small" value={l.component} onChange={(e) => patchPackagingLine(i, { component: e.target.value })} />
+                <Input value={l.component} onChange={(e) => patchPackagingLine(i, { component: e.target.value })} />
               ),
             },
             {
               title: 'Component type',
               width: 140,
               render: (_, l, i) => (
-                <Input size="small" value={l.componentType} onChange={(e) => patchPackagingLine(i, { componentType: e.target.value })} />
+                <Input value={l.componentType} onChange={(e) => patchPackagingLine(i, { componentType: e.target.value })} />
               ),
             },
             {
               title: 'Supplier',
               width: 140,
               render: (_, l, i) => (
-                <Input size="small" value={l.supplier} onChange={(e) => patchPackagingLine(i, { supplier: e.target.value })} />
+                <Input value={l.supplier} onChange={(e) => patchPackagingLine(i, { supplier: e.target.value })} />
               ),
             },
             {
@@ -861,7 +862,6 @@ export default function BomCosting() {
               width: 110,
               render: (_, l, i) => (
                 <InputNumber
-                  size="small"
                   min={0}
                   step={1}
                   value={l.unitsPerFinishedUnit}
@@ -874,7 +874,6 @@ export default function BomCosting() {
               width: 100,
               render: (_, l, i) => (
                 <InputNumber
-                  size="small"
                   min={0}
                   step={0.01}
                   value={l.unitCost}
@@ -887,7 +886,6 @@ export default function BomCosting() {
               width: 100,
               render: (_, l, i) => (
                 <InputNumber
-                  size="small"
                   min={0}
                   step={0.5}
                   value={l.wastagePercent}
@@ -900,33 +898,34 @@ export default function BomCosting() {
               title: 'Lead time',
               width: 100,
               render: (_, l, i) => (
-                <Input size="small" value={l.leadTime} onChange={(e) => patchPackagingLine(i, { leadTime: e.target.value })} />
+                <Input value={l.leadTime} onChange={(e) => patchPackagingLine(i, { leadTime: e.target.value })} />
               ),
             },
             {
               title: 'MOQ',
               width: 90,
               render: (_, l, i) => (
-                <Input size="small" value={l.moq} onChange={(e) => patchPackagingLine(i, { moq: e.target.value })} />
+                <Input value={l.moq} onChange={(e) => patchPackagingLine(i, { moq: e.target.value })} />
               ),
             },
             {
               title: 'Evidence link',
               width: 130,
               render: (_, l, i) => (
-                <Input size="small" value={l.evidenceLink} onChange={(e) => patchPackagingLine(i, { evidenceLink: e.target.value })} />
+                <Input value={l.evidenceLink} onChange={(e) => patchPackagingLine(i, { evidenceLink: e.target.value })} />
               ),
             },
             {
               title: 'Approval',
               width: 110,
               render: (_, l, i) => (
-                <Input size="small" value={l.approval} onChange={(e) => patchPackagingLine(i, { approval: e.target.value })} />
+                <Input value={l.approval} onChange={(e) => patchPackagingLine(i, { approval: e.target.value })} />
               ),
             },
             {
               title: '',
               width: 50,
+              fixed: 'right',
               render: (_, __, i) => (
                 <Popconfirm title="Remove component?" onConfirm={() => removePackagingLine(i)}>
                   <Button size="small" danger type="text" aria-label="Remove this packaging component" icon={<DeleteOutlined />} />
@@ -979,16 +978,17 @@ export default function BomCosting() {
               rowKey={(l) => l.line}
               dataSource={bom}
               pagination={false}
+              sticky={TABLE_STICKY}
               scroll={{ x: 1200 }}
               locale={{ emptyText: 'No formula lines entered yet' }}
               columns={[
-                { title: '#', width: 40, dataIndex: 'line' },
+                { title: '#', width: 40, fixed: 'left', dataIndex: 'line' },
                 // Trade name isn't its own `BomLine` field — every path that
                 // sets `rmDisplayName` (CosmetriImportModal's whole-formula
                 // import, and the manual picker's `rawMaterialLabel`) writes
                 // it as "{trade name} | {rmCode}", so the trade name is
                 // whatever comes before that separator.
-                { title: 'Trade name', width: 200, render: (_, l) => l.rmDisplayName?.split(' | ')[0] ?? '' },
+                { title: 'Trade name', width: 200, fixed: 'left', render: (_, l) => l.rmDisplayName?.split(' | ')[0] ?? '' },
                 { title: 'RM Code', width: 110, dataIndex: 'rmCode' },
                 { title: 'Ingredient / INCI', width: 240, dataIndex: 'inciName' },
                 { title: 'Function', width: 160, dataIndex: 'functionRole' },
@@ -1024,11 +1024,12 @@ export default function BomCosting() {
               rowKey={(l) => l.line}
               dataSource={packagingBom}
               pagination={false}
+              sticky={TABLE_STICKY}
               scroll={{ x: 900 }}
               locale={{ emptyText: 'No packaging components entered yet' }}
               columns={[
-                { title: '#', width: 40, dataIndex: 'line' },
-                { title: 'Component', width: 160, dataIndex: 'component' },
+                { title: '#', width: 40, fixed: 'left', dataIndex: 'line' },
+                { title: 'Component', width: 160, fixed: 'left', dataIndex: 'component' },
                 { title: 'Component type', width: 140, dataIndex: 'componentType' },
                 { title: 'Supplier', width: 140, dataIndex: 'supplier' },
                 { title: 'Units / finished unit', width: 110, dataIndex: 'unitsPerFinishedUnit' },
@@ -1061,7 +1062,7 @@ export default function BomCosting() {
                 showIcon
                 icon={<LockOutlined />}
                 style={{ marginBottom: 12 }}
-                message="Read-only — Gate 05 passed"
+                title="Read-only — Gate 05 passed"
                 description={LOCK_REASON}
               />
             )}
@@ -1071,7 +1072,6 @@ export default function BomCosting() {
               {numberInput('targetUnits', 'Target units', 100)}
               <Descriptions.Item label="Packaging cost / unit">
                 <InputNumber
-                  size="small"
                   min={0}
                   step={0.01}
                   value={costing.packagingCostPerUnit}

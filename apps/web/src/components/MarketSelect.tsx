@@ -41,7 +41,6 @@ export default function MarketSelect({
   if (markets.length === 0) {
     return (
       <Input
-        size="small"
         value={value}
         disabled={disabled}
         placeholder="Market"
@@ -68,7 +67,6 @@ export default function MarketSelect({
 
   return (
     <Select
-      size="small"
       allowClear
       showSearch
       mode={multiple ? 'multiple' : undefined}

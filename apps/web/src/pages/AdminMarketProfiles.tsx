@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Card, Input, InputNumber, Space, Switch, Table, Tag, message } from 'antd';
+import { Alert, Card, DatePicker, Input, InputNumber, Space, Switch, Table, Tag, message } from 'antd';
+import dayjs from 'dayjs';
 import type { MarketProfile } from '@mbc360/shared/config/referenceData';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import { ASEAN_MARKETS } from '@mbc360/shared/config/registers';
@@ -8,7 +9,7 @@ import { useSession } from '../auth/useSession';
 import { canEditReferenceData, EMPTY_GRANTS } from '../utils/permissions';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from '../components/SaveBar';
-import { TEXT } from '../theme/tokens';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 // Round 4 question 4 (2026-08-24): "Do not use a permanently hard-coded country
 // list. Regulatory maintains a configurable market profile indicating whether each
@@ -113,7 +114,7 @@ export default function AdminMarketProfiles() {
       <Alert
         type="info"
         showIcon
-        message="Company-level reference data — one list, read by every project"
+        title="Company-level reference data — one list, read by every project"
         description="The review team asked that market requirements be configurable here rather than hard-coded. A market with no profile is treated as having no market-specific requirement, which is why leaving one unconfigured is a decision rather than a gap."
       />
 
@@ -133,6 +134,7 @@ export default function AdminMarketProfiles() {
           rowKey={(r) => r.market}
           dataSource={draft}
           pagination={false}
+          sticky={TABLE_STICKY}
           scroll={{ x: 1500 }}
           columns={[
             {
@@ -161,7 +163,6 @@ export default function AdminMarketProfiles() {
               width: 150,
               render: (_, r) => (
                 <Switch
-                  size="small"
                   disabled={!canEdit}
                   checked={r.adverseEventReporting}
                   onChange={(v) => patch(r.market, { adverseEventReporting: v })}
@@ -173,7 +174,6 @@ export default function AdminMarketProfiles() {
               width: 110,
               render: (_, r) => (
                 <Switch
-                  size="small"
                   disabled={!canEdit}
                   checked={r.pmsRecordsRequired}
                   onChange={(v) => patch(r.market, { pmsRecordsRequired: v })}
@@ -187,7 +187,6 @@ export default function AdminMarketProfiles() {
               width: 140,
               render: (_, r) => (
                 <Switch
-                  size="small"
                   disabled={!canEdit}
                   checked={r.enhancedSurveillance}
                   onChange={(v) => patch(r.market, { enhancedSurveillance: v })}
@@ -199,7 +198,6 @@ export default function AdminMarketProfiles() {
               width: 160,
               render: (_, r) => (
                 <InputNumber
-                  size="small"
                   min={1}
                   max={120}
                   disabled={!canEdit}
@@ -214,7 +212,6 @@ export default function AdminMarketProfiles() {
               width: 190,
               render: (_, r) => (
                 <Input
-                  size="small"
                   disabled={!canEdit}
                   placeholder="e.g. ASEAN PIF, EU CPSR"
                   value={r.dossierType}
@@ -227,7 +224,6 @@ export default function AdminMarketProfiles() {
               width: 240,
               render: (_, r) => (
                 <Input.TextArea
-                  size="small"
                   autoSize={{ minRows: 1, maxRows: 3 }}
                   disabled={!canEdit}
                   placeholder="Any restriction this market imposes on claims"
@@ -241,7 +237,6 @@ export default function AdminMarketProfiles() {
               width: 160,
               render: (_, r) => (
                 <Input
-                  size="small"
                   disabled={!canEdit}
                   value={r.evidenceLink}
                   onChange={(e) => patch(r.market, { evidenceLink: e.target.value })}
@@ -252,12 +247,10 @@ export default function AdminMarketProfiles() {
               title: 'Reviewed',
               width: 140,
               render: (_, r) => (
-                <Input
-                  size="small"
-                  type="date"
+                <DatePicker
                   disabled={!canEdit}
-                  value={r.reviewDate}
-                  onChange={(e) => patch(r.market, { reviewDate: e.target.value })}
+                  value={r.reviewDate ? dayjs(r.reviewDate) : null}
+                  onChange={(d) => patch(r.market, { reviewDate: d ? d.format('YYYY-MM-DD') : undefined })}
                 />
               ),
             },

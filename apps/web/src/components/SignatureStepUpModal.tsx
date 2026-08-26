@@ -63,7 +63,7 @@ export default function SignatureStepUpModal({
       okButtonProps={{ loading: verifying, disabled: code.length !== 6 }}
       destroyOnHidden
     >
-      {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 12 }} />}
+      {error && <Alert type="error" showIcon title={error} style={{ marginBottom: 12 }} />}
       <Typography.Paragraph type="secondary">
         Attaching your saved signature needs the current code from your authenticator app. Signing
         records your account, the role you hold now, the server timestamp and the version of this

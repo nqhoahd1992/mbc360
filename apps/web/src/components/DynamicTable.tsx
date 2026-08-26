@@ -144,7 +144,6 @@ export default function DynamicTable({
       case 'select':
         return (
           <Select
-            size="small"
             allowClear
             style={{ width: '100%', minWidth: 110 }}
             value={value as string | undefined}
@@ -155,7 +154,6 @@ export default function DynamicTable({
       case 'date':
         return (
           <DatePicker
-            size="small"
             style={{ width: '100%' }}
             value={value ? dayjs(String(value)) : null}
             onChange={(d) => patch(index, column.key, d ? d.format('YYYY-MM-DD') : undefined)}
@@ -164,7 +162,6 @@ export default function DynamicTable({
       case 'number':
         return (
           <InputNumber
-            size="small"
             style={{ width: '100%', ...NUMERIC_CELL }}
             value={value as number | undefined}
             onChange={(v) => patch(index, column.key, v ?? 0)}
@@ -174,21 +171,18 @@ export default function DynamicTable({
         return (
           <Input.TextArea
             autoSize={{ minRows: 1, maxRows: 4 }}
-            size="small"
             value={value as string | undefined}
             onChange={(e) => patch(index, column.key, e.target.value)}
           />
         );
       case 'text':
       default:
-        return (
-          <Input size="small" value={value as string | undefined} onChange={(e) => patch(index, column.key, e.target.value)} />
-        );
+        return <Input value={value as string | undefined} onChange={(e) => patch(index, column.key, e.target.value)} />;
     }
   };
 
   const columns = [
-    ...config.columns.map((col) => {
+    ...config.columns.map((col, i) => {
       // A per-column gate is only worth showing on a register that spans several —
       // elsewhere the card's own gate tag already says it.
       const columnGate = spansSeveralGates(config.gate)
@@ -205,6 +199,11 @@ export default function DynamicTable({
           col.label
         ),
         width: columnWidth(col),
+        // Pin the identity column (the first one — RM code, ingredient name,
+        // whatever a given register leads with) so it — and the row it's
+        // in — stays readable while scrolling through the rest of a wide
+        // register, matching the fixed action column below (2026-08-26).
+        fixed: i === 0 ? ('left' as const) : undefined,
         ...(col.type === 'number' ? NUMERIC_COLUMN : null),
         render: (_: unknown, row: RegisterRow, index: number) => renderCell(col, row, index),
       };
@@ -214,6 +213,7 @@ export default function DynamicTable({
           {
             title: '',
             width: 44,
+            fixed: 'right' as const,
             render: (_: unknown, __: RegisterRow, index: number) => (
               <Popconfirm title="Remove this row?" onConfirm={() => removeRow(index)}>
                 <Button size="small" danger type="text" aria-label="Remove this row" icon={<DeleteOutlined />} />
@@ -254,7 +254,7 @@ export default function DynamicTable({
           showIcon
           icon={<LockOutlined />}
           style={{ marginBottom: 12 }}
-          message="Read-only — gate passed"
+          title="Read-only — gate passed"
           description={readOnlyReason ?? 'This evidence belongs to a gate that has already passed. To correct it, Backtrack to reopen that gate first.'}
         />
       )}
@@ -263,7 +263,7 @@ export default function DynamicTable({
           type="warning"
           showIcon
           style={{ marginBottom: 12 }}
-          message="Check this against the Gate 02 target users"
+          title="Check this against the Gate 02 target users"
           description={
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {softWarnings.map((w) => (

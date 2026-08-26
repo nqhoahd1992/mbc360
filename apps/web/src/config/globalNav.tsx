@@ -36,6 +36,12 @@ export interface GlobalNavEntry {
 }
 
 export const ADMIN_SUBMENU = 'Users & Roles';
+// Company-wide reference data the rule engine reads (Market profiles, Raw
+// Material Risk Overlay, ...) — split out from ADMIN_SUBMENU (2026-08-26,
+// user-requested): it was filed under "Users & Roles", which reads as user/
+// role administration when it is actually shared data every project reads,
+// unrelated to who can sign in or what they can approve.
+export const REFERENCE_DATA_SUBMENU = 'Company Reference Data';
 
 export const GLOBAL_NAV: GlobalNavEntry[] = [
   { path: '/', title: 'Dashboard', icon: <AppstoreOutlined />, sidebar: 'top' },
@@ -74,7 +80,7 @@ export const GLOBAL_NAV: GlobalNavEntry[] = [
     title: 'Market profiles',
     icon: <GlobalOutlined />,
     adminOnly: true,
-    sidebar: { submenu: ADMIN_SUBMENU },
+    sidebar: { submenu: REFERENCE_DATA_SUBMENU },
     keywords: 'regulatory market profile adverse event pms dossier claim restriction reference data',
   },
   // Round 4 question 17 (2026-08-24). Same shape and the same `adminOnly` caveat as
@@ -86,7 +92,7 @@ export const GLOBAL_NAV: GlobalNavEntry[] = [
     title: 'Raw material risk',
     icon: <ExperimentOutlined />,
     adminOnly: true,
-    sidebar: { submenu: ADMIN_SUBMENU },
+    sidebar: { submenu: REFERENCE_DATA_SUBMENU },
     keywords:
       'raw material risk overlay allergen fragrance essential oil botanical protein residual solvent heavy metal microbiological impurity reference data cosmetri',
   },

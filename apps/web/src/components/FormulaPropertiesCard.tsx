@@ -50,18 +50,17 @@ export default function FormulaPropertiesCard({ project }: { project: ProjectDat
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          message="Gate 05 has passed — formula properties are read-only. Use Backtrack to reopen."
+          title="Gate 05 has passed — formula properties are read-only. Use Backtrack to reopen."
         />
       )}
 
-      <Space direction="vertical" style={{ width: '100%' }} size={8}>
+      <Space orientation="vertical" style={{ width: '100%' }} size={8}>
         <div>
           <div style={{ fontSize: 12, color: '#555', marginBottom: 4 }}>Microbiological susceptibility</div>
           {locked ? (
             <span style={{ color: '#666' }}>{value || '—'}</span>
           ) : (
             <Select
-              size="small"
               style={{ width: 280 }}
               allowClear
               status={contradictsBom ? 'warning' : undefined}
@@ -77,7 +76,7 @@ export default function FormulaPropertiesCard({ project }: { project: ProjectDat
           <Alert
             type="warning"
             showIcon
-            message={`The composition contains water but the formula is recorded as "${value}" — make sure the rationale explains why.`}
+            title={`The composition contains water but the formula is recorded as "${value}" — make sure the rationale explains why.`}
           />
         )}
 
@@ -89,7 +88,6 @@ export default function FormulaPropertiesCard({ project }: { project: ProjectDat
             <span style={{ color: '#666' }}>{draft.microRationale || '—'}</span>
           ) : (
             <Input.TextArea
-              size="small"
               autoSize={{ minRows: 2, maxRows: 5 }}
               value={draft.microRationale}
               onChange={(e) => update((prev) => ({ ...prev, microRationale: e.target.value }))}

@@ -2883,8 +2883,19 @@ const DEPARTMENTS: RawDept[] = [
     // Evidence Plan) that must be signed off before Formula BOM/Gate 5 (see
     // gateReadiness.ts SG05 Mandatory items). Placed first since it precedes
     // every other department's work chronologically.
+    //
+    // Title prefixed "R&I — " (2026-08-26, user-requested): this group's
+    // `reviewOwner` is `REVIEW_SPECS.ri` (REVIEW_ROLES key 'ri', label
+    // "R&I" — see reviewers.ts), but the sidebar showed only the workbook
+    // sheet name, so a person filling in the Create Project form's "R&I"
+    // reviewer field had no visible link to which sidebar group that person
+    // owns. Keeping "NPD Front-End Roadmap" rather than dropping it: it is
+    // the literal v2 workbook sheet name (`sheetName: 'NPD Front-End
+    // Roadmap'` on the reference register in this same group, plus ~15 code
+    // comments and several docs/rules entries all name the concept this
+    // way) — renaming it away would break that link instead of fixing one.
     key: 'dept-npd-frontend',
-    title: 'NPD Front-End Roadmap',
+    title: 'R&I — NPD Front-End Roadmap',
     description: 'Needs & scientific basis, competitor landscape, target product profile/tech platform and evidence planning — mandatory before Formula BOM lock (Gate 5).',
     reviewOwner: REVIEW_SPECS.ri,
     items: [

@@ -31,7 +31,6 @@ export default function UserSelect({
 
   return (
     <Select
-      size="small"
       allowClear
       showSearch
       disabled={disabled}

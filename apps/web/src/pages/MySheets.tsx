@@ -129,7 +129,7 @@ export default function MySheets() {
         <Alert
           type="info"
           showIcon
-          message="You are not assigned to a review area on this project"
+          title="You are not assigned to a review area on this project"
           description={
             <span>
               Review areas are assigned per project on the Create New Project form (all 13 areas are required).

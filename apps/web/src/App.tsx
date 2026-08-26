@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, ConfigProvider, Divider, Layout, Menu, Button, Grid, Select, Spin, Tooltip, Typography } from 'antd';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Alert, App as AntApp, ConfigProvider, Divider, Layout, Menu, Button, Grid, Select, Spin, Tooltip, Typography } from 'antd';
 import {
   CheckCircleFilled,
+  DatabaseOutlined,
   EyeOutlined,
   LockOutlined,
   MenuOutlined,
@@ -44,7 +45,7 @@ import IntegrationsPage from './pages/IntegrationsPage';
 import MyAccount from './pages/MyAccount';
 import Login from './pages/Login';
 import { PHASES } from '@mbc360/shared/config/gates';
-import { ADMIN_SUBMENU, globalNavFor } from './config/globalNav';
+import { ADMIN_SUBMENU, REFERENCE_DATA_SUBMENU, globalNavFor } from './config/globalNav';
 import { getNavGroups, findNavGroupForRegister, getRegisterConfig, navItemHref, formatGate } from '@mbc360/shared/config/registers';
 import { ownerName, reviewRoleLabel } from '@mbc360/shared/config/reviewers';
 import { phaseProgress } from '@mbc360/shared/utils/gateProgress';
@@ -74,12 +75,19 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
   const projects = useAppStore((s) => s.projects);
 
   const urlProjectId = location.pathname.match(/\/projects\/([^/]+)/)?.[1];
-  const [activeProjectId, setActiveProjectId] = useState<string | undefined>(urlProjectId);
+  // Lives in the store now (2026-08-26), not local state, so a global page
+  // like Change Control can read the same "pinned" project — e.g. to default
+  // Open Change Request's Project field. `?? urlProjectId` covers the render
+  // before the effect below has run (e.g. arriving directly on a project URL
+  // in a fresh tab, before the store value catches up).
+  const storedActiveProjectId = useAppStore((s) => s.activeProjectId);
+  const setActiveProjectId = useAppStore((s) => s.setActiveProjectId);
+  const activeProjectId = storedActiveProjectId ?? urlProjectId;
 
   // Keep the workspace pinned to the last visited project, even on global pages
   useEffect(() => {
     if (urlProjectId) setActiveProjectId(urlProjectId);
-  }, [urlProjectId]);
+  }, [urlProjectId, setActiveProjectId]);
 
   // Now that the menu scrolls inside its own column, the highlighted item can
   // sit outside it — arriving via ⌘K, a gate-blocker deep link or a bookmark
@@ -108,26 +116,48 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
   // Built from the same GLOBAL_NAV the ⌘K palette reads, so a page added in one
   // place cannot go missing from the other (which is exactly what had happened
   // to Integrations, My Account and Users & Roles).
+  //
+  // Nested entries are grouped by their OWN `submenu` label (2026-08-26) — this
+  // used to dump every nested entry into one hardcoded "Users & Roles" bucket
+  // regardless of what `submenu` said, which is why Market profiles / Raw
+  // material risk (company-wide reference data, unrelated to user/role admin)
+  // ended up filed there. Each distinct label now gets its own top-level group,
+  // in the order that label first appears in GLOBAL_NAV.
   const globalItems = useMemo(() => {
     const entries = globalNavFor(isAdmin);
     const top = entries
       .filter((e) => e.sidebar === 'top')
       .map((e) => ({ key: e.path, icon: e.icon, label: <Link to={e.path}>{e.title}</Link> }));
     const nested = entries.filter(
-      (e) => typeof e.sidebar === 'object' && e.sidebar !== null,
+      (e): e is typeof e & { sidebar: { submenu: string } } =>
+        typeof e.sidebar === 'object' && e.sidebar !== null,
     );
     if (nested.length === 0) return top;
+    const submenuOrder: string[] = [];
+    const bySubmenu = new Map<string, typeof nested>();
+    for (const e of nested) {
+      const label = e.sidebar.submenu;
+      if (!bySubmenu.has(label)) {
+        bySubmenu.set(label, []);
+        submenuOrder.push(label);
+      }
+      bySubmenu.get(label)!.push(e);
+    }
+    const submenuIcons: Record<string, ReactNode> = {
+      [ADMIN_SUBMENU]: <TeamOutlined />,
+      [REFERENCE_DATA_SUBMENU]: <DatabaseOutlined />,
+    };
     return [
       ...top,
-      {
-        key: 'admin-users-roles',
-        icon: <TeamOutlined />,
-        label: ADMIN_SUBMENU,
-        children: nested.map((e) => ({
+      ...submenuOrder.map((label) => ({
+        key: `nav-submenu-${label}`,
+        icon: submenuIcons[label] ?? <TeamOutlined />,
+        label,
+        children: bySubmenu.get(label)!.map((e) => ({
           key: e.path,
           label: <Link to={e.path}>{e.title}</Link>,
         })),
-      },
+      })),
     ];
   }, [isAdmin]);
 
@@ -610,7 +640,6 @@ function Shell() {
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <EyeOutlined style={{ color: '#999' }} />
                 <Select
-                  size="small"
                   style={{ width: 230 }}
                   value={viewRole}
                   onChange={setViewRole}
@@ -714,9 +743,20 @@ function Shell() {
 export default function App() {
   return (
     <ConfigProvider theme={{ token: { colorPrimary: '#1677ff', borderRadius: 6 } }}>
-      <HashRouter>
-        <Shell />
-      </HashRouter>
+      {/* antd's `App` component (2026-08-26, fixes "[antd: Modal] Static
+          function can not consume context like dynamic theme"): the static
+          Modal.confirm/message/notification functions render outside React's
+          tree, so they never see ConfigProvider's theme. `App` provides a
+          context-aware `modal`/`message`/`notification` via `App.useApp()` —
+          UnsavedChangesGuard, GateFlowTable and RoleCapabilityEditor's
+          Modal.confirm calls now use that instead of the static API. Must
+          sit INSIDE ConfigProvider (reads its theme) and wrap everything that
+          calls `App.useApp()`. */}
+      <AntApp>
+        <HashRouter>
+          <Shell />
+        </HashRouter>
+      </AntApp>
     </ConfigProvider>
   );
 }

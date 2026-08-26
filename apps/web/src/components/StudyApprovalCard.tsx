@@ -6,7 +6,7 @@ import type { StudyApproval } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
-import { TEXT } from '../theme/tokens';
+import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 const DEPARTMENTS = [
   'NPD / Formulation',
@@ -79,9 +79,10 @@ export default function StudyApprovalCard({
         rowKey={(a) => a.role}
         dataSource={draft}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: 950 }}
         columns={[
-          { title: 'Role', width: 170, dataIndex: 'role', render: (v) => <b>{v}</b> },
+          { title: 'Role', width: 170, dataIndex: 'role', fixed: 'left', render: (v) => <b>{v}</b> },
           {
             title: 'Name',
             width: 170,
@@ -94,7 +95,6 @@ export default function StudyApprovalCard({
             width: 200,
             render: (_, a, i) => (
               <Select
-                size="small"
                 allowClear
                 style={{ width: 190 }}
                 placeholder="Select department"
@@ -118,7 +118,6 @@ export default function StudyApprovalCard({
             width: 140,
             render: (_, a, i) => (
               <DatePicker
-                size="small"
                 value={a.date ? dayjs(a.date) : null}
                 onChange={(d) => patch(i, { date: d ? d.format('YYYY-MM-DD') : undefined })}
               />
@@ -129,7 +128,6 @@ export default function StudyApprovalCard({
             width: 190,
             render: (_, a, i) => (
               <Select
-                size="small"
                 allowClear
                 style={{ width: 180 }}
                 value={a.decision}
@@ -142,7 +140,7 @@ export default function StudyApprovalCard({
             title: 'Comments',
             width: 240,
             render: (_, a, i) => (
-              <Input size="small" value={a.comments} onChange={(e) => patch(i, { comments: e.target.value })} />
+              <Input value={a.comments} onChange={(e) => patch(i, { comments: e.target.value })} />
             ),
           },
         ]}

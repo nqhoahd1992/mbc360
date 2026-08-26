@@ -11,6 +11,7 @@ import PhaseDependencyAlert from '../components/PhaseDependencyAlert';
 import { isGatePassed, positionSentence } from '@mbc360/shared/utils/gateProgress';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from '../components/SaveBar';
+import { TABLE_STICKY } from '../theme/tokens';
 
 const EVENT_TYPES = [
   'Consumer feedback', 'HCP feedback', 'Distributor feedback', 'Retailer feedback',
@@ -82,9 +83,10 @@ export default function PostMarketCapa() {
           size="small"
           rowKey={(r) => r.id}
           dataSource={draft}
+          sticky={TABLE_STICKY}
           scroll={{ x: 1000 }}
           columns={[
-            { title: 'Record ID', width: 100, dataIndex: 'id', render: (v) => <b>{v}</b> },
+            { title: 'Record ID', width: 100, dataIndex: 'id', fixed: 'left', render: (v) => <b>{v}</b> },
             { title: 'Market', width: 110, dataIndex: 'market' },
             { title: 'Event type', width: 180, dataIndex: 'eventType' },
             { title: 'Summary', width: 280, dataIndex: 'summary' },
@@ -94,7 +96,6 @@ export default function PostMarketCapa() {
               width: 150,
               render: (_, r, i) => (
                 <Select
-                  size="small"
                   style={{ width: 140 }}
                   value={r.status}
                   options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
@@ -107,7 +108,7 @@ export default function PostMarketCapa() {
               title: 'Notes',
               width: 200,
               render: (_, r, i) => (
-                <Input size="small" value={r.notes} onChange={(e) => patch(i, { notes: e.target.value })} />
+                <Input value={r.notes} onChange={(e) => patch(i, { notes: e.target.value })} />
               ),
             },
           ]}

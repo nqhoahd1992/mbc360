@@ -1401,6 +1401,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | R5-Q14 | **14** | "Safety **hoặc** Regulatory authority" — một trong hai là đủ, hay cần cả hai |
 | R5-Q15 | **15** | Trang dữ liệu tham chiếu cấp công ty: ai *thấy*, ai *sửa* |
 | R5-Q16 | **16** | Gap High — "controlled action" nghĩa là Next Action có kiểm soát?, và due date ghi đâu |
+| R5-Q17 | **17** | Trigger Change Control có nên giới hạn theo gate dự án đã pass không |
 | R5-Q3 | *chưa gửi* | Ba cái tên trong dòng "Approval route" của Guide — quá nhỏ để chiếm một số, gộp khi soạn bản cuối |
 
 ### Round 5, phần 1 — raised while implementing D1 ở cấp phase (2026-08-20)
@@ -1690,3 +1691,15 @@ Ba cách sửa, ba mức việc:
 **Vế phụ, cùng chỗ:** điều kiện thứ 2 — *"the relevant authorised function accepts the risk"* — hôm nay chỉ được thay thế bằng "có tên assessor", vì việc kiểm **thẩm quyền** cần bảng chữ ký per-gate của câu 29 (nhóm 3) mới có nghĩa. Nếu (a) hoặc (b) được chốt trước nhóm 3, vế này vẫn là proxy.
 
 **Nếu trả lời khác:** `HIGH_GAP_CONTROLS` + `missingHighGapControls()` trong `packages/shared/src/utils/gapCriticality.ts` · danh sách trường `gap*` trong `packages/shared/src/types/index.ts` và `GATE_RECORD_FIELDS`/`GATE_FIELD_LABELS` · `GAP_ASSESSMENT_FIELDS` trong `apps/api/src/projects/projects.service.ts` · `apps/web/src/components/GapAssessmentBlock.tsx` · và một migration trên `gate_records`.
+
+#### R5-Q17 · Change Control: trigger có nên giới hạn theo gate dự án đã pass không 🔴
+
+**Phát hiện khi thảo luận UI trang Change Control (26/08/2026).** Trang `/change-control` hiện cho chọn **bất kỳ trigger nào** trong `CHANGE_TRIGGERS`, cho **bất kỳ dự án nào**, không đối chiếu với tiến độ gate thật của dự án đó. Mỗi trigger tự khai `gates` nó ảnh hưởng (ví dụ *"Ingredient percentage or active level changed"* → Gate 05/08) — nhưng không gì ngăn 1 dự án đang ở Gate 02 chọn 1 trigger chỉ liên quan Gate 10 (ASEAN PIF, dossier...), dù ở gate đó dự án chưa từng có quyết định/dữ liệu nào được chốt để mà "change".
+
+**Hướng cần phân biệt rõ trước khi làm, vì đi sai hướng sẽ chặn nhầm đúng use-case đã xác nhận hoạt động:** một dự án **đã qua** Gate 05/08 (ví dụ đang ở Gate 11) mở lại trigger liên quan Gate 05/08 là **hoàn toàn hợp lệ** — đó chính là lý do Change Control tồn tại: sửa formal một quyết định đã khoá ở gate trước (cùng tinh thần B4/`isGateRefLocked` — evidence gate đã pass thì khoá, muốn sửa phải qua quy trình kiểm soát chính thức). Chỉ trigger trỏ tới gate **dự án chưa từng tới** mới là trường hợp vô lý cần chặn.
+
+**Nếu triển khai (chưa build, chỉ ghi lại theo yêu cầu chủ dự án 26/08):** so `trigger.gates` với **gate đã PASS cao nhất** của dự án đang chọn — không phải gate hiện tại đang làm dở, vì dữ liệu còn đang làm dở thì sửa trực tiếp, không cần qua Change Control. Trigger có `gates: ['ALL']` luôn cho phép. Khi chưa chọn Project thì không kiểm gì cả (không có tiến độ nào để so — xem cách field Project vừa được auto-điền theo `activeProjectId` cùng ngày).
+
+**Câu hỏi:** trigger của Change Control có nên bị giới hạn theo tiến độ (gate đã pass) của dự án đang chọn không? Nếu có, ngưỡng đúng là "gate đã pass cao nhất" hay tiêu chí khác? Và nên chặn cứng (disable option trong dropdown, kèm tooltip) hay chỉ cảnh báo mềm, cho phép chọn vẫn được?
+
+**Nếu trả lời khác:** `apps/web/src/pages/ChangeControl.tsx` (`Form.Item name="triggerId"`, `triggerSelectOptions`) — cần đọc `project.gates`/`isGatePassed` của dự án đang chọn (`Form.useWatch('projectId', form)`) để tính gate đã pass cao nhất, rồi lọc/disable option theo đó.

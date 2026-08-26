@@ -23,6 +23,7 @@ You can reply by number, for example "3 — option (b)".
 3. **Questions 7–9** — designed but not yet built. A wrong answer costs a redesign, not rework.
 4. **Questions 10–12** — the phase sign-off work from August, still open.
 5. **Questions 13–16** — smaller, but two of them name something your own answers assume exists and the software does not have.
+6. **Question 17** — lowest priority: nothing is built on it yet either way, so there is no rework at stake, just a design choice worth confirming before we build it.
 
 ---
 
@@ -217,6 +218,17 @@ Your critical-gap answer lets a High gap be carried conditionally where, among o
 
 **Question:** for a High gap, is the required action a tracked Next Action of the kind you specified for safety findings, or two plain fields on the gap itself? And where should the action's due date be recorded?
 
+---
+
+## Question 17 — Should the trigger you pick have to match how far the project has actually got?
+
+Right now Change Control lets you pick any trigger for any project, whatever gate that project is at. Each trigger declares which gates it affects — for example "Ingredient percentage or active level changed" affects Gates 5 and 8 — but nothing stops someone opening that same trigger against a project that is only at Gate 2, before any formula decision has even been made that there would be something to change.
+
+**The direction matters, and getting it backwards would break a case we already rely on.** A project that is past Gates 5 and 8 — say it is at Gate 11 — reopening a change tied to Gate 5 or 8 is exactly what this tool is for: formally amending a decision that was already locked in. That has to stay allowed. The odd case is the other direction: a project that has not yet reached a gate has nothing decided there yet to change.
+
+**What we would do without an answer.** Compare the trigger's gates against the highest gate the project has actually **passed** — not the gate it is currently working on, since anything still in progress gets edited directly rather than through a formal change record. A trigger marked as affecting every gate would stay available always, and with no project picked yet there is nothing to compare against, so the full list would stay open.
+
+**Question:** should the trigger someone can pick be limited by how far the project has progressed? If so, is the right boundary "the highest gate passed", or something else? And should a trigger that points ahead of the project's progress be blocked outright, or just flagged as unusual and left selectable?
 
 ## Summary
 
@@ -230,5 +242,6 @@ Your critical-gap answer lets a High gap be carried conditionally where, among o
 | 10–12 | Phase sign-off: who nominates, whether the gate rules apply, drawn signature | Built in August, never put to you |
 | 13–14 | A "Reject / Stop" decision that does not exist · whether Safety **or** Regulatory is enough | Two of your own answers name them; we did not invent either |
 | 15–16 | Who may open the reference-data pages · what makes a gap's action "controlled" | Both surfaced by using what we had just built |
+| 17 | Should a change-control trigger be limited to gates the project has passed | Not built yet — raised discussing the Change Control screen, no rework at stake either way |
 
 Questions 4 to 6, 10 to 12, 14 and 16 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

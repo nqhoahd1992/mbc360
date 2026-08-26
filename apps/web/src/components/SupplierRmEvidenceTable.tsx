@@ -22,6 +22,17 @@ import { columnWidth } from '../utils/columnWidth';
 // `rmCode`/`grade` (trade name)/`supplier` get picker treatment — every other
 // column (the actual evidence: SDS/CoA/TDS/allergen/impurity/...) stays exactly
 // as free-text as the generic DynamicTable already renders it.
+
+// This register carries 16 data columns — the widest of the evidence tables —
+// which made it the one users hit the "wall of columns" complaint on
+// (2026-08-26): the delete button sat off the right edge of the viewport, and
+// every text input was cramped at `size="small"`. Fixed app-wide (this table
+// plus DynamicTable and PublishedInfoApprovalTable, its siblings): `rmCode`
+// and the action column are pinned with `fixed`, so identity and delete never
+// scroll out of reach, and inputs dropped `size="small"` for the normal antd
+// size. (A "Show all fields" collapse was tried and dropped the same day —
+// kept every table showing its full, consistent column set instead.)
+
 export default function SupplierRmEvidenceTable({
   config,
   rows,
@@ -197,7 +208,6 @@ export default function SupplierRmEvidenceTable({
         }
         return (
           <Select
-            size="small"
             allowClear
             style={{ width: '100%', minWidth: 110 }}
             value={value as string | undefined}
@@ -209,7 +219,6 @@ export default function SupplierRmEvidenceTable({
       case 'date':
         return (
           <DatePicker
-            size="small"
             style={{ width: '100%' }}
             value={value ? dayjs(String(value)) : null}
             onChange={(d) => patch(index, column.key, d ? d.format('YYYY-MM-DD') : undefined)}
@@ -218,7 +227,6 @@ export default function SupplierRmEvidenceTable({
       case 'number':
         return (
           <InputNumber
-            size="small"
             style={{ width: '100%' }}
             value={value as number | undefined}
             onChange={(v) => patch(index, column.key, v ?? 0)}
@@ -228,16 +236,13 @@ export default function SupplierRmEvidenceTable({
         return (
           <Input.TextArea
             autoSize={{ minRows: 1, maxRows: 4 }}
-            size="small"
             value={value as string | undefined}
             onChange={(e) => patch(index, column.key, e.target.value)}
           />
         );
       case 'text':
       default:
-        return (
-          <Input size="small" value={value as string | undefined} onChange={(e) => patch(index, column.key, e.target.value)} />
-        );
+        return <Input value={value as string | undefined} onChange={(e) => patch(index, column.key, e.target.value)} />;
     }
   };
 
@@ -251,18 +256,23 @@ export default function SupplierRmEvidenceTable({
   const columns = [
     ...config.columns.map((col) => {
       if (readOnly) {
-        return { title: col.label, width: Math.max(col.key === 'rmCode' ? 260 : col.width ?? 140, columnWidth(col)), render: (_: unknown, row: RegisterRow) => staticCell(col, row) };
+        return {
+          title: col.label,
+          width: Math.max(col.key === 'rmCode' ? 260 : col.width ?? 140, columnWidth(col)),
+          fixed: col.key === 'rmCode' ? ('left' as const) : undefined,
+          render: (_: unknown, row: RegisterRow) => staticCell(col, row),
+        };
       }
       if (col.key === 'rmCode') {
         return {
           title: col.label,
           width: 260,
+          fixed: 'left' as const,
           render: (_: unknown, row: RegisterRow, index: number) => {
             const code = String(row.rmCode ?? '');
             const isDuplicate = !!code && duplicateRmCodes.has(code);
             return (
               <Select
-                size="small"
                 style={{ width: '100%' }}
                 showSearch
                 allowClear
@@ -310,7 +320,6 @@ export default function SupplierRmEvidenceTable({
               </Tooltip>
             ) : (
               <Input
-                size="small"
                 value={row.grade as string | undefined}
                 onChange={(e) => patch(index, 'grade', e.target.value)}
               />
@@ -330,7 +339,6 @@ export default function SupplierRmEvidenceTable({
               </Tooltip>
             ) : (
               <Input
-                size="small"
                 value={row.supplier as string | undefined}
                 onChange={(e) => patch(index, 'supplier', e.target.value)}
               />
@@ -344,7 +352,6 @@ export default function SupplierRmEvidenceTable({
           width: Math.max(col.width ?? 180, columnWidth(col)),
           render: (_: unknown, row: RegisterRow, index: number) => (
             <Input
-              size="small"
               value={row.inciName as string | undefined}
               // Cosmetri's raw-material API has no INCI field — the trade
               // name is only ever a grey hint, never auto-filled, so the user
@@ -364,6 +371,7 @@ export default function SupplierRmEvidenceTable({
     ...(readOnly ? [] : [{
       title: '',
       width: 44,
+      fixed: 'right' as const,
       render: (_: unknown, row: RegisterRow, index: number) => {
         const inUse = !!row.rmCode && rmCodesInBom.has(String(row.rmCode));
         return (
@@ -413,7 +421,7 @@ export default function SupplierRmEvidenceTable({
           showIcon
           icon={<LockOutlined />}
           style={{ marginBottom: 12 }}
-          message="Read-only — gate passed"
+          title="Read-only — gate passed"
           description={readOnlyReason ?? 'This evidence belongs to a gate that has already passed. To correct it, Backtrack to reopen that gate first.'}
         />
       ) : (

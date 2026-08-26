@@ -28,6 +28,7 @@ import { getMySignature, getMyTotpStatus } from '../api/accountApi';
 import SaveBar from './SaveBar';
 import SignatureStepUpModal from './SignatureStepUpModal';
 import { Link } from 'react-router-dom';
+import { TABLE_STICKY } from '../theme/tokens';
 
 // Phase sign-off, rebuilt 2026-08-20 around rule D1's requirement that a
 // sign-off record an AUTHENTICATED user, the role held, date/time, decision,
@@ -200,7 +201,7 @@ export default function SignOffBlock({
           showIcon
           icon={<LockOutlined />}
           style={{ marginBottom: 12 }}
-          message="Sign-off locked — closure conditions not yet met"
+          title="Sign-off locked — closure conditions not yet met"
           description={`Still required before sign-off: ${missing.join('; ')}.`}
         />
       )}
@@ -209,7 +210,7 @@ export default function SignOffBlock({
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          message={`You are this project's Lead — nominate a signer for: ${unassigned.join(', ')}`}
+          title={`You are this project's Lead — nominate a signer for: ${unassigned.join(', ')}`}
           description="Only the person nominated for a row can sign it, and they sign as themselves."
         />
       )}
@@ -218,7 +219,7 @@ export default function SignOffBlock({
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          message={`Signers are nominated by this project's Lead (${projectLead})`}
+          title={`Signers are nominated by this project's Lead (${projectLead})`}
           description="You can sign a row nominated to you; you cannot sign for anyone else, and no field here records a signature on somebody's behalf."
         />
       )}
@@ -227,7 +228,7 @@ export default function SignOffBlock({
           type="warning"
           showIcon
           style={{ marginBottom: 12 }}
-          message={`${sharedSigner.name} has signed more than one role on this phase`}
+          title={`${sharedSigner.name} has signed more than one role on this phase`}
           description="Rule D1 requires an independent reviewer or approver for safety-, regulatory-, claims- or release-critical decisions. This is not blocked here — it is recorded so it is visible."
         />
       )}
@@ -246,9 +247,10 @@ export default function SignOffBlock({
         rowKey={(r) => r.role}
         dataSource={closure.signOffs}
         pagination={false}
+        sticky={TABLE_STICKY}
         scroll={{ x: 1000 }}
         columns={[
-          { title: 'Role', width: 110, dataIndex: 'role', render: (v) => <b>{v}</b> },
+          { title: 'Role', width: 110, dataIndex: 'role', fixed: 'left', render: (v) => <b>{v}</b> },
           {
             title: 'Nominated signer',
             width: 200,
@@ -257,7 +259,6 @@ export default function SignOffBlock({
                 <span>{r.assignedToName ?? <Typography.Text type="secondary">Not nominated</Typography.Text>}</span>
               ) : (
                 <Select
-                  size="small"
                   allowClear
                   showSearch
                   style={{ width: '100%', minWidth: 140 }}
@@ -282,7 +283,7 @@ export default function SignOffBlock({
               if (isSignedOff(r)) {
                 const mine = r.signedByUserId === me?.id;
                 return (
-                  <Space direction="vertical" size={0}>
+                  <Space orientation="vertical" size={0}>
                     <span>
                       <Tag color="green">Signed</Tag>
                       {/* Not bold: the Role column already carries this row's
@@ -334,7 +335,7 @@ export default function SignOffBlock({
               }
               const why = blockedReason(r);
               return (
-                <Space direction="vertical" size={4}>
+                <Space orientation="vertical" size={4}>
                   {/* One path only. The old opt-in checkbox and the plain
                       "Sign as me" beside it are gone: a sign-off always carries
                       the signer's saved signature and always asks for a fresh
@@ -372,7 +373,6 @@ export default function SignOffBlock({
                 <span>{r.decision ?? '—'}</span>
               ) : r.assignedToUserId === me?.id ? (
                 <Select
-                  size="small"
                   allowClear
                   style={{ width: 150 }}
                   value={rowDraft(r.role).decision}
@@ -392,7 +392,6 @@ export default function SignOffBlock({
                 <span>{r.comments ?? '—'}</span>
               ) : r.assignedToUserId === me?.id ? (
                 <Input
-                  size="small"
                   value={rowDraft(r.role).comments}
                   disabled={locked}
                   placeholder="Required unless the decision is Proceed"

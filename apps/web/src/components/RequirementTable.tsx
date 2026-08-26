@@ -113,11 +113,14 @@ export default function RequirementTable({
           {
             key: 'detail',
             title: 'Requirement',
-            width: 280,
+            // Widened (2026-08-26) — this is the main free-text entry for a
+            // Phase 1 B6 row (what the category means for THIS project), not
+            // a short reference field like its neighbours, so it gets more
+            // room than the generic 280 default.
+            width: 360,
             render: (_, r, i) => (
               <Input.TextArea
                 autoSize={{ minRows: 1, maxRows: 4 }}
-                size="small"
                 placeholder="What this category means for this project"
                 value={r.requirementText}
                 disabled={isRowLocked?.(r)}
@@ -139,7 +142,6 @@ export default function RequirementTable({
             width: 130,
             render: (_, r, i) => (
               <Select
-                size="small"
                 style={{ width: '100%' }}
                 allowClear
                 disabled={isRowLocked?.(r)}
@@ -157,7 +159,6 @@ export default function RequirementTable({
             render: ownerEditable
               ? (_, r, i) => (
                   <Input
-                    size="small"
                     disabled={isRowLocked?.(r)}
                     value={r.owner}
                     onChange={(e) => patch(i, { owner: e.target.value })}
@@ -171,7 +172,6 @@ export default function RequirementTable({
             width: 140,
             render: (_, r, i) => (
               <Select
-                size="small"
                 style={{ width: 130 }}
                 value={r.status}
                 disabled={isRowLocked?.(r)}
@@ -186,7 +186,6 @@ export default function RequirementTable({
             width: 160,
             render: (_, r, i) => (
               <Input
-                size="small"
                 value={r.evidenceLink}
                 placeholder="link"
                 disabled={isRowLocked?.(r)}
@@ -199,7 +198,7 @@ export default function RequirementTable({
             title: 'Notes / action',
             width: 200,
             render: (_, r, i) => (
-              <Input size="small" value={r.notes} disabled={isRowLocked?.(r)} onChange={(e) => patch(i, { notes: e.target.value })} />
+              <Input value={r.notes} disabled={isRowLocked?.(r)} onChange={(e) => patch(i, { notes: e.target.value })} />
             ),
           },
         ];
@@ -218,7 +217,11 @@ export default function RequirementTable({
           const isCurrentGate = r.gate === currentGateNumber;
           return required && isCurrentGate ? { style: { background: '#fffbe6' } } : {};
         }}
-        columns={allColumns.filter((c) => shows(c.key))}
+        // Pin whichever column ends up first after filtering (varies by
+        // section — Phase 1's B6 leads with 'category', Phases 2-4 with
+        // 'gate') so the identity of a row stays readable while scrolling
+        // through the rest of a wide section (2026-08-26).
+        columns={allColumns.filter((c) => shows(c.key)).map((c, i) => (i === 0 ? { ...c, fixed: 'left' } : c))}
       />
       <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
     </Card>

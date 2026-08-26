@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react';
-import { Alert, Button, Card, Checkbox, Empty, Modal, Select, Space, Spin, Typography, message } from 'antd';
+import { Alert, App, Button, Card, Checkbox, Empty, Select, Space, Spin, Typography, message } from 'antd';
 import { GATES, PHASES } from '@mbc360/shared/config/gates';
 import { ADMIN_ROLE, SSO_ROLES } from '../utils/roles';
 import type { PermissionDef, PermissionGrid } from '../utils/permissions';
@@ -102,6 +102,9 @@ const sortedKey = (ids: string[]) => [...ids].sort().join('\n');
 const NO_GRANTS: string[] = [];
 
 export default function RoleCapabilityEditor() {
+  // Context-aware instance (2026-08-26) — see the note on App.tsx's root
+  // `<App>` for why the static `Modal.confirm` this used to call is wrong.
+  const { modal } = App.useApp();
   const loadPermissionGrid = useAppStore((s) => s.loadPermissionGrid);
   const [grid, setGrid] = useState<PermissionGrid | null>(null);
   const [loading, setLoading] = useState(true);
@@ -178,7 +181,7 @@ export default function RoleCapabilityEditor() {
       return;
     }
     const current = SSO_ROLES.find((r) => r.key === selectedRole)?.label ?? selectedRole;
-    Modal.confirm({
+    modal.confirm({
       title: `Discard unsaved changes to ${current}?`,
       content: 'Switching role reloads its saved capabilities. Your edits here have not been saved.',
       okText: 'Discard and switch',
@@ -240,7 +243,6 @@ export default function RoleCapabilityEditor() {
             Role
           </Typography.Text>
           <Select
-            size="small"
             style={{ width: 300 }}
             value={selectedRole}
             onChange={changeRole}

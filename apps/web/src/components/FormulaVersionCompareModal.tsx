@@ -110,7 +110,7 @@ export default function FormulaVersionCompareModal({
             />
           </span>
           <span>
-            <Switch size="small" checked={showUnchanged} onChange={setShowUnchanged} /> Show unchanged lines
+            <Switch checked={showUnchanged} onChange={setShowUnchanged} /> Show unchanged lines
           </span>
         </Space>
 

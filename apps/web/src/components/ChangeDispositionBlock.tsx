@@ -1,4 +1,5 @@
-import { Alert, Input, Space } from 'antd';
+import { Alert, DatePicker, Input, Space } from 'antd';
+import dayjs from 'dayjs';
 import type { ChangeRecord } from '@mbc360/shared/types';
 import { isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
 import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
@@ -60,33 +61,29 @@ export default function ChangeDispositionBlock({
         <Alert
           type="warning"
           showIcon
-          message="Final disposition incomplete — this change still blocks Gate 11"
+          title="Final disposition incomplete — this change still blocks Gate 11"
           description={`Missing: ${missing.map((f) => LABELS[f] ?? f).join(' · ')}`}
         />
       )}
 
-      <Space direction="vertical" size={4} style={{ width: '100%' }}>
+      <Space orientation="vertical" size={4} style={{ width: '100%' }}>
         <Input
-          size="small"
           placeholder={LABELS.closureOutcome}
           value={change.closureOutcome}
           onChange={(e) => onChange({ closureOutcome: e.target.value })}
         />
         <Input.TextArea
-          size="small"
           autoSize={{ minRows: 1, maxRows: 3 }}
           placeholder={LABELS.closureImplementation}
           value={change.closureImplementation}
           onChange={(e) => onChange({ closureImplementation: e.target.value })}
         />
         <Input
-          size="small"
           placeholder={LABELS.closureEvidence}
           value={change.closureEvidence}
           onChange={(e) => onChange({ closureEvidence: e.target.value })}
         />
         <Input
-          size="small"
           placeholder={LABELS.closureImpactedVersions}
           value={change.closureImpactedVersions}
           onChange={(e) => onChange({ closureImpactedVersions: e.target.value })}
@@ -98,19 +95,16 @@ export default function ChangeDispositionBlock({
             value={change.closureVerifier}
             onChange={(v?: string) => onChange({ closureVerifier: v ?? '' })}
           />
-          <Input
-            size="small"
-            type="date"
+          <DatePicker
             style={{ width: 150 }}
-            value={change.closedDate}
-            onChange={(e) => onChange({ closedDate: e.target.value })}
+            value={change.closedDate ? dayjs(change.closedDate) : null}
+            onChange={(d) => onChange({ closedDate: d ? d.format('YYYY-MM-DD') : undefined })}
           />
         </Space>
         {/* The one part the answer marks "if any", so it is never in the missing
             list — a change that leaves nothing behind should not be blocked into
             inventing a transition requirement. */}
         <Input
-          size="small"
           placeholder="Remaining action or transition requirement (if any)"
           value={change.closureRemainingAction}
           onChange={(e) => onChange({ closureRemainingAction: e.target.value })}

@@ -147,7 +147,7 @@ export default function AdminUsers() {
         // itself.
         scroll={{ x: 1000 }}
         columns={[
-          { title: 'Email', dataIndex: 'email' },
+          { title: 'Email', dataIndex: 'email', fixed: 'left' },
           { title: 'Name', dataIndex: 'displayName' },
           {
             title: 'Department',
@@ -159,7 +159,6 @@ export default function AdminUsers() {
             key: 'role',
             render: (_, record) => (
               <Select
-                size="small"
                 style={{ width: 220 }}
                 value={record.roles[0]?.key ?? null}
                 onChange={(key) => void setRole(record.id, key)}
@@ -175,7 +174,6 @@ export default function AdminUsers() {
             key: 'active',
             render: (_, record) => (
               <Switch
-                size="small"
                 checked={record.active}
                 onChange={(checked) => void setActive(record.id, checked)}
               />
@@ -206,6 +204,7 @@ export default function AdminUsers() {
             title: '',
             key: 'delete',
             width: 44,
+            fixed: 'right',
             render: (_, record) => (
               <Tooltip title="Only works for an account with no history — otherwise deactivate it instead">
                 <Popconfirm

@@ -89,6 +89,10 @@ export default function ChangeControl() {
   const projects = useAppStore((s) => s.projects);
   const addChange = useAppStore((s) => s.addChange);
   const setChangesBulk = useAppStore((s) => s.setChangesBulk);
+  // The project the sidebar is currently pinned to (2026-08-26, user-requested):
+  // opening "Open Change Request" from inside a project's workspace should not
+  // make someone re-pick the project they were just looking at.
+  const activeProjectId = useAppStore((s) => s.activeProjectId);
   const { draft, dirty, update, markSaved, discard } = useDraft(changes);
   const [open, setOpen] = useState(false);
   const [refOpen, setRefOpen] = useState(false);
@@ -116,6 +120,21 @@ export default function ChangeControl() {
 
   // Default is Yes (see initialValues); only hide the message when explicitly No.
   const commRequired = Form.useWatch('communicationRequired', form) !== false;
+
+  // `form`'s `initialValues` only apply once, at first mount — reopening the
+  // Modal later would not pick up a since-changed active project, so the
+  // Project (and its dependent Product/SKU) are set explicitly on every open
+  // instead. `activeProjectId` may point at a project that no longer exists
+  // (deleted, or never set) — falls back to leaving the field blank rather
+  // than crashing on a `.find()` that returns undefined.
+  const openNewChangeModal = () => {
+    const activeProject = projects.find((p) => p.identity.id === activeProjectId);
+    form.setFieldsValue({
+      projectId: activeProject?.identity.id,
+      productSku: activeProject?.identity.productSku,
+    });
+    setOpen(true);
+  };
 
   const onCreate = async () => {
     const values = await form.validateFields();
@@ -158,7 +177,7 @@ export default function ChangeControl() {
             <Button size="small" icon={<SearchOutlined />} onClick={() => setRefOpen(true)}>
               Trigger reference
             </Button>
-            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={openNewChangeModal}>
               Open Change Request
             </Button>
           </Space>
@@ -168,6 +187,7 @@ export default function ChangeControl() {
           size="small"
           rowKey={(c) => c.changeId}
           dataSource={draft}
+          sticky={TABLE_STICKY}
           scroll={{ x: 2260 }}
           // Round 4 question 34(c). Always expanded and not user-toggleable, the
           // same pattern the Gate Flow table uses for its readiness panel: a change
@@ -181,7 +201,7 @@ export default function ChangeControl() {
             ),
           }}
           columns={[
-            { title: 'Change ID', width: 100, dataIndex: 'changeId', render: (v) => <b>{v}</b> },
+            { title: 'Change ID', width: 100, dataIndex: 'changeId', fixed: 'left', render: (v) => <b>{v}</b> },
             { title: 'Trigger / event', width: 240, dataIndex: 'trigger' },
             {
               title: 'Affected gates / phases',
@@ -210,7 +230,6 @@ export default function ChangeControl() {
               width: 260,
               render: (_, c) => (
                 <Select
-                  size="small"
                   mode="multiple"
                   allowClear
                   style={{ width: 245 }}
@@ -237,7 +256,6 @@ export default function ChangeControl() {
               width: 235,
               render: (_, c) => (
                 <Select
-                  size="small"
                   style={{ width: 220 }}
                   value={c.status}
                   options={CHANGE_STATUSES.map((s) => ({ value: s, label: s }))}
@@ -349,6 +367,15 @@ export default function ChangeControl() {
       >
         <Form form={form} layout="vertical" initialValues={{ riskLevel: 'Medium', communicationRequired: true }}>
           <Form.Item name="triggerId" label="Trigger / event" rules={[{ required: true }]}>
+            {/* Every trigger is offered for every project, whatever gate it is
+                at — not filtered against how far the project has actually
+                progressed (2026-08-26, user-raised: a project at Gate 2
+                picking a Gate 10 trigger has nothing there yet to change,
+                while a project past Gate 5/8 reopening a Gate 5/8 trigger is
+                exactly what Change Control is for, so the filter — if any —
+                must compare against the highest gate PASSED, not just
+                disallow "not the current gate"). Left unrestricted for now
+                [ASSUMPTION: R5-Q17]. */}
             <Select
               showSearch
               optionFilterProp="label"

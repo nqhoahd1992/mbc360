@@ -18,13 +18,24 @@ export function useDraft<T>(committed: T) {
   // triggers a re-render that re-derives another new reference, that's an
   // infinite update loop, not just a wasted one.
   const [committedJson, setCommittedJson] = useState(() => JSON.stringify(committed));
-  const nextCommittedJson = JSON.stringify(committed);
-  if (nextCommittedJson !== committedJson) {
-    setCommittedJson(nextCommittedJson);
-    // Re-sync from the committed value only when there's no pending local
-    // edit - otherwise an unrelated store update (e.g. a Cosmetri import,
-    // another tab) would silently clobber in-progress typing.
-    if (!dirty) setDraft(committed);
+  // Skip the JSON.stringify comparison entirely while dirty (2026-08-26,
+  // perf fix): the result is only ever ACTED on when `!dirty` (the resync
+  // below), so computing it while the user has an in-progress edit was pure
+  // waste — and, worse, `committed` is often the WHOLE table's data, so this
+  // ran on every keystroke of every controlled input using this hook,
+  // stringifying the full register on every character typed. That is exactly
+  // the per-keystroke-cost problem this hook exists to eliminate; it had just
+  // moved from "stringify + localStorage.setItem" to "stringify alone".
+  // `committedJson` is simply left stale until dirty clears — harmless, since
+  // nothing reads it while dirty, and the next `!dirty` render re-checks it
+  // against whatever `committed` has become by then (after Save, that's the
+  // very value just written, so this immediately resolves to a no-op resync).
+  if (!dirty) {
+    const nextCommittedJson = JSON.stringify(committed);
+    if (nextCommittedJson !== committedJson) {
+      setCommittedJson(nextCommittedJson);
+      setDraft(committed);
+    }
   }
 
   const update = (updater: T | ((prev: T) => T)) => {

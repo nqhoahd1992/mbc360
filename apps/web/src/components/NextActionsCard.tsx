@@ -102,9 +102,9 @@ export default function NextActionsCard({
           {
             title: 'Gate',
             width: 100,
+            fixed: 'left',
             render: (_, a, i) => (
               <Select
-                size="small"
                 style={{ width: 90 }}
                 value={a.gateId}
                 options={gateOptions}
@@ -115,9 +115,9 @@ export default function NextActionsCard({
           {
             title: 'Description',
             width: 280,
+            fixed: 'left',
             render: (_, a, i) => (
               <Input.TextArea
-                size="small"
                 autoSize={{ minRows: 1, maxRows: 3 }}
                 value={a.description}
                 placeholder="What must be done?"
@@ -137,7 +137,6 @@ export default function NextActionsCard({
             width: 130,
             render: (_, a, i) => (
               <DatePicker
-                size="small"
                 value={a.dueDate ? dayjs(a.dueDate) : null}
                 onChange={(d) => patch(i, { dueDate: d ? d.format('YYYY-MM-DD') : undefined })}
               />
@@ -148,7 +147,6 @@ export default function NextActionsCard({
             width: 110,
             render: (_, a, i) => (
               <Select
-                size="small"
                 style={{ width: 100 }}
                 value={a.priority}
                 options={PRIORITY_OPTIONS.map((p) => ({
@@ -164,7 +162,6 @@ export default function NextActionsCard({
             width: 130,
             render: (_, a, i) => (
               <Select
-                size="small"
                 style={{ width: 120 }}
                 value={a.status}
                 options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
@@ -199,6 +196,7 @@ export default function NextActionsCard({
           {
             title: '',
             width: 50,
+            fixed: 'right',
             render: (_, a) => (
               <Popconfirm title="Remove action?" onConfirm={() => removeAction(a.id)}>
                 <Button size="small" danger type="text" aria-label="Remove this next action" icon={<DeleteOutlined />} />
