@@ -29,11 +29,16 @@
  * The fix is always the same shape: a migration that backfills the rows for
  * existing projects, generated from the same config a new project reads. Run this
  * after any change to PHASE_CONFIGS' checklistSections / requirementSections /
- * keyGateChecks, or to a fixed register's rows.
+ * keyGateChecks, a fixed register's rows, or which registers carry a gate (the
+ * closing feature added 2026-08-27 scaffolds a RegisterClosure + 2 sign-off
+ * rows for every register gateRefHighestGateId resolves — checked below the
+ * same way gate checks are, by identity, since a register missing its
+ * closure row can never satisfy unclosedRegistersBlocking for it).
  */
 import { execSync } from 'node:child_process';
 import { PHASE_CONFIGS } from '../src/config/phases';
 import { REGISTER_CONFIGS } from '../src/config/registers';
+import { gateRefHighestGateId } from '../src/utils/gateProgress';
 
 const CONTAINER = process.env.MBC_PG_CONTAINER ?? 'mbc360-postgres-dev';
 
@@ -91,6 +96,23 @@ const wantedGateChecks = Object.values(PHASE_CONFIGS).flatMap((phase) =>
   phase.keyGateChecks.map((kc) => `${kc.gate}|${kc.check}`),
 );
 
+// Register closing (2026-08-27): every register with a specific gate needs a
+// RegisterClosure + 2 RegisterClosureSignOff rows ('Review owner', 'Co-sign')
+// per project — the exact universe gateRefHighestGateId is non-undefined for.
+const closeableRegisters = REGISTER_CONFIGS.filter((r) => !!gateRefHighestGateId(r.gate));
+const WANTED_CLOSURE_ROLES = ['Review owner', 'Co-sign'];
+const registerClosureRoles = new Map<string, Map<string, Set<string>>>();
+for (const [projectId, registerKey, role] of query(
+  'select rc."projectId", rc."registerKey", rcso.role from register_closures rc' +
+    ' left join register_closure_sign_offs rcso on rcso."closureId" = rc.id',
+)) {
+  const byRegister = registerClosureRoles.get(projectId) ?? new Map<string, Set<string>>();
+  const roles = byRegister.get(registerKey) ?? new Set<string>();
+  if (role) roles.add(role);
+  byRegister.set(registerKey, roles);
+  registerClosureRoles.set(projectId, byRegister);
+}
+
 const drifts: Drift[] = [];
 for (const project of projects) {
   const have = gateCheckKeys.get(project) ?? new Set<string>();
@@ -127,6 +149,26 @@ for (const project of projects) {
     const db = registerCounts.get(`${project}::${register.key}`) ?? 0;
     if (db !== want) {
       drifts.push({ project, kind: 'register', key: register.key, config: want, db });
+    }
+  }
+  // Register closing (2026-08-27) — same "materialised once at creation"
+  // hazard as gate checks above, and compared by identity for the same
+  // reason: a project missing its RegisterClosure row for a given register
+  // can never satisfy unclosedRegistersBlocking for that register, silently
+  // stuck the same way a missing gate check row was in 2026-08-12.
+  const closureRoles = registerClosureRoles.get(project) ?? new Map<string, Set<string>>();
+  for (const register of closeableRegisters) {
+    const roles = closureRoles.get(register.key) ?? new Set<string>();
+    const missing = WANTED_CLOSURE_ROLES.filter((r) => !roles.has(r));
+    if (missing.length > 0) {
+      drifts.push({
+        project,
+        kind: 'register closure',
+        key: register.key,
+        config: WANTED_CLOSURE_ROLES.length,
+        db: roles.size,
+        missing,
+      });
     }
   }
 }

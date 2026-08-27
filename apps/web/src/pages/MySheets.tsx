@@ -76,10 +76,16 @@ export default function MySheets() {
     const out: MySheetRow[] = [];
     for (const group of getNavGroups()) {
       for (const item of group.items as NavItem[]) {
-        // A dedicated-page item carries no RegisterConfig, so fall back to the
-        // group's own spec — that is what its page caption composes from too.
+        // A dedicated-page item carries no RegisterConfig, so fall back to its
+        // own `reviewOwner` override (only set when it differs from the
+        // group — see registers.ts) and only then to the group's own spec —
+        // that is what its page caption composes from too. Without the
+        // item-level fallback, a page-based item filed outside its own
+        // owner's group (2026-08-27: "Formulation Safety" under "Quality")
+        // would silently attribute to whoever holds the GROUP's role instead
+        // of its real owner, on this page too.
         const config = item.registerKey ? getRegisterConfig(item.registerKey) : undefined;
-        const spec = config?.reviewOwner ?? group.reviewOwner;
+        const spec = config?.reviewOwner ?? item.reviewOwner ?? group.reviewOwner;
         const involvement = involvementIn(spec, myRoles);
         if (involvement.length === 0) continue;
         const registerRows = item.registerKey ? project.registers[item.registerKey] ?? [] : undefined;

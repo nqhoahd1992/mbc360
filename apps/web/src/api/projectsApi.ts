@@ -10,6 +10,7 @@ import type {
   GateRecord,
   ProjectData,
   ProjectIdentity,
+  RegisterClosureRole,
   RegisterRow,
   RequirementItem,
   SignOff,
@@ -281,6 +282,48 @@ export const withdrawRegisterRowSignature = (
   request<ProjectEnvelope>(
     `/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/rows/${rowIndex}/signature/withdraw`,
     { method: 'POST', body: JSON.stringify({ column, reason, expectedVersion }) },
+  );
+
+// Register closing (2026-08-27). Two signatures (Review owner + Co-sign) make
+// a register read-only independently of its gate — same three-call shape as
+// the phase sign-off and register-row signature above, targeting the whole
+// register + a role instead of one row + column. No separate nomination call
+// exists: the signer for each role is derived server-side (and mirrored
+// client-side via registerClosureSignerRole in @mbc360/shared/config/reviewers)
+// straight from the register's own reviewOwner spec.
+export const verifyRegisterCloseStepUp = (
+  id: string,
+  registerKey: string,
+  role: RegisterClosureRole,
+  code: string,
+): Promise<{ stepUpToken: string }> =>
+  request(`/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/close/step-up`, {
+    method: 'POST',
+    body: JSON.stringify({ role, code }),
+  });
+
+export const signRegisterClose = (
+  id: string,
+  registerKey: string,
+  role: RegisterClosureRole,
+  stepUpToken: string,
+  expectedVersion: number,
+) =>
+  request<ProjectEnvelope>(
+    `/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/close/sign`,
+    { method: 'POST', body: JSON.stringify({ role, stepUpToken, expectedVersion }) },
+  );
+
+export const withdrawRegisterClose = (
+  id: string,
+  registerKey: string,
+  role: RegisterClosureRole,
+  reason: string,
+  expectedVersion: number,
+) =>
+  request<ProjectEnvelope>(
+    `/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/close/withdraw`,
+    { method: 'POST', body: JSON.stringify({ role, reason, expectedVersion }) },
   );
 
 export const setEvidenceSummary = (id: string, phase: number, value: string, v: number) =>

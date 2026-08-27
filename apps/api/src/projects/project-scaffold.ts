@@ -7,6 +7,7 @@ import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import { EVIDENCE_AREAS } from '@mbc360/shared/config/evidence';
 import { REGISTER_CONFIGS } from '@mbc360/shared/config/registers';
 import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
+import { gateRefHighestGateId } from '@mbc360/shared/utils/gateProgress';
 import type { RegisterRow } from '@mbc360/shared/types';
 import type { Prisma } from '../generated/prisma/client';
 
@@ -141,6 +142,21 @@ function gateCheckCreates(): Prisma.GateCheckCreateWithoutProjectInput[] {
   );
 }
 
+// Register closing (2026-08-27): one RegisterClosure + 2 blank
+// RegisterClosureSignOff rows (Review owner, Co-sign) for every register
+// with a specific gate — the exact same universe isGateRefLocked already
+// applies to (gateRefHighestGateId is defined). Materialised at project
+// creation like every other config-driven row in this file, per this app's
+// standing rule: a section added to config later only reaches FUTURE
+// projects unless something backfills existing ones — see CLAUDE.md's
+// "scaffold drift" note and check-scaffold-drift.ts.
+function registerClosureCreates(): Prisma.RegisterClosureCreateWithoutProjectInput[] {
+  return REGISTER_CONFIGS.filter((config) => !!gateRefHighestGateId(config.gate)).map((config) => ({
+    registerKey: config.key,
+    signOffs: { create: [{ role: 'Review owner' }, { role: 'Co-sign' }] },
+  }));
+}
+
 function phaseClosureCreates(): Prisma.PhaseClosureCreateWithoutProjectInput[] {
   return Object.values(PHASE_CONFIGS).map((config) => ({
     phase: config.phase,
@@ -188,6 +204,7 @@ export async function createProjectWithScaffold(
       },
       evidenceItems: { create: EVIDENCE_AREAS.map((e) => ({ ...e })) },
       registerRows: { create: seedRegisterRowCreates() },
+      registerClosures: { create: registerClosureCreates() },
       studyApprovals: { create: STUDY_APPROVAL_ROLES.map((role) => ({ role })) },
       formulaVersions: { create: [{ version: INITIAL_FORMULA_VERSION }] },
     },

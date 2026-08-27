@@ -25,6 +25,8 @@ You can reply by number, for example "3 — option (b)".
 5. **Questions 13–16** — smaller, but two of them name something your own answers assume exists and the software does not have.
 6. **Questions 17–18** — design choices worth confirming before we build, with no rework at stake either way.
 7. **Question 19** — the largest structural question in this list, and the one we have deliberately stopped work on until you answer it.
+8. **Question 20** — raised the same day as 17–18, nothing built yet either way.
+9. **Question 21** — already built, on the project owner's own instruction, before asking you. We would rather you corrected it now than have it settle in as though it were confirmed.
 
 ---
 
@@ -310,6 +312,43 @@ The middle one reads that way from its own contents: it warns that Vietnam needs
 **(f)** Is the dividing line between the Development Iteration Log and the Formulation Change Register the moment the formula is **locked at Gate 5** — trials on one side, controlled changes on the other? If it is something else, what? (Today nothing enforces any line: the software will write a Formulation Change Register entry for a formula that has never been locked, which puts a development trial into the book meant for controlled changes. We have not guessed a rule, because the right fix depends on this answer.)
 
 **What we are doing meanwhile: nothing.** We could make one of these the master book tomorrow and show the others as filtered views of it, and it would look tidier immediately. We are not doing that, because if two of these records really are different things, we would then have to pull them apart again after they had been merged and filled with real data. Nothing is blocked by waiting; the duplication is visible rather than dangerous, with the single exception in point 1 above, which we will fix as soon as (c) is answered.
+
+---
+
+## Question 20 — If a Change Control affects a gate that already passed, should that gate reopen automatically?
+
+Right now, opening a Change Control against a gate that has already passed does nothing to that gate. If Gate 5 was decided "Proceed" and the project has since moved on to Gate 10, opening a change that names Gate 5 leaves the "Proceed" exactly as it was — the only trace is a small warning tag on the Gate Flow screen, which nobody is likely to see again once work has moved on. Closing the change is equally disconnected: nothing checks the gate's state at all.
+
+**What we would do without an answer.** Opening a Change Control against a gate that already passed would reopen exactly that gate — and only that gate, not everything between it and the gate currently being worked — using the same "gate open for work" mechanism the software already has (so nothing new needs building just to make it editable again). The only decision allowed on it afterward would be "Proceed with Conditions". The Change Control could not be closed — Completed, Rejected, Cancelled, or Superseded alike — until every gate it reopened had been decided again. We have already checked one part of this with the project owner: Rejected or Cancelled does not exempt this — even a change that ends up not being carried out still requires someone to explicitly re-confirm the gate, never an automatic restore to what it said before.
+
+**What we have not settled.** (a) Whether "reopen the gate automatically" is the right shape at all, or whether correcting an already-passed gate should always stay a deliberate action a person takes (as it does everywhere else in the system today), with Change Control limited to warning rather than acting on its own. Every existing case of a gate reopening today is either a person explicitly choosing to reopen it, or a single fixed block of gates that a major formula change always reopens together — this would be the first time gates are picked one at a time, by whichever ones a change actually names, rather than as one connected block. (b) Whether restricting the next decision to "Proceed with Conditions" is enough protection on its own, or whether re-deciding a reopened gate should also require a written explanation or a specific person's sign-off. (c) What happens when two open changes both name the same gate — does closing one wait on the other too?
+
+**Question:** should opening a Change Control against an already-passed gate reopen it automatically, restricted to "Proceed with Conditions" until re-decided, and hold the Change Control's own closure open until that happens? If yes, should this apply to every kind of change, or only some? If no, what should happen instead of today's silent no-op?
+
+---
+
+## Question 21 — We have built a two-signature "closing" act for every evidence register. Is this the right shape?
+
+Every register currently shows a "Review owner · Co-sign" caption, but it is only text — anyone can add, edit or delete a row regardless of whose name is shown. The project owner asked us to give that caption real teeth: keep editing open to everyone, but add a deliberate **closing** act — the Review owner and the Co-sign each sign, using the same authenticator-and-saved-signature method already used to sign off a phase — after which the register becomes read-only. A gate could then not pass until every register that belongs to it (or an earlier gate) has been closed this way — closing becomes a condition of the gate passing, not something that happens automatically afterward the way it does today.
+
+**We have already built this in full**, on the project owner's own instruction, before asking you — about 68 registers now carry this closing requirement, with no separate list to configure, since it applies wherever a register is already tied to a specific gate. Every save to a register also now keeps a row-by-row record of what changed and who changed it, which did not exist before.
+
+**Why we are asking anyway.** This is a genuinely new rule, not something transcribed from the workbook, and we would rather you corrected it now than have it settle in as though it were confirmed simply because it already works.
+
+**Five open points:**
+
+**(a)** Should this closing requirement apply to **every** register tied to a gate (around 68 of them), or only to a smaller set that is genuinely meant to be a controlled record — the way a couple of registers already had their own dedicated approval step before this?
+
+**(b)** Is **two** signatures (Review owner and Co-sign) the right number and the right pair of roles, or should some registers need different or additional sign-off?
+
+**(c)** For a register tied to more than one gate, we close-gate it against the **highest** of those gates, matching how the register already becomes read-only today. Is that the right threshold?
+
+**(d)** Building this exposed a real gap: for some registers, the Review owner and the Co-sign resolve to the **same person**, because no distinct Co-sign was ever named for that area — so "two signatures" is actually one person signing twice, not two independent people. We have left this as a visible warning rather than blocking it. Should specific areas like this get a distinct Co-sign assigned instead?
+
+**(e)** The only way to reopen a closed register right now is a Backtrack (which reopens the gate it depends on and the register together). Is that enough, or is a standalone way to reopen a register — without touching the gate — also needed?
+
+**Question:** does this closing mechanism match what you had in mind? If it needs to change, which of (a)–(e) is the one to fix first?
+
 ## Summary
 
 | # | Topic | Why it matters |
@@ -325,5 +364,7 @@ The middle one reads that way from its own contents: it warns that Vietnam needs
 | 17 | Should a change-control trigger be limited to gates the project has passed | Not built yet — raised discussing the Change Control screen, no rework at stake either way |
 | 18 | Whether "NP Controlled" is a book or an authority | The signature is already fixed; where the record lives is not |
 | 19 | **Nine places a change is written down — how many should there be** | **Work stopped until answered.** One measurable consequence: a major formula change never reaches the change-control side at all, so Gate 11 never weighs it |
+| 20 | Should Change Control auto-reopen a gate it affects that already passed | Not built yet — raised the same day as 17–18, no rework at stake either way |
+| 21 | **A two-signature "closing" act for every evidence register — is this the right shape** | **Already built, before asking you.** ~68 registers now require it; five open points on scope, signer count, and reopening |
 
 Questions 4 to 6, 10 to 12, 14 and 16 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

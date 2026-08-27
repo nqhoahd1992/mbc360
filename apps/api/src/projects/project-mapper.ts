@@ -24,6 +24,8 @@ import type {
   GateRecord,
   ProjectData,
   ProjectReferenceData,
+  RegisterClosureSignOff,
+  RegisterClosureState,
   RegisterRow,
   RequirementItem,
   SignOff,
@@ -57,6 +59,7 @@ export const PROJECT_INCLUDE = {
   costing: true,
   evidenceItems: { orderBy: { id: 'asc' } },
   registerRows: { orderBy: [{ registerKey: 'asc' }, { rowOrder: 'asc' }] },
+  registerClosures: { include: { signOffs: true }, orderBy: { registerKey: 'asc' } },
   formulaVersions: { include: { bomLines: { orderBy: { line: 'asc' } } }, orderBy: { createdAt: 'asc' } },
   capaRecords: { orderBy: { id: 'asc' } },
   changeRecords: { orderBy: { createdAt: 'asc' } },
@@ -115,6 +118,21 @@ function toSignOff(s: ProjectWithAll['phaseClosures'][number]['signOffs'][number
     date: dateOnly(s.date),
     decision: opt(s.decision) as SignOff['decision'],
     comments: opt(s.comments),
+    signedByUserId: opt(s.signedByUserId),
+    signedAt: s.signedAt ? s.signedAt.toISOString() : undefined,
+    roleAtSigning: opt(s.roleAtSigning),
+    recordVersion: s.recordVersion ?? undefined,
+    signatureImage: opt(s.signatureImage),
+    signatureVerifiedAt: s.signatureVerifiedAt ? s.signatureVerifiedAt.toISOString() : undefined,
+  };
+}
+
+function toRegisterClosureSignOff(
+  s: ProjectWithAll['registerClosures'][number]['signOffs'][number],
+): RegisterClosureSignOff {
+  return {
+    role: s.role as RegisterClosureSignOff['role'],
+    name: opt(s.name),
     signedByUserId: opt(s.signedByUserId),
     signedAt: s.signedAt ? s.signedAt.toISOString() : undefined,
     roleAtSigning: opt(s.roleAtSigning),
@@ -221,6 +239,11 @@ export function toProjectData(
   const registers: Record<string, RegisterRow[]> = {};
   for (const row of p.registerRows) {
     (registers[row.registerKey] ??= []).push(row.data as RegisterRow);
+  }
+
+  const registerClosures: Record<string, RegisterClosureState> = {};
+  for (const closure of p.registerClosures) {
+    registerClosures[closure.registerKey] = { signOffs: closure.signOffs.map(toRegisterClosureSignOff) };
   }
 
   const phaseClosures: ProjectData['phaseClosures'] = {};
@@ -412,6 +435,7 @@ export function toProjectData(
       concerns: opt(f.concerns),
     })),
     registers,
+    registerClosures,
     nextActions: p.nextActions.map((a) => ({
       id: a.id,
       gateId: a.gateId,

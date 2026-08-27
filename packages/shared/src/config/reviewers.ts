@@ -24,38 +24,43 @@ export interface ReviewRole {
 
 // The full set collected at project creation (all required).
 //
-// ORDER MATTERS and is not arbitrary (reordered 2026-07-26, user-requested):
-// it mirrors the `DEPARTMENTS` order in config/registers.ts — the sidebar's
-// "WORKBOOK BY RESPONSIBILITY" groups — so the Reviewers popover, the Create New
-// Project form fields and the Sheet Map's responsibility facet all read in the
-// same sequence the user navigates the workbook in, roughly following the
-// lifecycle (NPD front-end -> raw material -> formula -> quality -> regulatory
-// -> packaging -> sales -> supply chain). Previously the two lists were in
-// completely different orders, so the same 13 people appeared in one sequence in
-// the sidebar and another in every reviewer list.
+// Labels re-derived from the company's real job titles (2026-08-27,
+// user-supplied), replacing the earlier dev-invented functional-area names —
+// the sheet-to-person mapping comes from who actually owns each real
+// workbook tab, not from a guessed department name. Two people previously
+// assumed to be the same ("Sankar"/"Sekar", one letter apart) turned out to
+// be genuinely different: Sankar owns exactly one tab (Stability_Release),
+// Sekar owns two (GMP_Links, Micro_PET_Evidence) — see `dept-quality`/
+// `dept-quality-gmp`/the new production-support group in registers.ts.
 //
-// Two groups sit outside that mirror on purpose:
-//   - Project Manager first: cross-cutting, auto-appended as co-signer of EVERY
-//     area by composeReviewOwner, so it belongs at the top rather than at some
-//     gate's position.
-//   - Facility / PM Operations, HR/Quality and Digital / Platforms last: they own
-//     no sheet of their own (they only ever co-review or co-sign), so they have
-//     no place in the lifecycle sequence.
+// ORDER MATTERS and is not arbitrary (reordered 2026-07-26, re-sequenced
+// 2026-08-27 to match the new job-title grouping): it mirrors the
+// `DEPARTMENTS` order in config/registers.ts — the sidebar's "WORKBOOK BY
+// RESPONSIBILITY" groups — so the Reviewers popover, the Create New Project
+// form fields and the Sheet Map's responsibility facet all read in the same
+// sequence the user navigates the workbook in. Previously the two lists were
+// in completely different orders, so the same 13 people appeared in one
+// sequence in the sidebar and another in every reviewer list.
+//
+// Facility / PM Operations, HR/Quality and Digital / Platforms stay last:
+// they own no sheet of their own (they only ever co-review or co-sign), so
+// they have no place in the lifecycle sequence — no new job title was
+// supplied for these 3 either, so their labels are untouched.
 //
 // If DEPARTMENTS is reordered, reorder this list to match.
 export const REVIEW_ROLES: ReviewRole[] = [
-  // cross-cutting
-  { key: 'project-manager', label: 'Project Manager', workbookName: 'Chris' },
-  // mirrors DEPARTMENTS, in order
-  { key: 'ri', label: 'R&I', workbookName: 'George' }, // dept-npd-frontend
-  { key: 'raw-material', label: 'Raw Material Operations', workbookName: 'Chidkamon' }, // dept-raw-material
-  { key: 'formulation', label: 'Formulation', workbookName: 'Tuan' }, // dept-formulation
-  { key: 'quality', label: 'Quality', workbookName: 'Sankar' }, // dept-quality
-  { key: 'quality-gmp', label: 'Quality & GMP', workbookName: 'Sekar' }, // dept-quality-gmp
-  { key: 'regulatory', label: 'Regulatory', workbookName: 'Chi Chu' }, // dept-regulatory
-  { key: 'packaging', label: 'Packaging', workbookName: 'Lily' }, // dept-packaging
-  { key: 'sales-marketing', label: 'Sales & Marketing', workbookName: 'Nguyen' }, // dept-sales-marketing
-  { key: 'supply-chain', label: 'Supply Chain', workbookName: 'Hannah' }, // dept-supply-chain
+  // Project Manager now owns real content (the NPD Front-End Roadmap group),
+  // not just cross-cutting co-sign — see REVIEW_SPECS.npdFrontEnd below.
+  { key: 'project-manager', label: 'Project Manager', workbookName: 'Chris' }, // dept-npd-frontend
+  { key: 'formulation', label: 'Technical Services', workbookName: 'Tuan' }, // dept-formulation
+  { key: 'quality-gmp', label: 'QA & Regulatory Affairs', workbookName: 'Sekar' }, // dept-quality-gmp
+  { key: 'quality', label: 'Production Support', workbookName: 'Sankar' }, // dept-production-support
+  { key: 'ri', label: 'R&I', workbookName: 'George' }, // dept-quality (the old "Quality" group's real R&I content)
+  { key: 'regulatory', label: 'Regulatory Affairs Manager', workbookName: 'Chi Chu' }, // dept-regulatory
+  { key: 'packaging', label: 'Sales Manager', workbookName: 'Lily' }, // dept-packaging
+  { key: 'raw-material', label: 'Raw Material Coordinator', workbookName: 'Chidkamon' }, // dept-raw-material
+  { key: 'sales-marketing', label: 'Project Lead', workbookName: 'Nguyen' }, // dept-sales-marketing — Nguyen is also the company's real CEO/project sponsor
+  { key: 'supply-chain', label: 'Logistics & Supply Chain Manager', workbookName: 'Hannah' }, // dept-supply-chain
   // own no sheets — co-review / co-sign only
   { key: 'facility-pm', label: 'Facility / PM Operations', workbookName: 'Kaukab' },
   { key: 'hr-quality', label: 'HR/Quality', workbookName: 'Lani' },
@@ -82,13 +87,27 @@ export interface ReviewOwnerSpec {
 // Reusable specs mirroring the V18 workbook's per-area review-owner combos.
 // (Project Manager is auto-appended to Co-sign by composeReviewOwner.)
 export const REVIEW_SPECS = {
+  // Project Manager's real content ownership (2026-08-27): the NPD
+  // Front-End Roadmap group, previously attributed to 'ri' (R&I) as a
+  // placeholder — Chris's real job title is Project Manager, and this is
+  // what he actually owns per the company's org structure.
+  npdFrontEnd: { owner: { role: 'project-manager' } },
   rawMaterial: { owner: { role: 'raw-material' } },
   formulation: { owner: { role: 'formulation' } },
   formulationProductDevReport: { owner: { role: 'formulation', hat: 'Product Development Reporting' } },
   quality: { owner: { role: 'quality' }, coSign: [{ role: 'hr-quality' }] },
   qualityGmp: { owner: { role: 'quality-gmp' } },
   qualityGmpPet: { owner: { role: 'quality-gmp' }, coSign: [{ role: 'formulation', hat: 'PET' }] },
-  qualityGmpStability: { owner: { role: 'quality-gmp' }, coSign: [{ role: 'formulation', hat: 'Stability' }] },
+  // Stability_Release's real tab is 'Sankar-Stability_Release' (v2, the sole
+  // authoritative file) — Sankar is 'quality', not 'quality-gmp' (Sekar).
+  // This spec previously had owner: 'quality-gmp', contradicting its own tab
+  // prefix; renamed from qualityGmpStability and corrected (2026-08-27,
+  // found while explaining why this sheet sits in the "Quality & GMP" nav
+  // group at all — it stays there, content-grouped alongside GMP_Links/
+  // Micro_PET_Evidence, same pattern as R&I sheets filed under "Quality";
+  // the owner correction is what makes it badge "· Quality" there instead of
+  // silently reading as Sekar's own).
+  qualityStability: { owner: { role: 'quality' }, coSign: [{ role: 'formulation', hat: 'Stability' }] },
   regulatory: { owner: { role: 'regulatory' } },
   regulatoryWithRi: { owner: { role: 'regulatory' }, coSign: [{ role: 'ri' }] },
   ri: { owner: { role: 'ri' } },
@@ -97,11 +116,18 @@ export const REVIEW_SPECS = {
   salesMarketing: { owner: { role: 'sales-marketing' } },
   supplyChain: { owner: { role: 'supply-chain' } },
   facilityPm: { owner: { role: 'facility-pm' } },
-  // NPD Front-End Roadmap (v2 workbook, 2026-07-24) — Competitor Landscape is
-  // owned by Marketing with R&I co-review (Roadmap: "Marketing / R&I");
-  // Evidence & Claim Support is owned by R&I with Quality co-review (Roadmap:
-  // "R&I / Quality"). The other new NPD sheets reuse the existing `ri` spec.
-  npdCompetitor: { owner: { role: 'sales-marketing' }, coReview: [{ role: 'ri' }] },
+  // NPD Front-End Roadmap (v2 workbook, 2026-07-24) — Evidence & Claim
+  // Support is owned by R&I with Quality co-review (Roadmap: "R&I /
+  // Quality"). The other new NPD sheets reuse the existing `ri` spec.
+  //
+  // Competitor Landscape's owner was originally 'sales-marketing' (Roadmap:
+  // "Marketing / R&I") — changed to 'project-manager' (2026-08-27,
+  // user-requested), overriding that Roadmap-sheet cell: these 4 registers
+  // have no real per-sheet workbook tab of their own (they're app-side
+  // splits of one companion sheet with no owner prefix at all), sit inside
+  // the "Project Manager" nav group, and the user chose to match the group
+  // rather than keep the Roadmap's own "Marketing" assignment.
+  npdCompetitor: { owner: { role: 'project-manager' }, coReview: [{ role: 'ri' }] },
   npdEvidence: { owner: { role: 'ri' }, coReview: [{ role: 'quality' }] },
 } satisfies Record<string, ReviewOwnerSpec>;
 
@@ -124,6 +150,20 @@ export function composeReviewOwner(spec: ReviewOwnerSpec, reviewers: Record<stri
   const coSign: ReviewCredit[] = [...(spec.coSign ?? []), { role: 'project-manager' }];
   out += ` · Co-sign: ${coSign.map(credit).join(', ')}`;
   return out;
+}
+
+// Register closing (2026-08-27) — which REVIEW_ROLES key must sign each of
+// the 2 closing roles, straight from the register's own spec: no separate
+// nomination step exists (unlike phase sign-off), so this IS the assignment.
+// 'Review owner' -> spec.owner.role; 'Co-sign' -> the first declared co-signer,
+// or Project Manager if the spec names none (mirrors composeReviewOwner's own
+// auto-append). Shared by the API (apps/api/src/projects/projects.service.ts)
+// and the frontend closing panel — never re-derive this independently.
+export function registerClosureSignerRole(
+  spec: ReviewOwnerSpec,
+  role: 'Review owner' | 'Co-sign',
+): string {
+  return role === 'Review owner' ? spec.owner.role : (spec.coSign?.[0]?.role ?? 'project-manager');
 }
 
 // ---------------------------------------------------------------------------

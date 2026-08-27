@@ -364,34 +364,50 @@ async function seedDemoUsers(): Promise<void> {
 //
 // Each also gets ONE assignable SSO role (2026-07-26, user-requested — they were
 // initially left role-less because the F6 role x review-area matrix is still
-// open). This mapping is DERIVED, not SME-confirmed: 9 of the 13 match an SSO
-// role label almost literally, and 4 are a judgement call marked below. Change
-// these rows when F6 answers — it is seed data, not logic. The app enforces one
-// role per user (see admin-users.controller.ts), so each area gets exactly one
-// even where the person wears two hats in the workbook (e.g. George is both R&I
+// open). Re-derived 2026-08-27 against the company's real job titles (see
+// REVIEW_ROLES in reviewers.ts) rather than the earlier dev-invented
+// functional-area names — still DERIVED, not SME-confirmed: change these rows
+// when F6 answers, it is seed data, not logic. The app enforces one role per
+// user (see admin-users.controller.ts), so each area gets exactly one even
+// where the person wears two hats in the workbook (e.g. George is both R&I
 // evidence owner and the C2 Department Study Reviewer — that second authority
 // comes from the dedicated study-approval workflow, not from this role).
+//
+// Real behavioural consequences of this re-derivation, not silent:
+//   - Chris, Tuan and George now all hold the SAME sso-formulation-contributor
+//     grant (Chris because his real content, NPD Front-End Roadmap, is
+//     R&I-flavoured; George because his label is literally "R&I") — "View as:
+//     R&I/Formulation Contributor" now represents all three.
+//   - Nguyen holds sso-final-approver, reflecting her being the company's real
+//     CEO / project sponsor — a much broader grant than her old
+//     sso-marketing-sales-contributor (canApprovePhase short-circuits true for
+//     Final Approver on every phase of every project; DEMO_APPROVER_ROLE_KEY
+//     below already points at this SSO key, so Nguyen is automatically
+//     nomination-eligible for every phase's "Approved by" row too).
+//   - Sankar and Kaukab now share sso-manufacturing-link-contributor —
+//     coincidence of two different job titles (Production Support,
+//     Facility/PM Operations) mapping to the closest available SSO grant, not
+//     a mistake.
 const REVIEW_OWNER_ROLES: Record<string, string> = {
-  'project-manager': 'sso-project-owner',
-  formulation: 'sso-formulation-contributor',
-  ri: 'sso-formulation-contributor', // the SSO label is literally "R&I/Formulation Contributor"
-  quality: 'sso-quality-reviewer',
-  'quality-gmp': 'sso-quality-reviewer', // GMP is a Quality hat; no separate GMP role exists
-  regulatory: 'sso-regulatory-reviewer',
+  'project-manager': 'sso-formulation-contributor', // Chris — real content is NPD Front-End Roadmap (R&I-flavoured)
+  formulation: 'sso-formulation-contributor', // Tuan
+  ri: 'sso-formulation-contributor', // George — the SSO label is literally "R&I/Formulation Contributor"
+  'quality-gmp': 'sso-quality-reviewer', // Sekar — GMP/Micro-PET evidence
+  quality: 'sso-manufacturing-link-contributor', // Sankar — Production Support, Stability/Release
+  regulatory: 'sso-regulatory-reviewer', // Chi Chu
+  packaging: 'sso-packaging-artwork-contributor', // Lily — Sales Manager by title, but reviews packaging/artwork content
+  'sales-marketing': 'sso-final-approver', // Nguyen — real CEO / project sponsor, not just Marketing/Sales content
   // --- judgement calls (no close SSO label): revisit when F6 answers ---
-  'raw-material': 'sso-supply-chain-contributor', // Raw Material Ops ~ procurement/supply
-  'facility-pm': 'sso-manufacturing-link-contributor', // Facility / PM Operations ~ manufacturing link
-  'hr-quality': 'sso-quality-reviewer', // HR/Quality co-signs Quality areas
+  'raw-material': 'sso-supply-chain-contributor', // Chidkamon — Raw Material Coordinator ~ procurement/supply
+  'supply-chain': 'sso-supply-chain-contributor', // Hannah
+  'facility-pm': 'sso-manufacturing-link-contributor', // Kaukab — Facility / PM Operations ~ manufacturing link
+  'hr-quality': 'sso-quality-reviewer', // Lani — HR/Quality co-signs Quality areas
   // Digital / Platforms only CO-REVIEWS one register (Released Label Control) and
   // holds no gate-decision authority in the workbook, so Read-only Viewer —
   // which carries no decide/approve grants — matches the actual authority
   // better than inventing one. NOT "admin": administering the platform is a
   // different thing from having business decision rights.
-  'digital-platforms': 'sso-read-only-viewer',
-  // --- back to literal matches ---
-  packaging: 'sso-packaging-artwork-contributor',
-  'sales-marketing': 'sso-marketing-sales-contributor',
-  'supply-chain': 'sso-supply-chain-contributor',
+  'digital-platforms': 'sso-read-only-viewer', // Anki
 };
 
 const REVIEW_OWNER_DEPARTMENTS: Record<string, string> = {
@@ -444,6 +460,17 @@ async function seedReviewOwnerUsers(): Promise<NewProjectReviewer[]> {
     const roleKey = REVIEW_OWNER_ROLES[role.key];
     const dbRole = roleKey ? await prisma.role.findUnique({ where: { key: roleKey } }) : null;
     if (dbRole) {
+      // The app enforces one role per user (admin-users.controller.ts) — a
+      // plain upsert here does NOT: if REVIEW_OWNER_ROLES changes which SSO
+      // role this person should hold (as it did 2026-08-27 for Chris/Sankar/
+      // Nguyen), the old (userId, roleId) pair still matches nothing and a
+      // SECOND UserRole row gets created alongside it, leaving the user with
+      // two roles — a real gap this found, not a hypothetical one. Delete
+      // every other role this user holds first so re-running the seed after
+      // a mapping change actually converges to one row, not two.
+      await prisma.userRole.deleteMany({
+        where: { userId: user.id, roleId: { not: dbRole.id } },
+      });
       await prisma.userRole.upsert({
         where: { userId_roleId: { userId: user.id, roleId: dbRole.id } },
         update: {},
@@ -463,7 +490,15 @@ async function seedReviewOwnerUsers(): Promise<NewProjectReviewer[]> {
 
 // The demo project's stand-in lead. One constant, because it is written in two
 // places (create, and the repair path below) and they must not drift.
-const DEMO_PROJECT_LEAD = 'Chris';
+// Nguyen (2026-08-27, was Chris) — per the project owner, Nguyen is the
+// company's real CEO and the actual project sponsor/lead, matching the
+// review-role label change ('sales-marketing' -> "Project Lead", see
+// reviewers.ts). Changing this constant alone does not reach an
+// already-seeded project whose `projectLead` is still a real active user
+// (the repair path below only fires when the current value matches NO active
+// user) — the live dev database's `projects.projectLead` row needs its own
+// direct update alongside this change.
+const DEMO_PROJECT_LEAD = 'Nguyen';
 
 // Who is NOMINATED to sign each phase's three sign-off rows on the demo project
 // (D1: only the nominated person may sign, and the project's Lead nominates).
@@ -476,9 +511,11 @@ const DEMO_PROJECT_LEAD = 'Chris';
 // thì cứ gán tạm 1 user trong app".
 //
 // Prepared by = the area the workbook's own phase sheet belongs to (PHASE1
-// MKTG, PHASE2 NPD, PHASE3 QUAL, PHASE4 REG). Reviewed by = Quality, except on
-// Phase 3 where Quality already prepares, so Quality & GMP reviews and the two
-// rows stay two different people.
+// MKTG, PHASE2 NPD, PHASE3 QUAL, PHASE4 REG). Reviewed by = the 'quality' role
+// (Sankar, labelled "Production Support" since 2026-08-27 — the role KEY is
+// unchanged, only the display label), except on Phase 3 where 'quality'
+// already prepares, so 'quality-gmp' (Sekar, "QA & Regulatory Affairs")
+// reviews and the two rows stay two different people.
 const DEMO_SIGNOFF_AREAS: Record<number, { preparedBy: string; reviewedBy: string }> = {
   1: { preparedBy: 'sales-marketing', reviewedBy: 'quality' },
   2: { preparedBy: 'formulation', reviewedBy: 'quality' },
@@ -487,10 +524,13 @@ const DEMO_SIGNOFF_AREAS: Record<number, { preparedBy: string; reviewedBy: strin
 };
 
 // "Approved by" additionally needs the `phase:N|approve` capability, so it
-// cannot be nominated from a review area: of the 13 workbook owners, none holds
-// it on all four phases (Chris/Project Owner has phase:1 only). The Final
-// Approver role is the one seeded with all four — which is what that role is
-// for (F6: cross-cutting sign-off authority).
+// cannot be nominated from a review area directly — it resolves to whichever
+// active user holds this SSO role. Historically that was only the generic
+// per-SSO-role demo account (seedDemoUsers()); since 2026-08-27 Nguyen
+// ('sales-marketing' review role, the company's real CEO/project sponsor)
+// also holds it (see REVIEW_OWNER_ROLES above), so two accounts now qualify
+// and `findFirst` below picks whichever the database returns first — not
+// pinned to a specific one, since nothing here requires it to be.
 const DEMO_APPROVER_ROLE_KEY = 'sso-final-approver';
 
 // Fills the three nominations per phase, for rows that have none and are not

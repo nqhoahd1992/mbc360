@@ -55,6 +55,7 @@ model User {
   attachments  Attachment[]  @relation("AttachmentUploadedBy")
   signOffs     SignOff[]     @relation("SignOffSignedBy")
   signOffsAssigned SignOff[]  @relation("SignOffAssignedTo")
+  registerClosureSignOffs RegisterClosureSignOff[] @relation("RegisterClosureSignedBy")
   reviewerOf   ProjectReviewer[]
   archivedProjects Project[]     @relation("ProjectArchivedBy")
   signature    UserSignature?
@@ -206,6 +207,7 @@ model Project {
   costing          CostingInputs?
   marketTracks     MarketTrack[]
   registerRows     RegisterRow[]
+  registerClosures RegisterClosure[]
   evidenceItems    EvidenceItem[]
   attachments      Attachment[]
   changeRecords    ChangeRecord[]
@@ -415,6 +417,60 @@ model SignOff {
 
   @@index([phaseClosureId])
   @@map("sign_offs")
+}
+
+// Register closing (2026-08-27, user-requested). This whole mechanism —
+// which registers require it, exactly 2 signatures, closing as a gate
+// precondition — is a genuinely new rule, not transcribed from the workbook,
+// built on the project owner's own instruction before asking the SME team.
+// [ASSUMPTION: R5-Q21] — see docs/rules/F1_Per_Gate_Open_Questions.md.
+//
+// A register stays open to
+// ANY authenticated user to add/edit/delete rows (rule A4 is not touched) —
+// but a register also has a `gate` in its own config, and today the only
+// thing that makes it read-only is `isGateRefLocked` (every listed gate has
+// already passed). This adds a second, independent path to read-only: a
+// deliberate two-signature closing act. Modeled on PhaseClosure/SignOff —
+// one child row per required signer role, not a single boolean, because the
+// same "who exactly signed, with what account/role/timestamp/image" shape
+// that made the phase sign-off trustworthy applies here too.
+//
+// Unlike PhaseClosure's SignOff rows, there is no separate "who may sign"
+// nomination step: the signer for each role is derived directly from the
+// register's own `ReviewOwnerSpec` (owner.role for "Review owner",
+// coSign[0]?.role — or the auto-appended Project Manager if the spec
+// declares no coSign — for "Co-sign"), the exact same role resolution
+// `composeReviewOwner()` already uses for the on-screen caption.
+model RegisterClosure {
+  id          String                   @id @default(cuid())
+  project     Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  registerKey String // RegisterConfig.key
+  signOffs    RegisterClosureSignOff[]
+
+  @@unique([projectId, registerKey])
+  @@map("register_closures")
+}
+
+model RegisterClosureSignOff {
+  id                  String          @id @default(cuid())
+  closure             RegisterClosure @relation(fields: [closureId], references: [id], onDelete: Cascade)
+  closureId           String
+  role                String // 'Review owner' | 'Co-sign'
+  name                String?
+  signedBy            User?           @relation("RegisterClosureSignedBy", fields: [signedByUserId], references: [id])
+  signedByUserId      String?
+  signedAt            DateTime?
+  // Same snapshot principle as SignOff.roleAtSigning/recordVersion — a later
+  // role change or another save must not be able to rewrite what a past
+  // signature attested to.
+  roleAtSigning       String?
+  recordVersion       Int?
+  signatureImage      String?
+  signatureVerifiedAt DateTime?
+
+  @@unique([closureId, role])
+  @@map("register_closure_sign_offs")
 }
 
 // My Account > Signature (2026-08-21): a user's saved handwritten signature,

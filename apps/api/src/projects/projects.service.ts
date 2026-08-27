@@ -7,7 +7,9 @@ import {
 } from '@nestjs/common';
 import { GATES, GATE_DECISIONS } from '@mbc360/shared/config/gates';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
+import { registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import {
+  REGISTER_CONFIGS,
   getRegisterConfig,
   signatureColumns,
   signatureFieldKeys,
@@ -33,11 +35,13 @@ import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import {
   gateBlockers,
   gateIndex,
+  gateRefHighestGateId,
   hardGateBlockers,
   isGateRefLocked,
   isGateUnlocked,
   phaseCompletionChecklist,
 } from '@mbc360/shared/utils/gateProgress';
+import { isRegisterClosed } from '@mbc360/shared/types';
 import type {
   AngleRow,
   ChangeRecord,
@@ -47,6 +51,7 @@ import type {
   ProjectData,
   ProjectReferenceData,
   RawMaterialRisk,
+  RegisterClosureSignOff,
   RegisterRow,
   RequirementItem,
   SignOff,
@@ -1148,6 +1153,30 @@ export class ProjectsService {
   // One endpoint for all ~76 registers: the rows are JSONB, so the shape is the
   // register's own config problem, not the API's. Replace-the-whole-section
   // matches the draft+Save UI (rows can be added and removed together).
+  // Per-row blame for a register save (2026-08-27) — positional diff, same
+  // row-identity choice `carryRegisterSignatures` already lives with (see
+  // the comment at its call site). Only changed rows are returned, to keep
+  // the audit payload proportional to the edit, not the whole table.
+  private diffRegisterRows(
+    committed: RegisterRow[],
+    incoming: RegisterRow[],
+  ): { rowOrder: number; changeType: 'added' | 'edited' | 'deleted'; before?: RegisterRow; after?: RegisterRow }[] {
+    const changes: { rowOrder: number; changeType: 'added' | 'edited' | 'deleted'; before?: RegisterRow; after?: RegisterRow }[] = [];
+    const max = Math.max(committed.length, incoming.length);
+    for (let i = 0; i < max; i += 1) {
+      const before = committed[i];
+      const after = incoming[i];
+      if (before === undefined && after !== undefined) {
+        changes.push({ rowOrder: i, changeType: 'added', after });
+      } else if (before !== undefined && after === undefined) {
+        changes.push({ rowOrder: i, changeType: 'deleted', before });
+      } else if (before !== undefined && after !== undefined && JSON.stringify(before) !== JSON.stringify(after)) {
+        changes.push({ rowOrder: i, changeType: 'edited', before, after });
+      }
+    }
+    return changes;
+  }
+
   async setRegisterRows(
     user: SessionUser,
     id: string,
@@ -1161,6 +1190,18 @@ export class ProjectsService {
       if (isGateRefLocked(project, config.gate)) {
         throw new ForbiddenException(
           `Register "${registerKey}" belongs to gate ${config.gate}, which has passed — it is read-only (use Backtrack)`,
+        );
+      }
+      // Register closing (2026-08-27) — a SEPARATE, independent lock reason
+      // from the gate-based one above: a register can be closed (both
+      // Review owner and Co-sign signed) before its own gate has even
+      // passed, since closing is now a PRECONDITION for that gate to pass,
+      // not a consequence of it having passed. Both checks stay — closing
+      // does not replace the gate-based lock, it adds an earlier trigger for
+      // the same read-only state.
+      if (isRegisterClosed(project.registerClosures[registerKey])) {
+        throw new ForbiddenException(
+          `Register "${registerKey}" is closed — it is read-only until reopened (withdraw a closing signature, or Backtrack past its gate)`,
         );
       }
       // Gate 3 rule (F1 appendix): "A claim may remain under development, but
@@ -1256,6 +1297,17 @@ export class ProjectsService {
             // renders like every other person field.
             ? syncPublishedInfoDerived(project, rowsAfterSignatureGuard, user.displayName)
             : rowsAfterSignatureGuard;
+      // Blame (2026-08-27): editing itself stays open to anyone (rule A4 is
+      // not touched), but every save now leaves a real per-row trail instead
+      // of the previous `{ registerKey, rows: rows.length }` summary, which
+      // could not say WHICH row changed or what it said before. Diffed by
+      // POSITION, the same way carryRegisterSignatures already treats row
+      // identity for this register — there is no stable per-row id to diff
+      // by instead (setRegisterRows always deletes and rewrites the whole
+      // array; rowOrder IS the array index). Known limitation, inherited
+      // from that same positional-identity choice, not new here: a row moved
+      // to a different position reads as one delete + one add, not a move.
+      const rowDiff = this.diffRegisterRows(project.registers[registerKey] ?? [], rowsToWrite);
       await tx.registerRow.deleteMany({ where: { projectId: id, registerKey } });
       if (rowsToWrite.length > 0) {
         await tx.registerRow.createMany({
@@ -1268,7 +1320,7 @@ export class ProjectsService {
           })),
         });
       }
-      return { registerKey, rows: rows.length };
+      return { registerKey, rows: rowsToWrite.length, changes: rowDiff };
     });
   }
 
@@ -1493,6 +1545,201 @@ export class ProjectsService {
         data: { data: data as Prisma.InputJsonValue, updatedById: user.id },
       });
       return { registerKey, rowIndex, column, reason: why };
+    });
+  }
+
+  // -------------------------------------------------- register closing ----
+  //
+  // A register stays open to anyone to add/edit/delete (rule A4, untouched)
+  // — but a deliberate two-signature act (Review owner + Co-sign) can CLOSE
+  // it, an independent read-only trigger from isGateRefLocked (2026-08-27,
+  // user-requested; see the guard in setRegisterRows and
+  // unclosedRegistersBlocking in gateProgress.ts, which requires closure
+  // before the gate that depends on it may pass). Unlike phase sign-off,
+  // there is no separate nomination step: the signer for each role is
+  // derived directly from the register's own ReviewOwnerSpec — the same
+  // resolution the on-screen "Review owner · Co-sign" caption already uses
+  // — so whoever project_reviewers already names for that role is who may
+  // sign, nothing to assign first.
+
+  private registerClosureRoleKey(config: RegisterConfig, role: RegisterClosureSignOff['role']): string {
+    if (!config.reviewOwner) {
+      throw new BadRequestException(
+        `Register "${config.key}" has no review owner configured — it cannot be closed`,
+      );
+    }
+    // Shared with the frontend closing panel (packages/shared/src/config/reviewers.ts)
+    // — never re-derive this independently.
+    return registerClosureSignerRole(config.reviewOwner, role);
+  }
+
+  // Older projects (created before this feature) never had these rows
+  // scaffolded — rather than depend on scaffold timing, find-or-create them
+  // here too, the same "additive backfill" pattern seedDemoProject already
+  // uses for project_reviewers.
+  private async ensureRegisterClosure(tx: Prisma.TransactionClient, projectId: string, registerKey: string) {
+    const closure = await tx.registerClosure.upsert({
+      where: { projectId_registerKey: { projectId, registerKey } },
+      update: {},
+      create: { projectId, registerKey },
+    });
+    for (const role of ['Review owner', 'Co-sign'] as const) {
+      await tx.registerClosureSignOff.upsert({
+        where: { closureId_role: { closureId: closure.id, role } },
+        update: {},
+        create: { closureId: closure.id, role },
+      });
+    }
+    return closure;
+  }
+
+  private registerCloseStepUpPurpose(id: string, registerKey: string, role: string): string {
+    return `register_close:${id}:${registerKey}:${role}`;
+  }
+
+  async verifyRegisterCloseStepUp(
+    user: SessionUser,
+    id: string,
+    registerKey: string,
+    role: RegisterClosureSignOff['role'],
+    code: string,
+  ): Promise<{ stepUpToken: string }> {
+    const config = getRegisterConfig(registerKey);
+    if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    const roleKey = this.registerClosureRoleKey(config, role);
+    const reviewer = await this.prisma.projectReviewer.findUnique({
+      where: { projectId_roleKey: { projectId: id, roleKey } },
+    });
+    if (!reviewer || reviewer.name.trim() !== user.displayName.trim()) {
+      throw new ForbiddenException(
+        `"${role}" for "${registerKey}" is ${reviewer ? `assigned to ${reviewer.name}` : 'not assigned to anyone'} — only that person may sign`,
+      );
+    }
+    const signature = await this.prisma.userSignature.findUnique({ where: { userId: user.id } });
+    if (!signature) {
+      throw new BadRequestException('Save a signature in My Account before signing');
+    }
+    await this.totp.verifyForStepUp(user.id, code);
+    const purpose = this.registerCloseStepUpPurpose(id, registerKey, role);
+    const proof = await this.prisma.stepUpProof.create({
+      data: { userId: user.id, purpose, channel: 'totp' },
+    });
+    const stepUpToken = await this.jwt.signAsync(
+      { sub: user.id, typ: 'register_close_step_up', proof: proof.id, purpose },
+      { expiresIn: '5m' },
+    );
+    return { stepUpToken };
+  }
+
+  async signRegisterClose(
+    user: SessionUser,
+    id: string,
+    registerKey: string,
+    role: RegisterClosureSignOff['role'],
+    stepUpToken: string,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    const config = getRegisterConfig(registerKey);
+    if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    const roleKey = this.registerClosureRoleKey(config, role);
+    return this.mutate(user, id, expectedVersion, 'register_close.signed', async (tx, row) => {
+      const reviewer = await tx.projectReviewer.findUnique({
+        where: { projectId_roleKey: { projectId: id, roleKey } },
+      });
+      if (!reviewer || reviewer.name.trim() !== user.displayName.trim()) {
+        throw new ForbiddenException(`"${role}" for "${registerKey}" is assigned to somebody else`);
+      }
+      const closure = await this.ensureRegisterClosure(tx, id, registerKey);
+      const existing = await tx.registerClosureSignOff.findUnique({
+        where: { closureId_role: { closureId: closure.id, role } },
+      });
+      if (existing?.signedAt) {
+        throw new BadRequestException(`"${role}" was already signed by ${existing.name ?? 'another user'} — withdraw it first`);
+      }
+      if (!stepUpToken) {
+        throw new BadRequestException(
+          'An authenticator code is required to sign — enter the code from your authenticator app',
+        );
+      }
+      let payload: { sub?: string; typ?: string; proof?: string; purpose?: string };
+      try {
+        payload = await this.jwt.verifyAsync(stepUpToken);
+      } catch {
+        throw new BadRequestException('Verification expired or invalid — enter a new code');
+      }
+      const expectedPurpose = this.registerCloseStepUpPurpose(id, registerKey, role);
+      if (payload.typ !== 'register_close_step_up' || payload.sub !== user.id || payload.purpose !== expectedPurpose) {
+        throw new BadRequestException('Verification does not match this signature');
+      }
+      const proof = payload.proof ? await tx.stepUpProof.findUnique({ where: { id: payload.proof } }) : null;
+      if (!proof || proof.userId !== user.id || proof.usedForId) {
+        throw new BadRequestException('Verification already used or invalid — enter a new code');
+      }
+      const saved = await tx.userSignature.findUnique({ where: { userId: user.id } });
+      if (!saved) throw new BadRequestException('Save a signature in My Account before signing');
+      // Marker is the RegisterClosureSignOff row's own id, following
+      // signSignOff's convention (a real row id) rather than the
+      // purpose-string convention signRegisterRow used — that row is exactly
+      // "what this proof was spent on".
+      const target = existing ?? (await tx.registerClosureSignOff.findUniqueOrThrow({
+        where: { closureId_role: { closureId: closure.id, role } },
+      }));
+      await tx.stepUpProof.update({ where: { id: proof.id }, data: { usedForId: target.id } });
+
+      const now = new Date();
+      await tx.registerClosureSignOff.update({
+        where: { id: target.id },
+        data: {
+          name: user.displayName,
+          signedByUserId: user.id,
+          signedAt: now,
+          roleAtSigning: user.roles.map((r) => r.role.name).join(', ') || null,
+          recordVersion: row.version,
+          signatureImage: saved.imageData,
+          signatureVerifiedAt: now,
+        },
+      });
+      return { registerKey, role, recordVersion: row.version };
+    });
+  }
+
+  // Only the signer may withdraw their own signature (an admin too, for the
+  // case where that account is gone), and a reason is mandatory — B4, no
+  // silent corrections. Same rule as withdrawSignOff/withdrawRegisterRowSignature.
+  async withdrawRegisterClose(
+    user: SessionUser,
+    id: string,
+    registerKey: string,
+    role: RegisterClosureSignOff['role'],
+    reason: string,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    const why = reason?.trim();
+    if (!why) throw new BadRequestException('A reason is required to withdraw a signature');
+    const config = getRegisterConfig(registerKey);
+    if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    return this.mutate(user, id, expectedVersion, 'register_close.withdrawn', async (tx) => {
+      const closure = await tx.registerClosure.findUnique({ where: { projectId_registerKey: { projectId: id, registerKey } } });
+      const existing = closure
+        ? await tx.registerClosureSignOff.findUnique({ where: { closureId_role: { closureId: closure.id, role } } })
+        : null;
+      if (!existing?.signedAt) throw new BadRequestException(`"${role}" is not signed`);
+      if (existing.signedByUserId !== user.id && !this.permissions.isAdmin(user)) {
+        throw new ForbiddenException(`Only ${existing.name ?? 'the signer'} may withdraw this signature`);
+      }
+      await tx.registerClosureSignOff.update({
+        where: { id: existing.id },
+        data: {
+          name: null,
+          signedByUserId: null,
+          signedAt: null,
+          roleAtSigning: null,
+          recordVersion: null,
+          signatureImage: null,
+          signatureVerifiedAt: null,
+        },
+      });
+      return { registerKey, role, reason: why };
     });
   }
 
@@ -2057,6 +2304,29 @@ export class ProjectsService {
             where: { projectId: id, gateId: { in: reopened } },
             data: { status: 'Not Started', decision: null },
           });
+
+          // Register closing (2026-08-27) — same reopen-in-lockstep fix as
+          // backtrack() above, needed here too since this is the same
+          // "reopen a gate range" cascade, just triggered by a Major formula
+          // version instead of a manual Backtrack.
+          const reopenedRegisterKeys = REGISTER_CONFIGS.filter((config) => {
+            const thresholdId = gateRefHighestGateId(config.gate);
+            return thresholdId && toIdx <= gateIndex(thresholdId) && gateIndex(thresholdId) <= fromIdx;
+          }).map((config) => config.key);
+          if (reopenedRegisterKeys.length > 0) {
+            await tx.registerClosureSignOff.updateMany({
+              where: { closure: { projectId: id, registerKey: { in: reopenedRegisterKeys } } },
+              data: {
+                name: null,
+                signedByUserId: null,
+                signedAt: null,
+                roleAtSigning: null,
+                recordVersion: null,
+                signatureImage: null,
+                signatureVerifiedAt: null,
+              },
+            });
+          }
         }
 
         // Formulation Change Register entry (A2).
@@ -2476,6 +2746,36 @@ export class ProjectsService {
             signedAt: null,
             roleAtSigning: null,
             recordVersion: null,
+          },
+        });
+      }
+
+      // Register closing (2026-08-27): a register whose OWN threshold gate
+      // (gateRefHighestGateId) falls inside the reopened range must reopen
+      // too — otherwise a Backtrack could reopen Gate 5 while a register
+      // that had to close BEFORE Gate 5 stays closed, an inconsistency
+      // nothing else here would ever produce. Same clear-fields pattern as
+      // the phase SignOff clearing above; the previous signatures are not
+      // separately snapshotted — unlike phase sign-offs, there is no
+      // per-register slot in BacktrackEvent's shape to hold them, and the
+      // registerClosureSignOffs the transaction is about to null out are
+      // small enough (2 rows per affected register) that adding one is not
+      // worth doing until a real need for it shows up.
+      const reopenedRegisterKeys = REGISTER_CONFIGS.filter((config) => {
+        const thresholdId = gateRefHighestGateId(config.gate);
+        return thresholdId && inRange(thresholdId);
+      }).map((config) => config.key);
+      if (reopenedRegisterKeys.length > 0) {
+        await tx.registerClosureSignOff.updateMany({
+          where: { closure: { projectId: id, registerKey: { in: reopenedRegisterKeys } } },
+          data: {
+            name: null,
+            signedByUserId: null,
+            signedAt: null,
+            roleAtSigning: null,
+            recordVersion: null,
+            signatureImage: null,
+            signatureVerifiedAt: null,
           },
         });
       }

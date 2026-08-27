@@ -16,10 +16,12 @@ import {
 } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
-import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { isGateRefLocked, gateRefHighestGateId } from '@mbc360/shared/utils/gateProgress';
+import { isRegisterClosed } from '@mbc360/shared/types';
 import DynamicTable from '../components/DynamicTable';
 import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
 import PublishedInfoApprovalTable from '../components/PublishedInfoApprovalTable';
+import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { NO_VULNERABLE_GROUP } from '@mbc360/shared/config/vulnerableGroups';
 import {
   VULNERABLE_REGISTER,
@@ -141,7 +143,19 @@ export default function RegisterHubPage() {
 
     // Gate-level edit lock: read-only once every gate this register is tied to
     // has passed (config `gate`, e.g. '04' or '04/07'). Editing requires Backtrack.
-    const locked = isGateRefLocked(project, config.gate);
+    //
+    // Register closing (2026-08-27) is a SECOND, independent read-only trigger
+    // — a deliberate two-signature act (Review owner + Co-sign), rather than a
+    // consequence of the gate having passed (closing is now a PRECONDITION for
+    // that gate — see unclosedRegistersBlocking in gateProgress.ts). Only
+    // registers with a specific gate (gateRefHighestGateId defined) are
+    // closeable at all — the same universe isGateRefLocked already applies to.
+    const closed = isRegisterClosed(project.registerClosures[registerKey]);
+    const closeable = !!gateRefHighestGateId(config.gate);
+    const locked = isGateRefLocked(project, config.gate) || closed;
+    const lockedReason = closed
+      ? 'Closed — both Review owner and Co-sign have signed. To correct it, withdraw a signature in the Register Closing card above, or Backtrack past the gate that depends on it.'
+      : undefined; // undefined falls back to the gate-passed message, the other lock reason
 
     return (
       <div style={{ display: 'grid', gap: 16 }}>
@@ -177,6 +191,15 @@ export default function RegisterHubPage() {
             </Descriptions>
           </Card>
         )}
+        {closeable && config.reviewOwner && (
+          <RegisterClosurePanel
+            projectId={id}
+            registerKey={registerKey}
+            spec={config.reviewOwner}
+            reviewers={project.identity.reviewers}
+            closure={project.registerClosures[registerKey]}
+          />
+        )}
         {registerKey === 'studyProtocolSetup' && (
           <StudyApprovalCard projectId={id} approvals={project.studyApprovals} />
         )}
@@ -199,6 +222,7 @@ export default function RegisterHubPage() {
             bom={project.bom}
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
             readOnly={locked}
+            readOnlyReason={lockedReason}
           />
         ) : registerKey === 'publishedInfoApproval' ? (
           // Claim ID picker (Supported claims only) + auto-filled/locked
@@ -209,6 +233,7 @@ export default function RegisterHubPage() {
             claimEvidenceRows={claimEvidenceRows}
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
             readOnly={locked}
+            readOnlyReason={lockedReason}
           />
         ) : registerKey === VULNERABLE_REGISTER ? (
           // B5 keeps the target-user selection and the vulnerable-use
@@ -221,6 +246,7 @@ export default function RegisterHubPage() {
             rows={project.registers[registerKey] ?? []}
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
             readOnly={locked}
+            readOnlyReason={lockedReason}
             extraActions={(draft, update) => {
               const missing = expectedVulnerableGroups(project).filter(
                 (g) => !draft.some((r) => String(r.vulnerableGroup ?? '').trim() === g),
@@ -272,6 +298,7 @@ export default function RegisterHubPage() {
             rows={project.registers[registerKey] ?? []}
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
             readOnly={locked}
+            readOnlyReason={lockedReason}
           />
         )}
       </div>

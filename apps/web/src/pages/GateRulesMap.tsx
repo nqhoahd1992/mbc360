@@ -268,11 +268,16 @@ function buildSheetIndex(): SheetEntry[] {
       if (!item.registerKey) {
         entry.parts.push({ title: item.title, gate: item.gate, mode: 'page' });
         if (item.gate && !entry.gateRefs.includes(item.gate)) entry.gateRefs.push(item.gate);
-        // A dedicated page has no RegisterConfig, so its review owner is the
-        // group's — exactly what its own page caption composes from.
-        if (group.reviewOwner) {
-          entry.specs.push(group.reviewOwner);
-          const role = group.reviewOwner.owner.role;
+        // A dedicated page has no RegisterConfig, so prefer its own
+        // `reviewOwner` override (only set when it differs from the group —
+        // see registers.ts) and fall back to the group's, exactly what its
+        // own page caption composes from. Without the item-level check, a
+        // page filed outside its own owner's group (2026-08-27: "Formulation
+        // Safety" under "Quality") would misattribute here too.
+        const pageSpec = item.reviewOwner ?? group.reviewOwner;
+        if (pageSpec) {
+          entry.specs.push(pageSpec);
+          const role = pageSpec.owner.role;
           if (!entry.ownerRoles.includes(role)) entry.ownerRoles.push(role);
         }
       }

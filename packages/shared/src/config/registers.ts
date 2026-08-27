@@ -1579,7 +1579,10 @@ const developmentBrief: RegisterConfig = {
     'The approved development brief as a controlled record. The four Phase 1 checklist sections contribute to the brief but do not substitute for formal brief approval.',
   mode: 'register',
   gate: '02',
-  reviewOwner: REVIEW_SPECS.salesMarketing,
+  // No explicit reviewOwner — inherits dept-npd-frontend's group default
+  // (Project Manager). Was REVIEW_SPECS.salesMarketing when this register
+  // sat under Sales & Marketing/Nguyen; moved 2026-08-27, see the note on
+  // dept-npd-frontend in registers.ts.
   columns: [
     { key: 'briefStatus', label: 'Brief status', type: 'select', width: 150, options: ['Draft', 'In Review', 'Approved', 'Superseded'] },
     { key: 'briefLink', label: 'Brief link', type: 'text', width: 200 },
@@ -1606,7 +1609,10 @@ const vulnerableUserAssessment: RegisterConfig = {
     'Explicit recognition of whether this product touches a vulnerable-use group. A general-adult product must still record "No vulnerable-user group identified".',
   mode: 'register',
   gate: '02',
-  reviewOwner: REVIEW_SPECS.quality,
+  // No explicit reviewOwner — inherits dept-npd-frontend's group default
+  // (Project Manager). Was REVIEW_SPECS.quality (Sankar) when this register
+  // briefly sat under Production Support; moved 2026-08-27, see the note on
+  // dept-npd-frontend in registers.ts.
   columns: [
     {
       key: 'vulnerableGroup',
@@ -2838,15 +2844,46 @@ const SHEET_METADATA: Record<string, { workbookTab: string; reviewOwner: ReviewO
   SKU_Claims_PIF_Register: { workbookTab: 'ChiChu-SKU_Claims_PIF', reviewOwner: REVIEW_SPECS.regulatory },
   PIF_Evidence_Closure: { workbookTab: 'ChiChu-PIF_Evid_Closure', reviewOwner: REVIEW_SPECS.regulatory },
   Published_Info_Approval: { workbookTab: 'ChiChu-Published_Info_Ap', reviewOwner: REVIEW_SPECS.regulatory },
-  Formulation_Safety: { workbookTab: 'George-Formulation_Safety', reviewOwner: REVIEW_SPECS.formulation },
+  // 2026-08-27: a user report ("sidebar 'Quality' group lists far more items
+  // than Sankar's real tab prefix accounts for") led to checking these 5
+  // workbookTab strings against `xl/workbook.xml` — but against the WRONG
+  // file (the original V18 workbook, not v2). V18 and v2 disagree on exactly
+  // these 5 tab prefixes (confirmed: everything else across all ~50 shared
+  // sheets is identical between the two files) — apparently a naming pass
+  // that landed differently in each. **v2 is the sole authoritative source**
+  // per the project owner (2026-08-27): V18 must no longer be used at all.
+  // So the values below match v2's `xl/workbook.xml`, not V18's.
+  //
+  // This also exposed a real, separate bug: Formulation_Safety's reviewOwner
+  // was `REVIEW_SPECS.formulation` (Tuan) even though its own tab prefix has
+  // always been George's — it sits inside v2's contiguous George- block
+  // (between Product_Evid_Summ and Mechanism_Claims), nowhere near Tuan's
+  // block, and every neighbour in that block is REVIEW_SPECS.ri. This is a
+  // transcription accuracy fix, not a business-rule call — reading the
+  // authoritative file correctly is dev's own job, not a question for the
+  // SME team (project owner, 2026-08-27).
+  Formulation_Safety: { workbookTab: 'George-Formulation_Safety', reviewOwner: REVIEW_SPECS.ri },
   Formula_Change_Control: { workbookTab: 'Tuan-Formula_Chg_Control', reviewOwner: REVIEW_SPECS.formulation },
   Formulation_Change_Register: { workbookTab: 'Tuan-Formulation_Chg_Reg', reviewOwner: REVIEW_SPECS.formulation },
   Batch_Formula_Trace: { workbookTab: 'Tuan-Batch_Formula_Trace', reviewOwner: REVIEW_SPECS.formulation },
   Product_Development_Report: { workbookTab: 'Tuan-Product_Dev_Report', reviewOwner: REVIEW_SPECS.formulationProductDevReport },
-  Test_Report_Index: { workbookTab: 'George-Test_Report_Index', reviewOwner: REVIEW_SPECS.quality },
-  Eye_Safety_Evidence: { workbookTab: 'George-Eye_Safety_Evid', reviewOwner: REVIEW_SPECS.quality },
+  // Same mismatch as Formulation_Safety above, same fix — both tabs sit in
+  // v2's George- block, not anywhere near a Sankar-prefixed tab (which per
+  // v2 appears exactly once in the whole workbook, on Stability_Release —
+  // see the qualityStability note below).
+  Test_Report_Index: { workbookTab: 'George-Test_Report_Index', reviewOwner: REVIEW_SPECS.ri },
+  Eye_Safety_Evidence: { workbookTab: 'George-Eye_Safety_Evid', reviewOwner: REVIEW_SPECS.ri },
   Micro_PET_Evidence: { workbookTab: 'Sekar-Micro_PET_Evidence', reviewOwner: REVIEW_SPECS.qualityGmpPet },
-  Stability_Release: { workbookTab: 'Sankar-Stability_Release', reviewOwner: REVIEW_SPECS.qualityGmpStability },
+  // Stability_Release is 'Sankar-' in v2 (unlike GMP_Links/Micro_PET_Evidence
+  // above, which are 'Sekar-') — its reviewOwner used to say quality-gmp
+  // (Sekar) anyway, contradicting its own tab; corrected in reviewers.ts
+  // (qualityGmpStability -> qualityStability, owner quality-gmp -> quality).
+  // Stays filed under the "Quality & GMP" nav group regardless — content-
+  // grouped with GMP_Links/Micro_PET_Evidence (release-readiness evidence),
+  // same pattern as R&I sheets filed under "Quality" — the corrected owner
+  // is what makes it badge "· Quality" there instead of silently reading as
+  // Sekar's own.
+  Stability_Release: { workbookTab: 'Sankar-Stability_Release', reviewOwner: REVIEW_SPECS.qualityStability },
   GMP_Links: { workbookTab: 'Sekar-GMP_Links', reviewOwner: REVIEW_SPECS.qualityGmp },
   Mechanism_Claims_Map: { workbookTab: 'George-Mechanism_Claims', reviewOwner: REVIEW_SPECS.ri },
   Twinkle5_Claims_Map: { workbookTab: 'George-Twinkle5_Claims', reviewOwner: REVIEW_SPECS.ri },
@@ -2905,6 +2942,10 @@ export interface NavItem {
   page?: string;
   href?: string;
   gate?: string; // '04', '04/07', or 'ALL'
+  // Only set for a page-based item (no registerKey) whose real owner differs
+  // from its containing group's default — a register item's owner already
+  // comes from its own RegisterConfig via registerKey (2026-08-27).
+  reviewOwner?: ReviewOwnerSpec;
 }
 
 // Short gate label for a sheet: 'All' when it spans every gate, 'G04/07' for
@@ -2950,9 +2991,25 @@ function registerNavItem(registerKey: string): NavItem | null {
 // from a sheet) must be able to omit it rather than invent one — the sheet map
 // itself is built by sheetName, so a placeholder would show up there as a
 // workbook sheet that doesn't exist.
+// `reviewOwner` is optional and only needed when a dedicated-page item's real
+// owner differs from its containing group's default (2026-08-27) — a plain
+// register item gets this for free via its own RegisterConfig, but a
+// page-based item (`page` set, no `registerKey`) had no way to carry one at
+// all, so the sidebar's owner-mismatch badge (App.tsx) could never fire for
+// it — found when "Formulation Safety" (really Tuan/Formulation's, per
+// SHEET_METADATA above and the real workbook tab) sat under the "Quality"
+// group with no badge, silently reading as Quality's own.
 type RawDeptItem =
   | string
-  | { title: string; sheetName?: string; workbookTab?: string; page?: string; href?: string; gate?: string };
+  | {
+      title: string;
+      sheetName?: string;
+      workbookTab?: string;
+      page?: string;
+      href?: string;
+      gate?: string;
+      reviewOwner?: ReviewOwnerSpec;
+    };
 
 interface RawDept {
   key: string;
@@ -2972,21 +3029,38 @@ const DEPARTMENTS: RawDept[] = [
     // gateReadiness.ts SG05 Mandatory items). Placed first since it precedes
     // every other department's work chronologically.
     //
-    // Title prefixed "R&I — " (2026-08-26, user-requested): this group's
-    // `reviewOwner` is `REVIEW_SPECS.ri` (REVIEW_ROLES key 'ri', label
-    // "R&I" — see reviewers.ts), but the sidebar showed only the workbook
-    // sheet name, so a person filling in the Create Project form's "R&I"
-    // reviewer field had no visible link to which sidebar group that person
-    // owns. Keeping "NPD Front-End Roadmap" rather than dropping it: it is
-    // the literal v2 workbook sheet name (`sheetName: 'NPD Front-End
-    // Roadmap'` on the reference register in this same group, plus ~15 code
-    // comments and several docs/rules entries all name the concept this
-    // way) — renaming it away would break that link instead of fixing one.
+    // Owner changed from 'ri' (R&I) to 'project-manager' (Chris) on
+    // 2026-08-27, per the company's real org structure supplied by the
+    // project owner — this content is genuinely the Project Manager's, not a
+    // placeholder R&I attribution. Title renamed from "NPD Front-End
+    // Roadmap" to "Project Manager" the same day (user-requested) once the
+    // owner became Chris rather than George — the sheet-name link the old
+    // title existed to preserve no longer applies now that this group also
+    // hosts content with no single workbook-sheet identity (see the 3 items
+    // below).
+    //
+    // developmentBrief and vulnerableUserAssessment (2026-08-27,
+    // user-requested) are 2 of only 3 registers in the whole app with no real
+    // workbook tab behind them at all — each exists purely because an SME
+    // confirmation (Round 3 B4 and Round 3 B5 respectively) said the app
+    // needed a place to record something the workbook itself has no cell
+    // for. Both are Gate 02 content (Phase 1, before formula lock), which is
+    // why they belong with the Project Manager's own front-end work rather
+    // than with whichever group they were previously defaulting into for
+    // lack of a better home (developmentBrief was filed under Sales &
+    // Marketing/Nguyen, vulnerableUserAssessment under Production
+    // Support/Sankar via a stale reviewOwner nobody had verified). The third
+    // such register, regulatoryChecklistStatus, was briefly filed here too
+    // but moved to dept-regulatory the same day — it's Gate 10 content, a
+    // genuinely different stage, and belongs with Regulatory Affairs
+    // Manager/Chi Chu instead (see the note there).
     key: 'dept-npd-frontend',
-    title: 'R&I — NPD Front-End Roadmap',
-    description: 'Needs & scientific basis, competitor landscape, target product profile/tech platform and evidence planning — mandatory before Formula BOM lock (Gate 5).',
-    reviewOwner: REVIEW_SPECS.ri,
+    title: 'Project Manager',
+    description: 'Needs & scientific basis, competitor landscape, target product profile/tech platform, evidence planning and development brief / vulnerable-user screening.',
+    reviewOwner: REVIEW_SPECS.npdFrontEnd,
     items: [
+      'developmentBrief',
+      'vulnerableUserAssessment',
       'npdRoadmapFirstSteps',
       'npdRoadmapStructure',
       'npdRoadmapGapRegister',
@@ -3001,15 +3075,8 @@ const DEPARTMENTS: RawDept[] = [
     ],
   },
   {
-    key: 'dept-raw-material',
-    title: 'Raw Material Operations',
-    description: 'Supplier/raw-material documents, substitutions and product-family versioning.',
-    reviewOwner: REVIEW_SPECS.rawMaterial,
-    items: ['supplierRmEvidence', 'ingredientSubstitution', 'productFamilyRegister'],
-  },
-  {
     key: 'dept-formulation',
-    title: 'Formulation',
+    title: 'Technical Services',
     description: 'Formula BOM, change control/registers, batch traceability and the product development report.',
     reviewOwner: REVIEW_SPECS.formulation,
     items: [
@@ -3023,16 +3090,47 @@ const DEPARTMENTS: RawDept[] = [
     ],
   },
   {
-    key: 'dept-quality',
-    title: 'Quality',
-    description: 'Test-report index, eye safety, evidence summary, formulation safety and R&I efficacy/claims evidence.',
+    key: 'dept-quality-gmp',
+    title: 'QA & Regulatory Affairs',
+    description: 'GMP manufacturing links and microbiology/PET evidence.',
+    reviewOwner: REVIEW_SPECS.qualityGmpPet,
+    // Stability_Release moved out to dept-production-support (2026-08-27) —
+    // its real tab is Sankar's, not Sekar's, confirmed as two different
+    // people (see reviewers.ts).
+    items: ['gmpLinks', 'microPetEvidence'],
+  },
+  {
+    // New group (2026-08-27): Sankar's real content, split out of the old
+    // "Quality" bucket once it turned out Sankar owns exactly one real tab
+    // (Stability_Release) and none of the 13 sheets that used to sit
+    // alongside it there — those are all George's/R&I's, see dept-quality
+    // below. vulnerableUserAssessment briefly sat here too (it had no real
+    // tab to check against, so it rode along on a stale reviewOwner nobody
+    // had verified) — moved to dept-npd-frontend/Project Manager the same
+    // day once it turned out to be one of only 3 registers in the whole app
+    // with no workbook tab behind it at all, and its own confirmed rule (B5)
+    // ties it to Gate 02 target-user screening, not production/release.
+    key: 'dept-production-support',
+    title: 'Production Support',
+    description: 'Stability & release evidence.',
     reviewOwner: REVIEW_SPECS.quality,
+    items: ['stabilityRelease'],
+  },
+  {
+    // Renamed from dept-quality (2026-08-27): every real-tab item below is
+    // George's/R&I's, confirmed against v2's workbook.xml — none of it is
+    // Sankar's/Sekar's. See reviewers.ts and CLAUDE.md for how this was
+    // found (a user report that the old "Quality" sidebar group listed sheets
+    // that opened to no page actually belonging to Sankar).
+    key: 'dept-quality',
+    title: 'R&I',
+    description: 'Test-report index, eye safety, evidence summary, formulation safety and efficacy/claims evidence.',
+    reviewOwner: REVIEW_SPECS.ri,
     items: [
-      'vulnerableUserAssessment',
       'testReportIndex',
       'eyeSafetyEvidence',
-      { title: 'Product Evidence Summary', sheetName: 'Product_Evid_Summ', workbookTab: 'George-Product_Evid_Summ', page: 'evidence', gate: 'ALL' },
-      { title: 'Formulation Safety', sheetName: 'Formulation_Safety', workbookTab: 'George-Formulation_Safety', page: 'formulation-safety', gate: '07/10' },
+      { title: 'Product Evidence Summary', sheetName: 'Product_Evid_Summ', workbookTab: 'George-Product_Evid_Summ', page: 'evidence', gate: 'ALL', reviewOwner: REVIEW_SPECS.ri },
+      { title: 'Formulation Safety', sheetName: 'Formulation_Safety', workbookTab: 'George-Formulation_Safety', page: 'formulation-safety', gate: '07/10', reviewOwner: REVIEW_SPECS.ri },
       'mechanismClaimsMap',
       'twinkle5ClaimsMap',
       'efficacyAssurance',
@@ -3046,16 +3144,9 @@ const DEPARTMENTS: RawDept[] = [
     ],
   },
   {
-    key: 'dept-quality-gmp',
-    title: 'Quality & GMP',
-    description: 'GMP manufacturing links, microbiology/PET and stability & release evidence.',
-    reviewOwner: REVIEW_SPECS.qualityGmpPet,
-    items: ['gmpLinks', 'microPetEvidence', 'stabilityRelease'],
-  },
-  {
     key: 'dept-regulatory',
-    title: 'Regulatory',
-    description: 'Prohibited/caution watch-lists, fragrance, ASEAN PIF closure, claims and publication approval.',
+    title: 'Regulatory Affairs Manager',
+    description: 'Prohibited/caution watch-lists, fragrance, ASEAN PIF closure, claims, publication approval and non-ASEAN regulatory checklist status.',
     reviewOwner: REVIEW_SPECS.regulatoryWithRi,
     items: [
       'prohibitedIngredients',
@@ -3064,6 +3155,13 @@ const DEPARTMENTS: RawDept[] = [
       'fragranceAllergenLog',
       'aseanPifMap',
       'pifChecklistAsean',
+      // regulatoryChecklistStatus (2026-08-27, user-requested): one of only 3
+      // registers with no real workbook tab (rule E2/Round 4 question 35) —
+      // briefly filed under Project Manager alongside the other 2, then
+      // moved here since it's Gate 10 regulatory-dossier content, not Gate
+      // 02 front-end screening. No reviewOwner override needed — it's
+      // genuinely this group's own.
+      'regulatoryChecklistStatus',
       'pifEvidenceExport',
       'skuClaimsPifRegister',
       'pifEvidenceClosure',
@@ -3073,7 +3171,7 @@ const DEPARTMENTS: RawDept[] = [
   },
   {
     key: 'dept-packaging',
-    title: 'Packaging',
+    title: 'Sales Manager',
     description: 'Released-label control, packaging BOM, packaging specs/artwork evidence and artwork change control.',
     reviewOwner: REVIEW_SPECS.packaging,
     items: [
@@ -3086,12 +3184,21 @@ const DEPARTMENTS: RawDept[] = [
     ],
   },
   {
+    key: 'dept-raw-material',
+    title: 'Raw Material Coordinator',
+    description: 'Supplier/raw-material documents, substitutions and product-family versioning.',
+    reviewOwner: REVIEW_SPECS.rawMaterial,
+    items: ['supplierRmEvidence', 'ingredientSubstitution', 'productFamilyRegister'],
+  },
+  {
     key: 'dept-sales-marketing',
-    title: 'Sales & Marketing',
+    title: 'Project Lead',
     description: 'Campaign declarations, HCP/distributor answer packs, panel feedback, change control and templates.',
     reviewOwner: REVIEW_SPECS.salesMarketing,
+    // developmentBrief moved to dept-npd-frontend/Project Manager (2026-08-27)
+    // — it had no real workbook tab and was only ever defaulting here, see
+    // the note on dept-npd-frontend above.
     items: [
-      'developmentBrief',
       'campaignsSocialMedia',
       'hcpEfficacyAnswer',
       'hcpTestReportPack',
@@ -3102,7 +3209,7 @@ const DEPARTMENTS: RawDept[] = [
   },
   {
     key: 'dept-supply-chain',
-    title: 'Supply Chain',
+    title: 'Logistics & Supply Chain Manager',
     description: 'Costing calculator and post-market / complaint / CAPA evidence.',
     reviewOwner: REVIEW_SPECS.supplyChain,
     items: [
@@ -3144,6 +3251,7 @@ export function getNavGroups(): NavGroup[] {
               page: it.page,
               href: it.href,
               gate: it.gate,
+              reviewOwner: it.reviewOwner,
             },
       )
       .filter((i): i is NavItem => i !== null),

@@ -140,6 +140,9 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     capa: [],
     feedback: [],
     registers: seedRegisters(),
+    // Populated by the API from RegisterClosure rows; empty here since this
+    // factory only builds the frontend's pre-M3 demo shape.
+    registerClosures: {},
     nextActions: [],
     changes: [],
     backtrackEvents: [],

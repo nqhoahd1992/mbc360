@@ -19,6 +19,7 @@ import type {
   PackagingBomLine,
   ProjectData,
   ProjectIdentity,
+  RegisterClosureRole,
   RegisterRow,
   RequirementItem,
   SignOff,
@@ -190,6 +191,21 @@ interface AppState {
     registerKey: string,
     rowIndex: number,
     column: string,
+    reason: string,
+  ) => void;
+
+  // Register closing (2026-08-27) — a register-wide act (2 signatures: Review
+  // owner + Co-sign), separate from the per-row signature column above.
+  signRegisterClose: (
+    id: string,
+    registerKey: string,
+    role: RegisterClosureRole,
+    stepUpToken: string,
+  ) => void;
+  withdrawRegisterClose: (
+    id: string,
+    registerKey: string,
+    role: RegisterClosureRole,
     reason: string,
   ) => void;
 
@@ -491,6 +507,10 @@ export const useAppStore = create<AppState>()(
           writeSection(id, (v) =>
             projectsApi.withdrawRegisterRowSignature(id, registerKey, rowIndex, column, reason, v),
           ),
+        signRegisterClose: (id, registerKey, role, stepUpToken) =>
+          writeSection(id, (v) => projectsApi.signRegisterClose(id, registerKey, role, stepUpToken, v)),
+        withdrawRegisterClose: (id, registerKey, role, reason) =>
+          writeSection(id, (v) => projectsApi.withdrawRegisterClose(id, registerKey, role, reason, v)),
         setEvidenceItemsBulk: (id, items) =>
           writeSection(id, (v) => projectsApi.setEvidenceItems(id, items, v)),
 

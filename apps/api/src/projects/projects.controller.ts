@@ -19,6 +19,7 @@ import type {
   GateCheck,
   GateRecord,
   ProjectData,
+  RegisterClosureSignOff,
   RegisterRow,
   RequirementItem,
   SignOff,
@@ -412,6 +413,41 @@ export class ProjectsController {
       body.reason,
       body.expectedVersion,
     );
+  }
+
+  // Register closing (2026-08-27). Two signatures (Review owner + Co-sign)
+  // make a register read-only independently of its gate — see the guard in
+  // setRegisterRows and unclosedRegistersBlocking in gateProgress.ts. Same
+  // step-up/sign/withdraw shape as the register-row signature routes above,
+  // targeting the whole register + a role instead of one row + column.
+  @Post(':id/registers/:registerKey/close/step-up')
+  verifyRegisterCloseStepUp(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('registerKey') registerKey: string,
+    @Body() body: { role: RegisterClosureSignOff['role']; code: string },
+  ) {
+    return this.projects.verifyRegisterCloseStepUp(user, id, registerKey, body.role, body.code);
+  }
+
+  @Post(':id/registers/:registerKey/close/sign')
+  signRegisterClose(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('registerKey') registerKey: string,
+    @Body() body: { role: RegisterClosureSignOff['role']; stepUpToken: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.signRegisterClose(user, id, registerKey, body.role, body.stepUpToken, body.expectedVersion);
+  }
+
+  @Post(':id/registers/:registerKey/close/withdraw')
+  withdrawRegisterClose(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('registerKey') registerKey: string,
+    @Body() body: { role: RegisterClosureSignOff['role']; reason: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.withdrawRegisterClose(user, id, registerKey, body.role, body.reason, body.expectedVersion);
   }
 
   @Put(':id/evidence')

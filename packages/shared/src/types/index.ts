@@ -322,6 +322,44 @@ export function isSignedOff(signOff: SignOff | undefined): boolean {
   return !!(signOff?.signedByUserId && signOff.signedAt);
 }
 
+// Register closing (2026-08-27). Two roles, same authenticated-signature
+// shape as SignOff — but no `assignedToUserId`/`assignedToName`: unlike a
+// phase sign-off (which needs the project's Lead to nominate a signer), the
+// signer here is derived directly from the register's own ReviewOwnerSpec
+// (owner.role for "Review owner", coSign[0]?.role — or Project Manager if
+// none — for "Co-sign"), the same resolution composeReviewOwner() already
+// uses for the on-screen caption.
+export type RegisterClosureRole = 'Review owner' | 'Co-sign';
+
+export interface RegisterClosureSignOff {
+  role: RegisterClosureRole;
+  name?: string;
+  signedByUserId?: string;
+  signedAt?: string; // ISO timestamp, server clock
+  roleAtSigning?: string;
+  recordVersion?: number;
+  signatureImage?: string;
+  signatureVerifiedAt?: string;
+}
+
+export interface RegisterClosureState {
+  signOffs: RegisterClosureSignOff[]; // 0-2 rows; missing role = not yet signed
+}
+
+export function isRegisterClosureSigned(signOff: RegisterClosureSignOff | undefined): boolean {
+  return !!(signOff?.signedByUserId && signOff.signedAt);
+}
+
+// Closed = BOTH roles signed. A register with no RegisterClosureState at all
+// (not yet scaffolded, or a register with no specific gate — see
+// gateRefHighestGateId) is never closed.
+export function isRegisterClosed(state: RegisterClosureState | undefined): boolean {
+  if (!state) return false;
+  const owner = state.signOffs.find((s) => s.role === 'Review owner');
+  const coSign = state.signOffs.find((s) => s.role === 'Co-sign');
+  return isRegisterClosureSigned(owner) && isRegisterClosureSigned(coSign);
+}
+
 // A single free-text "next action" field used to live here, but rule B2
 // (confirmed) overturned that assumption: next actions are their own
 // controlled, multi-record list per gate — see NextAction / ProjectData.nextActions.
@@ -810,6 +848,11 @@ export interface ProjectData {
   capa: CapaRecord[];
   feedback: FeedbackEntry[];
   registers: Record<string, RegisterRow[]>; // keyed by RegisterConfig.key
+  // Register closing (2026-08-27) — keyed by RegisterConfig.key, present only
+  // for registers with a specific `gate` (gateRefHighestGateId(config.gate)
+  // !== undefined). A key missing from this map means "not yet scaffolded /
+  // not closeable", same as an empty registers[key] means "no rows".
+  registerClosures: Record<string, RegisterClosureState>;
   nextActions: NextAction[]; // controlled per-gate follow-up actions (rule B2)
   // Change Control records for THIS project. Added 2026-08-12 for rule E3(b),
   // which makes Gate 11 evaluate each open change's impact classification — a

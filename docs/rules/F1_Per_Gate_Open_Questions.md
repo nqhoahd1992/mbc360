@@ -1404,6 +1404,8 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | R5-Q17 | **17** | Trigger Change Control có nên giới hạn theo gate dự án đã pass không |
 | R5-Q18 | **18** | "NP Controlled" là một cuốn sổ riêng, hay là thẩm quyền phê duyệt trên sổ chung |
 | R5-Q19 | **19** | Chín cuốn sổ change control chồng lấn nhau — cuốn nào là sổ sự kiện, cuốn nào là sách luật |
+| R5-Q20 | **20** | Change Control chạm gate đã pass — có tự mở lại gate đó không, và Reject/Cancel có cần quyết định lại |
+| R5-Q21 | **21** | Đóng sổ 2 chữ ký (Review owner + Co-sign) thay khóa tự động theo gate — đã build, cần SME xác nhận |
 | R5-Q3 | *chưa gửi* | Ba cái tên trong dòng "Approval route" của Guide — quá nhỏ để chiếm một số, gộp khi soạn bản cuối |
 
 ### Round 5, phần 1 — raised while implementing D1 ở cấp phase (2026-08-20)
@@ -1764,5 +1766,49 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Câu hỏi:** (a) Về nghiệp vụ, có **một** loại bản ghi thay đổi hay **nhiều loại khác nhau thật sự**? Nếu nhiều, cuốn nào khác nhau về bản chất và khác ở điểm nào? (b) Trong 9 bề mặt trên, cuốn nào là sách luật và cuốn nào là sổ sự kiện? (c) Một lần tăng phiên bản công thức có **bắt buộc** sinh một bản ghi Change Control (và do đó khoá mềm Gate 05/08) không? (d) Một thay đổi ảnh hưởng cùng lúc tới công thức, bao bì và claim là **một** bản ghi hay **nhiều** bản ghi liên kết? (e) Các cột tham chiếu chéo có nên thành liên kết thật (chọn từ danh sách) không? (f) Ranh giới giữa Development Iteration Log và Formulation Change Register có phải là **thời điểm công thức được khoá ở Gate 5** không? Nếu không thì là gì?
 
 **Không làm gì tới khi có trả lời**, theo quyết định của chủ dự án: gộp nhầm hai loại bản ghi thật sự khác nhau còn tệ hơn để chúng rời rạc, vì lúc đó phải tách lại một cuốn sổ đã có dữ liệu thật. Ngoại lệ duy nhất đã làm trước là chữ ký NP ([[R5-Q18]]) — nó đúng bất kể sổ nằm ở đâu.
+
+#### R5-Q20 · Change Control chạm gate đã pass — có tự mở lại gate đó không, và Reject/Cancel có cần quyết định lại 🔴
+
+**Phát hiện khi giải thích cơ chế Change Control cho chủ dự án (27/08/2026).** Hiện tại mở 1 Change Control ảnh hưởng 1 gate ĐÃ PASS (ví dụ Gate 5, dự án đang ở Gate 10) không có tác dụng gì lên gate đó — quyết định "Proceed" cũ vẫn nguyên, gate vẫn hiện passed, chỉ có 1 tag cảnh báo trên dòng Gate Flow (dễ bỏ lỡ vì không ai quay lại phase đó nữa để xem). Đóng change (ghi disposition) cũng hoàn toàn tách rời — `setChanges` không kiểm tra gì về trạng thái gate cả.
+
+**Đề xuất của chủ dự án:** mở Change Control ảnh hưởng gate đã pass → tự động **mở lại đúng những gate đó** (không phải cả dải, chỉ đúng gate trigger khai — ví dụ chỉ gate 3 và 5, không đụng gate 4 ở giữa), gate đó trở thành gate hiện tại có thể sửa lại (dùng đúng cơ chế "gate hiện tại" sẵn có — `currentGateIndex` tự nhảy về gate sớm nhất chưa pass, không cần cơ chế unlock mới), và chỉ được chọn "Proceed with Conditions" cho lần quyết định lại đó. Change Control chỉ được chuyển sang trạng thái đóng (Completed/Rejected/Cancelled/Superseded) sau khi mọi gate nó mở lại đã được quyết định lại.
+
+**Đã hỏi và chốt một phần (27/08):** kể cả khi Change Control bị Rejected/Cancelled (thay đổi không thực sự triển khai), gate vẫn phải được quyết định lại thủ công — không tự động khôi phục về trạng thái pass cũ. Lý do: bản thân việc mở Change Control đã là tín hiệu "cần xem lại", và tự động phục hồi là đúng kiểu "silent correction" mà B4 cấm.
+
+**Còn nguyên là suy đoán, chưa hỏi SME — 3 điểm:**
+
+**(a) Có nên tự động mở lại gate đã pass chỉ vì một Change Control được mở, hay việc "sửa lại 1 gate đã pass" luôn luôn phải là hành động Backtrack thủ công (đúng như B4 hiện quy định) và Change Control chỉ nên tiếp tục *cảnh báo*, không tự thao túng gate?** Đây sẽ là lần đầu tiên một cơ chế TỰ ĐỘNG (không phải người bấm nút Backtrack) làm một gate đã pass quay về "Not Started", và theo TỪNG gate lẻ (không phải dải liên tục) — khác 2 tiền lệ duy nhất hiện có (`backtrack()` và nhánh Major của `createFormulaVersion()`, cả hai đều reset một DẢI liên tục theo index, không phải tập rời rạc theo `trigger.gates`).
+
+**(b) Chỉ giới hạn "Proceed with Conditions" có đủ, hay cần thêm điều kiện khác** (ví dụ bắt buộc note giải thích, hoặc bắt buộc một vai trò cụ thể mới được quyết định lại thay vì primary owner mặc định của gate)?
+
+**(c) Nếu 2 Change Control khác nhau cùng mở lại 1 gate — ai "sở hữu" việc gate đó cần giải quyết, và việc đóng change A có bị chặn bởi change B (đang mở, cùng chạm gate đó) không?**
+
+**Chưa build gì cả — kế hoạch kỹ thuật đầy đủ (migration, hàm dùng chung, guard, UI) đã ghi lại ở `docs/plans/ChangeControl_Gate_Reopen_Plan.md`, chờ trả lời mới bắt đầu**, theo đúng quyết định của chủ dự án ngày 27/08.
+
+**Nếu trả lời khác:** toàn bộ nội dung `docs/plans/ChangeControl_Gate_Reopen_Plan.md` cần viết lại theo hướng SME chọn trước khi code — chưa có dòng code nào bị ảnh hưởng vì chưa triển khai.
+
+**Không phải câu hỏi SME (chủ dự án chốt 27/08): cách transcribe sheet Excel vào app — tab nào thuộc ai — là việc dev tự đọc và làm đúng, không cần hỏi.** Đã sửa trực tiếp trong code (`SHEET_METADATA` + mục `dept-quality` trong `packages/shared/src/config/registers.ts`): `Formulation_Safety`, `Test_Report_Index`, `Eye_Safety_Evidence`, `Product_Evid_Summ` đều nằm trong khối `George-` (R&I) của file v2 — sole nguồn xác thực — nên `reviewOwner` của cả 4 đổi từ Quality/Formulation thành `REVIEW_SPECS.ri`, khớp badge "· R&I" như 9 sheet liền kề. Xem chi tiết trong code comment tại các dòng đó.
+
+#### R5-Q21 · Đóng sổ 2 chữ ký thay khóa tự động theo gate — đã build theo yêu cầu chủ dự án, chưa hỏi SME 🔴
+
+**Phát hiện khi giải thích "Review owner" chỉ là dòng chữ hiển thị, không có tác dụng phân quyền gì (27/08/2026).** Chủ dự án đề xuất thêm quyền thật cho field này: mọi register giữ nguyên "ai cũng thêm/sửa/xóa được" (không đảo ngược rule A4), nhưng thêm 1 hành động **đóng sổ** — 2 chữ ký (Review owner + Co-sign, dùng lại đúng cơ chế xác thực TOTP + chữ ký đã lưu đã có sẵn cho phase sign-off và register-row signature) — làm register read-only, và **gate không được phép pass nếu còn sổ liên quan (gate lớn nhất trong danh sách gate của sổ ≤ gate đang xét) chưa đóng đủ 2 chữ ký**. Đóng sổ trở thành điều kiện để pass gate, không phải hệ quả tự động sau khi gate pass như cơ chế `isGateRefLocked` cũ (vẫn giữ nguyên, cộng dồn — không thay thế).
+
+**Đã build đầy đủ theo yêu cầu (27/08):** 2 model mới (`RegisterClosure`/`RegisterClosureSignOff`), 3 route ký/xác thực/rút chữ ký, guard chặn sửa sổ đã đóng trong `setRegisterRows`, hàm `unclosedRegistersBlocking` tự động chặn cứng mọi gate còn sổ chưa đóng (không cần cấu hình riêng cho từng register — áp dụng cho toàn bộ ~68 register có gate cụ thể), đồng bộ với Backtrack/Major formula version (sổ tự mở lại khi gate liên quan bị reopen), diff theo dòng ghi vào `AuditEvent` mỗi lần Save để trả lời yêu cầu "ghi lịch sử để blame", và giao diện (`RegisterClosurePanel.tsx`).
+
+**Vì sao vẫn là suy đoán, chưa hỏi SME — đây là RULE MỚI hoàn toàn, không phải chuyển thể từ workbook:**
+
+**(a) Có nên áp dụng cơ chế đóng sổ 2 chữ ký cho TẤT CẢ ~68 register có gate cụ thể, hay chỉ một số ít mang tính "hồ sơ kiểm soát" thật sự** (ví dụ NP sign-off, Published Info Approval — vốn đã có cơ chế ký riêng)? Áp dụng đồng loạt là suy đoán về phạm vi, không phải điều SME đã xác nhận.
+
+**(b) Đúng 2 chữ ký (Review owner + Co-sign) có đủ, hay cần thêm/khác** — ví dụ 1 số sổ cần cả Co-review, hoặc không cần đóng sổ theo kiểu ký tay mà chỉ cần 1 tick đơn giản?
+
+**(c) Ngưỡng gate của sổ nhiều-gate = gate LỚN NHẤT trong danh sách** — đã chọn khớp với `isGateRefLocked`, nhưng chưa hỏi có đúng ý muốn không.
+
+**(d) Phát hiện khi build: một số register (thuộc nhóm "Project Manager") có Review owner VÀ Co-sign cùng trỏ về 1 người**, vì spec không khai Co-sign riêng và Owner đã là Project Manager — nghĩa là "2 chữ ký" thực chất là 1 người ký 2 lần, không phải 2 người độc lập. Đang chỉ cảnh báo trên UI (không chặn) — cần SME/chủ dự án quyết định có nên gán Co-sign fallback khác cho nhóm này không.
+
+**(e) Mở lại sổ đã đóng chỉ qua Backtrack** (tự động, đồng bộ với gate reopen) — chưa có nút "mở lại" độc lập nào khác. Đủ chưa, hay cần thêm đường khác?
+
+**Câu hỏi:** cơ chế đóng sổ 2 chữ ký (mô tả ở trên) có đúng hướng công ty muốn không? Nếu cần chỉnh, chỉnh ở điểm nào trong 5 điểm (a)-(e)?
+
+**Nếu trả lời khác:** `apps/api/prisma/schema.prisma` (`RegisterClosure`/`RegisterClosureSignOff`), `apps/api/src/projects/projects.service.ts` (`setRegisterRows` guard, `signRegisterClose`/`verifyRegisterCloseStepUp`/`withdrawRegisterClose`, đoạn mở lại trong `backtrack()`/`createFormulaVersion()`), `packages/shared/src/utils/gateProgress.ts` (`unclosedRegistersBlocking`, `gateRefHighestGateId`), `packages/shared/src/config/reviewers.ts` (`registerClosureSignerRole`), `apps/web/src/components/RegisterClosurePanel.tsx`.
 
 **Nếu trả lời khác:** `packages/shared/src/config/registers.ts` (`formulaChangeControl`, `artworkChangeControl`, `formulationChangeRegister`, `changeTemplates`) · `packages/shared/src/config/changeTriggers.ts` (`CHANGE_TRIGGERS`, hiện là bản chép tay của 2 sheet sách luật) · `apps/api/src/projects/projects.service.ts` (`createFormulaVersion`, đoạn "Formulation Change Register entry (A2)") · `apps/web/src/pages/ChangeControl.tsx`.

@@ -244,9 +244,14 @@ function SideMenu({ isAdmin }: { isAdmin: boolean }) {
             // confirmed business remap, see CLAUDE.md). Without this badge the
             // sidebar reads "Quality" while the page caption reads "…(R&I)",
             // which looks like a contradiction rather than a decision.
+            // A register item's owner comes from its own RegisterConfig; a
+            // page-based item (no registerKey) has no config to look one up
+            // from, so it needs `item.reviewOwner` set directly in
+            // registers.ts or this badge can never fire for it at all
+            // (found 2026-08-27 — see the note on "Formulation Safety" there).
             const itemRole = item.registerKey
               ? getRegisterConfig(item.registerKey)?.reviewOwner?.owner.role
-              : undefined;
+              : item.reviewOwner?.owner.role;
             const showOwnerBadge = !!itemRole && !!groupRole && itemRole !== groupRole;
             return {
               key: `${group.key}:${idx}`,

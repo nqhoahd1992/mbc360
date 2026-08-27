@@ -1,8 +1,8 @@
 import type { GateRecord, NextAction, ProjectData, RegisterRow } from '../types';
-import { NEXT_ACTION_TERMINAL_STATUSES, isSignedOff } from '../types';
+import { NEXT_ACTION_TERMINAL_STATUSES, isRegisterClosed, isSignedOff } from '../types';
 import { GATES } from '../config/gates';
 import { isChangeOpen } from '../config/changeTriggers';
-import { CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE } from '../config/registers';
+import { CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE, REGISTER_CONFIGS } from '../config/registers';
 import {
   CLAIM_CATEGORIES_NEEDING_REVIEW,
   CLAIM_REVIEWED_WORDING_COLUMN,
@@ -1121,7 +1121,68 @@ export function gateReadinessChecklist(
     link: phaseSectionLink(gateId, 'sec-next-actions'),
   });
 
+  // Register closing (2026-08-27, user-requested) — kept last, alongside Next
+  // Actions: a general precondition that applies the same way at every gate,
+  // not evidence specific to this gate's own subject matter. Always a hard
+  // block, never cleared by Proceed with Conditions — closing is the whole
+  // point of the mechanism, not a soft nicety.
+  items.push(...unclosedRegistersBlocking(project, gateId));
+
   return items;
+}
+
+// Every register whose OWN highest listed gate (gateRefHighestGateId) is at
+// or before the gate being evaluated must be closed (Review owner + Co-sign
+// both signed) before that gate may pass — closing is now a PRECONDITION for
+// the gate, not a consequence of it having passed (contrast isGateRefLocked,
+// which still applies independently — see the guard in setRegisterRows).
+// Cumulative by design: once a register closes it can only reopen via
+// Backtrack, which also reopens the gate range that depended on it, so an
+// already-closed register showing satisfied at every later gate is the
+// steady-state, not clutter — an unsatisfied item this far down the gate
+// sequence means something is genuinely inconsistent (the same class of
+// problem verify:scaffold's other sweeps exist to catch).
+//
+// [ASSUMPTION: R5-Q21] — the whole register-closing mechanism this function
+// enforces is a new rule, not transcribed from the workbook; built on the
+// project owner's own instruction before asking the SME team — see
+// docs/rules/F1_Per_Gate_Open_Questions.md.
+//
+// ONE combined item, not one per register (2026-08-27, user-reported): a
+// project that has closed nothing yet — the state of every project right
+// after this feature ships — piled up 72 separate "must be closed..." lines
+// on Gate 12 alone (68 closeable registers total), each repeating the same
+// boilerplate sentence. The underlying rule stays exactly as strict (Gate 12
+// genuinely cannot pass while any of them is open), only the PRESENTATION
+// collapses to one line so the panel stays readable.
+function unclosedRegistersBlocking(project: ProjectData, gateId: string): GateReadinessItem[] {
+  const currentIdx = gateIndex(gateId);
+  const relevant = REGISTER_CONFIGS.filter((config) => {
+    const thresholdId = gateRefHighestGateId(config.gate);
+    return !!thresholdId && gateIndex(thresholdId) <= currentIdx;
+  });
+  if (relevant.length === 0) return [];
+  const unclosed = relevant.filter((config) => !isRegisterClosed(project.registerClosures[config.key]));
+  if (unclosed.length === 0) {
+    return [
+      {
+        id: 'unclosed-registers',
+        label: `${relevant.length} register(s) closed (Review owner + Co-sign)`,
+        satisfied: true,
+        hardBlock: true,
+      },
+    ];
+  }
+  const shown = unclosed.slice(0, 8).map((c) => c.title);
+  const names = shown.join(', ') + (unclosed.length > shown.length ? `, +${unclosed.length - shown.length} more` : '');
+  return [
+    {
+      id: 'unclosed-registers',
+      label: `${unclosed.length} of ${relevant.length} register(s) must be closed (Review owner + Co-sign) before this gate can pass: ${names}`,
+      satisfied: false,
+      hardBlock: true,
+    },
+  ];
 }
 
 // Blockers that even a "Proceed with Conditions" decision cannot clear —
@@ -1206,6 +1267,21 @@ export function isGateRefLocked(project: ProjectData, gateRef: string | undefine
   const gateIds = gateRefGateIds(gateRef);
   if (gateIds.length === 0) return false;
   return gateIds.every((id) => isGatePassed(project, id));
+}
+
+// The HIGHEST gate a config `gate` string refers to, by numeric position —
+// NOT the last one written (a spec could in principle list them out of
+// order) and NOT the same thing `isGateRefLocked` computes (that one needs
+// EVERY listed gate passed; this needs just the furthest one). Added
+// 2026-08-27 for register closing (below): a register must be CLOSED before
+// this gate may pass, mirroring the same "the register stays relevant
+// through its last listed gate" reasoning isGateRefLocked already uses for
+// unlocking. Undefined for 'ALL'/unset — those never gate a closing
+// requirement either, same as they never lock.
+export function gateRefHighestGateId(gateRef: string | undefined): string | undefined {
+  const gateIds = gateRefGateIds(gateRef);
+  if (gateIds.length === 0) return undefined;
+  return gateIds.reduce((highest, id) => (gateIndex(id) > gateIndex(highest) ? id : highest));
 }
 
 // ---------------------------------------------------------------------------
