@@ -10,7 +10,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-Thank you for the Round 4 answers. They were complete enough to start building immediately, and thirteen of the thirty-six are already finished. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
+Thank you for the Round 4 answers. They were complete enough to start building immediately, and seventeen of the thirty-six are already finished. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
 
 Every question here follows the same pattern as last time: we have made a choice so that work could continue, the choice is running in the software now, and we would rather you corrected it than have it settle in silently. Where a question is still unbuilt we say so.
 
@@ -28,6 +28,7 @@ You can reply by number, for example "3 — option (b)".
 8. **Question 20** — raised the same day as 17–18, nothing built yet either way.
 9. **Question 21** — already built, on the project owner's own instruction, before asking you. We would rather you corrected it now than have it settle in as though it were confirmed.
 10. **Questions 22–23** — from building your question-21 answer. Both are small, and 23(b) is a rule we are already running on our own reading.
+11. **Question 24** — a new screen your question-5 answer asked for, built and running. Four choices in it are ours.
 
 ---
 
@@ -376,6 +377,22 @@ The second half has nowhere to go. A requirement row has an **Owner** column but
 
 ---
 
+## Question 24 — The new general restricted-and-caution screen: is this the right shape?
+
+Your answer to Round-4 question 5 chose option (b): Gate 7 needs a **general** restricted-and-caution ingredient assessment for every product, with the maternal screen as an additional conditional layer and the infant screen as a third. All three layers now exist.
+
+Building it showed that two of the three were already there — the prohibited/restricted screen has always applied to every product, and the infant compartment was already conditional on infant contact. What was genuinely missing was general **caution**: every caution row in the system belonged to the maternal list. So that layer is new, and four choices in it are ours rather than yours.
+
+**(a) The new screen starts empty.** The two existing watch-lists ship twelve reference substances each because the workbook lists them. There is no equivalent list for general caution, and writing one ourselves would mean inventing regulatory reference data inside the system that exists to control it. So the new screen holds only the findings for the product in front of you. Is that right, or does the company already have a general restricted/caution list that should be loaded in?
+
+**(b) "We looked and found nothing" is recorded as a separate tick.** An empty screen cannot tell "this product contains nothing restricted" from "nobody has looked", so there is a new Gate 7 checklist line — *General restricted and caution ingredient assessment completed* — that has to be ticked (or marked N/A with a reason) before Gate 7 can pass. Is that the right way to record it?
+
+**(c) It currently belongs to Gate 7 only.** Your answer was about Gate 7, so we kept it there. But a restricted ingredient is usually found during ingredient screening at Gate 4, and today a finding recorded here does not appear at Gate 4 at all. **Should this screen also be subject to the Gate 4 rules the other two watch-lists follow** — every row dispositioned, a reviewer trail on anything flagged?
+
+**(d) Its five outcome values** — No issue identified · Within limit, evidence linked · Restricted, reformulate · Needs Safety Review · Needs Regulatory Review — are assembled from the two existing screens, not supplied by you. The last three block Gate 7.
+
+---
+
 ## Summary
 
 | # | Topic | Why it matters |
@@ -395,5 +412,6 @@ The second half has nowhere to go. A requirement row has an **Owner** column but
 | 21 | **A two-signature "closing" act for every evidence register — is this the right shape** | **Already built, before asking you.** ~68 registers now require it; five open points on scope, signer count, and reopening |
 | 22 | Can a Phase 2–4 requirement row be marked "not applicable" too | Your question-21 answer gave Phase 1 that escape; the same case exists on the other three |
 | 23 | Deferring a Should/Could requirement — owner, due date, and whether every row needs a priority | 23(b) is running on our reading now; 23(c) currently blocks Gate 5 on an unprioritised cost row |
+| 24 | The new general restricted-and-caution screen — shape, and whether it belongs to Gate 4 too | Built for your question-5 answer; four choices in it are ours, and (c) may be a real gap |
 
 Questions 4 to 6, 10 to 12, 14 and 16 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

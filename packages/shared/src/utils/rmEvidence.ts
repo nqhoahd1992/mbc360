@@ -50,6 +50,25 @@ export function unresolvedRmRows(rows: RegisterRow[]): RegisterRow[] {
   return rows.filter((row) => !isRmDispositioned(row));
 }
 
+// Round 4 question 31(f), 2026-08-29: at Gates 7, 10 and 11 "the hard block applies
+// to materials ACTUALLY PRESENT in the current formula. Materials formally
+// dispositioned as not used should not block those gates."
+//
+// The join is by `rmCode`, the same key the Raw Material Risk Overlay and the
+// Formula BOM's own picker use. A BOM line with no rmCode therefore matches
+// nothing — which is safe in the direction that matters: it can only make this set
+// SMALLER, and the un-narrowed check at Gate 4 (`scope: 'all'`) has already had to
+// pass on every candidate before the formula could be locked at Gate 5.
+export function rmRowsInFormula(rows: RegisterRow[], bomRmCodes: string[]): RegisterRow[] {
+  const codes = new Set(bomRmCodes.filter((c) => c !== ''));
+  return rows.filter((row) => codes.has(rmCodeOf(row)));
+}
+
+export function rmRowsNotInFormula(rows: RegisterRow[], bomRmCodes: string[]): RegisterRow[] {
+  const codes = new Set(bomRmCodes.filter((c) => c !== ''));
+  return rows.filter((row) => !codes.has(rmCodeOf(row)));
+}
+
 export function conditionallyAcceptedRmRows(rows: RegisterRow[]): RegisterRow[] {
   return rows.filter(isRmConditionallyAccepted);
 }

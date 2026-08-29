@@ -619,6 +619,16 @@ export const PHASE_3: PhaseConfig = {
   ],
   keyGateChecks: [
     { gate: '07', check: 'Safety/tolerance questions defined and vulnerable-user risks reviewed' },
+    // Round 4 question 5 (2026-08-24), option (b), added 2026-08-29 — the only
+    // Key Gate Check row in this config that does not come from the workbook.
+    // Gate 7 needs a GENERAL restricted-and-caution assessment for every product,
+    // and the maternal row below is explicitly "an additional conditional layer"
+    // on top of it. This row is the record that somebody looked; the findings go
+    // in the General Restricted & Caution Assessment register. Without it, a
+    // product with no restricted ingredient would be indistinguishable from one
+    // nobody screened — an empty register cannot tell those apart, which is the
+    // same reason `criticalSafetyFindings` leans on the Final Safety Sign-off.
+    { gate: '07', check: 'General restricted and caution ingredient assessment completed' },
     { gate: '07', check: 'Pregnancy/breastfeeding and baby-contact screen completed where triggered' },
     { gate: '07', check: 'Restrictions, conditions and safety evidence linked' },
     { gate: '08', check: 'Testing families selected and methods/protocols referenced' },

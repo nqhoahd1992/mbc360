@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { criticalSafetyFindings, formulationSafetyFinalSignOff, formulationSafetyMatrix, formulationSafetyProfile } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
-import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { isGateRefLocked, uncoveredFormulaLines } from '@mbc360/shared/utils/gateProgress';
 import DynamicTable from '../components/DynamicTable';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
 
@@ -21,6 +21,9 @@ export default function FormulationSafety() {
   // Gate-level edit lock — Formulation Safety is used at Gate 07 and reused at
   // Gate 10, so it stays editable until BOTH have passed.
   const locked = isGateRefLocked(project, formulationSafetyProfile.gate);
+  // Round 4 question 23(b) — the same function the Gate 7 readiness item calls, so
+  // the screen and the blocker can never disagree about which lines are uncovered.
+  const uncovered = uncoveredFormulaLines(project);
 
   return (
     <div style={{ display: 'grid', gap: 16 }}>
@@ -50,6 +53,33 @@ export default function FormulationSafety() {
         reviewOwnerText={reviewOwnerText}
         readOnly={locked}
       />
+
+      {/* Round 4 question 23(b), 2026-08-29. The Gate 7 blocker says "every formula
+          line covered by a safety assessment"; on its own that sends the reader
+          back here to work out WHICH line, across a matrix and a BOM that are two
+          different screens. Same list, same function, named per ingredient. */}
+      {uncovered.length > 0 && !locked && (
+        <Alert
+          type="warning"
+          showIcon
+          title={`${uncovered.length} formula ${uncovered.length === 1 ? 'line has' : 'lines have'} no safety coverage recorded`}
+          description={
+            <>
+              Gate 07 requires every ingredient in the final formula to carry a safety disposition.
+              A low-risk excipient does not need its own monograph — a group or class assessment, an
+              existing approved assessment or an accepted regulatory conclusion all count, as long as
+              the row names which one.
+              <ul style={{ margin: '8px 0 0', paddingInlineStart: 20 }}>
+                {uncovered.map((u) => (
+                  <li key={u.label}>
+                    <strong>{u.label}</strong> — {u.reason}
+                  </li>
+                ))}
+              </ul>
+            </>
+          }
+        />
+      )}
 
       <DynamicTable
         config={formulationSafetyMatrix}

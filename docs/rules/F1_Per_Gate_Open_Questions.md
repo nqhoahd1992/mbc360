@@ -1502,6 +1502,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q16 | Gap High — "controlled action" là Next Action có kiểm soát?, due date ghi đâu | Nhóm 2 (câu 3) | **chủ dự án thử luồng gap** |
 | R5-Q22 | 'N/A kèm lý do' có áp cho bảng requirement của Phase 2-4 không | Độc lập (câu 21) | **build nhóm độc lập** |
 | R5-Q23 | Hoãn một requirement Should/Could: ai sở hữu, hạn khi nào, và có bắt buộc priority không | Độc lập (câu 21) | **build nhóm độc lập** |
+| R5-Q24 | Sổ "General Restricted & Caution" mới — hình dạng đúng chưa, và có thuộc Gate 4 không | Nhóm 6 (câu 5) | **build nhóm 6** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
 
@@ -1836,3 +1837,19 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **(c) Trường hợp riêng của (b):** nếu dòng *Target cost or commercial boundary* chưa có priority thì hiện Gate 5 **bị chặn** (trigger `commercialRequirementIsMust` trả `notAssessed`, theo đúng luật tri-state của câu 7). Đó có phải điều mong muốn không, hay dự án không có ràng buộc thương mại nên được để trống?
 
 **Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` (nhánh `requirementsDispositioned` — bỏ điều kiện priority; nhánh `commercialRequirementIsMust`) · `packages/shared/src/config/gateReadiness.ts` (`sg02-requirements-deferred`, `sg05-costing-must`) · `packages/shared/src/types/index.ts` (`RequirementItem` — thêm due date nếu là phương án (i)).
+
+#### R5-Q24 · Sổ "General Restricted & Caution Assessment" — hình dạng đúng chưa, và nó có thuộc Gate 4 không 🔴
+
+**Lộ ra khi build câu 5 (29/08/2026).** Đáp án chọn phương án (b): Gate 7 cần **general restricted-and-caution screen cho MỌI sản phẩm**, maternal là lớp điều kiện thêm, infant là lớp thứ ba. Ba lớp giờ đã có, nhưng lớp general phải **xây mới** — trước đó mọi dòng "caution" trong app đều thuộc sổ maternal, còn `prohibitedIngredients` chỉ phủ prohibited/restricted.
+
+**Đã xây, và mỗi lựa chọn dưới đây là của dev, không phải của SME:**
+
+**(a) Sổ tự do, không seed chất nào.** Hai sổ watch-list hiện có ship sẵn 12 dòng tham chiếu vì **workbook V18 có 12 dòng đó**; không có danh sách nào tương đương cho "general caution", và tự bịa ra một danh sách chất là fabricate dữ liệu tham chiếu quy chế trong chính hệ thống dựng ra để kiểm soát nó. Nên sổ này chỉ chứa **phát hiện của sản phẩm này**. Đúng hướng, hay công ty có sẵn một danh sách restricted/caution tổng quát nên được seed vào?
+
+**(b) Bằng chứng "đã xem mà không có gì" là một dòng Key Gate Check mới** (*"General restricted and caution ingredient assessment completed"*, gate 07). Sổ rỗng không thể phân biệt "sản phẩm không có chất nào bị hạn chế" với "chưa ai xem" — nên phải có một chỗ ghi tường minh. Đây là cùng cách `criticalSafetyFindings` dựa vào Final Safety Sign-off. Có ổn không, hay nên là một trường riêng trong sổ?
+
+**(c) Sổ này hiện KHÔNG thuộc Gate 4.** Câu 5 nói về Gate 7, nên chúng tôi giữ đúng phạm vi đó: một phát hiện general-caution không được đưa vào cơ chế reviewer-trail (D3) ở Gate 4, dù các cột của nó dùng đúng tên khoá để làm được điều đó ngay khi có yêu cầu. Nhưng một chất bị hạn chế phát hiện lúc sàng lọc nguyên liệu (Gate 4) thì lẽ ra phải hiện ở Gate 4 chứ không phải đợi tới Gate 7. **Sổ này có nên chịu luật Gate 4 như hai sổ kia không?**
+
+**(d) 5 giá trị "Assessment outcome"** (No issue identified · Within limit - evidence linked · Restricted - reformulate · Needs Safety Review · Needs Regulatory Review) là bản ghép từ hai sổ hiện có, không phải danh sách SME đưa. Ba giá trị cuối chặn cứng Gate 7.
+
+**Nếu trả lời khác:** `packages/shared/src/config/registers.ts` (`generalRestrictedCaution`, và `WATCHLIST_REGISTERS` trong `utils/watchlistReview.ts` nếu là (c)) · `packages/shared/src/config/phases.ts` (dòng Key Gate Check gate 07) · `packages/shared/src/config/gateReadiness.ts` (`sg07-general-caution`) · migration `20260829...` đã backfill dòng Key Gate Check cho dự án hiện có.

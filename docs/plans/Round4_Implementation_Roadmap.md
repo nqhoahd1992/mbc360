@@ -61,8 +61,8 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | 2 | 8 | ⬜ chưa làm | 6 trạng thái formula version + quyết định supersession per-market |
 | 3 | 2 | ✅ resolved | Đánh giá mức độ nghiêm trọng của gap (8 trường) — cũng đóng **A1 vòng 21/07** và bật được nhánh "critical gap" của F7 |
 | 4 | 4b + 8 | ⬜ chưa xong | **Market profile đã xây** (nền 4a + trang admin + revision + capability) ✅ — còn PMS baseline cho mọi sản phẩm và 14 trigger enhanced (thuộc nhóm 8) |
-| 5 | 6 | ⬜ chưa làm | Gate 7 cần màn hình restricted/caution tổng quát |
-| 6 | 6 | ⬜ chưa làm | Gate 4 phải disposition mọi dòng (6 giá trị) |
+| 5 | 6 | ✅ resolved | Gate 7 cần màn hình restricted/caution tổng quát |
+| 6 | 6 | ✅ resolved | Gate 4 phải disposition mọi dòng (6 giá trị) |
 | 7 | 1 | ✅ resolved | **Nền tảng** — tri-state "chưa đánh giá" phải chặn |
 | 8 | 1 | ✅ resolved | Change Control required? Yes/No/Pending |
 | 9 | 1 | ✅ resolved | Human-participant study planned? Yes/No/Undecided |
@@ -79,7 +79,7 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | 20 | — | ✅ resolved | Trường Gate 1 tuỳ chọn lúc tạo — xác nhận đúng như đã xây, không cần code |
 | 21 | độc lập | ✅ resolved | Priority Must/Should/Could + N/A kèm lý do |
 | 22 | độc lập | ✅ resolved | Primary project type + 2 giá trị Owner/function |
-| 23 | 6 + độc lập | ⬜ chưa xong | Option "Product form under evaluation" ✅ — **còn 4 đường phủ safety matrix** (23b, thuộc nhóm 6) |
+| 23 | 6 + độc lập | ✅ resolved | Option "Product form under evaluation" (23a) + 4 đường phủ safety matrix (23b) |
 | 24 | độc lập | ✅ resolved | Bỏ `initialTargetMarkets`; Countries/Markets là nguồn duy nhất |
 | 25 | độc lập + 7 | ⬜ chưa xong | Tách Dry / eczema-prone ✅ (a)(b)(d) — **còn family use hỏi nhóm tuổi** (25c, thuộc nhóm 7) |
 | 26 | 5 | ⬜ chưa làm | Revision claim đã duyệt thành read-only |
@@ -87,7 +87,7 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | 28 | 4d | ⬜ chưa làm | Claims Library cấp công ty |
 | 29 | 3 | ⬜ chưa làm | 5 điểm chữ ký gate: snapshot · comment · gate critical · độc lập · trình tự |
 | 30 | 5 | ⬜ chưa làm | Revision vs Claim ID mới · artwork link · bản ghi Publication |
-| 31 | 6 | ⬜ chưa làm | Gate 7/10/11 chỉ chặn nguyên liệu có trong công thức |
+| 31 | 6 | ✅ resolved | Gate 7/10/11 chỉ chặn nguyên liệu có trong công thức |
 | 32 | 6 | ✅ resolved | Thêm Needs Safety Review · 5 resolution status · sổ maternal |
 | 33 | 2 | ✅ resolved | 4 severity · 6 status · controlled action · chặn theo bậc |
 | 34 | 2 | ✅ resolved | Critical là mức riêng · final disposition 8 trường |
@@ -244,7 +244,7 @@ Cả năm sửa cùng bộ register — `claimEvidenceTraceability` · `skuClaim
 
 ---
 
-## Nhóm 6 — Sàng lọc nguyên liệu & an toàn 🔴
+## Nhóm 6 — Sàng lọc nguyên liệu & an toàn ✅ **xong 29/08/2026**
 
 **Câu:** 5 · 6 · 23(b) · 31 · 32(a)(c)(e)(f)
 
@@ -259,8 +259,25 @@ Cả năm nằm trên cùng ba màn hình — Prohibited Ingredients watch-list,
 - **Câu 31(f)** — ở Gate 7/10/11 chặn cứng **chỉ áp cho nguyên liệu có trong công thức hiện tại**; dòng ngoài công thức thì cảnh báo (`utils/rmEvidence.ts`, 3 item trong `gateReadiness.ts`).
 - **Câu 23(b)** — mọi dòng công thức phải có disposition, phủ được bằng **1 trong 4 đường**; tá dược rủi ro thấp không cần monograph dài.
 
-**Phụ thuộc:** nhóm 2 (thang giá trị) · nhóm 4c (risk overlay).
-**Câu hỏi còn mở:** `R5-Q10` — sáu giá trị của câu 6 thay thế hay bổ sung danh sách status hiện tại?
+**Phụ thuộc:** nhóm 2 (thang giá trị) · nhóm 4c (risk overlay) — cả hai đã xong trước.
+**Câu hỏi còn mở:** `R5-Q10` (sáu giá trị của câu 6 thay thế hay bổ sung danh sách status hiện tại — đã build theo phương án **hai cột**) và `R5-Q24` mới (hình dạng sổ General Restricted & Caution, và nó có thuộc Gate 4 không).
+
+### Đã làm gì, 29/08
+
+**Câu 32 vốn đã xong ở nhóm 2**, nên nhóm này thực chất là 5 · 6 · 23(b) · 31(f).
+
+- **Câu 5** — ba lớp ở Gate 7. Hai lớp đã có sẵn mà không ai nhận ra: `sg07-prohibited-closed` (Mandatory, mọi sản phẩm) là nửa prohibited/restricted của lớp general, và `sg07-infant-safety` là lớp 3. Thứ **thiếu hẳn** là nửa *caution* tổng quát — mọi dòng caution trong app đều thuộc sổ maternal. Nên: sổ mới `generalRestrictedCaution` (tự do, **không seed chất nào** — không có danh sách nào trong workbook để chép, và bịa ra là fabricate dữ liệu quy chế) + một dòng Key Gate Check mới ở gate 07 làm bằng chứng "đã xem mà không có gì", vì sổ rỗng không phân biệt được hai trạng thái đó. `sg07-caution-closed` đổi tên thành `sg07-maternal-caution` — cái tên cũ *nhận* là general trong khi sổ nó đọc chưa bao giờ là general, và chính điều đó khiến lớp general trông như đã có.
+- **Câu 6** — cột mới `gate4Disposition` (6 giá trị của SME) trên **cả hai** sổ watch-list, cạnh `productStatus` chứ không thay nó: một cột giữ kết quả *máy sàng lọc*, một cột giữ *phán quyết người*. Đây là nhánh "hai cột" của `R5-Q10`, chọn vì gộp hai cột thành một là một migration, còn tách một cột thành hai là đoán.
+- **Câu 23(b)** — `coverageRoute` (4 đường của SME) + `coverageReference` trên Ingredient-Level Safety Matrix, và check mới `safetyMatrixCoversFormula` nối **từng dòng BOM** sang matrix (theo `rmCode`, dự phòng `inciName`). Tính cân xứng nằm ở bốn đường chứ không phải ở một ngoại lệ: tá dược rủi ro thấp được phủ bằng group/class assessment, dòng vẫn *chứng minh là đã phủ*. **Chưa phủ và đã ghi rõ trên chính item** (`coverageNote`): "mixture components, impurities and residuals" — matrix là một dòng một BOM line, thành phần của một hỗn hợp không phải BOM line và không có chỗ ghi.
+- **Câu 31(f)** — `scope: 'formula'` trên hai check D4, dùng ở Gate 7/10/11; Gate 4 giữ nguyên `'all'` theo 31(a). Phần ngoài công thức thành item **Supporting** (cảnh báo, không chặn) ở cả ba gate.
+
+### Ba thứ học được, đáng chép lại
+
+1. **Sweep S2 bắt đúng cái nó sinh ra để bắt, và lộ ra một lỗ trong chính nó.** Sổ general-caution rỗng là hợp lệ (sản phẩm không có chất bị hạn chế), nên nó không thể có `registerHasRows` — S2 fail ngay. Và `scope: 'formula'` làm *lý lẽ cũ của S2 hết đúng*: một sổ đầy ứng viên không nói gì về việc công thức có dòng nào. Nên thêm **`nonVacuousBecause`** — một miễn trừ **phải khai bằng câu chữ**, S2 fail nếu thiếu, và in ra mỗi lần chạy. Kiểm ngược cả hai chiều.
+2. **Một check đọc BOM cũng vacuous như một check đọc register.** `safetyMatrixCoversFormula` trên công thức rỗng = "mọi dòng đã phủ" = tick xanh cho sản phẩm chưa có công thức. Phát hiện khi in danh sách blocker thật của dự án demo, không phải khi viết code.
+3. **Cột dropdown chỉ là dropdown ở trình duyệt.** `PUT /registers/:key` nhận mọi chuỗi, nên `gate4Disposition` — một *đầu vào của luật* — có thể mang giá trị không ai chọn được, và luật "mọi dòng đã disposition" thoả ngay. Sửa hai tầng: luật kiểm **membership** thay vì khác rỗng, và API thêm guard chung `invalidSelectValues` cho **mọi** cột select của **mọi** sổ (đo trước khi bật: 0 giá trị lệch trên dữ liệu thật; 243 giá trị `"fixture"` đều nằm trên dự án rác `MBC-SIGN-TEST`).
+
+---
 
 ---
 

@@ -2,7 +2,12 @@ import type { GateRecord, NextAction, ProjectData, RegisterRow } from '../types'
 import { NEXT_ACTION_TERMINAL_STATUSES, isRegisterClosed, isSignedOff } from '../types';
 import { COSTING_STATUS_NOT_APPLICABLE, GATES, REQUIREMENT_NOT_APPLICABLE } from '../config/gates';
 import { isChangeOpen } from '../config/changeTriggers';
-import { CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE, REGISTER_CONFIGS } from '../config/registers';
+import {
+  CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE,
+  GATE4_DISPOSITION_OPTIONS,
+  REGISTER_CONFIGS,
+  SAFETY_COVERAGE_INDIVIDUAL,
+} from '../config/registers';
 import {
   CLAIM_CATEGORIES_NEEDING_REVIEW,
   CLAIM_REVIEWED_WORDING_COLUMN,
@@ -13,7 +18,14 @@ import {
 } from '../config/claimReview';
 import { rmCodesUnclassified, rmCodesWithRiskFlags } from '../config/referenceData';
 import { TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
-import { RM_EVIDENCE_REGISTER, conditionallyAcceptedRmRows, hasUsableRmRow, unresolvedRmRows } from './rmEvidence';
+import {
+  RM_EVIDENCE_REGISTER,
+  conditionallyAcceptedRmRows,
+  hasUsableRmRow,
+  rmRowsInFormula,
+  rmRowsNotInFormula,
+  unresolvedRmRows,
+} from './rmEvidence';
 import { WATCHLIST_REGISTER, watchlistConditionalRows, watchlistHardBlockers } from './watchlistReview';
 import { conditionalSafetyFindings, hardBlockingSafetyFindings } from './safetyFindings';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
@@ -31,6 +43,7 @@ import {
   type ReadinessSource,
   type ReadinessTier,
   type ReadinessTrigger,
+  type RmEvidenceScope,
   type TriggerState,
 } from '../config/gateReadiness';
 
@@ -389,6 +402,61 @@ function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger): Trigg
 const PHASE1_REQUIREMENTS_SECTION = 'projectRequirements';
 const COMMERCIAL_BOUNDARY_REQUIREMENT = 'Target cost or commercial boundary';
 
+// Round 4 question 31(f): the rmCodes of the CURRENT formula, as opposed to
+// `projectRmCodes` below which is the union of formula and candidate register.
+// The two exist for opposite reasons — that one widens a screen so nothing slips
+// through, this one narrows a release block to what the product actually contains.
+function bomRmCodes(project: ProjectData): string[] {
+  return project.bom.map((line) => (line.rmCode ?? '').trim()).filter((code) => code !== '');
+}
+
+function rmRowsInScope(project: ProjectData, scope: RmEvidenceScope | undefined): RegisterRow[] {
+  const rows = project.registers[RM_EVIDENCE_REGISTER] ?? [];
+  return scope === 'formula' ? rmRowsInFormula(rows, bomRmCodes(project)) : rows;
+}
+
+export const SAFETY_MATRIX_REGISTER = 'formulationSafetyMatrix';
+
+// Round 4 question 23(b): formula lines with no safety coverage recorded against
+// them. Exported because the Ingredient-Level Safety Matrix screen shows the same
+// list — a blocker that names the gate but not the ingredient is a scavenger hunt.
+//
+// Matched by rmCode first and INCI second. The matrix's own identity column is
+// `inciName` (it predates rmCode existing anywhere), while a BOM line reliably has
+// rmCode, so both are tried rather than forcing one: requiring rmCode alone would
+// fail every matrix row typed before the Cosmetri import existed, and INCI alone
+// would mis-join two materials sharing an INCI name.
+export function uncoveredFormulaLines(project: ProjectData): { label: string; reason: string }[] {
+  const matrix = project.registers[SAFETY_MATRIX_REGISTER] ?? [];
+  const out: { label: string; reason: string }[] = [];
+  for (const line of project.bom) {
+    const code = (line.rmCode ?? '').trim();
+    const inci = (line.inciName ?? '').trim();
+    const label = inci || code || '(unnamed formula line)';
+    const row = matrix.find((r) => {
+      const rowCode = String(r.rmCode ?? '').trim();
+      const rowInci = String(r.inciName ?? '').trim();
+      return (code !== '' && rowCode === code) || (inci !== '' && rowInci.toLowerCase() === inci.toLowerCase());
+    });
+    if (!row) {
+      out.push({ label, reason: 'no safety-matrix row' });
+      continue;
+    }
+    const route = String(row.coverageRoute ?? '').trim();
+    if (route === '') {
+      out.push({ label, reason: 'no coverage route recorded' });
+      continue;
+    }
+    // "Every formula line must show it has been covered AND LINKED to the relevant
+    // assessment." An individual assessment IS this row; the other three routes
+    // name something elsewhere, so they have to say what.
+    if (route !== SAFETY_COVERAGE_INDIVIDUAL && String(row.coverageReference ?? '').trim() === '') {
+      out.push({ label, reason: `"${route}" but no assessment referenced` });
+    }
+  }
+  return out;
+}
+
 // Every raw material this project uses, by the rmCode the overlay is keyed on.
 //
 // The union of two surfaces on purpose. Supplier & RM Evidence is the Gate 4
@@ -537,16 +605,68 @@ function evaluateReadinessCheck(
       };
     // D4. Both read the same register; they are separate checks because Gate 4
     // treats them at different severities (see `clearedByConditions`).
-    case 'rmEvidenceDispositioned':
+    case 'rmEvidenceDispositioned': {
+      const rows = rmRowsInScope(project, check.scope);
+      // `scope: 'formula'` over an EMPTY formula would be vacuously true, which is
+      // the failure sweep S2 exists to catch — and it would land at Gate 7, after
+      // the formula was supposed to be locked at Gate 5. An empty formula means
+      // nothing has been assessed, not that everything has.
+      if (check.scope === 'formula' && project.bom.length === 0) {
+        return { evaluable: true, satisfied: false };
+      }
+      return { evaluable: true, satisfied: unresolvedRmRows(rows).length === 0 };
+    }
+    case 'rmEvidenceNoneConditional': {
+      const rows = rmRowsInScope(project, check.scope);
+      if (check.scope === 'formula' && project.bom.length === 0) {
+        return { evaluable: true, satisfied: false };
+      }
+      return { evaluable: true, satisfied: conditionallyAcceptedRmRows(rows).length === 0 };
+    }
+    // Question 31(f)'s warning half. Vacuously true when every candidate IS in the
+    // formula, which is correct here and harmless: this item is Supporting, so a
+    // true value blocks nothing either way.
+    case 'rmEvidenceNonFormulaResolved': {
+      const rows = rmRowsNotInFormula(project.registers[RM_EVIDENCE_REGISTER] ?? [], bomRmCodes(project));
       return {
         evaluable: true,
-        satisfied: unresolvedRmRows(project.registers[RM_EVIDENCE_REGISTER] ?? []).length === 0,
+        satisfied: unresolvedRmRows(rows).length === 0 && conditionallyAcceptedRmRows(rows).length === 0,
       };
-    case 'rmEvidenceNoneConditional':
+    }
+    // Round 4 question 6: every row of a watch-list register carries one of the six
+    // Gate 4 dispositions. Non-vacuous by construction — both registers this is
+    // used on are `mode: 'fixed'` and ship their rows at project creation, so an
+    // empty register cannot arise; and unlike `productStatus`, `gate4Disposition`
+    // has no seeded value, so no row starts out satisfying it (sweep S3's hazard
+    // read the other way round).
+    case 'watchlistDispositioned': {
+      const rows = project.registers[check.register] ?? [];
       return {
         evaluable: true,
-        satisfied: conditionallyAcceptedRmRows(project.registers[RM_EVIDENCE_REGISTER] ?? []).length === 0,
+        // Membership, not merely non-empty. A rule that accepts any non-blank
+        // string is satisfied by a value nobody can have picked from the dropdown
+        // — which is the failure sweep S1 exists to catch in config, and it
+        // applies just as much to data arriving through the API.
+        satisfied:
+          rows.length > 0 &&
+          rows.every((r) =>
+            (GATE4_DISPOSITION_OPTIONS as readonly string[]).includes(String(r.gate4Disposition ?? '').trim()),
+          ),
       };
+    }
+    // Round 4 question 23(b): every line of the current formula has a safety-matrix
+    // row naming a coverage route — and, for the three routes that point at an
+    // assessment elsewhere, naming what it points at.
+    case 'safetyMatrixCoversFormula': {
+      // Same empty-formula guard as the two `scope: 'formula'` D4 checks above,
+      // and for the same reason: "every formula line is covered" is vacuously
+      // true of a formula with no lines, which would show a green tick on the
+      // Gate 7 panel for a product that has not been formulated. `bomHasLines` at
+      // Gate 5 makes this unreachable for a project that got here properly — the
+      // panel is readable for any gate at any time, which is when it would show.
+      if (project.bom.length === 0) return { evaluable: true, satisfied: false };
+      return { evaluable: true, satisfied: uncoveredFormulaLines(project).length === 0 };
+    }
     case 'requirementSectionComplete': {
       const rows = project.requirements[check.section] ?? [];
       return { evaluable: true, satisfied: rows.every((r) => r.status === 'Completed') };
@@ -990,7 +1110,12 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'rmEvidenceDispositioned':
     case 'rmEvidenceNoneConditional':
     case 'rmEvidenceHasUsable':
+    case 'rmEvidenceNonFormulaResolved':
       return { href: `/registers/reg/${RM_EVIDENCE_REGISTER}` };
+    case 'watchlistDispositioned':
+      return { href: `/registers/reg/${check.register}` };
+    case 'safetyMatrixCoversFormula':
+      return { href: `/registers/reg/${SAFETY_MATRIX_REGISTER}` };
     case 'watchlistReviewed':
     case 'watchlistNoneConditional':
       return { href: `/registers/reg/${WATCHLIST_REGISTER}` };

@@ -141,6 +141,38 @@ export interface RegisterConfig {
 // counts as blank when every OTHER column is still empty, so "Add row" then
 // "Save" with nothing typed can be blocked without false-flagging normal
 // partial entry (e.g. only a status set, or only one column filled).
+// Every `select` cell whose value is not one of that column's own options
+// (2026-08-29). A dropdown is a controlled vocabulary, but only the UI was
+// enforcing it: `PUT /registers/:key` accepted any string, so a direct call could
+// store a value nobody could have picked — and a readiness rule reading that
+// column would then be deciding a gate on a value that is not in its own list.
+//
+// Found while verifying Round 4 question 6: `gate4Disposition` is a rule input, and
+// a garbage value satisfied "every row is dispositioned". The rule was tightened to
+// check membership, but the class is wider than one column, so the guard belongs
+// here — the same reason `verify:readiness` sweep S1 checks `badValues` against the
+// column's own options rather than trusting whoever wrote the check.
+//
+// Blank is always allowed: it is how an unanswered cell reads, and several rules
+// depend on being able to tell blank from answered.
+export function invalidSelectValues(
+  config: RegisterConfig,
+  rows: RegisterRow[],
+): { row: number; column: string; label: string; value: string }[] {
+  const bad: { row: number; column: string; label: string; value: string }[] = [];
+  rows.forEach((row, index) => {
+    for (const col of config.columns) {
+      if (col.type !== 'select' || !col.options) continue;
+      const value = row[col.key];
+      if (typeof value !== 'string' || value.trim() === '') continue;
+      if (!col.options.includes(value)) {
+        bad.push({ row: index, column: col.key, label: col.label, value });
+      }
+    }
+  });
+  return bad;
+}
+
 export function isRegisterRowBlank(config: RegisterConfig, row: RegisterRow): boolean {
   return config.columns.every((col) => {
     // A signature is not typed, so it can never make a row non-blank — and a
@@ -314,19 +346,53 @@ export const WATCHLIST_RESOLUTION_OPTIONS = RESOLUTION_LIFECYCLE;
 // not have it: the value existed only on the PB Caution Limits register, so a
 // Safety escalation was not even recordable on the watch-list.
 //
-// ⚠️ And question 6 lands on the SAME column from the other direction: at Gate 4
-// every row must carry one of six dispositions (No issue identified · Needs Safety
-// Review · Needs Regulatory Review · Prohibited — remove · Considered — not
-// selected · Further information required). Those six do NOT include `REVIEW -
-// possible formula match`, while the flagged list does — so `productStatus` is
-// being asked to hold both a machine screening result and a human disposition.
-// Whether the six replace the current list (two columns) or extend it (one column
-// of seven) is [ASSUMPTION: R5-Q10].
+// Question 6 lands on the SAME column from the other direction: at Gate 4 every row
+// must carry one of six dispositions (below). Those six do NOT include `REVIEW -
+// possible formula match`, while the flagged list does — so `productStatus` would
+// be asked to hold both a machine screening result and a human disposition. Built
+// 2026-08-29 as the TWO-COLUMN option: `productStatus` keeps the screening result
+// and a separate `gate4Disposition` holds the human verdict. Which of the two
+// shapes the team meant is [ASSUMPTION: R5-Q10] — the two-column build is the one
+// that can be undone without losing a recorded answer, since collapsing two
+// columns into one is a data migration while splitting one into two is guesswork.
 export const WATCHLIST_FLAGGED_STATUSES: readonly string[] = [
   'REVIEW - possible formula match',
   'Needs Safety Review',
   'Needs Regulatory Review',
 ];
+
+// Round 4 question 6 (2026-08-24), transcribed verbatim and in the answer's order.
+// "Gate 4 must not pass with unassessed rows" — so an empty value is the
+// unassessed state, and `watchlistDispositioned` blocks on it regardless of the
+// gate decision. Gate 4 keeps its lighter close-out; the full close-out of every
+// restricted or caution issue relevant to the final formula stays Gate 7's job.
+// Round 4 question 23(b) (2026-08-24), transcribed verbatim: the four ways a
+// formula line's safety disposition may be covered at Gate 7.
+export const SAFETY_COVERAGE_ROUTES = [
+  'Individual assessment',
+  'Reference to an existing approved ingredient assessment',
+  'Group or class assessment',
+  'Reference to an accepted regulatory/safety conclusion',
+] as const;
+
+// The one route that stands on its own row. The other three point somewhere else,
+// so `safetyMatrixCoversFormula` additionally requires a reference for them —
+// "linked to the relevant assessment" is not satisfied by naming a route.
+export const SAFETY_COVERAGE_INDIVIDUAL = 'Individual assessment';
+
+export const GATE4_DISPOSITION_OPTIONS = [
+  'No issue identified',
+  'Needs Safety Review',
+  'Needs Regulatory Review',
+  'Prohibited — remove',
+  'Considered — not selected',
+  'Further information required',
+] as const;
+
+// The one Gate 4 disposition that is an outright rejection rather than a verdict
+// awaiting work. Kept as a named constant because `sg04-no-remove` already
+// hard-blocks the equivalent `productStatus` value and the two must agree.
+export const GATE4_DISPOSITION_PROHIBITED = 'Prohibited — remove';
 
 export const RM_EVIDENCE_STATUS_OPTIONS = [
   RM_EVIDENCE_INCOMPLETE,
@@ -517,6 +583,12 @@ const prohibitedIngredients: RegisterConfig = {
       ],
     },
     { key: 'formulaMatchCount', label: 'Formula match count', type: 'number', width: 90 },
+    // Round 4 question 6 (2026-08-29). Sits beside `productStatus`, not inside it:
+    // that column holds the SCREENING result (does the formula match this row),
+    // this one holds the reviewer's DISPOSITION of that result. Blank is the
+    // unassessed state Gate 4 must not pass with, so it deliberately has no
+    // `defaultValue` [ASSUMPTION: R5-Q10].
+    { key: 'gate4Disposition', label: 'Gate 4 disposition', type: 'select', width: 190, options: [...GATE4_DISPOSITION_OPTIONS] },
     // Rule D3 — the reviewer trail a flagged result must carry before Gate 4 can
     // move. Every field here is one D3 names; only the Resolution status VALUES
     // and the flagged-status scope are ours (see WATCHLIST_* in this file).
@@ -578,6 +650,10 @@ const pbCautionLimits: RegisterConfig = {
       ],
     },
     { key: 'formulaExposure', label: 'Formula % / exposure', type: 'text', width: 130 },
+    // Round 4 question 6 (2026-08-29) — same column, same reason, as on the
+    // Prohibited Ingredient Watch-list above. Required at Gate 4 only when the
+    // maternal pathway is triggered, since this whole register is that pathway.
+    { key: 'gate4Disposition', label: 'Gate 4 disposition', type: 'select', width: 190, options: [...GATE4_DISPOSITION_OPTIONS] },
     // Round 4 question 32(e) (2026-08-24): "The Pregnancy/Breastfeeding Caution
     // list uses the same reviewer-trail fields for flagged findings." We asked
     // this ourselves — D3's wording said "each flagged watch-list result" while
@@ -610,6 +686,78 @@ const pbCautionLimits: RegisterConfig = {
     { ingredientGroup: 'Licorice root extract', functionRole: 'Brightening / soothing botanical', statusLimitGuidance: 'Caution; check glycyrrhizin content', whyCautionRequired: 'Placental cortisol-barrier mechanism and oral-exposure literature', applicableProducts: 'Brightening/soothing products', productStatus: 'Not assessed', owner: 'Safety / R&I', linkedGate: '07_Maternal_Baby_Safety', notes: 'Attach botanical spec and active content.' },
     { ingredientGroup: 'Salicylic acid / salicylates', functionRole: 'BHA exfoliant / anti-acne', statusLimitGuidance: 'Caution; topical limits and product type matter', whyCautionRequired: 'Dermal absorption, breast milk transfer and high-dose literature', applicableProducts: 'Acne, toners, cleansers', productStatus: 'Not assessed', owner: 'Safety / Regulatory', linkedGate: '07_Maternal_Baby_Safety', notes: 'Assess total salicylate exposure.' },
     { ingredientGroup: 'Glycerin for vulvovaginal use', functionRole: 'Humectant / solvent', statusLimitGuidance: 'Caution for intimate products', whyCautionRequired: 'Vaginal epithelial permeability/osmotic concern', applicableProducts: 'Feminine washes/intimate products', productStatus: 'Not assessed', owner: 'Safety / R&I', linkedGate: '07_Maternal_Baby_Safety', notes: 'Only relevant to intimate-use products.' },
+  ],
+};
+
+// Round 4 question 5 (2026-08-24), option (b), built 2026-08-29. Gate 7 requires a
+// **general** restricted-and-caution ingredient assessment for EVERY product; the
+// Pregnancy/Breastfeeding list above is "an additional conditional layer", and the
+// infant compartment is a third. The app had the first and third layers already —
+// `prohibitedIngredients` is Mandatory and unconditional at Gate 7, and the
+// INF-01..08 compartment is Conditional on infant contact — but nothing general
+// covered *caution*: every caution row in the app belonged to the maternal list.
+//
+// Free-form (`mode: 'register'`) and NOT seeded with substances, deliberately. The
+// two existing watch-lists ship 12 reference rows each because the V18 workbook
+// ships those rows; there is no such list for general caution, and inventing one
+// would be fabricating regulatory reference data in a system built to control it.
+// So this register holds the findings for THIS product, and the record that
+// somebody looked and found nothing is the Key Gate Check row added alongside it
+// ("General restricted and caution ingredient assessment completed") — the same
+// division `criticalSafetyFindings` already uses, and the reason an empty register
+// here is not read as a pass.
+//
+// Column KEYS deliberately mirror the two watch-lists (`reviewerAssessment`,
+// `reviewer`, `reviewDate`, `reviewRationale`, `linkedNextActionId`,
+// `resolutionStatus`) so the D3 reviewer-trail helpers in `utils/watchlistReview.ts`
+// read it without a branch if it is ever added to WATCHLIST_REGISTERS. It is NOT
+// added today: that array drives Gate 4 items, and question 5 is about Gate 7 —
+// widening Gate 4 on our own initiative is the kind of quiet scope change the
+// working agreement exists to stop [ASSUMPTION: R5-Q24].
+const generalRestrictedCaution: RegisterConfig = {
+  key: 'generalRestrictedCaution',
+  title: 'General Restricted & Caution Assessment',
+  // No workbook tab of its own — this control comes from Round 4 question 5, not
+  // from V18 — so it borrows the nearest one, exactly as `regulatoryChecklistStatus`
+  // borrows PIF_Checklist_ASEAN for the same reason.
+  sheetName: 'Prohibited_Ingredients',
+  description:
+    'Every product, at Gate 7: restricted or caution ingredients in the final formula, and how each was closed. The maternal and infant screens are additional layers on top of this one.',
+  mode: 'register',
+  gate: '07',
+  // No `reviewOwner`: like the two watch-lists it sits beside, it takes the one
+  // its nav group declares.
+  columns: [
+    { key: 'ingredientInci', label: 'Ingredient / INCI', type: 'text', width: 180 },
+    { key: 'restrictionBasis', label: 'Restriction / caution basis', type: 'textarea', width: 220 },
+    { key: 'sourceReference', label: 'Source / reference', type: 'text', width: 170 },
+    { key: 'markets', label: 'Markets affected', type: 'markets', width: 170 },
+    { key: 'formulaExposure', label: 'Formula % / exposure', type: 'text', width: 130 },
+    {
+      key: 'assessmentOutcome',
+      label: 'Assessment outcome',
+      type: 'select',
+      width: 200,
+      // Blank is the unassessed state; the readiness item treats blank and the
+      // three unresolved values alike, so a row added and left alone blocks Gate 7
+      // rather than counting as a closed finding.
+      options: [
+        'No issue identified',
+        'Within limit - evidence linked',
+        'Restricted - reformulate',
+        'Needs Safety Review',
+        'Needs Regulatory Review',
+      ],
+    },
+    { key: 'reviewerAssessment', label: 'Reviewer assessment', type: 'select', width: 190, options: WATCHLIST_ASSESSMENT_OPTIONS },
+    { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140 },
+    { key: 'reviewDate', label: 'Review date', type: 'date', width: 120 },
+    { key: 'reviewRationale', label: 'Rationale', type: 'textarea', width: 220 },
+    { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 220 },
+    { key: 'resolutionStatus', label: 'Resolution status', type: 'select', width: 130, options: WATCHLIST_RESOLUTION_OPTIONS },
+    { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
+    { key: 'owner', label: 'Owner', type: 'user', width: 130 },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
 };
 
@@ -1797,6 +1945,23 @@ export const formulationSafetyMatrix: RegisterConfig = {
     { key: 'allergenIfra', label: 'Allergen / IFRA', type: 'text', width: 130 },
     { key: 'impurityProof', label: 'Impurity / heavy metal proof', type: 'text', width: 170 },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 130 },
+    // Round 4 question 23(b), 2026-08-29: "At Gate 7, every ingredient in the final
+    // formula must have a safety disposition. Low-risk excipients do not each need
+    // a lengthy monograph." The four routes below are the answer's own list, and
+    // they are what makes that second sentence true — an excipient can be covered
+    // by a group assessment or an accepted regulatory conclusion instead of its own
+    // write-up, and the row still SHOWS it was covered, which is the requirement.
+    //
+    // Blank is "not covered": `safetyMatrixCoversFormula` reads this column, not
+    // the free-text `safetyDecision` beside it, precisely because a free-text cell
+    // cannot distinguish a considered disposition from a stray note.
+    { key: 'coverageRoute', label: 'Coverage route', type: 'select', width: 220, options: [...SAFETY_COVERAGE_ROUTES] },
+    // "Every formula line must show it has been covered and LINKED to the relevant
+    // assessment." For the individual route that link is this row's own evidence;
+    // for the other three it names the group, the existing approved assessment or
+    // the regulatory conclusion being relied on, which `evidenceLink` cannot hold
+    // because it is a URL field and the reference is often a document id.
+    { key: 'coverageReference', label: 'Assessment referenced', type: 'text', width: 200 },
     { key: 'safetyDecision', label: 'Safety decision', type: 'text', width: 140 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 170 },
   ],
@@ -2751,6 +2916,7 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   formulationSafetyFinalSignOff,
   supplierRmEvidence,
   prohibitedIngredients,
+  generalRestrictedCaution,
   pbCautionLimits,
   ingredientSubstitution,
   eyeSafetyEvidence,
@@ -3150,6 +3316,10 @@ const DEPARTMENTS: RawDept[] = [
     reviewOwner: REVIEW_SPECS.regulatoryWithRi,
     items: [
       'prohibitedIngredients',
+      // Round 4 question 5, 2026-08-29. Filed with the two watch-lists it is the
+      // general layer above, not with the safety registers, because it is the same
+      // kind of record — a restriction screen against reference sources.
+      'generalRestrictedCaution',
       'pbCautionLimits',
       'fragranceSafety',
       'fragranceAllergenLog',

@@ -11,6 +11,7 @@ import { registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import {
   REGISTER_CONFIGS,
   getRegisterConfig,
+  invalidSelectValues,
   signatureColumns,
   signatureFieldKeys,
   type RegisterConfig,
@@ -1219,6 +1220,20 @@ export class ProjectsService {
       if (isRegisterClosed(project.registerClosures[registerKey])) {
         throw new ForbiddenException(
           `Register "${registerKey}" is closed — it is read-only until reopened (withdraw a closing signature, or Backtrack past its gate)`,
+        );
+      }
+      // A `select` cell may only hold one of its own options (2026-08-29). Until
+      // this, the dropdown existed only in the browser and the API took any
+      // string — so a direct call could store a value nobody could pick, and any
+      // readiness rule reading that column would decide a gate on it. Found while
+      // verifying Round 4 question 6, whose new `gate4Disposition` is exactly such
+      // a rule input. Blank stays legal: it is how an unanswered cell reads.
+      const badSelects = invalidSelectValues(config, rows);
+      if (badSelects.length > 0) {
+        throw new BadRequestException(
+          `${badSelects.length} cell(s) hold a value that is not an option of their column: ${badSelects
+            .map((b) => `row ${b.row + 1} "${b.label}" -> "${b.value}"`)
+            .join('; ')}`,
         );
       }
       // Gate 3 rule (F1 appendix): "A claim may remain under development, but

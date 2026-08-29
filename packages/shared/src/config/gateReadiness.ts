@@ -111,6 +111,10 @@ export type ReadinessTrigger =
 // does not apply", which is exactly what the answer rejects.
 export type TriggerState = 'applies' | 'doesNotApply' | 'notAssessed';
 
+// Which Supplier & RM Evidence rows a D4 check looks at — see the `scope` note on
+// `rmEvidenceDispositioned` below (Round 4 question 31(f)).
+export type RmEvidenceScope = 'all' | 'formula';
+
 // Triggers that CANNOT yet return `notAssessed`, because the data they read has
 // nowhere for a person to say "I checked, it does not apply" — an empty checklist
 // or register is indistinguishable from a considered no [ASSUMPTION: R5-Q5].
@@ -263,10 +267,24 @@ export type ReadinessCheck =
   // for use, conditionally accepted, or screened and not used. A row still at
   // "Incomplete — evidence review required" (or with no status at all) is what D4
   // calls an unresolved identity-only stub.
-  | { kind: 'rmEvidenceDispositioned' }
+  //
+  // `scope` (Round 4 question 31(f), 2026-08-29) decides WHICH rows count.
+  // 'all' — every candidate in the register. Correct at Gate 4, where 31(a) says
+  //   "every row in the candidate raw-material register must be dispositioned",
+  //   and where there is no locked formula to narrow to yet.
+  // 'formula' — only materials actually present in the current BOM. Correct at
+  //   Gates 7, 10 and 11: "materials formally dispositioned as not used should not
+  //   block those gates. An incomplete non-formula candidate may produce a warning
+  //   but should not block release where the product does not rely on it."
+  // Omitted means 'all', so an existing check keeps its behaviour.
+  | { kind: 'rmEvidenceDispositioned'; scope?: RmEvidenceScope }
   // Rule D4: no material is resting on the conditional route. Separate from the
   // check above because the two differ in severity — see `clearedByConditions`.
-  | { kind: 'rmEvidenceNoneConditional' }
+  | { kind: 'rmEvidenceNoneConditional'; scope?: RmEvidenceScope }
+  // The other side of question 31(f): the candidates NOT in the formula. Same two
+  // conditions, reported as a warning instead of a block — "may produce a warning
+  // but should not block release".
+  | { kind: 'rmEvidenceNonFormulaResolved' }
   // Rule D4, the hole the two above leave: a register where every row is
   // "Considered — not used" satisfies both of them, so Gate 4 would pass with
   // nothing the formula can be built from.
@@ -330,6 +348,14 @@ export type ReadinessCheck =
   // Round 4 question 36(b): the Costing / Commercial Feasibility Status is set to
   // something other than 'Not Started', with a rationale where it is N/A.
   | { kind: 'costingStatusRecorded' }
+  // Round 4 question 6: every row of a watch-list register carries one of the six
+  // Gate 4 dispositions. "Gate 4 must not pass with unassessed rows", so a blank
+  // is a block and Proceed with Conditions does not clear it.
+  | { kind: 'watchlistDispositioned'; register: string }
+  // Round 4 question 23(b): every line of the current formula is covered by a
+  // safety-matrix row that names one of the four coverage routes, and — for the
+  // three routes that point elsewhere — what it points at.
+  | { kind: 'safetyMatrixCoversFormula' }
   | { kind: 'allOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
@@ -386,6 +412,21 @@ export interface ReadinessRequirement {
   // 2026-08-11 for C1, whose seven conditions include four the app cannot
   // evaluate — the failure mode CLAUDE.md names as having already cost us once.
   coverageNote?: string;
+  // A DECLARED exemption from `verify:readiness` sweep S2, naming what makes this
+  // item non-vacuous when the sweep cannot see it (2026-08-29). S2's normal proof
+  // is a Mandatory `registerHasRows` on the same register at the same or an
+  // earlier gate; two situations have a different proof and would otherwise have
+  // to be papered over by inventing a rows-must-exist rule nobody asked for:
+  //
+  //   - the register is legitimately empty (no findings), and the "somebody
+  //     looked" record is a sibling check inside the same allOf;
+  //   - the check narrows to the formula, so the engine's own empty-BOM branch is
+  //     what stops it passing on nothing.
+  //
+  // Required, not optional, in those cases: the sweep FAILS without it, so an
+  // exemption is always a sentence someone wrote, never a silence. Printed in the
+  // sweep summary for the same reason.
+  nonVacuousBecause?: string;
   // Blocks a plain Proceed but is explicitly allowed to stay open under Proceed
   // with Conditions — the treatment the open-non-critical-next-action blocker has
   // always had, now available to a config item. Added 2026-08-12 for D4's second
@@ -1226,32 +1267,49 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Pregnancy/breastfeeding caution screen',
       tier: 'Conditional',
       trigger: 'skincareForTwo',
-      // ⚠️ The Gate 4 vs Gate 7 threshold split below was our reading, not
-      // something the appendix states, and Round 4 question 6 (2026-08-24)
-      // corrects it: "Gate 4 screens and DISPOSITIONS every relevant candidate"
-      // and "must not pass with unassessed rows". So the deliberately
-      // conservative badValues below — which let a maternal project sail through
-      // Gate 4 with every row still at its seeded 'Not assessed' — are too loose.
-      // Gate 4 keeps its lighter close-out (the full final close-out stays a Gate
-      // 7 matter) but every row must carry one of six dispositions: No issue
-      // identified · Needs Safety Review · Needs Regulatory Review · Prohibited —
-      // remove · Considered — not selected · Further information required
-      // [R4-REWORK: câu 6].
-      // 2026-08-07: this now HARD-BLOCKS Gate 4 once the trigger is active
+      // The Gate 4 vs Gate 7 threshold split was our reading, not something the
+      // appendix states, and Round 4 question 6 (2026-08-24) corrected it: "Gate 4
+      // screens and DISPOSITIONS every relevant candidate" and "must not pass with
+      // unassessed rows". The old badValues — which let a maternal project sail
+      // through Gate 4 with every row still at its seeded 'Not assessed' — were
+      // too loose. Built 2026-08-29.
+      //
+      // Gate 4 keeps its LIGHTER close-out; what it gains is that every row must
+      // now carry one of the six dispositions. The escalation values stay in the
+      // badValues leg because an escalated row is still an open finding, and the
+      // full close-out of every restricted or caution issue remains Gate 7's job
+      // (`sg07-maternal-caution`, whose badValues include 'Not assessed').
+      //
+      // 2026-08-07: this HARD-BLOCKS Gate 4 once the trigger is active
       // (Conditional items with a live trigger stopped being advisory — see
-      // `advisory` in gateProgress.ts). Deliberately conservative badValues:
-      // 'Not assessed' is NOT one of them, so a maternal project whose rows
-      // are still at their seeded default is not blocked on day one — only a
-      // row someone has explicitly escalated to "Needs ... Review" blocks.
-      // Full closure of every row is Gate 7's job (sg07-caution-closed, whose
-      // badValues DO include 'Not assessed'), matching the workbook's own
-      // Gate 4 = screen / Gate 7 = close split.
+      // `advisory` in gateProgress.ts).
       check: {
-        kind: 'registerNoBadRows',
-        register: 'pbCautionLimits',
-        column: 'productStatus',
-        badValues: ['Needs Safety Review', 'Needs Regulatory Review'],
+        kind: 'allOf',
+        checks: [
+          {
+            kind: 'registerNoBadRows',
+            register: 'pbCautionLimits',
+            column: 'productStatus',
+            badValues: ['Needs Safety Review', 'Needs Regulatory Review'],
+          },
+          { kind: 'watchlistDispositioned', register: 'pbCautionLimits' },
+        ],
       },
+    },
+    {
+      // The other half of question 6, for the general watch-list. Unconditional,
+      // because the Prohibited Ingredient Watch-list applies to every product —
+      // unlike the maternal register above, which is the conditional layer.
+      //
+      // Separate from `sg04-no-remove` on purpose: that item blocks an explicit
+      // rejection, this one blocks silence. A register where nobody has recorded
+      // any disposition contains no "Prohibited - remove" either, so on its own
+      // sg04-no-remove passes an entirely unscreened project.
+      id: 'sg04-watchlist-dispositioned',
+      label: 'Every watch-list row dispositioned (Gate 4 screening complete)',
+      tier: 'Mandatory',
+      source: 'f-series',
+      check: { kind: 'watchlistDispositioned', register: 'prohibitedIngredients' },
     },
     {
       id: 'sg04-allergen',
@@ -1599,20 +1657,39 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     {
       // Rule D4. "Gate 7 final safety approval must use the completed evidence status." Both legs: nothing left undispositioned, AND nothing still resting on a conditional acceptance — a conditional acceptance has an open controlled action by definition, so it is not a COMPLETED evidence status. Unlike Gate 4 this does not clear with Proceed with Conditions. The second half is CONFIRMED by Round 4 question 31(d), 2026-08-24: "A conditionally accepted material included in the final formula must be fully closed before Gate 7 final safety approval."
       //
-      // ⚠️ But question 31(f) narrows the SCOPE, which is the half we got wrong.
-      // We applied the Gate 4 reading ("applicable" = every row in the register) at
-      // all four gates, for consistency. The answer: at Gates 7, 10 and 11 the
-      // formula exists, so "the hard block applies to materials ACTUALLY PRESENT in
-      // the current formula. Materials formally dispositioned as not used should
-      // not block those gates. An incomplete non-formula candidate may produce a
-      // warning but should not block release where the product does not rely on
-      // it." So both legs here must be scoped to the BOM, and the out-of-formula
-      // remainder becomes a warning [R4-REWORK: câu 31(f)].
+      // Question 31(f) narrowed the SCOPE, which is the half we had got wrong: we
+      // applied the Gate 4 reading ("applicable" = every row in the register) at
+      // all four gates, for consistency. The answer, built 2026-08-29: at Gates 7,
+      // 10 and 11 the formula exists, so "the hard block applies to materials
+      // ACTUALLY PRESENT in the current formula. Materials formally dispositioned
+      // as not used should not block those gates." The counter-argument we put
+      // ourselves — quoting D4's own "must not RELY on" — is the one that was
+      // accepted. The out-of-formula remainder is the Supporting item below.
       id: 'sg07-rm-evidence-complete',
-      label: 'Raw-material evidence review complete for every material',
+      label: 'Raw-material evidence review complete for every material in the formula',
       tier: 'Mandatory',
       source: 'f-series',
-      check: { kind: 'allOf', checks: [{ kind: 'rmEvidenceDispositioned' }, { kind: 'rmEvidenceNoneConditional' }] },
+      nonVacuousBecause:
+        'scoped to the current formula (question 31(f)), so the Supplier & RM Evidence row count proves nothing here; ' +
+        'the engine returns unsatisfied outright when the BOM is empty.',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'rmEvidenceDispositioned', scope: 'formula' },
+          { kind: 'rmEvidenceNoneConditional', scope: 'formula' },
+        ],
+      },
+    },
+    {
+      // Question 31(f)'s other half: "An incomplete non-formula candidate may
+      // produce a warning but should not block release where the product does not
+      // rely on it." Supporting, so it never blocks — the whole point is that it
+      // is visible without being an obstacle.
+      id: 'sg07-rm-evidence-non-formula',
+      label: 'Candidate materials not used in the formula are also resolved',
+      tier: 'Supporting',
+      source: 'f-series',
+      check: { kind: 'rmEvidenceNonFormulaResolved' },
     },
     {
       id: 'sg07-final-safety',
@@ -1641,25 +1718,57 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       },
     },
     {
-      id: 'sg07-caution-closed',
-      label: 'Restricted/caution ingredient assessment closed',
-      tier: 'Conditional',
-      trigger: 'skincareForTwo',
-      // ⚠️ Round 4 question 5 (2026-08-24) answers **option (b)**, and this item as
-      // it stands is the wrong shape for it. Gate 7 requires a GENERAL
-      // restricted-and-caution ingredient assessment for **every product**; the
-      // Pregnancy/Breastfeeding Caution assessment is "an additional conditional
-      // layer", and the Infant/Baby Safety screen is a third. So one Conditional
-      // item on `skincareForTwo` becomes three:
+      // Round 4 question 5 (2026-08-24), option (b), built 2026-08-29: Gate 7 needs
+      // a GENERAL restricted-and-caution ingredient assessment for **every**
+      // product, with the maternal and infant screens as additional conditional
+      // layers on top. All three layers now exist here, in the answer's own order:
       //
       //   general prohibited/restricted/caution → Mandatory, all products
-      //   maternal caution                      → Conditional, skincareForTwo
-      //   infant / baby safety                  → Conditional, infantContact
+      //     — `sg07-prohibited-closed` (the prohibited/restricted half, already
+      //       Mandatory and unconditional) plus THIS item (the caution half, which
+      //       had no home at all: every caution row in the app belonged to the
+      //       maternal register)
+      //   maternal caution   → `sg07-maternal-caution`, Conditional skincareForTwo
+      //   infant/baby safety → `sg07-infant-safety`, Conditional infantContact
       //
-      // Where both intended-use contexts are selected, both pathways apply. The
-      // general layer has no register today — `prohibitedIngredients` and
-      // `pbCautionLimits` are the only two — so it is a build, not a re-tier
-      // [R4-REWORK: câu 5].
+      // "Both maternal and infant pathways apply where both intended-use contexts
+      // are selected" needs no special handling: they are two independent items
+      // with two independent triggers.
+      //
+      // Two legs. The Key Gate Check is the record that somebody LOOKED — without
+      // it an empty register would read as a pass, and a product with no restricted
+      // ingredient is exactly the common case. The register leg then requires every
+      // finding recorded there to be closed.
+      id: 'sg07-general-caution',
+      label: 'General restricted and caution ingredient assessment closed',
+      tier: 'Mandatory',
+      source: 'f-series',
+      nonVacuousBecause:
+        'the register is legitimately empty when the formula contains nothing restricted, so it carries no registerHasRows guard; ' +
+        'the Key Gate Check leg of the same allOf is what stops an unscreened project passing.',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '07', check: 'General restricted and caution ingredient assessment completed' },
+          {
+            kind: 'registerNoBadRows',
+            register: 'generalRestrictedCaution',
+            column: 'assessmentOutcome',
+            badValues: ['Restricted - reformulate', 'Needs Safety Review', 'Needs Regulatory Review'],
+          },
+        ],
+      },
+    },
+    {
+      // Layer 2 of question 5: the maternal caution assessment, "an additional
+      // conditional layer when Pregnancy, Breastfeeding or Postpartum is selected".
+      // Renamed from `sg07-caution-closed` on 2026-08-29 — the old id and label
+      // claimed the general assessment this register never was, which is what made
+      // the general layer look present when it was absent.
+      id: 'sg07-maternal-caution',
+      label: 'Maternal (pregnancy / breastfeeding) caution assessment closed',
+      tier: 'Conditional',
+      trigger: 'skincareForTwo',
       // Corrected 2026-08-07 (SME Round 3, Response2 E1). This was Mandatory
       // and UNCONDITIONAL, on the reading that the Gate 7 appendix item
       // carries no qualifier (unlike sg04-pb-screen) — the open question in
@@ -1807,14 +1916,40 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // final formula must have a safety disposition… Every formula line must show
       // it has been covered and linked to the relevant assessment."
       //
-      // ⚠️ With a proportionality rule this row-count check cannot express:
-      // "low-risk excipients do not each need a lengthy monograph", and coverage
-      // may be shown four ways — individual assessment · reference to an existing
-      // approved ingredient assessment · group or class assessment where
-      // scientifically justified · reference to an accepted regulatory/safety
-      // conclusion. Relevant mixture components, impurities and residuals must
-      // also be assessed where required [R4-REWORK: câu 23(b)].
+      // With a proportionality rule a row-count check cannot express: "low-risk
+      // excipients do not each need a lengthy monograph", and coverage may be shown
+      // four ways. Built 2026-08-29 as `safetyMatrixCoversFormula` below, which is
+      // the real cardinality check — this item keeps the row-count guard because
+      // the three per-column matrix checks above still need a non-vacuous partner.
       check: { kind: 'registerHasRows', register: 'formulationSafetyMatrix' },
+    },
+    {
+      // Round 4 question 23(b), built 2026-08-29. The row-count guard above says
+      // the matrix is not empty; this says it covers the FORMULA — "every formula
+      // line must show it has been covered and linked to the relevant assessment".
+      //
+      // Proportionality lives in the four coverage routes, not in an exemption: a
+      // low-risk excipient is covered by naming a group or class assessment, or an
+      // accepted regulatory conclusion, and the line still shows it was covered.
+      // That is what lets this be a flat "every line" rule without demanding a
+      // monograph per excipient.
+      //
+      // NOT covered, and disclosed rather than implied: "relevant mixture
+      // components, impurities and residuals must also be assessed where required".
+      // The matrix is one row per BOM line, and a mixture's components are not BOM
+      // lines — there is nowhere to record them, and inventing that structure is a
+      // larger change than this answer describes.
+      id: 'sg07-matrix-coverage',
+      label: 'Every formula line covered by a safety assessment',
+      tier: 'Mandatory',
+      source: 'f-series',
+      nonVacuousBecause:
+        'reads the BOM, not a register, so registerHasRows says nothing about it; ' +
+        'the engine returns unsatisfied outright when the formula has no lines.',
+      coverageNote:
+        'the app checks that every line of the current formula has a matrix row naming one of the four coverage routes, with a reference where the route points elsewhere. ' +
+        'It does NOT yet check the answer\'s last sentence — that relevant mixture components, impurities and residuals are assessed too — because a mixture\'s components are not formula lines and have nowhere to be recorded.',
+      check: { kind: 'safetyMatrixCoversFormula' },
     },
     {
       id: 'sg07-safety-questions',
@@ -2183,17 +2318,33 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     {
       // Rule D4. "Gates 10 and 11 must not rely on unresolved identity-only stubs." Same pairing as Gate 7 — an unresolved stub blocks, and so does a still-open conditional acceptance, since releasing a dossier that rests on one would be relying on unfinished evidence.
       //
-      // ⚠️ Scope narrows here exactly as at Gate 7 — Round 4 question 31(f),
-      // 2026-08-24: only materials actually present in the current formula
+      // Scope narrows here exactly as at Gate 7 — Round 4 question 31(f), built
+      // 2026-08-29: only materials actually present in the current formula
       // hard-block; an incomplete candidate the product does not contain warns
       // instead. The counter-argument we put ourselves ("a gate arguably does not
       // rely on a material the product does not contain", quoting D4's own "must
-      // not RELY on") is the one that was accepted [R4-REWORK: câu 31(f)].
+      // not RELY on") is the one that was accepted.
       id: 'sg10-rm-evidence-complete',
-      label: 'No unresolved raw-material evidence stub',
+      label: 'No unresolved raw-material evidence stub in the formula',
       tier: 'Mandatory',
       source: 'f-series',
-      check: { kind: 'allOf', checks: [{ kind: 'rmEvidenceDispositioned' }, { kind: 'rmEvidenceNoneConditional' }] },
+      nonVacuousBecause:
+        'scoped to the current formula (question 31(f)), so the Supplier & RM Evidence row count proves nothing here; ' +
+        'the engine returns unsatisfied outright when the BOM is empty.',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'rmEvidenceDispositioned', scope: 'formula' },
+          { kind: 'rmEvidenceNoneConditional', scope: 'formula' },
+        ],
+      },
+    },
+    {
+      id: 'sg10-rm-evidence-non-formula',
+      label: 'Candidate materials not used in the formula are also resolved',
+      tier: 'Supporting',
+      source: 'f-series',
+      check: { kind: 'rmEvidenceNonFormulaResolved' },
     },
     {
       id: 'sg10-cosmetri-formula',
@@ -2320,14 +2471,30 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     {
       // Rule D4. "Gates 10 and 11 must not rely on unresolved identity-only stubs." Repeated at Gate 11 rather than assumed from Gate 10: a gate is evaluated on its own list, and Gate 10 could have passed under Proceed with Conditions.
       //
-      // ⚠️ Same narrowing as Gates 7 and 10 — Round 4 question 31(f), 2026-08-24:
-      // scope this to materials in the current formula, and warn rather than block
-      // on the rest [R4-REWORK: câu 31(f)].
+      // Same narrowing as Gates 7 and 10 — Round 4 question 31(f), built
+      // 2026-08-29: scoped to materials in the current formula, with the rest
+      // warning rather than blocking.
       id: 'sg11-rm-evidence-complete',
-      label: 'No unresolved raw-material evidence stub',
+      label: 'No unresolved raw-material evidence stub in the formula',
       tier: 'Mandatory',
       source: 'f-series',
-      check: { kind: 'allOf', checks: [{ kind: 'rmEvidenceDispositioned' }, { kind: 'rmEvidenceNoneConditional' }] },
+      nonVacuousBecause:
+        'scoped to the current formula (question 31(f)), so the Supplier & RM Evidence row count proves nothing here; ' +
+        'the engine returns unsatisfied outright when the BOM is empty.',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'rmEvidenceDispositioned', scope: 'formula' },
+          { kind: 'rmEvidenceNoneConditional', scope: 'formula' },
+        ],
+      },
+    },
+    {
+      id: 'sg11-rm-evidence-non-formula',
+      label: 'Candidate materials not used in the formula are also resolved',
+      tier: 'Supporting',
+      source: 'f-series',
+      check: { kind: 'rmEvidenceNonFormulaResolved' },
     },
     {
       id: 'sg11-cosmetri-formula',

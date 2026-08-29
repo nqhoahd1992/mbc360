@@ -214,6 +214,8 @@ function verifyNames({ gate, req, check }: Entry): void {
 
 const gateOrder = (gate: string) => Number(gate.replace('SG', ''));
 
+const declaredExemptions: { gate: string; id: string; why: string }[] = [];
+
 function verifyVacuity(): void {
   const guards = entries.filter(
     (e) => e.req.tier === 'Mandatory' && e.check.kind === 'registerHasRows',
@@ -237,6 +239,13 @@ function verifyVacuity(): void {
       check.kind === 'rmEvidenceDispositioned' || check.kind === 'rmEvidenceNoneConditional'
         ? RM_EVIDENCE_REGISTER
         : undefined;
+    // Round 4 question 31(f) (2026-08-29) gave those two kinds a `scope`. With
+    // `scope: 'formula'` the pairing above proves nothing — a register full of
+    // candidate rows says nothing about whether the FORMULA has any — so the
+    // registerHasRows route is closed for them and only a declared
+    // `nonVacuousBecause` is accepted. Left implicit, this would have been the
+    // sweep reporting clean on three release gates whose reasoning had moved.
+    const formulaScoped = !!impliedRegister && (check as { scope?: string }).scope === 'formula';
     const vacuous =
       !!impliedRegister ||
       check.kind === 'registerColumnFilled' ||
@@ -247,18 +256,35 @@ function verifyVacuity(): void {
     const register = impliedRegister ?? (check as { register: string }).register;
     if (getRegisterConfig(register)?.mode === 'fixed') continue; // rows seeded at creation
 
-    const guarded = guards.some(
-      (g) =>
-        (g.check as { register: string }).register === register &&
-        gateOrder(g.gate) <= gateOrder(gate),
-    );
+    // A DECLARED exemption: the item says in words what makes it non-vacuous when
+    // the sweep cannot see it. Collected and printed below rather than silently
+    // skipped, so an exemption stays visible in every run.
+    if (req.nonVacuousBecause) {
+      // One line per ITEM, not per leg: an allOf with two scoped legs is one
+      // exemption, and printing it twice makes the list look longer than it is.
+      if (!declaredExemptions.some((e) => e.gate === gate && e.id === req.id)) {
+        declaredExemptions.push({ gate, id: req.id, why: req.nonVacuousBecause });
+      }
+      continue;
+    }
+
+    const guarded =
+      !formulaScoped &&
+      guards.some(
+        (g) =>
+          (g.check as { register: string }).register === register &&
+          gateOrder(g.gate) <= gateOrder(gate),
+      );
     if (!guarded) {
       fail(
         'S2',
         gate,
         req.id,
-        `${check.kind}("${register}") không có Mandatory registerHasRows đi kèm ` +
-          `(cùng gate hoặc sớm hơn) — sẽ tự thoả trên register rỗng`,
+        formulaScoped
+          ? `${check.kind}("${register}", scope: 'formula') không thể dựa vào registerHasRows — ` +
+              `phải khai \`nonVacuousBecause\` nói rõ điều gì khiến nó không tự thoả`
+          : `${check.kind}("${register}") không có Mandatory registerHasRows đi kèm ` +
+              `(cùng gate hoặc sớm hơn) — sẽ tự thoả trên register rỗng`,
       );
     }
   }
@@ -553,6 +579,11 @@ console.log(
 console.log(`Đã chốt nhưng chưa sửa       : ${reworkSites} chỗ R4-REWORK trên ${openWithDebt.length} câu`);
 if (openWithDebt.length > 0) {
   console.log(`                               ${openWithDebt.map(([n, d]) => `câu ${n}×${d.count}`).join(' · ')}`);
+}
+
+if (declaredExemptions.length > 0) {
+  console.log(`\n--- Miễn trừ S2 đã khai (${declaredExemptions.length}) ---`);
+  for (const e of declaredExemptions) console.log(`  ${e.gate} ${e.id}: ${e.why}`);
 }
 
 if (notes.length > 0) {
