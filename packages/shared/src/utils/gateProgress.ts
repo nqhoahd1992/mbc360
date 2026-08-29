@@ -19,7 +19,11 @@ import {
   CLAIM_WORDING_COLUMN,
   marketRestrictsClaims,
 } from '../config/claimReview';
-import { rmCodesUnclassified, rmCodesWithRiskFlags } from '../config/referenceData';
+import {
+  marketRequiresEnhancedSurveillance,
+  rmCodesUnclassified,
+  rmCodesWithRiskFlags,
+} from '../config/referenceData';
 import { TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
 import {
   RM_EVIDENCE_REGISTER,
@@ -31,6 +35,7 @@ import {
 } from './rmEvidence';
 import { WATCHLIST_REGISTER, watchlistConditionalRows, watchlistHardBlockers } from './watchlistReview';
 import { conditionalSafetyFindings, hardBlockingSafetyFindings } from './safetyFindings';
+import { isMarketLaunched, overdueReviews } from './postLaunch';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
 import {
   ASEAN_CHECKLIST_REGISTER,
@@ -99,18 +104,59 @@ const INFANT_TARGET_USER = 'Infant 0+';
 // Round 4 question 25(c): the target-user option that asks a question rather than
 // answering one — see the `infantContact` trigger.
 const FAMILY_USE_TARGET_USER = 'Family use';
-// A3's "safety signal … complaint trend" limbs, as they appear on the Gate 12
-// Post-Market Sources checklist.
+// Round 4 question 10 (2026-08-24, built 2026-08-29) split the sixteen mixed
+// options into source / issue type / resulting action, which is what lets this
+// limb be expressed properly at last. The answer's own PV/PMS mapping is:
+// "Adverse event or PV signal · PMS trend · Complaint WITH A SAFETY COMPONENT ·
+// consumer, HCP or social-media feedback TAGGED AS a potential safety issue."
 //
-// ⚠️ Round 4 question 10 (2026-08-24) confirms the mapping but says the option
-// list itself is wrong: the sixteen options mix SOURCE, ISSUE TYPE and RESULTING
-// ACTION, and should be three separate lists. It also widens this limb — a
-// complaint counts only where it has a safety component, and consumer, HCP or
-// social-media feedback tagged as a potential safety issue counts too, neither of
-// which a flat label list can express [R4-REWORK: câu 10].
-const PV_PMS_SOURCE_LABELS = ['Adverse event / PV signal', 'PMS trend', 'Complaint'];
+// All four of those are now one condition, because with a separate issue-type
+// list they are the same statement: an issue type of "Safety or adverse event".
+// The old flat list could not say "complaint with a safety component" at all — it
+// counted every complaint, which is why this limb used to over-fire.
+const PV_PMS_SAFETY_ISSUE = 'Safety or adverse event';
 // B5's register — a row here means a vulnerable-user population was assessed.
 const VULNERABLE_REGISTER = 'vulnerableUserAssessment';
+
+// Round 4 question 4's enhanced-surveillance conditions that read the Gate 02
+// target-user list, in the answer's own words: infant or young child · pregnancy,
+// breastfeeding or postpartum · intimate use · sensitive, eczema-prone or
+// compromised skin. `Dry skin` is deliberately absent — question 25(b) says dry
+// skin alone is not a vulnerable group, and the two were split for that reason.
+const ENHANCED_PMS_TARGET_USERS = [
+  'Infant 0+',
+  'Child 2+',
+  'Child 3+',
+  'Pregnancy',
+  'Breastfeeding',
+  'Postpartum',
+  'Intimate area',
+  'Sensitive skin',
+  'Eczema-prone or compromised skin',
+];
+
+// "Eye-area product or product with foreseeable eye exposure" — the target-area
+// half. Foreseeable exposure beyond the eye area itself has no data source.
+const ENHANCED_PMS_TARGET_AREAS = ['Eyes'];
+
+// Round 4 question 15: the issue types that make product-performance feedback
+// mandatory — "a formula, packaging or quality issue affects performance", plus
+// the performance and claim-performance ones named directly.
+const PERFORMANCE_ISSUE_TYPES = [
+  'Product performance',
+  'Packaging issue',
+  'Formula issue',
+  'Quality issue',
+  'Claim or communication question',
+];
+
+// Today, as 'YYYY-MM-DD'. The one place the engine reads a clock — the review
+// SCHEDULE is a function of dates, so "is a milestone due" cannot be answered
+// without one. `overdueReviews` still takes `asOf` as a parameter so it stays a
+// pure, testable function; only the trigger supplies the real day.
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export function skincareForTwoTriggers(project: ProjectData): string[] {
   const targetUsers = project.checklists['targetUsers'] ?? [];
@@ -170,7 +216,11 @@ export function skincareForTwoIncompleteSections(project: ProjectData): string[]
 // an empty source from a considered no yet".
 const twoState = (applies: boolean): TriggerState => (applies ? 'applies' : 'doesNotApply');
 
-function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger): TriggerState {
+// Exported since 2026-08-29 so a screen can ask the same question the engine asks
+// — the Post-Launch Review card needs to know whether this product is under
+// enhanced surveillance, and re-deriving question 4's ten conditions there would
+// be a second copy of the rule.
+export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger): TriggerState {
   switch (trigger) {
     case 'skincareForTwo':
       return isSkincareForTwoTriggered(project) ? 'applies' : 'doesNotApply';
@@ -205,10 +255,51 @@ function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger): Trigg
     // the safety-signal and complaint-trend limbs; B5's Vulnerable-User Assessment
     // carries the vulnerable-population one. An OR-trigger can be wired limb by
     // limb and stay correct — it just catches fewer cases until the rest arrive.
+    // Round 4 question 4 (2026-08-24) reshaped this from A3's seven limbs into
+    // fourteen, and — more importantly — changed what the trigger is FOR. "MBc360
+    // requires a BASELINE post-market surveillance review for every marketed
+    // product"; this Conditional trigger is about the ENHANCED one. The baseline
+    // is its own unconditional item (`sg12-pms-baseline`), so nothing here decides
+    // whether a review happens at all, only whether it must be the enhanced kind.
+    //
+    // Ten of the fourteen conditions are readable today, in the answer's order:
+    //   infant / young child           -> targetUsers, and the family-use answer
+    //   pregnancy / breastfeeding /
+    //     postpartum                   -> targetUsers
+    //   intimate use                   -> targetUsers
+    //   eye area                       -> targetArea
+    //   sensitive / eczema-prone /
+    //     compromised skin             -> targetUsers (both split options)
+    //   medically vulnerable           -> the Vulnerable-User Assessment register
+    //   high-risk or therapeutic-
+    //     adjacent claim               -> the claim ledger's own risk/category
+    //   safety signal / adverse event /
+    //     significant complaint trend  -> the new issue-type checklist
+    //   market-specific vigilance      -> the Regulatory market profile's
+    //                                     `enhancedSurveillance` flag, which is
+    //                                     exactly the "configurable market profile"
+    //                                     the answer asks for instead of a
+    //                                     hard-coded country list
+    // Four are not: "new or unusual active ingredient", "recurring quality or
+    // performance issue" and "requirement in an approved surveillance plan" have
+    // no controlled data source, so the item discloses them in its coverageNote.
     case 'pvPmsRequired': {
-      const sources = selectedChecklistLabels(project, 'postMarketSources');
-      if (sources.some((s) => PV_PMS_SOURCE_LABELS.includes(s))) return 'applies';
-      return (project.registers[VULNERABLE_REGISTER] ?? []).length > 0 ? 'applies' : 'doesNotApply';
+      const users = selectedChecklistLabels(project, 'targetUsers');
+      const areas = selectedChecklistLabels(project, 'targetArea');
+      const issues = selectedChecklistLabels(project, 'postMarketIssueType');
+      const familyGroups = users.includes(FAMILY_USE_TARGET_USER)
+        ? familyUseAgeGroupList(project.assessments)
+        : [];
+      const vulnerableUser = [...users, ...familyGroups].some((u) => ENHANCED_PMS_TARGET_USERS.includes(u));
+      if (vulnerableUser) return 'applies';
+      if (areas.some((a) => ENHANCED_PMS_TARGET_AREAS.includes(a))) return 'applies';
+      if (issues.includes(PV_PMS_SAFETY_ISSUE)) return 'applies';
+      if ((project.registers[VULNERABLE_REGISTER] ?? []).length > 0) return 'applies';
+      if ((project.registers['claimEvidenceTraceability'] ?? []).some(claimNeedsReview)) return 'applies';
+      if (marketRequiresEnhancedSurveillance(project.identity.markets, project.reference.marketProfiles)) {
+        return 'applies';
+      }
+      return 'doesNotApply';
     }
 
     case 'claimNeedsPerformanceEvidence':
@@ -403,6 +494,41 @@ function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger): Trigg
     // (assessed as not applicable to this project), or nobody has prioritised it
     // yet — which blocks, because an unprioritised commercial boundary is the one
     // case where "we did not look" must not read as "it does not matter".
+    // Round 4 question 4: the baseline review applies to a MARKETED product.
+    // Three states from real data — launched somewhere · Gate 11 approved a launch
+    // but nobody has recorded the actual commercial date · nothing approved yet.
+    // The middle one is the case question 14 exists to separate: an approval is
+    // permission to sell, not selling.
+    case 'productMarketed': {
+      if (project.marketTracks.some(isMarketLaunched)) return 'applies';
+      const approved = project.marketTracks.some((t) => t.launchApproval === 'Approved');
+      return approved ? 'notAssessed' : 'doesNotApply';
+    }
+
+    // Round 4 questions 13 and 15: "mandatory once the applicable post-launch
+    // review milestone is reached OR a relevant signal occurs". Both limbs, and
+    // the signal limb reads the same issue-type list the PV/PMS trigger does.
+    case 'postLaunchReviewDue': {
+      if (!project.marketTracks.some(isMarketLaunched)) return 'doesNotApply';
+      const issues = selectedChecklistLabels(project, 'postMarketIssueType');
+      if (issues.includes(PV_PMS_SAFETY_ISSUE)) return 'applies';
+      const due = overdueReviews(project, { enhanced: false, asOf: todayIso(), profiles: project.reference.marketProfiles });
+      return due.length > 0 ? 'applies' : 'doesNotApply';
+    }
+
+    // Round 4 question 15's five conditions for product-performance feedback,
+    // in the answer's order. Four read the post-market lists that question 10
+    // split apart; the first reads the review schedule.
+    case 'productPerformanceFeedback': {
+      const issues = selectedChecklistLabels(project, 'postMarketIssueType');
+      const actions = selectedChecklistLabels(project, 'postMarketAction');
+      if (issues.some((i) => PERFORMANCE_ISSUE_TYPES.includes(i))) return 'applies';
+      if (actions.includes('Product optimisation')) return 'applies';
+      if (!project.marketTracks.some(isMarketLaunched)) return 'doesNotApply';
+      const due = overdueReviews(project, { enhanced: false, asOf: todayIso(), profiles: project.reference.marketProfiles });
+      return due.length > 0 ? 'applies' : 'doesNotApply';
+    }
+
     case 'commercialRequirementIsMust': {
       const row = (project.requirements[PHASE1_REQUIREMENTS_SECTION] ?? []).find(
         (r) => r.requirement === COMMERCIAL_BOUNDARY_REQUIREMENT,
@@ -612,6 +738,11 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
     'every raw material in this project is classified in the Raw Material Risk Overlay and none carries a fragrance, allergen, botanical, protein, residue, heavy-metal, microbiological or variable-source classification',
   commercialRequirementIsMust:
     'the "Target cost or commercial boundary" requirement is not a Must for this project, so it is not commercially dependent on a defined cost or margin',
+  productMarketed: 'no market has an actual commercial launch date recorded, so the product is not on sale anywhere yet',
+  postLaunchReviewDue:
+    'no post-launch review milestone has come due in any launched market, and no safety or adverse-event issue has been recorded',
+  productPerformanceFeedback:
+    'no performance, packaging, formula or quality issue has been recorded, no product optimisation is proposed, and no scheduled review is due',
 };
 
 // Why a trigger has not been evaluated yet, in plain language — the third state
@@ -643,6 +774,10 @@ const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
     'one or more raw materials in this project have no entry in the Raw Material Risk Overlay (Company Reference Data -> Raw material risk), so their allergen, impurity and contaminant risk is unclassified',
   commercialRequirementIsMust:
     'the "Target cost or commercial boundary" row of the Phase 1 requirements table has no Must / Should / Could priority yet, so it is unknown whether this project depends on a defined cost or margin',
+  productMarketed:
+    'a launch has been approved for at least one market but nobody has recorded the actual commercial launch date, so it is unknown whether the product is on sale (Phase 4 -> Market Regulatory & Launch Tracking)',
+  postLaunchReviewDue: 'nobody has recorded an actual commercial launch date, so no review schedule exists yet',
+  productPerformanceFeedback: 'nobody has recorded the post-market feedback issue types for this product yet',
 };
 
 // Evaluate a requirement's check against live project data. `evaluable` is false
@@ -737,6 +872,19 @@ function evaluateReadinessCheck(
     // said where it sells has not signed anything off for anywhere.
     case 'gateSignedOff':
       return { evaluable: true, satisfied: unsignedGateLanes(project, gateId).length === 0 };
+    // Round 4 questions 13 and 14: every milestone that has come due in a launched
+    // market has a completed review against it. Vacuously true before any launch,
+    // which is correct and harmless — the item carrying it is Conditional on
+    // `productMarketed`, so it is not even evaluated until the product is on sale.
+    case 'postLaunchReviewsRecorded': {
+      const enhanced = evaluateTrigger(project, 'pvPmsRequired') === 'applies';
+      return {
+        evaluable: true,
+        satisfied:
+          overdueReviews(project, { enhanced, asOf: todayIso(), profiles: project.reference.marketProfiles }).length ===
+          0,
+      };
+    }
     case 'safetyMatrixCoversFormula': {
       // Same empty-formula guard as the two `scope: 'formula'` D4 checks above,
       // and for the same reason: "every formula line is covered" is vacuously
@@ -1197,6 +1345,10 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return phaseSectionLink(gateId, 'sec-gate-checks');
     case 'nextActionsClosed':
       return phaseSectionLink(gateId, 'sec-next-actions');
+    case 'gateSignedOff':
+      return phaseSectionLink(gateId, 'sec-gate-flow');
+    case 'postLaunchReviewsRecorded':
+      return phaseSectionLink(gateId, 'sec-market-tracking');
     case 'registerHasRows':
     case 'registerColumnFilled':
     case 'registerNoBadRows':

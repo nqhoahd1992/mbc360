@@ -58,23 +58,23 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | Câu | Nhóm | Trạng thái | Chủ đề |
 |---|---|---|---|
 | 1 | 7 | ✅ resolved | Luồng Infant & Baby Safety trải 6 gate |
-| 2 | 8 | ⬜ chưa làm | 6 trạng thái formula version + quyết định supersession per-market |
+| 2 | 8 | ✅ resolved | 6 trạng thái formula version + quyết định supersession per-market |
 | 3 | 2 | ✅ resolved | Đánh giá mức độ nghiêm trọng của gap (8 trường) — cũng đóng **A1 vòng 21/07** và bật được nhánh "critical gap" của F7 |
-| 4 | 4b + 8 | ⬜ chưa xong | **Market profile đã xây** (nền 4a + trang admin + revision + capability) ✅ — còn PMS baseline cho mọi sản phẩm và 14 trigger enhanced (thuộc nhóm 8) |
+| 4 | 4b + 8 | ✅ resolved | Market profile (4b) + PMS baseline cho mọi sản phẩm + 10/14 trigger enhanced đọc được (4 điều kiện còn lại không có nguồn dữ liệu, đã ghi trên chính item) |
 | 5 | 6 | ✅ resolved | Gate 7 cần màn hình restricted/caution tổng quát |
 | 6 | 6 | ✅ resolved | Gate 4 phải disposition mọi dòng (6 giá trị) |
 | 7 | 1 | ✅ resolved | **Nền tảng** — tri-state "chưa đánh giá" phải chặn |
 | 8 | 1 | ✅ resolved | Change Control required? Yes/No/Pending |
 | 9 | 1 | ✅ resolved | Human-participant study planned? Yes/No/Undecided |
-| 10 | 8 | ⬜ chưa làm | Tách 16 option thành Source / Issue type / Action |
+| 10 | 8 | ✅ resolved | Tách 16 option thành Source / Issue type / Action |
 | 11 | 1 | ✅ resolved | Administrative-only change? Yes/No |
 | 12 | 1 | ⬜ chưa xong | Scale-up risk identified? ✅ + trigger Gate 9 ✅ — **còn 18 vùng ảnh hưởng**, chờ nhóm 2 tái cấu trúc change record |
-| 13 | 8 | ⬜ chưa làm | Lịch review 1/3/12 tháng từ ngày launch thực tế |
-| 14 | 8 | ⬜ chưa làm | Launch per market + 5 trạng thái roll-up |
-| 15 | 8 | ⬜ chưa làm | Product-performance → Conditional; market feedback tách hai |
+| 13 | 8 | ✅ resolved | Lịch review 1/3/12 tháng từ ngày launch thực tế |
+| 14 | 8 | ✅ resolved | Launch per market + 5 trạng thái roll-up |
+| 15 | 8 | ✅ resolved | Product-performance → Conditional; market feedback tách hai |
 | 16 | 1 | ⬜ chưa xong | Lý do N/A tự sinh ✅ (vốn đã có) — **còn phần reviewer xác nhận** với item critical, chờ `R5-Q6` |
 | 17 | 4c | ✅ xong | Bảng `raw_material_risks` (khoá theo `rmCode` Cosmetri, 11 phân loại, revision + audit) · `GET·PUT /api/reference/rm-risk` gated `reference:rm-risk|edit` · trang **Users & Roles → Raw material risk** · trigger mới `rmRiskFlagged` gỡ chặn `sg04-allergen` (Conditional trước đây không có trigger, không bao giờ chặn được) |
-| 18 | 3 | ⬜ chưa xong | Chữ ký Gate 10/11/12 per market ✅ — **còn trạng thái Phase 4 per market** (thuộc nhóm 8) |
+| 18 | 3 + 8 | ✅ resolved | Chữ ký Gate 10/11/12 per market (nhóm 3) + trạng thái Phase 4 per market và roll-up (nhóm 8) |
 | 19 | 5 | ⬜ chưa làm | 7 register tham chiếu Claim ID; mechanism từ Gate 3 |
 | 20 | — | ✅ resolved | Trường Gate 1 tuỳ chọn lúc tạo — xác nhận đúng như đã xây, không cần code |
 | 21 | độc lập | ✅ resolved | Priority Must/Should/Could + N/A kèm lý do |
@@ -91,7 +91,7 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | 32 | 6 | ✅ resolved | Thêm Needs Safety Review · 5 resolution status · sổ maternal |
 | 33 | 2 | ✅ resolved | 4 severity · 6 status · controlled action · chặn theo bậc |
 | 34 | 2 | ✅ resolved | Critical là mức riêng · final disposition 8 trường |
-| 35 | 8 | ⬜ chưa làm | Hai bộ giá trị riêng · "Other — specify" chặn Gate 10 |
+| 35 | 8 | ✅ resolved | Hai bộ giá trị riêng · "Other — specify" chặn Gate 10 |
 | 36 | 5 + độc lập | ⬜ chưa xong | Trạng thái costing ✅ (36b, kèm điều kiện "commercially dependent") — **còn cosmetic kích hoạt product-level evidence** (36a, thuộc nhóm 5) |
 
 **Câu 20 đã ✅ ngay từ đầu** vì đáp án là *"Current approach is correct"* — không có dòng code nào phải đổi. Nó cũng là ca thử tự nhiên cho S5: nếu ai đó lỡ gắn một marker `R4-REWORK: câu 20`, build sẽ đỏ ngay.
@@ -329,7 +329,7 @@ Kiểm: 29 ca luật trên envelope thật — cả 7 item tự pass khi không 
 
 ---
 
-## Nhóm 8 — Vòng đời per-market & hậu mãi 🔴
+## Nhóm 8 — Vòng đời per-market & hậu mãi ✅ **xong 29/08/2026**
 
 **Câu:** 2 · 4 · 10 · 13 · 14 · 15 · 35
 
@@ -343,7 +343,19 @@ Tất cả xoay quanh **ngày launch thương mại thực tế theo từng th�
 - **Câu 15** — Product-performance → Conditional (5 trigger); Market feedback tách thành **hai** item.
 - **Câu 35** — hai bộ giá trị riêng (7 + 6); "Other — specify" phải ghi quốc gia + dossier type, chưa ghi thì **chặn Gate 10**; N/A cần lý do + reviewer có thẩm quyền.
 
-**Phụ thuộc:** nhóm 3 (khoá per-market + trạng thái Phase 4) · nhóm 4b. Danh sách enhanced của câu 4 đọc nhóm dễ tổn thương và infant ⇒ mềm phụ thuộc nhóm 7.
+**Phụ thuộc:** nhóm 3 (khoá per-market + trạng thái Phase 4) · nhóm 4b · mềm phụ thuộc nhóm 7 — cả ba đã xong trước.
+
+### Đã làm gì, 29/08
+
+**Một trường mà cả nhóm dựa lên: `MarketTrack.actualLaunchDate`.** App chỉ có `launchApprovedDate` — ngày *được phép* bán. Câu 13 nói lịch review chạy từ *"the actual commercial launch date"*, câu 14 nói *"a product has launched in a market when the actual commercial launch date for that market is recorded"*. Hai ngày khác nhau, và app chỉ có ngày thứ nhất. Migration **cố ý không copy** ngày này từ ngày duyệt: làm vậy là bịa ra một ngày launch và khởi động một đồng hồ review không ai đặt.
+
+- **Câu 14** — `projectLaunchStatus()` **suy ra** 5 trạng thái roll-up, không lưu. Bản lưu là một bản sao thứ hai của các bản ghi per-market, và cảnh báo của chính đáp án — *"the launch of the first market must not cause all other markets to be treated as launched"* — chính là điều một bản tóm tắt lỗi thời sẽ làm. Thị trường đã rút khỏi "active" nên một thị trường withdrawn không giữ dự án khỏi "Launched in all active markets" mãi mãi.
+- **Câu 13** — lịch cũng suy ra, không lưu: chỉ *việc đã làm* với một mốc mới được lưu. Ba mốc cố định (1m chỉ cho sản phẩm enhanced, 3m, 12m) hiện **trước cả khi tới hạn** vì đó là điểm của một cái lịch; đuôi hằng năm không thể làm vậy (vô hạn) nên chỉ hiện khi đã tới hạn. **Sự bất đối xứng đó do một ca kiểm khẳng định điều ngược lại phát hiện ra**, nên nó được viết ra trong code chứ không để ai đó khám phá lại. Khoảng cách tuỳ chỉnh theo market profile **thay thế** cả thang, không cộng thêm.
+- **Câu 4** — vế đầu không phải điều kiện gì cả: *"MBc360 requires a BASELINE post-market surveillance review for every marketed product"*, nên nó thành item riêng không điều kiện, và item Conditional cũ giờ chỉ nói về bản **enhanced**. Trước đây một sản phẩm không dính điều kiện nào thì **không cần review hậu mãi nào hết**. 10/14 điều kiện enhanced đọc được, 4 điều kiện còn lại (nguyên liệu hoạt tính mới, vấn đề chất lượng lặp lại, yêu cầu trong surveillance plan) ghi thẳng trên `coverageNote`.
+- **Câu 10** — tách 16 option thành 3 danh sách. Câu *"CAPA is a resulting action, not a feedback source"* là thứ khiến việc tách thành bắt buộc. Và **chính việc tách mới cho phép diễn đạt limb PV/PMS cho đúng**: đáp án nói *complaint có thành phần an toàn* mới tính, mà danh sách phẳng cũ đếm **mọi** complaint — nên limb đó vẫn luôn over-fire. Giờ nó là một điều kiện: issue type = "Safety or adverse event".
+- **Câu 2** — `createFormulaVersion` giờ đưa bản cũ vào **Transition in Progress**, không phải Superseded. Superseded chỉ đến qua `setSupersessionDecision`, sau khi một người xác nhận đủ **10 dữ kiện cho từng thị trường** — *"must be recorded by a person, never inferred automatically by the system"*. Trước đây bản cũ đóng lặng lẽ và không có gì được ghi về tồn kho, artwork, thông báo hay truyền thông khách hàng.
+- **Câu 15** — market feedback tách thành **hai khái niệm** thay vì đổi tier của một bản ghi theo thời gian, đúng chữ của đáp án; product-performance chuyển Supporting → Conditional với 5 trigger, tất cả đọc hai danh sách mới của câu 10 — nên nó **không thể** re-tier trước khi câu 10 xong.
+- **Câu 35** — hai bộ giá trị riêng (thang gộp cũ khiến "Approved" nghĩa được cả hai), `otherMarketName` cho 35(b), và cặp rationale + authorised reviewer cho mọi N/A. Blocker Gate 10 giờ nói *thiếu cái gì* thay vì "record incomplete".
 
 ---
 

@@ -4,6 +4,7 @@ import { CheckCircleFilled, ClockCircleFilled, LockOutlined, RightCircleFilled }
 import { useParams, useSearchParams } from 'react-router-dom';
 import {
   currentGateNumber,
+  evaluateTrigger,
   isGateRefLocked,
   phaseCompletionChecklist,
   phaseProgress,
@@ -24,6 +25,7 @@ import EightAnglesTable from '../components/EightAnglesTable';
 import SignOffBlock from '../components/SignOffBlock';
 import NextActionsCard from '../components/NextActionsCard';
 import MarketTrackingCard from '../components/MarketTrackingCard';
+import PostLaunchReviewCard from '../components/PostLaunchReviewCard';
 import SectionJumpButton from '../components/SectionJumpButton';
 import { roleLabel } from '../utils/roles';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
@@ -282,8 +284,17 @@ export default function PhasePage() {
       </div>
 
       {phase === 4 && (
-        <div id="sec-market-tracking">
+        <div id="sec-market-tracking" style={{ display: 'grid', gap: 16 }}>
           <MarketTrackingCard projectId={project.identity.id} tracks={project.marketTracks} />
+          {/* Round 4 questions 13 and 14, 2026-08-29. Directly under the market
+              table it derives from: the schedule runs from each market's actual
+              commercial launch date, which is entered one card above. `enhanced`
+              is the same PV/PMS condition Gate 12 evaluates, so the one-month
+              early review appears for exactly the products question 4 names. */}
+          <PostLaunchReviewCard
+            project={project}
+            enhanced={evaluateTrigger(project, 'pvPmsRequired') === 'applies'}
+          />
         </div>
       )}
 

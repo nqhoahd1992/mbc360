@@ -522,6 +522,29 @@ export class ProjectsController {
   // Round 4 question 24: Countries / Markets is no longer captured at creation,
   // so it needs a write path of its own. Separate from :id/identity because it is
   // not a scalar patch — it adds and removes MarketTrack rows.
+  // Round 4 question 13 — what was done about a post-launch review milestone.
+  @Put(':id/post-launch-reviews')
+  setPostLaunchReviews(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { reviews: ProjectData['postLaunchReviews']; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.setPostLaunchReviews(user, id, body.reviews ?? [], body.expectedVersion);
+  }
+
+  // Round 4 question 2 — the per-market supersession decision. A POST because
+  // `confirm` makes it an ACT (it stamps who decided and when), not a field write.
+  @Post(':id/supersession')
+  setSupersessionDecision(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body()
+    body: { decision: ProjectData['supersessionDecisions'][number] & { confirm?: boolean }; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    if (!body.decision) throw new BadRequestException('decision is required');
+    return this.projects.setSupersessionDecision(user, id, body.decision, body.expectedVersion);
+  }
+
   // Per-gate sign-off (Round 4 questions 18 and 29). Same four-route shape as the
   // phase block above, for the same reason: signing is an ACT, not a field write.
   // Both the role and the MARKET travel in the body — "Prepared by" contains a

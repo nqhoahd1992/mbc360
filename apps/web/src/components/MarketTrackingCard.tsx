@@ -1,4 +1,4 @@
-import { Alert, Card, Input, Select, Table, Tag, Tooltip } from 'antd';
+import { Alert, Card, DatePicker, Input, Select, Table, Tag, Tooltip } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { MarketApprovalStatus, MarketTrack } from '@mbc360/shared/types';
@@ -100,7 +100,7 @@ export default function MarketTrackingCard({
         dataSource={draft}
         pagination={false}
         sticky={TABLE_STICKY}
-        scroll={{ x: 1100 }}
+        scroll={{ x: 1600 }}
         locale={{ emptyText: 'No target markets recorded in the project identity' }}
         columns={[
           { title: 'Market', width: 120, fixed: 'left', render: (_, t) => <b>{t.market}</b> },
@@ -147,6 +147,54 @@ export default function MarketTrackingCard({
             title: 'Launch approved',
             width: 110,
             render: (_, t) => <span style={{ color: TEXT.secondary }}>{t.launchApprovedDate ?? '—'}</span>,
+          },
+          {
+            // Round 4 questions 13 and 14, 2026-08-29. A different fact from
+            // "Launch approved" beside it: approval is permission to sell, this is
+            // the day selling started — "a product has launched in a market when
+            // the actual commercial launch date for that market is recorded" — and
+            // every post-launch review interval runs from it. Editable, unlike the
+            // two approval dates, which are stamped by the approval itself.
+            title: 'Actual launch',
+            width: 150,
+            render: (_, t, i) => (
+              <DatePicker
+                style={{ width: 130 }}
+                value={t.actualLaunchDate ? dayjs(t.actualLaunchDate) : null}
+                disabled={!canEdit || t.launchApproval !== 'Approved'}
+                placeholder={t.launchApproval === 'Approved' ? 'Date on sale' : 'Needs approval'}
+                onChange={(d) => patch(i, { actualLaunchDate: d ? d.format('YYYY-MM-DD') : undefined })}
+              />
+            ),
+          },
+          {
+            title: 'Withdrawn',
+            width: 150,
+            render: (_, t, i) => (
+              <DatePicker
+                style={{ width: 130 }}
+                value={t.withdrawnDate ? dayjs(t.withdrawnDate) : null}
+                disabled={!canEdit}
+                placeholder="Still selling"
+                onChange={(d) => patch(i, { withdrawnDate: d ? d.format('YYYY-MM-DD') : undefined })}
+              />
+            ),
+          },
+          {
+            title: 'Withdrawal reason',
+            width: 200,
+            render: (_, t, i) =>
+              t.withdrawnDate ? (
+                <Input
+                  status={(t.withdrawnReason ?? '').trim() === '' ? 'error' : undefined}
+                  placeholder="Required"
+                  value={t.withdrawnReason}
+                  disabled={!canEdit}
+                  onChange={(e) => patch(i, { withdrawnReason: e.target.value })}
+                />
+              ) : (
+                <span style={{ color: '#d9d9d9' }}>—</span>
+              ),
           },
           {
             title: 'Regulatory notes',

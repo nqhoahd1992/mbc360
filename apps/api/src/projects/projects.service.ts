@@ -41,6 +41,7 @@ import {
   previousGateSignOffRole,
 } from '@mbc360/shared/config/gateSignOff';
 import { gateEvidenceSnapshot } from '@mbc360/shared/utils/gateSnapshot';
+import { supersessionGaps } from '@mbc360/shared/utils/formulaLifecycle';
 import {
   gateBlockers,
   gateIndex,
@@ -2595,6 +2596,29 @@ export class ProjectsService {
           launchApproval = (prev.launchApproval as typeof launchApproval) ?? 'Not Started';
           blocked++;
         }
+        // Round 4 question 14: an actual commercial launch date is the record that
+        // a product IS on sale in this market, and every post-launch review
+        // interval is measured from it. It cannot precede the approval to sell —
+        // and unlike C5 above this is rejected outright rather than reverted,
+        // because a date silently reverting is indistinguishable from a typo.
+        const actualLaunch = next.actualLaunchDate?.trim();
+        if (actualLaunch) {
+          if (launchApproval !== 'Approved') {
+            throw new BadRequestException(
+              `${next.market}: an actual commercial launch date needs launch approval first (rule C5)`,
+            );
+          }
+          const approvedOn = next.launchApprovedDate?.trim();
+          if (approvedOn && actualLaunch < approvedOn) {
+            throw new BadRequestException(
+              `${next.market}: the actual launch date (${actualLaunch}) is before the launch approval date (${approvedOn})`,
+            );
+          }
+        }
+        const withdrawn = next.withdrawnDate?.trim();
+        if (withdrawn && !next.withdrawnReason?.trim()) {
+          throw new BadRequestException(`${next.market}: a reason is required to record a market withdrawal`);
+        }
         await tx.marketTrack.update({
           where: { id: prev.id },
           data: {
@@ -2605,10 +2629,147 @@ export class ProjectsService {
             regulatoryNotes: next.regulatoryNotes ?? null,
             pifApprovedDate: this.dateOrNull(next.pifApprovedDate),
             launchApprovedDate: this.dateOrNull(next.launchApprovedDate),
+            actualLaunchDate: this.dateOrNull(next.actualLaunchDate),
+            withdrawnDate: this.dateOrNull(next.withdrawnDate),
+            withdrawnReason: next.withdrawnReason ?? null,
           },
         });
       }
       return { tracks: tracks.length, launchBlockedByPif: blocked };
+    });
+  }
+
+  // Round 4 question 13 — recording what was done about a post-launch review
+  // milestone. The SCHEDULE is derived from each market's actual launch date
+  // (utils/postLaunch.ts) and is not stored; only the review itself is, keyed on
+  // (market, milestone) so re-saving updates rather than duplicating.
+  async setPostLaunchReviews(
+    user: SessionUser,
+    id: string,
+    reviews: ProjectData['postLaunchReviews'],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'post_launch_reviews.updated', async (tx, _row, project) => {
+      const markets = new Set(project.identity.markets);
+      for (const r of reviews) {
+        if (!markets.has(r.market)) {
+          throw new BadRequestException(`"${r.market}" is not a market on this project`);
+        }
+        // A completed review that says nothing is not a review. Question 13 gives
+        // the schedule, not the content, so this asks only for the two things a
+        // record of a completed review cannot be without.
+        if (r.completedDate?.trim() && !r.outcome?.trim()) {
+          throw new BadRequestException(`${r.market} ${r.milestone}: an outcome is required to complete a review`);
+        }
+        if (r.completedDate?.trim() && !r.reviewer?.trim()) {
+          throw new BadRequestException(`${r.market} ${r.milestone}: a reviewer is required to complete a review`);
+        }
+        const data = {
+          dueDate: new Date(r.dueDate),
+          completedDate: this.dateOrNull(r.completedDate),
+          reviewer: r.reviewer ?? null,
+          outcome: r.outcome ?? null,
+          evidenceLink: r.evidenceLink ?? null,
+          notes: r.notes ?? null,
+        };
+        await tx.postLaunchReview.upsert({
+          where: { projectId_market_milestone: { projectId: id, market: r.market, milestone: r.milestone } },
+          create: { projectId: id, market: r.market, milestone: r.milestone, ...data },
+          update: data,
+        });
+      }
+      return { reviews: reviews.length };
+    });
+  }
+
+  // Round 4 question 2 — the per-market supersession decision. "Must be recorded
+  // by a person, never inferred automatically by the system", so this route is the
+  // ONLY way a version reaches Superseded, and it refuses to record a confirmation
+  // while any of the ten facts is missing.
+  //
+  // The version's own state is then derived and written here rather than by a
+  // background rule: a version moves to Superseded exactly when every market it is
+  // sold into has a complete decision, and that transition is a consequence of the
+  // decisions, not a separate judgement.
+  async setSupersessionDecision(
+    user: SessionUser,
+    id: string,
+    input: ProjectData['supersessionDecisions'][number] & { confirm?: boolean },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'supersession.updated', async (tx, row, project) => {
+      if (!project.identity.markets.includes(input.market)) {
+        throw new BadRequestException(`"${input.market}" is not a market on this project`);
+      }
+      const version = row.formulaVersions.find((v) => v.version === input.version);
+      if (!version) throw new NotFoundException(`Formula version "${input.version}" not found`);
+      if (input.version === project.formulaVersion) {
+        throw new BadRequestException('The current formula version cannot be superseded — create a new version first');
+      }
+
+      const draft = { ...input, confirmedBy: input.confirm ? user.displayName : undefined };
+      if (input.confirm) {
+        const gaps = supersessionGaps(draft);
+        if (gaps.length > 0) {
+          throw new BadRequestException(
+            `The supersession decision is incomplete — ${gaps.join('; ')}. All ten facts are required before it can be confirmed.`,
+          );
+        }
+      }
+      const data = {
+        replacementVersion: input.replacementVersion || null,
+        effectiveTransitionDate: this.dateOrNull(input.effectiveTransitionDate),
+        lastReleaseDate: this.dateOrNull(input.lastReleaseDate),
+        stockDisposition: input.stockDisposition || null,
+        regulatoryNotificationStatus: input.regulatoryNotificationStatus || null,
+        artworkTransition: input.artworkTransition || null,
+        pifUpdate: input.pifUpdate || null,
+        salesMarketingCommunication: input.salesMarketingCommunication || null,
+        distributorCommunication: input.distributorCommunication || null,
+        noFurtherBatchesConfirmed: !!input.noFurtherBatchesConfirmed,
+        notes: input.notes || null,
+        // Confirmation is an act with an author and a time — taken from the
+        // session, never from the request body, for the same reason a signature is.
+        ...(input.confirm ? { confirmedBy: user.displayName, confirmedAt: new Date() } : {}),
+      };
+      await tx.supersessionDecision.upsert({
+        where: { projectId_version_market: { projectId: id, version: input.version, market: input.market } },
+        create: { projectId: id, version: input.version, market: input.market, ...data },
+        update: data,
+      });
+
+      // Re-derive the version's state from the decisions as they now stand.
+      const decisions = await tx.supersessionDecision.findMany({
+        where: { projectId: id, version: input.version },
+      });
+      const complete = decisions.filter((d) =>
+        supersessionGaps({
+          ...d,
+          effectiveTransitionDate: d.effectiveTransitionDate?.toISOString().slice(0, 10) ?? '',
+          lastReleaseDate: d.lastReleaseDate?.toISOString().slice(0, 10) ?? '',
+          replacementVersion: d.replacementVersion ?? '',
+          stockDisposition: d.stockDisposition ?? '',
+          regulatoryNotificationStatus: d.regulatoryNotificationStatus ?? '',
+          artworkTransition: d.artworkTransition ?? '',
+          pifUpdate: d.pifUpdate ?? '',
+          salesMarketingCommunication: d.salesMarketingCommunication ?? '',
+          distributorCommunication: d.distributorCommunication ?? '',
+          confirmedBy: d.confirmedBy ?? undefined,
+        } as ProjectData['supersessionDecisions'][number]).length === 0,
+      );
+      const allMarketsDecided =
+        project.identity.markets.length > 0 &&
+        project.identity.markets.every((m) => complete.some((d) => d.market === m));
+      const state = allMarketsDecided ? 'Superseded' : 'Transition in Progress';
+      await tx.formulaVersion.update({ where: { id: version.id }, data: { status: state } });
+
+      return {
+        version: input.version,
+        market: input.market,
+        confirmed: !!input.confirm,
+        versionState: state,
+        marketsRemaining: project.identity.markets.filter((m) => !complete.some((d) => d.market === m)),
+      };
     });
   }
 
@@ -2749,11 +2910,24 @@ export class ProjectsService {
         }
         const previous = row.formulaVersions.find((v) => v.status === 'Active') ?? row.formulaVersions.at(-1);
 
-        // Supersede the outgoing version and create the new Active one. The old
-        // version KEEPS its BOM lines, which is what makes the version-compare
-        // feature work without a snapshot column.
+        // Move the outgoing version into TRANSITION, not Superseded. Round 4
+        // question 2 (2026-08-29): "an older formula version does not
+        // automatically close when the replacement receives launch approval — it
+        // must be deliberately transitioned via a per-market supersession
+        // decision", and "approval of the new version places the old version into
+        // Transition in Progress (not Superseded)". Superseded is reached only
+        // through `setSupersessionDecision`, once a person has confirmed the ten
+        // facts for every market. Before this the old version closed silently here,
+        // and nothing was ever recorded about stock, artwork, notifications or
+        // customer communication.
+        //
+        // The old version KEEPS its BOM lines, which is what makes the
+        // version-compare feature work without a snapshot column.
         if (previous) {
-          await tx.formulaVersion.update({ where: { id: previous.id }, data: { status: 'Superseded' } });
+          await tx.formulaVersion.update({
+            where: { id: previous.id },
+            data: { status: 'Transition in Progress' },
+          });
         }
         const created = await tx.formulaVersion.create({
           data: {

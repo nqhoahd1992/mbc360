@@ -243,6 +243,20 @@ export const withdrawSignOff = (
     { method: 'POST', body: JSON.stringify({ role, reason, expectedVersion }) },
   );
 
+// Round 4 questions 2 and 13 — the per-market post-market records.
+export const setPostLaunchReviews = (id: string, reviews: ProjectData['postLaunchReviews'], v: number) =>
+  put(id, 'post-launch-reviews', { reviews }, v);
+
+export const setSupersessionDecision = (
+  id: string,
+  decision: ProjectData['supersessionDecisions'][number] & { confirm?: boolean },
+  expectedVersion: number,
+) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/supersession`, {
+    method: 'POST',
+    body: JSON.stringify({ decision, expectedVersion }),
+  });
+
 // Per-gate sign-off (Round 4 questions 18 and 29). Same four acts as the phase
 // block above; the market is present only at Gates 10-12.
 export const setGateSignOffAssignees = (

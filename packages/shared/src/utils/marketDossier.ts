@@ -11,7 +11,7 @@
 // ASEAN. That reasoning was right and the conclusion was wrong: the answer is to
 // enforce it per market, not to enforce nothing — which is the sentence above.
 import type { ProjectData } from '../types';
-import { ASEAN_MARKETS } from '../config/registers';
+import { ASEAN_MARKETS, CHECKLIST_NOT_APPLICABLE, OTHER_MARKET_OPTION } from '../config/registers';
 
 export const MARKET_DOSSIER_REGISTER = 'regulatoryChecklistStatus';
 export const ASEAN_CHECKLIST_REGISTER = 'pifChecklistAsean';
@@ -34,16 +34,30 @@ export function marketsNeedingOwnChecklist(project: ProjectData): string[] {
 }
 
 // A row counts once Regulatory has said what the dossier is, who owns it, where
-// the checklist lives, and recorded both statuses. E2 lists all six; a row missing
-// any of them is a placeholder, not the record it asks for.
-function isChecklistRowComplete(row: Record<string, unknown>): boolean {
-  return (
-    text(row.dossierType) !== '' &&
-    text(row.owner) !== '' &&
-    text(row.checklistLink) !== '' &&
-    text(row.status) !== '' &&
-    text(row.regulatoryApproval) !== ''
-  );
+// the checklist lives, and recorded both statuses. E2 lists all six, CONFIRMED by
+// Round 4 question 35(c); a row missing any of them is a placeholder, not the
+// record it asks for. Returns WHY, so the Gate 10 blocker can name the missing
+// piece rather than say "incomplete".
+function checklistRowGap(row: Record<string, unknown>): string | null {
+  if (text(row.dossierType) === '') return 'no dossier type';
+  if (text(row.owner) === '') return 'no owner';
+  if (text(row.checklistLink) === '') return 'no checklist or evidence link';
+  if (text(row.status) === '') return 'no status';
+  if (text(row.regulatoryApproval) === '') return 'no regulatory approval';
+  // 35(b): "a market entered as Other — specify must also record the actual
+  // country or jurisdiction. Until the market is named and the dossier type is
+  // identified, the record is incomplete and must block Gate 10."
+  if (text(row.market) === OTHER_MARKET_OPTION && text(row.otherMarketName) === '') {
+    return 'market recorded as "Other - specify" with no actual country or jurisdiction named';
+  }
+  // 35(c): "Where N/A is used, the rationale and authorised reviewer must also be
+  // recorded." Applies to either column — an unexplained N/A is the one answer
+  // that closes a row by saying nothing.
+  const usesNotApplicable =
+    text(row.status) === CHECKLIST_NOT_APPLICABLE || text(row.regulatoryApproval) === CHECKLIST_NOT_APPLICABLE;
+  if (usesNotApplicable && text(row.naRationale) === '') return 'N/A recorded with no rationale';
+  if (usesNotApplicable && text(row.naReviewer) === '') return 'N/A recorded with no authorised reviewer';
+  return null;
 }
 
 // Which markets still have nothing usable at Gate 10, and why. Returned as text so
@@ -54,8 +68,8 @@ export function marketsWithoutChecklist(project: ProjectData): string[] {
     .map((market) => {
       const row = rows.find((r) => text(r.market) === market);
       if (!row) return `${market} (no checklist record)`;
-      if (!isChecklistRowComplete(row)) return `${market} (record incomplete)`;
-      return '';
+      const gap = checklistRowGap(row);
+      return gap ? `${market} (${gap})` : '';
     })
     .filter(Boolean);
 }

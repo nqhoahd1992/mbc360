@@ -10,7 +10,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-Thank you for the Round 4 answers. They were complete enough to start building immediately, and nineteen of the thirty-six are already finished — including the per-gate sign-off, which questions 18 and 29 unblocked. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
+Thank you for the Round 4 answers. They were complete enough to start building immediately, and twenty-eight of the thirty-six are already finished — including the per-gate sign-off and the whole per-market post-market lifecycle. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
 
 Every question here follows the same pattern as last time: we have made a choice so that work could continue, the choice is running in the software now, and we would rather you corrected it than have it settle in silently. Where a question is still unbuilt we say so.
 
@@ -127,6 +127,9 @@ Two ways to read it:
 **Question:** do the six values **replace** the current status list or **extend** it? And is "possible formula match" a system-generated result or a person's choice?
 
 ## Question 7 — Who signs the decision to supersede a formula version?
+
+**Now built, and one detail is worth confirming.** A new formula version puts the old one into *Transition in Progress*, exactly as you said, and it reaches *Superseded* only once somebody has confirmed all ten facts for **every market the project sells into**. Nothing derives it.
+
 
 You specified that an old formula version becomes Superseded only after an authorised person confirms ten things for the relevant market, and that this "must be recorded by a person — never inferred automatically by the system". We have not built it yet.
 

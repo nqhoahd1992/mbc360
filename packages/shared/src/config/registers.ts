@@ -1,4 +1,4 @@
-import { MARKET_APPROVAL_STATUSES, RISK_LEVELS, type RegisterRow } from '../types';
+import { RISK_LEVELS, type RegisterRow } from '../types';
 import { CLAIM_REVIEW_OUTCOMES } from './claimReview';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
@@ -379,6 +379,36 @@ export const SAFETY_COVERAGE_ROUTES = [
 // so `safetyMatrixCoversFormula` additionally requires a reference for them —
 // "linked to the relevant assessment" is not satisfied by naming a route.
 export const SAFETY_COVERAGE_INDIVIDUAL = 'Individual assessment';
+
+// Round 4 question 35(a), transcribed verbatim. Two lists, because they answer two
+// different questions — how far the paperwork has got, and what the authority
+// said — and the single reused scale made "Approved" ambiguous between them.
+export const CHECKLIST_WORK_STATUSES = [
+  'Not Started',
+  'In Progress',
+  'Awaiting Information',
+  'Complete',
+  'On Hold',
+  'Blocked',
+  'N/A — rationale required',
+] as const;
+
+export const REGULATORY_APPROVAL_STATUSES = [
+  'Pending',
+  'Approved',
+  'Approved with Conditions',
+  'Not Approved',
+  'Withdrawn',
+  'N/A — rationale required',
+] as const;
+
+// The one value in both lists that demands the rationale + authorised reviewer of
+// 35(c). Named once so the two columns cannot drift apart on the spelling.
+export const CHECKLIST_NOT_APPLICABLE = 'N/A — rationale required';
+
+// 35(b): the Target Markets option that is not a market. A row on it is incomplete
+// until the real country or jurisdiction is named.
+export const OTHER_MARKET_OPTION = 'Other - specify';
 
 export const GATE4_DISPOSITION_OPTIONS = [
   'No issue identified',
@@ -1279,16 +1309,17 @@ const aseanPifMap: RegisterConfig = {
 // which also adds that where N/A is used the rationale AND an authorised reviewer
 // must be recorded.
 //
-// ⚠️ Status and Regulatory approval reuse vocabularies the app already has
-// (WorkStatus and the market-track approval scale) rather than inventing two more.
-// Question 35(a) rejects the reuse and supplies both lists [R4-REWORK: câu 35(a)]:
-//   Checklist work status → Not Started · In Progress · Awaiting Information ·
-//     Complete · On Hold · Blocked · N/A — rationale required
-//   Regulatory approval   → Pending · Approved · Approved with Conditions ·
-//     Not Approved · Withdrawn · N/A — rationale required
-// And 35(b): a market entered as "Other — specify" must also record the actual
-// country or jurisdiction; until it is named and the dossier type identified, the
-// record is incomplete and must block Gate 10 [R4-REWORK: câu 35(b)].
+// Status and Regulatory approval originally reused vocabularies the app already
+// had (WorkStatus and the market-track approval scale) rather than inventing two
+// more. Question 35(a) rejected that reuse and supplied both lists, built
+// 2026-08-29 as CHECKLIST_WORK_STATUSES and REGULATORY_APPROVAL_STATUSES — the
+// two are genuinely different questions (how far the paperwork has got, and what
+// the authority said), and collapsing them onto one scale had made "Approved"
+// mean either.
+//
+// 35(b) is the `otherMarketName` column: a market entered as "Other - specify"
+// must also record the actual country or jurisdiction, and until it is named and
+// the dossier type identified the record is incomplete and blocks Gate 10.
 const regulatoryChecklistStatus: RegisterConfig = {
   key: 'regulatoryChecklistStatus',
   title: 'Regulatory Checklist Status (per market)',
@@ -1302,8 +1333,17 @@ const regulatoryChecklistStatus: RegisterConfig = {
     { key: 'dossierType', label: 'Required dossier type', type: 'text', width: 200 },
     { key: 'owner', label: 'Owner', type: 'user', width: 140 },
     { key: 'checklistLink', label: 'Checklist or evidence link', type: 'text', width: 200 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    { key: 'regulatoryApproval', label: 'Regulatory approval', type: 'select', width: 140, options: MARKET_APPROVAL_STATUSES },
+    // 35(b): only meaningful when `market` is the catch-all option, but present
+    // on every row — a column that appears and disappears is harder to reason
+    // about than one that is simply empty where it does not apply.
+    { key: 'otherMarketName', label: 'Actual country / jurisdiction', type: 'text', width: 190 },
+    { key: 'status', label: 'Status', type: 'select', width: 160, options: [...CHECKLIST_WORK_STATUSES] },
+    { key: 'regulatoryApproval', label: 'Regulatory approval', type: 'select', width: 180, options: [...REGULATORY_APPROVAL_STATUSES] },
+    // "Where N/A is used, the rationale and authorised reviewer must also be
+    // recorded" (35(c)) — one pair covering both N/A values above, because the
+    // reviewer authorising an N/A is authorising the row, not one of its columns.
+    { key: 'naRationale', label: 'N/A rationale', type: 'textarea', width: 220 },
+    { key: 'naReviewer', label: 'N/A authorised by', type: 'user', width: 150 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
 };

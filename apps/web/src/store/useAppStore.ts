@@ -154,6 +154,11 @@ interface AppState {
     input: { decision?: string; comments?: string; stepUpToken: string },
   ) => void;
   withdrawSignOff: (id: string, phase: number, role: SignOff['role'], reason: string) => void;
+  setPostLaunchReviews: (id: string, reviews: ProjectData['postLaunchReviews']) => void;
+  setSupersessionDecision: (
+    id: string,
+    decision: ProjectData['supersessionDecisions'][number] & { confirm?: boolean },
+  ) => Promise<void>;
   // Per-gate sign-off (Round 4 questions 18/29). `market` is undefined on Gates 1-9.
   setGateSignOffAssignees: (
     id: string,
@@ -501,6 +506,10 @@ export const useAppStore = create<AppState>()(
           writeSection(id, (v) => projectsApi.signSignOff(id, phase, role, input, v)),
         withdrawSignOff: (id, phase, role, reason) =>
           writeSection(id, (v) => projectsApi.withdrawSignOff(id, phase, role, reason, v)),
+        setPostLaunchReviews: (id, reviews) =>
+          writeSection(id, (v) => projectsApi.setPostLaunchReviews(id, reviews, v)),
+        setSupersessionDecision: (id, decision) =>
+          writeSection(id, (v) => projectsApi.setSupersessionDecision(id, decision, v)),
         setGateSignOffAssignees: (id, gateId, market, assignments) =>
           writeSection(id, (v) => projectsApi.setGateSignOffAssignees(id, gateId, market, assignments, v)),
         signGateSignOff: (id, gateId, market, role, input) =>

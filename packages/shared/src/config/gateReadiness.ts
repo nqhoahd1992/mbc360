@@ -91,7 +91,16 @@ export type ReadinessTrigger =
   // ignored." Question 21 supplies the designation without inventing a field: the
   // Phase 1 requirement row "Target cost or commercial boundary" carries a
   // Must / Should / Could priority, and Must is what the answer names.
-  | 'commercialRequirementIsMust';
+  | 'commercialRequirementIsMust'
+  // Round 4 question 4: the baseline post-market review applies to every MARKETED
+  // product, so the condition is "has this product actually launched anywhere" —
+  // question 14's actual commercial launch date, not a launch approval.
+  | 'productMarketed'
+  // Round 4 questions 13, 14 and 15: a scheduled post-launch review milestone has
+  // been reached in some market, or a signal has occurred that brings one forward.
+  | 'postLaunchReviewDue'
+  // Round 4 question 15's five conditions for product-performance feedback.
+  | 'productPerformanceFeedback';
 
 // Round 4 question 7 (2026-08-24), option (b): "A missing assessment must never be
 // treated as meaning the condition does not apply." A trigger therefore has THREE
@@ -373,6 +382,9 @@ export type ReadinessCheck =
   // Round 4 questions 18 and 29: the gate's three sign-offs are recorded and none
   // is stale. On a per-market gate that means all three, for every market.
   | { kind: 'gateSignedOff' }
+  // Round 4 questions 13 and 14: every post-launch review milestone that has come
+  // due for a launched market has a review recorded against it.
+  | { kind: 'postLaunchReviewsRecorded' }
   | { kind: 'allOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
@@ -2642,10 +2654,47 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   // the NA-with-justification escape.
   SG12: [
     {
+      // Round 4 question 15, 2026-08-29: "for market feedback, use two distinct
+      // concepts rather than changing the tier of one record over time". This is
+      // the first — "Continuous Market Feedback Capture — Supporting — available
+      // throughout the lifecycle". Its pair is `sg12-feedback-review` below.
       id: 'sg12-feedback',
-      label: 'Market feedback',
+      label: 'Continuous market feedback capture',
       tier: 'Supporting',
       check: { kind: 'checklistHasSelection', section: 'postMarketSources' },
+    },
+    {
+      // The second concept: "Scheduled Market Feedback Review — Conditional —
+      // mandatory once the applicable post-launch review milestone is reached or a
+      // relevant signal occurs." Both halves of that sentence are the trigger.
+      id: 'sg12-feedback-review',
+      label: 'Scheduled market feedback review',
+      tier: 'Conditional',
+      trigger: 'postLaunchReviewDue',
+      source: 'f-series',
+      check: { kind: 'gateCheckDone', gate: '12', check: 'Feedback sources monitored and PV/PMS signals classified' },
+    },
+    {
+      // Round 4 question 4's first sentence, which is not a condition at all:
+      // "MBc360 requires a BASELINE post-market surveillance review for every
+      // marketed product." Unconditional and Mandatory, so the Conditional item
+      // below is only ever about the ENHANCED review — before this, a product with
+      // none of the enhanced conditions needed no post-market review of any kind.
+      //
+      // Triggered on being marketed rather than on the gate being reached: a
+      // project that never launched anywhere has nothing to survey.
+      id: 'sg12-pms-baseline',
+      label: 'Baseline post-market surveillance review',
+      tier: 'Conditional',
+      trigger: 'productMarketed',
+      source: 'f-series',
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '12', check: 'Feedback sources monitored and PV/PMS signals classified' },
+          { kind: 'postLaunchReviewsRecorded' },
+        ],
+      },
     },
     {
       id: 'sg12-complaints',
@@ -2659,26 +2708,34 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // population (B5's assessment register, which exists since 11/08). The other
       // four need reference data nobody has supplied — product category list,
       // market and company policy, surveillance plan — so the item says so.
+      // Round 4 question 4 reshaped this item rather than just filling its gaps,
+      // and it is built (2026-08-29): the BASELINE review is now its own
+      // unconditional item above, so this Conditional one is about the ENHANCED
+      // review alone; the trigger has fourteen limbs rather than seven; and the
+      // market limb reads the configurable Regulatory market profile, which is
+      // what the answer asks for INSTEAD of a hard-coded country list.
       id: 'sg12-pv-pms',
       trigger: 'pvPmsRequired',
       coverageNote:
-        // ⚠️ Round 4 question 4 reshapes this item rather than just filling its
-        // gaps: a BASELINE review is required for every marketed product (so the
-        // Conditional tier is about the ENHANCED one), the enhanced trigger has
-        // fourteen limbs rather than seven, and the market limb comes from the
-        // configurable Regulatory market profile — explicitly NOT a hard-coded
-        // country list [R4-REWORK: câu 4].
-        'the app checks three of the conditions — a safety signal or complaint trend recorded on Post-Market Sources, and a vulnerable-user population assessed. It does not yet check the product-category, market-profile, company-policy or surveillance-plan conditions, and does not yet require the baseline review every marketed product needs.',
-      label: 'PV/PMS review where applicable',
+        'the app checks ten of the fourteen conditions — infant/young child, maternal, intimate use, eye area, ' +
+        'sensitive or eczema-prone skin, a medically vulnerable population, a high-risk or therapeutic-adjacent claim, ' +
+        'a safety or adverse-event issue recorded on the post-market feedback list, and a market whose Regulatory ' +
+        'profile flags enhanced surveillance. Three have no controlled data source yet: a new or unusual active ' +
+        'ingredient, a recurring quality or performance issue, and a requirement in an approved surveillance plan.',
+      label: 'Enhanced PV/PMS review where applicable',
       tier: 'Conditional',
       check: { kind: 'gateCheckDone', gate: '12', check: 'Feedback sources monitored and PV/PMS signals classified' },
     },
     {
+      // Round 4 question 15, 2026-08-29: "product-performance feedback should be
+      // CONDITIONAL, not Supporting", with five triggers. All five read the two
+      // new post-market lists (question 10) plus the scheduled-review milestone,
+      // which is why this could not be re-tiered before that split existed.
       id: 'sg12-performance',
       label: 'Product-performance feedback',
-      tier: 'Supporting',
-      // Shares the feedback-source checklist — Supporting tier only warns.
-      check: { kind: 'checklistHasSelection', section: 'postMarketSources' },
+      tier: 'Conditional',
+      trigger: 'productPerformanceFeedback',
+      check: { kind: 'checklistHasSelection', section: 'postMarketIssueType' },
     },
     {
       id: 'sg12-capa',

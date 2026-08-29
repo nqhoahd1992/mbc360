@@ -110,6 +110,19 @@ export const ENHANCED_PMS_CONDITIONS: readonly string[] = [
   'Requirement in an approved surveillance plan',
 ];
 
+// Question 4's "market-specific vigilance requirement" limb, and the sentence that
+// makes it a limb at all: "Do not use a permanently hard-coded country list.
+// Regulatory maintains a configurable market profile." So the answer is read from
+// the profile, and a market with no profile row contributes nothing — an absent
+// profile is not evidence that a market has no vigilance requirement, which is
+// why this can only ever ADD the enhanced review, never rule it out.
+export function marketRequiresEnhancedSurveillance(
+  projectMarkets: readonly string[],
+  profiles: readonly { market: string; enhancedSurveillance: boolean }[],
+): boolean {
+  return profiles.some((p) => projectMarkets.includes(p.market) && p.enhancedSurveillance);
+}
+
 // Question 13's company schedule, in months from the ACTUAL commercial launch date
 // — not the launch approval date, which is what `MarketTrack.launchApprovedDate`
 // holds. The one-month review applies only to enhanced-surveillance products.

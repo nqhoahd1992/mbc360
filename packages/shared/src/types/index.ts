@@ -699,15 +699,56 @@ export interface StudyApproval {
 // creates a new version and reopens Gates 4-9; previous versions are preserved
 // for audit history.
 //
-// ⚠️ Round 4 question 2 (2026-08-24) gives a version a real lifecycle this shape
-// cannot hold: Active · Transition Approved · Transition in Progress · Superseded
-// · Withdrawn · Cancelled. Approving a replacement moves the old version to
-// **Transition in Progress**, NOT Superseded; it becomes Superseded only after an
-// authorised person confirms ten things **for the relevant market** — and "the
-// supersession decision must be recorded by a person, never inferred
-// automatically by the system". Those ten facts span Regulatory, Quality, Supply
-// Chain, Sales & Marketing and Packaging, so whether that is one signature or a
-// multi-role block is not settled [ASSUMPTION: R5-Q8] [R4-REWORK: câu 2].
+// Round 4 question 2 (2026-08-24) gave a version a real lifecycle, built
+// 2026-08-29: FORMULA_VERSION_STATES below. Approving a replacement moves the old
+// version to **Transition in Progress**, NOT Superseded; it becomes Superseded
+// only once a `SupersessionDecision` exists for every market it was sold into,
+// each confirming the ten facts the answer lists — because "the supersession
+// decision must be recorded by a person, never inferred automatically by the
+// system", which is why nothing derives it.
+//
+// Those ten facts span Regulatory, Quality, Supply Chain, Sales & Marketing and
+// Packaging, so whether the confirmation is one signature or a multi-role block
+// is still not settled: it is recorded as one `confirmedBy` for now
+// [ASSUMPTION: R5-Q8].
+// Round 4 question 2, transcribed: the lifecycle a formula version actually has.
+// "Approval of the new version places the old version into Transition in Progress
+// (not Superseded)", and it becomes Superseded only after a person records the
+// per-market supersession decision below.
+export const FORMULA_VERSION_STATES = [
+  'Active',
+  'Transition Approved',
+  'Transition in Progress',
+  'Superseded',
+  'Withdrawn',
+  'Cancelled',
+] as const;
+export type FormulaVersionState = (typeof FORMULA_VERSION_STATES)[number];
+
+// Question 2's ten facts, per market, all of which must be confirmed before an old
+// version becomes Superseded — "the supersession decision must be recorded by a
+// person, never inferred automatically by the system", which is why nothing here
+// has a derived value and why `confirmedBy` is required for the record to count.
+export interface SupersessionDecision {
+  id: string;
+  // The version being superseded, and the market it is being superseded in.
+  version: string;
+  market: string;
+  replacementVersion: string;
+  effectiveTransitionDate: string;
+  lastReleaseDate: string;
+  stockDisposition: string;
+  regulatoryNotificationStatus: string;
+  artworkTransition: string;
+  pifUpdate: string;
+  salesMarketingCommunication: string;
+  distributorCommunication: string;
+  noFurtherBatchesConfirmed: boolean;
+  confirmedBy?: string;
+  confirmedAt?: string;
+  notes?: string;
+}
+
 export interface FormulaVersionRecord {
   version: string;
   previousVersion: string;
@@ -725,6 +766,11 @@ export interface FormulaVersionRecord {
   // existed. The CURRENT version's BOM is never snapshotted here — it's just
   // `ProjectData.bom` (still live/editable).
   previousBomSnapshot?: BomLine[];
+  // Round 4 question 2, 2026-08-29. Absent on records created before this existed;
+  // `formulaVersionState()` treats an absent value as 'Superseded' for a historic
+  // record and 'Active' for the current one, which is what the app meant before
+  // the lifecycle existed — not a guess about what a person would have chosen.
+  state?: FormulaVersionState;
 }
 
 // Controlled follow-up action attached to a gate (confirmed rules B2 + F8).
@@ -795,6 +841,48 @@ export interface MarketTrack {
   regulatoryNotes?: string;
   pifApprovedDate?: string;
   launchApprovedDate?: string;
+  // Round 4 questions 13 and 14, 2026-08-29. The ACTUAL commercial launch date,
+  // which is a different fact from `launchApprovedDate` above: approval is
+  // permission to sell, this is the day selling started, and every post-launch
+  // review interval is measured from it. "A product has launched in a market when
+  // the actual commercial launch date for that market is recorded."
+  actualLaunchDate?: string;
+  // Question 14's per-market lifecycle beyond launch. Absent means "still selling".
+  withdrawnDate?: string;
+  withdrawnReason?: string;
+}
+
+// Round 4 question 14's project-level roll-up, transcribed. Explicitly a summary
+// of the per-market records and never a substitute: "the launch of the first
+// market must not cause all other markets to be treated as launched", and
+// question 18 adds that a project-level Phase 4 summary "may remain, but only as
+// a roll-up — it must not replace the per-market approvals".
+export const PROJECT_LAUNCH_STATUSES = [
+  'Not launched',
+  'Partially launched',
+  'Launched in all active markets',
+  'Market transition in progress',
+  'Withdrawn',
+] as const;
+export type ProjectLaunchStatus = (typeof PROJECT_LAUNCH_STATUSES)[number];
+
+// Round 4 question 13: a post-launch review that has come due for one market, and
+// what was recorded against it. Held per project because the schedule is per
+// market and the reviews accumulate over the product's life.
+export interface PostLaunchReview {
+  id: string;
+  market: string;
+  // Which milestone this review answers: '1m' | '3m' | '12m' | 'annual-N' |
+  // 'signal'. A signal review is unscheduled — question 13's "a review must occur
+  // earlier if a significant adverse event, complaint trend, regulatory request or
+  // quality signal arises".
+  milestone: string;
+  dueDate: string;
+  completedDate?: string;
+  reviewer?: string;
+  outcome?: string;
+  evidenceLink?: string;
+  notes?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -1006,6 +1094,10 @@ export interface ProjectData {
   gateSignOffs: GateSignOff[];
   formulaVersion: string; // current formula version, e.g. "F1.0" (rule A2)
   formulaVersionHistory: FormulaVersionRecord[]; // prior versions, audit history (rule A2)
+  // Round 4 question 2 — per-market supersession decisions, and question 13's
+  // post-launch reviews. Both are append-mostly records of acts, not settings.
+  supersessionDecisions: SupersessionDecision[];
+  postLaunchReviews: PostLaunchReview[];
   // Company reference data resolved for THIS project — read-only, refreshed on
   // every read, never written by a store action. See ProjectReferenceData above.
   reference: ProjectReferenceData;

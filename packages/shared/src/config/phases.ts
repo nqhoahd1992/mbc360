@@ -785,16 +785,44 @@ export const PHASE_4: PhaseConfig = {
       ],
     },
     {
+      // Round 4 question 10 (2026-08-24), built 2026-08-29. The original sixteen
+      // options — kept as `postMarketSources`, whose key is unchanged so nothing
+      // has to migrate its section name — "mixes source, issue type and action;
+      // these should ideally be separated". They now are, into the three sections
+      // below, each transcribed verbatim from the answer.
+      //
+      // This one keeps the SOURCE half and nothing else. "CAPA is a resulting
+      // action, not a feedback source" is the sentence that made the split
+      // unavoidable: a checklist where ticking "CAPA" meant the same kind of thing
+      // as ticking "Consumer feedback" could not answer either question properly.
       key: 'postMarketSources',
-      title: 'Post-Market / PV-PMS Feedback Sources',
+      title: 'Post-Market Feedback — Source',
       gate: '12',
       ownerFunction: 'Quality / PV-PMS',
       options: [
-        'Consumer feedback', 'HCP feedback', 'Distributor feedback',
-        'Retailer feedback', 'Sales feedback', 'Social media feedback',
-        'Complaint', 'Adverse event / PV signal', 'PMS trend', 'Claim question',
-        'Packaging issue', 'Formula issue', 'Quality issue', 'FAQ update',
-        'CAPA', 'Product optimisation',
+        'Consumer', 'HCP', 'Distributor', 'Retailer', 'Sales', 'Social media',
+        'Customer service', 'Regulator', 'Internal Quality or Manufacturing',
+      ],
+    },
+    {
+      key: 'postMarketIssueType',
+      title: 'Post-Market Feedback — Issue type',
+      gate: '12',
+      ownerFunction: 'Quality / PV-PMS',
+      options: [
+        'Safety or adverse event', 'Product performance', 'Claim or communication question',
+        'Packaging issue', 'Formula issue', 'Quality issue', 'FAQ or education requirement',
+        'Product optimisation opportunity',
+      ],
+    },
+    {
+      key: 'postMarketAction',
+      title: 'Post-Market Feedback — Resulting action',
+      gate: '12',
+      ownerFunction: 'Quality / PV-PMS',
+      options: [
+        'PMS review', 'CAPA', 'Change Control', 'FAQ update', 'Product optimisation',
+        'No further action',
       ],
     },
   ],

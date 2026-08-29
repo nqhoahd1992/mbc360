@@ -153,6 +153,12 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     // list that changes during the project. An empty array is the correct
     // starting state: nothing signed anywhere.
     gateSignOffs: [],
+    // Round 4 questions 2 and 13 — both are records of acts (a person's
+    // supersession decision, a completed post-launch review), so a new project has
+    // none. The review SCHEDULE is derived from each market's actual launch date;
+    // nothing is scaffolded.
+    supersessionDecisions: [],
+    postLaunchReviews: [],
     studyApprovals: [
       { role: 'Study Author' },
       { role: 'Department Reviewer' },

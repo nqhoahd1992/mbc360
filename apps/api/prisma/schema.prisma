@@ -205,6 +205,8 @@ model Project {
 
   markets          ProjectMarket[]
   gateSignOffs     GateSignOff[]
+  postLaunchReviews     PostLaunchReview[]
+  supersessionDecisions SupersessionDecision[]
   reviewers        ProjectReviewer[]
   gates            GateRecord[]
   nextActions      NextAction[]
@@ -429,6 +431,56 @@ model SignOff {
 
   @@index([phaseClosureId])
   @@map("sign_offs")
+}
+
+// Round 4 question 13 — a post-launch review that has come due for one market.
+// The SCHEDULE is derived (utils/postLaunch.ts); this records what was actually
+// done about a milestone, which is not derivable from anything.
+model PostLaunchReview {
+  id            String    @id @default(cuid())
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String
+  market        String
+  milestone     String // '1m' | '3m' | '12m' | 'annual-N' | 'signal'
+  dueDate       DateTime  @db.Date
+  completedDate DateTime? @db.Date
+  reviewer      String?
+  outcome       String?
+  evidenceLink  String?
+  notes         String?
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([projectId, market, milestone])
+  @@map("post_launch_reviews")
+}
+
+// Round 4 question 2 — the per-market supersession decision. Ten facts, all
+// entered by a person: "the supersession decision must be recorded by a person,
+// never inferred automatically by the system", so nothing here has a default and
+// `confirmedBy` is what turns a draft into a decision.
+model SupersessionDecision {
+  id                           String    @id @default(cuid())
+  project                      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId                    String
+  version                      String // the version being superseded
+  market                       String
+  replacementVersion           String?
+  effectiveTransitionDate      DateTime? @db.Date
+  lastReleaseDate              DateTime? @db.Date
+  stockDisposition             String?
+  regulatoryNotificationStatus String?
+  artworkTransition            String?
+  pifUpdate                    String?
+  salesMarketingCommunication  String?
+  distributorCommunication     String?
+  noFurtherBatchesConfirmed    Boolean   @default(false)
+  confirmedBy                  String?
+  confirmedAt                  DateTime?
+  notes                        String?
+  updatedAt                    DateTime  @updatedAt
+
+  @@unique([projectId, version, market])
+  @@map("supersession_decisions")
 }
 
 // Per-gate sign-off (Round 4 questions 18 and 29, 2026-08-29). A NEW table rather
@@ -795,7 +847,12 @@ model FormulaVersion {
   changeType        String? // Major | Minor (null for the initial version)
   reason            String?
   initiatedBy       String?
-  status            String   @default("Active") // Active | Superseded
+  // Round 4 question 2 (2026-08-29) replaced the two-value Active | Superseded
+  // with FORMULA_VERSION_STATES: Active · Transition Approved · Transition in
+  // Progress · Superseded · Withdrawn · Cancelled. Approving a replacement now
+  // moves the old version to "Transition in Progress", and only a person's
+  // per-market SupersessionDecision moves it to Superseded.
+  status            String   @default("Active")
   createdAt         DateTime @default(now())
 
   bomLines     BomLine[]
@@ -886,6 +943,13 @@ model MarketTrack {
   regulatoryNotes  String?
   pifApprovedDate  DateTime?       @db.Date
   launchApprovedDate DateTime?     @db.Date
+  // Round 4 questions 13 and 14 (2026-08-29). The ACTUAL commercial launch date,
+  // which is a different fact from launchApprovedDate above: approval is
+  // permission to sell, this is the day selling started, and every post-launch
+  // review interval is measured from it.
+  actualLaunchDate DateTime?       @db.Date
+  withdrawnDate    DateTime?       @db.Date
+  withdrawnReason  String?
   updatedAt        DateTime        @updatedAt
 
   @@unique([projectId, market])
