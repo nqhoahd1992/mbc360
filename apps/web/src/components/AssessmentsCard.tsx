@@ -4,8 +4,10 @@ import type { ProjectData } from '@mbc360/shared/types';
 import {
   ADMINISTRATIVE_ONLY_OPTIONS,
   CHANGE_CONTROL_REQUIRED_OPTIONS,
+  FAMILY_USE_AGE_GROUPS,
   HUMAN_STUDY_PLANNED_OPTIONS,
   SCALE_UP_RISK_OPTIONS,
+  familyUseAgeGroupList,
 } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
@@ -13,7 +15,7 @@ import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
 import { TEXT } from '../theme/tokens';
 
-// The four explicit assessments Round 4 questions 8, 9, 11 and 12 asked for
+// The explicit assessments Round 4 questions 8, 9, 11, 12 and 25(c) asked for
 // (2026-08-24). They sit on one card because they share a purpose rather than a
 // gate: each records a judgement the app used to infer, so that "nobody has
 // decided yet" becomes visible instead of silently passing a gate.
@@ -57,6 +59,13 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
   const protocolStarted = (project.registers['studyProtocolSetup'] ?? []).some(
     (r) => String(r.plannedValue ?? '').trim() !== '',
   );
+
+  // Question 25(c): the family-use question exists only for a family-use product,
+  // and mirrors the `infantContact` limb in evaluateTrigger.
+  const familyUseSelected = (project.checklists['targetUsers'] ?? []).some(
+    (i) => i.selected && i.label === 'Family use',
+  );
+  const familyGroups = familyUseAgeGroupList(draft);
 
   // Question 8: "If Yes, a valid Change Control record must be linked. If No, the
   // rationale and reviewer must be recorded." Both are enforced before Save
@@ -138,6 +147,43 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
             />
           </Space>
         </Field>
+
+        {/* Round 4 question 25(c), 2026-08-29. Only shown when it is actually
+            being asked — this is not a field every project has to answer, it is a
+            question that "Family use" raises. Hiding it elsewhere is deliberate:
+            an always-visible unanswered field reads as an obligation, and here
+            blank means "not applicable", not "not done". */}
+        {familyUseSelected && (
+          <Field
+            label="Family use — which age groups does this product include?"
+            hint="Gates 2, 4, 5, 6, 7, 8-9 and 10. Family use is not a vulnerable population on its own, but leaving this unanswered blocks the infant pathway from being decided either way. Including Infant 0+ activates it."
+          >
+            <Space orientation="vertical" style={{ width: '100%' }} size={6}>
+              <Select
+                mode="multiple"
+                style={{ width: '100%', maxWidth: 460 }}
+                allowClear
+                placeholder="Not yet confirmed"
+                value={familyGroups}
+                options={FAMILY_USE_AGE_GROUPS.map((o) => ({ value: o, label: o }))}
+                onChange={(v: string[]) => set('familyUseAgeGroups', v.join(', '))}
+              />
+              <Space wrap>
+                <UserSelect
+                  style={{ width: 220 }}
+                  placeholder="Confirmed by"
+                  value={draft.familyUseConfirmedBy}
+                  onChange={(v?: string) => set('familyUseConfirmedBy', v ?? '')}
+                />
+                <DatePicker
+                  style={{ width: 150 }}
+                  value={draft.familyUseConfirmedDate ? dayjs(draft.familyUseConfirmedDate) : null}
+                  onChange={(d) => set('familyUseConfirmedDate', d ? d.format('YYYY-MM-DD') : '')}
+                />
+              </Space>
+            </Space>
+          </Field>
+        )}
 
         <Field
           label="Scale-up risk identified?"

@@ -96,6 +96,9 @@ const ASSESSMENT_FIELDS = [
   'scaleUpRiskRationale',
   'scaleUpRiskActivity',
   'scaleUpRiskEvidenceLink',
+  'familyUseAgeGroups',
+  'familyUseConfirmedBy',
+  'familyUseConfirmedDate',
 ] as const satisfies readonly (keyof ProjectData['assessments'])[];
 
 // The eight gap-assessment columns (Round 4 question 3). Same allowlist discipline

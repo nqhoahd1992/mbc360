@@ -57,7 +57,7 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 
 | Câu | Nhóm | Trạng thái | Chủ đề |
 |---|---|---|---|
-| 1 | 7 | ⬜ chưa làm | Luồng Infant & Baby Safety trải 6 gate |
+| 1 | 7 | ✅ resolved | Luồng Infant & Baby Safety trải 6 gate |
 | 2 | 8 | ⬜ chưa làm | 6 trạng thái formula version + quyết định supersession per-market |
 | 3 | 2 | ✅ resolved | Đánh giá mức độ nghiêm trọng của gap (8 trường) — cũng đóng **A1 vòng 21/07** và bật được nhánh "critical gap" của F7 |
 | 4 | 4b + 8 | ⬜ chưa xong | **Market profile đã xây** (nền 4a + trang admin + revision + capability) ✅ — còn PMS baseline cho mọi sản phẩm và 14 trigger enhanced (thuộc nhóm 8) |
@@ -81,7 +81,7 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | 22 | độc lập | ✅ resolved | Primary project type + 2 giá trị Owner/function |
 | 23 | 6 + độc lập | ✅ resolved | Option "Product form under evaluation" (23a) + 4 đường phủ safety matrix (23b) |
 | 24 | độc lập | ✅ resolved | Bỏ `initialTargetMarkets`; Countries/Markets là nguồn duy nhất |
-| 25 | độc lập + 7 | ⬜ chưa xong | Tách Dry / eczema-prone ✅ (a)(b)(d) — **còn family use hỏi nhóm tuổi** (25c, thuộc nhóm 7) |
+| 25 | độc lập + 7 | ✅ resolved | Tách Dry / eczema-prone (a)(b)(d) + family use hỏi nhóm tuổi (c) |
 | 26 | 5 | ⬜ chưa làm | Revision claim đã duyệt thành read-only |
 | 27 | 5 | ⬜ chưa làm | 11 cờ chủ đề claim có cấu trúc |
 | 28 | 4d | ⬜ chưa làm | Claims Library cấp công ty |
@@ -281,7 +281,7 @@ Cả năm nằm trên cùng ba màn hình — Prohibited Ingredients watch-list,
 
 ---
 
-## Nhóm 7 — Luồng Infant & Baby Safety 🔴
+## Nhóm 7 — Luồng Infant & Baby Safety ✅ **xong 29/08/2026**
 
 **Câu:** 1 · 25(c) phần family-use
 
@@ -299,7 +299,21 @@ Compartment 3 đúng và giữ nguyên, **nhưng nó là cấu phần CUỐI** c
 
 **25(c) đi kèm:** `Family use` không tự động là nhóm dễ tổn thương nhưng **phải hỏi lại nhóm tuổi thực tế**; có trẻ sơ sinh/trẻ nhỏ thì luồng kích hoạt. Đây là một trigger mới, không phải một ánh xạ.
 
-**Phụ thuộc:** nhóm 6 (phần Gate 4 nằm trên chính màn hình sàng lọc) · nhóm 4c · nhóm 1.
+**Phụ thuộc:** nhóm 6 (phần Gate 4 nằm trên chính màn hình sàng lọc) · nhóm 4c · nhóm 1 — cả ba đã xong trước.
+
+### Đã làm gì, 29/08
+
+**Sáu requirement section mới**, mỗi gate một section, chép nguyên văn danh sách của SME: `infantUseContext` (gate 02, 10 dòng) · `infantIngredientSuitability` (04, 8) · `infantFormulaAssessment` (05, 7) · `infantPackaging` (06, 7) · `infantTesting` (08-09, 7) · `infantPif` (10, 6). Compartment 3 ở Gate 7 **không đổi một dòng nào** — nó vẫn là cấu phần cuối, đúng như đáp án nói. 45 dòng mới sinh **từ chính config** trong migration `20260829180000_round4_infant_pathway`, không gõ tay.
+
+Cả sáu là **Conditional trên `infantContact`**, nên sản phẩm không dành cho trẻ sơ sinh không thấy chúng; khi luồng kích hoạt thì chặn cứng — chính là dòng "Hard block" của đáp án, và là lý do bắt các gate sớm phải ghi.
+
+**Ba điều đáng ghi lại:**
+
+1. **Câu 25(c) mới là thứ khiến `infantContact` có trạng thái thứ ba.** Trước đó trigger chỉ đọc "Infant 0+ có được tick không" — nhị phân, và nằm trong `TRIGGERS_WITHOUT_UNASSESSED_STATE`. Đáp án: *"Family use … must prompt confirmation of the actual age groups included"*. Nên một sản phẩm `Family use` mà chưa ai xác nhận nhóm tuổi giờ trả `notAssessed` và **chặn** — trước đây nó lặng lẽ bỏ qua toàn bộ luồng infant. Bộ đếm trigger nợ giảm 7 → 6. Phần còn thiếu (dự án chưa ghi target user nào thì vẫn đọc thành "không có infant") là câu R5-Q5 chung cho mọi trigger đọc checklist, không riêng cái này.
+2. **`allowNotApplicable` từ câu 21 hoá ra là điều kiện tiên quyết của nhóm này.** Nhiều dòng mang đúng chữ "where relevant" / "where appropriate" của SME, và cả mục Gate 8-9 được viết như một **thực đơn** (*"Trigger by use context and risk"*) chứ không phải danh sách nghĩa vụ. Bắt cả 7 test family cho mọi sản phẩm trẻ em là tự đặt ra luật SME cố ý không viết. Nên check mới `requirementSectionDispositioned` (Completed **hoặc** N/A kèm lý do) — **tách khỏi** `requirementSectionComplete`, cái vẫn chỉ nhận Completed và vẫn đỡ Compartment 3: mở rộng nó sẽ đổi luật của một câu khác. Kiểm cả hai chiều.
+3. **Nửa "young children" của 25(c) không có pathway riêng, và đó là câu trả lời.** *"if infants or young children are included, the relevant pathway activates"* — với trẻ sơ sinh là luồng infant, với trẻ nhỏ thì "pathway liên quan" chỉ có thể là Vulnerable-User Assessment. Nên `expectedVulnerableGroups` đọc thêm nhóm tuổi family-use đã xác nhận, **qua đúng cùng một map** với target user được tick. Cố ý KHÔNG nhân bản sang `targetUsersPinnedByAssessment`: guard đó bảo vệ một *cái tick* khỏi bị gỡ, còn đây là một trường xác nhận.
+
+Kiểm: 29 ca luật trên envelope thật — cả 7 item tự pass khi không có infant, cả 7 chặn khi có, một câu trả lời family-use cũ bị bỏ qua khi gỡ tick `Family use`, và Compartment 3 vẫn **không** nhận N/A. Cộng kiểm API cho 3 cột mới và một dòng N/A kèm lý do trong section mới. Dữ liệu test đã dọn.
 
 ---
 

@@ -1,5 +1,5 @@
 import type { GateRecord, NextAction, ProjectData, RegisterRow } from '../types';
-import { NEXT_ACTION_TERMINAL_STATUSES, isRegisterClosed, isSignedOff } from '../types';
+import { NEXT_ACTION_TERMINAL_STATUSES, familyUseAgeGroupList, isRegisterClosed, isSignedOff } from '../types';
 import { COSTING_STATUS_NOT_APPLICABLE, GATES, REQUIREMENT_NOT_APPLICABLE } from '../config/gates';
 import { isChangeOpen } from '../config/changeTriggers';
 import {
@@ -93,6 +93,9 @@ export function openNextActions(project: ProjectData, gateId: string): NextActio
 const SKINCARE_FOR_TWO_TRIGGERS = ['Pregnancy', 'Breastfeeding', 'Postpartum'];
 // E1's infant pathway keys off this one option, separately from the three above.
 const INFANT_TARGET_USER = 'Infant 0+';
+// Round 4 question 25(c): the target-user option that asks a question rather than
+// answering one — see the `infantContact` trigger.
+const FAMILY_USE_TARGET_USER = 'Family use';
 // A3's "safety signal … complaint trend" limbs, as they appear on the Gate 12
 // Post-Market Sources checklist.
 //
@@ -215,10 +218,24 @@ function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger): Trigg
     case 'aseanMarket':
       return twoState(projectHasAseanMarket(project));
 
-    case 'infantContact':
-      return twoState(
-        (project.checklists['targetUsers'] ?? []).some((item) => item.selected && item.label === INFANT_TARGET_USER),
-      );
+    // Two routes in, since Round 4 question 25(c) (2026-08-29). Selecting
+    // `Infant 0+` outright is the first and always has been. The second is
+    // `Family use`, which "does not automatically mean a vulnerable population,
+    // but must prompt confirmation of the actual age groups included; if infants
+    // or young children are included, the relevant pathway activates".
+    //
+    // That second route is what gives this trigger a real `notAssessed` state: a
+    // family product whose age groups nobody has confirmed is not a product
+    // without infants, it is a product nobody has asked about. Before this, an
+    // unanswered family-use project silently skipped the whole infant pathway.
+    case 'infantContact': {
+      const selected = (project.checklists['targetUsers'] ?? []).filter((i) => i.selected).map((i) => i.label);
+      if (selected.includes(INFANT_TARGET_USER)) return 'applies';
+      if (!selected.includes(FAMILY_USE_TARGET_USER)) return 'doesNotApply';
+      const groups = familyUseAgeGroupList(project.assessments);
+      if (groups.length === 0) return 'notAssessed';
+      return groups.includes(INFANT_TARGET_USER) ? 'applies' : 'doesNotApply';
+    }
 
     // A3: mandatory "before ANY study involving human participants". Study
     // Protocol Setup is `mode: 'fixed'`, so its rows are seeded — the signal is
@@ -530,7 +547,8 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
     'not a new product, claim change or market extension, not a customer or distributor request, and no benchmark product named',
   microbiologicallySusceptible:
     'the formula is recorded as anhydrous, self-preserving, sterile or single-use, with a rationale',
-  infantContact: 'no Infant 0+ target user selected, so no infant or baby-contact use is intended',
+  infantContact:
+    'no Infant 0+ target user selected, and no family-use product whose confirmed age groups include infants',
   aseanMarket: 'no ASEAN market selected, so the ASEAN PIF checklist does not apply',
   openChangeControl: 'no change control record is open for this project',
   claimNeedsPerformanceEvidence:
@@ -564,7 +582,8 @@ const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   humanStudyPlanned: 'nobody has answered whether this project involves a human-participant study',
   newOrRepositionedProject: 'the development / change type has not been recorded, so it is unknown whether this is a new product, a claim change or an administrative-only change',
   microbiologicallySusceptible: 'the formula has not been classified as susceptible, anhydrous, self-preserving, sterile or single-use',
-  infantContact: 'nobody has recorded the target users yet, so infant use is unknown',
+  infantContact:
+    'this is a Family use product and nobody has confirmed which age groups it is for, so whether infants are included is unknown (Project Overview -> Assessments)',
   aseanMarket: 'no market has been recorded for this project yet',
   openChangeControl: 'nobody has assessed whether a change control record should be opened for this finding',
   claimNeedsPerformanceEvidence: 'no claim has been declared yet, so no claim carries an evidence category',
@@ -670,6 +689,22 @@ function evaluateReadinessCheck(
     case 'requirementSectionComplete': {
       const rows = project.requirements[check.section] ?? [];
       return { evaluable: true, satisfied: rows.every((r) => r.status === 'Completed') };
+    }
+    // Round 4 question 1: Completed, or 'N/A' with a rationale. The rationale is
+    // not optional — without it "N/A" is a way to clear a row by clicking, which
+    // is the opposite of what a disposition is.
+    case 'requirementSectionDispositioned': {
+      const rows = project.requirements[check.section] ?? [];
+      return {
+        evaluable: true,
+        satisfied:
+          rows.length > 0 &&
+          rows.every(
+            (r) =>
+              r.status === 'Completed' ||
+              (r.status === REQUIREMENT_NOT_APPLICABLE && (r.naRationale ?? '').trim() !== ''),
+          ),
+      };
     }
     case 'marketChecklistRecorded':
       return { evaluable: true, satisfied: marketsWithoutChecklist(project).length === 0 };
@@ -1093,6 +1128,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return phaseSectionLink(gateId, `sec-checklist-${check.section}`);
     case 'requirementDone':
     case 'requirementSectionComplete':
+    case 'requirementSectionDispositioned':
     case 'requirementsDispositioned':
     case 'requirementsNoOpenDeferrals':
       return phaseSectionLink(gateId, `sec-requirement-${check.section}`);

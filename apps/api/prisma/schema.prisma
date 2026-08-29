@@ -179,6 +179,13 @@ model Project {
   scaleUpRiskRationale          String?
   scaleUpRiskActivity           String?
   scaleUpRiskEvidenceLink       String?
+  // Round 4 question 25(c), 2026-08-29. Comma-joined FAMILY_USE_AGE_GROUPS. NULL
+  // is load-bearing here too: on a Family use product it means nobody has
+  // confirmed which age groups are included, which makes the infantContact
+  // trigger return `notAssessed` instead of quietly deciding infants are out.
+  familyUseAgeGroups            String?
+  familyUseConfirmedBy          String?
+  familyUseConfirmedDate        String?
   // Optimistic lock (BACKEND_PLAN §3 principle 8). Every mutation bumps it
   // inside the same transaction that reads it; a client sending a stale
   // expectedVersion gets 409 Conflict instead of silently overwriting the

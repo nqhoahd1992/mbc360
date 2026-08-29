@@ -347,6 +347,42 @@ export const PHASE_1: PhaseConfig = {
       { gate: '02', requirement: 'Other project assumptions', minimum: '', rationale: '', owner: '' },
       ],
     },
+    // ---------------------------------------------------------------------
+    // Infant & Baby Safety pathway (Round 4 question 1, 2026-08-24, built
+    // 2026-08-29). "Retain Compartment 3 as the core Gate 7 Infant & Baby Safety
+    // assessment, but treat it as the FINAL COMPONENT of a broader pathway
+    // spanning multiple gates — not the entire pathway by itself."
+    //
+    // Six sections, one per gate the answer names, each transcribed verbatim from
+    // its list. All Conditional on the `infantContact` trigger, so a product with
+    // no infant use never sees them; when the pathway IS active they hard-block
+    // their gate, which is what the answer's own "Hard block" line asks for at
+    // Gate 7 and what makes the earlier gates worth capturing at all.
+    //
+    // `allowNotApplicable`: several rows carry the answer's own qualifiers —
+    // "where relevant", "where hand-to-mouth exposure is foreseeable", "where
+    // appropriate" — and a row that cannot be closed for a product it does not
+    // apply to is the `sg07-caution-closed` mistake repeated. N/A needs a written
+    // rationale, and whether Phase 2-4 requirement rows should have that escape at
+    // all is [ASSUMPTION: R5-Q22].
+    // ---------------------------------------------------------------------
+    {
+      key: 'infantUseContext',
+      title: 'Infant & Baby Safety - Gate 2 intended use context',
+      allowNotApplicable: true,
+      rows: [
+        { gate: '02', requirement: 'Intended minimum age in months', minimum: 'State the youngest age the product is intended for, in months', rationale: 'Every later infant control is scaled to this age', owner: 'Marketing / Safety' },
+        { gate: '02', requirement: 'Direct infant use, incidental contact or both', minimum: 'State which of the three applies', rationale: 'Decides whether exposure is direct or transferred', owner: 'Safety' },
+        { gate: '02', requirement: 'Leave-on or rinse-off use', minimum: 'State which', rationale: 'Contact time drives the exposure assessment', owner: 'R&I / Safety' },
+        { gate: '02', requirement: 'Body area', minimum: 'State the body areas the product is intended for', rationale: 'Absorption and sensitivity vary by area', owner: 'Safety' },
+        { gate: '02', requirement: 'Frequency and amount of use', minimum: 'Applications per day and amount per use', rationale: 'Inputs to the infant-adjusted margin of safety', owner: 'Safety' },
+        { gate: '02', requirement: 'Nappy-area, face, eye-area or scalp use', minimum: 'State which of these areas are intended', rationale: 'Each carries its own occlusion, mucous-membrane or barrier concern', owner: 'Safety' },
+        { gate: '02', requirement: 'Foreseeable hand-to-mouth exposure', minimum: 'State whether hand-to-mouth transfer is foreseeable', rationale: 'Triggers the oral-safety review at Gate 4', owner: 'Safety' },
+        { gate: '02', requirement: 'Foreseeable accidental ingestion', minimum: 'State whether accidental ingestion is foreseeable', rationale: 'Drives packaging and warning requirements at Gate 6', owner: 'Safety' },
+        { gate: '02', requirement: 'Use on damaged or compromised skin', minimum: 'State whether use on damaged or compromised skin is intended or foreseeable', rationale: 'Compromised barrier changes absorption and tolerance', owner: 'Safety' },
+        { gate: '02', requirement: 'Caregiver use or direct application to the infant', minimum: 'State whether the caregiver uses it or it is applied to the infant', rationale: 'Decides whose exposure is being assessed', owner: 'Safety / Marketing' },
+      ],
+    },
   ],
   keyGateChecks: [
     { gate: '01', check: 'Product request, opportunity and requester captured' },
@@ -456,6 +492,52 @@ export const PHASE_2: PhaseConfig = {
         { gate: '05', requirement: 'Compatibility / use-with constraints', minimum: 'Use-with, pack and ingredient interactions recorded', rationale: 'Controls formula compatibility and real-world use risks', owner: 'R&I / Quality' },
         { gate: '05', requirement: 'Formula constraints / exclusions', minimum: 'Restricted, prohibited or customer-excluded ingredients recorded', rationale: 'Prevents rework and regulatory gaps', owner: 'R&I / Regulatory' },
         { gate: '05', requirement: 'Scale-up or manufacturing notes', minimum: 'Critical process parameters and scale-up notes recorded', rationale: 'Maintains formula performance during manufacturing', owner: 'Manufacturing / Quality' },
+      ],
+    },
+    // Infant & Baby Safety pathway (Round 4 question 1) — see the note on
+    // `infantUseContext` in PHASE_1 for why these six sections exist, why they are
+    // Conditional on `infantContact`, and why they allow N/A with a rationale.
+    {
+      key: 'infantIngredientSuitability',
+      title: 'Infant & Baby Safety - Gate 4 ingredient and raw-material suitability',
+      allowNotApplicable: true,
+      rows: [
+        { gate: '04', requirement: 'Infant suitability assessment for each proposed ingredient', minimum: 'Every proposed ingredient assessed for infant suitability', rationale: 'Infant skin is more permeable and less tolerant than adult skin', owner: 'Safety / R&I' },
+        { gate: '04', requirement: 'Restricted and prohibited ingredient review', minimum: 'Watch-list screen completed against the infant use context', rationale: 'Restrictions differ for infant products', owner: 'Regulatory' },
+        { gate: '04', requirement: 'Fragrance, essential-oil and allergen review', minimum: 'Fragrance, essential oils and allergens reviewed for infant contact', rationale: 'Infant respiratory and skin sensitivity', owner: 'R&I / Safety' },
+        { gate: '04', requirement: 'Impurity, contaminant and residual-solvent review', minimum: 'Impurities, contaminants and residual solvents reviewed', rationale: 'Trace levels acceptable for adults may not be for infants', owner: 'Quality / Safety' },
+        { gate: '04', requirement: 'Heavy-metal and microbiological risk review where relevant', minimum: 'Reviewed, or N/A with a rationale', rationale: 'Applies where the material or process carries that risk', owner: 'Quality / Safety' },
+        { gate: '04', requirement: 'Oral-safety consideration where hand-to-mouth exposure is foreseeable', minimum: 'Reviewed, or N/A with a rationale', rationale: 'Follows the Gate 2 hand-to-mouth answer', owner: 'Safety' },
+        { gate: '04', requirement: 'Eye-exposure assessment where eye contact is reasonably foreseeable', minimum: 'Reviewed, or N/A with a rationale', rationale: 'Follows the Gate 2 eye-area answer', owner: 'Safety' },
+        { gate: '04', requirement: 'Supplier evidence links', minimum: 'Supplier evidence linked for each material relied on', rationale: 'The assessment has to rest on documents, not assertions', owner: 'Procurement / R&I' },
+      ],
+    },
+    {
+      key: 'infantFormulaAssessment',
+      title: 'Infant & Baby Safety - Gate 5 formula-level assessment',
+      allowNotApplicable: true,
+      rows: [
+        { gate: '05', requirement: 'Final ingredient concentrations', minimum: 'Final concentrations recorded for the locked formula', rationale: 'The exposure assessment is only as good as the concentrations', owner: 'R&I' },
+        { gate: '05', requirement: 'Formula pH and compatibility with infant skin', minimum: 'pH and infant-skin compatibility assessed', rationale: 'Infant skin barrier is thinner and less acidic', owner: 'R&I / Safety' },
+        { gate: '05', requirement: 'Preservative strategy and microbiological protection', minimum: 'Preservative strategy assessed for an infant product', rationale: 'Microbiological failure is a direct infant safety risk', owner: 'Quality / R&I' },
+        { gate: '05', requirement: 'Exposure assessment and infant-adjusted margin-of-safety rationale', minimum: 'MoS calculated on infant body weight and surface area', rationale: 'An adult MoS does not transfer to an infant', owner: 'Safety' },
+        { gate: '05', requirement: 'Potential degradation products or ingredient interactions', minimum: 'Degradation and interaction risks assessed', rationale: 'What the formula becomes matters as much as what it is', owner: 'R&I / Quality' },
+        { gate: '05', requirement: 'Process controls needed to preserve ingredient quality and safety', minimum: 'Critical process controls identified', rationale: 'Safety depends on the formula being made as designed', owner: 'Manufacturing / Quality' },
+        { gate: '05', requirement: 'Intended dose or amount per use', minimum: 'Dose or amount per use defined', rationale: 'Feeds both the MoS and the Gate 6 dose-delivery requirement', owner: 'R&I / Safety' },
+      ],
+    },
+    {
+      key: 'infantPackaging',
+      title: 'Infant & Baby Safety - Gate 6 packaging and instructions',
+      allowNotApplicable: true,
+      rows: [
+        { gate: '06', requirement: 'Appropriate dose delivery', minimum: 'Pack delivers the intended dose', rationale: 'Over-delivery undoes the Gate 5 exposure assessment', owner: 'Packaging / R&I' },
+        { gate: '06', requirement: 'Control of excessive dispensing where relevant', minimum: 'Assessed, or N/A with a rationale', rationale: 'Applies to pack formats that can over-dispense', owner: 'Packaging' },
+        { gate: '06', requirement: 'Accidental access or ingestion risk', minimum: 'Risk of an infant opening or ingesting the product assessed', rationale: 'Follows the Gate 2 accidental-ingestion answer', owner: 'Packaging / Safety' },
+        { gate: '06', requirement: 'Suitable closure and packaging', minimum: 'Closure and pack suitable for an infant product', rationale: 'Closure integrity is part of the safety case', owner: 'Packaging' },
+        { gate: '06', requirement: 'Age and use instructions', minimum: 'Minimum age and use instructions drafted', rationale: 'The Gate 2 age answer has to reach the label', owner: 'Regulatory / Marketing' },
+        { gate: '06', requirement: 'Required warnings', minimum: 'Warnings required for infant use drafted', rationale: 'Warnings are a control, not a formality', owner: 'Regulatory' },
+        { gate: '06', requirement: 'Directions for safe caregiver use', minimum: 'Caregiver directions drafted', rationale: 'The caregiver is who actually applies the product', owner: 'Regulatory / Marketing' },
       ],
     },
     {
@@ -596,6 +678,28 @@ export const PHASE_3: PhaseConfig = {
         { gate: '07', requirement: 'INF-08 Label / PIF statement (infant)', minimum: 'Infant-contact statement matches label and PIF', rationale: 'Consistency control', owner: 'Regulatory' },
       ],
     },
+    // Infant & Baby Safety pathway (Round 4 question 1) — see the note on
+    // `infantUseContext` in PHASE_1.
+    // Gates 8-9 are the one part of question 1 written as a menu rather than a
+    // list of obligations — "Trigger by use context and risk" — so every row here
+    // is expected to be either done or explicitly N/A with a rationale. That is
+    // the whole reason `allowNotApplicable` exists on these sections: forcing
+    // seven test families onto every infant product would be inventing a rule the
+    // answer deliberately did not write.
+    {
+      key: 'infantTesting',
+      title: 'Infant & Baby Safety - Gates 8-9 testing and validation',
+      allowNotApplicable: true,
+      rows: [
+        { gate: '08', requirement: 'Skin tolerance', minimum: 'Triggered and planned, or N/A with a rationale', rationale: 'Infant skin tolerance cannot be inferred from adult data', owner: 'Safety / Quality' },
+        { gate: '08', requirement: 'Eye safety', minimum: 'Triggered and planned, or N/A with a rationale', rationale: 'Applies where eye contact is reasonably foreseeable', owner: 'Safety' },
+        { gate: '09', requirement: 'Preservative efficacy', minimum: 'Triggered and planned, or N/A with a rationale', rationale: 'Microbiological protection over the in-use life', owner: 'Quality' },
+        { gate: '09', requirement: 'Microbiological quality', minimum: 'Triggered and planned, or N/A with a rationale', rationale: 'Release limits appropriate to an infant product', owner: 'Quality' },
+        { gate: '09', requirement: 'Stability', minimum: 'Triggered and planned, or N/A with a rationale', rationale: 'Degradation products were assessed at Gate 5 on the assumption of stability', owner: 'Quality / R&I' },
+        { gate: '09', requirement: 'Packaging compatibility', minimum: 'Triggered and planned, or N/A with a rationale', rationale: 'Pack interaction can change what the infant is exposed to', owner: 'Packaging / Quality' },
+        { gate: '09', requirement: 'In-use or consumer testing where appropriate', minimum: 'Triggered and planned, or N/A with a rationale', rationale: 'Real caregiver use differs from laboratory conditions', owner: 'R&I / Marketing' },
+      ],
+    },
     {
       key: 'swimmerSafety',
       title: 'Compartment 4 - Swimmer Safety & Characteristics',
@@ -707,6 +811,21 @@ export const PHASE_4: PhaseConfig = {
         { gate: '10', requirement: 'Approved HCP wording', minimum: 'Explain evidence without unsupported pregnancy-safe or therapeutic labels', rationale: 'Controls external wording', owner: 'Regulatory / Marketing' },
         { gate: '10', requirement: 'PIF/CPSR export-ready', minimum: 'Dossier package reviewed and approved', rationale: 'Market/distributor readiness', owner: 'Regulatory' },
         { gate: '10', requirement: 'Country-specific restrictions', minimum: 'Vietnam/ASEAN/EU/Australia/US wording checked as applicable', rationale: 'Claim and advertising control', owner: 'Regulatory' },
+      ],
+    },
+    // Infant & Baby Safety pathway (Round 4 question 1) — see the note on
+    // `infantUseContext` in PHASE_1.
+    {
+      key: 'infantPif',
+      title: 'Infant & Baby Safety - Gate 10 PIF and claims',
+      allowNotApplicable: true,
+      rows: [
+        { gate: '10', requirement: 'Infant-use safety conclusion', minimum: 'The Gate 7 conclusion carried into the PIF', rationale: 'The dossier has to state the conclusion, not just hold the working', owner: 'Safety / Regulatory' },
+        { gate: '10', requirement: 'Relevant ingredient and formula assessments', minimum: 'Gate 4 and Gate 5 infant assessments included or linked', rationale: 'The conclusion is only readable with its basis', owner: 'Regulatory' },
+        { gate: '10', requirement: 'Applicable test reports', minimum: 'Reports from the Gates 8-9 testing included', rationale: 'Evidence, not summary', owner: 'Quality / Regulatory' },
+        { gate: '10', requirement: 'Approved age and use statements', minimum: 'Minimum age and use statements approved and included', rationale: 'The Gate 2 age answer reaching the dossier', owner: 'Regulatory' },
+        { gate: '10', requirement: 'Evidence supporting infant-related claims', minimum: 'Each infant claim linked to its evidence', rationale: 'An infant claim carries a higher evidential bar', owner: 'Regulatory / Claims' },
+        { gate: '10', requirement: 'Label warnings and directions', minimum: 'Gate 6 warnings and directions included as released', rationale: 'The dossier must match the pack', owner: 'Regulatory / Packaging' },
       ],
     },
     {

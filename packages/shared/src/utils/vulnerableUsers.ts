@@ -7,6 +7,7 @@
 // the same act as recognising a vulnerable-use context. Separate, though, must
 // not mean free to contradict each other, which is what these functions check.
 import type { ProjectData, RegisterRow } from '../types';
+import { familyUseAgeGroupList } from '../types';
 import { NO_VULNERABLE_GROUP, TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
 
 export const VULNERABLE_REGISTER = 'vulnerableUserAssessment';
@@ -20,12 +21,38 @@ function selectedTargetUsers(project: ProjectData): string[] {
 
 // Groups the Gate 02 selections imply — what `vulnerableGroupsCovered` requires a
 // row for, and what the register page offers as a one-click preset.
+//
+// Round 4 question 25(c) (2026-08-29) adds a second source: a Family use product's
+// CONFIRMED age groups. "Family use does not automatically mean a vulnerable
+// population, but must prompt confirmation of the actual age groups included; if
+// infants or young children are included, the relevant pathway activates." For
+// infants that pathway is the Infant & Baby Safety one (the `infantContact`
+// trigger); for young children it is this assessment, and there is nowhere else it
+// could be. The confirmed groups are read through the SAME map as a ticked target
+// user, so "family use includes Child 2+" and "Child 2+ is a target user" imply
+// the same obligation.
+//
+// Deliberately NOT mirrored into `targetUsersPinnedByAssessment`: that guard stops
+// a TICK being removed while a row depends on it, and these groups come from a
+// confirmation field, not a tick. A row justified this way is simply unpinned.
 export function expectedVulnerableGroups(project: ProjectData): string[] {
-  const groups = selectedTargetUsers(project)
-    .map((label) => TARGET_USER_TO_VULNERABLE_GROUP[label])
-    .filter((g): g is string => !!g);
+  const sources = [...selectedTargetUsers(project), ...familyUseImpliedTargetUsers(project)];
+  const groups = sources.map((label) => TARGET_USER_TO_VULNERABLE_GROUP[label]).filter((g): g is string => !!g);
   return [...new Set(groups)];
 }
+
+// The age groups a Family use product has been confirmed to include, expressed as
+// target-user labels. Empty unless `Family use` is ticked AND somebody answered —
+// an unanswered question implies no obligation here; it blocks through the
+// `infantContact` trigger instead, which is where "nobody has said" belongs.
+function familyUseImpliedTargetUsers(project: ProjectData): string[] {
+  const familyUse = (project.checklists['targetUsers'] ?? []).some(
+    (i) => i.selected && i.label === FAMILY_USE_TARGET_USER,
+  );
+  return familyUse ? familyUseAgeGroupList(project.assessments) : [];
+}
+
+const FAMILY_USE_TARGET_USER = 'Family use';
 
 // Which selected target users a given group came from — used to explain a block
 // ("Breastfeeding is not selected as a target user") and to find out whether a

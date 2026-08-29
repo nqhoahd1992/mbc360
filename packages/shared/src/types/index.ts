@@ -500,6 +500,17 @@ export const HUMAN_STUDY_PLANNED_OPTIONS = ['Yes', 'No', 'Undecided'] as const;
 export const ADMINISTRATIVE_ONLY_OPTIONS = ['Yes', 'No'] as const;
 export const SCALE_UP_RISK_OPTIONS = ['Yes', 'No', 'Pending assessment'] as const;
 
+// Round 4 question 25(c), 2026-08-29: "Family use does not automatically mean a
+// vulnerable population, but must prompt confirmation of the actual age groups
+// included; if infants or young children are included, the relevant pathway
+// activates."
+//
+// So this is a QUESTION, not a mapping — which is why `Family use` is still absent
+// from TARGET_USER_TO_VULNERABLE_GROUP. The values reuse the Gate 02 target-user
+// vocabulary rather than inventing an age scale, so "family use includes infants"
+// and "Infant 0+ is a target user" mean the same thing to the engine.
+export const FAMILY_USE_AGE_GROUPS = ['Infant 0+', 'Child 2+', 'Child 3+', 'Adults only'] as const;
+
 export interface ProjectAssessments {
   // Question 8 — "Change Control required?", with the five supporting fields the
   // answer lists. Held at PROJECT level, not per finding, because the app has no
@@ -532,6 +543,21 @@ export interface ProjectAssessments {
   scaleUpRiskRationale?: string;
   scaleUpRiskActivity?: string;
   scaleUpRiskEvidenceLink?: string;
+  // Question 25(c) — which age groups a "Family use" product is actually for.
+  // Comma-joined subset of FAMILY_USE_AGE_GROUPS; empty means nobody has
+  // confirmed, which is what makes the infant trigger return `notAssessed`
+  // rather than quietly deciding that a family product excludes infants.
+  familyUseAgeGroups?: string;
+  familyUseConfirmedBy?: string;
+  familyUseConfirmedDate?: string;
+}
+
+// The recorded family-use age groups, as a list. Empty means unanswered.
+export function familyUseAgeGroupList(assessments: ProjectAssessments): string[] {
+  return (assessments.familyUseAgeGroups ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter((v) => v !== '');
 }
 
 export interface FormulaProperties {

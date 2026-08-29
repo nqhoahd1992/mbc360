@@ -133,9 +133,14 @@ export type RmEvidenceScope = 'all' | 'formula';
 // The count is printed by `npm run verify:readiness` every run. No typo sweep is
 // needed: the array is typed, so the compiler already catches a bad name. An empty
 // list means R5-Q5 is fully discharged.
+// `infantContact` left this list on 2026-08-29 (question 25(c)): a Family use
+// product whose age groups nobody has confirmed now returns `notAssessed`. The
+// shortfall it still shares with `skincareForTwo` — a project with NO target user
+// recorded at all reads as "no infant use" rather than "nobody has said" — is the
+// general R5-Q5 question about checklist-derived triggers, not something specific
+// to this one, which is why it is no longer listed here.
 export const TRIGGERS_WITHOUT_UNASSESSED_STATE: readonly ReadinessTrigger[] = [
   'skincareForTwo',
-  'infantContact',
   'aseanMarket',
   'claimNeedsRegulatoryReview',
   'claimNeedsPerformanceEvidence',
@@ -312,6 +317,15 @@ export type ReadinessCheck =
   // pathway; the section's rows are scaffolded at project creation (and
   // verify:scaffold guards that), so this is not vacuous in practice.
   | { kind: 'requirementSectionComplete'; section: string }
+  // Round 4 question 1 (2026-08-29): every row of a requirement section has been
+  // DISPOSITIONED — Completed, or 'N/A' with a rationale. Distinct from
+  // `requirementSectionComplete` above, which accepts nothing but Completed and
+  // still backs the Gate 7 compartment: the six new infant sections carry rows the
+  // answer itself qualifies ("where relevant", "where appropriate"), and a row
+  // that cannot be closed for a product it does not apply to is the
+  // `sg07-caution-closed` mistake repeated. Only used on sections that declare
+  // `allowNotApplicable`, which is what makes 'N/A' selectable at all.
+  | { kind: 'requirementSectionDispositioned'; section: string }
   // Rule E3(b): no open Change Control at Gate 11 is launch-impacting, High risk,
   // impacting formula/artwork/claims/safety/regulatory/packaging/release, or
   // unclassified. Blocks Proceed with Conditions too.
@@ -861,6 +875,20 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'checklistHasSelection', section: 'productType' },
     },
     {
+      // Infant & Baby Safety pathway (Round 4 question 1, 2026-08-29). Compartment
+      // 3 at Gate 7 is "the FINAL COMPONENT of a broader pathway spanning multiple
+      // gates — not the entire pathway by itself"; this is that pathway's Gate 2
+      // component. Conditional on the same `infantContact` trigger as the Gate 7
+      // compartment, so it appears only for a product with infant use — and blocks
+      // when it does, which is the point of capturing it this early.
+      id: 'sg02-infant-context',
+      label: 'Infant & Baby Safety — intended infant-use context recorded',
+      tier: 'Conditional',
+      trigger: 'infantContact',
+      source: 'f-series',
+      check: { kind: 'requirementSectionDispositioned', section: 'infantUseContext' },
+    },
+    {
       // Not an F1-named item — same generalizable rule as sg01-constraints:
       // this Key Gate Check row was already mandatory-in-effect via B3
       // (phase close), just not yet enforced at its own gate.
@@ -1331,6 +1359,20 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'registerRowsComplete', register: 'supplierRmEvidence', columns: ['allergenStatement', 'impurities'] },
     },
     {
+      // Infant & Baby Safety pathway (Round 4 question 1, 2026-08-29). Compartment
+      // 3 at Gate 7 is "the FINAL COMPONENT of a broader pathway spanning multiple
+      // gates — not the entire pathway by itself"; this is that pathway's Gate 4
+      // component. Conditional on the same `infantContact` trigger as the Gate 7
+      // compartment, so it appears only for a product with infant use — and blocks
+      // when it does, which is the point of capturing it this early.
+      id: 'sg04-infant-suitability',
+      label: 'Infant & Baby Safety — ingredient and raw-material suitability',
+      tier: 'Conditional',
+      trigger: 'infantContact',
+      source: 'f-series',
+      check: { kind: 'requirementSectionDispositioned', section: 'infantIngredientSuitability' },
+    },
+    {
       // Added 2026-07-28 (see the note above GATE_READINESS).
       id: 'sg04-signoff',
       label: 'Prepared, reviewed and approved sign-off',
@@ -1432,6 +1474,20 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Initial efficacy rationale and mechanism-of-action mapping',
       tier: 'Mandatory',
       check: { kind: 'requirementDone', section: 'efficacyProcess', requirement: 'Mechanism-to-formula route' },
+    },
+    {
+      // Infant & Baby Safety pathway (Round 4 question 1, 2026-08-29). Compartment
+      // 3 at Gate 7 is "the FINAL COMPONENT of a broader pathway spanning multiple
+      // gates — not the entire pathway by itself"; this is that pathway's Gate 5
+      // component. Conditional on the same `infantContact` trigger as the Gate 7
+      // compartment, so it appears only for a product with infant use — and blocks
+      // when it does, which is the point of capturing it this early.
+      id: 'sg05-infant-formula',
+      label: 'Infant & Baby Safety — formula-level assessment',
+      tier: 'Conditional',
+      trigger: 'infantContact',
+      source: 'f-series',
+      check: { kind: 'requirementSectionDispositioned', section: 'infantFormulaAssessment' },
     },
     // Was `manual` until 2026-08-29 — CostingInputs had no status field and its
     // numbers are pre-filled with non-blank defaults at project creation, so
@@ -1555,6 +1611,20 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
           { kind: 'registerHasRows', register: 'packagingSpecsArtwork' },
         ],
       },
+    },
+    {
+      // Infant & Baby Safety pathway (Round 4 question 1, 2026-08-29). Compartment
+      // 3 at Gate 7 is "the FINAL COMPONENT of a broader pathway spanning multiple
+      // gates — not the entire pathway by itself"; this is that pathway's Gate 6
+      // component. Conditional on the same `infantContact` trigger as the Gate 7
+      // compartment, so it appears only for a product with infant use — and blocks
+      // when it does, which is the point of capturing it this early.
+      id: 'sg06-infant-packaging',
+      label: 'Infant & Baby Safety — packaging and instructions',
+      tier: 'Conditional',
+      trigger: 'infantContact',
+      source: 'f-series',
+      check: { kind: 'requirementSectionDispositioned', section: 'infantPackaging' },
     },
     {
       // Merged 2026-07-27 (user-requested) from sg06-compatibility +
@@ -1994,14 +2064,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // confirmed in their own words: "Gate 7 must hard-block if the Infant 0+
       // pathway is triggered and this assessment is incomplete."
       //
-      // ⚠️ But Compartment 3 is "the FINAL COMPONENT of a broader pathway spanning
-      // multiple gates — not the entire pathway by itself". Six other gates carry
-      // requirements that do not exist in the app at all: Gate 2 (10 items of
-      // intended infant-use context) · Gate 4 (8 ingredient-suitability items) ·
-      // Gate 5 (7 formula-level items) · Gate 6 (7 packaging and instruction items)
-      // · Gates 8–9 (testing triggered by use context and risk) · Gate 10 (6 PIF
-      // content items). Until those exist, an infant project is screened at Gate 7
-      // and nowhere earlier [R4-REWORK: câu 1].
+      // Compartment 3 is "the FINAL COMPONENT of a broader pathway spanning multiple
+      // gates — not the entire pathway by itself", and the other six components
+      // were built on 2026-08-29: `sg02-infant-context` · `sg04-infant-suitability`
+      // · `sg05-infant-formula` · `sg06-infant-packaging` · `sg08-infant-testing` ·
+      // `sg10-infant-pif`, each on the same `infantContact` trigger as this item.
+      // Until then an infant project was screened at Gate 7 and nowhere earlier.
+      //
+      // This item is deliberately the ONE that kept `requirementSectionComplete`:
+      // every INF-01..08 row is an obligation the answer states without a
+      // qualifier, so unlike the six new sections it has no N/A route.
       id: 'sg07-infant-safety',
       label: 'Infant / baby-contact safety compartment completed (INF-01 to INF-08)',
       tier: 'Conditional',
@@ -2067,6 +2139,20 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Testing plan',
       tier: 'Mandatory',
       check: { kind: 'gateCheckDone', gate: '08', check: 'Testing families selected and methods/protocols referenced' },
+    },
+    {
+      // Infant & Baby Safety pathway (Round 4 question 1, 2026-08-29). Compartment
+      // 3 at Gate 7 is "the FINAL COMPONENT of a broader pathway spanning multiple
+      // gates — not the entire pathway by itself"; this is that pathway's Gates 8-9
+      // component. Conditional on the same `infantContact` trigger as the Gate 7
+      // compartment, so it appears only for a product with infant use — and blocks
+      // when it does, which is the point of capturing it this early.
+      id: 'sg08-infant-testing',
+      label: 'Infant & Baby Safety — testing triggered by use context and risk',
+      tier: 'Conditional',
+      trigger: 'infantContact',
+      source: 'f-series',
+      check: { kind: 'requirementSectionDispositioned', section: 'infantTesting' },
     },
     {
       id: 'sg08-methods',
@@ -2394,6 +2480,20 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Ingredient and product safety evidence attached',
       tier: 'Mandatory',
       check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'Product Safety Summary' },
+    },
+    {
+      // Infant & Baby Safety pathway (Round 4 question 1, 2026-08-29). Compartment
+      // 3 at Gate 7 is "the FINAL COMPONENT of a broader pathway spanning multiple
+      // gates — not the entire pathway by itself"; this is that pathway's Gate 10
+      // component. Conditional on the same `infantContact` trigger as the Gate 7
+      // compartment, so it appears only for a product with infant use — and blocks
+      // when it does, which is the point of capturing it this early.
+      id: 'sg10-infant-pif',
+      label: 'Infant & Baby Safety — PIF content and infant claim evidence',
+      tier: 'Conditional',
+      trigger: 'infantContact',
+      source: 'f-series',
+      check: { kind: 'requirementSectionDispositioned', section: 'infantPif' },
     },
     {
       // Wired 2026-08-12. The catalogue had this "waiting on B7"; B7 landed on

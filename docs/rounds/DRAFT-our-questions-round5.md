@@ -10,7 +10,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-Thank you for the Round 4 answers. They were complete enough to start building immediately, and seventeen of the thirty-six are already finished. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
+Thank you for the Round 4 answers. They were complete enough to start building immediately, and nineteen of the thirty-six are already finished. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
 
 Every question here follows the same pattern as last time: we have made a choice so that work could continue, the choice is running in the software now, and we would rather you corrected it than have it settle in silently. Where a question is still unbuilt we say so.
 
@@ -357,9 +357,11 @@ Your answer to Round-4 question 21 gave the Phase 1 requirements table a third w
 
 The same situation exists on the Phase 2, 3 and 4 requirement tables. Those rows come from the workbook and are fixed, so a project can perfectly well have one that does not apply to it — the "compatibility / use-with constraints" row for a product with nothing to be used alongside, for example.
 
-We have deliberately **not** given those tables the N/A option yet, because the gate rules that read them accept nothing but *Completed*. Offering N/A there without changing those rules would let someone pick a status that can never satisfy the rule reading the row — the gate would simply stay blocked with nothing on screen explaining why.
+Since building your question-1 answer, the six new Infant & Baby Safety sections use it too — several of their rows carry your own qualifiers ("where relevant", "where appropriate"), and the Gates 8–9 list is written as a menu ("trigger by use context and risk") rather than a set of obligations, so forcing all seven test families onto every infant product would invent a rule you deliberately did not write.
 
-**Question:** when a Phase 2–4 requirement row does not apply to a project, should it be closed as **N/A with a rationale** the same way Phase 1 now can, or should it be marked Completed with an explanation in the notes?
+The other Phase 2–4 tables still do **not** have the N/A option, because the gate rules that read them accept nothing but *Completed*. Offering N/A there without changing those rules would let someone pick a status that can never satisfy the rule reading the row — the gate would simply stay blocked with nothing on screen explaining why.
+
+**Question:** when a Phase 2–4 requirement row does not apply to a project, should it be closed as **N/A with a rationale** the same way Phase 1 and the infant sections now can, or should it be marked Completed with an explanation in the notes? And is that escape right for the infant sections themselves?
 
 ---
 

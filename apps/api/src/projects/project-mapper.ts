@@ -391,6 +391,9 @@ export function toProjectData(
       ...(p.scaleUpRiskRationale ? { scaleUpRiskRationale: p.scaleUpRiskRationale } : {}),
       ...(p.scaleUpRiskActivity ? { scaleUpRiskActivity: p.scaleUpRiskActivity } : {}),
       ...(p.scaleUpRiskEvidenceLink ? { scaleUpRiskEvidenceLink: p.scaleUpRiskEvidenceLink } : {}),
+      ...(p.familyUseAgeGroups ? { familyUseAgeGroups: p.familyUseAgeGroups } : {}),
+      ...(p.familyUseConfirmedBy ? { familyUseConfirmedBy: p.familyUseConfirmedBy } : {}),
+      ...(p.familyUseConfirmedDate ? { familyUseConfirmedDate: p.familyUseConfirmedDate } : {}),
     },
     costing: {
       batchSizeKg: p.costing?.batchSizeKg ?? 0,
