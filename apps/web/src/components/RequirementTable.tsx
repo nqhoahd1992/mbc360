@@ -1,10 +1,13 @@
 import { Card, Input, Select, Table, Tag, Tooltip } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
-import type { RequirementItem, WorkStatus } from '@mbc360/shared/types';
+import type { RequirementItem, RequirementStatus } from '@mbc360/shared/types';
 import type { ColumnsType } from 'antd/es/table';
 import type { RequirementColumnKey } from '@mbc360/shared/config/phases';
-import { NEXT_ACTION_PRIORITIES } from '@mbc360/shared/types';
-import { WORK_STATUSES } from '@mbc360/shared/config/gates';
+import {
+  REQUIREMENT_NOT_APPLICABLE,
+  REQUIREMENT_PRIORITIES,
+  WORK_STATUSES,
+} from '@mbc360/shared/config/gates';
 import { isMandatoryRequirementRow } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -19,6 +22,7 @@ export default function RequirementTable({
   currentGateNumber,
   isRowLocked,
   columns: visibleColumns,
+  allowNotApplicable,
 }: {
   projectId: string;
   sectionKey: string;
@@ -35,6 +39,10 @@ export default function RequirementTable({
   // table can drop the columns that mean nothing at the opportunity stage and
   // add `priority`, without forking this component.
   columns?: RequirementColumnKey[];
+  // Round 4 question 21: this section offers 'N/A' as a disposition, and a row
+  // set to it must give a rationale. Off everywhere except Phase 1's B6 table —
+  // see RequirementSectionConfig.allowNotApplicable for why.
+  allowNotApplicable?: boolean;
 }) {
   // 'category' is an ALTERNATIVE heading for the same data as 'requirement'
   // (Phase 1's B6 rows are categories, and the project's own requirement goes
@@ -49,6 +57,17 @@ export default function RequirementTable({
   const ownerEditable = !!visibleColumns;
   const setSection = useAppStore((s) => s.setRequirementSection);
   const { draft, dirty, update, markSaved, discard } = useDraft(items);
+
+  // Round 4 question 21: 'N/A' is offered only where the section declares it —
+  // the Phases 2-4 sections are read by checks that accept nothing but
+  // 'Completed', so quietly offering a fourth disposition there would let a user
+  // pick a status that can never satisfy the rule reading the row.
+  const statusOptions = [
+    ...WORK_STATUSES.map((s) => ({ value: s, label: s })),
+    ...(allowNotApplicable
+      ? [{ value: REQUIREMENT_NOT_APPLICABLE, label: `${REQUIREMENT_NOT_APPLICABLE} — rationale required` }]
+      : []),
+  ];
 
   const patch = (index: number, p: Partial<RequirementItem>) => update((prev) => patchArray(prev, index, p));
   const save = () => {
@@ -144,9 +163,12 @@ export default function RequirementTable({
               <Select
                 style={{ width: '100%' }}
                 allowClear
-                disabled={isRowLocked?.(r)}
+                // A row dispositioned N/A has no priority to give: it is not a
+                // requirement of this project at all.
+                disabled={isRowLocked?.(r) || r.status === REQUIREMENT_NOT_APPLICABLE}
+                placeholder="Must / Should / Could"
                 value={r.priority || undefined}
-                options={NEXT_ACTION_PRIORITIES.map((o) => ({ value: o, label: o }))}
+                options={REQUIREMENT_PRIORITIES.map((o) => ({ value: o, label: o }))}
                 onChange={(v?: string) => patch(i, { priority: v ?? '' })}
               />
             ),
@@ -169,16 +191,39 @@ export default function RequirementTable({
           {
             key: 'status',
             title: 'Status',
-            width: 140,
+            width: 160,
             render: (_, r, i) => (
               <Select
-                style={{ width: 130 }}
+                style={{ width: 150 }}
                 value={r.status}
                 disabled={isRowLocked?.(r)}
-                options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
-                onChange={(v: WorkStatus) => patch(i, { status: v })}
+                options={statusOptions}
+                // Switching AWAY from N/A drops the rationale in the same edit,
+                // so a stale reason cannot sit beside a Completed row (the API
+                // clears it too — this only keeps the screen honest before Save).
+                onChange={(v: RequirementStatus) =>
+                  patch(i, v === REQUIREMENT_NOT_APPLICABLE ? { status: v } : { status: v, naRationale: '' })
+                }
               />
             ),
+          },
+          {
+            key: 'naRationale',
+            title: 'N/A rationale',
+            width: 240,
+            render: (_, r, i) =>
+              r.status === REQUIREMENT_NOT_APPLICABLE ? (
+                <Input.TextArea
+                  autoSize={{ minRows: 1, maxRows: 4 }}
+                  status={(r.naRationale ?? '').trim() === '' ? 'error' : undefined}
+                  placeholder="Why this does not apply to this project"
+                  value={r.naRationale}
+                  disabled={isRowLocked?.(r)}
+                  onChange={(e) => patch(i, { naRationale: e.target.value })}
+                />
+              ) : (
+                <span style={{ color: '#d9d9d9' }}>—</span>
+              ),
           },
           {
             key: 'evidenceLink',

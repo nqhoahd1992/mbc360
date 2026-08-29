@@ -1500,6 +1500,8 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q14 | "Safety **hoặc** Regulatory authority" — một trong hai đủ, hay cần cả hai | Nhóm 2 (câu 32c) | **build nhóm 2** |
 | R5-Q15 | Trang dữ liệu tham chiếu cấp công ty: ai *thấy* khác ai *sửa* | Nhóm 4a/4b | **build nhóm 4b** |
 | R5-Q16 | Gap High — "controlled action" là Next Action có kiểm soát?, due date ghi đâu | Nhóm 2 (câu 3) | **chủ dự án thử luồng gap** |
+| R5-Q22 | 'N/A kèm lý do' có áp cho bảng requirement của Phase 2-4 không | Độc lập (câu 21) | **build nhóm độc lập** |
+| R5-Q23 | Hoãn một requirement Should/Could: ai sở hữu, hạn khi nào, và có bắt buộc priority không | Độc lập (câu 21) | **build nhóm độc lập** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
 
@@ -1812,3 +1814,25 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `apps/api/prisma/schema.prisma` (`RegisterClosure`/`RegisterClosureSignOff`), `apps/api/src/projects/projects.service.ts` (`setRegisterRows` guard, `signRegisterClose`/`verifyRegisterCloseStepUp`/`withdrawRegisterClose`, đoạn mở lại trong `backtrack()`/`createFormulaVersion()`), `packages/shared/src/utils/gateProgress.ts` (`unclosedRegistersBlocking`, `gateRefHighestGateId`), `packages/shared/src/config/reviewers.ts` (`registerClosureSignerRole`), `apps/web/src/components/RegisterClosurePanel.tsx`.
 
 **Nếu trả lời khác:** `packages/shared/src/config/registers.ts` (`formulaChangeControl`, `artworkChangeControl`, `formulationChangeRegister`, `changeTemplates`) · `packages/shared/src/config/changeTriggers.ts` (`CHANGE_TRIGGERS`, hiện là bản chép tay của 2 sheet sách luật) · `apps/api/src/projects/projects.service.ts` (`createFormulaVersion`, đoạn "Formulation Change Register entry (A2)") · `apps/web/src/pages/ChangeControl.tsx`.
+
+#### R5-Q22 · "N/A kèm lý do" chỉ dành cho bảng requirement của Phase 1, hay cả Phase 2-4 🔴
+
+**Lộ ra khi build câu 21 (29/08/2026).** Câu 21 nằm dưới tiêu đề *"Phase 1 requirements table"* và câu trả lời cũng nói về bảng đó. Nhưng lý do đằng sau nó không có gì riêng của Phase 1: *"The system must not require users to mark an empty requirement as Completed."* Bảng requirement của Phase 2, 3 và 4 có tổng cộng hàng chục dòng cố định lấy từ workbook, và một dự án hoàn toàn có thể có dòng không áp dụng cho mình — đúng vấn đề đó.
+
+**Đã build:** `N/A` chỉ bật ở section khai `allowNotApplicable`, hiện chỉ có `projectRequirements` (Phase 1). Lý do chọn hẹp: 2 loại check đang đọc các bảng Phase 2-4 (`requirementDone`, `requirementSectionComplete`) đều chỉ chấp nhận `Completed`. Nếu lặng lẽ cho chọn `N/A` ở đó, người dùng sẽ chọn được một giá trị mà luật đọc dòng đó **không bao giờ** thoả — gate kẹt vĩnh viễn, không có gì trên màn hình nói tại sao. Mở rộng phải đi kèm việc sửa hai check đó, tức là đổi luật của những câu khác.
+
+**Câu hỏi:** một dòng requirement ở Phase 2-4 (ví dụ "Compatibility / use-with constraints" ở Phase 2, hay một dòng của `stabilityRelease` ở Phase 3) không áp dụng cho dự án này thì ghi thế nào — cũng `N/A kèm lý do` như Phase 1, hay phải làm và ghi "không áp dụng" trong phần ghi chú?
+
+**Nếu trả lời "cũng N/A":** `packages/shared/src/config/phases.ts` (thêm `allowNotApplicable` cho các section Phase 2-4 và cột `naRationale` vào bộ cột mặc định) · `packages/shared/src/utils/gateProgress.ts` (`requirementDone` và `requirementSectionComplete` phải chấp nhận `N/A` có lý do).
+
+#### R5-Q23 · Hoãn một requirement Should/Could — ai sở hữu, hạn khi nào, và có bắt buộc priority không 🔴
+
+**Lộ ra khi build câu 21 (29/08/2026).** Câu trả lời viết: *"A Should or Could requirement may be deferred only through Proceed with Conditions, with an owner and due date."* Hai vế đầu đã build (`sg02-requirements-deferred`, `clearedByConditions`). Vế thứ ba thì không có chỗ ghi: dòng requirement có cột **Owner** nhưng **không có due date**, và Next Action — thứ duy nhất trong app có owner + due date + trạng thái đóng — không có gì nối tới dòng requirement nào cả.
+
+**(a) "With an owner and due date" nghĩa là gì:** (i) dòng requirement đó cần thêm một cột due date, hay (ii) việc hoãn phải sinh ra một **Next Action có kiểm soát** trỏ về dòng đó — đúng cách câu 33(c) yêu cầu cho hành động an toàn ("Required action" từ free text thành controlled Next Action)? Nếu là (ii) thì Proceed with Conditions ở Gate 2 nên bị chặn khi còn dòng Should/Could hoãn mà chưa có Next Action tương ứng.
+
+**(b) Một dòng requirement *áp dụng* có bắt buộc phải có priority Must/Should/Could không?** Chúng tôi đã build theo hướng **có** — `requirementsDispositioned` coi một dòng không N/A mà chưa có priority là chưa xong. Lý do: luật *"every Must requirement must be complete"* không kiểm được trên những dòng chưa ai xếp hạng, và câu 36(b) đọc đúng cột đó để biết dự án có "commercially dependent" hay không (dòng *Target cost or commercial boundary* là Must ⇒ item costing ở Gate 5 chuyển từ Supporting sang chặn-mềm). Nhưng câu trả lời chỉ nói priority nhận giá trị nào và mỗi giá trị ràng buộc gì, không nói *mọi dòng đều phải có*. `[ASSUMPTION: R5-Q23]`
+
+**(c) Trường hợp riêng của (b):** nếu dòng *Target cost or commercial boundary* chưa có priority thì hiện Gate 5 **bị chặn** (trigger `commercialRequirementIsMust` trả `notAssessed`, theo đúng luật tri-state của câu 7). Đó có phải điều mong muốn không, hay dự án không có ràng buộc thương mại nên được để trống?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` (nhánh `requirementsDispositioned` — bỏ điều kiện priority; nhánh `commercialRequirementIsMust`) · `packages/shared/src/config/gateReadiness.ts` (`sg02-requirements-deferred`, `sg05-costing-must`) · `packages/shared/src/types/index.ts` (`RequirementItem` — thêm due date nếu là phương án (i)).

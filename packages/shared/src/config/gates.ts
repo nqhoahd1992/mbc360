@@ -182,6 +182,34 @@ export const EIGHT_ANGLES = [
   'Real-world performance',
 ];
 
+// Requirement-row priority (Round 4 question 21, 2026-08-29). Deliberately NOT
+// NEXT_ACTION_PRIORITIES, which is what these rows reused until now: "Criticality
+// remains a risk concept, not a requirements-priority value." The two scales are
+// not two spellings of one idea, so there is no mapping between them — see the
+// migration note in 20260829060000_round4_requirement_priority_and_na.
+export const REQUIREMENT_PRIORITIES = ['Must', 'Should', 'Could'] as const;
+
+// The disposition a requirement row can carry where its section declares
+// `allowNotApplicable` (Round 4 question 21): "The system must not require users
+// to mark an empty requirement as Completed." A row set to it must also carry a
+// rationale — enforced in `requirementsDispositioned`, not by the type.
+export const REQUIREMENT_NOT_APPLICABLE = 'N/A';
+
+// Costing / Commercial Feasibility Status (Round 4 question 36(b), 2026-08-29).
+// Transcribed verbatim from the answer, including the trailing clause on the last
+// value — it is what makes the rationale requirement readable on screen without a
+// tooltip, and `costingStatusRecorded` enforces it.
+export const COSTING_FEASIBILITY_STATUSES = [
+  'Not Started',
+  'In Progress',
+  'Commercially Feasible',
+  'Feasible with Conditions',
+  'Not Feasible',
+  'N/A — rationale required',
+] as const;
+
+export const COSTING_STATUS_NOT_APPLICABLE = 'N/A — rationale required';
+
 // Generic work-item status (Requirement / Evidence / Change / CAPA rows)
 export const WORK_STATUSES = [
   'Not Started',

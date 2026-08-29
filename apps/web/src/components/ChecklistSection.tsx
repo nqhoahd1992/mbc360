@@ -1,4 +1,4 @@
-import { Card, Checkbox, Input, Select, Table, Tag, Tooltip } from 'antd';
+import { Alert, Card, Checkbox, Input, Radio, Select, Table, Tag, Tooltip } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import type { ChecklistItem, YNNA } from '@mbc360/shared/types';
 import { isMandatoryChecklistSection } from '@mbc360/shared/utils/gateProgress';
@@ -24,6 +24,7 @@ export default function ChecklistSection({
   // dependency guard as a Supplier & RM Evidence row the Formula BOM still
   // references. Ticking something ON is never restricted.
   untickBlockedReason,
+  requiresPrimary,
 }: {
   projectId: string;
   sectionKey: string;
@@ -36,6 +37,10 @@ export default function ChecklistSection({
   // passed — inputs disabled, no Save; edit requires Backtrack.
   readOnly?: boolean;
   untickBlockedReason?: (label: string) => string | undefined;
+  // Round 4 question 22(b), 2026-08-29: "A project may have more than one
+  // development/change type. Require one to be identified as the Primary project
+  // type, with others recorded as secondary." Only `projectNature` sets it.
+  requiresPrimary?: boolean;
 }) {
   const setSection = useAppStore((s) => s.setChecklistSection);
   const { draft, dirty, update, markSaved, discard } = useDraft(items);
@@ -45,6 +50,13 @@ export default function ChecklistSection({
   const isCurrentGate = gate === currentGateNumber;
 
   const patch = (index: number, p: Partial<ChecklistItem>) => update((prev) => patchArray(prev, index, p));
+  // Primary is single-valued, so picking one has to clear the others: it is a
+  // radio spread across rows, not a per-row checkbox, and letting two rows hold
+  // it would leave `checklistPrimarySelected` permanently unsatisfiable with no
+  // visible reason why.
+  const setPrimary = (index: number) =>
+    update((prev) => prev.map((item, i) => ({ ...item, isPrimary: i === index })));
+  const primaryMissing = requiresPrimary && draft.some((i) => i.selected) && !draft.some((i) => i.selected && i.isPrimary);
   const save = () => {
     setSection(projectId, sectionKey, draft);
     markSaved();
@@ -71,6 +83,15 @@ export default function ChecklistSection({
       }
       extra={<span style={{ color: TEXT.secondary }}>{selectedCount} selected</span>}
     >
+      {primaryMissing && !readOnly && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 8 }}
+          message="Mark one of the selected options as Primary"
+          description="Where several apply, one must lead and the rest are recorded as secondary. Gate 01 cannot pass until one is marked."
+        />
+      )}
       <Table
         size="small"
         rowKey={(r) => r.label}
@@ -108,6 +129,26 @@ export default function ChecklistSection({
               <span style={{ fontWeight: r.selected ? 600 : 400 }}>{r.label}</span>
             ),
           },
+          ...(requiresPrimary
+            ? [
+                {
+                  title: 'Primary',
+                  width: 90,
+                  render: (_: unknown, r: ChecklistItem, i: number) =>
+                    r.selected ? (
+                      <Radio
+                        checked={!!r.isPrimary}
+                        disabled={readOnly}
+                        onChange={() => setPrimary(i)}
+                      >
+                        {r.isPrimary ? 'Primary' : 'Set'}
+                      </Radio>
+                    ) : (
+                      <span style={{ color: '#d9d9d9' }}>—</span>
+                    ),
+                },
+              ]
+            : []),
           { title: 'Owner / function', width: 190, dataIndex: 'ownerFunction' },
           {
             title: 'Status',

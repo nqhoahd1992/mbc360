@@ -7,6 +7,11 @@ export interface ChecklistSectionConfig {
   gate: string;
   ownerFunction: string;
   options: string[];
+  // Round 4 question 22(b), 2026-08-29: where several options may apply, one
+  // must be identified as the PRIMARY one and the rest recorded as secondary.
+  // Only `projectNature` declares it today; see the comment there for why this
+  // is opt-in rather than a property every checklist section has.
+  requiresPrimary?: boolean;
 }
 
 export interface RequirementRowConfig {
@@ -21,6 +26,10 @@ export interface RequirementSectionConfig {
   key: string;
   title: string;
   rows: RequirementRowConfig[];
+  // Round 4 question 21 (2026-08-29): 'N/A' becomes a selectable status, and a
+  // row set to it must carry a rationale. Opt-in per section — see the comment
+  // on `projectRequirements` for why this is not switched on everywhere.
+  allowNotApplicable?: boolean;
   // Which columns this section shows. Omitted = the Phases 2-4 default. Added
   // 2026-08-09 so Phase 1's B6 table can drop the three columns that have no
   // meaning at the opportunity stage and add `priority`, without forking
@@ -41,6 +50,9 @@ export type RequirementColumnKey =
   | 'priority'
   | 'owner'
   | 'status'
+  // Shown only where `allowNotApplicable` is set; holds the reason a row was
+  // dispositioned N/A (Round 4 question 21).
+  | 'naRationale'
   | 'evidenceLink'
   | 'notes';
 
@@ -140,8 +152,8 @@ export const PHASE_1: PhaseConfig = {
     // Which two per table was our choice, not the SME's — no new function name
     // was invented, but the split was a judgement.
     //
-    // ⚠️ Round 4 question 22(c) (2026-08-24) supplies the real values, and BOTH
-    // differ from what is set below [R4-REWORK: câu 22(c)]:
+    // Round 4 question 22(c) (2026-08-24) supplied the real values, and BOTH
+    // differed from the two we had picked. Set below as answered (2026-08-29):
     //   Request Origin / Source  → "Requesting Function / Project Owner"
     //     — explicitly preferable to naming Sales, because "a request may
     //       originate from Regulatory, Quality, Manufacturing, Management or
@@ -152,9 +164,7 @@ export const PHASE_1: PhaseConfig = {
       key: 'requestOrigin',
       title: 'Request Origin / Source',
       gate: '01',
-      // Sales, because most of B1's options arrive through it — a Sales,
-      // Customer or Distributor request.
-      ownerFunction: 'Project owner / Sales',
+      ownerFunction: 'Requesting Function / Project Owner',
       options: [...REQUEST_ORIGIN_OPTIONS],
     },
     {
@@ -173,10 +183,18 @@ export const PHASE_1: PhaseConfig = {
       key: 'projectNature',
       title: 'Development / Change Type',
       gate: '01',
-      // NPD, because new development vs reformulation vs claim change is a
-      // development-scope judgement, not a commercial one.
-      ownerFunction: 'Project owner / NPD',
+      ownerFunction: 'NPD / Project Owner',
       options: [...PROJECT_NATURE_OPTIONS],
+      // Question 22(b): "A project may have more than one development/change
+      // type. Require one to be identified as the Primary project type, with
+      // others recorded as secondary." The multi-select this table already
+      // allows IS the answer's premise; what it could not express is which of
+      // several ticks leads. `requiresPrimary` turns on the Primary column and
+      // the `checklistPrimarySelected` readiness check — it is deliberately a
+      // per-section flag rather than a property of every checklist, because no
+      // other option list in the workbook asks for one (Target Users, Target
+      // Markets and Claim Areas are all genuinely unranked).
+      requiresPrimary: true,
     },
     {
       key: 'targetArea',
@@ -193,13 +211,23 @@ export const PHASE_1: PhaseConfig = {
       title: 'Product Type',
       gate: '02',
       ownerFunction: 'Marketing / NPD',
+      // The last option before 'Other - specify' is NOT a workbook value:
+      // Round 4 question 23(a) (2026-08-24) adds it, because "Gate 2 requires at
+      // least one product type or form status" while "the exact final form may
+      // legitimately remain open". Without it the one failing case we could
+      // construct ourselves — an early brief reading "infant barrier product —
+      // cream or balm to be determined" — could not pass Gate 2 at all, since
+      // `sg02-product-type` is Mandatory. Added 2026-08-29; every other option
+      // here is transcribed from the workbook.
       options: [
         'Cream', 'Lotion', 'Balm', 'Serum', 'Oil', 'Body oil', 'Hair oil', 'Wash',
         'Body wash', 'Shower gel', 'Shampoo', '2-in-1 wash', 'Spray', 'Mist',
         'Feminine wash', 'Perineal product', 'Nipple product', 'Toothpaste', 'Gel',
         'Ointment', 'Cleanser', 'Moisturiser', 'Barrier product',
         'Scar / blemish product', 'Insect bite / itch product',
-        'Raw material / extract', 'Other - specify',
+        'Raw material / extract',
+        'Product form under evaluation — to be confirmed by Gate 5',
+        'Other - specify',
       ],
     },
     {
@@ -209,7 +237,13 @@ export const PHASE_1: PhaseConfig = {
       ownerFunction: 'Marketing / Regulatory',
       options: [
         'General adult', 'Pregnancy', 'Breastfeeding', 'Postpartum', 'Infant 0+',
-        'Child 2+', 'Child 3+', 'Sensitive skin', 'Dry / eczema-prone skin',
+        'Child 2+', 'Child 3+', 'Sensitive skin',
+        // Round 4 question 25(b), built 2026-08-29: the workbook's single
+        // 'Dry / eczema-prone skin' option is SPLIT here, because the two halves
+        // get opposite answers — "dry skin alone should not automatically be a
+        // vulnerable-user group. Eczema-prone or compromised skin should." This
+        // is the one place a workbook option list is deliberately not verbatim.
+        'Dry skin', 'Eczema-prone or compromised skin',
         'Oily skin', 'Intimate area', 'Swimmers', 'Cancer patient support',
         'Kidney disease support', 'Family use',
         'Professional / HCP recommendation', 'Other - specify',
@@ -275,18 +309,25 @@ export const PHASE_1: PhaseConfig = {
       // notes". `status` is ours — it is how a row is closed and what the Gate
       // 02 check reads.
       //
-      // ⚠️ Round 4 question 21 (2026-08-24) changes what goes IN two of these
-      // columns [R4-REWORK: câu 21]:
-      //   priority → **Must / Should / Could**, not the NextAction scale reused
-      //     here. "Criticality remains a risk concept, not a requirements-priority
-      //     value." Every Must must be complete before Gate 2; a Should or Could
-      //     may be deferred only through Proceed with Conditions, with an owner
-      //     and due date.
+      // Round 4 question 21 (2026-08-24) changed what goes IN two of these
+      // columns; built 2026-08-29:
+      //   priority → **Must / Should / Could** (REQUIREMENT_PRIORITIES), not the
+      //     NextAction Low/Medium/High/Critical scale this reused. "Criticality
+      //     remains a risk concept, not a requirements-priority value." Every
+      //     Must must be complete before Gate 2; a Should or Could may be
+      //     deferred only through Proceed with Conditions.
       //   status   → gains **N/A with rationale** as a valid disposition, which is
       //     the gap we reported ourselves: "The system must not require users to
-      //     mark an empty requirement as Completed." Every applicable row must be
-      //     completed or formally deferred; every non-applicable one marked N/A.
-      columns: ['category', 'detail', 'priority', 'owner', 'notes', 'status'],
+      //     mark an empty requirement as Completed." That is `allowNotApplicable`
+      //     below, plus the `naRationale` column beside it.
+      columns: ['category', 'detail', 'priority', 'owner', 'notes', 'status', 'naRationale'],
+      // Scoped to this section on purpose. Question 21 is about the Phase 1
+      // requirements table; the Phases 2-4 sections are fixed engineering rows
+      // whose `requirementDone` / `requirementSectionComplete` checks all read
+      // status === 'Completed', so quietly admitting a fourth disposition there
+      // would change rules nobody asked about. Whether Phases 2-4 want the same
+      // escape is a question we have not put to them [ASSUMPTION: R5-Q22].
+      allowNotApplicable: true,
       rows: [
       { gate: '02', requirement: 'Must-have product requirements', minimum: '', rationale: '', owner: '' },
       { gate: '02', requirement: 'Must-not-have ingredients or features', minimum: '', rationale: '', owner: '' },

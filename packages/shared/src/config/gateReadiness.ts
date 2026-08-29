@@ -83,7 +83,15 @@ export type ReadinessTrigger =
   // `ProjectData.reference.rmRisk` against the materials this project uses. Before
   // this, `sg04-allergen` was Conditional with no trigger at all: it could never
   // hard-block whatever the formula contained.
-  | 'rmRiskFlagged';
+  | 'rmRiskFlagged'
+  // Round 4 question 36(b), Gate 5. The costing item "remains a Supporting Gate 5
+  // item unless the project is specifically designated as commercially dependent
+  // on a defined cost or margin. Where that commercial requirement is a Must,
+  // failure should result in Hold or Proceed with Conditions rather than being
+  // ignored." Question 21 supplies the designation without inventing a field: the
+  // Phase 1 requirement row "Target cost or commercial boundary" carries a
+  // Must / Should / Could priority, and Must is what the answer names.
+  | 'commercialRequirementIsMust';
 
 // Round 4 question 7 (2026-08-24), option (b): "A missing assessment must never be
 // treated as meaning the condition does not apply." A trigger therefore has THREE
@@ -233,7 +241,7 @@ export type ReadinessCheck =
   // Before adding a field here, ask the question that killed the last one: can
   // this field ever actually be empty on a real project? If not, the check is
   // decoration, not enforcement.
-  | { kind: 'identityFieldFilled'; field: 'initialScope' | 'initialTargetUsers' | 'initialTargetMarkets' }
+  | { kind: 'identityFieldFilled'; field: 'initialScope' | 'initialTargetUsers' }
   // A `FormulaProperties` field is non-empty. Same non-vacuity test as
   // `identityFieldFilled`: these fields start empty and only a person fills them.
   | { kind: 'formulaPropertyFilled'; field: 'microSusceptibility' | 'microRationale' }
@@ -302,6 +310,26 @@ export type ReadinessCheck =
   // Rule E2: the built-in ASEAN PIF checklist is complete. Conditional on an
   // ASEAN market being selected.
   | { kind: 'aseanChecklistComplete' }
+  // Round 4 question 22(b): on a checklist section declaring `requiresPrimary`,
+  // exactly one SELECTED option is marked Primary. Never vacuous — with nothing
+  // selected there is no primary either, so it blocks.
+  | { kind: 'checklistPrimarySelected'; section: string }
+  // Round 4 question 21, the hard half of the Gate 2 requirements rule: every row
+  // reviewed (no 'Not Started'), every applicable row carrying a Must/Should/Could
+  // priority, every 'N/A' row carrying a rationale, and every **Must** row
+  // Completed. Deliberately separate from `requirementsNoOpenDeferrals` below,
+  // which is the half Proceed with Conditions may clear.
+  | { kind: 'requirementsDispositioned'; section: string }
+  // Round 4 question 21, the deferrable half: no Should or Could row is still
+  // open. Paired with `clearedByConditions`, because that is exactly the answer's
+  // escape — "may be deferred only through Proceed with Conditions".
+  | { kind: 'requirementsNoOpenDeferrals'; section: string }
+  // Round 4 question 24: the Countries / Markets parameter, which stopped being
+  // mandatory at project creation, is recorded before Gate 1 passes.
+  | { kind: 'identityMarketsRecorded' }
+  // Round 4 question 36(b): the Costing / Commercial Feasibility Status is set to
+  // something other than 'Not Started', with a rationale where it is N/A.
+  | { kind: 'costingStatusRecorded' }
   | { kind: 'allOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
@@ -513,6 +541,11 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
           { kind: 'gateCheckDone', gate: '01', check: 'Initial product scope defined' },
           { kind: 'identityFieldFilled', field: 'initialScope' },
           { kind: 'checklistHasSelection', section: 'projectNature' },
+          // Round 4 question 22(b), 2026-08-29: several development/change types
+          // may apply, but one must lead. Kept inside this item rather than made
+          // a row of its own — it is the same statement of scope, and a second
+          // red line saying "now say which one" reads as a separate obligation.
+          { kind: 'checklistPrimarySelected', section: 'projectNature' },
         ],
       },
     },
@@ -529,14 +562,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // would make this half vacuous (the form guarantees a value), so it stays
       // as it was until the SME answered.
       //
-      // ⚠️ Round 4 question 24 (2026-08-24) resolves both halves at once, and the
-      // vacuity objection with them: "Use the existing Countries / Markets
-      // parameter as the single source of truth. Remove the separate free-text
-      // Initial target market field. The Countries / Markets parameter is not
-      // mandatory to create the initial project shell, but becomes mandatory
-      // before Gate 1 passes." So this check reads `identity.markets` and is NOT
-      // vacuous, because creation stops guaranteeing it. `initialTargetUsers`
-      // stays as-is — it duplicates nothing [R4-REWORK: câu 24].
+      // Round 4 question 24 (2026-08-24, built 2026-08-29) resolved both halves at
+      // once, and the vacuity objection with them: "Use the existing Countries /
+      // Markets parameter as the single source of truth. Remove the separate
+      // free-text Initial target market field. The Countries / Markets parameter
+      // is not mandatory to create the initial project shell, but becomes
+      // mandatory before Gate 1 passes." So the market half reads
+      // `identity.markets` and is NOT vacuous — creation stopped guaranteeing it
+      // on the same day. `initialTargetUsers` stays as it was: it duplicates
+      // nothing, so B3's preliminary-capture reasoning still holds for it.
       id: 'sg01-market-user',
       label: 'Initial target market and user',
       tier: 'Mandatory',
@@ -544,7 +578,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'allOf',
         checks: [
           { kind: 'identityFieldFilled', field: 'initialTargetUsers' },
-          { kind: 'identityFieldFilled', field: 'initialTargetMarkets' },
+          { kind: 'identityMarketsRecorded' },
         ],
       },
     },
@@ -712,23 +746,51 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // justification) is a known limitation, not something to work around by
       // requiring less than the SME asked.
       //
-      // ⚠️ Round 4 question 21(b) (2026-08-24) closes the gap rather than the
-      // question: **"N/A with rationale" becomes a valid disposition** on a
-      // requirement row — "The system must not require users to mark an empty
-      // requirement as Completed", the exact objection raised here. Once it
-      // exists, the Gate 2 rule is no longer "one row": every row must be
-      // reviewed, every applicable row completed or formally deferred, every
-      // non-applicable one marked N/A with rationale, and **every Must
-      // requirement complete**, with Should/Could deferrable only under Proceed
-      // with Conditions [R4-REWORK: câu 21(b)].
+      // Round 4 question 21(b) (2026-08-24) closed the gap rather than the
+      // question, and it is built (2026-08-29): **'N/A with rationale' is now a
+      // valid disposition** on a requirement row — "The system must not require
+      // users to mark an empty requirement as Completed", the exact objection
+      // raised above. With that escape in place the Gate 2 rule is no longer one
+      // row, so this item now carries the answer's own four conditions, and the
+      // fifth ("a Should or Could requirement may be deferred only through
+      // Proceed with Conditions") is the separate item immediately below.
+      //
+      // The 'Must-have product requirements' leg stays, unchanged and strict:
+      // "The Must-have product requirements row is always mandatory", so N/A does
+      // not satisfy that one whatever its priority says.
       id: 'sg02-requirements',
       label: 'Project requirements and exclusions',
       tier: 'Mandatory',
       check: {
-        kind: 'requirementDone',
-        section: 'projectRequirements',
-        requirement: 'Must-have product requirements',
+        kind: 'allOf',
+        checks: [
+          {
+            kind: 'requirementDone',
+            section: 'projectRequirements',
+            requirement: 'Must-have product requirements',
+          },
+          { kind: 'requirementsDispositioned', section: 'projectRequirements' },
+        ],
       },
+    },
+    {
+      // Question 21's fifth condition, kept as its own row precisely because it
+      // behaves differently from the four above: a Should or Could requirement
+      // that is not finished does not stop the gate outright — it may be
+      // "deferred only through Proceed with Conditions". `clearedByConditions`
+      // is the existing mechanism for exactly that (D4's conditional-acceptance
+      // route), so this needs no new machinery in gateProgress.
+      //
+      // What the answer also asks for and this does NOT capture is the deferral's
+      // own owner and due date. A requirement row has an Owner column but no due
+      // date, and whether a deferral is supposed to become a controlled Next
+      // Action (as question 33(c) requires for a safety action) or just a note on
+      // the row is not stated [ASSUMPTION: R5-Q23].
+      id: 'sg02-requirements-deferred',
+      label: 'Should / Could requirements completed, or deferred under Proceed with Conditions',
+      tier: 'Mandatory',
+      clearedByConditions: true,
+      check: { kind: 'requirementsNoOpenDeferrals', section: 'projectRequirements' },
     },
     // --- End of the 6 F1-named Gate 2 items (order matches the appendix
     // exactly, 2026-07-26, user-requested) — everything below is NOT one of
@@ -748,12 +810,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // 23(a): "Gate 2 requires at least one product type or form status", so this
       // requirement was right.
       //
-      // ⚠️ With one addition: "the exact final form may legitimately remain open",
-      // so `productType` gains the option **"Product form under evaluation — to be
-      // confirmed by Gate 5"**. Without it a legitimate early brief ("infant
-      // barrier product — cream or balm to be determined") cannot pass Gate 2 at
-      // all, which is the one failing case we could construct ourselves when we
-      // asked [R4-REWORK: câu 23(a)].
+      // With one addition, built 2026-08-29: "the exact final form may legitimately
+      // remain open", so `productType` gained the option **"Product form under
+      // evaluation — to be confirmed by Gate 5"**. Without it a legitimate early
+      // brief ("infant barrier product — cream or balm to be determined") could
+      // not pass Gate 2 at all, which is the one failing case we could construct
+      // ourselves when we asked. This check is unchanged — the option list it
+      // reads is what gained the escape.
       check: { kind: 'checklistHasSelection', section: 'productType' },
     },
     {
@@ -1312,11 +1375,38 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Mandatory',
       check: { kind: 'requirementDone', section: 'efficacyProcess', requirement: 'Mechanism-to-formula route' },
     },
-    // sg05-costing: still `manual` — CostingInputs has no status field and is
-    // always pre-filled with non-blank defaults from project creation, so
-    // there's no non-invented "has this been considered" signal. Supporting
-    // tier — never hard-blocks regardless.
-    { id: 'sg05-costing', label: 'Costing or commercial feasibility status', tier: 'Supporting', check: { kind: 'manual' } },
+    // Was `manual` until 2026-08-29 — CostingInputs had no status field and its
+    // numbers are pre-filled with non-blank defaults at project creation, so
+    // there was no non-invented "has this been considered" signal to read.
+    // Round 4 question 36(b) supplied one: a Costing / Commercial Feasibility
+    // Status with six values, plus assessor, review date, assumptions and an
+    // evidence link. Supporting tier, exactly as the answer says — it warns.
+    {
+      id: 'sg05-costing',
+      label: 'Costing or commercial feasibility status',
+      tier: 'Supporting',
+      check: { kind: 'costingStatusRecorded' },
+    },
+    {
+      // The other half of 36(b): the item "remains a Supporting Gate 5 item
+      // unless the project is specifically designated as commercially dependent
+      // on a defined cost or margin. Where that commercial requirement is a Must,
+      // failure should result in Hold or Proceed with Conditions rather than
+      // being ignored."
+      //
+      // The designation needed no new field: question 21 gives the Phase 1
+      // requirement row "Target cost or commercial boundary" a Must / Should /
+      // Could priority, and Must is the word the answer itself uses. So this is
+      // the same check as above, escalated by that trigger and cleared by
+      // Proceed with Conditions — which is what "Hold or Proceed with
+      // Conditions rather than being ignored" describes.
+      id: 'sg05-costing-must',
+      label: 'Costing status recorded — this project is commercially dependent',
+      tier: 'Conditional',
+      trigger: 'commercialRequirementIsMust',
+      clearedByConditions: true,
+      check: { kind: 'costingStatusRecorded' },
+    },
     {
       // Not an F1-named item — same generalizable rule as prior gates' extra
       // rows (sg01-constraints, sg02-commercial, sg03-decision).

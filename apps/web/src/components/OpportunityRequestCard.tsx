@@ -35,7 +35,9 @@ const OPPORTUNITY_FIELDS = [
   'requesterDepartment',
   'initialScope',
   'initialTargetUsers',
-  'initialTargetMarkets',
+  // No 'initialTargetMarkets': Round 4 question 24 (built 2026-08-29) removed it
+  // as a duplicate of the Countries / Markets parameter, which is now the single
+  // source of truth and is required before Gate 1 passes rather than at creation.
 ] as const;
 
 type OpportunityPatch = Partial<Pick<ProjectIdentity, (typeof OPPORTUNITY_FIELDS)[number]>>;
@@ -101,9 +103,6 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
         </Descriptions.Item>
         <Descriptions.Item label="Initial target user / life-stage">
           {text('initialTargetUsers', 'e.g. general adult, pregnancy')}
-        </Descriptions.Item>
-        <Descriptions.Item label="Initial target market(s)">
-          {text('initialTargetMarkets', 'e.g. Vietnam, Malaysia')}
         </Descriptions.Item>
 
         <Descriptions.Item label="Initial product scope" span={3}>

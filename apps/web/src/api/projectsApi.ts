@@ -362,6 +362,10 @@ export const setCosting = (id: string, patch: Partial<CostingInputs>, v: number)
 export const setIdentity = (id: string, patch: Partial<ProjectData['identity']>, v: number) =>
   put(id, 'identity', { patch }, v);
 
+// Countries / Markets (Round 4 question 24). Not part of `setIdentity`: it adds
+// and removes MarketTrack rows, so it is its own endpoint.
+export const setMarkets = (id: string, markets: string[], v: number) => put(id, 'markets', { markets }, v);
+
 export const setNextActions = (
   id: string,
   gateIds: string[],

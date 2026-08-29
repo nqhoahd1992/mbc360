@@ -77,11 +77,11 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | 18 | 3 | ⬜ chưa làm | Chữ ký Gate 10/11 per market; Phase 4 per market |    
 | 19 | 5 | ⬜ chưa làm | 7 register tham chiếu Claim ID; mechanism từ Gate 3 |
 | 20 | — | ✅ resolved | Trường Gate 1 tuỳ chọn lúc tạo — xác nhận đúng như đã xây, không cần code |
-| 21 | độc lập | ⬜ chưa làm | Priority Must/Should/Could + N/A kèm lý do |
-| 22 | độc lập | ⬜ chưa làm | Primary project type + 2 giá trị Owner/function |
-| 23 | 6 + độc lập | ⬜ chưa làm | Option "Product form under evaluation" + 4 đường phủ safety matrix |
-| 24 | độc lập | ⬜ chưa làm | Bỏ `initialTargetMarkets`; Countries/Markets là nguồn duy nhất |
-| 25 | độc lập + 7 | ⬜ chưa làm | Tách Dry / eczema-prone; family use hỏi nhóm tuổi |
+| 21 | độc lập | ✅ resolved | Priority Must/Should/Could + N/A kèm lý do |
+| 22 | độc lập | ✅ resolved | Primary project type + 2 giá trị Owner/function |
+| 23 | 6 + độc lập | ⬜ chưa xong | Option "Product form under evaluation" ✅ — **còn 4 đường phủ safety matrix** (23b, thuộc nhóm 6) |
+| 24 | độc lập | ✅ resolved | Bỏ `initialTargetMarkets`; Countries/Markets là nguồn duy nhất |
+| 25 | độc lập + 7 | ⬜ chưa xong | Tách Dry / eczema-prone ✅ (a)(b)(d) — **còn family use hỏi nhóm tuổi** (25c, thuộc nhóm 7) |
 | 26 | 5 | ⬜ chưa làm | Revision claim đã duyệt thành read-only |
 | 27 | 5 | ⬜ chưa làm | 11 cờ chủ đề claim có cấu trúc |
 | 28 | 4d | ⬜ chưa làm | Claims Library cấp công ty |
@@ -92,7 +92,7 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | 33 | 2 | ✅ resolved | 4 severity · 6 status · controlled action · chặn theo bậc |
 | 34 | 2 | ✅ resolved | Critical là mức riêng · final disposition 8 trường |
 | 35 | 8 | ⬜ chưa làm | Hai bộ giá trị riêng · "Other — specify" chặn Gate 10 |
-| 36 | 5 + độc lập | ⬜ chưa làm | Cosmetic kích hoạt product-level evidence · trạng thái costing |
+| 36 | 5 + độc lập | ⬜ chưa xong | Trạng thái costing ✅ (36b, kèm điều kiện "commercially dependent") — **còn cosmetic kích hoạt product-level evidence** (36a, thuộc nhóm 5) |
 
 **Câu 20 đã ✅ ngay từ đầu** vì đáp án là *"Current approach is correct"* — không có dòng code nào phải đổi. Nó cũng là ca thử tự nhiên cho S5: nếu ai đó lỡ gắn một marker `R4-REWORK: câu 20`, build sẽ đỏ ngay.
 
@@ -304,17 +304,25 @@ Tất cả xoay quanh **ngày launch thương mại thực tế theo từng th�
 
 ---
 
-## Độc lập — không phụ thuộc gì, làm song song bất cứ lúc nào
+## Độc lập — ✅ **xong 29/08/2026**, một migration duy nhất
 
-| Câu | Việc | Ghi chú |
+| Câu | Việc | Trạng thái |
 |---|---|---|
-| **20** | **Không có việc gì.** *"Current approach is correct"* — đúng như đã xây | Lập luận "field bắt buộc lúc tạo ⇒ check thành trang trí" được xác nhận |
-| **21** | Priority → **Must / Should / Could**; thêm **N/A kèm lý do** cho requirement row; Must phải xong, Should/Could hoãn qua PwC | `RequirementItem.status` là `WorkStatus`, chưa có N/A — cần migration cho giá trị đã lưu |
-| **22(b)(c)** | Bắt buộc chỉ định **Primary**; đổi hai giá trị Owner/function thành **"Requesting Function / Project Owner"** và **"NPD / Project Owner"** | **Làm chung migration với câu 11** — cùng checklist `projectNature` |
-| **23(a)** | Thêm option Product Type **"Product form under evaluation — to be confirmed by Gate 5"** | Lối ra cho brief hợp lệ chưa chốt dạng bào chế |
-| **24** | Bỏ `initialTargetMarkets`; **Countries / Markets** là nguồn duy nhất, không bắt buộc lúc tạo, bắt buộc trước Gate 1 | Chính điều này giữ cho check Gate 1 không thành trang trí |
-| **25(a)(b)(d)** | **Tách** `Dry / eczema-prone skin` thành hai option; da khô đơn thuần không phải nhóm dễ tổn thương | 9 cặp ánh xạ và cách xử lý hai chiều đã được xác nhận |
-| **36(b)** | Thêm **Costing / Commercial Feasibility Status** (6 giá trị) + assessor · review date · assumptions · evidence link | Vẫn **Supporting** ở Gate 5 trừ khi dự án được chỉ định phụ thuộc thương mại — khi đó Hold hoặc PwC |
+| **20** | **Không có việc gì.** *"Current approach is correct"* — đúng như đã xây | ✅ từ đầu |
+| **21** | Priority → **Must / Should / Could**; thêm **N/A kèm lý do**; Must phải xong, Should/Could hoãn qua PwC | ✅ |
+| **22(b)(c)** | Bắt buộc chỉ định **Primary**; hai giá trị Owner/function mới | ✅ |
+| **23(a)** | Option Product Type **"Product form under evaluation — to be confirmed by Gate 5"** | ✅ (23b thuộc nhóm 6) |
+| **24** | Bỏ `initialTargetMarkets`; **Countries / Markets** là nguồn duy nhất | ✅ |
+| **25(a)(b)(d)** | **Tách** `Dry / eczema-prone skin` thành hai option | ✅ (25c thuộc nhóm 7) |
+| **36(b)** | **Costing / Commercial Feasibility Status** (6 giá trị) + assessor · review date · assumptions · evidence link | ✅ (36a thuộc nhóm 5) |
+
+**Ba điều đáng ghi lại, vì không cái nào đọc ra được từ đáp án:**
+
+1. **Câu 24 tự sinh ra một route mới.** Bỏ bắt buộc `markets` lúc tạo mà không làm gì thêm thì `markets` vẫn là write-once ở `POST /projects` — nghĩa là một dự án mở ra không có thị trường nào sẽ **không có cách nào ghi vào**, và item Gate 1 chuyển từ "trang trí" (luôn thoả) sang "không thể thoả", tệ hơn chỗ xuất phát. Nên có `PUT /projects/:id/markets` (khoá theo gate 01 như mọi bằng chứng Gate 1 khác), thêm thị trường thì tạo luôn `MarketTrack` như `project-scaffold`, và **bỏ** một thị trường đã ghi tiến độ thì bị chặn — cùng kiểu guard đã dùng cho dòng Supplier & RM Evidence mà BOM còn tham chiếu.
+2. **Câu 36(b) không cần trường mới cho "commercially dependent".** Đáp án tự nói chỗ ghi: *"where that commercial requirement is a **Must**"* — và câu 21 vừa đặt Must/Should/Could lên đúng dòng *Target cost or commercial boundary*. Nên trigger `commercialRequirementIsMust` đọc thẳng dòng đó, và item costing ở Gate 5 có hai bản: bản Supporting luôn hiện (cảnh báo), bản Conditional chặn-mềm khi dự án phụ thuộc thương mại (PwC gỡ được, đúng *"Hold or Proceed with Conditions rather than being ignored"*).
+3. **Không ánh xạ Low/Medium/High/Critical sang Must/Should/Could.** Lý do đáp án bác thang cũ là chúng khác *loại* phán đoán ("criticality remains a risk concept"), nên mọi ánh xạ là ta tự đặt ra một tương đương mà đáp án phủ nhận. Migration giữ nguyên giá trị cũ vào `notes` và **xoá** cột priority để người chọn lại. Trên dev không có dòng nào bị ảnh hưởng (194 dòng đều trống).
+
+**Hai câu R5 mới sinh ra từ đây:** `R5-Q22` (N/A có áp cho bảng requirement Phase 2-4 không) và `R5-Q23` (hoãn Should/Could thì ai sở hữu, hạn ở đâu, và một dòng áp dụng có buộc phải có priority không — chỗ này đang chạy trên giả định).
 
 ---
 

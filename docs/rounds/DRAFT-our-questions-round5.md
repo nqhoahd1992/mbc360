@@ -10,7 +10,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-Thank you for the Round 4 answers. They were complete enough to start building immediately, and ten of the thirty-six are already finished. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
+Thank you for the Round 4 answers. They were complete enough to start building immediately, and thirteen of the thirty-six are already finished. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
 
 Every question here follows the same pattern as last time: we have made a choice so that work could continue, the choice is running in the software now, and we would rather you corrected it than have it settle in silently. Where a question is still unbuilt we say so.
 
@@ -27,6 +27,7 @@ You can reply by number, for example "3 — option (b)".
 7. **Question 19** — the largest structural question in this list, and the one we have deliberately stopped work on until you answer it.
 8. **Question 20** — raised the same day as 17–18, nothing built yet either way.
 9. **Question 21** — already built, on the project owner's own instruction, before asking you. We would rather you corrected it now than have it settle in as though it were confirmed.
+10. **Questions 22–23** — from building your question-21 answer. Both are small, and 23(b) is a rule we are already running on our own reading.
 
 ---
 
@@ -349,6 +350,32 @@ Every register currently shows a "Review owner · Co-sign" caption, but it is on
 
 **Question:** does this closing mechanism match what you had in mind? If it needs to change, which of (a)–(e) is the one to fix first?
 
+## Question 22 — Can a Phase 2, 3 or 4 requirement row also be marked "not applicable"?
+
+Your answer to Round-4 question 21 gave the Phase 1 requirements table a third way to close a row: **N/A with a rationale**, because "the system must not require users to mark an empty requirement as Completed". That is now built.
+
+The same situation exists on the Phase 2, 3 and 4 requirement tables. Those rows come from the workbook and are fixed, so a project can perfectly well have one that does not apply to it — the "compatibility / use-with constraints" row for a product with nothing to be used alongside, for example.
+
+We have deliberately **not** given those tables the N/A option yet, because the gate rules that read them accept nothing but *Completed*. Offering N/A there without changing those rules would let someone pick a status that can never satisfy the rule reading the row — the gate would simply stay blocked with nothing on screen explaining why.
+
+**Question:** when a Phase 2–4 requirement row does not apply to a project, should it be closed as **N/A with a rationale** the same way Phase 1 now can, or should it be marked Completed with an explanation in the notes?
+
+---
+
+## Question 23 — Deferring a Should or Could requirement: who owns it, and when is it due?
+
+Your Round-4 answer to question 21 says a **Should** or **Could** requirement "may be deferred only through *Proceed with Conditions*, with an owner and due date". The first half is built: Gate 2 will not accept a plain *Proceed* while such a row is unfinished, and *Proceed with Conditions* clears it.
+
+The second half has nowhere to go. A requirement row has an **Owner** column but no due date, and the app's Next Actions — the only records that carry an owner, a due date and a closure — have no link to a requirement row.
+
+**(a)** Should a deferred requirement simply gain a due-date field on its own row, or should deferring it **create a controlled Next Action** pointing back at that row — the way your answer to question 33 requires for a safety action? If it is the second, we would also block *Proceed with Conditions* at Gate 2 while a deferred row has no such action against it.
+
+**(b)** **Must every applicable requirement row carry a Must / Should / Could priority?** We have built it that way — a row that is neither N/A nor prioritised counts as unfinished at Gate 2. Our reasoning: the rule "every Must requirement must be complete" cannot be checked over rows nobody has ranked. But your answer says which values the priority takes and what each obliges, not that every row must have one, so this is our reading rather than yours.
+
+**(c)** A consequence of (b) worth confirming separately. Your answer to question 36 says the costing status becomes blocking "where that commercial requirement is a **Must**" — so we read the priority on the *Target cost or commercial boundary* row to decide whether a project is commercially dependent. If nobody has prioritised that row, we currently treat it as **not yet assessed** and Gate 5 is blocked until someone answers, following your question-7 rule that a missing assessment must never be read as "does not apply". Is that right for this row, or should an unprioritised commercial boundary simply mean the project has no commercial constraint?
+
+---
+
 ## Summary
 
 | # | Topic | Why it matters |
@@ -366,5 +393,7 @@ Every register currently shows a "Review owner · Co-sign" caption, but it is on
 | 19 | **Nine places a change is written down — how many should there be** | **Work stopped until answered.** One measurable consequence: a major formula change never reaches the change-control side at all, so Gate 11 never weighs it |
 | 20 | Should Change Control auto-reopen a gate it affects that already passed | Not built yet — raised the same day as 17–18, no rework at stake either way |
 | 21 | **A two-signature "closing" act for every evidence register — is this the right shape** | **Already built, before asking you.** ~68 registers now require it; five open points on scope, signer count, and reopening |
+| 22 | Can a Phase 2–4 requirement row be marked "not applicable" too | Your question-21 answer gave Phase 1 that escape; the same case exists on the other three |
+| 23 | Deferring a Should/Could requirement — owner, due date, and whether every row needs a priority | 23(b) is running on our reading now; 23(c) currently blocks Gate 5 on an unprioritised cost row |
 
 Questions 4 to 6, 10 to 12, 14 and 16 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

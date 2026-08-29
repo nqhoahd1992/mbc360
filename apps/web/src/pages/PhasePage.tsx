@@ -212,7 +212,10 @@ export default function PhasePage() {
       </div>
 
       <div id="sec-identification">
-        <ProjectIdentificationCard project={project} />
+        {/* Countries / Markets is editable on Phase 1 only — it is Gate 1
+            evidence since Round 4 question 24 stopped requiring it at creation.
+            Everywhere else this card stays display-only. */}
+        <ProjectIdentificationCard project={project} editableMarkets={phase === 1} />
       </div>
 
       <div id="sec-gate-flow">
@@ -248,6 +251,7 @@ export default function PhasePage() {
             items={project.checklists[section.key] ?? []}
             currentGateNumber={currentGateNum}
             readOnly={isGateRefLocked(project, section.gate)}
+            requiresPrimary={section.requiresPrimary}
           />
         </div>
       ))}
@@ -262,6 +266,7 @@ export default function PhasePage() {
             currentGateNumber={currentGateNum}
             isRowLocked={(item) => isGateRefLocked(project, item.gate)}
             columns={section.columns}
+            allowNotApplicable={section.allowNotApplicable}
           />
         </div>
       ))}

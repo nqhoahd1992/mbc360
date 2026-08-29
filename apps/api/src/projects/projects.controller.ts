@@ -128,9 +128,13 @@ export class ProjectsController {
       if (!body[field]?.trim()) throw new BadRequestException(`${field} is required`);
     }
     if (!body.targetLaunchDate) throw new BadRequestException('targetLaunchDate is required');
-    if (!body.markets || body.markets.length === 0) {
-      throw new BadRequestException('markets is required');
-    }
+    // Countries / Markets is deliberately NOT required here since 2026-08-29.
+    // Round 4 question 24: "The Countries / Markets parameter is not mandatory to
+    // create the initial project shell, but becomes mandatory before Gate 1
+    // passes." Requiring it here is exactly what made the old `sg01-market-user`
+    // check decoration — a field the create form guarantees can never block a
+    // gate. `identityMarketsRecorded` is where it is enforced now.
+    
     return this.projects.create(
       user.id,
       {
@@ -512,6 +516,19 @@ export class ProjectsController {
     @Body() body: { patch: Partial<ProjectData['identity']>; expectedVersion: number },
   ): Promise<ProjectEnvelope> {
     return this.projects.setIdentity(user, id, body.patch ?? {}, body.expectedVersion);
+  }
+
+  // Round 4 question 24: Countries / Markets is no longer captured at creation,
+  // so it needs a write path of its own. Separate from :id/identity because it is
+  // not a scalar patch — it adds and removes MarketTrack rows.
+  @Put(':id/markets')
+  setMarkets(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { markets: string[]; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    if (!Array.isArray(body.markets)) throw new BadRequestException('markets must be an array');
+    return this.projects.setMarkets(user, id, body.markets, body.expectedVersion);
   }
 
   @Put(':id/next-actions')

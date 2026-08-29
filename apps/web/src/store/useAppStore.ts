@@ -165,6 +165,7 @@ interface AppState {
   setAssessments: (id: string, patch: ProjectData['assessments']) => void;
   // Gate 1 opportunity capture (B1/B2/B3) — only those 8 fields are writable.
   setIdentity: (id: string, patch: Partial<ProjectData['identity']>) => void;
+  setMarkets: (id: string, markets: string[]) => void;
   setPackagingBomBulk: (id: string, lines: PackagingBomLine[]) => void;
 
   // Integrations (decision A3): Power Apps hosts the "create new raw
@@ -495,6 +496,7 @@ export const useAppStore = create<AppState>()(
         setAssessments: (id, patch) =>
           writeSection(id, (v) => projectsApi.setAssessments(id, patch, v)),
         setIdentity: (id, patch) => writeSection(id, (v) => projectsApi.setIdentity(id, patch, v)),
+        setMarkets: (id, markets) => writeSection(id, (v) => projectsApi.setMarkets(id, markets, v)),
         setPackagingBomBulk: (id, lines) =>
           writeSection(id, (v) => projectsApi.setPackagingBom(id, lines, v)),
         setRegisterRowsBulk: (id, registerKey, rows) =>

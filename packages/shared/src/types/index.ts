@@ -1,5 +1,11 @@
 // Generic work-item status, used by Requirement / Evidence / Change / CAPA rows.
 export type WorkStatus = 'Not Started' | 'In Progress' | 'Completed' | 'On Hold' | 'Backtracked';
+// A requirement row may additionally be dispositioned 'N/A' where its section
+// declares `allowNotApplicable` (Round 4 question 21, 2026-08-29). Kept OUT of
+// `WorkStatus` itself: that type is shared with Evidence / Change / CAPA rows,
+// and widening it there would silently offer a disposition nobody asked for on
+// three other tables.
+export type RequirementStatus = WorkStatus | 'N/A';
 
 // Gate "Stage status" — matches the real MBc360 workbook dropdown exactly
 // (Not Started, In Progress, Complete, Gap, Hold, N/A).
@@ -226,6 +232,11 @@ export interface ChecklistItem {
   selected: boolean;
   ownerFunction: string;
   status: YNNA;
+  // Round 4 question 22(b), 2026-08-29: on a section declaring `requiresPrimary`
+  // exactly one SELECTED option must carry this. Named `isPrimary` rather than
+  // `primary` only because PRIMARY is a reserved word in SQL and the column
+  // would need quoting everywhere it appears.
+  isPrimary?: boolean;
   evidenceLink?: string;
   notes?: string;
 }
@@ -240,10 +251,11 @@ export interface RequirementItem {
   // column but names no values, and reusing an already-confirmed list seemed a
   // much weaker assumption than inventing one.
   //
-  // ⚠️ Round 4 question 21(a) (2026-08-24) rejects the reuse: use **Must /
-  // Should / Could**, because "criticality remains a risk concept, not a
-  // requirements-priority value". Existing rows hold Low/Medium/High/Critical,
-  // so this needs a data migration, not just a config swap [R4-REWORK: câu 21(a)].
+  // Round 4 question 21(a) (2026-08-24) rejected that reuse — "criticality
+  // remains a risk concept, not a requirements-priority value" — so the values
+  // are REQUIREMENT_PRIORITIES (Must / Should / Could) since 2026-08-29. Still a
+  // plain string rather than a union: Phases 2-4 rows carry no priority at all,
+  // and a union would invite a non-null assertion at every read site.
   priority?: string;
   // Phase 1 only (2026-08-11). B6's own shape is "category, requirement,
   // priority, owner and notes": the 16 rows the team listed ARE the categories,
@@ -254,7 +266,12 @@ export interface RequirementItem {
   minimumRequirement: string;
   rationale: string;
   owner: string;
-  status: WorkStatus;
+  status: RequirementStatus;
+  // Why this row is not applicable to this project. Required (and only shown)
+  // when `status === 'N/A'` on a section declaring `allowNotApplicable`; a plain
+  // free-text field of its own rather than a convention inside `notes`, which
+  // was already doing double duty once before (see `requirementText`).
+  naRationale?: string;
   evidenceLink?: string;
   notes?: string;
 }
@@ -435,6 +452,22 @@ export interface CostingInputs {
   labourOverheadPerUnit: number;
   freightOtherPerUnit: number;
   targetSellPrice: number;
+  // Round 4 question 36(b), 2026-08-29: "Add a status field to the costing
+  // screen", with four supporting fields beside it. Until this, every number
+  // above was pre-filled at project creation, so nothing on this screen could
+  // distinguish "costed" from "never opened" — which is why the Gate 5 item that
+  // reads it had stayed `manual` since the readiness engine was built.
+  //
+  // COSTING_FEASIBILITY_STATUSES; optional because existing projects predate it.
+  feasibilityStatus?: string;
+  assessor?: string;
+  // 'YYYY-MM-DD'.
+  reviewDate?: string;
+  // "Assumptions or conditions" — also where the rationale goes when the status
+  // is 'N/A — rationale required'.
+  assumptions?: string;
+  // "Evidence or costing-version link."
+  evidenceLink?: string;
 }
 
 // Properties of the formula itself that gate readiness has to reason about,
@@ -817,14 +850,15 @@ export interface ProjectIdentity {
   // approve them." Wiring Gate 1 to the Gate 02 checklists would have forced the
   // team to finish Gate 2's work before Gate 1 could close.
   initialTargetUsers?: string;
-  // ⚠️ Round 4 question 24 (2026-08-24) removes this one: "Use the existing
-  // Countries / Markets parameter as the single source of truth. Remove the
-  // separate free-text Initial target market field." `markets` above stops being
-  // mandatory to create the project shell and becomes mandatory before Gate 1
-  // passes instead — which is also what keeps the Gate 1 check from becoming
-  // decoration, the concern that put this field here in the first place.
-  // `initialTargetUsers` stays: it duplicates nothing [R4-REWORK: câu 24].
-  initialTargetMarkets?: string;
+  // There is deliberately no `initialTargetMarkets` beside it. Round 4 question
+  // 24 (2026-08-24, built 2026-08-29) removed that field: "Use the existing
+  // Countries / Markets parameter as the single source of truth." `markets`
+  // above therefore stopped being mandatory to create the project shell and
+  // became mandatory before Gate 1 passes instead — which is what keeps
+  // `sg01-market-user` from being decoration, the exact concern that had put a
+  // second free-text field here. `initialTargetUsers` stays: it duplicates
+  // nothing, and B3's "preliminary, does not replace Gate 2" reasoning still
+  // holds for the user half.
 }
 
 // Generic evidence-register row (Supplier_RM_Evidence, Prohibited_Ingredients,

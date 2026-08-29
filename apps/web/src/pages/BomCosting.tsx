@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Descriptions, Empty, Input, InputNumber, Popconfirm, Row, Select, Statistic, Table, Tag, Tooltip } from 'antd';
+import { Alert, Button, Card, Col, DatePicker, Descriptions, Empty, Input, InputNumber, Popconfirm, Row, Select, Statistic, Table, Tag, Tooltip } from 'antd';
+import dayjs from 'dayjs';
 import { PlusOutlined, DeleteOutlined, CloudDownloadOutlined, UserOutlined, LockOutlined } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
@@ -14,6 +15,8 @@ import { hasReachedPhase, isGateRefLocked, positionSentence } from '@mbc360/shar
 import { bomWatchMatches } from '@mbc360/shared/utils/ingredientWatch';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
 import { composeReviewOwner, type ReviewOwnerSpec } from '@mbc360/shared/config/reviewers';
+import { COSTING_FEASIBILITY_STATUSES, COSTING_STATUS_NOT_APPLICABLE } from '@mbc360/shared/config/gates';
+import UserSelect from '../components/UserSelect';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { NUMERIC_CELL, NUMERIC_COLUMN } from '../utils/numeric';
 import SaveBar from '../components/SaveBar';
@@ -55,6 +58,7 @@ export default function BomCosting() {
       labourOverheadPerUnit: 0,
       freightOtherPerUnit: 0,
       targetSellPrice: 0,
+      feasibilityStatus: '',
     },
   );
 
@@ -1087,6 +1091,78 @@ export default function BomCosting() {
               {numberInput('labourOverheadPerUnit', 'Labour / overhead / unit')}
               {numberInput('freightOtherPerUnit', 'Freight / other / unit')}
               {numberInput('targetSellPrice', 'Target sell price / unit')}
+            </Descriptions>
+
+            {/* Round 4 question 36(b), 2026-08-29. Kept in its own block below the
+                numbers because it is a JUDGEMENT about them, not another input to
+                them: every number above is pre-filled at project creation, which
+                is exactly why the Gate 5 readiness item reading this screen had
+                no signal to read until now. */}
+            <Descriptions
+              size="small"
+              column={1}
+              bordered
+              style={{ marginTop: 12 }}
+              title="Commercial feasibility"
+            >
+              <Descriptions.Item label="Costing / commercial feasibility status">
+                <Select
+                  style={{ minWidth: 260 }}
+                  allowClear
+                  placeholder="Not assessed"
+                  value={costing.feasibilityStatus || undefined}
+                  disabled={formulaLocked}
+                  options={COSTING_FEASIBILITY_STATUSES.map((o) => ({ value: o, label: o }))}
+                  onChange={(v?: string) =>
+                    costingDraft.update((prev) => ({ ...prev, feasibilityStatus: v ?? '' }))
+                  }
+                />
+              </Descriptions.Item>
+              <Descriptions.Item label="Assessor">
+                <UserSelect
+                  value={costing.assessor}
+                  disabled={formulaLocked}
+                  onChange={(v) => costingDraft.update((prev) => ({ ...prev, assessor: v }))}
+                />
+              </Descriptions.Item>
+              <Descriptions.Item label="Review date">
+                <DatePicker
+                  value={costing.reviewDate ? dayjs(costing.reviewDate) : null}
+                  disabled={formulaLocked}
+                  onChange={(d) =>
+                    costingDraft.update((prev) => ({ ...prev, reviewDate: d ? d.format('YYYY-MM-DD') : undefined }))
+                  }
+                />
+              </Descriptions.Item>
+              <Descriptions.Item label="Assumptions or conditions">
+                <Input.TextArea
+                  autoSize={{ minRows: 1, maxRows: 4 }}
+                  // The one status that names its own obligation, so it is the one
+                  // the readiness check refuses without this field.
+                  status={
+                    costing.feasibilityStatus === COSTING_STATUS_NOT_APPLICABLE &&
+                    (costing.assumptions ?? '').trim() === ''
+                      ? 'error'
+                      : undefined
+                  }
+                  placeholder={
+                    costing.feasibilityStatus === COSTING_STATUS_NOT_APPLICABLE
+                      ? 'Why costing does not apply to this project'
+                      : 'Assumptions or conditions behind this status'
+                  }
+                  value={costing.assumptions}
+                  disabled={formulaLocked}
+                  onChange={(e) => costingDraft.update((prev) => ({ ...prev, assumptions: e.target.value }))}
+                />
+              </Descriptions.Item>
+              <Descriptions.Item label="Evidence or costing-version link">
+                <Input
+                  placeholder="link"
+                  value={costing.evidenceLink}
+                  disabled={formulaLocked}
+                  onChange={(e) => costingDraft.update((prev) => ({ ...prev, evidenceLink: e.target.value }))}
+                />
+              </Descriptions.Item>
             </Descriptions>
             <SaveBar
               dirty={costingDraft.dirty}

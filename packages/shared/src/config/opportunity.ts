@@ -52,10 +52,12 @@ export const REQUEST_ORIGIN_OPTIONS = [
 //
 // Like the list above, this feeds the `projectNature` checklist section (gate
 // 01) — so a project may record SEVERAL natures, which the earlier dropdown
-// could not. CONFIRMED by question 22(b) — with one addition: where several
-// apply, one must be identified as the **Primary** project type and the rest
-// recorded as secondary, which this flat option list cannot express
-// [R4-REWORK: câu 22(b)].
+// could not. CONFIRMED by question 22(b) — with one addition, built 2026-08-29:
+// where several apply, one must be identified as the **Primary** project type and
+// the rest recorded as secondary. That could never be a property of this flat
+// option list; it is a per-project answer, so it lives on the checklist ROW
+// (`ChecklistItem.isPrimary`, turned on by `requiresPrimary` on the section) and
+// is enforced by the `checklistPrimarySelected` readiness check at Gate 1.
 export const PROJECT_NATURE_OPTIONS = [
   'New development',
   'Reformulation',

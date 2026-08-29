@@ -19,6 +19,7 @@ import type {
   BacktrackEvent,
   BomLine,
   ChecklistItem,
+  EvidenceItem,
   GateChangeLogEntry,
   GateCheck,
   GateRecord,
@@ -215,6 +216,7 @@ export function toProjectData(
       selected: item.selected,
       ownerFunction: item.ownerFunction,
       status: item.status as ChecklistItem['status'],
+      ...(item.isPrimary ? { isPrimary: true } : {}),
       evidenceLink: opt(item.evidenceLink),
       notes: opt(item.notes),
     });
@@ -231,6 +233,7 @@ export function toProjectData(
       rationale: item.rationale,
       owner: item.owner,
       status: item.status as RequirementItem['status'],
+      ...(item.naRationale ? { naRationale: item.naRationale } : {}),
       evidenceLink: opt(item.evidenceLink),
       notes: opt(item.notes),
     });
@@ -324,7 +327,6 @@ export function toProjectData(
       ...(p.requesterDepartment ? { requesterDepartment: p.requesterDepartment } : {}),
       ...(p.initialScope ? { initialScope: p.initialScope } : {}),
       ...(p.initialTargetUsers ? { initialTargetUsers: p.initialTargetUsers } : {}),
-      ...(p.initialTargetMarkets ? { initialTargetMarkets: p.initialTargetMarkets } : {}),
       reviewers,
       ...(p.archivedAt
         ? { archived: { at: p.archivedAt.toISOString().slice(0, 10), by: p.archivedBy?.displayName } }
@@ -398,6 +400,11 @@ export function toProjectData(
       labourOverheadPerUnit: p.costing?.labourOverheadPerUnit ?? 0,
       freightOtherPerUnit: p.costing?.freightOtherPerUnit ?? 0,
       targetSellPrice: p.costing?.targetSellPrice ?? 0,
+      ...(p.costing?.feasibilityStatus ? { feasibilityStatus: p.costing.feasibilityStatus } : {}),
+      ...(p.costing?.assessor ? { assessor: p.costing.assessor } : {}),
+      ...(p.costing?.reviewDate ? { reviewDate: dateOnly(p.costing.reviewDate) as string } : {}),
+      ...(p.costing?.assumptions ? { assumptions: p.costing.assumptions } : {}),
+      ...(p.costing?.evidenceLink ? { evidenceLink: p.costing.evidenceLink } : {}),
     },
     evidence: p.evidenceItems.map((e) => ({
       area: e.area,
@@ -405,7 +412,10 @@ export function toProjectData(
       trigger: e.trigger,
       primaryTemplate: e.primaryTemplate,
       owner: e.owner,
-      status: e.status as RequirementItem['status'],
+      // EvidenceItem's own status, not RequirementItem's — the two were the same
+      // type until question 21 gave requirement rows an 'N/A' disposition, and
+      // this cast was reading the wrong one.
+      status: e.status as EvidenceItem['status'],
       gate: e.gate,
       evidenceLink: opt(e.evidenceLink),
       notes: opt(e.notes),

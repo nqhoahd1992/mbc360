@@ -22,18 +22,24 @@
 // recorded with no matching target user warns and asks for a rationale, because
 // the Safety/Regulatory reviewer may identify that context independently.
 //
-// The four options left unmapped were answered as follows, and NONE of the
-// answers is a plain "add it to the map" [R4-REWORK: câu 25(b)(c)]:
+// The four options left unmapped were answered as follows, and only one of the
+// four became a map entry:
 //
-//   Dry / eczema-prone skin — the combined option must be SPLIT. Dry skin alone
-//     is not a vulnerable-user group; eczema-prone or compromised skin is. Until
-//     the option is split in `phases.ts`, the combined option counts as
-//     triggering the sensitive/compromised-skin review, so mapping it here now
-//     would misclassify every dry-skin-only project.
+//   Dry / eczema-prone skin — the combined option was SPLIT (2026-08-29, in
+//     `phases.ts`), because the two halves get opposite answers: "dry skin alone
+//     should not automatically be a vulnerable-user group. Eczema-prone or
+//     compromised skin should." So 'Eczema-prone or compromised skin' is mapped
+//     below and 'Dry skin' deliberately is not. Mapping the COMBINED option would
+//     have misclassified every dry-skin-only project, which is why this waited
+//     for the split rather than taking the answer's fallback ("if it cannot be
+//     split, treat the combined option as triggering the review") — that fallback
+//     is the conservative reading, and it is what the migration applies to ticks
+//     recorded before the split.
 //   Family use — not automatically vulnerable, but it must PROMPT confirmation of
 //     the age groups actually included, and activate the relevant pathway when
 //     infants or young children are among them. That is a question to ask, not a
-//     row to require, so no map entry can express it.
+//     row to require, so no map entry can express it — it is a new trigger, and
+//     it belongs with the Infant & Baby Safety pathway (question 1, group 7).
 //   Intimate area — triggers a specialised use-site and safety assessment, which
 //     is a different control from the vulnerable-user assessment this map feeds.
 //   Swimmers — confirmed as NOT a vulnerable population. Correctly absent.
@@ -47,6 +53,9 @@ export const TARGET_USER_TO_VULNERABLE_GROUP: Record<string, string> = {
   'Child 2+': 'Young child',
   'Child 3+': 'Young child',
   'Sensitive skin': 'Sensitive or compromised skin',
+  // Question 25(b), 2026-08-29. Shares a group with 'Sensitive skin' on the
+  // answer's own wording — "Sensitive or compromised skin" is one population.
+  'Eczema-prone or compromised skin': 'Sensitive or compromised skin',
   'Cancer patient support': 'Oncology or medically vulnerable support context',
   'Kidney disease support': 'Renal or other health-related support context',
 };

@@ -1,6 +1,6 @@
 import type { GateRecord, NextAction, ProjectData, RegisterRow } from '../types';
 import { NEXT_ACTION_TERMINAL_STATUSES, isRegisterClosed, isSignedOff } from '../types';
-import { GATES } from '../config/gates';
+import { COSTING_STATUS_NOT_APPLICABLE, GATES, REQUIREMENT_NOT_APPLICABLE } from '../config/gates';
 import { isChangeOpen } from '../config/changeTriggers';
 import { CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE, REGISTER_CONFIGS } from '../config/registers';
 import {
@@ -358,8 +358,36 @@ function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger): Trigg
       if (rmCodesWithRiskFlags(rmCodes, project.reference.rmRisk).length > 0) return 'applies';
       return rmCodesUnclassified(rmCodes, project.reference.rmRisk).length > 0 ? 'notAssessed' : 'doesNotApply';
     }
+
+    // Round 4 question 36(b), Gate 5: is this project "specifically designated as
+    // commercially dependent on a defined cost or margin"? The answer's own next
+    // sentence names where that is recorded — "where that commercial requirement
+    // is a Must" — and question 21 gives every Phase 1 requirement row exactly
+    // that priority, so the designation needed no field of its own.
+    //
+    // All three of question 7's states come from real data here: a priority is
+    // recorded (Must, or one of the other two), the row is dispositioned N/A
+    // (assessed as not applicable to this project), or nobody has prioritised it
+    // yet — which blocks, because an unprioritised commercial boundary is the one
+    // case where "we did not look" must not read as "it does not matter".
+    case 'commercialRequirementIsMust': {
+      const row = (project.requirements[PHASE1_REQUIREMENTS_SECTION] ?? []).find(
+        (r) => r.requirement === COMMERCIAL_BOUNDARY_REQUIREMENT,
+      );
+      if (!row) return 'notAssessed';
+      if (row.status === REQUIREMENT_NOT_APPLICABLE) return 'doesNotApply';
+      const priority = row.priority?.trim() ?? '';
+      if (priority === '') return 'notAssessed';
+      return priority === 'Must' ? 'applies' : 'doesNotApply';
+    }
   }
 }
+
+// The Phase 1 (B6) requirements section and the one row question 36(b) reads.
+// Named constants rather than inline strings: `verify:readiness` sweep S1 checks
+// config references, not engine ones, so a typo here would be silent.
+const PHASE1_REQUIREMENTS_SECTION = 'projectRequirements';
+const COMMERCIAL_BOUNDARY_REQUIREMENT = 'Target cost or commercial boundary';
 
 // Every raw material this project uses, by the rmCode the overlay is keyed on.
 //
@@ -447,6 +475,8 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
     'no declared claim is borderline, therapeutic-adjacent, high risk, still unclassified, or reworded since its last review',
   rmRiskFlagged:
     'every raw material in this project is classified in the Raw Material Risk Overlay and none carries a fragrance, allergen, botanical, protein, residue, heavy-metal, microbiological or variable-source classification',
+  commercialRequirementIsMust:
+    'the "Target cost or commercial boundary" requirement is not a Must for this project, so it is not commercially dependent on a defined cost or margin',
 };
 
 // Why a trigger has not been evaluated yet, in plain language — the third state
@@ -475,6 +505,8 @@ const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   scaleUpRiskIdentified: 'nobody has assessed whether this project carries a scale-up or pilot risk',
   rmRiskFlagged:
     'one or more raw materials in this project have no entry in the Raw Material Risk Overlay (Company Reference Data -> Raw material risk), so their allergen, impurity and contaminant risk is unclassified',
+  commercialRequirementIsMust:
+    'the "Target cost or commercial boundary" row of the Phase 1 requirements table has no Must / Should / Could priority yet, so it is unknown whether this project depends on a defined cost or margin',
 };
 
 // Evaluate a requirement's check against live project data. `evaluable` is false
@@ -630,7 +662,72 @@ function evaluateReadinessCheck(
     }
     case 'requirementDone': {
       const row = (project.requirements[check.section] ?? []).find((r) => r.requirement === check.requirement);
+      // Deliberately NOT widened to accept 'N/A' when question 21 introduced it:
+      // the one row this kind reads today is "Must-have product requirements",
+      // and the answer says that row "is always mandatory".
       return { evaluable: true, satisfied: row?.status === 'Completed' };
+    }
+    // Round 4 question 21's four hard conditions, in the answer's own order.
+    // Vacuous only on a section with no rows, which cannot happen here: the rows
+    // are scaffolded at project creation and `verify:scaffold` guards that.
+    case 'requirementsDispositioned': {
+      const rows = project.requirements[check.section] ?? [];
+      return {
+        evaluable: true,
+        satisfied: rows.every((r) => {
+          // "Every row must be reviewed."
+          if (r.status === 'Not Started') return false;
+          // "Every non-applicable row must be marked N/A with rationale."
+          if (r.status === REQUIREMENT_NOT_APPLICABLE) return (r.naRationale ?? '').trim() !== '';
+          // An applicable row carries a priority. The answer does not say this in
+          // so many words — it says which values a priority takes and what each
+          // one obliges — but "every Must requirement must be complete" cannot be
+          // checked on rows nobody has prioritised, and question 36(b) reads the
+          // same column to decide whether a project is commercially dependent
+          // [ASSUMPTION: R5-Q23].
+          if ((r.priority ?? '').trim() === '') return false;
+          // "Every Must requirement must be complete."
+          return r.priority !== 'Must' || r.status === 'Completed';
+        }),
+      };
+    }
+    // Question 21's fifth condition. Everything the row above lets through that is
+    // still open — a Should or Could not yet Completed — lands here, where
+    // `clearedByConditions` lets Proceed with Conditions carry it.
+    case 'requirementsNoOpenDeferrals': {
+      const rows = project.requirements[check.section] ?? [];
+      return {
+        evaluable: true,
+        satisfied: rows.every(
+          (r) =>
+            r.priority === 'Must' || // already covered, strictly, above
+            r.status === 'Completed' ||
+            r.status === REQUIREMENT_NOT_APPLICABLE,
+        ),
+      };
+    }
+    // Round 4 question 22(b): exactly one SELECTED option is the Primary one.
+    case 'checklistPrimarySelected': {
+      const primary = (project.checklists[check.section] ?? []).filter((i) => i.isPrimary && i.selected);
+      return { evaluable: true, satisfied: primary.length === 1 };
+    }
+    // Round 4 question 24: Countries / Markets, no longer guaranteed by the create
+    // form, must be recorded before Gate 1 passes.
+    case 'identityMarketsRecorded':
+      return {
+        evaluable: true,
+        satisfied: project.identity.markets.some((m) => m.trim() !== ''),
+      };
+    // Round 4 question 36(b). 'Not Started' is the seeded default, so it is the one
+    // value that cannot count as an answer; the N/A value names its own condition
+    // ("N/A — rationale required"), so it needs the rationale field filled.
+    case 'costingStatusRecorded': {
+      const status = project.costing.feasibilityStatus?.trim() ?? '';
+      if (status === '' || status === 'Not Started') return { evaluable: true, satisfied: false };
+      if (status === COSTING_STATUS_NOT_APPLICABLE) {
+        return { evaluable: true, satisfied: (project.costing.assumptions ?? '').trim() !== '' };
+      }
+      return { evaluable: true, satisfied: true };
     }
     case 'identityFieldFilled':
       return { evaluable: true, satisfied: !!project.identity[check.field]?.trim() };
@@ -872,9 +969,12 @@ function phaseSectionLink(gateId: string, scrollToId: string): GateBlockerLink |
 function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLink | undefined {
   switch (check.kind) {
     case 'checklistHasSelection':
+    case 'checklistPrimarySelected':
       return phaseSectionLink(gateId, `sec-checklist-${check.section}`);
     case 'requirementDone':
     case 'requirementSectionComplete':
+    case 'requirementsDispositioned':
+    case 'requirementsNoOpenDeferrals':
       return phaseSectionLink(gateId, `sec-requirement-${check.section}`);
     case 'gateCheckDone':
       return phaseSectionLink(gateId, 'sec-gate-checks');
@@ -918,7 +1018,12 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       // their own card on 2026-08-11, so the blocker link follows them.
       return phaseSectionLink(gateId, 'sec-opportunity');
     case 'formulaPropertyFilled':
+    case 'costingStatusRecorded':
       return { href: '/bom' };
+    case 'identityMarketsRecorded':
+      // Countries / Markets lives on the Project Identification card, not the
+      // Gate 01 opportunity block the sibling identity check points at.
+      return phaseSectionLink(gateId, 'sec-identification');
     case 'gateFieldFilled':
       return phaseSectionLink(gateId, 'sec-gate-flow');
     case 'allOf':

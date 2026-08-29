@@ -418,7 +418,15 @@ export default function ProjectList() {
               <DatePicker style={{ width: '100%' }} />
             </Form.Item>
           </div>
-          <Form.Item name="markets" label="Countries / Markets" rules={[{ required: true }]}>
+          {/* Optional at creation since 2026-08-29 (Round 4 question 24): "not
+              mandatory to create the initial project shell, but becomes mandatory
+              before Gate 1 passes". Requiring it here is what had made the Gate 1
+              check unsatisfiable-by-being-always-satisfied. */}
+          <Form.Item
+            name="markets"
+            label="Countries / Markets"
+            extra="Optional now — required before Gate 1 can pass."
+          >
             <Select mode="multiple" options={marketOptions} placeholder="Select markets" />
           </Form.Item>
 

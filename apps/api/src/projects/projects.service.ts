@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { GATES, GATE_DECISIONS } from '@mbc360/shared/config/gates';
+import { COSTING_FEASIBILITY_STATUSES, GATES, GATE_DECISIONS } from '@mbc360/shared/config/gates';
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import {
@@ -632,6 +632,13 @@ export class ProjectsService {
             data: {
               selected: item.selected,
               status: item.status,
+              // Round 4 question 22(b). Un-selecting an option clears its Primary
+              // flag here rather than trusting the client to: a row that is
+              // primary but not selected is the one state
+              // `checklistPrimarySelected` treats as no answer at all, and it
+              // would be invisible on screen (the Primary control only renders on
+              // a selected row).
+              isPrimary: !!item.isPrimary && item.selected,
               evidenceLink: item.evidenceLink ?? null,
               notes: item.notes ?? null,
             },
@@ -677,6 +684,16 @@ export class ProjectsService {
             // skips undefined, so those rows are untouched.
             priority: item.priority ?? undefined,
             requirementText: item.requirementText ?? undefined,
+            // Round 4 question 21. Cleared whenever the row is not N/A, so a
+            // rationale can never outlive the disposition that required it and
+            // read as evidence for a row that is now Completed.
+            naRationale: item.status === 'N/A' ? (item.naRationale ?? null) : null,
+            // Editable on any section declaring its own columns (Phase 1's B6
+            // table); on Phases 2-4 it is config-set and rendered read-only, so
+            // what arrives is the value already stored. It was missing from this
+            // list entirely until 2026-08-29 — the Phase 1 Owner column accepted
+            // typing and silently discarded it on save.
+            owner: item.owner,
             evidenceLink: item.evidenceLink ?? null,
             notes: item.notes ?? null,
           },
@@ -1941,7 +1958,33 @@ export class ProjectsService {
       if (isGateRefLocked(project, '05')) {
         throw new ForbiddenException('Costing belongs to gate 05, which has passed — it is read-only (use Backtrack)');
       }
-      await tx.costingInputs.update({ where: { projectId: id }, data: patch });
+      // Round 4 question 36(b) added five non-numeric fields to this record, and
+      // two of them cannot go straight through: `reviewDate` is a `@db.Date`
+      // column that arrives as a 'YYYY-MM-DD' string, and `feasibilityStatus` is
+      // a controlled list — an unrecognised value would silently never satisfy
+      // `costingStatusRecorded`, the same failure sweep S1 exists to catch in
+      // config.
+      const { reviewDate, feasibilityStatus, assessor, assumptions, evidenceLink, ...numbers } = patch;
+      if (
+        feasibilityStatus !== undefined &&
+        feasibilityStatus !== '' &&
+        !COSTING_FEASIBILITY_STATUSES.includes(feasibilityStatus as (typeof COSTING_FEASIBILITY_STATUSES)[number])
+      ) {
+        throw new BadRequestException(
+          `Unknown costing status "${feasibilityStatus}" — expected one of: ${COSTING_FEASIBILITY_STATUSES.join(', ')}`,
+        );
+      }
+      await tx.costingInputs.update({
+        where: { projectId: id },
+        data: {
+          ...numbers,
+          ...(feasibilityStatus !== undefined ? { feasibilityStatus: feasibilityStatus || null } : {}),
+          ...(assessor !== undefined ? { assessor: assessor || null } : {}),
+          ...(assumptions !== undefined ? { assumptions: assumptions || null } : {}),
+          ...(evidenceLink !== undefined ? { evidenceLink: evidenceLink || null } : {}),
+          ...(reviewDate !== undefined ? { reviewDate: reviewDate ? new Date(reviewDate) : null } : {}),
+        },
+      });
       return { fields: Object.keys(patch) };
     });
   }
@@ -1950,7 +1993,8 @@ export class ProjectsService {
   // identity-mutation path in the system: identity was previously write-once at
   // POST /projects and had no update route at all.
   //
-  // Only the five Gate-1 free-text fields are writable. The identifying fields
+  // Only the Gate-1 free-text fields are writable ('initialTargetMarkets' was
+  // the fifth until Round 4 question 24 removed it, 2026-08-29). The identifying fields
   // (productCode, projectLead, productSku, markets, reviewers, ...) stay
   // write-once deliberately — changing them is a different, larger question
   // than "record where this request came from", and nothing in Round 3 asked
@@ -1976,7 +2020,6 @@ export class ProjectsService {
         'requesterDepartment',
         'initialScope',
         'initialTargetUsers',
-        'initialTargetMarkets',
       ] as const;
       const data: Record<string, string | null> = {};
       for (const field of writable) {
@@ -1985,6 +2028,82 @@ export class ProjectsService {
       if (Object.keys(data).length === 0) return { fields: [] };
       await tx.project.update({ where: { id }, data });
       return { fields: Object.keys(data) };
+    });
+  }
+
+  // Countries / Markets after creation (Round 4 question 24, 2026-08-29).
+  //
+  // This route exists BECAUSE of that answer, and would be wrong without it: the
+  // parameter used to be mandatory at POST /projects and write-once thereafter,
+  // which is coherent. Now that creation no longer requires it — "not mandatory
+  // to create the initial project shell, but becomes mandatory before Gate 1
+  // passes" — a project can be opened with no markets, and something has to be
+  // able to record them, or the Gate 1 item is unsatisfiable rather than merely
+  // unsatisfied.
+  //
+  // Gate-01 locked like the opportunity fields, so correcting the list after
+  // Gate 1 passes needs Backtrack (B4). Adding a market creates its MarketTrack
+  // row exactly the way project-scaffold does, against the CURRENT formula
+  // version rather than the initial one.
+  //
+  // Removing one is guarded rather than free: a market whose track has recorded
+  // any approval state would take that state with it, and there is no undo. Same
+  // dependency guard as un-ticking a target user the Vulnerable-User Assessment
+  // depends on, and as deleting a Supplier & RM Evidence row the BOM still uses.
+  async setMarkets(
+    user: SessionUser,
+    id: string,
+    markets: string[],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'markets.updated', async (tx, row, project) => {
+      if (isGateRefLocked(project, '01')) {
+        throw new ForbiddenException(
+          'Countries / Markets belongs to gate 01, which has passed — it is read-only (use Backtrack to reopen it).',
+        );
+      }
+      const wanted = [...new Set(markets.map((m) => m.trim()).filter((m) => m !== ''))];
+      const current = row.markets.map((m) => m.market);
+      const removed = current.filter((m) => !wanted.includes(m));
+      const added = wanted.filter((m) => !current.includes(m));
+
+      if (removed.length > 0) {
+        const tracks = await tx.marketTrack.findMany({
+          where: { projectId: id, market: { in: removed } },
+        });
+        const inUse = tracks.filter(
+          (t) =>
+            t.pifStatus !== 'Not Started' ||
+            t.regulatoryStatus !== 'Not Started' ||
+            t.claimsApproval !== 'Not Started' ||
+            t.launchApproval !== 'Not Started' ||
+            !!t.regulatoryNotes,
+        );
+        if (inUse.length > 0) {
+          throw new BadRequestException(
+            inUse
+              .map(
+                (t) =>
+                  `Cannot remove "${t.market}": its Market Regulatory & Launch Tracking row has recorded progress — reset that row first`,
+              )
+              .join('; '),
+          );
+        }
+        await tx.marketTrack.deleteMany({ where: { projectId: id, market: { in: removed } } });
+        await tx.projectMarket.deleteMany({ where: { projectId: id, market: { in: removed } } });
+      }
+
+      if (added.length > 0) {
+        const version = await tx.formulaVersion.findFirst({
+          where: { projectId: id },
+          orderBy: { createdAt: 'desc' },
+        });
+        await tx.projectMarket.createMany({ data: added.map((market) => ({ projectId: id, market })) });
+        await tx.marketTrack.createMany({
+          data: added.map((market) => ({ projectId: id, market, formulaVersionId: version?.id })),
+        });
+      }
+      return { added, removed };
     });
   }
 
