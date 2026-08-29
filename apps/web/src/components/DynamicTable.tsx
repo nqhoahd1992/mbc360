@@ -147,6 +147,20 @@ export default function DynamicTable({
             onChange={(v) => patch(index, column.key, v)}
           />
         );
+      // Round 4 question 27 — several values from the column's own list, stored
+      // comma-joined. Deliberately the same storage shape as `markets` so nothing
+      // has to learn a second convention.
+      case 'multiSelect':
+        return (
+          <Select
+            mode="multiple"
+            style={{ width: '100%' }}
+            allowClear
+            value={(value as string | undefined)?.split(',').map((v) => v.trim()).filter(Boolean) ?? []}
+            options={(column.options ?? []).map((o) => ({ value: o, label: o }))}
+            onChange={(v: string[]) => patch(index, column.key, v.join(', '))}
+          />
+        );
       case 'market':
       case 'markets':
         return (

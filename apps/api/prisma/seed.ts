@@ -183,6 +183,16 @@ async function seedRbac(): Promise<void> {
       action: 'represent-technical',
       description: 'Represent Technical on a critical gate sign-off (Round 4, q29.4)',
     },
+    // Round 4 question 30(e): the "No product claim or technical statement"
+    // exemption "must be confirmed by a Technical or Regulatory reviewer before
+    // release". One capability rather than two, because the answer names either
+    // function as sufficient — unlike question 32(c), where a Safety-escalated and
+    // a Regulatory-escalated finding are deliberately different things.
+    {
+      resource: 'claim-exemption',
+      action: 'confirm',
+      description: 'Confirm a "no product claim" exemption before release (Round 4, q30e)',
+    },
     // Round 4 question 34(d): the existing Gate 11 open-change acknowledgement
     // "may be reused if role-restricted… Only a person authorised to approve the
     // relevant Gate 11 impact may acknowledge it."
@@ -281,6 +291,12 @@ async function seedRbac(): Promise<void> {
     }
     if (role.key === 'sso-formulation-contributor') {
       grantedIds.push(permissionId('gate-signoff', 'represent-technical'));
+    }
+
+    // Question 30(e)'s "Technical or Regulatory reviewer" — the same two functions
+    // question 17's reference-data grant already reads that way.
+    if (['sso-regulatory-reviewer', 'sso-published-info-technical-reviewer'].includes(role.key)) {
+      grantedIds.push(permissionId('claim-exemption', 'confirm'));
     }
 
     // "NP" is the company's final commercial authority. Which of the 17 SSO roles

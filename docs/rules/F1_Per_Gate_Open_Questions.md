@@ -1503,6 +1503,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q22 | 'N/A kèm lý do' có áp cho bảng requirement của Phase 2-4 không | Độc lập (câu 21) | **build nhóm độc lập** |
 | R5-Q23 | Hoãn một requirement Should/Could: ai sở hữu, hạn khi nào, và có bắt buộc priority không | Độc lập (câu 21) | **build nhóm độc lập** |
 | R5-Q24 | Sổ "General Restricted & Caution" mới — hình dạng đúng chưa, và có thuộc Gate 4 không | Nhóm 6 (câu 5) | **build nhóm 6** |
+| R5-Q25 | Danh sách kênh của bản ghi Publication / Deployment | Nhóm 5 (câu 30d) | **build nhóm 5** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
 
@@ -1865,3 +1866,13 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **(d) 5 giá trị "Assessment outcome"** (No issue identified · Within limit - evidence linked · Restricted - reformulate · Needs Safety Review · Needs Regulatory Review) là bản ghép từ hai sổ hiện có, không phải danh sách SME đưa. Ba giá trị cuối chặn cứng Gate 7.
 
 **Nếu trả lời khác:** `packages/shared/src/config/registers.ts` (`generalRestrictedCaution`, và `WATCHLIST_REGISTERS` trong `utils/watchlistReview.ts` nếu là (c)) · `packages/shared/src/config/phases.ts` (dòng Key Gate Check gate 07) · `packages/shared/src/config/gateReadiness.ts` (`sg07-general-caution`) · migration `20260829...` đã backfill dòng Key Gate Check cho dự án hiện có.
+
+#### R5-Q25 · Bản ghi Publication / Deployment — danh sách "Channel" gồm những gì 🔴
+
+**Lộ ra khi build câu 30(d) (29/08/2026).** Đáp án tách rõ hai sự kiện — *"Approved for Release means AUTHORISED for use"*, còn việc xuất bản thật là một bản ghi riêng — và liệt kê đủ **bảy trường** phải ghi: ngày xuất bản thật · **kênh** · thị trường · URL/file/artwork reference · phiên bản đã xuất bản · người chịu trách nhiệm · ngày rút hoặc thay thế. Sáu trong bảy có kiểu dữ liệu rõ ràng; **"kênh" thì không có danh sách giá trị**.
+
+**Đã build:** một danh sách 8 giá trị do dev ghép — lấy từ các kênh mà sổ Published Information Approval vốn đã phân biệt, cộng giá trị mà chính đáp án nêu đích danh (*"for printed packaging the equivalent event may be Release to Print"*). Đó là suy đoán về từ vựng, không phải về luật: không có luật nào đọc cột này hôm nay, nên chọn sai chỉ tốn một migration giá trị chứ không làm sai một quyết định gate nào.
+
+**Câu hỏi:** công ty có danh sách kênh chuẩn không? Nếu có thì gồm những gì, và "Release to Print" có phải một kênh trong danh sách đó hay là một loại sự kiện riêng bên cạnh?
+
+**Nếu trả lời khác:** `packages/shared/src/config/registers.ts` (`PUBLICATION_CHANNELS`) + một migration đổi giá trị đã lưu (chưa có dữ liệu thật lúc build).

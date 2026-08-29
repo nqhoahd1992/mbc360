@@ -10,7 +10,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-Thank you for the Round 4 answers. They were complete enough to start building immediately, and twenty-eight of the thirty-six are already finished — including the per-gate sign-off and the whole per-market post-market lifecycle. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
+Thank you for the Round 4 answers. They were complete enough to start building immediately, and thirty-three of the thirty-six are already finished — everything except the Claims Library, the scale-up affected-area list, and the reviewer acknowledgement in question 16. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
 
 Every question here follows the same pattern as last time: we have made a choice so that work could continue, the choice is running in the software now, and we would rather you corrected it than have it settle in silently. Where a question is still unbuilt we say so.
 
@@ -404,6 +404,16 @@ Building it showed that two of the three were already there — the prohibited/r
 
 ---
 
+## Question 25 — For the Publication / Deployment record, what are the channels?
+
+Your answer to question 30(d) separated the two events cleanly — *"Approved for Release means AUTHORISED for use"*, and actual publication is its own record — and listed all seven things it must capture: the real publication date · **channel** · market · URL, file or artwork reference · published version · person responsible · withdrawal or supersession date. Six of the seven have an obvious form. **Channel does not have a list of values.**
+
+We have built one from the channels the Published Information register already distinguishes, plus the one your answer names outright (*"for printed packaging the equivalent event may be Release to Print"*): Release to Print (packaging/label) · Website · Social media · Sales or distributor material · HCP or professional material · Retailer listing · Advertising · Other.
+
+**Question:** does the company have a standard channel list? If so, what is on it — and is "Release to Print" one of the channels, or a different kind of event alongside them?
+
+---
+
 ## Summary
 
 | # | Topic | Why it matters |
@@ -424,5 +434,6 @@ Building it showed that two of the three were already there — the prohibited/r
 | 22 | Can a Phase 2–4 requirement row be marked "not applicable" too | Your question-21 answer gave Phase 1 that escape; the same case exists on the other three |
 | 23 | Deferring a Should/Could requirement — owner, due date, and whether every row needs a priority | 23(b) is running on our reading now; 23(c) currently blocks Gate 5 on an unprioritised cost row |
 | 24 | The new general restricted-and-caution screen — shape, and whether it belongs to Gate 4 too | Built for your question-5 answer; four choices in it are ours, and (c) may be a real gap |
+| 25 | What channels the Publication / Deployment record should offer | Your question-30 answer lists the field but no values; ours is assembled, not supplied |
 
 Questions 4 to 6, 10 to 12, 14 and 16 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

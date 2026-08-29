@@ -33,19 +33,23 @@
 // (packagingSpecsArtwork has no claim linkage at all) and "external publication"
 // as a separate act from reaching a released state.
 //
-// Round 4 question 30 (2026-08-24) answered both, and neither is a small addition
-// [R4-REWORK: câu 30(c)(d)]:
-//   (c) final artwork approval IS the Packaging/Artwork Approval record, which
-//       must link EVERY Claim ID on the artwork and hard-block where any linked
-//       claim is Pending · Unsupported · Not approved for the market · Superseded
-//       · Not approved for the intended wording or channel;
+// Round 4 question 30 (2026-08-24) answered both, and both are built (2026-08-29):
+//   (c) final artwork approval IS the Packaging/Artwork Approval record, which now
+//       carries a `claimIds` column and is hard-blocked by `artworkClaimBlockers`
+//       below where any linked claim is Pending · Unsupported · Not approved for
+//       the market · Superseded · Not approved for the intended wording or channel;
 //   (d) external publication is a separate event from Approval for Release, held
-//       in a new Publication/Deployment record (date · channel · market · URL,
+//       in the new `publicationRecord` register (date · channel · market · URL,
 //       file or artwork reference · published version · person responsible ·
 //       withdrawal or supersession date). For printed packaging the equivalent
-//       event is Release to Print.
+//       event is Release to Print, which is a channel value there.
 import type { RegisterRow } from '../types';
-import { RELEASED_INFO_STATES, WORDING_EQUIVALENT_VALUES, WORDING_MATERIAL_CHANGE } from '../config/registers';
+import {
+  CLAIM_STATUSES_BLOCKING_ARTWORK,
+  RELEASED_INFO_STATES,
+  WORDING_EQUIVALENT_VALUES,
+  WORDING_MATERIAL_CHANGE,
+} from '../config/registers';
 
 export interface PublishedInfoViolation {
   row: RegisterRow;
@@ -56,6 +60,11 @@ export interface PublishedInfoViolation {
 }
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+
+// Any cell value as a comparable string. Unlike `text` above — which deliberately
+// treats a non-string as absent, because the columns it reads are text fields —
+// this keeps numbers and booleans, so a `number` column can be compared at all.
+const cell = (value: unknown): string => (value === undefined || value === null ? '' : String(value).trim());
 
 // Compared after normalising, so a trailing space or a double space is not a
 // "difference" anyone should have to classify. Case and punctuation ARE
@@ -107,6 +116,132 @@ export function wordingSimilarity(master: unknown, proposed: unknown): number {
 // failure (B4). The person unlinks it themselves, or leaves the box alone.
 export function contradictoryClaimRows(publishedInfoRows: RegisterRow[]): RegisterRow[] {
   return publishedInfoRows.filter((row) => !!row.noProductClaim && text(row.claimId) !== '');
+}
+
+// Round 4 question 30(e): "the content owner may PROPOSE 'No product claim or
+// technical statement'. The exemption must be CONFIRMED by a Technical or
+// Regulatory reviewer before release." Until 2026-08-29 anyone who could edit the
+// register could tick it and release on it — the claim of "there is no claim here"
+// was the one claim nobody checked.
+//
+// The confirmer is recorded server-side from the session (like every other
+// attributed act in this app), and the capability is what the Role Editor grants.
+export const CLAIM_EXEMPTION_CAPABILITY = 'claim-exemption|confirm';
+
+export function unconfirmedExemptionRows(publishedInfoRows: RegisterRow[]): RegisterRow[] {
+  return publishedInfoRows.filter(
+    (row) =>
+      RELEASED_INFO_STATES.includes(String(row.workflowState)) &&
+      !!row.noProductClaim &&
+      text(row.noProductClaimConfirmedBy) === '',
+  );
+}
+
+// Round 4 questions 26 and 30(b), 2026-08-29. "Once a claim revision receives
+// Regulatory or Gate 10 approval, that revision becomes read-only. A new wording
+// or evidence position creates a new revision or new Claim ID."
+//
+// So an approved revision is frozen at the level of the REVISION, not the row: the
+// row stays editable, but changing anything the approval covers requires bumping
+// the revision — which is what makes "a new wording creates a new revision" a
+// mechanic rather than an instruction nobody can be held to.
+//
+// What the approval covers is the claim as approved: its wording, its
+// classification and the evidence position that classification rests on. The
+// review-trail columns are deliberately NOT frozen — a later review is exactly how
+// a claim is reassessed, and freezing them would make the "must invalidate the
+// previous review" rule of question 27 unimplementable.
+export const REVISION_CONTROLLED_COLUMNS = [
+  { key: 'approvedWording', label: 'Approved claim wording' },
+  { key: 'claimCategory', label: 'Claim category' },
+  { key: 'claimRisk', label: 'Claim risk' },
+  { key: 'claimSubjects', label: 'Claim subjects' },
+  { key: 'evidenceBasisRequired', label: 'Evidence basis required' },
+] as const;
+
+export function isRevisionApproved(row: RegisterRow): boolean {
+  return text(row.revisionApprovedBy) !== '' && text(row.revisionApprovedDate) !== '';
+}
+
+// Changes made to an approved revision without bumping it. Empty when every edit
+// is legitimate — either the revision moved on, or nothing controlled changed.
+export function frozenRevisionEdits(
+  before: RegisterRow[],
+  after: RegisterRow[],
+): { claimId: string; changed: string[] }[] {
+  const previous = new Map(
+    before.filter((r) => text(r.claimId) !== '').map((r) => [text(r.claimId), r]),
+  );
+  const out: { claimId: string; changed: string[] }[] = [];
+  for (const row of after) {
+    const id = text(row.claimId);
+    const old = id === '' ? undefined : previous.get(id);
+    if (!old || !isRevisionApproved(old)) continue;
+    // Bumping the revision is the sanctioned route, so an edit that comes with a
+    // new revision number is not a frozen edit at all — it is question 30(b)'s
+    // "new revision of the same Claim ID".
+    //
+    // Compared with `cell`, not the module's `text` helper: `revision` is a
+    // `number` column, and `text` returns '' for anything that is not a string —
+    // so every revision compared equal to every other and the bump was never
+    // detected. Found by an end-to-end test, not by reading the code.
+    if (cell(row.revision) !== cell(old.revision)) continue;
+    const changed = REVISION_CONTROLLED_COLUMNS.filter(
+      (c) => cell(row[c.key]) !== cell(old[c.key]),
+    ).map((c) => c.label);
+    if (changed.length > 0) out.push({ claimId: id, changed });
+  }
+  return out;
+}
+
+// Round 4 question 30(c). Every claim named on an artwork row, with why it blocks.
+// Two kinds of state are checked, because the answer's five values are not all
+// properties of the same record: three are the CLAIM's own status, and the other
+// two ("not approved for the market", "not approved for the intended wording or
+// channel") are properties of a market/channel USE — which the SKU claim register
+// holds, and which the app can only check where such a row exists.
+export function artworkClaimBlockers(
+  artworkRows: RegisterRow[],
+  claimRows: RegisterRow[],
+): { row: RegisterRow; claimId: string; reason: string }[] {
+  const claimById = new Map(claimRows.map((c) => [text(c.claimId), c]));
+  const out: { row: RegisterRow; claimId: string; reason: string }[] = [];
+  for (const row of artworkRows) {
+    // Only rows that have reached artwork APPROVAL are judged: a specification
+    // being drafted may legitimately name a claim still under development, which
+    // is the same reasoning that keeps the Published Info checks at release only.
+    //
+    // "Approved" is read as the register's own `approval` column being filled in —
+    // it is free text in the workbook and the Gate 10 item already treats a filled
+    // cell as the approval. Turning it into a controlled list would be inventing a
+    // vocabulary nobody supplied, on the one column an existing rule depends on.
+    if (text(row.approval) === '') continue;
+    const ids = text(row.claimIds)
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean);
+    if (ids.length === 0) {
+      out.push({
+        row,
+        claimId: '',
+        reason:
+          'approved artwork with no Claim ID linked — every claim on the artwork must be linked, or the row must record that it carries none',
+      });
+      continue;
+    }
+    for (const id of ids) {
+      const claim = claimById.get(id);
+      if (!claim) {
+        out.push({ row, claimId: id, reason: `claim ${id} does not exist in Claim -> Evidence Traceability` });
+        continue;
+      }
+      const status = text(claim.status);
+      if (status === '' || CLAIM_STATUSES_BLOCKING_ARTWORK.includes(status)) {
+        out.push({ row, claimId: id, reason: `claim ${id} is "${status || 'unclassified'}", not Supported` });
+      }
+    }
+  }
+  return out;
 }
 
 // Every reason a Published Info row may not sit at a released state. Non-empty

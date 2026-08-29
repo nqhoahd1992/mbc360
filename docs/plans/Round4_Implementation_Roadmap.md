@@ -75,24 +75,24 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | 16 | 1 | ⬜ chưa xong | Lý do N/A tự sinh ✅ (vốn đã có) — **còn phần reviewer xác nhận** với item critical, chờ `R5-Q6` |
 | 17 | 4c | ✅ xong | Bảng `raw_material_risks` (khoá theo `rmCode` Cosmetri, 11 phân loại, revision + audit) · `GET·PUT /api/reference/rm-risk` gated `reference:rm-risk|edit` · trang **Users & Roles → Raw material risk** · trigger mới `rmRiskFlagged` gỡ chặn `sg04-allergen` (Conditional trước đây không có trigger, không bao giờ chặn được) |
 | 18 | 3 + 8 | ✅ resolved | Chữ ký Gate 10/11/12 per market (nhóm 3) + trạng thái Phase 4 per market và roll-up (nhóm 8) |
-| 19 | 5 | ⬜ chưa làm | 7 register tham chiếu Claim ID; mechanism từ Gate 3 |
+| 19 | 5 | ✅ resolved | 7 register tham chiếu Claim ID; mechanism từ Gate 3 |
 | 20 | — | ✅ resolved | Trường Gate 1 tuỳ chọn lúc tạo — xác nhận đúng như đã xây, không cần code |
 | 21 | độc lập | ✅ resolved | Priority Must/Should/Could + N/A kèm lý do |
 | 22 | độc lập | ✅ resolved | Primary project type + 2 giá trị Owner/function |
 | 23 | 6 + độc lập | ✅ resolved | Option "Product form under evaluation" (23a) + 4 đường phủ safety matrix (23b) |
 | 24 | độc lập | ✅ resolved | Bỏ `initialTargetMarkets`; Countries/Markets là nguồn duy nhất |
 | 25 | độc lập + 7 | ✅ resolved | Tách Dry / eczema-prone (a)(b)(d) + family use hỏi nhóm tuổi (c) |
-| 26 | 5 | ⬜ chưa làm | Revision claim đã duyệt thành read-only |
-| 27 | 5 | ⬜ chưa làm | 11 cờ chủ đề claim có cấu trúc |
+| 26 | 5 | ✅ resolved | Revision claim đã duyệt thành read-only (guard ở cả hai tầng) |
+| 27 | 5 | ✅ resolved | 11 cờ chủ đề claim có cấu trúc; 4 outcome viết hoa đúng bản trả lời |
 | 28 | 4d | ⬜ chưa làm | Claims Library cấp công ty |
 | 29 | 3 | ✅ resolved | 5 điểm chữ ký gate: snapshot · comment · gate critical · độc lập · trình tự |
-| 30 | 5 | ⬜ chưa làm | Revision vs Claim ID mới · artwork link · bản ghi Publication |
+| 30 | 5 | ✅ resolved | Revision vs Claim ID mới (b) · artwork link + chặn cứng (c) · bản ghi Publication (d) · miễn trừ non-product (e) |
 | 31 | 6 | ✅ resolved | Gate 7/10/11 chỉ chặn nguyên liệu có trong công thức |
 | 32 | 6 | ✅ resolved | Thêm Needs Safety Review · 5 resolution status · sổ maternal |
 | 33 | 2 | ✅ resolved | 4 severity · 6 status · controlled action · chặn theo bậc |
 | 34 | 2 | ✅ resolved | Critical là mức riêng · final disposition 8 trường |
 | 35 | 8 | ✅ resolved | Hai bộ giá trị riêng · "Other — specify" chặn Gate 10 |
-| 36 | 5 + độc lập | ⬜ chưa xong | Trạng thái costing ✅ (36b, kèm điều kiện "commercially dependent") — **còn cosmetic kích hoạt product-level evidence** (36a, thuộc nhóm 5) |
+| 36 | 5 + độc lập | ✅ resolved | Trạng thái costing (36b) + cosmetic kích hoạt product-level evidence kèm miễn trừ evidence-basis (36a) |
 
 **Câu 20 đã ✅ ngay từ đầu** vì đáp án là *"Current approach is correct"* — không có dòng code nào phải đổi. Nó cũng là ca thử tự nhiên cho S5: nếu ai đó lỡ gắn một marker `R4-REWORK: câu 20`, build sẽ đỏ ngay.
 
@@ -235,7 +235,7 @@ Phần chung: bảng cấp công ty (không thuộc project) · revision history
 
 ---
 
-## Nhóm 5 — Kiến trúc claim 🔴
+## Nhóm 5 — Kiến trúc claim ✅ **xong 30/08/2026**
 
 **Câu:** 19 · 26 · 27 · 30 · 36(a)
 
@@ -253,6 +253,19 @@ Cả năm sửa cùng bộ register — `claimEvidenceTraceability` · `skuClaim
 - **30(d)** — bản ghi **Publication / Deployment** tách khỏi "Approved for Release" (7 trường; bao bì in thì tương đương **Release to Print**).
 - **30(e)** — miễn trừ "No product claim or technical statement" phải do **Technical hoặc Regulatory** xác nhận; hôm nay ai sửa được register cũng tick được.
 - **36(a)** — sửa `CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE` + thêm trường **Evidence basis required** (7 giá trị).
+
+### Đã làm gì, 30/08
+
+**Bốn điều đáng ghi lại:**
+
+1. **Câu 27 gỡ được điều kiện C1 cuối cùng mà app không đọc nổi.** Vế thứ bảy của C1 — *"claim liên quan tới thai kỳ, cho con bú, trẻ nhỏ, bệnh, điều trị, phòng ngừa, chữa lành hay chứng thực y khoa"* — trước đây phải **suy từ câu chữ tự do**, tức là một phán đoán chứ không phải một tra cứu. 11 cờ có cấu trúc biến nó thành tra cứu. `UNEVALUATED_C1_CONDITIONS` từ 3 → 1 (chỉ còn Claims Library, câu 28). Cố ý chỉ **8/11** cờ kích hoạt review: ba cờ còn lại (Safety or tolerance · Comparative or superiority · Other sensitive topic) là câu 27 thêm để nhìn thấy, C1 không nêu — đọc chúng thành trigger là tự nới một luật đã chốt.
+2. **Câu 36(a) không phải "thêm Cosmetic vào danh sách".** Thêm phẳng sẽ mâu thuẫn chính câu sau đó của đáp án (*"một phát biểu thuần ingredient-level được phép dựa vào bằng chứng ingredient"*). Nên `Cosmetic` vào danh sách **kèm** trường **Evidence basis required**: claim Cosmetic khai `Ingredient-level evidence` hoặc `No performance claim` thì được miễn. `Formula/mechanism rationale` **cố ý không** nằm trong miễn trừ — mechanism nói về công thức thành phẩm, đúng thứ câu đó loại trừ khỏi miễn trừ.
+3. **Câu 26 + 30(b) là một cơ chế, và chỗ khó là "read-only" nghĩa là gì.** Không phải khoá cả dòng: khoá ở mức **revision**. Dòng vẫn sửa được, nhưng đổi bất cứ thứ gì bản duyệt bao phủ (wording · category · risk · subject flags · evidence basis) mà **không bump revision** thì bị từ chối — đó chính là thứ biến *"wording mới tạo ra revision mới"* thành một cơ chế thay vì một lời dặn. Cột review-trail **không** bị đóng băng: review sau chính là cách một claim được đánh giá lại, đóng băng nó sẽ làm luật "review cũ bị vô hiệu" của câu 27 không thực hiện được.
+4. **Câu 30(e) đóng lỗ hổng "claim rằng không có claim nào".** Trước đây ai sửa được sổ là tick được ô miễn trừ và release trên đó. Giờ hai cột hai người: người đề xuất (content owner) và người xác nhận (Technical hoặc Regulatory, theo capability). Cả hai đều ghi từ session, giá trị client gửi lên luôn bị bỏ.
+
+**Một bug bắt được bằng kiểm end-to-end, không phải bằng đọc code:** hàm `text()` dùng chung trong `claimEvidence.ts` trả `''` cho mọi giá trị không phải chuỗi — mà `revision` là cột `number`. Nên mọi revision so sánh bằng nhau và **việc bump revision không bao giờ được nhận ra**: đường thoát hợp lệ bị chặn y như đường vi phạm. Thêm `cell()` bên cạnh `text()` và ghi rõ khác biệt.
+
+**Một chỗ lệch config bắt được bằng một ca kiểm đếm:** `publishedInfoApproval.claimId` khai `type: 'text'` trong khi màn hình đã render picker claim từ 11/08 (component riêng special-case theo KEY nên type không bao giờ tới màn hình). Câu 19(g) gọi tên sổ này là một trong bảy sổ tham chiếu Claim ID — một config nói "text" trong khi app hiện picker là config không ai tin được. Đã sửa thành `claimRef`.
 
 ---
 

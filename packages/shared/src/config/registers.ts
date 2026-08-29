@@ -1,5 +1,5 @@
 import { RISK_LEVELS, type RegisterRow } from '../types';
-import { CLAIM_REVIEW_OUTCOMES } from './claimReview';
+import { CLAIM_REVIEW_OUTCOMES, CLAIM_SUBJECT_FLAGS } from './claimReview';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
 // `user` = a person, picked from the app's active users (UserSelect); the
@@ -12,7 +12,12 @@ import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 // "Vietnam", "VN" and "vietnam" three different markets, and let a row name a
 // market the project does not sell into. `markets` stores a comma-joined
 // string, which is what those columns already held as free text.
-export type ColumnType = 'text' | 'textarea' | 'select' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef' | 'nextActionRef' | 'signature';
+// `multiSelect` (2026-08-29, Round 4 question 27): several values from one
+// controlled list, comma-joined in the cell — the shape `markets` already had, but
+// over the column's own `options` rather than the project's market list. Added
+// because eleven separate checkbox columns for question 27's claim-subject flags
+// would be eleven columns that always move together.
+export type ColumnType = 'text' | 'textarea' | 'select' | 'multiSelect' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef' | 'nextActionRef' | 'signature';
 
 export interface RegisterColumn {
   key: string;
@@ -162,11 +167,16 @@ export function invalidSelectValues(
   const bad: { row: number; column: string; label: string; value: string }[] = [];
   rows.forEach((row, index) => {
     for (const col of config.columns) {
-      if (col.type !== 'select' || !col.options) continue;
+      if ((col.type !== 'select' && col.type !== 'multiSelect') || !col.options) continue;
       const value = row[col.key];
       if (typeof value !== 'string' || value.trim() === '') continue;
-      if (!col.options.includes(value)) {
-        bad.push({ row: index, column: col.key, label: col.label, value });
+      // A multiSelect cell holds several values, comma-joined — each is checked on
+      // its own, so one bad entry among five is named rather than the whole cell.
+      const values = col.type === 'multiSelect' ? value.split(',').map((v) => v.trim()).filter(Boolean) : [value];
+      for (const one of values) {
+        if (!col.options.includes(one)) {
+          bad.push({ row: index, column: col.key, label: col.label, value: one });
+        }
       }
     }
   });
@@ -468,19 +478,93 @@ const CLAIM_CATEGORY_OPTIONS = [
 // reading, and widening a rule on our own is how a gate starts demanding
 // evidence nobody asked for.
 //
-// ⚠️ Round 4 question 36(a) (2026-08-24) settles the boundary the other way: a
-// **Cosmetic** claim DOES trigger product-level evidence "where it asserts an
-// outcome or performance of the finished product" — their examples are
-// Moisturises · Hydrates · Softens · Improves appearance · Supports barrier
-// function · Helps detangle · Reduces residue · Improves skin feel. It is not a
-// flat third entry in this list, though: an ingredient-level statement may still
-// rely on ingredient evidence where it is clearly presented as one, so the answer
-// also adds an **Evidence basis required** field (7 values) that carries the
-// distinction per claim [R4-REWORK: câu 36(a)].
+// Round 4 question 36(a) (2026-08-24) settled the boundary the other way, built
+// 2026-08-29: a **Cosmetic** claim DOES trigger product-level evidence "where it
+// asserts an outcome or performance of the finished product". So 'Cosmetic' joins
+// the list — but NOT as a flat third entry, because "a purely ingredient-level
+// statement may rely on ingredient evidence only where clearly presented as an
+// ingredient statement". The distinction is carried per claim by the answer's own
+// **Evidence basis required** field (EVIDENCE_BASIS_OPTIONS below): a Cosmetic
+// claim whose basis is 'Ingredient-level evidence' or 'No performance claim' is
+// the case the sentence protects, and the trigger reads that rather than assuming.
 export const CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE: readonly string[] = [
   'Product performance',
   'Sensory',
+  // Added 2026-08-29 (question 36(a)): "Product performance, Sensory and Cosmetic
+  // claims describing a finished-product effect trigger the product-level evidence
+  // requirement." The qualifier is what `EVIDENCE_BASIS_NOT_PRODUCT_LEVEL` below
+  // carries — a Cosmetic claim declared as an ingredient statement is exempt.
+  'Cosmetic',
 ];
+
+// Round 4 question 36(a)'s "Evidence basis required" field, transcribed verbatim.
+export const EVIDENCE_BASIS_OPTIONS = [
+  'Finished-product evidence',
+  'Ingredient-level evidence',
+  'Formula/mechanism rationale',
+  'Consumer-perception evidence',
+  'Regulatory or compositional evidence',
+  'No performance claim',
+  'Combination of evidence types',
+] as const;
+
+// The two bases that mean this claim does NOT rest on the finished product —
+// "a purely ingredient-level statement may rely on ingredient evidence only where
+// clearly presented as an ingredient statement and it does not imply the finished
+// product delivers the same measured result".
+//
+// 'Formula/mechanism rationale' is deliberately NOT here: a mechanism rationale is
+// about the finished formula, which is exactly what the sentence excludes from the
+// exemption. Widening it would let a performance claim escape the requirement on a
+// rationale rather than evidence.
+export const EVIDENCE_BASIS_NOT_PRODUCT_LEVEL: readonly string[] = [
+  'Ingredient-level evidence',
+  'No performance claim',
+];
+
+export const EVIDENCE_BASIS_COLUMN = 'evidenceBasisRequired';
+
+// Round 4 question 30(b): "the Technical/Regulatory reviewer decides which route
+// applies" when wording changes — so the route is RECORDED, not derived. The two
+// values are the answer's own two headings; the criteria under each are what the
+// reviewer weighs, and are not conditions software can evaluate ("meaning
+// changes", "scope expands", "evidence burden changes materially").
+// Question 30(d) names no channel list, so this is ours — assembled from the
+// channels the Published Information register already distinguishes plus the one
+// the answer names outright ("for printed packaging the equivalent event may be
+// Release to Print") [ASSUMPTION: R5-Q25].
+export const PUBLICATION_CHANNELS = [
+  'Release to Print (packaging / label)',
+  'Website',
+  'Social media',
+  'Sales or distributor material',
+  'HCP or professional material',
+  'Retailer listing',
+  'Advertising',
+  'Other — specify in notes',
+] as const;
+
+export const CLAIM_REVISION_ROUTES = [
+  'New revision of the same Claim ID',
+  'New Claim ID',
+] as const;
+
+// Question 30(c) hard-blocks artwork where a linked claim is "Pending ·
+// Unsupported · Not approved for the market · Superseded · Not approved for the
+// intended wording or channel". Three of those five are states of the CLAIM, so
+// the claim's own status column has to be able to hold them; the other two are
+// properties of a market/channel use and live on the SKU claim record.
+export const CLAIM_STATUSES = [
+  'Pending',
+  'Supported',
+  'Unsupported',
+  'Superseded',
+  'Withdrawn',
+] as const;
+
+// The claim states that block artwork approval (question 30(c)). 'Supported' is
+// the only one that does not.
+export const CLAIM_STATUSES_BLOCKING_ARTWORK: readonly string[] = CLAIM_STATUSES.filter((s) => s !== 'Supported');
 
 const CLAIM_RISK_OPTIONS = ['Low', 'Medium', 'High', 'Prohibited / not acceptable', 'Pending classification'] as const;
 const YNNA = ['Y', 'N', 'N/A'] as const;
@@ -973,6 +1057,13 @@ const mechanismClaimsMap: RegisterConfig = {
   mode: 'register',
   gate: '03/10',
   columns: [
+    // Round 4 question 19(g), 2026-08-29: this register REFERENCES a Claim ID
+    // rather than retyping wording. The free-text claim column beside it stays —
+    // it is the local shorthand a person reads, and deleting recorded text to make
+    // room for a link would lose what somebody wrote — but the link is what the
+    // rules follow. See `claimEvidenceTraceability`: the ledger is the source of
+    // truth (19c) and this is one of the seven registers the answer names.
+    { key: 'claimId', label: 'Claim ID', type: 'claimRef', width: 200 },
     { key: 'claim', label: 'Claim / benefit', type: 'text', width: 160 },
     { key: 'userProblem', label: 'User problem', type: 'text', width: 160 },
     { key: 'mechanism', label: 'Mechanism of action', type: 'text', width: 180 },
@@ -1070,6 +1161,13 @@ const clinicalHumanEvidence: RegisterConfig = {
   mode: 'register',
   gate: '08/10',
   columns: [
+    // Round 4 question 19(g), 2026-08-29: this register REFERENCES a Claim ID
+    // rather than retyping wording. The free-text claim column beside it stays —
+    // it is the local shorthand a person reads, and deleting recorded text to make
+    // room for a link would lose what somebody wrote — but the link is what the
+    // rules follow. See `claimEvidenceTraceability`: the ledger is the source of
+    // truth (19c) and this is one of the seven registers the answer names.
+    { key: 'claimId', label: 'Claim ID', type: 'claimRef', width: 200 },
     { key: 'evidenceId', label: 'Evidence ID', type: 'text', width: 100 },
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
     { key: 'studyProtocol', label: 'Study / protocol', type: 'text', width: 140 },
@@ -1142,6 +1240,13 @@ const efficacyStudyPlan: RegisterConfig = {
   mode: 'register',
   gate: '08',
   columns: [
+    // Round 4 question 19(g), 2026-08-29: this register REFERENCES a Claim ID
+    // rather than retyping wording. The free-text claim column beside it stays —
+    // it is the local shorthand a person reads, and deleting recorded text to make
+    // room for a link would lose what somebody wrote — but the link is what the
+    // rules follow. See `claimEvidenceTraceability`: the ledger is the source of
+    // truth (19c) and this is one of the seven registers the answer names.
+    { key: 'claimId', label: 'Claim ID', type: 'claimRef', width: 200 },
     { key: 'claimEndpoint', label: 'Claim / endpoint', type: 'text', width: 150 },
     { key: 'studyType', label: 'Study type', type: 'text', width: 130 },
     { key: 'methodInstrument', label: 'Method / instrument', type: 'text', width: 150 },
@@ -1194,6 +1299,13 @@ const packagingSpecsArtwork: RegisterConfig = {
   mode: 'register',
   gate: '06/10/11',
   columns: [
+    // Round 4 question 30(c), 2026-08-29: "final artwork approval is represented
+    // in the Packaging/Artwork Approval record, which must link EVERY Claim ID on
+    // the artwork" and must hard-block where any linked claim is Pending ·
+    // Unsupported · Not approved for the market · Superseded · Not approved for
+    // the intended wording or channel. One row can carry several claims, so this
+    // is the multi-value form; `artworkClaimBlockers` reads it.
+    { key: 'claimIds', label: 'Claim IDs on this artwork', type: 'text', width: 220 },
     { key: 'component', label: 'Component', type: 'text', width: 140 },
     { key: 'materialConstruction', label: 'Material / construction', type: 'text', width: 150 },
     { key: 'supplier', label: 'Supplier', type: 'text', width: 130 },
@@ -1301,6 +1413,41 @@ const aseanPifMap: RegisterConfig = {
     { requirement: 'Packaging and artwork', requiredDocument: 'Label, carton, component specs and artwork approval', owner: 'Packaging / Regulatory', linkedGate: '06_Packaging_Artwork', notes: 'Country-specific label checks' },
     { requirement: 'Claim substantiation', requiredDocument: 'Claim matrix, clinical/literature/internal evidence', owner: 'Marketing / Regulatory / R&I', linkedGate: '03_Concept_Claims', notes: 'Do not approve unsupported claims' },
     { requirement: 'Adverse event / post-market system', requiredDocument: 'Complaint, AE, PV/PMS and CAPA pathway', owner: 'Quality / PV-PMS', linkedGate: '12_PostMarket_Improve', notes: 'Must be live after launch' },
+  ],
+};
+
+// Round 4 question 30(d), 2026-08-29: "Approval for Release and actual external
+// publication are separate events. 'Approved for Release' means AUTHORISED for
+// use." Until now the app had only the first — a Published Information row
+// reaching a released workflow state was the whole record, so nothing said whether
+// anything had actually gone out, where, or when it came down again.
+//
+// Seven fields, transcribed. Free-form (`mode: 'register'`) because a claim may be
+// published many times across channels and markets, and a product may legitimately
+// never publish anything.
+//
+// `claimId` rather than wording, per 19(g)'s list — the artwork/label claim list
+// and this record are the two the app did not have at all.
+const publicationRecord: RegisterConfig = {
+  key: 'publicationRecord',
+  title: 'Publication / Deployment Record',
+  // No workbook tab: this control comes from question 30(d). Borrows the sheet its
+  // subject belongs to, as `regulatoryChecklistStatus` does.
+  sheetName: 'Published_Info_Approval',
+  description:
+    'What actually went out, and when. Separate from "Approved for Release", which only means authorised for use. For printed packaging the equivalent event is Release to Print.',
+  mode: 'register',
+  gate: '10/11',
+  columns: [
+    { key: 'claimId', label: 'Claim ID', type: 'claimRef', width: 200 },
+    { key: 'publicationDate', label: 'Actual publication / release date', type: 'date', width: 170 },
+    { key: 'channel', label: 'Channel', type: 'select', width: 180, options: [...PUBLICATION_CHANNELS] },
+    { key: 'market', label: 'Market', type: 'market', width: 140 },
+    { key: 'reference', label: 'URL, file or artwork reference', type: 'text', width: 220 },
+    { key: 'publishedVersion', label: 'Published version', type: 'text', width: 150 },
+    { key: 'responsible', label: 'Person responsible', type: 'user', width: 150 },
+    { key: 'withdrawalDate', label: 'Withdrawal / supersession date', type: 'date', width: 180 },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
   ],
 };
 
@@ -1523,10 +1670,24 @@ const publishedInfoApproval: RegisterConfig = {
     // guarded both ways — see `contradictoryClaimRows`.
     { key: 'noProductClaim', label: 'No product claim or technical statement', type: 'checkbox', width: 130 },
     { key: 'noProductClaimBy', label: 'Exemption declared by', type: 'user', width: 150, editable: false },
+    // Round 4 question 30(e), 2026-08-29: "the content owner may PROPOSE 'No
+    // product claim or technical statement'. The exemption must be CONFIRMED by a
+    // Technical or Regulatory reviewer before release." Two people, two columns —
+    // the proposer above and the confirmer here — because a single field cannot
+    // record that anyone checked. Written server-side from the session, so it is
+    // read-only here for the same reason `noProductClaimBy` is.
+    { key: 'noProductClaimConfirmedBy', label: 'Exemption confirmed by', type: 'user', width: 160, editable: false },
+    { key: 'noProductClaimConfirmedAt', label: 'Exemption confirmed', type: 'date', width: 140, editable: false },
     // Links this row to a specific row in Claim -> Evidence Traceability
     // (claimEvidenceTraceability.claimId) — hard-blocks release until that
     // claim's own status is 'Supported'.
-    { key: 'claimId', label: 'Claim ID (Claim -> Evidence Traceability)', type: 'text', width: 150 },
+    // `claimRef`, not `text`, since 2026-08-29. The bespoke PublishedInfoApprovalTable
+    // has rendered a live claim picker here since 2026-08-11 (it special-cases the
+    // column by KEY, so this type never reached the screen) — but question 19(g)
+    // names this register as one of the seven that reference a Claim ID, and a
+    // config that says "text" while the app shows a picker is a config nothing else
+    // can trust. Found by a test counting the seven.
+    { key: 'claimId', label: 'Claim ID (Claim -> Evidence Traceability)', type: 'claimRef', width: 150 },
     // D2's "master approved wording" — the linked claim's own approved text,
     // mirrored here so the record shows what the channel wording is being
     // compared against. Derived, never typed.
@@ -2633,6 +2794,13 @@ export const evidencePlanProspective: RegisterConfig = {
   gate: '05',
   reviewOwner: REVIEW_SPECS.npdEvidence,
   columns: [
+    // Round 4 question 19(g), 2026-08-29: this register REFERENCES a Claim ID
+    // rather than retyping wording. The free-text claim column beside it stays —
+    // it is the local shorthand a person reads, and deleting recorded text to make
+    // room for a link would lose what somebody wrote — but the link is what the
+    // rules follow. See `claimEvidenceTraceability`: the ledger is the source of
+    // truth (19c) and this is one of the seven registers the answer names.
+    { key: 'claimId', label: 'Claim ID', type: 'claimRef', width: 200 },
     { key: 'claim', label: 'Claim / benefit to prove', type: 'textarea', width: 220 },
     { key: 'endpoint', label: 'Endpoint / what is measured', type: 'textarea', width: 200 },
     { key: 'comparator', label: 'Comparator (vs what)', type: 'text', width: 160 },
@@ -2701,11 +2869,10 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // split and it matches on three gates of four; the existing `claimCategory`
     // column is also confirmed as B7's classification, so no second column (19a).
     //
-    // ⚠️ One difference: the mechanism "begins as a preliminary hypothesis at
-    // Gate 3 and is technically confirmed at Gate 5", so Gate 3 needs its own
-    // preliminary-mechanism column alongside the Gate 5 one below, and Gate 3's
-    // completion test needs a sixth element — "preliminary evidence requirement"
-    // (19d) [R4-REWORK: câu 19(d)(h)].
+    // One difference, built 2026-08-29: the mechanism "begins as a preliminary
+    // hypothesis at Gate 3 and is technically confirmed at Gate 5", so Gate 3 has
+    // its own preliminary-mechanism column alongside the Gate 5 one, and Gate 3's
+    // completion test has a sixth element — "preliminary evidence requirement".
     //
     // Gate 03 — declaring the claim: it has an id, wording, and B7's
     // classification. `claimRisk` is included because its own vocabulary carries
@@ -2715,9 +2882,33 @@ export const claimEvidenceTraceability: RegisterConfig = {
     { key: 'approvedWording', label: 'Approved claim wording', type: 'textarea', width: 240, gate: '03' },
     { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS, gate: '03' },
     { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS, gate: '03' },
+    // Question 27: the eleven structured claim-subject flags, replacing an
+    // inference from free text. Eight of them are C1's seventh review condition,
+    // which is what makes that condition evaluable at last.
+    { key: 'claimSubjects', label: 'Claim subjects', type: 'multiSelect', width: 240, options: CLAIM_SUBJECT_FLAGS, gate: '03' },
+    // Question 19(h): "the mechanism begins as a PRELIMINARY HYPOTHESIS at Gate 3
+    // and is technically confirmed at Gate 5." Two columns, not one, because a
+    // single column would either block Gate 3 on formula work that has not
+    // happened or let Gate 5 pass on a Gate 3 guess.
+    { key: 'preliminaryMechanism', label: 'Preliminary mechanism / benefit rationale', type: 'textarea', width: 220, gate: '03' },
+    // Question 19(d)'s sixth element.
+    { key: 'preliminaryEvidenceRequirement', label: 'Preliminary evidence requirement', type: 'textarea', width: 200, gate: '03' },
+    // Question 36(a): what kind of evidence this claim actually rests on. Carries
+    // the exemption the answer attaches to Cosmetic claims — see
+    // EVIDENCE_BASIS_NOT_PRODUCT_LEVEL.
+    { key: 'evidenceBasisRequired', label: 'Evidence basis required', type: 'select', width: 220, options: EVIDENCE_BASIS_OPTIONS, gate: '03' },
+    // Questions 26 and 30(b): the revision model. A claim is refined in place
+    // until a revision is approved; from then the wording is controlled, and a
+    // change either bumps this or mints a new Claim ID — the reviewer decides
+    // which, and records it in `revisionRoute` below.
+    { key: 'revision', label: 'Revision', type: 'number', width: 90, gate: '03' },
+    { key: 'revisionApprovedBy', label: 'Revision approved by', type: 'user', width: 150, gate: '10' },
+    { key: 'revisionApprovedDate', label: 'Revision approved', type: 'date', width: 130, gate: '10' },
+    { key: 'revisionRoute', label: 'Change route (reviewer decision)', type: 'select', width: 220, options: CLAIM_REVISION_ROUTES, gate: '10' },
     // The mechanism comes from the Target Product & Technology work (sheet 3),
     // which the NPD roadmap places at Gate 3 heading into formula lock at Gate 5.
-    { key: 'mechanism', label: 'Mechanism', type: 'text', width: 160, gate: '05' },
+    // Question 19(h) calls this the technically confirmed one.
+    { key: 'mechanism', label: 'Confirmed mechanism (formula-specific)', type: 'text', width: 200, gate: '05' },
     // Gate 08 — the evidence itself exists: a grade can be assigned and a report
     // linked only once testing has produced one.
     { key: 'evidenceGrade', label: 'Evidence grade', type: 'select', width: 110, options: ['A', 'B', 'C', 'D', 'E'], gate: '08' },
@@ -2740,7 +2931,10 @@ export const claimEvidenceTraceability: RegisterConfig = {
     { key: 'regulatoryReviewEvidence', label: 'Review evidence link', type: 'text', width: 160, gate: '03' },
     // Gate 10 — release: "Supported" is what publishedInfoViolations() reads before
     // anything may be published, and the approval is the act of releasing it.
-    { key: 'status', label: 'Status', type: 'select', width: 120, options: ['Pending', 'Supported'], gate: '10' },
+    // Question 30(c) names five states an artwork-linked claim may not be in;
+    // three of them are claim states this column has to be able to express.
+    // 'Pending' and 'Supported' were the whole vocabulary until 2026-08-29.
+    { key: 'status', label: 'Status', type: 'select', width: 150, options: [...CLAIM_STATUSES], gate: '10' },
     { key: 'approvedByDate', label: 'Approved by / date', type: 'text', width: 160, gate: '10' },
   ],
 };
@@ -2954,6 +3148,7 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   formulationSafetyMatrix,
   criticalSafetyFindings,
   formulationSafetyFinalSignOff,
+  publicationRecord,
   supplierRmEvidence,
   prohibitedIngredients,
   generalRestrictedCaution,
@@ -3377,6 +3572,10 @@ const DEPARTMENTS: RawDept[] = [
       'pifEvidenceClosure',
       'publicationRules',
       'publishedInfoApproval',
+      // Round 4 question 30(d), 2026-08-29 — the act of publishing, as distinct
+      // from the approval that authorises it. Filed beside the approval register
+      // it follows on from.
+      'publicationRecord',
     ],
   },
   {

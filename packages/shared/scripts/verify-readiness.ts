@@ -81,7 +81,9 @@ const fail = (sweep: string, gate: string, id: string, detail: string) =>
 
 // `allOf` nests; every sweep below reasons about leaf checks.
 function leafChecks(check: ReadinessCheck): ReadinessCheck[] {
-  return check.kind === 'allOf' ? check.checks.flatMap(leafChecks) : [check];
+  // `anyOf` flattens the same way (2026-08-29): a reference typo inside one is
+  // exactly as silent as inside an `allOf`, so both composites are walked.
+  return check.kind === 'allOf' || check.kind === 'anyOf' ? check.checks.flatMap(leafChecks) : [check];
 }
 
 interface Entry {

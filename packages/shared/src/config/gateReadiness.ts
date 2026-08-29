@@ -385,7 +385,19 @@ export type ReadinessCheck =
   // Round 4 questions 13 and 14: every post-launch review milestone that has come
   // due for a launched market has a review recorded against it.
   | { kind: 'postLaunchReviewsRecorded' }
-  | { kind: 'allOf'; checks: ReadinessCheck[] };
+  // Round 4 question 30(c): every claim on approved artwork is linked and
+  // Supported. Blocks Proceed with Conditions too — the answer says hard-block.
+  | { kind: 'artworkClaimsSupported' }
+  // Round 4 question 30(e): a "no product claim" exemption has been confirmed by a
+  // Technical or Regulatory reviewer, not only proposed by the content owner.
+  | { kind: 'claimExemptionsConfirmed' }
+  | { kind: 'allOf'; checks: ReadinessCheck[] }
+  // Satisfied when ANY sub-check is (2026-08-29). Added for question 19(d)'s "if
+  // no claims are proposed, this must be explicitly recorded", where two different
+  // records can each answer the same obligation. Deliberately rarer than `allOf`:
+  // an `anyOf` is only honest where the alternatives really are equivalent
+  // answers, not where one is a weaker substitute for the other.
+  | { kind: 'anyOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
 // items in the confirmed F1 appendix (docs/rounds/2026-07-21-sme-reply-F1-F14.txt). Left undefined for
@@ -958,10 +970,44 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg03-classification',
       label: 'Preliminary claim classification',
       tier: 'Mandatory',
+      // Round 4 question 19(d), 2026-08-29 supplies the full list: before Gate 3
+      // passes every claim in scope must have a Claim ID · proposed master wording
+      // · category · risk · PRELIMINARY EVIDENCE REQUIREMENT · and the Regulatory
+      // review status where triggered. The first four were already here; the fifth
+      // is the new column, and the sixth is `sg03-reg-claims` below, which reads
+      // the same trigger C1 does.
+      //
+      // "There is no arbitrary number of claims. If no claims are proposed, this
+      // must be explicitly recorded" — `registerRowsComplete` is non-vacuous, so an
+      // empty ledger fails, and the explicit record is the sibling item
+      // `sg03-no-claims` below.
       check: {
         kind: 'registerRowsComplete',
         register: 'claimEvidenceTraceability',
-        columns: ['claimId', 'approvedWording', 'claimCategory', 'claimRisk'],
+        columns: ['claimId', 'approvedWording', 'claimCategory', 'claimRisk', 'preliminaryEvidenceRequirement'],
+      },
+    },
+    {
+      // Question 19(d)'s last sentence, which is a requirement in its own right:
+      // "if no claims are proposed, this must be explicitly recorded". Without it
+      // the only way past `sg03-classification` on a genuinely claim-free product
+      // would be to invent a claim — and the empty ledger that ought to mean "none
+      // proposed" is indistinguishable from "nobody has started".
+      //
+      // The record is the Gate 3 Key Gate Check, which carries the
+      // NA-with-justification escape; so a claim-free product ticks it N/A with a
+      // reason, and this item is satisfied either way once the ledger has rows OR
+      // that record exists.
+      id: 'sg03-no-claims',
+      label: 'Claims proposed, or "no claims" explicitly recorded',
+      tier: 'Mandatory',
+      source: 'f-series',
+      check: {
+        kind: 'anyOf',
+        checks: [
+          { kind: 'registerHasRows', register: 'claimEvidenceTraceability' },
+          { kind: 'gateCheckDone', gate: '03', check: 'Claim/benefit areas selected and evidence route identified' },
+        ],
       },
     },
     {
@@ -1063,7 +1109,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Regulatory review of high-risk or borderline claims',
       tier: 'Conditional',
       trigger: 'claimNeedsRegulatoryReview',
-      coverageNote: `the app checks the claim's category and risk; it cannot yet check: ${UNEVALUATED_C1_CONDITIONS.join('; ')}`,
+      coverageNote: `the app checks the claim's category, risk, subject flags, wording drift since review and the market's own restrictions; it cannot yet check: ${UNEVALUATED_C1_CONDITIONS.join('; ')}`,
       check: { kind: 'claimsRegulatoryReviewed' },
     },
     {
@@ -2445,10 +2491,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Product-performance evidence attached where relevant',
       tier: 'Conditional',
       trigger: 'claimNeedsPerformanceEvidence',
-      coverageNote:
-        // ⚠️ Round 4 question 36(a) settles what this note used to call unsettled,
-        // and the other way round [R4-REWORK: câu 36(a)].
-        'triggered by a claim categorised Product performance or Sensory. The review team have since confirmed that a Cosmetic claim asserting an outcome of the finished product triggers it too — the app does not check that yet.',
+      // Round 4 question 36(a) settled what this note used to call unsettled, and
+      // the other way round: a Cosmetic claim DOES trigger product-level evidence.
+      // Built 2026-08-29, with the answer's own exemption — a claim whose recorded
+      // evidence basis is 'Ingredient-level evidence' or 'No performance claim' is
+      // the "purely ingredient-level statement" the sentence protects, and is
+      // skipped. No coverageNote any more: the rule is fully checked.
+
       check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'Efficacy evidence summary' },
     },
     {
@@ -2460,6 +2509,36 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // own satisfied flag was vacuously true if viewed before Gate 06 is
       // actually passed (found 2026-07-28 — same class as the Gate 06 fix).
       check: { kind: 'registerRowsComplete', register: 'packagingSpecsArtwork', columns: ['approval'] },
+    },
+    {
+      // Round 4 question 30(c), 2026-08-29. The artwork approval record must link
+      // every Claim ID on the artwork and hard-block where any linked claim is
+      // Pending · Unsupported · Not approved for the market · Superseded · Not
+      // approved for the intended wording or channel. Separate from the item above
+      // — that one asks whether the artwork has been approved, this asks whether
+      // the claims printed on it may be.
+      id: 'sg10-artwork-claims',
+      label: 'Every claim on approved artwork is linked and Supported',
+      tier: 'Mandatory',
+      source: 'f-series',
+      coverageNote:
+        'the app checks the three of the five states that belong to the CLAIM itself — Pending, Unsupported and ' +
+        'Superseded, plus an unclassified or missing claim. The other two ("not approved for the market", "not approved ' +
+        'for the intended wording or channel") are properties of a market or channel use rather than of the claim, and ' +
+        'are checked on the Published Information record instead.',
+      check: { kind: 'artworkClaimsSupported' },
+    },
+    {
+      // Round 4 question 30(e), 2026-08-29: the "No product claim or technical
+      // statement" exemption "must be confirmed by a Technical or Regulatory
+      // reviewer before release". Until now anyone who could edit the register
+      // could tick it — the claim that there is no claim was the one nobody
+      // checked.
+      id: 'sg10-claim-exemptions',
+      label: 'Non-product exemptions confirmed by a Technical or Regulatory reviewer',
+      tier: 'Mandatory',
+      source: 'f-series',
+      check: { kind: 'claimExemptionsConfirmed' },
     },
     {
       id: 'sg10-published-info',

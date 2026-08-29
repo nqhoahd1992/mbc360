@@ -54,7 +54,7 @@ const ARTWORK_REGISTER = 'packagingSpecsArtwork';
 function registersReadAtGate(gateId: string): string[] {
   const keys = new Set<string>();
   const walk = (check: ReadinessCheck): void => {
-    if (check.kind === 'allOf') {
+    if (check.kind === 'allOf' || check.kind === 'anyOf') {
       check.checks.forEach(walk);
       return;
     }

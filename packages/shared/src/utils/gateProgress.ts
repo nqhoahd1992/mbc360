@@ -7,6 +7,8 @@ import { gateEvidenceSnapshot, snapshotChanges } from './gateSnapshot';
 import { isChangeOpen } from '../config/changeTriggers';
 import {
   CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE,
+  EVIDENCE_BASIS_COLUMN,
+  EVIDENCE_BASIS_NOT_PRODUCT_LEVEL,
   GATE4_DISPOSITION_OPTIONS,
   REGISTER_CONFIGS,
   SAFETY_COVERAGE_INDIVIDUAL,
@@ -17,6 +19,7 @@ import {
   CLAIM_REVIEW_COLUMNS,
   CLAIM_RISKS_NEEDING_REVIEW,
   CLAIM_WORDING_COLUMN,
+  claimHasReviewableSubject,
   marketRestrictsClaims,
 } from '../config/claimReview';
 import {
@@ -36,6 +39,7 @@ import {
 import { WATCHLIST_REGISTER, watchlistConditionalRows, watchlistHardBlockers } from './watchlistReview';
 import { conditionalSafetyFindings, hardBlockingSafetyFindings } from './safetyFindings';
 import { isMarketLaunched, overdueReviews } from './postLaunch';
+import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
 import {
   ASEAN_CHECKLIST_REGISTER,
@@ -302,11 +306,20 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
       return 'doesNotApply';
     }
 
+    // Round 4 question 36(a), 2026-08-29. 'Cosmetic' joined the category list, but
+    // with the exemption the answer attaches to it: "a purely ingredient-level
+    // statement may rely on ingredient evidence only where clearly presented as an
+    // ingredient statement". So a claim in a triggering category is skipped when
+    // its recorded evidence basis says it does not rest on the finished product —
+    // a declared position, not an inference from wording.
     case 'claimNeedsPerformanceEvidence':
       return twoState(
-        (project.registers['claimEvidenceTraceability'] ?? []).some((c) =>
-          CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE.includes(String(c.claimCategory ?? '').trim()),
-        ),
+        (project.registers['claimEvidenceTraceability'] ?? []).some((c) => {
+          if (!CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE.includes(String(c.claimCategory ?? '').trim())) {
+            return false;
+          }
+          return !EVIDENCE_BASIS_NOT_PRODUCT_LEVEL.includes(String(c[EVIDENCE_BASIS_COLUMN] ?? '').trim());
+        }),
       );
 
     case 'aseanMarket':
@@ -677,6 +690,11 @@ function claimNeedsReview(row: RegisterRow): boolean {
   return (
     CLAIM_CATEGORIES_NEEDING_REVIEW.includes(category) ||
     CLAIM_RISKS_NEEDING_REVIEW.includes(risk) ||
+    // C1's seventh condition — "the claim relates to pregnancy, breastfeeding,
+    // infant use, disease, treatment, prevention, healing or medical endorsement".
+    // Unevaluable until question 27's structured flags shipped (2026-08-29),
+    // because it had only free-text wording to infer from.
+    claimHasReviewableSubject(row) ||
     claimWordingChangedSinceReview(row)
   );
 }
@@ -876,6 +894,20 @@ function evaluateReadinessCheck(
     // market has a completed review against it. Vacuously true before any launch,
     // which is correct and harmless — the item carrying it is Conditional on
     // `productMarketed`, so it is not even evaluated until the product is on sale.
+    case 'artworkClaimsSupported':
+      return {
+        evaluable: true,
+        satisfied:
+          artworkClaimBlockers(
+            project.registers['packagingSpecsArtwork'] ?? [],
+            project.registers['claimEvidenceTraceability'] ?? [],
+          ).length === 0,
+      };
+    case 'claimExemptionsConfirmed':
+      return {
+        evaluable: true,
+        satisfied: unconfirmedExemptionRows(project.registers['publishedInfoApproval'] ?? []).length === 0,
+      };
     case 'postLaunchReviewsRecorded': {
       const enhanced = evaluateTrigger(project, 'pvPmsRequired') === 'applies';
       return {
@@ -1105,6 +1137,10 @@ function evaluateReadinessCheck(
       const results = check.checks.map((c) => evaluateReadinessCheck(project, c, gateId));
       return { evaluable: results.every((r) => r.evaluable), satisfied: results.every((r) => r.satisfied) };
     }
+    case 'anyOf': {
+      const results = check.checks.map((c) => evaluateReadinessCheck(project, c, gateId));
+      return { evaluable: results.every((r) => r.evaluable), satisfied: results.some((r) => r.satisfied) };
+    }
     default:
       return { evaluable: false, satisfied: false };
   }
@@ -1124,7 +1160,7 @@ function evaluateReadinessCheck(
 // mandatory-field UX helpers below still find every check a composite item
 // is backed by, not just its top-level `allOf` wrapper.
 function flattenChecks(check: ReadinessCheck): ReadinessCheck[] {
-  return check.kind === 'allOf' ? check.checks.flatMap(flattenChecks) : [check];
+  return check.kind === 'allOf' || check.kind === 'anyOf' ? check.checks.flatMap(flattenChecks) : [check];
 }
 
 const MANDATORY_CHECKS = Object.values(GATE_READINESS)
@@ -1381,6 +1417,10 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: '/change-control', absolute: true };
     case 'claimsRegulatoryReviewed':
       return { href: '/evidence-claim-support' };
+    case 'artworkClaimsSupported':
+      return { href: '/registers/reg/packagingSpecsArtwork' };
+    case 'claimExemptionsConfirmed':
+      return { href: '/registers/reg/publishedInfoApproval' };
     case 'bomHasLines':
     case 'bomIdentityComplete':
     case 'bomReconciled':
@@ -1400,6 +1440,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return phaseSectionLink(gateId, 'sec-identification');
     case 'gateFieldFilled':
       return phaseSectionLink(gateId, 'sec-gate-flow');
+    case 'anyOf':
     case 'allOf':
       // By convention the composite's LAST check is the more specific one
       // (e.g. [gateCheckDone, checklistHasSelection] — the detail checklist,

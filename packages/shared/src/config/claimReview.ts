@@ -32,8 +32,12 @@ export const CLAIM_RISKS_NEEDING_REVIEW = ['High', 'Pending classification'];
 // Was three; two remain. Round 4 questions 28, 4 and 27 (2026-08-24) each supplied
 // the missing piece, and question 4's is BUILT — the market-restriction condition
 // left this list when the Market profiles dataset shipped. The other two wait on
-// their data sources: the Claims Library (question 28, group 4d) and the structured
-// claim-subject flags (question 27, group 5) [R4-REWORK: câu 27(1)(3)].
+// Was three, then two; ONE remains. Question 27's structured claim-subject flags
+// shipped 2026-08-29 (`CLAIM_SUBJECT_FLAGS` below), so C1's seventh condition —
+// "the claim relates to pregnancy, breastfeeding, infant use, disease, treatment,
+// prevention, healing or medical endorsement" — is read from a controlled column
+// instead of being inferred from free text, which is what made it unevaluable.
+// Only the Claims Library condition is left, waiting on question 28 (group 4d).
 export const UNEVALUATED_C1_CONDITIONS = [
   // Question 28 settles what kind of thing the library is, which was the real
   // blocker: a COMPANY-LEVEL list that a project claim POINTS AT, so "not in the
@@ -61,12 +65,12 @@ export const UNEVALUATED_C1_CONDITIONS = [
   // round to every market: an unconfigured market is visible as such on that page
   // ("not set"), which is where a gap in the reference data belongs, rather than
   // being reported here as a gap in the rule.
-  // Question 27: replaced by eleven structured claim-subject flags (Pregnancy ·
-  // Breastfeeding · Postpartum · Infant or child · Disease or condition ·
-  // Treatment or prevention · Healing or repair · Medical or HCP endorsement ·
-  // Safety or tolerance · Comparative or superiority · Other sensitive topic),
-  // "rather than inferring from free text" — so it stops being a judgement.
-  'the claim relates to pregnancy, breastfeeding, infant use, disease, treatment, prevention, healing or medical endorsement (reading that from the wording is a judgement, not a lookup)',
+  // ✅ "the claim relates to pregnancy, breastfeeding, infant use, disease,
+  // treatment, prevention, healing or medical endorsement" LEFT this list on
+  // 2026-08-29. Question 27 replaced the judgement with eleven structured
+  // claim-subject flags "rather than inferring from free text", so the condition
+  // became a lookup: `claimHasReviewableSubject` reads the eight of the eleven
+  // that C1 itself names.
 ];
 
 // What must be recorded for a triggering claim to count as reviewed. Modelled on
@@ -105,6 +109,50 @@ export const CLAIM_WORDING_COLUMN = 'approvedWording';
 // C1's "the market imposes a specific restriction", made evaluable 2026-08-24 by
 // Round 4 question 4's configurable market profile.
 //
+// Round 4 question 27, transcribed verbatim and in the answer's order: "add
+// structured claim-subject flags (rather than inferring from free text)". Every
+// one of the first eight is a subject C1 names as requiring Regulatory review, so
+// the flags ARE that condition rather than a proxy for it.
+export const CLAIM_SUBJECT_FLAGS = [
+  'Pregnancy',
+  'Breastfeeding',
+  'Postpartum',
+  'Infant or child',
+  'Disease or condition',
+  'Treatment or prevention',
+  'Healing or repair',
+  'Medical or HCP endorsement',
+  'Safety or tolerance',
+  'Comparative or superiority',
+  'Other sensitive topic',
+] as const;
+
+// Which of the eleven make C1's seventh condition fire. Deliberately not all
+// eleven: C1's own list is "pregnancy, breastfeeding, infant use, disease,
+// treatment, prevention, healing or medical endorsement" — 'Safety or tolerance',
+// 'Comparative or superiority' and 'Other sensitive topic' are flags question 27
+// adds for visibility, and reading them as review triggers would widen a
+// confirmed rule on our own initiative.
+export const CLAIM_SUBJECTS_NEEDING_REVIEW: readonly string[] = [
+  'Pregnancy',
+  'Breastfeeding',
+  'Postpartum',
+  'Infant or child',
+  'Disease or condition',
+  'Treatment or prevention',
+  'Healing or repair',
+  'Medical or HCP endorsement',
+];
+
+export const CLAIM_SUBJECT_COLUMN = 'claimSubjects';
+
+export function claimHasReviewableSubject(row: { [key: string]: unknown }): boolean {
+  return String(row[CLAIM_SUBJECT_COLUMN] ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .some((v) => CLAIM_SUBJECTS_NEEDING_REVIEW.includes(v));
+}
+
 // Reads whether ANY market this project sells into has a restriction recorded. Not
 // which market or which claim: C1 uses the condition to decide whether a
 // Regulatory review is REQUIRED, and a restriction in one of the project's markets
@@ -128,13 +176,13 @@ export function marketRestrictsClaims(
 // watch-list hit is real, which does not transfer. CONFIRMED by Round 4 question
 // 27(b), 2026-08-24, which accepts all four.
 //
-// ⚠️ The reply writes them capitalised: "Approved · Approved with Conditions ·
-// Not Approved · Further Information Required". This repo transcribes controlled
-// values verbatim, and question 29's mandatory-comment list names the same three
-// strings, so the two must not drift [R4-REWORK: câu 27(b)].
+// Capitalised to match the reply exactly (2026-08-29). This repo transcribes
+// controlled values verbatim, and question 29's mandatory-comment list names the
+// same three strings — two lists holding "Approved with conditions" and "Approved
+// with Conditions" is how a comment rule silently stops firing.
 export const CLAIM_REVIEW_OUTCOMES = [
   'Approved',
-  'Approved with conditions',
-  'Not approved',
-  'Further information required',
+  'Approved with Conditions',
+  'Not Approved',
+  'Further Information Required',
 ] as const;

@@ -18,7 +18,7 @@
 import { GATE_READINESS, type ReadinessCheck } from '../config/gateReadiness';
 
 function leafChecks(check: ReadinessCheck): ReadinessCheck[] {
-  return check.kind === 'allOf' ? check.checks.flatMap(leafChecks) : [check];
+  return check.kind === 'allOf' || check.kind === 'anyOf' ? check.checks.flatMap(leafChecks) : [check];
 }
 
 function build(): Map<string, string> {

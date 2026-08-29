@@ -42,6 +42,7 @@ import {
 } from '@mbc360/shared/config/gateSignOff';
 import { gateEvidenceSnapshot } from '@mbc360/shared/utils/gateSnapshot';
 import { supersessionGaps } from '@mbc360/shared/utils/formulaLifecycle';
+import { CLAIM_EXEMPTION_CAPABILITY, frozenRevisionEdits } from '@mbc360/shared/utils/claimEvidence';
 import {
   gateBlockers,
   gateIndex,
@@ -202,10 +203,19 @@ export function snapshotReviewedWording(project: ProjectData, rows: RegisterRow[
 //                      this field is ALWAYS discarded — an earlier version kept it
 //                      whenever the box was already ticked, which let a second
 //                      save replace the real declarer with any name at all.
+//   noProductClaimConfirmedBy / …At — Round 4 question 30(e), 2026-08-29: the
+//                      content owner PROPOSES the exemption, and "the exemption
+//                      must be confirmed by a Technical or Regulatory reviewer
+//                      before release". Confirmation is an act with an author, so
+//                      it is stamped from the session and never taken from the
+//                      body — and only when the confirming user holds the
+//                      capability, which is why `canConfirmExemption` is passed in
+//                      rather than re-derived here.
 export function syncPublishedInfoDerived(
   project: ProjectData,
   rows: RegisterRow[],
   actorName: string,
+  canConfirmExemption: boolean,
 ): RegisterRow[] {
   const claimById = new Map(
     (project.registers['claimEvidenceTraceability'] ?? [])
@@ -229,6 +239,29 @@ export function syncPublishedInfoDerived(
     const stored = before.get(String(row.recordId ?? '').trim());
     const storedDeclarer = stored?.noProductClaim ? String(stored.noProductClaimBy ?? '').trim() : '';
     next.noProductClaimBy = row.noProductClaim ? storedDeclarer || actorName : '';
+
+    // Question 30(e). An existing confirmation is carried over untouched; a new
+    // one is only ever stamped for a user who holds the capability, and the
+    // client's own value is always discarded — the same discipline as the
+    // declarer above, for the same reason.
+    const storedConfirmer = stored?.noProductClaim ? String(stored.noProductClaimConfirmedBy ?? '').trim() : '';
+    const storedConfirmedAt = storedConfirmer ? String(stored?.noProductClaimConfirmedAt ?? '') : '';
+    if (!row.noProductClaim) {
+      next.noProductClaimConfirmedBy = '';
+      next.noProductClaimConfirmedAt = '';
+    } else if (storedConfirmer) {
+      next.noProductClaimConfirmedBy = storedConfirmer;
+      next.noProductClaimConfirmedAt = storedConfirmedAt;
+    } else if (canConfirmExemption) {
+      // The confirmer may be the same person as the declarer — the answer names a
+      // FUNCTION ("a Technical or Regulatory reviewer"), not a second pair of eyes,
+      // and requiring two people would be a stricter rule than it states.
+      next.noProductClaimConfirmedBy = actorName;
+      next.noProductClaimConfirmedAt = new Date().toISOString().slice(0, 10);
+    } else {
+      next.noProductClaimConfirmedBy = '';
+      next.noProductClaimConfirmedAt = '';
+    }
     return next;
   });
 }
@@ -1690,6 +1723,21 @@ export class ProjectsService {
       // D4: the three evidence statuses all describe an unapproved row, so none
       // can stand beside the approval tick. The UI sets the pair together, which
       // is exactly why the server still checks it.
+      // Round 4 questions 26 and 30(b), 2026-08-29: an APPROVED claim revision is
+      // read-only. Refused here rather than only disabled in the browser — the
+      // whole point of the rule is that an approved claim cannot be quietly
+      // re-worded, and "the UI hides the field" is not that (BACKEND_PLAN §3
+      // principle 7). Bumping the revision is the sanctioned route and passes.
+      if (registerKey === 'claimEvidenceTraceability') {
+        const frozen = frozenRevisionEdits(project.registers[registerKey] ?? [], rows);
+        if (frozen.length > 0) {
+          throw new BadRequestException(
+            `${frozen.length} claim revision(s) are approved and read-only: ${frozen
+              .map((f) => `${f.claimId} (${f.changed.join(', ')})`)
+              .join('; ')}. Record a new revision or a new Claim ID instead — the reviewer decides which.`,
+          );
+        }
+      }
       if (registerKey === RM_EVIDENCE_REGISTER) {
         const bad = rmEvidenceContradictions(rows);
         if (bad.length > 0) {
@@ -1744,7 +1792,12 @@ export class ProjectsService {
             // displayName, not the user id — every `user`-typed register column
             // stores a display name (see UserSelect), so the exemption declarer
             // renders like every other person field.
-            ? syncPublishedInfoDerived(project, rowsAfterSignatureGuard, user.displayName)
+            ? syncPublishedInfoDerived(
+                project,
+                rowsAfterSignatureGuard,
+                user.displayName,
+                await this.holdsAnyCapability(user, [CLAIM_EXEMPTION_CAPABILITY]),
+              )
             : rowsAfterSignatureGuard;
       // Blame (2026-08-27): editing itself stays open to anyone (rule A4 is
       // not touched), but every save now leaves a real per-row trail instead
