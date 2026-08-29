@@ -34,6 +34,14 @@ import {
 } from '@mbc360/shared/utils/vulnerableUsers';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import {
+  INDEPENDENT_FUNCTION_BY_GATE,
+  gateSignOffMarkets,
+  gateSignOffNeedsComment,
+  isPerMarketGate,
+  previousGateSignOffRole,
+} from '@mbc360/shared/config/gateSignOff';
+import { gateEvidenceSnapshot } from '@mbc360/shared/utils/gateSnapshot';
+import {
   gateBlockers,
   gateIndex,
   gateRefHighestGateId,
@@ -42,7 +50,8 @@ import {
   isGateUnlocked,
   phaseCompletionChecklist,
 } from '@mbc360/shared/utils/gateProgress';
-import { isRegisterClosed } from '@mbc360/shared/types';
+import { GATE_SIGNOFF_ROLES, isRegisterClosed } from '@mbc360/shared/types';
+import type { GateSignOffRole } from '@mbc360/shared/types';
 import type {
   AngleRow,
   ChangeRecord,
@@ -58,7 +67,9 @@ import type {
   SignOff,
 } from '@mbc360/shared/types';
 import { JwtService } from '@nestjs/jwt';
-import type { Prisma } from '../generated/prisma/client';
+// Value import, not `import type`: `Prisma.DbNull` is a runtime value, needed to
+// clear a Json column when a signature is withdrawn.
+import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { PermissionsService } from '../rbac/permissions.service';
@@ -975,19 +986,17 @@ export class ProjectsService {
       // anything other than a plain Proceed carries a condition or a reason
       // that must be written down.
       //
-      // Round 4 question 29(2) (2026-08-24) confirms the shape of that reading and
-      // names the ten decisions: Proceed with Conditions · Hold · Backtrack ·
-      // Reject/Stop · Approved with Conditions · Not Approved · Further
-      // Information Required · N/A where a human rationale is required ·
-      // Delegated approval · Override or exception. The four extra values are
-      // ones this enum does not carry yet, so the `!== 'Proceed'` test stays
-      // correct for the decisions that CAN be recorded here — but it must be
-      // replaced by the explicit list when the gate sign-off lands, so the two
-      // surfaces cannot drift [R4-REWORK: câu 29(2)].
+      // Round 4 question 29(2) (2026-08-24) confirmed the shape of that reading and
+      // named ten decisions. Since the gate sign-off landed (2026-08-29) both
+      // surfaces read the SAME list — `gateSignOffNeedsComment` — rather than each
+      // carrying its own test: the old `!== 'Proceed'` here happened to agree with
+      // the answer for the five decisions this enum carries, and would have
+      // stopped agreeing the moment a sixth was added on one side only.
+      //
       // Whether D1's field set applies to the PHASE block at all (it is written
       // for gate sign-off) is [ASSUMPTION: R5-Q2].
       const comments = input.comments?.trim();
-      if (decision !== 'Proceed' && !comments) {
+      if (gateSignOffNeedsComment(decision) && !comments) {
         throw new BadRequestException(`A comment is required when the decision is "${decision}"`);
       }
 
@@ -1107,6 +1116,410 @@ export class ProjectsService {
         },
       });
       return { phase, role, reason: why, previousSigner: existing.name ?? null };
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // Per-gate sign-off (Round 4 questions 18 and 29, 2026-08-29)
+  // -------------------------------------------------------------------------
+  //
+  // The phase sign-off's machinery is reused wholesale — nomination by the Lead,
+  // authenticator step-up, single-use StepUpProof, snapshotted role and signature
+  // image, withdrawal by the signer alone with a mandatory reason. What is NEW
+  // here is everything question 29 adds: the market lane, the Preparer -> Reviewer
+  // -> Approver sequence, independence, the ten-decision comment rule, the
+  // gate-scoped evidence snapshot, and the approver's decision BEING the gate
+  // decision.
+  //
+  // Rows are created lazily (`upsert`) rather than scaffolded: the per-market
+  // lanes depend on a market list that changes during the project.
+
+  private gateSignOffStepUpPurpose(id: string, gateId: string, market: string | undefined, role: string): string {
+    return `gate_sign_off:${id}:${gateId}:${market ?? ''}:${role}`;
+  }
+
+  // A lane must be one the project actually has. Without this a caller could sign
+  // Gate 10 for a market this project does not sell into, and that signature would
+  // sit in the table forever satisfying nothing — or worse, a market-less Gate 10
+  // signature would look like it covered every market.
+  private assertGateLane(project: ProjectData, gateId: string, market: string | undefined): void {
+    if (!GATES.some((g) => g.id === gateId)) throw new BadRequestException(`Unknown gate "${gateId}"`);
+    const lanes = gateSignOffMarkets(project, gateId);
+    if (!lanes.some((m: string | undefined) => m === market)) {
+      throw new BadRequestException(
+        isPerMarketGate(gateId)
+          ? `${gateId} is signed off per market (question 18) — "${market ?? '(none)'}" is not a market on this project`
+          : `${gateId} is not signed off per market — omit the market`,
+      );
+    }
+  }
+
+  private async loadGateSignOffs(
+    tx: Prisma.TransactionClient,
+    id: string,
+    gateId: string,
+    market: string | undefined,
+  ) {
+    return tx.gateSignOff.findMany({ where: { projectId: id, gateId, market: market ?? null } });
+  }
+
+  // Question 29(5): "Preparer confirms the record is complete and recommends a
+  // decision · Reviewer confirms the evidence and records a recommendation ·
+  // Approver records the final gate decision." An order, not a list.
+  private assertSequence(rows: { role: string; signedAt: Date | null }[], role: GateSignOffRole): void {
+    const previous = previousGateSignOffRole(role);
+    if (!previous) return;
+    const before = rows.find((r) => r.role === previous);
+    if (!before?.signedAt) {
+      throw new BadRequestException(`"${previous}" must be signed before "${role}" — the sequence is fixed`);
+    }
+  }
+
+  // Question 29(4). Two rules, and they are deliberately different in strength:
+  //
+  //   every gate    — "the reviewer must be a different authenticated person from
+  //                   the preparer". A person may not review their own work.
+  //   critical gate — "at least one reviewer or approver must ALSO represent the
+  //                   relevant independent function", expressed as a capability so
+  //                   the Role Editor stays where authority is granted.
+  //
+  // The human-study workflow keeps its stricter outside-department rule (C2); the
+  // answer says so explicitly, and nothing here touches it.
+  private async assertIndependence(
+    user: SessionUser,
+    gateId: string,
+    role: GateSignOffRole,
+    rows: { role: string; signedByUserId: string | null }[],
+  ): Promise<void> {
+    if (role !== 'Prepared by') {
+      const preparer = rows.find((r) => r.role === 'Prepared by')?.signedByUserId;
+      if (preparer && preparer === user.id) {
+        throw new ForbiddenException(
+          `You signed "Prepared by" on this gate — the reviewer and approver must be different people`,
+        );
+      }
+    }
+    if (role === 'Approved by') {
+      const reviewer = rows.find((r) => r.role === 'Reviewed by')?.signedByUserId;
+      if (reviewer && reviewer === user.id) {
+        throw new ForbiddenException('You signed "Reviewed by" on this gate — the approver must be a different person');
+      }
+    }
+    const required = INDEPENDENT_FUNCTION_BY_GATE[gateId];
+    // Checked at the APPROVER's step only, and that is not a relaxation — the rule
+    // is about a SET ("at least one reviewer OR approver"), and the set is not
+    // complete until the last of the two signs. Checking it at the reviewer's step
+    // would demand the capability of the reviewer alone, since no approver has
+    // signed yet — which would silently convert "one of the two" into "both", and
+    // make a Quality reviewer plus a Safety approver impossible at Gate 7.
+    if (!required || role !== 'Approved by') return;
+    const mine = await this.holdsAnyCapability(user, required.anyOf);
+    if (mine) return;
+    const other = rows.find((r) => r.role === 'Reviewed by' && r.signedByUserId);
+    if (other?.signedByUserId) {
+      // Loaded with the SAME include SessionUser is defined by, so the capability
+      // check runs over a real user record rather than a hand-built lookalike —
+      // `hasPermission` reads `active` and `roles[].roleId`, and a partial object
+      // would silently answer "no".
+      const otherUser = await this.prisma.user.findUnique({
+        where: { id: other.signedByUserId },
+        include: { department: true, roles: { include: { role: true } } },
+      });
+      if (otherUser && (await this.holdsAnyCapability(otherUser, required.anyOf))) return;
+    }
+    throw new ForbiddenException(
+      `${gateId} is a critical gate: its reviewer or approver must represent ${required.label} ` +
+        `(needs one of ${required.anyOf.join(' or ')}) — neither you nor the reviewer holds it`,
+    );
+  }
+
+  private async holdsAnyCapability(user: SessionUser, capabilities: string[]): Promise<boolean> {
+    for (const capability of capabilities) {
+      const [resource, action] = capability.split('|');
+      if (await this.permissions.hasPermission(user, resource, action)) return true;
+    }
+    return false;
+  }
+
+  // The Lead nominates who signs each role of a gate lane, exactly as for the
+  // phase block. A signed row cannot be reassigned — withdraw it first.
+  async setGateSignOffAssignees(
+    user: SessionUser,
+    id: string,
+    gateId: string,
+    market: string | undefined,
+    assignees: Partial<Record<GateSignOffRole, string | null>>,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'gate_sign_off.assigned', async (tx, _row, project) => {
+      this.assertGateLane(project, gateId, market);
+      if (project.identity.projectLead !== user.displayName && !this.permissions.isAdmin(user)) {
+        throw new ForbiddenException(`Only the project's Lead (${project.identity.projectLead}) may nominate signers`);
+      }
+      const existing = await this.loadGateSignOffs(tx, id, gateId, market);
+      for (const [role, userId] of Object.entries(assignees) as [GateSignOffRole, string | null][]) {
+        if (!(GATE_SIGNOFF_ROLES as readonly string[]).includes(role)) {
+          throw new BadRequestException(`Unknown sign-off role "${role}"`);
+        }
+        const current = existing.find((r: { role: string; signedAt: Date | null }) => r.role === role);
+        if (current?.signedAt) {
+          throw new BadRequestException(`"${role}" is already signed — withdraw the signature before reassigning`);
+        }
+        if (userId) {
+          const exists = await tx.user.findUnique({ where: { id: userId }, select: { id: true, active: true } });
+          if (!exists?.active) throw new BadRequestException('The nominated signer is not an active user');
+        }
+        // findFirst + create/update rather than `upsert`: Prisma types a compound
+        // unique's nullable member as non-null, so the market-less lane (Gates
+        // 1-9, where `market` IS NULL) cannot be addressed through it at all. The
+        // uniqueness itself is enforced by the two indexes in the migration.
+        if (current) {
+          await tx.gateSignOff.update({ where: { id: current.id }, data: { assignedToUserId: userId } });
+        } else {
+          await tx.gateSignOff.create({
+            data: { projectId: id, gateId, market: market ?? null, role, assignedToUserId: userId },
+          });
+        }
+      }
+      return { gateId, market: market ?? null, roles: Object.keys(assignees) };
+    });
+  }
+
+  async verifyGateSignOffStepUp(
+    user: SessionUser,
+    id: string,
+    gateId: string,
+    market: string | undefined,
+    role: GateSignOffRole,
+    code: string,
+  ): Promise<{ stepUpToken: string }> {
+    const existing = await this.prisma.gateSignOff.findFirst({
+      where: { projectId: id, gateId, market: market ?? null, role },
+    });
+    if (!existing) throw new NotFoundException(`"${role}" has no nominated signer on ${gateId} yet`);
+    if (existing.signedAt) throw new BadRequestException(`"${role}" is already signed — withdraw it first`);
+    if (existing.assignedToUserId !== user.id) {
+      throw new ForbiddenException(`"${role}" is assigned to somebody else — only the assigned signer may sign it`);
+    }
+    const signature = await this.prisma.userSignature.findUnique({ where: { userId: user.id } });
+    if (!signature) throw new BadRequestException('Save a signature in My Account before signing');
+    await this.totp.verifyForStepUp(user.id, code);
+    const purpose = this.gateSignOffStepUpPurpose(id, gateId, market, role);
+    const proof = await this.prisma.stepUpProof.create({ data: { userId: user.id, purpose, channel: 'totp' } });
+    const stepUpToken = await this.jwt.signAsync(
+      { sub: user.id, typ: 'gate_sign_off_step_up', proof: proof.id, purpose },
+      { expiresIn: '5m' },
+    );
+    return { stepUpToken };
+  }
+
+  async signGateSignOff(
+    user: SessionUser,
+    id: string,
+    gateId: string,
+    market: string | undefined,
+    role: GateSignOffRole,
+    input: { decision?: string; comment?: string; stepUpToken?: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'gate_sign_off.signed', async (tx, _row, project) => {
+      this.assertGateLane(project, gateId, market);
+      const rows = await this.loadGateSignOffs(tx, id, gateId, market);
+      const existing = rows.find((r) => r.role === role);
+      if (!existing) throw new NotFoundException(`"${role}" has no nominated signer on ${gateId} yet`);
+      if (existing.signedAt) {
+        throw new BadRequestException(`"${role}" was already signed by ${existing.name ?? 'another user'} — withdraw it first`);
+      }
+      if (!existing.assignedToUserId) {
+        throw new BadRequestException(`"${role}" has no assigned signer yet — the project's Lead assigns one`);
+      }
+      if (existing.assignedToUserId !== user.id) {
+        throw new ForbiddenException(`"${role}" is assigned to somebody else — only the assigned signer may sign it`);
+      }
+      this.assertSequence(rows, role);
+      await this.assertIndependence(user, gateId, role, rows);
+
+      const decision = input.decision?.trim();
+      if (!decision) throw new BadRequestException('A decision is required to sign');
+      if (!(GATE_DECISIONS as readonly string[]).includes(decision)) {
+        throw new BadRequestException(`"${decision}" is not a valid decision`);
+      }
+      // Question 29(2): the ten decisions that require a comment, by name rather
+      // than by "anything except Proceed" — four of the ten are decisions this
+      // enum does not carry yet, and naming them now means adding one later
+      // cannot silently skip the rule.
+      const comment = input.comment?.trim();
+      if (gateSignOffNeedsComment(decision) && !comment) {
+        throw new BadRequestException(`A comment is required when the decision is "${decision}"`);
+      }
+      // Question 29(5): "the approver's decision IS the gate decision … the gate
+      // passes only when the approver records Proceed or Proceed with
+      // Conditions." So the approver signing is the act that records the gate
+      // decision, and it goes through the SAME B1/F9/F1 guards a direct decision
+      // would — otherwise signing would be a way around them.
+      if (role === 'Approved by') {
+        await this.assertCanDecide(user, gateId);
+        const gate = project.gates.find((g) => g.gateId === gateId);
+        if (!gate) throw new NotFoundException(`Gate ${gateId} not found`);
+        // Evaluated against the project AS IT WILL BE once this signature exists.
+        //
+        // Without that, the guard deadlocks by construction: one of the gate's own
+        // Mandatory readiness items is "Prepared, reviewed and approved sign-off",
+        // and the approval being recorded here is the third of those three
+        // signatures — so the approver could never record Proceed, because the
+        // thing that would satisfy the item is the act being validated. This is
+        // exactly the loop `Post_Round3_Design_Decisions.md` §1 point 5 flagged,
+        // and question 29(5) resolves it: "the approver's decision IS the gate
+        // decision — no separate duplicate decision after approval."
+        //
+        // Only THIS lane's row is added. On a per-market gate the other markets'
+        // lanes stay unsigned and go on blocking, which is question 18's whole
+        // point: one approved market must not make the rest look ready.
+        const pending: ProjectData = {
+          ...project,
+          gateSignOffs: [
+            ...project.gateSignOffs.filter(
+              (sofar) => !(sofar.gateId === gateId && (sofar.market ?? undefined) === market && sofar.role === role),
+            ),
+            {
+              gateId,
+              ...(market ? { market } : {}),
+              role,
+              signedByUserId: user.id,
+              signedAt: new Date().toISOString(),
+              decision: decision as GateRecord['decision'],
+            },
+          ],
+        };
+        this.resolveDecision(
+          pending,
+          [],
+          gateId,
+          gate,
+          decision as GateRecord['decision'],
+          { ...gate, decision: decision as GateRecord['decision'] },
+          await this.openChangeGateNumbers(tx, id),
+          true,
+        );
+      }
+
+      let signatureImage: string | null = null;
+      {
+        if (!input.stepUpToken) {
+          throw new BadRequestException('An authenticator code is required to sign');
+        }
+        let payload: { sub?: string; typ?: string; proof?: string; purpose?: string };
+        try {
+          payload = await this.jwt.verifyAsync(input.stepUpToken);
+        } catch {
+          throw new BadRequestException('Verification expired or invalid — enter a new code');
+        }
+        const expectedPurpose = this.gateSignOffStepUpPurpose(id, gateId, market, role);
+        if (payload.typ !== 'gate_sign_off_step_up' || payload.sub !== user.id || payload.purpose !== expectedPurpose) {
+          throw new BadRequestException('Verification does not match this sign-off');
+        }
+        const proof = payload.proof ? await tx.stepUpProof.findUnique({ where: { id: payload.proof } }) : null;
+        if (!proof || proof.userId !== user.id || proof.usedForId) {
+          throw new BadRequestException('Verification already used or invalid — enter a new code');
+        }
+        const signature = await tx.userSignature.findUnique({ where: { userId: user.id } });
+        if (!signature) {
+          throw new BadRequestException('Save a signature in My Account before signing');
+        }
+        await tx.stepUpProof.update({ where: { id: proof.id }, data: { usedForId: existing.id } });
+        signatureImage = signature.imageData;
+      }
+
+      // Question 29(1). Taken here, inside the row-locked transaction, so it is
+      // exactly the evidence that existed at the moment of signing — and stored in
+      // full, because the answer requires the system to say what changed later.
+      const snapshot = gateEvidenceSnapshot(project, gateId, market);
+      const now = new Date();
+      await tx.gateSignOff.update({
+        where: { id: existing.id },
+        data: {
+          name: user.displayName,
+          initials: this.initialsOf(user.displayName),
+          signedByUserId: user.id,
+          signedAt: now,
+          roleAtSigning: user.roles.map((r) => r.role.name).join(', ') || null,
+          decision,
+          comment: comment || null,
+          signatureImage,
+          signatureVerifiedAt: now,
+          snapshot: snapshot as unknown as Prisma.InputJsonValue,
+        },
+      });
+
+      // The approver's decision IS the gate decision — written here rather than
+      // left for somebody to record separately, which is what "no separate
+      // duplicate decision after approval" means.
+      if (role === 'Approved by') {
+        await tx.gateRecord.update({
+          where: { projectId_gateId: { projectId: id, gateId } },
+          data: { decision },
+        });
+      }
+      return { gateId, market: market ?? null, role, decision, gateDecisionRecorded: role === 'Approved by' };
+    });
+  }
+
+  // Only the signer (or an admin, for the case where that account is gone) may
+  // release a signature, and a reason is mandatory — B4, no silent corrections.
+  // The nomination survives, exactly as for the phase block.
+  async withdrawGateSignOff(
+    user: SessionUser,
+    id: string,
+    gateId: string,
+    market: string | undefined,
+    role: GateSignOffRole,
+    reason: string,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    const why = reason?.trim();
+    if (!why) throw new BadRequestException('A reason is required to withdraw a signature');
+    return this.mutate(user, id, expectedVersion, 'gate_sign_off.withdrawn', async (tx, _row, project) => {
+      this.assertGateLane(project, gateId, market);
+      const rows = await this.loadGateSignOffs(tx, id, gateId, market);
+      const existing = rows.find((r) => r.role === role);
+      if (!existing?.signedAt) throw new BadRequestException(`"${role}" is not signed`);
+      if (existing.signedByUserId !== user.id && !this.permissions.isAdmin(user)) {
+        throw new ForbiddenException(`Only ${existing.name ?? 'the signer'} may withdraw this signature`);
+      }
+      // The sequence runs the other way too: releasing the preparer's signature
+      // while a reviewer's still stands would leave a review of nothing. Later
+      // signatures must be withdrawn first, by the people who gave them.
+      const later = GATE_SIGNOFF_ROLES.slice(GATE_SIGNOFF_ROLES.indexOf(role) + 1);
+      const standing = rows.filter((r) => later.includes(r.role as GateSignOffRole) && r.signedAt);
+      if (standing.length > 0) {
+        throw new BadRequestException(
+          `Withdraw ${standing.map((r) => `"${r.role}"`).join(' and ')} first — a later signature rests on this one`,
+        );
+      }
+      await tx.gateSignOff.update({
+        where: { id: existing.id },
+        data: {
+          name: null,
+          initials: null,
+          signedByUserId: null,
+          signedAt: null,
+          roleAtSigning: null,
+          decision: null,
+          comment: null,
+          signatureImage: null,
+          signatureVerifiedAt: null,
+          snapshot: Prisma.DbNull,
+        },
+      });
+      // Withdrawing the approval un-records the gate decision it WAS — leaving it
+      // would keep a decision on the gate that nobody currently stands behind.
+      if (role === 'Approved by') {
+        await tx.gateRecord.update({
+          where: { projectId_gateId: { projectId: id, gateId } },
+          data: { decision: null },
+        });
+      }
+      return { gateId, market: market ?? null, role, reason: why, previousSigner: existing.name ?? null };
     });
   }
 

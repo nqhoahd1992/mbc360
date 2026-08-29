@@ -10,7 +10,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-Thank you for the Round 4 answers. They were complete enough to start building immediately, and nineteen of the thirty-six are already finished. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
+Thank you for the Round 4 answers. They were complete enough to start building immediately, and nineteen of the thirty-six are already finished — including the per-gate sign-off, which questions 18 and 29 unblocked. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
 
 Every question here follows the same pattern as last time: we have made a choice so that work could continue, the choice is running in the software now, and we would rather you corrected it than have it settle in silently. Where a question is still unbuilt we say so.
 
@@ -63,15 +63,21 @@ Three readings, with quite different amounts of work:
 
 ## Question 3 — How much does a gate's signed evidence snapshot cover?
 
-Your sign-off answer settled the shape completely, and we are grateful — it is the largest single piece of work left. One thing is still ours to decide, and it decides how the whole mechanism behaves.
+**Now built, and building it raised one specific point we could not have seen from the answer alone.** The snapshot covers: every evidence register the gate's own rules read · the checklist sections and requirement rows belonging to that gate · its Key Gate Check rows · its evidence link · its open actions · the formula version · and, on a per-market gate, the packaging/artwork record. Changing any of them marks the signature stale and names what changed, as you asked.
 
-You said the signed record is a gate-specific evidence snapshot, and listed eight things in it. Three of those eight are open-ended: "applicable checklist results", "mandatory and triggered evidence-register states", and "evidence links and document revisions". At Gate 10 that could mean around fifteen registers of several dozen rows each.
+**Two things are deliberately left out, both for the same reason — including them makes the mechanism defeat itself:**
 
-This matters because of the rule you attached to it: if evidence inside the snapshot changes after a signature, the signature goes stale and the system must say **what** changed. The wider the snapshot, the more often a signature goes stale — and a signature that goes stale every time anyone edits anything nearby is one people learn to ignore.
+**The gate decision.** Your point 1 lists "gate status and proposed decision" in the signed record, but your point 5 also says the approver's decision *is* the gate decision. So the decision is the sign-off's **output**. If it were inside the snapshot, the moment the approver signed, the record would change and all three signatures would go stale — the gate could never be completed: approve, all stale, re-sign, approve, stale again. The recommendation each person made is still recorded: every signature carries its own decision.
 
-**What we would do.** Snapshot exactly what the gate's own readiness checks read — every condition the gate is judged on, and the value each one read. The boundary is then defined by the gate's own rules, so it cannot drift from "what actually blocks this gate", and "what changed" becomes a simple comparison. The cost: a register column that no readiness check reads could change without any signature noticing.
+**Our own conclusion about the gate's readiness verdict.** The shortest way to capture "applicable checklist results" would have been to store the system's own verdict on each of the gate's requirements. We did not, because one of those requirements is *"prepared, reviewed and approved sign-off"* — so answering "has this gate been signed off?" would mean reading a record that contains the answer to that question. We store the underlying checklists, requirements and registers directly instead.
 
-**Question:** is that boundary enough, or must the snapshot cover the full contents of every register the gate touches, including columns no rule reads?
+**The boundary itself, which is the original question.** You listed eight things in the signed record, and three are open-ended: "applicable checklist results", "mandatory and triggered evidence-register states", and "evidence links and document revisions". At Gate 10 that could mean around fifteen registers of several dozen rows each.
+
+This matters because of the rule you attached to it: if evidence inside the snapshot changes after a signature, the signature goes stale and re-signing is required. The wider the snapshot, the more often that happens — and a signature that goes stale every time anyone edits anything nearby is one people learn to ignore.
+
+**What we have done.** The snapshot covers every register the gate's own rules read, in full, plus the checklist and requirement rows tagged with that gate. So the boundary is set by the gate's own rules and cannot drift from "what actually blocks this gate".
+
+**Questions:** (a) is that boundary right? (b) should the gate decision be inside the signed record at all, given the loop above — and if so, in what form?
 
 ## Question 4 — Is "is a change control needed?" answered once for the project, or once per finding?
 

@@ -22,6 +22,7 @@ import type {
   RegisterClosureRole,
   RegisterRow,
   RequirementItem,
+  GateSignOffRole,
   SignOff,
   StudyApproval,
 } from '@mbc360/shared/types';
@@ -153,6 +154,27 @@ interface AppState {
     input: { decision?: string; comments?: string; stepUpToken: string },
   ) => void;
   withdrawSignOff: (id: string, phase: number, role: SignOff['role'], reason: string) => void;
+  // Per-gate sign-off (Round 4 questions 18/29). `market` is undefined on Gates 1-9.
+  setGateSignOffAssignees: (
+    id: string,
+    gateId: string,
+    market: string | undefined,
+    assignments: { role: GateSignOffRole; userId?: string | null }[],
+  ) => void;
+  signGateSignOff: (
+    id: string,
+    gateId: string,
+    market: string | undefined,
+    role: GateSignOffRole,
+    input: { decision?: string; comment?: string; stepUpToken: string },
+  ) => Promise<void>;
+  withdrawGateSignOff: (
+    id: string,
+    gateId: string,
+    market: string | undefined,
+    role: GateSignOffRole,
+    reason: string,
+  ) => Promise<void>;
   // F13: the responsible owner accepts a phase's pre-work once it has opened.
   acceptPhasePreWork: (id: string, phase: number, acceptedBy: string) => void;
   setEvidenceSummary: (id: string, phase: number, value: string) => void;
@@ -479,6 +501,12 @@ export const useAppStore = create<AppState>()(
           writeSection(id, (v) => projectsApi.signSignOff(id, phase, role, input, v)),
         withdrawSignOff: (id, phase, role, reason) =>
           writeSection(id, (v) => projectsApi.withdrawSignOff(id, phase, role, reason, v)),
+        setGateSignOffAssignees: (id, gateId, market, assignments) =>
+          writeSection(id, (v) => projectsApi.setGateSignOffAssignees(id, gateId, market, assignments, v)),
+        signGateSignOff: (id, gateId, market, role, input) =>
+          writeSection(id, (v) => projectsApi.signGateSignOff(id, gateId, market, role, input, v)),
+        withdrawGateSignOff: (id, gateId, market, role, reason) =>
+          writeSection(id, (v) => projectsApi.withdrawGateSignOff(id, gateId, market, role, reason, v)),
         setEvidenceSummary: (id, phase, value) =>
           writeSection(id, (v) => projectsApi.setEvidenceSummary(id, phase, value, v)),
         setPhaseKeyLinks: (id, phase, links) =>

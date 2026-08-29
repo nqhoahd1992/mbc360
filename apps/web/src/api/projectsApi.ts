@@ -13,6 +13,7 @@ import type {
   RegisterClosureRole,
   RegisterRow,
   RequirementItem,
+  GateSignOffRole,
   SignOff,
 } from '@mbc360/shared/types';
 
@@ -241,6 +242,54 @@ export const withdrawSignOff = (
     `/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/withdraw`,
     { method: 'POST', body: JSON.stringify({ role, reason, expectedVersion }) },
   );
+
+// Per-gate sign-off (Round 4 questions 18 and 29). Same four acts as the phase
+// block above; the market is present only at Gates 10-12.
+export const setGateSignOffAssignees = (
+  id: string,
+  gateId: string,
+  market: string | undefined,
+  assignments: { role: GateSignOffRole; userId?: string | null }[],
+  v: number,
+) => put(id, `gates/${gateId}/sign-off-assignees`, { market, assignments }, v);
+
+export const verifyGateSignOffStepUp = (
+  id: string,
+  gateId: string,
+  market: string | undefined,
+  role: GateSignOffRole,
+  code: string,
+): Promise<{ stepUpToken: string }> =>
+  request(`/projects/${encodeURIComponent(id)}/gates/${gateId}/sign-offs/step-up`, {
+    method: 'POST',
+    body: JSON.stringify({ market, role, code }),
+  });
+
+export const signGateSignOff = (
+  id: string,
+  gateId: string,
+  market: string | undefined,
+  role: GateSignOffRole,
+  input: { decision?: string; comment?: string; stepUpToken: string },
+  expectedVersion: number,
+) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/gates/${gateId}/sign-offs/sign`, {
+    method: 'POST',
+    body: JSON.stringify({ market, role, ...input, expectedVersion }),
+  });
+
+export const withdrawGateSignOff = (
+  id: string,
+  gateId: string,
+  market: string | undefined,
+  role: GateSignOffRole,
+  reason: string,
+  expectedVersion: number,
+) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/gates/${gateId}/sign-offs/withdraw`, {
+    method: 'POST',
+    body: JSON.stringify({ market, role, reason, expectedVersion }),
+  });
 
 // Register-row signatures (2026-08-26). A `signature` column (first use: the
 // Formulation Change Register's NP approval) is never written by the bulk

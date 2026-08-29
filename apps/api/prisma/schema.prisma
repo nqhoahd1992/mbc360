@@ -55,6 +55,8 @@ model User {
   attachments  Attachment[]  @relation("AttachmentUploadedBy")
   signOffs     SignOff[]     @relation("SignOffSignedBy")
   signOffsAssigned SignOff[]  @relation("SignOffAssignedTo")
+  gateSignOffs         GateSignOff[] @relation("GateSignOffSignedBy")
+  gateSignOffsAssigned GateSignOff[] @relation("GateSignOffAssignedTo")
   registerClosureSignOffs RegisterClosureSignOff[] @relation("RegisterClosureSignedBy")
   reviewerOf   ProjectReviewer[]
   archivedProjects Project[]     @relation("ProjectArchivedBy")
@@ -202,6 +204,7 @@ model Project {
   updatedAt        DateTime @updatedAt
 
   markets          ProjectMarket[]
+  gateSignOffs     GateSignOff[]
   reviewers        ProjectReviewer[]
   gates            GateRecord[]
   nextActions      NextAction[]
@@ -426,6 +429,60 @@ model SignOff {
 
   @@index([phaseClosureId])
   @@map("sign_offs")
+}
+
+// Per-gate sign-off (Round 4 questions 18 and 29, 2026-08-29). A NEW table rather
+// than an extension of SignOff above, which hangs off phaseClosureId and is
+// therefore per-PHASE; D1 says the phase block "remains as an additional
+// phase-closure approval and is not replaced", so both exist.
+//
+// Key = (project, gate, market, role), option C of
+// docs/plans/Post_Round3_Design_Decisions.md §1: `market` is set at Gates 10-12
+// (question 18 — each market may differ in dossier status, regulatory decision,
+// claims, artwork, formula version and launch date) and NULL everywhere else.
+// Postgres treats each NULL as distinct, so @@unique alone would not stop two
+// "Prepared by" rows on Gate 1 — hence the partial unique index in the migration.
+//
+// Rows are created LAZILY, on nomination or signing, rather than scaffolded at
+// project creation: the per-market lanes depend on a market list that changes
+// during the project, so a scaffolded set would be wrong the moment a market is
+// added. An absent row simply means unsigned, which is what the readiness check
+// reads.
+model GateSignOff {
+  id               String   @id @default(cuid())
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId        String
+  gateId           String // SG01..SG12
+  market           String? // Gates 10-12 only
+  role             String // Prepared by | Reviewed by | Approved by
+  // The project Lead nominates; only that person may sign. An authorisation
+  // input, so it is the user id, not a display name.
+  assignedTo       User?    @relation("GateSignOffAssignedTo", fields: [assignedToUserId], references: [id])
+  assignedToUserId String?
+  signedBy         User?    @relation("GateSignOffSignedBy", fields: [signedByUserId], references: [id])
+  signedByUserId   String?
+  name             String?
+  initials         String?
+  signedAt         DateTime?
+  // Snapshotted at signing, never re-read — a role change tomorrow must not
+  // rewrite what this signature claimed today.
+  roleAtSigning    String?
+  // Question 29(5): "the approver's decision IS the gate decision", so this reuses
+  // GateDecision rather than carrying an enum of its own.
+  decision         String?
+  comment          String?
+  signatureImage   String?
+  signatureVerifiedAt DateTime?
+  // Question 29(1): the gate-scoped evidence snapshot this signature attests to,
+  // held in FULL rather than hashed — the answer requires the system to "identify
+  // what changed", and a hash can only say that something did. "A project-wide
+  // save counter is not sufficient" rules out projects.version explicitly.
+  snapshot         Json?
+  updatedAt        DateTime @updatedAt
+
+  @@unique([projectId, gateId, market, role])
+  @@index([projectId, gateId])
+  @@map("gate_sign_offs")
 }
 
 // Register closing (2026-08-27, user-requested). This whole mechanism —

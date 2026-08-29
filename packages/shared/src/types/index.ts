@@ -511,6 +511,82 @@ export const SCALE_UP_RISK_OPTIONS = ['Yes', 'No', 'Pending assessment'] as cons
 // and "Infant 0+ is a target user" mean the same thing to the engine.
 export const FAMILY_USE_AGE_GROUPS = ['Infant 0+', 'Child 2+', 'Child 3+', 'Adults only'] as const;
 
+// Per-gate sign-off (Round 4 questions 18 and 29, built 2026-08-29). Distinct
+// from the PHASE-level `SignOff`, which stays: question 29's answer describes the
+// gate act, and D1 says the phase block "remains as an additional phase-closure
+// approval and is not replaced".
+//
+// Three roles per gate, in sequence — "Preparer confirms the record is complete
+// and recommends a decision · Reviewer confirms the evidence and records a
+// recommendation · Approver records the final gate decision", and "the approver's
+// decision IS the gate decision".
+export const GATE_SIGNOFF_ROLES = ['Prepared by', 'Reviewed by', 'Approved by'] as const;
+export type GateSignOffRole = (typeof GATE_SIGNOFF_ROLES)[number];
+
+export interface GateSignOff {
+  gateId: string;
+  // Question 18: Gates 10, 11 and 12 are signed PER MARKET, because each market
+  // may differ in dossier status, regulatory decision, claims, artwork, formula
+  // version and launch date. Absent on every other gate — deliberately nullable
+  // rather than a placeholder value, so the two shapes stay visibly different.
+  market?: string;
+  role: GateSignOffRole;
+  // Nominated signer (the project Lead nominates; only that person may sign),
+  // stored as the user id because this one is an authorisation input.
+  assignedToUserId?: string;
+  assignedToName?: string;
+  signedByUserId?: string;
+  name?: string;
+  initials?: string;
+  signedAt?: string;
+  roleAtSigning?: string;
+  decision?: GateRecord['decision'];
+  comment?: string;
+  signatureImage?: string;
+  signatureVerifiedAt?: string;
+  // Question 29(1): the gate-scoped evidence snapshot this signature attests to.
+  // Held in full rather than hashed, because the answer requires the system to
+  // "identify what changed" — a hash can only say that something did.
+  snapshot?: GateEvidenceSnapshot;
+}
+
+// The eight components question 29(1) lists, in its own order. Everything here is
+// derived from ProjectData by `gateEvidenceSnapshot()`; nothing is entered.
+export interface GateEvidenceSnapshot {
+  gateId: string;
+  market?: string;
+  status: string;
+  // NOT the gate record's `decision`. That field is the OUTPUT of the sign-off —
+  // question 29(5) makes the approver's decision the gate decision — so including
+  // it would mean the act of approving changed the snapshot the preparer and
+  // reviewer signed, making both stale the instant the gate was approved and the
+  // gate permanently unsignable: approve, all three go stale, re-sign, approve,
+  // stale again. The answer's "gate status and proposed decision" is still
+  // recorded: each signature carries its own `decision`, which is precisely the
+  // recommendation that role made [ASSUMPTION: R5-Q7].
+  // The Key Gate Check rows belonging to this gate.
+  gateChecks: { check: string; done: boolean; ynna: string; notes?: string }[];
+  // "Applicable checklist results" — the checklist sections and requirement rows
+  // this gate owns, each reduced to a stable string.
+  //
+  // Captured as EVIDENCE rather than as the readiness engine's verdict on it, and
+  // that is not a stylistic choice: a snapshot containing the readiness list would
+  // contain the sign-off item itself, so evaluating "is this gate signed off"
+  // would have to evaluate a snapshot that contains the answer to that question.
+  // Reading the underlying records directly breaks the loop and is closer to what
+  // question 29(1) actually names.
+  checklists: Record<string, string>;
+  requirements: Record<string, string>;
+  // "Evidence links and document revisions" — the gate row's own evidence link
+  // plus every register row this gate reads, reduced to a stable string.
+  evidenceLinks: string[];
+  registers: Record<string, string>;
+  // "Open actions and conditions".
+  openActions: { id: string; title: string; status: string; priority: string }[];
+  formulaVersion: string;
+  artworkVersion?: string;
+}
+
 export interface ProjectAssessments {
   // Question 8 — "Change Control required?", with the five supporting fields the
   // answer lists. Held at PROJECT level, not per finding, because the app has no
@@ -924,6 +1000,10 @@ export interface ProjectData {
   gateChangeLog: GateChangeLogEntry[]; // immutable log of ordinary Phase Gate Flow field edits
   marketTracks: MarketTrack[]; // per-market Gate 10-12 tracking (rules A1/C5)
   studyApprovals: StudyApproval[]; // dedicated study approval workflow (rule C2)
+  // Per-gate sign-off records (Round 4 questions 18/29). Sparse: a row exists only
+  // once somebody has been nominated or has signed, so an absent (gate, market,
+  // role) is simply unsigned — which is what the readiness check reads.
+  gateSignOffs: GateSignOff[];
   formulaVersion: string; // current formula version, e.g. "F1.0" (rule A2)
   formulaVersionHistory: FormulaVersionRecord[]; // prior versions, audit history (rule A2)
   // Company reference data resolved for THIS project — read-only, refreshed on

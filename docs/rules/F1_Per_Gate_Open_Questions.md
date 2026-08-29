@@ -1547,6 +1547,16 @@ Ba cách đọc, ba lượng công việc rất khác nhau:
 
 #### R5-Q7 · Ảnh chụp bằng chứng theo gate gồm chính xác những gì 🔴
 
+**Cập nhật 29/08/2026 — đã build, và việc build làm lộ ra một điều đáp án không thể lường trước.** Biên đã chọn: mọi register mà luật readiness của gate đó đọc · các section checklist mang gate đó · các dòng requirement mang gate đó · dòng Key Gate Check của gate · evidence link của gate · next action đang mở của gate · formula version · (chỉ ở lane per-market) bản ghi artwork. Xem `packages/shared/src/utils/gateSnapshot.ts`.
+
+**Hai thứ cố ý KHÔNG nằm trong ảnh chụp, và cả hai đều vì cùng một lý do — chúng biến cơ chế thành tự vô hiệu:**
+
+- **Quyết định gate (`GateRecord.decision`).** Đáp án ghi *"gate status and proposed decision"*, nhưng câu 29(5) lại nói quyết định của approver **chính là** quyết định gate — nên nó là **đầu ra** của sign-off. Chụp nó vào thì approver ký xong là decision đổi, ảnh chụp đổi, **cả ba chữ ký stale ngay lập tức**, và gate không bao giờ ký xong được. "Proposed decision" vẫn được ghi: mỗi dòng chữ ký mang `decision` riêng, đúng là khuyến nghị của vai đó.
+- **Danh sách readiness.** Đường ngắn nhất tới "applicable checklist results" là chụp kết quả engine, nhưng danh sách đó chứa chính item `sgNN-signoff` — nên trả lời "gate đã ký chưa" phải đánh giá một ảnh chụp chứa câu trả lời cho câu hỏi đó.
+
+**Câu hỏi giữ nguyên:** biên này có đúng không, và cụ thể là hai vế trên — quyết định gate có nên nằm trong bản ghi được ký không, và nếu có thì làm sao tránh vòng lặp?
+
+
 **Đáp án Vòng 4 câu 29(1)** liệt kê 8 thành phần của bản ghi được ký, và nói rõ nếu bằng chứng bên trong ảnh chụp thay đổi thì chữ ký thành stale, hệ thống phải **chỉ ra cái gì đã đổi**, và phải ký lại. Câu *"A project-wide save counter is not sufficient"* loại `projects.version`.
 
 **Cái đáp án không nói:** biên của ảnh chụp. Ba thành phần trong tám là **rộng vô định**: *"applicable checklist results"* · *"mandatory and triggered evidence-register states"* · *"evidence links and document revisions"*. Ở Gate 10, "mandatory and triggered evidence-register states" là khoảng 15 register, mỗi cái vài chục dòng.

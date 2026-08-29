@@ -1,6 +1,9 @@
 import type { GateRecord, NextAction, ProjectData, RegisterRow } from '../types';
-import { NEXT_ACTION_TERMINAL_STATUSES, familyUseAgeGroupList, isRegisterClosed, isSignedOff } from '../types';
+import { GATE_SIGNOFF_ROLES, NEXT_ACTION_TERMINAL_STATUSES, familyUseAgeGroupList, isRegisterClosed, isSignedOff } from '../types';
+import type { GateSignOffRole } from '../types';
 import { COSTING_STATUS_NOT_APPLICABLE, GATES, REQUIREMENT_NOT_APPLICABLE } from '../config/gates';
+import { findGateSignOff, gateSignOffMarkets, isGateSignOffSigned } from '../config/gateSignOff';
+import { gateEvidenceSnapshot, snapshotChanges } from './gateSnapshot';
 import { isChangeOpen } from '../config/changeTriggers';
 import {
   CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE,
@@ -474,6 +477,52 @@ export function uncoveredFormulaLines(project: ProjectData): { label: string; re
   return out;
 }
 
+// Round 4 questions 18 and 29 — the lanes of a gate that are not fully and
+// currently signed. A "lane" is one market at Gates 10-12 and the single
+// market-less lane everywhere else.
+//
+// A lane counts as signed only when all three roles are signed AND none of the
+// three has gone stale, which is question 29(1)'s own consequence: "if evidence
+// within the signed snapshot changes after a signature … the signature becomes
+// stale/invalidated … re-signing is required". A stale signature is deliberately
+// not deleted — what was signed and when stays on the record; it simply stops
+// counting, and `staleGateSignOffs` says what changed.
+export function unsignedGateLanes(project: ProjectData, gateId: string): { market?: string; reason: string }[] {
+  const lanes = gateSignOffMarkets(project, gateId);
+  if (lanes.length === 0) {
+    return [{ reason: 'no market recorded on this project, so there is nothing to sign off per market' }];
+  }
+  const out: { market?: string; reason: string }[] = [];
+  for (const market of lanes) {
+    const missing = GATE_SIGNOFF_ROLES.filter((role) => !isGateSignOffSigned(findGateSignOff(project, gateId, market, role)));
+    if (missing.length > 0) {
+      out.push({ market, reason: `not signed: ${missing.join(', ')}` });
+      continue;
+    }
+    const stale = GATE_SIGNOFF_ROLES.filter((role) => gateSignOffStaleChanges(project, gateId, market, role).length > 0);
+    if (stale.length > 0) {
+      out.push({ market, reason: `evidence changed since signing: ${stale.join(', ')} must re-sign` });
+    }
+  }
+  return out;
+}
+
+// What has changed under one signature since it was given — empty when it is
+// still current, and the list question 29(1) asks the system to identify when it
+// is not. A signature with no stored snapshot is treated as current rather than
+// stale: that can only be a record predating this mechanism, and inventing
+// staleness for it would invalidate signatures on evidence nobody has touched.
+export function gateSignOffStaleChanges(
+  project: ProjectData,
+  gateId: string,
+  market: string | undefined,
+  role: GateSignOffRole,
+): string[] {
+  const signOff = findGateSignOff(project, gateId, market, role);
+  if (!signOff?.signedAt || !signOff.snapshot) return [];
+  return snapshotChanges(signOff.snapshot, gateEvidenceSnapshot(project, gateId, market));
+}
+
 // Every raw material this project uses, by the rmCode the overlay is keyed on.
 //
 // The union of two surfaces on purpose. Supplier & RM Evidence is the Gate 4
@@ -602,6 +651,11 @@ const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
 function evaluateReadinessCheck(
   project: ProjectData,
   check: ReadinessCheck,
+  // Which gate is being evaluated. Only `gateSignedOff` needs it — every other
+  // kind names its own data source — but it is threaded rather than looked up,
+  // because a check that had to work out which gate it belongs to would be a
+  // check that could get it wrong.
+  gateId: string,
 ): { evaluable: boolean; satisfied: boolean } {
   switch (check.kind) {
     case 'manual':
@@ -676,6 +730,13 @@ function evaluateReadinessCheck(
     // Round 4 question 23(b): every line of the current formula has a safety-matrix
     // row naming a coverage route — and, for the three routes that point at an
     // assessment elsewhere, naming what it points at.
+    // Round 4 questions 18 and 29. Satisfied only when every lane of this gate
+    // carries all three signatures and none has gone stale. A per-market gate has
+    // one lane per market — and none at all on a project with no markets, which
+    // resolves to unsatisfied rather than vacuously true: a project that has not
+    // said where it sells has not signed anything off for anywhere.
+    case 'gateSignedOff':
+      return { evaluable: true, satisfied: unsignedGateLanes(project, gateId).length === 0 };
     case 'safetyMatrixCoversFormula': {
       // Same empty-formula guard as the two `scope: 'formula'` D4 checks above,
       // and for the same reason: "every formula line is covered" is vacuously
@@ -893,7 +954,7 @@ function evaluateReadinessCheck(
       return { evaluable: true, satisfied: !!record?.[check.field]?.trim() };
     }
     case 'allOf': {
-      const results = check.checks.map((c) => evaluateReadinessCheck(project, c));
+      const results = check.checks.map((c) => evaluateReadinessCheck(project, c, gateId));
       return { evaluable: results.every((r) => r.evaluable), satisfied: results.every((r) => r.satisfied) };
     }
     default:
@@ -988,7 +1049,7 @@ export function evaluateReadinessRequirements(
   const reqs: ReadinessRequirement[] = GATE_READINESS[gateId] ?? [];
   return reqs.map((req) => {
     const active = req.trigger ? evaluateTrigger(project, req.trigger) === 'applies' : true;
-    const { evaluable, satisfied } = evaluateReadinessCheck(project, req.check);
+    const { evaluable, satisfied } = evaluateReadinessCheck(project, req.check, gateId);
     return {
       id: req.id,
       label: req.label,
@@ -1334,7 +1395,7 @@ export function gateReadinessChecklist(
     // hardBlock false, and satisfied once Proceed with Conditions is the decision
     // on the table. `decisionOverride` is what makes the Save-guard able to ask
     // "would the decision I am about to record be rejected?".
-    const satisfiedNow = evaluateReadinessCheck(project, req.check).satisfied;
+    const satisfiedNow = evaluateReadinessCheck(project, req.check, gateId).satisfied;
     const decisionOnTable =
       decisionOverride !== undefined ? decisionOverride : project.gates.find((g) => g.gateId === gateId)?.decision;
     items.push({

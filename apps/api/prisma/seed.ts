@@ -158,6 +158,31 @@ async function seedRbac(): Promise<void> {
       action: 'accept-regulatory',
       description: 'Carry a Regulatory-escalated watch-list finding under Proceed with Conditions (Round 4, q32c)',
     },
+    // Round 4 question 29(4): at the seven critical gates "at least one reviewer or
+    // approver must also represent the relevant independent function". Four
+    // capabilities, one per function the answer names, rather than one generic
+    // "is independent" — a Safety reviewer standing in for a Regulatory decision
+    // is precisely what the sentence rules out.
+    {
+      resource: 'gate-signoff',
+      action: 'represent-safety',
+      description: 'Represent Safety / Scientific Review on a critical gate sign-off (Round 4, q29.4)',
+    },
+    {
+      resource: 'gate-signoff',
+      action: 'represent-regulatory',
+      description: 'Represent Regulatory on a critical gate sign-off (Round 4, q29.4)',
+    },
+    {
+      resource: 'gate-signoff',
+      action: 'represent-quality',
+      description: 'Represent Quality on a critical gate sign-off (Round 4, q29.4)',
+    },
+    {
+      resource: 'gate-signoff',
+      action: 'represent-technical',
+      description: 'Represent Technical on a critical gate sign-off (Round 4, q29.4)',
+    },
     // Round 4 question 34(d): the existing Gate 11 open-change acknowledgement
     // "may be reused if role-restricted… Only a person authorised to approve the
     // relevant Gate 11 impact may acknowledge it."
@@ -238,6 +263,24 @@ async function seedRbac(): Promise<void> {
     // too, since several of E3(b)'s impact subjects are regulatory.
     if (['sso-quality-reviewer', 'sso-regulatory-reviewer', 'sso-final-approver'].includes(role.key)) {
       grantedIds.push(permissionId('change-impact', 'acknowledge'));
+    }
+
+    // Question 29(4)'s four independent functions, mapped onto the roles whose
+    // names say the same thing. Regulatory and Quality are literal; "Safety /
+    // Scientific Review" is the Safety Reviewer; "Technical" is R&I/Formulation,
+    // the same reading question 17's grant already uses. Starting points, editable
+    // in the Role Editor like every other grant here.
+    if (role.key === 'sso-safety-reviewer') {
+      grantedIds.push(permissionId('gate-signoff', 'represent-safety'));
+    }
+    if (role.key === 'sso-regulatory-reviewer') {
+      grantedIds.push(permissionId('gate-signoff', 'represent-regulatory'));
+    }
+    if (role.key === 'sso-quality-reviewer') {
+      grantedIds.push(permissionId('gate-signoff', 'represent-quality'));
+    }
+    if (role.key === 'sso-formulation-contributor') {
+      grantedIds.push(permissionId('gate-signoff', 'represent-technical'));
     }
 
     // "NP" is the company's final commercial authority. Which of the 17 SSO roles

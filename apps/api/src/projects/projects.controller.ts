@@ -18,6 +18,7 @@ import type {
   ChecklistItem,
   GateCheck,
   GateRecord,
+  GateSignOffRole,
   ProjectData,
   RegisterClosureSignOff,
   RegisterRow,
@@ -521,6 +522,95 @@ export class ProjectsController {
   // Round 4 question 24: Countries / Markets is no longer captured at creation,
   // so it needs a write path of its own. Separate from :id/identity because it is
   // not a scalar patch — it adds and removes MarketTrack rows.
+  // Per-gate sign-off (Round 4 questions 18 and 29). Same four-route shape as the
+  // phase block above, for the same reason: signing is an ACT, not a field write.
+  // Both the role and the MARKET travel in the body — "Prepared by" contains a
+  // space, and a market name can contain anything.
+  @Put(':id/gates/:gateId/sign-off-assignees')
+  setGateSignOffAssignees(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('gateId') gateId: string,
+    @Body()
+    body: {
+      market?: string;
+      assignments: { role: GateSignOffRole; userId?: string | null }[];
+      expectedVersion: number;
+    },
+  ): Promise<ProjectEnvelope> {
+    const assignees: Partial<Record<GateSignOffRole, string | null>> = {};
+    for (const a of body.assignments ?? []) assignees[a.role] = a.userId ?? null;
+    return this.projects.setGateSignOffAssignees(
+      user,
+      id,
+      gateId,
+      body.market?.trim() || undefined,
+      assignees,
+      body.expectedVersion,
+    );
+  }
+
+  @Post(':id/gates/:gateId/sign-offs/step-up')
+  verifyGateSignOffStepUp(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('gateId') gateId: string,
+    @Body() body: { market?: string; role: GateSignOffRole; code: string },
+  ) {
+    return this.projects.verifyGateSignOffStepUp(
+      user,
+      id,
+      gateId,
+      body.market?.trim() || undefined,
+      body.role,
+      body.code,
+    );
+  }
+
+  @Post(':id/gates/:gateId/sign-offs/sign')
+  signGateSignOff(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('gateId') gateId: string,
+    @Body()
+    body: {
+      market?: string;
+      role: GateSignOffRole;
+      decision?: string;
+      comment?: string;
+      stepUpToken?: string;
+      expectedVersion: number;
+    },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.signGateSignOff(
+      user,
+      id,
+      gateId,
+      body.market?.trim() || undefined,
+      body.role,
+      { decision: body.decision, comment: body.comment, stepUpToken: body.stepUpToken },
+      body.expectedVersion,
+    );
+  }
+
+  @Post(':id/gates/:gateId/sign-offs/withdraw')
+  withdrawGateSignOff(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('gateId') gateId: string,
+    @Body() body: { market?: string; role: GateSignOffRole; reason: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.withdrawGateSignOff(
+      user,
+      id,
+      gateId,
+      body.market?.trim() || undefined,
+      body.role,
+      body.reason,
+      body.expectedVersion,
+    );
+  }
+
   @Put(':id/markets')
   setMarkets(
     @CurrentUser() user: SessionUser,

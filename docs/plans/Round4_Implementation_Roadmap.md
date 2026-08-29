@@ -74,7 +74,7 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | 15 | 8 | ⬜ chưa làm | Product-performance → Conditional; market feedback tách hai |
 | 16 | 1 | ⬜ chưa xong | Lý do N/A tự sinh ✅ (vốn đã có) — **còn phần reviewer xác nhận** với item critical, chờ `R5-Q6` |
 | 17 | 4c | ✅ xong | Bảng `raw_material_risks` (khoá theo `rmCode` Cosmetri, 11 phân loại, revision + audit) · `GET·PUT /api/reference/rm-risk` gated `reference:rm-risk|edit` · trang **Users & Roles → Raw material risk** · trigger mới `rmRiskFlagged` gỡ chặn `sg04-allergen` (Conditional trước đây không có trigger, không bao giờ chặn được) |
-| 18 | 3 | ⬜ chưa làm | Chữ ký Gate 10/11 per market; Phase 4 per market |    
+| 18 | 3 | ⬜ chưa xong | Chữ ký Gate 10/11/12 per market ✅ — **còn trạng thái Phase 4 per market** (thuộc nhóm 8) |
 | 19 | 5 | ⬜ chưa làm | 7 register tham chiếu Claim ID; mechanism từ Gate 3 |
 | 20 | — | ✅ resolved | Trường Gate 1 tuỳ chọn lúc tạo — xác nhận đúng như đã xây, không cần code |
 | 21 | độc lập | ✅ resolved | Priority Must/Should/Could + N/A kèm lý do |
@@ -85,7 +85,7 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | 26 | 5 | ⬜ chưa làm | Revision claim đã duyệt thành read-only |
 | 27 | 5 | ⬜ chưa làm | 11 cờ chủ đề claim có cấu trúc |
 | 28 | 4d | ⬜ chưa làm | Claims Library cấp công ty |
-| 29 | 3 | ⬜ chưa làm | 5 điểm chữ ký gate: snapshot · comment · gate critical · độc lập · trình tự |
+| 29 | 3 | ✅ resolved | 5 điểm chữ ký gate: snapshot · comment · gate critical · độc lập · trình tự |
 | 30 | 5 | ⬜ chưa làm | Revision vs Claim ID mới · artwork link · bản ghi Publication |
 | 31 | 6 | ✅ resolved | Gate 7/10/11 chỉ chặn nguyên liệu có trong công thức |
 | 32 | 6 | ✅ resolved | Thêm Needs Safety Review · 5 resolution status · sổ maternal |
@@ -174,7 +174,7 @@ Bốn câu độc lập nhưng trả về **cùng hai bộ giá trị**:
 
 ---
 
-## Nhóm 3 — Chữ ký per-gate 🔴 LỚN NHẤT
+## Nhóm 3 — Chữ ký per-gate ✅ **xong 29/08/2026** (còn một vế của câu 18 thuộc nhóm 8)
 
 **Câu:** 18 · 29 — xem thêm `Post_Round3_Design_Decisions.md` §1, nay đã có đủ đáp án cho cả hai vế.
 
@@ -192,7 +192,19 @@ Bốn câu độc lập nhưng trả về **cùng hai bộ giá trị**:
 
 **Đặt điểm 3 và 4 thành hằng số cạnh nhau**, không rải trong logic — danh sách 7 gate critical, phép kiểm độc lập, và ánh xạ gate → chức năng độc lập.
 
-**Câu hỏi còn mở:** `R5-Q7` — biên của ảnh chụp (chỉ những gì `gateReadinessChecklist()` đọc, hay toàn bộ nội dung register?).
+**Câu hỏi còn mở:** `R5-Q7` — biên của ảnh chụp.
+
+### Đã làm gì, 29/08
+
+Bảng mới `gate_sign_offs` khoá `(project, gate, market, role)` — phương án C, `market` chỉ dùng ở Gate 10/11/12. Dòng tạo **lười** (lúc đề cử hoặc lúc ký) chứ không scaffold: lane per-market phụ thuộc danh sách thị trường thay đổi trong đời dự án, nên bộ dòng scaffold lúc tạo sẽ sai ngay khi thêm một thị trường. Không có dòng = chưa ký, đúng thứ check `gateSignedOff` đọc. Toàn bộ cơ chế chữ ký phase được dùng lại nguyên vẹn (đề cử bởi Lead · step-up authenticator · `StepUpProof` dùng một lần · chụp role và ảnh chữ ký lúc ký · rút chữ ký chỉ bởi chính người ký, bắt buộc lý do). 12 item `sgNN-signoff` giờ đọc thứ thật, và `GATE_SIGNOFF_COVERAGE_NOTE` — dòng cảnh báo "tick xanh này không phải chữ ký" — đã bỏ cùng chúng.
+
+**Ba vòng lặp phải gỡ, không cái nào đọc ra từ đáp án:**
+
+1. **Approver không bao giờ ghi được Proceed.** Một trong các item Mandatory của chính gate là *"Prepared, reviewed and approved sign-off"*, mà chữ ký approver đang được validate **chính là** cái thứ ba làm item đó thoả — nên guard tự khoá mình. Đây đúng là vòng lặp mà `Post_Round3_Design_Decisions.md` §1 điểm 5 đã cảnh báo, và câu 29(5) gỡ nó: quyết định của approver **chính là** quyết định gate. Nên guard chạy trên một `ProjectData` **đã có sẵn chữ ký đang ký**. Chỉ lane này được thêm — lane của thị trường khác vẫn chặn, đúng tinh thần câu 18.
+2. **Ảnh chụp không được chứa quyết định gate.** Bản đầu chụp cả `GateRecord.decision` (đáp án có ghi *"gate status and proposed decision"*). Hậu quả đo được ngay: approver ký xong thì decision đổi ⇒ ảnh chụp đổi ⇒ **cả ba chữ ký thành stale tức khắc**, gate không bao giờ ký xong được (ký → stale → ký lại → stale). Quyết định gate là **đầu ra** của sign-off, không phải bằng chứng nó chứng thực; "proposed decision" đã nằm trên chính từng dòng chữ ký, nơi mỗi vai ghi khuyến nghị của mình.
+3. **Độc lập phải kiểm ở bước approver, không phải bước reviewer.** Luật là về một **tập** ("at least one reviewer **or** approver"), mà tập chỉ đủ khi người cuối ký. Kiểm ở bước reviewer sẽ lặng lẽ biến "một trong hai" thành "cả hai", và khiến Quality-review + Safety-approve ở Gate 7 thành bất khả thi.
+
+**Ảnh chụp không dùng danh sách readiness** dù đó là đường ngắn nhất tới "applicable checklist results": ảnh chụp khi đó sẽ chứa chính item sign-off, nên trả lời "gate này đã ký chưa" lại phải đánh giá một ảnh chụp chứa câu trả lời cho câu hỏi đó. Đọc thẳng checklist/requirement/register không có vòng lặp, và gần với chữ của đáp án hơn — bằng chứng, không phải kết luận của ta về bằng chứng.
 
 ---
 

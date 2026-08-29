@@ -370,6 +370,9 @@ export type ReadinessCheck =
   // safety-matrix row that names one of the four coverage routes, and — for the
   // three routes that point elsewhere — what it points at.
   | { kind: 'safetyMatrixCoversFormula' }
+  // Round 4 questions 18 and 29: the gate's three sign-offs are recorded and none
+  // is stale. On a per-market gate that means all three, for every market.
+  | { kind: 'gateSignedOff' }
   | { kind: 'allOf'; checks: ReadinessCheck[] };
 
 // Where a requirement came from, when it ISN'T one of the SME's own named
@@ -472,36 +475,25 @@ export interface ReadinessRequirement {
 // has actually been filled in. The phase-level sign-off block is unchanged
 // and remains a separate B3 condition.
 //
-// ⚠️ Round 3 D1 (2026-08-07) rejected that reading in its own words: "Owner +
+// Round 3 D1 (2026-08-07) rejected that reading in its own words: "Owner +
 // Evidence link is not equivalent to Prepared, Reviewed and Approved sign-off."
-// The replacement — three separately recorded sign-offs per gate, each carrying
-// an authenticated user, role, timestamp, decision, record version and comment,
-// plus an independent reviewer on safety-, regulatory-, claims- or
-// release-critical gates — is NOT built. It waited on one decision the team had to
-// make first: whether a gate sign-off keys on (project, gate) or (project, gate,
-// market), which is where D1 meets E3(a)'s per-market Gates 10-11. Project owner's
-// call, 2026-08-12: wait for the answer rather than build on a guess and migrate
-// signatures afterwards.
+// It waited on one decision the team had to make first — whether a gate sign-off
+// keys on (project, gate) or (project, gate, market), which is where D1 meets
+// E3(a)'s per-market Gates 10-11. Project owner's call, 2026-08-12: wait for the
+// answer rather than build on a guess and migrate real signatures afterwards.
 //
-// ✅ Both answers arrived 2026-08-24 (Round 4 questions 18 and 29), so the wait is
-// over. The key is `(project, gate, market?, role)` with `market` used only at
-// Gates 10-11 — option C of docs/plans/Post_Round3_Design_Decisions.md §1 — and
-// all five open points of D1 are settled there. One thing question 29(1) asks for
-// is still ours to scope: the gate-specific evidence snapshot names three
-// components that are open-ended ("applicable checklist results", "mandatory and
-// triggered evidence-register states", "evidence links and document revisions"),
-// so how much of a register the snapshot covers is [ASSUMPTION: R5-Q7]
-// [R4-REWORK: câu 18+29].
+// Both answers arrived 2026-08-24 (Round 4 questions 18 and 29) and it is BUILT
+// (2026-08-29). The key is `(project, gate, market?, role)` with `market` used at
+// Gates 10-12 — option C of docs/plans/Post_Round3_Design_Decisions.md §1 — and
+// all five of D1's open points are settled there. So these 12 items now read the
+// real thing (`gateSignedOff`) and the coverage note that used to warn readers
+// that a green tick was not a sign-off is gone with them.
 //
-// Until then these 12 items still block on owner+evidenceLink, and the note below
-// keeps the panel from presenting that as the sign-off D1 asks for — 12 green
-// ticks reading as "three roles have signed" is worse than a red one, because
-// nobody goes looking for what a green tick is hiding.
-const GATE_SIGNOFF_COVERAGE_NOTE =
-  'the app checks only that the gate has an Owner and an Evidence link. The review team have said that is not a sign-off: ' +
-  'three separate records are required (prepared / reviewed / approved), each with the signed-in user, their role, the time, ' +
-  'the decision, the record version and a comment — and an independent reviewer for safety, regulatory, claims or release ' +
-  'decisions. Not built yet.';
+// One thing question 29(1) asks for is still ours to scope: the gate-specific
+// evidence snapshot names three open-ended components ("applicable checklist
+// results", "mandatory and triggered evidence-register states", "evidence links
+// and document revisions"), so how much of a register the snapshot covers is
+// [ASSUMPTION: R5-Q7] — see utils/gateSnapshot.ts for the boundary drawn.
 
 export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   SG01: [
@@ -644,14 +636,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg01-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
-      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
-      check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'gateFieldFilled', gate: '01', field: 'owner' },
-          { kind: 'gateFieldFilled', gate: '01', field: 'evidenceLink' },
-        ],
-      },
+      check: { kind: 'gateSignedOff' },
     },
   ],
   SG02: [
@@ -922,14 +907,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg02-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
-      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
-      check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'gateFieldFilled', gate: '02', field: 'owner' },
-          { kind: 'gateFieldFilled', gate: '02', field: 'evidenceLink' },
-        ],
-      },
+      check: { kind: 'gateSignedOff' },
     },
   ],
   SG03: [
@@ -1090,14 +1068,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg03-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
-      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
-      check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'gateFieldFilled', gate: '03', field: 'owner' },
-          { kind: 'gateFieldFilled', gate: '03', field: 'evidenceLink' },
-        ],
-      },
+      check: { kind: 'gateSignedOff' },
     },
   ],
   SG04: [
@@ -1377,14 +1348,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg04-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
-      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
-      check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'gateFieldFilled', gate: '04', field: 'owner' },
-          { kind: 'gateFieldFilled', gate: '04', field: 'evidenceLink' },
-        ],
-      },
+      check: { kind: 'gateSignedOff' },
     },
   ],
   SG05: [
@@ -1581,14 +1545,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg05-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
-      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
-      check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'gateFieldFilled', gate: '05', field: 'owner' },
-          { kind: 'gateFieldFilled', gate: '05', field: 'evidenceLink' },
-        ],
-      },
+      check: { kind: 'gateSignedOff' },
     },
   ],
   // Gate 6 wired 2026-07-26 (previously 0 of 5 Mandatory items enforced — the
@@ -1698,14 +1655,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg06-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
-      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
-      check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'gateFieldFilled', gate: '06', field: 'owner' },
-          { kind: 'gateFieldFilled', gate: '06', field: 'evidenceLink' },
-        ],
-      },
+      check: { kind: 'gateSignedOff' },
     },
   ],
   // Gate 7 is a safety-critical hard block.
@@ -1961,14 +1911,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg07-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
-      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
-      check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'gateFieldFilled', gate: '07', field: 'owner' },
-          { kind: 'gateFieldFilled', gate: '07', field: 'evidenceLink' },
-        ],
-      },
+      check: { kind: 'gateSignedOff' },
     },
     {
       id: 'sg07-matrix-rows',
@@ -2235,14 +2178,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg08-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
-      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
-      check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'gateFieldFilled', gate: '08', field: 'owner' },
-          { kind: 'gateFieldFilled', gate: '08', field: 'evidenceLink' },
-        ],
-      },
+      check: { kind: 'gateSignedOff' },
     },
   ],
   // Gate 9 wired 2026-07-26 (previously 0 of 5 Mandatory items enforced). Phase 3
@@ -2339,14 +2275,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg09-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
-      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
-      check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'gateFieldFilled', gate: '09', field: 'owner' },
-          { kind: 'gateFieldFilled', gate: '09', field: 'evidenceLink' },
-        ],
-      },
+      check: { kind: 'gateSignedOff' },
     },
   ],
   // Gate 10 is a market-specific hard block (requirements repeat per market).
@@ -2534,14 +2463,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg10-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
-      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
-      check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'gateFieldFilled', gate: '10', field: 'owner' },
-          { kind: 'gateFieldFilled', gate: '10', field: 'evidenceLink' },
-        ],
-      },
+      check: { kind: 'gateSignedOff' },
     },
   ],
   // Gate 11 is a market-specific hard block.
@@ -2710,14 +2632,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg11-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
-      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
-      check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'gateFieldFilled', gate: '11', field: 'owner' },
-          { kind: 'gateFieldFilled', gate: '11', field: 'evidenceLink' },
-        ],
-      },
+      check: { kind: 'gateSignedOff' },
     },
   ],
   // Gate 12 wired 2026-07-26 (previously 0 of 2 Mandatory items enforced).
@@ -2817,16 +2732,9 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // ("review closure" vs "sign-off") — transcribed verbatim from
       // docs/rounds/2026-07-21-sme-reply-F1-F14.txt rather than reusing the other gates' exact wording.
       id: 'sg12-signoff',
-      label: 'Prepared, reviewed and approved review closure',
+      label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
-      coverageNote: GATE_SIGNOFF_COVERAGE_NOTE,
-      check: {
-        kind: 'allOf',
-        checks: [
-          { kind: 'gateFieldFilled', gate: '12', field: 'owner' },
-          { kind: 'gateFieldFilled', gate: '12', field: 'evidenceLink' },
-        ],
-      },
+      check: { kind: 'gateSignedOff' },
     },
   ],
 };

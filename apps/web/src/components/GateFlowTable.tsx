@@ -22,6 +22,7 @@ import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import GateReadinessPanel from './GateReadinessPanel';
+import GateSignOffPanel from './GateSignOffPanel';
 import GapAssessmentBlock from './GapAssessmentBlock';
 import UserSelect from './UserSelect';
 import { ApiError } from '../api/projectsApi';
@@ -245,15 +246,14 @@ export default function GateFlowTable({
   // lists made that column (and the whole row) very tall. Rendered instead as
   // a full-width row via the Table's `expandable` mechanism, always shown
   // (not user-toggleable) whenever there's something to say about a gate.
-  const rowHasGuidance = (r: (typeof rows)[number]) =>
-    (!r.canDecide && !r.locked) ||
-    r.draftRecord.status === 'Gap' ||
-    r.openChanges.length > 0 ||
-    (r.awaitingDecision && !r.record.decision) ||
-    // The readiness checklist itself is shown even once fully satisfied
-    // (green, not hidden) — see the expandedRowRender below.
-    r.readinessChecklist.length > 0;
-  const guidanceRowKeys = rows.filter(rowHasGuidance).map((r) => r.meta.id);
+  // Every gate row expands, unconditionally, since 2026-08-29: the per-gate
+  // sign-off panel (Round 4 questions 18/29) belongs to every gate, so there is
+  // no longer a case where the expansion would be empty. Kept as a named
+  // predicate rather than inlined `true` because `expandable` takes one, and
+  // because the conditions it used to test are exactly what the panels below
+  // render — a future panel that is conditional would go back in here.
+  const rowHasGuidance = () => true;
+  const guidanceRowKeys = rows.map((r) => r.meta.id);
 
   const save = () => {
     // Defense in depth — the Save button is already disabled in this case
@@ -346,6 +346,11 @@ export default function GateFlowTable({
               {r.awaitingDecision && !r.record.decision && (
                 <div style={{ fontSize: 12, color: '#d48806' }}>Pending — decision required to pass</div>
               )}
+              {/* Per-gate sign-off (Round 4 questions 18/29, 2026-08-29). Sits with
+                  the blocker checklist because a signature and the evidence it
+                  attests to are one subject — and because `sgNN-signoff` is one
+                  of the items in that very list. */}
+              <GateSignOffPanel project={project} gateId={r.meta.id} />
               {r.readinessChecklist.length > 0 && (
                 <GateReadinessPanel
                   gateNumber={r.meta.number}
