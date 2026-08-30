@@ -36,12 +36,69 @@ export const referenceEditCapability = (dataset: ReferenceDataset): string => `r
 // imports nothing. Re-exported here so a caller reading about reference data has
 // one module to import from.
 export type {
+  ClaimLibraryEntry,
+  ClaimLibraryStatus,
   MarketProfile,
   ProjectReferenceData,
   RawMaterialRisk,
   RmRiskFlag,
 } from '../types';
-export { RM_RISK_FLAGS } from '../types';
+export { CLAIM_LIBRARY_AUDIENCES, CLAIM_LIBRARY_STATUSES, RM_RISK_FLAGS } from '../types';
+
+// Round 4 question 28(3): "Technical AND Regulatory must both approve an entry
+// before it becomes Approved Library Wording. Marketing/Brand may propose wording
+// but not provide final technical/regulatory approval."
+//
+// Two capabilities, not one — the answer names two functions that must BOTH act,
+// so a single "may approve" grant could not express it. Editing and proposing stay
+// on the existing `reference:claims-library|edit`, which is what Marketing needs.
+export const CLAIMS_LIBRARY_TECHNICAL_APPROVAL = 'claims-library|approve-technical';
+export const CLAIMS_LIBRARY_REGULATORY_APPROVAL = 'claims-library|approve-regulatory';
+export const CLAIMS_LIBRARY_APPROVAL_CAPABILITIES: readonly string[] = [
+  CLAIMS_LIBRARY_TECHNICAL_APPROVAL,
+  CLAIMS_LIBRARY_REGULATORY_APPROVAL,
+];
+
+// The status an entry SHOULD hold, derived from its two approval stamps and its
+// withdrawal. Derived rather than stored-and-settable: "Approved Library Wording"
+// is a consequence of two people having approved, and a status a person can type
+// is a status that can say Approved with nobody's name against it.
+export function claimLibraryStatusFor(entry: {
+  technicalApprovedBy?: string;
+  regulatoryApprovedBy?: string;
+  withdrawnAt?: string;
+}): ClaimLibraryStatusValue {
+  if ((entry.withdrawnAt ?? '').trim() !== '') return 'Withdrawn';
+  const technical = (entry.technicalApprovedBy ?? '').trim() !== '';
+  const regulatory = (entry.regulatoryApprovedBy ?? '').trim() !== '';
+  return technical && regulatory ? 'Approved' : 'Proposed';
+}
+type ClaimLibraryStatusValue = 'Proposed' | 'Approved' | 'Withdrawn';
+
+// Question 28(2): "A project claim links to a library entry where it reuses
+// approved wording. A genuinely new claim may be proposed WITHOUT a library link
+// but must be identified as 'New claim — not yet in Claims Library', which
+// triggers Regulatory and Technical review."
+//
+// So the marker is the answer's own words, and it is not a way out of anything —
+// it is what makes C1's library condition fire.
+export const CLAIM_NOT_IN_LIBRARY = 'New claim — not yet in Claims Library';
+export const CLAIM_LIBRARY_LINK_OPTIONS = ['Linked to Claims Library', CLAIM_NOT_IN_LIBRARY] as const;
+export const CLAIM_LIBRARY_ENTRY_COLUMN = 'libraryEntryId';
+
+// C1's remaining condition, at last evaluable: "wording is not in the approved
+// Claims Library". A claim counts as covered ONLY by a link to an entry that is
+// currently Approved — a Proposed entry has not been through the two-party gate,
+// and a Withdrawn one is exactly what question 28(5) says must "flag affected
+// material for re-review".
+export function claimCoveredByLibrary(
+  row: { [key: string]: unknown },
+  library: readonly { id: string; status: string }[],
+): boolean {
+  const linked = String(row[CLAIM_LIBRARY_ENTRY_COLUMN] ?? '').trim();
+  if (linked === '') return false;
+  return library.some((e) => e.id === linked && e.status === 'Approved');
+}
 
 // A3's Gate 4 trigger, verbatim: "The ingredient or raw material contains
 // fragrance, essential oils, botanical extracts, proteins, known allergens,

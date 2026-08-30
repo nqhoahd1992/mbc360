@@ -38,7 +38,19 @@ export const CLAIM_RISKS_NEEDING_REVIEW = ['High', 'Pending classification'];
 // prevention, healing or medical endorsement" — is read from a controlled column
 // instead of being inferred from free text, which is what made it unevaluable.
 // Only the Claims Library condition is left, waiting on question 28 (group 4d).
-export const UNEVALUATED_C1_CONDITIONS = [
+// ✅ EMPTY since 2026-08-30. All seven of C1's conditions are now evaluable: the
+// three reading B7's per-claim classification, the wording-drift check, the market
+// restriction (question 4's Market profiles), the eleven structured claim-subject
+// flags (question 27), and — last — "wording is not in the approved Claims
+// Library", which question 28 turned from a judgement into a lookup by making the
+// library a company-level dataset a project claim POINTS AT.
+//
+// Kept as an exported empty array rather than deleted: the readiness item renders
+// it, and a future condition that becomes unevaluable again has an obvious home.
+export const UNEVALUATED_C1_CONDITIONS: string[] = [];
+
+// The reasoning that retired each condition, kept because it records what the
+// app now asserts and on what basis:
   // Question 28 settles what kind of thing the library is, which was the real
   // blocker: a COMPANY-LEVEL list that a project claim POINTS AT, so "not in the
   // library" becomes a fact the system knows rather than a judgement someone
@@ -52,7 +64,6 @@ export const UNEVALUATED_C1_CONDITIONS = [
   // the change is critical or required by Regulatory" — and who declares a change
   // critical, and whether that is the same `Critical` as the four-level scale
   // questions 3/33/34 settled, is not said [ASSUMPTION: R5-Q9].
-  'wording is not in the approved Claims Library (the Claims Library does not exist yet — F11)',
   // ✅ "the market imposes a specific restriction" LEFT this list on 2026-08-24,
   // when question 4's market profile gave it a data source: the
   // `claimNeedsRegulatoryReview` trigger now calls `marketRestrictsClaims` below
@@ -71,7 +82,7 @@ export const UNEVALUATED_C1_CONDITIONS = [
   // claim-subject flags "rather than inferring from free text", so the condition
   // became a lookup: `claimHasReviewableSubject` reads the eight of the eleven
   // that C1 itself names.
-];
+
 
 // What must be recorded for a triggering claim to count as reviewed. Modelled on
 // D3, the shape the team themselves specified for the same situation at Gate 4

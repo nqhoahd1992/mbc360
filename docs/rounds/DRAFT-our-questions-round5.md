@@ -10,7 +10,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-Thank you for the Round 4 answers. They were complete enough to start building immediately, and thirty-three of the thirty-six are already finished — everything except the Claims Library, the scale-up affected-area list, and the reviewer acknowledgement in question 16. This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
+Thank you for the Round 4 answers. They were complete enough to start building immediately, and **thirty-four of the thirty-six are finished**. The two that are not are waiting on answers below rather than on work: the scale-up affected-area list (question 19 here) and the reviewer acknowledgement in your question 16 (question 2 here). This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
 
 Every question here follows the same pattern as last time: we have made a choice so that work could continue, the choice is running in the software now, and we would rather you corrected it than have it settle in silently. Where a question is still unbuilt we say so.
 
@@ -138,6 +138,9 @@ Those ten facts sit with different functions: the regulatory notification with R
 **Question:** is the supersession decision **one signature** — and if so, whose — or a multi-role block like the Prepared / Reviewed / Approved sets? And does it need the second authentication step that phase sign-off now uses?
 
 ## Question 8 — Who decides that a change to a Claims Library entry is "critical"?
+
+**The library is now built, which sharpens this question rather than answering it.** An entry needs both a Technical and a Regulatory approval before it counts as approved wording; withdrawing one lists every project claim, market and published record that depends on it, and flags them for re-review. What it does **not** do is remove anything from a market — because your answer says that should happen only where the change "is critical or required by Regulatory", and who makes that call is exactly what is asked below.
+
 
 You specified what happens when a library entry is changed or withdrawn: identify every linked claim, SKU, market and published material, assess the impact, raise change control where needed, flag material for re-review, and record the effective date and transition plan. Then: *"Changing or withdrawing must not automatically remove a product from the market unless the change is critical or required by Regulatory."*
 

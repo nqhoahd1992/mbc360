@@ -91,6 +91,17 @@ export function canEditReferenceData(
   return roleKeys.some((key) => has(grants, key, referenceEditCapability(dataset)));
 }
 
+// Any capability by id, for the growing set of one-off authorities that are not
+// per-gate, per-phase or per-column — Round 4 question 28's two Claims Library
+// approvals are the first. Same REAL-roles rule as everything else here.
+export function hasCapability(
+  grants: Record<string, string[]>,
+  roleKeys: string[],
+  capabilityId: string,
+): boolean {
+  return roleKeys.some((key) => has(grants, key, capabilityId));
+}
+
 // Signing a `signature` column on a register row (2026-08-26). The capability
 // is declared per column (`RegisterColumn.signCapability`), so this takes the id
 // rather than hard-coding one — a second signature column must not need a second

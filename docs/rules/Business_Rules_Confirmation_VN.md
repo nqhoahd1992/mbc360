@@ -913,7 +913,7 @@ Mỗi câu dưới đây thêm một trường mà giá trị "chưa đánh giá
 
 **Được xác nhận là đã đúng, không phải đổi gì ngoài việc gỡ tag giả định:** thời điểm bắt buộc của các trường Gate 1 (20) · mô hình khai báo claim và thời điểm sinh Claim ID (19a/c/e/f) · sổ traceability mở suốt tới Gate 10–11 (26) · năm trường Regulatory review và bốn giá trị outcome (27a/b) · bốn quyết định về liên kết claim (30a) · năm trên sáu cách đọc về import stub (31a–e) · quy tắc về dòng chưa đánh giá và bằng chứng đóng của safety finding (33d/e) · phép kiểm hai chiều về nhóm dễ tổn thương (25a/d) · hai yêu cầu Gate 2 product-type và Gate 7 safety-matrix mà ta tự thêm (23) · Major = major reformulation (12).
 
-**Thứ tự build mà điều này hàm ý** được trình bày trong `docs/plans/Round4_Implementation_Roadmap.md`: engine trigger ba trạng thái và các bộ từ vựng dùng chung phải xong trước, vì mọi nhóm sau đều ngồi trên chúng. Bảng theo dõi trong lộ trình đó là nơi duy nhất ghi câu nào đã xong — tài liệu này ghi *đáp án*, không ghi tiến độ build. Tính đến 30/08/2026 đã xong ba mươi ba câu — chỉ còn Claims Library (28), 18 vùng ảnh hưởng của câu 12 và phần reviewer xác nhận của câu 16.
+**Thứ tự build mà điều này hàm ý** được trình bày trong `docs/plans/Round4_Implementation_Roadmap.md`: engine trigger ba trạng thái và các bộ từ vựng dùng chung phải xong trước, vì mọi nhóm sau đều ngồi trên chúng. Bảng theo dõi trong lộ trình đó là nơi duy nhất ghi câu nào đã xong — tài liệu này ghi *đáp án*, không ghi tiến độ build. Tính đến 30/08/2026 đã xong ba mươi bốn câu — chỉ còn 18 vùng ảnh hưởng của câu 12 (chờ tái cấu trúc bản ghi change, R5-Q19) và phần reviewer xác nhận của câu 16 (chờ R5-Q6).
 
 ---
 ## Đầu vào còn cần cho triển khai (21/07/2026)

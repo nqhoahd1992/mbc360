@@ -1,5 +1,6 @@
 import { RISK_LEVELS, type RegisterRow } from '../types';
 import { CLAIM_REVIEW_OUTCOMES, CLAIM_SUBJECT_FLAGS } from './claimReview';
+import { CLAIM_LIBRARY_LINK_OPTIONS } from './referenceData';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
 // `user` = a person, picked from the app's active users (UserSelect); the
@@ -2882,6 +2883,18 @@ export const claimEvidenceTraceability: RegisterConfig = {
     { key: 'approvedWording', label: 'Approved claim wording', type: 'textarea', width: 240, gate: '03' },
     { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS, gate: '03' },
     { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS, gate: '03' },
+    // Question 28(2), 2026-08-30: "A project claim links to a library entry where
+    // it reuses approved wording. A genuinely new claim may be proposed WITHOUT a
+    // library link but must be identified as 'New claim — not yet in Claims
+    // Library', which triggers Regulatory and Technical review."
+    //
+    // Two columns, because the answer describes two different facts: WHICH entry
+    // (the link, which C1's library condition reads) and the declaration that
+    // there is none. A blank link with no declaration is neither — and it fires
+    // C1 exactly as an explicit "not in the library" does, so the declaration
+    // buys visibility rather than an escape.
+    { key: 'libraryEntryId', label: 'Claims Library entry', type: 'text', width: 200, gate: '03' },
+    { key: 'libraryStatus', label: 'Claims Library status', type: 'select', width: 220, options: [...CLAIM_LIBRARY_LINK_OPTIONS], gate: '03' },
     // Question 27: the eleven structured claim-subject flags, replacing an
     // inference from free text. Eight of them are C1's seventh review condition,
     // which is what makes that condition evaluable at last.

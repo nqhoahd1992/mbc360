@@ -84,7 +84,7 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | 25 | độc lập + 7 | ✅ resolved | Tách Dry / eczema-prone (a)(b)(d) + family use hỏi nhóm tuổi (c) |
 | 26 | 5 | ✅ resolved | Revision claim đã duyệt thành read-only (guard ở cả hai tầng) |
 | 27 | 5 | ✅ resolved | 11 cờ chủ đề claim có cấu trúc; 4 outcome viết hoa đúng bản trả lời |
-| 28 | 4d | ⬜ chưa làm | Claims Library cấp công ty |
+| 28 | 4d | ✅ resolved | Claims Library cấp công ty |
 | 29 | 3 | ✅ resolved | 5 điểm chữ ký gate: snapshot · comment · gate critical · độc lập · trình tự |
 | 30 | 5 | ✅ resolved | Revision vs Claim ID mới (b) · artwork link + chặn cứng (c) · bản ghi Publication (d) · miễn trừ non-product (e) |
 | 31 | 6 | ✅ resolved | Gate 7/10/11 chỉ chặn nguyên liệu có trong công thức |
@@ -208,7 +208,7 @@ Bảng mới `gate_sign_offs` khoá `(project, gate, market, role)` — phương
 
 ---
 
-## Nhóm 4 — Dữ liệu tham chiếu cấp công ty 🔴 HẠ TẦNG MỚI
+## Nhóm 4 — Dữ liệu tham chiếu cấp công ty ✅ **xong 30/08/2026**
 
 **Câu:** 4 (phần market profile) · 17 · 28
 
@@ -229,7 +229,17 @@ Phần chung: bảng cấp công ty (không thuộc project) · revision history
 - **4a — Nền chung.** ✅ **xong 24/08.** `ReferenceDataService` (`assertCanEdit` + `recordRevision` ghi revision và audit **trong transaction của caller**) · bảng `reference_revisions` · một capability cho mỗi dataset (`reference:<dataset>|edit`) chứ không phải một cái chung, vì câu 4 và câu 17 giao cho những chức năng khác nhau.
 - **4b — Regulatory Market Profiles.** ✅ **xong 24/08.** Bảng `market_profiles` · `GET·PUT /api/reference/market-profiles` · trang **Users & Roles → Market profiles** liệt kê **mọi** thị trường app biết (lấy từ chính option list Target Markets), thị trường chưa cấu hình hiện "not set" thay vì vắng mặt. Điều kiện thứ 2 của `UNEVALUATED_C1_CONDITIONS` đã rời danh sách: trigger `claimNeedsRegulatoryReview` gọi `marketRestrictsClaims` — kiểm 6 ca, gồm hạn chế ở thị trường **khác** (không kích hoạt) và giá trị chỉ có khoảng trắng.
 - **4c — Raw Material Risk Overlay.** ✅ **xong 25/08.** Bảng `raw_material_risks` khoá `rmCode` · `GET·PUT /api/reference/rm-risk` · trang **Users & Roles → Raw material risk** (11 checkbox, thêm nguyên liệu từ catalogue Cosmetri) · trigger `rmRiskFlagged`. Trước đây `sg04-allergen` là Conditional **không có trigger**, tức không bao giờ chặn được; giờ chặn ở cả hai hướng — có cờ, **và** còn nguyên liệu chưa phân loại. Kiểm 8 ca + 6 ca cho 4b, cộng kiểm live qua API. Cơ chế `ProjectData.reference` dựng ở bước này (xem CLAUDE.md) là thứ 4d dùng lại.
-- **4d — Claims Library.** ⬜ Nặng nhất. **Không chặn nhóm 5**: câu 28(2) cho phép claim mới không có link, chỉ cần đánh dấu *"New claim — not yet in Claims Library"*.
+- **4d — Claims Library.** ✅ **xong 30/08.** Bảng `claim_library_entries` cấp công ty · `GET·PUT /api/reference/claims-library` + ba route hành động (`propose` · `approve/:side` · `withdraw`) · trang **Company Reference Data → Claims Library**. Đúng như đã ghi ở 4a, đây là dataset **duy nhất có workflow**, nên `ReferenceDataService` vẫn là nền chứ không thành framework.
+
+  **Ba điều đáng ghi lại:**
+
+  1. **Cổng hai bên là hai capability, không phải một.** Câu 28(3): *"Technical **AND** Regulatory must both approve"*, và *"Marketing/Brand may propose wording but not provide final technical/regulatory approval"*. Một grant "được duyệt" không diễn đạt nổi điều đó. Nên có `claims-library|approve-technical` và `claims-library|approve-regulatory`, còn đề xuất/sửa vẫn nằm trên `reference:claims-library|edit` — thứ Marketing có. `side` nằm trong **path** chứ không trong body: hai bên là hai thẩm quyền khác nhau, để trong body thì chỉ cách một lỗi gõ là người Technical ghi mất chữ ký Regulatory.
+  2. **`status` được suy ra, không bao giờ set.** "Approved Library Wording" là **hệ quả** của hai người đã duyệt; một status gõ được là một status có thể ghi "Approved" mà không có tên ai bên cạnh. Cùng lý do với `formulaVersionState` (câu 2) và `unsignedGateLanes` (câu 29).
+  3. **Sửa wording là rút cả hai chữ ký duyệt.** Không có trong đáp án, nhưng suy trực tiếp từ nó: chữ ký duyệt đứng cho *đúng câu chữ đã được duyệt*, để wording đổi bên dưới nó thì bản duyệt đứng cho một đoạn văn không ai duyệt. Cùng một lập luận với revision freeze của câu 26/30(b) và chữ ký gate bị stale của câu 29(1) — ba câu khác nhau, một nguyên tắc.
+
+  **Câu 28(5) IDENTIFY và FLAG, không QUYẾT ĐỊNH.** Route `withdraw` bắt buộc có lý do và **trả về danh sách ảnh hưởng** (claim liên kết, ở dự án nào, SKU, thị trường, số bản ghi đã publish), đọc **xuyên dự án** vì thư viện là cấp công ty. Có thêm `GET /:id/impact` để chạy đánh giá ảnh hưởng **trước khi** rút — một đánh giá chỉ chạy được bằng cách làm điều đó thì không phải đánh giá. Không có gì tự bị gỡ khỏi thị trường: *"must not automatically remove a product from the market unless the change is critical or required by Regulatory"*, và ai tuyên bố một thay đổi là critical vẫn là `R5-Q9`.
+
+  **Điều kiện C1 cuối cùng đã đọc được.** `UNEVALUATED_C1_CONDITIONS` giờ **rỗng**: một claim chỉ được coi là "có trong thư viện" khi link tới một entry đang **Approved** — link tới entry mới Proposed, hoặc đã Withdrawn, hoặc không link, đều kích hoạt Regulatory review (đúng câu 28(2): claim mới phải đánh dấu *"New claim — not yet in Claims Library"*, và dấu đó **không** phải lối thoát, nó chính là thứ làm C1 bật).
 
 **Câu hỏi còn mở:** `R5-Q9` — ai phán định một thay đổi thư viện là "critical" (quyết định có hệ quả rút sản phẩm khỏi thị trường).
 

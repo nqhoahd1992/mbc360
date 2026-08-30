@@ -62,6 +62,7 @@ import type {
   GateRecord,
   ProjectData,
   ProjectReferenceData,
+  ClaimLibraryEntry,
   RawMaterialRisk,
   RegisterClosureSignOff,
   RegisterRow,
@@ -392,7 +393,7 @@ export class ProjectsService {
   // Taken with the caller's client so a guard sees the reference data as of its own
   // transaction, not a value read before the row lock was taken.
   private async loadReference(tx: Prisma.TransactionClient): Promise<ProjectReferenceData> {
-    const [marketProfiles, rmRisk] = await Promise.all([
+    const [marketProfiles, rmRisk, claimsLibrary] = await Promise.all([
       tx.marketProfile.findMany({
         orderBy: { market: 'asc' },
         include: { updatedBy: { select: { displayName: true } } },
@@ -400,6 +401,16 @@ export class ProjectsService {
       tx.rawMaterialRisk.findMany({
         orderBy: { rmCode: 'asc' },
         include: { updatedBy: { select: { displayName: true } } },
+      }),
+      // Round 4 question 28 (2026-08-30). Only the columns the rules read: C1's
+      // library condition needs the id and the status, and the UI picker needs the
+      // wording and classification. The applicability tags, approval stamps and
+      // revision history stay on the admin page — a project reads the library, it
+      // does not administer it, and shipping the whole table into every project
+      // envelope would be the same over-fetch the Cosmetri picker was fixed for.
+      tx.claimLibraryEntry.findMany({
+        orderBy: { wording: 'asc' },
+        select: { id: true, wording: true, claimCategory: true, claimRisk: true, status: true, revision: true },
       }),
     ]);
     return {
@@ -430,6 +441,14 @@ export class ProjectsService {
         revision: r.revision,
         updatedBy: r.updatedBy?.displayName,
         updatedAt: r.updatedAt.toISOString(),
+      })),
+      claimsLibrary: claimsLibrary.map((c) => ({
+        id: c.id,
+        wording: c.wording,
+        claimCategory: c.claimCategory ?? undefined,
+        claimRisk: c.claimRisk ?? undefined,
+        status: c.status as ClaimLibraryEntry['status'],
+        revision: c.revision,
       })),
     };
   }

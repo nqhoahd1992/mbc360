@@ -55,6 +55,7 @@ model User {
   attachments  Attachment[]  @relation("AttachmentUploadedBy")
   signOffs     SignOff[]     @relation("SignOffSignedBy")
   signOffsAssigned SignOff[]  @relation("SignOffAssignedTo")
+  claimLibraryEntries  ClaimLibraryEntry[]
   gateSignOffs         GateSignOff[] @relation("GateSignOffSignedBy")
   gateSignOffsAssigned GateSignOff[] @relation("GateSignOffAssignedTo")
   registerClosureSignOffs RegisterClosureSignOff[] @relation("RegisterClosureSignedBy")
@@ -1217,6 +1218,59 @@ model MarketProfile {
 // gives a list of classifications, adding one is a data change not a schema
 // change, and the values are checked against RM_RISK_FLAGS at the API layer the
 // same way every other dropdown-valued column in this schema is.
+// Round 4 question 28 (2026-08-24), built 2026-08-30. The third company-level
+// reference dataset, and the only one with a workflow: "Technical AND Regulatory
+// must both approve an entry before it becomes Approved Library Wording."
+//
+// `status` is DERIVED from the two approval stamps and the withdrawal on every
+// write (see claimLibraryStatusFor) rather than being settable — an "Approved"
+// that a person can type is an approval with nobody's name against it.
+model ClaimLibraryEntry {
+  id      String @id @default(cuid())
+  wording String
+
+  claimCategory       String?
+  claimRisk           String?
+  evidenceRequirement String?
+
+  // Question 28(1)'s seven applicability tags. Comma-joined lists rather than
+  // relations: nothing queries across entries by tag, and a brand or a market is
+  // not a vocabulary this app owns.
+  brands          String?
+  productFamilies String?
+  skus            String?
+  markets         String?
+  languages       String?
+  channels        String?
+  audience        String?
+
+  status                String    @default("Proposed")
+  technicalApprovedBy   String?
+  technicalApprovedAt   DateTime?
+  regulatoryApprovedBy  String?
+  regulatoryApprovedAt  DateTime?
+  effectiveDate         String?
+  reviewDate            String?
+  withdrawnAt           DateTime?
+  withdrawnReason       String?
+
+  // Question 28(4): "project approval must not auto-promote wording. A separate
+  // controlled action Propose for Claims Library is required." Where a proposal
+  // came from, so a promoted entry traces back to the project and claim.
+  proposedBy            String?
+  proposedFromProjectId String?
+  proposedFromClaimId   String?
+
+  notes       String?
+  revision    Int      @default(1)
+  updatedBy   User?    @relation(fields: [updatedById], references: [id])
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@map("claim_library_entries")
+}
+
 model RawMaterialRisk {
   id          String   @id @default(cuid())
   rmCode      String   @unique // RM-{Cosmetri id}, matching BomLine.rmCode

@@ -3,6 +3,7 @@ import {
   ApiOutlined,
   AppstoreOutlined,
   ExperimentOutlined,
+  FileProtectOutlined,
   FolderOpenOutlined,
   GlobalOutlined,
   SwapOutlined,
@@ -95,6 +96,19 @@ export const GLOBAL_NAV: GlobalNavEntry[] = [
     sidebar: { submenu: REFERENCE_DATA_SUBMENU },
     keywords:
       'raw material risk overlay allergen fragrance essential oil botanical protein residual solvent heavy metal microbiological impurity reference data cosmetri',
+  },
+  // Round 4 question 28 (2026-08-30). The third and last reference dataset, and
+  // the only one with a workflow: entries need BOTH a Technical and a Regulatory
+  // approval before they count as Approved Library Wording. Same `adminOnly`
+  // caveat as its two siblings [ASSUMPTION: R5-Q15].
+  {
+    path: '/admin/claims-library',
+    title: 'Claims Library',
+    icon: <FileProtectOutlined />,
+    adminOnly: true,
+    sidebar: { submenu: REFERENCE_DATA_SUBMENU },
+    keywords:
+      'claims library approved wording company level technical regulatory approval propose withdraw applicability brand market channel reference data',
   },
 ];
 

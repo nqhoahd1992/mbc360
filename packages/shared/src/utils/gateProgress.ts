@@ -23,6 +23,7 @@ import {
   marketRestrictsClaims,
 } from '../config/claimReview';
 import {
+  claimCoveredByLibrary,
   marketRequiresEnhancedSurveillance,
   rmCodesUnclassified,
   rmCodesWithRiskFlags,
@@ -413,6 +414,18 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
       // C1's per-claim conditions: category, risk, or wording reworded since its
       // last review.
       if (claims.some(claimNeedsReview)) return 'applies';
+      // C1's FIRST condition, evaluable since 2026-08-30 (question 28): "wording is
+      // not in the approved Claims Library". A claim counts as covered only by a
+      // link to an entry that is currently Approved — a Proposed entry has not been
+      // through the two-party gate, and a Withdrawn one is exactly what question
+      // 28(5) says must "flag affected material for re-review".
+      //
+      // Evaluated only once at least one claim exists, for the same reason the
+      // market condition below is: with no claims declared there is nothing for a
+      // library to cover.
+      if (claims.length > 0 && claims.some((c) => !claimCoveredByLibrary(c, project.reference.claimsLibrary))) {
+        return 'applies';
+      }
       // C1's sixth condition — "the market imposes a specific restriction" — became
       // evaluable with question 4's market profile (2026-08-24). It is a property of
       // the PROJECT's markets, not of one claim, so it can only make the review

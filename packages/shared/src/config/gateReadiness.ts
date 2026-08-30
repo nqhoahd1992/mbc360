@@ -1109,7 +1109,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Regulatory review of high-risk or borderline claims',
       tier: 'Conditional',
       trigger: 'claimNeedsRegulatoryReview',
-      coverageNote: `the app checks the claim's category, risk, subject flags, wording drift since review and the market's own restrictions; it cannot yet check: ${UNEVALUATED_C1_CONDITIONS.join('; ')}`,
+      // Since 2026-08-30 (question 28) every one of C1's seven conditions is
+      // evaluable, so there is nothing left to disclose — the note appears only
+      // while UNEVALUATED_C1_CONDITIONS is non-empty, rather than being deleted,
+      // so a condition that becomes unreadable again says so on its own.
+      ...(UNEVALUATED_C1_CONDITIONS.length > 0
+        ? {
+            coverageNote: `the app checks the claim's category, risk, subject flags, Claims Library link, wording drift since review and the market's own restrictions; it cannot yet check: ${UNEVALUATED_C1_CONDITIONS.join('; ')}`,
+          }
+        : {}),
       check: { kind: 'claimsRegulatoryReviewed' },
     },
     {

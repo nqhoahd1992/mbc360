@@ -26,7 +26,7 @@ import type {
   SignOff,
   StudyApproval,
 } from '@mbc360/shared/types';
-import type { MarketProfile, RawMaterialRisk } from '@mbc360/shared/config/referenceData';
+import type { ClaimLibraryEntry, MarketProfile, RawMaterialRisk } from '@mbc360/shared/config/referenceData';
 import type { PermissionGrid } from '../utils/permissions';
 import * as projectsApi from '../api/projectsApi';
 
@@ -62,6 +62,10 @@ interface AppState {
   // Round 4 question 17 — the shared Raw Material Risk Overlay. Null until loaded.
   rmRisk: RawMaterialRisk[] | null;
   loadRmRisk: () => Promise<void>;
+  // Round 4 question 28 — the third reference dataset. Same null-vs-empty contract
+  // as the two above.
+  claimsLibrary: ClaimLibraryEntry[] | null;
+  loadClaimsLibrary: () => Promise<void>;
 
   // M3 Phase 1 (2026-07-26): `projects` is no longer demo data in localStorage —
   // it is server state fetched from GET /api/projects/:id. Zustand stays the
@@ -360,6 +364,13 @@ export const useAppStore = create<AppState>()(
           const res = await fetch('/api/reference/rm-risk');
           if (!res.ok) return;
           set({ rmRisk: (await res.json()) as RawMaterialRisk[] });
+        },
+
+        claimsLibrary: null,
+        loadClaimsLibrary: async () => {
+          const res = await fetch('/api/reference/claims-library');
+          if (!res.ok) return;
+          set({ claimsLibrary: (await res.json()) as ClaimLibraryEntry[] });
         },
 
         // The list endpoint returns summary rows only, so each project is then

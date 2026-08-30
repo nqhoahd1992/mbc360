@@ -913,7 +913,7 @@ Each of these adds a field whose "not yet assessed" value blocks — the mechani
 
 **Confirmed as already correct, no change beyond retiring the assumption tag:** the Gate 1 field timing (20) · the claim declaration model and Claim ID timing (19a/c/e/f) · the traceability ledger staying open through Gates 10–11 (26) · the five Regulatory review fields and four outcomes (27a/b) · the four claim-linkage choices (30a) · five of the six import-stub readings (31a–e) · the unassessed-row and closure-evidence rules on safety findings (33d/e) · the two-way vulnerable-user check (25a/d) · the Gate 2 product-type and Gate 7 safety-matrix requirements we had added ourselves (23) · Major = major reformulation (12).
 
-**The build order this implies** is set out in `docs/plans/Round4_Implementation_Roadmap.md`: the tri-state trigger engine and the shared vocabularies first, because every later group sits on them. That roadmap's tracking table is the single record of which of the 36 is finished — this document records the answers, not the build. As of 2026-08-30, thirty-three are done — everything except the Claims Library (28), 12's eighteen affected areas and 16's reviewer acknowledgement.
+**The build order this implies** is set out in `docs/plans/Round4_Implementation_Roadmap.md`: the tri-state trigger engine and the shared vocabularies first, because every later group sits on them. That roadmap's tracking table is the single record of which of the 36 is finished — this document records the answers, not the build. As of 2026-08-30, thirty-four are done — everything except 12's eighteen affected areas (waiting on the change-record restructure, R5-Q19) and 16's reviewer acknowledgement (waiting on R5-Q6).
 
 ---
 ## Remaining implementation inputs (2026-07-21)

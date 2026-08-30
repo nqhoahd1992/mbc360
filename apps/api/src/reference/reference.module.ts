@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MarketProfilesController } from './market-profiles.controller';
+import { ClaimsLibraryController } from './claims-library.controller';
 import { RmRiskController } from './rm-risk.controller';
 import { ReferenceDataService } from './reference-data.service';
 
@@ -7,7 +8,7 @@ import { ReferenceDataService } from './reference-data.service';
 // 2026-08-24). Market profiles and the Raw Material Risk Overlay; the Claims
 // Library joins this module as its own controller, sharing ReferenceDataService.
 @Module({
-  controllers: [MarketProfilesController, RmRiskController],
+  controllers: [MarketProfilesController, RmRiskController, ClaimsLibraryController],
   providers: [ReferenceDataService],
   exports: [ReferenceDataService],
 })

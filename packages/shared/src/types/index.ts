@@ -173,11 +173,73 @@ export interface RawMaterialRisk {
 // second narrowing step at load time would be a second copy of the same join to
 // keep correct — one of which would eventually be wrong. Both tables are
 // company-scale, so there is nothing to gain by pre-filtering.
+// Round 4 question 28 (2026-08-24), built 2026-08-30. The third and heaviest
+// company-level reference dataset: "Company-level. Entries carry applicability
+// tags … Projects read from the library but do not directly edit it."
+//
+// Unlike the other two it has a real WORKFLOW — "Technical AND Regulatory must
+// both approve an entry before it becomes Approved Library Wording" — which is
+// why `ReferenceDataService` stays a foundation rather than a framework: only this
+// dataset carries a two-party gate and a withdrawal cascade.
+export const CLAIM_LIBRARY_STATUSES = ['Proposed', 'Approved', 'Withdrawn'] as const;
+export type ClaimLibraryStatus = (typeof CLAIM_LIBRARY_STATUSES)[number];
+
+// Question 28(1)'s seven applicability tags, transcribed. Six are free lists (a
+// brand or a market is not a fixed vocabulary the app owns); the seventh is a
+// closed choice because "consumer or professional use" names its own values.
+export const CLAIM_LIBRARY_AUDIENCES = ['Consumer', 'Professional', 'Both'] as const;
+
+export interface ClaimLibraryEntry {
+  id: string;
+  // The approved wording itself — the thing a project claim reuses. This is what
+  // C1's "wording is not in the approved Claims Library" is asking about.
+  wording: string;
+  claimCategory?: string;
+  claimRisk?: string;
+  // Question 28(3): "Every entry retains … Evidence requirement".
+  evidenceRequirement?: string;
+  // Question 28(1)'s applicability tags. Comma-joined lists, the same storage the
+  // register `markets` columns use — a tag set is not worth a join table when
+  // nothing queries across entries by tag.
+  brands?: string;
+  productFamilies?: string;
+  skus?: string;
+  markets?: string;
+  languages?: string;
+  channels?: string;
+  audience?: string;
+  // Question 28(3)'s two-party gate. An entry is Approved Library Wording only
+  // when BOTH stamps are present — the status is derived from them on write, never
+  // set directly, so "approved" cannot be typed into existence.
+  status: ClaimLibraryStatus;
+  technicalApprovedBy?: string;
+  technicalApprovedAt?: string;
+  regulatoryApprovedBy?: string;
+  regulatoryApprovedAt?: string;
+  effectiveDate?: string;
+  reviewDate?: string;
+  withdrawnAt?: string;
+  withdrawnReason?: string;
+  // Question 28(4): "project approval must not auto-promote wording. A separate
+  // controlled action Propose for Claims Library is required." These record where
+  // a proposal came from, so a promoted entry can be traced back to the project
+  // and claim that proposed it.
+  proposedBy?: string;
+  proposedFromProjectId?: string;
+  proposedFromClaimId?: string;
+  notes?: string;
+  revision: number;
+  updatedBy?: string;
+  updatedAt?: string;
+}
+
 export interface ProjectReferenceData {
   marketProfiles: MarketProfile[];
   // The overlay. An rmCode the project uses that is ABSENT here has not been
   // classified — which is not the same as carrying no risk.
   rmRisk: RawMaterialRisk[];
+  // The Claims Library, read-only from a project's point of view (question 28(1)).
+  claimsLibrary: ClaimLibraryEntry[];
 }
 
 export interface GateRecord {

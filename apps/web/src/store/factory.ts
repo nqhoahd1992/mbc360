@@ -135,7 +135,7 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     // direction: an unclassified raw material makes the Gate 4 allergen trigger
     // read "not assessed", which blocks, so a project built locally can never
     // under-report a risk this object happens not to be holding yet.
-    reference: { marketProfiles: [], rmRisk: [] },
+    reference: { marketProfiles: [], rmRisk: [], claimsLibrary: [] },
     evidence: EVIDENCE_AREAS.map((e) => ({ ...e, status: 'Not Started' })),
     capa: [],
     feedback: [],

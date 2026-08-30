@@ -19,6 +19,7 @@ import AuthStatus from './components/AuthStatus';
 import AdminUsers from './pages/AdminUsers';
 import AdminRoles from './pages/AdminRoles';
 import AdminMarketProfiles from './pages/AdminMarketProfiles';
+import AdminClaimsLibrary from './pages/AdminClaimsLibrary';
 import AdminRmRisk from './pages/AdminRmRisk';
 import Dashboard from './pages/Dashboard';
 import ProjectList from './pages/ProjectList';
@@ -734,6 +735,7 @@ function Shell() {
                 because it is company scope, not project scope. */}
             <Route path="/admin/market-profiles" element={<AdminMarketProfiles />} />
             <Route path="/admin/rm-risk" element={<AdminRmRisk />} />
+            <Route path="/admin/claims-library" element={<AdminClaimsLibrary />} />
           </Routes>
           )}
         </Content>

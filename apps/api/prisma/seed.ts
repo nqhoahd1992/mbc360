@@ -183,6 +183,22 @@ async function seedRbac(): Promise<void> {
       action: 'represent-technical',
       description: 'Represent Technical on a critical gate sign-off (Round 4, q29.4)',
     },
+    // Round 4 question 28(3): "Technical AND Regulatory must both approve an entry
+    // before it becomes Approved Library Wording. Marketing/Brand may propose
+    // wording but not provide final technical/regulatory approval." Two
+    // capabilities because two functions must BOTH act — a single "may approve"
+    // grant could not express a two-party gate. Proposing and editing stay on
+    // `reference:claims-library|edit`, which is what Marketing needs.
+    {
+      resource: 'claims-library',
+      action: 'approve-technical',
+      description: 'Record the Technical half of a Claims Library approval (Round 4, q28.3)',
+    },
+    {
+      resource: 'claims-library',
+      action: 'approve-regulatory',
+      description: 'Record the Regulatory half of a Claims Library approval (Round 4, q28.3)',
+    },
     // Round 4 question 30(e): the "No product claim or technical statement"
     // exemption "must be confirmed by a Technical or Regulatory reviewer before
     // release". One capability rather than two, because the answer names either
@@ -319,6 +335,12 @@ async function seedRbac(): Promise<void> {
       grantedIds.push(permissionId('reference:rm-risk', 'edit'));
       grantedIds.push(permissionId('reference:claims-library', 'edit'));
     }
+    // Question 28(3): "Marketing/Brand MAY PROPOSE wording" — so Marketing gets the
+    // edit/propose capability and neither approval one. Without this the answer's
+    // own split would exist in the code and not in the grid.
+    if (role.key === 'sso-marketing-sales-contributor') {
+      grantedIds.push(permissionId('reference:claims-library', 'edit'));
+    }
     // "Technical" in question 17 is R&I/Formulation here — the role that owns
     // ingredient knowledge. `sso-formulation-contributor` is its key.
     if (['sso-safety-reviewer', 'sso-formulation-contributor'].includes(role.key)) {
@@ -326,6 +348,18 @@ async function seedRbac(): Promise<void> {
     }
     if (role.key === 'sso-published-info-technical-reviewer') {
       grantedIds.push(permissionId('reference:claims-library', 'edit'));
+    }
+
+    // Question 28(3)'s two-party gate. Technical is the Published Information
+    // Technical Reviewer — the role whose whole job is the technical half of claim
+    // wording — and Regulatory is the Regulatory Reviewer. Marketing/Sales
+    // deliberately gets NEITHER: it holds `reference:claims-library|edit` through
+    // no grant here, which is the answer's "may propose but not approve" split.
+    if (role.key === 'sso-published-info-technical-reviewer') {
+      grantedIds.push(permissionId('claims-library', 'approve-technical'));
+    }
+    if (role.key === 'sso-regulatory-reviewer') {
+      grantedIds.push(permissionId('claims-library', 'approve-regulatory'));
     }
 
     for (const pid of grantedIds) {
