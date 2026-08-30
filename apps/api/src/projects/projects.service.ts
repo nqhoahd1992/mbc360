@@ -84,6 +84,7 @@ import {
   toChangeRecords,
   toGateChangeLog,
   toProjectData,
+  toSupersessionDecision,
   type ProjectWithAll,
 } from './project-mapper';
 import { createProjectWithScaffold, type NewProjectInput } from './project-scaffold';
@@ -2814,21 +2815,7 @@ export class ProjectsService {
       const decisions = await tx.supersessionDecision.findMany({
         where: { projectId: id, version: input.version },
       });
-      const complete = decisions.filter((d) =>
-        supersessionGaps({
-          ...d,
-          effectiveTransitionDate: d.effectiveTransitionDate?.toISOString().slice(0, 10) ?? '',
-          lastReleaseDate: d.lastReleaseDate?.toISOString().slice(0, 10) ?? '',
-          replacementVersion: d.replacementVersion ?? '',
-          stockDisposition: d.stockDisposition ?? '',
-          regulatoryNotificationStatus: d.regulatoryNotificationStatus ?? '',
-          artworkTransition: d.artworkTransition ?? '',
-          pifUpdate: d.pifUpdate ?? '',
-          salesMarketingCommunication: d.salesMarketingCommunication ?? '',
-          distributorCommunication: d.distributorCommunication ?? '',
-          confirmedBy: d.confirmedBy ?? undefined,
-        } as ProjectData['supersessionDecisions'][number]).length === 0,
-      );
+      const complete = decisions.filter((d) => supersessionGaps(toSupersessionDecision(d)).length === 0);
       const allMarketsDecided =
         project.identity.markets.length > 0 &&
         project.identity.markets.every((m) => complete.some((d) => d.market === m));

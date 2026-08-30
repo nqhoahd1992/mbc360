@@ -33,6 +33,7 @@ import type {
   RegisterRow,
   RequirementItem,
   SignOff,
+  SupersessionDecision,
 } from '@mbc360/shared/types';
 import type { Prisma } from '../generated/prisma/client';
 
@@ -94,6 +95,34 @@ function dateOnly(value: Date | null): string | undefined {
 function dateTime(value: Date): string {
   // Same 'YYYY-MM-DD HH:mm' shape the store used for change-log entries.
   return value.toISOString().slice(0, 16).replace('T', ' ');
+}
+
+// One place turns a stored supersession decision into the shared shape (Round 4
+// question 2). `ProjectsService.setSupersessionDecision` re-derives the version's
+// state from the same rows and needs the identical conversion — it used to repeat
+// this inline behind an `as` cast, which is how `confirmedAt` came to be compared
+// as a `Date` against a `string` field and why the cast was needed at all.
+export function toSupersessionDecision(
+  d: ProjectWithAll['supersessionDecisions'][number],
+): SupersessionDecision {
+  return {
+    id: d.id,
+    version: d.version,
+    market: d.market,
+    replacementVersion: d.replacementVersion ?? '',
+    effectiveTransitionDate: dateOnly(d.effectiveTransitionDate) ?? '',
+    lastReleaseDate: dateOnly(d.lastReleaseDate) ?? '',
+    stockDisposition: d.stockDisposition ?? '',
+    regulatoryNotificationStatus: d.regulatoryNotificationStatus ?? '',
+    artworkTransition: d.artworkTransition ?? '',
+    pifUpdate: d.pifUpdate ?? '',
+    salesMarketingCommunication: d.salesMarketingCommunication ?? '',
+    distributorCommunication: d.distributorCommunication ?? '',
+    noFurtherBatchesConfirmed: d.noFurtherBatchesConfirmed,
+    confirmedBy: opt(d.confirmedBy),
+    ...(d.confirmedAt ? { confirmedAt: d.confirmedAt.toISOString() } : {}),
+    notes: opt(d.notes),
+  };
 }
 
 function toGateRecord(g: ProjectWithAll['gates'][number]): GateRecord {
@@ -515,24 +544,7 @@ export function toProjectData(
       evidenceLink: opt(r.evidenceLink),
       notes: opt(r.notes),
     })),
-    supersessionDecisions: p.supersessionDecisions.map((d) => ({
-      id: d.id,
-      version: d.version,
-      market: d.market,
-      replacementVersion: d.replacementVersion ?? '',
-      effectiveTransitionDate: dateOnly(d.effectiveTransitionDate) ?? '',
-      lastReleaseDate: dateOnly(d.lastReleaseDate) ?? '',
-      stockDisposition: d.stockDisposition ?? '',
-      regulatoryNotificationStatus: d.regulatoryNotificationStatus ?? '',
-      artworkTransition: d.artworkTransition ?? '',
-      pifUpdate: d.pifUpdate ?? '',
-      salesMarketingCommunication: d.salesMarketingCommunication ?? '',
-      distributorCommunication: d.distributorCommunication ?? '',
-      noFurtherBatchesConfirmed: d.noFurtherBatchesConfirmed,
-      confirmedBy: opt(d.confirmedBy),
-      ...(d.confirmedAt ? { confirmedAt: d.confirmedAt.toISOString() } : {}),
-      notes: opt(d.notes),
-    })),
+    supersessionDecisions: p.supersessionDecisions.map(toSupersessionDecision),
     gateSignOffs: p.gateSignOffs.map((g) => ({
       gateId: g.gateId,
       ...(g.market ? { market: g.market } : {}),

@@ -58,7 +58,7 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | Câu | Nhóm | Trạng thái | Chủ đề |
 |---|---|---|---|
 | 1 | 7 | ✅ resolved | Luồng Infant & Baby Safety trải 6 gate |
-| 2 | 8 | ✅ resolved | 6 trạng thái formula version + quyết định supersession per-market |
+| 2 | 8 | ✅ resolved | 6 trạng thái formula version + quyết định supersession per-market — **màn hình bổ sung 30/08** sau lượt rà cuối: rule + endpoint đã có nhưng không trang nào gọi, xem `FormulaSupersessionCard.tsx` |
 | 3 | 2 | ✅ resolved | Đánh giá mức độ nghiêm trọng của gap (8 trường) — cũng đóng **A1 vòng 21/07** và bật được nhánh "critical gap" của F7 |
 | 4 | 4b + 8 | ✅ resolved | Market profile (4b) + PMS baseline cho mọi sản phẩm + 10/14 trigger enhanced đọc được (4 điều kiện còn lại không có nguồn dữ liệu, đã ghi trên chính item) |
 | 5 | 6 | ✅ resolved | Gate 7 cần màn hình restricted/caution tổng quát |

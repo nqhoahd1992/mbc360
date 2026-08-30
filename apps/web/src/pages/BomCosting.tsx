@@ -10,6 +10,8 @@ import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
 import FormulaPropertiesCard from '../components/FormulaPropertiesCard';
 import CosmetriImportModal from '../components/CosmetriImportModal';
 import FormulaVersionModal from '../components/FormulaVersionModal';
+import { formulaVersionState } from '@mbc360/shared/utils/formulaLifecycle';
+import FormulaSupersessionCard from '../components/FormulaSupersessionCard';
 import FormulaVersionCompareModal, { type FormulaVersionOption } from '../components/FormulaVersionCompareModal';
 import { hasReachedPhase, isGateRefLocked, positionSentence } from '@mbc360/shared/utils/gateProgress';
 import { bomWatchMatches } from '@mbc360/shared/utils/ingredientWatch';
@@ -780,6 +782,16 @@ export default function BomCosting() {
                   <Tag color={r.changeType === 'Major' ? 'red' : 'default'}>{r.changeType}</Tag>
                 ),
               },
+              {
+                // Round 4 question 2: a version's lifecycle state. Without this the
+                // outgoing version sat in "Transition in Progress" invisibly.
+                title: 'State',
+                width: 160,
+                render: (_, r) => {
+                  const state = formulaVersionState(project, r.version);
+                  return <Tag color={state === 'Superseded' ? 'default' : 'orange'}>{state}</Tag>;
+                },
+              },
               { title: 'Initiated by', width: 140, render: (_, r) => r.initiatedBy ?? '—' },
               { title: 'Reason', render: (_, r) => r.reason ?? '—' },
               {
@@ -796,6 +808,7 @@ export default function BomCosting() {
           />
         </Card>
       )}
+      <FormulaSupersessionCard project={project} />
       <FormulaVersionCompareModal
         open={!!compare}
         onClose={() => setCompare(undefined)}
