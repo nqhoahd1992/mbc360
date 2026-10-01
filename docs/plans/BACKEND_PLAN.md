@@ -124,7 +124,7 @@ Ngoài phạm vi: sinh/quản lý tài liệu GMP (chỉ lưu link — theo yêu
 **Đóng gói (production):**
 - `apps/api` → image NestJS (multi-stage build: `node:lts` build → runtime slim, chạy non-root, `HEALTHCHECK` trỏ `GET /health`).
 - `apps/web` → multi-stage build Vite → image nginx serve static; API URL cấu hình lúc runtime (env → file config), không nướng cứng vào build.
-- Prisma migration chạy như bước riêng khi deploy (`migrate deploy`), không tự chạy lúc container khởi động nhiều replica.
+- Prisma migration chạy như bước riêng khi deploy (`migrate deploy`), không nằm trong lệnh khởi động của container api (nhiều replica sẽ migrate song song). Hiện thực: service một-lần `migrate` trong `docker-compose.prod.yml` (build từ target `migrate` của `apps/api/Dockerfile`), chạy đúng một container, và api `depends_on` nó với `condition: service_completed_successfully` — vẫn là bước riêng, nhưng không còn là bước *thủ công* có thể quên.
 
 **Điều phối (docker-compose trên server tự quản):**
 - Reverse proxy dùng **nginx sẵn có trên server** (host-level): TLS termination (HTTPS bắt buộc vì có OIDC), route `/` → container `web`, `/api` → container `api`. Không cần thêm service proxy trong compose.

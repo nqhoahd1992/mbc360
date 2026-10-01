@@ -76,16 +76,20 @@ curl http://127.0.0.1:3004/api/health    # {"status":"ok",...}
 curl -I http://127.0.0.1:8086            # HTTP/1.1 200
 ```
 
-**Migration KHÔNG tự chạy khi container khởi động** (chủ đích — xem `docs/plans/BACKEND_PLAN.md` mục hạ tầng) và image api chỉ chứa `dist/` (không có Prisma CLI/schema). Postgres cũng không mở port ra host, nên chạy migrate/seed bằng container một-lần trên cùng Docker network. Tên network = `<tên-thư-mục>_default` (clone thành `mbc360_app` → `mbc360_app_default`; xác nhận bằng `docker network ls`):
+**Migration CHẠY TỰ ĐỘNG trong chính lệnh `up` ở trên.** `docker-compose.prod.yml` có service một-lần tên `migrate` (build từ target `migrate` của `apps/api/Dockerfile` — chứa Prisma CLI + schema + thư mục migrations) chạy `prisma migrate deploy` ngay khi Postgres healthy rồi thoát; service `api` khai báo `depends_on: migrate: condition: service_completed_successfully` nên **api không khởi động nếu migrate fail**.
+
+> Trước đây migration là một bước thủ công tách rời. Hậu quả đã xảy ra thật trên production: ai đó chạy `up -d --build` mà quên bước migrate → code mới chạy trên schema cũ → mọi query chạm cột mới đổ lỗi Prisma `P2022 column ... does not exist` / `P2021 table ... does not exist` trong log api, trong khi lệnh deploy vẫn báo thành công. Giờ không còn khả năng đó: hoặc migrate xong rồi api mới lên, hoặc api giữ nguyên image cũ.
+
+Kiểm tra migrate đã chạy đúng (service đã exit 0):
 
 ```bash
-# Migrate — tạo toàn bộ bảng (bỏ qua bước này thì api lỗi "table does not exist"
-# ngay từ cron Cosmetri và crash khi callback đăng nhập ghi user)
-docker run --rm --network mbc360_app_default \
-  -v "$PWD":/repo -w /repo \
-  -e DATABASE_URL="postgresql://mbc360:<POSTGRES_PASSWORD>@postgres:5432/mbc360" \
-  node:22-alpine sh -c "npm ci && npm run db:deploy -w @mbc360/api"
+docker compose -f docker-compose.prod.yml logs migrate
+docker compose -f docker-compose.prod.yml ps -a migrate   # State = Exited (0)
+```
 
+Seed thì vẫn là bước thủ công một-lần (chỉ cần ở lần deploy đầu) — nó cần `@mbc360/shared` đã build và Prisma client đã generate, những thứ image `migrate` cố tình không mang theo. Postgres không mở port ra host nên chạy trên cùng Docker network; tên network = `<tên-thư-mục>_default` (clone thành `mbc360_app` → `mbc360_app_default`; xác nhận bằng `docker network ls`):
+
+```bash
 # Seed — rule config (safety triggers, watch-lists) + role matrix. Idempotent,
 # chạy lại an toàn. SEED_DEMO_USERS=false để bỏ user demo @demo.mbc360.local.
 docker run --rm --network mbc360_app_default \
@@ -95,7 +99,7 @@ docker run --rm --network mbc360_app_default \
   node:22-alpine sh -c "npm ci && npm run build -w @mbc360/shared && npm exec -w @mbc360/api -- prisma generate && npm run db:seed -w @mbc360/api"
 ```
 
-(Seed cần build `@mbc360/shared` trước — seeder import config từ dist của package đó — và cần `prisma generate` vì seeder import Prisma client từ `apps/api/src/generated/`, thư mục gitignored không có sẵn trong bản clone mới; thiếu bước này sẽ lỗi `Cannot find module '../src/generated/prisma/client'`. Cả hai bước migrate + seed đều bắt buộc trong lần deploy đầu.)
+(Seed cần build `@mbc360/shared` trước — seeder import config từ dist của package đó — và cần `prisma generate` vì seeder import Prisma client từ `apps/api/src/generated/`, thư mục gitignored không có sẵn trong bản clone mới; thiếu bước này sẽ lỗi `Cannot find module '../src/generated/prisma/client'`. Ở lần deploy đầu, migrate do `up` lo, seed phải chạy tay — hoặc dùng `./deploy.sh --seed` làm cả hai.)
 
 ## 6. nginx trên host
 
@@ -134,11 +138,14 @@ Certbot tự viết lại block thành dạng đầy đủ 443 + redirect 80→4
 
 ```bash
 cd ~/mbc360_app
+./deploy.sh            # git pull + build + up (migrate nằm trong up) + health-check
+
+# hoặc thủ công, tương đương:
 git pull
 docker compose -f docker-compose.prod.yml up -d --build
-# nếu bản mới có migration mới: chạy lại lệnh Migrate ở mục 5 (db:deploy là
-# incremental — chỉ áp các migration chưa chạy)
 ```
+
+Không còn bước migrate riêng: service `migrate` chạy trong chính lệnh `up` và `prisma migrate deploy` là incremental — bản không có migration mới chỉ tốn vài giây. `deploy.sh` cũng đã bỏ cờ `--no-migrate` (xem phần đầu `deploy.sh` để biết lý do).
 
 Đổi biến trong `.env` chỉ cần recreate service liên quan: `docker compose -f docker-compose.prod.yml up -d api`.
 
@@ -152,7 +159,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 | `nginx -t` báo `Permission denied` đọc `fullchain.pem` của domain khác | Chạy `nginx -t` không có `sudo` | `sudo nginx -t` |
 | certbot: `Invalid response ... 404`, `unauthorized` | DNS của subdomain chưa trỏ về VPS | Thêm/sửa A record, chờ lan truyền (`dig +short` ra đúng IP) rồi chạy lại |
 | Đăng nhập lỗi, log api: `AADSTS7000215: Invalid client secret` | Dán Secret **ID** thay vì secret **Value** vào `AUTH_CLIENT_SECRET` | Tạo secret mới trên Entra, copy cột Value, cập nhật `.env`, `up -d api` |
-| Log api lặp lại `The table ... does not exist` (P2021) | Chưa chạy migration | Chạy lệnh Migrate + Seed ở mục 5 |
+| Log api lặp lại `The table ... does not exist` (P2021) hoặc `The column ... does not exist` (P2022) | DB chưa migrate — code mới chạy trên schema cũ | Không còn xảy ra khi dựng stack bằng `up -d --build` (service `migrate` chặn api). Nếu đang gặp: chạy `docker compose -f docker-compose.prod.yml up -d --build` rồi kiểm tra `logs migrate`. Migration lỗi dở dang (`P3009`) phải xử lý tay bằng `prisma migrate resolve` |
 | Seed lỗi `Cannot find module '../src/generated/prisma/client'` | Prisma client chưa generate (thư mục gitignored, không có trong bản clone) | Lệnh Seed ở mục 5 đã gồm `prisma generate`; đừng bỏ bước đó |
 | Login thành công nhưng không có quyền admin dù `AUTH_AUTO_ADMIN_ROLE=true`; log api: `no "admin" role exists — skipping` | Bảng `roles` trống — đã migrate nhưng chưa seed | Chạy Seed (mục 5) rồi Sign out → Sign in lại (cơ chế auto-admin thử lại ở mỗi lần login khi user còn 0 role) |
 

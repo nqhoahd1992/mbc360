@@ -24,7 +24,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build api image
-        run: docker build -f apps/api/Dockerfile -t mbc360-api:${{ github.sha }} .
+        run: docker build -f apps/api/Dockerfile --target runtime -t mbc360-api:${{ github.sha }} .
+      # The migrate target is what applies schema changes on deploy; if it stops
+      # building, the api can no longer start at all (it depends_on migrate
+      # completing successfully). Catch that here, not on the production server.
+      - name: Build migrate image
+        run: docker build -f apps/api/Dockerfile --target migrate -t mbc360-migrate:${{ github.sha }} .
       - name: Build web image
         run: docker build -f apps/web/Dockerfile -t mbc360-web:${{ github.sha }} .
       # Pushing to a registry (GHCR or internal) is wired up at deploy time —

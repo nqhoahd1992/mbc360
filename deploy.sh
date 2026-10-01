@@ -7,22 +7,28 @@
 # It mirrors docs/guides/DEPLOY.md §9 (redeploy) + §5 (migrate/seed) but automated:
 #
 #   1. git pull            (skip with --no-pull)
-#   2. docker compose up -d --build
-#   3. wait for Postgres, then apply DB migrations (incremental + idempotent;
-#      skip with --no-migrate)
-#   4. seed rule config + role matrix        (only with --seed; first deploy)
-#   5. health-check api + web
+#   2. docker compose up -d --build  — this also MIGRATES: the compose file has
+#      a one-shot `migrate` service (prisma migrate deploy) that the api waits
+#      on with `service_completed_successfully`
+#   3. seed rule config + role matrix        (only with --seed; first deploy)
+#   4. health-check api + web
 #
 # Usage:
-#   ./deploy.sh                 # pull, build, up, migrate, health-check
+#   ./deploy.sh                 # pull, build, up (+migrate), health-check
 #   ./deploy.sh --seed          # also run the (idempotent) seeder — first deploy
 #   ./deploy.sh --no-pull       # deploy the working tree as-is (no git pull)
-#   ./deploy.sh --no-migrate    # skip migrations (e.g. no new migration shipped)
 #   ./deploy.sh -h | --help
 #
-# Migrations do NOT run at container start by design, and the api image ships
-# only dist/ (no Prisma CLI), so migrate/seed run in a one-off node:22-alpine
-# container attached to the compose network — exactly as docs/guides/DEPLOY.md §5.
+# There is deliberately NO --no-migrate: skipping migrations is how production
+# ended up running new code against an old schema (every query touching a new
+# column failing with Prisma P2022 "column does not exist" while the deploy
+# itself reported success). Migrations are incremental and idempotent — a
+# deploy with nothing new to apply costs a few seconds.
+#
+# The api image still ships only dist/ (no Prisma CLI); migrations run from the
+# `migrate` build target of apps/api/Dockerfile, and the seeder — which also
+# needs @mbc360/shared built and the Prisma client generated — still runs in a
+# one-off node:22-alpine container, exactly as docs/guides/DEPLOY.md §5.
 
 set -euo pipefail
 
@@ -30,7 +36,6 @@ COMPOSE_FILE="docker-compose.prod.yml"
 NODE_IMAGE="node:22-alpine"
 
 DO_PULL=1
-DO_MIGRATE=1
 DO_SEED=0
 
 log()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
@@ -40,9 +45,9 @@ die()  { printf '\033[1;31m  ✗ %s\033[0m\n' "$*" >&2; exit 1; }
 for arg in "$@"; do
   case "$arg" in
     --no-pull)    DO_PULL=0 ;;
-    --no-migrate) DO_MIGRATE=0 ;;
+    --no-migrate) die "--no-migrate was removed: migrations now run as part of 'docker compose up' (see the header of this script)." ;;
     --seed)       DO_SEED=1 ;;
-    -h|--help)    sed -n '2,32p' "$0"; exit 0 ;;
+    -h|--help)    sed -n '2,37p' "$0"; exit 0 ;;
     *)            die "Unknown option: $arg (try --help)" ;;
   esac
 done
@@ -79,14 +84,23 @@ fi
 # ---------------------------------------------------------------------------
 # 2. Build + start the stack
 # ---------------------------------------------------------------------------
-log "Building images and starting the stack"
-dc up -d --build
-ok "Containers up"
+#
+# `up` blocks on the one-shot `migrate` service: Postgres must report healthy,
+# `prisma migrate deploy` must exit 0, and only then is the api started. If a
+# migration fails the api is left on the OLD image rather than serving new code
+# against an un-migrated schema — so surface the migrate log and stop here.
+log "Building images and starting the stack (includes prisma migrate deploy)"
+if ! dc up -d --build; then
+  printf '\n\033[1;31m  ✗ Stack failed to come up. Last 50 lines of the migrate service:\033[0m\n' >&2
+  dc logs --tail 50 migrate >&2 || true
+  die "Deploy aborted — the database was not migrated, so the api was not restarted on the new image."
+fi
+ok "Containers up, migrations applied"
 
 # ---------------------------------------------------------------------------
-# 3. Migrate (+ optional seed) via a one-off container on the compose network
+# 3. Optional seed via a one-off container on the compose network
 # ---------------------------------------------------------------------------
-if [ "$DO_MIGRATE" -eq 1 ] || [ "$DO_SEED" -eq 1 ]; then
+if [ "$DO_SEED" -eq 1 ]; then
   log "Waiting for Postgres to be ready"
   for i in $(seq 1 30); do
     if dc exec -T postgres pg_isready -U mbc360 -d mbc360 >/dev/null 2>&1; then
@@ -109,20 +123,7 @@ if [ "$DO_MIGRATE" -eq 1 ] || [ "$DO_SEED" -eq 1 ]; then
   NETWORK="$(docker inspect -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}' "$(dc ps -q postgres)")"
   [ -n "$NETWORK" ] || die "Could not determine the compose network for postgres."
   ok "Using network: $NETWORK"
-fi
 
-if [ "$DO_MIGRATE" -eq 1 ]; then
-  log "Applying database migrations (prisma migrate deploy — incremental)"
-  docker run --rm --network "$NETWORK" \
-    -v "$PWD":/repo -w /repo \
-    -e DATABASE_URL="$DB_URL" \
-    "$NODE_IMAGE" sh -c "npm ci && npm run db:deploy -w @mbc360/api"
-  ok "Migrations applied"
-else
-  log "Skipping migrations (--no-migrate)"
-fi
-
-if [ "$DO_SEED" -eq 1 ]; then
   log "Seeding rule config + role matrix (idempotent; SEED_DEMO_USERS=false)"
   docker run --rm --network "$NETWORK" \
     -v "$PWD":/repo -w /repo \
