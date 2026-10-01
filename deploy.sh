@@ -136,17 +136,38 @@ fi
 # ---------------------------------------------------------------------------
 # 4. Health checks
 # ---------------------------------------------------------------------------
-log "Health-checking the stack"
-if curl -fsS "http://127.0.0.1:${API_PORT}/api/health" >/dev/null 2>&1; then
-  ok "API healthy (127.0.0.1:${API_PORT}/api/health)"
-else
-  die "API health check failed on 127.0.0.1:${API_PORT} — check: docker compose -f $COMPOSE_FILE logs api"
-fi
-if curl -fsSI "http://127.0.0.1:${WEB_PORT}" >/dev/null 2>&1; then
-  ok "Web responding (127.0.0.1:${WEB_PORT})"
-else
-  die "Web check failed on 127.0.0.1:${WEB_PORT} — check: docker compose -f $COMPOSE_FILE logs web"
-fi
+# `docker compose up -d` returns as soon as containers are STARTED, not when the
+# app inside is ready — the api still needs a few seconds for Nest to boot,
+# Prisma to connect and OIDC discovery to complete. So poll rather than fire one
+# curl. This used to pass by accident: the old one-off migrate container ran a
+# full `npm ci` first, which took long enough that the api was always up by the
+# time the check ran. Folding migrations into `up` removed that accidental delay
+# and turned a healthy deploy into a reported failure.
+HEALTH_TRIES=45        # x2s = 90s budget
+wait_http() {
+  local label="$1" url="$2" svc="$3" head="${4:-}"
+  local i waited=0
+  for i in $(seq 1 "$HEALTH_TRIES"); do
+    if curl -fsS ${head:+-I} -o /dev/null "$url" 2>/dev/null; then
+      if [ "$waited" -gt 0 ]; then
+        ok "$label responding ($url) — ready after ~${waited}s"
+      else
+        ok "$label responding ($url)"
+      fi
+      return 0
+    fi
+    sleep 2
+    waited=$((waited + 2))
+  done
+  printf '\n\033[1;31m  ✗ %s never responded at %s within %ds. Last 40 lines of its log:\033[0m\n' \
+    "$label" "$url" "$((HEALTH_TRIES * 2))" >&2
+  dc logs --tail 40 "$svc" >&2 || true
+  die "$label health check failed."
+}
+
+log "Health-checking the stack (waiting up to $((HEALTH_TRIES * 2))s per service)"
+wait_http "API" "http://127.0.0.1:${API_PORT}/api/health" api
+wait_http "Web" "http://127.0.0.1:${WEB_PORT}" web head
 
 log "Deploy complete."
 printf '   Behind the host nginx at your configured domain (see deploy/nginx.mbcstaging.conf).\n'
