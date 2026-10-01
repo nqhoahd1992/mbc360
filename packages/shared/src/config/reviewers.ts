@@ -20,6 +20,11 @@ export interface ReviewRole {
   // Renamed from `defaultName` on 2026-08-20 — the old name claimed exactly the
   // behaviour this comment denies.
   workbookName: string;
+  // The area this person owns, shown ONLY where the job title alone is
+  // ambiguous (2026-10-01). Set it when `label` collides with something else on
+  // the same screen; leave it undefined otherwise, so twelve of thirteen rows
+  // stay the plain job title the company actually uses.
+  area?: string;
 }
 
 // The full set collected at project creation (all required).
@@ -59,7 +64,15 @@ export const REVIEW_ROLES: ReviewRole[] = [
   { key: 'regulatory', label: 'Regulatory Affairs Manager', workbookName: 'Chi Chu' }, // dept-regulatory
   { key: 'packaging', label: 'Sales Manager', workbookName: 'Lily' }, // dept-packaging
   { key: 'raw-material', label: 'Raw Material Coordinator', workbookName: 'Chidkamon' }, // dept-raw-material
-  { key: 'sales-marketing', label: 'Project Lead', workbookName: 'Nguyen' }, // dept-sales-marketing — Nguyen is also the company's real CEO/project sponsor
+  // `area` is set here and nowhere else: this label collides with the
+  // Project Identification block's own `projectLead` field, so the Create New
+  // Project form showed two required pickers both labelled "Project Lead" with
+  // nothing to tell them apart. They are different people — this one owns the
+  // Sales & Marketing sheets (campaigns, HCP/distributor answer packs, panel
+  // feedback, change control, templates); `projectLead` is whoever leads the
+  // individual project. The collision arrived with the 2026-08-27 relabel to
+  // real job titles, which could not have known about the older field.
+  { key: 'sales-marketing', label: 'Project Lead', area: 'Sales & Marketing', workbookName: 'Nguyen' }, // dept-sales-marketing — Nguyen is also the company's real CEO/project sponsor
   { key: 'supply-chain', label: 'Logistics & Supply Chain Manager', workbookName: 'Hannah' }, // dept-supply-chain
   // own no sheets — co-review / co-sign only
   { key: 'facility-pm', label: 'Facility / PM Operations', workbookName: 'Kaukab' },
@@ -71,6 +84,15 @@ export const REVIEW_ROLE_KEYS = REVIEW_ROLES.map((r) => r.key);
 
 export function reviewRoleLabel(key: string): string {
   return REVIEW_ROLES.find((r) => r.key === key)?.label ?? key;
+}
+
+// The label for a picker that sits next to fields which are NOT review roles —
+// today only the Create New Project form, where "Project Lead" otherwise reads
+// identically to the Project Identification field of the same name. Everywhere
+// else (captions, My Sheets, the Reviewers popover) every entry is a review
+// role, so the job title alone is unambiguous and `reviewRoleLabel` is right.
+export function reviewRoleFieldLabel(role: ReviewRole): string {
+  return role.area ? `${role.label} · ${role.area}` : role.label;
 }
 
 export interface ReviewCredit {

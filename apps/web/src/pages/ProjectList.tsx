@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
 import { PHASE_1 } from '@mbc360/shared/config/phases';
-import { REVIEW_ROLES } from '@mbc360/shared/config/reviewers';
+import { REVIEW_ROLES, reviewRoleFieldLabel } from '@mbc360/shared/config/reviewers';
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useSession } from '../auth/useSession';
@@ -447,8 +447,8 @@ export default function ProjectList() {
               <Form.Item
                 key={role.key}
                 name={['reviewers', role.key]}
-                label={role.label}
-                rules={[{ required: true, message: `${role.label} is required` }]}
+                label={reviewRoleFieldLabel(role)}
+                rules={[{ required: true, message: `${reviewRoleFieldLabel(role)} is required` }]}
               >
                 <Select
                   showSearch
