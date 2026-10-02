@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import {Alert, App, Button, Card, DatePicker, Empty, Input, message, Modal, Select, Table, Tooltip, Typography} from 'antd';
+import {Alert, App, Button, Card, DatePicker, Empty, Input, message, Select, Table, Tooltip, Typography} from 'antd';
+import type { TableColumnsType } from 'antd';
 import {
   CheckCircleFilled,
   ExclamationCircleFilled,
@@ -19,6 +20,7 @@ import { useAppStore } from '../store/useAppStore';
 import { currentGateIndex, gateIndex, gateReadinessChecklist, isAwaitingDecision, isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { roleLabel } from '../utils/roles';
 import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
+import './GateFlowTable.css';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import GateReadinessPanel from './GateReadinessPanel';
@@ -32,12 +34,22 @@ import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 
 
+import FormDrawer from './FormDrawer';
 export default function GateFlowTable({
   project,
   gateIds,
+  layout = 'table',
+  hideReadiness,
 }: {
   project: ProjectData;
   gateIds: string[];
+  // 'card' (2026-10-02 Phase page concept): each gate as a form card — the same
+  // editors, guards, sign-off panel and modals as the table, laid out for the
+  // single-gate tab of PhasePage instead of a 1250px-wide row.
+  layout?: 'table' | 'card';
+  // The Phase page shows readiness in its own sticky rail, so the card layout
+  // can leave it out rather than print the same list twice.
+  hideReadiness?: boolean;
 }) {
   const setGate = useAppStore((s) => s.setGate);
   const setGatesBulk = useAppStore((s) => s.setGatesBulk);
@@ -50,8 +62,8 @@ export default function GateFlowTable({
   // Context-aware instance for the imperative "acknowledge open change
   // control" confirm below — the static `Modal.confirm` it used to call
   // renders outside React's tree and never sees ConfigProvider's theme (see
-  // the note on App.tsx's root `<App>`). The declarative `<Modal open={...}>`
-  // dialogs further down are unaffected and stay as-is.
+  // the note on App.tsx's root `<App>`). The Backtrack and Change history
+  // panels further down are FormDrawers (2026-10-02), not dialogs.
   const { modal } = App.useApp();
   const projectId = project.identity.id;
   const archived = !!project.identity.archived;
@@ -277,58 +289,10 @@ export default function GateFlowTable({
       }))
     : [];
 
-  return (
-    <Card
-      size="small"
-      title="Phase Gate Flow"
-      extra={
-        <span style={{ color: TEXT.secondary }}>
-          A gate passes only when status is Complete, a Proceed / Proceed with Conditions decision
-          is recorded, and no blockers remain (open next actions, mandatory safety screens)
-        </span>
-      }
-    >
-      {archived && (
-        <Alert
-          type="warning"
-          showIcon
-          style={{ marginBottom: 12 }}
-          title="This project is archived — read-only"
-          description="Restore it from the Projects list to make changes. Nothing has been deleted."
-        />
-      )}
-      {saveBlockedRows.length > 0 && (
-        <Alert
-          type="error"
-          showIcon
-          style={{ marginBottom: 12 }}
-          title="Decision not valid yet — cannot save"
-          description={
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {saveBlockedRows.map((r) => (
-                <li key={r.meta.id}>{r.saveInvalidReason}</li>
-              ))}
-            </ul>
-          }
-        />
-      )}
-      <Table
-        size="small"
-        rowKey={(r) => r.meta.id}
-        dataSource={rows}
-        pagination={false}
-        sticky={TABLE_STICKY}
-        scroll={{ x: 1250 }}
-        rowClassName={(r) => (r.passed ? 'gate-row-passed' : r.locked ? 'gate-row-locked' : '')}
-        expandable={{
-          showExpandColumn: false,
-          expandedRowKeys: guidanceRowKeys,
-          onExpandedRowsChange: () => {
-            // Fully controlled by `guidanceRowKeys` — not user-toggleable, so
-            // there's nothing to do here (and no expand icon to click anyway).
-          },
-          rowExpandable: rowHasGuidance,
-          expandedRowRender: (r) => (
+  type Row = (typeof rows)[number];
+  // Everything shown under a gate besides its own fields: restrictions, the gap
+  // assessment, notices, the gate sign-off panel and (unless hidden) readiness.
+  const renderGuidance = (r: Row) => (
             <div style={{ display: 'grid', gap: 4 }}>
               {!r.canDecide && !r.locked && (
                 <div style={{ fontSize: 12, color: TEXT.secondary }}>
@@ -351,7 +315,7 @@ export default function GateFlowTable({
                   attests to are one subject — and because `sgNN-signoff` is one
                   of the items in that very list. */}
               <GateSignOffPanel project={project} gateId={r.meta.id} />
-              {r.readinessChecklist.length > 0 && (
+              {!hideReadiness && r.readinessChecklist.length > 0 && (
                 <GateReadinessPanel
                   gateNumber={r.meta.number}
                   items={r.readinessChecklist}
@@ -364,9 +328,9 @@ export default function GateFlowTable({
                 />
               )}
             </div>
-          ),
-        }}
-        columns={[
+  );
+
+  const columns: TableColumnsType<Row> = [
           {
             title: 'Gate',
             width: 90,
@@ -386,7 +350,7 @@ export default function GateFlowTable({
                 )}
                 {!r.passed && !r.awaitingDecision && r.record.status !== 'Gap' && r.isCurrent && (
                   <Tooltip title="Current gate">
-                    <RightCircleFilled style={{ color: '#1677ff', marginRight: 6 }} />
+                    <RightCircleFilled style={{ color: '#0958d9', marginRight: 6 }} />
                   </Tooltip>
                 )}
                 {r.locked && (
@@ -410,7 +374,7 @@ export default function GateFlowTable({
                       .map((t) => t.market)
                       .join(', ')} — launch approval is hard-blocked per market until its PIF is Approved (see Market Tracking).`}
                   >
-                    <GlobalOutlined style={{ color: '#1677ff', marginLeft: 6 }} />
+                    <GlobalOutlined style={{ color: '#0958d9', marginLeft: 6 }} />
                   </Tooltip>
                 )}
               </span>
@@ -566,8 +530,101 @@ export default function GateFlowTable({
               </Button>
             ),
           },
-        ]}
+  ];
+
+  // Card layout: the same column renderers, laid out as a form per gate.
+  const CARD_FIELDS = ['Stage status', 'Gate decision', 'Owner', 'Due date', 'Evidence / link', 'Notes / blockers'];
+  const fieldFor = (title: string) => columns.find((c) => c.title === title) as { render: (v: unknown, r: Row, i: number) => React.ReactNode } | undefined;
+
+  const content = (
+    <>
+      {archived && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          title="This project is archived — read-only"
+          description="Restore it from the Projects list to make changes. Nothing has been deleted."
+        />
+      )}
+      {saveBlockedRows.length > 0 && (
+        <Alert
+          type="error"
+          showIcon
+          style={{ marginBottom: 12 }}
+          title="Decision not valid yet — cannot save"
+          description={
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {saveBlockedRows.map((r) => (
+                <li key={r.meta.id}>{r.saveInvalidReason}</li>
+              ))}
+            </ul>
+          }
+        />
+      )}
+      {layout === 'card' ? (
+        <div className="gfc-list">
+          {rows.map((r) => (
+            <div key={r.meta.id} className={`c-card gfc-card${r.passed ? ' gfc-passed' : ''}`}>
+              <div className="gfc-head">
+                <div style={{ minWidth: 0 }}>
+                  <div className="gfc-title-row">
+                    <span className="gfc-title">
+                      Gate {r.meta.number} · {r.meta.name}
+                    </span>
+                    {r.passed ? (
+                      <span className="c-tag c-tag-dot c-tag-ok">Passed · {r.record.decision}</span>
+                    ) : r.locked && !r.isCurrent ? (
+                      <span className="c-tag">
+                        <LockOutlined /> {gateIndex(r.meta.id) > currentIdx ? 'Not open yet' : 'Read-only'}
+                      </span>
+                    ) : (
+                      <span className="c-tag c-tag-dot">{r.record.status}</span>
+                    )}
+                    {r.openChanges.length > 0 && <span className="c-tag c-tag-warn">Open change</span>}
+                  </div>
+                  <div className="gfc-purpose">{r.meta.purpose}</div>
+                </div>
+                <Button type="text" icon={<HistoryOutlined />} disabled={r.historyCount === 0} onClick={() => setHistoryFor(r.meta.id)}>
+                  {r.historyCount > 0 ? `History (${r.historyCount})` : 'No history'}
+                </Button>
+              </div>
+              <div className="gfc-fields">
+                {CARD_FIELDS.map((title) => (
+                  <label key={title} className={title === 'Notes / blockers' || title === 'Evidence / link' ? 'gfc-wide' : undefined}>
+                    <span className="gfc-label">{title}</span>
+                    {fieldFor(title)?.render(undefined, r, r.draftIndex)}
+                  </label>
+                ))}
+              </div>
+              <div className="gfc-guidance">{renderGuidance(r)}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+      <Table
+        size="small"
+        rowKey={(r) => r.meta.id}
+        dataSource={rows}
+        pagination={false}
+        sticky={TABLE_STICKY}
+        scroll={{ x: 1250 }}
+        rowClassName={(r) => (r.passed ? 'gate-row-passed' : r.locked ? 'gate-row-locked' : '')}
+        expandable={{
+          showExpandColumn: false,
+          expandedRowKeys: guidanceRowKeys,
+          onExpandedRowsChange: () => {
+            // Fully controlled by `guidanceRowKeys` — not user-toggleable, so
+            // there's nothing to do here (and no expand icon to click anyway).
+          },
+          rowExpandable: rowHasGuidance,
+          expandedRowRender: (r) => (
+            renderGuidance(r)
+          ),
+        }}
+        columns={columns}
       />
+      )}
       <SaveBar
         dirty={dirty}
         onSave={save}
@@ -576,7 +633,7 @@ export default function GateFlowTable({
         disabledReason="Resolve the issue(s) flagged above before saving."
       />
 
-      <Modal
+      <FormDrawer
         title={backtrackFromMeta ? `Backtrack from Gate ${backtrackFromMeta.number}` : 'Backtrack'}
         open={!!backtrackFrom}
         onOk={confirmBacktrack}
@@ -623,9 +680,9 @@ export default function GateFlowTable({
             placeholder="Why is this backtrack required?"
           />
         </div>
-      </Modal>
+      </FormDrawer>
 
-      <Modal
+      <FormDrawer
         title={historyGateMeta ? `Change history — Gate ${historyGateMeta.number}` : 'Change history'}
         open={!!historyFor}
         onCancel={() => setHistoryFor(null)}
@@ -690,7 +747,24 @@ export default function GateFlowTable({
             )}
           </>
         )}
-      </Modal>
+      </FormDrawer>
+    </>
+  );
+
+  return layout === 'card' ? (
+    <div className="concept-tokens gfc">{content}</div>
+  ) : (
+    <Card
+      size="small"
+      title="Phase Gate Flow"
+      extra={
+        <span style={{ color: TEXT.secondary }}>
+          A gate passes only when status is Complete, a Proceed / Proceed with Conditions decision
+          is recorded, and no blockers remain (open next actions, mandatory safety screens)
+        </span>
+      }
+    >
+      {content}
     </Card>
   );
 }

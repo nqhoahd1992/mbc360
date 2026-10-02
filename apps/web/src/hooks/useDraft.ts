@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { setSectionDirty } from './unsavedRegistry';
 
 // Local "draft" copy of a table/section's data that the user edits freely —
@@ -38,8 +38,25 @@ export function useDraft<T>(committed: T) {
     }
   }
 
+  // A row added and then removed again (2026-10-02, user-reported) leaves the
+  // table exactly as it was saved, yet the Save bar stayed up. So when an edit
+  // changes the number of rows, the next render checks whether the draft is
+  // back to the saved state. Only then: comparing on every edit would put a
+  // full JSON.stringify back on every keystroke (see the perf note above), and
+  // typing a cell back to its old value is rare enough to leave dirty. The
+  // updater stays functional, so two updates in one handler still compose.
+  const recheck = useRef(false);
+  if (dirty && recheck.current) {
+    recheck.current = false;
+    if (JSON.stringify(draft) === committedJson) setDirty(false);
+  }
+
   const update = (updater: T | ((prev: T) => T)) => {
-    setDraft((prev) => (typeof updater === 'function' ? (updater as (prev: T) => T)(prev) : updater));
+    setDraft((prev) => {
+      const next = typeof updater === 'function' ? (updater as (prev: T) => T)(prev) : updater;
+      if (Array.isArray(next) && Array.isArray(prev) && next.length !== prev.length) recheck.current = true;
+      return next;
+    });
     setDirty(true);
   };
 

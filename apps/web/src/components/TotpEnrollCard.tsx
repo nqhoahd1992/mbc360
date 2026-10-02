@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Input, Popconfirm, QRCode, Space, Spin, Tag, Typography, message } from 'antd';
+import { Button, Input, Popconfirm, QRCode, Typography, message } from 'antd';
 import {
   activateTotp,
   beginTotpEnrollment,
@@ -8,6 +8,8 @@ import {
   type TotpEnrollment,
   type TotpStatus,
 } from '../api/accountApi';
+import '../styles/concept.css';
+import './TotpEnrollCard.css';
 
 // My Account → "Authenticator app" (2026-08-21). The second factor a signer
 // proves before their saved signature may be attached to a phase sign-off.
@@ -70,138 +72,143 @@ export default function TotpEnrollCard() {
       message.success('Authenticator removed');
     });
 
-  // A tall card with the error pinned to its top means a rejected code shows
-  // up ~700px above the button that was pressed, which reads as "nothing
-  // happened" — so this is rendered inside whichever step is active instead.
-  const errorAlert = error ? (
-    <Alert type="error" showIcon title={error} style={{ marginTop: 4 }} />
-  ) : null;
+  // Rendered inside whichever step is active, next to the button that was
+  // pressed — a rejected code pinned far above it read as "nothing happened".
+  const errorLine = error ? <p className="te-error">{error}</p> : null;
+
+  const codeInput = (value: string, set: (v: string) => void, onEnter: () => void, name: string, autoFocus?: boolean) => (
+    <Input
+      className="te-code"
+      maxLength={6}
+      placeholder="000000"
+      inputMode="numeric"
+      autoComplete="one-time-code"
+      spellCheck={false}
+      name={name}
+      autoFocus={autoFocus}
+      value={value}
+      onChange={(e) => set(e.target.value.replace(/\D/g, ''))}
+      onPressEnter={onEnter}
+    />
+  );
+
+  // 2026-10-02 (My Account redesign): no card of its own — it is the right half
+  // of the page's "Ready to sign" card — and the two-step setup is numbered
+  // steps instead of three stacked colour banners.
+  if (loading) return <div className="c-skel" style={{ height: 40 }} />;
+
+  if (enrollment) {
+    return (
+      <ol className="te-steps">
+        <li>
+          <span className="te-n">1</span>
+          <div className="te-body">
+            <div className="te-title">Scan with your authenticator app</div>
+            <QRCode value={enrollment.otpauthUri} size={152} bordered={false} />
+            <p className="te-hint">
+              Can&apos;t scan? Enter this key:{' '}
+              <Typography.Text code copyable={{ text: enrollment.secret.replace(/\s/g, '') }}>
+                {enrollment.secret}
+              </Typography.Text>
+            </p>
+            <p className="te-hint">
+              Only this QR works. If you scanned an earlier one for MBc360, delete that entry in your app first — codes
+              from it will be rejected.
+            </p>
+          </div>
+        </li>
+        <li>
+          <span className="te-n">2</span>
+          <div className="te-body">
+            <div className="te-title">Enter the 6-digit code it shows now</div>
+            <div className="te-row">
+              {codeInput(code, setCode, confirm, 'totpEnrollCode', true)}
+              <Button type="primary" loading={busy} disabled={code.length !== 6} onClick={confirm}>
+                Activate
+              </Button>
+              <Button type="text" onClick={() => setEnrollment(null)}>
+                Cancel
+              </Button>
+            </div>
+            <p className="te-hint">The code changes every 30 seconds — if it rolls over while you type, use the new one.</p>
+            {errorLine}
+          </div>
+        </li>
+      </ol>
+    );
+  }
+
+  if (status?.enrolled) {
+    return (
+      <div className="te">
+        <div className="te-row">
+          {status.lockedUntil ? (
+            <>
+              <span className="c-tag c-tag-bad">Locked</span>
+              <span className="te-hint">
+                Too many incorrect codes — try again after {new Date(status.lockedUntil).toLocaleTimeString()}.
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="c-tag c-tag-ok">Active</span>
+              <span className="te-hint">
+                Set up on {status.activatedAt ? new Date(status.activatedAt).toLocaleDateString() : '—'}
+              </span>
+            </>
+          )}
+        </div>
+        {removing ? (
+          <>
+            <p className="te-hint">Enter a current code to confirm it is you removing it.</p>
+            <div className="te-row">
+              {codeInput(removeCode, setRemoveCode, remove, 'totpRemoveCode')}
+              <Button danger loading={busy} disabled={removeCode.length !== 6} onClick={remove}>
+                Remove
+              </Button>
+              <Button type="text" onClick={() => setRemoving(false)}>
+                Cancel
+              </Button>
+            </div>
+            {errorLine}
+          </>
+        ) : (
+          <>
+            {errorLine}
+            <div>
+              <Popconfirm
+                title="Remove your authenticator?"
+                description="You will not be able to attach your signature to a sign-off until you set one up again."
+                okText="Continue"
+                okButtonProps={{ danger: true }}
+                onConfirm={() => setRemoving(true)}
+              >
+                <Button>Remove authenticator</Button>
+              </Popconfirm>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <Card size="small" title="Authenticator app">
-      <Typography.Paragraph type="secondary">
-        Attaching your saved signature to a sign-off asks for the 6-digit code from an authenticator
-        app (Microsoft Authenticator, Google Authenticator, 1Password — any of them). Set it up once
-        here.
-      </Typography.Paragraph>
-      {loading ? (
-        <Spin />
-      ) : enrollment ? (
-        <Space orientation="vertical" size={12}>
-          <Alert
-            type="info"
-            showIcon
-            title="Step 1 — scan this with your authenticator app"
-            description="Scanning alone does not switch it on: the app will start showing a 6-digit code, and entering one below is what proves the device is yours."
-          />
-          <Alert
-            type="warning"
-            showIcon
-            title="Only this QR works"
-            description="If you scanned an earlier one for MBc360, delete that entry in your app first — starting setup again replaces the key, so codes from the old entry will be rejected, and both entries look identical in the app."
-          />
-          <QRCode value={enrollment.otpauthUri} size={168} />
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Can&apos;t scan? Enter this key manually:{' '}
-            <Typography.Text code copyable={{ text: enrollment.secret.replace(/\s/g, '') }}>
-              {enrollment.secret}
-            </Typography.Text>
-          </Typography.Text>
-          <Space orientation="vertical" size={4}>
-            <Typography.Text strong>Step 2 — enter the code your app shows now</Typography.Text>
-            <Space>
-              <Input
-                style={{ width: 140 }}
-                maxLength={6}
-                placeholder="000000"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                spellCheck={false}
-                name="totpEnrollCode"
-                autoFocus
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                onPressEnter={confirm}
-              />
-              <Button type="primary" loading={busy} disabled={code.length !== 6} onClick={confirm}>
-                Confirm
-              </Button>
-              <Button onClick={() => setEnrollment(null)}>Cancel</Button>
-            </Space>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              The code changes every 30 seconds — if it rolls over while you type, just use the new
-              one.
-            </Typography.Text>
-            {errorAlert}
-          </Space>
-        </Space>
-      ) : status?.enrolled ? (
-        <Space orientation="vertical" size={12}>
-          <Space>
-            <Tag color="green">Active</Tag>
-            <Typography.Text type="secondary">
-              Set up on {status.activatedAt ? new Date(status.activatedAt).toLocaleString() : '—'}
-            </Typography.Text>
-          </Space>
-          {status.lockedUntil && (
-            <Alert
-              type="warning"
-              showIcon
-              title={`Too many incorrect codes — locked until ${new Date(status.lockedUntil).toLocaleTimeString()}`}
-            />
-          )}
-          {!removing && errorAlert}
-          {removing ? (
-            <Space orientation="vertical" size={8}>
-              <Typography.Text type="secondary">
-                Enter a current code to confirm it is you removing it.
-              </Typography.Text>
-              <Space>
-                <Input
-                  style={{ width: 140 }}
-                  maxLength={6}
-                  placeholder="000000"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  spellCheck={false}
-                  name="totpRemoveCode"
-                  value={removeCode}
-                  onChange={(e) => setRemoveCode(e.target.value.replace(/\D/g, ''))}
-                  onPressEnter={remove}
-                />
-                <Button danger loading={busy} disabled={removeCode.length !== 6} onClick={remove}>
-                  Remove
-                </Button>
-                <Button onClick={() => setRemoving(false)}>Cancel</Button>
-              </Space>
-              {errorAlert}
-            </Space>
-          ) : (
-            <Popconfirm
-              title="Remove your authenticator?"
-              description="You will not be able to attach your signature to a sign-off until you set one up again."
-              okText="Continue"
-              okButtonProps={{ danger: true }}
-              onConfirm={() => setRemoving(true)}
-            >
-              <Button danger>Remove authenticator</Button>
-            </Popconfirm>
-          )}
-        </Space>
-      ) : (
-        <Space orientation="vertical">
-          {status?.pending && (
-            <Typography.Text type="warning">
-              A setup was started but never confirmed — it does not work yet. Start again below, and
-              delete any earlier MBc360 entry in your app: the new QR uses a different key.
-            </Typography.Text>
-          )}
-          <Button type="primary" loading={busy} onClick={start}>
-            Set up authenticator
-          </Button>
-          {errorAlert}
-        </Space>
+    <div className="te">
+      <p className="te-hint">
+        Not set up. Any authenticator app works — Microsoft Authenticator, Google Authenticator, 1Password.
+      </p>
+      {status?.pending && (
+        <p className="te-warn">
+          A setup was started but never confirmed, so it does not work yet. Start again, and delete any earlier MBc360
+          entry in your app — the new QR uses a different key.
+        </p>
       )}
-    </Card>
+      <div>
+        <Button type="primary" loading={busy} onClick={start}>
+          Set up authenticator
+        </Button>
+      </div>
+      {errorLine}
+    </div>
   );
 }

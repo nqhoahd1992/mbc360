@@ -1,11 +1,11 @@
-import { Alert, Empty, Typography } from 'antd';
+import { Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { claimEvidenceTraceability, evidencePlanProspective, evidenceTestProtocol } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import DynamicTable from '../components/DynamicTable';
-import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
+import { CompositePageHeader } from '../components/RegisterPageHeader';
 
 // NPD Front-End Roadmap Step 4 (v2 workbook, 2026-07-24). The prospective plan
 // must be agreed BEFORE formula lock (Mandatory hard-block at SG05); the
@@ -29,31 +29,22 @@ export default function EvidenceClaimSupport() {
   const lockedClaims = isGateRefLocked(project, claimEvidenceTraceability.gate);
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <div>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Evidence Plan & Claim Support
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          Plan the proof BEFORE the formula is locked, then trace every claim to it. Defining
-          pass/fail before results prevents outcome-shopping.
-        </Typography.Text>
-      </div>
-
-      <Alert
-        type="info"
-        showIcon
-        title="Prospective plan required before formula lock"
-        description="The prospective evidence plan hard-blocks Formula BOM (Gate 05); the detailed test protocol hard-blocks Gate 08 once a prototype exists."
+    <div className="concept">
+      <CompositePageHeader
+        project={project}
+        title="Evidence Plan & Claim Support"
+        description={<>Plan the proof BEFORE the formula is locked, then trace every claim to it. Defining pass/fail before results prevents outcome-shopping.</>}
+        note={{
+          title: "Prospective plan required before formula lock",
+          text: "The prospective evidence plan hard-blocks Formula BOM (Gate 05); the detailed test protocol hard-blocks Gate 08 once a prototype exists.",
+        }}
+        reviewOwnerText={reviewOwnerText}
       />
-
-      <ProjectIdentificationCard project={project} />
 
       <DynamicTable
         config={evidencePlanProspective}
         rows={project.registers[evidencePlanProspective.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, evidencePlanProspective.key, rows)}
-        reviewOwnerText={reviewOwnerText}
         readOnly={lockedPlan}
       />
 
@@ -61,7 +52,6 @@ export default function EvidenceClaimSupport() {
         config={evidenceTestProtocol}
         rows={project.registers[evidenceTestProtocol.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, evidenceTestProtocol.key, rows)}
-        reviewOwnerText={reviewOwnerText}
         readOnly={lockedProtocol}
       />
 
@@ -69,7 +59,6 @@ export default function EvidenceClaimSupport() {
         config={claimEvidenceTraceability}
         rows={project.registers[claimEvidenceTraceability.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, claimEvidenceTraceability.key, rows)}
-        reviewOwnerText={reviewOwnerText}
         readOnly={lockedClaims}
       />
     </div>

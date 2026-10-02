@@ -1,13 +1,17 @@
-import { Card, Checkbox, DatePicker, Input, Select, Table } from 'antd';
+import { useState } from 'react';
+import { Checkbox, DatePicker, Input, Select } from 'antd';
+import type { InputRef } from 'antd';
 import dayjs from 'dayjs';
 import type { AngleRow, YNNA } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
-import { TEXT, TABLE_STICKY } from '../theme/tokens';
+import RecordList, { RecordField } from './RecordList';
 
 const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v }));
 
+// 8 Angles coverage for a phase. Since 2026-10-02 a RecordList: Covered and
+// Y/N/NA on the row, date, evidence, initials and comments in the drawer.
 export default function EightAnglesTable({
   projectId,
   phase,
@@ -26,88 +30,81 @@ export default function EightAnglesTable({
     setAnglesBulk(projectId, phase, draft);
     markSaved();
   };
+  // Same as Key Gate Checks: ticking Covered on an angle with no evidence yet
+  // opens its drawer with the cursor in Evidence / reference.
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [focusEvidence, setFocusEvidence] = useState(false);
+  const toggleCovered = (i: number, on: boolean) => {
+    patch(i, { covered: on, ynna: on ? 'Y' : draft[i].ynna, date: on ? dayjs().format('YYYY-MM-DD') : undefined });
+    if (on && !(draft[i].evidenceRef ?? '').trim() && openIndex !== i) {
+      setOpenIndex(i);
+      setFocusEvidence(true);
+    }
+  };
+  const evidenceRef = (el: InputRef | null) => {
+    if (!el || !focusEvidence) return;
+    setFocusEvidence(false);
+    setTimeout(() => el.focus(), 320);
+  };
 
   return (
-    <Card
-      size="small"
-      title="8 Angles Coverage — apply to the phase before gate closure"
-      extra={
-        <span style={{ color: TEXT.secondary }}>
-          {covered}/8 covered
-        </span>
-      }
-    >
-      <Table
-        size="small"
-        rowKey={(r) => r.angle}
-        dataSource={draft}
-        pagination={false}
-        sticky={TABLE_STICKY}
-        scroll={{ x: 900 }}
-        columns={[
-          { title: 'Angle', width: 200, dataIndex: 'angle', fixed: 'left', render: (v) => <b>{v}</b> },
-          {
-            title: 'Y/N/NA',
-            width: 80,
-            render: (_, r, i) => (
-              <Select
-                style={{ width: 70 }}
-                value={r.ynna}
-                options={YNNA_OPTIONS}
-                onChange={(v: YNNA) => patch(i, { ynna: v })}
-              />
-            ),
-          },
-          {
-            title: 'Covered',
-            width: 80,
-            render: (_, r, i) => (
-              <Checkbox
-                checked={r.covered}
-                onChange={(e) =>
-                  patch(i, {
-                    covered: e.target.checked,
-                    ynna: e.target.checked ? 'Y' : r.ynna,
-                    date: e.target.checked ? dayjs().format('YYYY-MM-DD') : undefined,
-                  })
-                }
-              />
-            ),
-          },
-          {
-            title: 'Date',
-            width: 130,
-            render: (_, r, i) => (
-              <DatePicker
-                value={r.date ? dayjs(r.date) : null}
-                onChange={(d) => patch(i, { date: d ? d.format('YYYY-MM-DD') : undefined })}
-              />
-            ),
-          },
-          {
-            title: 'Evidence / reference',
-            width: 180,
-            render: (_, r, i) => (
-              <Input value={r.evidenceRef} onChange={(e) => patch(i, { evidenceRef: e.target.value })} />
-            ),
-          },
-          {
-            title: 'Initials',
-            width: 90,
-            render: (_, r, i) => (
+    <RecordList
+      title="8 Angles Coverage"
+      description="Apply to the phase before gate closure — covered, or N/A with a justification in the comments."
+      count={`${covered}/8 covered`}
+      rows={draft}
+      rowKey={(r) => r.angle}
+      rowTitle={(r) => r.angle}
+      rowSubtitle={(r) => [r.evidenceRef, r.comments].filter(Boolean).join(' · ')}
+      openIndex={openIndex}
+      onOpenIndexChange={setOpenIndex}
+      inline={[
+        {
+          label: 'Covered',
+          width: 88,
+          render: (r, i) => <Checkbox checked={r.covered} onChange={(e) => toggleCovered(i, e.target.checked)} />,
+        },
+        {
+          label: 'Y/N/NA',
+          width: 112,
+          render: (r, i) => <Select style={{ width: 90 }} value={r.ynna} options={YNNA_OPTIONS} onChange={(v: YNNA) => patch(i, { ynna: v })} />,
+        },
+      ]}
+      drawer={(r, i) => (
+        <section>
+          <div className="rt-grid">
+            <RecordField label="Covered">
+              <Checkbox checked={r.covered} onChange={(e) => toggleCovered(i, e.target.checked)}>
+                {r.covered ? 'Covered' : 'Not covered'}
+              </Checkbox>
+            </RecordField>
+            <RecordField label="Y/N/NA">
+              <Select style={{ width: '100%' }} value={r.ynna} options={YNNA_OPTIONS} onChange={(v: YNNA) => patch(i, { ynna: v })} />
+            </RecordField>
+            <RecordField label="Date">
+              <DatePicker style={{ width: '100%' }} value={r.date ? dayjs(r.date) : null} onChange={(d) => patch(i, { date: d ? d.format('YYYY-MM-DD') : undefined })} />
+            </RecordField>
+            <RecordField label="Initials">
               <Input value={r.initials} onChange={(e) => patch(i, { initials: e.target.value })} />
-            ),
-          },
-          {
-            title: 'Comments',
-            width: 220,
-            render: (_, r, i) => (
-              <Input value={r.comments} onChange={(e) => patch(i, { comments: e.target.value })} />
-            ),
-          },
-        ]}
-      />
-      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
-    </Card>
+            </RecordField>
+            <RecordField label="Evidence / reference" wide>
+              <Input ref={evidenceRef} value={r.evidenceRef} onChange={(e) => patch(i, { evidenceRef: e.target.value })} />
+            </RecordField>
+            <RecordField label="Comments" wide>
+              <Input.TextArea autoSize={{ minRows: 2 }} value={r.comments} onChange={(e) => patch(i, { comments: e.target.value })} />
+            </RecordField>
+          </div>
+        </section>
+      )}
+      footer={
+        dirty ? (
+          <div className="rt-savebar">
+            <div>
+              <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
+            </div>
+          </div>
+        ) : null
+      }
+    />
   );
 }

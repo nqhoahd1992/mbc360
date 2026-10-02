@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import UserSelect from '../components/UserSelect';
 import ChangeDispositionBlock from '../components/ChangeDispositionBlock';
 import { isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
-import { Alert, AutoComplete, Button, Card, DatePicker, Form, Input, Modal, Select, Space, Switch, Table, Tag, message } from 'antd';
+import { AutoComplete, Button, DatePicker, Form, Input, Select, Space, Switch, Table, Tag, message, Tooltip } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
@@ -22,8 +22,12 @@ import {
 import StatusBadge from '../components/StatusBadge';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from '../components/SaveBar';
-import { TEXT, TABLE_STICKY } from '../theme/tokens';
+import RecordList, { RecordField } from '../components/RecordList';
+import '../styles/concept.css';
+import '../components/DynamicTable.css';
+import './ChangeControl.css';
 
+import FormDrawer from '../components/FormDrawer';
 const AFFECTED_AREAS = [
   'Artwork', 'Formula', 'Label', 'Claim', 'Supplier', 'Process', 'Packaging', 'Market',
   'Formula / Supplier', 'Other',
@@ -31,11 +35,12 @@ const AFFECTED_AREAS = [
 
 const TRIGGER_CATEGORIES: ChangeTriggerCategory[] = ['Formula', 'Artwork / Label', 'PIF / Evidence'];
 
-const RACI_ROLE_COLOR: Record<RaciRole, string> = {
-  Accountable: 'red',
-  Responsible: 'blue',
-  Approver: 'green',
-  'Informed / acknowledgement': 'default',
+// Tone on the role tag only (concept rule: colour carries state on the tag).
+const RACI_ROLE_TONE: Record<RaciRole, string> = {
+  Accountable: ' c-tag-bad',
+  Responsible: '',
+  Approver: ' c-tag-ok',
+  'Informed / acknowledgement': '',
 };
 
 const triggerSelectOptions = TRIGGER_CATEGORIES.map((cat) => ({
@@ -138,7 +143,14 @@ export default function ChangeControl() {
 
   const onCreate = async () => {
     const values = await form.validateFields();
-    const nextNumber = changes.length + 1;
+    // Highest existing CHG number + 1, not `changes.length + 1`: a count repeats
+    // an id as soon as any record is missing from the list (removed, or not
+    // loaded), and a change id is the record's reference everywhere else.
+    const nextNumber =
+      changes.reduce((max, c) => {
+        const n = /^CHG-(\d+)$/.exec(c.changeId ?? '')?.[1];
+        return n ? Math.max(max, Number(n)) : max;
+      }, 0) + 1;
     const trig = getChangeTrigger(values.triggerId);
     const record: ChangeRecord = {
       ...values,
@@ -160,142 +172,206 @@ export default function ChangeControl() {
     markSaved();
   };
 
+  const openCount = draft.filter((c) => isChangeOpen(c.status)).length;
+  const projectLabel = (id?: string) => {
+    if (!id) return undefined;
+    const p = projects.find((x) => x.identity.id === id);
+    return p ? `${p.identity.id} — ${p.identity.productSku}` : id;
+  };
+  // What makes a change hold Gate 11 (rule E3(b), Round 4 question 34(c)): an
+  // open change nobody has classified, or a closed one without its final
+  // disposition. The old table kept the disposition always expanded so this
+  // never needed a click; in the list it is the row's flag and subtitle instead.
+  const gate11Issue = (c: ChangeRecord): string | undefined => {
+    if (isChangeOpen(c.status)) {
+      return (c.impactAreas ?? []).length === 0 ? 'Impact not classified — blocks Gate 11' : undefined;
+    }
+    if (isChangeDispositionRecorded(c)) return undefined;
+    return `Final disposition: ${missingDispositionFields(c).length} missing — blocks Gate 11`;
+  };
+
+  const statusSelect = (c: ChangeRecord) => (
+    <Select
+      style={{ width: '100%' }}
+      value={c.status}
+      aria-label="Status"
+      options={CHANGE_STATUSES.map((s) => ({ value: s, label: s }))}
+      onChange={(v: ChangeStatus) =>
+        patchChange(c.changeId, {
+          status: v,
+          closedDate:
+            v === 'Completed' || v === 'Rejected' || v === 'Cancelled' || v === 'Superseded'
+              ? dayjs().format('YYYY-MM-DD')
+              : undefined,
+        })
+      }
+    />
+  );
+
+  const dlRow = (label: string, value: React.ReactNode) => (
+    <div className="rt-dl-row">
+      <dt>{label}</dt>
+      <dd>{value === undefined || value === null || value === '' ? <span className="rt-muted">—</span> : value}</dd>
+    </div>
+  );
+
+  const actions = (
+    <>
+      {/* On a phone the label collapses to the icon so both actions fit one
+          row under the title; the tooltip and aria-label keep the name. */}
+      <Tooltip title="Trigger reference">
+        <Button icon={<SearchOutlined />} aria-label="Trigger reference" onClick={() => setRefOpen(true)}>
+          <span className="cc-btn-text">Trigger reference</span>
+        </Button>
+      </Tooltip>
+      <Button type="primary" icon={<PlusOutlined />} onClick={openNewChangeModal}>
+        Open Change Request
+      </Button>
+    </>
+  );
+
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <Alert
-        type="warning"
-        showIcon
-        title="No silent corrections"
-        description="Artwork, formula, label, claim, supplier, process and market changes must be recorded here with a trigger, owner, impact assessment, approval, communication and closure evidence."
-      />
+    <div className="concept cc">
+      <header className="cc-header">
+        <div className="cc-title-row">
+          <h1 className="cc-title">Change Control</h1>
+          {openCount > 0 ? (
+            <span className="c-tag c-tag-dot c-tag-warn">{openCount} open</span>
+          ) : (
+            <span className="c-tag c-tag-dot c-tag-ok">Nothing open</span>
+          )}
+          <div className="cc-actions">{actions}</div>
+        </div>
+        <p className="cc-meta">
+          Change Control &amp; Communication Log · {draft.length} {draft.length === 1 ? 'change' : 'changes'} across all
+          projects
+        </p>
+        <p className="cc-desc">
+          <b>No silent corrections.</b> Artwork, formula, label, claim, supplier, process and market changes must be
+          recorded here with a trigger, owner, impact assessment, approval, communication and closure evidence.
+        </p>
+      </header>
 
-      <Card
-        size="small"
-        title="Change Control & Communication Log"
-        extra={
-          <Space>
-            <Button size="small" icon={<SearchOutlined />} onClick={() => setRefOpen(true)}>
-              Trigger reference
-            </Button>
-            <Button size="small" type="primary" icon={<PlusOutlined />} onClick={openNewChangeModal}>
-              Open Change Request
-            </Button>
-          </Space>
-        }
-      >
-        <Table
-          size="small"
+      {draft.length === 0 ? (
+        <div className="c-card cc-empty">
+          <div className="cc-empty-title">No change requests yet</div>
+          <p className="cc-empty-text">
+            Open one whenever an artwork, formula, label, claim, supplier, process or market change is proposed —
+            before the change is made, not after.
+          </p>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openNewChangeModal}>
+            Open Change Request
+          </Button>
+        </div>
+      ) : (
+        <RecordList<ChangeRecord>
+          title="Change Control & Communication Log"
+          description="Open a change to see every field. Status, impact classification and the final disposition are edited in place and saved together."
+          count={`${openCount} open of ${draft.length}`}
+          rows={draft}
           rowKey={(c) => c.changeId}
-          dataSource={draft}
-          sticky={TABLE_STICKY}
-          scroll={{ x: 2260 }}
-          // Round 4 question 34(c). Always expanded and not user-toggleable, the
-          // same pattern the Gate Flow table uses for its readiness panel: a change
-          // that silently blocks Gate 11 is exactly what should not need a click to
-          // discover.
-          expandable={{
-            showExpandColumn: false,
-            expandedRowKeys: draft.filter((c) => !isChangeOpen(c.status)).map((c) => c.changeId),
-            expandedRowRender: (c) => (
-              <ChangeDispositionBlock change={c} onChange={(p) => patchChange(c.changeId, p)} />
-            ),
+          rowTitle={(c) => (
+            <>
+              <span className="cc-id">{c.changeId}</span> {c.trigger || <span className="rt-muted">No trigger recorded</span>}
+            </>
+          )}
+          rowSubtitle={(c) => {
+            const issue = gate11Issue(c);
+            return (
+              <>
+                {[c.productSku, c.affectedArea].filter(Boolean).join(' · ') || '—'}
+                {issue && <span className="cc-issue"> · {issue}</span>}
+              </>
+            );
           }}
-          columns={[
-            { title: 'Change ID', width: 100, dataIndex: 'changeId', fixed: 'left', render: (v) => <b>{v}</b> },
-            { title: 'Trigger / event', width: 240, dataIndex: 'trigger' },
-            {
-              title: 'Affected gates / phases',
-              width: 260,
-              render: (_, c) => {
-                const t = getChangeTrigger(c.triggerId);
-                return t ? <AffectedTags gates={t.gates} /> : <span style={{ color: TEXT.disabled }}>—</span>;
-              },
-            },
-            { title: 'Product / SKU', width: 200, dataIndex: 'productSku' },
-            { title: 'Affected area', width: 140, dataIndex: 'affectedArea' },
-            { title: 'Old version', width: 110, dataIndex: 'oldVersion', render: (v) => v || '—' },
-            {
-              title: 'Risk',
-              width: 90,
-              dataIndex: 'riskLevel',
-              render: (v) => <StatusBadge value={v} />,
-            },
-            {
-              // Editable in the table, not only on the create form: rule E3(b) makes an
-              // UNCLASSIFIED open change block Gate 11, and every change that existed
-              // before this column did is unclassified. Without an inline editor those
-              // would block the gate with nowhere to fix them — an unsatisfiable blocker,
-              // the exact failure the readiness sweeps exist to catch.
-              title: 'Impact (Gate 11)',
-              width: 260,
-              render: (_, c) => (
-                <Select
-                  mode="multiple"
-                  allowClear
-                  style={{ width: 245 }}
-                  placeholder="Not classified — blocks Gate 11"
-                  status={(c.impactAreas ?? []).length === 0 ? 'warning' : undefined}
-                  value={c.impactAreas ?? []}
-                  options={CHANGE_IMPACT_AREAS.map((a) => ({ value: a, label: a }))}
-                  onChange={(v: string[]) => patchChange(c.changeId, { impactAreas: v })}
-                />
-              ),
-            },
-            { title: 'Required action', width: 240, dataIndex: 'requiredAction', ellipsis: true },
-            { title: 'Evidence link', width: 130, dataIndex: 'evidenceLink', ellipsis: true, render: (v) => v || '—' },
-            { title: 'Sign-offs', width: 160, dataIndex: 'requiredSignOffs', ellipsis: true },
-            {
-              title: 'Comms',
-              width: 90,
-              render: (_, c) => (c.communicationRequired ? 'Required' : '—'),
-            },
-            { title: 'Sales / Marketing message', width: 200, dataIndex: 'salesMarketingMessage', ellipsis: true, render: (v) => v || '—' },
-            { title: 'Due', width: 110, dataIndex: 'dueDate' },
-            {
-              title: 'Status',
-              width: 235,
-              render: (_, c) => (
-                <Select
-                  style={{ width: 220 }}
-                  value={c.status}
-                  options={CHANGE_STATUSES.map((s) => ({ value: s, label: s }))}
-                  onChange={(v: ChangeStatus) =>
-                    patchChange(c.changeId, {
-                      status: v,
-                      closedDate:
-                        v === 'Completed' || v === 'Rejected' || v === 'Cancelled' || v === 'Superseded'
-                          ? dayjs().format('YYYY-MM-DD')
-                          : undefined,
-                    })
-                  }
-                />
-              ),
-            },
-            // Round 4 question 34(c): the seven parts of a final disposition are
-            // edited in the expandable row below, not as seven more columns — this
-            // table is already 2260px wide. The column here reports whether the
-            // disposition is complete, which is what decides Gate 11.
-            {
-              title: 'Final disposition',
-              width: 150,
-              render: (_, c) =>
-                isChangeOpen(c.status) ? (
-                  <span style={{ color: TEXT.secondary }}>—</span>
-                ) : isChangeDispositionRecorded(c) ? (
-                  <Tag color="green">Recorded</Tag>
-                ) : (
-                  <Tag color="orange">{missingDispositionFields(c).length} missing</Tag>
-                ),
-            },
-            { title: 'Closed', width: 110, dataIndex: 'closedDate' },
-            { title: 'Owner', width: 130, dataIndex: 'owner' },
-            { title: 'Notes', width: 200, dataIndex: 'notes', ellipsis: true, render: (v) => v || '—' },
+          rowFlag={(c) => gate11Issue(c) !== undefined}
+          inline={[
+            { label: 'Risk', width: 96, render: (c) => <StatusBadge value={c.riskLevel} /> },
+            { label: 'Status', width: 248, render: (c) => statusSelect(c) },
           ]}
-        />
-        <SaveBar dirty={dirty} onSave={saveChanges} onDiscard={discard} />
-      </Card>
+          drawerTitle={(c) => (
+            <>
+              {c.changeId} · {c.trigger || 'No trigger recorded'}
+            </>
+          )}
+          drawer={(c) => {
+            const t = getChangeTrigger(c.triggerId);
+            return (
+              <>
+                <div>
+                  <div className="rt-sec-title">Change</div>
+                  <dl className="rt-dl">
+                    {dlRow('Trigger / event', c.trigger)}
+                    {dlRow('Affected gates / phases', t ? <AffectedTags gates={t.gates} /> : undefined)}
+                    {dlRow('Project', projectLabel(c.projectId))}
+                    {dlRow('Product / SKU', c.productSku)}
+                    {dlRow('Affected area', c.affectedArea)}
+                    {dlRow('Old version', c.oldVersion)}
+                    {dlRow('Risk', <StatusBadge value={c.riskLevel} />)}
+                    {dlRow('Owner', c.owner)}
+                    {dlRow('Due', c.dueDate)}
+                    {dlRow('Closed', c.closedDate)}
+                  </dl>
+                </div>
 
-      <Modal
+                <div>
+                  <div className="rt-sec-title">Status &amp; impact</div>
+                  <div className="rt-grid">
+                    <RecordField label="Status">{statusSelect(c)}</RecordField>
+                    {/* Editable here, not only on the create form: rule E3(b) makes
+                        an UNCLASSIFIED open change block Gate 11, and every change
+                        that existed before this field did is unclassified. Without
+                        an editor those would block the gate with nowhere to fix
+                        them — an unsatisfiable blocker, the exact failure the
+                        readiness sweeps exist to catch. */}
+                    <RecordField label="Impact (Gate 11)" wide>
+                      <Select
+                        mode="multiple"
+                        allowClear
+                        style={{ width: '100%' }}
+                        placeholder="Not classified — blocks Gate 11"
+                        status={(c.impactAreas ?? []).length === 0 ? 'warning' : undefined}
+                        value={c.impactAreas ?? []}
+                        options={CHANGE_IMPACT_AREAS.map((a) => ({ value: a, label: a }))}
+                        onChange={(v: string[]) => patchChange(c.changeId, { impactAreas: v })}
+                      />
+                    </RecordField>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="rt-sec-title">Action &amp; communication</div>
+                  <dl className="rt-dl">
+                    {dlRow('Required action', c.requiredAction)}
+                    {dlRow('Required sign-offs', c.requiredSignOffs)}
+                    {dlRow('Evidence link', c.evidenceLink)}
+                    {dlRow('Comms', c.communicationRequired ? 'Required' : undefined)}
+                    {dlRow('Sales / Marketing message', c.salesMarketingMessage)}
+                    {dlRow('Notes', c.notes)}
+                  </dl>
+                </div>
+
+                {/* Round 4 question 34(c): the seven parts of a final disposition. */}
+                <div>
+                  <div className="rt-sec-title">Final disposition</div>
+                  <ChangeDispositionBlock change={c} onChange={(p) => patchChange(c.changeId, p)} />
+                </div>
+              </>
+            );
+          }}
+          footer={
+            dirty && (
+              <div className="rt-savebar">
+                <div>
+                  <SaveBar dirty={dirty} onSave={saveChanges} onDiscard={discard} />
+                </div>
+              </div>
+            )
+          }
+        />
+      )}
+
+      <FormDrawer
         title="Change trigger reference — affected gates & phases"
         open={refOpen}
         onCancel={() => setRefOpen(false)}
@@ -330,34 +406,28 @@ export default function ChangeControl() {
             { title: 'Required sign-offs', width: 200, dataIndex: 'signOffs', render: (v) => v ?? '—' },
           ]}
         />
-      </Modal>
+      </FormDrawer>
 
-      <Card
-        size="small"
-        title="RACI / Closure control — who must contribute before a change can close"
-      >
-        <Table
-          size="small"
-          rowKey={(r) => r.functionName}
-          dataSource={CHANGE_RACI}
-          pagination={false}
-          sticky={TABLE_STICKY}
-          scroll={{ x: 900 }}
-          columns={[
-            { title: 'Function', width: 160, dataIndex: 'functionName', render: (v) => <b>{v}</b> },
-            {
-              title: 'Role',
-              width: 190,
-              dataIndex: 'role',
-              render: (v: RaciRole) => <Tag color={RACI_ROLE_COLOR[v]}>{v}</Tag>,
-            },
-            { title: 'Required contribution', width: 300, dataIndex: 'contribution' },
-            { title: 'Linked evidence / sheet', width: 260, dataIndex: 'linkedEvidence' },
-          ]}
-        />
-      </Card>
+      <section className="c-card cc-raci">
+        <div className="cc-raci-head">
+          <h2 className="cc-raci-title">RACI / Closure control</h2>
+          <p className="cc-raci-sub">Who must contribute before a change can close</p>
+        </div>
+        <ul className="cc-raci-list">
+          {CHANGE_RACI.map((r) => (
+            <li key={r.functionName}>
+              <div className="cc-raci-name">
+                <b>{r.functionName}</b>
+                <span className={`c-tag${RACI_ROLE_TONE[r.role]}`}>{r.role}</span>
+              </div>
+              <div className="cc-raci-text">{r.contribution}</div>
+              <div className="cc-raci-ev">{r.linkedEvidence}</div>
+            </li>
+          ))}
+        </ul>
+      </section>
 
-      <Modal
+      <FormDrawer
         title="Open Change Request"
         open={open}
         onOk={onCreate}
@@ -397,7 +467,7 @@ export default function ChangeControl() {
               <AffectedTags gates={selectedTrigger.gates} />
             </Form.Item>
           )}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+          <div className="cc-form-grid">
             <Form.Item name="projectId" label="Project">
               <Select
                 allowClear
@@ -483,7 +553,7 @@ export default function ChangeControl() {
             <Input.TextArea rows={2} />
           </Form.Item>
         </Form>
-      </Modal>
+      </FormDrawer>
     </div>
   );
 }

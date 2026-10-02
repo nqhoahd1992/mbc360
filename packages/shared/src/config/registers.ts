@@ -18,7 +18,11 @@ import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 // over the column's own `options` rather than the project's market list. Added
 // because eleven separate checkbox columns for question 27's claim-subject flags
 // would be eleven columns that always move together.
-export type ColumnType = 'text' | 'textarea' | 'select' | 'multiSelect' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef' | 'nextActionRef' | 'signature';
+// `claimsLibraryRef` (2026-10-02): an id in the company Claims Library, picked
+// rather than typed — the stored value is the entry id the Gate 3 rule reads.
+// `rowRef` (2026-10-02): the identifying value of a row in ANOTHER register of
+// the same project (`refRegister` + `refColumn`), picked rather than typed.
+export type ColumnType = 'text' | 'textarea' | 'select' | 'multiSelect' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef' | 'nextActionRef' | 'claimsLibraryRef' | 'rowRef' | 'signature';
 
 export interface RegisterColumn {
   key: string;
@@ -33,6 +37,10 @@ export interface RegisterColumn {
   // Without a link the cell is disabled rather than free: classifying an
   // unlinked row is how the two copies drifted apart in the first place.
   inheritFromClaim?: boolean;
+  // For `type: 'rowRef'` only: which register this column points into, and the
+  // column of that register whose value identifies a row (and is what is stored).
+  refRegister?: string;
+  refColumn?: string;
   // Which gate this COLUMN belongs to, for a register whose own gate spans
   // several (2026-08-11, user-raised: "a claim row is formed across 3/10/11, so
   // to pass Gate 3 only some columns are needed — the columns should be split by
@@ -2288,7 +2296,8 @@ const labelPlatformRollout: RegisterConfig = {
   reviewOwner: RELEASED_LABEL_OWNER,
   columns: [
     { key: 'rolloutId', label: 'Rollout ID', type: 'text', width: 100 },
-    { key: 'linkedRecordId', label: 'Linked Record ID (Block A)', type: 'text', width: 150 },
+    // Block A is the Released Label Register; its rows are identified by Record ID.
+    { key: 'linkedRecordId', label: 'Linked Record ID (Block A)', type: 'rowRef', refRegister: 'releasedLabelRegister', refColumn: 'recordId', width: 150 },
     { key: 'productSku', label: 'Product / SKU', type: 'text', width: 150 },
     { key: 'platform', label: 'Platform / channel', type: 'text', width: 140 },
     { key: 'platformUrl', label: 'Platform URL / location', type: 'text', width: 160 },
@@ -2319,7 +2328,8 @@ const labelShipmentVerification: RegisterConfig = {
   reviewOwner: RELEASED_LABEL_OWNER,
   columns: [
     { key: 'shipmentId', label: 'Shipment ID', type: 'text', width: 100 },
-    { key: 'linkedRecordId', label: 'Linked Record ID (Block A)', type: 'text', width: 150 },
+    // Block A is the Released Label Register; its rows are identified by Record ID.
+    { key: 'linkedRecordId', label: 'Linked Record ID (Block A)', type: 'rowRef', refRegister: 'releasedLabelRegister', refColumn: 'recordId', width: 150 },
     { key: 'productSku', label: 'Product / SKU', type: 'text', width: 150 },
     { key: 'destination', label: 'Destination / customer / market', type: 'text', width: 180 },
     { key: 'shipDate', label: 'Ship date', type: 'date', width: 120 },
@@ -2893,7 +2903,11 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // there is none. A blank link with no declaration is neither — and it fires
     // C1 exactly as an explicit "not in the library" does, so the declaration
     // buys visibility rather than an escape.
-    { key: 'libraryEntryId', label: 'Claims Library entry', type: 'text', width: 200, gate: '03' },
+    // A picker over the Claims Library since 2026-10-02: as free text it had to
+    // hold an internal entry id that no screen displayed, so it could not
+    // realistically be filled in, and a typo silently counted as "not in the
+    // library".
+    { key: 'libraryEntryId', label: 'Claims Library entry', type: 'claimsLibraryRef', width: 200, gate: '03' },
     { key: 'libraryStatus', label: 'Claims Library status', type: 'select', width: 220, options: [...CLAIM_LIBRARY_LINK_OPTIONS], gate: '03' },
     // Question 27: the eleven structured claim-subject flags, replacing an
     // inference from free text. Eight of them are C1's seventh review condition,
@@ -3356,6 +3370,11 @@ export interface NavItem {
   page?: string;
   href?: string;
   gate?: string; // '04', '04/07', or 'ALL'
+  // A dedicated page that renders several registers on one screen: their keys,
+  // so search can find the page by a register's own title ("Claim -> Evidence
+  // Traceability") rather than only by the page's. Keep in step with the
+  // registers the page imports.
+  contains?: string[];
   // Only set for a page-based item (no registerKey) whose real owner differs
   // from its containing group's default — a register item's owner already
   // comes from its own RegisterConfig via registerKey (2026-08-27).
@@ -3423,6 +3442,7 @@ type RawDeptItem =
       href?: string;
       gate?: string;
       reviewOwner?: ReviewOwnerSpec;
+      contains?: string[];
     };
 
 interface RawDept {
@@ -3478,14 +3498,14 @@ const DEPARTMENTS: RawDept[] = [
       'npdRoadmapFirstSteps',
       'npdRoadmapStructure',
       'npdRoadmapGapRegister',
-      { title: 'Needs & Scientific Basis', sheetName: '1. Needs & Scientific Basis', page: 'needs-scientific-basis', gate: '02/05' },
+      { title: 'Needs & Scientific Basis', sheetName: '1. Needs & Scientific Basis', page: 'needs-scientific-basis', gate: '02/05', contains: ['needsExecutiveBrief', 'needsResearchQuestions', 'needsLiteratureSearchMethod', 'needsAnatomyExposureNotes', 'needsTechnologyTraceability', 'needsSignOff'] },
       'carrierEmollientReview',
       'carrierReviewSummary',
-      { title: 'Competitor Landscape', sheetName: '2. Competitor Landscape', page: 'competitor-landscape', gate: '03/05' },
-      { title: 'Target Product & Tech Platform', sheetName: '3. Target Product & Tech', page: 'target-product-tech', gate: '05' },
-      { title: 'Evidence Plan & Claim Support', sheetName: '4. Evidence & Claim Support', page: 'evidence-claim-support', gate: '05/08' },
+      { title: 'Competitor Landscape', sheetName: '2. Competitor Landscape', page: 'competitor-landscape', gate: '03/05', contains: ['currentSolutionsStandardOfCare', 'competitorLandscape', 'competitorLandscapeSummary', 'competitorTestingProtocol'] },
+      { title: 'Target Product & Tech Platform', sheetName: '3. Target Product & Tech', page: 'target-product-tech', gate: '05', contains: ['targetProductProfile', 'backbonePlatformTechnology', 'targetProductSignOff'] },
+      { title: 'Evidence Plan & Claim Support', sheetName: '4. Evidence & Claim Support', page: 'evidence-claim-support', gate: '05/08', contains: ['evidencePlanProspective', 'evidenceTestProtocol', 'claimEvidenceTraceability'] },
       'ingredientMonograph',
-      { title: 'Evidence Hierarchy & Search Rules', sheetName: '6. Evidence & Search Rules', page: 'evidence-search-rules' },
+      { title: 'Evidence Hierarchy & Search Rules', sheetName: '6. Evidence & Search Rules', page: 'evidence-search-rules', contains: ['evidenceHierarchyGrades', 'evidenceSearchStandard', 'evidenceTransferabilityRules', 'evidenceControlSignOff'] },
     ],
   },
   {
@@ -3544,7 +3564,7 @@ const DEPARTMENTS: RawDept[] = [
       'testReportIndex',
       'eyeSafetyEvidence',
       { title: 'Product Evidence Summary', sheetName: 'Product_Evid_Summ', workbookTab: 'George-Product_Evid_Summ', page: 'evidence', gate: 'ALL', reviewOwner: REVIEW_SPECS.ri },
-      { title: 'Formulation Safety', sheetName: 'Formulation_Safety', workbookTab: 'George-Formulation_Safety', page: 'formulation-safety', gate: '07/10', reviewOwner: REVIEW_SPECS.ri },
+      { title: 'Formulation Safety', sheetName: 'Formulation_Safety', workbookTab: 'George-Formulation_Safety', page: 'formulation-safety', gate: '07/10', reviewOwner: REVIEW_SPECS.ri, contains: ['formulationSafetyProfile', 'formulationSafetyMatrix', 'criticalSafetyFindings', 'formulationSafetyFinalSignOff'] },
       'mechanismClaimsMap',
       'twinkle5ClaimsMap',
       'efficacyAssurance',
@@ -3674,6 +3694,7 @@ export function getNavGroups(): NavGroup[] {
               href: it.href,
               gate: it.gate,
               reviewOwner: it.reviewOwner,
+              contains: it.contains,
             },
       )
       .filter((i): i is NavItem => i !== null),

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -12,6 +13,10 @@ import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthConfig, loadAuthConfig } from './auth-config';
 import type { SessionUser } from './session-user';
+
+// Why a real company account was not let in; travels to the sign-in screen as
+// `?auth_error=<value>`.
+export type LoginRefusal = 'no_role' | 'inactive' | 'tenant';
 
 // Transient payload carried between /auth/login and /auth/callback in a
 // short-lived signed cookie (PKCE code verifier + CSRF state).
@@ -60,7 +65,7 @@ export class AuthService {
 
   // Step 1 of the code flow: build the Entra authorization URL plus the signed
   // transient (PKCE verifier + state) the callback needs to finish the exchange.
-  async startLogin(): Promise<{ authorizationUrl: string; transientJwt: string }> {
+  async startLogin(selectAccount = false): Promise<{ authorizationUrl: string; transientJwt: string }> {
     const config = await this.getOidcConfig();
     const codeVerifier = oidc.randomPKCECodeVerifier();
     const codeChallenge = await oidc.calculatePKCECodeChallenge(codeVerifier);
@@ -74,6 +79,7 @@ export class AuthService {
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
       state,
+      ...(selectAccount ? { prompt: 'select_account' } : {}),
     }).href;
 
     const transientJwt = await this.jwt.signAsync(
@@ -85,7 +91,10 @@ export class AuthService {
 
   // Step 2: exchange the code, sync the user (+ department from Graph) and
   // issue the session cookie value.
-  async handleCallback(currentUrl: URL, transientJwt: string | undefined): Promise<string> {
+  async handleCallback(
+    currentUrl: URL,
+    transientJwt: string | undefined,
+  ): Promise<{ session: string } | { refused: LoginRefusal; email?: string }> {
     if (!transientJwt) throw new BadRequestException('Missing login transient — restart sign-in');
     let transient: OidcTransient;
     try {
@@ -107,8 +116,32 @@ export class AuthService {
     const displayName = (claims['name'] as string | undefined) ?? email ?? oid;
     if (!email) throw new BadRequestException('Entra ID token carried no email/preferred_username');
 
+    // Same tenant only. The tenant-specific issuer already rejects tokens from
+    // other tenants; checking `tid` as well costs nothing and says so plainly.
+    const tid = claims['tid'] as string | undefined;
+    if (this.config.tenantId && tid && tid !== this.config.tenantId) {
+      this.logger.warn(`Sign-in refused: token from tenant ${tid}`);
+      return { refused: 'tenant' };
+    }
+
     const department = await this.fetchDepartment(tokens.access_token);
+    // The account is still created/updated when it may not enter: that is how
+    // the person appears in Users & Roles for an administrator to give a role.
     const user = await this.upsertSsoUser({ oid, email, displayName, department });
+
+    // Access rule (2026-10-02): Microsoft 365 proves membership of the tenant;
+    // entering the app needs an active account with at least one role.
+    const refused = await this.loginRefusal(user.id);
+    if (refused) {
+      await this.audit.record({
+        actorId: user.id,
+        entityType: 'user',
+        entityId: user.id,
+        action: 'auth.login_refused',
+        after: { method: 'entra-id', email: user.email, reason: refused },
+      });
+      return { refused, email: user.email };
+    }
 
     await this.audit.record({
       actorId: user.id,
@@ -118,7 +151,17 @@ export class AuthService {
       after: { method: 'entra-id', email: user.email },
     });
 
-    return this.issueSession(user.id, tokens.id_token);
+    return { session: await this.issueSession(user.id, tokens.id_token) };
+  }
+
+  private async loginRefusal(userId: string): Promise<LoginRefusal | undefined> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { active: true, _count: { select: { roles: true } } },
+    });
+    if (!user || !user.active) return 'inactive';
+    if (user._count.roles === 0) return 'no_role';
+    return undefined;
   }
 
   private async fetchDepartment(accessToken: string): Promise<string | undefined> {
@@ -140,8 +183,8 @@ export class AuthService {
 
   // Match by Entra object id first, then by email (links pre-provisioned
   // users to their SSO identity on first login), else create. New SSO users
-  // start with no roles: they can contribute evidence but cannot decide,
-  // approve or sign until an admin assigns a role (A4; real matrix = F6) —
+  // start with no roles, and since 2026-10-02 a user with no role cannot enter
+  // the app at all until an admin assigns one (see loginRefusal) —
   // unless config.autoAdminRole is on (temporary dev-phase behavior, see
   // auth-config.ts), in which case a user with zero roles is granted admin
   // right here so testers get full access immediately.
@@ -219,6 +262,9 @@ export class AuthService {
     }
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || !user.active) throw new BadRequestException('Unknown or inactive user');
+    // Same access rule as a Microsoft sign-in, so dev-login cannot be used to
+    // look around as an account that could not otherwise enter.
+    if (await this.loginRefusal(user.id)) throw new ForbiddenException('No role has been assigned to this account yet');
 
     await this.audit.record({
       actorId: user.id,

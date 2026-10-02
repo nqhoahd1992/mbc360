@@ -6,6 +6,8 @@ import type { SessionUser } from '../auth/useSession';
 interface AuthStatusProps {
   user: SessionUser;
   onLogout: () => void;
+  /** Avatar only — the name is still in the dropdown. For narrow screens. */
+  compact?: boolean;
 }
 
 // The real signed-in identity (M2 Entra ID SSO) — a single chip (avatar +
@@ -16,7 +18,7 @@ interface AuthStatusProps {
 // sits next to, not instead of, the "View as" simulator: gate/phase
 // decisions in this demo UI still run off the simulated role until the
 // frontend is switched to the API (M3).
-export default function AuthStatus({ user, onLogout }: AuthStatusProps) {
+export default function AuthStatus({ user, onLogout, compact }: AuthStatusProps) {
   return (
     <Dropdown
       trigger={['click']}
@@ -46,8 +48,14 @@ export default function AuthStatus({ user, onLogout }: AuthStatusProps) {
         ],
       }}
     >
-      <Button type="text" size="small" style={{ display: 'flex', alignItems: 'center', gap: 6, paddingInline: 6 }}>
+      <Button
+        type="text"
+        size="small"
+        aria-label={compact ? `Account: ${user.displayName}` : undefined}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, paddingInline: 6 }}
+      >
         <Avatar size={22} icon={<UserOutlined />} />
+        {!compact && (
         <span
           style={{
             fontSize: 13,
@@ -59,6 +67,7 @@ export default function AuthStatus({ user, onLogout }: AuthStatusProps) {
         >
           {user.displayName}
         </span>
+        )}
       </Button>
     </Dropdown>
   );

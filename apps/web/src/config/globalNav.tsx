@@ -30,13 +30,18 @@ export interface GlobalNavEntry {
   title: string;
   icon?: ReactNode;
   adminOnly?: boolean;
-  /** 'top' = a top-level sidebar item · {submenu} = nested · false = palette only. */
-  sidebar: 'top' | { submenu: string } | false;
+  /**
+   * 'rail' = a destination on the sidebar's icon rail · {submenu} = a group in
+   * the Administration panel · false = palette (and avatar menu) only.
+   */
+  sidebar: 'rail' | { submenu: string } | false;
+  /** Short label under the rail icon, where the full title does not fit in 60px. */
+  railLabel?: string;
   /** Extra search terms for the palette. */
   keywords?: string;
 }
 
-export const ADMIN_SUBMENU = 'Users & Roles';
+export const ADMIN_SUBMENU = 'Access & integrations';
 // Company-wide reference data the rule engine reads (Market profiles, Raw
 // Material Risk Overlay, ...) — split out from ADMIN_SUBMENU (2026-08-26,
 // user-requested): it was filed under "Users & Roles", which reads as user/
@@ -45,16 +50,17 @@ export const ADMIN_SUBMENU = 'Users & Roles';
 export const REFERENCE_DATA_SUBMENU = 'Company Reference Data';
 
 export const GLOBAL_NAV: GlobalNavEntry[] = [
-  { path: '/', title: 'Dashboard', icon: <AppstoreOutlined />, sidebar: 'top' },
-  { path: '/projects', title: 'All Projects', icon: <FolderOpenOutlined />, sidebar: 'top' },
-  { path: '/integrations', title: 'Integrations', icon: <ApiOutlined />, sidebar: 'top', keywords: 'cosmetri power apps sharepoint graph tokens' },
+  { path: '/', title: 'Dashboard', icon: <AppstoreOutlined />, sidebar: 'rail', railLabel: 'Home' },
+  { path: '/projects', title: 'All Projects', icon: <FolderOpenOutlined />, sidebar: 'rail', railLabel: 'Projects' },
   {
-    // Reachable in the menu as a workbook sheet (Sales & Marketing →
-    // "Change Control & Communication"), so it is not repeated at the top.
+    // On the rail since the 2026-10-03 sidebar redesign: it is company-wide
+    // (every project's changes on one page), so filing it only as a workbook
+    // sheet inside one project's groups hid it from anyone not in that group.
     path: '/change-control',
     title: 'Change Control',
     icon: <SwapOutlined />,
-    sidebar: false,
+    sidebar: 'rail',
+    railLabel: 'Changes',
     keywords: 'change request major minor formula version',
   },
   {
@@ -67,6 +73,9 @@ export const GLOBAL_NAV: GlobalNavEntry[] = [
   },
   { path: '/admin/users', title: 'Users', icon: <TeamOutlined />, adminOnly: true, sidebar: { submenu: ADMIN_SUBMENU }, keywords: 'roles assign account deactivate authenticator reset' },
   { path: '/admin/roles', title: 'Roles', icon: <TeamOutlined />, adminOnly: true, sidebar: { submenu: ADMIN_SUBMENU }, keywords: 'capabilities permissions gate decisions phase approvals' },
+  // System Administrator only (2026-10-02): the page manages the Cosmetri token
+  // pair, and IntegrationsPage refuses non-admins too.
+  { path: '/integrations', title: 'Integrations', icon: <ApiOutlined />, adminOnly: true, sidebar: { submenu: ADMIN_SUBMENU }, keywords: 'cosmetri tokens connection refresh' },
   // Round 4 question 4 (2026-08-24). Company-level reference data, so it belongs
   // beside Users & Roles rather than in a project workspace — one list every
   // project reads and none of them can edit.

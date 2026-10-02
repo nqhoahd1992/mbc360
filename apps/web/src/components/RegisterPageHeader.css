@@ -1,0 +1,24 @@
+.rph { padding-top: 4px; }
+.rph-crumb { font-size: 13px; }
+.rph-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 4px; }
+.rph-title { margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; }
+.rph-meta { margin: 4px 0 0; color: var(--c-text-2); font-size: 13px; }
+.rph-meta b { color: var(--c-text); font-weight: 500; }
+.rph-desc { margin: 4px 0 0; color: var(--c-text-3); font-size: 13px; }
+
+.rph-lock { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; font-size: 13px; }
+.rph-lock > .anticon { margin-top: 3px; color: var(--c-text-3); }
+.rph-lock-title { font-size: 14px; font-weight: 500; }
+.rph-lock-text { color: var(--c-text-2); }
+
+.rph-progress { padding: 20px 24px; }
+.rph-label { color: var(--c-text-2); font-size: 13px; }
+.rph-big { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
+.rph-big b { font-size: 24px; font-weight: 600; line-height: 32px; }
+.rph-big span { color: var(--c-text-3); }
+.rph-bar { max-width: 360px; height: 6px; margin-top: 8px; overflow: hidden; border-radius: 3px; background: rgb(0 0 0 / 6%); }
+.rph-bar > div { height: 100%; border-radius: 3px; background: var(--c-primary); }
+.rph-bar > div.rph-bar-done { background: var(--c-ok-dot); }
+
+.rph-note { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; font-size: 13px; }
+.rph-note > .anticon { margin-top: 3px; color: var(--c-primary); }

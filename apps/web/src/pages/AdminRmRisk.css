@@ -1,0 +1,17 @@
+/* Raw-material risk overlay (2026-10-02 redesign). Row and drawer primitives come
+   from AdminUsers.css + AdminMarketProfiles.css; only what differs is here. */
+.rr-name { width: 260px; flex-shrink: 0; min-width: 0; font-weight: 500; }
+.rr-name .au-email { font-weight: 400; }
+.rr-add { flex: 0 1 300px; min-width: 220px; margin-left: auto; }
+.rr-drawer-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.rr-flags.ant-checkbox-group {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 4px 16px;
+}
+.rr-flags .ant-checkbox-wrapper { align-items: center; min-height: 32px; }
+.rr-flags-help { margin: 8px 0 0; }
+
+@media (max-width: 767px) {
+  .rr-name { flex: 1; width: auto; }
+  .rr-add { flex-basis: 100%; margin-left: 0; }
+}

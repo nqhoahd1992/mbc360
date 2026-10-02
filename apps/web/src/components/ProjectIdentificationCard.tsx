@@ -59,7 +59,7 @@ export default function ProjectIdentificationCard({
         <Descriptions.Item label="Date Opened">{identity.dateOpened}</Descriptions.Item>
         <Descriptions.Item label="Target Launch">{identity.targetLaunchDate}</Descriptions.Item>
         <Descriptions.Item label="Owner / Department">{identity.ownerDepartment}</Descriptions.Item>
-        <Descriptions.Item label="Countries / Markets" span={3}>
+        <Descriptions.Item label="Countries / Markets" span="filled">
           {editing ? (
             <Select
               mode="multiple"

@@ -1,10 +1,12 @@
-import { Alert, DatePicker, Input, Space } from 'antd';
+import { DatePicker, Input } from 'antd';
 import dayjs from 'dayjs';
 import type { ChangeRecord } from '@mbc360/shared/types';
 import { isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
 import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import UserSelect from './UserSelect';
-import { TEXT } from '../theme/tokens';
+import Notice from './Notice';
+import { RecordField } from './RecordList';
+import './DynamicTable.css';
 
 // Round 4 question 34(c) (2026-08-24): "A closing date or short note alone is
 // insufficient. Final disposition includes: Final status · Outcome · What was
@@ -41,10 +43,10 @@ export default function ChangeDispositionBlock({
 }) {
   if (isChangeOpen(change.status)) {
     return (
-      <div style={{ fontSize: 12, color: TEXT.secondary }}>
+      <p className="rt-muted" style={{ margin: 0, fontSize: 13 }}>
         Still open — the final disposition is recorded once this change reaches Completed, Rejected, Cancelled or
         Superseded.
-      </div>
+      </p>
     );
   }
 
@@ -52,64 +54,58 @@ export default function ChangeDispositionBlock({
   const done = isChangeDispositionRecorded(change);
 
   return (
-    <div style={{ display: 'grid', gap: 6, padding: '6px 0' }}>
+    <div className="cc-disp">
       {done ? (
-        <div style={{ fontSize: 12, color: '#389e0d' }}>
-          Final disposition recorded — this change no longer blocks Gate 11.
-        </div>
+        <div className="cc-disp-ok">Final disposition recorded — this change no longer blocks Gate 11.</div>
       ) : (
-        <Alert
-          type="warning"
-          showIcon
-          title="Final disposition incomplete — this change still blocks Gate 11"
-          description={`Missing: ${missing.map((f) => LABELS[f] ?? f).join(' · ')}`}
-        />
+        <Notice tone="warn" title="Final disposition incomplete — this change still blocks Gate 11">
+          Missing: {missing.map((f) => LABELS[f] ?? f).join(' · ')}
+        </Notice>
       )}
 
-      <Space orientation="vertical" size={4} style={{ width: '100%' }}>
-        <Input
-          placeholder={LABELS.closureOutcome}
-          value={change.closureOutcome}
-          onChange={(e) => onChange({ closureOutcome: e.target.value })}
-        />
-        <Input.TextArea
-          autoSize={{ minRows: 1, maxRows: 3 }}
-          placeholder={LABELS.closureImplementation}
-          value={change.closureImplementation}
-          onChange={(e) => onChange({ closureImplementation: e.target.value })}
-        />
-        <Input
-          placeholder={LABELS.closureEvidence}
-          value={change.closureEvidence}
-          onChange={(e) => onChange({ closureEvidence: e.target.value })}
-        />
-        <Input
-          placeholder={LABELS.closureImpactedVersions}
-          value={change.closureImpactedVersions}
-          onChange={(e) => onChange({ closureImpactedVersions: e.target.value })}
-        />
-        <Space wrap style={{ width: '100%' }}>
+      <div className="rt-grid">
+        <RecordField label={LABELS.closureOutcome} wide>
+          <Input value={change.closureOutcome} onChange={(e) => onChange({ closureOutcome: e.target.value })} />
+        </RecordField>
+        <RecordField label={LABELS.closureImplementation} wide>
+          <Input.TextArea
+            autoSize={{ minRows: 1, maxRows: 3 }}
+            value={change.closureImplementation}
+            onChange={(e) => onChange({ closureImplementation: e.target.value })}
+          />
+        </RecordField>
+        <RecordField label={LABELS.closureEvidence} wide>
+          <Input value={change.closureEvidence} onChange={(e) => onChange({ closureEvidence: e.target.value })} />
+        </RecordField>
+        <RecordField label={LABELS.closureImpactedVersions} wide>
+          <Input
+            value={change.closureImpactedVersions}
+            onChange={(e) => onChange({ closureImpactedVersions: e.target.value })}
+          />
+        </RecordField>
+        <RecordField label={LABELS.closureVerifier}>
           <UserSelect
-            style={{ width: 200 }}
-            placeholder={LABELS.closureVerifier}
             value={change.closureVerifier}
             onChange={(v?: string) => onChange({ closureVerifier: v ?? '' })}
           />
+        </RecordField>
+        <RecordField label={LABELS.closedDate}>
           <DatePicker
-            style={{ width: 150 }}
+            style={{ width: '100%' }}
             value={change.closedDate ? dayjs(change.closedDate) : null}
             onChange={(d) => onChange({ closedDate: d ? d.format('YYYY-MM-DD') : undefined })}
           />
-        </Space>
+        </RecordField>
         {/* The one part the answer marks "if any", so it is never in the missing
             list — a change that leaves nothing behind should not be blocked into
             inventing a transition requirement. */}
-        <Input
-          placeholder="Remaining action or transition requirement (if any)"
-          value={change.closureRemainingAction}
-          onChange={(e) => onChange({ closureRemainingAction: e.target.value })}
-        />
-      </Space>
+        <RecordField label="Remaining action or transition requirement (if any)" wide>
+          <Input
+            value={change.closureRemainingAction}
+            onChange={(e) => onChange({ closureRemainingAction: e.target.value })}
+          />
+        </RecordField>
+      </div>
     </div>
   );
 }

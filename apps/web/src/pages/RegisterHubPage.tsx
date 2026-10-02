@@ -1,27 +1,24 @@
-import { Alert, Button, Card, Descriptions, Empty, Progress, Table, Tabs, Tag, Tooltip, Typography } from 'antd';
-import { RightOutlined, ThunderboltOutlined, UserOutlined } from '@ant-design/icons';
-import { Link, useParams } from 'react-router-dom';
+import { Alert, Button, Empty, Tooltip } from 'antd';
+import { ThunderboltOutlined } from '@ant-design/icons';
+import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { createEmptyRegisterRow } from '../store/factory';
 import StudyApprovalCard from '../components/StudyApprovalCard';
 import {
   findNavGroupForRegister,
-  formatGate,
   getNavGroup,
   getRegisterConfig,
-  navItemHref,
   RELEASED_INFO_STATES,
-  type NavItem,
   type RegisterConfig,
 } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
-import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked, gateRefHighestGateId } from '@mbc360/shared/utils/gateProgress';
 import { isRegisterClosed } from '@mbc360/shared/types';
 import DynamicTable from '../components/DynamicTable';
 import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
 import PublishedInfoApprovalTable from '../components/PublishedInfoApprovalTable';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
+import SectionOverview from '../components/SectionOverview';
 import { NO_VULNERABLE_GROUP } from '@mbc360/shared/config/vulnerableGroups';
 import {
   VULNERABLE_REGISTER,
@@ -29,7 +26,9 @@ import {
   vulnerableRowProblems,
   vulnerableSaveBlockers,
 } from '@mbc360/shared/utils/vulnerableUsers';
-import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
+import WatchlistRegister from '../components/WatchlistRegister';
+import RegisterPageHeader, { RegisterProgressCard } from '../components/RegisterPageHeader';
+import { WATCHLIST_REGISTER } from '@mbc360/shared/utils/watchlistReview';
 
 // Content transcribed verbatim from the source workbook's front-matter sheets
 // "Introduction" and "Guide To Using This Document" (V18). Shown as the
@@ -83,11 +82,6 @@ const DATA_ENTRY_GUIDE: GuideRow[] = [
   { topic: 'Evidence', instruction: 'Each completed check should reference evidence, method reference and internal link where applicable.' },
   { topic: 'Costing', instruction: 'Use the Costing_Calc, Formula_BOM and Packaging_BOM sheets for numeric inputs and formulas.' },
   { topic: 'Packaging / regulatory', instruction: 'Use the dedicated support sheets plus the relevant stage forms. Packaging is included in the main workbook.' },
-];
-
-const guideColumns = [
-  { title: 'Topic', dataIndex: 'topic', width: 260 },
-  { title: 'Instruction', dataIndex: 'instruction' },
 ];
 
 // Per-register completion, derived from the register's own "status" column when present.
@@ -157,49 +151,40 @@ export default function RegisterHubPage() {
       ? 'Closed — both Review owner and Co-sign have signed. To correct it, withdraw a signature in the Register Closing card above, or Backtrack past the gate that depends on it.'
       : undefined; // undefined falls back to the gate-passed message, the other lock reason
 
+    // Redesigned 2026-10-02 (wireframe option A): its own page layout — header,
+    // progress, decision table + detail drawer, closing at the bottom. The pilot
+    // for moving the other registers to the same concept.
+    if (registerKey === WATCHLIST_REGISTER) {
+      return (
+        <WatchlistRegister
+          project={project}
+          config={config}
+          rows={project.registers[registerKey] ?? []}
+          parent={parent}
+          onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
+          readOnly={locked}
+          readOnlyReason={lockedReason}
+          closeable={closeable}
+        />
+      );
+    }
+
+    const progress = registerProgress(config, project.registers[registerKey] ?? []);
+
+    // 2026-10-02 concept (approved on the Prohibited Ingredient Watch-list): one
+    // header line instead of the Project Identification + Review owner cards,
+    // the table in its compact form with a detail drawer, and the closing card
+    // at the bottom, after the rows it signs off.
     return (
-      <div style={{ display: 'grid', gap: 16 }}>
-        <div>
-          {parent && (
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              <Link to={`/projects/${id}/registers/cat/${parent.key}`}>{parent.title}</Link>
-            </Typography.Text>
-          )}
-          <Typography.Title level={4} style={{ margin: 0 }}>
-            {config.title}
-          </Typography.Title>
-        </div>
-        <ProjectIdentificationCard project={project} />
-        {/* Prominent, dedicated "Review owner" section right under Project
-            Identification (2026-07-23). Composed from the project's own
-            assigned people (identity.reviewers) via composeReviewOwner —
-            DynamicTable below is passed no reviewOwnerText, so it doesn't
-            duplicate this caption on the single-register view. */}
-        {config.reviewOwner && (
-          <Card size="small">
-            <Descriptions size="small" column={1}>
-              <Descriptions.Item
-                label={
-                  <span>
-                    <UserOutlined style={{ marginRight: 6 }} />
-                    Review owner
-                  </span>
-                }
-              >
-                <b>{composeReviewOwner(config.reviewOwner, project.identity.reviewers)}</b>
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
-        )}
-        {closeable && config.reviewOwner && (
-          <RegisterClosurePanel
-            projectId={id}
-            registerKey={registerKey}
-            spec={config.reviewOwner}
-            reviewers={project.identity.reviewers}
-            closure={project.registerClosures[registerKey]}
-          />
-        )}
+      <div className="concept">
+        <RegisterPageHeader
+          project={project}
+          config={config}
+          parent={parent}
+          readOnly={locked}
+          readOnlyReason={lockedReason}
+        />
+        {progress && <RegisterProgressCard completed={progress.completed} total={progress.total} />}
         {registerKey === 'studyProtocolSetup' && (
           <StudyApprovalCard projectId={id} approvals={project.studyApprovals} />
         )}
@@ -223,6 +208,7 @@ export default function RegisterHubPage() {
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
             readOnly={locked}
             readOnlyReason={lockedReason}
+            embedded
           />
         ) : registerKey === 'publishedInfoApproval' ? (
           // Claim ID picker (Supported claims only) + auto-filled/locked
@@ -234,6 +220,7 @@ export default function RegisterHubPage() {
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
             readOnly={locked}
             readOnlyReason={lockedReason}
+            embedded
           />
         ) : registerKey === VULNERABLE_REGISTER ? (
           // B5 keeps the target-user selection and the vulnerable-use
@@ -285,7 +272,9 @@ export default function RegisterHubPage() {
                 </Tooltip>
               );
             }}
+            embedded
             saveBlockers={(draft) => vulnerableSaveBlockers(project, draft)}
+            warningsTitle="Check this against the Gate 02 target users"
             warnings={(draft) =>
               vulnerableRowProblems(project, draft)
                 .filter((problem) => !problem.hard)
@@ -299,6 +288,16 @@ export default function RegisterHubPage() {
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
             readOnly={locked}
             readOnlyReason={lockedReason}
+            embedded
+          />
+        )}
+        {closeable && config.reviewOwner && (
+          <RegisterClosurePanel
+            projectId={id}
+            registerKey={registerKey}
+            spec={config.reviewOwner}
+            reviewers={project.identity.reviewers}
+            closure={project.registerClosures[registerKey]}
           />
         )}
       </div>
@@ -308,131 +307,18 @@ export default function RegisterHubPage() {
   // --- Group overview -------------------------------------------------------
   const group = getNavGroup(categoryKey);
   if (!group) return <Empty description="Not found" />;
-
-  const renderCard = (item: NavItem) => {
-    const config = item.registerKey ? getRegisterConfig(item.registerKey) : undefined;
-    const rows = item.registerKey ? project.registers[item.registerKey] ?? [] : [];
-    const progress = config ? registerProgress(config, rows) : null;
-    return (
-      <Link key={item.registerKey ?? item.title} to={navItemHref(item, id)} style={{ display: 'block' }}>
-        <Card size="small" hoverable style={{ height: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 600 }}>{item.title}</div>
-              {item.sheetName && (
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {item.sheetName}
-                </Typography.Text>
-              )}
-            </div>
-            <RightOutlined style={{ color: '#bbb', marginTop: 4 }} />
-          </div>
-          <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            {/* Read from `item.gate`, not `config?.gate` — a dedicated page
-                (e.g. Formula BOM: page: 'bom/formula', no registerKey) has no
-                RegisterConfig behind it at all, so `config` is undefined and
-                this tag used to be silently skipped even though the sidebar
-                shows the same item's gate (via the same `formatGate` helper)
-                right next to it. For a register-backed item `item.gate` is
-                populated from `config.gate` by `registerNavItem()` anyway, so
-                this is a strict improvement, not a behaviour change there. */}
-            {item.gate && <Tag>{formatGate(item.gate)}</Tag>}
-            {config ? (
-              <Tag color={config.mode === 'register' ? 'blue' : 'default'}>
-                {config.mode === 'register' ? 'Register' : 'Reference'}
-              </Tag>
-            ) : (
-              <Tag color="purple">Page</Tag>
-            )}
-            {config && (
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                {rows.length} {rows.length === 1 ? 'row' : 'rows'}
-              </Typography.Text>
-            )}
-          </div>
-          {progress && (
-            <Progress
-              size="small"
-              percent={progress.percent}
-              style={{ marginTop: 8 }}
-              format={() => `${progress.completed}/${progress.total}`}
-            />
-          )}
-        </Card>
-      </Link>
-    );
-  };
-
-  const sheetsCard = (
-    <Card size="small" title={`Sheets in this section (${group.items.length})`}>
-      <div
-        style={{
-          display: 'grid',
-          gap: 12,
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-        }}
-      >
-        {group.items.map(renderCard)}
-      </div>
-    </Card>
-  );
-
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <div>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          {group.title}
-        </Typography.Title>
-        <Typography.Text type="secondary">{group.description}</Typography.Text>
-        {group.reviewOwner && (
-          <div style={{ marginTop: 4 }}>
-            <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-              Review owner: {composeReviewOwner(group.reviewOwner, project.identity.reviewers)}
-            </Typography.Text>
-          </div>
-        )}
-      </div>
-
-      <ProjectIdentificationCard project={project} />
-
-      {group.key === 'dept-system' ? (
-        <Tabs
-          defaultActiveKey="guide"
-          items={[
-            {
-              key: 'guide',
-              label: 'Guide',
-              children: (
-                <div style={{ display: 'grid', gap: 16 }}>
-                  <Card size="small" title="Introduction">
-                    <Table
-                      size="small"
-                      rowKey="topic"
-                      dataSource={INTRODUCTION}
-                      columns={guideColumns}
-                      pagination={false}
-                      scroll={{ x: 720 }}
-                    />
-                  </Card>
-                  <Card size="small" title="Guide To Using This Document">
-                    <Table
-                      size="small"
-                      rowKey="topic"
-                      dataSource={DATA_ENTRY_GUIDE}
-                      columns={[{ title: 'Feature', dataIndex: 'topic', width: 260 }, { title: 'How to use', dataIndex: 'instruction' }]}
-                      pagination={false}
-                      scroll={{ x: 720 }}
-                    />
-                  </Card>
-                </div>
-              ),
-            },
-            { key: 'reference', label: 'Reference & Feedback', children: sheetsCard },
-          ]}
-        />
-      ) : (
-        sheetsCard
-      )}
-    </div>
+    <SectionOverview
+      project={project}
+      group={group}
+      guide={
+        group.key === 'dept-system'
+          ? [
+              { title: 'Introduction', rows: INTRODUCTION },
+              { title: 'Guide To Using This Document', rows: DATA_ENTRY_GUIDE },
+            ]
+          : undefined
+      }
+    />
   );
 }

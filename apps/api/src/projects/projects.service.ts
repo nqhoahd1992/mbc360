@@ -2431,6 +2431,19 @@ export class ProjectsService {
           'Change Control required = "Yes" needs a linked Change Control record (Round 4, question 8)',
         );
       }
+      // "A VALID Change Control record" — so the link must name a change record
+      // that exists on this project, not any non-empty text. Before 2026-10-02 the
+      // field was a free-text box and a typo, or a record id from another project,
+      // satisfied the rule. Whether every kind of change book counts (the CHG-
+      // records here versus the FC- Formulation Change Register rows) is part of
+      // the still-open question on how many change books there should be
+      // [ASSUMPTION: R5-Q27].
+      const recordId = value('changeControlRecordId');
+      if (recordId !== '' && !project.changes.some((c) => c.changeId === recordId)) {
+        throw new BadRequestException(
+          `Linked Change Control record "${recordId}" is not a change record of this project (Round 4, question 8)`,
+        );
+      }
       if (
         value('changeControlRequired') === 'No' &&
         (value('changeControlRationale') === '' || value('changeControlReviewer') === '')
@@ -3125,9 +3138,20 @@ export class ProjectsService {
         // [ASSUMPTION: R5-Q19]; deliberately not "fixed" before the review team
         // answers, because merging two records that are genuinely different is
         // worse than leaving them apart.
-        const existingRows = await tx.registerRow.count({
+        const existing = await tx.registerRow.findMany({
           where: { projectId: id, registerKey: 'formulationChangeRegister' },
+          select: { data: true },
         });
+        const existingRows = existing.length;
+        // Highest existing FC number + 1, not the row count: rows on this
+        // register can be removed, and a count would then reissue an id that is
+        // already printed on another record.
+        const nextFc =
+          existing.reduce((max, r) => {
+            const raw = (r.data as Record<string, unknown> | null)?.changeId;
+            const n = typeof raw === 'string' ? /^FC-(\d+)$/.exec(raw)?.[1] : undefined;
+            return n ? Math.max(max, Number(n)) : max;
+          }, 0) + 1;
         await tx.registerRow.create({
           data: {
             projectId: id,
@@ -3135,7 +3159,7 @@ export class ProjectsService {
             rowOrder: existingRows,
             updatedById: user.id,
             data: {
-              changeId: `FC-${String(existingRows + 1).padStart(3, '0')}`,
+              changeId: `FC-${String(nextFc).padStart(3, '0')}`,
               productFamilySku: project.identity.productSku,
               requestedByNpd: input.initiatedBy ?? user.displayName,
               dateRequested: new Date().toISOString().slice(0, 10),

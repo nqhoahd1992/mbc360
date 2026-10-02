@@ -1,11 +1,14 @@
-import { Alert, Card, Input, Select, Space, Tag } from 'antd';
+import { Input, Select } from 'antd';
+import { ExclamationCircleOutlined, LockOutlined } from '@ant-design/icons';
 import type { ProjectData } from '@mbc360/shared/types';
 import { MICROBIOLOGICAL_SUSCEPTIBILITY_OPTIONS } from '@mbc360/shared/config/opportunity';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
-import { TEXT } from '../theme/tokens';
+import '../styles/concept.css';
+import './DynamicTable.css';
+import '../pages/BomCosting.css';
 
 // Does the composition contain water? Derivable, and only that much: it is a
 // SUGGESTION, never the answer. A3's condition is "water-containing,
@@ -29,86 +32,92 @@ export default function FormulaPropertiesCard({ project }: { project: ProjectDat
   const contradictsBom = hasWater && !!value && value !== 'Susceptible';
 
   return (
-    <Card
-      size="small"
-      title="Formula Properties"
-      extra={
-        hasWater ? (
-          <Tag color="blue">Composition contains water</Tag>
+    <div className="c-card bom-card">
+      <div className="bom-card-head">
+        <div style={{ minWidth: 0 }}>
+          <div className="bom-card-title">Formula Properties</div>
+          <div className="bom-hint" style={{ marginTop: 4, fontSize: 13 }}>
+            Read by Gate 05 (preservative strategy) and Gate 09 (preservative efficacy). Both become mandatory only
+            when the formula is recorded as susceptible.
+          </div>
+        </div>
+        {hasWater ? (
+          <span className="c-tag c-tag-dot">Composition contains water</span>
         ) : (
-          <Tag>No water line in the composition</Tag>
-        )
-      }
-    >
-      <div style={{ color: TEXT.secondary, fontSize: 12, marginBottom: 12 }}>
-        Read by Gate 05 (preservative strategy) and Gate 09 (preservative efficacy). Both become mandatory only when the
-        formula is recorded as susceptible.
+          <span className="c-tag">No water line in the composition</span>
+        )}
       </div>
 
-      {locked && (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 12 }}
-          title="Gate 05 has passed — formula properties are read-only. Use Backtrack to reopen."
-        />
-      )}
+      <div className="bom-card-body">
+        {locked && (
+          <div className="rt-lock">
+            <LockOutlined />
+            <span>Gate 05 has passed — formula properties are read-only. Use Backtrack to reopen.</span>
+          </div>
+        )}
 
-      <Space orientation="vertical" style={{ width: '100%' }} size={8}>
-        <div>
-          <div style={{ fontSize: 12, color: '#555', marginBottom: 4 }}>Microbiological susceptibility</div>
-          {locked ? (
-            <span style={{ color: '#666' }}>{value || '—'}</span>
-          ) : (
-            <Select
-              style={{ width: 280 }}
-              allowClear
-              status={contradictsBom ? 'warning' : undefined}
-              placeholder={hasWater ? 'Suggested: Susceptible' : 'Classify the formula'}
-              value={value || undefined}
-              options={MICROBIOLOGICAL_SUSCEPTIBILITY_OPTIONS.map((o) => ({ value: o, label: o }))}
-              onChange={(v?: string) => update((prev) => ({ ...prev, microSusceptibility: v ?? '' }))}
-            />
-          )}
+        <div className="bom-form">
+          <label className="bom-field">
+            <span className="bom-label">Microbiological susceptibility</span>
+            {locked ? (
+              <span className="rt-static">{value || '—'}</span>
+            ) : (
+              <Select
+                style={{ width: '100%' }}
+                allowClear
+                status={contradictsBom ? 'warning' : undefined}
+                placeholder={hasWater ? 'Suggested: Susceptible' : 'Classify the formula'}
+                value={value || undefined}
+                options={MICROBIOLOGICAL_SUSCEPTIBILITY_OPTIONS.map((o) => ({ value: o, label: o }))}
+                onChange={(v?: string) => update((prev) => ({ ...prev, microSusceptibility: v ?? '' }))}
+              />
+            )}
+          </label>
+
+          <label className="bom-field bom-span-2">
+            <span className="bom-label">
+              Rationale {value === 'Susceptible' ? '(preservative strategy)' : '(why this product does not need preserving)'}
+            </span>
+            {locked ? (
+              <span className="rt-static">{draft.microRationale || '—'}</span>
+            ) : (
+              <Input.TextArea
+                autoSize={{ minRows: 2, maxRows: 5 }}
+                value={draft.microRationale}
+                onChange={(e) => update((prev) => ({ ...prev, microRationale: e.target.value }))}
+              />
+            )}
+          </label>
         </div>
 
         {contradictsBom && (
-          <Alert
-            type="warning"
-            showIcon
-            title={`The composition contains water but the formula is recorded as "${value}" — make sure the rationale explains why.`}
-          />
-        )}
-
-        <div>
-          <div style={{ fontSize: 12, color: '#555', marginBottom: 4 }}>
-            Rationale {value === 'Susceptible' ? '(preservative strategy)' : '(why this product does not need preserving)'}
+          <div className="bom-total-warn">
+            <ExclamationCircleOutlined />
+            <span>
+              The composition contains water but the formula is recorded as "{value}" — make sure the rationale
+              explains why.
+            </span>
           </div>
-          {locked ? (
-            <span style={{ color: '#666' }}>{draft.microRationale || '—'}</span>
-          ) : (
-            <Input.TextArea
-              autoSize={{ minRows: 2, maxRows: 5 }}
-              value={draft.microRationale}
-              onChange={(e) => update((prev) => ({ ...prev, microRationale: e.target.value }))}
-            />
-          )}
-        </div>
-      </Space>
+        )}
+      </div>
 
-      {!locked && (
-        <SaveBar
-          dirty={dirty}
-          onSave={() => {
-            if (rationaleMissing) return;
-            setFormulaProperties(project.identity.id, draft);
-            markSaved();
-          }}
-          onDiscard={discard}
-          disabled={rationaleMissing}
-          disabledReason={rationaleMissing ? 'A documented rationale is required (SME Round 3, A3)' : undefined}
-        />
+      {!locked && dirty && (
+        <div className="rt-savebar bom-savebar">
+          <div>
+            <SaveBar
+              dirty={dirty}
+              onSave={() => {
+                if (rationaleMissing) return;
+                setFormulaProperties(project.identity.id, draft);
+                markSaved();
+              }}
+              onDiscard={discard}
+              disabled={rationaleMissing}
+              disabledReason={rationaleMissing ? 'A documented rationale is required (SME Round 3, A3)' : undefined}
+            />
+          </div>
+        </div>
       )}
-    </Card>
+    </div>
   );
 }

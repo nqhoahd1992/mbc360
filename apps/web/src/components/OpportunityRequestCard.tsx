@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
-import { Alert, Card, Descriptions, Input } from 'antd';
+import { Input } from 'antd';
 import type { ProjectData, ProjectIdentity } from '@mbc360/shared/types';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
-import { TEXT } from '../theme/tokens';
+import '../styles/concept.css';
+import './DynamicTable.css';
 
 // Gate 01 "Opportunity & Request" — the five free-text fields SME Round 3 asked
 // for: the requester (B1), the initial product scope (B2, the supporting field
@@ -67,7 +68,7 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
 
   const text = (field: (typeof OPPORTUNITY_FIELDS)[number], placeholder: string, rows?: number) =>
     locked ? (
-      <span style={{ color: '#666' }}>{draft[field] || '—'}</span>
+      <span className="rt-static">{draft[field] || '—'}</span>
     ) : rows ? (
       <Input.TextArea
         autoSize={{ minRows: rows, maxRows: 6 }}
@@ -79,38 +80,48 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
       <Input placeholder={placeholder} value={draft[field]} onChange={(e) => set(field, e.target.value)} />
     );
 
+  // 2026-10-02: a plain labelled form (label above input) instead of a bordered
+  // Descriptions grid, where each input was squeezed beside its label.
   return (
-    <Card size="small" title="Opportunity &amp; Request (Gate 01)">
-      <div style={{ color: TEXT.secondary, fontSize: 12, marginBottom: 12 }}>
-        Who filed the request, and the initial scope, market and user. These are preliminary — Gate 02 confirms, refines
-        and formally approves the target user and markets. Where the request came from, and the type of development or
-        change, are recorded in the two Gate 01 tables below.
+    <div className="concept-tokens c-card rt rt-standalone">
+      <div className="rt-head">
+        <div className="rt-head-title">
+          <span>Opportunity &amp; Request</span>
+          <span className="c-tag">Gate 01</span>
+          {locked && <span className="c-tag">Read-only — gate passed</span>}
+        </div>
+        <p className="rt-head-desc">
+          Who filed the request, and the initial scope and user. These are preliminary — Gate 02 confirms, refines and
+          formally approves the target user and markets. Where the request came from, and the type of development or
+          change, are recorded in the two Gate 01 tables below.
+        </p>
       </div>
-
-      {locked && (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 12 }}
-          title="Gate 01 has passed — this record is read-only. Use Backtrack to reopen it."
-        />
-      )}
-
-      <Descriptions size="small" column={{ xs: 1, sm: 2, md: 3 }} bordered>
-        <Descriptions.Item label="Requester name">{text('requesterName', 'Who filed the request')}</Descriptions.Item>
-        <Descriptions.Item label="Requester department">
+      <div className="rt-grid">
+        <label>
+          <span className="rt-label">Requester name</span>
+          {text('requesterName', 'Who filed the request')}
+        </label>
+        <label>
+          <span className="rt-label">Requester department</span>
           {text('requesterDepartment', 'Their department')}
-        </Descriptions.Item>
-        <Descriptions.Item label="Initial target user / life-stage">
+        </label>
+        <label className="rt-span-2">
+          <span className="rt-label">Initial target user / life-stage</span>
           {text('initialTargetUsers', 'e.g. general adult, pregnancy')}
-        </Descriptions.Item>
-
-        <Descriptions.Item label="Initial product scope" span={3}>
+        </label>
+        <label className="rt-span-2">
+          <span className="rt-label">Initial product scope</span>
           {text('initialScope', 'Proposed product type, intended purpose, and the known boundaries of the request', 2)}
-        </Descriptions.Item>
-      </Descriptions>
-
-      {!locked && <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />}
-    </Card>
+        </label>
+      </div>
+      {locked && <p className="rt-head-desc" style={{ margin: 0 }}>Gate 01 has passed — use Backtrack to reopen this record.</p>}
+      {!locked && dirty && (
+        <div className="rt-savebar">
+          <div>
+            <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

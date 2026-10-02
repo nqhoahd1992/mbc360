@@ -1,20 +1,13 @@
 import { useMemo } from 'react';
-import { Alert, Button, Card, Checkbox, DatePicker, Input, InputNumber, Popconfirm, Select, Table, Tag, Tooltip } from 'antd';
-import { PlusOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
+import { Alert, Checkbox, Input, Select, Tooltip } from 'antd';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
-import { isRegisterRowBlank } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
 import { contradictoryClaimRows, publishedInfoViolations, wordingDiffers, wordingSimilarity } from '@mbc360/shared/utils/claimEvidence';
-import { patchArray, useDraft } from '../hooks/useDraft';
-import { createEmptyRegisterRow } from '../store/factory';
-import SaveBar from './SaveBar';
-import UserSelect from './UserSelect';
-import MarketSelect from './MarketSelect';
-import { TEXT, TABLE_STICKY } from '../theme/tokens';
-import { columnWidth } from '../utils/columnWidth';
+import DynamicTable, { type CellApi } from './DynamicTable';
 
-// Published_Info_Approval-specific variant of DynamicTable (2026-07-27,
+// Published_Info_Approval: the generic register table (DynamicTable, 2026-10-02
+// concept) plus this register's own cell rules — it was a fork of the whole table
+// until then. Originally (2026-07-27,
 // user-requested): "Claim ID" is picked from Claim -> Evidence Traceability
 // instead of typed free text.
 //
@@ -47,6 +40,7 @@ export default function PublishedInfoApprovalTable({
   onSave,
   readOnly,
   readOnlyReason,
+  embedded,
 }: {
   config: RegisterConfig;
   rows: RegisterRow[];
@@ -56,27 +50,17 @@ export default function PublishedInfoApprovalTable({
   onSave: (rows: RegisterRow[]) => void;
   readOnly?: boolean;
   readOnlyReason?: string;
+  embedded?: boolean;
 }) {
-  const { draft, dirty, update, markSaved, discard } = useDraft(rows);
-  const patch = (index: number, key: string, value: string | number | boolean | undefined) =>
-    update((prev) => patchArray(prev, index, { [key]: value } as Partial<RegisterRow>));
-  const addRow = () => update((prev) => [...prev, createEmptyRegisterRow(config.key)]);
-  const removeRow = (index: number) => update((prev) => prev.filter((_, i) => i !== index));
-
   const claimById = useMemo(
     () => new Map(claimEvidenceRows.filter((c) => typeof c.claimId === 'string' && c.claimId).map((c) => [String(c.claimId), c])),
     [claimEvidenceRows],
   );
   // EVERY claim is offered, whatever its status (corrected 2026-08-07, SME
-  // Round 3 / Response2 D2). It used to list 'Supported' claims only, on the
-  // reasoning that a claim still under development has no approved wording to
-  // lock to — the team answered the other way: "Developing or Pending claims
-  // should be selectable. The purpose is to document the intended claim
-  // early." The restriction was also stricter than the Gate 3 rule requires,
-  // since that rule bites at RELEASE, not at linking — and that block is a
-  // separate mechanism (`publishedInfoViolations` below, enforced in the API
-  // too), so nothing is weakened by removing it here. A non-Supported claim
-  // is labelled as such in the dropdown rather than hidden.
+  // Round 3 D2: "Developing or Pending claims should be selectable"). The
+  // release block is a separate mechanism (`publishedInfoViolations`, enforced
+  // in the API too), so nothing is weakened by offering them here. A
+  // non-Supported claim is labelled as such rather than hidden.
   const claimOptions = useMemo(
     () =>
       claimEvidenceRows
@@ -100,388 +84,213 @@ export default function PublishedInfoApprovalTable({
     return claimId ? String(claimById.get(claimId)?.approvedWording ?? '') : '';
   };
 
-  const hasBlankRows = draft.some((r) => isRegisterRowBlank(config, r));
-  // All three D2 release conditions, from the same function the API calls.
-  const violations = publishedInfoViolations(draft, claimEvidenceRows);
-  const violationFor = (row: RegisterRow) => violations.find((v) => v.row === row);
-  // Both cells below are disabled to keep this impossible, so a row can only
-  // reach this state through data that arrived from somewhere else — but the
-  // guard exists at both layers regardless, because "the UI disables it" is not
-  // enforcement (BACKEND_PLAN §3 principle 7).
-  const contradictory = contradictoryClaimRows(draft);
-  const saveBlocked = hasBlankRows || violations.length > 0 || contradictory.length > 0;
-
   // D2: "Automated similarity checking may be used as a warning, but final
   // equivalence must be confirmed by an authorised reviewer." Nothing branches
   // on this number — it only tells the reviewer how far apart the two texts are.
-  const wordingAdaptations = useMemo(
-    () =>
-      draft
-        .map((row) => ({ row, master: masterWordingFor(row) }))
-        .filter(({ row, master }) => wordingDiffers(master, row.exactWording))
-        .map(({ row, master }) => ({
-          row,
-          similarity: wordingSimilarity(master, row.exactWording),
-          classified: String(row.wordingEquivalence ?? '').trim() !== '',
-        })),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [draft, claimById],
-  );
-
-  const save = () => {
-    if (saveBlocked) return;
-    // No resync: overwriting the proposed wording with the claim's text is
-    // exactly the character-for-character lock D2 rules out. The API fills the
-    // read-only masterWording column instead, so the record still carries what
-    // the channel wording was compared against.
-    onSave(draft);
-    markSaved();
+  const adaptationFor = (row: RegisterRow) => {
+    const master = masterWordingFor(row);
+    if (!wordingDiffers(master, row.exactWording)) return undefined;
+    return {
+      similarity: wordingSimilarity(master, row.exactWording),
+      classified: String(row.wordingEquivalence ?? '').trim() !== '',
+    };
   };
 
-  const renderGeneric = (column: RegisterColumn, row: RegisterRow, index: number) => {
-    const editable = column.editable !== false && !readOnly;
-    const value = row[column.key];
-    if (!editable) return <span style={{ color: '#666' }}>{value != null ? String(value) : ''}</span>;
-    switch (column.type) {
-      case 'market':
-      case 'markets':
+  const renderCell = (column: RegisterColumn, row: RegisterRow, _index: number, api: CellApi): React.ReactNode | undefined => {
+    switch (column.key) {
+      // No input by design: the API stamps this from the signed-in account when
+      // the box is ticked, so it cannot be typed (a declaration anyone can retype
+      // attributes nothing) — hence explicit states, including "recorded when you
+      // save", since the name only exists after the server has seen the tick.
+      case 'noProductClaimBy': {
+        const declared = String(row.noProductClaimBy ?? '').trim();
+        if (declared) return <span className="rt-static">{declared}</span>;
         return (
-          <MarketSelect
-            value={value as string | undefined}
-            multiple={column.type === 'markets'}
-            onChange={(v) => patch(index, column.key, v)}
-          />
+          <span className="rt-muted" style={{ fontSize: 12 }}>
+            {row.noProductClaim ? 'recorded when you save' : 'no exemption declared'}
+          </span>
         );
-      case 'user':
-        return (
-          <UserSelect
-            value={value as string | undefined}
-            onChange={(v) => patch(index, column.key, v)}
-          />
-        );
-      case 'checkbox':
-        return <Checkbox checked={!!value} onChange={(e) => patch(index, column.key, e.target.checked)} />;
-      case 'select':
-        return (
-          <Select
-            allowClear
-            style={{ width: '100%', minWidth: 110 }}
-            value={value as string | undefined}
-            options={(column.options ?? []).map((o) => ({ value: o, label: o }))}
-            onChange={(v) => patch(index, column.key, v)}
-          />
-        );
-      case 'date':
-        return (
-          <DatePicker
-            style={{ width: '100%' }}
-            value={value ? dayjs(String(value)) : null}
-            onChange={(d) => patch(index, column.key, d ? d.format('YYYY-MM-DD') : undefined)}
-          />
-        );
-      case 'number':
-        return (
-          <InputNumber style={{ width: '100%' }} value={value as number | undefined} onChange={(v) => patch(index, column.key, v ?? 0)} />
-        );
-      case 'textarea':
-        return (
-          <Input.TextArea
-            autoSize={{ minRows: 1, maxRows: 4 }}
-            value={value as string | undefined}
-            onChange={(e) => patch(index, column.key, e.target.value)}
-          />
-        );
-      case 'text':
+      }
+      // Read-only, rendered from the claim rather than the row's stored copy so
+      // it is right the moment a claim is linked, before any save.
+      case 'masterWording': {
+        const master = masterWordingFor(row);
+        if (!master) {
+          return (
+            <span className="rt-muted" style={{ fontSize: 12 }}>
+              {row.claimId ? 'claim has no approved wording yet' : 'no claim linked'}
+            </span>
+          );
+        }
+        return <span className="rt-static">{master}</span>;
+      }
       default:
-        return <Input value={value as string | undefined} onChange={(e) => patch(index, column.key, e.target.value)} />;
+        break;
+    }
+    if (api.readOnly) return undefined;
+
+    switch (column.key) {
+      // The prior question: a record that makes no product statement has nothing
+      // to link. Ticking is blocked while a claim IS linked — the person unlinks
+      // it deliberately rather than the app dropping the link for them.
+      case 'noProductClaim': {
+        const linked = String(row.claimId ?? '').trim() !== '';
+        const blocked = linked && !row.noProductClaim;
+        return (
+          <Tooltip
+            title={
+              blocked
+                ? 'A Claim ID is linked, so this record does make a product statement — unlink the claim first if that is wrong'
+                : undefined
+            }
+          >
+            <Checkbox
+              checked={!!row.noProductClaim}
+              disabled={blocked}
+              onChange={(e) => {
+                if (e.target.checked && linked) return; // defence in depth
+                api.patch('noProductClaim', e.target.checked);
+              }}
+            />
+          </Tooltip>
+        );
+      }
+      case 'claimId': {
+        const claimId = String(row.claimId ?? '');
+        const violation = publishedInfoViolations(api.draft, claimEvidenceRows).find((v) => v.row === row);
+        const isViolation = violation?.kind === 'unlinked' || violation?.kind === 'unsupported';
+        const exempt = !!row.noProductClaim;
+        return (
+          <Tooltip
+            title={
+              exempt
+                ? 'Declared as containing no product claim or technical statement — untick that to link a claim'
+                : isViolation
+                  ? violation?.reason
+                  : undefined
+            }
+          >
+            <Select
+              disabled={exempt}
+              style={{ width: '100%' }}
+              showSearch
+              allowClear
+              popupMatchSelectWidth={false}
+              status={isViolation ? 'error' : undefined}
+              optionFilterProp="label"
+              placeholder="Not claim-linked"
+              value={claimId || undefined}
+              options={
+                // Never silently hide an existing link, even one pointing at a
+                // claim that has since been deleted.
+                claimId && !claimOptions.some((o) => o.value === claimId)
+                  ? [{ value: claimId, label: `${claimId} — no matching claim record` }, ...claimOptions]
+                  : claimOptions
+              }
+              onChange={(value: string | undefined) => {
+                // Seed the proposed wording from the claim ONLY when it is still
+                // empty — never overwrite text written for this channel, which is
+                // what the old lock did on every save.
+                const claim = value ? claimById.get(value) : undefined;
+                const wording = String(claim?.approvedWording ?? '').trim();
+                api.patchRow({
+                  claimId: value ?? '',
+                  ...(wording && String(row.exactWording ?? '').trim() === '' ? { exactWording: wording } : {}),
+                });
+              }}
+            />
+          </Tooltip>
+        );
+      }
+      case 'exactWording': {
+        const adaptation = adaptationFor(row);
+        const violation = publishedInfoViolations(api.draft, claimEvidenceRows).find((v) => v.row === row);
+        return (
+          <>
+            <Input.TextArea
+              autoSize={{ minRows: 2, maxRows: 8 }}
+              status={violation?.kind === 'wording' ? 'error' : undefined}
+              value={row.exactWording as string | undefined}
+              onChange={(e) => api.patch('exactWording', e.target.value)}
+            />
+            {adaptation && (
+              <div style={{ fontSize: 12, marginTop: 4, color: adaptation.classified ? 'var(--c-text-3)' : 'var(--c-warn)' }}>
+                Differs from master · {Math.round(adaptation.similarity * 100)}% word overlap
+                {adaptation.classified ? '' : ' — needs a reviewer comparison'}
+              </div>
+            )}
+          </>
+        );
+      }
+      default:
+        return undefined;
     }
   };
 
-  const staticCell = (column: RegisterColumn, row: RegisterRow) => {
-    const value = row[column.key];
-    if (column.type === 'checkbox') return <Checkbox checked={!!value} disabled />;
-    return <span style={{ color: '#666' }}>{value != null ? String(value) : ''}</span>;
-  };
-
-  const columns = [
-    ...config.columns.map((col, i) => {
-      // Pin the identity column so it (and the row it's in) stays readable
-      // while scrolling through the rest of this wide register (2026-08-26).
-      const fixed = i === 0 ? ('left' as const) : undefined;
-      if (readOnly) {
-        return { title: col.label, width: Math.max(col.width ?? 140, columnWidth(col)), fixed, render: (_: unknown, row: RegisterRow) => staticCell(col, row) };
-      }
-      // No input by design: the API stamps this from the signed-in account when
-      // the box is ticked, so it cannot be typed or edited (a declaration anyone
-      // can retype attributes nothing). It rendered as a bare empty cell before
-      // 2026-08-12, which reads as a broken column rather than a derived one —
-      // hence the explicit states below, including "recorded when you save", since
-      // the name only exists after the server has seen the tick.
-      if (col.key === 'noProductClaimBy') {
-        return {
-          title: col.label,
-          width: Math.max(col.width ?? 150, columnWidth(col)),
-          fixed,
-          render: (_: unknown, row: RegisterRow) => {
-            const declared = String(row.noProductClaimBy ?? '').trim();
-            if (declared) return <span style={{ color: '#666' }}>{declared}</span>;
-            return (
-              <span style={{ color: TEXT.disabled, fontSize: 12 }}>
-                {row.noProductClaim ? 'recorded when you save' : 'no exemption declared'}
-              </span>
-            );
-          },
-        };
-      }
-      // The prior question, so it comes first in config order too: a record that
-      // makes no product statement has nothing to link. Ticking is blocked while a
-      // claim IS linked — the person unlinks it deliberately rather than the app
-      // dropping the link for them.
-      if (col.key === 'noProductClaim') {
-        return {
-          title: col.label,
-          width: Math.max(col.width ?? 130, columnWidth(col)),
-          fixed,
-          render: (_: unknown, row: RegisterRow, index: number) => {
-            const linked = String(row.claimId ?? '').trim() !== '';
-            const blocked = linked && !row.noProductClaim;
-            return (
-              <Tooltip
-                title={
-                  blocked
-                    ? 'A Claim ID is linked, so this record does make a product statement — unlink the claim first if that is wrong'
-                    : undefined
-                }
-              >
-                <Checkbox
-                  checked={!!row.noProductClaim}
-                  disabled={blocked}
-                  onChange={(e) => {
-                    // Defence in depth for the same rule the `disabled` above
-                    // expresses — a stale render must not be able to set it.
-                    if (e.target.checked && linked) return;
-                    patch(index, 'noProductClaim', e.target.checked);
-                  }}
-                />
-              </Tooltip>
-            );
-          },
-        };
-      }
-      if (col.key === 'claimId') {
-        return {
-          title: col.label,
-          width: Math.max(col.width ?? 150, columnWidth(col)),
-          fixed,
-          render: (_: unknown, row: RegisterRow, index: number) => {
-            const claimId = String(row.claimId ?? '');
-            const violation = violationFor(row);
-            const isViolation = violation?.kind === 'unlinked' || violation?.kind === 'unsupported';
-            const exempt = !!row.noProductClaim;
-            return (
-              <Tooltip
-                title={
-                  exempt
-                    ? 'Declared as containing no product claim or technical statement — untick that to link a claim'
-                    : isViolation
-                      ? violation?.reason
-                      : undefined
-                }
-              >
-                <Select
-                  disabled={exempt}
-                  style={{ width: '100%' }}
-                  showSearch
-                  allowClear
-                  status={isViolation ? 'error' : undefined}
-                  optionFilterProp="label"
-                  placeholder="Not claim-linked"
-                  value={claimId || undefined}
-                  options={
-                    // Never silently hide an existing link, even one pointing
-                    // at a claim that has since been deleted — same principle
-                    // as the Cosmetri raw-material picker keeping an
-                    // off-catalogue value visible. (Every existing claim is in
-                    // `claimOptions` now, whatever its status, so this only
-                    // fires for an id with no claim behind it at all.)
-                    claimId && !claimOptions.some((o) => o.value === claimId)
-                      ? [{ value: claimId, label: `${claimId} — no matching claim record` }, ...claimOptions]
-                      : claimOptions
-                  }
-                  onChange={(value: string | undefined) => {
-                    patch(index, 'claimId', value ?? '');
-                    // Seed the proposed wording from the claim as a convenience
-                    // ONLY when the cell is still empty — never overwrite text
-                    // someone has written for this channel, which is what the
-                    // old lock did on every save.
-                    const claim = value ? claimById.get(value) : undefined;
-                    const wording = String(claim?.approvedWording ?? '').trim();
-                    if (wording && String(row.exactWording ?? '').trim() === '') {
-                      patch(index, 'exactWording', wording);
-                    }
-                  }}
-                />
-              </Tooltip>
-            );
-          },
-        };
-      }
-      // Read-only, and rendered from the claim rather than from the row's stored
-      // copy so it is right the moment a claim is linked, before any save.
-      if (col.key === 'masterWording') {
-        return {
-          title: col.label,
-          width: Math.max(col.width ?? 200, columnWidth(col)),
-          fixed,
-          render: (_: unknown, row: RegisterRow) => {
-            const master = masterWordingFor(row);
-            if (!master) {
-              return (
-                <span style={{ color: TEXT.disabled, fontSize: 12 }}>
-                  {row.claimId ? 'claim has no approved wording yet' : 'no claim linked'}
-                </span>
-              );
-            }
-            return <span style={{ color: '#666' }}>{master}</span>;
-          },
-        };
-      }
-      if (col.key === 'exactWording') {
-        return {
-          title: col.label,
-          width: Math.max(col.width ?? 220, columnWidth(col)),
-          fixed,
-          render: (_: unknown, row: RegisterRow, index: number) => {
-            const adaptation = wordingAdaptations.find((a) => a.row === row);
-            return (
-              <>
-                <Input.TextArea
-                  autoSize={{ minRows: 1, maxRows: 4 }}
-                  status={violationFor(row)?.kind === 'wording' ? 'error' : undefined}
-                  value={row.exactWording as string | undefined}
-                  onChange={(e) => patch(index, 'exactWording', e.target.value)}
-                />
-                {adaptation && (
-                  <div style={{ fontSize: 11, marginTop: 2, color: adaptation.classified ? '#8c8c8c' : '#d46b08' }}>
-                    Differs from master · {Math.round(adaptation.similarity * 100)}% word overlap
-                    {adaptation.classified ? '' : ' — needs a reviewer comparison'}
-                  </div>
-                )}
-              </>
-            );
-          },
-        };
-      }
-      return {
-        title: col.label,
-        width: Math.max(col.width ?? 140, columnWidth(col)),
-        fixed,
-        render: (_: unknown, row: RegisterRow, index: number) => renderGeneric(col, row, index),
-      };
-    }),
-    ...(readOnly
-      ? []
-      : [
-          {
-            title: '',
-            width: 44,
-            fixed: 'right' as const,
-            render: (_: unknown, __: RegisterRow, index: number) => (
-              <Popconfirm title="Remove this row?" onConfirm={() => removeRow(index)}>
-                <Button size="small" danger type="text" aria-label="Remove this row" icon={<DeleteOutlined />} />
-              </Popconfirm>
-            ),
-          },
-        ]),
-  ];
-
-  // Mirrors the per-column floor above, so the horizontal scroll matches
-  // what is actually rendered.
-  const totalWidth =
-    config.columns.reduce((sum, c) => sum + Math.max(c.width ?? 140, columnWidth(c)), 0) + 44;
-
   return (
-    <Card
-      size="small"
-      title={
-        <span>
-          {config.title} {config.gate && <Tag>Gate {config.gate}</Tag>}
-        </span>
+    <DynamicTable
+      config={config}
+      rows={rows}
+      // No resync on save: overwriting the proposed wording with the claim's
+      // text is exactly the character-for-character lock D2 rules out. The API
+      // fills the read-only masterWording column instead.
+      onSave={onSave}
+      readOnly={readOnly}
+      readOnlyReason={readOnlyReason}
+      embedded={embedded}
+      renderCell={renderCell}
+      tableColumns={['workflowState', 'claimId', 'market', 'status']}
+      subtitleText={(row) =>
+        [row.publishedItem, row.channel].map((v) => String(v ?? '').trim()).filter(Boolean).join(' · ')
       }
-      extra={<span style={{ color: TEXT.secondary, fontSize: 12 }}>{draft.length} rows</span>}
-    >
-      {config.description && (
-        <p style={{ color: TEXT.secondary, fontSize: 12, marginTop: -4, marginBottom: 12 }}>{config.description}</p>
-      )}
-      {readOnly && (
-        <Alert
-          type="info"
-          showIcon
-          icon={<LockOutlined />}
-          style={{ marginBottom: 12 }}
-          title="Read-only — gate passed"
-          description={readOnlyReason ?? 'This evidence belongs to a gate that has already passed. To correct it, Backtrack to reopen that gate first.'}
-        />
-      )}
-      {!readOnly && violations.length > 0 && (
-        <Alert
-          type="error"
-          showIcon
-          style={{ marginBottom: 12 }}
-          title={`${violations.length} row(s) cannot sit at a released workflow state`}
-          description={
-            <ul style={{ margin: 0, paddingLeft: 18 }}>
-              {violations.map((v, i) => (
-                <li key={i}>
-                  <strong>{String(v.row.recordId ?? '(no record id)')}</strong> — {v.reason}
-                </li>
-              ))}
-            </ul>
-          }
-        />
-      )}
-      {!readOnly && wordingAdaptations.some((a) => !a.classified) && violations.length === 0 && (
-        <Alert
-          type="warning"
-          showIcon
-          style={{ marginBottom: 12 }}
-          title="Proposed wording differs from the claim's master wording on some rows"
-          description="That is allowed — a channel may adapt wording where the meaning, scope, qualifiers and evidence burden are unchanged. Record the comparison in 'Wording comparison' and who confirmed it; a material change needs a new or revised claim record instead. The word-overlap figure is guidance only, never a decision."
-        />
-      )}
-      <Table
-        size="small"
-        rowKey={(row) => draft.indexOf(row)}
-        dataSource={draft}
-        columns={columns}
-        pagination={false}
-        sticky={TABLE_STICKY}
-        scroll={{ x: totalWidth }}
-        onRow={(row) => {
-          const isBlank = isRegisterRowBlank(config, row);
-          return isBlank || violationFor(row) ? { style: { background: '#fff1f0' } } : {};
-        }}
-      />
-      {!readOnly && (
-        <Button size="small" type="dashed" block icon={<PlusOutlined />} onClick={addRow} style={{ marginTop: 8 }}>
-          Add row
-        </Button>
-      )}
-      {!readOnly && (
-        <SaveBar
-          dirty={dirty}
-          onSave={save}
-          onDiscard={discard}
-          disabled={saveBlocked}
-          disabledReason={
-            hasBlankRows
-              ? 'One or more rows have no data entered — fill in at least one field or remove the row before saving.'
-              : contradictory.length > 0
-                ? `${contradictory.length} row(s) are declared as containing no product claim while also linking a Claim ID — unlink the claim, or clear the declaration.`
-                : `${violations.length} row(s) cannot sit at a released workflow state — see the reasons above.`
-          }
-        />
-      )}
-    </Card>
+      rowHasError={(row, draft) => publishedInfoViolations(draft, claimEvidenceRows).some((v) => v.row === row)}
+      saveBlockers={(draft) => {
+        // All three D2 release conditions, from the same function the API calls.
+        const violations = publishedInfoViolations(draft, claimEvidenceRows);
+        // Both cells are disabled to keep this impossible, so a row can only
+        // reach this state through data from elsewhere — but the guard exists at
+        // both layers regardless (BACKEND_PLAN §3 principle 7).
+        const contradictory = contradictoryClaimRows(draft);
+        return [
+          ...(contradictory.length > 0
+            ? [`${contradictory.length} row(s) are declared as containing no product claim while also linking a Claim ID — unlink the claim, or clear the declaration.`]
+            : []),
+          ...(violations.length > 0 ? [`${violations.length} row(s) cannot sit at a released workflow state — see the reasons above.`] : []),
+        ];
+      }}
+      notices={(draft) => {
+        if (readOnly) return null;
+        const violations = publishedInfoViolations(draft, claimEvidenceRows);
+        if (violations.length > 0) {
+          return (
+            <Alert
+              type="error"
+              showIcon
+              title={`${violations.length} row(s) cannot sit at a released workflow state`}
+              description={
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {violations.map((v, i) => (
+                    <li key={i}>
+                      <strong>{String(v.row.recordId ?? '(no record id)')}</strong> — {v.reason}
+                    </li>
+                  ))}
+                </ul>
+              }
+            />
+          );
+        }
+        if (draft.some((row) => adaptationFor(row) && !adaptationFor(row)?.classified)) {
+          return (
+            <Alert
+              type="warning"
+              showIcon
+              title="Proposed wording differs from the claim's master wording on some rows"
+              description="That is allowed — a channel may adapt wording where the meaning, scope, qualifiers and evidence burden are unchanged. Record the comparison in 'Wording comparison' and who confirmed it; a material change needs a new or revised claim record instead. The word-overlap figure is guidance only, never a decision."
+            />
+          );
+        }
+        return null;
+      }}
+    />
   );
 }

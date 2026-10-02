@@ -1,4 +1,4 @@
-import { Alert, Empty, Typography } from 'antd';
+import { Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import {
@@ -9,7 +9,7 @@ import {
 } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import DynamicTable from '../components/DynamicTable';
-import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
+import { CompositePageHeader } from '../components/RegisterPageHeader';
 
 // NPD Front-End Roadmap "6. Evidence & Search Rules" (v2 workbook,
 // 2026-07-24) — the corporate evidence-grading/transferability/literature-
@@ -28,52 +28,40 @@ export default function EvidenceSearchRules() {
     : undefined;
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <div>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Evidence Hierarchy & Search Rules
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          The corporate rulebook that keeps every claim honest: how evidence is graded, when it
-          transfers vs is only inferred, and how literature is searched and cited.
-        </Typography.Text>
-      </div>
-
-      <Alert
-        type="info"
-        showIcon
-        title="Applies to Sheets 1-5 and every efficacy/claim sheet"
-        description="No need or claim may progress to formula or label without an assigned evidence Grade, a passed transferability check (or explicit inference flag), and a complete, dated, linked search record."
+    <div className="concept">
+      <CompositePageHeader
+        project={project}
+        title="Evidence Hierarchy & Search Rules"
+        description={<>The corporate rulebook that keeps every claim honest: how evidence is graded, when it transfers vs is only inferred, and how literature is searched and cited.</>}
+        note={{
+          title: "Applies to Sheets 1-5 and every efficacy/claim sheet",
+          text: "No need or claim may progress to formula or label without an assigned evidence Grade, a passed transferability check (or explicit inference flag), and a complete, dated, linked search record.",
+        }}
+        reviewOwnerText={reviewOwnerText}
       />
-
-      <ProjectIdentificationCard project={project} />
 
       <DynamicTable
         config={evidenceHierarchyGrades}
         rows={project.registers[evidenceHierarchyGrades.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, evidenceHierarchyGrades.key, rows)}
-        reviewOwnerText={reviewOwnerText}
       />
 
       <DynamicTable
         config={evidenceTransferabilityRules}
         rows={project.registers[evidenceTransferabilityRules.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, evidenceTransferabilityRules.key, rows)}
-        reviewOwnerText={reviewOwnerText}
       />
 
       <DynamicTable
         config={evidenceSearchStandard}
         rows={project.registers[evidenceSearchStandard.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, evidenceSearchStandard.key, rows)}
-        reviewOwnerText={reviewOwnerText}
       />
 
       <DynamicTable
         config={evidenceControlSignOff}
         rows={project.registers[evidenceControlSignOff.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, evidenceControlSignOff.key, rows)}
-        reviewOwnerText={reviewOwnerText}
       />
     </div>
   );

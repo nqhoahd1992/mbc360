@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Input, Modal, Select, Space, Table, Tag, Tooltip } from 'antd';
+import { Alert, Button, Input, Modal, Select, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import type { GateSignOff, GateSignOffRole, ProjectData } from '@mbc360/shared/types';
 import { GATE_SIGNOFF_ROLES } from '@mbc360/shared/types';
@@ -18,7 +18,8 @@ import { useSession } from '../auth/useSession';
 import { usePickerUsers } from '../hooks/useUserOptions';
 import { getMySignature, getMyTotpStatus } from '../api/accountApi';
 import GateSignOffStepUpModal from './GateSignOffStepUpModal';
-import { TEXT } from '../theme/tokens';
+import '../styles/concept.css';
+import './GateSignOffPanel.css';
 
 // Per-gate sign-off (Round 4 questions 18 and 29, 2026-08-29). One panel per
 // gate, rendered inside the Phase Gate Flow row's existing full-width expansion —
@@ -109,131 +110,120 @@ export default function GateSignOffPanel({
           (role) => findGateSignOff(project, gateId, market, role) ?? ({ gateId, market, role } as GateSignOff),
         );
         return (
-          <Card
-            key={market ?? '_'}
-            size="small"
-            style={{ marginTop: 8 }}
-            title={
-              <span>
-                Gate sign-off {market && <Tag color="blue">{market}</Tag>}
-                {critical && (
-                  <Tooltip
-                    title={`A critical gate: the reviewer must be a different person from the preparer, and at least one reviewer or approver must represent ${independent?.label}.`}
-                  >
-                    <Tag color="volcano">Critical gate</Tag>
-                  </Tooltip>
-                )}
-              </span>
-            }
-          >
-            <Table
-              size="small"
-              rowKey={(r) => r.role}
-              dataSource={rows}
-              pagination={false}
-              columns={[
-                { title: 'Role', width: 130, dataIndex: 'role' },
-                {
-                  title: 'Signer',
-                  width: 230,
-                  render: (_, r) =>
-                    r.signedAt ? (
-                      <span>
-                        <strong>{r.name}</strong>
-                        <div style={{ fontSize: 11, color: TEXT.secondary }}>{r.roleAtSigning}</div>
-                      </span>
-                    ) : isLead ? (
-                      <Select
-                        style={{ width: '100%' }}
-                        allowClear
-                        showSearch
-                        optionFilterProp="label"
-                        placeholder="Nominate a signer"
-                        value={r.assignedToUserId}
-                        options={users.map((u) => ({
-                          value: u.id,
-                          label: u.roleName ? `${u.displayName} — ${u.roleName}` : u.displayName,
-                        }))}
-                        onChange={(v?: string) =>
-                          setAssignees(projectId, gateId, market, [{ role: r.role, userId: v ?? null }])
-                        }
-                      />
-                    ) : (
-                      <span style={{ color: TEXT.secondary }}>{r.assignedToName ?? 'Not nominated yet'}</span>
-                    ),
-                },
-                {
-                  title: 'Decision',
-                  width: 190,
-                  render: (_, r) =>
-                    r.signedAt ? (
-                      <Tag color={r.decision === 'Proceed' ? 'green' : 'orange'}>{r.decision}</Tag>
-                    ) : (
-                      <Select
-                        style={{ width: '100%' }}
-                        allowClear
-                        placeholder="Decision"
-                        value={draftOf(market, r.role).decision}
-                        options={GATE_DECISIONS.map((d) => ({ value: d, label: d }))}
-                        onChange={(v?: string) => patchDraft(market, r.role, { decision: v })}
-                      />
-                    ),
-                },
-                {
-                  title: 'Comment',
-                  render: (_, r) =>
-                    r.signedAt ? (
-                      <span style={{ fontSize: 12 }}>{r.comment ?? '—'}</span>
-                    ) : (
-                      <Input.TextArea
-                        autoSize={{ minRows: 1, maxRows: 3 }}
-                        placeholder="Required for anything other than a clean Proceed"
-                        value={draftOf(market, r.role).comment}
-                        onChange={(e) => patchDraft(market, r.role, { comment: e.target.value })}
-                      />
-                    ),
-                },
-                {
-                  title: '',
-                  width: 170,
-                  render: (_, r) => {
-                    if (r.signedAt) {
-                      const stale = gateSignOffStaleChanges(project, gateId, market, r.role);
-                      return (
-                        <Space orientation="vertical" size={2}>
-                          <span style={{ fontSize: 11, color: TEXT.secondary }}>
-                            {dayjs(r.signedAt).format('YYYY-MM-DD HH:mm')}
-                          </span>
+          // 2026-10-02 (user-reported): one block per role instead of a table
+          // row. As a table the Comment column was a few characters wide, so a
+          // typed comment wrapped one word per line and a signed one was hard to
+          // read. Now the comment gets the full width, grows with its content,
+          // and a signed comment keeps the line breaks it was written with.
+          <div key={market ?? '_'} className="concept-tokens c-card gso">
+            <div className="gso-head">
+              <span className="gso-title">Gate sign-off</span>
+              {market && <span className="c-tag">{market}</span>}
+              {critical && (
+                <Tooltip
+                  title={`A critical gate: the reviewer must be a different person from the preparer, and at least one reviewer or approver must represent ${independent?.label}.`}
+                >
+                  <span className="c-tag c-tag-warn">Critical gate</span>
+                </Tooltip>
+              )}
+            </div>
+            {rows.map((r) => {
+              const stale = r.signedAt ? gateSignOffStaleChanges(project, gateId, market, r.role) : [];
+              const why = r.signedAt ? null : blockedReason(market, r.role);
+              const draft = draftOf(market, r.role);
+              const needsComment = !!draft.decision && gateSignOffNeedsComment(draft.decision);
+              return (
+                <div key={r.role} className={`gso-row${r.signedAt ? ' gso-signed' : ''}`}>
+                  <div className="gso-line">
+                    <span className="gso-role">{r.role}</span>
+                    <div className="gso-signer">
+                      {r.signedAt ? (
+                        <>
+                          <strong>{r.name}</strong>
+                          {r.roleAtSigning && <span className="gso-muted"> · {r.roleAtSigning}</span>}
+                        </>
+                      ) : isLead ? (
+                        <Select
+                          style={{ width: '100%', maxWidth: 320 }}
+                          allowClear
+                          showSearch
+                          optionFilterProp="label"
+                          placeholder="Nominate a signer"
+                          value={r.assignedToUserId}
+                          options={users.map((u) => ({
+                            value: u.id,
+                            label: u.roleName ? `${u.displayName} — ${u.roleName}` : u.displayName,
+                          }))}
+                          onChange={(v?: string) => setAssignees(projectId, gateId, market, [{ role: r.role, userId: v ?? null }])}
+                        />
+                      ) : (
+                        <span className="gso-muted">{r.assignedToName ?? 'Not nominated yet'}</span>
+                      )}
+                    </div>
+                    <div className="gso-action">
+                      {r.signedAt ? (
+                        <>
+                          <span className="gso-muted">Signed {dayjs(r.signedAt).format('YYYY-MM-DD HH:mm')}</span>
                           {stale.length > 0 && (
                             <Tooltip title={stale.join(' · ')}>
-                              <Tag color="red">Stale — re-sign ({stale.length})</Tag>
+                              <span className="c-tag c-tag-bad">Stale — re-sign ({stale.length})</span>
                             </Tooltip>
                           )}
                           {r.signedByUserId === session.user?.id && (
-                            <Button size="small" danger onClick={() => setWithdrawing({ market, role: r.role })}>
+                            <Button danger onClick={() => setWithdrawing({ market, role: r.role })}>
                               Withdraw
                             </Button>
                           )}
-                        </Space>
-                      );
-                    }
-                    const why = blockedReason(market, r.role);
-                    const button = (
-                      <Button
-                        size="small"
-                        type="primary"
-                        disabled={!!why}
-                        onClick={() => setStepUp({ market, role: r.role })}
-                      >
-                        Sign
-                      </Button>
-                    );
-                    return why ? <Tooltip title={why}>{button}</Tooltip> : button;
-                  },
-                },
-              ]}
-            />
-          </Card>
+                        </>
+                      ) : why ? (
+                        <Tooltip title={why}>
+                          <Button type="primary" disabled>
+                            Sign
+                          </Button>
+                        </Tooltip>
+                      ) : (
+                        <Button type="primary" onClick={() => setStepUp({ market, role: r.role })}>
+                          Sign
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  {r.signedAt ? (
+                    <div className="gso-record">
+                      <span className={`c-tag c-tag-dot ${r.decision === 'Proceed' ? 'c-tag-ok' : 'c-tag-warn'}`}>{r.decision}</span>
+                      {r.comment ? <p className="gso-comment">{r.comment}</p> : <span className="gso-muted">No comment</span>}
+                    </div>
+                  ) : (
+                    <div className="gso-form">
+                      <label>
+                        <span className="gso-label">Decision</span>
+                        <Select
+                          style={{ width: '100%' }}
+                          allowClear
+                          placeholder="Decision"
+                          value={draft.decision}
+                          options={GATE_DECISIONS.map((d) => ({ value: d, label: d }))}
+                          onChange={(v?: string) => patchDraft(market, r.role, { decision: v })}
+                        />
+                      </label>
+                      <label>
+                        <span className="gso-label">
+                          Comment{needsComment && <span className="gso-req"> * required for "{draft.decision}"</span>}
+                        </span>
+                        <Input.TextArea
+                          autoSize={{ minRows: 2, maxRows: 10 }}
+                          status={needsComment && !draft.comment?.trim() ? 'warning' : undefined}
+                          placeholder="Required for anything other than a clean Proceed"
+                          value={draft.comment}
+                          onChange={(e) => patchDraft(market, r.role, { comment: e.target.value })}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         );
       })}
 

@@ -14,8 +14,16 @@ export interface SessionUser {
   roles: { key: string; name: string }[];
 }
 
+// Why a signed-in account is not let in (2026-10-02 access rule: Microsoft 365
+// proves tenant membership; entering needs an active account with a role).
+export interface AccessDenial {
+  reason: 'no_role' | 'inactive';
+  email?: string;
+}
+
 export function useSession() {
   const [user, setUser] = useState<SessionUser | null>(null);
+  const [denied, setDenied] = useState<AccessDenial | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -23,6 +31,15 @@ export function useSession() {
     try {
       const res = await fetch('/api/auth/me');
       setUser(res.ok ? await res.json() : null);
+      // A 403 here means the session is valid but the account may not enter
+      // (its last role removed, or deactivated) — say which on the sign-in
+      // screen rather than showing it as an ordinary signed-out state.
+      if (res.status === 403) {
+        const body = (await res.json().catch(() => undefined)) as { code?: string; email?: string } | undefined;
+        setDenied({ reason: body?.code === 'INACTIVE' ? 'inactive' : 'no_role', email: body?.email });
+      } else {
+        setDenied(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -45,6 +62,7 @@ export function useSession() {
 
   return {
     user,
+    denied,
     loading,
     isAdmin: user?.roles.some((r) => r.key === ADMIN_ROLE) ?? false,
     refresh,

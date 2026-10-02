@@ -1,0 +1,42 @@
+/* Claims Library (2026-10-02 redesign, wireframe option A). Row, drawer and danger
+   primitives come from AdminUsers.css + AdminMarketProfiles.css. */
+.cl-header { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; }
+
+.cl-row { min-height: 60px; }
+.cl-text { flex: 1; min-width: 0; }
+.cl-wording {
+  display: -webkit-box; overflow: hidden; font-weight: 500;
+  -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-wrap: pretty;
+}
+.cl-withdrawn { color: var(--c-text-3); text-decoration: line-through; text-decoration-color: rgb(0 0 0 / 30%); }
+.cl-sub { margin-top: 2px; font-size: 12px; }
+.cl-state { display: flex; flex-shrink: 0; align-items: center; gap: 6px; }
+
+/* One mark per approval side: outlined while pending, green with a tick once approved. */
+.cl-mark {
+  display: inline-flex; align-items: center; gap: 2px; height: 20px; padding: 0 6px;
+  border: 1px solid var(--c-border); border-radius: 10px; color: var(--c-text-3);
+  font-size: 11px; font-weight: 600; cursor: default;
+}
+.cl-mark-on { border-color: var(--c-ok-line); background: var(--c-ok-bg); color: var(--c-ok); }
+
+@media (max-width: 767px) {
+  .cl-row { flex-wrap: wrap; gap: 8px; padding-inline: 16px; }
+  .cl-text { flex-basis: 100%; }
+  .cl-row .mp-chev { display: none; }
+}
+
+.cl-approvals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.cl-approval { display: grid; align-content: start; gap: 4px; padding: 12px; border: 1px solid var(--c-border-2); border-radius: 8px; }
+.cl-approval .ant-btn { margin-top: 4px; }
+.cl-approved { display: flex; align-items: center; gap: 6px; }
+.cl-approved .anticon { color: var(--c-ok-dot); }
+.cl-gap { margin: 8px 0 0; }
+.cl-warn { display: flex; gap: 6px; color: var(--c-warn); font-size: 12px; }
+.cl-warn .anticon { margin-top: 2px; }
+
+.cl-linked { display: grid; gap: 10px; margin: 0; padding: 0; font-size: 13px; list-style: none; }
+.cl-linked li { display: grid; gap: 2px; }
+.cl-origin { margin: 0 0 8px; }
+.cl-modal-text { margin: 0 0 12px; }
+.cl-foot { justify-content: flex-end; gap: 8px; }

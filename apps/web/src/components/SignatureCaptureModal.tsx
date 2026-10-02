@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react';
-import { Alert, Button, Modal, Typography } from 'antd';
+import { Button, Modal, Typography } from 'antd';
 import SignatureCanvas from 'react-signature-canvas';
 
 // Crops the transparent margin off a drawn signature, so the saved PNG is the
-// mark itself rather than the whole 400x150 pad.
+// mark itself rather than the whole pad.
 //
 // This replaces react-signature-canvas's own `getTrimmedCanvas()` (2026-08-21),
 // which throws `(0 , import_build.default) is not a function` in the browser.
@@ -66,6 +66,11 @@ export default function SignatureCaptureModal({
   const padRef = useRef<SignatureCanvas>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [padWidth, setPadWidth] = useState(0);
+  // Measured once the dialog has opened (its body has a width only then).
+  // Re-measuring on resize would clear a half-drawn signature, so it is not.
+  const measure = () => setPadWidth(Math.floor((boxRef.current?.clientWidth ?? 0)));
 
   const clear = () => {
     padRef.current?.clear();
@@ -97,6 +102,7 @@ export default function SignatureCaptureModal({
       title="Draw your signature"
       onCancel={onClose}
       destroyOnHidden
+      afterOpenChange={(visible) => (visible ? measure() : setPadWidth(0))}
       footer={[
         <Button key="clear" onClick={clear}>
           Clear
@@ -109,25 +115,26 @@ export default function SignatureCaptureModal({
         </Button>,
       ]}
     >
-      {error && <Alert type="error" showIcon title={error} style={{ marginBottom: 12 }} />}
       <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
         Draw with your mouse (or finger, on a touch screen) in the box below.
       </Typography.Text>
+      {/* The pad fills the dialog's width (2026-10-02, user-reported: a fixed
+          400px pad sat left-aligned in a wider dialog). The canvas's own pixel
+          width must equal its displayed width or strokes land off the pointer,
+          so it is measured rather than stretched with CSS. */}
       <div
-        style={{
-          border: '1px solid #d9d9d9',
-          borderRadius: 4,
-          width: 400,
-          background: '#fff',
-          touchAction: 'none',
-        }}
+        ref={boxRef}
+        style={{ border: '1px solid #d9d9d9', borderRadius: 6, background: '#fff', touchAction: 'none' }}
       >
-        <SignatureCanvas
-          ref={padRef}
-          penColor="#1f1f1f"
-          canvasProps={{ width: 400, height: 150, style: { display: 'block' } }}
-        />
+        {padWidth > 0 && (
+          <SignatureCanvas
+            ref={padRef}
+            penColor="#1f1f1f"
+            canvasProps={{ width: padWidth, height: 160, style: { display: 'block' } }}
+          />
+        )}
       </div>
+      {error && <p style={{ margin: '8px 0 0', color: '#cf1322', fontSize: 13 }}>{error}</p>}
     </Modal>
   );
 }

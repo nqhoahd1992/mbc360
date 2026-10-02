@@ -100,6 +100,28 @@ export function claimCoveredByLibrary(
   return library.some((e) => e.id === linked && e.status === 'Approved');
 }
 
+export const CLAIM_LIBRARY_STATUS_COLUMN = 'libraryStatus';
+
+// The two Claims Library columns of a claim row describe one fact twice — which
+// entry it reuses, and the declaration "Linked" / "New claim" — so they can say
+// opposite things: "Linked to Claims Library" with no entry picked, or an entry
+// picked under "New claim". This names the disagreement for the screen to flag.
+// It is a WARNING, never a block: C1 reads only the link, so neither mismatch
+// changes what Gate 3 decides — it only stops the declaration from misleading a
+// reader. Whether it should block is ours to ask, not to decide
+// [ASSUMPTION: R5-Q26].
+export function claimLibraryLinkMismatch(row: { [key: string]: unknown }): string | undefined {
+  const linked = String(row[CLAIM_LIBRARY_ENTRY_COLUMN] ?? '').trim() !== '';
+  const declared = String(row[CLAIM_LIBRARY_STATUS_COLUMN] ?? '').trim();
+  if (declared === CLAIM_LIBRARY_LINK_OPTIONS[0] && !linked) {
+    return 'Marked "Linked to Claims Library" but no entry is picked — Gate 3 treats it as not in the library.';
+  }
+  if (declared === CLAIM_NOT_IN_LIBRARY && linked) {
+    return 'An entry is picked but the claim is marked "New claim — not yet in Claims Library".';
+  }
+  return undefined;
+}
+
 // A3's Gate 4 trigger, verbatim: "The ingredient or raw material contains
 // fragrance, essential oils, botanical extracts, proteins, known allergens,
 // residual solvents, heavy-metal risk, microbiological risk, restricted

@@ -1,0 +1,59 @@
+/* Formula BOM & Costing (2026-10 concept). Tokens from styles/concept.css;
+   the BOM lists themselves are RecordList (components/DynamicTable.css). */
+.bom-head { padding-top: 4px; }
+.bom-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.bom-title { margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; }
+.bom-meta { margin: 4px 0 0; color: var(--c-text-2); font-size: 13px; text-wrap: pretty; }
+.bom-meta b { color: var(--c-text); font-weight: 500; }
+.bom-head-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+
+.bom-watch { display: grid; gap: 6px; margin-top: 4px; }
+.bom-watch-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.bom-watch-row .c-tag { white-space: normal; height: auto; min-height: 22px; }
+
+.bom-line-no { flex-shrink: 0; min-width: 28px; justify-content: center; font-variant-numeric: tabular-nums; }
+.bom-tag-btn { font: inherit; font-size: 12px; cursor: pointer; }
+.bom-tag-btn:disabled { cursor: not-allowed; opacity: 0.7; }
+.bom-num { font-variant-numeric: tabular-nums; }
+.bom-dl { margin-top: 16px; }
+
+.bom-total {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 24px;
+  padding: 10px 12px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface-2);
+  color: var(--c-text-2); font-size: 13px;
+}
+.bom-total b { color: var(--c-text); font-weight: 600; }
+.bom-total-warn { display: flex; align-items: flex-start; gap: 8px; color: var(--c-text-2); font-size: 13px; }
+.bom-total-warn > .anticon { margin-top: 3px; color: var(--c-warn-dot); }
+
+.bom-card-head {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px;
+  padding: 16px 20px; border-bottom: 1px solid var(--c-border-2);
+}
+.bom-card-title { font-size: 16px; font-weight: 600; }
+.bom-card-body { display: grid; gap: 20px; padding: 20px; }
+/* A read-only reference table scrolls inside its own card, never the page. */
+.bom-table-wrap { min-width: 0; }
+.bom-savebar { padding: 0 20px 16px; }
+
+.bom-form { display: grid; gap: 16px; }
+@media (min-width: 640px) { .bom-form { grid-template-columns: 1fr 1fr; } .bom-span-2 { grid-column: span 2; } }
+@media (min-width: 992px) { .bom-form { grid-template-columns: repeat(3, minmax(0, 1fr)); } .bom-span-2 { grid-column: span 2; } }
+.bom-field { display: grid; align-content: start; gap: 6px; min-width: 0; }
+.bom-label { color: var(--c-text-2); font-size: 13px; }
+.bom-hint { color: var(--c-text-3); font-size: 12px; }
+.bom-subsection { display: grid; gap: 12px; padding-top: 20px; border-top: 1px solid var(--c-border-2); }
+.bom-subtitle { font-size: 14px; font-weight: 600; }
+
+.bom-stats { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 992px) { .bom-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.bom-stat { min-width: 0; padding: 16px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface-2); }
+.bom-stat-label { display: flex; align-items: center; gap: 8px; color: var(--c-text-2); font-size: 13px; }
+.bom-stat-value { margin-top: 6px; overflow-wrap: anywhere; font-size: 20px; font-weight: 600; line-height: 28px; font-variant-numeric: tabular-nums; }
+.bom-dot { width: 6px; height: 6px; border-radius: 50%; }
+.bom-dot-ok { background: var(--c-ok-dot); }
+.bom-dot-warn { background: var(--c-warn-dot); }
+.bom-dot-bad { background: var(--c-bad-dot); }
+.bom-ok { color: var(--c-ok); }
+.bom-warn { color: var(--c-warn); }
+.bom-bad { color: var(--c-bad); }

@@ -374,73 +374,13 @@ async function seedRbac(): Promise<void> {
   console.log(`Seeded ${roles.length} roles, ${permissionDefs.length} permissions, ${grants} grants (demo-parity, awaiting F6)`);
 }
 
-// One demo user per SSO role (2026-07-23, user-requested: re-seed demo users
-// against the new F6 role list) so dev-login covers every real assignable
-// role, not just the old VIEW_ROLES demo/"View as" keys. Independent Study
-// Reviewer deliberately gets a DIFFERENT department than Study Author/
-// Department Study Reviewer, so the C2 "Independent Reviewer must not share
-// the Study Author's department" guard is actually exercisable against these
-// demo accounts. Skip with SEED_DEMO_USERS=false (production).
-const DEMO_USER_DEPARTMENTS: Record<string, string> = {
-  [ADMIN_ROLE]: 'Management',
-  'sso-project-owner': 'Project Office',
-  'sso-formulation-contributor': 'NPD / R&I',
-  'sso-safety-reviewer': 'Safety',
-  'sso-quality-reviewer': 'Quality',
-  'sso-regulatory-reviewer': 'Regulatory',
-  'sso-packaging-artwork-contributor': 'Packaging',
-  'sso-marketing-sales-contributor': 'Marketing & Sales',
-  'sso-supply-chain-contributor': 'Supply Chain',
-  'sso-manufacturing-link-contributor': 'Manufacturing',
-  'sso-study-author': 'NPD / R&I',
-  'sso-department-study-reviewer': 'NPD / R&I',
-  'sso-independent-study-reviewer': 'Quality',
-  'sso-published-info-technical-reviewer': 'Quality',
-  'sso-published-info-regulatory-reviewer': 'Regulatory',
-  'sso-final-approver': 'Management',
-  'sso-read-only-viewer': 'Management',
-};
-
-async function seedDemoUsers(): Promise<void> {
-  if (process.env.SEED_DEMO_USERS === 'false') {
-    console.log('SEED_DEMO_USERS=false — demo users skipped');
-    return;
-  }
-  // Previously-seeded VIEW_ROLES-keyed demo users (project-owner@demo...,
-  // npd-ri@demo..., etc.) are left as-is, not deleted — this loop is purely
-  // additive, matching the idempotent-seed convention used throughout this
-  // file (never destructive).
-  for (const ssoRole of SSO_ROLES) {
-    // Keep the full key (incl. `sso-` prefix) as the email local-part rather
-    // than stripping it — `sso-project-owner` would otherwise collide with
-    // the pre-existing VIEW_ROLES demo user at `project-owner@demo...`,
-    // silently merging two different roles onto one user instead of creating
-    // a distinct account. `admin` is unprefixed either way, so it correctly
-    // reuses the existing `admin@demo.mbc360.local` account (same role, same
-    // person — that reuse IS intended).
-    const email = `${ssoRole.key}@demo.mbc360.local`;
-    const departmentName = DEMO_USER_DEPARTMENTS[ssoRole.key] ?? 'Management';
-    const role = await prisma.role.findUnique({ where: { key: ssoRole.key } });
-    if (!role) continue;
-    const user = await prisma.user.upsert({
-      where: { email },
-      update: {},
-      create: {
-        email,
-        displayName: `${ssoRole.label} (demo)`,
-        department: {
-          connectOrCreate: { where: { name: departmentName }, create: { name: departmentName } },
-        },
-      },
-    });
-    await prisma.userRole.upsert({
-      where: { userId_roleId: { userId: user.id, roleId: role.id } },
-      update: {},
-      create: { userId: user.id, roleId: role.id },
-    });
-  }
-  console.log(`Seeded ${SSO_ROLES.length} demo users (…@demo.mbc360.local, one per SSO role)`);
-}
+// The per-SSO-role "(demo)" accounts (…-reviewer@demo.mbc360.local, one per
+// role, plus admin@demo.mbc360.local) were REMOVED from the seed on 2026-10-02
+// at the project owner's request: they sat in the Users list beside the real
+// people with names like "Quality Reviewer (demo)". The 13 workbook review
+// owners below (Chris, Tuan, George, …) still seed — they are the people the
+// demo project is assigned to. For dev-login, use one of those or a real
+// Microsoft 365 account that has signed in once.
 
 // The 13 review areas each have a named owner in the source workbook (encoded
 // as the tab-name prefix: Tuan-, George-, ChiChu-, ...). Seeding them as real
@@ -618,12 +558,10 @@ const DEMO_SIGNOFF_AREAS: Record<number, { preparedBy: string; reviewedBy: strin
 
 // "Approved by" additionally needs the `phase:N|approve` capability, so it
 // cannot be nominated from a review area directly — it resolves to whichever
-// active user holds this SSO role. Historically that was only the generic
-// per-SSO-role demo account (seedDemoUsers()); since 2026-08-27 Nguyen
-// ('sales-marketing' review role, the company's real CEO/project sponsor)
-// also holds it (see REVIEW_OWNER_ROLES above), so two accounts now qualify
-// and `findFirst` below picks whichever the database returns first — not
-// pinned to a specific one, since nothing here requires it to be.
+// active user holds this SSO role. Since the per-SSO-role demo accounts were
+// removed (2026-10-02) that is Nguyen ('sales-marketing' review role, the
+// company's real CEO/project sponsor — see REVIEW_OWNER_ROLES above);
+// `findFirst` is not pinned to him, so a second holder would also qualify.
 const DEMO_APPROVER_ROLE_KEY = 'sso-final-approver';
 
 // Fills the three nominations per phase, for rows that have none and are not
@@ -755,7 +693,6 @@ async function main(): Promise<void> {
   await seedWatchlists();
   await seedCosmetriSyncState();
   await seedRbac();
-  await seedDemoUsers();
   const reviewers = await seedReviewOwnerUsers();
   await seedDemoProject(reviewers);
 }

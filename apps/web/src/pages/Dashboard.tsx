@@ -1,12 +1,74 @@
-import { Card, Col, Progress, Row, Statistic, Table, Tag, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
+import {
+  AlertOutlined,
+  BranchesOutlined,
+  CheckSquareOutlined,
+  ClockCircleOutlined,
+  EditOutlined,
+  FolderOpenOutlined,
+  GlobalOutlined,
+  InboxOutlined,
+  InfoCircleOutlined,
+  RollbackOutlined,
+  SyncOutlined,
+} from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { GATES, PHASES } from '@mbc360/shared/config/gates';
 import { isSignedOff } from '@mbc360/shared/types';
-import StatusBadge from '../components/StatusBadge';
 import { currentGateIndex, gateBlockers, isGatePassed, phaseCompletionChecklist } from '@mbc360/shared/utils/gateProgress';
 import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useSession } from '../auth/useSession';
+import '../styles/concept.css';
+import '../components/RegisterPageHeader.css';
+import './ProjectList.css';
+import './Dashboard.css';
+
+
+type Tone = 'bad' | 'warn' | undefined;
+
+// One stat tile. `tone` is set only when the number means trouble, so colour
+// keeps its meaning across the row instead of decorating every tile.
+function StatTile({
+  icon,
+  label,
+  value,
+  of,
+  sub,
+  tone,
+  hint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  of?: number;
+  sub: React.ReactNode;
+  tone?: Tone;
+  hint?: string;
+}) {
+  const tile = (
+    <div className={`db-stat${tone ? ` db-stat-${tone}` : ''}`}>
+      <div className="db-stat-label">
+        {icon}
+        {label}
+        {hint && <InfoCircleOutlined aria-label="About this number" />}
+      </div>
+      <div className={`db-stat-value${tone ? ` db-${tone}` : ''}`}>
+        {value}
+        {of !== undefined && <small>/ {of}</small>}
+      </div>
+      <div className="db-stat-sub">{sub}</div>
+    </div>
+  );
+  return hint ? <Tooltip title={hint}>{tile}</Tooltip> : tile;
+}
+
+// Change risk carries state on the tag only (concept rule 4).
+function riskTagClass(risk?: string) {
+  if (risk === 'High' || risk === 'Critical') return 'c-tag c-tag-bad c-tag-dot';
+  if (risk === 'Medium') return 'c-tag c-tag-warn c-tag-dot';
+  return 'c-tag c-tag-dot';
+}
 
 export default function Dashboard() {
   const projects = useAppStore((s) => s.projects);
@@ -66,253 +128,293 @@ export default function Dashboard() {
       )
     : [];
 
-  return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      {myPendingSignOffs.length > 0 && (
-        <Card
-          size="small"
-          title={
-            <span>
-              Waiting on you{' '}
-              <Tag color="gold" style={{ marginLeft: 4 }}>
-                {myPendingSignOffs.length} sign-off{myPendingSignOffs.length > 1 ? 's' : ''}
-              </Tag>
-            </span>
-          }
-        >
-          <Table
-            size="small"
-            rowKey={(r) => `${r.project.identity.id}-${r.phase.phase}-${r.row.role}`}
-            dataSource={myPendingSignOffs}
-            pagination={false}
-            scroll={{ x: 640 }}
-            columns={[
-              {
-                title: 'Phase',
-                width: 240,
-                render: (_, r) => (
-                  <Link to={`/projects/${r.project.identity.id}/phase/${r.phase.phase}`}>
-                    {r.phase.title.split(' - ')[0]} — {r.project.identity.id}
-                  </Link>
-                ),
-              },
-              { title: 'Your row', width: 140, render: (_, r) => r.row.role },
-              {
-                title: 'Ready to sign?',
-                render: (_, r) =>
-                  phaseCompletionChecklist(r.project, r.phase.phase).canSignOff ? (
-                    <Tag color="green">Yes — closure conditions met</Tag>
-                  ) : (
-                    <Tag>Not yet — closure conditions outstanding</Tag>
-                  ),
-              },
-            ]}
-          />
-        </Card>
-      )}
+  const backtrackCount = projects.reduce((sum, p) => sum + p.backtrackEvents.length, 0);
+  const actionsTrouble = criticalActions.length > 0 || overdueActions.length > 0;
 
-      {/* One grid, not two antd Rows: `gutter={16}` is horizontal only, so the
-          ninth card wrapped onto a new line with no vertical gap and the cards
-          sat flush against each other. `auto-fill` also keeps the orphan card
-          the same width as its siblings instead of stretching it across the
-          whole row. */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))',
-          gap: 16,
-        }}
-      >
-        <Card size="small">
-          <Statistic
-            title="Active projects"
-            value={activeProjects.length}
-            suffix={archivedCount > 0 ? ` (+${archivedCount} archived)` : undefined}
-          />
-        </Card>
-        <Card size="small">
-          <Tooltip title="Counts gates whose Stage status field is set to 'In Progress'. A gate that is open for work but still marked 'Not Started' is not counted here — see each project's current gate in the portfolio table below.">
-            <Statistic
-              title="Gates marked In Progress"
-              value={activeGates.length}
-              styles={{ content: { color: '#1677ff' } }}
-            />
-          </Tooltip>
-        </Card>
-        <Card size="small">
-          <Statistic title="Open change controls" value={openChanges.length} styles={{ content: { color: '#fa8c16' } }} />
-        </Card>
-        <Card size="small">
-          <Statistic title="Overdue gates" value={overdue.length} styles={{ content: { color: overdue.length ? '#cf1322' : undefined } }} />
-        </Card>
-        <Card size="small">
-          <Statistic
-            title="Open next actions"
-            value={openActions.length}
-            suffix={
-              [
-                criticalActions.length ? `${criticalActions.length} critical` : '',
-                overdueActions.length ? `${overdueActions.length} overdue` : '',
-              ]
-                .filter(Boolean)
-                .join(' · ') || undefined
-            }
-            styles={{
-              content: {
-                color: criticalActions.length || overdueActions.length ? '#cf1322' : '#1677ff',
-              },
-            }}
-          />
-        </Card>
-        <Card size="small">
-          <Statistic
-            // `gateBlockers` composes open/critical next actions, the
-            // Skincare-for-Two safety screen AND every unmet F1/C7 mandatory
-            // readiness item (103 of 113 are wired) plus the NPD roadmap
-            // items — "actions / safety" named two of five.
-            title="Gates with unmet requirements"
-            value={blockedGates.length}
-            styles={{ content: { color: blockedGates.length ? '#cf1322' : undefined } }}
-          />
-        </Card>
-        <Card size="small">
-          <Statistic
-            title="Markets launch-approved"
-            value={launchReady}
-            suffix={`/ ${allMarkets.length}`}
-            styles={{ content: { color: '#3f8600' } }}
-          />
-        </Card>
-        <Card size="small">
-          <Tooltip title="Every closure condition met (gates passed, key checks done, angles covered, actions closed, pre-work accepted) and one or more of the three signatures still missing.">
-            <Statistic
-              title="Phases awaiting sign-off"
-              value={phasesAwaitingSignOff.length}
-              styles={{ content: { color: phasesAwaitingSignOff.length ? '#d48806' : undefined } }}
-            />
-          </Tooltip>
-        </Card>
-        <Card size="small">
-          <Statistic
-            title="Backtrack events (audit)"
-            value={projects.reduce((sum, p) => sum + p.backtrackEvents.length, 0)}
-          />
-        </Card>
+  return (
+    <div className="concept">
+      <div className="rph">
+        <div className="rph-title-row">
+          <h1 className="rph-title">Dashboard</h1>
+        </div>
+        <p className="rph-meta">
+          {activeProjects.length} active project{activeProjects.length === 1 ? '' : 's'} · {allMarkets.length} market
+          track{allMarkets.length === 1 ? '' : 's'} · As of {today}
+        </p>
       </div>
 
-      <Card size="small" title="Project portfolio — gate progress">
-        <Table
-          size="small"
-          rowKey={(p) => p.identity.id}
-          dataSource={projects}
-          pagination={false}
-          scroll={{ x: 900 }}
-          columns={[
-            {
-              title: 'Project',
-              width: 260,
-              render: (_, p) => (
-                <span>
-                  <Link to={`/projects/${p.identity.id}`}>
-                    <b>{p.identity.id}</b> — {p.identity.productSku}
+      {myPendingSignOffs.length > 0 && (
+        <div className="c-card">
+          <div className="pl-card-head">
+            <span className="pl-card-title">Waiting on you</span>
+            <span className="c-tag c-tag-warn c-tag-dot">
+              {myPendingSignOffs.length} sign-off{myPendingSignOffs.length > 1 ? 's' : ''}
+            </span>
+          </div>
+          <ul className="db-list">
+            {myPendingSignOffs.map((r) => (
+              <li key={`${r.project.identity.id}-${r.phase.phase}-${r.row.role}`}>
+                <div className="db-item-main">
+                  <Link className="c-link db-item-title" to={`/projects/${r.project.identity.id}/phase/${r.phase.phase}`}>
+                    {r.phase.title.split(' - ')[0]} — {r.project.identity.id}
                   </Link>
-                  {/* An archived project is read-only everywhere; listing it
-                      here unmarked made it look like live work. */}
-                  {p.identity.archived && (
-                    <Tag style={{ marginLeft: 6 }}>Archived</Tag>
-                  )}
-                </span>
-              ),
-            },
-            { title: 'Lead', width: 130, render: (_, p) => p.identity.projectLead },
-            {
-              title: 'Current phase',
-              width: 220,
-              render: (_, p) => {
+                  <div className="db-item-sub">Your row: {r.row.role}</div>
+                </div>
+                {phaseCompletionChecklist(r.project, r.phase.phase).canSignOff ? (
+                  <span className="c-tag c-tag-ok c-tag-dot">Ready — closure conditions met</span>
+                ) : (
+                  <span className="c-tag c-tag-dot">Not yet — closure conditions outstanding</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="db-stats">
+        <StatTile
+          icon={<FolderOpenOutlined />}
+          label="Active projects"
+          value={activeProjects.length}
+          sub={archivedCount > 0 ? `+${archivedCount} archived` : 'None archived in view'}
+        />
+        <StatTile
+          icon={<SyncOutlined />}
+          label="Gates marked In Progress"
+          value={activeGates.length}
+          sub="Stage status set to In Progress"
+          hint="Counts gates whose Stage status field is set to 'In Progress'. A gate that is open for work but still marked 'Not Started' is not counted here — see each project's current gate in the portfolio below."
+        />
+        <StatTile
+          icon={<BranchesOutlined />}
+          label="Open change controls"
+          value={openChanges.length}
+          sub="Across all projects"
+        />
+        <StatTile
+          icon={<ClockCircleOutlined />}
+          label="Overdue gates"
+          value={overdue.length}
+          sub="Past due, not yet passed"
+          tone={overdue.length ? 'bad' : undefined}
+        />
+        <StatTile
+          icon={<CheckSquareOutlined />}
+          label="Open next actions"
+          value={openActions.length}
+          sub={
+            [
+              criticalActions.length ? `${criticalActions.length} critical` : '',
+              overdueActions.length ? `${overdueActions.length} overdue` : '',
+            ]
+              .filter(Boolean)
+              .join(' · ') || 'None critical or overdue'
+          }
+          tone={actionsTrouble ? 'bad' : undefined}
+        />
+        <StatTile
+          // `gateBlockers` composes open/critical next actions, the
+          // Skincare-for-Two safety screen AND every unmet F1/C7 mandatory
+          // readiness item plus the NPD roadmap items — "actions / safety"
+          // named two of five.
+          icon={<AlertOutlined />}
+          label="Gates with unmet requirements"
+          value={blockedGates.length}
+          sub="Started gates with a blocker"
+          tone={blockedGates.length ? 'bad' : undefined}
+        />
+        <StatTile
+          icon={<GlobalOutlined />}
+          label="Markets launch-approved"
+          value={launchReady}
+          of={allMarkets.length}
+          sub="Per-market launch approval"
+        />
+        <StatTile
+          icon={<EditOutlined />}
+          label="Phases awaiting sign-off"
+          value={phasesAwaitingSignOff.length}
+          sub="Signatures still missing"
+          tone={phasesAwaitingSignOff.length ? 'warn' : undefined}
+          hint="Every closure condition met (gates passed, key checks done, angles covered, actions closed, pre-work accepted) and one or more of the three signatures still missing."
+        />
+        <StatTile
+          icon={<RollbackOutlined />}
+          label="Backtrack events (audit)"
+          value={backtrackCount}
+          sub="Recorded across all projects"
+        />
+      </div>
+
+      <div
+        className="c-card pl"
+        style={{ '--pl-cols': 'minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1.3fr) minmax(0, 0.9fr) minmax(0, 1.4fr)' } as React.CSSProperties}
+      >
+        <div className="pl-card-head">
+          <span className="pl-card-title">Project portfolio — gate progress</span>
+          <Link className="c-link" to="/projects" style={{ fontSize: 13 }}>
+            All projects
+          </Link>
+        </div>
+        {projects.length === 0 ? (
+          <div className="db-empty">
+            <InfoCircleOutlined />
+            <span>
+              No projects yet. <Link className="c-link" to="/projects">Create one on the Projects page</Link>.
+            </span>
+          </div>
+        ) : (
+          <>
+            <div className="pl-head" aria-hidden>
+              <span>Project</span>
+              <span>Lead</span>
+              <span>Current phase</span>
+              <span>Progress (12 gates)</span>
+              <span>Target launch</span>
+              <span>Markets</span>
+            </div>
+            <ul className="pl-list">
+              {projects.map((p) => {
                 const idx = currentGateIndex(p);
                 const meta = idx < GATES.length ? GATES[idx] : undefined;
                 const phase = meta ? PHASES.find((ph) => ph.phase === meta.phase) : undefined;
-                return phase ? (
-                  <Tag color={phase.color}>{phase.title.split(' - ')[0]} · Gate {meta!.number}</Tag>
-                ) : (
-                  <Tag color="green">All gates passed</Tag>
-                );
-              },
-            },
-            {
-              title: 'Progress (12 gates)',
-              width: 220,
-              render: (_, p) => {
                 const done = p.gates.filter((g) => isGatePassed(p, g.gateId)).length;
-                return <Progress percent={Math.round((done / 12) * 100)} size="small" />;
-              },
-            },
-            { title: 'Target launch', width: 120, render: (_, p) => p.identity.targetLaunchDate },
-            {
-              title: 'Markets',
-              render: (_, p) => (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {p.identity.markets.map((m) => (
-                    <Tag key={m} style={{ marginInlineEnd: 0 }}>
-                      {m}
-                    </Tag>
-                  ))}
-                </div>
-              ),
-            },
-          ]}
-        />
-      </Card>
+                const pct = Math.round((done / 12) * 100);
+                return (
+                  <li key={p.identity.id} className="pl-row">
+                    <div className="pl-cell">
+                      <div className="pl-id-title">
+                        <Link className="c-link pl-id-name" to={`/projects/${p.identity.id}`}>
+                          {p.identity.productSku || p.identity.id}
+                        </Link>
+                        {/* An archived project is read-only everywhere; listing
+                            it here unmarked made it look like live work. */}
+                        {p.identity.archived && (
+                          <span className="c-tag">
+                            <InboxOutlined />
+                            Archived
+                          </span>
+                        )}
+                      </div>
+                      <div className="pl-id-sub">{p.identity.id}</div>
+                    </div>
+                    <div className="pl-cell" data-label="Lead">
+                      {p.identity.projectLead || <span className="pl-muted">—</span>}
+                    </div>
+                    <div className="pl-cell" data-label="Current phase">
+                      {phase ? (
+                        <span className="c-tag">
+                          {phase.title.split(' - ')[0]} · Gate {meta!.number}
+                        </span>
+                      ) : (
+                        <span className="c-tag c-tag-ok c-tag-dot">All gates passed</span>
+                      )}
+                    </div>
+                    <div className="pl-cell" data-label="Progress">
+                      <div className="pl-progress">
+                        <div
+                          className="pl-bar"
+                          role="progressbar"
+                          aria-label={`${done} of 12 gates passed`}
+                          aria-valuenow={pct}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        >
+                          <div className={done === 12 ? 'pl-bar-done' : undefined} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="pl-pct">{pct}%</span>
+                      </div>
+                    </div>
+                    <div className="pl-cell" data-label="Target launch">
+                      {p.identity.targetLaunchDate || <span className="pl-muted">—</span>}
+                    </div>
+                    <div className="pl-cell" data-label="Markets">
+                      {p.identity.markets.length ? (
+                        <div className="pl-tags">
+                          {p.identity.markets.map((m) => (
+                            <span key={m} className="c-tag">
+                              {m}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="pl-muted">None yet</span>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </div>
 
-      <Row gutter={[16, 16]}>
-        <Col xs={24} md={12}>
-          <Card size="small" title="Gates marked In Progress">
-            <Table
-              size="small"
-              rowKey={(r) => `${r.project.identity.id}-${r.gate.gateId}`}
-              dataSource={activeGates}
-              pagination={false}
-              locale={{
-                emptyText:
-                  'No gate has its Stage status set to "In Progress". Each project\'s current gate is in the portfolio table above.',
-              }}
-              columns={[
-                {
-                  title: 'Gate',
-                  render: (_, r) => {
-                    const meta = GATES.find((g) => g.id === r.gate.gateId)!;
-                    return (
-                      <Link to={`/projects/${r.project.identity.id}/phase/${meta.phase}`}>
+      <div className="db-pair">
+        <div className="c-card">
+          <div className="pl-card-head">
+            <span className="pl-card-title">Gates marked In Progress</span>
+            <span className="pl-count">{activeGates.length}</span>
+          </div>
+          {activeGates.length === 0 ? (
+            <div className="db-empty">
+              <InfoCircleOutlined />
+              <span>
+                No gate has its Stage status set to "In Progress". Each project's current gate is in the portfolio
+                above.
+              </span>
+            </div>
+          ) : (
+            <ul className="db-list">
+              {activeGates.map((r) => {
+                const meta = GATES.find((g) => g.id === r.gate.gateId)!;
+                return (
+                  <li key={`${r.project.identity.id}-${r.gate.gateId}`}>
+                    <div className="db-item-main">
+                      <Link className="c-link db-item-title" to={`/projects/${r.project.identity.id}/phase/${meta.phase}`}>
                         Gate {meta.number} — {meta.name}
                       </Link>
-                    );
-                  },
-                },
-                { title: 'Project', render: (_, r) => r.project.identity.id },
-                { title: 'Owner', render: (_, r) => r.gate.owner },
-                { title: 'Due', render: (_, r) => r.gate.dueDate },
-              ]}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={12}>
-          <Card size="small" title="Open change controls" extra={<Link to="/change-control">View all</Link>}>
-            <Table
-              size="small"
-              rowKey={(c) => c.changeId}
-              dataSource={openChanges}
-              pagination={false}
-              locale={{ emptyText: 'No open change control across any project.' }}
-              columns={[
-                { title: 'ID', dataIndex: 'changeId' },
-                { title: 'Trigger', dataIndex: 'trigger', ellipsis: true },
-                { title: 'Risk', dataIndex: 'riskLevel', render: (v) => <StatusBadge value={v} /> },
-                { title: 'Status', dataIndex: 'status', render: (v) => <StatusBadge value={v} /> },
-              ]}
-            />
-          </Card>
-        </Col>
-      </Row>
+                      <div className="db-item-sub">
+                        {r.project.identity.id}
+                        {r.gate.owner && ` · ${r.gate.owner}`}
+                        {r.gate.dueDate && ` · Due ${r.gate.dueDate}`}
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+        <div className="c-card">
+          <div className="pl-card-head">
+            <span className="pl-card-title">Open change controls</span>
+            <Link className="c-link" to="/change-control" style={{ fontSize: 13 }}>
+              View all
+            </Link>
+          </div>
+          {openChanges.length === 0 ? (
+            <div className="db-empty">
+              <InfoCircleOutlined />
+              <span>No open change control across any project.</span>
+            </div>
+          ) : (
+            <ul className="db-list">
+              {openChanges.map((c) => (
+                <li key={c.changeId}>
+                  <div className="db-item-main">
+                    <div className="db-item-title">{c.changeId}</div>
+                    <div className="db-item-sub">{c.trigger}</div>
+                  </div>
+                  <div className="db-item-tags">
+                    {c.riskLevel && <span className={riskTagClass(c.riskLevel)}>{c.riskLevel}</span>}
+                    {c.status && <span className="c-tag">{c.status}</span>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

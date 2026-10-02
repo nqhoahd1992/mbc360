@@ -1,0 +1,81 @@
+/* Shared tokens + primitives for the 2026-10 redesign concept (Integrations,
+   then the Prohibited Ingredient Watch-list). Scoped to `.concept` so pages that
+   have not moved yet are untouched; when the whole site has, these lift to
+   :root unchanged. Secondary text and tone colours are darkened from antd's
+   alpha greys so they clear 4.5:1 on white and on #fafafa.
+   `.concept-tokens` carries the variables alone, for content antd portals out
+   of the page (Drawer, Modal) — give it as that overlay's rootClassName. */
+.concept,
+.concept-tokens {
+  --c-surface: #ffffff;
+  --c-surface-2: #fafafa;
+  --c-text: #1f1f1f;
+  --c-text-2: #595959;
+  --c-text-3: #6b6b6b;
+  --c-border: #d9d9d9;
+  --c-border-2: #f0f0f0;
+  --c-primary: #0958d9; /* = App.tsx colorPrimary */
+  --c-primary-light: #e6f4ff;
+  --c-link: #0958d9;
+  --c-ok: #237804;
+  --c-ok-dot: #52c41a;
+  --c-ok-bg: #f6ffed;
+  --c-ok-line: #b7eb8f;
+  --c-warn: #8a5300;
+  --c-warn-dot: #faad14;
+  --c-warn-bg: #fffbe6;
+  --c-warn-line: #ffe58f;
+  --c-bad: #cf1322;
+  --c-bad-dot: #ff4d4f;
+  --c-bad-bg: #fff2f0;
+  --c-bad-line: #ffccc7;
+}
+
+.concept {
+  display: grid;
+  /* One column that may shrink below its content's width — otherwise a wide
+     child that scrolls on its own (the Phase stepper) widens the whole page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  /* Capped so prose and tiles stay readable, and centred in the content area. */
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  color: var(--c-text);
+  font-size: 14px;
+}
+
+.c-card {
+  min-width: 0;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-2);
+  border-radius: 8px;
+}
+
+.c-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.c-tag-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--c-text-3); }
+.c-tag-ok { background: var(--c-ok-bg); border-color: var(--c-ok-line); color: var(--c-ok); }
+.c-tag-ok.c-tag-dot::before { background: var(--c-ok-dot); }
+.c-tag-warn { background: var(--c-warn-bg); border-color: var(--c-warn-line); color: var(--c-warn); }
+.c-tag-warn.c-tag-dot::before { background: var(--c-warn-dot); }
+.c-tag-bad { background: var(--c-bad-bg); border-color: var(--c-bad-line); color: var(--c-bad); }
+.c-tag-bad.c-tag-dot::before { background: var(--c-bad-dot); }
+
+.c-link { color: var(--c-link); }
+.c-link:hover { color: var(--c-link); text-decoration: underline; }
+
+.c-skel { border-radius: 4px; background: rgb(0 0 0 / 6%); animation: c-pulse 1.5s ease-in-out infinite; }
+@keyframes c-pulse { 50% { opacity: 0.5; } }
+@media (prefers-reduced-motion: reduce) { .c-skel { animation: none; } }

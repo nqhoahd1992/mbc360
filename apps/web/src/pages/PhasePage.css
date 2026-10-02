@@ -1,0 +1,45 @@
+/* Phase page (2026-10-02, wireframe option A): gate stepper, one gate's
+   content at a time, sticky readiness rail. Tokens from styles/concept.css. */
+.ph-header { padding-top: 4px; }
+.ph-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.ph-title { margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; }
+.ph-meta { margin: 4px 0 0; color: var(--c-text-2); font-size: 13px; text-wrap: pretty; }
+.ph-meta b { color: var(--c-text); font-weight: 500; }
+.ph-note { margin: 4px 0 0; max-width: 860px; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
+.ph-small { margin: 0; color: var(--c-text-3); font-size: 12px; }
+
+.ph-steps { display: flex; gap: 4px; padding: 6px; overflow-x: auto; }
+.ph-step {
+  display: flex; flex: 1; align-items: flex-start; gap: 12px; min-width: 168px; padding: 12px 16px;
+  border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.ph-step:hover { background: rgb(0 0 0 / 4%); }
+.ph-step[aria-current='step'] { background: var(--c-primary-light); box-shadow: inset 0 -2px 0 var(--c-primary); }
+.ph-step-dot {
+  display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+  background: rgb(0 0 0 / 6%); color: var(--c-text-3); font-size: 12px; font-weight: 600;
+}
+.ph-step-passed .ph-step-dot { background: var(--c-ok-dot); color: #fff; }
+.ph-step-current .ph-step-dot { background: var(--c-primary); color: #fff; }
+.ph-step-text { display: grid; min-width: 0; }
+.ph-step-title { font-weight: 500; }
+.ph-step-sub { color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
+.ph-step-meta { margin-top: 2px; color: var(--c-text-3); font-size: 12px; }
+.ph-step-meta-bad { color: var(--c-bad); }
+
+.ph-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (min-width: 1280px) { .ph-body { grid-template-columns: minmax(0, 1fr) 300px; } }
+.ph-stack,
+.ph-rail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
+@media (min-width: 1280px) { .ph-rail { position: sticky; top: 80px; } }
+.ph-rail-card { overflow: hidden; }
+.ph-rail-head { padding: 16px 16px 12px; border-bottom: 1px solid var(--c-border-2); }
+.ph-rail-title { font-weight: 600; }
+.ph-rail-sub { margin-top: 4px; color: var(--c-ok); font-size: 13px; }
+.ph-rail-sub.ph-bad { color: var(--c-bad); }
+.ph-rail-body { padding: 8px 12px 12px; }
+
+/* Arrival highlight for a ?scrollTo= deep link. */
+.ph-flash { border-radius: 8px; animation: ph-flash 2.2s ease-out; }
+@keyframes ph-flash { 0%, 40% { background-color: #fffbe6; } 100% { background-color: transparent; } }
+@media (prefers-reduced-motion: reduce) { .ph-flash { animation: none; } }

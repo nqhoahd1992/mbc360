@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Checkbox, DatePicker, Empty, Form, Input, Modal, Popconfirm, Popover, Progress, Select, Table, Tag, Tooltip, message } from 'antd';
+import { Button, Checkbox, DatePicker, Empty, Form, Input, Pagination, Popconfirm, Popover, Select, Tag, Tooltip, message } from 'antd';
 import { ArrowRightOutlined, PlusOutlined, DeleteOutlined, InboxOutlined, UndoOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
@@ -11,7 +11,11 @@ import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useSession } from '../auth/useSession';
 import { canArchiveProject, EMPTY_GRANTS } from '../utils/permissions';
 import { TEXT } from '../theme/tokens';
+import '../styles/concept.css';
+import '../components/RegisterPageHeader.css';
+import './ProjectList.css';
 
+import FormDrawer from '../components/FormDrawer';
 interface NewProjectForm {
   id: string;
   productCode: string;
@@ -109,14 +113,169 @@ export default function ProjectList() {
     form.resetFields();
   };
 
+  // The list used antd Table's default pagination (10 per page); kept, so a
+  // long portfolio does not become one endless page.
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(projects.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageRows = projects.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const activeCount = projects.filter((p) => !p.identity.archived).length;
+  const archivedCount = projects.length - activeCount;
+
+  const isMe = (name: string) => !!myName && name.trim().toLowerCase() === myName.trim().toLowerCase();
+
+  // The 13 review areas assigned at project creation. One person can hold
+  // several areas, so the cell lists DISTINCT people (a few inline, the rest
+  // behind a popover with the full role -> person grid) rather than 13
+  // near-duplicate names.
+  const renderReviewers = (p: (typeof projects)[number]) => {
+    const reviewers = p.identity.reviewers ?? {};
+    const assigned = REVIEW_ROLES.filter((role) => !!reviewers[role.key]?.trim());
+    if (assigned.length === 0) {
+      return <span className="pl-muted">Not assigned</span>;
+    }
+    // Distinct people, in role order, each with every area they hold.
+    const byPerson = new Map<string, string[]>();
+    for (const role of assigned) {
+      const name = reviewers[role.key].trim();
+      if (!byPerson.has(name)) byPerson.set(name, []);
+      byPerson.get(name)!.push(role.label);
+    }
+    const people = [...byPerson.entries()];
+    const shown = people.slice(0, 3);
+    const hidden = people.length - shown.length;
+    return (
+      <Popover
+        placement="left"
+        rootClassName="concept-tokens"
+        title={`Review owners — ${p.identity.id}`}
+        content={
+          <div style={{ display: 'grid', gap: 2, fontSize: 12, maxWidth: 320 }}>
+            {REVIEW_ROLES.map((role) => {
+              const name = reviewers[role.key]?.trim();
+              return (
+                <div key={role.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ color: TEXT.secondary }}>{role.label}</span>
+                  <span style={{ fontWeight: name && isMe(name) ? 700 : 400 }}>
+                    {name || <span style={{ color: TEXT.disabled }}>unassigned</span>}
+                    {name && isMe(name) && <Tag color="gold" style={{ marginInlineStart: 6 }}>You</Tag>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        }
+      >
+        <div className="pl-tags pl-reviewers">
+          {shown.map(([name, areas]) => (
+            <span key={name} className={`c-tag${isMe(name) ? ' pl-me' : ''}`}>
+              {name}
+              {areas.length > 1 && <span style={{ opacity: 0.7 }}>×{areas.length}</span>}
+            </span>
+          ))}
+          {hidden > 0 && (
+            <span className="c-tag" style={{ borderStyle: 'dashed' }}>
+              +{hidden} more
+            </span>
+          )}
+        </div>
+      </Popover>
+    );
+  };
+
+  const renderChanges = (p: (typeof projects)[number]) => {
+    const list = changes.filter((c) => c.projectId === p.identity.id);
+    if (list.length === 0) return <span className="pl-muted">0</span>;
+    const openCount = list.filter((c) => isChangeOpen(c.status)).length;
+    return (
+      <Link className="c-link" to="/change-control" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <b>{list.length}</b>
+        {openCount > 0 && <span className="c-tag c-tag-warn c-tag-dot">{openCount} open</span>}
+      </Link>
+    );
+  };
+
+  // Two different authorities, deliberately not interchangeable:
+  //   Archive  — reversible, keeps everything, needs `project|archive`
+  //              (Project Owner). Shown to whoever holds it.
+  //   Delete   — irreversible, also destroys the audit trail, System
+  //              Administrator only. Hidden entirely otherwise, so a role that
+  //              cannot use it never sees the button.
+  // Both are re-checked on the server; hiding is only about not offering an
+  // action that would be refused.
+  const renderActions = (p: (typeof projects)[number]) => {
+    const archived = !!p.identity.archived;
+    return (
+      <>
+        {/* The identity is already a link, but nothing in the action group
+            said "open this" — the only two other controls are archive and
+            delete, i.e. both destructive. A real <Link> (not an onClick) so
+            ⌘-click and middle-click open it in a new tab like any other link. */}
+        <Link to={`/projects/${p.identity.id}`}>
+          <Tooltip title="Open this project's workspace">
+            <Button type="link" style={{ paddingInline: 4 }}>
+              View <ArrowRightOutlined />
+            </Button>
+          </Tooltip>
+        </Link>
+        {canArchive && (
+          <Popconfirm
+            title={archived ? 'Restore this project?' : 'Archive this project?'}
+            description={
+              archived
+                ? 'It reappears in the active list.'
+                : 'It is hidden from the list but nothing is deleted — you can restore it later.'
+            }
+            onConfirm={() =>
+              setProjectArchived(p.identity.id, !archived).catch((err: unknown) =>
+                message.error(err instanceof Error ? err.message : 'Could not update the project'),
+              )
+            }
+          >
+            <Tooltip title={archived ? 'Restore' : 'Archive (reversible)'}>
+              <Button
+                type="text"
+                aria-label={archived ? 'Restore this project' : 'Archive this project'}
+                icon={archived ? <UndoOutlined /> : <InboxOutlined />}
+              />
+            </Tooltip>
+          </Popconfirm>
+        )}
+        {canDelete && (
+          <Popconfirm
+            title="Delete this project?"
+            description="This also deletes its entire audit trail and cannot be undone. Archive instead if you may need the record."
+            okButtonProps={{ danger: true }}
+            onConfirm={() =>
+              deleteProject(p.identity.id).catch((err: unknown) =>
+                message.error(err instanceof Error ? err.message : 'Could not delete the project'),
+              )
+            }
+          >
+            <Tooltip title="Delete permanently (System Administrator only)">
+              <Button danger type="text" aria-label="Delete this project permanently" icon={<DeleteOutlined />} />
+            </Tooltip>
+          </Popconfirm>
+        )}
+      </>
+    );
+  };
+
   return (
-    <Card
-      size="small"
-      title="Projects"
-      extra={
-        <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div className="concept">
+      <div className="pl-toolbar">
+        <div className="rph">
+          <div className="rph-title-row">
+            <h1 className="rph-title">Projects</h1>
+          </div>
+          <p className="rph-meta">
+            {activeCount} active project{activeCount === 1 ? '' : 's'}
+            {showArchived && ` · ${archivedCount} archived shown`}
+          </p>
+        </div>
+        <div className="pl-actions-bar">
           <Checkbox
-            style={{ fontSize: 13 }}
             checked={showArchived}
             onChange={(e) =>
               setShowArchived(e.target.checked).catch((err: unknown) =>
@@ -126,34 +285,32 @@ export default function ProjectList() {
           >
             Show archived
           </Checkbox>
-          {/* `size="small"` to match the Card: a default 32px button inside a
-              small card's ~38px header leaves 3px of breathing room top and
-              bottom and reads as if it is bursting out of the strip. Every
-              other card-header action in the app (Refresh now, Disconnect,
-              Select all…) is small for the same reason. The full-size button
-              stays on the empty state, where it is the page's only call to
-              action rather than a header control. */}
-          <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setOpen(true)}>
             New Project
           </Button>
-        </span>
-      }
-    >
-      <Table
-        size="small"
-        rowKey={(p) => p.identity.id}
-        dataSource={projects}
-        scroll={{ x: 1290 }}
-        // antd's default empty state is the words "No data", which on the
-        // first-run screen of the whole app says nothing about what to do.
-        locale={{
-          emptyText: (
+        </div>
+      </div>
+
+      <div
+        className="c-card pl"
+        style={{ '--pl-cols': 'minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1.3fr) minmax(0, 1.6fr) minmax(0, 0.7fr) minmax(0, 1.1fr) 132px' } as React.CSSProperties}
+      >
+        <div className="pl-card-head">
+          <span className="pl-card-title">All projects</span>
+          <span className="pl-count">
+            {projects.length} project{projects.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        {projects.length === 0 ? (
+          // A bare "No data" on the first-run screen of the whole app says
+          // nothing about what to do.
+          <div className="pl-empty">
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={
                 <span>
-                  No projects yet. Creating one scaffolds all four phase forms, the twelve gates
-                  and every evidence register.
+                  No projects yet. Creating one scaffolds all four phase forms, the twelve gates and every evidence
+                  register.
                 </span>
               }
             >
@@ -161,216 +318,108 @@ export default function ProjectList() {
                 Create New Project
               </Button>
             </Empty>
-          ),
-        }}
-        columns={[
-          {
-            title: 'Project ID',
-            width: 140,
-            render: (_, p) => (
-              <span>
-                <Link to={`/projects/${p.identity.id}`}>
-                  <b>{p.identity.id}</b>
-                </Link>
-                {p.identity.archived && (
-                  <Tooltip
-                    title={`Archived ${p.identity.archived.at}${p.identity.archived.by ? ` by ${p.identity.archived.by}` : ''} — restore it to resume work.`}
-                  >
-                    <Tag icon={<InboxOutlined />} style={{ marginInlineStart: 6 }}>
-                      Archived
-                    </Tag>
-                  </Tooltip>
-                )}
-              </span>
-            ),
-          },
-          { title: 'Product / SKU', width: 240, render: (_, p) => p.identity.productSku },
-          { title: 'Product group', width: 160, render: (_, p) => p.identity.productGroup },
-          { title: 'Lead', width: 130, render: (_, p) => p.identity.projectLead },
-          { title: 'Opened', width: 110, render: (_, p) => p.identity.dateOpened },
-          { title: 'Target launch', width: 110, render: (_, p) => p.identity.targetLaunchDate },
-          {
-            title: 'Markets',
-            width: 200,
-            render: (_, p) => (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {p.identity.markets.map((m) => (
-                  <Tag key={m} style={{ marginInlineEnd: 0 }}>
-                    {m}
-                  </Tag>
-                ))}
-              </div>
-            ),
-          },
-          {
-            // The 13 review areas assigned at project creation. One person can
-            // hold several areas, so the cell lists DISTINCT people (a few
-            // inline, the rest behind a popover with the full role -> person
-            // grid) rather than 13 near-duplicate names.
-            title: 'Reviewers',
-            width: 230,
-            render: (_, p) => {
-              const reviewers = p.identity.reviewers ?? {};
-              const assigned = REVIEW_ROLES.filter((role) => !!reviewers[role.key]?.trim());
-              if (assigned.length === 0) {
-                return <span style={{ color: TEXT.disabled }}>Not assigned</span>;
-              }
-              // Distinct people, in role order, each with every area they hold.
-              const byPerson = new Map<string, string[]>();
-              for (const role of assigned) {
-                const name = reviewers[role.key].trim();
-                if (!byPerson.has(name)) byPerson.set(name, []);
-                byPerson.get(name)!.push(role.label);
-              }
-              const people = [...byPerson.entries()];
-              const shown = people.slice(0, 3);
-              const hidden = people.length - shown.length;
-              const isMe = (name: string) =>
-                !!myName && name.trim().toLowerCase() === myName.trim().toLowerCase();
-              return (
-                <Popover
-                  placement="left"
-                  title={`Review owners — ${p.identity.id}`}
-                  content={
-                    <div style={{ display: 'grid', gap: 2, fontSize: 12, maxWidth: 320 }}>
-                      {REVIEW_ROLES.map((role) => {
-                        const name = reviewers[role.key]?.trim();
-                        return (
-                          <div key={role.key} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                            <span style={{ color: TEXT.secondary }}>{role.label}</span>
-                            <span style={{ fontWeight: name && isMe(name) ? 700 : 400 }}>
-                              {name || <span style={{ color: TEXT.disabled }}>unassigned</span>}
-                              {name && isMe(name) && <Tag color="gold" style={{ marginInlineStart: 6 }}>You</Tag>}
+          </div>
+        ) : (
+          <>
+            <div className="pl-head" aria-hidden>
+              <span>Project</span>
+              <span>Lead</span>
+              <span>Target launch</span>
+              <span>Markets</span>
+              <span>Reviewers</span>
+              <span>Changes</span>
+              <span>Progress</span>
+              <span />
+            </div>
+            <ul className="pl-list">
+              {pageRows.map((p) => {
+                const done = p.gates.filter((g) => isGatePassed(p, g.gateId)).length;
+                const pct = Math.round((done / 12) * 100);
+                return (
+                  <li key={p.identity.id} className="pl-row">
+                    <div className="pl-cell">
+                      <div className="pl-id-title">
+                        <Link className="c-link pl-id-name" to={`/projects/${p.identity.id}`}>
+                          {p.identity.productSku || p.identity.id}
+                        </Link>
+                        {p.identity.archived && (
+                          <Tooltip
+                            title={`Archived ${p.identity.archived.at}${p.identity.archived.by ? ` by ${p.identity.archived.by}` : ''} — restore it to resume work.`}
+                          >
+                            <span className="c-tag">
+                              <InboxOutlined />
+                              Archived
                             </span>
-                          </div>
-                        );
-                      })}
+                          </Tooltip>
+                        )}
+                      </div>
+                      <div className="pl-id-sub">
+                        {p.identity.id}
+                        {p.identity.productGroup && ` · ${p.identity.productGroup}`}
+                        {p.identity.dateOpened && ` · Opened ${p.identity.dateOpened}`}
+                      </div>
                     </div>
-                  }
-                >
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, cursor: 'help' }}>
-                    {shown.map(([name, areas]) => (
-                      <Tag
-                        key={name}
-                        color={isMe(name) ? 'gold' : undefined}
-                        style={{ marginInlineEnd: 0 }}
-                      >
-                        {name}
-                        {areas.length > 1 && <span style={{ opacity: 0.6 }}> ×{areas.length}</span>}
-                      </Tag>
-                    ))}
-                    {hidden > 0 && (
-                      <Tag style={{ marginInlineEnd: 0, borderStyle: 'dashed' }}>+{hidden} more</Tag>
-                    )}
-                  </div>
-                </Popover>
-              );
-            },
-          },
-          {
-            title: 'Change requests',
-            width: 150,
-            render: (_, p) => {
-              const list = changes.filter((c) => c.projectId === p.identity.id);
-              if (list.length === 0) return <span style={{ color: TEXT.disabled }}>0</span>;
-              const openCount = list.filter((c) => isChangeOpen(c.status)).length;
-              return (
-                <Link to="/change-control">
-                  <b>{list.length}</b>
-                  {openCount > 0 && (
-                    <Tag color="orange" style={{ marginInlineStart: 6, marginInlineEnd: 0 }}>
-                      {openCount} open
-                    </Tag>
-                  )}
-                </Link>
-              );
-            },
-          },
-          {
-            title: 'Progress',
-            width: 160,
-            render: (_, p) => {
-              const done = p.gates.filter((g) => isGatePassed(p, g.gateId)).length;
-              return <Progress percent={Math.round((done / 12) * 100)} size="small" />;
-            },
-          },
-          {
-            // Two different authorities, deliberately not interchangeable:
-            //   Archive  — reversible, keeps everything, needs `project|archive`
-            //              (Project Owner). Shown to whoever holds it.
-            //   Delete   — irreversible, also destroys the audit trail, System
-            //              Administrator only. Hidden entirely otherwise, so a
-            //              role that cannot use it never sees the button.
-            // Both are re-checked on the server; hiding is only about not
-            // offering an action that would be refused.
-            title: '',
-            // Three actions now, so the column needs the room the two icons
-            // did not.
-            width: 150,
-            render: (_, p) => {
-              const archived = !!p.identity.archived;
-              return (
-                <span style={{ whiteSpace: 'nowrap' }}>
-                  {/* The Project ID cell is already a link, but nothing in the
-                      action group said "open this" — the only two controls there
-                      were archive and delete, i.e. both destructive. A real
-                      <Link> (not an onClick) so ⌘-click and middle-click open it
-                      in a new tab like any other link. */}
-                  <Link to={`/projects/${p.identity.id}`}>
-                    <Tooltip title="Open this project's workspace">
-                      <Button size="small" type="link" style={{ paddingInline: 4 }}>
-                        View <ArrowRightOutlined />
-                      </Button>
-                    </Tooltip>
-                  </Link>
-                  {canArchive && (
-                    <Popconfirm
-                      title={archived ? 'Restore this project?' : 'Archive this project?'}
-                      description={
-                        archived
-                          ? 'It reappears in the active list.'
-                          : 'It is hidden from the list but nothing is deleted — you can restore it later.'
-                      }
-                      onConfirm={() =>
-                        setProjectArchived(p.identity.id, !archived).catch((err: unknown) =>
-                          message.error(err instanceof Error ? err.message : 'Could not update the project'),
-                        )
-                      }
-                    >
-                      <Tooltip title={archived ? 'Restore' : 'Archive (reversible)'}>
-                        <Button
-                          size="small"
-                          type="text"
-                          aria-label={archived ? 'Restore this project' : 'Archive this project'}
-                          icon={archived ? <UndoOutlined /> : <InboxOutlined />}
-                        />
-                      </Tooltip>
-                    </Popconfirm>
-                  )}
-                  {canDelete && (
-                    <Popconfirm
-                      title="Delete this project?"
-                      description="This also deletes its entire audit trail and cannot be undone. Archive instead if you may need the record."
-                      okButtonProps={{ danger: true }}
-                      onConfirm={() =>
-                        deleteProject(p.identity.id).catch((err: unknown) =>
-                          message.error(err instanceof Error ? err.message : 'Could not delete the project'),
-                        )
-                      }
-                    >
-                      <Tooltip title="Delete permanently (System Administrator only)">
-                        <Button size="small" danger type="text" aria-label="Delete this project permanently" icon={<DeleteOutlined />} />
-                      </Tooltip>
-                    </Popconfirm>
-                  )}
-                </span>
-              );
-            },
-          },
-        ]}
-      />
+                    <div className="pl-cell" data-label="Lead">
+                      {p.identity.projectLead || <span className="pl-muted">—</span>}
+                    </div>
+                    <div className="pl-cell" data-label="Target launch">
+                      {p.identity.targetLaunchDate || <span className="pl-muted">—</span>}
+                    </div>
+                    <div className="pl-cell" data-label="Markets">
+                      {p.identity.markets.length ? (
+                        <div className="pl-tags">
+                          {p.identity.markets.map((m) => (
+                            <span key={m} className="c-tag">
+                              {m}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="pl-muted">None yet</span>
+                      )}
+                    </div>
+                    <div className="pl-cell" data-label="Reviewers">
+                      {renderReviewers(p)}
+                    </div>
+                    <div className="pl-cell" data-label="Changes">
+                      {renderChanges(p)}
+                    </div>
+                    <div className="pl-cell" data-label="Progress">
+                      <div className="pl-progress">
+                        <div
+                          className="pl-bar"
+                          role="progressbar"
+                          aria-label={`${done} of 12 gates passed`}
+                          aria-valuenow={pct}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                        >
+                          <div className={done === 12 ? 'pl-bar-done' : undefined} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="pl-pct">{pct}%</span>
+                      </div>
+                    </div>
+                    <div className="pl-cell pl-cell-actions">{renderActions(p)}</div>
+                  </li>
+                );
+              })}
+            </ul>
+            {pageCount > 1 && (
+              <div className="pl-pagination">
+                <Pagination
+                  current={currentPage}
+                  pageSize={PAGE_SIZE}
+                  total={projects.length}
+                  onChange={setPage}
+                  showSizeChanger={false}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
-      <Modal
+      <FormDrawer
         title="New Project — Project Identification"
         open={open}
         onOk={onCreate}
@@ -379,7 +428,8 @@ export default function ProjectList() {
         width={720}
       >
         <Form form={form} layout="vertical">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+          <div className="pl-form-section">Project identification</div>
+          <div className="pl-form-grid">
             <Form.Item name="id" label="Project ID" rules={[{ required: true }]}>
               <Input placeholder="MBC-2026-003" />
             </Form.Item>
@@ -436,13 +486,11 @@ export default function ProjectList() {
               field is an empty user picker, so a project never inherits the
               workbook's reference names (REVIEW_ROLES[].workbookName) — those
               only seed the 13 user ACCOUNTS. */}
-          <div style={{ fontWeight: 600, margin: '4px 0 12px' }}>
+          <div className="pl-form-section">
             Review owners &amp; co-signers
-            <span style={{ fontWeight: 400, color: TEXT.secondary, fontSize: 12, marginLeft: 8 }}>
-              — the person responsible for each area on this project
-            </span>
+            <span>the person responsible for each area on this project</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+          <div className="pl-form-grid">
             {REVIEW_ROLES.map((role) => (
               <Form.Item
                 key={role.key}
@@ -468,7 +516,7 @@ export default function ProjectList() {
             ))}
           </div>
         </Form>
-      </Modal>
-    </Card>
+      </FormDrawer>
+    </div>
   );
 }

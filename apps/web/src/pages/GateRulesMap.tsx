@@ -1,14 +1,17 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { Card, Checkbox, Collapse, Empty, Input, Segmented, Select, Table, Tag, Tooltip, Typography } from 'antd';
+import { Button, Checkbox, Collapse, Drawer, Empty, Grid, Input, Segmented, Select, Tooltip } from 'antd';
 import {
   CheckCircleFilled,
   CloseCircleFilled,
+  DownOutlined,
   ExclamationCircleOutlined,
+  ExportOutlined,
   LockFilled,
   MinusCircleOutlined,
-  RightCircleFilled,
+  RightOutlined,
   UnlockOutlined,
+  UpOutlined,
 } from '@ant-design/icons';
 import { GATES, PHASES } from '@mbc360/shared/config/gates';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
@@ -38,7 +41,10 @@ import {
 } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
-import { TEXT, TABLE_STICKY } from '../theme/tokens';
+import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
+import '../styles/concept.css';
+import '../components/DynamicTable.css';
+import './GateRulesMap.css';
 
 // One-page map of the whole workbook against the two gate rules that govern
 // it (2026-07-25, user-requested):
@@ -52,7 +58,11 @@ import { TEXT, TABLE_STICKY } from '../theme/tokens';
 // page never restates a rule in its own words, so it cannot drift from the
 // behaviour it documents.
 
-const BOM_SHEET_NAME = 'Tuan-Formula_BOM';
+// The owner-neutral sheetName the Formula BOM nav item carries. It used to be
+// the V18 tab string ('Tuan-Formula_BOM'), which stopped matching any entry
+// once tab prefixes moved to `workbookTab` (2026-08-20), so every BOM check
+// was silently dropped from this map.
+const BOM_SHEET_NAME = 'Formula_BOM';
 
 // The four phase forms, by phase number — the workbook tabs that hold the Key
 // Gate Checks, option checklists, requirement tables, 8 Angles and sign-off
@@ -313,10 +323,11 @@ function buildSheetIndex(): SheetEntry[] {
   return [...bySheet.values()].sort((a, b) => a.sheetName.localeCompare(b.sheetName));
 }
 
-const TIER_COLOR: Record<ReadinessTier, string> = {
-  Mandatory: 'red',
-  Conditional: 'orange',
-  Supporting: 'default',
+// Tier as a concept tag tone: the colour sits on the tag, never on the text.
+const TIER_TONE: Record<ReadinessTier, string> = {
+  Mandatory: 'c-tag-bad',
+  Conditional: 'c-tag-warn',
+  Supporting: '',
 };
 
 type SheetFilter = 'All sheets' | 'Blocks a gate' | 'Locked now' | 'Never locks';
@@ -356,6 +367,17 @@ export default function GateRulesMap() {
   const setRoleFilter = (v?: string) => setParam('role', v);
   const setGateFilter = (v?: string) => setParam('gate', v);
   const setOnlyMine = (v: boolean) => setParam('mine', v ? '1' : undefined);
+  const showGateSheets = (gateId: string) =>
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (prev.get('gate') === gateId && prev.get('view') !== 'gates') next.delete('gate');
+        else next.set('gate', gateId);
+        next.delete('view');
+        return next;
+      },
+      { replace: true },
+    );
   const setView = (v: 'Sheet map' | 'Gate requirements') =>
     setParam('view', v === 'Gate requirements' ? 'gates' : undefined);
 
@@ -366,6 +388,13 @@ export default function GateRulesMap() {
     () => rolesAssignedTo(project?.identity.reviewers, user?.displayName),
     [project?.identity.reviewers, user?.displayName],
   );
+
+  // Which sheet's details drawer is open (by key). Details used to be an
+  // always-available expanded row; in a drawer the list stays one line per
+  // sheet, which is what made this page ~8,000px tall.
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  useExclusiveDrawer(openKey !== null, () => setOpenKey(null));
+  const screens = Grid.useBreakpoint();
 
   if (!project) return <Empty description="Not found" />;
   const id = project.identity.id;
@@ -440,170 +469,240 @@ export default function GateRulesMap() {
     return true;
   });
 
+
+  const isMine = (entry: SheetEntry) => entry.specs.some((spec) => involvementIn(spec, myRoles).length > 0);
+  const currentGate = gateRows.find((r) => r.state === 'current');
+
+  // The sheet's edit-lock state as tags — the same four cases the old "Edit
+  // lock" column rendered, with the direction spelled out. "Editable · after
+  // Gate 02" reads as "editable once Gate 02 passes" — the exact opposite of
+  // the rule (editable UNTIL it passes).
+  const lockTags = (entry: SheetEntry) => {
+    if (entry.perSectionLock) {
+      return (
+        <Tooltip title="Each section on this form carries its own gate, so it freezes section by section as those gates pass — not as one sheet. Open the page to see which sections are already read-only.">
+          <span className="c-tag">
+            <LockFilled />
+            Section by section
+          </span>
+        </Tooltip>
+      );
+    }
+    const lockable = entry.gateRefs.filter((r) => gateRefGateIds(r).length > 0);
+    if (lockable.length === 0) {
+      return (
+        <span className="c-tag">
+          <UnlockOutlined />
+          {entry.gateRefs.length > 0 ? 'Cross-cutting — never locks' : 'Reference — never locks'}
+        </span>
+      );
+    }
+    return lockable.map((r) => {
+      const after = locksAfterGateId(r);
+      const afterNumber = after ? gateNumberOf(after) : '—';
+      const locked = isGateRefLocked(project, r);
+      return (
+        <Tooltip
+          key={r}
+          title={
+            locked
+              ? `Read-only: Gate ${afterNumber} has passed. Editing requires a Backtrack.`
+              : `Editable right now. It becomes read-only as soon as Gate ${afterNumber} passes.`
+          }
+        >
+          <span className={`c-tag${locked ? ' c-tag-ok' : ''}`}>
+            {locked ? <LockFilled /> : <UnlockOutlined />}
+            {locked ? `Read-only — G${afterNumber} passed` : `Editable until G${afterNumber} passes`}
+          </span>
+        </Tooltip>
+      );
+    });
+  };
+
+  // One tag per blocked gate, red when any of its items there is Mandatory —
+  // the old "Blocks a gate?" column; the reasons live in the drawer.
+  const blockTags = (entry: SheetEntry) => {
+    const gatesBlocked = [...new Set(entry.blocks.map((b) => b.gateNumber))].sort();
+    return gatesBlocked.map((n) => {
+      const worst = entry.blocks.find((b) => b.gateNumber === n && b.tier === 'Mandatory');
+      return (
+        <span key={n} className={`c-tag c-tag-dot ${worst ? 'c-tag-bad' : 'c-tag-warn'}`}>
+          Blocks G{n}
+        </span>
+      );
+    });
+  };
+
+  const ownerLine = (entry: SheetEntry) =>
+    entry.ownerRoles.length > 0
+      ? entry.ownerRoles.map((role) => `${ownerName({ owner: { role } }, project.identity.reviewers)} (${reviewRoleLabel(role)})`).join(', ')
+      : 'No review owner';
+
+  const openIndex = openKey === null ? -1 : filtered.findIndex((e) => e.key === openKey);
+  const open = openIndex >= 0 ? filtered[openIndex] : undefined;
+  const step = (delta: number) => {
+    if (openIndex < 0 || filtered.length === 0) return;
+    setOpenKey(filtered[(openIndex + delta + filtered.length) % filtered.length].key);
+  };
+
+  const filterChips: SheetFilter[] = ['All sheets', 'Blocks a gate', 'Locked now', 'Never locks'];
+
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <div>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Gate Rules &amp; Sheet Map
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          Every workbook sheet ({sheets.length}) against the two rules that control it — what a gate cannot
-          pass without, and what stops being editable once a gate passes. Lock state below is live for{' '}
-          <b>{id}</b>.
-        </Typography.Text>
-      </div>
-
-      {/* ---- The two rules, stated once, colour-coded for the whole page ---- */}
-      <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))' }}>
-        <Card size="small" style={{ borderLeft: '4px solid #cf1322' }}>
-          <div style={{ fontWeight: 600, color: '#cf1322', marginBottom: 4 }}>
-            <CloseCircleFilled style={{ marginRight: 6 }} />
-            Rule 1 — Blocks the gate
-          </div>
-          <Typography.Text style={{ fontSize: 13 }}>
-            The gate cannot record a Proceed decision until this evidence exists / is complete. Mandatory items
-            hard-block <b>both</b> Proceed and Proceed with Conditions; a non-critical open next action is the
-            only thing Proceed with Conditions clears.
-          </Typography.Text>
-        </Card>
-        <Card size="small" style={{ borderLeft: '4px solid #d48806' }}>
-          <div style={{ fontWeight: 600, color: '#d48806', marginBottom: 4 }}>
-            <LockFilled style={{ marginRight: 6 }} />
-            Rule 2 — Locked after the gate passes
-          </div>
-          <Typography.Text style={{ fontSize: 13 }}>
-            Once every gate a sheet belongs to has passed, that sheet becomes read-only across the whole app, so
-            a later gate that depends on it cannot be undermined by a silent edit. Correcting it requires a{' '}
-            <b>Backtrack</b> (which reopens the gate and invalidates the approvals below it). Sheets tagged{' '}
-            <Tag style={{ marginInlineEnd: 0 }}>All</Tag> are cross-cutting and never lock.
-          </Typography.Text>
-        </Card>
-      </div>
-
-      {/* ---- Gate timeline: the whole 12-gate route at a glance ---- */}
-      <Card size="small" title="The 12 gates — blocks outstanding and sheets each gate freezes">
-        <div style={{ display: 'grid', gap: 12 }}>
-          {PHASES.map((phase) => (
-            <div key={phase.phase}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: phase.color, marginBottom: 6 }}>
-                {phase.title} <span style={{ fontWeight: 400, color: TEXT.secondary }}>· {phase.department}</span>
-              </div>
-              <div style={{ display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-                {gateRows
-                  .filter((r) => r.meta.phase === phase.phase)
-                  .map((r) => {
-                    const frozen = r.locking.length + r.lockingPages.length;
-                    const stateTag =
-                      r.state === 'passed' ? (
-                        <Tag color="success" icon={<CheckCircleFilled />}>
-                          Passed
-                        </Tag>
-                      ) : r.state === 'current' ? (
-                        <Tag color="processing" icon={<RightCircleFilled />}>
-                          Current
-                        </Tag>
-                      ) : r.state === 'gap' ? (
-                        <Tag color="volcano">Gap</Tag>
-                      ) : r.state === 'hold' ? (
-                        <Tag color="warning">Hold</Tag>
-                      ) : (
-                        <Tag>Locked</Tag>
-                      );
-                    return (
-                      <Card
-                        key={r.meta.id}
-                        size="small"
-                        style={{
-                          borderTop: `3px solid ${phase.color}`,
-                          background: r.state === 'passed' ? '#f6ffed' : undefined,
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6 }}>
-                          <b>Gate {r.meta.number}</b>
-                          {stateTag}
-                        </div>
-                        <div style={{ fontSize: 12, color: '#666', margin: '2px 0 6px' }}>{r.meta.name}</div>
-                        <div style={{ fontSize: 12 }}>
-                          <div style={{ color: r.unmet.length > 0 ? '#cf1322' : '#389e0d' }}>
-                            {r.unmet.length > 0 ? (
-                              <CloseCircleFilled style={{ marginRight: 4 }} />
-                            ) : (
-                              <CheckCircleFilled style={{ marginRight: 4 }} />
-                            )}
-                            {r.enforced.length - r.unmet.length}/{r.enforced.length} enforced checks met
-                          </div>
-                          {r.notWired.length > 0 && (
-                            <Tooltip title="Mandatory in the confirmed F1/C7 appendix, so it should hard-block — but nothing is wired to it yet, so today it does not. A gap in the system, not a rule.">
-                              <div style={{ color: '#d46b08' }}>
-                                <ExclamationCircleOutlined style={{ marginRight: 4 }} />
-                                {r.notWired.length} mandatory, not wired yet
-                              </div>
-                            </Tooltip>
-                          )}
-                          {r.notInForce.length > 0 && (
-                            <Tooltip title="Conditional items whose trigger has not fired on this project, plus Supporting items. Not blocking is the confirmed rule for these — a Conditional item DOES hard-block once its trigger applies, and is counted in the line above when it does.">
-                              <div style={{ color: '#8c8c8c' }}>
-                                <MinusCircleOutlined style={{ marginRight: 4 }} />
-                                {r.notInForce.length} not in force here
-                              </div>
-                            </Tooltip>
-                          )}
-                          <div style={{ color: frozen > 0 ? '#d48806' : TEXT.disabled }}>
-                            <LockFilled style={{ marginRight: 4 }} />
-                            {frozen} sheet{frozen === 1 ? '' : 's'} freeze here
-                          </div>
-                        </div>
-                      </Card>
-                    );
-                  })}
-              </div>
-            </div>
-          ))}
+    <div className="concept grm">
+      <div className="grm-head">
+        <div className="grm-title-row">
+          <h1 className="grm-title">Gate Rules &amp; Sheet Map</h1>
+          <span className="c-tag">{sheets.length} workbook sheets</span>
+          {currentGate && <span className="c-tag c-tag-dot">Current: Gate {currentGate.meta.number}</span>}
         </div>
-      </Card>
+        <p className="grm-meta">
+          {id} · {project.identity.productSku} · lock state below is live for this project
+        </p>
+        <p className="grm-desc">
+          Every workbook sheet against the two rules that control it — what a gate cannot pass without, and what stops
+          being editable once a gate passes.
+        </p>
+      </div>
 
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-        <Segmented
-          value={view}
-          onChange={(v) => setView(v as typeof view)}
-          options={['Sheet map', 'Gate requirements']}
-        />
+      {/* ---- The two rules, stated once for the whole page ---- */}
+      <div className="c-card grm-rules">
+        <div className="grm-rule">
+          <CloseCircleFilled className="grm-ic-bad" />
+          <div>
+            <div className="grm-rule-title">Rule 1 — Blocks the gate</div>
+            <div className="grm-rule-text">
+              The gate cannot record a Proceed decision until this evidence exists / is complete. Mandatory items
+              hard-block <b>both</b> Proceed and Proceed with Conditions; a non-critical open next action is the only
+              thing Proceed with Conditions clears.
+            </div>
+          </div>
+        </div>
+        <div className="grm-rule">
+          <LockFilled className="grm-ic-warn" />
+          <div>
+            <div className="grm-rule-title">Rule 2 — Locked after the gate passes</div>
+            <div className="grm-rule-text">
+              Once every gate a sheet belongs to has passed, that sheet becomes read-only across the whole app, so a
+              later gate that depends on it cannot be undermined by a silent edit. Correcting it requires a{' '}
+              <b>Backtrack</b> (which reopens the gate and invalidates the approvals below it). Sheets tagged{' '}
+              <span className="c-tag">All</span> are cross-cutting and never lock.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ---- Gate timeline: the whole 12-gate route at a glance. Scrolls
+          inside itself at narrow widths; a step filters the sheet map to the
+          sheets that serve or block that gate. ---- */}
+      <nav className="c-card grm-steps" aria-label="The 12 gates — blocks outstanding and sheets each gate freezes">
+        {PHASES.map((phase) => (
+          <div key={phase.phase} className="grm-phase">
+            <div className="grm-phase-label">
+              {phase.title} <span>· {phase.department}</span>
+            </div>
+            <div className="grm-phase-steps">
+              {gateRows
+                .filter((r) => r.meta.phase === phase.phase)
+                .map((r) => {
+                  const frozen = r.locking.length + r.lockingPages.length;
+                  const stateLabel =
+                    r.state === 'passed' ? 'Passed' : r.state === 'current' ? 'Current' : r.state === 'gap' ? 'Gap' : r.state === 'hold' ? 'Hold' : 'Locked';
+                  const pressed = gateFilter === r.meta.id && view === 'Sheet map';
+                  return (
+                    <button
+                      key={r.meta.id}
+                      type="button"
+                      className={`grm-step grm-step-${r.state}`}
+                      aria-pressed={pressed}
+                      aria-current={r.state === 'current' ? 'step' : undefined}
+                      onClick={() => showGateSheets(r.meta.id)}
+                    >
+                      <span className="grm-step-dot">{r.state === 'passed' ? <CheckCircleFilled /> : r.meta.number}</span>
+                      <span className="grm-step-text">
+                        <span className="grm-step-title">
+                          Gate {r.meta.number} <span className="grm-step-state">· {stateLabel}</span>
+                        </span>
+                        <span className="grm-step-sub">{r.meta.name}</span>
+                        <span className="grm-step-meta">
+                          {r.unmet.length > 0 ? <CloseCircleFilled className="grm-ic-bad" /> : <CheckCircleFilled className="grm-ic-ok" />}
+                          {r.enforced.length - r.unmet.length}/{r.enforced.length} enforced checks met
+                        </span>
+                        {r.notWired.length > 0 && (
+                          <Tooltip title="Mandatory in the confirmed F1/C7 appendix, so it should hard-block — but nothing is wired to it yet, so today it does not. A gap in the system, not a rule.">
+                            <span className="grm-step-meta">
+                              <ExclamationCircleOutlined className="grm-ic-warn" />
+                              {r.notWired.length} mandatory, not wired yet
+                            </span>
+                          </Tooltip>
+                        )}
+                        {r.notInForce.length > 0 && (
+                          <Tooltip title="Conditional items whose trigger has not fired on this project, plus Supporting items. Not blocking is the confirmed rule for these — a Conditional item DOES hard-block once its trigger applies, and is counted in the line above when it does.">
+                            <span className="grm-step-meta">
+                              <MinusCircleOutlined />
+                              {r.notInForce.length} not in force here
+                            </span>
+                          </Tooltip>
+                        )}
+                        <span className="grm-step-meta">
+                          <LockFilled className={frozen > 0 ? 'grm-ic-warn' : undefined} />
+                          {frozen} sheet{frozen === 1 ? '' : 's'} freeze here
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      {/* ---- One filter toolbar; it wraps rather than widening the page ---- */}
+      <div className="c-card grm-toolbar">
+        <Segmented value={view} onChange={(v) => setView(v as typeof view)} options={['Sheet map', 'Gate requirements']} />
         {view === 'Sheet map' && (
           <>
             <Input.Search
               allowClear
+              className="grm-search"
               placeholder="Search sheet, form or section"
-              style={{ maxWidth: 300 }}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <Segmented
-              value={filter}
-              onChange={(v) => setFilter(v as SheetFilter)}
-              options={['All sheets', 'Blocks a gate', 'Locked now', 'Never locks']}
-            />
+            <div className="grm-chips" role="group" aria-label="Show">
+              {filterChips.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  className="grm-chip"
+                  aria-pressed={filter === chip}
+                  onClick={() => setFilter(chip)}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
             {/* Responsibility as a FACET, not a folder — the workbook's owner
                 tab-prefix digitised. Only roles that actually own a sheet are
                 offered (5 of the 13 review areas own none). */}
             <Select
               allowClear
+              className="grm-select"
               placeholder="Any responsibility"
-              style={{ minWidth: 190 }}
               value={roleFilter}
               onChange={setRoleFilter}
-              options={REVIEW_ROLES.filter((role) => sheets.some((s) => s.ownerRoles.includes(role.key))).map(
-                (role) => ({
-                  value: role.key,
-                  label: `${role.label} — ${project.identity.reviewers?.[role.key] ?? 'unassigned'}`,
-                }),
-              )}
+              popupMatchSelectWidth={false}
+              options={REVIEW_ROLES.filter((role) => sheets.some((s) => s.ownerRoles.includes(role.key))).map((role) => ({
+                value: role.key,
+                label: `${role.label} — ${project.identity.reviewers?.[role.key] ?? 'unassigned'}`,
+              }))}
             />
             <Select
               allowClear
+              className="grm-select"
               placeholder="Any gate"
-              style={{ minWidth: 150 }}
               value={gateFilter}
               onChange={setGateFilter}
+              popupMatchSelectWidth={false}
               options={GATES.map((g) => ({ value: g.id, label: `Gate ${g.number} — ${g.name}` }))}
             />
             <Tooltip
@@ -613,11 +712,7 @@ export default function GateRulesMap() {
                   : 'You are not assigned to a review area on this project, so this filter would return nothing.'
               }
             >
-              <Checkbox
-                checked={onlyMine}
-                disabled={myRoles.length === 0}
-                onChange={(e) => setOnlyMine(e.target.checked)}
-              >
+              <Checkbox checked={onlyMine} disabled={myRoles.length === 0} onChange={(e) => setOnlyMine(e.target.checked)}>
                 Only mine
               </Checkbox>
             </Tooltip>
@@ -626,313 +721,126 @@ export default function GateRulesMap() {
       </div>
 
       {view === 'Sheet map' ? (
-        <Card size="small" title={`Workbook sheets (${filtered.length} of ${sheets.length})`}>
-          <Table
-            size="small"
-            rowKey="key"
-            dataSource={filtered}
-            pagination={false}
-            sticky={TABLE_STICKY}
-            scroll={{ x: 1100 }}
-            expandable={{
-              expandedRowRender: (entry) => (
-                <div style={{ fontSize: 12, display: 'grid', gap: 8 }}>
-                  <div>
-                    <b>Forms on this sheet</b>
-                    <ul style={{ margin: '2px 0 0', paddingLeft: 18 }}>
-                      {entry.parts.map((p, i) => {
-                        const locked = isGateRefLocked(project, p.gate);
-                        return (
-                          <li key={`${p.title}-${i}`}>
-                            {p.title}{' '}
-                            <Tag
-                              color={
-                                p.mode === 'page'
-                                  ? 'purple'
-                                  : p.mode === 'register'
-                                    ? 'blue'
-                                    : p.mode === 'form'
-                                      ? 'geekblue'
-                                      : 'default'
-                              }
-                            >
-                              {p.mode === 'page'
-                                ? 'Page'
-                                : p.mode === 'register'
-                                  ? 'Register'
-                                  : p.mode === 'form'
-                                    ? 'Phase form'
-                                    : 'Reference'}
-                            </Tag>
-                            {p.gate && <Tag>{formatGate(p.gate)}</Tag>}
-                            {p.mode === 'form' ? (
-                              <Tag icon={<LockFilled />} color="warning">
-                                Locks section by section
-                              </Tag>
-                            ) : gateRefGateIds(p.gate).length === 0 ? (
-                              <Tag icon={<UnlockOutlined />}>Never locks</Tag>
-                            ) : locked ? (
-                              <Tag color="error" icon={<LockFilled />}>
-                                Read-only — Gate {gateNumberOf(locksAfterGateId(p.gate!)!)} has passed
-                              </Tag>
-                            ) : (
-                              <Tag color="success" icon={<UnlockOutlined />}>
-                                Editable until Gate {gateNumberOf(locksAfterGateId(p.gate!)!)} passes
-                              </Tag>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                  {entry.blocks.length > 0 && (
-                    <div>
-                      <b style={{ color: '#cf1322' }}>Gates this sheet can block</b>
-                      <ul style={{ margin: '2px 0 0', paddingLeft: 18 }}>
-                        {entry.blocks.map((b, i) => (
-                          <li key={i}>
-                            <Tag color={TIER_COLOR[b.tier]}>
-                              Gate {b.gateNumber} · {b.tier}
-                            </Tag>
-                            {b.label}
-                            {!b.enforced && (
-                              <Typography.Text type="secondary"> — declared, not yet enforced</Typography.Text>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              ),
-            }}
-            columns={[
-              {
-                title: 'Excel sheet',
-                width: 230,
-                render: (_, entry: SheetEntry) => {
-                  const href = hrefFor(entry);
-                  return (
-                    <div>
-                      <div style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: 12 }}>
-                        {href ? (
-                          <a href={`#${href}`} target="_blank" rel="noopener noreferrer">
-                            {entry.sheetName}
+        <div className="c-card grm-list-card">
+          <div className="grm-list-head">
+            <div className="grm-list-title">Workbook sheets</div>
+            <span className="grm-count">
+              {filtered.length} of {sheets.length}
+            </span>
+          </div>
+          {filtered.length === 0 ? (
+            <div className="rt-empty">No sheet matches these filters.</div>
+          ) : (
+            <ul className="grm-list">
+              {filtered.map((entry) => {
+                const href = hrefFor(entry);
+                return (
+                  <li
+                    key={entry.key}
+                    className="grm-row rt-row"
+                    aria-selected={openKey === entry.key}
+                    onClick={() => setOpenKey(entry.key)}
+                  >
+                    <div className="grm-row-name">
+                      <div className="grm-sheet">
+                        <button
+                          type="button"
+                          className="grm-sheet-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenKey(entry.key);
+                          }}
+                        >
+                          {entry.sheetName}
+                        </button>
+                        {href && (
+                          <a
+                            className="c-link grm-open"
+                            href={`#${href}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`Open ${entry.sheetName} in a new tab`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <ExportOutlined />
                           </a>
-                        ) : (
-                          entry.sheetName
                         )}
                       </div>
-                      <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                        {entry.parts.length} form{entry.parts.length === 1 ? '' : 's'}
-                      </Typography.Text>
-                      {entry.workbookTab && entry.workbookTab !== entry.sheetName && (
-                        <div>
-                          <Typography.Text type="secondary" style={{ fontSize: 11 }}>
-                            Excel tab: <span style={{ fontFamily: 'monospace' }}>{entry.workbookTab}</span>
-                          </Typography.Text>
-                        </div>
-                      )}
+                      {/* One muted line: the V18 tab (provenance, not owner) and
+                          what the sheet is in the app; the full list is in the drawer. */}
+                      <div className="grm-forms">
+                        {entry.workbookTab && entry.workbookTab !== entry.sheetName && (
+                          <>
+                            Excel tab: <span className="grm-mono">{entry.workbookTab}</span> ·{' '}
+                          </>
+                        )}
+                        {entry.parts.length} form{entry.parts.length === 1 ? '' : 's'} · {entry.parts.map((p) => p.title).join(' · ')}
+                      </div>
                     </div>
-                  );
-                },
-              },
-              {
-                title: 'In the app as',
-                width: 220,
-                render: (_, entry: SheetEntry) => (
-                  <span style={{ fontSize: 12 }}>{entry.parts.map((p) => p.title).join(' · ')}</span>
-                ),
-              },
-              {
-                // Responsibility shown as DATA (role + the person assigned on
-                // this project), not just as the folder it happens to sit in —
-                // several sheets are deliberately filed outside their owner's
-                // section, and the person differs per project.
-                title: 'Responsible',
-                width: 210,
-                render: (_, entry: SheetEntry) => {
-                  const mine = entry.specs.some((spec) => involvementIn(spec, myRoles).length > 0);
-                  return (
-                    <div style={{ fontSize: 12 }}>
-                      {entry.ownerRoles.length > 0 ? (
-                        entry.ownerRoles.map((role) => (
-                          <div key={role}>
-                            <b>{ownerName({ owner: { role } }, project.identity.reviewers)}</b>{' '}
-                            <Typography.Text type="secondary">({reviewRoleLabel(role)})</Typography.Text>
-                          </div>
-                        ))
-                      ) : (
-                        <Typography.Text type="secondary">No review owner</Typography.Text>
-                      )}
-                      {mine && (
-                        <Tag color="gold" style={{ marginTop: 2 }}>
-                          Yours
-                        </Tag>
-                      )}
-                      {entry.groups.length > 0 && (
-                        <Typography.Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
-                          filed under {entry.groups.join(', ')}
-                        </Typography.Text>
-                      )}
-                    </div>
-                  );
-                },
-              },
-              {
-                title: 'Gate',
-                width: 110,
-                render: (_, entry: SheetEntry) =>
-                  entry.gateRefs.length > 0 ? (
-                    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
+                    <div className="grm-row-tags">
+                      {blockTags(entry)}
+                      {lockTags(entry)}
                       {entry.gateRefs.map((r) => (
-                        <Tag key={r} style={{ margin: 0 }}>
+                        <span key={r} className="c-tag grm-gate">
                           {formatGate(r)}
-                        </Tag>
+                        </span>
                       ))}
-                    </span>
-                  ) : (
-                    <Typography.Text type="secondary">—</Typography.Text>
-                  ),
-              },
-              {
-                title: 'Blocks a gate?',
-                width: 190,
-                render: (_, entry: SheetEntry) => {
-                  if (entry.blocks.length === 0) {
-                    return <Typography.Text type="secondary">No — evidence only</Typography.Text>;
-                  }
-                  const gatesBlocked = [...new Set(entry.blocks.map((b) => b.gateNumber))].sort();
-                  return (
-                    <Tooltip
-                      title={
-                        // A plain '\n'-joined string doesn't break lines inside
-                        // antd's Tooltip (its default white-space collapses
-                        // them into one run-on sentence) — each reason needs
-                        // to be its own block element instead.
-                        <div style={{ display: 'grid', gap: 4 }}>
-                          {entry.blocks.map((b, i) => (
-                            <div key={i}>
-                              Gate {b.gateNumber} ({b.tier}): {b.label}
-                            </div>
-                          ))}
-                        </div>
-                      }
-                    >
-                      <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
-                        {gatesBlocked.map((n) => {
-                          const worst = entry.blocks.find((b) => b.gateNumber === n && b.tier === 'Mandatory');
-                          return (
-                            <Tag key={n} color={worst ? 'red' : 'orange'} style={{ margin: 0 }}>
-                              Gate {n}
-                            </Tag>
-                          );
-                        })}
-                      </span>
-                    </Tooltip>
-                  );
-                },
-              },
-              {
-                title: 'Edit lock',
-                width: 210,
-                render: (_, entry: SheetEntry) => {
-                  if (entry.perSectionLock) {
-                    return (
-                      <Tooltip title="Each section on this form carries its own gate, so it freezes section by section as those gates pass — not as one sheet. Open the page to see which sections are already read-only.">
-                        <Tag color="warning" icon={<LockFilled />}>
-                          Section by section
-                        </Tag>
-                      </Tooltip>
-                    );
-                  }
-                  const lockable = entry.gateRefs.filter((r) => gateRefGateIds(r).length > 0);
-                  if (lockable.length === 0) {
-                    return (
-                      <Tag icon={<UnlockOutlined />}>
-                        {entry.gateRefs.length > 0 ? 'Cross-cutting — never locks' : 'Reference — never locks'}
-                      </Tag>
-                    );
-                  }
-                  return (
-                    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>
-                      {lockable.map((r) => {
-                        const after = locksAfterGateId(r);
-                        const afterNumber = after ? gateNumberOf(after) : '—';
-                        const locked = isGateRefLocked(project, r);
-                        // Spell the direction out. "Editable · after Gate 02"
-                        // reads as "editable once Gate 02 passes" — the exact
-                        // opposite of the rule (editable UNTIL it passes).
-                        return (
-                          <Tooltip
-                            key={r}
-                            title={
-                              locked
-                                ? `Read-only: Gate ${afterNumber} has passed. Editing requires a Backtrack.`
-                                : `Editable right now. It becomes read-only as soon as Gate ${afterNumber} passes.`
-                            }
-                          >
-                            <Tag
-                              color={locked ? 'error' : 'success'}
-                              icon={locked ? <LockFilled /> : <UnlockOutlined />}
-                              style={{ margin: 0 }}
-                            >
-                              {locked
-                                ? `Read-only — G${afterNumber} passed`
-                                : `Editable until G${afterNumber} passes`}
-                            </Tag>
-                          </Tooltip>
-                        );
-                      })}
-                    </span>
-                  );
-                },
-              },
-            ]}
-          />
-        </Card>
+                    </div>
+                    <div className="grm-row-owner">
+                      <span>{ownerLine(entry)}</span>
+                      {isMine(entry) && <span className="c-tag c-tag-dot c-tag-warn">Yours</span>}
+                    </div>
+                    <RightOutlined className="rt-chev grm-chev" />
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       ) : (
-        <Collapse
-          defaultActiveKey={gateRows.find((r) => r.state === 'current')?.meta.id}
-          items={gateRows.map((r) => {
-            const phase = PHASES.find((p) => p.phase === r.meta.phase)!;
-            return {
+        <div className="c-card grm-gates-card">
+          <Collapse
+            ghost
+            defaultActiveKey={gateRows.find((r) => r.state === 'current')?.meta.id}
+            items={gateRows.map((r) => ({
               key: r.meta.id,
               label: (
-                <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
+                <span className="grm-tags">
                   <span>
-                    <b style={{ color: phase.color }}>Gate {r.meta.number}</b> · {r.meta.name}
+                    <b>Gate {r.meta.number}</b> · {r.meta.name}
                   </span>
                   {r.unmet.length > 0 ? (
-                    <Tag color="error" style={{ margin: 0 }}>
-                      {r.unmet.length} blocking
-                    </Tag>
+                    <span className="c-tag c-tag-dot c-tag-bad">{r.unmet.length} blocking</span>
                   ) : (
-                    <Tag color="success" style={{ margin: 0 }}>
-                      Nothing blocking
-                    </Tag>
+                    <span className="c-tag c-tag-dot c-tag-ok">Nothing blocking</span>
                   )}
                   {r.locking.length + r.lockingPages.length > 0 && (
-                    <Tag color="warning" icon={<LockFilled />} style={{ margin: 0 }}>
+                    <span className="c-tag">
+                      <LockFilled />
                       {r.locking.length + r.lockingPages.length} freeze here
-                    </Tag>
+                    </span>
                   )}
                 </span>
               ),
               children: (
-                <div style={{ display: 'grid', gap: 12, fontSize: 13 }}>
-                  <Typography.Text type="secondary">
+                <div className="grm-gate-body">
+                  <div className="grm-muted">
                     {r.meta.purpose} · Decision owner: {r.meta.primaryOwner}
-                  </Typography.Text>
+                  </div>
 
                   <div>
-                    <div style={{ fontWeight: 600, color: '#cf1322' }}>Enforced now — the gate cannot pass until</div>
-                    <ul style={{ margin: '4px 0 0', paddingLeft: 18, display: 'grid', gap: 4 }}>
+                    <div className="grm-sub-title">
+                      <CloseCircleFilled className="grm-ic-bad" />
+                      Enforced now — the gate cannot pass until
+                    </div>
+                    <ul className="grm-ul">
                       {r.enforced.map((item) => (
-                        <li key={item.id} style={{ color: item.satisfied ? '#389e0d' : '#cf1322' }}>
-                          {item.satisfied ? '✓ ' : ''}
-                          {item.label}
-                          {!item.hardBlock && !item.satisfied && ' — clears with Proceed with Conditions'}
+                        <li key={item.id}>
+                          {item.satisfied ? <CheckCircleFilled className="grm-ic-ok" /> : <CloseCircleFilled className="grm-ic-bad" />}
+                          <span>
+                            {item.label}
+                            {!item.hardBlock && !item.satisfied && ' — clears with Proceed with Conditions'}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -940,18 +848,15 @@ export default function GateRulesMap() {
 
                   {r.notWired.length > 0 && (
                     <div>
-                      <div style={{ fontWeight: 600, color: '#d46b08' }}>
+                      <div className="grm-sub-title">
+                        <ExclamationCircleOutlined className="grm-ic-warn" />
                         Mandatory, but nothing is wired to it yet ({r.notWired.length}) — should block, does not
                       </div>
-                      <ul style={{ margin: '4px 0 0', paddingLeft: 18, color: '#d46b08', display: 'grid', gap: 4 }}>
+                      <ul className="grm-ul">
                         {r.notWired.map((item) => (
                           <li key={item.id}>
-                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
-                              <Tag color={TIER_COLOR[item.tier]} style={{ margin: 0 }}>
-                                {item.tier}
-                              </Tag>
-                              <span>{item.label} — no data source wired</span>
-                            </span>
+                            <span className={`c-tag ${TIER_TONE[item.tier]}`}>{item.tier}</span>
+                            <span>{item.label} — no data source wired</span>
                           </li>
                         ))}
                       </ul>
@@ -960,25 +865,22 @@ export default function GateRulesMap() {
 
                   {r.notInForce.length > 0 && (
                     <div>
-                      <div style={{ fontWeight: 600, color: '#8c8c8c' }}>
+                      <div className="grm-sub-title">
+                        <MinusCircleOutlined />
                         Not in force on this project ({r.notInForce.length}) — by the confirmed rule, not a gap
                       </div>
-                      <ul style={{ margin: '4px 0 0', paddingLeft: 18, color: '#8c8c8c', display: 'grid', gap: 4 }}>
+                      <ul className="grm-ul grm-muted">
                         {r.notInForce.map((item) => (
                           <li key={item.id}>
-                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
-                              <Tag color={TIER_COLOR[item.tier]} style={{ margin: 0 }}>
-                                {item.tier}
-                              </Tag>
-                              <span>
-                                {item.label}
-                                {item.tier === 'Supporting' && ' — never blocks, warns only'}
-                                {item.tier === 'Conditional' &&
-                                  !item.active &&
-                                  ' — its trigger has not applied on this project; it would hard-block if it did'}
-                                {item.tier === 'Conditional' && item.active && !item.evaluable && ' — triggered, but no data source wired'}
-                                {!item.evaluable && item.tier === 'Supporting' && ' (no data source wired)'}
-                              </span>
+                            <span className={`c-tag ${TIER_TONE[item.tier]}`}>{item.tier}</span>
+                            <span>
+                              {item.label}
+                              {item.tier === 'Supporting' && ' — never blocks, warns only'}
+                              {item.tier === 'Conditional' &&
+                                !item.active &&
+                                ' — its trigger has not applied on this project; it would hard-block if it did'}
+                              {item.tier === 'Conditional' && item.active && !item.evaluable && ' — triggered, but no data source wired'}
+                              {!item.evaluable && item.tier === 'Supporting' && ' (no data source wired)'}
                             </span>
                           </li>
                         ))}
@@ -987,66 +889,218 @@ export default function GateRulesMap() {
                   )}
 
                   <div>
-                    <div style={{ fontWeight: 600, color: '#d48806' }}>
-                      <LockFilled style={{ marginRight: 4 }} />
+                    <div className="grm-sub-title">
+                      <LockFilled className="grm-ic-warn" />
                       Becomes read-only once Gate {r.meta.number} passes
                     </div>
                     {r.locking.length + r.lockingPages.length === 0 ? (
-                      <Typography.Text type="secondary">Nothing freezes at this gate.</Typography.Text>
+                      <div className="grm-muted">Nothing freezes at this gate.</div>
                     ) : (
-                      <ul style={{ margin: '4px 0 0', paddingLeft: 18, display: 'grid', gap: 4 }}>
+                      <ul className="grm-ul">
                         {r.lockingPages.map((p) => (
                           <li key={p.title}>
-                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
-                              <span>{p.title}</span>
-                              <Tag color="purple" style={{ margin: 0 }}>
-                                Page
-                              </Tag>
-                              <Tag style={{ margin: 0 }}>{formatGate(p.gate)}</Tag>
-                              {isGateRefLocked(project, p.gate) && (
-                                <Tag color="error" icon={<LockFilled />} style={{ margin: 0 }}>
-                                  Read-only now
-                                </Tag>
-                              )}
-                            </span>
+                            <span>{p.title}</span>
+                            <span className="c-tag">Page</span>
+                            <span className="c-tag">{formatGate(p.gate)}</span>
+                            {isGateRefLocked(project, p.gate) && (
+                              <span className="c-tag c-tag-ok">
+                                <LockFilled />
+                                Read-only now
+                              </span>
+                            )}
                           </li>
                         ))}
                         {r.locking.map((c: RegisterConfig) => (
                           <li key={c.key}>
-                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 4 }}>
-                              <a
-                                href={`#/projects/${id}/registers/reg/${c.key}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                {c.title}
-                              </a>
-                              <Typography.Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 11 }}>
-                                {c.sheetName}
-                              </Typography.Text>
-                              <Tag style={{ margin: 0 }}>{formatGate(c.gate)}</Tag>
-                              {isGateRefLocked(project, c.gate) && (
-                                <Tag color="error" icon={<LockFilled />} style={{ margin: 0 }}>
-                                  Read-only now
-                                </Tag>
-                              )}
-                            </span>
+                            <a className="c-link" href={`#/projects/${id}/registers/reg/${c.key}`} target="_blank" rel="noopener noreferrer">
+                              {c.title}
+                            </a>
+                            <span className="grm-mono grm-muted">{c.sheetName}</span>
+                            <span className="c-tag">{formatGate(c.gate)}</span>
+                            {isGateRefLocked(project, c.gate) && (
+                              <span className="c-tag c-tag-ok">
+                                <LockFilled />
+                                Read-only now
+                              </span>
+                            )}
                           </li>
                         ))}
                       </ul>
                     )}
                   </div>
 
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    Work this gate in the <Link to={`/projects/${id}/phase/${r.meta.phase}`}>Phase {r.meta.phase}</Link>{' '}
+                  <div className="grm-muted">
+                    Work this gate in the{' '}
+                    <Link className="c-link" to={`/projects/${id}/phase/${r.meta.phase}`}>
+                      Phase {r.meta.phase}
+                    </Link>{' '}
                     page.
-                  </Typography.Text>
+                  </div>
                 </div>
               ),
-            };
-          })}
-        />
+            }))}
+          />
+        </div>
       )}
+
+      {/* Sheet details: read-only, so no draft hint and no footer. */}
+      <Drawer
+        open={open !== undefined}
+        onClose={() => setOpenKey(null)}
+        size={screens.md ? 520 : '100%'}
+        mask={!screens.xxl}
+        closable={false}
+        rootClassName="concept-tokens"
+        title={
+          open && (
+            <div className="rt-drawer-head">
+              <div style={{ minWidth: 0 }}>
+                <div className="rt-drawer-count">
+                  {openIndex + 1} of {filtered.length}
+                </div>
+                <div className="rt-drawer-name grm-mono">{open.sheetName}</div>
+                {open.workbookTab && open.workbookTab !== open.sheetName && (
+                  <div className="rt-sub">
+                    Excel tab: <span className="grm-mono">{open.workbookTab}</span>
+                  </div>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                <Button type="text" icon={<UpOutlined />} aria-label="Previous" onClick={() => step(-1)} />
+                <Button type="text" icon={<DownOutlined />} aria-label="Next" onClick={() => step(1)} />
+                <Button type="text" aria-label="Close" onClick={() => setOpenKey(null)}>
+                  ✕
+                </Button>
+              </div>
+            </div>
+          )
+        }
+      >
+        {open && (
+          <div className="rt-sections">
+            {hrefFor(open) && (
+              <a className="c-link grm-open-link" href={`#${hrefFor(open)}`} target="_blank" rel="noopener noreferrer">
+                <ExportOutlined /> Open this sheet in a new tab
+              </a>
+            )}
+            <section>
+              <div className="rt-sec-title">Responsibility</div>
+              <dl className="rt-dl">
+                {/* Responsibility shown as DATA (role + the person assigned on
+                    this project), not just as the folder it happens to sit in —
+                    several sheets are deliberately filed outside their owner's
+                    section, and the person differs per project. */}
+                <div className="rt-dl-row">
+                  <dt>Responsible</dt>
+                  <dd>
+                    {open.ownerRoles.length > 0
+                      ? open.ownerRoles.map((role) => (
+                          <div key={role}>
+                            <b>{ownerName({ owner: { role } }, project.identity.reviewers)}</b>{' '}
+                            <span className="rt-muted">({reviewRoleLabel(role)})</span>
+                          </div>
+                        ))
+                      : <span className="rt-muted">No review owner</span>}
+                    {isMine(open) && <span className="c-tag c-tag-dot c-tag-warn grm-yours">Yours</span>}
+                  </dd>
+                </div>
+                {open.groups.length > 0 && (
+                  <div className="rt-dl-row">
+                    <dt>Filed under</dt>
+                    <dd>{open.groups.join(', ')}</dd>
+                  </div>
+                )}
+                <div className="rt-dl-row">
+                  <dt>Gate</dt>
+                  <dd>
+                    {open.gateRefs.length > 0 ? (
+                      <span className="grm-tags">
+                        {open.gateRefs.map((r) => (
+                          <span key={r} className="c-tag">
+                            {formatGate(r)}
+                          </span>
+                        ))}
+                      </span>
+                    ) : (
+                      '—'
+                    )}
+                  </dd>
+                </div>
+                <div className="rt-dl-row">
+                  <dt>Edit lock</dt>
+                  <dd>
+                    <span className="grm-tags">{lockTags(open)}</span>
+                  </dd>
+                </div>
+              </dl>
+            </section>
+
+            <section>
+              <div className="rt-sec-title">Forms on this sheet ({open.parts.length})</div>
+              <ul className="grm-ul grm-forms-ul">
+                {open.parts.map((p, i) => {
+                  const locked = isGateRefLocked(project, p.gate);
+                  return (
+                    <li key={`${p.title}-${i}`}>
+                      <div className="grm-form-title">{p.title}</div>
+                      <span className="grm-tags">
+                        <span className="c-tag">
+                          {p.mode === 'page' ? 'Page' : p.mode === 'register' ? 'Register' : p.mode === 'form' ? 'Phase form' : 'Reference'}
+                        </span>
+                        {p.gate && <span className="c-tag">{formatGate(p.gate)}</span>}
+                        {p.mode === 'form' ? (
+                          <span className="c-tag">
+                            <LockFilled />
+                            Locks section by section
+                          </span>
+                        ) : gateRefGateIds(p.gate).length === 0 ? (
+                          <span className="c-tag">
+                            <UnlockOutlined />
+                            Never locks
+                          </span>
+                        ) : locked ? (
+                          <span className="c-tag c-tag-ok">
+                            <LockFilled />
+                            Read-only — Gate {gateNumberOf(locksAfterGateId(p.gate!)!)} has passed
+                          </span>
+                        ) : (
+                          <span className="c-tag">
+                            <UnlockOutlined />
+                            Editable until Gate {gateNumberOf(locksAfterGateId(p.gate!)!)} passes
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+
+            <section>
+              <div className="rt-sec-title">Gates this sheet can block ({open.blocks.length})</div>
+              {open.blocks.length === 0 ? (
+                <div className="rt-muted">None — evidence only.</div>
+              ) : (
+                <ul className="grm-ul grm-forms-ul">
+                  {open.blocks.map((b, i) => (
+                    <li key={i}>
+                      <span className="grm-tags">
+                        <span className={`c-tag c-tag-dot ${TIER_TONE[b.tier]}`}>
+                          Gate {b.gateNumber} · {b.tier}
+                        </span>
+                      </span>
+                      <div>
+                        {b.label}
+                        {!b.enforced && <span className="rt-muted"> — declared, not yet enforced</span>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
+        )}
+      </Drawer>
     </div>
   );
 }

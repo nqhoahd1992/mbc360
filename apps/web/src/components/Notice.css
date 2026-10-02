@@ -1,0 +1,11 @@
+/* Page-level notice (2026-10 concept): white card, the tone on the icon only. */
+.ph-notice { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; padding: 12px 16px; font-size: 13px; }
+.ph-notice > .anticon { margin-top: 3px; }
+.ph-notice-info > .anticon { color: var(--c-text-3); }
+.ph-notice-warn > .anticon { color: var(--c-warn-dot); }
+.ph-notice-bad > .anticon { color: var(--c-bad-dot); }
+.ph-notice-ok > .anticon { color: var(--c-ok-dot); }
+.ph-notice-text { flex: 1; min-width: 220px; }
+.ph-notice-title { font-size: 14px; font-weight: 500; }
+.ph-notice-body { color: var(--c-text-2); text-wrap: pretty; }
+

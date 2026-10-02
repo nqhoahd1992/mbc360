@@ -1,11 +1,11 @@
-import { Alert, Empty, Typography } from 'antd';
+import { Alert, Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { criticalSafetyFindings, formulationSafetyFinalSignOff, formulationSafetyMatrix, formulationSafetyProfile } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked, uncoveredFormulaLines } from '@mbc360/shared/utils/gateProgress';
 import DynamicTable from '../components/DynamicTable';
-import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
+import { CompositePageHeader } from '../components/RegisterPageHeader';
 
 export default function FormulationSafety() {
   const { projectId } = useParams();
@@ -26,31 +26,22 @@ export default function FormulationSafety() {
   const uncovered = uncoveredFormulaLines(project);
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <div>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Full Formulation Safety Evidence
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          The product-level safety control sheet — pulls ingredient, exposure and use-context
-          evidence into one final sign-off.
-        </Typography.Text>
-      </div>
-
-      <Alert
-        type="info"
-        showIcon
-        title="Primary safety evidence tab"
-        description="This is the main evidence used to close Gate 07 (Maternal & Baby-Contact Safety), and is reused again at Gate 10 (PIF-03 Safety assessment)."
+    <div className="concept">
+      <CompositePageHeader
+        project={project}
+        title="Full Formulation Safety Evidence"
+        description={<>The product-level safety control sheet — pulls ingredient, exposure and use-context evidence into one final sign-off.</>}
+        note={{
+          title: "Primary safety evidence tab",
+          text: "This is the main evidence used to close Gate 07 (Maternal & Baby-Contact Safety), and is reused again at Gate 10 (PIF-03 Safety assessment).",
+        }}
+        reviewOwnerText={reviewOwnerText}
       />
-
-      <ProjectIdentificationCard project={project} />
 
       <DynamicTable
         config={formulationSafetyProfile}
         rows={project.registers[formulationSafetyProfile.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, formulationSafetyProfile.key, rows)}
-        reviewOwnerText={reviewOwnerText}
         readOnly={locked}
       />
 
@@ -85,7 +76,6 @@ export default function FormulationSafety() {
         config={formulationSafetyMatrix}
         rows={project.registers[formulationSafetyMatrix.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, formulationSafetyMatrix.key, rows)}
-        reviewOwnerText={reviewOwnerText}
         readOnly={locked}
       />
 
@@ -97,7 +87,6 @@ export default function FormulationSafety() {
         config={criticalSafetyFindings}
         rows={project.registers[criticalSafetyFindings.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, criticalSafetyFindings.key, rows)}
-        reviewOwnerText={reviewOwnerText}
         readOnly={isGateRefLocked(project, criticalSafetyFindings.gate)}
       />
 
@@ -105,7 +94,6 @@ export default function FormulationSafety() {
         config={formulationSafetyFinalSignOff}
         rows={project.registers[formulationSafetyFinalSignOff.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, formulationSafetyFinalSignOff.key, rows)}
-        reviewOwnerText={reviewOwnerText}
         readOnly={locked}
       />
     </div>

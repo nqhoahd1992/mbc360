@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -8,7 +9,7 @@ import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
-import { IS_PUBLIC_KEY } from './public.decorator';
+import { ALLOW_WITHOUT_ROLE_KEY, IS_PUBLIC_KEY } from './public.decorator';
 import { SESSION_COOKIE } from './auth-config';
 
 // Global guard: every route requires a valid session cookie unless marked
@@ -46,7 +47,23 @@ export class SessionAuthGuard implements CanActivate {
       where: { id: payload.sub },
       include: { department: true, roles: { include: { role: true } } },
     });
-    if (!user || !user.active) throw new UnauthorizedException('Unknown or deactivated user');
+    if (!user) throw new UnauthorizedException('Unknown user');
+    // Access rule (project owner, 2026-10-02): signing in with Microsoft 365
+    // only proves the person belongs to the company tenant; being let IN
+    // needs an active account holding at least one role, granted by an
+    // administrator in Users & Roles. Checked on every request, not only at
+    // sign-in, so deactivating someone or removing their last role takes
+    // effect at once. The `code` lets the sign-in screen say which it was.
+    const allowWithoutRole = this.reflector.getAllAndOverride<boolean>(ALLOW_WITHOUT_ROLE_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (!allowWithoutRole) {
+      if (!user.active) throw new ForbiddenException({ code: 'INACTIVE', email: user.email, message: 'This account has been deactivated' });
+      if (user.roles.length === 0) {
+        throw new ForbiddenException({ code: 'NO_ROLE', email: user.email, message: 'No role has been assigned to this account yet' });
+      }
+    }
 
     (request as Request & { user: typeof user }).user = user;
     return true;

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Alert, Checkbox, Input, Modal, Radio, Typography, message } from 'antd';
+import { Alert, Checkbox, Input, Radio, Typography, message } from 'antd';
 import { MAJOR_CHANGE_CRITERIA } from '@mbc360/shared/config/changeTriggers';
 import { useAppStore } from '../store/useAppStore';
 import LabeledInput from './LabeledInput';
 
+import FormDrawer from './FormDrawer';
 // Suggest the next version label: "F1.0" -> Major "F2.0" / Minor "F1.1".
 function suggestVersion(current: string, changeType: 'Major' | 'Minor'): string {
   const match = current.match(/^(.*?)(\d+)\.(\d+)$/);
@@ -89,7 +90,7 @@ export default function FormulaVersionModal({
   };
 
   return (
-    <Modal
+    <FormDrawer
       title={`New formula version (current: ${currentVersion})`}
       open={open}
       onOk={onConfirm}
@@ -167,6 +168,6 @@ export default function FormulaVersionModal({
           />
         )}
       </div>
-    </Modal>
+    </FormDrawer>
   );
 }

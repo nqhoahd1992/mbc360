@@ -1,0 +1,18 @@
+/* Gate sign-off (2026-10-02): one block per role, full-width comment. */
+.gso { overflow: hidden; color: var(--c-text); font-size: 14px; }
+.gso-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--c-border-2); }
+.gso-title { font-weight: 600; }
+.gso-row { display: grid; gap: 12px; padding: 14px 16px; }
+.gso-row + .gso-row { border-top: 1px solid var(--c-border-2); }
+.gso-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.gso-role { width: 110px; flex-shrink: 0; font-weight: 500; }
+.gso-signer { flex: 1; min-width: 180px; }
+.gso-action { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.gso-muted { color: var(--c-text-3); font-size: 13px; }
+.gso-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 900px) { .gso-form { grid-template-columns: 220px minmax(0, 1fr); } }
+.gso-form > label { min-width: 0; }
+.gso-label { display: block; margin-bottom: 6px; color: var(--c-text-2); font-size: 13px; }
+.gso-req { color: var(--c-warn); }
+.gso-record { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 12px; }
+.gso-comment { flex: 1; min-width: 220px; margin: 0; color: var(--c-text-2); white-space: pre-wrap; overflow-wrap: anywhere; }

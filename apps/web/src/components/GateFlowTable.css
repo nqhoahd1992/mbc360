@@ -1,0 +1,20 @@
+/* Card layout of GateFlowTable (2026-10-02 Phase page concept). Tokens from
+   styles/concept.css via the `.concept-tokens` wrapper. */
+.gfc { display: grid; gap: 12px; min-width: 0; color: var(--c-text); font-size: 14px; }
+.gfc-list { display: grid; gap: 16px; }
+.gfc-card { min-width: 0; }
+.gfc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 20px 0; }
+.gfc-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gfc-title { font-weight: 600; }
+.gfc-purpose { margin-top: 2px; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
+.gfc-fields { display: grid; grid-template-columns: 1fr; gap: 16px; padding: 16px 20px; }
+@media (min-width: 640px) { .gfc-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .gfc-fields { grid-template-columns: repeat(4, minmax(0, 1fr)); } .gfc-wide { grid-column: span 2; } }
+.gfc-fields > label { min-width: 0; }
+.gfc-fields .ant-select,
+.gfc-fields .ant-picker { width: 100% !important; }
+.gfc-label { display: block; margin-bottom: 6px; color: var(--c-text-2); font-size: 13px; }
+.gfc-guidance { display: grid; gap: 8px; padding: 0 20px 16px; }
+.gfc-guidance:empty { display: none; }
+/* GateSignOffPanel's table has no scroll of its own; on a phone it would widen the page. */
+.gfc-guidance .ant-table-content { overflow-x: auto; }

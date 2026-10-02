@@ -1,0 +1,82 @@
+/* Generic register table (2026-10-02 concept). Tokens from styles/concept.css. */
+.rt { display: grid; gap: 12px; min-width: 0; color: var(--c-text); font-size: 14px; }
+.rt-standalone { padding: 16px; }
+.rt-head-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; }
+.rt-head-desc { margin: 4px 0 0; color: var(--c-text-3); font-size: 13px; }
+.rt-lock { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface-2); color: var(--c-text-2); font-size: 13px; }
+.rt-lock > .anticon { margin-top: 3px; color: var(--c-text-3); }
+.rt-alert { margin: 0; }
+
+.rt-body { min-width: 0; overflow: hidden; }
+.rt-standalone .rt-body { border: 1px solid var(--c-border-2); border-radius: 8px; }
+.rt-count { padding: 10px 12px; border-bottom: 1px solid var(--c-border-2); color: var(--c-text-3); font-size: 13px; }
+
+.rt-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.rt-table th {
+  height: 40px; padding: 0 12px; border-bottom: 1px solid var(--c-border-2);
+  background: var(--c-surface-2); color: var(--c-text-2); font-size: 13px; font-weight: 500; text-align: left; white-space: nowrap;
+}
+.rt-th { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.rt-table td { padding: 12px; border-bottom: 1px solid var(--c-border-2); vertical-align: middle; }
+.rt-table tbody tr:last-child td { border-bottom: 0; }
+.rt-row { cursor: pointer; }
+.rt-row:hover { background: rgb(0 0 0 / 2.5%); }
+.rt-row[aria-selected='true'] { background: var(--c-primary-light); }
+.rt-table .rt-row[aria-selected='true'] > td:first-child { box-shadow: inset 3px 0 0 var(--c-primary); }
+.rt-row-blank { background: var(--c-bad-bg); }
+.rt-name { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 500; }
+.rt-table .rt-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rt-empty-tag { flex-shrink: 0; font-weight: 400; }
+.rt-sub { overflow: hidden; color: var(--c-text-3); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.rt-preview { display: -webkit-box; overflow: hidden; color: var(--c-text-2); font-size: 13px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.rt-chev { color: var(--c-text-3); }
+.rt-static { color: var(--c-text-2); }
+.rt-muted { color: var(--c-text-3); }
+.rt-gate { height: 18px; margin-left: 6px; padding: 0 4px; font-size: 11px; vertical-align: middle; }
+.rt-empty { padding: 32px 16px; color: var(--c-text-2); text-align: center; }
+
+.rt-list { margin: 0; padding: 0; list-style: none; }
+.rt-list > li { padding: 14px 16px; border-bottom: 1px solid var(--c-border-2); }
+.rt-list > li:last-child { border-bottom: 0; }
+.rt-list-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.rt-list-head .rt-chev { margin-top: 4px; }
+.rt-list-controls { display: grid; gap: 10px; margin-top: 12px; }
+@media (min-width: 640px) { .rt-list-controls { grid-template-columns: 1fr 1fr; } }
+
+.rt-add { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--c-border-2); }
+
+.rt-savebar { position: sticky; bottom: 0; z-index: 20; }
+.rt-savebar > div {
+  padding: 12px 16px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface);
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 6%);
+}
+
+/* Drawer */
+.rt-drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.rt-drawer-count { color: var(--c-text-3); font-size: 12px; font-weight: 400; }
+.rt-drawer-name { font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
+.rt-drawer-head .rt-sub { font-weight: 400; white-space: normal; }
+.rt-drawer-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.rt-drawer-hint { color: var(--c-text-3); font-size: 12px; }
+.rt-sections { display: grid; gap: 28px; }
+.rt-sec-title { margin-bottom: 12px; font-size: 13px; font-weight: 600; }
+.rt-grid { display: grid; gap: 16px; }
+@media (min-width: 640px) { .rt-grid { grid-template-columns: 1fr 1fr; } .rt-span-2 { grid-column: span 2; } }
+.rt-grid > label { min-width: 0; }
+.rt-label { display: flex; align-items: center; margin-bottom: 6px; color: var(--c-text-2); font-size: 13px; }
+.rt-list-controls .rt-label { margin-bottom: 4px; font-size: 12px; }
+.rt-dl { display: grid; gap: 10px; margin: 0; font-size: 13px; }
+.rt-dl-row { display: grid; grid-template-columns: 1fr; gap: 2px 16px; }
+@media (min-width: 640px) { .rt-dl-row { grid-template-columns: 150px 1fr; } }
+.rt-dl dt { color: var(--c-text-3); }
+.rt-dl dd { margin: 0; text-wrap: pretty; overflow-wrap: anywhere; }
+.rt-notice { margin: 0; color: var(--c-warn); font-size: 13px; }
+
+/* RecordList (phase-page blocks in the register concept). */
+.rl-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.rl-count { color: var(--c-text-3); font-size: 13px; white-space: nowrap; }
+.rl-required { border-color: var(--c-warn-line); background: #fffdf5; }
+.rl-name { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
+.rl-title { font-weight: 500; text-wrap: pretty; overflow-wrap: anywhere; }
+.rl-flag > td:first-child, .rt-list > li.rl-flag { box-shadow: inset 3px 0 0 var(--c-warn-dot); }
+.rl-req { color: var(--c-bad-dot); }

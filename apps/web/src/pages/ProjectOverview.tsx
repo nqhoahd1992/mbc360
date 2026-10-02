@@ -1,13 +1,14 @@
-import { Alert, Card, Col, Empty, Progress, Row, Space, Table, Tag, Tooltip } from 'antd';
+import { useState } from 'react';
+import { Button, Empty, Tooltip } from 'antd';
 import {
   CheckCircleFilled,
   ClockCircleFilled,
-  HistoryOutlined,
   LockOutlined,
   RightCircleFilled,
+  RightOutlined,
   WarningFilled,
 } from '@ant-design/icons';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { GATE_FIELD_LABELS, GATES, PHASES } from '@mbc360/shared/config/gates';
 import { isSignedOff } from '@mbc360/shared/types';
@@ -15,22 +16,48 @@ import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import {
   currentGateIndex,
   gateBlockers,
+  gateState,
   isGatePassed,
   phaseProgress,
+  type GateState,
 } from '@mbc360/shared/utils/gateProgress';
-import PhaseStepper from '../components/PhaseStepper';
-import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
 import AssessmentsCard from '../components/AssessmentsCard';
+import Notice from '../components/Notice';
 import StatusBadge from '../components/StatusBadge';
-import { TEXT } from '../theme/tokens';
+import '../styles/concept.css';
+import './ProjectOverview.css';
+
+// Project Overview in the 2026-10 concept: a header carrying the identification
+// context (this page never edited it), the four things that need someone as
+// linked stat tiles, one 12-gate grid grouped by phase — the phase summary that
+// used to be a second row of four cards now sits on each phase's own header —
+// then market readiness and the two audit logs.
+
+// State is carried by the icon alone; the tile background only marks the gate
+// currently open for work (primary-light) and a locked one (muted).
+const GATE_ICON: Record<GateState, { icon: React.ReactNode; label: string }> = {
+  passed: { icon: <CheckCircleFilled className="po-ico-ok" />, label: 'Passed' },
+  current: { icon: <RightCircleFilled className="po-ico-current" />, label: 'In progress' },
+  hold: { icon: <ClockCircleFilled className="po-ico-warn" />, label: 'On hold' },
+  gap: { icon: <WarningFilled className="po-ico-bad" />, label: 'Gap identified' },
+  locked: { icon: <LockOutlined className="po-ico-muted" />, label: 'Locked' },
+};
+
+// The two logs grow with every edit and backtrack; past this many entries the
+// rest fold away so the page does not end in a wall of history.
+const LOG_PREVIEW = 5;
 
 export default function ProjectOverview() {
   const { projectId } = useParams();
+  const navigate = useNavigate();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const changes = useAppStore((s) => s.changes);
+  const [showAllBacktracks, setShowAllBacktracks] = useState(false);
+  const [showAllGateChanges, setShowAllGateChanges] = useState(false);
 
   if (!project) return <Empty description="Project not found" />;
 
+  const identity = project.identity;
   const done = project.gates.filter((g) => isGatePassed(project, g.gateId)).length;
 
   // What this project needs from someone right now. Every one of these was
@@ -44,26 +71,127 @@ export default function ProjectOverview() {
   const criticalActions = openActions.filter((a) => a.priority === 'Critical');
   const today = new Date().toISOString().slice(0, 10);
   const overdueActions = openActions.filter((a) => a.dueDate && a.dueDate < today);
-  const openChanges = changes.filter((c) => c.projectId === project.identity.id && isChangeOpen(c.status));
+  const openChanges = changes.filter((c) => c.projectId === identity.id && isChangeOpen(c.status));
   const currentGate = GATES[currentGateIndex(project)];
   const currentBlockers = currentGate ? gateBlockers(project, currentGate.id) : [];
-  const archived = project.identity.archived;
+  const archived = identity.archived;
+  const currentPhase = currentGate ? PHASES.find((p) => p.phase === currentGate.phase) : undefined;
+
+  // Next actions are listed per gate on the phase page, so the tile lands on
+  // the gate that owns the most pressing one — a Critical, then an overdue
+  // one, else the gate currently open.
+  const actionGateId = (criticalActions[0] ?? overdueActions[0])?.gateId ?? currentGate?.id;
+  const actionGate = GATES.find((g) => g.id === actionGateId);
+  const actionsLink = actionGate
+    ? `/projects/${identity.id}/phase/${actionGate.phase}?gate=${actionGate.id}&scrollTo=sec-next-actions`
+    : undefined;
+
+  const pct = Math.round((done / 12) * 100);
+  const backtracks = [...project.backtrackEvents].reverse();
+  const gateChanges = [...project.gateChangeLog].reverse();
+  const gateNumber = (id: string) => GATES.find((g) => g.id === id)?.number ?? id;
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
+    <div className="concept po">
+      <header className="po-header">
+        <div className="po-title-row">
+          <h1 className="po-title">{identity.productSku || identity.id}</h1>
+          {currentPhase && <span className="c-tag">Phase {currentPhase.phase}</span>}
+          {currentGate ? (
+            currentBlockers.length > 0 ? (
+              <span className="c-tag c-tag-dot c-tag-warn">
+                Gate {currentGate.number} · {currentBlockers.length} blocking
+              </span>
+            ) : (
+              <span className="c-tag c-tag-dot c-tag-ok">Gate {currentGate.number} · ready to decide</span>
+            )
+          ) : (
+            <span className="c-tag c-tag-dot c-tag-ok">All 12 gates passed</span>
+          )}
+          {archived && (
+            <span className="c-tag">
+              <LockOutlined /> Archived
+            </span>
+          )}
+        </div>
+        {/* The identification parameters, as context: they are write-once at
+            creation (markets are edited on Phase 1), so a card of them here was
+            only ever repeated reading. */}
+        <p className="po-meta">
+          {identity.id}
+          {identity.productCode && <> · {identity.productCode}</>}
+          {identity.productGroup && <> · {identity.productGroup}</>}
+          {identity.brandCustomer && <> · {identity.brandCustomer}</>}
+          {identity.projectLead && (
+            <>
+              {' '}· Lead <b>{identity.projectLead}</b>
+            </>
+          )}
+          {identity.ownerDepartment && <> · {identity.ownerDepartment}</>}
+          {identity.dateOpened && <> · Opened {identity.dateOpened}</>}
+          {identity.targetLaunchDate && (
+            <>
+              {' '}· Target launch <b>{identity.targetLaunchDate}</b>
+            </>
+          )}
+          {' '}·{' '}
+          {identity.markets.length > 0 ? identity.markets.join(', ') : <span className="po-muted">No markets recorded yet</span>}
+        </p>
+      </header>
+
       {/* An archived project is read-only server-side, so every Save on every
           screen fails. ProjectList marks it and GateFlowTable explains it, but
           the project's own front page said nothing. */}
       {archived && (
-        <Alert
-          type="warning"
-          showIcon
-          title="This project is archived — read-only"
-          description={`Archived ${archived.at.slice(0, 10)}${archived.by ? ` by ${archived.by}` : ''}. Restore it from All Projects to make changes again.`}
-        />
+        <Notice tone="warn" title="This project is archived — read-only">
+          Archived {archived.at.slice(0, 10)}
+          {archived.by ? ` by ${archived.by}` : ''}. Restore it from All Projects to make changes again.
+        </Notice>
       )}
 
-      <ProjectIdentificationCard project={project} />
+      <section className="po-stats" aria-label="Needs attention">
+        <StatTile
+          to={actionsLink}
+          label="Open next actions"
+          value={openActions.length}
+          sub={
+            criticalActions.length > 0 || overdueActions.length > 0 ? (
+              <>
+                {criticalActions.length > 0 && <span className="po-bad-text">{criticalActions.length} Critical</span>}
+                {criticalActions.length > 0 && overdueActions.length > 0 && ' · '}
+                {overdueActions.length > 0 && <span className="po-warn-text">{overdueActions.length} overdue</span>}
+              </>
+            ) : (
+              'None Critical or overdue'
+            )
+          }
+        />
+        <StatTile
+          to={openChanges.length > 0 ? '/change-control' : undefined}
+          label="Open change controls"
+          value={openChanges.length}
+          sub={openChanges.length > 0 ? 'Open in Change Control' : 'Nothing open'}
+        />
+        {currentGate && (
+          <StatTile
+            to={`/projects/${identity.id}/phase/${currentGate.phase}?gate=${currentGate.id}`}
+            label={`Gate ${currentGate.number} blockers`}
+            value={currentBlockers.length}
+            tone={currentBlockers.length > 0 ? 'bad' : undefined}
+            sub={currentBlockers.length === 0 ? 'Ready to decide' : currentGate.name}
+          />
+        )}
+        <div className="c-card po-stat">
+          <div className="po-stat-label">Gates passed</div>
+          <div className="po-stat-value">
+            {done}
+            <span className="po-stat-of">/12</span>
+          </div>
+          <div className="po-bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+            <div className={done === 12 ? 'po-bar-done' : undefined} style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      </section>
 
       {/* Round 4 questions 8/9/11/12 (2026-08-24). On the overview rather than a
           phase page because the four answers feed four different gates (03, 08,
@@ -71,327 +199,304 @@ export default function ProjectOverview() {
           three. */}
       <AssessmentsCard project={project} />
 
-      <Card size="small" title="Needs attention">
-        <Space size={[24, 8]} wrap>
-          <span>
-            Open next actions: <b>{openActions.length}</b>
-            {criticalActions.length > 0 && (
-              <Tag color="red" style={{ marginLeft: 8 }}>
-                {criticalActions.length} Critical
-              </Tag>
-            )}
-            {overdueActions.length > 0 && (
-              <Tag color="orange" style={{ marginLeft: 8 }}>
-                {overdueActions.length} overdue
-              </Tag>
-            )}
-          </span>
-          <span>
-            Open change controls:{' '}
-            {openChanges.length > 0 ? (
-              <Link to="/change-control">
-                <b>{openChanges.length}</b>
-              </Link>
-            ) : (
-              <b>0</b>
-            )}
-          </span>
-          {currentGate && (
-            <span>
-              Gate {currentGate.number} blockers:{' '}
-              <Link to={`/projects/${project.identity.id}/phase/${currentGate.phase}`}>
-                <b>{currentBlockers.length}</b>
-              </Link>
-              {currentBlockers.length === 0 && (
-                <Tag color="green" style={{ marginLeft: 8 }}>
-                  Ready to decide
-                </Tag>
-              )}
-            </span>
-          )}
-        </Space>
-      </Card>
-
-      <Card
-        size="small"
-        title={
-          <span>
-            Gate progress{' '}
-            <span style={{ fontWeight: 400, color: TEXT.secondary, fontSize: 12 }}>
-              — {done}/12 gates passed · gates unlock in order
-            </span>
-          </span>
-        }
-        extra={<Progress percent={Math.round((done / 12) * 100)} size="small" style={{ width: 200 }} />}
-      >
-        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginBottom: 16, fontSize: 12 }}>
-          <span><CheckCircleFilled style={{ color: '#52c41a', marginRight: 6 }} />Passed</span>
-          <span><RightCircleFilled style={{ color: '#1677ff', marginRight: 6 }} />In progress</span>
-          <span><ClockCircleFilled style={{ color: '#faad14', marginRight: 6 }} />On hold</span>
-          <span><WarningFilled style={{ color: '#fa541c', marginRight: 6 }} />Gap identified</span>
-          <span><LockOutlined style={{ color: '#bfbfbf', marginRight: 6 }} />Locked</span>
+      <section className="c-card po-card">
+        <div className="po-card-head">
+          <div>
+            <h2 className="po-card-title">Gate progress</h2>
+            <p className="po-card-sub">
+              {done}/12 gates passed · gates unlock in order
+            </p>
+          </div>
+          <div className="po-legend" aria-label="Legend">
+            {(Object.keys(GATE_ICON) as GateState[]).map((s) => (
+              <span key={s}>
+                {GATE_ICON[s].icon}
+                {GATE_ICON[s].label}
+              </span>
+            ))}
+          </div>
         </div>
-        <PhaseStepper project={project} />
-      </Card>
 
-      <Row gutter={[16, 16]}>
-        {PHASES.map((phase) => {
-          const closure = project.phaseClosures[phase.phase];
-          const approved = closure.signOffs.find((s) => s.role === 'Approved by');
-          const covered = closure.angles.filter((a) => a.covered).length;
-          const progress = phaseProgress(project, phase.phase);
-          // "Gates passed: 2/3" leaves the reader to do the subtraction, and
-          // the number that decides what happens next is the OTHER one. Naming
-          // the outstanding gates as well means the card answers "what is left
-          // here?" without opening the phase.
-          const outstanding = GATES.filter(
-            (g) => g.phase === phase.phase && !isGatePassed(project, g.id),
-          );
-          return (
-            <Col key={phase.phase} xs={24} md={12} lg={6}>
-              <Card
-                size="small"
-                title={
-                  <span style={{ color: phase.color }}>
-                    {progress.state === 'completed' && (
-                      <CheckCircleFilled style={{ color: '#52c41a', marginRight: 6 }} />
-                    )}
-                    {progress.state === 'current' && (
-                      <RightCircleFilled style={{ color: '#1677ff', marginRight: 6 }} />
-                    )}
-                    {progress.state === 'locked' && (
-                      <LockOutlined style={{ color: '#bbb', marginRight: 6 }} />
-                    )}
-                    {phase.title.split(' - ')[0]}
-                  </span>
-                }
-                extra={<Link to={`/projects/${project.identity.id}/phase/${phase.phase}`}>Open</Link>}
-              >
-                <Space orientation="vertical" size={4}>
-                  <span style={{ color: TEXT.secondary }}>{phase.subtitle}</span>
-                  <span>
-                    Gates passed: {progress.passedGates}/{progress.totalGates}
-                    {outstanding.length > 0 ? (
-                      <Tooltip
-                        title={`Not passed yet: ${outstanding.map((g) => `Gate ${g.number}`).join(', ')}`}
-                      >
-                        <Tag color="orange" style={{ marginLeft: 8, cursor: 'default' }}>
-                          {outstanding.length} to go
-                        </Tag>
-                      </Tooltip>
-                    ) : (
-                      <Tag color="green" style={{ marginLeft: 8 }}>
-                        All passed
-                      </Tag>
-                    )}
-                  </span>
-                  <span>
+        <div className="po-phases">
+          {PHASES.map((phase) => {
+            const closure = project.phaseClosures[phase.phase];
+            const approved = closure.signOffs.find((s) => s.role === 'Approved by');
+            const covered = closure.angles.filter((a) => a.covered).length;
+            const progress = phaseProgress(project, phase.phase);
+            const phaseGates = GATES.filter((g) => g.phase === phase.phase);
+            // "Gates passed: 2/3" leaves the reader to do the subtraction, and
+            // the number that decides what happens next is the OTHER one.
+            const outstanding = phaseGates.filter((g) => !isGatePassed(project, g.id));
+            return (
+              <div key={phase.phase} className="po-phase">
+                <div className="po-phase-head">
+                  <div className="po-phase-name">
+                    <Link className="c-link po-phase-title" to={`/projects/${identity.id}/phase/${phase.phase}`}>
+                      {phase.title.split(' - ')[0]} · {phase.title.split(' - ')[1]}
+                    </Link>
                     {/* Locked / awaiting sign-off are phase STATE, not gate
-                        counts — on their own line so they stop competing with
-                        the numbers above. */}
-                    {progress.state === 'locked' && <Tag>Locked</Tag>}
-                    {progress.awaitingApproval && <Tag color="gold">Awaiting sign-off</Tag>}
-                    {outstanding.length > 0 && progress.state === 'current' && (
-                      <Tag color="blue">In progress</Tag>
-                    )}
-                  </span>
-                  <span>8 Angles: {covered}/8 covered</span>
-                  <span>
-                    {/* `isSignedOff` (signedByUserId + signedAt) is what
-                        phaseCompletionChecklist counts, so this card must use it
-                        too. Reading `approved.decision` alone reported "Approved"
-                        for a pre-D1 row that carries a typed name and a decision
-                        but no authenticated signature — a phase the rule engine
-                        still treats as unsigned. */}
-                    Approval:{' '}
-                    {isSignedOff(approved) ? (
-                      <>
-                        <StatusBadge value={approved?.decision} /> {approved?.name}
-                        {approved?.signedAt && (
-                          <span style={{ color: TEXT.secondary, fontSize: 12 }}>
-                            {' '}
-                            · {approved.signedAt.slice(0, 10)}
-                          </span>
-                        )}
-                      </>
-                    ) : approved?.decision ? (
-                      <Tooltip title="A decision was recorded before sign-off became an authenticated act, so it carries no signed-in user or timestamp. The rule engine does not count it as signed.">
-                        <Tag color="orange">Recorded, not signed</Tag>
-                      </Tooltip>
+                        counts — so they are tags beside the name. */}
+                    {progress.state === 'completed' ? (
+                      <span className="c-tag c-tag-dot c-tag-ok">Completed</span>
+                    ) : progress.awaitingApproval ? (
+                      <span className="c-tag c-tag-dot c-tag-warn">Awaiting sign-off</span>
+                    ) : progress.state === 'locked' ? (
+                      <span className="c-tag">
+                        <LockOutlined /> Locked
+                      </span>
                     ) : (
-                      <Tag>Pending</Tag>
+                      <span className="c-tag c-tag-dot">In progress</span>
                     )}
-                  </span>
-                </Space>
-              </Card>
-            </Col>
-          );
-        })}
-      </Row>
+                  </div>
+                  <div className="po-phase-meta">
+                    <span>{phase.subtitle}</span>
+                    <span>
+                      Gates passed <b>{progress.passedGates}/{progress.totalGates}</b>
+                      {outstanding.length > 0 ? (
+                        <Tooltip title={`Not passed yet: ${outstanding.map((g) => `Gate ${g.number}`).join(', ')}`}>
+                          <span className="po-muted"> · {outstanding.length} to go</span>
+                        </Tooltip>
+                      ) : (
+                        <span className="po-muted"> · all passed</span>
+                      )}
+                    </span>
+                    <span>
+                      8 Angles <b>{covered}/8</b> covered
+                    </span>
+                    <span>
+                      {/* `isSignedOff` (signedByUserId + signedAt) is what
+                          phaseCompletionChecklist counts, so this line must use it
+                          too. Reading `approved.decision` alone reported "Approved"
+                          for a pre-D1 row that carries a typed name and a decision
+                          but no authenticated signature — a phase the rule engine
+                          still treats as unsigned. */}
+                      Approval{' '}
+                      {isSignedOff(approved) ? (
+                        <>
+                          <StatusBadge value={approved?.decision} />
+                          {approved?.name}
+                          {approved?.signedAt && <span className="po-muted"> · {approved.signedAt.slice(0, 10)}</span>}
+                        </>
+                      ) : approved?.decision ? (
+                        <Tooltip title="A decision was recorded before sign-off became an authenticated act, so it carries no signed-in user or timestamp. The rule engine does not count it as signed.">
+                          <span className="c-tag c-tag-dot c-tag-warn">Recorded, not signed</span>
+                        </Tooltip>
+                      ) : (
+                        <span className="c-tag">Pending</span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="po-gates">
+                  {phaseGates.map((meta) => {
+                    const state = gateState(project, meta.id);
+                    const record = project.gates.find((g) => g.gateId === meta.id);
+                    const isCurrent = currentGate?.id === meta.id;
+                    return (
+                      <Tooltip key={meta.id} title={meta.purpose}>
+                        <button
+                          type="button"
+                          className={`po-gate po-gate-${state}${isCurrent ? ' po-gate-now' : ''}`}
+                          aria-current={isCurrent ? 'step' : undefined}
+                          onClick={() => navigate(`/projects/${identity.id}/phase/${phase.phase}?gate=${meta.id}`)}
+                        >
+                          <span className="po-gate-ico">{GATE_ICON[state].icon}</span>
+                          <span className="po-gate-text">
+                            <span className="po-gate-title">
+                              Gate {meta.number}
+                              <span className="po-gate-state">{GATE_ICON[state].label}</span>
+                            </span>
+                            <span className="po-gate-name">{meta.name}</span>
+                            {record?.owner && state !== 'locked' && (
+                              <span className="po-gate-owner">
+                                {record.owner}
+                                {record.dueDate ? ` · due ${record.dueDate}` : ''}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      </Tooltip>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* Gates 10-12 are tracked PER MARKET (rule A1), and a market's launch
           approval is blocked until its PIF is Approved (C5) — so for a project
           in Phase 4 this table IS the project's state, and Overview showed none
           of it. Read-only: it is captured on the Phase 4 page. */}
       {project.marketTracks.length > 0 && (
-        <Card
-          size="small"
-          title={
-            <span>
-              Market readiness{' '}
-              <span style={{ fontWeight: 400, color: TEXT.secondary, fontSize: 12 }}>
-                — Gates 10-12 run per market; launch needs an Approved PIF first
-              </span>
-            </span>
-          }
-          extra={<Link to={`/projects/${project.identity.id}/phase/4`}>Open Phase 4</Link>}
-        >
-          <Table
-            size="small"
-            rowKey={(t) => t.market}
-            dataSource={project.marketTracks}
-            pagination={false}
-            scroll={{ x: 700 }}
-            columns={[
-              { title: 'Market', width: 150, render: (_, t) => <b>{t.market}</b> },
-              { title: 'PIF', width: 130, render: (_, t) => <StatusBadge value={t.pifStatus} /> },
-              { title: 'Regulatory', width: 130, render: (_, t) => <StatusBadge value={t.regulatoryStatus} /> },
-              { title: 'Claims', width: 130, render: (_, t) => <StatusBadge value={t.claimsApproval} /> },
-              { title: 'Launch', width: 130, render: (_, t) => <StatusBadge value={t.launchApproval} /> },
-            ]}
-          />
-        </Card>
+        <section className="c-card po-card">
+          <div className="po-card-head">
+            <div>
+              <h2 className="po-card-title">Market readiness</h2>
+              <p className="po-card-sub">Gates 10-12 run per market; launch needs an Approved PIF first</p>
+            </div>
+            <Link className="c-link po-head-link" to={`/projects/${identity.id}/phase/4`}>
+              Open Phase 4 <RightOutlined />
+            </Link>
+          </div>
+          {/* Below 640px each market becomes a stacked block (labels from
+              data-label), so a narrow screen never scrolls or widens the page. */}
+          <div className="po-table-wrap">
+            <table className="po-table">
+              <thead>
+                <tr>
+                  <th>Market</th>
+                  <th>PIF</th>
+                  <th>Regulatory</th>
+                  <th>Claims</th>
+                  <th>Launch</th>
+                </tr>
+              </thead>
+              <tbody>
+                {project.marketTracks.map((t) => (
+                  <tr key={t.market}>
+                    <td className="po-strong">{t.market}</td>
+                    <td data-label="PIF"><StatusBadge value={t.pifStatus} /></td>
+                    <td data-label="Regulatory"><StatusBadge value={t.regulatoryStatus} /></td>
+                    <td data-label="Claims"><StatusBadge value={t.claimsApproval} /></td>
+                    <td data-label="Launch"><StatusBadge value={t.launchApproval} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
 
-      {project.backtrackEvents.length > 0 && (
-        <Card
-          size="small"
-          title={
-            <span>
-              <HistoryOutlined style={{ marginRight: 6 }} />
-              Backtrack audit log{' '}
-              <span style={{ fontWeight: 400, color: TEXT.secondary, fontSize: 12 }}>
-                — nothing is deleted; previous decisions and sign-offs are preserved here
-              </span>
-            </span>
-          }
-        >
-          <Table
-            size="small"
-            rowKey={(e) => e.id}
-            dataSource={[...project.backtrackEvents].reverse()}
-            pagination={false}
-            scroll={{ x: 950 }}
-            columns={[
-              { title: 'Date', width: 110, dataIndex: 'date' },
-              {
-                title: 'From → To',
-                width: 150,
-                render: (_, e) => {
-                  const from = GATES.find((g) => g.id === e.fromGateId);
-                  const to = GATES.find((g) => g.id === e.toGateId);
-                  return (
-                    <span>
-                      Gate {from?.number ?? e.fromGateId} → Gate {to?.number ?? e.toGateId}
+      {backtracks.length > 0 && (
+        <section className="c-card po-card">
+          <div className="po-card-head">
+            <div>
+              <h2 className="po-card-title">Backtrack audit log</h2>
+              <p className="po-card-sub">Nothing is deleted; previous decisions and sign-offs are preserved here</p>
+            </div>
+            <span className="po-count">{backtracks.length}</span>
+          </div>
+          <ul className="po-log">
+            {(showAllBacktracks ? backtracks : backtracks.slice(0, LOG_PREVIEW)).map((e) => {
+              const phases = Object.keys(e.previousSignOffs);
+              return (
+                <li key={e.id}>
+                  <div className="po-log-head">
+                    <span className="po-strong">
+                      Gate {gateNumber(e.fromGateId)} → Gate {gateNumber(e.toGateId)}
                     </span>
-                  );
-                },
-              },
-              {
-                title: 'Initiated by',
-                width: 130,
-                render: (_, e) => e.initiatedBy ?? '—',
-              },
-              {
-                title: 'Reason',
-                width: 240,
-                render: (_, e) => e.reason ?? '—',
-              },
-              {
-                title: 'Previous decisions (snapshot)',
-                width: 260,
-                render: (_, e) => (
-                  <span style={{ fontSize: 12, color: '#666' }}>
-                    {e.previousGates
-                      .map((g) => {
-                        const meta = GATES.find((m) => m.id === g.gateId);
-                        return `G${meta?.number ?? g.gateId}: ${g.status}${g.decision ? ` / ${g.decision}` : ''}`;
-                      })
-                      .join(' · ')}
-                  </span>
-                ),
-              },
-              {
-                title: 'Invalidated sign-offs',
-                width: 220,
-                render: (_, e) => {
-                  const phases = Object.keys(e.previousSignOffs);
-                  if (phases.length === 0) return <span style={{ color: TEXT.secondary }}>None</span>;
-                  return (
-                    <span style={{ fontSize: 12, color: '#666' }}>
-                      {phases
-                        .map((ph) => {
-                          const approved = e.previousSignOffs[Number(ph)].find(
-                            (s) => s.role === 'Approved by',
-                          );
-                          const who = approved?.name || approved?.initials || 'unsigned';
-                          return `Phase ${ph} (was: ${who})`;
-                        })
+                    <span className="po-muted">
+                      {e.date} · {e.initiatedBy ?? '—'}
+                    </span>
+                  </div>
+                  <div className="po-log-body">{e.reason ?? '—'}</div>
+                  <dl className="po-log-dl">
+                    <dt>Previous decisions</dt>
+                    <dd>
+                      {e.previousGates
+                        .map((g) => `G${gateNumber(g.gateId)}: ${g.status}${g.decision ? ` / ${g.decision}` : ''}`)
                         .join(' · ')}
-                    </span>
-                  );
-                },
-              },
-            ]}
-          />
-        </Card>
+                    </dd>
+                    <dt>Invalidated sign-offs</dt>
+                    <dd>
+                      {phases.length === 0
+                        ? 'None'
+                        : phases
+                            .map((ph) => {
+                              const a = e.previousSignOffs[Number(ph)].find((s) => s.role === 'Approved by');
+                              return `Phase ${ph} (was: ${a?.name || a?.initials || 'unsigned'})`;
+                            })
+                            .join(' · ')}
+                    </dd>
+                  </dl>
+                </li>
+              );
+            })}
+          </ul>
+          {backtracks.length > LOG_PREVIEW && (
+            <div className="po-log-more">
+              <Button type="link" onClick={() => setShowAllBacktracks((v) => !v)}>
+                {showAllBacktracks ? 'Show fewer' : `Show all ${backtracks.length}`}
+              </Button>
+            </div>
+          )}
+        </section>
       )}
 
-      {project.gateChangeLog.length > 0 && (
-        <Card
-          size="small"
-          title={
-            <span>
-              <HistoryOutlined style={{ marginRight: 6 }} />
-              Gate change log{' '}
-              <span style={{ fontWeight: 400, color: TEXT.secondary, fontSize: 12 }}>
-                — who changed what, in the Phase Gate Flow table, and when
-              </span>
-            </span>
-          }
-        >
-          <Table
-            size="small"
-            rowKey={(e) => e.id}
-            dataSource={[...project.gateChangeLog].reverse()}
-            pagination={false}
-            scroll={{ x: 800 }}
-            columns={[
-              { title: 'Date', width: 140, dataIndex: 'date' },
-              {
-                title: 'Gate',
-                width: 90,
-                render: (_, e) => {
-                  const meta = GATES.find((g) => g.id === e.gateId);
-                  return <span>Gate {meta?.number ?? e.gateId}</span>;
-                },
-              },
-              { title: 'Changed by', width: 150, render: (_, e) => e.changedBy ?? '—' },
-              {
-                title: 'Changes',
-                render: (_, e) => (
-                  <span style={{ fontSize: 12, color: '#666' }}>
-                    {e.changes
-                      .map((c) => `${GATE_FIELD_LABELS[c.field]}: ${c.from || '—'} → ${c.to || '—'}`)
-                      .join(' · ')}
+      {gateChanges.length > 0 && (
+        <section className="c-card po-card">
+          <div className="po-card-head">
+            <div>
+              <h2 className="po-card-title">Gate change log</h2>
+              <p className="po-card-sub">Who changed what in the Phase Gate Flow table, and when</p>
+            </div>
+            <span className="po-count">{gateChanges.length}</span>
+          </div>
+          <ul className="po-log">
+            {(showAllGateChanges ? gateChanges : gateChanges.slice(0, LOG_PREVIEW)).map((e) => (
+              <li key={e.id}>
+                <div className="po-log-head">
+                  <span className="po-strong">Gate {gateNumber(e.gateId)}</span>
+                  <span className="po-muted">
+                    {e.date} · {e.changedBy ?? '—'}
                   </span>
-                ),
-              },
-            ]}
-          />
-        </Card>
+                </div>
+                <div className="po-log-body po-log-changes">
+                  {e.changes.map((c, i) => (
+                    <span key={i}>
+                      {GATE_FIELD_LABELS[c.field]}: {c.from || '—'} → {c.to || '—'}
+                    </span>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+          {gateChanges.length > LOG_PREVIEW && (
+            <div className="po-log-more">
+              <Button type="link" onClick={() => setShowAllGateChanges((v) => !v)}>
+                {showAllGateChanges ? 'Show fewer' : `Show all ${gateChanges.length}`}
+              </Button>
+            </div>
+          )}
+        </section>
       )}
-
     </div>
+  );
+}
+
+// One "Needs attention" tile. A tile with somewhere to go is a link to where
+// that work is done; one with nothing to act on is plain.
+function StatTile({
+  to,
+  label,
+  value,
+  sub,
+  tone,
+}: {
+  to?: string;
+  label: string;
+  value: number;
+  sub: React.ReactNode;
+  tone?: 'bad';
+}) {
+  const body = (
+    <>
+      <div className="po-stat-label">
+        {label}
+        {to && <RightOutlined className="po-stat-go" />}
+      </div>
+      <div className={`po-stat-value${tone === 'bad' ? ' po-bad-text' : ''}`}>{value}</div>
+      <div className="po-stat-sub">{sub}</div>
+    </>
+  );
+  return to ? (
+    <Link to={to} className="c-card po-stat po-stat-link">
+      {body}
+    </Link>
+  ) : (
+    <div className="c-card po-stat">{body}</div>
   );
 }

@@ -1,0 +1,58 @@
+/* Roles editor (2026-10-02 redesign, wireframe option A). Tokens from styles/concept.css. */
+.rce-meta { margin-top: -12px; color: var(--c-text-2); font-size: 13px; }
+.rce-muted { color: var(--c-text-3); font-size: 13px; }
+.rce-skel { display: grid; gap: 12px; padding: 20px; }
+
+.rce-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (min-width: 992px) {
+  .rce-layout { grid-template-columns: 300px minmax(0, 1fr); }
+  .rce-side { position: sticky; top: 80px; }
+}
+
+.rce-roles { overflow: hidden; padding: 0; }
+.rce-role {
+  display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 16px;
+  border: 0; border-top: 1px solid var(--c-border-2); background: none; color: var(--c-text);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.rce-role:first-child { border-top: 0; }
+.rce-role:hover { background: rgb(0 0 0 / 4%); }
+.rce-role:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
+.rce-role[aria-current='true'] { background: var(--c-primary-light); box-shadow: inset 3px 0 0 var(--c-primary); }
+.rce-role-text { flex: 1; min-width: 0; }
+.rce-role-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rce-role-people { display: block; color: var(--c-text-3); font-size: 12px; }
+.rce-role-count { flex-shrink: 0; color: var(--c-text-2); font-size: 12px; }
+.rce-role-count.rce-muted { font-size: 12px; }
+
+.rce-picker { display: grid; gap: 6px; }
+.rce-picker-label { color: var(--c-text-2); font-size: 13px; }
+.rce-option { display: flex; justify-content: space-between; gap: 12px; }
+
+.rce-panel { display: grid; gap: 16px; min-width: 0; }
+.rce-panel-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.rce-panel-title { margin: 0; font-size: 16px; font-weight: 600; }
+
+.rce-group { padding: 0; }
+.rce-group-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 12px 20px;
+  border-bottom: 1px solid var(--c-border-2);
+}
+.rce-group-title { font-weight: 600; }
+.rce-group-hint { color: var(--c-text-3); font-size: 13px; }
+.rce-group-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.rce-link.ant-btn { height: auto; padding: 0; font-size: 13px; }
+.rce-caps {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  column-gap: 24px; padding: 8px 20px;
+}
+.rce-cap.ant-checkbox-wrapper { align-items: center; min-height: 36px; padding: 4px 0; }
+.rce-change { margin-left: 8px; }
+
+.rce-savebar {
+  position: sticky; bottom: 16px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  padding: 12px 16px; box-shadow: 0 -4px 12px rgb(0 0 0 / 6%);
+}
+.rce-savebar-text { flex: 1; min-width: 200px; font-size: 13px; }
+.rce-savebar-actions { display: flex; gap: 8px; margin-left: auto; }
+.rce-savebar-text b { font-weight: 500; }

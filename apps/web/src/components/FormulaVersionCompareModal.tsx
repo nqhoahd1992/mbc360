@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Alert, Modal, Select, Space, Switch, Table, Tag, Typography } from 'antd';
+import { Alert, Select, Space, Switch, Table, Tag, Typography } from 'antd';
 import type { BomLine } from '@mbc360/shared/types';
 import { diffFormulaBom, type FormulaBomDiffRow, type FormulaBomDiffStatus } from '@mbc360/shared/utils/formulaDiff';
 import { TEXT } from '../theme/tokens';
 
+import FormDrawer from './FormDrawer';
 export interface FormulaVersionOption {
   version: string;
   // BOM as it stood at this version. Undefined = no snapshot was captured
@@ -81,13 +82,12 @@ export default function FormulaVersionCompareModal({
   );
 
   return (
-    <Modal
+    <FormDrawer
       title="Compare formula versions"
       open={open}
       onCancel={onClose}
       footer={null}
       width="min(1200px, 96vw)"
-      style={{ top: 24 }}
     >
       <div style={{ display: 'grid', gap: 12, minWidth: 0 }}>
         <Space wrap>
@@ -164,6 +164,6 @@ export default function FormulaVersionCompareModal({
           </>
         )}
       </div>
-    </Modal>
+    </FormDrawer>
   );
 }

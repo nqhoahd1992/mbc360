@@ -1,0 +1,2 @@
+/* Footer of a FormDrawer: actions on the right, as on the Modals it replaces. */
+.fd-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }

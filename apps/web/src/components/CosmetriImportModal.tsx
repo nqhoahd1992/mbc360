@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Modal, Select, Spin, Table, Tag, Typography, message } from 'antd';
+import { Alert, Button, Select, Spin, Table, Tag, Typography, message } from 'antd';
 import { CloudDownloadOutlined, ExportOutlined } from '@ant-design/icons';
 import type { BomLine } from '@mbc360/shared/types';
 import {
@@ -12,6 +12,7 @@ import { matchIngredientWatchLists } from '@mbc360/shared/utils/ingredientWatch'
 import { useAppStore } from '../store/useAppStore';
 import { createEmptyRegisterRow } from '../store/factory';
 
+import FormDrawer from './FormDrawer';
 // Imports a Formula BOM from Cosmetri (decision A3 — Cosmetri is the read-only
 // master data source; MBc360 stores only project-specific evidence and links).
 export default function CosmetriImportModal({
@@ -125,7 +126,7 @@ export default function CosmetriImportModal({
   const isPlaceholderUrl = powerAppsUrl.includes('REPLACE-');
 
   return (
-    <Modal
+    <FormDrawer
       title={
         <span>
           <CloudDownloadOutlined style={{ marginRight: 8 }} />
@@ -245,6 +246,6 @@ export default function CosmetriImportModal({
           Open request app{isPlaceholderUrl ? ' (URL not configured)' : ''}
         </Button>
       </Typography.Paragraph>
-    </Modal>
+    </FormDrawer>
   );
 }

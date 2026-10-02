@@ -5,7 +5,7 @@ import { SearchOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { PHASES } from '@mbc360/shared/config/gates';
-import { getNavGroups, navItemHref } from '@mbc360/shared/config/registers';
+import { getNavGroups, getRegisterConfig, navItemHref } from '@mbc360/shared/config/registers';
 import { globalNavFor } from '../config/globalNav';
 import { useSession } from '../auth/useSession';
 import { TEXT } from '../theme/tokens';
@@ -16,6 +16,9 @@ interface Command {
   group: string;
   path: string;
   keywords?: string;
+  // Rows that share a path on purpose (a page's own row and the registers it
+  // renders) de-duplicate on this instead.
+  dedupeKey?: string;
 }
 
 // Highlight the matched substring of `query` inside `text` (bold), like a palette.
@@ -140,6 +143,20 @@ export default function CommandPalette({
             path: navItemHref(item, id),
             keywords: `${grp.title} ${item.sheetName ?? ''} ${item.workbookTab ?? ''}`,
           });
+          // The registers a dedicated page renders, each findable by its own
+          // title and landing on that page (they have no route of their own).
+          for (const key of item.contains ?? []) {
+            const cfg = getRegisterConfig(key);
+            if (!cfg) continue;
+            list.push({
+              id: `reg-${grp.key}-${itemKey}-${key}-${id}`,
+              title: cfg.title,
+              group: `${g} · ${item.title}`,
+              path: navItemHref(item, id),
+              keywords: `${item.title} ${cfg.sheetName ?? ''}`,
+              dedupeKey: `${navItemHref(item, id)}#${key}`,
+            });
+          }
         }
       }
     }
@@ -150,8 +167,9 @@ export default function CommandPalette({
     // same page three times.
     const seen = new Set<string>();
     return list.filter((cmd) => {
-      if (seen.has(cmd.path)) return false;
-      seen.add(cmd.path);
+      const key = cmd.dedupeKey ?? cmd.path;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
   }, [projects, activeProject, isAdmin]);
@@ -237,16 +255,28 @@ export default function CommandPalette({
                 padding: '10px 12px',
                 borderRadius: 8,
                 cursor: 'pointer',
-                background: active ? '#2f54eb' : 'transparent',
+                background: active ? '#0958d9' : 'transparent',
                 color: active ? '#fff' : 'inherit',
               }}
             >
               <ArrowRightOutlined style={{ opacity: active ? 1 : 0.5 }} />
-              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                <span style={{ opacity: active ? 0.85 : 0.55, fontSize: 12 }}>
-                  Go to: {cmd.group}{' '}·{' '}
-                </span>
-                {highlight(cmd.title, query.trim())}
+              {/* Title first, where it was: with "Go to: <project> · <group> ·
+                  <page>" in front of it, a register's name was the part cut off. */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {highlight(cmd.title, query.trim())}
+                </div>
+                <div
+                  style={{
+                    opacity: active ? 0.85 : 0.55,
+                    fontSize: 12,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {cmd.group}
+                </div>
               </div>
               <span style={{ opacity: active ? 0.85 : 0.4, fontSize: 12 }}>View</span>
             </div>

@@ -81,8 +81,19 @@ export function isControlledAction(action: NextAction | undefined): boolean {
 // The reviewer trail every flagged row needs, whatever the verdict: who, when,
 // why. D3 lists Reviewer, Review date and Rationale for every flagged result, not
 // only for some verdicts.
+function trailGaps(row: RegisterRow): string[] {
+  return [
+    ['Reviewer assessment', row.reviewerAssessment],
+    ['Reviewer', row.reviewer],
+    ['Review date', row.reviewDate],
+    ['Rationale', row.reviewRationale],
+  ]
+    .filter(([, value]) => text(value) === '')
+    .map(([label]) => label as string);
+}
+
 function hasReviewTrail(row: RegisterRow): boolean {
-  return text(row.reviewerAssessment) !== '' && text(row.reviewer) !== '' && text(row.reviewDate) !== '' && text(row.reviewRationale) !== '';
+  return trailGaps(row).length === 0;
 }
 
 // What each verdict additionally requires before it counts as recorded.
@@ -91,13 +102,27 @@ function hasReviewTrail(row: RegisterRow): boolean {
 //   Not a true match — "reviewer rationale and evidence", so the evidence link.
 //   Critical — nothing further; it blocks regardless, so demanding paperwork
 //     before the block would only delay the block.
-function verdictDocumented(project: ProjectData, row: RegisterRow): boolean {
+function verdictGap(project: ProjectData, row: RegisterRow): string | undefined {
   const verdict = text(row.reviewerAssessment);
   if (verdict === WATCHLIST_ASSESSMENT_NON_CRITICAL || verdict === WATCHLIST_ASSESSMENT_MORE_INFO) {
-    return isControlledAction(linkedNextAction(project, row));
+    return isControlledAction(linkedNextAction(project, row)) ? undefined : 'Linked Next Action';
   }
-  if (verdict === WATCHLIST_ASSESSMENT_NOT_A_MATCH) return text(row.evidenceLink) !== '';
-  return true;
+  if (verdict === WATCHLIST_ASSESSMENT_NOT_A_MATCH) return text(row.evidenceLink) !== '' ? undefined : 'Evidence link';
+  return undefined;
+}
+
+function verdictDocumented(project: ProjectData, row: RegisterRow): boolean {
+  return verdictGap(project, row) === undefined;
+}
+
+// The field labels a flagged row is still missing, for the UI to name — built
+// from the SAME two predicates the blockers below use, so the list on screen and
+// the reason a gate is blocked cannot disagree. Empty for a row that is not
+// flagged, since D3's trail applies only to flagged results.
+export function watchlistReviewGaps(project: ProjectData, row: RegisterRow): string[] {
+  if (!isFlaggedWatchlistRow(row)) return [];
+  const gap = verdictGap(project, row);
+  return gap ? [...trailGaps(row), gap] : trailGaps(row);
 }
 
 // Rows that block even Proceed with Conditions: a Critical verdict, and a flagged

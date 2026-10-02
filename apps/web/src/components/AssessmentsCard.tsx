@@ -1,4 +1,4 @@
-import { Alert, Card, DatePicker, Input, Select, Space } from 'antd';
+import { DatePicker, Input, Select } from 'antd';
 import dayjs from 'dayjs';
 import type { ProjectData } from '@mbc360/shared/types';
 import {
@@ -13,7 +13,10 @@ import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
-import { TEXT } from '../theme/tokens';
+import Notice from './Notice';
+import '../styles/concept.css';
+import './DynamicTable.css';
+import './AssessmentsCard.css';
 
 // The explicit assessments Round 4 questions 8, 9, 11, 12 and 25(c) asked for
 // (2026-08-24). They sit on one card because they share a purpose rather than a
@@ -26,23 +29,41 @@ import { TEXT } from '../theme/tokens';
 
 type Assessments = ProjectData['assessments'];
 
-// The gate each answer feeds, shown next to it so the cost of leaving it blank is
-// on screen rather than discoverable only from the readiness panel.
+// One assessment: its question and the gate it feeds — shown next to it so the
+// cost of leaving it blank is on screen rather than discoverable only from the
+// readiness panel — then its answer and follow-up fields in a labelled grid.
+function Block({ label, hint, children }: { label: string; hint: string; children: React.ReactNode }) {
+  return (
+    <div className="as-block">
+      <div className="as-block-head">
+        <div className="as-block-title">{label}</div>
+        <div className="as-block-hint">{hint}</div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 function Field({
   label,
-  hint,
+  wide,
+  required,
   children,
 }: {
   label: string;
-  hint: string;
+  wide?: boolean;
+  // Marks a field the current answer makes mandatory (the Save guard below).
+  required?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <div style={{ fontSize: 12, color: '#555', marginBottom: 4 }}>{label}</div>
+    <label className={wide ? 'as-wide' : undefined}>
+      <span className="as-label">
+        {label}
+        {required && <span className="as-req"> *</span>}
+      </span>
       {children}
-      <div style={{ fontSize: 11, color: TEXT.secondary, marginTop: 4 }}>{hint}</div>
-    </div>
+    </label>
   );
 }
 
@@ -73,6 +94,9 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
   // would read it as a complete one.
   const ccAnswer = draft.changeControlRequired?.trim() ?? '';
   const ccNeedsRecord = ccAnswer === 'Yes' && !draft.changeControlRecordId?.trim();
+  const projectChanges = project.changes;
+  const ccRecordUnknown =
+    !!draft.changeControlRecordId?.trim() && !projectChanges.some((c) => c.changeId === draft.changeControlRecordId?.trim());
   const ccNeedsRationale =
     ccAnswer === 'No' && (!draft.changeControlRationale?.trim() || !draft.changeControlReviewer?.trim());
 
@@ -91,62 +115,67 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
         : undefined;
 
   return (
-    <Card size="small" title="Assessments">
-      <div style={{ color: TEXT.secondary, fontSize: 12, marginBottom: 12 }}>
-        Four judgements the review team asked to be recorded rather than inferred. Leaving one blank does not mean it
-        does not apply — it means it has not been assessed, and the gate that reads it stays blocked.
+    <section className="c-card as-card">
+      <div className="as-head">
+        <h2 className="as-title">Assessments</h2>
+        <p className="as-desc">
+          Four judgements the review team asked to be recorded rather than inferred. Leaving one blank does not mean it
+          does not apply — it means it has not been assessed, and the gate that reads it stays blocked.
+        </p>
       </div>
 
-      <Space orientation="vertical" style={{ width: '100%' }} size={14}>
-        <Field
-          label="Human-participant study planned?"
-          hint="Gate 08. Undecided blocks the gate."
-        >
-          <Space orientation="vertical" style={{ width: '100%' }} size={6}>
-            <Select
-              style={{ width: 280 }}
-              allowClear
-              placeholder="Not yet assessed"
-              value={draft.humanStudyPlanned || undefined}
-              options={HUMAN_STUDY_PLANNED_OPTIONS.map((o) => ({ value: o, label: o }))}
-              onChange={(v?: string) => set('humanStudyPlanned', v ?? '')}
-            />
-            {/* "Creating a Study Protocol automatically sets the answer to Yes."
-                The engine already treats a started protocol as Yes, but the field
-                itself stays as the person left it — so without this line the card
-                would show blank while Gate 8 behaves as though it said Yes, which
-                reads as a bug rather than a rule. */}
-            {protocolStarted && (
-              <Alert
-                type="info"
-                showIcon
-                title="A Study Protocol has been started, so this already counts as Yes whatever is selected here."
+      <div className="as-blocks">
+        <Block label="Human-participant study planned?" hint="Gate 08. Undecided blocks the gate.">
+          <div className="as-grid">
+            <Field label="Answer">
+              <Select
+                style={{ width: '100%' }}
+                allowClear
+                placeholder="Not yet assessed"
+                value={draft.humanStudyPlanned || undefined}
+                options={HUMAN_STUDY_PLANNED_OPTIONS.map((o) => ({ value: o, label: o }))}
+                onChange={(v?: string) => set('humanStudyPlanned', v ?? '')}
               />
-            )}
-          </Space>
-        </Field>
+            </Field>
+          </div>
+          {/* "Creating a Study Protocol automatically sets the answer to Yes."
+              The engine already treats a started protocol as Yes, but the field
+              itself stays as the person left it — so without this line the card
+              would show blank while Gate 8 behaves as though it said Yes, which
+              reads as a bug rather than a rule. */}
+          {protocolStarted && (
+            <Notice
+              tone="info"
+              title="A Study Protocol has been started, so this already counts as Yes whatever is selected here."
+            />
+          )}
+        </Block>
 
-        <Field
+        <Block
           label="Administrative-only change?"
           hint="Gate 03. Only a confirmed Yes exempts the project from competitor and benchmark review."
         >
-          <Space wrap>
-            <Select
-              style={{ width: 160 }}
-              allowClear
-              placeholder="Not yet assessed"
-              value={draft.administrativeOnly || undefined}
-              options={ADMINISTRATIVE_ONLY_OPTIONS.map((o) => ({ value: o, label: o }))}
-              onChange={(v?: string) => set('administrativeOnly', v ?? '')}
-            />
-            <UserSelect
-              style={{ width: 220 }}
-              placeholder="Confirmed by (authorised reviewer)"
-              value={draft.administrativeOnlyConfirmedBy}
-              onChange={(v?: string) => set('administrativeOnlyConfirmedBy', v ?? '')}
-            />
-          </Space>
-        </Field>
+          <div className="as-grid">
+            <Field label="Answer">
+              <Select
+                style={{ width: '100%' }}
+                allowClear
+                placeholder="Not yet assessed"
+                value={draft.administrativeOnly || undefined}
+                options={ADMINISTRATIVE_ONLY_OPTIONS.map((o) => ({ value: o, label: o }))}
+                onChange={(v?: string) => set('administrativeOnly', v ?? '')}
+              />
+            </Field>
+            <Field label="Confirmed by (authorised reviewer)" required={adminNeedsConfirmer}>
+              <UserSelect
+                style={{ width: '100%' }}
+                status={adminNeedsConfirmer && !draft.administrativeOnlyConfirmedBy?.trim() ? 'error' : undefined}
+                value={draft.administrativeOnlyConfirmedBy}
+                onChange={(v?: string) => set('administrativeOnlyConfirmedBy', v ?? '')}
+              />
+            </Field>
+          </div>
+        </Block>
 
         {/* Round 4 question 25(c), 2026-08-29. Only shown when it is actually
             being asked — this is not a field every project has to answer, it is a
@@ -154,156 +183,193 @@ export default function AssessmentsCard({ project }: { project: ProjectData }) {
             an always-visible unanswered field reads as an obligation, and here
             blank means "not applicable", not "not done". */}
         {familyUseSelected && (
-          <Field
+          <Block
             label="Family use — which age groups does this product include?"
             hint="Gates 2, 4, 5, 6, 7, 8-9 and 10. Family use is not a vulnerable population on its own, but leaving this unanswered blocks the infant pathway from being decided either way. Including Infant 0+ activates it."
           >
-            <Space orientation="vertical" style={{ width: '100%' }} size={6}>
-              <Select
-                mode="multiple"
-                style={{ width: '100%', maxWidth: 460 }}
-                allowClear
-                placeholder="Not yet confirmed"
-                value={familyGroups}
-                options={FAMILY_USE_AGE_GROUPS.map((o) => ({ value: o, label: o }))}
-                onChange={(v: string[]) => set('familyUseAgeGroups', v.join(', '))}
-              />
-              <Space wrap>
+            <div className="as-grid">
+              <Field label="Age groups included" wide>
+                <Select
+                  mode="multiple"
+                  style={{ width: '100%' }}
+                  allowClear
+                  placeholder="Not yet confirmed"
+                  value={familyGroups}
+                  options={FAMILY_USE_AGE_GROUPS.map((o) => ({ value: o, label: o }))}
+                  onChange={(v: string[]) => set('familyUseAgeGroups', v.join(', '))}
+                />
+              </Field>
+              <Field label="Confirmed by">
                 <UserSelect
-                  style={{ width: 220 }}
-                  placeholder="Confirmed by"
+                  style={{ width: '100%' }}
                   value={draft.familyUseConfirmedBy}
                   onChange={(v?: string) => set('familyUseConfirmedBy', v ?? '')}
                 />
+              </Field>
+              <Field label="Confirmed on">
                 <DatePicker
-                  style={{ width: 150 }}
+                  style={{ width: '100%' }}
                   value={draft.familyUseConfirmedDate ? dayjs(draft.familyUseConfirmedDate) : null}
                   onChange={(d) => set('familyUseConfirmedDate', d ? d.format('YYYY-MM-DD') : '')}
                 />
-              </Space>
-            </Space>
-          </Field>
+              </Field>
+            </div>
+          </Block>
         )}
 
-        <Field
+        <Block
           label="Scale-up risk identified?"
           hint="Gate 09. Pending assessment blocks the gate. A Major formula change counts as identified on its own."
         >
-          <Space orientation="vertical" style={{ width: '100%' }} size={6}>
-            <Space wrap>
+          <div className="as-grid">
+            <Field label="Answer">
               <Select
-                style={{ width: 200 }}
+                style={{ width: '100%' }}
                 allowClear
                 placeholder="Not yet assessed"
                 value={draft.scaleUpRiskIdentified || undefined}
                 options={SCALE_UP_RISK_OPTIONS.map((o) => ({ value: o, label: o }))}
                 onChange={(v?: string) => set('scaleUpRiskIdentified', v ?? '')}
               />
+            </Field>
+            <Field label="Assessor">
               <UserSelect
-                style={{ width: 200 }}
-                placeholder="Assessor"
+                style={{ width: '100%' }}
                 value={draft.scaleUpRiskAssessor}
                 onChange={(v?: string) => set('scaleUpRiskAssessor', v ?? '')}
               />
+            </Field>
+            <Field label="Assessment date">
               <DatePicker
-                style={{ width: 150 }}
+                style={{ width: '100%' }}
                 value={draft.scaleUpRiskAssessmentDate ? dayjs(draft.scaleUpRiskAssessmentDate) : null}
                 onChange={(d) => set('scaleUpRiskAssessmentDate', d ? d.format('YYYY-MM-DD') : '')}
               />
-            </Space>
-            <Input.TextArea
-              autoSize={{ minRows: 1, maxRows: 3 }}
-              placeholder="Risk description"
-              value={draft.scaleUpRiskDescription}
-              onChange={(e) => set('scaleUpRiskDescription', e.target.value)}
-            />
-            <Input.TextArea
-              autoSize={{ minRows: 1, maxRows: 3 }}
-              placeholder="Rationale"
-              value={draft.scaleUpRiskRationale}
-              onChange={(e) => set('scaleUpRiskRationale', e.target.value)}
-            />
-            <Space wrap style={{ width: '100%' }}>
+            </Field>
+            <Field label="Risk description" wide>
+              <Input.TextArea
+                autoSize={{ minRows: 1, maxRows: 3 }}
+                value={draft.scaleUpRiskDescription}
+                onChange={(e) => set('scaleUpRiskDescription', e.target.value)}
+              />
+            </Field>
+            <Field label="Rationale" wide>
+              <Input.TextArea
+                autoSize={{ minRows: 1, maxRows: 3 }}
+                value={draft.scaleUpRiskRationale}
+                onChange={(e) => set('scaleUpRiskRationale', e.target.value)}
+              />
+            </Field>
+            <Field label="Required pilot or scale-up activity">
               <Input
-                style={{ width: 280 }}
-                placeholder="Required pilot or scale-up activity"
                 value={draft.scaleUpRiskActivity}
                 onChange={(e) => set('scaleUpRiskActivity', e.target.value)}
               />
+            </Field>
+            <Field label="Evidence link">
               <Input
-                style={{ width: 220 }}
-                placeholder="Evidence link"
+                placeholder="link / folder"
                 value={draft.scaleUpRiskEvidenceLink}
                 onChange={(e) => set('scaleUpRiskEvidenceLink', e.target.value)}
               />
-            </Space>
-          </Space>
-        </Field>
+            </Field>
+          </div>
+        </Block>
 
-        <Field
+        <Block
           label="Change Control required for the post-market finding?"
           hint="Gate 12. Pending assessment blocks closure. An already-open change control counts as Yes on its own."
         >
-          <Space orientation="vertical" style={{ width: '100%' }} size={6}>
-            <Space wrap>
+          <div className="as-grid">
+            <Field label="Answer">
               <Select
-                style={{ width: 200 }}
+                style={{ width: '100%' }}
                 allowClear
                 placeholder="Not yet assessed"
                 value={draft.changeControlRequired || undefined}
                 options={CHANGE_CONTROL_REQUIRED_OPTIONS.map((o) => ({ value: o, label: o }))}
                 onChange={(v?: string) => set('changeControlRequired', v ?? '')}
               />
+            </Field>
+            <Field label="Reviewer" required={ccAnswer === 'No'}>
               <UserSelect
-                style={{ width: 200 }}
-                placeholder="Reviewer"
+                style={{ width: '100%' }}
+                status={ccAnswer === 'No' && !draft.changeControlReviewer?.trim() ? 'error' : undefined}
                 value={draft.changeControlReviewer}
                 onChange={(v?: string) => set('changeControlReviewer', v ?? '')}
               />
+            </Field>
+            <Field label="Review date">
               <DatePicker
-                style={{ width: 150 }}
+                style={{ width: '100%' }}
                 value={draft.changeControlReviewDate ? dayjs(draft.changeControlReviewDate) : null}
                 onChange={(d) => set('changeControlReviewDate', d ? d.format('YYYY-MM-DD') : '')}
               />
-            </Space>
-            <Input.TextArea
-              autoSize={{ minRows: 1, maxRows: 3 }}
-              placeholder="Rationale"
-              value={draft.changeControlRationale}
-              onChange={(e) => set('changeControlRationale', e.target.value)}
-            />
-            <Space wrap>
-              <Input
-                style={{ width: 280 }}
-                status={ccNeedsRecord ? 'error' : undefined}
-                placeholder="Linked Change Control ID (required when Yes)"
-                value={draft.changeControlRecordId}
-                onChange={(e) => set('changeControlRecordId', e.target.value)}
+            </Field>
+            <Field label="Rationale" wide required={ccAnswer === 'No'}>
+              <Input.TextArea
+                autoSize={{ minRows: 1, maxRows: 3 }}
+                status={ccNeedsRationale && !draft.changeControlRationale?.trim() ? 'error' : undefined}
+                value={draft.changeControlRationale}
+                onChange={(e) => set('changeControlRationale', e.target.value)}
               />
+            </Field>
+            <Field label="Linked Change Control record" required={ccAnswer === 'Yes'}>
+              {/* A picker over this project's change records, not a text box:
+                  question 8 asks for a VALID record, and the server now refuses
+                  an id that is not one of them. */}
+              <Select
+                style={{ width: '100%' }}
+                allowClear
+                showSearch={{ optionFilterProp: 'label' }}
+                popupMatchSelectWidth={false}
+                status={ccNeedsRecord || ccRecordUnknown ? 'error' : undefined}
+                placeholder={projectChanges.length === 0 ? 'No change record on this project yet' : 'Required when Yes'}
+                notFoundContent="Open one on the Change Control page first"
+                value={draft.changeControlRecordId || undefined}
+                options={[
+                  ...(ccRecordUnknown
+                    ? [{ value: draft.changeControlRecordId as string, label: `${draft.changeControlRecordId} — not a change record of this project` }]
+                    : []),
+                  ...projectChanges.map((c) => ({
+                    value: c.changeId,
+                    label: `${c.changeId} — ${c.trigger || c.affectedArea || 'change'} · ${c.status}`,
+                  })),
+                ]}
+                onChange={(v?: string) => set('changeControlRecordId', v ?? '')}
+              />
+            </Field>
+            <Field label="Evidence link">
               <Input
-                style={{ width: 220 }}
-                placeholder="Evidence link"
+                placeholder="link / folder"
                 value={draft.changeControlEvidenceLink}
                 onChange={(e) => set('changeControlEvidenceLink', e.target.value)}
               />
-            </Space>
-          </Space>
-        </Field>
-      </Space>
+            </Field>
+          </div>
+        </Block>
+      </div>
 
-      {blockingReason && dirty && <Alert type="warning" showIcon style={{ marginTop: 12 }} title={blockingReason} />}
-
-      <SaveBar
-        dirty={dirty}
-        onSave={() => {
-          if (blockingReason) return;
-          setAssessments(project.identity.id, draft);
-          markSaved();
-        }}
-        onDiscard={discard}
-        disabled={!!blockingReason}
-        disabledReason={blockingReason}
-      />
-    </Card>
+      {(dirty || blockingReason) && (
+        <div className="as-foot">
+          {blockingReason && dirty && <Notice tone="warn" title={blockingReason} />}
+          <div className="rt-savebar">
+            <div>
+              <SaveBar
+                dirty={dirty}
+                onSave={() => {
+                  if (blockingReason) return;
+                  setAssessments(project.identity.id, draft);
+                  markSaved();
+                }}
+                onDiscard={discard}
+                disabled={!!blockingReason}
+                disabledReason={blockingReason}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

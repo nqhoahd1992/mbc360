@@ -1,0 +1,76 @@
+/* Project rows (2026-10 concept) — the Projects page and the Dashboard's
+   portfolio card both list projects, so they share this one shape. Tokens come
+   from styles/concept.css; the page header reuses RegisterPageHeader.css.
+   Wide: one grid row per project under a header row, columns set per page via
+   --pl-cols. Narrow: each project becomes a stacked card with labelled fields,
+   so nothing scrolls sideways or widens the page at 375px. A container query
+   (not a viewport media query) because the sidebar eats a variable share of
+   the viewport. */
+
+.pl-toolbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 16px; }
+.pl-toolbar .rph { min-width: 0; }
+.pl-actions-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+.pl { container-type: inline-size; min-width: 0; overflow: hidden; }
+.pl-card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; padding: 16px 16px 12px; }
+.pl-card-title { font-size: 16px; font-weight: 600; }
+.pl-count { color: var(--c-text-3); font-size: 13px; }
+
+.pl-head { display: none; }
+.pl-list { margin: 0; padding: 0; list-style: none; }
+.pl-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--c-border-2);
+}
+.pl-cell { min-width: 0; }
+/* Stacked: every field but the identity carries its column name as a label. */
+.pl-cell[data-label] { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 8px; align-items: center; }
+.pl-cell[data-label]::before { content: attr(data-label); color: var(--c-text-3); font-size: 13px; }
+.pl-cell-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+
+.pl-id-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+.pl-id-name { font-weight: 600; overflow-wrap: anywhere; }
+.pl-id-sub { color: var(--c-text-3); font-size: 13px; overflow-wrap: anywhere; }
+.pl-tags { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.pl-muted { color: var(--c-text-3); }
+.pl-sub { color: var(--c-text-3); font-size: 12px; }
+.pl-progress { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pl-bar { flex: 1; min-width: 40px; max-width: 160px; height: 6px; overflow: hidden; border-radius: 3px; background: rgb(0 0 0 / 6%); }
+.pl-bar > div { height: 100%; border-radius: 3px; background: var(--c-primary); }
+.pl-bar > div.pl-bar-done { background: var(--c-ok-dot); }
+.pl-pct { color: var(--c-text-2); font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pl-reviewers { cursor: help; }
+.pl-me { border-color: var(--c-warn-line); background: var(--c-warn-bg); color: var(--c-warn); }
+
+.pl-empty { padding: 32px 16px; border-top: 1px solid var(--c-border-2); }
+.pl-pagination { display: flex; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--c-border-2); }
+
+@container (min-width: 860px) {
+  .pl-head,
+  .pl-row { display: grid; grid-template-columns: var(--pl-cols); gap: 16px; align-items: center; }
+  .pl-head {
+    padding: 0 16px;
+    height: 40px;
+    border-top: 1px solid var(--c-border-2);
+    background: var(--c-surface-2);
+    color: var(--c-text-2);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .pl-head > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pl-row:hover { background: rgb(0 0 0 / 2%); }
+  .pl-cell[data-label] { display: block; }
+  .pl-cell[data-label]::before { content: none; }
+  .pl-cell-actions { justify-content: flex-end; flex-wrap: nowrap; }
+}
+
+/* Create New Project modal: labelled fields, two columns where there is room. */
+.pl-form-section { margin: 8px 0 12px; font-size: 14px; font-weight: 600; }
+.pl-form-section span { margin-left: 8px; color: var(--c-text-3); font-size: 13px; font-weight: 400; }
+.pl-form-section:first-child { margin-top: 16px; }
+.pl-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 16px; }
+@media (min-width: 640px) { .pl-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* A lone tag in a stacked field keeps its own width instead of stretching. */
+.pl-cell[data-label] > .c-tag { justify-self: start; }

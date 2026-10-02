@@ -1,0 +1,15 @@
+/* Authenticator setup (2026-10-02): numbered steps, neutral text, state on tags. */
+.te { display: grid; gap: 12px; }
+.te-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.te-hint { margin: 0; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
+.te-warn { margin: 0; color: var(--c-warn); font-size: 13px; }
+.te-error { margin: 0; color: var(--c-bad); font-size: 13px; }
+.te-code.ant-input { width: 132px; letter-spacing: 0.3em; font-variant-numeric: tabular-nums; }
+.te-steps { display: grid; gap: 20px; margin: 0; padding: 0; list-style: none; }
+.te-steps li { display: flex; gap: 12px; }
+.te-n {
+  display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--c-primary-light); color: var(--c-link); font-size: 12px; font-weight: 600;
+}
+.te-body { display: grid; flex: 1; gap: 8px; min-width: 0; }
+.te-title { font-size: 13px; font-weight: 500; }

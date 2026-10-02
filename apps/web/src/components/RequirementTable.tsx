@@ -1,19 +1,19 @@
-import { Card, Input, Select, Table, Tag, Tooltip } from 'antd';
+import { Input, Select, Tooltip } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import type { RequirementItem, RequirementStatus } from '@mbc360/shared/types';
-import type { ColumnsType } from 'antd/es/table';
 import type { RequirementColumnKey } from '@mbc360/shared/config/phases';
-import {
-  REQUIREMENT_NOT_APPLICABLE,
-  REQUIREMENT_PRIORITIES,
-  WORK_STATUSES,
-} from '@mbc360/shared/config/gates';
+import { REQUIREMENT_NOT_APPLICABLE, REQUIREMENT_PRIORITIES, WORK_STATUSES } from '@mbc360/shared/config/gates';
 import { isMandatoryRequirementRow } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
-import { TABLE_STICKY } from '../theme/tokens';
+import RecordList, { RecordField } from './RecordList';
 
+// A phase requirement table. Since 2026-10-02 laid out as a RecordList: the
+// row's requirement, its priority (where the section has one) and status stay
+// on the row; the project's own text, owner, N/A rationale, evidence and notes
+// open in the drawer, with the workbook's minimum requirement and rationale as
+// reference. Same draft, same Save, same per-row gate lock and N/A rule.
 export default function RequirementTable({
   projectId,
   sectionKey,
@@ -28,45 +28,33 @@ export default function RequirementTable({
   sectionKey: string;
   title: string;
   items: RequirementItem[];
-  // Gate `number` (e.g. '05') currently open for work — see the highlight below.
+  // Gate `number` (e.g. '05') currently open for work — still-required rows of
+  // that gate are flagged.
   currentGateNumber?: string;
-  // Gate-level edit lock (2026-07-23): a row whose gate has passed is
-  // read-only (inputs disabled). A requirement section can span several gates,
-  // so this is per-row, not per-table.
+  // Gate-level edit lock, per row (a section can span several gates).
   isRowLocked?: (item: RequirementItem) => boolean;
-  // Which columns this section shows (RequirementSectionConfig.columns).
-  // Omitted = the Phases 2-4 default set. Added 2026-08-09 so Phase 1's B6
-  // table can drop the columns that mean nothing at the opportunity stage and
-  // add `priority`, without forking this component.
+  // Which fields this section uses (RequirementSectionConfig.columns). Omitted =
+  // the Phases 2-4 default set.
   columns?: RequirementColumnKey[];
   // Round 4 question 21: this section offers 'N/A' as a disposition, and a row
-  // set to it must give a rationale. Off everywhere except Phase 1's B6 table —
-  // see RequirementSectionConfig.allowNotApplicable for why.
+  // set to it must give a rationale. Off everywhere except Phase 1's B6 table.
   allowNotApplicable?: boolean;
 }) {
-  // 'category' is an ALTERNATIVE heading for the same data as 'requirement'
-  // (Phase 1's B6 rows are categories, and the project's own requirement goes
-  // in 'detail'). It is opt-in, so it must not appear in the default set —
-  // otherwise Phases 2-4 print the row label twice, in bold, in adjacent
-  // columns, which is what they were doing.
+  // 'category' is an alternative heading for the same data as 'requirement',
+  // opt-in only (Phase 1's B6 rows are categories).
   const OPT_IN_ONLY: RequirementColumnKey[] = ['category'];
-  const shows = (key: RequirementColumnKey) =>
-    visibleColumns ? visibleColumns.includes(key) : !OPT_IN_ONLY.includes(key);
+  const shows = (key: RequirementColumnKey) => (visibleColumns ? visibleColumns.includes(key) : !OPT_IN_ONLY.includes(key));
   // Owner is config-set (from the workbook) on Phases 2-4 and read-only there;
   // on a section that declares its own columns it is the user's to fill in.
   const ownerEditable = !!visibleColumns;
   const setSection = useAppStore((s) => s.setRequirementSection);
   const { draft, dirty, update, markSaved, discard } = useDraft(items);
 
-  // Round 4 question 21: 'N/A' is offered only where the section declares it —
-  // the Phases 2-4 sections are read by checks that accept nothing but
-  // 'Completed', so quietly offering a fourth disposition there would let a user
-  // pick a status that can never satisfy the rule reading the row.
+  // 'N/A' is offered only where the section declares it — the Phases 2-4
+  // sections are read by checks that accept nothing but 'Completed'.
   const statusOptions = [
     ...WORK_STATUSES.map((s) => ({ value: s, label: s })),
-    ...(allowNotApplicable
-      ? [{ value: REQUIREMENT_NOT_APPLICABLE, label: `${REQUIREMENT_NOT_APPLICABLE} — rationale required` }]
-      : []),
+    ...(allowNotApplicable ? [{ value: REQUIREMENT_NOT_APPLICABLE, label: `${REQUIREMENT_NOT_APPLICABLE} — rationale required` }] : []),
   ];
 
   const patch = (index: number, p: Partial<RequirementItem>) => update((prev) => patchArray(prev, index, p));
@@ -74,201 +62,152 @@ export default function RequirementTable({
     setSection(projectId, sectionKey, draft);
     markSaved();
   };
+  const required = (r: RequirementItem) => isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';
+  // Switching AWAY from N/A drops the rationale in the same edit, so a stale
+  // reason cannot sit beside a Completed row (the API clears it too).
+  const setStatus = (i: number, v: RequirementStatus) =>
+    patch(i, v === REQUIREMENT_NOT_APPLICABLE ? { status: v } : { status: v, naRationale: '' });
+  const naMissing = (r: RequirementItem) => r.status === REQUIREMENT_NOT_APPLICABLE && (r.naRationale ?? '').trim() === '';
 
-  // Every column carries its `key` so a section can select a subset; the
-  // annotation keeps antd's render callbacks typed (an `as const` array
-  // widens them to `any`).
-  const allColumns: (ColumnsType<RequirementItem>[number] & { key: RequirementColumnKey })[] = [
-          {
-            key: 'gate',
-            title: 'Gate',
-            width: 60,
-            render: (_, r) => (
-              <Tag icon={isRowLocked?.(r) ? <LockOutlined /> : undefined}>{r.gate}</Tag>
-            ),
-          },
-          {
-            key: 'requirement',
-            title: 'Requirement / field',
-            width: 200,
-            dataIndex: 'requirement',
-            render: (v, r) => {
-              const required = isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';
-              return (
-                <span style={{ fontWeight: 600 }}>
-                  {v}
-                  {required && (
-                    <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
-                      <span style={{ color: '#ff4d4f' }}> *</span>
-                    </Tooltip>
-                  )}
-                </span>
-              );
-            },
-          },
-          {
-            // Same data as 'requirement' above, different heading: B6's 16 rows
-            // ARE categories, so Phase 1 labels the column that way and puts the
-            // project's own requirement in 'detail' beside it. Opt-in only —
-            // see OPT_IN_ONLY above.
-            key: 'category',
-            title: 'Category',
-            width: 210,
-            dataIndex: 'requirement',
-            render: (v, r) => {
-              const required = isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';
-              return (
-                <span style={{ fontWeight: 600 }}>
-                  {v}
-                  {required && (
-                    <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
-                      <span style={{ color: '#ff4d4f' }}> *</span>
-                    </Tooltip>
-                  )}
-                </span>
-              );
-            },
-          },
-          {
-            key: 'detail',
-            title: 'Requirement',
-            // Widened (2026-08-26) — this is the main free-text entry for a
-            // Phase 1 B6 row (what the category means for THIS project), not
-            // a short reference field like its neighbours, so it gets more
-            // room than the generic 280 default.
-            width: 360,
-            render: (_, r, i) => (
-              <Input.TextArea
-                autoSize={{ minRows: 1, maxRows: 4 }}
-                placeholder="What this category means for this project"
-                value={r.requirementText}
-                disabled={isRowLocked?.(r)}
-                onChange={(e) => patch(i, { requirementText: e.target.value })}
-              />
-            ),
-          },
-          { key: 'minimum', title: 'Minimum requirement', width: 260, dataIndex: 'minimumRequirement' },
-          {
-            key: 'rationale',
-            title: 'Rationale / control reason',
-            width: 260,
-            dataIndex: 'rationale',
-            render: (v) => <span style={{ color: '#666' }}>{v}</span>,
-          },
-          {
-            key: 'priority',
-            title: 'Priority',
-            width: 130,
-            render: (_, r, i) => (
-              <Select
-                style={{ width: '100%' }}
-                allowClear
-                // A row dispositioned N/A has no priority to give: it is not a
-                // requirement of this project at all.
-                disabled={isRowLocked?.(r) || r.status === REQUIREMENT_NOT_APPLICABLE}
-                placeholder="Must / Should / Could"
-                value={r.priority || undefined}
-                options={REQUIREMENT_PRIORITIES.map((o) => ({ value: o, label: o }))}
-                onChange={(v?: string) => patch(i, { priority: v ?? '' })}
-              />
-            ),
-          },
-          {
-            key: 'owner',
-            title: 'Owner',
-            width: 150,
-            dataIndex: 'owner',
-            render: ownerEditable
-              ? (_, r, i) => (
-                  <Input
-                    disabled={isRowLocked?.(r)}
-                    value={r.owner}
-                    onChange={(e) => patch(i, { owner: e.target.value })}
-                  />
-                )
-              : undefined,
-          },
-          {
-            key: 'status',
-            title: 'Status',
-            width: 160,
-            render: (_, r, i) => (
-              <Select
-                style={{ width: 150 }}
-                value={r.status}
-                disabled={isRowLocked?.(r)}
-                options={statusOptions}
-                // Switching AWAY from N/A drops the rationale in the same edit,
-                // so a stale reason cannot sit beside a Completed row (the API
-                // clears it too — this only keeps the screen honest before Save).
-                onChange={(v: RequirementStatus) =>
-                  patch(i, v === REQUIREMENT_NOT_APPLICABLE ? { status: v } : { status: v, naRationale: '' })
-                }
-              />
-            ),
-          },
-          {
-            key: 'naRationale',
-            title: 'N/A rationale',
-            width: 240,
-            render: (_, r, i) =>
-              r.status === REQUIREMENT_NOT_APPLICABLE ? (
-                <Input.TextArea
-                  autoSize={{ minRows: 1, maxRows: 4 }}
-                  status={(r.naRationale ?? '').trim() === '' ? 'error' : undefined}
-                  placeholder="Why this does not apply to this project"
-                  value={r.naRationale}
-                  disabled={isRowLocked?.(r)}
-                  onChange={(e) => patch(i, { naRationale: e.target.value })}
-                />
-              ) : (
-                <span style={{ color: '#d9d9d9' }}>—</span>
-              ),
-          },
-          {
-            key: 'evidenceLink',
-            title: 'Evidence link',
-            width: 160,
-            render: (_, r, i) => (
-              <Input
-                value={r.evidenceLink}
-                placeholder="link"
-                disabled={isRowLocked?.(r)}
-                onChange={(e) => patch(i, { evidenceLink: e.target.value })}
-              />
-            ),
-          },
-          {
-            key: 'notes',
-            title: 'Notes / action',
-            width: 200,
-            render: (_, r, i) => (
-              <Input value={r.notes} disabled={isRowLocked?.(r)} onChange={(e) => patch(i, { notes: e.target.value })} />
-            ),
-          },
-        ];
+  const priorityControl = (r: RequirementItem, i: number) => (
+    <Select
+      style={{ width: '100%' }}
+      allowClear
+      // A row dispositioned N/A has no priority to give.
+      disabled={isRowLocked?.(r) || r.status === REQUIREMENT_NOT_APPLICABLE}
+      placeholder="Must / Should / Could"
+      value={r.priority || undefined}
+      options={REQUIREMENT_PRIORITIES.map((o) => ({ value: o, label: o }))}
+      onChange={(v?: string) => patch(i, { priority: v ?? '' })}
+    />
+  );
+  const statusControl = (r: RequirementItem, i: number) => (
+    <Select
+      style={{ width: '100%' }}
+      value={r.status}
+      disabled={isRowLocked?.(r)}
+      status={naMissing(r) ? 'error' : undefined}
+      options={statusOptions}
+      popupMatchSelectWidth={false}
+      onChange={(v: RequirementStatus) => setStatus(i, v)}
+    />
+  );
+  const done = draft.filter((r) => r.status === 'Completed' || r.status === REQUIREMENT_NOT_APPLICABLE).length;
 
   return (
-    <Card size="small" title={title}>
-      <Table
-        size="small"
-        rowKey={(r) => r.requirement}
-        dataSource={draft}
-        pagination={false}
-        sticky={TABLE_STICKY}
-        scroll={{ x: 1100 }}
-        onRow={(r) => {
-          const required = isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';
-          const isCurrentGate = r.gate === currentGateNumber;
-          return required && isCurrentGate ? { style: { background: '#fffbe6' } } : {};
-        }}
-        // Pin whichever column ends up first after filtering (varies by
-        // section — Phase 1's B6 leads with 'category', Phases 2-4 with
-        // 'gate') so the identity of a row stays readable while scrolling
-        // through the rest of a wide section (2026-08-26).
-        columns={allColumns.filter((c) => shows(c.key)).map((c, i) => (i === 0 ? { ...c, fixed: 'left' } : c))}
-      />
-      <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
-    </Card>
+    <RecordList
+      // Every row's gate has passed: nothing here can change, so the drawer
+      // drops its "changes stay in the draft" hint.
+      readOnly={draft.length > 0 && draft.every((r) => !!isRowLocked?.(r))}
+      title={title}
+      count={`${done}/${draft.length} ${allowNotApplicable ? 'dispositioned' : 'completed'}`}
+      rows={draft}
+      rowKey={(r) => r.requirement}
+      rowBadge={
+        shows('gate')
+          ? (r) => (
+              <span className="c-tag" style={{ flexShrink: 0 }}>
+                {isRowLocked?.(r) && <LockOutlined />}
+                {r.gate}
+              </span>
+            )
+          : undefined
+      }
+      rowTitle={(r) => (
+        <>
+          {r.requirement}
+          {required(r) && (
+            <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
+              <span className="rl-req"> *</span>
+            </Tooltip>
+          )}
+        </>
+      )}
+      rowSubtitle={(r) => (shows('detail') ? r.requirementText : r.minimumRequirement) || undefined}
+      rowFlag={(r) => (required(r) && r.gate === currentGateNumber) || naMissing(r)}
+      inline={[
+        ...(shows('priority') ? [{ label: 'Priority', width: 168, render: priorityControl }] : []),
+        ...(shows('status') ? [{ label: 'Status', width: 184, render: statusControl }] : []),
+      ]}
+      drawer={(r, i) => {
+        const locked = isRowLocked?.(r);
+        const reference = [
+          ...(shows('minimum') && r.minimumRequirement ? [['Minimum requirement', r.minimumRequirement]] : []),
+          ...(shows('rationale') && r.rationale ? [['Rationale / control reason', r.rationale]] : []),
+          ...(!ownerEditable && shows('owner') && r.owner ? [['Owner', r.owner]] : []),
+          ...(shows('gate') ? [['Gate', r.gate]] : []),
+        ];
+        return (
+          <>
+            <section>
+              <div className="rt-grid">
+                {shows('detail') && (
+                  <RecordField label="Requirement" wide>
+                    <Input.TextArea
+                      autoSize={{ minRows: 2 }}
+                      placeholder="What this category means for this project"
+                      value={r.requirementText}
+                      disabled={locked}
+                      onChange={(e) => patch(i, { requirementText: e.target.value })}
+                    />
+                  </RecordField>
+                )}
+                {shows('priority') && <RecordField label="Priority">{priorityControl(r, i)}</RecordField>}
+                {shows('status') && <RecordField label="Status">{statusControl(r, i)}</RecordField>}
+                {ownerEditable && shows('owner') && (
+                  <RecordField label="Owner">
+                    <Input disabled={locked} value={r.owner} onChange={(e) => patch(i, { owner: e.target.value })} />
+                  </RecordField>
+                )}
+                {shows('naRationale') && r.status === REQUIREMENT_NOT_APPLICABLE && (
+                  <RecordField label="N/A rationale" wide>
+                    <Input.TextArea
+                      autoSize={{ minRows: 2 }}
+                      status={naMissing(r) ? 'error' : undefined}
+                      placeholder="Why this does not apply to this project"
+                      value={r.naRationale}
+                      disabled={locked}
+                      onChange={(e) => patch(i, { naRationale: e.target.value })}
+                    />
+                  </RecordField>
+                )}
+                {shows('evidenceLink') && (
+                  <RecordField label="Evidence link" wide>
+                    <Input value={r.evidenceLink} placeholder="Link to the supporting record" disabled={locked} onChange={(e) => patch(i, { evidenceLink: e.target.value })} />
+                  </RecordField>
+                )}
+                {shows('notes') && (
+                  <RecordField label="Notes / action" wide>
+                    <Input.TextArea autoSize={{ minRows: 2 }} value={r.notes} disabled={locked} onChange={(e) => patch(i, { notes: e.target.value })} />
+                  </RecordField>
+                )}
+              </div>
+            </section>
+            {reference.length > 0 && (
+              <section>
+                <div className="rt-sec-title">Reference</div>
+                <dl className="rt-dl">
+                  {reference.map(([label, value]) => (
+                    <div key={label} className="rt-dl-row">
+                      <dt>{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            )}
+          </>
+        );
+      }}
+      footer={
+        dirty ? (
+          <div className="rt-savebar">
+            <div>
+              <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
+            </div>
+          </div>
+        ) : null
+      }
+    />
   );
 }

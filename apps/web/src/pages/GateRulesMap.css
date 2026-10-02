@@ -1,0 +1,117 @@
+/* Gate Rules & Sheet Map (2026-10 concept). Tokens from styles/concept.css;
+   the drawer reuses the register drawer's rt-* classes (DynamicTable.css). */
+.grm-head { padding-top: 4px; }
+.grm-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.grm-title { margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; }
+.grm-meta { margin: 4px 0 0; color: var(--c-text-2); font-size: 13px; }
+.grm-desc { margin: 4px 0 0; max-width: 860px; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
+
+.grm-ic-bad { color: var(--c-bad-dot); }
+.grm-ic-warn { color: var(--c-warn-dot); }
+.grm-ic-ok { color: var(--c-ok-dot); }
+.grm-bad { color: var(--c-bad); }
+.grm-muted { color: var(--c-text-3); }
+.grm-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+.grm-tags { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+/* The two rules */
+.grm-rules { display: grid; gap: 16px; padding: 16px; }
+@media (min-width: 900px) { .grm-rules { grid-template-columns: 1fr 1fr; } }
+.grm-rule { display: flex; align-items: flex-start; gap: 12px; font-size: 13px; }
+.grm-rule > .anticon { margin-top: 3px; }
+.grm-rule-title { font-size: 14px; font-weight: 500; }
+.grm-rule-text { color: var(--c-text-2); text-wrap: pretty; }
+.grm-rule-text .c-tag { height: 18px; padding: 0 4px; }
+
+/* 12-gate strip: scrolls inside its own card, never the page. */
+.grm-steps { display: flex; gap: 12px; padding: 8px; overflow-x: auto; }
+.grm-phase { display: grid; align-content: start; gap: 4px; flex: 1 0 auto; }
+.grm-phase + .grm-phase { padding-left: 12px; border-left: 1px solid var(--c-border-2); }
+.grm-phase-label { padding: 4px 8px 0; color: var(--c-text); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.grm-phase-label span { color: var(--c-text-3); font-weight: 400; }
+.grm-phase-steps { display: flex; gap: 4px; }
+.grm-step {
+  display: flex; align-items: flex-start; gap: 10px; width: 212px; padding: 10px 12px;
+  border: 0; border-radius: 8px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.grm-step:hover { background: rgb(0 0 0 / 4%); }
+.grm-step[aria-pressed='true'] { background: var(--c-primary-light); box-shadow: inset 0 -2px 0 var(--c-primary); }
+.grm-step-dot {
+  display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
+  background: rgb(0 0 0 / 6%); color: var(--c-text-3); font-size: 11px; font-weight: 600;
+}
+.grm-step-passed .grm-step-dot { background: none; color: var(--c-ok-dot); font-size: 22px; }
+.grm-step-current .grm-step-dot { background: var(--c-primary); color: #fff; }
+.grm-step-gap .grm-step-dot { background: var(--c-bad-dot); color: #fff; }
+.grm-step-hold .grm-step-dot { background: var(--c-warn-dot); color: #fff; }
+.grm-step-text { display: grid; gap: 1px; min-width: 0; }
+.grm-step-title { font-weight: 500; }
+.grm-step-state { color: var(--c-text-3); font-weight: 400; font-size: 13px; }
+.grm-step-sub { margin-bottom: 4px; color: var(--c-text-3); font-size: 12px; line-height: 16px; text-wrap: pretty; }
+.grm-step-meta { display: flex; align-items: center; gap: 6px; color: var(--c-text-2); font-size: 12px; white-space: nowrap; }
+.grm-step-meta > .anticon:not([class*='grm-ic']) { color: var(--c-text-3); }
+
+/* Filter toolbar */
+.grm-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; }
+.grm-toolbar > * { max-width: 100%; }
+.grm-search { width: 280px; }
+.grm-select { width: 200px; }
+@media (max-width: 639px) { .grm-search, .grm-select { width: 100%; } }
+.grm-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.grm-chip {
+  height: 28px; padding: 0 12px; border: 1px solid var(--c-border); border-radius: 14px;
+  background: var(--c-surface); color: var(--c-text-2); font: inherit; font-size: 13px; cursor: pointer;
+}
+.grm-chip:hover { border-color: var(--c-primary); color: var(--c-link); }
+.grm-chip[aria-pressed='true'] { border-color: var(--c-primary); background: var(--c-primary-light); color: var(--c-link); }
+
+/* Sheet list */
+.grm-list-card { overflow: hidden; }
+.grm-list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--c-border-2); }
+.grm-list-title { font-size: 16px; font-weight: 600; }
+.grm-count { color: var(--c-text-3); font-size: 13px; }
+.grm-list { margin: 0; padding: 0; list-style: none; }
+.grm-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 16px; gap: 6px 16px; align-items: start;
+  padding: 10px 16px; border-bottom: 1px solid var(--c-border-2);
+}
+.grm-row:last-child { border-bottom: 0; }
+.grm-row-name { min-width: 0; grid-column: 1; }
+.grm-row-tags { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 1; min-width: 0; }
+.grm-row-owner { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; grid-column: 1; min-width: 0; color: var(--c-text-2); font-size: 13px; }
+.grm-chev { grid-column: 2; grid-row: 1; margin-top: 4px; }
+@media (min-width: 900px) {
+  .grm-row { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.3fr) minmax(0, 1fr) 16px; }
+  .grm-row-name, .grm-row-tags, .grm-row-owner { grid-row: 1; }
+  .grm-row-tags { grid-column: 2; }
+  .grm-row-owner { grid-column: 3; }
+  .grm-chev { grid-column: 4; }
+}
+.grm-sheet { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.grm-sheet-btn {
+  min-width: 0; padding: 0; border: 0; background: none; color: var(--c-text); text-align: left; cursor: pointer;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; font-weight: 600; overflow-wrap: anywhere;
+}
+.grm-open { flex-shrink: 0; font-size: 12px; }
+.grm-forms { margin-top: 2px; color: var(--c-text-3); font-size: 12px; }
+.grm-forms .grm-mono { font-size: 11px; }
+.grm-forms { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grm-row .c-tag { max-width: 100%; height: 20px; }
+.grm-gate { color: var(--c-text-3); }
+
+/* Gate requirements view */
+.grm-gates-card { padding: 4px 0; }
+.grm-gates-card .ant-collapse-header { align-items: center !important; }
+.grm-gate-body { display: grid; gap: 14px; font-size: 13px; }
+.grm-sub-title { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.grm-ul { display: grid; gap: 6px; margin: 6px 0 0; padding: 0; list-style: none; }
+.grm-ul > li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.grm-ul > li > .anticon { flex-shrink: 0; }
+
+/* Drawer */
+.grm-open-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.grm-forms-ul { gap: 12px; }
+.grm-forms-ul > li { display: grid; gap: 4px; }
+.grm-form-title { font-size: 13px; }
+.grm-yours { margin-top: 4px; }
+.rt-drawer-name.grm-mono { font-size: 15px; }

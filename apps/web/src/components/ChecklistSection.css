@@ -1,0 +1,49 @@
+/* Checklist option list as tick tiles (2026-10-02 Phase page concept). */
+.cl { display: grid; gap: 12px; padding: 16px 20px; color: var(--c-text); font-size: 14px; }
+.cl-required { border-color: var(--c-warn-line); background: #fffdf5; }
+.cl-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.cl-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cl-title { font-weight: 600; }
+.cl-count { color: var(--c-text-3); font-size: 13px; }
+.cl-alert { margin: 0; }
+
+.cl-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+@media (min-width: 640px) { .cl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .cl-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.cl-tile {
+  display: flex; align-items: stretch; min-width: 0; min-height: 36px;
+  border: 1px solid var(--c-border-2); border-radius: 6px; background: var(--c-surface);
+}
+.cl-tile:hover { border-color: var(--c-border); }
+.cl-on { border-color: var(--c-primary); background: var(--c-primary-light); }
+.cl-on:hover { border-color: var(--c-primary); }
+.cl-check {
+  display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; padding: 6px 12px;
+  border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.cl-ro .cl-check,
+.cl-check[aria-disabled='true'] { cursor: default; }
+.cl-box {
+  display: grid; place-items: center; flex-shrink: 0; width: 16px; height: 16px;
+  border: 1px solid var(--c-border); border-radius: 4px; background: var(--c-surface); color: #fff; font-size: 10px;
+}
+.cl-on .cl-box { border-color: var(--c-primary); background: var(--c-primary); }
+.cl-label { flex: 1; min-width: 0; text-wrap: pretty; }
+.cl-on .cl-label { font-weight: 500; }
+.cl-primary { flex-shrink: 0; }
+.cl-detail {
+  display: grid; place-items: center; flex-shrink: 0; width: 36px;
+  position: relative; border: 0; border-left: 1px solid rgb(9 88 217 / 20%); background: none; color: var(--c-text-3); cursor: pointer;
+}
+.cl-detail:hover { color: var(--c-link); }
+.cl-detail-filled { color: var(--c-link); }
+.cl-detail-missing { color: var(--c-warn); }
+.cl-detail-missing::after { content: ''; position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--c-warn-dot); }
+.cl-more { margin-top: -4px; }
+.cl-save { padding-top: 4px; }
+
+.cl-drawer-sub { color: var(--c-text-3); font-size: 12px; font-weight: 400; }
+.cl-form { display: grid; gap: 16px; }
+.cl-form > label, .cl-form > div { display: block; }
+.cl-field-label { display: block; margin-bottom: 6px; color: var(--c-text-2); font-size: 13px; }
+.cl-hint { margin: 0; color: var(--c-text-3); font-size: 12px; }

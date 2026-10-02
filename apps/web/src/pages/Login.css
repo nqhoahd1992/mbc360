@@ -1,0 +1,14 @@
+/* Sign in (2026-10-02 redesign, wireframe option A). Tokens from concept.css. */
+.ln { box-sizing: border-box; display: grid; place-items: center; min-height: 100vh; padding: 16px; background: #f5f5f5; }
+.ln-card { box-sizing: border-box; display: grid; gap: 24px; width: 100%; max-width: 400px; padding: 32px; }
+.ln-brand { display: flex; align-items: center; gap: 12px; }
+.ln-mark {
+  display: grid; place-items: center; width: 36px; height: 36px; border-radius: 8px;
+  background: var(--c-primary); color: #fff; font-weight: 700;
+}
+.ln-name { font-size: 18px; font-weight: 600; line-height: 24px; }
+.ln-sub { color: var(--c-text-3); font-size: 13px; }
+.ln-title { margin: 0; font-size: 20px; font-weight: 600; }
+.ln-btn.ant-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 44px; font-weight: 500; }
+.ln-foot { margin: 0; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
+@media (max-width: 480px) { .ln-card { padding: 24px; } }

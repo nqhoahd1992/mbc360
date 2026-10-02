@@ -1,20 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Avatar,
-  Button,
-  Card,
-  Col,
-  Descriptions,
-  Empty,
-  Popconfirm,
-  Row,
-  Space,
-  Spin,
-  Table,
-  Tag,
-  Typography,
-} from 'antd';
+import { Button, Popconfirm } from 'antd';
+import { RightOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { GATES, PHASES } from '@mbc360/shared/config/gates';
 import { reviewRoleLabel, rolesAssignedTo } from '@mbc360/shared/config/reviewers';
@@ -28,8 +14,12 @@ import SignatureCaptureModal from '../components/SignatureCaptureModal';
 import TotpEnrollCard from '../components/TotpEnrollCard';
 import { useSession } from '../auth/useSession';
 import { useAppStore } from '../store/useAppStore';
-import { ADMIN_ROLE } from '../utils/roles';
-import { TEXT } from '../theme/tokens';
+import { buildCapabilityGroups } from '../utils/capabilityGroups';
+import Notice from '../components/Notice';
+import '../styles/concept.css';
+import './AdminUsers.css';
+import './AdminMarketProfiles.css';
+import './MyAccount.css';
 
 // My Account (2026-08-21): the signing identity, in one place — who the app
 // thinks you are, what your role lets you do, which review areas you hold on
@@ -83,6 +73,7 @@ export default function MyAccount() {
     const gateNumbers = GATES.filter((g) => granted.has(`gate:${g.id}|decide`)).map((g) => g.number);
     const phaseNumbers = PHASES.filter((p) => granted.has(`phase:${p.phase}|approve`)).map((p) => p.phase);
     return {
+      granted,
       gateNumbers,
       phaseNumbers,
       marketTrack: granted.has('market-track|approve'),
@@ -106,226 +97,166 @@ export default function MyAccount() {
     [projects, user?.displayName],
   );
 
-  return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <Typography.Title level={4} style={{ margin: 0 }}>
-        My Account
-      </Typography.Title>
+  const groups = useMemo(() => (permissionGrid ? buildCapabilityGroups(permissionGrid.permissions) : []), [permissionGrid]);
+  const total = groups.reduce((n, g) => n + g.caps.length, 0);
+  const myGroups = groups
+    .map((g) => ({ ...g, caps: g.caps.filter((c) => capabilities.granted.has(c.id)) }))
+    .filter((g) => g.caps.length > 0);
+  const grantedCount = myGroups.reduce((n, g) => n + g.caps.length, 0);
 
-      {/* Grouped by what each card is FOR:
-            · what you may do   — full width, first: it is the question people
-                                  open this page to answer
-            · who you are       — full width
-            · what you own      — full width
-            · your signature | the authenticator that releases it
-          Only the last pair is halved, because those two are the halves of ONE
-          act: the signature is what gets attached, the authenticator is what
-          permits attaching it. The three above each hold a table that reads
-          better across the full width.
-          Row/Col also fixes an alignment bug the hand-built flex columns had:
-          the right column started 16px lower than the left because
-          TotpEnrollCard carried a `marginTop: 16` from when it was stacked
-          under the signature card. */}
-      <Row gutter={[16, 16]} align="top">
-        <Col xs={24}>
-            <Card size="small" title="What your role lets you do">
-              {isAdmin ? (
-                <Alert
-                  type="info"
-                  showIcon
-                  title="System Administrator — unrestricted"
-                  description="Every gate decision, every phase approval, market tracking and project deletion. Deleting a project is admin-only by construction, not a grantable capability."
-                />
-              ) : !permissionGrid ? (
-                <Spin />
-              ) : !capabilities.any ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="No decision rights yet — you can still enter and edit evidence everywhere (rule A4). An administrator grants gate and phase authority per role."
-                />
-              ) : (
-                <Descriptions size="small" column={{ xs: 1, md: 2 }} bordered>
-                  <Descriptions.Item label="Gate decisions" span={{ xs: 1, md: 2 }}>
-                    {capabilities.gateNumbers.length === 0 ? (
-                      <span style={{ color: TEXT.secondary }}>None</span>
-                    ) : (
-                      capabilities.gateNumbers.map((n) => (
-                        <Tag key={n} color="blue">
-                          Gate {n}
-                        </Tag>
-                      ))
-                    )}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Phase approvals">
-                    {capabilities.phaseNumbers.length === 0 ? (
-                      <span style={{ color: TEXT.secondary }}>None</span>
-                    ) : (
-                      capabilities.phaseNumbers.map((n) => (
-                        <Tag key={n} color="green">
-                          Phase {n}
-                        </Tag>
-                      ))
-                    )}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Market tracking">
-                    {capabilities.marketTrack ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Archive a project">
-                    {capabilities.archive ? <Tag color="green">Yes</Tag> : <Tag>No</Tag>}
-                  </Descriptions.Item>
-                </Descriptions>
-              )}
-            </Card>
-        </Col>
-        <Col xs={24}>
-            <Card size="small" title="Profile">
-              <Space align="start" size={16} style={{ marginBottom: 12 }}>
-                <Avatar size={56} style={{ backgroundColor: '#1677ff', flexShrink: 0 }}>
-                  {initials || '?'}
-                </Avatar>
-                <div>
-                  <Typography.Text strong style={{ fontSize: 16 }}>
-                    {user?.displayName ?? '—'}
-                  </Typography.Text>
-                  <div style={{ color: TEXT.secondary, fontSize: 13 }}>{user?.email ?? '—'}</div>
-                  <div style={{ marginTop: 6 }}>
-                    {(user?.roles ?? []).length === 0 ? (
-                      <Tag>No role assigned</Tag>
-                    ) : (
-                      (user?.roles ?? []).map((r) => (
-                        <Tag key={r.key} color={r.key === ADMIN_ROLE ? 'gold' : 'blue'}>
-                          {r.name}
-                        </Tag>
-                      ))
-                    )}
-                  </div>
+  return (
+    <div className="concept au">
+      <header className="ma-header">
+        <span className="au-avatar ma-avatar">{initials}</span>
+        <div style={{ minWidth: 0 }}>
+          <h1 className="au-title">{user?.displayName}</h1>
+          <p className="au-meta">
+            {user?.email}
+            {user?.department && ` · ${user.department}`} ·{' '}
+            {/* Not always SSO: the seeded …@demo.mbc360.local accounts come in
+                through dev-login, and claiming Microsoft 365 for one of those
+                would simply be false. */}
+            {user?.email.endsWith('@demo.mbc360.local') ? 'Dev login' : 'Microsoft 365'}
+          </p>
+          <div className="ma-roles">
+            {(user?.roles ?? []).map((r) => (
+              <span key={r.key} className="c-tag">
+                {r.name}
+              </span>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <section className="c-card ma-card">
+        <div className="ma-card-head">
+          <h2 className="ma-card-title">What your role lets you do</h2>
+          {!isAdmin && permissionGrid && (
+            <span className="mp-muted">
+              {grantedCount} of {total} capabilities
+            </span>
+          )}
+        </div>
+        {isAdmin ? (
+          <p className="ma-pad ma-text">
+            System Administrator is unrestricted — it holds every capability, including deleting projects.{' '}
+            <Link to="/admin/roles">Edit roles</Link>
+          </p>
+        ) : !permissionGrid ? (
+          <div className="ma-pad">
+            <div className="c-skel" style={{ height: 40 }} />
+          </div>
+        ) : myGroups.length === 0 ? (
+          <p className="ma-pad ma-text">
+            Your role grants no decision or approval rights. You can still record evidence everywhere.
+          </p>
+        ) : (
+          <>
+            <dl className="ma-groups">
+              {myGroups.map((g) => (
+                <div key={g.key} className="ma-group">
+                  <dt>
+                    {g.title} <span className="mp-muted">{g.caps.length}</span>
+                  </dt>
+                  <dd>
+                    {g.caps.map((c) => (
+                      <span key={c.id} className="c-tag">
+                        {c.label}
+                      </span>
+                    ))}
+                  </dd>
                 </div>
-              </Space>
-              <Descriptions size="small" column={{ xs: 1, md: 2 }} bordered>
-                <Descriptions.Item label="Department">
-                  {user?.department ?? <span style={{ color: TEXT.secondary }}>Not synced</span>}
-                </Descriptions.Item>
-                <Descriptions.Item label="Sign-in">
-                  {/* Not always SSO: the seeded …@demo.mbc360.local accounts come
-                      in through dev-login, and claiming Microsoft 365 for one of
-                      those would simply be false. */}
-                  {user?.email.endsWith('@demo.mbc360.local')
-                    ? 'Dev login (seeded demo account)'
-                    : 'Microsoft 365 (single sign-on)'}
-                </Descriptions.Item>
-              </Descriptions>
-              <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 8, marginBottom: 0 }}>
-                Name, email and department come from Microsoft 365 at sign-in and are not editable
-                here. Your role is a decision made inside MBc360 — an administrator sets it on the{' '}
-                <Link to="/admin/users">Users</Link> page.
-              </Typography.Paragraph>
-            </Card>
-        </Col>
-        <Col xs={24}>
-            <Card
-              size="small"
-              title="My review areas"
-              extra={
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {reviewAreas.length === 0 ? 'None' : `${reviewAreas.length} project(s)`}
-                </Typography.Text>
-              }
-            >
-              {reviewAreas.length === 0 ? (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description="You are not assigned as a reviewer on any project. Reviewers are chosen per project when it is created."
-                />
-              ) : (
-                <Table
-                  size="small"
-                  rowKey="id"
-                  dataSource={reviewAreas}
-                  pagination={false}
-                  scroll={{ x: 420 }}
-                  columns={[
-                    {
-                      title: 'Project',
-                      width: 160,
-                      render: (_, row) => (
-                        <span>
-                          <Link to={`/projects/${row.id}/my-sheets`}>{row.name}</Link>
-                          {row.sku && (
-                            <div style={{ color: TEXT.secondary, fontSize: 12 }}>{row.sku}</div>
-                          )}
-                        </span>
-                      ),
-                    },
-                    {
-                      title: 'Review areas you hold',
-                      render: (_, row) =>
-                        row.areas.map((key) => (
-                          <Tag key={key} style={{ marginBottom: 2 }}>
-                            {reviewRoleLabel(key)}
-                          </Tag>
-                        )),
-                    },
-                  ]}
-                />
-              )}
-            </Card>
-        </Col>
-        <Col xs={24} xl={12}>
-            <Card size="small" title="Signature">
-              {error && <Alert type="error" showIcon title={error} style={{ marginBottom: 12 }} />}
-              <Typography.Paragraph type="secondary">
-                Draw a signature once and reuse it when signing a phase. Attaching it to a sign-off
-                still needs a fresh code from your authenticator app each time — saving it here does
-                not.
-              </Typography.Paragraph>
-              {loading ? (
-                <Spin />
-              ) : signature?.hasSignature ? (
-                <Space orientation="vertical" size={12}>
-                  <div
-                    style={{
-                      border: '1px solid #f0f0f0',
-                      borderRadius: 4,
-                      padding: 8,
-                      background: '#fff',
-                      display: 'inline-block',
-                    }}
+              ))}
+            </dl>
+            <p className="ma-foot">Anything not listed needs another role. Recording evidence needs none of these.</p>
+          </>
+        )}
+      </section>
+
+      <section className="c-card au-list">
+        <div className="ma-card-head ma-card-head-plain">
+          <h2 className="ma-card-title">My review areas</h2>
+          <span className="mp-muted">
+            {reviewAreas.length === 0 ? 'None' : `${reviewAreas.length} ${reviewAreas.length === 1 ? 'project' : 'projects'}`}
+          </span>
+        </div>
+        {reviewAreas.length === 0 ? (
+          <p className="ma-pad ma-text" style={{ paddingTop: 0 }}>
+            You are not a reviewer on any project yet. Reviewers are chosen per project when it is created.
+          </p>
+        ) : (
+          reviewAreas.map((row) => (
+            <Link key={row.id} to={`/projects/${row.id}/my-sheets`} className="au-row ma-row">
+              <div className="ma-row-text">
+                <div className="au-name-text">{row.name}</div>
+                {row.sku && <div className="au-email">{row.sku}</div>}
+              </div>
+              <div className="ma-row-tags">
+                {row.areas.map((key) => (
+                  <span key={key} className="c-tag">
+                    {reviewRoleLabel(key)}
+                  </span>
+                ))}
+              </div>
+              <RightOutlined className="au-chev" />
+            </Link>
+          ))
+        )}
+      </section>
+
+      <section className="c-card ma-card">
+        <div className="ma-card-head ma-card-head-stack">
+          <h2 className="ma-card-title">Ready to sign</h2>
+          <p className="ma-text">
+            Your saved signature is attached when you sign a phase, a gate or a register signature cell; each time, a fresh
+            code from your authenticator confirms it is you.
+          </p>
+        </div>
+        <div className="ma-sign">
+          <div className="ma-sign-half">
+            <div className="ma-sub">Signature</div>
+            {error && (
+              <Notice tone="bad" title="Could not load your signature">
+                {error}
+              </Notice>
+            )}
+            {loading ? (
+              <div className="c-skel" style={{ height: 76, width: 240 }} />
+            ) : signature?.hasSignature ? (
+              <>
+                <div className="ma-sigbox">
+                  <img src={signature.imageData} alt="Your saved signature" />
+                </div>
+                <div className="ma-actions">
+                  <Button onClick={() => setModalOpen(true)}>Update</Button>
+                  <Popconfirm
+                    title="Remove your saved signature?"
+                    description="You can draw a new one at any time."
+                    okText="Remove"
+                    okButtonProps={{ danger: true }}
+                    onConfirm={handleDelete}
                   >
-                    <img
-                      src={signature.imageData}
-                      alt="Your saved signature"
-                      width={300}
-                      height={90}
-                      style={{ display: 'block', maxWidth: 300, height: 'auto', objectFit: 'contain' }}
-                    />
-                  </div>
-                  <Space>
-                    <Button onClick={() => setModalOpen(true)}>Update signature</Button>
-                    <Popconfirm
-                      title="Remove your saved signature?"
-                      description="You can draw a new one at any time."
-                      okText="Remove"
-                      okButtonProps={{ danger: true }}
-                      onConfirm={handleDelete}
-                    >
-                      <Button danger>Remove</Button>
-                    </Popconfirm>
-                  </Space>
-                </Space>
-              ) : (
-                <Space orientation="vertical">
-                  <Typography.Text type="secondary">No signature saved yet.</Typography.Text>
+                    <Button danger>Remove</Button>
+                  </Popconfirm>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="ma-sigbox ma-sigbox-empty">No signature saved yet</div>
+                <div className="ma-actions">
                   <Button type="primary" onClick={() => setModalOpen(true)}>
-                    Add signature
+                    Draw signature
                   </Button>
-                </Space>
-              )}
-            </Card>
-        </Col>
-        <Col xs={24} xl={12}>
-          <TotpEnrollCard />
-        </Col>
-      </Row>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="ma-sign-half">
+            <div className="ma-sub">Authenticator</div>
+            <TotpEnrollCard />
+          </div>
+        </div>
+      </section>
       <SignatureCaptureModal open={modalOpen} onClose={() => setModalOpen(false)} onSave={handleSave} />
     </div>
   );

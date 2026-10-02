@@ -1,0 +1,86 @@
+/* Users page (2026-10-02 redesign, wireframe option A). Tokens from styles/concept.css. */
+.au-header { padding-top: 4px; }
+.au-title { margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; }
+.au-meta { margin-top: 4px; color: var(--c-text-2); font-size: 13px; }
+.au-meta-warn { color: var(--c-warn); font-weight: 500; }
+.au-desc { max-width: 760px; margin: 4px 0 0; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
+
+.au-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.au-search { flex: 1 1 220px; max-width: 360px; }
+.au-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+  border: 1px solid var(--c-border); border-radius: 16px; background: var(--c-surface);
+  color: var(--c-text-2); font: inherit; white-space: nowrap; cursor: pointer;
+}
+.au-chip b { color: var(--c-text-3); font-weight: 500; }
+.au-chip:hover { border-color: var(--c-primary); color: var(--c-primary); }
+.au-chip[aria-pressed='true'] { border-color: var(--c-primary); background: var(--c-primary-light); color: var(--c-link); }
+.au-chip[aria-pressed='true'] b { color: var(--c-link); }
+
+.au-list { overflow: hidden; padding: 0; }
+.au-head, .au-row { display: flex; align-items: center; gap: 16px; padding: 0 20px; }
+.au-head { height: 40px; background: var(--c-surface-2); color: var(--c-text-2); font-size: 13px; font-weight: 500; }
+.au-row { min-height: 64px; padding-block: 12px; border-top: 1px solid var(--c-border-2); cursor: pointer; }
+.au-row:hover { background: rgb(0 0 0 / 2.5%); }
+.au-row:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
+.au-row[aria-selected='true'] { background: var(--c-primary-light); box-shadow: inset 3px 0 0 var(--c-primary); }
+
+.au-col-user { flex: 1; min-width: 0; }
+.au-col-dept { width: 160px; flex-shrink: 0; }
+.au-col-role { width: 230px; flex-shrink: 0; }
+.au-col-active { width: 64px; flex-shrink: 0; }
+.au-col-chev { width: 14px; flex-shrink: 0; }
+.au-controls { display: contents; }
+.au-role { width: 100%; }
+
+.au-who { display: flex; align-items: center; gap: 12px; }
+.au-who-text { min-width: 0; }
+.au-name { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 500; }
+.au-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.au-name .c-tag { flex-shrink: 0; }
+.au-email { overflow: hidden; color: var(--c-text-3); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.au-dept { overflow: hidden; color: var(--c-text-2); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.au-chev { color: var(--c-text-3); font-size: 12px; }
+
+.au-avatar {
+  display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--c-primary-light); color: var(--c-link); font-size: 12px; font-weight: 600;
+}
+.au-avatar-off { opacity: 0.5; }
+.au-avatar-lg { width: 40px; height: 40px; font-size: 14px; }
+
+.au-skel { display: grid; gap: 12px; padding: 20px; }
+.au-empty { padding: 48px 24px; text-align: center; }
+.au-empty p { margin: 4px 0 16px; color: var(--c-text-2); font-size: 13px; }
+.au-empty-icon { color: var(--c-text-3); font-size: 22px; }
+.au-empty-title { margin-top: 12px; font-weight: 500; }
+
+/* Phone: the row stacks — who on top, Role + Active on one line below. */
+@media (max-width: 767px) {
+  .au-head, .au-col-dept, .au-col-chev { display: none; }
+  .au-row { flex-wrap: wrap; gap: 12px; padding-inline: 16px; }
+  .au-col-user { flex-basis: 100%; }
+  .au-controls { display: flex; align-items: center; gap: 16px; width: 100%; }
+  .au-controls .au-col-role { flex: 1; width: auto; min-width: 0; }
+  .au-controls .au-col-active { width: auto; }
+}
+
+/* Drawer (rendered in a portal; `concept-tokens` carries the vars). */
+.au-detail { display: grid; gap: 24px; }
+.au-detail-who { display: flex; align-items: center; gap: 12px; }
+.au-detail-name { font-weight: 600; }
+.au-dl { display: grid; grid-template-columns: 120px minmax(0, 1fr); row-gap: 8px; margin: 0; font-size: 13px; }
+.au-dl dt { color: var(--c-text-3); }
+.au-dl dd { margin: 0; }
+.au-detail-fields { display: grid; gap: 16px; }
+.au-field { display: grid; align-content: start; gap: 6px; }
+.au-field-label { color: var(--c-text-2); font-size: 13px; }
+.au-field-help { color: var(--c-text-3); font-size: 12px; }
+.au-field-inline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+.au-danger { border: 1px solid var(--c-bad-line); border-radius: 8px; }
+.au-danger-title { padding: 12px 16px 8px; color: var(--c-bad); font-size: 13px; font-weight: 600; }
+.au-danger-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--c-bad-line); }
+.au-danger-text { flex: 1; min-width: 180px; }
+.au-danger-name { font-weight: 500; }
+.au-danger-desc { color: var(--c-text-3); font-size: 12px; }

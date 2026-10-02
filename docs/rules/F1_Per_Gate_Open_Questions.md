@@ -1876,3 +1876,23 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Câu hỏi:** công ty có danh sách kênh chuẩn không? Nếu có thì gồm những gì, và "Release to Print" có phải một kênh trong danh sách đó hay là một loại sự kiện riêng bên cạnh?
 
 **Nếu trả lời khác:** `packages/shared/src/config/registers.ts` (`PUBLICATION_CHANNELS`) + một migration đổi giá trị đã lưu (chưa có dữ liệu thật lúc build).
+
+#### R5-Q26 · Hai ô Claims Library trên một claim nói ngược nhau — cảnh báo hay chặn 🔴
+
+**Lộ ra khi đổi ô "Claims Library entry" từ ô gõ chữ thành ô chọn (02/10/2026).** Câu 28(2) cho mỗi claim hai cột: *entry nào* trong thư viện (`libraryEntryId`, thứ C1 đọc) và *lời khai* "Linked to Claims Library" / "New claim — not yet in Claims Library" (`libraryStatus`). Hai cột có thể nói ngược nhau: khai "Linked" mà không chọn entry nào, hoặc chọn một entry mà lại khai "New claim". Đáp án không nói gì về trường hợp này.
+
+**Đã build:** một **cảnh báo**, không chặn — viền vàng trên ô và một dòng cảnh báo trên bảng (`claimLibraryLinkMismatch`). Lý do chọn cảnh báo: C1 chỉ đọc cột link, nên cả hai kiểu lệch đều không làm đổi kết quả Gate 3 — chỉ làm lời khai đánh lừa người đọc. Chặn lưu sẽ là thêm một luật mà đáp án không viết.
+
+**Câu hỏi:** (a) lệch như vậy có nên **chặn lưu** không, hay cảnh báo là đủ? (b) Có nên bỏ hẳn cột lời khai và **suy ra** nó từ việc có chọn entry hay không — hay lời khai "New claim" là một hành động có chủ đích mà đáp án muốn người dùng tự làm?
+
+**Nếu trả lời khác:** `packages/shared/src/config/referenceData.ts` (`claimLibraryLinkMismatch`) + `apps/web/src/components/DynamicTable.tsx` (chỗ gom `libraryWarnings`); nếu chặn thì thêm cùng kiểm tra vào `ProjectsService.setRegisterRows`.
+
+#### R5-Q27 · "Một bản ghi Change Control hợp lệ" ở câu 8 — sổ nào được tính 🔴
+
+**Lộ ra khi đổi ô "Linked Change Control ID" trên thẻ Assessments thành ô chọn (02/10/2026).** Câu 8: *"If Yes, a valid Change Control record must be linked."* Trước đây đó là ô gõ chữ tự do: gõ bất kỳ chữ gì, kể cả sai mã hay mã của dự án khác, cũng qua được luật.
+
+**Đã build:** ô chọn lấy từ các bản ghi `CHG-…` của **chính dự án này** (trang Change Control), và server từ chối mã không thuộc danh sách đó. Đọc "valid" là "tồn tại trên dự án này" là cách hiểu hẹp nhất có thể, nhưng vẫn là cách hiểu của mình.
+
+**Câu hỏi:** (a) Một dòng `FC-…` của Formulation Change Register có được tính là "Change Control record" ở đây không? (Câu này gắn với R5-Q19 — có bao nhiêu sổ ghi thay đổi.) (b) "Valid" có đòi thêm điều kiện nào khác ngoài tồn tại không — ví dụ bản ghi phải còn mở, hay phải đúng loại thay đổi?
+
+**Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` (`setAssessments`, kiểm tra `changeControlRecordId`) + `apps/web/src/components/AssessmentsCard.tsx` (danh sách lựa chọn).

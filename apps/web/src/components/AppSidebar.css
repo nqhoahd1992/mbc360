@@ -1,0 +1,273 @@
+/* Main sidebar — rail + panel (2026-10-03, wireframe option B). */
+.sb {
+  display: flex;
+  height: 100%;
+  font-size: 14px;
+}
+
+/* ---- Rail: app-level destinations, dark ---------------------------------- */
+.sb-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 64px;
+  flex-shrink: 0;
+  padding: 12px 0;
+  background: #001529;
+  overflow-y: auto;
+}
+.sb-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  background: var(--c-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+}
+.sb-mark:hover,
+.sb-mark:focus-visible {
+  color: #fff;
+}
+.sb-rail-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgb(255 255 255 / 0.78);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+.sb-rail-btn .anticon {
+  font-size: 18px;
+}
+.sb-rail-btn:hover {
+  background: rgb(255 255 255 / 0.08);
+  color: #fff;
+}
+.sb-rail-btn[aria-current] {
+  background: var(--c-primary);
+  color: #fff;
+}
+.sb-rail-btn:focus-visible,
+.sb-mark:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 1px;
+}
+
+/* ---- Panel: the open section, light --------------------------------------- */
+.sb-panel {
+  display: flex;
+  flex-direction: column;
+  width: 256px;
+  flex-shrink: 0;
+  min-height: 0;
+  background: var(--c-surface);
+  border-right: 1px solid var(--c-border-2);
+  color: var(--c-text);
+}
+.sb-panel-title {
+  display: flex;
+  align-items: center;
+  height: 56px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  font-weight: 600;
+  font-size: 15px;
+}
+.sb-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 16px;
+}
+.sb-label {
+  padding: 16px 16px 6px;
+  color: var(--c-text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Project switcher card */
+.sb-proj {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% - 16px);
+  margin: 0 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border-2);
+  border-radius: 8px;
+  background: var(--c-surface-2);
+  color: var(--c-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.sb-proj:hover {
+  border-color: var(--c-border);
+  color: var(--c-text);
+}
+.sb-proj:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 1px;
+}
+.sb-proj-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--c-text-3);
+  line-height: 18px;
+}
+.sb-proj-text b {
+  color: var(--c-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.sb-proj-pos {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  color: var(--c-text-2);
+}
+.sb-proj-icon,
+.sb-proj-chev {
+  flex-shrink: 0;
+  color: var(--c-text-3);
+}
+.sb-proj-icon {
+  font-size: 18px;
+}
+.sb-trunc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sb-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c-warn-dot);
+}
+.sb-dot-ok {
+  background: var(--c-ok-dot);
+}
+
+/* Rows */
+.sb-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: calc(100% - 16px);
+  min-height: 36px;
+  margin: 0 8px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--c-text-2);
+  font: inherit;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.sb-item:hover {
+  background: rgb(0 0 0 / 0.04);
+  color: var(--c-text);
+}
+.sb-item:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: -2px;
+}
+.sb-item[aria-current] {
+  background: var(--c-primary-light);
+  color: var(--c-link);
+  font-weight: 500;
+  box-shadow: inset 3px 0 0 var(--c-primary);
+}
+.sb-icon,
+.sb-chev {
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 20px;
+  align-items: center;
+}
+.sb-icon {
+  width: 16px;
+  justify-content: center;
+  color: var(--c-text-3);
+}
+.sb-item[aria-current] .sb-icon {
+  color: inherit;
+}
+.sb-ok {
+  color: var(--c-ok-dot);
+}
+.sb-cur {
+  color: var(--c-warn-dot);
+}
+.sb-lbl {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+/* Long sheet names wrap to two lines rather than ending in "…" — the name is
+   how you find the sheet. */
+.sb-lbl-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.sb-note {
+  color: var(--c-text-3);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+.sb-meta {
+  flex-shrink: 0;
+  color: var(--c-text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.sb-item[aria-current] .sb-meta,
+.sb-item[aria-current] .sb-note {
+  color: var(--c-link);
+}
+
+/* Groups */
+.sb-chev {
+  color: var(--c-text-3);
+  font-size: 10px;
+  transition: rotate 0.15s;
+}
+.sb-grp[data-open] .sb-chev {
+  rotate: 90deg;
+}
+.sb-grp[data-open] > .sb-grp-head {
+  color: var(--c-text);
+  font-weight: 500;
+}
+.sb-sub {
+  padding-left: 34px;
+}

@@ -1,0 +1,43 @@
+/* Change Control (2026-10 concept). Tokens from styles/concept.css; the log
+   itself is a RecordList (DynamicTable.css). */
+.cc-header { padding-top: 4px; }
+.cc-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.cc-title { margin: 0; font-size: 20px; font-weight: 600; line-height: 28px; }
+.cc-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.cc-meta { margin: 4px 0 0; color: var(--c-text-2); font-size: 13px; }
+.cc-desc { max-width: 860px; margin: 4px 0 0; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
+.cc-desc b { color: var(--c-text-2); font-weight: 500; }
+
+.cc-id { color: var(--c-text-2); font-variant-numeric: tabular-nums; font-weight: 600; }
+.cc-issue { color: var(--c-warn); }
+
+.cc-empty { display: grid; justify-items: center; gap: 8px; padding: 40px 24px; text-align: center; }
+.cc-empty-title { font-size: 16px; font-weight: 600; }
+.cc-empty-text { max-width: 480px; margin: 0 0 8px; color: var(--c-text-2); font-size: 13px; text-wrap: pretty; }
+
+.cc-raci { overflow: hidden; }
+.cc-raci-head { padding: 16px 20px; border-bottom: 1px solid var(--c-border-2); }
+.cc-raci-title { margin: 0; font-size: 16px; font-weight: 600; line-height: 24px; }
+.cc-raci-sub { margin: 2px 0 0; color: var(--c-text-3); font-size: 13px; }
+.cc-raci-list { display: grid; margin: 0 0 -1px; padding: 0; list-style: none; }
+@media (min-width: 992px) { .cc-raci-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.cc-raci-list > li { display: grid; gap: 4px; min-width: 0; padding: 12px 20px; border-bottom: 1px solid var(--c-border-2); font-size: 13px; }
+.cc-raci-name { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 14px; }
+.cc-raci-name b { font-weight: 500; }
+.cc-raci-text { color: var(--c-text-2); text-wrap: pretty; }
+.cc-raci-ev { color: var(--c-text-3); font-size: 12px; overflow-wrap: anywhere; }
+
+/* Open Change Request form: two columns where there is room. */
+.cc-form-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 16px; }
+@media (min-width: 576px) { .cc-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Final disposition fields inside the change drawer. */
+.cc-disp { display: grid; gap: 12px; }
+.cc-disp-ok { color: var(--c-ok); font-size: 13px; }
+
+@media (max-width: 639px) {
+  /* Both header actions on one row under the title. */
+  .cc-actions { flex-wrap: nowrap; width: 100%; margin-left: 0; }
+  .cc-actions .cc-btn-text { display: none; }
+  .cc-actions > .ant-btn-primary { flex: 1; }
+}

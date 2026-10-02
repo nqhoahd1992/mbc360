@@ -1,0 +1,111 @@
+/* Prohibited Ingredient Watch-list (2026-10-02 redesign, wireframe option A:
+   compact decision table + detail drawer). Tokens come from styles/concept.css. */
+.wl-summary { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 32px; padding: 20px 24px; }
+.wl-progress { flex: 1; min-width: 220px; }
+.wl-label { color: var(--c-text-2); font-size: 13px; }
+.wl-big { display: flex; align-items: baseline; gap: 8px; margin-top: 4px; }
+.wl-big b { font-size: 24px; font-weight: 600; line-height: 32px; }
+.wl-big span { color: var(--c-text-3); }
+.wl-bar { max-width: 360px; height: 6px; margin-top: 8px; overflow: hidden; border-radius: 3px; background: rgb(0 0 0 / 6%); }
+.wl-bar > div { height: 100%; border-radius: 3px; background: var(--c-primary); }
+.wl-bar > div.wl-bar-done { background: var(--c-ok-dot); }
+.wl-counts { display: flex; flex-wrap: wrap; gap: 12px 32px; margin: 0; }
+.wl-counts dd { margin: 4px 0 0; font-size: 20px; font-weight: 600; line-height: 28px; }
+.wl-bad-text { color: var(--c-bad); }
+.wl-warn-text { color: var(--c-warn); }
+
+.wl-chips { display: flex; gap: 8px; padding-bottom: 4px; overflow-x: auto; }
+.wl-chip {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  height: 32px; padding: 0 12px;
+  border: 1px solid var(--c-border); border-radius: 16px; background: var(--c-surface);
+  color: var(--c-text-2); font: inherit; white-space: nowrap; cursor: pointer;
+}
+.wl-chip:hover { border-color: var(--c-primary); color: var(--c-primary); }
+.wl-chip b { color: var(--c-text-3); font-weight: 500; }
+.wl-chip[aria-pressed='true'] { border-color: var(--c-primary); background: var(--c-primary-light); color: var(--c-link); }
+.wl-chip[aria-pressed='true'] b { color: var(--c-link); }
+
+.wl-tablecard { overflow: hidden; }
+.wl-table { display: none; width: 100%; table-layout: fixed; border-collapse: collapse; }
+.wl-table th {
+  height: 40px; padding: 0 12px; border-bottom: 1px solid var(--c-border-2);
+  background: var(--c-surface-2); color: var(--c-text-2); font-size: 13px; font-weight: 500; text-align: left; white-space: nowrap;
+}
+.wl-table td { padding: 12px; border-bottom: 1px solid var(--c-border-2); vertical-align: middle; }
+.wl-table tr:last-child td { border-bottom: 0; }
+.wl-col-owner { display: none; }
+.wl-row { cursor: pointer; }
+.wl-row:hover { background: rgb(0 0 0 / 2.5%); }
+.wl-row[aria-selected='true'] { background: var(--c-primary-light); }
+.wl-table .wl-row[aria-selected='true'] > td:first-child { box-shadow: inset 3px 0 0 var(--c-primary); }
+.wl-name { overflow: hidden; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.wl-fn { overflow: hidden; color: var(--c-text-3); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.wl-chev { color: var(--c-text-3); }
+
+.wl-list { margin: 0; padding: 0; list-style: none; }
+.wl-list > li { padding: 14px 16px; border-bottom: 1px solid var(--c-border-2); }
+.wl-list > li:last-child { border-bottom: 0; }
+.wl-list-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.wl-list-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 8px; }
+.wl-list-controls { display: grid; gap: 8px; margin-top: 12px; }
+@media (min-width: 640px) { .wl-list-controls { grid-template-columns: 1fr 1fr; } }
+.wl-list .wl-fn { display: none; }
+@media (min-width: 640px) { .wl-list .wl-fn { display: block; } }
+
+@media (min-width: 1280px) {
+  .wl-table { display: table; }
+  .wl-list { display: none; }
+}
+@media (min-width: 1400px) { .wl-col-owner { display: table-cell; } }
+
+.wl-empty { padding: 40px 16px; color: var(--c-text-2); text-align: center; }
+
+.wl-state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; }
+.wl-state-bad { color: var(--c-bad); }
+.wl-state-warn { color: var(--c-warn); }
+.wl-state-muted { color: var(--c-text-3); }
+.wl-state-open { color: var(--c-text-2); }
+.wl-state-ok { color: var(--c-ok); }
+
+.wl-owner { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+.wl-owner > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wl-initials {
+  display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px;
+  border: 1px solid var(--c-border-2); border-radius: 50%; background: var(--c-surface-2);
+  color: var(--c-text-2); font-size: 11px; font-weight: 600;
+}
+
+.wl-savebar { position: sticky; bottom: 0; z-index: 20; }
+.wl-savebar > div {
+  padding: 12px 16px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface);
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 6%);
+}
+
+/* Drawer content */
+.wl-drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.wl-drawer-count { color: var(--c-text-3); font-size: 12px; font-weight: 400; }
+.wl-drawer-name { font-size: 16px; font-weight: 600; }
+.wl-drawer-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; font-weight: 400; }
+.wl-drawer-fn { color: var(--c-text-3); font-size: 13px; }
+.wl-sections { display: grid; gap: 28px; }
+.wl-sec-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; font-weight: 600; }
+.wl-sec-note { margin: -6px 0 12px; color: var(--c-text-2); font-size: 13px; }
+.wl-grid { display: grid; gap: 16px; }
+@media (min-width: 640px) { .wl-grid { grid-template-columns: 1fr 1fr; } .wl-span-2 { grid-column: span 2; } }
+.wl-field-label { display: block; margin-bottom: 6px; color: var(--c-text-2); font-size: 13px; }
+.wl-req::after { content: ' *'; color: var(--c-bad-dot); }
+.wl-bom { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.wl-bom li {
+  display: flex; align-items: flex-start; gap: 12px; padding: 8px 12px;
+  border: 1px solid var(--c-warn-line); border-radius: 6px; background: var(--c-warn-bg); font-size: 13px;
+}
+.wl-bom li > .anticon { margin-top: 3px; color: var(--c-warn); }
+.wl-bom b { font-weight: 500; }
+.wl-bom span span { display: block; color: var(--c-text-2); }
+.wl-muted { color: var(--c-text-2); font-size: 13px; }
+.wl-dl { display: grid; grid-template-columns: 1fr; gap: 10px 16px; margin: 0; font-size: 13px; }
+@media (min-width: 640px) { .wl-dl { grid-template-columns: 150px 1fr; } }
+.wl-dl dt { color: var(--c-text-3); }
+.wl-dl dd { margin: 0; text-wrap: pretty; }
+.wl-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }

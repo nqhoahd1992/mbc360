@@ -1,11 +1,11 @@
-import { Alert, Empty, Typography } from 'antd';
+import { Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { backbonePlatformTechnology, targetProductProfile, targetProductSignOff } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import DynamicTable from '../components/DynamicTable';
-import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
+import { CompositePageHeader } from '../components/RegisterPageHeader';
 
 // NPD Front-End Roadmap Step 3 (v2 workbook, 2026-07-24) — "Complete before
 // formula lock (Gate 5)". Mandatory hard-block at SG05; SG03 only gets a
@@ -23,32 +23,22 @@ export default function TargetProductTech() {
   const locked = isGateRefLocked(project, targetProductProfile.gate);
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <div>
-        <Typography.Title level={4} style={{ margin: 0 }}>
-          Target Product & Tech Platform
-        </Typography.Title>
-        <Typography.Text type="secondary">
-          ONE agreed definition of what success means, plus the backbone technology that will
-          deliver it. The technology must be demonstrably superior in some way to the current
-          market (Competitor Landscape).
-        </Typography.Text>
-      </div>
-
-      <Alert
-        type="info"
-        showIcon
-        title="Complete before formula lock"
-        description="Step 3 of the NPD Front-End Roadmap — hard-blocks Formula BOM (Gate 05) until signed off."
+    <div className="concept">
+      <CompositePageHeader
+        project={project}
+        title="Target Product & Tech Platform"
+        description={<>ONE agreed definition of what success means, plus the backbone technology that will deliver it. The technology must be demonstrably superior in some way to the current market (Competitor Landscape).</>}
+        note={{
+          title: "Complete before formula lock",
+          text: "Step 3 of the NPD Front-End Roadmap — hard-blocks Formula BOM (Gate 05) until signed off.",
+        }}
+        reviewOwnerText={reviewOwnerText}
       />
-
-      <ProjectIdentificationCard project={project} />
 
       <DynamicTable
         config={targetProductProfile}
         rows={project.registers[targetProductProfile.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, targetProductProfile.key, rows)}
-        reviewOwnerText={reviewOwnerText}
         readOnly={locked}
       />
 
@@ -56,7 +46,6 @@ export default function TargetProductTech() {
         config={backbonePlatformTechnology}
         rows={project.registers[backbonePlatformTechnology.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, backbonePlatformTechnology.key, rows)}
-        reviewOwnerText={reviewOwnerText}
         readOnly={locked}
       />
 
@@ -64,7 +53,6 @@ export default function TargetProductTech() {
         config={targetProductSignOff}
         rows={project.registers[targetProductSignOff.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, targetProductSignOff.key, rows)}
-        reviewOwnerText={reviewOwnerText}
         readOnly={locked}
       />
     </div>

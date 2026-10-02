@@ -415,6 +415,27 @@ We have built one from the channels the Published Information register already d
 
 **Question:** does the company have a standard channel list? If so, what is on it — and is "Release to Print" one of the channels, or a different kind of event alongside them?
 
+
+---
+
+## Question 26 — A claim's two Claims Library fields disagree: warn, or block?
+
+Your answer to question 28(2) gives each project claim two Claims Library fields: **which library entry** it reuses, and the **declaration** "Linked to Claims Library" or "New claim — not yet in Claims Library". The two can contradict each other — "Linked" with no entry chosen, or an entry chosen under "New claim". Your answer does not say what should happen then.
+
+We now show a **warning** on the claim and above the table, and still allow it to be saved. We chose a warning because the Gate 3 review rule reads only the entry link, so neither contradiction changes what Gate 3 decides — it only makes the declaration misleading.
+
+**Questions:** (a) should such a contradiction **block saving**, or is a warning enough? (b) Should the declaration be dropped and **worked out** from whether an entry is chosen — or is declaring "New claim" a deliberate act you want a person to make?
+
+---
+
+## Question 27 — "A valid Change Control record" (question 8): which records count?
+
+Question 8 says *"If Yes, a valid Change Control record must be linked."* Until now that was a free-text field, so any text at all — a typo, or another project's record number — satisfied it.
+
+It is now a choice from **this project's own Change Control records** (the CHG- numbers), and the system refuses anything else. Reading "valid" as "exists on this project" is the narrowest reading we could find, but it is still ours.
+
+**Questions:** (a) Does a row of the Formulation Change Register (the FC- numbers) count as a Change Control record here? This ties to question 19, on how many change books there should be. (b) Does "valid" require anything beyond existing — for example that the record is still open, or covers the right kind of change?
+
 ---
 
 ## Summary
@@ -438,5 +459,7 @@ We have built one from the channels the Published Information register already d
 | 23 | Deferring a Should/Could requirement — owner, due date, and whether every row needs a priority | 23(b) is running on our reading now; 23(c) currently blocks Gate 5 on an unprioritised cost row |
 | 24 | The new general restricted-and-caution screen — shape, and whether it belongs to Gate 4 too | Built for your question-5 answer; four choices in it are ours, and (c) may be a real gap |
 | 25 | What channels the Publication / Deployment record should offer | Your question-30 answer lists the field but no values; ours is assembled, not supplied |
+| 26 | A claim's two Claims Library fields contradict each other — warn or block | Built as a warning; blocking would be a rule your answer does not state |
+| 27 | Which records count as "a valid Change Control record" for question 8 | Now limited to the project's own CHG- records; FC- rows tie to question 19 |
 
 Questions 4 to 6, 10 to 12, 14 and 16 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

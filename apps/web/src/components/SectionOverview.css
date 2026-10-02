@@ -1,0 +1,41 @@
+/* Section overview (2026-10-02 redesign, wireframe option A). Header, chip and
+   row primitives come from pages/AdminUsers.css; tokens from concept.css. */
+.so-owner { color: var(--c-text); font-weight: 500; }
+.so-counts { margin-top: 8px; }
+.so-muted { color: var(--c-text-3); font-size: 13px; }
+.so-warn { color: var(--c-warn); font-size: 13px; }
+.so-ok { color: var(--c-ok-dot); }
+
+.so-row { color: inherit; text-decoration: none; }
+.so-row:hover { color: inherit; }
+.so-name { flex: 1; min-width: 0; font-weight: 500; }
+.so-name .au-email { font-weight: 400; font-size: 12px; }
+.so-gate { width: 150px; flex-shrink: 0; }
+.so-gate .c-tag b { font-weight: 700; }
+.so-prog { width: 150px; flex-shrink: 0; }
+.so-state { width: 96px; flex-shrink: 0; }
+.so-chev { flex-shrink: 0; }
+
+.so-progress { display: inline-flex; align-items: center; gap: 8px; color: var(--c-text-2); font-size: 13px; font-variant-numeric: tabular-nums; }
+.so-bar { position: relative; overflow: hidden; width: 64px; height: 4px; border-radius: 2px; background: rgb(0 0 0 / 8%); }
+.so-bar i { position: absolute; inset: 0 auto 0 0; background: var(--c-primary); }
+
+/* Phone: name on top, then gate · progress · state on one wrapped line. */
+@media (max-width: 767px) {
+  .so-row { flex-wrap: wrap; gap: 8px 12px; padding-inline: 16px; }
+  .so-name { flex-basis: 100%; }
+  .so-gate, .so-prog, .so-state { width: auto; }
+  .so-chev { display: none; }
+}
+
+.so-guide { display: grid; gap: 16px; }
+.so-guide-card { padding: 20px 24px; }
+.so-guide-title { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+.so-dl { display: grid; margin: 0; }
+.so-dl-row { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 4px 24px; padding: 10px 0; border-top: 1px solid var(--c-border-2); }
+.so-dl-row:first-child { border-top: 0; padding-top: 0; }
+.so-dl-row dt { font-weight: 500; }
+.so-dl-row dd { margin: 0; color: var(--c-text-2); text-wrap: pretty; }
+@media (max-width: 767px) {
+  .so-dl-row { grid-template-columns: minmax(0, 1fr); }
+}

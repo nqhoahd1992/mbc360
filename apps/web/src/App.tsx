@@ -1,21 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Alert, App as AntApp, ConfigProvider, Divider, Layout, Menu, Button, Grid, Select, Spin, Tooltip, Typography } from 'antd';
-import {
-  CheckCircleFilled,
-  DatabaseOutlined,
-  EyeOutlined,
-  LockOutlined,
-  MenuOutlined,
-  RightCircleFilled,
-  SearchOutlined,
-  StarOutlined,
-  TeamOutlined,
-} from '@ant-design/icons';
-import { HashRouter, Link, Route, Routes, useLocation, useNavigate, useNavigationType } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, App as AntApp, ConfigProvider, Divider, Drawer, Layout, Button, Grid, Select, Spin, Tooltip, Typography } from 'antd';
+import { EyeOutlined, MenuOutlined, SearchOutlined } from '@ant-design/icons';
+import { HashRouter, Link, Route, Routes, useLocation, useNavigationType } from 'react-router-dom';
 import { useAppStore } from './store/useAppStore';
 import { SSO_ROLES } from './utils/roles';
 import { useSession } from './auth/useSession';
 import AuthStatus from './components/AuthStatus';
+import AppSidebar from './components/AppSidebar';
 import AdminUsers from './pages/AdminUsers';
 import AdminRoles from './pages/AdminRoles';
 import AdminMarketProfiles from './pages/AdminMarketProfiles';
@@ -45,14 +36,9 @@ import MySheets from './pages/MySheets';
 import IntegrationsPage from './pages/IntegrationsPage';
 import MyAccount from './pages/MyAccount';
 import Login from './pages/Login';
-import { PHASES } from '@mbc360/shared/config/gates';
-import { ADMIN_SUBMENU, REFERENCE_DATA_SUBMENU, globalNavFor } from './config/globalNav';
-import { getNavGroups, findNavGroupForRegister, getRegisterConfig, navItemHref, formatGate } from '@mbc360/shared/config/registers';
-import { ownerName, reviewRoleLabel } from '@mbc360/shared/config/reviewers';
-import { phaseProgress } from '@mbc360/shared/utils/gateProgress';
 import { TEXT } from './theme/tokens';
 
-const { Sider, Header, Content } = Layout;
+const { Header, Content } = Layout;
 
 function ProjectContextTitle() {
   const location = useLocation();
@@ -67,365 +53,6 @@ function ProjectContextTitle() {
       </Link>{' '}
       — {project.identity.productSku}
     </span>
-  );
-}
-
-function SideMenu({ isAdmin }: { isAdmin: boolean }) {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const projects = useAppStore((s) => s.projects);
-
-  const urlProjectId = location.pathname.match(/\/projects\/([^/]+)/)?.[1];
-  // Lives in the store now (2026-08-26), not local state, so a global page
-  // like Change Control can read the same "pinned" project — e.g. to default
-  // Open Change Request's Project field. `?? urlProjectId` covers the render
-  // before the effect below has run (e.g. arriving directly on a project URL
-  // in a fresh tab, before the store value catches up).
-  const storedActiveProjectId = useAppStore((s) => s.activeProjectId);
-  const setActiveProjectId = useAppStore((s) => s.setActiveProjectId);
-  const activeProjectId = storedActiveProjectId ?? urlProjectId;
-
-  // Keep the workspace pinned to the last visited project, even on global pages
-  useEffect(() => {
-    if (urlProjectId) setActiveProjectId(urlProjectId);
-  }, [urlProjectId, setActiveProjectId]);
-
-  // Now that the menu scrolls inside its own column, the highlighted item can
-  // sit outside it — arriving via ⌘K, a gate-blocker deep link or a bookmark
-  // would show a sidebar scrolled somewhere else entirely, with nothing marking
-  // where you are. `block: 'nearest'` is a no-op when the item is already
-  // visible, so ordinary clicking never moves the menu.
-  useEffect(() => {
-    const selected = document.querySelector('.ant-layout-sider .ant-menu-item-selected');
-    selected?.scrollIntoView({ block: 'nearest' });
-  }, [location.pathname]);
-
-  const projectId =
-    activeProjectId && projects.some((p) => p.identity.id === activeProjectId)
-      ? activeProjectId
-      : projects[0]?.identity.id;
-
-  const onSwitchProject = (id: string) => {
-    setActiveProjectId(id);
-    // Stay on the same workspace tab when switching project
-    const subPath = urlProjectId
-      ? location.pathname.replace(`/projects/${urlProjectId}`, '')
-      : '';
-    navigate(`/projects/${id}${subPath}`);
-  };
-
-  // Built from the same GLOBAL_NAV the ⌘K palette reads, so a page added in one
-  // place cannot go missing from the other (which is exactly what had happened
-  // to Integrations, My Account and Users & Roles).
-  //
-  // Nested entries are grouped by their OWN `submenu` label (2026-08-26) — this
-  // used to dump every nested entry into one hardcoded "Users & Roles" bucket
-  // regardless of what `submenu` said, which is why Market profiles / Raw
-  // material risk (company-wide reference data, unrelated to user/role admin)
-  // ended up filed there. Each distinct label now gets its own top-level group,
-  // in the order that label first appears in GLOBAL_NAV.
-  const globalItems = useMemo(() => {
-    const entries = globalNavFor(isAdmin);
-    const top = entries
-      .filter((e) => e.sidebar === 'top')
-      .map((e) => ({ key: e.path, icon: e.icon, label: <Link to={e.path}>{e.title}</Link> }));
-    const nested = entries.filter(
-      (e): e is typeof e & { sidebar: { submenu: string } } =>
-        typeof e.sidebar === 'object' && e.sidebar !== null,
-    );
-    if (nested.length === 0) return top;
-    const submenuOrder: string[] = [];
-    const bySubmenu = new Map<string, typeof nested>();
-    for (const e of nested) {
-      const label = e.sidebar.submenu;
-      if (!bySubmenu.has(label)) {
-        bySubmenu.set(label, []);
-        submenuOrder.push(label);
-      }
-      bySubmenu.get(label)!.push(e);
-    }
-    const submenuIcons: Record<string, ReactNode> = {
-      [ADMIN_SUBMENU]: <TeamOutlined />,
-      [REFERENCE_DATA_SUBMENU]: <DatabaseOutlined />,
-    };
-    return [
-      ...top,
-      ...submenuOrder.map((label) => ({
-        key: `nav-submenu-${label}`,
-        icon: submenuIcons[label] ?? <TeamOutlined />,
-        label,
-        children: bySubmenu.get(label)!.map((e) => ({
-          key: e.path,
-          label: <Link to={e.path}>{e.title}</Link>,
-        })),
-      })),
-    ];
-  }, [isAdmin]);
-
-  const activeProject = projects.find((p) => p.identity.id === projectId);
-
-  const workspaceItems = useMemo(() => {
-    if (!projectId || !activeProject) return [];
-    const items = [
-      { key: `/projects/${projectId}`, label: <Link to={`/projects/${projectId}`}>Overview</Link> },
-      // My Sheets used to sit here, between Overview and Phase 1. It is a LENS
-      // over the workbook groups, not a step in the process, so it broke the
-      // one sequence this block exists to show — Overview → Phase 1 → 2 → 3 → 4.
-      // It now heads the WORKBOOK BY RESPONSIBILITY section instead, which is
-      // the thing it filters.
-      ...PHASES.map((ph) => {
-        const progress = phaseProgress(activeProject, ph.phase);
-        const icon =
-          progress.state === 'completed' ? (
-            <CheckCircleFilled style={{ color: '#52c41a' }} />
-          ) : progress.state === 'current' ? (
-            <RightCircleFilled style={{ color: '#faad14' }} />
-          ) : (
-            <LockOutlined style={{ color: 'rgba(255,255,255,0.35)' }} />
-          );
-        return {
-          key: `/projects/${projectId}/phase/${ph.phase}`,
-          icon,
-          label: (
-            <Link to={`/projects/${projectId}/phase/${ph.phase}`}>
-              Phase {ph.phase} · {ph.subtitle.replace(/Gates [\d-]+ /, '').replace(/[()]/g, '')}{' '}
-              <span style={{ opacity: 0.65 }}>
-                ({progress.passedGates}/{progress.totalGates})
-              </span>
-            </Link>
-          ),
-        };
-      }),
-    ];
-    return items;
-  }, [projectId, activeProject]);
-
-  // Evidence-register submenus, grouped by responsibility (the DEPARTMENTS
-  // config). Leaf keys are synthetic (a page can appear under several
-  // groups, so keys can't just be the route); selection is computed by path
-  // match below.
-  const registerItems = useMemo(() => {
-    if (!projectId) return [];
-    const reviewers = activeProject?.identity.reviewers;
-    // "Everything below, filtered to me" — the digital replacement for the
-    // workbook's owner tab-prefix, so it belongs at the top of the groups it
-    // narrows rather than in the phase sequence above.
-    const mySheets = {
-      key: `/projects/${projectId}/my-sheets`,
-      icon: <StarOutlined style={{ color: '#faad14' }} />,
-      label: <Link to={`/projects/${projectId}/my-sheets`}>My Sheets</Link>,
-    };
-    return [mySheets, ...getNavGroups().map((group) => {
-      // The group is labelled with the person actually assigned to it on THIS
-      // project (the workbook's tab-name prefix digitised — see reviewers.ts),
-      // not a name baked into config.
-      const groupOwner = ownerName(group.reviewOwner, reviewers);
-      const groupRole = group.reviewOwner?.owner.role;
-      return {
-        key: `registers-sub-${group.key}`,
-        label: (
-          <span>
-            {group.title}
-            {groupOwner && (
-              <span style={{ marginLeft: 6, opacity: 0.5, fontSize: 11, fontWeight: 400 }}>
-                {groupOwner}
-              </span>
-            )}
-          </span>
-        ),
-        children: [
-          {
-            key: `cat:${group.key}`,
-            label: <Link to={`/projects/${projectId}/registers/cat/${group.key}`}>Overview</Link>,
-          },
-          ...group.items.map((item, idx) => {
-            const gate = formatGate(item.gate);
-            // Some sheets are deliberately filed outside their own review
-            // owner's group (10 R&I-owned sheets sit under "Quality" — a
-            // confirmed business remap, see CLAUDE.md). Without this badge the
-            // sidebar reads "Quality" while the page caption reads "…(R&I)",
-            // which looks like a contradiction rather than a decision.
-            // A register item's owner comes from its own RegisterConfig; a
-            // page-based item (no registerKey) has no config to look one up
-            // from, so it needs `item.reviewOwner` set directly in
-            // registers.ts or this badge can never fire for it at all
-            // (found 2026-08-27 — see the note on "Formulation Safety" there).
-            const itemRole = item.registerKey
-              ? getRegisterConfig(item.registerKey)?.reviewOwner?.owner.role
-              : item.reviewOwner?.owner.role;
-            const showOwnerBadge = !!itemRole && !!groupRole && itemRole !== groupRole;
-            return {
-              key: `${group.key}:${idx}`,
-              label: (
-                <Link to={navItemHref(item, projectId)}>
-                  {item.title}
-                  {gate && (
-                    <span style={{ marginLeft: 6, opacity: 0.55, fontSize: 11 }}>{gate}</span>
-                  )}
-                  {showOwnerBadge && (
-                    <span style={{ marginLeft: 6, opacity: 0.55, fontSize: 11 }}>
-                      · {reviewRoleLabel(itemRole)}
-                    </span>
-                  )}
-                </Link>
-              ),
-            };
-          }),
-        ],
-      };
-    })];
-  }, [projectId, activeProject]);
-
-  // Highlight every leaf whose route matches the current path.
-  const registerSelectedKeys = useMemo(() => {
-    if (!projectId) return [];
-    const keys: string[] = [];
-    // My Sheets now lives in this menu (see registerItems), and its key is the
-    // route itself rather than a `group:index` pair — without this it would
-    // render unhighlighted while you are standing on it.
-    if (location.pathname === `/projects/${projectId}/my-sheets`) {
-      keys.push(`/projects/${projectId}/my-sheets`);
-    }
-    for (const group of getNavGroups()) {
-      if (location.pathname === `/projects/${projectId}/registers/cat/${group.key}`) {
-        keys.push(`cat:${group.key}`);
-      }
-      group.items.forEach((item, idx) => {
-        if (navItemHref(item, projectId) === location.pathname) keys.push(`${group.key}:${idx}`);
-      });
-    }
-    return keys;
-  }, [projectId, location.pathname]);
-
-  // Keep the register submenu for the current route expanded. Register
-  // deep-links are category-agnostic, so resolve the parent submenu from the
-  // register key.
-  const [openKeys, setOpenKeys] = useState<string[]>([]);
-  const catInPath = location.pathname.match(/\/registers\/cat\/([^/]+)/)?.[1];
-  const regInPath = location.pathname.match(/\/registers\/reg\/([^/]+)/)?.[1];
-  // A department can also link to a dedicated page (BOM, Change Control, …); when
-  // the current route matches one of those, open its submenu too.
-  const pageGroup =
-    !catInPath && !regInPath && projectId
-      ? getNavGroups().find((g) => g.items.some((it) => navItemHref(it, projectId) === location.pathname))
-      : undefined;
-  const activeSubKey = catInPath
-    ? `registers-sub-${catInPath}`
-    : regInPath
-      ? `registers-sub-${findNavGroupForRegister(regInPath)?.key}`
-      : pageGroup
-        ? `registers-sub-${pageGroup.key}`
-        : undefined;
-  useEffect(() => {
-    if (activeSubKey) {
-      setOpenKeys((prev) => (prev.includes(activeSubKey) ? prev : [...prev, activeSubKey]));
-    }
-  }, [activeSubKey]);
-
-  return (
-    <>
-      <Menu
-        theme="dark"
-        mode="inline"
-        selectedKeys={[location.pathname]}
-        defaultOpenKeys={['admin-users-roles']}
-        items={globalItems as never}
-      />
-      {projectId && (
-        <>
-          <div
-            style={{
-              padding: '16px 16px 8px',
-              color: 'rgba(255,255,255,0.45)',
-              fontSize: 12,
-              letterSpacing: 0.5,
-            }}
-          >
-            PROJECT WORKSPACE
-          </div>
-          <div style={{ padding: '0 12px 8px' }}>
-            <Select
-              style={{ width: '100%' }}
-              popupMatchSelectWidth={false}
-              placeholder="Select project"
-              value={projectId}
-              onChange={onSwitchProject}
-              optionRender={(opt) => <span style={{ whiteSpace: 'normal' }}>{opt.label}</span>}
-              options={projects.map((p) => ({
-                value: p.identity.id,
-                label: `${p.identity.id} — ${p.identity.productSku}`,
-              }))}
-              showSearch
-              optionFilterProp="label"
-            />
-          </div>
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={[location.pathname]}
-            items={workspaceItems as never}
-          />
-
-          <div
-            style={{
-              padding: '16px 16px 8px',
-              color: 'rgba(255,255,255,0.45)',
-              fontSize: 12,
-              letterSpacing: 0.5,
-            }}
-          >
-            WORKBOOK BY RESPONSIBILITY
-          </div>
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={registerSelectedKeys}
-            openKeys={openKeys}
-            onOpenChange={(keys) => setOpenKeys(keys as string[])}
-            items={registerItems as never}
-          />
-        </>
-      )}
-    </>
-  );
-}
-
-// Keeps the sidebar visible while the (window-level) page scrolls.
-// The sidebar is its own scroll region, pinned to the viewport.
-//
-// It used to be a sticky block whose full height (60+ register links across ten
-// groups) participated in the PAGE scroll, bottom-pinning once you had scrolled
-// past it. That made the MENU the tallest thing on the page, so the document
-// stayed scrollable even on a screen with two cards on it — and since router
-// navigation does not reset scroll, arriving from a long page left the window
-// scrolled far past the whole of a short one: a blank content area with the
-// menu's tail beside it (reported 2026-08-22 with a screenshot of exactly
-// that). Now the document is only as tall as the CONTENT, and the menu scrolls
-// inside its own 100vh column.
-//
-// Scroll chaining is deliberately LEFT ON (no `overscroll-behavior: contain`):
-// a contained scroll port blocks chaining as soon as it is at a boundary, and a
-// menu shorter than the viewport is always at its boundary — so containing it
-// would turn the whole left column into a dead zone for the wheel. Chaining is
-// also harmless now that the page itself is short.
-function StickySidebar({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        position: 'sticky',
-        top: 0,
-        // Pinned on BOTH axes. `top` alone leaves the menu free to scroll off
-        // to the left the moment anything makes the document wider than the
-        // viewport — reported with a screenshot of exactly that. The page
-        // should not scroll sideways at all now (see index.css), so this is the
-        // second line of defence rather than the fix.
-        left: 0,
-        height: '100vh',
-        overflowY: 'auto',
-      }}
-    >
-      {children}
-    </div>
   );
 }
 
@@ -484,6 +111,8 @@ function Shell() {
     () => typeof window === 'undefined' || window.matchMedia('(min-width: 992px)').matches,
   );
   const wideScreen = screens.lg ?? navOpen;
+  // Below md the header controls collapse to icons (see the Header below).
+  const compactHeader = screens.md === false;
   useEffect(() => setNavOpen(wideScreen), [wideScreen]);
   // On a narrow screen the expanded sidebar covers most of the viewport, so a
   // link tap should close it rather than leave the content hidden behind it.
@@ -542,11 +171,11 @@ function Shell() {
     );
   }
   if (!session.user) {
-    return <Login />;
+    return <Login denied={session.denied} />;
   }
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout hasSider style={{ minHeight: '100vh' }}>
       {/* Keyboard users otherwise tab through the entire sidebar — ~10 groups
           and dozens of register links — before reaching the page itself.
           Off-screen until focused; antd's Content renders a real <main>. */}
@@ -574,29 +203,34 @@ function Shell() {
       >
         Skip to content
       </a>
-      <Sider
-        breakpoint="lg"
-        collapsedWidth={0}
-        width={250}
-        collapsible
-        trigger={null}
-        collapsed={!navOpen}
-      >
-        <StickySidebar>
-          <div style={{ color: '#fff', padding: 16, fontWeight: 700, fontSize: 16 }}>
-            MBc360
-            <div style={{ fontWeight: 400, fontSize: 11, color: 'rgba(255,255,255,0.65)' }}>
-              Development & Quality System
-            </div>
-          </div>
-          <SideMenu isAdmin={session.isAdmin} />
-        </StickySidebar>
-      </Sider>
+      {/* The sidebar scrolls inside its own 100vh column rather than with the
+          page: a menu taller than the content used to make the document
+          scrollable on a two-card screen, and router navigation (which keeps
+          scrollY) then left a short page scrolled past its own end. */}
+      {wideScreen ? (
+        <div style={{ position: 'sticky', top: 0, left: 0, height: '100vh', flexShrink: 0, zIndex: 101 }}>
+          <AppSidebar isAdmin={session.isAdmin} narrow={false} />
+        </div>
+      ) : (
+        <Drawer
+          placement="left"
+          open={navOpen}
+          onClose={() => setNavOpen(false)}
+          closable={false}
+          size={320}
+          styles={{ body: { padding: 0 } }}
+          rootClassName="concept-tokens"
+        >
+          <AppSidebar isAdmin={session.isAdmin} narrow />
+        </Drawer>
+      )}
       <Layout>
         <Header
           style={{
             background: '#fff',
-            padding: '0 24px',
+            // Narrow screens (2026-10-02): tighter padding, and the controls
+            // below collapse to icons so a 375px phone no longer scrolls sideways.
+            padding: compactHeader ? '0 12px' : '0 24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -637,16 +271,17 @@ function Shell() {
           >
             <ProjectContextTitle />
           </Typography.Text>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: compactHeader ? 8 : 12, flexShrink: 0 }}>
             {/* "Reset demo data" was removed in M3 Phase 1: projects are real
                 database records now, not seeded demo state, so a client-side
                 reset button would have nothing meaningful to reset (and must
                 not be able to wipe server data). */}
             <Tooltip title="Demo simulation: previews screens as if signed in with this role's permissions, until every screen reads permissions from your real signed-in account instead (rule A4).">
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <EyeOutlined style={{ color: '#999' }} />
+                {!compactHeader && <EyeOutlined style={{ color: '#999' }} />}
                 <Select
-                  style={{ width: 230 }}
+                  aria-label="View as role"
+                  style={{ width: compactHeader ? 120 : 230 }}
                   value={viewRole}
                   onChange={setViewRole}
                   options={SSO_ROLES.map((r) => ({ value: r.key, label: r.label }))}
@@ -655,8 +290,11 @@ function Shell() {
               </span>
             </Tooltip>
 
-            <Divider orientation="vertical" style={{ margin: 0, height: 22 }} />
+            {!compactHeader && <Divider orientation="vertical" style={{ margin: 0, height: 22 }} />}
 
+            {compactHeader ? (
+              <Button icon={<SearchOutlined />} aria-label="Search" onClick={() => setPaletteOpen(true)} style={{ color: TEXT.secondary }} />
+            ) : (
             <Button
               icon={<SearchOutlined />}
               onClick={() => setPaletteOpen(true)}
@@ -676,10 +314,11 @@ function Shell() {
                 {isMac ? '⌘' : 'Ctrl'} K
               </kbd>
             </Button>
+            )}
 
-            <Divider orientation="vertical" style={{ margin: 0, height: 22 }} />
+            {!compactHeader && <Divider orientation="vertical" style={{ margin: 0, height: 22 }} />}
 
-            <AuthStatus user={session.user} onLogout={session.logout} />
+            <AuthStatus user={session.user} onLogout={session.logout} compact={compactHeader} />
           </div>
         </Header>
         <Content id="main-content" style={{ padding: 16 }}>
@@ -706,7 +345,15 @@ function Shell() {
           {projectsLoading && projectCount === 0 && !projectsError && needsProjects ? (
             <PageSkeleton label="Loading projects…" />
           ) : (
-          <Routes>
+          // Keyed by path (2026-10-02, user-reported): many routes share one
+          // page component and only differ by a URL parameter (every register,
+          // every phase, every project), so React used to keep the component —
+          // and its unsaved draft — across them, and a blank row added on one
+          // register reappeared on the next. The unsaved-changes guard has
+          // already asked before the path changes, so a fresh page is what
+          // "Leave" means. Query strings (a phase's ?gate tab) are not in the
+          // key, so switching tabs does not remount.
+          <Routes key={location.pathname}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/:projectId" element={<ProjectOverview />} />
@@ -748,8 +395,14 @@ function Shell() {
 }
 
 export default function App() {
+  // colorPrimary is #0958d9, not antd's default #1677ff (2026-10-02): white
+  // text on #1677ff is 4.1:1, under the 4.5:1 WCAG AA minimum for body text —
+  // the primary buttons and the selected sidebar item both carry white text on
+  // it. #0958d9 is antd's own next blue step (6.6:1). colorInfo and colorLink
+  // are set too: antd derives links from colorInfo, not colorPrimary, so they
+  // stayed #1677ff (4.1:1 on white). styles/concept.css --c-primary must match.
   return (
-    <ConfigProvider theme={{ token: { colorPrimary: '#1677ff', borderRadius: 6 } }}>
+    <ConfigProvider theme={{ token: { colorPrimary: '#0958d9', colorInfo: '#0958d9', colorLink: '#0958d9', borderRadius: 6 } }}>
       {/* antd's `App` component (2026-08-26, fixes "[antd: Modal] Static
           function can not consume context like dynamic theme"): the static
           Modal.confirm/message/notification functions render outside React's

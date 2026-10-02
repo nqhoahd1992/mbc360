@@ -1,0 +1,23 @@
+/* Gate readiness list (2026-10-02): neutral text, the state on the icon only. */
+.grp { display: grid; gap: 12px; color: var(--c-text); font-size: 13px; }
+.grp-summary { font-weight: 600; color: var(--c-ok); }
+.grp-summary-bad { color: var(--c-bad); }
+.grp-group { display: grid; gap: 6px; }
+.grp-group-title { color: var(--c-text-2); font-size: 12px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+.grp-group-title span { margin-left: 4px; color: var(--c-text-3); font-weight: 500; }
+.grp-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.grp-item { display: flex; align-items: flex-start; gap: 8px; padding: 4px 6px; border-radius: 6px; }
+.grp-item:hover { background: rgb(0 0 0 / 3%); }
+.grp-icon { flex-shrink: 0; margin-top: 2px; font-size: 14px; }
+.grp-blocking .grp-icon { color: var(--c-bad-dot); }
+.grp-confirm .grp-icon { color: var(--c-warn-dot); }
+.grp-met .grp-icon { color: var(--c-ok-dot); }
+.grp-body { flex: 1; min-width: 0; }
+.grp-label { line-height: 20px; text-wrap: pretty; }
+.grp-met .grp-label { color: var(--c-text-2); }
+.grp-link { color: inherit; }
+.grp-link:hover { color: var(--c-link); text-decoration: underline; }
+.grp-ext { margin-left: 4px; color: var(--c-text-3); font-size: 11px; }
+.grp-tier { height: 18px; margin-left: 6px; padding: 0 6px; font-size: 11px; vertical-align: 1px; cursor: default; }
+.grp-note { margin-top: 2px; color: var(--c-text-3); font-size: 12px; text-wrap: pretty; }
+.grp-toggle { height: auto; padding: 0; font-size: 13px; justify-self: start; }

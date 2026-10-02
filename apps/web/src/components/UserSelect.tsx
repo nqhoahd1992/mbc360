@@ -15,12 +15,16 @@ export default function UserSelect({
   disabled,
   placeholder = 'Select a person',
   style,
+  status,
 }: {
   value?: string;
   onChange: (value: string | undefined) => void;
   disabled?: boolean;
   placeholder?: string;
   style?: React.CSSProperties;
+  // Outline the picker like the inputs around it when a required person is
+  // missing (antd's own Select `status`).
+  status?: 'error' | 'warning';
 }) {
   const users = useUserOptions();
   const known = users.some((u) => u.value === value);
@@ -34,6 +38,7 @@ export default function UserSelect({
       allowClear
       showSearch
       disabled={disabled}
+      status={status}
       placeholder={placeholder}
       style={{ width: '100%', minWidth: 120, ...style }}
       value={value || undefined}
