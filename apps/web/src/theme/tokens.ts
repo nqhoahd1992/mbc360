@@ -33,8 +33,9 @@ export const ICON_MUTED = '#8c8c8c';
 // "Owner", "Evidence link" and "Notes" are all free text, a scrolled-away
 // header means guessing which column you are typing into.
 //
-// 64 is not a guess: antd's Layout token sets `headerHeight: controlHeight * 2`
-// (layout/style/index.js) and controlHeight defaults to 32.
+// The header's height is set explicitly (HEADER_HEIGHT, 56 since the
+// 2026-10-03 header redesign) rather than left to antd's Layout default of 64,
+// so this offset and App.tsx's Header read the same number.
 //
 // The offset alone is not enough — the app header also has to outrank the
 // table's own sticky z-index, or the table header paints over it while being
@@ -46,4 +47,5 @@ export const ICON_MUTED = '#8c8c8c';
 // floats across the middle of the rows (which is exactly what it did in the
 // Change-trigger reference modal). In a dialog use `scroll={{ y }}` instead —
 // that pins the header to the top of the table's own scroll area.
-export const TABLE_STICKY = { offsetHeader: 64 } as const;
+export const HEADER_HEIGHT = 56;
+export const TABLE_STICKY = { offsetHeader: HEADER_HEIGHT } as const;

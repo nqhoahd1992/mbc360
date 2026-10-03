@@ -1,0 +1,101 @@
+/* Change trigger reference drawer (2026-10-03, wireframe option A). */
+.tr {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  color: var(--c-text);
+  font-size: 14px;
+}
+.tr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tr-count {
+  margin: 0;
+  color: var(--c-text-3);
+  font-size: 13px;
+}
+.tr-list {
+  display: grid;
+  gap: 12px;
+}
+.tr-card {
+  padding: 16px;
+}
+.tr-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tr-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 22px;
+}
+.tr-cat {
+  flex-shrink: 0;
+}
+.tr-examples {
+  margin: 4px 0 0;
+  color: var(--c-text-2);
+  font-size: 13px;
+}
+.tr-dl {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 8px 16px;
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+.tr-dl dt {
+  color: var(--c-text-3);
+}
+.tr-dl dd {
+  margin: 0;
+}
+.tr-affected {
+  display: grid;
+  gap: 6px;
+}
+.tr-gates {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.tr-phases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tr-empty {
+  padding: 40px 24px;
+  text-align: center;
+}
+.tr-empty-title {
+  font-weight: 500;
+}
+.tr-empty p {
+  margin: 4px 0 16px;
+  color: var(--c-text-3);
+  font-size: 13px;
+}
+
+/* Phone: chips scroll in their own row instead of leaving one orphan on a
+   third line, and each label sits above its value. */
+@media (max-width: 600px) {
+  .tr-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: -24px;
+    padding-inline: 24px;
+  }
+  .tr-dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px 0;
+  }
+  .tr-dl dd {
+    margin-bottom: 8px;
+  }
+}

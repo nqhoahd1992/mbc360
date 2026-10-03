@@ -6,7 +6,7 @@ import type { MarketProfile } from '@mbc360/shared/config/referenceData';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import { ASEAN_MARKETS } from '@mbc360/shared/config/registers';
 import { useAppStore } from '../store/useAppStore';
-import { useSession } from '../auth/useSession';
+import { usePermissionView } from '../auth/previewMode';
 import { canEditReferenceData, EMPTY_GRANTS } from '../utils/permissions';
 import { useDraft } from '../hooks/useDraft';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
@@ -71,7 +71,6 @@ export default function AdminMarketProfiles() {
   const profiles = useAppStore((s) => s.marketProfiles);
   const loadMarketProfiles = useAppStore((s) => s.loadMarketProfiles);
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
-  const { user } = useSession();
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
@@ -86,7 +85,8 @@ export default function AdminMarketProfiles() {
   // Checked against the REAL signed-in roles, not the "View as" simulator: this
   // edits company-wide rules, so a demo role switch must not grant it — the same
   // reasoning as archive/delete.
-  const roleKeys = useMemo(() => (user?.roles ?? []).map((r) => r.key), [user]);
+  // The previewed role while View as is on, otherwise your own.
+  const { roleKeys } = usePermissionView();
   const canEdit = canEditReferenceData(grants, roleKeys, 'market-profile');
 
   // One row per known market, merged with whatever Regulatory has configured. A

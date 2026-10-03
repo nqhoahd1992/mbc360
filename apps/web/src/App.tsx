@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, App as AntApp, ConfigProvider, Divider, Drawer, Layout, Button, Grid, Select, Spin, Tooltip, Typography } from 'antd';
+import { Alert, App as AntApp, ConfigProvider, Drawer, Layout, Button, Grid, Spin } from 'antd';
 import { EyeOutlined, MenuOutlined, SearchOutlined } from '@ant-design/icons';
-import { HashRouter, Link, Route, Routes, useLocation, useNavigationType } from 'react-router-dom';
+import { HashRouter, Route, Routes, useLocation, useNavigationType } from 'react-router-dom';
 import { useAppStore } from './store/useAppStore';
-import { SSO_ROLES } from './utils/roles';
 import { useSession } from './auth/useSession';
+import { setPreviewWriteLock, usePermissionView } from './auth/previewMode';
+import { roleLabel } from './utils/roles';
 import AuthStatus from './components/AuthStatus';
 import AppSidebar from './components/AppSidebar';
+import HeaderBreadcrumb from './components/HeaderBreadcrumb';
+import ViewAsChip from './components/ViewAsChip';
+import './App.css';
 import AdminUsers from './pages/AdminUsers';
 import AdminRoles from './pages/AdminRoles';
 import AdminMarketProfiles from './pages/AdminMarketProfiles';
@@ -36,25 +40,9 @@ import MySheets from './pages/MySheets';
 import IntegrationsPage from './pages/IntegrationsPage';
 import MyAccount from './pages/MyAccount';
 import Login from './pages/Login';
-import { TEXT } from './theme/tokens';
+import { HEADER_HEIGHT, TEXT } from './theme/tokens';
 
 const { Header, Content } = Layout;
-
-function ProjectContextTitle() {
-  const location = useLocation();
-  const match = location.pathname.match(/\/projects\/([^/]+)/);
-  const projectId = match?.[1];
-  const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
-  if (!project) return <span>MBc360 Development & Quality System</span>;
-  return (
-    <span>
-      <Link to={`/projects/${project.identity.id}`} style={{ color: 'inherit' }}>
-        {project.identity.id}
-      </Link>{' '}
-      — {project.identity.productSku}
-    </span>
-  );
-}
 
 // Router navigation leaves window.scrollY where it was, which is right for
 // Back and wrong for everything else.
@@ -81,7 +69,6 @@ function ScrollToTopOnNavigate() {
 }
 
 function Shell() {
-  const viewRole = useAppStore((s) => s.viewRole);
   const setViewRole = useAppStore((s) => s.setViewRole);
   const loadPermissionGrid = useAppStore((s) => s.loadPermissionGrid);
   const loadMarketProfiles = useAppStore((s) => s.loadMarketProfiles);
@@ -89,6 +76,15 @@ function Shell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
   const session = useSession();
+  const permissionView = usePermissionView();
+  // A preview is read-only: the server would carry out a write with the real
+  // (administrator) session, not the previewed role.
+  useEffect(() => {
+    setPreviewWriteLock(permissionView.previewing);
+    // Also on <body>, so the inputs inside drawers (portalled out of the page)
+    // are frozen too — see App.css.
+    document.body.classList.toggle('app-previewing', permissionView.previewing);
+  }, [permissionView.previewing]);
   const projectsLoading = useAppStore((s) => s.projectsLoading);
   const projectsError = useAppStore((s) => s.projectsError);
   const projectCount = useAppStore((s) => s.projects.length);
@@ -209,7 +205,7 @@ function Shell() {
           scrollY) then left a short page scrolled past its own end. */}
       {wideScreen ? (
         <div style={{ position: 'sticky', top: 0, left: 0, height: '100vh', flexShrink: 0, zIndex: 101 }}>
-          <AppSidebar isAdmin={session.isAdmin} narrow={false} />
+          <AppSidebar isAdmin={permissionView.isAdmin} narrow={false} />
         </div>
       ) : (
         <Drawer
@@ -221,19 +217,25 @@ function Shell() {
           styles={{ body: { padding: 0 } }}
           rootClassName="concept-tokens"
         >
-          <AppSidebar isAdmin={session.isAdmin} narrow />
+          <AppSidebar isAdmin={permissionView.isAdmin} narrow />
         </Drawer>
       )}
       <Layout>
+        {/* 2026-10-03 redesign (wireframe option A): a breadcrumb to the
+            current page instead of the project name (already on the sidebar
+            card and the page title), a search box that looks like one, the
+            "View as" simulator as a chip that turns amber while it differs
+            from the account's real role, and the avatar alone. */}
         <Header
+          className="app-header"
           style={{
+            height: HEADER_HEIGHT,
+            lineHeight: 'normal',
             background: '#fff',
-            // Narrow screens (2026-10-02): tighter padding, and the controls
-            // below collapse to icons so a 375px phone no longer scrolls sideways.
             padding: compactHeader ? '0 12px' : '0 24px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            gap: compactHeader ? 8 : 16,
             borderBottom: '1px solid #f0f0f0',
             position: 'sticky',
             top: 0,
@@ -255,70 +257,30 @@ function Shell() {
               aria-label={navOpen ? 'Hide navigation' : 'Show navigation'}
               aria-expanded={navOpen}
               onClick={() => setNavOpen((open) => !open)}
-              style={{ marginRight: 8, flexShrink: 0 }}
+              style={{ flexShrink: 0 }}
             />
           )}
-          <Typography.Text
-            strong
-            style={{
-              flex: '1 1 auto',
-              minWidth: 0,
-              marginRight: 12,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <ProjectContextTitle />
-          </Typography.Text>
-          <div style={{ display: 'flex', alignItems: 'center', gap: compactHeader ? 8 : 12, flexShrink: 0 }}>
-            {/* "Reset demo data" was removed in M3 Phase 1: projects are real
-                database records now, not seeded demo state, so a client-side
-                reset button would have nothing meaningful to reset (and must
-                not be able to wipe server data). */}
-            <Tooltip title="Demo simulation: previews screens as if signed in with this role's permissions, until every screen reads permissions from your real signed-in account instead (rule A4).">
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                {!compactHeader && <EyeOutlined style={{ color: '#999' }} />}
-                <Select
-                  aria-label="View as role"
-                  style={{ width: compactHeader ? 120 : 230 }}
-                  value={viewRole}
-                  onChange={setViewRole}
-                  options={SSO_ROLES.map((r) => ({ value: r.key, label: r.label }))}
-                  popupMatchSelectWidth={false}
-                />
-              </span>
-            </Tooltip>
-
-            {!compactHeader && <Divider orientation="vertical" style={{ margin: 0, height: 22 }} />}
-
+          <HeaderBreadcrumb fallback="MBc360" />
+          <div className="app-header-tools">
             {compactHeader ? (
-              <Button icon={<SearchOutlined />} aria-label="Search" onClick={() => setPaletteOpen(true)} style={{ color: TEXT.secondary }} />
+              <Button type="text" icon={<SearchOutlined />} aria-label="Search" onClick={() => setPaletteOpen(true)} />
             ) : (
-            <Button
-              icon={<SearchOutlined />}
-              onClick={() => setPaletteOpen(true)}
-              style={{ color: TEXT.secondary }}
-            >
-              <span style={{ marginRight: 8 }}>Search</span>
-              <kbd
-                style={{
-                  fontSize: 11,
-                  padding: '1px 6px',
-                  border: '1px solid #d9d9d9',
-                  borderRadius: 4,
-                  background: '#fafafa',
-                  color: TEXT.secondary,
-                }}
-              >
-                {isMac ? '⌘' : 'Ctrl'} K
-              </kbd>
-            </Button>
+              <button type="button" className="app-search" onClick={() => setPaletteOpen(true)}>
+                <SearchOutlined />
+                <span className="app-search-text">Search…</span>
+                <kbd>{isMac ? '⌘' : 'Ctrl'} K</kbd>
+              </button>
             )}
-
-            {!compactHeader && <Divider orientation="vertical" style={{ margin: 0, height: 22 }} />}
-
-            <AuthStatus user={session.user} onLogout={session.logout} compact={compactHeader} />
+            {/* Previewing is an administrator's tool; nobody else sees the chip. */}
+            {permissionView.realIsAdmin && (
+              <ViewAsChip
+                value={permissionView.previewRole}
+                onChange={setViewRole}
+                realRoleKeys={permissionView.realRoleKeys}
+                compact={compactHeader}
+              />
+            )}
+            <AuthStatus user={session.user} onLogout={session.logout} compact />
           </div>
         </Header>
         <Content id="main-content" style={{ padding: 16 }}>
@@ -342,6 +304,18 @@ function Shell() {
               }
             />
           )}
+          {permissionView.previewing && (
+            <div className="app-preview-banner" role="status">
+              <EyeOutlined />
+              <span className="app-preview-banner-text">
+                <b>Previewing as {roleLabel(permissionView.previewRole!)}</b> — read-only. Screens show what this role
+                may do; nothing can be saved, signed or changed.
+              </span>
+              <Button size="small" onClick={() => setViewRole(null)}>
+                Back to my role
+              </Button>
+            </div>
+          )}
           {projectsLoading && projectCount === 0 && !projectsError && needsProjects ? (
             <PageSkeleton label="Loading projects…" />
           ) : (
@@ -353,6 +327,11 @@ function Shell() {
           // already asked before the path changes, so a fresh page is what
           // "Leave" means. Query strings (a phase's ?gate tab) are not in the
           // key, so switching tabs does not remount.
+          //
+          // componentDisabled greys every antd control on the page (and in the
+          // drawers it opens) while previewing, so the read-only state is
+          // visible, not just refused on Save. Links and rows still work.
+          <ConfigProvider componentDisabled={permissionView.previewing}>
           <Routes key={location.pathname}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/projects" element={<ProjectList />} />
@@ -384,6 +363,7 @@ function Shell() {
             <Route path="/admin/rm-risk" element={<AdminRmRisk />} />
             <Route path="/admin/claims-library" element={<AdminClaimsLibrary />} />
           </Routes>
+          </ConfigProvider>
           )}
         </Content>
       </Layout>

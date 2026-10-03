@@ -1,0 +1,168 @@
+/* Sticky app header (2026-10-03, wireframe option A). */
+.app-header-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Breadcrumb: ancestors give way first, the current page holds on longest. */
+.hb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+.hb-link {
+  flex: 0 3 auto;
+  min-width: 48px;
+  max-width: 200px;
+  overflow: hidden;
+  color: #595959;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+a.hb-link:hover {
+  color: #0958d9;
+}
+.hb-sep {
+  flex-shrink: 0;
+  color: #6b6b6b;
+  font-size: 10px;
+}
+.hb-cur {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: #1f1f1f;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hb-cur:only-child {
+  flex: 1;
+}
+
+/* Search: a box that looks like one, opening the ⌘K palette. */
+.app-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 200px;
+  height: 32px;
+  padding: 0 8px 0 10px;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  background: #fafafa;
+  color: #6b6b6b;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.app-search:hover {
+  border-color: #0958d9;
+}
+.app-search:focus-visible {
+  outline: 2px solid #0958d9;
+  outline-offset: 1px;
+}
+.app-search-text {
+  flex: 1;
+  text-align: left;
+}
+.app-search kbd {
+  padding: 1px 6px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  background: #fff;
+  color: #595959;
+  font: inherit;
+  font-size: 11px;
+}
+
+/* View as chip: neutral on the account's own role, amber while simulating. */
+.app-viewas {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 240px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid #d9d9d9;
+  border-radius: 16px;
+  background: #fff;
+  color: #595959;
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.app-viewas:focus-visible {
+  outline: 2px solid #0958d9;
+  outline-offset: 1px;
+}
+.app-viewas-sim {
+  border-color: #ffe58f;
+  background: #fffbe6;
+  color: #8a5300;
+}
+.app-viewas-label {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+.app-viewas-chev {
+  font-size: 10px;
+}
+.app-viewas-compact {
+  justify-content: center;
+  width: 32px;
+  padding: 0;
+}
+
+/* Phone: only the current page — the sidebar drawer carries the rest. */
+@media (max-width: 767px) {
+  .hb-link,
+  .hb-sep {
+    display: none;
+  }
+  .hb-cur {
+    flex: 1;
+  }
+}
+
+/* Read-only preview banner (View as). */
+.app-preview-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+  padding: 10px 16px;
+  border: 1px solid #ffe58f;
+  border-radius: 8px;
+  background: #fffbe6;
+  color: #8a5300;
+  font-size: 13px;
+}
+.app-preview-banner-text {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* While previewing, the page's form controls cannot be clicked into. Many
+   controls pass an explicit disabled={false}, which overrides antd's
+   componentDisabled, so this is what actually freezes them on screen; the
+   fetch lock in auth/previewMode.ts is what guarantees nothing is saved.
+   Scoped to the page and its drawers: the header, sidebar and ⌘K palette stay
+   usable. */
+.app-previewing #main-content :is(input, textarea, .ant-select, .ant-picker, .ant-checkbox-wrapper, .ant-radio-wrapper, .ant-switch, .ant-input-number, .ant-upload),
+.app-previewing .ant-drawer :is(input, textarea, .ant-select, .ant-picker, .ant-checkbox-wrapper, .ant-radio-wrapper, .ant-switch, .ant-input-number, .ant-upload) {
+  pointer-events: none;
+}
+.app-previewing #main-content :is(.ant-input, .ant-input-affix-wrapper, .ant-picker),
+.app-previewing .ant-drawer :is(.ant-input, .ant-input-affix-wrapper, .ant-picker) {
+  background-color: #fafafa;
+}

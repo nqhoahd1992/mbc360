@@ -33,11 +33,12 @@ import MarketTrackingCard from '../components/MarketTrackingCard';
 import PostLaunchReviewCard from '../components/PostLaunchReviewCard';
 import SectionJumpButton from '../components/SectionJumpButton';
 import GateReadinessPanel from '../components/GateReadinessPanel';
+import AssessmentBlock, { isFamilyUseSelected } from '../components/AssessmentBlock';
+import { ASSESSMENT_HOMES, assessmentAnchor } from '@mbc360/shared/config/assessments';
 import Notice from '../components/Notice';
 import { useUnsavedCount } from '../hooks/unsavedRegistry';
 import '../styles/concept.css';
 import './PhasePage.css';
-import { roleLabel } from '../utils/roles';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { targetUsersPinnedByAssessment } from '@mbc360/shared/utils/vulnerableUsers';
 
@@ -57,7 +58,6 @@ export default function PhasePage() {
   const { projectId, phaseNo } = useParams();
   const phase = Number(phaseNo);
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
-  const viewRole = useAppStore((s) => s.viewRole);
   const acceptPreWork = useAppStore((s) => s.acceptPhasePreWork);
   const location = useLocation();
   const [showSatisfied, setShowSatisfied] = useState(false);
@@ -85,6 +85,8 @@ export default function PhasePage() {
     if (anchor.startsWith('sec-requirement-')) return requirementTab(anchor.slice('sec-requirement-'.length));
     if (anchor === 'sec-eight-angles' || anchor === 'sec-sign-off') return CLOSE_TAB;
     if (anchor === 'sec-opportunity' || anchor === 'sec-identification') return config.gateIds[0];
+    const assessment = ASSESSMENT_HOMES.find((a) => assessmentAnchor(a.key) === anchor);
+    if (assessment && config.gateIds.includes(assessment.gateId)) return assessment.gateId;
     return undefined;
   };
 
@@ -199,6 +201,11 @@ export default function PhasePage() {
     .filter((c) => checkGateMatches(c.check.gate));
   const checklistSections = config.checklistSections.filter((s) => tabForRef(s.gate) === tab);
   const requirementSections = config.requirementSections.filter((s) => requirementTab(s.key) === tab);
+  // The explicit assessments answered at this gate (config/assessments.ts). The
+  // family-use one exists only for a Family use product.
+  const assessments = ASSESSMENT_HOMES.filter(
+    (a) => a.gateId === tab && (a.key !== 'familyUse' || isFamilyUseSelected(project)),
+  );
 
   const readiness = tab === CLOSE_TAB ? [] : gateReadinessChecklist(project, tab);
   const blockingCount = (id: string) =>
@@ -224,6 +231,7 @@ export default function PhasePage() {
             : []),
           ...checklistSections.map((s) => ({ id: `sec-checklist-${s.key}`, label: s.title })),
           ...requirementSections.map((s) => ({ id: `sec-requirement-${s.key}`, label: s.title })),
+          ...assessments.map((a) => ({ id: assessmentAnchor(a.key), label: `Assessment: ${a.title}` })),
           ...(keyChecks.length ? [{ id: 'sec-gate-checks', label: 'Key Gate Checks' }] : []),
           { id: 'sec-next-actions', label: 'Next Actions' },
         ];
@@ -277,7 +285,7 @@ export default function PhasePage() {
         <Notice
           tone="warn"
           title="Pre-work review required"
-          action={<Button onClick={() => acceptPreWork(project.identity.id, phase, roleLabel(viewRole))}>Accept pre-work</Button>}
+          action={<Button onClick={() => acceptPreWork(project.identity.id, phase)}>Accept pre-work</Button>}
         >
           If any data in this phase was entered before the phase opened (pre-work), the responsible owner must
           review and formally accept it before it contributes to completion.
@@ -463,6 +471,10 @@ export default function PhasePage() {
                   allowNotApplicable={section.allowNotApplicable}
                 />
               </div>
+            ))}
+
+            {assessments.map((a) => (
+              <AssessmentBlock key={a.key} project={project} which={a.key} />
             ))}
 
             {keyChecks.length > 0 && (

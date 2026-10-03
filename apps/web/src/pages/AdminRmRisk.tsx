@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 import type { RawMaterialRisk, RmRiskFlag } from '@mbc360/shared/config/referenceData';
 import { RM_RISK_FLAGS } from '@mbc360/shared/config/referenceData';
 import { useAppStore } from '../store/useAppStore';
-import { useSession } from '../auth/useSession';
+import { usePermissionView } from '../auth/previewMode';
 import { canEditReferenceData, EMPTY_GRANTS } from '../utils/permissions';
 import { useDraft } from '../hooks/useDraft';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
@@ -61,7 +61,6 @@ export default function AdminRmRisk() {
   const overlay = useAppStore((s) => s.rmRisk);
   const loadRmRisk = useAppStore((s) => s.loadRmRisk);
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
-  const { user } = useSession();
   const connected = useCosmetriStatus().status.connected;
   const [saving, setSaving] = useState(false);
   const [catalogue, setCatalogue] = useState<CosmetriRawMaterialSummary[]>([]);
@@ -93,7 +92,8 @@ export default function AdminRmRisk() {
 
   // Checked against the REAL signed-in roles, not the "View as" simulator: this
   // edits a company-wide classification every project reads.
-  const roleKeys = useMemo(() => (user?.roles ?? []).map((r) => r.key), [user]);
+  // The previewed role while View as is on, otherwise your own.
+  const { roleKeys } = usePermissionView();
   const canEdit = canEditReferenceData(grants, roleKeys, 'rm-risk');
 
   const committed = useMemo<Row[]>(() => overlay ?? [], [overlay]);

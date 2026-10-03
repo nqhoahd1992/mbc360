@@ -153,7 +153,25 @@ export default function DynamicTable({
   // project — the same index the bulk save writes as `rowOrder`.
   const { projectId } = useParams();
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [openIndex, setOpenRaw] = useState<number | null>(null);
+  // The row "Add row" just created, until the drawer moves off it. Closing the
+  // drawer on it while it is still blank discards it (2026-10-03, user-reported:
+  // opening a new row and pressing Close left an empty entry behind, which then
+  // blocked Save as a blank row). Any way of leaving counts — the ✕, a click on
+  // the mask, Esc, another drawer opening, or stepping to another row.
+  const [freshIndex, setFreshIndex] = useState<number | null>(null);
+  const setOpenIndex = (target: number | null) => {
+    let next = target;
+    if (freshIndex !== null && next !== freshIndex) {
+      const row = draft[freshIndex];
+      if (row && isRegisterRowBlank(config, row)) {
+        update((prev) => prev.filter((_, i) => i !== freshIndex));
+        if (next !== null && next > freshIndex) next -= 1;
+      }
+      setFreshIndex(null);
+    }
+    setOpenRaw(next);
+  };
   useExclusiveDrawer(openIndex !== null, () => setOpenIndex(null));
   const [wrapRef, width] = useWidth<HTMLDivElement>();
   const screens = Grid.useBreakpoint();
@@ -162,13 +180,16 @@ export default function DynamicTable({
     update((prev) => patchArray(prev, index, { [key]: value } as Partial<RegisterRow>));
   const addRow = () => {
     update((prev) => [...prev, createEmptyRegisterRow(config.key)]);
-    setOpenIndex(draft.length);
+    setFreshIndex(draft.length);
+    setOpenRaw(draft.length);
   };
   const removeRow = (index: number) => {
     // Defence in depth — the button is disabled for this case too.
     if (removeBlockedReason?.(draft[index])) return;
     update((prev) => prev.filter((_, i) => i !== index));
-    setOpenIndex(null);
+    // Already removed — skip the blank-row discard so it is not removed twice.
+    setFreshIndex(null);
+    setOpenRaw(null);
   };
   const isBlank = (row: RegisterRow) => isRegister && isRegisterRowBlank(config, row);
   const hasBlankRows = isRegister && draft.some((r) => isRegisterRowBlank(config, r));

@@ -1,3 +1,4 @@
+import { assessmentAnchor, assessmentForTrigger } from '../config/assessments';
 import type { GateRecord, NextAction, ProjectData, RegisterRow } from '../types';
 import { GATE_SIGNOFF_ROLES, NEXT_ACTION_TERMINAL_STATUSES, familyUseAgeGroupList, isRegisterClosed, isSignedOff } from '../types';
 import type { GateSignOffRole } from '../types';
@@ -790,17 +791,17 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
 // the rule is fresh is better than one written months later by whoever wires it.
 const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   skincareForTwo: 'nobody has recorded the target users yet, so pregnancy, breastfeeding and postpartum use are unknown',
-  humanStudyPlanned: 'nobody has answered whether this project involves a human-participant study',
+  humanStudyPlanned: 'nobody has answered whether this project involves a human-participant study (Phase 3 -> Gate 08)',
   newOrRepositionedProject: 'the development / change type has not been recorded, so it is unknown whether this is a new product, a claim change or an administrative-only change',
   microbiologicallySusceptible: 'the formula has not been classified as susceptible, anhydrous, self-preserving, sterile or single-use',
   infantContact:
-    'this is a Family use product and nobody has confirmed which age groups it is for, so whether infants are included is unknown (Project Overview -> Assessments)',
+    'this is a Family use product and nobody has confirmed which age groups it is for, so whether infants are included is unknown (Phase 1 -> Gate 02)',
   aseanMarket: 'no market has been recorded for this project yet',
-  openChangeControl: 'nobody has assessed whether a change control record should be opened for this finding',
+  openChangeControl: 'nobody has assessed whether a change control record should be opened for this finding (Phase 4 -> Gate 12)',
   claimNeedsPerformanceEvidence: 'no claim has been declared yet, so no claim carries an evidence category',
   pvPmsRequired: 'nothing has been recorded on Post-Market Sources and no vulnerable-user assessment exists, so it is unknown whether enhanced surveillance applies',
   claimNeedsRegulatoryReview: 'no claim has been declared yet, so no claim carries a category or risk level',
-  scaleUpRiskIdentified: 'nobody has assessed whether this project carries a scale-up or pilot risk',
+  scaleUpRiskIdentified: 'nobody has assessed whether this project carries a scale-up or pilot risk (Phase 3 -> Gate 09)',
   rmRiskFlagged:
     'one or more raw materials in this project have no entry in the Raw Material Risk Overlay (Company Reference Data -> Raw material risk), so their allergen, impurity and contaminant risk is unclassified',
   commercialRequirementIsMust:
@@ -1376,6 +1377,11 @@ function phaseSectionLink(gateId: string, scrollToId: string): GateBlockerLink |
   return phase ? { href: `/phase/${phase}`, scrollToId } : undefined;
 }
 
+function assessmentLink(trigger: ReadinessTrigger): GateBlockerLink | undefined {
+  const home = assessmentForTrigger(trigger);
+  return home ? phaseSectionLink(home.gateId, assessmentAnchor(home.key)) : undefined;
+}
+
 // Where a `ReadinessCheck` should be resolved by a user — a register page,
 // the Formula BOM page, or a specific section anchor on the gate's phase
 // page. `manual` checks have no linked data source yet, so no link.
@@ -1556,7 +1562,11 @@ export function gateReadinessChecklist(
         satisfied: false,
         hardBlock: req.tier !== 'Supporting',
         advisory: req.tier === 'Supporting' || undefined,
-        link: resolveCheckLink(gateId, req.check),
+        // The fix is the assessment itself, so link there when the trigger is
+        // one of the recorded assessments — it may sit on another gate's tab
+        // (the family-use age groups decide the infant pathway at Gates 2–10
+        // but are answered at Gate 02).
+        link: assessmentLink(req.trigger!) ?? resolveCheckLink(gateId, req.check),
         source: req.source,
         tier: req.tier,
         coverageNote: req.coverageNote,

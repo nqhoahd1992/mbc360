@@ -3,6 +3,7 @@ import { LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { MarketApprovalStatus, MarketTrack } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
+import { usePermissionView } from '../auth/previewMode';
 import { roleLabel } from '../utils/roles';
 import { canEditMarketTrack, EMPTY_GRANTS } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -38,11 +39,11 @@ export default function MarketTrackingCard({
   tracks: MarketTrack[];
 }) {
   const setTracksBulk = useAppStore((s) => s.setMarketTracksBulk);
-  const viewRole = useAppStore((s) => s.viewRole);
+  const permissionView = usePermissionView();
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const { draft, dirty, update, markSaved, discard } = useDraft(tracks);
   // A4 example ruling: "only Regulatory can approve regulatory decisions".
-  const canEdit = canEditMarketTrack(grants, viewRole);
+  const canEdit = permissionView.roleKeys.some((k) => canEditMarketTrack(grants, k));
 
   const patch = (index: number, p: Partial<MarketTrack>) => update((prev) => patchArray(prev, index, p));
   const save = () => {
@@ -90,7 +91,7 @@ export default function MarketTrackingCard({
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          title={`Market approvals are restricted to Regulatory — you are viewing as ${roleLabel(viewRole)}`}
+          title={`Market approvals are restricted to Regulatory — ${permissionView.previewing ? `previewing as ${roleLabel(permissionView.previewRole!)}` : 'your role is not granted it'}`}
           description="Notes stay open to contributors. RBAC demo simulation — the real role matrix is pending confirmation (F6)."
         />
       )}

@@ -80,7 +80,30 @@ export default function RecordList<T>({
   const [ownOpen, setOwnOpen] = useState<number | null>(null);
   const controlled = controlledOpen !== undefined;
   const openIndex = controlled ? controlledOpen : ownOpen;
-  const setOpenIndex = (index: number | null) => (controlled ? onOpenIndexChange?.(index) : setOwnOpen(index));
+  const setOpenRaw = (index: number | null) => (controlled ? onOpenIndexChange?.(index) : setOwnOpen(index));
+  // The row `onAdd` just created, until the drawer moves off it. Leaving it while
+  // it is still blank (per `isRowBlank`) removes it through `onRemove`, so
+  // pressing Close on a new, untouched row does not leave an empty entry behind
+  // (2026-10-03, user-reported). Any way of leaving counts — the ✕, the mask,
+  // Esc, another drawer opening, or stepping to another row.
+  const [freshIndex, setFreshIndex] = useState<number | null>(null);
+  const setOpenIndex = (target: number | null) => {
+    let next = target;
+    if (freshIndex !== null && next !== freshIndex) {
+      const row = rows[freshIndex];
+      if (row !== undefined && onRemove && isRowBlank?.(row, freshIndex)) {
+        onRemove(freshIndex);
+        if (next !== null && next > freshIndex) next -= 1;
+      }
+      setFreshIndex(null);
+    }
+    setOpenRaw(next);
+  };
+  // After an explicit Remove the row is gone already; just close.
+  const closeAfterRemove = () => {
+    setFreshIndex(null);
+    setOpenRaw(null);
+  };
   useExclusiveDrawer(openIndex !== null, () => setOpenIndex(null));
   const screens = Grid.useBreakpoint();
   const ref = useRef<HTMLDivElement>(null);
@@ -199,7 +222,11 @@ export default function RecordList<T>({
         )}
         {onAdd && (
           <div className="rt-add">
-            <Button type="dashed" block icon={<PlusOutlined />} onClick={() => setOpenIndex(onAdd())}>
+            <Button type="dashed" block icon={<PlusOutlined />} onClick={() => {
+                const index = onAdd();
+                setFreshIndex(index);
+                setOpenRaw(index);
+              }}>
               {addLabel}
             </Button>
           </div>
@@ -248,7 +275,7 @@ export default function RecordList<T>({
                   icon={<DeleteOutlined />}
                   onClick={() => {
                     onRemove(openIndex);
-                    setOpenIndex(null);
+                    closeAfterRemove();
                   }}
                 >
                   {removeLabel}
@@ -260,7 +287,7 @@ export default function RecordList<T>({
                     okText={removeLabel}
                     onConfirm={() => {
                       onRemove(openIndex);
-                      setOpenIndex(null);
+                      closeAfterRemove();
                     }}
                   >
                     <Button danger icon={<DeleteOutlined />}>

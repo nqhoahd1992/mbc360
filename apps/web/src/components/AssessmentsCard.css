@@ -1,4 +1,5 @@
-/* Assessments card on Project Overview (2026-10 concept). Tokens from styles/concept.css. */
+/* Assessment blocks on the gate tabs (AssessmentBlock) and the summary on the
+   Project Overview (AssessmentSummary). Tokens from styles/concept.css. */
 .as-card { overflow: hidden; }
 .as-head { padding: 16px 20px; border-bottom: 1px solid var(--c-border-2); }
 .as-title { margin: 0; font-size: 16px; font-weight: 600; line-height: 24px; }
@@ -15,3 +16,29 @@
 .as-label { display: block; margin-bottom: 6px; color: var(--c-text-2); font-size: 13px; }
 .as-req { color: var(--c-bad-dot); }
 .as-foot { display: grid; gap: 8px; padding: 0 20px 16px; }
+
+.as-kicker { color: var(--c-text-3); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Overview summary */
+.asum { overflow: hidden; }
+.asum-head { padding: 16px 20px 12px; }
+.asum-title { margin: 0; font-size: 16px; font-weight: 600; line-height: 24px; }
+.asum-sub { margin: 2px 0 0; color: var(--c-text-3); font-size: 13px; }
+.asum-warn { color: var(--c-warn); font-weight: 500; }
+.asum-list { margin: 0; padding: 0; list-style: none; }
+.asum-row { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 8px 20px; border-top: 1px solid var(--c-border-2); color: var(--c-text); }
+.asum-row:hover { background: rgb(0 0 0 / 2.5%); color: var(--c-text); }
+.asum-row:focus-visible { outline: 2px solid var(--c-primary); outline-offset: -2px; }
+.asum-gate { flex-shrink: 0; min-width: 72px; justify-content: center; }
+.asum-q { flex: 1; min-width: 0; }
+.asum-a { flex: 0 1 auto; max-width: 40%; font-size: 13px; text-align: right; }
+.asum-ok { color: var(--c-text-2); }
+.asum-muted { color: var(--c-text-3); }
+.asum-warn.asum-a, .asum-a.asum-warn { color: var(--c-warn); font-weight: 500; }
+.asum-chev { flex-shrink: 0; color: var(--c-text-3); font-size: 11px; }
+@media (max-width: 600px) {
+  .asum-row { flex-wrap: wrap; row-gap: 4px; }
+  .asum-q { flex-basis: calc(100% - 120px); }
+  .asum-a { max-width: none; flex-basis: 100%; padding-left: 84px; text-align: left; }
+  .asum-chev { display: none; }
+}

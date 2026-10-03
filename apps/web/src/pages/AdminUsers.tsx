@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { CloudOutlined, DeleteOutlined, RightOutlined, SafetyCertificateOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import Notice from '../components/Notice';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
+import { usePermissionView } from '../auth/previewMode';
 import '../styles/concept.css';
 import './AdminUsers.css';
 
@@ -48,6 +49,9 @@ const initials = (name: string) =>
 // opens this page for.
 export default function AdminUsers() {
   const screens = Grid.useBreakpoint();
+  // The server answers this page with the REAL session, so a preview of a
+  // non-admin role has to be refused here or it would show the admin list.
+  const { isAdmin } = usePermissionView();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [roles, setRoles] = useState<AdminRole[]>([]);
   const [forbidden, setForbidden] = useState(false);
@@ -181,7 +185,7 @@ export default function AdminUsers() {
     <Switch checked={u.active} aria-label={`${u.displayName} active`} onChange={(checked) => void setActive(u.id, checked)} />
   );
 
-  if (forbidden) {
+  if (forbidden || !isAdmin) {
     return (
       <div className="concept">
         <Notice tone="warn" title="Admin access required">

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useSession } from '../auth/useSession';
+import { usePermissionView } from '../auth/previewMode';
 import Notice from '../components/Notice';
 import RoleCapabilityEditor from '../components/RoleCapabilityEditor';
 import '../styles/concept.css';
@@ -12,7 +12,7 @@ import './AdminUsers.css';
 // here too so a non-admin who deep-links the URL sees a clear notice instead
 // of an editor whose Save silently 403s.
 export default function AdminRoles() {
-  const { isAdmin } = useSession();
+  const { isAdmin } = usePermissionView();
 
   if (!isAdmin) {
     return (

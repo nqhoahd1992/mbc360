@@ -1,0 +1,175 @@
+/* ⌘K search palette (2026-10-03, wireframe option A). */
+.cp-root .ant-modal-container,
+.cp-root .ant-modal-content {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 12px;
+}
+.cp-root .ant-modal-body {
+  padding: 0;
+}
+.cp {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 160px);
+  color: var(--c-text);
+  font-size: 14px;
+}
+
+/* Search box */
+.cp-in {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--c-border-2);
+}
+.cp-in-icon {
+  color: var(--c-text-3);
+  font-size: 18px;
+}
+.cp-in input {
+  flex: 1;
+  min-width: 0;
+  align-self: stretch;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--c-text);
+  font: inherit;
+  font-size: 15px;
+}
+.cp-in input::placeholder {
+  color: var(--c-text-3);
+}
+.cp-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--c-border);
+  border-radius: 4px;
+  background: var(--c-surface-2);
+  color: var(--c-text-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Results */
+.cp-list {
+  flex: 1;
+  min-height: 0;
+  max-height: 460px;
+  overflow-y: auto;
+  padding: 4px 0 8px;
+}
+.cp-h {
+  padding: 12px 16px 4px;
+  color: var(--c-text-3);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.cp-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  margin: 0 8px;
+  padding: 0 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.cp-row[aria-selected='true'] {
+  background: var(--c-primary-light);
+  box-shadow: inset 3px 0 0 var(--c-primary);
+}
+.cp-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--c-text-3);
+  font-size: 15px;
+}
+.cp-row[aria-selected='true'] .cp-icon {
+  color: var(--c-primary);
+}
+.cp-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cp-title b {
+  color: var(--c-link);
+  font-weight: 600;
+}
+/* The context gives way only once it passes 45% of the row: a gate code never
+   gets that long, so it is never cut to "G05…", while a long "in <page>" note
+   cannot squeeze the title down to a few letters. */
+.cp-ctx {
+  flex: 0 1 auto;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 12px;
+  color: var(--c-text-3);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cp-enter {
+  display: none;
+}
+.cp-row[aria-selected='true'] .cp-enter {
+  display: inline-flex;
+}
+
+.cp-empty {
+  padding: 48px 24px;
+  text-align: center;
+}
+.cp-empty-title {
+  font-weight: 500;
+}
+.cp-empty p {
+  margin: 4px 0 0;
+  color: var(--c-text-3);
+  font-size: 13px;
+}
+
+/* Key hints */
+.cp-foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 40px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  border-top: 1px solid var(--c-border-2);
+  color: var(--c-text-3);
+  font-size: 12px;
+}
+.cp-foot > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cp-foot-count {
+  margin-left: auto;
+}
+
+/* Phone: no keyboard, so no key hints. */
+@media (max-width: 600px) {
+  .cp-foot,
+  .cp-row[aria-selected='true'] .cp-enter,
+  .cp-in .cp-kbd {
+    display: none;
+  }
+}

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import UserSelect from '../components/UserSelect';
 import ChangeDispositionBlock from '../components/ChangeDispositionBlock';
 import { isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
-import { AutoComplete, Button, DatePicker, Form, Input, Select, Space, Switch, Table, Tag, message, Tooltip } from 'antd';
+import { AutoComplete, Button, DatePicker, Form, Input, Select, Switch, message, Tooltip } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
@@ -14,8 +14,6 @@ import {
   CHANGE_IMPACT_AREAS,
   getChangeTrigger,
   isChangeOpen,
-  phaseShortLabel,
-  triggerPhases,
   type ChangeTriggerCategory,
   type RaciRole,
 } from '@mbc360/shared/config/changeTriggers';
@@ -28,6 +26,7 @@ import '../components/DynamicTable.css';
 import './ChangeControl.css';
 
 import FormDrawer from '../components/FormDrawer';
+import TriggerReference, { AffectedGates } from '../components/TriggerReference';
 const AFFECTED_AREAS = [
   'Artwork', 'Formula', 'Label', 'Claim', 'Supplier', 'Process', 'Packaging', 'Market',
   'Formula / Supplier', 'Other',
@@ -47,30 +46,6 @@ const triggerSelectOptions = TRIGGER_CATEGORIES.map((cat) => ({
   label: cat,
   options: CHANGE_TRIGGERS.filter((t) => t.category === cat).map((t) => ({ value: t.id, label: t.label })),
 }));
-
-// Affected gates + phases, derived from a trigger's gate list.
-function AffectedTags({ gates }: { gates: string[] }) {
-  const phases = triggerPhases(gates);
-  const spansAll = gates.includes('ALL');
-  return (
-    <Space size={[4, 4]} wrap>
-      {spansAll ? (
-        <Tag color="red">All gates</Tag>
-      ) : (
-        gates.map((g) => (
-          <Tag key={g} color="blue">
-            Gate {g}
-          </Tag>
-        ))
-      )}
-      {phases.map((p) => (
-        <Tag key={p} color="geekblue">
-          {phaseShortLabel(p)}
-        </Tag>
-      ))}
-    </Space>
-  );
-}
 
 interface ChangeForm {
   triggerId?: string;
@@ -302,7 +277,7 @@ export default function ChangeControl() {
                   <div className="rt-sec-title">Change</div>
                   <dl className="rt-dl">
                     {dlRow('Trigger / event', c.trigger)}
-                    {dlRow('Affected gates / phases', t ? <AffectedTags gates={t.gates} /> : undefined)}
+                    {dlRow('Affected gates / phases', t ? <AffectedGates gates={t.gates} /> : undefined)}
                     {dlRow('Project', projectLabel(c.projectId))}
                     {dlRow('Product / SKU', c.productSku)}
                     {dlRow('Affected area', c.affectedArea)}
@@ -376,36 +351,9 @@ export default function ChangeControl() {
         open={refOpen}
         onCancel={() => setRefOpen(false)}
         footer={null}
-        width={1040}
+        width={720}
       >
-        <Table
-          size="small"
-          rowKey={(t) => t.id}
-          dataSource={CHANGE_TRIGGERS}
-          pagination={false}
-          // NOT `sticky`: inside a Modal the scroll container is the modal
-          // body, while antd's sticky header pins against the VIEWPORT at
-          // offsetHeader — so the header detached and floated across the middle
-          // of the list. `scroll.y` is the in-modal equivalent: the table gets
-          // its own scroll area with the header pinned to the top of it, and
-          // the 19-row reference stops making the modal taller than the screen.
-          scroll={{ x: 1200, y: '58vh' }}
-          columns={[
-            {
-              title: 'Category',
-              width: 130,
-              dataIndex: 'category',
-              render: (v) => <Tag>{v}</Tag>,
-              filters: TRIGGER_CATEGORIES.map((c) => ({ text: c, value: c })),
-              onFilter: (v, t) => t.category === v,
-            },
-            { title: 'Trigger', width: 240, dataIndex: 'label', render: (v) => <b>{v}</b> },
-            { title: 'Examples', width: 240, dataIndex: 'examples', render: (v) => v ?? '—' },
-            { title: 'Affected gates / phases', width: 280, render: (_, t) => <AffectedTags gates={t.gates} /> },
-            { title: 'Owner', width: 150, dataIndex: 'owner' },
-            { title: 'Required sign-offs', width: 200, dataIndex: 'signOffs', render: (v) => v ?? '—' },
-          ]}
-        />
+        <TriggerReference categories={TRIGGER_CATEGORIES} />
       </FormDrawer>
 
       <section className="c-card cc-raci">
@@ -464,7 +412,7 @@ export default function ChangeControl() {
           </Form.Item>
           {selectedTrigger && (
             <Form.Item label="Affected gates & phases">
-              <AffectedTags gates={selectedTrigger.gates} />
+              <AffectedGates gates={selectedTrigger.gates} />
             </Form.Item>
           )}
           <div className="cc-form-grid">

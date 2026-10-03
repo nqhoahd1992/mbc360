@@ -1623,7 +1623,7 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 
 **Câu hỏi:** câu trả lời này nên ghi **một lần cho cả dự án** (đang làm vậy), hay **từng phát hiện hậu thị trường một**? Nếu là từng phát hiện, xin cho biết cái gì tạo thành một "phát hiện" trong hệ thống — nó có phải là thứ sẽ ra đời khi tách ba danh sách của câu 10 không?
 
-**Nếu trả lời khác:** `ProjectAssessments` trong `packages/shared/src/types/index.ts` (chuyển 6 trường sang một register mới), nhánh `openChangeControl` trong `evaluateTrigger()` ở `utils/gateProgress.ts`, và `AssessmentsCard.tsx`.
+**Nếu trả lời khác:** `ProjectAssessments` trong `packages/shared/src/types/index.ts` (chuyển 6 trường sang một register mới), nhánh `openChangeControl` trong `evaluateTrigger()` ở `utils/gateProgress.ts`, và `AssessmentBlock.tsx`.
 
 #### R5-Q12 · Một safety finding `Superseded` có cần kết luận + bằng chứng như `Closed` không 🔴
 
@@ -1895,4 +1895,4 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Câu hỏi:** (a) Một dòng `FC-…` của Formulation Change Register có được tính là "Change Control record" ở đây không? (Câu này gắn với R5-Q19 — có bao nhiêu sổ ghi thay đổi.) (b) "Valid" có đòi thêm điều kiện nào khác ngoài tồn tại không — ví dụ bản ghi phải còn mở, hay phải đúng loại thay đổi?
 
-**Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` (`setAssessments`, kiểm tra `changeControlRecordId`) + `apps/web/src/components/AssessmentsCard.tsx` (danh sách lựa chọn).
+**Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` (`setAssessments`, kiểm tra `changeControlRecordId`) + `apps/web/src/components/AssessmentBlock.tsx` (danh sách lựa chọn).

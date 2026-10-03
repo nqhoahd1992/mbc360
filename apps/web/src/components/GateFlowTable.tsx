@@ -17,6 +17,7 @@ import { GATE_FIELD_LABELS, GATES, GATE_DECISIONS, STAGE_STATUSES } from '@mbc36
 import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { useAppStore } from '../store/useAppStore';
+import { usePermissionView } from '../auth/previewMode';
 import { currentGateIndex, gateIndex, gateReadinessChecklist, isAwaitingDecision, isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { roleLabel } from '../utils/roles';
 import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
@@ -55,7 +56,8 @@ export default function GateFlowTable({
   const setGatesBulk = useAppStore((s) => s.setGatesBulk);
   const backtrackGate = useAppStore((s) => s.backtrackGate);
   const changes = useAppStore((s) => s.changes);
-  const viewRole = useAppStore((s) => s.viewRole);
+  // The role(s) on-screen checks use: your own, or the one being previewed.
+  const permissionView = usePermissionView();
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const { user } = useSession();
   const location = useLocation();
@@ -188,8 +190,8 @@ export default function GateFlowTable({
         hardBlockers: readinessChecklist.filter((item) => item.hardBlock && !item.satisfied && !item.pending && !item.advisory),
         liveBlockers: readinessChecklist.filter((item) => !item.satisfied && !item.pending && !item.advisory),
         openChanges: openChangesForGate(r.meta.number),
-        // A4 demo simulation: only the gate's primary-owner function may decide.
-        canDecide: canDecideGate(grants, viewRole, r.meta.id),
+        // Only a role granted `gate:SGnn|decide` may record the decision.
+        canDecide: permissionView.roleKeys.some((k) => canDecideGate(grants, k, r.meta.id)),
         // C5 soft check (per-market hard blocks live in Market Tracking; the
         // project-level effect of a partially-ready market set is follow-up F4).
         marketsNotReady:
@@ -407,7 +409,7 @@ export default function GateFlowTable({
                 <Tooltip
                   title={
                     !r.canDecide
-                      ? `Only ${r.meta.primaryOwner} can record this gate's decision — you are viewing as ${roleLabel(viewRole)} (RBAC demo, matrix pending F6)`
+                      ? `Only ${r.meta.primaryOwner} can record this gate's decision — ${permissionView.previewing ? `previewing as ${roleLabel(permissionView.previewRole!)}` : 'your role is not granted it'}`
                       : undefined
                   }
                 >

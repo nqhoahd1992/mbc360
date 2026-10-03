@@ -6,6 +6,7 @@ import { signatureFieldKeys } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
+import { usePermissionView } from '../auth/previewMode';
 import { verifyRegisterSignatureStepUp } from '../api/projectsApi';
 import { canSignRegisterColumn } from '../utils/permissions';
 import { EMPTY_GRANTS } from '../utils/permissions';
@@ -45,7 +46,8 @@ export default function RegisterSignatureCell({
   const signedAt = row[keys.at] as string | undefined;
   const signedImage = row[keys.image] as string | undefined;
 
-  const { user, isAdmin } = useSession();
+  const { user } = useSession();
+  const { isAdmin, roleKeys } = usePermissionView();
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const signRegisterRow = useAppStore((s) => s.signRegisterRow);
   const withdrawRegisterSignature = useAppStore((s) => s.withdrawRegisterSignature);
@@ -61,7 +63,7 @@ export default function RegisterSignatureCell({
   // act on real data (same reasoning as archive/delete).
   const maySign = canSignRegisterColumn(
     grants,
-    (user?.roles ?? []).map((r) => r.key),
+    roleKeys,
     column.signCapability,
   );
   const mayWithdraw = !!signedUserId && (signedUserId === user?.id || isAdmin);

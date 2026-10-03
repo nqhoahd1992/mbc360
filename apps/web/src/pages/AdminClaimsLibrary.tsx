@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { App, Button, DatePicker, Drawer, Grid, Input, Modal, Select, message } from 'antd';
 import { BookOutlined, CheckCircleFilled, CheckOutlined, InboxOutlined, PlusOutlined, RightOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -9,7 +9,7 @@ import {
   CLAIM_LIBRARY_AUDIENCES,
 } from '@mbc360/shared/config/referenceData';
 import { useAppStore } from '../store/useAppStore';
-import { useSession } from '../auth/useSession';
+import { usePermissionView } from '../auth/previewMode';
 import { canEditReferenceData, EMPTY_GRANTS, hasCapability } from '../utils/permissions';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 import Notice from '../components/Notice';
@@ -98,7 +98,6 @@ export default function AdminClaimsLibrary() {
   const entries = useAppStore((s) => s.claimsLibrary);
   const load = useAppStore((s) => s.loadClaimsLibrary);
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
-  const { user } = useSession();
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
@@ -115,7 +114,8 @@ export default function AdminClaimsLibrary() {
     if (entries === null) void load();
   }, [entries, load]);
 
-  const roleKeys = useMemo(() => (user?.roles ?? []).map((r) => r.key), [user]);
+  // The previewed role while View as is on, otherwise your own.
+  const { roleKeys } = usePermissionView();
   const canEdit = canEditReferenceData(grants, roleKeys, 'claims-library');
   const canApproveTechnical = hasCapability(grants, roleKeys, CLAIMS_LIBRARY_TECHNICAL_APPROVAL);
   const canApproveRegulatory = hasCapability(grants, roleKeys, CLAIMS_LIBRARY_REGULATORY_APPROVAL);

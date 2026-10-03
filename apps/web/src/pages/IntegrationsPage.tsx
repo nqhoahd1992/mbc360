@@ -17,7 +17,7 @@ import {
 import dayjs from 'dayjs';
 import { COSMETRI_DEFAULT_BASE_URL } from '../integrations/cosmetri';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
-import { useSession } from '../auth/useSession';
+import { usePermissionView } from '../auth/previewMode';
 import '../styles/concept.css';
 import './IntegrationsPage.css';
 
@@ -56,7 +56,7 @@ function isPast(iso?: string | null): boolean {
 // System Administrator only: the link is admin-only in globalNav, and a
 // non-admin who deep-links here gets a notice instead of the page.
 export default function IntegrationsPage() {
-  const { isAdmin } = useSession();
+  const { isAdmin } = usePermissionView();
   const { status: cosmetri, loading, refresh: refreshCosmetriStatus } = useCosmetriStatus();
 
   const [showTokenMechanics, setShowTokenMechanics] = useState(false);

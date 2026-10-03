@@ -9,6 +9,7 @@ import { REVIEW_ROLES, reviewRoleFieldLabel } from '@mbc360/shared/config/review
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useSession } from '../auth/useSession';
+import { usePermissionView } from '../auth/previewMode';
 import { canArchiveProject, EMPTY_GRANTS } from '../utils/permissions';
 import { TEXT } from '../theme/tokens';
 import '../styles/concept.css';
@@ -51,9 +52,11 @@ export default function ProjectList() {
   // deleting change real data, so a demo role switch must not grant them.
   const session = useSession();
   const myName = session.user?.displayName;
-  const myRoleKeys = session.user?.roles.map((r) => r.key) ?? [];
-  const canArchive = canArchiveProject(grants, myRoleKeys);
-  const canDelete = session.isAdmin;
+  // Archive and Delete follow View as like every other on-screen check; a
+  // preview is read-only anyway, and the server checks the real session.
+  const permissionView = usePermissionView();
+  const canArchive = canArchiveProject(grants, permissionView.roleKeys);
+  const canDelete = permissionView.isAdmin;
 
   // Active users for the reviewer pickers (no hard role filter — every field
   // lists all active users, role shown as a tag). Fetched when the modal opens.

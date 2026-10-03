@@ -34,10 +34,12 @@ interface AppState {
   projects: ProjectData[];
   changes: ChangeRecord[];
 
-  // A4 (RBAC demo simulation): the role the user is currently "viewing as" —
-  // stands in for the authenticated user's role until F6 (real role matrix/SSO).
-  viewRole: string;
-  setViewRole: (role: string) => void;
+  // "View as" preview (2026-10-03, read-only): a role an administrator is
+  // previewing the screens as, or null for their own roles. While set, every
+  // permission check on screen reads it (auth/previewMode.ts) and nothing can
+  // be written; the server never sees it.
+  viewRole: string | null;
+  setViewRole: (role: string | null) => void;
 
   // The project the sidebar is pinned to (2026-08-26) — moved here from local
   // state in App.tsx's SideMenu so a global page like Change Control can read
@@ -185,7 +187,8 @@ interface AppState {
     reason: string,
   ) => Promise<void>;
   // F13: the responsible owner accepts a phase's pre-work once it has opened.
-  acceptPhasePreWork: (id: string, phase: number, acceptedBy: string) => void;
+  // Who accepted is the signed-in user, recorded by the server.
+  acceptPhasePreWork: (id: string, phase: number) => void;
   setEvidenceSummary: (id: string, phase: number, value: string) => void;
   // The phase banner's "(provide link here)" shortcuts, keyed by workbook label.
   setPhaseKeyLinks: (id: string, phase: number, links: Record<string, string>) => void;
@@ -325,7 +328,7 @@ export const useAppStore = create<AppState>()(
         // Loaded from the API with the projects (no seed, no localStorage).
         changes: [],
 
-        viewRole: 'admin',
+        viewRole: null,
         setViewRole: (role) => set({ viewRole: role }),
 
         activeProjectId: undefined,
@@ -611,7 +614,7 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: 'mbc360-demo-store',
-      version: 16,
+      version: 17,
       // `permissionGrid` is server state, always loaded fresh on startup — never
       // persist a stale copy to localStorage. (Functions and everything else are
       // handled as before; this only strips the grid.)
@@ -679,6 +682,9 @@ export const useAppStore = create<AppState>()(
       // Old persisted demo data doesn't fit the new schema, so re-seed instead of migrating it.
       // v13 -> v14: `changes` left localStorage too (M3 Phase 2-6), so there is
       // no project data left to migrate — everything comes from the API.
+      // v16 -> v17: `viewRole` became nullable (null = your own roles) and a
+      // set value now means a read-only preview. The old default 'admin' would
+      // read as "previewing as admin" for every non-admin, so start clean.
       migrate: () => ({}),
     },
   ),

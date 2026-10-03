@@ -21,7 +21,7 @@ import {
   phaseProgress,
   type GateState,
 } from '@mbc360/shared/utils/gateProgress';
-import AssessmentsCard from '../components/AssessmentsCard';
+import AssessmentSummary from '../components/AssessmentSummary';
 import Notice from '../components/Notice';
 import StatusBadge from '../components/StatusBadge';
 import '../styles/concept.css';
@@ -193,11 +193,10 @@ export default function ProjectOverview() {
         </div>
       </section>
 
-      {/* Round 4 questions 8/9/11/12 (2026-08-24). On the overview rather than a
-          phase page because the four answers feed four different gates (03, 08,
-          09, 12) — filing them under any one phase would hide them from the other
-          three. */}
-      <AssessmentsCard project={project} />
+      {/* Round 4 questions 8/9/11/12/25(c): the answers are recorded on each
+          gate's tab (moved 2026-10-03 — the overview summarises, it is not where
+          a gate's judgement is made). This lists where each stands and links there. */}
+      <AssessmentSummary project={project} />
 
       <section className="c-card po-card">
         <div className="po-card-head">

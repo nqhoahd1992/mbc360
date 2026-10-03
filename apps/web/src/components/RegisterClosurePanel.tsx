@@ -8,6 +8,7 @@ import type { ReviewOwnerSpec } from '@mbc360/shared/config/reviewers';
 import { registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
+import { usePermissionView } from '../auth/previewMode';
 import { getMySignature, getMyTotpStatus } from '../api/accountApi';
 import RegisterCloseStepUpModal from './RegisterCloseStepUpModal';
 import { Link } from 'react-router-dom';
@@ -38,7 +39,8 @@ export default function RegisterClosurePanel({
 }) {
   const signRegisterClose = useAppStore((s) => s.signRegisterClose);
   const withdrawRegisterClose = useAppStore((s) => s.withdrawRegisterClose);
-  const { user: me, isAdmin } = useSession();
+  const { user: me } = useSession();
+  const { isAdmin } = usePermissionView();
 
   const [withdrawing, setWithdrawing] = useState<RegisterClosureRole | null>(null);
   const [reason, setReason] = useState('');

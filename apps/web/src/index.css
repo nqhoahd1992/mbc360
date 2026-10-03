@@ -68,7 +68,7 @@ body {
   color: #595959;
 }
 
-/* The app header is sticky (64px) and table headers now stick under it, so
+/* The app header is sticky (56px, HEADER_HEIGHT in theme/tokens.ts) and table headers now stick under it, so
    anything scrolled to — the "what's blocking this gate" deep links
    (?scrollTo=), in-page anchors, and the browser's own scrolling when Tab
    moves focus — must stop BELOW them. Without this, `scrollIntoView({block:

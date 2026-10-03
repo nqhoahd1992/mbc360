@@ -22,6 +22,7 @@ import { GATE_DECISIONS, PHASES } from '@mbc360/shared/config/gates';
 import { useAppStore } from '../store/useAppStore';
 import { canApprovePhase, EMPTY_GRANTS } from '../utils/permissions';
 import { useSession } from '../auth/useSession';
+import { usePermissionView } from '../auth/previewMode';
 import { usePickerUsers } from '../hooks/useUserOptions';
 import { useDraft } from '../hooks/useDraft';
 import { getMySignature, getMyTotpStatus } from '../api/accountApi';
@@ -75,7 +76,8 @@ export default function SignOffBlock({
   const signSignOff = useAppStore((s) => s.signSignOff);
   const withdrawSignOff = useAppStore((s) => s.withdrawSignOff);
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
-  const { user: me, isAdmin } = useSession();
+  const { user: me } = useSession();
+  const { isAdmin, roleKeys } = usePermissionView();
   const users = usePickerUsers();
 
   // Only the evidence summary is a free-text field with a draft; a decision and
@@ -130,7 +132,7 @@ export default function SignOffBlock({
   // ProjectIdentity.projectLead stores (the Create form's user picker writes the
   // picked user's displayName) — the server checks the same thing.
   const isLead = !!me && (isAdmin || me.displayName.trim() === projectLead.trim());
-  const canApprove = (me?.roles ?? []).some((r) => canApprovePhase(grants, r.key, phase));
+  const canApprove = roleKeys.some((k) => canApprovePhase(grants, k, phase));
   const phaseDept = PHASES.find((p) => p.phase === phase)?.department;
 
   const userOptions = users.map((u) => ({
