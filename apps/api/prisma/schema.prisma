@@ -160,6 +160,11 @@ model Project {
   // two nullable fields do not earn their own table, join and mapper branch.
   microSusceptibility  String?
   microRationale       String?
+  // Round 4 question 23(a) (SME rule audit D, 2026-10-04): a Gate 2 brief may
+  // record "Product form under evaluation — to be confirmed by Gate 5". The Gate 2
+  // checklist is locked once Gate 2 passes, so the confirmation lives here, at
+  // Gate 5, with the other formula properties.
+  confirmedProductForm String?
 
   // Round 4 questions 8, 9, 11 and 12 (2026-08-24) — explicit assessment answers,
   // so that "not yet assessed" is a state a person sets rather than one the engine
@@ -1208,6 +1213,12 @@ model MarketProfile {
   // sentence Regulatory writes, not an enum, and C1 only needs to know whether one
   // EXISTS to trigger the review.
   claimRestrictions String?
+  // SME Round 3 A2: Gate 6's market-specific pack requirements become mandatory
+  // "where the selected market has specific requirements affecting language;
+  // mandatory warnings; ingredient declaration; …". Free text for the same reason
+  // as claimRestrictions — the trigger only needs to know whether one exists
+  // (SME rule audit D, 2026-10-04).
+  packRequirements String?
 
   // Shared across all three datasets.
   evidenceLink String?
@@ -1264,6 +1275,10 @@ model ClaimLibraryEntry {
   reviewDate            String?
   withdrawnAt           DateTime?
   withdrawnReason       String?
+  // Question 28(5): a withdrawal must "record the effective date and transition
+  // plan" (SME rule audit D, 2026-10-04).
+  withdrawalEffectiveDate  String?
+  withdrawalTransitionPlan String?
 
   // Question 28(4): "project approval must not auto-promote wording. A separate
   // controlled action Propose for Claims Library is required." Where a proposal

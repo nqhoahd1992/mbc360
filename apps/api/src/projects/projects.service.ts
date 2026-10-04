@@ -25,6 +25,7 @@ import {
 import { ownerName, registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import {
   REGISTER_CONFIGS,
+  applyClaimInheritance,
   createEmptyRegisterRow,
   getRegisterConfig,
   invalidSelectValues,
@@ -48,7 +49,7 @@ import {
   targetUsersPinnedByAssessment,
   vulnerableSaveBlockers,
 } from '@mbc360/shared/utils/vulnerableUsers';
-import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
+import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '@mbc360/shared/config/phases';
 import { ASSESSMENT_FIELDS as ASSESSMENT_FIELDS_BY_KEY, ASSESSMENT_HOMES } from '@mbc360/shared/config/assessments';
 import { EVIDENCE_AREAS } from '@mbc360/shared/config/evidence';
 import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateReadiness';
@@ -525,6 +526,7 @@ export class ProjectsService {
         enhancedSurveillance: p.enhancedSurveillance,
         dossierType: p.dossierType ?? undefined,
         claimRestrictions: p.claimRestrictions ?? undefined,
+        packRequirements: p.packRequirements ?? undefined,
         evidenceLink: p.evidenceLink ?? undefined,
         reviewDate: p.reviewDate ?? undefined,
         notes: p.notes ?? undefined,
@@ -1931,6 +1933,9 @@ export class ProjectsService {
       // Widened 2026-08-12 to the whole of D2 (claim linkage mandatory unless
       // declared non-product; wording equivalence classified by a reviewer),
       // evaluated by the same shared function the UI's save-guard calls.
+      // Round 4 question 19(c): inherited claim columns come from the claim, not
+      // from the request.
+      rows = applyClaimInheritance(config, rows, project.registers['claimEvidenceTraceability'] ?? []);
       // C6: a column flagged `selfAttest` records an act ("confirmed by"), so a
       // new or changed value must be the signed-in person. Rows are matched by
       // their record id where they have one, otherwise by position.
@@ -2756,8 +2761,16 @@ export class ProjectsService {
         );
       }
       const data: Record<string, string | null> = {};
-      for (const field of ['microSusceptibility', 'microRationale'] as const) {
+      for (const field of ['microSusceptibility', 'microRationale', 'confirmedProductForm'] as const) {
         if (field in patch) data[field] = (patch[field] ?? '').trim() || null;
+      }
+      // Question 23(a): the confirmed form is one of the Gate 2 Product Type
+      // options — any but "under evaluation", which is what it confirms away from.
+      if ('confirmedProductForm' in data) {
+        const forms = (PHASE_CONFIGS[1].checklistSections.find((c) => c.key === 'productType')?.options ?? []).filter(
+          (o) => o !== PRODUCT_FORM_UNDER_EVALUATION,
+        );
+        assertOneOf('Confirmed product form', data.confirmedProductForm, forms);
       }
       if (Object.keys(data).length === 0) return { fields: [] };
       await tx.project.update({ where: { id }, data });
@@ -2979,15 +2992,19 @@ export class ProjectsService {
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
     return this.mutate(user, id, expectedVersion, 'markets.updated', async (tx, row, project) => {
-      if (isGateRefLocked(project, '01')) {
-        throw new ForbiddenException(
-          'Countries / Markets belongs to gate 01, which has passed — it is read-only (use Backtrack to reopen it).',
-        );
-      }
       const wanted = [...new Set(markets.map((m) => m.trim()).filter((m) => m !== ''))];
       const current = row.markets.map((m) => m.market);
       const removed = current.filter((m) => !wanted.includes(m));
       const added = wanted.filter((m) => !current.includes(m));
+      // F4: "adding a market creates a new track" — so ADDING stays open after
+      // Gate 1 (SME rule audit D, 2026-10-04); only removal is a Gate 1 decision.
+      // Whether an added market must re-open earlier gates ("may re-trigger
+      // earlier gates if that market differs") is not built [ASSUMPTION: R5-Q49].
+      if (removed.length > 0 && isGateRefLocked(project, '01')) {
+        throw new ForbiddenException(
+          'Removing a market belongs to gate 01, which has passed — mark the market Withdrawn on Market Regulatory & Launch Tracking instead.',
+        );
+      }
 
       if (removed.length > 0) {
         const tracks = await tx.marketTrack.findMany({
@@ -2999,14 +3016,29 @@ export class ProjectsService {
             t.regulatoryStatus !== 'Not Started' ||
             t.claimsApproval !== 'Not Started' ||
             t.launchApproval !== 'Not Started' ||
-            !!t.regulatoryNotes,
+            !!t.regulatoryNotes ||
+            // F4: a market with any history is never deleted — it is marked
+            // Withdrawn with a reason. The dates and the per-market records below
+            // were not looked at, so a Backtrack to Gate 1 could erase a launched
+            // market (SME rule audit D, 2026-10-04).
+            !!t.pifApprovedDate ||
+            !!t.launchApprovedDate ||
+            !!t.actualLaunchDate ||
+            !!t.withdrawnDate,
         );
-        if (inUse.length > 0) {
+        const withRecords = removed.filter(
+          (m) =>
+            project.gateSignOffs.some((g) => g.market === m) ||
+            project.postLaunchReviews.some((r) => r.market === m) ||
+            project.supersessionDecisions.some((d) => d.market === m),
+        );
+        const blocked = [...new Set([...inUse.map((t) => t.market), ...withRecords])];
+        if (blocked.length > 0) {
           throw new BadRequestException(
-            inUse
+            blocked
               .map(
-                (t) =>
-                  `Cannot remove "${t.market}": its Market Regulatory & Launch Tracking row has recorded progress — reset that row first`,
+                (m) =>
+                  `Cannot remove "${m}": it already has recorded progress, sign-offs or reviews — mark it Withdrawn with a reason on Market Regulatory & Launch Tracking instead`,
               )
               .join('; '),
           );

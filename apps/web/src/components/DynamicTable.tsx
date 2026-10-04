@@ -260,7 +260,9 @@ export default function DynamicTable({
       if (claim) {
         return (
           <Tooltip title={`From claim ${String(row.claimId)} — change it on Claim -> Evidence Traceability`}>
-            <span className="rt-static">{text(claim[column.key]) || '—'}</span>
+            <span className="rt-static">
+              {text(claim[column.inheritFromClaim === true ? column.key : column.inheritFromClaim]) || '—'}
+            </span>
           </Tooltip>
         );
       }

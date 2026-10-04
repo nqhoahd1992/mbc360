@@ -17,6 +17,8 @@
 export const CLAIM_CATEGORIES_NEEDING_REVIEW = [
   'Borderline / therapeutic-adjacent',
   'Therapeutic — not permitted within the cosmetic claim pathway',
+  // Its own name says so; it was missing (SME rule audit D, 2026-10-04).
+  'Other — Regulatory review required',
 ];
 
 // 'High' is C1's own word. 'Pending classification' is NOT in C1 — we read an

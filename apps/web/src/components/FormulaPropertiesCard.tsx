@@ -3,6 +3,7 @@ import { ExclamationCircleOutlined, LockOutlined } from '@ant-design/icons';
 import type { ProjectData } from '@mbc360/shared/types';
 import { MICROBIOLOGICAL_SUSCEPTIBILITY_OPTIONS } from '@mbc360/shared/config/opportunity';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '@mbc360/shared/config/phases';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
@@ -16,6 +17,12 @@ import '../pages/BomCosting.css';
 // anhydrous balm in a jar opened with wet hands is susceptible too, and no
 // composition data says so. The person decides; this only stops them starting
 // from a blank box on the obvious case.
+// The Gate 2 Product Type options a form can be confirmed as — every one except
+// "under evaluation" itself.
+const CONFIRMABLE_FORMS = (
+  PHASE_CONFIGS[1].checklistSections.find((c) => c.key === 'productType')?.options ?? []
+).filter((o) => o !== PRODUCT_FORM_UNDER_EVALUATION);
+
 const WATER_INCI = /^(aqua|water|aqua \(water\)|water \(aqua\))$/i;
 
 export default function FormulaPropertiesCard({ project }: { project: ProjectData }) {
@@ -23,6 +30,9 @@ export default function FormulaPropertiesCard({ project }: { project: ProjectDat
   const locked = isGateRefLocked(project, '05');
   const { draft, dirty, update, markSaved, discard } = useDraft(project.formulaProperties);
 
+  const formOpen = (project.checklists['productType'] ?? []).some(
+    (i) => i.selected && i.label === PRODUCT_FORM_UNDER_EVALUATION,
+  );
   const hasWater = project.bom.some((l) => WATER_INCI.test((l.inciName ?? '').trim()));
   const value = draft.microSusceptibility ?? '';
   // A3 allows the four N/A values only "with documented rationale". For a
@@ -88,6 +98,26 @@ export default function FormulaPropertiesCard({ project }: { project: ProjectDat
               />
             )}
           </label>
+          {formOpen && (
+            // Round 4 question 23(a): the Gate 2 brief left the form open, so it
+            // is confirmed here — the Gate 2 checklist is locked by now.
+            <label className="bom-field">
+              <span className="bom-label">Confirmed product form (left open at Gate 2)</span>
+              {locked ? (
+                <span className="rt-static">{draft.confirmedProductForm || '—'}</span>
+              ) : (
+                <Select
+                  style={{ width: '100%' }}
+                  allowClear
+                  showSearch
+                  placeholder="Confirm the product form"
+                  value={draft.confirmedProductForm || undefined}
+                  options={CONFIRMABLE_FORMS.map((o) => ({ value: o, label: o }))}
+                  onChange={(v?: string) => update((prev) => ({ ...prev, confirmedProductForm: v ?? '' }))}
+                />
+              )}
+            </label>
+          )}
         </div>
 
         {contradictsBom && (

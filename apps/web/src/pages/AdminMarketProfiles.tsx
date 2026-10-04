@@ -105,6 +105,7 @@ export default function AdminMarketProfiles() {
         enhancedSurveillance: p?.enhancedSurveillance ?? false,
         dossierType: p?.dossierType,
         claimRestrictions: p?.claimRestrictions,
+        packRequirements: p?.packRequirements,
         evidenceLink: p?.evidenceLink,
         reviewDate: p?.reviewDate,
         notes: p?.notes,
@@ -139,6 +140,7 @@ export default function AdminMarketProfiles() {
           reviewIntervalMonths: row.reviewIntervalMonths ?? null,
           dossierType: row.dossierType ?? '',
           claimRestrictions: row.claimRestrictions ?? '',
+          packRequirements: row.packRequirements ?? '',
           evidenceLink: row.evidenceLink ?? '',
           reviewDate: row.reviewDate ?? '',
           notes: row.notes ?? '',
@@ -393,6 +395,16 @@ export default function AdminMarketProfiles() {
                   placeholder="Any restriction this market imposes on claims"
                   value={open.claimRestrictions}
                   onChange={(e) => patch(open.market, { claimRestrictions: e.target.value })}
+                />
+              </label>
+              <label className="au-field mp-wide">
+                <span className="au-field-label">Pack requirements</span>
+                <Input.TextArea
+                  autoSize={{ minRows: 3 }}
+                  disabled={!canEdit}
+                  placeholder="Language, mandatory warnings, ingredient declaration, responsible party, notification numbers, pack size, tamper evidence, barcode, recycling marks…"
+                  value={open.packRequirements}
+                  onChange={(e) => patch(open.market, { packRequirements: e.target.value })}
                 />
               </label>
               <label className="au-field">

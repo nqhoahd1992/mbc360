@@ -66,6 +66,12 @@ export class ClaimsLibraryController {
     await this.prisma.$transaction(async (tx) => {
       const existing = id === 'new' ? null : await tx.claimLibraryEntry.findUnique({ where: { id } });
       if (id !== 'new' && !existing) throw new BadRequestException(`Claims Library entry "${id}" not found`);
+      // A withdrawn entry is closed (SME rule audit D, 2026-10-04). Editing its
+      // wording used to drop the withdrawal and return it to Proposed — a way to
+      // un-withdraw an entry with no approval and no record that it happened.
+      if (existing?.withdrawnAt) {
+        throw new BadRequestException('A withdrawn entry cannot be edited — propose a new one');
+      }
       const wording = (patch.wording ?? existing?.wording ?? '').trim();
       if (wording === '') throw new BadRequestException('Approved wording is required');
 
@@ -75,8 +81,12 @@ export class ClaimsLibraryController {
       // approval standing for text nobody approved — the same reasoning as the
       // per-claim revision freeze (questions 26/30b) and the stale gate signature
       // (question 29(1)).
-      const wordingChanged = !!existing && existing.wording.trim() !== wording;
-      const data = {
+      //
+      // Not only the wording (SME rule audit D, 2026-10-04): question 28(3) has an
+      // entry retain its evidence requirement and market/channel applicability with
+      // the approval, so changing those — or the category and risk the reviewers
+      // classified it under — leaves the approval covering something else too.
+      const data0 = {
         wording,
         claimCategory: (patch.claimCategory ?? existing?.claimCategory ?? '') || null,
         claimRisk: (patch.claimRisk ?? existing?.claimRisk ?? '') || null,
@@ -91,6 +101,17 @@ export class ClaimsLibraryController {
         effectiveDate: (patch.effectiveDate ?? existing?.effectiveDate ?? '') || null,
         reviewDate: (patch.reviewDate ?? existing?.reviewDate ?? '') || null,
         notes: (patch.notes ?? existing?.notes ?? '') || null,
+      };
+      const COVERED = [
+        'wording', 'claimCategory', 'claimRisk', 'evidenceRequirement', 'brands', 'productFamilies',
+        'skus', 'markets', 'languages', 'channels', 'audience',
+      ] as const;
+      const coveredChanged = existing
+        ? COVERED.filter((k) => ((existing[k] as string | null) ?? '').trim() !== ((data0[k] as string | null) ?? '').trim())
+        : [];
+      const wordingChanged = coveredChanged.length > 0;
+      const data = {
+        ...data0,
         ...(wordingChanged
           ? {
               technicalApprovedBy: null,
@@ -124,7 +145,9 @@ export class ClaimsLibraryController {
         row.id,
         revision,
         { ...data, status },
-        wordingChanged ? `${body.reason ?? 'edited'} (wording changed — both approvals retracted)` : body.reason,
+        wordingChanged
+          ? `${body.reason ?? 'edited'} (${coveredChanged.join(', ')} changed — both approvals retracted)`
+          : body.reason,
       );
     });
     return this.readAll();
@@ -221,11 +244,18 @@ export class ClaimsLibraryController {
   async withdraw(
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
-    @Body() body: { reason?: string },
+    @Body() body: { reason?: string; effectiveDate?: string; transitionPlan?: string },
   ): Promise<{ entries: ClaimLibraryEntry[]; impact: LinkedClaim[] }> {
     await this.reference.assertCanEdit(user, 'claims-library');
     const reason = (body.reason ?? '').trim();
     if (reason === '') throw new BadRequestException('A reason is required to withdraw a library entry');
+    // Question 28(5): "Record the effective date and transition plan."
+    const effectiveDate = (body.effectiveDate ?? '').trim();
+    const transitionPlan = (body.transitionPlan ?? '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) {
+      throw new BadRequestException('An effective date (YYYY-MM-DD) is required to withdraw a library entry');
+    }
+    if (transitionPlan === '') throw new BadRequestException('A transition plan is required to withdraw a library entry');
     const impact = await this.linkedClaims(id);
     await this.prisma.$transaction(async (tx) => {
       const existing = await tx.claimLibraryEntry.findUnique({ where: { id } });
@@ -233,7 +263,15 @@ export class ClaimsLibraryController {
       const revision = existing.revision + 1;
       await tx.claimLibraryEntry.update({
         where: { id },
-        data: { withdrawnAt: new Date(), withdrawnReason: reason, status: 'Withdrawn', revision, updatedById: user.id },
+        data: {
+          withdrawnAt: new Date(),
+          withdrawnReason: reason,
+          withdrawalEffectiveDate: effectiveDate,
+          withdrawalTransitionPlan: transitionPlan,
+          status: 'Withdrawn',
+          revision,
+          updatedById: user.id,
+        },
       });
       await this.reference.recordRevision(
         tx,
@@ -241,7 +279,7 @@ export class ClaimsLibraryController {
         'claims-library',
         id,
         revision,
-        { status: 'Withdrawn', reason, affectedClaims: impact.length },
+        { status: 'Withdrawn', reason, effectiveDate, transitionPlan, affectedClaims: impact.length },
         reason,
       );
     });
@@ -255,7 +293,14 @@ export class ClaimsLibraryController {
   // none.
   private async linkedClaims(entryId: string): Promise<LinkedClaim[]> {
     const rows = await this.prisma.registerRow.findMany({
-      where: { registerKey: { in: ['claimEvidenceTraceability', 'skuClaimsPifRegister', 'publishedInfoApproval'] } },
+      // Question 28(5) also names published materials: the artwork that carries
+      // the claim and its Publication / Deployment records were missing (SME rule
+      // audit D, 2026-10-04).
+      where: {
+        registerKey: {
+          in: ['claimEvidenceTraceability', 'skuClaimsPifRegister', 'publishedInfoApproval', 'publicationRecord', 'packagingSpecsArtwork'],
+        },
+      },
       select: { projectId: true, registerKey: true, data: true },
     });
     const claims = rows.filter(
@@ -269,8 +314,19 @@ export class ClaimsLibraryController {
         (r) =>
           r.projectId === c.projectId &&
           r.registerKey !== 'claimEvidenceTraceability' &&
+          r.registerKey !== 'packagingSpecsArtwork' &&
           claimIds.has(String((r.data as Record<string, unknown>)?.claimId ?? '')) &&
           String((r.data as Record<string, unknown>)?.claimId ?? '') === claimId,
+      );
+      // Artwork rows list several Claim IDs in one comma-separated cell.
+      const artwork = rows.filter(
+        (r) =>
+          r.projectId === c.projectId &&
+          r.registerKey === 'packagingSpecsArtwork' &&
+          String((r.data as Record<string, unknown>)?.claimIds ?? '')
+            .split(',')
+            .map((v) => v.trim())
+            .includes(claimId),
       );
       return {
         projectId: c.projectId,
@@ -283,6 +339,8 @@ export class ClaimsLibraryController {
         skus: [...new Set(uses.map((u) => String((u.data as Record<string, unknown>)?.productSku ?? '')).filter(Boolean))],
         markets: [...new Set(uses.map((u) => String((u.data as Record<string, unknown>)?.market ?? '')).filter(Boolean))],
         publishedRecords: uses.filter((u) => u.registerKey === 'publishedInfoApproval').length,
+        publicationRecords: uses.filter((u) => u.registerKey === 'publicationRecord').length,
+        artworkRecords: artwork.map((a) => String((a.data as Record<string, unknown>)?.artworkVersion ?? '') || '(no version)'),
       };
     });
   }
@@ -314,6 +372,8 @@ export class ClaimsLibraryController {
       reviewDate: r.reviewDate ?? undefined,
       withdrawnAt: r.withdrawnAt?.toISOString(),
       withdrawnReason: r.withdrawnReason ?? undefined,
+      withdrawalEffectiveDate: r.withdrawalEffectiveDate ?? undefined,
+      withdrawalTransitionPlan: r.withdrawalTransitionPlan ?? undefined,
       proposedBy: r.proposedBy ?? undefined,
       proposedFromProjectId: r.proposedFromProjectId ?? undefined,
       proposedFromClaimId: r.proposedFromClaimId ?? undefined,
@@ -333,4 +393,6 @@ export interface LinkedClaim {
   skus: string[];
   markets: string[];
   publishedRecords: number;
+  publicationRecords: number;
+  artworkRecords: string[];
 }

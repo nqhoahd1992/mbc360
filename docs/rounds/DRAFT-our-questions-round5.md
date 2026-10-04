@@ -568,6 +568,70 @@ Your F13 answer says early entries must be reviewed and accepted by "the respons
 
 ---
 
+## Question 44 — Gates 10–11: must every market be ready before the project passes?
+
+Your answers have Gates 10 and 11 run per market. The project still has one record for each gate, so the system now requires every active market to have its regulatory approval, its Gate 10 sign-off and its launch approval before the project passes. No unready market gets through, but a ready market waits for the others.
+
+**Question:** May a market that is ready launch while another is still pending? If so, each market needs its own gate progress, which is a larger change.
+
+---
+
+## Question 45 — Which signals bring a post-launch review forward, and which claim questions count as performance?
+
+Question 13 brings a review forward on "a significant adverse event, complaint trend, regulatory request or quality signal". We read these as: a safety/adverse-event or quality issue recorded, or feedback whose source is a regulator. Nothing in the system records a complaint trend yet. Question 10 counts only a claim question "concerning actual performance", but nothing records what a claim question is about, so every claim question counts.
+
+**Question:** Are those readings right? Where should a complaint trend be recorded? Do you need claim questions about performance told apart from others?
+
+---
+
+## Question 46 — The controlled action when the product form is left open at Gate 2
+
+Question 23(a) lets an early brief pass Gate 2 with the product form still open, "with a controlled action". We require an open Next Action at Gate 5, where the form is to be confirmed. The confirmation itself is a new "Confirmed product form" field at Gate 5, because the Gate 2 list is locked once Gate 2 passes.
+
+**Question:** Must that action sit at Gate 5 and be about confirming the form, or is any controlled action enough?
+
+---
+
+## Question 47 — At which gate must a claim's evidence basis be recorded?
+
+Your question-36(a) answer adds an "Evidence basis required" field to every claim and exempts some Cosmetic claims through it, but does not say when it must be filled in. We require it at Gate 3, beside the preliminary evidence requirement.
+
+**Question:** Is Gate 3 right, or should it be later — Gate 8 or Gate 10?
+
+---
+
+## Question 48 — What marks a "new formula" for the scale-up requirement?
+
+Your Round 3 answer makes scale-up or pilot status mandatory for "new formulas, major reformulations …". We read a new formula as the Gate 1 project type "New development"; a major reformulation is already caught by a Major formula version.
+
+**Question:** Does "New development" match what you mean by a new formula? Should a Reformulation that is not Major also count?
+
+---
+
+## Question 49 — Does adding a market after Gate 1 reopen earlier gates?
+
+Your F4 answer says adding a market creates a new track and "may re-trigger earlier gates if that market differs". A market can now be added after Gate 1 without a backtrack, and nothing is reopened. Removing a market that has any history is refused; it is marked Withdrawn instead.
+
+**Question:** When must adding a market reopen earlier gates, and which ones?
+
+---
+
+## Question 50 — What proves the approved artwork version at Gate 11?
+
+Gate 11's "Approved artwork version" used to be satisfied by any row on the Released Label Control register. Each row must now name the new label version and the new artwork file.
+
+**Question:** Which fields should prove it — does it need an approval status or a release date as well?
+
+---
+
+## Question 51 — Where are a market's pack requirements recorded, and what closes the item?
+
+Your A2 answer makes market-specific pack requirements mandatory where the market has specific requirements (language, warnings, ingredient declaration and so on). We added a "Pack requirements" field to Regulatory's market profile; if it is filled in for a market the project sells into, the item applies. It is closed by the Gate 6 check "Artwork/label needs and pack compatibility triggers identified".
+
+**Question:** Should Regulatory record these on the market profile like this? What should close the item?
+
+---
+
 ## Summary
 
 | # | Topic | Why it matters |
@@ -607,5 +671,13 @@ Your F13 answer says early entries must be reviewed and accepted by "the respons
 | 41 | A deviation record when something is released without approval | Not built — blocking inside the system for now, CAPA for the rest; your (a)–(d) decide what to build |
 | 42 | May the person who creates a formula version also confirm its Major/Minor classification? | Built as "the same person may, with the authority"; ours |
 | 43 | Who accepts a phase's pre-work? | Built as "phase review owner or project Lead"; ours |
+| 44 | Gates 10–11: must every market be ready before the project passes? | Built as "every active market"; ours |
+| 45 | Which signals bring a post-launch review forward, and which claim questions count as performance? | Built as above; ours |
+| 46 | The controlled action when the product form is left open at Gate 2 | Built as "a Next Action at Gate 5"; ours |
+| 47 | At which gate must a claim's evidence basis be recorded? | Built at Gate 3; ours |
+| 48 | What marks a "new formula" for the scale-up requirement? | Built as "New development"; ours |
+| 49 | Does adding a market after Gate 1 reopen earlier gates? | Built as "nothing reopened"; ours |
+| 50 | What proves the approved artwork version at Gate 11? | Built as "version and file named"; ours |
+| 51 | Where are a market's pack requirements recorded, and what closes the item? | Built as above; ours |
 
 Questions 4 to 6, 10 to 12, 14 and 16 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

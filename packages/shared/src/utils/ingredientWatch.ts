@@ -10,8 +10,17 @@ import type { ProjectData } from '../types';
 //  2. INCI name keywords — fallback for manually typed lines. The watch-lists
 //     (config/registers.ts fixedRows) hold ingredient GROUPS ("Parabens"), so
 //     each group carries a keyword/synonym list here.
-// Follow-up F3: ownership of the per-group CAS mapping is still to be
-// confirmed; this table is the demo stand-in.
+//
+// F3 WAS answered (2026-07-21): match by exact Cosmetri RM identifier → exact
+// INCI → CAS → synonym/group mapping → manual scientific review, against
+// controlled watch-lists Regulatory & Safety maintain (INCI, CAS, synonyms,
+// markets, limits, source, dates, owner, version). This file does not implement
+// that yet, because the controlled dataset does not exist: the tables below are
+// a demo stand-in holding groups, keywords and a few CAS numbers, with no RM
+// identifiers or exact INCI lists to match first. With these tables the order
+// only changes which key a hit is labelled with, not which groups are hit.
+// Replace the tables — and add the first two keys — when the dataset arrives
+// (SME rule audit D, 2026-10-04).
 
 export type WatchListKind = 'prohibited' | 'pbCaution';
 

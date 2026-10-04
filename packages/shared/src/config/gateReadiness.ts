@@ -101,7 +101,13 @@ export type ReadinessTrigger =
   // been reached in some market, or a signal has occurred that brings one forward.
   | 'postLaunchReviewDue'
   // Round 4 question 15's five conditions for product-performance feedback.
-  | 'productPerformanceFeedback';
+  | 'productPerformanceFeedback'
+  // Round 4 question 23(a): the Gate 2 brief left the product form open
+  // ("Product form under evaluation — to be confirmed by Gate 5").
+  | 'productFormUnderEvaluation'
+  // SME Round 3 A2, Gate 6: a market this project sells into has specific pack
+  // requirements recorded on its Regulatory market profile.
+  | 'marketPackRequirements';
 
 // Round 4 question 7 (2026-08-24), option (b): "A missing assessment must never be
 // treated as meaning the condition does not apply." A trigger therefore has THREE
@@ -156,6 +162,11 @@ export const TRIGGERS_WITHOUT_UNASSESSED_STATE: readonly ReadinessTrigger[] = [
   'claimNeedsPerformanceEvidence',
   'newOrRepositionedProject',
   'pvPmsRequired',
+  // A checklist tick: present or absent, and Gate 2 already requires a selection.
+  'productFormUnderEvaluation',
+  // Reads Regulatory's profiles: a market with nothing recorded is Regulatory
+  // saying there is nothing — the same reading as claimRestrictions.
+  'marketPackRequirements',
 ];
 
 export type ReadinessCheck =
@@ -263,7 +274,16 @@ export type ReadinessCheck =
   | { kind: 'identityFieldFilled'; field: 'initialScope' | 'initialTargetUsers' }
   // A `FormulaProperties` field is non-empty. Same non-vacuity test as
   // `identityFieldFilled`: these fields start empty and only a person fills them.
-  | { kind: 'formulaPropertyFilled'; field: 'microSusceptibility' | 'microRationale' }
+  | { kind: 'formulaPropertyFilled'; field: 'microSusceptibility' | 'microRationale' | 'confirmedProductForm' }
+  // A Next Action on `gate` that has not been cancelled — question 23(a)'s
+  // "controlled action" for a product form left open at Gate 2.
+  | { kind: 'nextActionAtGate'; gate: string }
+  // Rule C2 / Round 4 question 9: the dedicated study approval workflow — all
+  // three roles named, each with an approving decision.
+  | { kind: 'studyApprovalsComplete' }
+  // At least one row of `register` has `column` set to one of `values` — for a
+  // register where several rows may coexist but one must be the approved one.
+  | { kind: 'registerSomeRow'; register: string; column: string; values: string[] }
   // A specific field on the Phase Gate Flow row itself (`ProjectData.gates`
   // entry for `gate`) is non-empty. This is NOT vacuous:
   // `owner`/`dueDate`/`evidenceLink`/`notes` on a gate record start
@@ -370,6 +390,11 @@ export type ReadinessCheck =
   // one to be invented. Never vacuous: an unticked row or a ledger with rows
   // leaves it unsatisfied.
   | { kind: 'noClaimsDeclared' }
+  // E3(a) / Round 4 question 18: Gates 10-11 per market. Every ACTIVE market
+  // (withdrawn ones excluded) has the named market-track status Approved or N/A —
+  // or, for `gateSignedOff`, its own lane of that gate signed off.
+  | { kind: 'everyMarket'; field: 'regulatoryStatus' | 'launchApproval' }
+  | { kind: 'everyMarketGateSignedOff'; gate: string }
   // Round 4 question 22(b): on a checklist section declaring `requiresPrimary`,
   // exactly one SELECTED option is marked Primary. Never vacuous — with nothing
   // selected there is no primary either, so it blocks.
@@ -702,6 +727,9 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
           { kind: 'registerHasRows', register: 'developmentBrief' },
           { kind: 'registerRowsComplete', register: 'developmentBrief', columns: ['briefStatus', 'briefLink', 'briefOwner'] },
           { kind: 'registerNoBadRows', register: 'developmentBrief', column: 'briefStatus', badValues: ['Draft', 'In Review'] },
+          // A brief whose every row is "Superseded" passed the two checks above
+          // with no approved brief at all (SME rule audit D, 2026-10-04).
+          { kind: 'registerSomeRow', register: 'developmentBrief', column: 'briefStatus', values: ['Approved'] },
         ],
       },
     },
@@ -906,6 +934,18 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'checklistHasSelection', section: 'productType' },
     },
     {
+      // Round 4 question 23(a) (SME rule audit D, 2026-10-04): an open product
+      // form "allows an early brief … to pass Gate 2 with a controlled action".
+      // The action is read as a Next Action on Gate 5, where the form is to be
+      // confirmed [ASSUMPTION: R5-Q46].
+      id: 'sg02-product-form-action',
+      label: 'Product form left open — a controlled action tracks its confirmation at Gate 5',
+      tier: 'Conditional',
+      trigger: 'productFormUnderEvaluation',
+      source: 'f-series',
+      check: { kind: 'nextActionAtGate', gate: 'SG05' },
+    },
+    {
       // Infant & Baby Safety pathway (Round 4 question 1, 2026-08-29). Compartment
       // 3 at Gate 7 is "the FINAL COMPONENT of a broader pathway spanning multiple
       // gates — not the entire pathway by itself"; this is that pathway's Gate 2
@@ -1023,6 +1063,25 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
             register: 'claimEvidenceTraceability',
             columns: ['claimId', 'approvedWording', 'claimCategory', 'claimRisk', 'preliminaryEvidenceRequirement'],
           },
+        ],
+      },
+    },
+    {
+      // Round 4 question 36(a) adds "Evidence basis required" to every claim, and
+      // the Cosmetic-claim exemption depends on it — yet nothing required it, so a
+      // blank one silently counted as "not exempt". The column is declared Gate 3
+      // in config, beside the preliminary evidence requirement it qualifies; that
+      // Gate 3 is where it must be filled is ours (SME rule audit D, 2026-10-04)
+      // [ASSUMPTION: R5-Q47].
+      id: 'sg03-evidence-basis',
+      label: 'Evidence basis recorded for every proposed claim',
+      tier: 'Mandatory',
+      source: 'f-series',
+      check: {
+        kind: 'anyOf',
+        checks: [
+          { kind: 'noClaimsDeclared' },
+          { kind: 'registerRowsComplete', register: 'claimEvidenceTraceability', columns: ['evidenceBasisRequired'] },
         ],
       },
     },
@@ -1497,6 +1556,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'gateCheckDone', gate: '05', check: 'Formula route, BOM and costing started' },
     },
     {
+      // Round 4 question 23(a): "to be confirmed by Gate 5". Recorded on the
+      // formula properties, since the Gate 2 checklist is locked by then.
+      id: 'sg05-product-form',
+      label: 'Product form confirmed (left open at Gate 2)',
+      tier: 'Conditional',
+      trigger: 'productFormUnderEvaluation',
+      source: 'f-series',
+      check: { kind: 'formulaPropertyFilled', field: 'confirmedProductForm' },
+    },
+    {
       // Relocated here from Gate 4 (2026-07-22) — Formula_BOM is tagged
       // `linkedGate: '05_Formula_BOM_Costing'` in registers.ts ("Formula_BOM
       // must be current"), i.e. the locked recipe belongs to Gate 5, not
@@ -1780,7 +1849,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg06-market-pack',
       label: 'Market-specific pack requirements',
       tier: 'Conditional',
-      check: { kind: 'checklistHasSelection', section: 'packagingOptions' },
+      // A2 gave the trigger in 2026-08; it had none, so the item never blocked
+      // (SME rule audit D, 2026-10-04). The requirements live on the Regulatory
+      // market profile, and the evidence is the Gate 6 artwork/label row rather
+      // than the packaging-format checklist this read before — both choices ours
+      // [ASSUMPTION: R5-Q51].
+      trigger: 'marketPackRequirements',
+      check: {
+        kind: 'gateCheckDone',
+        gate: '06',
+        check: 'Artwork/label needs and pack compatibility triggers identified',
+      },
     },
     {
       id: 'sg06-evidence-link',
@@ -2339,7 +2418,21 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       trigger: 'humanStudyPlanned',
       // Phase 3's humanStudy requirement section is tagged gate '08' and has an
       // "Approval trail" row — the C2 study-approval workflow's own checkpoint.
-      check: { kind: 'requirementDone', section: 'humanStudy', requirement: 'Approval trail' },
+      //
+      // Widened 2026-10-04 (SME rule audit D): question 9 says that where a study
+      // is planned "the dedicated study approval workflow becomes mandatory" and
+      // "participant information, consent, privacy and data-management
+      // requirements must be complete". The item read only the requirement row
+      // that NAMES the workflow; it now also reads the workflow itself and the
+      // consent and recruitment log row.
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'studyApprovalsComplete' },
+          { kind: 'requirementDone', section: 'humanStudy', requirement: 'Consent and recruitment log' },
+          { kind: 'requirementDone', section: 'humanStudy', requirement: 'Approval trail' },
+        ],
+      },
     },
     {
       // Merged 2026-07-27 (user-requested) from sg08-reports +
@@ -2598,7 +2691,9 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // registerRowsComplete, not registerColumnFilled: sg10-claims-register's
       // registerHasRows only guards the GATE overall, not this item's own
       // satisfied flag (found 2026-07-28 — same class as the Gate 06 fix).
-      check: { kind: 'registerRowsComplete', register: 'skuClaimsPifRegister', columns: ['evidenceLink'] },
+      // PIF link added 2026-10-04 (SME rule audit D): Round 4 question 19(h) puts
+      // "PIF/Product Master File attachment" among the Gate 10 claim fields.
+      check: { kind: 'registerRowsComplete', register: 'skuClaimsPifRegister', columns: ['evidenceLink', 'pifLink'] },
     },
     {
       id: 'sg10-safety-evidence',
@@ -2688,9 +2783,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Mandatory',
       check: { kind: 'registerHasRows', register: 'publishedInfoApproval' },
     },
-    // sg10-reg-approval: still `manual` — per-market (marketTracks.regulatoryStatus),
-    // needs F4. See docs/rules/F1_Per_Gate_Open_Questions.md.
-    { id: 'sg10-reg-approval', label: 'Regulatory approval', tier: 'Mandatory', check: { kind: 'manual' } },
+    // E3(a) (SME rule audit D, 2026-10-04): was `manual` "pending F4". It reads
+    // each market's own Regulatory status. The project still has ONE Gate 10
+    // record, so until gates progress per market every active market must be
+    // approved — no unready market passes, at the cost of a ready one waiting
+    // [ASSUMPTION: R5-Q44].
+    {
+      id: 'sg10-reg-approval',
+      label: 'Regulatory approval in every active market',
+      tier: 'Mandatory',
+      check: { kind: 'everyMarket', field: 'regulatoryStatus' },
+    },
     {
       // Added 2026-07-28 (see the note above GATE_READINESS).
       id: 'sg10-signoff',
@@ -2701,9 +2804,14 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   ],
   // Gate 11 is a market-specific hard block.
   SG11: [
-    // sg11-gate10: still `manual` — per-market, same F4 dependency as
-    // sg10-reg-approval below it.
-    { id: 'sg11-gate10', label: 'Gate 10 complete for the relevant market', tier: 'Mandatory', check: { kind: 'manual' } },
+    // E3(a): Gate 10 complete for each market = that market's Gate 10 lane is
+    // signed off (question 18). All active markets [ASSUMPTION: R5-Q44].
+    {
+      id: 'sg11-gate10',
+      label: 'Gate 10 complete (signed off) for every active market',
+      tier: 'Mandatory',
+      check: { kind: 'everyMarketGateSignedOff', gate: 'SG10' },
+    },
     {
       // Merged 2026-07-27 (user-requested) from sg11-gmp + sg11-gmp-link.
       id: 'sg11-gmp',
@@ -2762,7 +2870,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg11-artwork',
       label: 'Approved artwork version',
       tier: 'Mandatory',
-      check: { kind: 'registerHasRows', register: 'releasedLabelRegister' },
+      // A row of any content used to satisfy this (SME rule audit D, 2026-10-04).
+      // Each released-label row must now name the new label version and artwork
+      // file; which columns stand for "approved artwork version" is ours
+      // [ASSUMPTION: R5-Q50].
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'registerHasRows', register: 'releasedLabelRegister' },
+          { kind: 'registerRowsComplete', register: 'releasedLabelRegister', columns: ['newLabelVersion', 'newArtworkFile'] },
+        ],
+      },
     },
     {
       // Merged 2026-07-27 (user-requested) from sg11-production +
@@ -2867,9 +2985,14 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         ],
       },
     },
-    // sg11-launch: still `manual` — per-market (marketTracks.launchApproval, already
-    // hard-blocked per market by C5 in MarketTrackingCard/setMarketTracks). F4.
-    { id: 'sg11-launch', label: 'Launch approval', tier: 'Mandatory', check: { kind: 'manual' } },
+    // E3(a): each market's launch approval (C5 already holds it behind that
+    // market's PIF). All active markets [ASSUMPTION: R5-Q44].
+    {
+      id: 'sg11-launch',
+      label: 'Launch approval in every active market',
+      tier: 'Mandatory',
+      check: { kind: 'everyMarket', field: 'launchApproval' },
+    },
     {
       // Added 2026-07-28 (see the note above GATE_READINESS).
       id: 'sg11-signoff',

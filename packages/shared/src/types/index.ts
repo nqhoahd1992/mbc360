@@ -93,6 +93,10 @@ export interface MarketProfile {
   enhancedSurveillance: boolean;
   dossierType?: string;
   claimRestrictions?: string;
+  // SME Round 3 A2 — market-specific pack requirements (language, warnings,
+  // ingredient declaration, responsible party, notification numbers, pack size,
+  // tamper evidence, barcode, recycling marks, primary/secondary information).
+  packRequirements?: string;
   evidenceLink?: string;
   reviewDate?: string;
   notes?: string;
@@ -220,6 +224,9 @@ export interface ClaimLibraryEntry {
   reviewDate?: string;
   withdrawnAt?: string;
   withdrawnReason?: string;
+  // Question 28(5): recorded with a withdrawal.
+  withdrawalEffectiveDate?: string;
+  withdrawalTransitionPlan?: string;
   // Question 28(4): "project approval must not auto-promote wording. A separate
   // controlled action Propose for Claims Library is required." These record where
   // a proposal came from, so a promoted entry can be traced back to the project
@@ -703,6 +710,10 @@ export interface FormulaProperties {
   microSusceptibility?: string;
   // Required by A3 whenever the answer is anything but 'Susceptible'.
   microRationale?: string;
+  // Round 4 question 23(a): the product form confirmed at Gate 5, required when
+  // the Gate 2 brief recorded "Product form under evaluation". One of the Gate 2
+  // Product Type options other than that one.
+  confirmedProductForm?: string;
 }
 
 export interface EvidenceItem {

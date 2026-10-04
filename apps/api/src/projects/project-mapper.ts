@@ -411,6 +411,7 @@ export function toProjectData(
     formulaProperties: {
       ...(p.microSusceptibility ? { microSusceptibility: p.microSusceptibility } : {}),
       ...(p.microRationale ? { microRationale: p.microRationale } : {}),
+      ...(p.confirmedProductForm ? { confirmedProductForm: p.confirmedProductForm } : {}),
     },
     // Round 4 questions 8/9/11/12. Omitting a null column rather than mapping it to
     // '' keeps "nobody answered" distinguishable from "answered with nothing" —

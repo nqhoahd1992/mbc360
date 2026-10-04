@@ -175,6 +175,28 @@ Ký hiệu đường dẫn: `svc` = `apps/api/src/projects/projects.service.ts`,
 - **Q10/Q15:** `PERFORMANCE_ISSUE_TYPES` tính cả mọi claim question và bỏ sót "Product optimisation opportunity".
 - **Thấp:** `sg02-brief` tính "Superseded" là đã duyệt; `sg10-claim-evidence` không đọc `pifLink`; `sg10-artwork` và `sg11-artwork` nhận bất kỳ giá trị nào; `regulatoryReviewRequired` (Q19b) không được đọc; claim category "Other — Regulatory review required" không kích hoạt rà soát; `sg05-version` đọc ô tích thay vì dữ liệu phiên bản; `sg06-market-pack` không có trigger (A2 đã đưa danh sách).
 
+**Trạng thái (04/10/2026): đã làm mọi mục trừ F4 và Q2 (chờ chủ dự án chọn phương án).** Kiểm bằng type-check 3 package, `verify:readiness`, `verify:scaffold`, lint, 25 ca luật trên project dựng từ config, và 14 ca end-to-end trên API tạm. Câu hỏi mới **R5-Q44 → R5-Q51**. Migration `20261004164654_confirmed_product_form`, `20261004165213_claims_library_withdrawal_plan`, `20261004165600_market_pack_requirements`.
+
+| Mục | Đã làm | Câu hỏi |
+|---|---|---|
+| E3(a)/Q18 | `sg10-reg-approval`, `sg11-gate10`, `sg11-launch` hết `manual`: đòi mọi thị trường đang hoạt động (bỏ qua thị trường đã rút) | R5-Q44 |
+| F4, Q2 | **Chưa làm** — cần mô hình track theo phiên bản công thức và định nghĩa "phiên bản mới được duyệt"; chờ chủ dự án chọn | — |
+| Q4/Q13 | Trigger dùng `enhanced` thật (mốc 1 tháng); tín hiệu kéo review sớm thêm "Quality issue" và nguồn "Regulator". **Chưa làm:** record review tín hiệu ngay lập tức; baseline/enhanced vẫn dùng chung một dòng Key Gate Check | R5-Q45 |
+| Q10/Q15 | Thêm "Product optimisation opportunity"; giữ mọi claim question (không phân biệt được) | R5-Q45 |
+| Q23(a) | Gate 2: để ngỏ dạng sản phẩm thì phải có Next Action ở Gate 5; Gate 5: trường mới "Confirmed product form" | R5-Q46 |
+| Q19(c) | Dòng SKU kế thừa câu chữ, revision, trạng thái bằng chứng; server chép từ claim mỗi lần lưu | — |
+| Q23(b) | Thiếu safety decision được nêu theo từng dòng công thức | — |
+| Q36(a) | Evidence basis bắt buộc ở Gate 3 (trừ khi "không có claim") | R5-Q47 |
+| Q8 | Đã có chốt chặn khi lưu (Yes → phải có change; No → lý do + người rà soát); không đổi | — |
+| Q9 | Gate 8 đọc workflow C2 thật + dòng Consent and recruitment log | — |
+| A3 (Gate 9) | "New development" kích hoạt scale-up | R5-Q48 |
+| F7 | Gap Medium/Low cũng cần action, chủ action, người đánh giá để Proceed with Conditions | R5-Q16 (đã có) |
+| F11 | Hướng A (xem B23) | R5-Q41 |
+| F3 | Chỉ sửa ghi chú: F3 đã được trả lời, chờ bộ dữ liệu thật | — |
+| Q28(5) | Danh sách ảnh hưởng có artwork và publication record; rút phải ghi ngày hiệu lực + kế hoạch chuyển tiếp; sửa category/risk/phạm vi cũng huỷ hai chữ duyệt; mục đã rút không sửa được (trước đây sửa câu chữ làm nó quay về Proposed) | — |
+| Q24 | Thêm thị trường được cả sau Gate 1; bỏ thị trường có lịch sử bị từ chối (đánh dấu Withdrawn) | R5-Q49 |
+| Thấp | `sg02-brief` cần một brief Approved; `sg10-claim-evidence` đọc PIF link; `sg11-artwork` cần phiên bản + file; Q19(b) đọc `regulatoryReviewRequired`; "Other — Regulatory review required" kích hoạt rà soát; `sg06-market-pack` có trigger từ trường mới "Pack requirements" của hồ sơ thị trường. Giữ nguyên `sg10-artwork` (ô duyệt là chữ tự do theo workbook) và `sg05-version` | R5-Q50, R5-Q51 |
+
 ## E. Cần hỏi SME (hai nguồn mâu thuẫn)
 
 - Dự án thuần hành chính được miễn rà soát đối thủ (A3, Q11), nhưng `sg03-npd-competitor-content` và `sg05-npd-competitor-content` (workbook v2 của chuyên gia) là Mandatory, không có điều kiện.

@@ -41,7 +41,12 @@ export interface RegisterColumn {
   // claim is classified ONCE, where it is declared, and every later use inherits.
   // Without a link the cell is disabled rather than free: classifying an
   // unlinked row is how the two copies drifted apart in the first place.
-  inheritFromClaim?: boolean;
+  //
+  // `true` copies the claim's column of the same key; a string names the claim's
+  // column to copy (Round 4 question 19(c): master wording, current revision and
+  // evidence status are inherited too, and their keys differ on the claim). The
+  // API copies them on every save, so the inheritance is not only a display.
+  inheritFromClaim?: true | string;
   // For `type: 'rowRef'` only: which register this column points into, and the
   // column of that register whose value identifies a row (and is what is stored).
   refRegister?: string;
@@ -1586,9 +1591,14 @@ const skuClaimsPifRegister: RegisterConfig = {
     // channel). What the claim IS — its wording, category and risk — belongs to
     // the claim itself, so the row points at one instead of restating it.
     { key: 'claimId', label: 'Claim ID (Claim -> Evidence Traceability)', type: 'claimRef', width: 220 },
-    { key: 'claimWording', label: 'Claim / wording', type: 'textarea', width: 180 },
+    // Round 4 question 19(c) (SME rule audit D, 2026-10-04): the claim-use row
+    // inherits, read-only, category · risk · master wording · current revision ·
+    // evidence status. Only the first two were inherited; the wording was retyped.
+    { key: 'claimWording', label: 'Master wording', type: 'textarea', width: 180, inheritFromClaim: 'approvedWording' },
     { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS, inheritFromClaim: true },
     { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS, inheritFromClaim: true },
+    { key: 'claimRevision', label: 'Current revision', type: 'text', width: 100, inheritFromClaim: 'revision' },
+    { key: 'claimEvidenceStatus', label: 'Evidence status', type: 'text', width: 130, inheritFromClaim: 'status' },
     // B7's "intended channel" and "Regulatory review required Y/N" — the two of
     // its nine attributes that had no home. Both belong to the USE of a claim
     // rather than the claim itself: the same wording is held to a different
@@ -3758,4 +3768,25 @@ export function getNavGroup(key: string | undefined): NavGroup | undefined {
 export function findNavGroupForRegister(registerKey: string | undefined): NavGroup | undefined {
   if (!registerKey) return undefined;
   return getNavGroups().find((g) => g.items.some((i) => i.registerKey === registerKey));
+}
+
+// Round 4 question 19(c): the values a row inherits from the claim it links,
+// copied by the API on every save so the stored row can never disagree with the
+// claim. Rows with no Claim ID are left as they are.
+export function applyClaimInheritance(config: RegisterConfig, rows: RegisterRow[], claimRows: RegisterRow[]): RegisterRow[] {
+  const inherited = config.columns.filter((c) => c.inheritFromClaim);
+  if (inherited.length === 0) return rows;
+  const byId = new Map(
+    claimRows.filter((c) => String(c.claimId ?? '').trim() !== '').map((c) => [String(c.claimId).trim(), c]),
+  );
+  return rows.map((row) => {
+    const claim = byId.get(String(row.claimId ?? '').trim());
+    if (!claim) return row;
+    const next = { ...row };
+    for (const c of inherited) {
+      const source = c.inheritFromClaim === true ? c.key : (c.inheritFromClaim as string);
+      next[c.key] = claim[source] ?? '';
+    }
+    return next;
+  });
 }

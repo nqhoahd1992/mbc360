@@ -141,13 +141,25 @@ export function gapBlocksDecision(gate: GateRecord, decision: GateDecision): Gap
     return null;
   }
 
-  // Medium and Low keep the pre-existing B1 treatment: a Gap blocks a plain
-  // Proceed, and Proceed with Conditions carries it. Question 3 grades the top two
-  // levels and says nothing about the lower two, so nothing here changes for them.
+  // Medium and Low: a Gap blocks a plain Proceed (B1). Question 3 grades only
+  // the top two levels, but F7 — confirmed 2026-07-21 for EVERY gap — allows
+  // Proceed with Conditions "only when … an authorised reviewer accepts the
+  // temporary risk, and a controlled Next Action (owner, due date, escalation) is
+  // created". That half was enforced for High alone (SME rule audit D,
+  // 2026-10-04); it now applies at every grade. What counts as the controlled
+  // action is the same open question as for High [ASSUMPTION: R5-Q16].
   if (decision === 'Proceed') {
     return {
       reason: `the stage status is Gap (assessed ${criticality})`,
       allowed: ['Proceed with Conditions', 'Hold', 'Backtrack'],
+    };
+  }
+  const missing = missingHighGapControls(gate);
+  if (missing.length > 0) {
+    return {
+      reason: 'a gap may be carried under Proceed with Conditions only once its controls are recorded (F7)',
+      allowed: ['Hold', 'Backtrack'],
+      missing,
     };
   }
   return null;

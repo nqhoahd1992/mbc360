@@ -1520,6 +1520,14 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q41 | Bản ghi deviation khi phát hành chưa được duyệt | Rà soát luật SME (B23) | **rà soát 04/10/2026** |
 | R5-Q42 | Người tạo phiên bản công thức có được tự xác nhận phân loại Major/Minor không | Rà soát luật SME (C1) | **rà soát 04/10/2026** |
 | R5-Q43 | "Chủ phụ trách" chấp nhận pre-work là ai | Rà soát luật SME (C4) | **rà soát 04/10/2026** |
+| R5-Q44 | Gate 10–11 theo thị trường: dự án chỉ qua gate khi mọi thị trường sẵn sàng? | Rà soát luật SME (E3(a)) | **rà soát 04/10/2026** |
+| R5-Q45 | Tín hiệu nào kéo review hậu mãi sớm hơn, và claim question nào là "hiệu năng" | Rà soát luật SME (Q10/Q13/Q15) | **rà soát 04/10/2026** |
+| R5-Q46 | "Controlled action" khi để ngỏ dạng sản phẩm ở Gate 2 | Rà soát luật SME (Q23(a)) | **rà soát 04/10/2026** |
+| R5-Q47 | "Evidence basis required" bắt buộc ở gate nào | Rà soát luật SME (Q36(a)) | **rà soát 04/10/2026** |
+| R5-Q48 | "Công thức mới" trong trigger scale-up đọc từ đâu | Rà soát luật SME (A3 (Gate 9)) | **rà soát 04/10/2026** |
+| R5-Q49 | Thêm thị trường sau Gate 1 có phải mở lại các gate trước không | Rà soát luật SME (Q24/F4) | **rà soát 04/10/2026** |
+| R5-Q50 | "Approved artwork version" ở Gate 11 đọc những cột nào | Rà soát luật SME (Gate 11) | **rà soát 04/10/2026** |
+| R5-Q51 | Yêu cầu bao bì theo thị trường ghi ở đâu và chứng minh bằng gì | Rà soát luật SME (A2 (Gate 6)) | **rà soát 04/10/2026** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
 
@@ -2044,3 +2052,67 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Câu hỏi:** Ai là người chấp nhận pre-work của một phase?
 
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `acceptPreWork`.
+
+#### R5-Q44 · Gate 10–11 theo thị trường: dự án chỉ qua gate khi mọi thị trường sẵn sàng? 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục E3(a)).** E3(a)/Q18: Gate 10–11 vận hành theo từng thị trường. Dự án vẫn chỉ có một bản ghi Gate 10/11, nên ba mục `sg10-reg-approval`, `sg11-gate10`, `sg11-launch` giờ đòi **mọi** thị trường đang hoạt động đã đạt. Không thị trường nào chưa sẵn sàng lọt qua, nhưng một thị trường đã sẵn sàng phải chờ các thị trường khác.
+
+**Câu hỏi:** Một thị trường đã đủ điều kiện có được đi tiếp (launch) trong khi thị trường khác còn chờ không? Nếu có, mình cần cho mỗi thị trường một tiến độ gate riêng.
+
+**Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-reg-approval`, `sg11-gate10`, `sg11-launch`; và mô hình gate theo thị trường (F4).
+
+#### R5-Q45 · Tín hiệu nào kéo review hậu mãi sớm hơn, và claim question nào là "hiệu năng" 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục Q10/Q13/Q15).** Q13: review sớm hơn khi có *adverse event, complaint trend, regulatory request hoặc quality signal*. Đang đọc: loại vấn đề 'Safety or adverse event' hoặc 'Quality issue', hoặc nguồn 'Regulator'. 'Complaint trend' chưa có dữ liệu. Q10 chỉ tính claim question *liên quan hiệu năng thật*, nhưng dữ liệu không phân biệt được, nên mọi claim question đều được tính.
+
+**Câu hỏi:** Ba cách ghép trên có đúng ý không? 'Complaint trend' nên được ghi nhận ở đâu? Có cần phân biệt claim question về hiệu năng với claim question khác không?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — `EARLY_REVIEW_ISSUE_TYPES`, `EARLY_REVIEW_SOURCES`, `PERFORMANCE_ISSUE_TYPES`.
+
+#### R5-Q46 · "Controlled action" khi để ngỏ dạng sản phẩm ở Gate 2 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục Q23(a)).** Q23(a): để ngỏ dạng sản phẩm thì qua Gate 2 "with a controlled action". Đang đòi: có một Next Action (không bị huỷ) ở Gate 5, nơi dạng sản phẩm được chốt. Việc chốt được ghi ở trường mới 'Confirmed product form' trên trang BOM, vì danh sách Gate 2 đã khoá.
+
+**Câu hỏi:** Action đó có cần nằm ở Gate 5, có cần nêu đúng việc chốt dạng sản phẩm, hay chỉ cần có một action bất kỳ?
+
+**Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg02-product-form-action`, `sg05-product-form`.
+
+#### R5-Q47 · "Evidence basis required" bắt buộc ở gate nào 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục Q36(a)).** Q36(a) thêm trường 'Evidence basis required' nhưng không nói bắt buộc ở gate nào. Đang bắt buộc ở Gate 3, cạnh 'preliminary evidence requirement', và vẫn cho qua khi đã ghi nhận "không có claim".
+
+**Câu hỏi:** Trường này phải được điền ở Gate 3, hay muộn hơn (ví dụ Gate 8 hoặc Gate 10)?
+
+**Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg03-evidence-basis`.
+
+#### R5-Q48 · "Công thức mới" trong trigger scale-up đọc từ đâu 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục A3 (Gate 9)).** A3 Gate 9: scale-up bắt buộc với *new formulas, major reformulations, …*. Đang đọc 'New development' ở loại dự án Gate 1. 'Major reformulation' đã được phủ bởi phiên bản công thức Major.
+
+**Câu hỏi:** "New formula" có tương ứng với loại dự án 'New development' không? 'Reformulation' (không phải Major) có cần tính không?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — trigger `scaleUpRiskIdentified`.
+
+#### R5-Q49 · Thêm thị trường sau Gate 1 có phải mở lại các gate trước không 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục Q24/F4).** F4: thêm thị trường tạo track mới, và *"may re-trigger earlier gates if that market differs"*. Giờ thêm thị trường được cả sau Gate 1, không cần Backtrack. Việc mở lại gate trước chưa làm. Bỏ thị trường đã có lịch sử thì phải đánh dấu Withdrawn, không xoá.
+
+**Câu hỏi:** Khi nào việc thêm một thị trường phải mở lại các gate trước, và những gate nào?
+
+**Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `setMarkets`.
+
+#### R5-Q50 · "Approved artwork version" ở Gate 11 đọc những cột nào 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục Gate 11).** Trước đây chỉ cần sổ Released Label Control có một dòng bất kỳ. Giờ mỗi dòng phải có 'New label version' và 'New artwork file'.
+
+**Câu hỏi:** "Approved artwork version" nên được chứng minh bằng những trường nào — có cần trạng thái duyệt hay ngày phát hành không?
+
+**Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg11-artwork`.
+
+#### R5-Q51 · Yêu cầu bao bì theo thị trường ghi ở đâu và chứng minh bằng gì 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục A2 (Gate 6)).** A2: mục bắt buộc khi thị trường có yêu cầu riêng về ngôn ngữ, cảnh báo, khai báo thành phần, v.v. Đã thêm trường 'Pack requirements' vào hồ sơ thị trường (Regulatory duy trì); có nội dung là kích hoạt. Bằng chứng là dòng Gate 6 'Artwork/label needs and pack compatibility triggers identified'.
+
+**Câu hỏi:** Yêu cầu bao bì theo thị trường nên do Regulatory ghi trên hồ sơ thị trường như vậy không? Bằng chứng đóng mục nên là gì?
+
+**Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg06-market-pack`; `MarketProfile.packRequirements`.

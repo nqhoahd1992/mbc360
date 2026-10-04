@@ -98,6 +98,10 @@ export interface PhaseConfig {
 // actual people are per-project (identity.reviewers), composed at display time.
 const PHASE_REVIEW_OWNER: ReviewOwnerSpec = REVIEW_SPECS.facilityPm;
 
+// Round 4 question 23(a)'s option, named once: the Gate 2 checklist offers it,
+// and a Gate 5 trigger and the confirmed-form field both read it.
+export const PRODUCT_FORM_UNDER_EVALUATION = 'Product form under evaluation — to be confirmed by Gate 5';
+
 export const PHASE_1: PhaseConfig = {
   phase: 1,
   reviewOwner: PHASE_REVIEW_OWNER,
@@ -226,7 +230,7 @@ export const PHASE_1: PhaseConfig = {
         'Ointment', 'Cleanser', 'Moisturiser', 'Barrier product',
         'Scar / blemish product', 'Insect bite / itch product',
         'Raw material / extract',
-        'Product form under evaluation — to be confirmed by Gate 5',
+        PRODUCT_FORM_UNDER_EVALUATION,
         'Other - specify',
       ],
     },

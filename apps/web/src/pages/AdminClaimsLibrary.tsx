@@ -53,7 +53,17 @@ interface LinkedClaim {
   skus: string[];
   markets: string[];
   publishedRecords: number;
+  publicationRecords: number;
+  artworkRecords: string[];
 }
+
+// Question 28(5)'s published materials, in one phrase for both impact lists.
+const usesSummary = (c: LinkedClaim): string =>
+  [
+    `${c.publishedRecords} published record${c.publishedRecords === 1 ? '' : 's'}`,
+    `${c.publicationRecords ?? 0} publication record${(c.publicationRecords ?? 0) === 1 ? '' : 's'}`,
+    (c.artworkRecords ?? []).length > 0 ? `artwork ${c.artworkRecords.join(', ')}` : 'no artwork',
+  ].join(' · ');
 
 interface Revision {
   revision: number;
@@ -108,6 +118,9 @@ export default function AdminClaimsLibrary() {
   const [history, setHistory] = useState<{ id: string; revisions: Revision[] } | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
   const [reason, setReason] = useState('');
+  // Question 28(5): a withdrawal records its effective date and transition plan.
+  const [withdrawDate, setWithdrawDate] = useState<string>('');
+  const [transitionPlan, setTransitionPlan] = useState('');
   const [impact, setImpact] = useState<LinkedClaim[] | null>(null);
 
   useEffect(() => {
@@ -214,11 +227,16 @@ export default function AdminClaimsLibrary() {
 
   const confirmWithdraw = async () => {
     if (!open) return;
-    const result = await call(`/${open.id}/withdraw`, { method: 'POST', body: JSON.stringify({ reason }) });
+    const result = await call(`/${open.id}/withdraw`, {
+      method: 'POST',
+      body: JSON.stringify({ reason, effectiveDate: withdrawDate, transitionPlan }),
+    });
     if (result) {
       setImpact(result.impact ?? []);
       setWithdrawing(false);
       setReason('');
+      setWithdrawDate('');
+      setTransitionPlan('');
       setLinked(null);
     }
   };
@@ -453,6 +471,8 @@ export default function AdminClaimsLibrary() {
             {open?.status === 'Withdrawn' && (
               <Notice tone="info" title="Withdrawn">
                 {open.withdrawnReason ?? 'No reason recorded.'}
+                {open.withdrawalEffectiveDate && ` · effective ${open.withdrawalEffectiveDate}`}
+                {open.withdrawalTransitionPlan && ` · transition: ${open.withdrawalTransitionPlan}`}
               </Notice>
             )}
 
@@ -574,8 +594,7 @@ export default function AdminClaimsLibrary() {
                           </b>
                           <span className="mp-muted">
                             {c.status}
-                            {c.markets.length > 0 && ` · ${c.markets.join(', ')}`} · {c.publishedRecords} published record
-                            {c.publishedRecords === 1 ? '' : 's'}
+                            {c.markets.length > 0 && ` · ${c.markets.join(', ')}`} · {usesSummary(c)}
                           </span>
                         </li>
                       ))}
@@ -635,12 +654,14 @@ export default function AdminClaimsLibrary() {
         rootClassName="concept-tokens"
         title="Withdraw this entry?"
         okText="Withdraw"
-        okButtonProps={{ danger: true, disabled: !reason.trim() }}
+        okButtonProps={{ danger: true, disabled: !reason.trim() || !withdrawDate || !transitionPlan.trim() }}
         confirmLoading={busy}
         onOk={() => void confirmWithdraw()}
         onCancel={() => {
           setWithdrawing(false);
           setReason('');
+          setWithdrawDate('');
+          setTransitionPlan('');
         }}
       >
         <p className="cl-modal-text">“{open?.wording}”</p>
@@ -649,6 +670,19 @@ export default function AdminClaimsLibrary() {
           this entry is listed afterwards so an impact assessment can be run.
         </p>
         <Input.TextArea rows={3} value={reason} placeholder="Why is this entry being withdrawn?" onChange={(e) => setReason(e.target.value)} />
+        <div className="au-field-help cl-modal-text" style={{ marginTop: 12 }}>Effective date</div>
+        <DatePicker
+          style={{ width: '100%' }}
+          value={withdrawDate ? dayjs(withdrawDate) : null}
+          onChange={(d) => setWithdrawDate(d ? d.format('YYYY-MM-DD') : '')}
+        />
+        <div className="au-field-help cl-modal-text" style={{ marginTop: 12 }}>Transition plan</div>
+        <Input.TextArea
+          rows={3}
+          value={transitionPlan}
+          placeholder="How affected material moves off this wording — by when, and who re-reviews it"
+          onChange={(e) => setTransitionPlan(e.target.value)}
+        />
       </Modal>
 
       <FormDrawer
@@ -671,8 +705,7 @@ export default function AdminClaimsLibrary() {
                 <span className="mp-muted">
                   {c.status}
                   {c.skus.length > 0 && ` · ${c.skus.join(', ')}`}
-                  {c.markets.length > 0 && ` · ${c.markets.join(', ')}`} · {c.publishedRecords} published record
-                  {c.publishedRecords === 1 ? '' : 's'}
+                  {c.markets.length > 0 && ` · ${c.markets.join(', ')}`} · {usesSummary(c)}
                 </span>
               </li>
             ))}

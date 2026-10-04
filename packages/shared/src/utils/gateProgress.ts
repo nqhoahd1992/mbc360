@@ -46,7 +46,8 @@ import {
 } from './rmEvidence';
 import { WATCHLIST_REGISTER, watchlistConditionalRows, watchlistHardBlockers } from './watchlistReview';
 import { conditionalSafetyFindings, hardBlockingSafetyFindings } from './safetyFindings';
-import { isMarketLaunched, overdueReviews } from './postLaunch';
+import { activeMarketTracks, isMarketLaunched, overdueReviews } from './postLaunch';
+import { PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
 import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
 import {
@@ -154,13 +155,27 @@ const ENHANCED_PMS_TARGET_AREAS = ['Eyes'];
 // Round 4 question 15: the issue types that make product-performance feedback
 // mandatory — "a formula, packaging or quality issue affects performance", plus
 // the performance and claim-performance ones named directly.
+// 'Product optimisation opportunity' added 2026-10-04 (SME rule audit D): question
+// 15 names "product optimisation is proposed", and question 10 makes it an issue
+// type as well as an action. 'Claim or communication question' stays although
+// question 10 says only a claim question "concerning actual performance" counts —
+// nothing records what a claim question concerns, so the broad reading is kept
+// rather than missing a performance one [ASSUMPTION: R5-Q45].
 const PERFORMANCE_ISSUE_TYPES = [
   'Product performance',
   'Packaging issue',
   'Formula issue',
   'Quality issue',
   'Claim or communication question',
+  'Product optimisation opportunity',
 ];
+
+// Question 13: "A review must occur earlier if a significant adverse event,
+// complaint trend, regulatory request or quality signal arises." Read as: an
+// adverse-event or quality issue, or feedback from a regulator. A complaint TREND
+// has no record to read yet [ASSUMPTION: R5-Q45].
+const EARLY_REVIEW_ISSUE_TYPES = ['Safety or adverse event', 'Quality issue'];
+const EARLY_REVIEW_SOURCES = ['Regulator'];
 
 // Today, as 'YYYY-MM-DD'. The one place the engine reads a clock — the review
 // SCHEDULE is a function of dates, so "is a milestone due" cannot be answered
@@ -490,6 +505,11 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     case 'scaleUpRiskIdentified': {
       const majorChange = project.formulaVersionHistory.some((v) => v.changeType === 'Major');
       if (majorChange) return 'applies';
+      // A3 names "new formulas" first; that limb was missing (SME rule audit D,
+      // 2026-10-04). Read as the Gate 1 project nature "New development" — a
+      // reformulation is caught by the Major-version limb above when it is major
+      // [ASSUMPTION: R5-Q48].
+      if (selectedChecklistLabels(project, 'projectNature').includes('New development')) return 'applies';
       const answer = project.assessments.scaleUpRiskIdentified?.trim() ?? '';
       if (answer === '' || answer === 'Pending assessment') return 'notAssessed';
       return answer === 'Yes' ? 'applies' : 'doesNotApply';
@@ -547,21 +567,51 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     case 'postLaunchReviewDue': {
       if (!project.marketTracks.some(isMarketLaunched)) return 'doesNotApply';
       const issues = selectedChecklistLabels(project, 'postMarketIssueType');
-      if (issues.includes(PV_PMS_SAFETY_ISSUE)) return 'applies';
-      const due = overdueReviews(project, { enhanced: false, asOf: todayIso(), profiles: project.reference.marketProfiles });
+      const sources = selectedChecklistLabels(project, 'postMarketSources');
+      if (issues.some((i) => EARLY_REVIEW_ISSUE_TYPES.includes(i))) return 'applies';
+      if (sources.some((src) => EARLY_REVIEW_SOURCES.includes(src))) return 'applies';
+      // The 1-month milestone exists only for an enhanced-surveillance product; this
+      // passed `enhanced: false`, so that milestone never made the trigger fire
+      // (SME rule audit D, 2026-10-04). Same derivation as postLaunchReviewsRecorded.
+      const due = overdueReviews(project, {
+        enhanced: evaluateTrigger(project, 'pvPmsRequired') === 'applies',
+        asOf: todayIso(),
+        profiles: project.reference.marketProfiles,
+      });
       return due.length > 0 ? 'applies' : 'doesNotApply';
     }
 
     // Round 4 question 15's five conditions for product-performance feedback,
     // in the answer's order. Four read the post-market lists that question 10
     // split apart; the first reads the review schedule.
+    case 'marketPackRequirements': {
+      const markets = activeMarketTracks(project).map((t) => t.market);
+      return project.reference.marketProfiles.some(
+        (mp) => markets.includes(mp.market) && (mp.packRequirements ?? '').trim() !== '',
+      )
+        ? 'applies'
+        : 'doesNotApply';
+    }
+
+    case 'productFormUnderEvaluation':
+      return selectedChecklistLabels(project, 'productType').includes(PRODUCT_FORM_UNDER_EVALUATION)
+        ? 'applies'
+        : 'doesNotApply';
+
     case 'productPerformanceFeedback': {
       const issues = selectedChecklistLabels(project, 'postMarketIssueType');
       const actions = selectedChecklistLabels(project, 'postMarketAction');
       if (issues.some((i) => PERFORMANCE_ISSUE_TYPES.includes(i))) return 'applies';
       if (actions.includes('Product optimisation')) return 'applies';
       if (!project.marketTracks.some(isMarketLaunched)) return 'doesNotApply';
-      const due = overdueReviews(project, { enhanced: false, asOf: todayIso(), profiles: project.reference.marketProfiles });
+      // The 1-month milestone exists only for an enhanced-surveillance product; this
+      // passed `enhanced: false`, so that milestone never made the trigger fire
+      // (SME rule audit D, 2026-10-04). Same derivation as postLaunchReviewsRecorded.
+      const due = overdueReviews(project, {
+        enhanced: evaluateTrigger(project, 'pvPmsRequired') === 'applies',
+        asOf: todayIso(),
+        profiles: project.reference.marketProfiles,
+      });
       return due.length > 0 ? 'applies' : 'doesNotApply';
     }
 
@@ -627,6 +677,13 @@ export function uncoveredFormulaLines(project: ProjectData): { label: string; re
     const route = String(row.coverageRoute ?? '').trim();
     if (route === '') {
       out.push({ label, reason: 'no coverage route recorded' });
+      continue;
+    }
+    // Question 23(b): "every ingredient in the final formula must have a safety
+    // disposition" — named per line here (SME rule audit D, 2026-10-04), so the
+    // blocker says which ingredient lacks one instead of only that some row does.
+    if (String(row.safetyDecision ?? '').trim() === '') {
+      out.push({ label, reason: 'no safety decision recorded' });
       continue;
     }
     // "Every formula line must show it has been covered AND LINKED to the relevant
@@ -736,8 +793,16 @@ function claimNeedsReview(row: RegisterRow): boolean {
 // project's markets restricts claims (question 4's market profile). The latter is a
 // property of the markets, so it makes every declared claim reviewable.
 function claimReviewableInProject(row: RegisterRow, project: ProjectData): boolean {
+  const claimId = String(row.claimId ?? '').trim();
   return (
     claimNeedsReview(row) ||
+    // Round 4 question 19(b): "a market or channel may impose an additional review
+    // requirement" — recorded on the claim-use row, and read nowhere until
+    // 2026-10-04 (SME rule audit D).
+    (claimId !== '' &&
+      (project.registers['skuClaimsPifRegister'] ?? []).some(
+        (u) => String(u.claimId ?? '').trim() === claimId && String(u.regulatoryReviewRequired ?? '').trim() === 'Y',
+      )) ||
     !claimCoveredByLibrary(row, project.reference.claimsLibrary) ||
     marketRestrictsClaims(project.identity.markets, project.reference.marketProfiles)
   );
@@ -793,7 +858,7 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   pvPmsRequired:
     'no safety signal, complaint or PMS trend recorded on Post-Market Sources, and no vulnerable-user population assessed',
   scaleUpRiskIdentified:
-    'no Major formula change has been recorded and the scale-up risk assessment says no risk was identified',
+    'this is not a New development, no Major formula change has been recorded and the scale-up risk assessment says no risk was identified',
   claimNeedsRegulatoryReview:
     'no declared claim is borderline, therapeutic-adjacent, high risk, still unclassified, or reworded since its last review',
   rmRiskFlagged:
@@ -805,6 +870,8 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
     'no post-launch review milestone has come due in any launched market, and no safety or adverse-event issue has been recorded',
   productPerformanceFeedback:
     'no performance, packaging, formula or quality issue has been recorded, no product optimisation is proposed, and no scheduled review is due',
+  productFormUnderEvaluation: 'the Gate 2 brief names a product form rather than leaving it under evaluation',
+  marketPackRequirements: "no market this project sells into has pack requirements on its Regulatory market profile",
 };
 
 // Why a trigger has not been evaluated yet, in plain language — the third state
@@ -840,6 +907,8 @@ const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
     'a launch has been approved for at least one market but nobody has recorded the actual commercial launch date, so it is unknown whether the product is on sale (Phase 4 -> Market Regulatory & Launch Tracking)',
   postLaunchReviewDue: 'nobody has recorded an actual commercial launch date, so no review schedule exists yet',
   productPerformanceFeedback: 'nobody has recorded the post-market feedback issue types for this product yet',
+  productFormUnderEvaluation: 'nobody has recorded a product type at Gate 2 yet',
+  marketPackRequirements: 'no market has been recorded for this project yet',
 };
 
 // Rule C3: watch-list groups the current formula matches whose register row is
@@ -1068,6 +1137,39 @@ function evaluateReadinessCheck(
       return { evaluable: true, satisfied: noClaimsDeclared(project) };
     case 'bomMatchesTakenUp':
       return { evaluable: true, satisfied: bomMatchesNotTakenUp(project, check.list).length === 0 };
+    case 'everyMarket': {
+      // Non-vacuous: a project with no active market has nothing approved.
+      const tracks = activeMarketTracks(project);
+      return {
+        evaluable: true,
+        satisfied: tracks.length > 0 && tracks.every((t) => ['Approved', 'N/A'].includes(t[check.field])),
+      };
+    }
+    case 'everyMarketGateSignedOff':
+      return { evaluable: true, satisfied: unsignedGateLanes(project, check.gate).length === 0 };
+    case 'registerSomeRow':
+      return {
+        evaluable: true,
+        satisfied: (project.registers[check.register] ?? []).some((r) =>
+          check.values.includes(String(r[check.column] ?? '').trim()),
+        ),
+      };
+    case 'studyApprovalsComplete': {
+      const approving = ['Approve', 'Approve with conditions'];
+      const roles = ['Study Author', 'Department Reviewer', 'Independent Reviewer'];
+      return {
+        evaluable: true,
+        satisfied: roles.every((role) => {
+          const a = project.studyApprovals.find((x) => x.role === role);
+          return !!a?.name?.trim() && approving.includes(a.decision ?? '');
+        }),
+      };
+    }
+    case 'nextActionAtGate':
+      return {
+        evaluable: true,
+        satisfied: project.nextActions.some((a) => a.gateId === check.gate && a.status !== 'Cancelled'),
+      };
     case 'changeControlNoHardImpact':
       return { evaluable: true, satisfied: gate11HardBlockingChanges(project, project.changes).length === 0 };
     case 'changeControlNoAdminImpact':
@@ -1541,6 +1643,16 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: '/formulation-safety' };
     case 'noClaimsDeclared':
       return phaseSectionLink(gateId, 'sec-gate-checks');
+    case 'everyMarket':
+      return phaseSectionLink(gateId, 'sec-market-tracking');
+    case 'everyMarketGateSignedOff':
+      return phaseSectionLink(check.gate, 'sec-gate-flow');
+    case 'nextActionAtGate':
+      return phaseSectionLink(check.gate, 'sec-next-actions');
+    case 'studyApprovalsComplete':
+      return { href: '/registers/reg/studyProtocolSetup' };
+    case 'registerSomeRow':
+      return { href: `/registers/reg/${check.register}` };
     case 'bomMatchesTakenUp':
       return { href: `/registers/reg/${check.list === 'prohibited' ? 'prohibitedIngredients' : 'pbCautionLimits'}` };
     case 'changeControlNoHardImpact':

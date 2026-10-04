@@ -39,8 +39,11 @@ export default function ProjectIdentificationCard({
   const identity = project.identity;
   const setMarkets = useAppStore((s) => s.setMarkets);
   const { draft, dirty, update, markSaved, discard } = useDraft(identity.markets);
+  // After Gate 1 a market can still be ADDED (F4: a new market gets its own
+  // track) but not removed — a market already in the project is withdrawn on
+  // Market Regulatory & Launch Tracking instead. The API refuses a removal too.
   const locked = isGateRefLocked(project, '01');
-  const editing = !!editableMarkets && !locked;
+  const editing = !!editableMarkets && !project.identity.archived;
 
   const save = () => {
     setMarkets(identity.id, draft);
@@ -65,12 +68,28 @@ export default function ProjectIdentificationCard({
               mode="multiple"
               style={{ width: '100%', maxWidth: 640 }}
               options={MARKET_OPTIONS}
+              // Gate 1 passed: existing markets stay; tags cannot be removed.
+              tagRender={
+                locked
+                  ? ({ label, value, onClose }) => (
+                      <Tag
+                        style={{ marginInlineEnd: 4 }}
+                        closable={!identity.markets.includes(String(value))}
+                        onClose={onClose}
+                      >
+                        {label}
+                      </Tag>
+                    )
+                  : undefined
+              }
               value={draft}
               // Required before Gate 1 can pass, so an empty list is flagged here
               // rather than only in the readiness panel.
               status={draft.length === 0 ? 'error' : undefined}
               placeholder="Required before Gate 1 can pass"
-              onChange={(v: string[]) => update(() => v)}
+              onChange={(v: string[]) =>
+                update(() => (locked ? [...new Set([...identity.markets, ...v])] : v))
+              }
             />
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
