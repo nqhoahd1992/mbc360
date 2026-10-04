@@ -13,6 +13,7 @@ import type {
   ProjectData,
   SupersessionDecision,
 } from '../types';
+import { activeMarkets } from './postLaunch';
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
@@ -71,7 +72,9 @@ export function marketsAwaitingSupersession(project: ProjectData, version: strin
       .filter((d) => d.version === version && isSupersessionComplete(d))
       .map((d) => d.market),
   );
-  return project.identity.markets.filter((m) => !done.has(m));
+  // Withdrawn markets are skipped (SME rule audit A9): there is no stock left
+  // there to transition, so a decision for them would be owed forever.
+  return activeMarkets(project).filter((m) => !done.has(m));
 }
 
 // Whether a version may now move to Superseded — every market decided. Returns the
@@ -79,7 +82,7 @@ export function marketsAwaitingSupersession(project: ProjectData, version: strin
 // inferring it silently: the answer forbids the system deciding supersession, and
 // this only reports that the person-recorded decisions are all present.
 export function supersessionReady(project: ProjectData, version: string): boolean {
-  if (project.identity.markets.length === 0) return false;
+  if (activeMarkets(project).length === 0) return false;
   return marketsAwaitingSupersession(project, version).length === 0;
 }
 

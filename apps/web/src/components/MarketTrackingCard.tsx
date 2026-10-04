@@ -63,6 +63,13 @@ export default function MarketTrackingCard({
       options={STATUS_OPTIONS.map((s) => ({
         value: s,
         label: <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
+        // C5: launch approval rests on an Approved PIF, so the PIF cannot leave
+        // Approved while launch approval stands — the server refuses it too.
+        disabled: field === 'pifStatus' && s !== 'Approved' && track.launchApproval === 'Approved',
+        title:
+          field === 'pifStatus' && s !== 'Approved' && track.launchApproval === 'Approved'
+            ? 'Change the launch approval first (rule C5)'
+            : undefined,
       }))}
       onChange={(v: MarketApprovalStatus) => {
         const p: Partial<MarketTrack> = { [field]: v };

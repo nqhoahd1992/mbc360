@@ -217,6 +217,7 @@ export default function RegisterHubPage() {
             config={config}
             rows={project.registers[registerKey] ?? []}
             claimEvidenceRows={claimEvidenceRows}
+            skuClaimRows={project.registers['skuClaimsPifRegister'] ?? []}
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
             readOnly={locked}
             readOnlyReason={lockedReason}

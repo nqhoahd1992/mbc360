@@ -9,8 +9,8 @@
 //
 // Optional and off by default: when any value below is unset (e.g. in dev,
 // or before the Mail.Send grant lands), codes are only logged to the API
-// console — never delivered — mirroring how AUTH_DEV_MODE/AUTH_AUTO_ADMIN_ROLE
-// are env-gated with a safe fallback in auth-config.ts.
+// console — never delivered — mirroring how AUTH_DEV_MODE is env-gated with a
+// safe fallback in auth-config.ts.
 export interface MailerConfig {
   enabled: boolean;
   tenantId?: string;

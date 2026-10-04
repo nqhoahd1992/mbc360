@@ -3,13 +3,16 @@ import type { GateRecord, NextAction, ProjectData, RegisterRow } from '../types'
 import { GATE_SIGNOFF_ROLES, NEXT_ACTION_TERMINAL_STATUSES, familyUseAgeGroupList, isRegisterClosed, isSignedOff } from '../types';
 import type { GateSignOffRole } from '../types';
 import { COSTING_STATUS_NOT_APPLICABLE, GATES, REQUIREMENT_NOT_APPLICABLE } from '../config/gates';
-import { findGateSignOff, gateSignOffMarkets, isGateSignOffSigned } from '../config/gateSignOff';
+import { GATE_PASSING_DECISIONS, findGateSignOff, gateSignOffMarkets, isGateSignOffSigned } from '../config/gateSignOff';
 import { gateEvidenceSnapshot, snapshotChanges } from './gateSnapshot';
 import { isChangeOpen } from '../config/changeTriggers';
 import {
   CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE,
   EVIDENCE_BASIS_COLUMN,
   EVIDENCE_BASIS_NOT_PRODUCT_LEVEL,
+  FINAL_SAFETY_NA,
+  FINAL_SAFETY_PREGNANCY_ROW,
+  FINAL_SAFETY_REGISTER,
   GATE4_DISPOSITION_OPTIONS,
   REGISTER_CONFIGS,
   SAFETY_COVERAGE_INDIVIDUAL,
@@ -18,6 +21,8 @@ import {
   CLAIM_CATEGORIES_NEEDING_REVIEW,
   CLAIM_REVIEWED_WORDING_COLUMN,
   CLAIM_REVIEW_COLUMNS,
+  CLAIM_REVIEW_OUTCOMES_PASSING,
+  CLAIM_TECHNICAL_REVIEW_COLUMNS,
   CLAIM_RISKS_NEEDING_REVIEW,
   CLAIM_WORDING_COLUMN,
   claimHasReviewableSubject,
@@ -29,7 +34,8 @@ import {
   rmCodesUnclassified,
   rmCodesWithRiskFlags,
 } from '../config/referenceData';
-import { TARGET_USER_TO_VULNERABLE_GROUP } from '../config/vulnerableGroups';
+import { VULNERABLE_REGISTER, expectedVulnerableGroups, groupOf, namesVulnerableGroup } from './vulnerableUsers';
+import { bomWatchMatches } from './ingredientWatch';
 import {
   RM_EVIDENCE_REGISTER,
   conditionallyAcceptedRmRows,
@@ -121,8 +127,8 @@ const FAMILY_USE_TARGET_USER = 'Family use';
 // The old flat list could not say "complaint with a safety component" at all — it
 // counted every complaint, which is why this limb used to over-fire.
 const PV_PMS_SAFETY_ISSUE = 'Safety or adverse event';
-// B5's register — a row here means a vulnerable-user population was assessed.
-const VULNERABLE_REGISTER = 'vulnerableUserAssessment';
+// B5's register (VULNERABLE_REGISTER, imported from vulnerableUsers.ts) — a row
+// naming a group means a vulnerable-user population was assessed.
 
 // Round 4 question 4's enhanced-surveillance conditions that read the Gate 02
 // target-user list, in the answer's own words: infant or young child · pregnancy,
@@ -300,7 +306,11 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
       if (vulnerableUser) return 'applies';
       if (areas.some((a) => ENHANCED_PMS_TARGET_AREAS.includes(a))) return 'applies';
       if (issues.includes(PV_PMS_SAFETY_ISSUE)) return 'applies';
-      if ((project.registers[VULNERABLE_REGISTER] ?? []).length > 0) return 'applies';
+      // A row that NAMES a vulnerable group (Q4: "a medically vulnerable
+      // population"). Fixed 2026-10-04: this used to count any row, including the
+      // "No vulnerable-user group identified" row Gate 2 requires of an ordinary
+      // product, so every project was put on enhanced surveillance.
+      if ((project.registers[VULNERABLE_REGISTER] ?? []).some(namesVulnerableGroup)) return 'applies';
       if ((project.registers['claimEvidenceTraceability'] ?? []).some(claimNeedsReview)) return 'applies';
       if (marketRequiresEnhancedSurveillance(project.identity.markets, project.reference.marketProfiles)) {
         return 'applies';
@@ -412,9 +422,14 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     // item itself (coverageNote) so a green tick never claims more than it checked.
     case 'claimNeedsRegulatoryReview': {
       const claims = project.registers['claimEvidenceTraceability'] ?? [];
+      // Every condition below now lives in `claimReviewableInProject`, which the
+      // readiness check reads too — before 2026-10-04 the library and market
+      // conditions fired the trigger without putting any claim into the set the
+      // check reviewed, so the item satisfied itself (SME rule audit B20). The
+      // per-condition notes below are kept as the record of why each limb exists.
+      if (claims.some((c) => claimReviewableInProject(c, project))) return 'applies';
       // C1's per-claim conditions: category, risk, or wording reworded since its
       // last review.
-      if (claims.some(claimNeedsReview)) return 'applies';
       // C1's FIRST condition, evaluable since 2026-08-30 (question 28): "wording is
       // not in the approved Claims Library". A claim counts as covered only by a
       // link to an entry that is currently Approved — a Proposed entry has not been
@@ -424,17 +439,11 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
       // Evaluated only once at least one claim exists, for the same reason the
       // market condition below is: with no claims declared there is nothing for a
       // library to cover.
-      if (claims.length > 0 && claims.some((c) => !claimCoveredByLibrary(c, project.reference.claimsLibrary))) {
-        return 'applies';
-      }
       // C1's sixth condition — "the market imposes a specific restriction" — became
       // evaluable with question 4's market profile (2026-08-24). It is a property of
       // the PROJECT's markets, not of one claim, so it can only make the review
       // required once at least one claim has been declared: with no claims there is
       // nothing for a restriction to apply to.
-      if (claims.length > 0 && marketRestrictsClaims(project.identity.markets, project.reference.marketProfiles)) {
-        return 'applies';
-      }
       return 'doesNotApply';
     }
 
@@ -652,6 +661,14 @@ export function unsignedGateLanes(project: ProjectData, gateId: string): { marke
       out.push({ market, reason: `not signed: ${missing.join(', ')}` });
       continue;
     }
+    // Signed is not the same as approved (SME rule audit B1, 2026-10-04): an
+    // approver who signs Hold has signed, and the lane used to count — so a
+    // decision written onto the gate afterwards passed it on a Hold signature.
+    const approverDecision = findGateSignOff(project, gateId, market, 'Approved by')?.decision ?? '';
+    if (!GATE_PASSING_DECISIONS.includes(approverDecision)) {
+      out.push({ market, reason: `the approver recorded "${approverDecision || 'no decision'}", not Proceed or Proceed with Conditions` });
+      continue;
+    }
     const stale = GATE_SIGNOFF_ROLES.filter((role) => gateSignOffStaleChanges(project, gateId, market, role).length > 0);
     if (stale.length > 0) {
       out.push({ market, reason: `evidence changed since signing: ${stale.join(', ')} must re-sign` });
@@ -710,6 +727,19 @@ function claimNeedsReview(row: RegisterRow): boolean {
     // because it had only free-text wording to infer from.
     claimHasReviewableSubject(row) ||
     claimWordingChangedSinceReview(row)
+  );
+}
+
+// Every C1 condition for ONE claim on THIS project: the per-claim ones above,
+// plus the two that depend on project data — the claim is not covered by an
+// Approved Claims Library entry (C1's first condition, question 28), or one of the
+// project's markets restricts claims (question 4's market profile). The latter is a
+// property of the markets, so it makes every declared claim reviewable.
+function claimReviewableInProject(row: RegisterRow, project: ProjectData): boolean {
+  return (
+    claimNeedsReview(row) ||
+    !claimCoveredByLibrary(row, project.reference.claimsLibrary) ||
+    marketRestrictsClaims(project.identity.markets, project.reference.marketProfiles)
   );
 }
 
@@ -811,6 +841,72 @@ const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   postLaunchReviewDue: 'nobody has recorded an actual commercial launch date, so no review schedule exists yet',
   productPerformanceFeedback: 'nobody has recorded the post-market feedback issue types for this product yet',
 };
+
+// Rule C3: watch-list groups the current formula matches whose register row is
+// still at the status a row ships with — i.e. nobody has looked at the flag.
+// Any other status is a person's call (present within restriction, flagged for
+// review, not present with evidence, …) and the other Gate 7 items judge it.
+const UNTOUCHED_WATCHLIST_STATUS: Record<'prohibited' | 'pbCaution', { register: string; status: string }> = {
+  prohibited: { register: 'prohibitedIngredients', status: 'No formula match recorded' },
+  pbCaution: { register: 'pbCautionLimits', status: 'Not assessed' },
+};
+export function bomMatchesNotTakenUp(project: ProjectData, list: 'prohibited' | 'pbCaution'): string[] {
+  const { register, status } = UNTOUCHED_WATCHLIST_STATUS[list];
+  const rows = project.registers[register] ?? [];
+  const groups = new Set(
+    bomWatchMatches(project).flatMap((m) => m.hits.filter((h) => h.kind === list).map((h) => h.group)),
+  );
+  return [...groups].filter((group) => {
+    const row = rows.find((r) => String(r.ingredientGroup ?? '').trim() === group);
+    return !row || String(row.productStatus ?? '').trim() === status;
+  });
+}
+
+// Round 4 question 19(d): the product explicitly proposes no claims — the claim
+// ledger is empty AND the Gate 3 claims Key Gate Check is N/A with a reason.
+// Both halves matter: the N/A alone, beside a ledger that has claims in it, is
+// a contradiction rather than a record, and an empty ledger alone is
+// indistinguishable from "nobody has started".
+export function noClaimsDeclared(project: ProjectData): boolean {
+  if ((project.registers['claimEvidenceTraceability'] ?? []).length > 0) return false;
+  const row = project.gateChecks.find(
+    (c) => c.gate === '03' && c.check === 'Claim/benefit areas selected and evidence route identified',
+  );
+  return !!row && row.ynna === 'NA' && !!row.notes?.trim();
+}
+
+// Adds `trigger` to every `gateCheckDone` leg's `naInvalidWhenTrigger`, through
+// `allOf` / `anyOf`, so a row the trigger makes applicable no longer accepts N/A.
+function withNaInvalidWhen(check: ReadinessCheck, trigger: ReadinessTrigger): ReadinessCheck {
+  if (check.kind === 'allOf' || check.kind === 'anyOf') {
+    return { ...check, checks: check.checks.map((c) => withNaInvalidWhen(c, trigger)) };
+  }
+  if (check.kind === 'gateCheckDone') {
+    const existing = check.naInvalidWhenTrigger ?? [];
+    return existing.includes(trigger) ? check : { ...check, naInvalidWhenTrigger: [...existing, trigger] };
+  }
+  return check;
+}
+
+// Gate 7 Final Safety Sign-off rows that are not done (Round 3 E1). N/A counts
+// only on the pregnancy / breastfeeding row, only with a rationale, and only
+// once the maternal trigger has been ASSESSED as not applying — "not yet
+// assessed" (Round 4 Q7) is not a reason to skip it.
+export function finalSafetySignOffGaps(project: ProjectData): string[] {
+  const maternalOff = evaluateTrigger(project, 'skincareForTwo') === 'doesNotApply';
+  return (project.registers[FINAL_SAFETY_REGISTER] ?? [])
+    .filter((r) => {
+      const status = String(r.status ?? '').trim();
+      if (status === 'Completed') return false;
+      return !(
+        status === FINAL_SAFETY_NA &&
+        r.safetyQuestion === FINAL_SAFETY_PREGNANCY_ROW &&
+        maternalOff &&
+        String(r.notes ?? '').trim() !== ''
+      );
+    })
+    .map((r) => String(r.safetyQuestion ?? ''));
+}
 
 // Evaluate a requirement's check against live project data. `evaluable` is false
 // for `manual` checks (no linked data source yet — shown for confirmation, never
@@ -915,6 +1011,7 @@ function evaluateReadinessCheck(
           artworkClaimBlockers(
             project.registers['packagingSpecsArtwork'] ?? [],
             project.registers['claimEvidenceTraceability'] ?? [],
+            project.registers['skuClaimsPifRegister'] ?? [],
           ).length === 0,
       };
     case 'claimExemptionsConfirmed':
@@ -965,6 +1062,12 @@ function evaluateReadinessCheck(
       return { evaluable: true, satisfied: marketsWithoutChecklist(project).length === 0 };
     case 'aseanChecklistComplete':
       return { evaluable: true, satisfied: !aseanChecklistIncomplete(project) };
+    case 'finalSafetySignOffComplete':
+      return { evaluable: true, satisfied: finalSafetySignOffGaps(project).length === 0 };
+    case 'noClaimsDeclared':
+      return { evaluable: true, satisfied: noClaimsDeclared(project) };
+    case 'bomMatchesTakenUp':
+      return { evaluable: true, satisfied: bomMatchesNotTakenUp(project, check.list).length === 0 };
     case 'changeControlNoHardImpact':
       return { evaluable: true, satisfied: gate11HardBlockingChanges(project, project.changes).length === 0 };
     case 'changeControlNoAdminImpact':
@@ -1035,7 +1138,12 @@ function evaluateReadinessCheck(
       return { evaluable: true, satisfied };
     }
     case 'claimsRegulatoryReviewed': {
-      const reviewable = (project.registers['claimEvidenceTraceability'] ?? []).filter(claimNeedsReview);
+      const reviewable = (project.registers['claimEvidenceTraceability'] ?? []).filter((c) =>
+        claimReviewableInProject(c, project),
+      );
+      const passed = (row: RegisterRow, columns: string[], outcomeColumn: string) =>
+        columns.every((column) => String(row[column] ?? '').trim() !== '') &&
+        CLAIM_REVIEW_OUTCOMES_PASSING.includes(String(row[outcomeColumn] ?? '').trim());
       // Satisfied when nothing is reviewable — correct, and not vacuous in
       // practice: the item only becomes mandatory when its trigger says at least
       // one claim IS reviewable.
@@ -1046,29 +1154,27 @@ function evaluateReadinessCheck(
         // rewriting it afterwards would pass unnoticed.
         satisfied: reviewable.every(
           (row) =>
-            CLAIM_REVIEW_COLUMNS.every((column) => String(row[column] ?? '').trim() !== '') &&
+            passed(row, CLAIM_REVIEW_COLUMNS, 'regulatoryReviewOutcome') &&
+            // Question 28(2): a new claim also needs the Technical review.
+            (claimCoveredByLibrary(row, project.reference.claimsLibrary) ||
+              passed(row, CLAIM_TECHNICAL_REVIEW_COLUMNS, 'technicalReviewOutcome')) &&
             !claimWordingChangedSinceReview(row),
         ),
       };
     }
     case 'vulnerableGroupsCovered': {
-      const expected = new Set(
-        (project.checklists['targetUsers'] ?? [])
-          .filter((i) => i.selected)
-          .map((i) => TARGET_USER_TO_VULNERABLE_GROUP[i.label])
-          .filter((g): g is string => !!g),
-      );
-      const recorded = new Set(
-        (project.registers['vulnerableUserAssessment'] ?? []).map((r) =>
-          String(r['vulnerableGroup'] ?? '').trim(),
-        ),
-      );
+      // One source for "which groups are owed a row" (2026-10-04, SME rule audit
+      // A8): this case used to re-derive them from the ticked target users only,
+      // so a Family use product's confirmed age groups (Round 4 question 25(c))
+      // were missed here while the register page's preset offered them.
+      const expected = expectedVulnerableGroups(project);
+      const recorded = new Set((project.registers[VULNERABLE_REGISTER] ?? []).map(groupOf));
       // Vacuously satisfied when no selected target user implies a vulnerable
       // group, which is correct — a general-adult project has nothing to cover.
       // The paired registerHasRows in the same item still forces the explicit
       // "none" row B5 demands, so this can never be the only thing standing
       // between an untouched register and a passed gate.
-      return { evaluable: true, satisfied: [...expected].every((g) => recorded.has(g)) };
+      return { evaluable: true, satisfied: expected.every((g) => recorded.has(g)) };
     }
     case 'requirementDone': {
       const row = (project.requirements[check.section] ?? []).find((r) => r.requirement === check.requirement);
@@ -1137,6 +1243,7 @@ function evaluateReadinessCheck(
       if (status === COSTING_STATUS_NOT_APPLICABLE) {
         return { evaluable: true, satisfied: (project.costing.assumptions ?? '').trim() !== '' };
       }
+      if (check.feasibleOnly) return { evaluable: true, satisfied: status === 'Commercially Feasible' };
       return { evaluable: true, satisfied: true };
     }
     case 'identityFieldFilled':
@@ -1430,6 +1537,12 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: `/registers/reg/${MARKET_DOSSIER_REGISTER}` };
     case 'aseanChecklistComplete':
       return { href: `/registers/reg/${ASEAN_CHECKLIST_REGISTER}` };
+    case 'finalSafetySignOffComplete':
+      return { href: '/formulation-safety' };
+    case 'noClaimsDeclared':
+      return phaseSectionLink(gateId, 'sec-gate-checks');
+    case 'bomMatchesTakenUp':
+      return { href: `/registers/reg/${check.list === 'prohibited' ? 'prohibitedIngredients' : 'pbCautionLimits'}` };
     case 'changeControlNoHardImpact':
     case 'changeControlNoAdminImpact':
       // Change Control is a GLOBAL page, not per project — no project prefix.
@@ -1611,7 +1724,17 @@ export function gateReadinessChecklist(
     // hardBlock false, and satisfied once Proceed with Conditions is the decision
     // on the table. `decisionOverride` is what makes the Save-guard able to ask
     // "would the decision I am about to record be rejected?".
-    const satisfiedNow = evaluateReadinessCheck(project, req.check, gateId).satisfied;
+    // A Conditional item whose trigger APPLIES cannot be closed as "not
+    // applicable" (SME rule audit B8, 2026-10-04): the app has just established
+    // that it applies, so an N/A on its Key Gate Check row contradicts the record.
+    // This is the project owner's 2026-08-12 reasoning for `sg07-screen-check`
+    // ("the project already knows"), extended from that one row to every
+    // triggered Conditional item [ASSUMPTION: R5-Q29].
+    const effectiveCheck =
+      req.tier === 'Conditional' && req.trigger && triggerState === 'applies'
+        ? withNaInvalidWhen(req.check, req.trigger)
+        : req.check;
+    const satisfiedNow = evaluateReadinessCheck(project, effectiveCheck, gateId).satisfied;
     const decisionOnTable =
       decisionOverride !== undefined ? decisionOverride : project.gates.find((g) => g.gateId === gateId)?.decision;
     items.push({
@@ -1837,7 +1960,10 @@ export function isPhaseApproved(project: ProjectData, phase: number): boolean {
   // D1: a signature is an authenticated act, so "approved" keys on the
   // server-recorded signer + timestamp, never on typed text (a name could be
   // typed by anyone, including for somebody else — see isSignedOff).
-  return isSignedOff(closure.signOffs.find((s) => s.role === 'Approved by'));
+  // Signed AND positive (SME rule audit B6, 2026-10-04): "Approved by" signing
+  // Hold used to close the phase, because only the signature was read.
+  const approval = closure.signOffs.find((s) => s.role === 'Approved by');
+  return isSignedOff(approval) && GATE_PASSING_DECISIONS.includes(approval?.decision ?? '');
 }
 
 export function isLastGateOfPhase(index: number): boolean {

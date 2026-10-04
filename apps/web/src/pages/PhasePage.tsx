@@ -277,8 +277,9 @@ export default function PhasePage() {
         <Notice tone="info" title="This phase is locked — entries here count as pre-work">
           Gates must be completed in order. You can still review and fill the forms below (draft evidence,
           requirements, notes, risks, proposed actions), but the gate flow, sign-off and formal closure stay
-          read-only. Anything entered now is recorded as Pre-work / Entered Before Gate Opened and must be
-          reviewed and accepted by the responsible owner once this phase opens.
+          read-only. Anything entered now is pre-work: once this phase opens, its review owner or the
+          project's Lead must review and accept this phase's entries before they count towards completion.
+          (Individual entries are not yet labelled as pre-work — the acceptance covers the phase as a whole.)
         </Notice>
       )}
       {showPreWorkReview && (
@@ -287,8 +288,8 @@ export default function PhasePage() {
           title="Pre-work review required"
           action={<Button onClick={() => acceptPreWork(project.identity.id, phase)}>Accept pre-work</Button>}
         >
-          If any data in this phase was entered before the phase opened (pre-work), the responsible owner must
-          review and formally accept it before it contributes to completion.
+          If any data in this phase was entered before the phase opened (pre-work), the phase's review owner or
+          the project's Lead must review and formally accept it before it contributes to completion.
         </Notice>
       )}
       {progress.awaitingApproval && (

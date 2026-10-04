@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import {Alert, App, Button, Card, DatePicker, Empty, Input, message, Select, Table, Tooltip, Typography} from 'antd';
+import {Alert, Button, Card, DatePicker, Empty, Input, message, Select, Table, Tooltip, Typography} from 'antd';
 import type { TableColumnsType } from 'antd';
 import {
   CheckCircleFilled,
@@ -14,7 +14,8 @@ import {
 import dayjs from 'dayjs';
 import type { GateDecision, GateRecord, ProjectData, StageStatus } from '@mbc360/shared/types';
 import { GATE_FIELD_LABELS, GATES, GATE_DECISIONS, STAGE_STATUSES } from '@mbc360/shared/config/gates';
-import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
+import { GATE_PASSING_DECISIONS as PASSING } from '@mbc360/shared/config/gateSignOff';
+import { openChangesAffectingGate } from '@mbc360/shared/config/changeTriggers';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
@@ -52,7 +53,6 @@ export default function GateFlowTable({
   // can leave it out rather than print the same list twice.
   hideReadiness?: boolean;
 }) {
-  const setGate = useAppStore((s) => s.setGate);
   const setGatesBulk = useAppStore((s) => s.setGatesBulk);
   const backtrackGate = useAppStore((s) => s.backtrackGate);
   const changes = useAppStore((s) => s.changes);
@@ -61,12 +61,6 @@ export default function GateFlowTable({
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const { user } = useSession();
   const location = useLocation();
-  // Context-aware instance for the imperative "acknowledge open change
-  // control" confirm below — the static `Modal.confirm` it used to call
-  // renders outside React's tree and never sees ConfigProvider's theme (see
-  // the note on App.tsx's root `<App>`). The Backtrack and Change history
-  // panels further down are FormDrawers (2026-10-02), not dialogs.
-  const { modal } = App.useApp();
   const projectId = project.identity.id;
   const archived = !!project.identity.archived;
   const gates = project.gates;
@@ -149,12 +143,7 @@ export default function GateFlowTable({
   // C4 (confirmed): an open change control record linked to a gate soft-locks
   // that gate — a visible warning until the change is assessed and closed.
   const openChangesForGate = (gateNumber: string) =>
-    changes.filter((c) => {
-      if (c.projectId !== projectId || !isChangeOpen(c.status)) return false;
-      const trigger = getChangeTrigger(c.triggerId);
-      if (!trigger) return false;
-      return trigger.gates.includes('ALL') || trigger.gates.includes(gateNumber);
-    });
+    openChangesAffectingGate(changes.filter((c) => c.projectId === projectId), projectId, gateNumber);
 
   const rows = gateIds
     .map((id, i) => ({
@@ -179,6 +168,12 @@ export default function GateFlowTable({
         ...r,
         passed: isGatePassed(project, r.meta.id),
         awaitingDecision: isAwaitingDecision(project, r.meta.id),
+        // Question 29(5): once an approver has signed on this gate, its decision
+        // is that signature's — the dropdown cannot change it (the API refuses
+        // too). Withdrawing the signature is the way to change it.
+        approverSigned: project.gateSignOffs.some(
+          (g) => g.gateId === r.meta.id && g.role === 'Approved by' && !!g.signedAt,
+        ),
         readinessChecklist,
         // Subset that even Proceed with Conditions can't clear (Critical next
         // actions, Skincare for Two, F1/C7 Mandatory evidence) — decision only
@@ -301,12 +296,17 @@ export default function GateFlowTable({
                   Decision restricted to {r.meta.primaryOwner}
                 </div>
               )}
-              {r.draftRecord.status === 'Gap' && (
+              {/* Also shown while a Critical/High grade is still recorded after the
+                  status left Gap: that grade keeps blocking (gapBlocksDecision), and
+                  clearing it here is how the gap is closed — hiding the block would
+                  leave the gate blocked with no field to fix it. */}
+              {(r.draftRecord.status === 'Gap' ||
+                ['Critical', 'High'].includes(r.draftRecord.gapCriticality ?? '')) && (
                 <GapAssessmentBlock gate={r.draftRecord} locked={r.locked} onChange={(p) => patch(r.draftIndex, p)} />
               )}
               {r.openChanges.length > 0 && (
                 <div style={{ fontSize: 12, color: '#d48806' }}>
-                  Open change — plain Proceed blocked; use Proceed with Conditions (acknowledge required)
+                  Open change — plain Proceed blocked; the approver's sign-off with Proceed with Conditions records its acceptance
                 </div>
               )}
               {r.awaitingDecision && !r.record.decision && (
@@ -410,7 +410,9 @@ export default function GateFlowTable({
                   title={
                     !r.canDecide
                       ? `Only ${r.meta.primaryOwner} can record this gate's decision — ${permissionView.previewing ? `previewing as ${roleLabel(permissionView.previewRole!)}` : 'your role is not granted it'}`
-                      : undefined
+                      : r.approverSigned
+                        ? "Recorded by the approver's sign-off — withdraw that signature to change it"
+                        : undefined
                   }
                 >
                   <Select
@@ -418,11 +420,15 @@ export default function GateFlowTable({
                     placeholder="Decision"
                     style={{ width: 140 }}
                     value={r.draftRecord.decision}
-                    disabled={r.locked || !r.canDecide}
+                    disabled={r.locked || !r.canDecide || r.approverSigned}
                     status={r.awaitingDecision ? 'warning' : undefined}
                     options={GATE_DECISIONS.map((d) => ({
                       value: d,
-                      label: d,
+                      // Question 29(5): "the approver's decision IS the gate
+                      // decision" — Proceed and Proceed with Conditions are
+                      // recorded by the approver signing in the sign-off panel
+                      // below, never set here (SME rule audit B3, 2026-10-04).
+                      label: PASSING.includes(d) ? `${d} — via approver sign-off` : d,
                       // Proceed / Proceed with Conditions are deliberately left
                       // selectable even when they'd currently be rejected — B1/
                       // F1/C7 still enforce the rule (via the Save-blocked
@@ -431,37 +437,19 @@ export default function GateFlowTable({
                       // Backtrack (reopens an EARLIER gate — Gate 1 has none)
                       // stays disabled here, since there's no "what's missing"
                       // explanation that would apply to it.
-                      disabled: d === 'Backtrack' && r.meta.id === 'SG01',
+                      disabled: (d === 'Backtrack' && r.meta.id === 'SG01') || (PASSING.includes(d) && d !== r.draftRecord.decision),
                     }))}
                     onChange={(v: GateDecision | undefined) => {
                       if (v === 'Backtrack') {
                         openBacktrackModal(r.meta.id);
                         return;
                       }
-                      // F9: acknowledge any open change control record affecting
-                      // this gate before the decision is recorded (audit note).
-                      // This commits immediately (like Backtrack, it's already
-                      // gated behind its own explicit confirmation), then
-                      // mirrors the same fields into the draft so any other
-                      // pending unsaved edits on this row aren't lost or
-                      // clobbered by a later Save.
-                      if (v && r.openChanges.length > 0) {
-                        const ids = r.openChanges.map((c) => c.changeId).join(', ');
-                        modal.confirm({
-                          title: 'Acknowledge open change control',
-                          content: `Open change control record${r.openChanges.length > 1 ? 's' : ''} affect Gate ${r.meta.number}: ${ids}. Recording "${v}" acknowledges ${r.openChanges.length > 1 ? 'them' : 'it'} as accepted for this decision.`,
-                          okText: 'Acknowledge & record',
-                          cancelText: 'Cancel',
-                          onOk: () => {
-                            const note = `[Change ack ${dayjs().format('YYYY-MM-DD')}] Decision "${v}" recorded with open change(s) ${ids} acknowledged.`;
-                            const notes = r.record.notes ? `${r.record.notes}\n${note}` : note;
-                            setGate(projectId, r.meta.id, { decision: v, notes }, user?.displayName)
-                              .then(() => patch(r.draftIndex, { decision: v, notes }))
-                              .catch(reportWriteError);
-                          },
-                        });
-                        return;
-                      }
+                      // F9's acknowledgement moved to the approver's sign-off
+                      // (SME rule audit C10, 2026-10-04): it was a confirm
+                      // dialog that wrote a line into the editable notes. Only
+                      // the approver's signature records Proceed / Proceed with
+                      // Conditions now, and it records which open changes it
+                      // accepted.
                       patch(r.draftIndex, { decision: v });
                     }}
                   />

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Select, Spin, Table, Tag, Typography, message } from 'antd';
 import { CloudDownloadOutlined, ExportOutlined } from '@ant-design/icons';
-import type { BomLine } from '@mbc360/shared/types';
 import {
   cosmetriGetFormulaImport,
   cosmetriListFormulas,
@@ -10,7 +9,6 @@ import {
 } from '../integrations/cosmetri';
 import { matchIngredientWatchLists } from '@mbc360/shared/utils/ingredientWatch';
 import { useAppStore } from '../store/useAppStore';
-import { createEmptyRegisterRow } from '../store/factory';
 
 import FormDrawer from './FormDrawer';
 // Imports a Formula BOM from Cosmetri (decision A3 — Cosmetri is the read-only
@@ -32,8 +30,7 @@ export default function CosmetriImportModal({
   onImported?: () => void;
   hasExistingBom: boolean;
 }) {
-  const setBom = useAppStore((s) => s.setBom);
-  const setRegisterRowsBulk = useAppStore((s) => s.setRegisterRowsBulk);
+  const importCosmetriBom = useAppStore((s) => s.importCosmetriBom);
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const powerAppsUrl = useAppStore((s) => s.integrations.powerApps.newRawMaterialUrl);
 
@@ -68,56 +65,27 @@ export default function CosmetriImportModal({
 
   const totalPercent = rows.reduce((sum, r) => sum + r.percentWw, 0);
 
-  const onImport = () => {
-    const lines: BomLine[] = rows.map((r, i) => ({
-      line: i + 1,
-      rmCode: `RM-${r.rmId}`,
-      rmDisplayName: r.code ? `${r.tradeName} | ${r.code}` : r.tradeName,
-      inciName: r.inciName,
-      casNo: r.casNo,
-      functionRole: '',
-      supplier: r.supplierName,
-      percentWw: r.percentWw,
-      costPerKg: 0,
-      notes: r.qualityStatus !== 'Approved' ? `Cosmetri quality status: ${r.qualityStatus}` : undefined,
-      fromCosmetri: true,
-    }));
-    setBom(projectId, lines);
+  const [importing, setImporting] = useState(false);
 
-    // F1/C7 Gate 4: every material touching the Formula BOM should be
-    // traceable in Supplier_RM_Evidence, even one that arrived via a
-    // whole-formula import rather than the per-line picker (which already
-    // requires an existing evidence row before it can be picked — see
-    // BomCosting.tsx). Auto-create an identity-only stub row (SDS/CoA/
-    // allergen/etc. left blank for R&I/Procurement to fill in) for any
-    // imported material that doesn't have one yet, rather than blocking the
-    // import itself.
-    const existingEvidence = project?.registers['supplierRmEvidence'] ?? [];
-    const existingRmCodes = new Set(existingEvidence.map((r) => String(r.rmCode ?? '')));
-    const newEvidenceRows = rows
-      .filter((r) => {
-        const rmCode = `RM-${r.rmId}`;
-        if (existingRmCodes.has(rmCode)) return false;
-        existingRmCodes.add(rmCode); // dedupe if the same material appears twice in one formula
-        return true;
-      })
-      .map((r) => ({
-        ...createEmptyRegisterRow('supplierRmEvidence'),
-        rmCode: `RM-${r.rmId}`,
-        inciName: r.inciName,
-        supplier: r.supplierName,
-        grade: r.code ? `${r.tradeName} | ${r.code}` : r.tradeName,
-      }));
-    if (newEvidenceRows.length > 0) {
-      setRegisterRowsBulk(projectId, 'supplierRmEvidence', [...existingEvidence, ...newEvidenceRows]);
-    }
-
+  // The server reads the formula from Cosmetri itself and writes the lines, plus
+  // an identity-only Supplier & RM Evidence row for any material that has none
+  // (F1/C7 Gate 4 traceability) — one transaction. Doing it here would let any
+  // client mark a manual line "from Cosmetri" (SME rule audit A1).
+  const onImport = async () => {
+    if (!selectedId) return;
+    const knownBefore = new Set((project?.registers['supplierRmEvidence'] ?? []).map((r) => String(r.rmCode ?? '')));
+    setImporting(true);
+    const ok = await importCosmetriBom(projectId, selectedId);
+    setImporting(false);
+    if (!ok) return;
+    const after = useAppStore.getState().projects.find((p) => p.identity.id === projectId);
+    const added = (after?.registers['supplierRmEvidence'] ?? []).filter(
+      (r) => !knownBefore.has(String(r.rmCode ?? '')),
+    ).length;
     onImported?.();
     message.success(
-      `Imported ${lines.length} BOM lines from Cosmetri` +
-        (newEvidenceRows.length > 0
-          ? ` and added ${newEvidenceRows.length} new Supplier & RM Evidence record${newEvidenceRows.length > 1 ? 's' : ''}`
-          : '') +
+      `Imported ${after?.bom.length ?? rows.length} BOM lines from Cosmetri` +
+        (added > 0 ? ` and added ${added} new Supplier & RM Evidence record${added > 1 ? 's' : ''}` : '') +
         '.',
     );
     onClose();
@@ -140,7 +108,7 @@ export default function CosmetriImportModal({
         <Button key="cancel" onClick={onClose}>
           Cancel
         </Button>,
-        <Button key="import" type="primary" disabled={rows.length === 0} onClick={onImport}>
+        <Button key="import" type="primary" disabled={rows.length === 0} loading={importing} onClick={onImport}>
           Import {rows.length > 0 ? `${rows.length} lines` : ''}
         </Button>,
       ]}

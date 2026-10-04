@@ -75,10 +75,28 @@ function missingHighGapControls(gate: GateRecord): string[] {
 // the server is the authority (BACKEND_PLAN §3 principle 7) and the UI uses this
 // only to avoid offering a decision the server would reject.
 export function gapBlocksDecision(gate: GateRecord, decision: GateDecision): GapVerdict | null {
-  if (gate.status !== 'Gap') return null;
   if (decision !== 'Proceed' && decision !== 'Proceed with Conditions') return null;
 
   const criticality = text(gate.gapCriticality);
+
+  // A Critical or High grade stays in force when the status leaves Gap (SME rule
+  // audit B14, 2026-10-04). Keying everything on `status === 'Gap'` let a save
+  // that set the status to Complete and the decision to Proceed together skip
+  // the assessment entirely — the gate-decision-step informality question 3
+  // forbids. Closing such a gap is now an act on the gap record itself: clear the
+  // grade (logged in the gate's change history) once it is resolved. That this is
+  // how a gap gets closed is our reading [ASSUMPTION: R5-Q33]. Medium and Low keep
+  // their old status-bound treatment below.
+  if (gate.status !== 'Gap') {
+    if (criticality !== 'Critical' && criticality !== 'High') return null;
+    const stillRecorded = `a ${criticality} gap assessment is still recorded on this gate although the status is no longer Gap — clear the gap assessment once the gap is resolved`;
+    if (criticality === 'Critical') return { reason: stillRecorded, allowed: ['Hold', 'Backtrack'] };
+    if (decision === 'Proceed') {
+      return { reason: stillRecorded, allowed: ['Proceed with Conditions', 'Hold', 'Backtrack'] };
+    }
+    const missing = missingHighGapControls(gate);
+    return missing.length > 0 ? { reason: stillRecorded, allowed: ['Hold', 'Backtrack'], missing } : null;
+  }
 
   // Not assessed. Deliberately refuses BOTH decisions, where the old behaviour let
   // Proceed with Conditions through: question 3 makes the grading a reviewer's act,

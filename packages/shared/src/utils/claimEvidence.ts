@@ -55,7 +55,7 @@ export interface PublishedInfoViolation {
   row: RegisterRow;
   // Which of the three conditions failed — lets the UI colour the right cell
   // instead of only reddening the whole row.
-  kind: 'unlinked' | 'unsupported' | 'wording';
+  kind: 'unlinked' | 'unsupported' | 'wording' | 'use' | 'workflow';
   reason: string;
 }
 
@@ -159,6 +159,42 @@ export const REVISION_CONTROLLED_COLUMNS = [
   { key: 'evidenceBasisRequired', label: 'Evidence basis required' },
 ] as const;
 
+// Who approved the revision, and when. Frozen with the revision (see below), and
+// on the server only ever recorded as the signed-in person (`revisionApprovalForgeries`).
+export const REVISION_APPROVAL_COLUMNS = ['revisionApprovedBy', 'revisionApprovedDate'] as const;
+
+// Question 26: a revision is frozen once it "receives Regulatory or Gate 10
+// approval". Who may record that approval is our reading of those two words —
+// a Regulatory representative, or someone who may decide Gate 10
+// [ASSUMPTION: R5-Q37].
+export const REVISION_APPROVAL_CAPABILITIES = ['gate-signoff|represent-regulatory', 'gate:SG10|decide'] as const;
+
+// Rows whose "Revision approved by" is newly set or changed in this save to
+// anyone other than `actorName`. An approval names the person who gave it; a
+// picker that lets one person record another's approval is the free-text
+// signature D1 rejected, in a different column.
+export function revisionApprovalForgeries(before: RegisterRow[], after: RegisterRow[], actorName: string): string[] {
+  const previous = new Map(before.filter((r) => text(r.claimId) !== '').map((r) => [text(r.claimId), r]));
+  return after
+    .filter((row) => {
+      const by = text(row.revisionApprovedBy);
+      if (by === '') return false;
+      const old = previous.get(text(row.claimId));
+      if (old && text(old.revisionApprovedBy) === by) return false;
+      return by !== actorName;
+    })
+    .map((row) => text(row.claimId) || '(no Claim ID)');
+}
+
+// Rows that newly carry a revision approval in this save — the act that needs
+// REVISION_APPROVAL_CAPABILITIES.
+export function newRevisionApprovals(before: RegisterRow[], after: RegisterRow[]): string[] {
+  const previous = new Map(before.filter((r) => text(r.claimId) !== '').map((r) => [text(r.claimId), r]));
+  return after
+    .filter((row) => text(row.revisionApprovedBy) !== '' && text(previous.get(text(row.claimId))?.revisionApprovedBy) !== text(row.revisionApprovedBy))
+    .map((row) => text(row.claimId) || '(no Claim ID)');
+}
+
 export function isRevisionApproved(row: RegisterRow): boolean {
   return text(row.revisionApprovedBy) !== '' && text(row.revisionApprovedDate) !== '';
 }
@@ -186,12 +222,52 @@ export function frozenRevisionEdits(
     // so every revision compared equal to every other and the bump was never
     // detected. Found by an end-to-end test, not by reading the code.
     if (cell(row.revision) !== cell(old.revision)) continue;
-    const changed = REVISION_CONTROLLED_COLUMNS.filter(
+    const changed: string[] = REVISION_CONTROLLED_COLUMNS.filter(
       (c) => cell(row[c.key]) !== cell(old[c.key]),
     ).map((c) => c.label);
+    // The approval itself is frozen too (SME rule audit B21, 2026-10-04). It was
+    // not, so two saves walked straight round the rule: the first cleared
+    // "Revision approved by", which made the revision unapproved, and the second
+    // re-worded it freely. An approval is withdrawn by moving to a new revision.
+    if (REVISION_APPROVAL_COLUMNS.some((k) => cell(row[k]) !== cell(old[k]))) changed.push('Revision approval');
     if (changed.length > 0) out.push({ claimId: id, changed });
   }
   return out;
+}
+
+// Round 4 question 30(c)'s two USE conditions — "not approved for the market"
+// and "not approved for the intended … channel" — plus a Regulatory review that
+// said no (SME rule audit B22, 2026-10-04). The claim's own status can read
+// "Supported" while its Regulatory review outcome is "Not Approved"; and a claim
+// cleared for one market is not cleared for another.
+//
+// The market/channel record is the SKU claim register: one row per claim × SKU ×
+// market × intended channel, with its own status. A use counts as approved when a
+// row for that claim and market is Completed, and — where both sides name a
+// channel — that row's intended channel covers it. Reading approval for a market
+// from that register, and "Completed" as approved, is ours [ASSUMPTION: R5-Q38].
+const CLAIM_REVIEW_REFUSED = ['Not Approved', 'Further Information Required'];
+
+export function claimUseBlocker(
+  claim: RegisterRow,
+  use: { market?: unknown; channel?: unknown },
+  skuClaimRows: RegisterRow[],
+): string | undefined {
+  const id = text(claim.claimId);
+  const outcome = text(claim.regulatoryReviewOutcome);
+  if (CLAIM_REVIEW_REFUSED.includes(outcome)) return `claim ${id}'s Regulatory review outcome is "${outcome}"`;
+  const market = text(use.market);
+  if (market === '') return undefined;
+  const rows = skuClaimRows.filter((r) => text(r.claimId) === id && text(r.market) === market);
+  const approved = rows.filter((r) => text(r.status) === 'Completed');
+  if (approved.length === 0) return `claim ${id} is not approved for ${market} on the SKU claim register`;
+  const channel = text(use.channel).toLowerCase();
+  if (channel === '') return undefined;
+  const covers = approved.some((r) => {
+    const intended = text(r.intendedChannel).toLowerCase();
+    return intended === '' || intended.includes(channel);
+  });
+  return covers ? undefined : `claim ${id} is not approved for the "${text(use.channel)}" channel in ${market}`;
 }
 
 // Round 4 question 30(c). Every claim named on an artwork row, with why it blocks.
@@ -203,6 +279,7 @@ export function frozenRevisionEdits(
 export function artworkClaimBlockers(
   artworkRows: RegisterRow[],
   claimRows: RegisterRow[],
+  skuClaimRows: RegisterRow[],
 ): { row: RegisterRow; claimId: string; reason: string }[] {
   const claimById = new Map(claimRows.map((c) => [text(c.claimId), c]));
   const out: { row: RegisterRow; claimId: string; reason: string }[] = [];
@@ -238,18 +315,53 @@ export function artworkClaimBlockers(
       const status = text(claim.status);
       if (status === '' || CLAIM_STATUSES_BLOCKING_ARTWORK.includes(status)) {
         out.push({ row, claimId: id, reason: `claim ${id} is "${status || 'unclassified'}", not Supported` });
+        continue;
       }
+      const useBlock = claimUseBlocker(claim, { market: row.market }, skuClaimRows);
+      if (useBlock) out.push({ row, claimId: id, reason: useBlock });
     }
   }
   return out;
 }
 
+// What C6/F11 still needs on a Published Info row before it may be released.
+const WORKFLOW_STEPS: { key: string; label: string }[] = [
+  { key: 'terminologyChecked', label: 'step 1 (terminology / claims guidance) is not Y' },
+  { key: 'evidenceVerified', label: 'step 2 (evidence linked & verified) is not Y' },
+  { key: 'technicalReview', label: 'step 3 (Technical review) is not Y' },
+  { key: 'finalApproval', label: 'step 5 (final approval) is not Y' },
+];
+export function publishedInfoWorkflowGaps(row: RegisterRow): string[] {
+  const gaps = WORKFLOW_STEPS.filter(({ key }) => text(row[key]) !== 'Y').map(({ label }) => label);
+  const hasProductStatement = text(row.claimId) !== '';
+  const regulatory = text(row.regulatoryReview);
+  if (regulatory !== 'Y' && !(regulatory === 'N/A' && !hasProductStatement)) {
+    gaps.push(
+      hasProductStatement
+        ? 'step 4 (Regulatory review) is not Y — required because the row carries a product claim'
+        : 'step 4 (Regulatory review) is neither Y nor N/A',
+    );
+  }
+  if (text(row.technicalReviewer) === '') gaps.push('no Technical Reviewer named');
+  if (text(row.finalApprover) === '') gaps.push('no Final Approver named');
+  if (regulatory === 'Y' && text(row.regulatoryReviewer) === '') gaps.push('no Regulatory Reviewer named');
+  return gaps;
+}
+
+// F11 also says "releasing without approval generates a deviation/violation
+// record". In the app that cannot happen — the checks below refuse the released
+// state — so no deviation record is built. A release made OUTSIDE the app, or
+// released material that stops being valid later, has no record of its own yet;
+// until the review team says what they want, such an incident is logged as a
+// CAPA (project owner's choice, 2026-10-04) [ASSUMPTION: R5-Q41].
+//
 // Every reason a Published Info row may not sit at a released state. Non-empty
 // and never mutates its inputs, so both layers can call it on the same data and
 // agree.
 export function publishedInfoViolations(
   publishedInfoRows: RegisterRow[],
   claimEvidenceRows: RegisterRow[],
+  skuClaimRows: RegisterRow[],
 ): PublishedInfoViolation[] {
   const supportedClaimIds = new Set(
     claimEvidenceRows
@@ -265,6 +377,19 @@ export function publishedInfoViolations(
     // first drafted, and D2's own picker rule exists so an intended claim can be
     // documented early rather than blocking early work.
     if (!RELEASED_INFO_STATES.includes(String(row.workflowState))) continue;
+
+    // C6's five steps and F11's roles (SME rule audit B23, 2026-10-04). The
+    // register has carried every one of these columns since F11 shipped, and the
+    // state could still be set to "Approved for Release" with all of them blank —
+    // the workflow existed only as a list of columns. Regulatory may be N/A only
+    // where nothing on the row is a product statement: F11 says the Regulatory
+    // Reviewer is needed "whenever content includes claims", and that "marketing-
+    // only aesthetic content may skip Regulatory".
+    const workflowGaps = publishedInfoWorkflowGaps(row);
+    if (workflowGaps.length > 0) {
+      violations.push({ row, kind: 'workflow', reason: `release workflow incomplete — ${workflowGaps.join('; ')}` });
+      continue;
+    }
 
     const claimId = text(row.claimId);
 
@@ -287,6 +412,12 @@ export function publishedInfoViolations(
         reason: `claim ${claimId} is not 'Supported' in Claim -> Evidence Traceability`,
       });
       continue; // the wording check below would be noise on top of this
+    }
+
+    const useBlock = claimUseBlocker(claimById.get(claimId)!, { market: row.market, channel: row.channel }, skuClaimRows);
+    if (useBlock) {
+      violations.push({ row, kind: 'use', reason: useBlock });
+      continue;
     }
 
     // Master wording comes from the claim, live — not from the row's own stored

@@ -194,6 +194,9 @@ interface AppState {
   setPhaseKeyLinks: (id: string, phase: number, links: Record<string, string>) => void;
 
   setBom: (id: string, lines: BomLine[]) => void;
+  // Resolves true once the server has imported the formula (false on failure,
+  // which writeSection has already reported).
+  importCosmetriBom: (id: string, formulaId: number) => Promise<boolean>;
   setCosting: (id: string, patch: Partial<CostingInputs>) => void;
   setFormulaProperties: (id: string, patch: ProjectData['formulaProperties']) => void;
   setAssessments: (id: string, patch: ProjectData['assessments']) => void;
@@ -290,12 +293,16 @@ export const useAppStore = create<AppState>()(
       // failure it surfaces the server's own message and reloads the project, so
       // a component that already called markSaved() snaps back to the real
       // values instead of showing a save that did not happen.
-      const writeSection = async (
+      // `tryWriteSection` reports success for the few callers that act on it (the
+      // Cosmetri import closes its drawer only once the server has the lines);
+      // `writeSection` keeps the void signature every other action declares.
+      const tryWriteSection = async (
         id: string,
         call: (version: number) => Promise<projectsApi.ProjectEnvelope>,
-      ): Promise<void> => {
+      ): Promise<boolean> => {
         try {
           applyEnvelope(await call(get().projectVersions[id] ?? 0));
+          return true;
         } catch (err) {
           const conflict = err instanceof projectsApi.ApiError && err.isConflict;
           message.error(
@@ -312,7 +319,14 @@ export const useAppStore = create<AppState>()(
             // The reload itself failed (offline?) — the message above already told
             // the user; leaving the cached copy alone is better than blanking it.
           }
+          return false;
         }
+      };
+      const writeSection = async (
+        id: string,
+        call: (version: number) => Promise<projectsApi.ProjectEnvelope>,
+      ): Promise<void> => {
+        await tryWriteSection(id, call);
       };
 
       const updateProject = (id: string, updater: (p: ProjectData) => ProjectData) =>
@@ -540,6 +554,8 @@ export const useAppStore = create<AppState>()(
           writeSection(id, (v) => projectsApi.acceptPreWork(id, phase, v)),
 
         setBom: (id, lines) => writeSection(id, (v) => projectsApi.setBom(id, lines, v)),
+        importCosmetriBom: (id, formulaId) =>
+          tryWriteSection(id, (v) => projectsApi.importCosmetriBom(id, formulaId, v)),
         setCosting: (id, patch) => writeSection(id, (v) => projectsApi.setCosting(id, patch, v)),
         setFormulaProperties: (id, patch) =>
           writeSection(id, (v) => projectsApi.setFormulaProperties(id, patch, v)),

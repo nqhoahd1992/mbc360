@@ -3,7 +3,8 @@ import { Alert, Button, Input, Modal, Select, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import type { GateSignOff, GateSignOffRole, ProjectData } from '@mbc360/shared/types';
 import { GATE_SIGNOFF_ROLES } from '@mbc360/shared/types';
-import { GATE_DECISIONS } from '@mbc360/shared/config/gates';
+import { GATE_DECISIONS, GATES } from '@mbc360/shared/config/gates';
+import { openChangesAffectingGate } from '@mbc360/shared/config/changeTriggers';
 import {
   CRITICAL_GATES,
   INDEPENDENT_FUNCTION_BY_GATE,
@@ -43,6 +44,11 @@ export default function GateSignOffPanel({
   const sign = useAppStore((s) => s.signGateSignOff);
   const withdraw = useAppStore((s) => s.withdrawGateSignOff);
 
+  const allChanges = useAppStore((st) => st.changes);
+  const openChanges = useMemo(
+    () => openChangesAffectingGate(allChanges, projectId, GATES.find((g) => g.id === gateId)?.number ?? ''),
+    [allChanges, projectId, gateId],
+  );
   const [drafts, setDrafts] = useState<Record<string, { decision?: string; comment?: string }>>({});
   const [stepUp, setStepUp] = useState<{ market?: string; role: GateSignOffRole } | null>(null);
   const [withdrawing, setWithdrawing] = useState<{ market?: string; role: GateSignOffRole } | null>(null);
@@ -195,6 +201,14 @@ export default function GateSignOffPanel({
                     </div>
                   ) : (
                     <div className="gso-form">
+                      {r.role === 'Approved by' && openChanges.length > 0 && (
+                        // C10: F9's acknowledgement — recorded on this signature.
+                        <Alert
+                          type="warning"
+                          showIcon
+                          title={`Open change control affects this gate: ${openChanges.map((c) => c.changeId).join(', ')}. A plain Proceed is refused; signing Proceed with Conditions records that you accept ${openChanges.length > 1 ? 'them' : 'it'}.`}
+                        />
+                      )}
                       <label>
                         <span className="gso-label">Decision</span>
                         <Select

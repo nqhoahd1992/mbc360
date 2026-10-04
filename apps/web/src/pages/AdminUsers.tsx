@@ -17,7 +17,12 @@ interface AdminUser {
   roles: { key: string; name: string }[];
   // An ACTIVATED authenticator enrolment (a pending one authorises nothing).
   totpEnrolled: boolean;
+  // Listed in PINNED_ADMINS on the server: always admin, re-applied on every
+  // deploy, so its role, Active switch and Delete are locked here.
+  pinned?: boolean;
 }
+
+const PINNED_HELP = 'Listed in PINNED_ADMINS on the server — always System Administrator. Remove it there to change this.';
 
 interface AdminRole {
   key: string;
@@ -171,6 +176,8 @@ export default function AdminUsers() {
   const roleSelect = (u: AdminUser) => (
     <Select
       className="au-role"
+      disabled={u.pinned}
+      title={u.pinned ? PINNED_HELP : undefined}
       value={u.roles[0]?.key ?? null}
       onChange={(key) => void setRole(u.id, key ?? null)}
       popupMatchSelectWidth={false}
@@ -182,7 +189,13 @@ export default function AdminUsers() {
     />
   );
   const activeSwitch = (u: AdminUser) => (
-    <Switch checked={u.active} aria-label={`${u.displayName} active`} onChange={(checked) => void setActive(u.id, checked)} />
+    <Switch
+      checked={u.active}
+      disabled={u.pinned}
+      title={u.pinned ? PINNED_HELP : undefined}
+      aria-label={`${u.displayName} active`}
+      onChange={(checked) => void setActive(u.id, checked)}
+    />
   );
 
   if (forbidden || !isAdmin) {
@@ -296,6 +309,11 @@ export default function AdminUsers() {
                         <div className="au-name">
                           <span className="au-name-text">{u.displayName}</span>
                           {noRole && <span className="c-tag c-tag-warn">No role</span>}
+                          {u.pinned && (
+                            <span className="c-tag" title={PINNED_HELP}>
+                              Pinned admin
+                            </span>
+                          )}
                           {!u.active && <span className="c-tag">Inactive</span>}
                         </div>
                         <div className="au-email">{u.email}</div>
@@ -349,7 +367,7 @@ export default function AdminUsers() {
               <label className="au-field">
                 <span className="au-field-label">Role</span>
                 {roleSelect(open)}
-                <span className="au-field-help">Saved as soon as you pick it.</span>
+                <span className="au-field-help">{open.pinned ? PINNED_HELP : 'Saved as soon as you pick it.'}</span>
               </label>
               <div className="au-field-inline">
                 <div>
@@ -387,16 +405,19 @@ export default function AdminUsers() {
               <div className="au-danger-row">
                 <div className="au-danger-text">
                   <div className="au-danger-name">Delete user</div>
-                  <div className="au-danger-desc">Only for an account with no history — otherwise turn Active off instead.</div>
+                  <div className="au-danger-desc">
+                    {open.pinned ? PINNED_HELP : 'Only for an account with no history — otherwise turn Active off instead.'}
+                  </div>
                 </div>
                 <Popconfirm
+                  disabled={open.pinned}
                   title="Delete this user?"
                   description="Only succeeds if the account has never signed, edited, uploaded, or acted in the audit trail."
                   onConfirm={() => void deleteUser(open.id)}
                   okText="Delete"
                   okButtonProps={{ danger: true }}
                 >
-                  <Button danger icon={<DeleteOutlined />}>
+                  <Button danger icon={<DeleteOutlined />} disabled={open.pinned}>
                     Delete
                   </Button>
                 </Popconfirm>

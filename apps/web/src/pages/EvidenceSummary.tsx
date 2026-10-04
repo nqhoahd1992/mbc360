@@ -3,6 +3,7 @@ import { Empty, Input, Select } from 'antd';
 import { Link, useParams } from 'react-router-dom';
 import type { EvidenceItem, WorkStatus } from '@mbc360/shared/types';
 import { WORK_STATUSES } from '@mbc360/shared/config/gates';
+import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { composeReviewOwner, REVIEW_SPECS } from '@mbc360/shared/config/reviewers';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -82,9 +83,12 @@ export default function EvidenceSummary() {
     ['completed', 'Completed', completed],
   ];
 
+  // C9: an evidence area whose gate has passed is read-only (the API refuses it).
+  const isLocked = (e: EvidenceItem) => isGateRefLocked(project, e.gate);
   const statusControl = (row: { e: EvidenceItem; index: number }) => (
     <Select
       style={{ width: '100%' }}
+      disabled={isLocked(row.e)}
       value={row.e.status}
       options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
       onChange={(v: WorkStatus) => patch(row.index, { status: v })}
@@ -172,6 +176,7 @@ export default function EvidenceSummary() {
                 <RecordField label="Status">{statusControl(r)}</RecordField>
                 <RecordField label="Evidence link / folder" wide>
                   <Input
+                    disabled={isLocked(r.e)}
                     value={r.e.evidenceLink}
                     placeholder="Link to the evidence"
                     onChange={(ev) => patch(r.index, { evidenceLink: ev.target.value })}
@@ -180,6 +185,7 @@ export default function EvidenceSummary() {
                 <RecordField label="Notes" wide>
                   <Input.TextArea
                     autoSize={{ minRows: 2 }}
+                    disabled={isLocked(r.e)}
                     value={r.e.notes}
                     onChange={(ev) => patch(r.index, { notes: ev.target.value })}
                   />

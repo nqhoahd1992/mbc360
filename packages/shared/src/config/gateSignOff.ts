@@ -6,6 +6,7 @@
 // edit rather than a hunt through the engine.
 import type { GateSignOff, GateSignOffRole, ProjectData } from '../types';
 import { GATE_SIGNOFF_ROLES } from '../types';
+import { activeMarkets } from '../utils/postLaunch';
 
 // Question 29(3), verbatim: "Enhanced independence requirements apply to Gate 3
 // (claims) · Gate 4 (ingredient and regulatory screening) · Gate 7 (safety) ·
@@ -86,10 +87,18 @@ export function isPerMarketGate(gateId: string): boolean {
 // markets recorded yields no lanes at all, which the readiness check reads as
 // unsigned rather than as complete — a project that has not said where it sells
 // has not signed anything off for anywhere.
+//
+// A WITHDRAWN market has no lane (2026-10-04, SME rule audit A9): it used to
+// keep one, so withdrawing a single market left Gates 10-12 blocked forever on a
+// signature nobody would ever give. [ASSUMPTION: R5-Q28] for Gate 12.
 export function gateSignOffMarkets(project: ProjectData, gateId: string): (string | undefined)[] {
   if (!isPerMarketGate(gateId)) return [undefined];
-  return project.identity.markets.filter((m) => m.trim() !== '');
+  return activeMarkets(project);
 }
+
+// Question 29(5): "the gate passes only when the approver records Proceed or
+// Proceed with Conditions". The two decisions that let a signed lane count.
+export const GATE_PASSING_DECISIONS: readonly string[] = ['Proceed', 'Proceed with Conditions'];
 
 export function findGateSignOff(
   project: ProjectData,

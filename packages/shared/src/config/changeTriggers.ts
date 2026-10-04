@@ -1,5 +1,5 @@
 import { PHASES } from './gates';
-import type { ChangeStatus } from '../types';
+import type { ChangeRecord, ChangeStatus } from '../types';
 
 // Change-control lifecycle statuses (confirmed rule F9), in workflow order.
 export const CHANGE_STATUSES: ChangeStatus[] = [
@@ -73,6 +73,15 @@ export interface MajorChangeCriterion {
   id: string;
   label: string;
 }
+
+// F5: who may confirm a formula change's Major/Minor classification — "an
+// authorised technical or quality reviewer". Expressed as the two independent-
+// function capabilities question 29(4) already defines, so the Role Editor stays
+// where the authority is granted.
+export const FORMULA_CLASSIFICATION_CAPABILITIES = [
+  'gate-signoff|represent-technical',
+  'gate-signoff|represent-quality',
+] as const;
 
 export const MAJOR_CHANGE_CRITERIA: MajorChangeCriterion[] = [
   { id: 'safety-exposure', label: 'Safety or exposure' },
@@ -326,4 +335,16 @@ export function phaseShortLabel(phase: number): string {
   const p = PHASES.find((x) => x.phase === phase);
   const paren = p?.subtitle.match(/\(([^)]+)\)/)?.[1];
   return paren ? `Phase ${phase} · ${paren}` : `Phase ${phase}`;
+}
+
+// F9: an OPEN change whose trigger names this gate (or ALL) soft-locks it. One
+// definition for the Gate Flow warning, the approver's sign-off panel and the
+// API, which records on the approver's signature which of these were accepted.
+export function openChangesAffectingGate(changes: ChangeRecord[], projectId: string, gateNumber: string): ChangeRecord[] {
+  return changes.filter((c) => {
+    if ((c.projectId && c.projectId !== projectId) || !isChangeOpen(c.status)) return false;
+    const trigger = getChangeTrigger(c.triggerId);
+    if (!trigger) return false;
+    return trigger.gates.includes('ALL') || trigger.gates.includes(gateNumber);
+  });
 }

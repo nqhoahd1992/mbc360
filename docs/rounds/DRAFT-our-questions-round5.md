@@ -438,6 +438,136 @@ It is now a choice from **this project's own Change Control records** (the CHG- 
 
 ---
 
+## Question 28 — After a market is withdrawn, is a Gate 12 sign-off still owed there?
+
+Your answer to question 18 has Gates 10 to 12 signed off per market. Until now, a market the product had been withdrawn from kept its signing slot, so withdrawing from one country left Gates 10 to 12 blocked forever on a signature nobody would give.
+
+A withdrawn market now has **no** signing slot at Gates 10, 11 or 12, and no longer needs a supersession decision. For Gates 10–11 and supersession that seems certain — nothing more will be launched or transitioned there. For **Gate 12** it is our reading: product already sold in that country may still need post-market follow-up after withdrawal.
+
+**Question:** after withdrawal from a market, is that market's Gate 12 sign-off (a) no longer required, (b) still required for a set period, or (c) still required like any market where the product is on sale?
+
+---
+
+## Question 29 — Can a triggered conditional item still be marked "not applicable"?
+
+Your Round 3 answer says a conditional item "hard-blocks only when its defined trigger applies". When the system has established that a trigger applies (for example, a scale-up risk has been recorded), we no longer accept "not applicable" on that item's gate check — only a completed one.
+
+**Question:** Once the system knows a conditional item applies to the project, may a user still close it as "not applicable" with a reason, or must it be completed?
+
+---
+
+## Question 30 — Gate 12 — what shows product-performance feedback has been dealt with?
+
+Question 15 gives five triggers but does not say what evidence closes the item. It is now satisfied when the Gate 12 check "Complaints/issues triaged and CAPA/improvement actions assigned" is complete.
+
+**Question:** When performance feedback has been received, is it enough that it was triaged and actions assigned, or is a separate performance review needed?
+
+---
+
+## Question 31 — Gate 10 — which checklist and approval values count as done for a market?
+
+Question 35(a) gives the two value lists but not which values pass. We accept a checklist status of Complete and a regulatory approval of Approved or Approved with Conditions (each, or N/A with rationale and reviewer). Every other value — Not Approved, Blocked, Pending and so on — blocks Gate 10.
+
+**Question:** Is "Approved with Conditions" enough to pass Gate 10? Must the checklist be "Complete", or is another status acceptable?
+
+---
+
+## Question 32 — A commercially dependent project — which costing results allow a plain Proceed?
+
+Question 36(b) says that where the commercial requirement is a Must, failure leads to Hold or Proceed with Conditions. We allow a plain Proceed only on "Commercially Feasible" (or N/A with rationale). "Feasible with Conditions", "In Progress" and "Not Feasible" all require Hold or Proceed with Conditions.
+
+**Question:** Do "Feasible with Conditions" and "In Progress" count as failure in the sense of question 36(b)?
+
+---
+
+## Question 33 — How is a Critical or High gap closed?
+
+A gap graded Critical or High now stays in force even after the gate's status leaves Gap. Before, changing the status and recording Proceed in one step bypassed the grading. It is closed by clearing the gap assessment, which is logged in the gate's history.
+
+**Question:** When a gap is resolved, should closing it be recorded by clearing the assessment, or by a separate "resolved" state with a named person confirming it?
+
+---
+
+## Question 34 — Automatic ingredient matches — what counts as having taken a flag up?
+
+Rule C3 says the system compares the formula with the watch-lists and flags matches. At Gate 7, every watch-list group the formula matches must now have had its row moved off the status it started with ("No formula match recorded" / "Not assessed"). The system does not write the verdict itself.
+
+**Question:** Should an automatic match set the watch-list row to "REVIEW – possible formula match" by itself, or is it right that a reviewer updates the row before Gate 7?
+
+---
+
+## Question 35 — A claim review outcome of "Not Approved" at Gate 3
+
+Question 27 accepts four outcomes but does not say which let a claim go forward. Only Approved and Approved with Conditions do now; Not Approved and Further Information Required block Gate 3 until the claim is reworded (which needs a new review) or removed.
+
+**Question:** May a claim reviewed as "Not Approved" remain on the project's claim list when Gate 3 passes — for example as a claim still in development?
+
+---
+
+## Question 36 — Technical review of a new claim — which fields?
+
+Question 28(2) says a new claim triggers Regulatory and Technical review. There was nowhere to record the Technical review. We added the same five fields you accepted for the Regulatory review in question 27: outcome, reviewer, date, rationale and evidence link.
+
+**Question:** Does the Technical review need the same five fields, or something different?
+
+---
+
+## Question 37 — Who may record that a claim revision is approved?
+
+Question 26 freezes a claim revision once it receives "Regulatory or Gate 10 approval". The approval can now be recorded only by someone representing Regulatory or entitled to decide Gate 10, and only in their own name.
+
+**Question:** Who is entitled to approve a claim revision?
+
+---
+
+## Question 38 — Where is a claim's approval for a market and channel recorded?
+
+Question 30(c) requires blocking a claim that is not approved for the market or channel. We read that approval from the SKU claims register: a row for that claim and market with status Completed, whose intended channel covers the channel used.
+
+**Question:** Where — and with which value — is it recorded that a claim is approved for a given market and channel?
+
+---
+
+## Question 39 — When may an action owner close their own action?
+
+F8 says the owner cannot verify closure "where independent confirmation is required" but not when that is. We apply it to every action. A Critical action may only be closed or cancelled by whoever raised it, the gate owner, or someone entitled to decide that gate.
+
+**Question:** Are there actions an owner may close themselves?
+
+---
+
+## Question 40 — A market already on sale — may its PIF be reopened while launch approval stands?
+
+Rule C5 makes launch approval depend on an approved PIF. The system now refuses to move a PIF off Approved while that market's launch approval stands; launch approval has to be changed first.
+
+**Question:** When the PIF of a market already on sale must be updated (after a formula change, say), does its launch approval have to be withdrawn in the meantime?
+
+---
+
+## Question 41 — A deviation record when something is released without approval
+
+Your F11 answer says that "releasing without approval generates a deviation/violation record". Inside the system this cannot happen: material cannot be marked approved or released until every step is complete. Two cases remain that the system cannot prevent, because publishing itself happens outside it: material published without ever entering the workflow, and material released correctly that later stops being valid (its claim is revised, its Claims Library entry is withdrawn, or its review date passes). For now such incidents are logged as a CAPA.
+
+**Questions:** (a) Does blocking release inside the system meet the requirement for what happens in it? (b) What should a deviation record contain? (c) Should an open deviation block Gate 11 or Gate 12? (d) Should the system warn when released material is no longer valid?
+
+---
+
+## Question 42 — May the person who creates a formula version also confirm its Major/Minor classification?
+
+Your F5 answer says the initiator may propose the classification and an authorised technical or quality reviewer must confirm it. The system now records the person creating the version as the confirmer, and only lets them do so if they hold Technical or Quality authority. Previously the confirmer was a typed name.
+
+**Question:** May one person — holding Technical or Quality authority — both propose and confirm, or must the confirmer be someone else?
+
+---
+
+## Question 43 — Who accepts a phase's pre-work?
+
+Your F13 answer says early entries must be reviewed and accepted by "the responsible owner" once the phase opens. We allow the phase's assigned review owner or the project's Lead to accept it, and only once the phase has opened. The system does not yet mark individual entries as pre-work; acceptance covers the phase as a whole.
+
+**Question:** Who should be able to accept a phase's pre-work? And do you need individual entries marked as pre-work, or is accepting the phase as a whole enough?
+
+---
+
 ## Summary
 
 | # | Topic | Why it matters |
@@ -461,5 +591,21 @@ It is now a choice from **this project's own Change Control records** (the CHG- 
 | 25 | What channels the Publication / Deployment record should offer | Your question-30 answer lists the field but no values; ours is assembled, not supplied |
 | 26 | A claim's two Claims Library fields contradict each other — warn or block | Built as a warning; blocking would be a rule your answer does not state |
 | 27 | Which records count as "a valid Change Control record" for question 8 | Now limited to the project's own CHG- records; FC- rows tie to question 19 |
+| 28 | Whether a withdrawn market still owes a Gate 12 sign-off | Built as "no longer owed"; Gates 10–11 are not in doubt |
+| 29 | Can a triggered conditional item still be marked "not applicable"? | Built as "must be completed"; Our reading of your answer |
+| 30 | Gate 12 — what shows product-performance feedback has been dealt with? | Built as "triaged and actions assigned"; Which record stands for the item is ours |
+| 31 | Gate 10 — which checklist and approval values count as done for a market? | Built as above; Which values pass is ours |
+| 32 | A commercially dependent project — which costing results allow a plain Proceed? | Built as above; The placement of the two middle values is ours |
+| 33 | How is a Critical or High gap closed? | Built as "clear the assessment"; Ours |
+| 34 | Automatic ingredient matches — what counts as having taken a flag up? | Built as "a reviewer updates the row"; Ours |
+| 35 | A claim review outcome of "Not Approved" at Gate 3 | Built as "blocks Gate 3"; Ours |
+| 36 | Technical review of a new claim — which fields? | Built with five fields; The shape is ours |
+| 37 | Who may record that a claim revision is approved? | Built as above; Ours |
+| 38 | Where is a claim's approval for a market and channel recorded? | Built as above; The record and value are ours |
+| 39 | When may an action owner close their own action? | Built as "never"; Ours |
+| 40 | A market already on sale — may its PIF be reopened while launch approval stands? | Built as "withdraw first"; Ours |
+| 41 | A deviation record when something is released without approval | Not built — blocking inside the system for now, CAPA for the rest; your (a)–(d) decide what to build |
+| 42 | May the person who creates a formula version also confirm its Major/Minor classification? | Built as "the same person may, with the authority"; ours |
+| 43 | Who accepts a phase's pre-work? | Built as "phase review owner or project Lead"; ours |
 
 Questions 4 to 6, 10 to 12, 14 and 16 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

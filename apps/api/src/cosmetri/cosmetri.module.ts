@@ -7,6 +7,8 @@ import { CosmetriRefreshJob } from './cosmetri-refresh.job';
 @Module({
   controllers: [CosmetriController],
   providers: [CosmetriTokenService, CosmetriDataService, CosmetriRefreshJob],
-  exports: [CosmetriTokenService],
+  // CosmetriDataService is exported for the server-side Formula BOM import
+  // (ProjectsService.importCosmetriBom).
+  exports: [CosmetriTokenService, CosmetriDataService],
 })
 export class CosmetriModule {}

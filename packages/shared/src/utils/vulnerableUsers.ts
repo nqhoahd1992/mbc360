@@ -13,7 +13,14 @@ import { NO_VULNERABLE_GROUP, TARGET_USER_TO_VULNERABLE_GROUP } from '../config/
 export const VULNERABLE_REGISTER = 'vulnerableUserAssessment';
 const GROUP = 'vulnerableGroup';
 
-const groupOf = (row: RegisterRow): string => String(row[GROUP] ?? '').trim();
+export const groupOf = (row: RegisterRow): string => String(row[GROUP] ?? '').trim();
+
+// A Vulnerable-User Assessment row that names an actual group — the
+// "No vulnerable-user group identified" row records an ABSENCE, not a group.
+export const namesVulnerableGroup = (row: RegisterRow): boolean => {
+  const g = groupOf(row);
+  return g !== '' && g !== NO_VULNERABLE_GROUP;
+};
 
 function selectedTargetUsers(project: ProjectData): string[] {
   return (project.checklists['targetUsers'] ?? []).filter((i) => i.selected).map((i) => i.label);

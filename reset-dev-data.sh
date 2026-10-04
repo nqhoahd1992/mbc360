@@ -24,8 +24,8 @@
 #   ./reset-dev-data.sh --help
 #
 # Real Microsoft-365 users ARE deleted by default: SSO recreates them on the
-# next sign-in, and with AUTH_AUTO_ADMIN_ROLE=true they get the admin role back
-# automatically. Use --keep-users if you would rather not re-login.
+# next sign-in, and any address in PINNED_ADMINS gets its admin role back on the
+# next API start. Use --keep-users if you would rather not re-login.
 set -euo pipefail
 
 cd "$(dirname "$0")"

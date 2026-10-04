@@ -848,6 +848,11 @@ model FormulaVersion {
   changeType        String? // Major | Minor (null for the initial version)
   reason            String?
   initiatedBy       String?
+  // F5 (SME rule audit C1, 2026-10-04): the impact areas ticked and the reviewer
+  // who confirmed the Major/Minor classification. Both used to be accepted by the
+  // API and thrown away. The confirmer is the signed-in person, never typed.
+  majorCriteria             String[] @default([])
+  classificationConfirmedBy String?
   // Round 4 question 2 (2026-08-29) replaced the two-value Active | Superseded
   // with FORMULA_VERSION_STATES: Active · Transition Approved · Transition in
   // Progress · Superseded · Withdrawn · Cancelled. Approving a replacement now
@@ -876,7 +881,13 @@ model BomLine {
   percentWw        Float
   costPerKg        Float
   evidenceLink     String?
+  methodRef        String?
   notes            String?
+  // F14 (2026-10-04 fix: these were never stored, so after a reload every line
+  // read as an unreconciled manual line and Gates 7/10/11 could never pass).
+  fromCosmetri     Boolean        @default(false) // set by the Cosmetri import
+  reconciled       Boolean        @default(false) // a manual line reconciled to Cosmetri
+  rmDisplayName    String?        // "{trade name} | {code}" captured at import/pick time
 
   @@unique([formulaVersionId, line])
   @@map("bom_lines")
@@ -1031,7 +1042,7 @@ model ChangeRecord {
   productSku            String
   affectedArea          String
   oldVersion            String?
-  riskLevel             String // Low | Medium | High
+  riskLevel             String // Low | Medium | High | Critical (Round 4 Q34(a))
   // Rule E3(b): Gate 11 evaluates each open change by impact, not just by status.
   // Values from CHANGE_IMPACT_AREAS in @mbc360/shared/config/changeTriggers.
   impactAreas           String[]  @default([])
@@ -1069,7 +1080,7 @@ model CapaRecord {
   market    String
   eventType String
   summary   String
-  severity  String // Low | Medium | High
+  severity  String // Low | Medium | High | Critical (Round 4 Q3/Q33)
   status    String @default("Not Started") // WorkStatus values
   owner     String
   notes     String?

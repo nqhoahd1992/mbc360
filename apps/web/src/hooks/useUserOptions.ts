@@ -19,6 +19,7 @@ export interface PickerUser {
   displayName: string;
   email?: string;
   roleName?: string | null;
+  department?: string | null;
 }
 
 export interface UserOption {

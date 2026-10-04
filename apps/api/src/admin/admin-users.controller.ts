@@ -13,8 +13,9 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { SessionUser } from '../auth/session-user';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionsService } from '../rbac/permissions.service';
-import { SSO_ROLES } from '@mbc360/shared/config/roles';
+import { ADMIN_ROLE, SSO_ROLES } from '@mbc360/shared/config/roles';
 import { TotpService } from '../verification/totp.service';
+import { isPinnedAdmin } from '../auth/pinned-admins';
 
 const SSO_ROLE_KEYS = new Set(SSO_ROLES.map((r) => r.key));
 
@@ -57,6 +58,9 @@ export class AdminUsersController {
       // pending one authorises nothing, so offering to reset it would be
       // offering to undo nothing.
       totpEnrolled: !!user.totp?.activatedAt,
+      // Listed in PINNED_ADMINS: always admin, re-applied on every deploy, so
+      // the page shows why its role, Active switch and Delete are locked.
+      pinned: isPinnedAdmin(user.email),
     };
   }
 
@@ -104,6 +108,13 @@ export class AdminUsersController {
     if (!target) throw new BadRequestException('Unknown user');
 
     const roleKey = body.roleKey ?? null;
+    // A pinned admin's role is re-applied on every deploy, so a change here
+    // would quietly come back. Refuse it and say where the setting lives.
+    if (isPinnedAdmin(target.email) && roleKey !== ADMIN_ROLE) {
+      throw new BadRequestException(
+        `${target.email} is listed in PINNED_ADMINS and always holds the System Administrator role. Remove it from PINNED_ADMINS first.`,
+      );
+    }
     let role: { id: string; key: string; name: string } | null = null;
     if (roleKey) {
       role = await this.prisma.role.findUnique({ where: { key: roleKey } });
@@ -157,6 +168,11 @@ export class AdminUsersController {
 
     const target = await this.prisma.user.findUnique({ where: { id } });
     if (!target) throw new BadRequestException('Unknown user');
+    if (isPinnedAdmin(target.email) && body.active === false) {
+      throw new BadRequestException(
+        `${target.email} is listed in PINNED_ADMINS, so it cannot be deactivated or deleted here. Remove it from PINNED_ADMINS first.`,
+      );
+    }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const record = await tx.user.update({
@@ -204,6 +220,11 @@ export class AdminUsersController {
 
     const target = await this.prisma.user.findUnique({ where: { id } });
     if (!target) throw new BadRequestException('Unknown user');
+    if (isPinnedAdmin(target.email)) {
+      throw new BadRequestException(
+        `${target.email} is listed in PINNED_ADMINS, so it cannot be deactivated or deleted here. Remove it from PINNED_ADMINS first.`,
+      );
+    }
 
     const [auditCount, registerRowCount, attachmentCount, signOffCount] = await Promise.all([
       this.prisma.auditEvent.count({ where: { actorId: id } }),

@@ -1504,6 +1504,22 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q23 | Hoãn một requirement Should/Could: ai sở hữu, hạn khi nào, và có bắt buộc priority không | Độc lập (câu 21) | **build nhóm độc lập** |
 | R5-Q24 | Sổ "General Restricted & Caution" mới — hình dạng đúng chưa, và có thuộc Gate 4 không | Nhóm 6 (câu 5) | **build nhóm 6** |
 | R5-Q25 | Danh sách kênh của bản ghi Publication / Deployment | Nhóm 5 (câu 30d) | **build nhóm 5** |
+| R5-Q28 | Thị trường đã rút còn cần làn ký Gate 12 không | Rà soát luật SME (A9) | **rà soát 04/10/2026** |
+| R5-Q29 | Mục Conditional đã kích hoạt có còn được đánh N/A không | Rà soát luật SME (B8) | **rà soát 04/10/2026** |
+| R5-Q30 | "Product-performance feedback" ở Gate 12 đọc bằng chứng nào | Rà soát luật SME (B9) | **rà soát 04/10/2026** |
+| R5-Q31 | Những trạng thái nào của checklist thị trường được coi là xong ở Gate 10 | Rà soát luật SME (B10) | **rà soát 04/10/2026** |
+| R5-Q32 | Dự án phụ thuộc thương mại: costing thế nào thì được Proceed thường | Rà soát luật SME (B11) | **rà soát 04/10/2026** |
+| R5-Q33 | Đóng một gap Critical/High như thế nào | Rà soát luật SME (B14) | **rà soát 04/10/2026** |
+| R5-Q34 | Thế nào là đã "tiếp nhận" một cờ đối chiếu tự động (C3) | Rà soát luật SME (B15) | **rà soát 04/10/2026** |
+| R5-Q35 | Kết quả rà soát claim "Not Approved" ở Gate 3 | Rà soát luật SME (B19) | **rà soát 04/10/2026** |
+| R5-Q36 | Technical review cho claim mới ghi bằng những trường nào | Rà soát luật SME (B20) | **rà soát 04/10/2026** |
+| R5-Q37 | Ai được ghi nhận "đã duyệt revision" của một claim | Rà soát luật SME (B21) | **rà soát 04/10/2026** |
+| R5-Q38 | "Được duyệt cho thị trường / kênh" đọc ở đâu | Rà soát luật SME (B22) | **rà soát 04/10/2026** |
+| R5-Q39 | Khi nào chủ action không được tự đóng action của mình | Rà soát luật SME (B24) | **rà soát 04/10/2026** |
+| R5-Q40 | Thị trường đã bán có được mở lại PIF mà giữ launch approval không | Rà soát luật SME (B25) | **rà soát 04/10/2026** |
+| R5-Q41 | Bản ghi deviation khi phát hành chưa được duyệt | Rà soát luật SME (B23) | **rà soát 04/10/2026** |
+| R5-Q42 | Người tạo phiên bản công thức có được tự xác nhận phân loại Major/Minor không | Rà soát luật SME (C1) | **rà soát 04/10/2026** |
+| R5-Q43 | "Chủ phụ trách" chấp nhận pre-work là ai | Rà soát luật SME (C4) | **rà soát 04/10/2026** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
 
@@ -1896,3 +1912,135 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Câu hỏi:** (a) Một dòng `FC-…` của Formulation Change Register có được tính là "Change Control record" ở đây không? (Câu này gắn với R5-Q19 — có bao nhiêu sổ ghi thay đổi.) (b) "Valid" có đòi thêm điều kiện nào khác ngoài tồn tại không — ví dụ bản ghi phải còn mở, hay phải đúng loại thay đổi?
 
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` (`setAssessments`, kiểm tra `changeControlRecordId`) + `apps/web/src/components/AssessmentBlock.tsx` (danh sách lựa chọn).
+
+#### R5-Q28 · Thị trường đã rút (Withdrawn) còn cần làn ký Gate 12 không 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục A9).** Câu 18 cho Gate 10–12 ký theo từng thị trường. Trước đây làn ký đọc **mọi** thị trường của dự án, kể cả nước đã ghi ngày rút (`withdrawnDate`) — nên rút một nước là Gate 10–12 bị chặn mãi vì một chữ ký không ai còn ký. Supersession (câu 2) cũng đòi quyết định cho nước đã rút.
+
+**Đã build:** thị trường đã rút **không còn làn ký** ở cả Gate 10, 11 và 12, và không còn bị đòi quyết định supersession. Với Gate 10–11 và supersession thì không có gì để bàn: không ra mắt hay chuyển đổi thêm gì ở nước đã rút. Với **Gate 12** thì là cách hiểu của mình: sản phẩm đã bán ở nước đó có thể vẫn cần theo dõi hậu mãi (khiếu nại, phản ứng phụ) sau khi rút.
+
+**Câu hỏi:** Sau khi rút khỏi một thị trường, Gate 12 của thị trường đó (a) không còn áp dụng, (b) vẫn phải ký cho tới hết một khoảng thời gian nhất định, hay (c) vẫn phải ký như mọi thị trường đang bán?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/postLaunch.ts` (`activeMarkets`) + `packages/shared/src/config/gateSignOff.ts` (`gateSignOffMarkets`) — tách Gate 12 ra đọc `identity.markets` thay vì `activeMarkets`.
+
+#### R5-Q29 · Mục Conditional đã kích hoạt có còn được đánh N/A không 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B8).** Round 3 A1 chỉ nói mục Conditional "chặn khi trigger áp dụng". Mình áp lập luận của chủ dự án ngày 12/08 cho `sg07-screen-check` ("dự án đã biết là có áp dụng") cho **mọi** mục Conditional đang được kích hoạt: dòng Key Gate Check của nó không còn nhận N/A, chỉ nhận Done + Y.
+
+**Câu hỏi:** Khi một mục có điều kiện đã được hệ thống xác định là áp dụng cho dự án, người dùng còn được đánh dấu nó "không áp dụng" kèm lý do không, hay phải hoàn thành thật?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — `withNaInvalidWhen` trong `gateReadinessChecklist`.
+
+#### R5-Q30 · "Product-performance feedback" ở Gate 12 đọc bằng chứng nào 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B9).** Câu 15 nêu 5 điều kiện kích hoạt nhưng không nói bằng chứng nào cho thấy đã xử lý. Trước đây mục tự đạt nhờ chính ô tích kích hoạt nó. Giờ mục đọc dòng Key Gate Check "Complaints/issues triaged and CAPA/improvement actions assigned".
+
+**Câu hỏi:** Khi có phản hồi về hiệu năng sản phẩm, điều gì chứng tỏ nó đã được xử lý đủ để đóng Gate 12: phản hồi đã được phân loại và giao việc, hay cần một bản rà soát riêng?
+
+**Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg12-performance`.
+
+#### R5-Q31 · Những trạng thái nào của checklist thị trường được coi là xong ở Gate 10 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B10).** Câu 35(a) đưa hai danh sách giá trị nhưng không nói giá trị nào là đạt. Đang chọn: checklist = Complete (hoặc N/A có lý do + người duyệt); Regulatory approval = Approved, Approved with Conditions (hoặc N/A). "Not Approved", "Blocked", "Pending"… đều chặn.
+
+**Câu hỏi:** Ở Gate 10, "Approved with Conditions" có đủ để qua không? Checklist có cần "Complete" không, hay "Awaiting Information" cũng được?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/marketDossier.ts` — `CHECKLIST_DONE_STATUSES` / `REGULATORY_APPROVAL_DONE`.
+
+#### R5-Q32 · Dự án phụ thuộc thương mại: costing thế nào thì được Proceed thường 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B11).** Câu 36(b): khi yêu cầu thương mại là Must, "thất bại" phải dẫn tới Hold hoặc PwC. Đang chọn: chỉ "Commercially Feasible" (hoặc N/A có lý do) qua được Proceed thường; "Feasible with Conditions", "In Progress", "Not Feasible" đều cần Hold/PwC.
+
+**Câu hỏi:** "Feasible with Conditions" và "In Progress" có được tính là "thất bại" theo nghĩa của câu 36(b) không?
+
+**Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg05-costing-must` (`feasibleOnly`).
+
+#### R5-Q33 · Đóng một gap Critical/High như thế nào 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B14).** Trước đây đổi status từ Gap sang Complete cùng lúc với Proceed là bỏ qua hết đánh giá gap. Giờ một mức Critical/High đã ghi vẫn có hiệu lực cho tới khi người dùng **xoá đánh giá gap** (việc xoá được ghi vào lịch sử gate).
+
+**Câu hỏi:** Khi một gap đã được giải quyết, việc đóng nó nên ghi nhận ra sao: xoá đánh giá, hay cần một trạng thái "đã giải quyết" riêng kèm người xác nhận?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/gapCriticality.ts` — nhánh `gate.status !== 'Gap'`.
+
+#### R5-Q34 · Thế nào là đã "tiếp nhận" một cờ đối chiếu tự động (C3) 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B15).** C3: hệ thống tự đối chiếu BOM và gắn cờ. Mục mới ở Gate 7: mọi nhóm bị khớp phải có dòng watch-list đã rời trạng thái mặc định ("No formula match recorded" / "Not assessed"). Hệ thống không tự ghi kết luận.
+
+**Câu hỏi:** Cờ tự động có nên **tự đặt** dòng watch-list sang "REVIEW – possible formula match" không, hay chỉ cần người rà soát cập nhật dòng đó trước Gate 7 như hiện tại?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — `bomMatchesNotTakenUp`; `gateReadiness.ts` — `sg07-bom-matches-*`.
+
+#### R5-Q35 · Kết quả rà soát claim "Not Approved" ở Gate 3 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B19).** Câu 27 chấp nhận 4 kết quả nhưng không nói kết quả nào cho claim đi tiếp. Đang chọn: chỉ Approved / Approved with Conditions; "Not Approved" và "Further Information Required" chặn Gate 3 cho tới khi claim được sửa câu chữ (rà soát lại) hoặc bỏ đi.
+
+**Câu hỏi:** Một claim bị "Not Approved" có được giữ lại trong danh sách khi qua Gate 3 (ví dụ như claim còn đang phát triển) không?
+
+**Nếu trả lời khác:** `packages/shared/src/config/claimReview.ts` — `CLAIM_REVIEW_OUTCOMES_PASSING`.
+
+#### R5-Q36 · Technical review cho claim mới ghi bằng những trường nào 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B20).** Câu 28(2): claim mới (chưa có trong Claims Library) kích hoạt rà soát Regulatory **và** Technical. Chưa có trường nào cho Technical. Đã thêm 5 trường giống hệt bộ Regulatory của câu 27 (kết quả, người rà soát, ngày, lý do, link bằng chứng).
+
+**Câu hỏi:** Technical review của một claim mới có cần đúng 5 trường như Regulatory review không, hay ít hơn/khác?
+
+**Nếu trả lời khác:** `packages/shared/src/config/registers.ts` — cột `technicalReview*`; `claimReview.ts` — `CLAIM_TECHNICAL_REVIEW_COLUMNS`.
+
+#### R5-Q37 · Ai được ghi nhận "đã duyệt revision" của một claim 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B21).** Câu 26: revision bị khoá khi "nhận Regulatory hoặc Gate 10 approval". Đang chọn: người đại diện Regulatory, hoặc người có quyền quyết Gate 10; và chỉ được ghi tên chính mình.
+
+**Câu hỏi:** Ai có quyền phê duyệt một revision claim?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/claimEvidence.ts` — `REVISION_APPROVAL_CAPABILITIES`.
+
+#### R5-Q38 · "Được duyệt cho thị trường / kênh" đọc ở đâu 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B22).** Câu 30(c) yêu cầu chặn khi claim chưa được duyệt cho thị trường hoặc kênh. Đang đọc sổ SKU Claims: phải có dòng của claim đó, đúng thị trường, status Completed; nếu cả hai bên ghi kênh thì kênh dự định phải bao gồm kênh dùng.
+
+**Câu hỏi:** Việc một claim được duyệt cho một thị trường/kênh được ghi nhận ở đâu và bằng giá trị nào?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/claimEvidence.ts` — `claimUseBlocker`.
+
+#### R5-Q39 · Khi nào chủ action không được tự đóng action của mình 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B24).** F8: chủ action không được tự xác nhận đóng "where independent confirmation is required". Không nói khi nào là required. Đang áp cho **mọi** action; riêng action Critical chỉ người nêu, chủ gate hoặc người có quyền quyết gate mới đóng/huỷ được.
+
+**Câu hỏi:** Có loại action nào chủ action được tự đóng không?
+
+**Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `guardNextActions`.
+
+#### R5-Q40 · Thị trường đã bán có được mở lại PIF mà giữ launch approval không 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B25).** C5: launch approval cần PIF Approved. Giờ hệ thống từ chối hạ PIF khỏi Approved khi launch approval còn hiệu lực — phải đổi launch approval trước.
+
+**Câu hỏi:** Khi PIF của một thị trường đang bán phải cập nhật (ví dụ do thay đổi công thức), launch approval có phải thu hồi trong lúc đó không?
+
+**Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `setMarketTracks`.
+
+#### R5-Q41 · Bản ghi deviation khi phát hành chưa được duyệt 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục B23).** F11: *"Releasing without approval generates a deviation/violation record."* App chặn ngay từ đầu: một dòng Published Info không chuyển được sang trạng thái phát hành khi chưa đủ điều kiện, nên trong app không thể có lần phát hành chưa duyệt. Còn thiếu hai trường hợp: nội dung được đăng **ngoài app** mà chưa từng qua quy trình, và nội dung đã phát hành đúng quy trình nhưng **về sau không còn hợp lệ** (claim đổi revision, mục Claims Library bị rút, quá hạn rà soát).
+
+**Đã chọn (chủ dự án, 04/10/2026):** chưa dựng sổ deviation; trong lúc chờ, sự cố như vậy ghi vào sổ CAPA.
+
+**Câu hỏi:** (a) Việc app chặn ngay từ đầu có được coi là đã đáp ứng yêu cầu trong app không? (b) Một bản ghi deviation cần những trường nào? (c) Deviation đang mở có chặn Gate 11 hoặc Gate 12 không? (d) Có muốn app tự cảnh báo khi tài liệu đã phát hành không còn hợp lệ không?
+
+**Nếu trả lời khác:** thêm một `RegisterConfig` mới trong `packages/shared/src/config/registers.ts`, và nếu (c) là có thì thêm một mục readiness ở `gateReadiness.ts`; chú thích tại `publishedInfoViolations` trong `packages/shared/src/utils/claimEvidence.ts`.
+
+#### R5-Q42 · Người tạo phiên bản công thức có được tự xác nhận phân loại Major/Minor không 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục C1).** F5: *"the change initiator may propose the classification, but an authorised technical or quality reviewer must confirm it."* Trước đây người xác nhận là một tên gõ tay. Giờ người tạo phiên bản chính là người xác nhận, ghi theo phiên đăng nhập, và phải có quyền Technical hoặc Quality.
+
+**Câu hỏi:** Người đề xuất và người xác nhận phân loại có được là cùng một người (nếu người đó có quyền Technical/Quality) không, hay phải là hai người?
+
+**Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `createFormulaVersion` (`FORMULA_CLASSIFICATION_CAPABILITIES`).
+
+#### R5-Q43 · "Chủ phụ trách" chấp nhận pre-work là ai 🔴
+
+**Lộ ra khi rà soát luật SME (04/10/2026, mục C4).** F13: pre-work phải được *"the responsible owner"* duyệt và chấp nhận khi phase mở. Không nói là ai. Đang chọn: review owner của phase đó theo phân công dự án, hoặc Project Lead.
+
+**Câu hỏi:** Ai là người chấp nhận pre-work của một phase?
+
+**Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `acceptPreWork`.

@@ -2,6 +2,7 @@ import { Alert, DatePicker, Input, Select, Space } from 'antd';
 import dayjs from 'dayjs';
 import type { GateRecord, RiskLevel } from '@mbc360/shared/types';
 import { GAP_IMPACT_CATEGORIES, RISK_LEVELS } from '@mbc360/shared/types';
+import SelfAttestField from './SelfAttestField';
 import UserSelect from './UserSelect';
 import { TEXT } from '../theme/tokens';
 
@@ -72,7 +73,10 @@ export default function GapAssessmentBlock({
               placeholder="Criticality"
               value={gate.gapCriticality}
               options={RISK_LEVELS.map((o) => ({ value: o, label: o }))}
-              onChange={(v?: RiskLevel) => onChange({ gapCriticality: v })}
+              // Cleared as '' rather than undefined: undefined is dropped by
+              // JSON.stringify, so a cleared grade never reached the server and
+              // came back on reload. The API stores '' as NULL.
+              onChange={(v?: RiskLevel) => onChange({ gapCriticality: v ?? ('' as RiskLevel) })}
             />
             <Select
               style={{ width: 160 }}
@@ -82,16 +86,12 @@ export default function GapAssessmentBlock({
               options={GAP_IMPACT_CATEGORIES.map((o) => ({ value: o, label: o }))}
               onChange={(v?: string) => onChange({ gapImpactCategory: v ?? '' })}
             />
-            <UserSelect
-              style={{ width: 170 }}
-              placeholder="Assessor"
-              value={gate.gapAssessor}
-              onChange={(v?: string) => onChange({ gapAssessor: v ?? '' })}
-            />
+            {/* C6: the assessor is whoever records the assessment. */}
+            <SelfAttestField value={gate.gapAssessor} disabled={locked} onChange={(v) => onChange({ gapAssessor: v })} />
             <DatePicker
               style={{ width: 140 }}
               value={gate.gapAssessmentDate ? dayjs(gate.gapAssessmentDate) : null}
-              onChange={(d) => onChange({ gapAssessmentDate: d ? d.format('YYYY-MM-DD') : undefined })}
+              onChange={(d) => onChange({ gapAssessmentDate: d ? d.format('YYYY-MM-DD') : '' })}
             />
           </Space>
           <Input.TextArea

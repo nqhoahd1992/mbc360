@@ -277,7 +277,10 @@ export class ClaimsLibraryController {
         claimId,
         wording: String(data.approvedWording ?? ''),
         status: String(data.status ?? ''),
-        skus: [...new Set(uses.map((u) => String((u.data as Record<string, unknown>)?.sku ?? '')).filter(Boolean))],
+        // `productSku` is the column both referencing registers use; this read
+        // `sku`, which no register has, so the list was always empty (SME rule
+        // audit A10, 2026-10-04).
+        skus: [...new Set(uses.map((u) => String((u.data as Record<string, unknown>)?.productSku ?? '')).filter(Boolean))],
         markets: [...new Set(uses.map((u) => String((u.data as Record<string, unknown>)?.market ?? '')).filter(Boolean))],
         publishedRecords: uses.filter((u) => u.registerKey === 'publishedInfoApproval').length,
       };

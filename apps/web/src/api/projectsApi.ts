@@ -408,6 +408,13 @@ export const setEvidenceItems = (id: string, items: ProjectData['evidence'], v: 
   put(id, 'evidence', { items }, v);
 
 export const setBom = (id: string, lines: ProjectData['bom'], v: number) => put(id, 'bom', { lines }, v);
+// The server reads the Cosmetri formula itself and writes the lines — a client
+// cannot mark a line "from Cosmetri" (SME rule audit A1).
+export const importCosmetriBom = (id: string, formulaId: number, expectedVersion: number) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/bom/import-cosmetri`, {
+    method: 'POST',
+    body: JSON.stringify({ formulaId, expectedVersion }),
+  });
 
 export const setPackagingBom = (id: string, lines: ProjectData['packagingBom'], v: number) =>
   put(id, 'packaging-bom', { lines }, v);

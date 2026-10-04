@@ -36,8 +36,6 @@ export default function FormulaVersionModal({
   const [majorCriteria, setMajorCriteria] = useState<string[]>([]);
   const [version, setVersion] = useState('');
   const [reason, setReason] = useState('');
-  const [initiatedBy, setInitiatedBy] = useState('');
-  const [confirmedBy, setConfirmedBy] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -45,8 +43,6 @@ export default function FormulaVersionModal({
       setMajorCriteria([]);
       setVersion(suggestVersion(currentVersion, 'Minor'));
       setReason('');
-      setInitiatedBy('');
-      setConfirmedBy('');
     }
   }, [open, currentVersion]);
 
@@ -77,9 +73,7 @@ export default function FormulaVersionModal({
       version: version.trim(),
       changeType,
       reason: reason.trim() || undefined,
-      initiatedBy: initiatedBy.trim() || undefined,
       majorCriteria: majorCriteria.length > 0 ? majorCriteria : undefined,
-      classificationConfirmedBy: confirmedBy.trim() || undefined,
     });
     message.success(
       changeType === 'Major'
@@ -100,8 +94,7 @@ export default function FormulaVersionModal({
         disabled:
           !version.trim() ||
           version.trim() === currentVersion ||
-          !reason.trim() ||
-          !confirmedBy.trim(),
+          !reason.trim(),
       }}
     >
       <div style={{ display: 'grid', gap: 12 }}>
@@ -148,18 +141,14 @@ export default function FormulaVersionModal({
             placeholder="What changed and why? (required — recorded in the Formulation Change Register)"
           />
         </div>
-        <LabeledInput
-          label="Initiated by"
-          value={initiatedBy}
-          onChange={(e) => setInitiatedBy(e.target.value)}
-          placeholder="Recorded in the audit trail"
-        />
-        <LabeledInput
-          label="Classification confirmed by"
-          value={confirmedBy}
-          onChange={(e) => setConfirmedBy(e.target.value)}
-          placeholder="Technical / Quality reviewer (required — F5)"
-        />
+        {/* F5: the classification is confirmed by "an authorised technical or
+            quality reviewer". Recorded by the server as you — the person
+            creating the version — and refused if you do not hold that
+            authority. It used to be two typed names. */}
+        <Typography.Paragraph type="secondary" style={{ fontSize: 12, margin: 0 }}>
+          Recorded as initiated and classification-confirmed by <b>you</b>. Creating a version needs Technical or
+          Quality authority (F5).
+        </Typography.Paragraph>
         {changeType === 'Major' && (
           <Alert
             type="warning"

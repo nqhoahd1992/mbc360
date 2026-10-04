@@ -130,9 +130,8 @@ Certbot tự viết lại block thành dạng đầy đủ 443 + redirect 80→4
    ```bash
    docker compose -f docker-compose.prod.yml logs -f api
    ```
-   Kỳ vọng: audit event `auth.login`; nếu `AUTH_AUTO_ADMIN_ROLE=true`, tài khoản đầu tiên (chưa có role) tự nhận admin (`user.auto_admin_dev`) → sidebar hiện **Admin → Users** để gán role cho người khác.
+   Kỳ vọng: audit event `auth.login`. **Admin mặc định:** đặt `PINNED_ADMINS=email1@maxbiocare.com,email2@…` trong `.env` — mỗi lần api khởi động (tức mỗi lần deploy) các email này được tạo nếu chưa có, bật Active và gán role System Administrator (log api: `PINNED_ADMINS: … — granted admin`; audit `user.pinned_admin_applied`). Người đó đăng nhập M365 lần đầu là tài khoản được nối theo email và vào thẳng với quyền admin → sidebar hiện **Admin → Users** để gán role cho người khác. Trang Users không cho gỡ admin / tắt Active / xoá một tài khoản pinned — muốn bỏ thì xoá khỏi `PINNED_ADMINS` trước.
 3. Vào **Integrations**, admin dán cặp token Cosmetri (connect) — sau đó cron tự refresh mỗi 10 phút, không cần đụng lại.
-4. **Khi đã gán role xong cho mọi người: xoá `AUTH_AUTO_ADMIN_ROLE` khỏi `.env`** rồi `docker compose -f docker-compose.prod.yml up -d api`. Flag này không có khoá tự động ở production — để quên là mọi nhân viên công ty đăng nhập đều thành admin.
 
 ## 9. Deploy bản mới
 
@@ -161,7 +160,7 @@ Không còn bước migrate riêng: service `migrate` chạy trong chính lệnh
 | Đăng nhập lỗi, log api: `AADSTS7000215: Invalid client secret` | Dán Secret **ID** thay vì secret **Value** vào `AUTH_CLIENT_SECRET` | Tạo secret mới trên Entra, copy cột Value, cập nhật `.env`, `up -d api` |
 | Log api lặp lại `The table ... does not exist` (P2021) hoặc `The column ... does not exist` (P2022) | DB chưa migrate — code mới chạy trên schema cũ | Không còn xảy ra khi dựng stack bằng `up -d --build` (service `migrate` chặn api). Nếu đang gặp: chạy `docker compose -f docker-compose.prod.yml up -d --build` rồi kiểm tra `logs migrate`. Migration lỗi dở dang (`P3009`) phải xử lý tay bằng `prisma migrate resolve` |
 | Seed lỗi `Cannot find module '../src/generated/prisma/client'` | Prisma client chưa generate (thư mục gitignored, không có trong bản clone) | Lệnh Seed ở mục 5 đã gồm `prisma generate`; đừng bỏ bước đó |
-| Login thành công nhưng không có quyền admin dù `AUTH_AUTO_ADMIN_ROLE=true`; log api: `no "admin" role exists — skipping` | Bảng `roles` trống — đã migrate nhưng chưa seed | Chạy Seed (mục 5) rồi Sign out → Sign in lại (cơ chế auto-admin thử lại ở mỗi lần login khi user còn 0 role) |
+| Đăng nhập M365 xong báo "không có quyền truy cập" dù email nằm trong `PINNED_ADMINS` | Biến chưa tới container api, hoặc email viết sai | `docker compose -f docker-compose.prod.yml exec api printenv PINNED_ADMINS`; sửa `.env` rồi `up -d api` — log khởi động phải có dòng `PINNED_ADMINS: <email> — …` |
 
 ## Phụ lục: hai file trong `deploy/` dùng làm gì
 

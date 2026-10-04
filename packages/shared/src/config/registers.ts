@@ -31,6 +31,11 @@ export interface RegisterColumn {
   width?: number;
   options?: readonly string[];
   editable?: boolean; // default true; false = static reference text from the source sheet
+  // A `user` column that records an ACT — "confirmed by", "assessed by" (SME rule
+  // audit C6, 2026-10-04). Only the signed-in person may put themselves in it;
+  // the API refuses any other name, and the table offers "Record as me" instead
+  // of a picker of everyone.
+  selfAttest?: boolean;
   // Read from the linked claim (Claim -> Evidence Traceability) instead of being
   // entered here, once the row's `claimRef` column names one — added 2026-08-11 so a
   // claim is classified ONCE, where it is declared, and every later use inherits.
@@ -203,6 +208,14 @@ export function isRegisterRowBlank(config: RegisterConfig, row: RegisterRow): bo
 }
 
 const WORK_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Backtracked'] as const;
+
+// Final Safety Sign-off (Gate 7). Round 3 E1: "The pregnancy/breastfeeding
+// assessment at Gate 7 should not be unconditional for every project. It is
+// mandatory when Pregnancy, Breastfeeding or Postpartum is selected … General
+// products should record N/A with rationale where neither pathway applies."
+export const FINAL_SAFETY_REGISTER = 'formulationSafetyFinalSignOff';
+export const FINAL_SAFETY_PREGNANCY_ROW = 'Pregnancy / breastfeeding assessment';
+export const FINAL_SAFETY_NA = 'N/A';
 
 // Rule D4 (SME Round 3) on the identity-only Supplier & RM Evidence record a
 // Cosmetri formula import creates: "The stub must be clearly labelled Incomplete
@@ -1709,7 +1722,7 @@ const publishedInfoApproval: RegisterConfig = {
     // proposed wording differs from master cannot be released until an
     // authorised reviewer has recorded which kind of difference it is.
     { key: 'wordingEquivalence', label: 'Wording comparison', type: 'select', width: 200, options: [...WORDING_EQUIVALENCE_OPTIONS] },
-    { key: 'equivalenceConfirmedBy', label: 'Equivalence confirmed by', type: 'user', width: 150 },
+    { key: 'equivalenceConfirmedBy', label: 'Equivalence confirmed by', type: 'user', width: 150, selfAttest: true },
     { key: 'equivalenceConfirmedDate', label: 'Equivalence confirmed date', type: 'date', width: 130 },
     { key: 'evidenceTypeRequired', label: 'Evidence type required', type: 'text', width: 150 },
     { key: 'evidenceLink', label: 'Evidence / PMF / PIF link', type: 'text', width: 150 },
@@ -2218,7 +2231,7 @@ export const criticalSafetyFindings: RegisterConfig = {
 };
 
 export const formulationSafetyFinalSignOff: RegisterConfig = {
-  key: 'formulationSafetyFinalSignOff',
+  key: FINAL_SAFETY_REGISTER,
   title: 'Final Safety Sign-off',
   sheetName: 'Formulation_Safety',
   mode: 'fixed',
@@ -2228,7 +2241,10 @@ export const formulationSafetyFinalSignOff: RegisterConfig = {
     { key: 'acceptanceRequirement', label: 'Acceptance requirement', type: 'text', width: 260, editable: false },
     { key: 'requiredEvidence', label: 'Required evidence', type: 'text', width: 200, editable: false },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    // N/A exists for one row only — the pregnancy / breastfeeding assessment on a
+    // product with no maternal target user (Round 3 E1). Recorded on any other
+    // row it does not satisfy Gate 7 (see `finalSafetySignOffComplete`).
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: [...WORK_STATUS_OPTIONS, FINAL_SAFETY_NA] },
     { key: 'owner', label: 'Owner', type: 'text', width: 150, editable: false },
     { key: 'decisionDate', label: 'Decision date', type: 'date', width: 130 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 170 },
@@ -2236,7 +2252,7 @@ export const formulationSafetyFinalSignOff: RegisterConfig = {
   fixedRows: [
     { safetyQuestion: 'Formula identity locked', acceptanceRequirement: 'Current formula version and Formula_BOM match', requiredEvidence: 'Formula_BOM / batch formula / version record', owner: 'R&I' },
     { safetyQuestion: 'Toxicology / safety assessment', acceptanceRequirement: 'Safety assessment or CPSR-style rationale covers all ingredients', requiredEvidence: 'Safety assessment link', owner: 'Safety / Regulatory' },
-    { safetyQuestion: 'Pregnancy / breastfeeding assessment', acceptanceRequirement: 'PB caution table reviewed and risks addressed', requiredEvidence: 'PB_Caution_Limits + rationale link', owner: 'Safety' },
+    { safetyQuestion: FINAL_SAFETY_PREGNANCY_ROW, acceptanceRequirement: 'PB caution table reviewed and risks addressed', requiredEvidence: 'PB_Caution_Limits + rationale link', owner: 'Safety' },
     { safetyQuestion: 'Baby-contact / nipple-use assessment', acceptanceRequirement: 'Use area, transfer risk and warnings assessed where applicable', requiredEvidence: 'Use scenario / safety rationale', owner: 'Safety / Regulatory' },
     { safetyQuestion: 'Preservation / microbiology', acceptanceRequirement: 'Micro/PET evidence supports formula and pack', requiredEvidence: 'Micro_PET_Evidence / report link', owner: 'Quality' },
     { safetyQuestion: 'Impurities / heavy metals', acceptanceRequirement: 'Supplier CoA or finished test confirms limits', requiredEvidence: 'Supplier_RM_Evidence / report link', owner: 'Quality' },
@@ -2956,6 +2972,16 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // wording above no longer matches this, the review no longer covers it.
     { key: 'reviewedWording', label: 'Wording at review', type: 'textarea', width: 220, gate: '03', editable: false },
     { key: 'regulatoryReviewEvidence', label: 'Review evidence link', type: 'text', width: 160, gate: '03' },
+    // Gate 03 — Round 4 question 28(2): a claim that is "New claim — not yet in
+    // Claims Library" "triggers Regulatory AND Technical review". The Technical
+    // half had no fields at all until 2026-10-04 (SME rule audit B20). Shaped
+    // after the five Regulatory fields question 27 accepted; that the Technical
+    // review takes the same shape is ours [ASSUMPTION: R5-Q36].
+    { key: 'technicalReviewOutcome', label: 'Technical review outcome', type: 'select', width: 190, options: CLAIM_REVIEW_OUTCOMES, gate: '03' },
+    { key: 'technicalReviewer', label: 'Technical reviewer', type: 'user', width: 150, gate: '03' },
+    { key: 'technicalReviewDate', label: 'Technical review date', type: 'date', width: 130, gate: '03' },
+    { key: 'technicalReviewRationale', label: 'Technical review rationale', type: 'textarea', width: 220, gate: '03' },
+    { key: 'technicalReviewEvidence', label: 'Technical review evidence link', type: 'text', width: 160, gate: '03' },
     // Gate 10 — release: "Supported" is what publishedInfoViolations() reads before
     // anything may be published, and the approval is the act of releasing it.
     // Question 30(c) names five states an artwork-linked claim may not be in;
@@ -3344,6 +3370,26 @@ for (const config of REGISTER_CONFIGS) {
 
 export function getRegisterConfig(key: string): RegisterConfig | undefined {
   return REGISTER_CONFIGS.find((r) => r.key === key);
+}
+
+// A brand-new row of a register, as both the web table's "Add row" and the
+// server's Cosmetri import stub create it — one definition, so the two cannot
+// start a row differently (moved here from apps/web/src/store/factory.ts on
+// 2026-10-04 when the import moved server-side).
+export function createEmptyRegisterRow(registerKey: string): RegisterRow {
+  const config = getRegisterConfig(registerKey);
+  const row: RegisterRow = {};
+  if (!config) return row;
+  for (const col of config.columns) {
+    // An explicit config default wins: D4 needs a new Supplier & RM Evidence row
+    // to read "Incomplete — evidence review required" from the moment it exists,
+    // and that has to hold for a row a person adds as much as for a Cosmetri
+    // import stub — both are equally unreviewed.
+    if (col.defaultValue !== undefined) row[col.key] = col.defaultValue;
+    else if (col.type === 'checkbox') row[col.key] = false;
+    else if (col.key === 'status') row[col.key] = 'Not Started';
+  }
+  return row;
 }
 
 // ---------------------------------------------------------------------------

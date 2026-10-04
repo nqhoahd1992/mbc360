@@ -129,10 +129,14 @@ export default function NextActionsCard({
             <RecordField label="Status">
               <Select style={{ width: '100%' }} value={a.status} options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))} onChange={(v: NextActionStatus) => setStatus(i, v)} />
             </RecordField>
-            {/* F8: verified & closed by someone other than the owner where
-                independent confirmation is required. */}
+            {/* F8: verified & closed by someone other than the owner. Recorded by
+                the server as whoever moves the action to Closed or Cancelled —
+                a name typed here would be the free-text signature D1 rejects. */}
+            <RecordField label="Raised by">
+              <span className="rt-static">{a.raisedBy ?? '—'}</span>
+            </RecordField>
             <RecordField label="Verified by">
-              <UserSelect placeholder="Reviewer" value={a.verifiedBy} onChange={(v) => patch(i, { verifiedBy: v })} />
+              <span className="rt-static">{a.verifiedBy ?? 'Recorded when someone other than the owner closes it'}</span>
             </RecordField>
             <RecordField label="Date completed">
               <span className="rt-static">{a.dateCompleted ?? '—'}</span>

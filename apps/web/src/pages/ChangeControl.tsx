@@ -7,6 +7,7 @@ import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
 import type { ChangeRecord, ChangeStatus, RiskLevel } from '@mbc360/shared/types';
+import { RISK_LEVELS } from '@mbc360/shared/types';
 import {
   CHANGE_RACI,
   CHANGE_STATUSES,
@@ -282,7 +283,6 @@ export default function ChangeControl() {
                     {dlRow('Product / SKU', c.productSku)}
                     {dlRow('Affected area', c.affectedArea)}
                     {dlRow('Old version', c.oldVersion)}
-                    {dlRow('Risk', <StatusBadge value={c.riskLevel} />)}
                     {dlRow('Owner', c.owner)}
                     {dlRow('Due', c.dueDate)}
                     {dlRow('Closed', c.closedDate)}
@@ -293,6 +293,17 @@ export default function ChangeControl() {
                   <div className="rt-sec-title">Status &amp; impact</div>
                   <div className="rt-grid">
                     <RecordField label="Status">{statusSelect(c)}</RecordField>
+                    {/* Editable after creation (2026-10-04): a change's risk can
+                        grow as its impact becomes known, and High/Critical is what
+                        makes an open change hard-block Gate 11. */}
+                    <RecordField label="Risk level">
+                      <Select
+                        style={{ width: '100%' }}
+                        value={c.riskLevel}
+                        options={RISK_LEVELS.map((r) => ({ value: r, label: r }))}
+                        onChange={(v: RiskLevel) => patchChange(c.changeId, { riskLevel: v })}
+                      />
+                    </RecordField>
                     {/* Editable here, not only on the create form: rule E3(b) makes
                         an UNCLASSIFIED open change block Gate 11, and every change
                         that existed before this field did is unclassified. Without
@@ -448,7 +459,9 @@ export default function ChangeControl() {
               />
             </Form.Item>
             <Form.Item name="riskLevel" label="Risk level" rules={[{ required: true }]}>
-              <Select options={['Low', 'Medium', 'High'].map((r) => ({ value: r, label: r }))} />
+              {/* The shared four-level scale (Round 4 question 34(a): Critical is a
+                  separate level above High). */}
+              <Select options={RISK_LEVELS.map((r) => ({ value: r, label: r }))} />
             </Form.Item>
             <Form.Item name="oldVersion" label="Old version">
               <AutoComplete

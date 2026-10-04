@@ -330,7 +330,11 @@ export function toProjectData(
     percentWw: l.percentWw,
     costPerKg: l.costPerKg,
     evidenceLink: opt(l.evidenceLink),
+    methodRef: opt(l.methodRef),
     notes: opt(l.notes),
+    fromCosmetri: l.fromCosmetri || undefined,
+    reconciled: l.reconciled || undefined,
+    rmDisplayName: opt(l.rmDisplayName),
   });
 
   const reviewers: Record<string, string> = {};
@@ -578,6 +582,8 @@ export function toProjectData(
       changeType: (v.changeType ?? 'Minor') as 'Major' | 'Minor',
       reason: opt(v.reason),
       initiatedBy: opt(v.initiatedBy),
+      majorCriteria: v.majorCriteria.length > 0 ? v.majorCriteria : undefined,
+      classificationConfirmedBy: opt(v.classificationConfirmedBy),
       previousBomSnapshot: v.bomLines.map(toBomLine),
       state: v.status as FormulaVersionRecord['state'],
     })),

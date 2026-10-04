@@ -473,6 +473,17 @@ export class ProjectsController {
     return this.projects.setBom(user, id, body.lines ?? [], body.expectedVersion);
   }
 
+  // The only way to create "from Cosmetri" BOM lines — the server reads the
+  // formula itself (SME rule audit A1).
+  @Post(':id/bom/import-cosmetri')
+  importCosmetriBom(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { formulaId: number; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.importCosmetriBom(user, id, Number(body.formulaId), body.expectedVersion);
+  }
+
   @Put(':id/packaging-bom')
   setPackagingBom(
     @CurrentUser() user: SessionUser,

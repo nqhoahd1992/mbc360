@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as oidc from 'openid-client';
-import { ADMIN_ROLE } from '@mbc360/shared/config/roles';
 import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthConfig, loadAuthConfig } from './auth-config';
@@ -184,10 +183,9 @@ export class AuthService {
   // Match by Entra object id first, then by email (links pre-provisioned
   // users to their SSO identity on first login), else create. New SSO users
   // start with no roles, and since 2026-10-02 a user with no role cannot enter
-  // the app at all until an admin assigns one (see loginRefusal) —
-  // unless config.autoAdminRole is on (temporary dev-phase behavior, see
-  // auth-config.ts), in which case a user with zero roles is granted admin
-  // right here so testers get full access immediately.
+  // the app at all until an admin assigns one (see loginRefusal). The first
+  // administrator comes from PINNED_ADMINS (auth/pinned-admins.ts), whose
+  // pre-provisioned account is linked here by email.
   private async upsertSsoUser(input: {
     oid: string;
     email: string;
@@ -204,8 +202,12 @@ export class AuthService {
       : undefined;
 
     const existing =
-      (await this.prisma.user.findUnique({ where: { oid: input.oid }, include: { roles: true } })) ??
-      (await this.prisma.user.findUnique({ where: { email: input.email }, include: { roles: true } }));
+      (await this.prisma.user.findUnique({ where: { oid: input.oid } })) ??
+      // Case-insensitive: an account pre-provisioned from PINNED_ADMINS is stored
+      // in lower case, while Entra may report the address with capitals.
+      (await this.prisma.user.findFirst({
+        where: { email: { equals: input.email, mode: 'insensitive' } },
+      }));
 
     const user = existing
       ? await this.prisma.user.update({
@@ -226,32 +228,7 @@ export class AuthService {
           },
         });
 
-    if (this.config.autoAdminRole && (existing?.roles.length ?? 0) === 0) {
-      await this.grantAutoAdminRole(user.id);
-    }
-
     return user;
-  }
-
-  // TEMPORARY dev-phase mechanism — see the autoAdminRole doc comment in
-  // auth-config.ts. Only ever runs when config.autoAdminRole is on. Unlike
-  // devMode, that flag is purely env-controlled in EVERY environment,
-  // production included — there is no automatic lockout.
-  private async grantAutoAdminRole(userId: string): Promise<void> {
-    const adminRole = await this.prisma.role.findUnique({ where: { key: ADMIN_ROLE } });
-    if (!adminRole) {
-      this.logger.warn(`AUTH_AUTO_ADMIN_ROLE is on but no "${ADMIN_ROLE}" role exists — skipping`);
-      return;
-    }
-    await this.prisma.userRole.create({ data: { userId, roleId: adminRole.id } });
-    await this.audit.record({
-      actorId: userId,
-      entityType: 'user',
-      entityId: userId,
-      action: 'user.auto_admin_dev',
-      after: { roles: [ADMIN_ROLE] },
-    });
-    this.logger.warn(`AUTH_AUTO_ADMIN_ROLE granted admin to user ${userId} — turn this off before production`);
   }
 
   // Dev-mode stand-in while the Entra app registration is pending: issues a

@@ -49,12 +49,15 @@ export class RolePermissionsController {
   async users() {
     const users = await this.prisma.user.findMany({
       where: { active: true },
-      include: { roles: { include: { role: true } } },
+      include: { roles: { include: { role: true } }, department: true },
       orderBy: { displayName: 'asc' },
     });
     return users.map((u) => ({
       id: u.id,
       displayName: u.displayName,
+      // The SSO department (synced from Microsoft Graph) — read by the study
+      // approval card, whose independence rule (C2) compares departments.
+      department: u.department?.name ?? null,
       roleKey: u.roles[0]?.role.key ?? null,
       roleName: u.roles[0]?.role.name ?? null,
     }));

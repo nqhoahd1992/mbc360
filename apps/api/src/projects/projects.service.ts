@@ -5,11 +5,27 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { COSTING_FEASIBILITY_STATUSES, GATES, GATE_DECISIONS } from '@mbc360/shared/config/gates';
-import { getChangeTrigger, isChangeOpen } from '@mbc360/shared/config/changeTriggers';
-import { registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
+import {
+  COSTING_FEASIBILITY_STATUSES,
+  GATES,
+  GATE_DECISIONS,
+  REQUIREMENT_NOT_APPLICABLE,
+  REQUIREMENT_PRIORITIES,
+  STAGE_STATUSES,
+  WORK_STATUSES,
+} from '@mbc360/shared/config/gates';
+import {
+  CHANGE_IMPACT_AREAS,
+  FORMULA_CLASSIFICATION_CAPABILITIES,
+  MAJOR_CHANGE_CRITERIA,
+  getChangeTrigger,
+  isChangeOpen,
+  openChangesAffectingGate,
+} from '@mbc360/shared/config/changeTriggers';
+import { ownerName, registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import {
   REGISTER_CONFIGS,
+  createEmptyRegisterRow,
   getRegisterConfig,
   invalidSelectValues,
   signatureColumns,
@@ -33,7 +49,11 @@ import {
   vulnerableSaveBlockers,
 } from '@mbc360/shared/utils/vulnerableUsers';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
+import { ASSESSMENT_FIELDS as ASSESSMENT_FIELDS_BY_KEY, ASSESSMENT_HOMES } from '@mbc360/shared/config/assessments';
+import { EVIDENCE_AREAS } from '@mbc360/shared/config/evidence';
+import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateReadiness';
 import {
+  GATE_PASSING_DECISIONS,
   INDEPENDENT_FUNCTION_BY_GATE,
   gateSignOffMarkets,
   gateSignOffNeedsComment,
@@ -42,18 +62,38 @@ import {
 } from '@mbc360/shared/config/gateSignOff';
 import { gateEvidenceSnapshot } from '@mbc360/shared/utils/gateSnapshot';
 import { supersessionGaps } from '@mbc360/shared/utils/formulaLifecycle';
-import { CLAIM_EXEMPTION_CAPABILITY, frozenRevisionEdits } from '@mbc360/shared/utils/claimEvidence';
+import { activeMarkets } from '@mbc360/shared/utils/postLaunch';
+import {
+  CLAIM_EXEMPTION_CAPABILITY,
+  REVISION_APPROVAL_CAPABILITIES,
+  frozenRevisionEdits,
+  newRevisionApprovals,
+  revisionApprovalForgeries,
+} from '@mbc360/shared/utils/claimEvidence';
 import {
   gateBlockers,
   gateIndex,
   gateRefHighestGateId,
   hardGateBlockers,
+  isGatePassed,
   isGateRefLocked,
+  phaseProgress,
   isGateUnlocked,
   phaseCompletionChecklist,
 } from '@mbc360/shared/utils/gateProgress';
-import { GATE_SIGNOFF_ROLES, isRegisterClosed } from '@mbc360/shared/types';
-import type { GateSignOffRole } from '@mbc360/shared/types';
+import {
+  ADMINISTRATIVE_ONLY_OPTIONS,
+  CHANGE_CONTROL_REQUIRED_OPTIONS,
+  FAMILY_USE_AGE_GROUPS,
+  GAP_IMPACT_CATEGORIES,
+  GATE_SIGNOFF_ROLES,
+  HUMAN_STUDY_PLANNED_OPTIONS,
+  RISK_LEVELS,
+  NEXT_ACTION_TERMINAL_STATUSES,
+  SCALE_UP_RISK_OPTIONS,
+  isRegisterClosed,
+} from '@mbc360/shared/types';
+import type { GateSignOffRole, NextActionStatus } from '@mbc360/shared/types';
 import type {
   AngleRow,
   ChangeRecord,
@@ -79,6 +119,7 @@ import { PermissionsService } from '../rbac/permissions.service';
 import type { SessionUser } from '../auth/session-user';
 import { IdempotencyService } from './idempotency.service';
 import { TotpService } from '../verification/totp.service';
+import { CosmetriDataService, type CosmetriImportRow } from '../cosmetri/cosmetri-data.service';
 import {
   PROJECT_INCLUDE,
   toChangeRecords,
@@ -129,6 +170,49 @@ const GAP_ASSESSMENT_FIELDS = [
   'gapRequiredAction',
   'gapActionOwner',
 ] as const satisfies readonly (keyof GateRecord)[];
+
+// A value the engine compares exactly must be one of its list's values (SME rule
+// audit B13, 2026-10-04). A dropdown is only a dropdown in the browser: a direct
+// call could store 'critical', 'must' or 'N/A' where the rules look for
+// 'Critical', 'Must' or 'Pending assessment', and the rule then reads the wrong
+// answer instead of rejecting it. Empty is allowed — it means "not answered".
+function assertOneOf(field: string, value: string | null | undefined, allowed: readonly string[]): void {
+  const v = (value ?? '').trim();
+  if (v !== '' && !allowed.includes(v)) {
+    throw new BadRequestException(`${field}: "${v}" is not one of ${allowed.join(' / ')}`);
+  }
+}
+
+// Whether a gate's readiness config uses a check kind anywhere (through allOf /
+// anyOf) — so a rule that belongs to "the gate carrying X" follows the config.
+function gateCarries(gateId: string, kind: ReadinessCheck['kind']): boolean {
+  const has = (c: ReadinessCheck): boolean =>
+    c.kind === kind || ((c.kind === 'allOf' || c.kind === 'anyOf') && c.checks.some(has));
+  return (GATE_READINESS[gateId] ?? []).some((r) => has(r.check));
+}
+
+// C6 (SME rule audit, 2026-10-04): a field that says WHO confirmed, reviewed or
+// assessed something records an act, and an act names the person who did it —
+// the reasoning D1 applied to signatures. These were typed names, so anyone could
+// put anyone's name there. When such a field is newly set or changed it must be
+// the signed-in person; leaving it as it was is always fine. WHO is entitled to
+// confirm each of them is a separate question the answers do not settle.
+function assertSelfAttested(label: string, before: unknown, after: unknown, actor: string): void {
+  const next = typeof after === 'string' ? after.trim() : '';
+  const prev = typeof before === 'string' ? before.trim() : '';
+  if (next === '' || next === prev) return;
+  if (next !== actor) {
+    throw new BadRequestException(`${label} records who did it, so it can only be set to yourself (${actor}), not "${next}"`);
+  }
+}
+
+// The single-answer assessment fields and the list each must come from.
+const ASSESSMENT_ANSWER_LISTS: Partial<Record<keyof ProjectData['assessments'], readonly string[]>> = {
+  changeControlRequired: CHANGE_CONTROL_REQUIRED_OPTIONS,
+  humanStudyPlanned: HUMAN_STUDY_PLANNED_OPTIONS,
+  administrativeOnly: ADMINISTRATIVE_ONLY_OPTIONS,
+  scaleUpRiskIdentified: SCALE_UP_RISK_OPTIONS,
+};
 
 // M3 Phase 1 (2026-07-26). Every guard here is the SAME shared pure function the
 // browser store calls — never a re-implementation (BACKEND_PLAN §3 principle 1
@@ -254,16 +338,23 @@ export function syncPublishedInfoDerived(
     } else if (storedConfirmer) {
       next.noProductClaimConfirmedBy = storedConfirmer;
       next.noProductClaimConfirmedAt = storedConfirmedAt;
-    } else if (canConfirmExemption) {
+    } else if (canConfirmExemption && row.confirmNoProductClaim === true) {
       // The confirmer may be the same person as the declarer — the answer names a
       // FUNCTION ("a Technical or Regulatory reviewer"), not a second pair of eyes,
       // and requiring two people would be a stricter rule than it states.
+      //
+      // C7 (SME rule audit, 2026-10-04): only when that reviewer ASKS to confirm
+      // (`confirmNoProductClaim`, sent by the "Confirm exemption" control). It used
+      // to be stamped on any save by a capability holder — a reviewer fixing a typo
+      // elsewhere in the table confirmed every pending exemption without seeing it.
       next.noProductClaimConfirmedBy = actorName;
       next.noProductClaimConfirmedAt = new Date().toISOString().slice(0, 10);
     } else {
       next.noProductClaimConfirmedBy = '';
       next.noProductClaimConfirmedAt = '';
     }
+    // A request flag, never stored.
+    delete next.confirmNoProductClaim;
     return next;
   });
 }
@@ -277,6 +368,7 @@ export class ProjectsService {
     private readonly permissions: PermissionsService,
     private readonly totp: TotpService,
     private readonly jwt: JwtService,
+    private readonly cosmetri: CosmetriDataService,
   ) {}
 
   // Binds a step-up code/proof to the exact act — a code minted for one
@@ -320,13 +412,22 @@ export class ProjectsService {
   ): Promise<void> {
     if (decision !== 'Proceed with Conditions') return;
 
-    if (watchlistConditionalRows(project).length > 0 && !(await this.permissions.canAcceptWatchlistFinding(user))) {
+    // C11 (SME rule audit, 2026-10-04): each authority is needed only at the gate
+    // whose readiness actually lets that thing ride on Proceed with Conditions —
+    // read from the config, not hard-coded. It used to be demanded at EVERY gate,
+    // so a Gate 7 approver needed watch-list authority because of a Gate 4 finding.
+    if (
+      gateCarries(gateId, 'watchlistNoneConditional') &&
+      watchlistConditionalRows(project).length > 0 &&
+      !(await this.permissions.canAcceptWatchlistFinding(user))
+    ) {
       throw new ForbiddenException(
         `Gate ${gateId}: carrying a flagged watch-list finding under Proceed with Conditions needs Safety or Regulatory authority ` +
           `(watchlist-finding|accept-safety or |accept-regulatory)`,
       );
     }
     if (
+      gateCarries(gateId, 'changeControlNoAdminImpact') &&
       gate11ConditionalChanges(project, project.changes).length > 0 &&
       !(await this.permissions.canAcknowledgeChangeImpact(user))
     ) {
@@ -738,6 +839,18 @@ export class ProjectsService {
           `Requirement section "${section}" expects ${existing.length} rows, received ${items.length}`,
         );
       }
+      // N/A exists only on a section declaring `allowNotApplicable` (question 21);
+      // elsewhere a row is a plain obligation and only the work statuses apply.
+      const sectionConfig = Object.values(PHASE_CONFIGS)
+        .flatMap((p) => p.requirementSections)
+        .find((r) => r.key === section);
+      const allowedStatuses: readonly string[] = sectionConfig?.allowNotApplicable
+        ? [...WORK_STATUSES, REQUIREMENT_NOT_APPLICABLE]
+        : WORK_STATUSES;
+      for (const item of items) {
+        assertOneOf(`Requirement "${item.requirement}" status`, item.status, allowedStatuses);
+        assertOneOf(`Requirement "${item.requirement}" priority`, item.priority, REQUIREMENT_PRIORITIES);
+      }
       let skipped = 0;
       for (const [index, item] of items.entries()) {
         const target = existing[index];
@@ -1035,6 +1148,12 @@ export class ProjectsService {
       if (!decision) throw new BadRequestException('A decision is required to sign');
       if (!(GATE_DECISIONS as readonly string[]).includes(decision)) {
         throw new BadRequestException(`"${decision}" is not a valid decision`);
+      }
+      // Backtrack is an action with its own record (B4), not a word a signature
+      // can carry — signing it would leave a gate marked "Backtrack" that nothing
+      // reopened.
+      if (decision === 'Backtrack') {
+        throw new BadRequestException('Backtrack is recorded with the Backtrack action, not as a sign-off decision');
       }
       // D1 asked for "comment where required" without saying when. Read as:
       // anything other than a plain Proceed carries a condition or a reason
@@ -1378,6 +1497,14 @@ export class ProjectsService {
   ): Promise<ProjectEnvelope> {
     return this.mutate(user, id, expectedVersion, 'gate_sign_off.signed', async (tx, _row, project) => {
       this.assertGateLane(project, gateId, market);
+      // B4 (SME rule audit, 2026-10-04): a sign-off is part of working the gate,
+      // so it follows the same lock as every other gate edit — only the gate open
+      // for work, and a passed gate is corrected through Backtrack.
+      if (!isGateUnlocked(project, gateId)) {
+        throw new ForbiddenException(
+          `Gate ${gateId} is not the gate currently open for work — it cannot be signed (a passed gate is reopened with Backtrack)`,
+        );
+      }
       const rows = await this.loadGateSignOffs(tx, id, gateId, market);
       const existing = rows.find((r) => r.role === role);
       if (!existing) throw new NotFoundException(`"${role}" has no nominated signer on ${gateId} yet`);
@@ -1445,6 +1572,26 @@ export class ProjectsService {
             },
           ],
         };
+        // B7 (SME rule audit, 2026-10-04): the approver's path skipped the
+        // authority check the dropdown path runs for Proceed with Conditions —
+        // carrying a flagged watch-list finding (question 32(c)) or an open
+        // change's Gate 11 impact (question 34(d)) needs the matching authority
+        // whichever way the decision is recorded.
+        await this.assertCanCarryConditions(user, pending, gateId, decision as GateRecord['decision']);
+        // B2 (SME rule audit, 2026-10-04): on a per-market gate the OTHER markets'
+        // lanes are not this approver's to sign, so their being unsigned must not
+        // refuse this lane's approval — Vietnam could not record Proceed while
+        // Australia was still open. Every other readiness item still applies.
+        const otherLanesOpen =
+          isPerMarketGate(gateId) &&
+          gateSignOffMarkets(pending, gateId).some(
+            (m) =>
+              m !== market &&
+              !GATE_PASSING_DECISIONS.includes(
+                pending.gateSignOffs.find((g) => g.gateId === gateId && g.market === m && g.role === 'Approved by' && g.signedAt)
+                  ?.decision ?? '',
+              ),
+          );
         this.resolveDecision(
           pending,
           [],
@@ -1454,6 +1601,7 @@ export class ProjectsService {
           { ...gate, decision: decision as GateRecord['decision'] },
           await this.openChangeGateNumbers(tx, id),
           true,
+          otherLanesOpen ? this.signOffItemIds(gateId) : [],
         );
       }
 
@@ -1508,13 +1656,54 @@ export class ProjectsService {
       // The approver's decision IS the gate decision — written here rather than
       // left for somebody to record separately, which is what "no separate
       // duplicate decision after approval" means.
+      // B2: on a per-market gate each lane's approver decides THAT market, and
+      // they used to overwrite one shared gate decision — Australia's Hold then
+      // Vietnam's Proceed left the gate reading Proceed. The gate decision is now
+      // the roll-up of every lane, written only once every lane's approver has
+      // signed: Proceed with Conditions if any lane carries conditions, Proceed
+      // if all are Proceed, otherwise the first non-passing lane's decision.
+      let gateDecision: string | null | undefined;
       if (role === 'Approved by') {
+        gateDecision = decision;
+        if (isPerMarketGate(gateId)) {
+          const lanes = gateSignOffMarkets(project, gateId);
+          const laneDecision = (m: string | undefined) =>
+            m === market
+              ? decision
+              : project.gateSignOffs.find((g) => g.gateId === gateId && g.market === m && g.role === 'Approved by' && g.signedAt)
+                  ?.decision;
+          const decisions = lanes.map(laneDecision);
+          if (decisions.some((d) => !d)) gateDecision = null;
+          else if (decisions.every((d) => GATE_PASSING_DECISIONS.includes(d!))) {
+            gateDecision = decisions.includes('Proceed with Conditions') ? 'Proceed with Conditions' : 'Proceed';
+          } else gateDecision = decisions.find((d) => !GATE_PASSING_DECISIONS.includes(d!))!;
+        }
         await tx.gateRecord.update({
           where: { projectId_gateId: { projectId: id, gateId } },
-          data: { decision },
+          data: { decision: gateDecision },
         });
       }
-      return { gateId, market: market ?? null, role, decision, gateDecisionRecorded: role === 'Approved by' };
+      // C10 (SME rule audit, 2026-10-04): F9's acknowledgement of open change
+      // controls used to be a browser dialog that appended a line to the gate's
+      // editable notes. The approver's signature is the act that records the
+      // decision now, so it records — on this immutable audit row — which open
+      // changes affecting the gate it was given with. A plain Proceed with one
+      // open is already refused (F9), so these accompany Proceed with Conditions,
+      // whose comment is mandatory.
+      const gateNumber = GATES.find((g) => g.id === gateId)?.number ?? '';
+      const acceptedOpenChanges =
+        role === 'Approved by'
+          ? openChangesAffectingGate(project.changes, project.identity.id, gateNumber).map((c) => c.changeId)
+          : [];
+      return {
+        gateId,
+        market: market ?? null,
+        role,
+        decision,
+        gateDecisionRecorded: role === 'Approved by',
+        gateDecision: gateDecision ?? null,
+        acceptedOpenChanges,
+      };
     });
   }
 
@@ -1537,6 +1726,13 @@ export class ProjectsService {
       const rows = await this.loadGateSignOffs(tx, id, gateId, market);
       const existing = rows.find((r) => r.role === role);
       if (!existing?.signedAt) throw new BadRequestException(`"${role}" is not signed`);
+      // B4 (SME rule audit, 2026-10-04): withdrawing the approval of a gate that
+      // has passed un-passed it with no Backtrack and no reopened range.
+      if (isGatePassed(project, gateId)) {
+        throw new ForbiddenException(
+          `Gate ${gateId} has passed — its signatures cannot be withdrawn; reopen it with Backtrack`,
+        );
+      }
       if (existing.signedByUserId !== user.id && !this.permissions.isAdmin(user)) {
         throw new ForbiddenException(`Only ${existing.name ?? 'the signer'} may withdraw this signature`);
       }
@@ -1627,7 +1823,26 @@ export class ProjectsService {
     phase: number,
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
-    return this.mutate(user, id, expectedVersion, 'pre_work.accepted', async (tx) => {
+    return this.mutate(user, id, expectedVersion, 'pre_work.accepted', async (tx, _row, project) => {
+      // C4 (SME rule audit, 2026-10-04). F13: pre-work is reviewed and accepted
+      // "by the responsible owner once the phase opens". Both halves were missing:
+      // anyone could accept, and could do it while the phase was still locked —
+      // i.e. before there was anything for an owner to review.
+      if (phaseProgress(project, phase).state === 'locked') {
+        throw new BadRequestException(`Phase ${phase} has not opened yet — its pre-work is accepted once it opens (F13)`);
+      }
+      // Who the "responsible owner" is: the phase's review owner on this project,
+      // or the project's Lead [ASSUMPTION: R5-Q43].
+      const phaseOwner = ownerName(PHASE_CONFIGS[phase]?.reviewOwner, project.identity.reviewers);
+      if (
+        user.displayName !== phaseOwner &&
+        user.displayName !== project.identity.projectLead &&
+        !this.permissions.isAdmin(user)
+      ) {
+        throw new ForbiddenException(
+          `Only the phase's review owner (${phaseOwner ?? 'not assigned'}) or the project's Lead may accept its pre-work (F13)`,
+        );
+      }
       await tx.phaseClosure.update({
         where: { projectId_phase: { projectId: id, phase } },
         data: { preWorkAcceptedBy: user.displayName, preWorkAcceptedDate: new Date() },
@@ -1716,6 +1931,18 @@ export class ProjectsService {
       // Widened 2026-08-12 to the whole of D2 (claim linkage mandatory unless
       // declared non-product; wording equivalence classified by a reviewer),
       // evaluated by the same shared function the UI's save-guard calls.
+      // C6: a column flagged `selfAttest` records an act ("confirmed by"), so a
+      // new or changed value must be the signed-in person. Rows are matched by
+      // their record id where they have one, otherwise by position.
+      const attestColumns = config.columns.filter((c) => c.selfAttest);
+      if (attestColumns.length > 0) {
+        const committedRows = project.registers[registerKey] ?? [];
+        rows.forEach((r, i) => {
+          const recordId = String(r.recordId ?? '').trim();
+          const old = (recordId && committedRows.find((c) => String(c.recordId ?? '').trim() === recordId)) || committedRows[i];
+          for (const c of attestColumns) assertSelfAttested(c.label, old?.[c.key], r[c.key], user.displayName);
+        });
+      }
       if (registerKey === 'publishedInfoApproval') {
         const contradictory = contradictoryClaimRows(rows);
         if (contradictory.length > 0) {
@@ -1726,7 +1953,7 @@ export class ProjectsService {
           );
         }
         const claimRows = project.registers['claimEvidenceTraceability'] ?? [];
-        const bad = publishedInfoViolations(rows, claimRows);
+        const bad = publishedInfoViolations(rows, claimRows, project.registers['skuClaimsPifRegister'] ?? []);
         if (bad.length > 0) {
           throw new BadRequestException(
             `${bad.length} Published Information row(s) cannot sit at a released workflow state: ${bad
@@ -1749,6 +1976,23 @@ export class ProjectsService {
       // re-worded, and "the UI hides the field" is not that (BACKEND_PLAN §3
       // principle 7). Bumping the revision is the sanctioned route and passes.
       if (registerKey === 'claimEvidenceTraceability') {
+        // B21 (2026-10-04): a revision approval names the person who gave it, and
+        // only someone with Regulatory or Gate 10 authority can give it.
+        const committedClaims = project.registers[registerKey] ?? [];
+        const forged = revisionApprovalForgeries(committedClaims, rows, user.displayName);
+        if (forged.length > 0) {
+          throw new BadRequestException(
+            `"Revision approved by" can only record your own approval: ${forged.join(', ')}`,
+          );
+        }
+        if (
+          newRevisionApprovals(committedClaims, rows).length > 0 &&
+          !(await this.holdsAnyCapability(user, [...REVISION_APPROVAL_CAPABILITIES]))
+        ) {
+          throw new ForbiddenException(
+            'Approving a claim revision needs Regulatory authority or the right to decide Gate 10',
+          );
+        }
         const frozen = frozenRevisionEdits(project.registers[registerKey] ?? [], rows);
         if (frozen.length > 0) {
           throw new BadRequestException(
@@ -2271,12 +2515,25 @@ export class ProjectsService {
     items: ProjectData['evidence'],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
-    return this.mutate(user, id, expectedVersion, 'evidence.updated', async (tx, row) => {
+    return this.mutate(user, id, expectedVersion, 'evidence.updated', async (tx, row, project) => {
       // Fixed rows seeded from EVIDENCE_AREAS — matched by `area`, never replaced
       // wholesale, so the seeded reference text cannot be overwritten by a client.
       for (const item of items) {
         const target = row.evidenceItems.find((e) => e.area === item.area);
         if (!target) continue;
+        // C9 (SME rule audit, 2026-10-04): the B4 edit lock, which every other
+        // evidence surface already has. A changed row whose gate has passed is
+        // refused; an unchanged one rides along with the rest of the save.
+        const gateRef = EVIDENCE_AREAS.find((a) => a.area === item.area)?.gate;
+        const changed =
+          item.status !== target.status ||
+          (item.evidenceLink ?? null) !== (target.evidenceLink ?? null) ||
+          (item.notes ?? null) !== (target.notes ?? null);
+        if (changed && isGateRefLocked(project, gateRef)) {
+          throw new ForbiddenException(
+            `Evidence area "${item.area}" belongs to gate ${gateRef}, which has passed — it is read-only (use Backtrack)`,
+          );
+        }
         await tx.evidenceItem.update({
           where: { id: target.id },
           data: {
@@ -2307,6 +2564,19 @@ export class ProjectsService {
       }
       const active = row.formulaVersions.find((v) => v.status === 'Active') ?? row.formulaVersions.at(-1);
       if (!active) throw new BadRequestException('Project has no formula version to attach BOM lines to');
+      // "From Cosmetri" is a fact about where a line came from, and it exempts the
+      // line from F14 reconciliation and from the approved-for-use check — so a
+      // client must not be able to claim it (SME rule audit A1, 2026-10-04). Only
+      // `importCosmetriBom` creates such lines; here a line may keep the flag only
+      // if it matches a line already stored with it, with the two fields Cosmetri
+      // owns (supplier, % w/w) unchanged. INCI and CAS stay editable — the import's
+      // name join can come back blank or wrong.
+      const forged = this.forgedCosmetriLines(project.bom, lines);
+      if (forged.length > 0) {
+        throw new BadRequestException(
+          `Line${forged.length > 1 ? 's' : ''} ${forged.join(', ')} claim${forged.length > 1 ? '' : 's'} to come from Cosmetri but ${forged.length > 1 ? 'do' : 'does'} not match an imported line (supplier and % w/w of an imported line cannot be changed). Use "Import from Cosmetri", or add the material as a manual line.`,
+        );
+      }
       await tx.bomLine.deleteMany({ where: { formulaVersionId: active.id } });
       if (lines.length > 0) {
         await tx.bomLine.createMany({
@@ -2321,11 +2591,116 @@ export class ProjectsService {
             percentWw: l.percentWw,
             costPerKg: l.costPerKg,
             evidenceLink: l.evidenceLink ?? null,
+            methodRef: l.methodRef ?? null,
             notes: l.notes ?? null,
+            fromCosmetri: l.fromCosmetri === true,
+            // An imported line is inherently reconciled (F14); only a manual
+            // line carries its own flag.
+            reconciled: l.fromCosmetri === true || l.reconciled === true,
+            rmDisplayName: l.rmDisplayName ?? null,
           })),
         });
       }
       return { version: active.version, lines: lines.length };
+    });
+  }
+
+  // Incoming lines flagged `fromCosmetri` that no stored imported line accounts
+  // for. Matched as a multiset on (rmCode, supplier, % w/w): one formula may list
+  // the same material twice, and each stored line can vouch for one incoming line.
+  private forgedCosmetriLines(stored: ProjectData['bom'], incoming: ProjectData['bom']): number[] {
+    const pool = stored.filter((l) => l.fromCosmetri);
+    const forged: number[] = [];
+    incoming.forEach((l, i) => {
+      if (l.fromCosmetri !== true) return;
+      const k = pool.findIndex(
+        (s) => s.rmCode === l.rmCode && s.supplier === l.supplier && Number(s.percentWw) === Number(l.percentWw),
+      );
+      if (k === -1) forged.push(i + 1);
+      else pool.splice(k, 1);
+    });
+    return forged;
+  }
+
+  // The Formula BOM import (decision A3, F14), done on the server: the composition
+  // is read from Cosmetri HERE, so every `fromCosmetri` line is one the server
+  // fetched. Replaces the active version's lines, and in the same transaction adds
+  // an identity-only Supplier & RM Evidence row for any imported material that has
+  // none — the traceability stub the web used to write as a second, separate save.
+  async importCosmetriBom(
+    user: SessionUser,
+    id: string,
+    formulaId: number,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    if (!Number.isInteger(formulaId) || formulaId <= 0) throw new BadRequestException('A Cosmetri formula id is required');
+    // Fetched before the transaction: a network call must not hold the row lock.
+    const rows: CosmetriImportRow[] = await this.cosmetri.getFormulaImport(formulaId);
+    if (rows.length === 0) throw new BadRequestException(`Cosmetri formula ${formulaId} has no composition to import`);
+
+    return this.mutate(user, id, expectedVersion, 'bom.imported_from_cosmetri', async (tx, row, project) => {
+      if (isGateRefLocked(project, '05')) {
+        throw new ForbiddenException('The Formula BOM belongs to gate 05, which has passed — it is read-only (use Backtrack)');
+      }
+      const active = row.formulaVersions.find((v) => v.status === 'Active') ?? row.formulaVersions.at(-1);
+      if (!active) throw new BadRequestException('Project has no formula version to attach BOM lines to');
+
+      await tx.bomLine.deleteMany({ where: { formulaVersionId: active.id } });
+      await tx.bomLine.createMany({
+        data: rows.map((r, i) => ({
+          formulaVersionId: active.id,
+          line: i + 1,
+          rmCode: `RM-${r.rmId}`,
+          rmDisplayName: r.code ? `${r.tradeName} | ${r.code}` : r.tradeName,
+          inciName: r.inciName,
+          casNo: r.casNo || null,
+          functionRole: '',
+          supplier: r.supplierName,
+          percentWw: r.percentWw,
+          costPerKg: 0,
+          notes: r.qualityStatus !== 'Approved' ? `Cosmetri quality status: ${r.qualityStatus}` : null,
+          fromCosmetri: true,
+          // An imported line is inherently reconciled (F14).
+          reconciled: true,
+        })),
+      });
+
+      // Traceability stubs. Skipped (and reported) once Gate 4 has passed: that
+      // register is then read-only, and adding to it would bypass the same lock
+      // the register's own save enforces.
+      const evidence = project.registers['supplierRmEvidence'] ?? [];
+      const known = new Set(evidence.map((r) => String(r.rmCode ?? '')));
+      const missing = rows.filter((r) => {
+        const code = `RM-${r.rmId}`;
+        if (known.has(code)) return false;
+        known.add(code);
+        return true;
+      });
+      const evidenceLocked = isGateRefLocked(project, getRegisterConfig('supplierRmEvidence')?.gate);
+      if (missing.length > 0 && !evidenceLocked) {
+        await tx.registerRow.createMany({
+          data: missing.map((r, i) => ({
+            projectId: id,
+            registerKey: 'supplierRmEvidence',
+            rowOrder: evidence.length + i,
+            updatedById: user.id,
+            data: {
+              ...createEmptyRegisterRow('supplierRmEvidence'),
+              rmCode: `RM-${r.rmId}`,
+              inciName: r.inciName,
+              supplier: r.supplierName,
+              grade: r.code ? `${r.tradeName} | ${r.code}` : r.tradeName,
+            } as Prisma.InputJsonValue,
+          })),
+        });
+      }
+      return {
+        version: active.version,
+        cosmetriFormulaId: formulaId,
+        lines: rows.length,
+        evidenceRowsAdded: evidenceLocked ? 0 : missing.length,
+        evidenceRowsSkippedGateLocked: evidenceLocked ? missing.length : 0,
+      };
     });
   }
 
@@ -2414,6 +2789,14 @@ export class ProjectsService {
         if (field in patch) data[field] = (patch[field] ?? '').trim() || null;
       }
       if (Object.keys(data).length === 0) return { fields: [] };
+      for (const [field, allowed] of Object.entries(ASSESSMENT_ANSWER_LISTS)) {
+        if (field in data) assertOneOf(field, data[field], allowed);
+      }
+      if ('familyUseAgeGroups' in data) {
+        for (const group of (data.familyUseAgeGroups ?? '').split(',')) {
+          assertOneOf('Family use age group', group, FAMILY_USE_AGE_GROUPS);
+        }
+      }
 
       // Questions 8 and 11 each attach a condition to one of the answers, and both
       // are enforced here rather than only in the card — BACKEND_PLAN §3 principle
@@ -2421,6 +2804,27 @@ export class ProjectsService {
       // enforcement. Merged against the stored row, not read from the patch alone,
       // so a partial PUT cannot satisfy a condition by simply omitting the field
       // that fails it.
+      // C9: each assessment is answered at its gate, and once that gate has passed
+      // the answer is evidence it passed on — changing the family-use age groups
+      // after Gate 2 used to switch the whole infant pathway off silently.
+      for (const home of ASSESSMENT_HOMES) {
+        const touched = ASSESSMENT_FIELDS_BY_KEY[home.key].some(
+          (f) => f in data && (data[f] ?? null) !== ((project.assessments[f] ?? '').trim() || null),
+        );
+        if (touched && isGateRefLocked(project, home.gateId.slice(2))) {
+          throw new ForbiddenException(
+            `"${home.title}" is answered at ${home.gateId}, which has passed — it is read-only (use Backtrack)`,
+          );
+        }
+      }
+      for (const [field, label] of [
+        ['administrativeOnlyConfirmedBy', 'Administrative-only "confirmed by"'],
+        ['changeControlReviewer', 'Change Control reviewer'],
+        ['scaleUpRiskAssessor', 'Scale-up risk assessor'],
+        ['familyUseConfirmedBy', 'Family use "confirmed by"'],
+      ] as const) {
+        if (field in data) assertSelfAttested(label, project.assessments[field], data[field], user.displayName);
+      }
       const merged = { ...project.assessments, ...patch };
       const value = (k: keyof ProjectData['assessments']) => (merged[k] ?? '').trim();
 
@@ -2636,26 +3040,133 @@ export class ProjectsService {
     actions: ProjectData['nextActions'],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
-    return this.mutate(user, id, expectedVersion, 'next_actions.updated', async (tx) => {
-      await tx.nextAction.deleteMany({ where: { projectId: id, gateId: { in: gateIds } } });
-      if (actions.length > 0) {
-        await tx.nextAction.createMany({
-          data: actions.map((a) => ({
-            projectId: id,
-            gateId: a.gateId,
-            description: a.description,
-            owner: a.owner ?? null,
-            dueDate: this.dateOrNull(a.dueDate),
-            status: a.status,
-            priority: a.priority,
-            dateCompleted: this.dateOrNull(a.dateCompleted),
-            raisedBy: a.raisedBy ?? null,
-            verifiedBy: a.verifiedBy ?? null,
-          })),
-        });
+    return this.mutate(user, id, expectedVersion, 'next_actions.updated', async (tx, _row, project) => {
+      // F8 and B4, enforced here (SME rule audit B24, 2026-10-04). Before this the
+      // server stored whatever arrived: anyone could delete or cancel a Critical
+      // action — the one kind that blocks a gate even under Proceed with
+      // Conditions — the owner could verify their own action, `verifiedBy` was
+      // whatever name the browser sent, and adding or removing actions on a gate
+      // that had already passed flipped its pass state with no Backtrack.
+      actions = await this.guardNextActions(user, project, gateIds, actions);
+      // Update in place rather than delete-and-recreate (2026-10-04 fix): safety
+      // findings and watch-list rows link to an action by its id
+      // (`linkedNextActionId`), so recreating every action under a new id broke
+      // every such link on each save and re-blocked the gates they had cleared.
+      const existing = await tx.nextAction.findMany({
+        where: { projectId: id, gateId: { in: gateIds } },
+        select: { id: true },
+      });
+      const existingIds = new Set(existing.map((e) => e.id));
+      const keep = new Set(actions.map((a) => a.id).filter((a) => existingIds.has(a)));
+      await tx.nextAction.deleteMany({
+        where: { projectId: id, gateId: { in: gateIds }, id: { notIn: [...keep] } },
+      });
+      for (const a of actions) {
+        const data = {
+          gateId: a.gateId,
+          description: a.description,
+          owner: a.owner ?? null,
+          dueDate: this.dateOrNull(a.dueDate),
+          status: a.status,
+          priority: a.priority,
+          dateCompleted: this.dateOrNull(a.dateCompleted),
+          raisedBy: a.raisedBy ?? null,
+          verifiedBy: a.verifiedBy ?? null,
+        };
+        if (keep.has(a.id)) {
+          await tx.nextAction.update({ where: { id: a.id }, data });
+        } else {
+          // A new action keeps the id the client gave it (so a link made in the
+          // same session still resolves), unless that id is already used by
+          // another record anywhere.
+          const taken = a.id ? await tx.nextAction.findUnique({ where: { id: a.id }, select: { id: true } }) : null;
+          await tx.nextAction.create({ data: { ...data, projectId: id, ...(a.id && !taken ? { id: a.id } : {}) } });
+        }
       }
       return { gates: gateIds, actions: actions.length };
     });
+  }
+
+  private async guardNextActions(
+    user: SessionUser,
+    project: ProjectData,
+    gateIds: string[],
+    incoming: ProjectData['nextActions'],
+  ): Promise<ProjectData['nextActions']> {
+    const terminal = (status: string) => NEXT_ACTION_TERMINAL_STATUSES.includes(status as NextActionStatus);
+    const before = new Map(project.nextActions.map((a) => [a.id, a]));
+    const incomingIds = new Set(incoming.map((a) => a.id));
+
+    // Removal. An open Critical action is closed by cancelling it, which carries a
+    // verifier; deleting it would make the block vanish with no trail. And nothing
+    // tied to a passed gate is deleted (B4: no silent corrections).
+    for (const old of project.nextActions.filter((a) => gateIds.includes(a.gateId) && !incomingIds.has(a.id))) {
+      if (old.priority === 'Critical' && !terminal(old.status)) {
+        throw new BadRequestException(
+          `Critical action "${old.description}" cannot be deleted while open — cancel it instead, which records who verified it`,
+        );
+      }
+      if (isGatePassed(project, old.gateId)) {
+        throw new BadRequestException(
+          `Action "${old.description}" belongs to ${old.gateId}, which has passed — it cannot be deleted (use Backtrack)`,
+        );
+      }
+    }
+
+    const result: ProjectData['nextActions'] = [];
+    for (const a of incoming) {
+      const old = before.get(a.id);
+      // Attribution is the server's: the raiser is whoever first saved the action,
+      // the verifier whoever moved it to Closed or Cancelled.
+      // An action saved before this rule has no raiser on record; it stays
+      // unattributed rather than being credited to whoever saves it next.
+      const raisedBy = old ? old.raisedBy : user.displayName;
+      let verifiedBy = old?.verifiedBy;
+      const entering = terminal(a.status) && !(old && terminal(old.status));
+      if (entering) {
+        // "The owner cannot unilaterally verify closure where independent
+        // confirmation is required." Applied to every action — when independent
+        // confirmation is NOT required is not stated [ASSUMPTION: R5-Q39].
+        if ((a.owner ?? '').trim() !== '' && a.owner === user.displayName) {
+          throw new BadRequestException(
+            `"${a.description}": you own this action, so someone else — its raiser, the gate owner or an authorised reviewer — must verify and close it (F8)`,
+          );
+        }
+        if (a.priority === 'Critical') {
+          const gateOwner = project.gates.find((g) => g.gateId === a.gateId)?.owner;
+          const allowed =
+            user.displayName === raisedBy ||
+            (!!gateOwner && user.displayName === gateOwner) ||
+            (await this.permissions.hasPermission(user, `gate:${a.gateId}`, 'decide'));
+          if (!allowed) {
+            throw new ForbiddenException(
+              `"${a.description}" is Critical: only its raiser, the ${a.gateId} gate owner or someone who may decide ${a.gateId} can close or cancel it (F8)`,
+            );
+          }
+        }
+        verifiedBy = user.displayName;
+      } else if (!terminal(a.status)) {
+        // Re-opened (or never closed): no verification stands.
+        verifiedBy = undefined;
+      }
+      result.push({ ...a, raisedBy, verifiedBy });
+    }
+
+    // A gate that has passed must still pass after this save — otherwise adding
+    // an open action to it, or raising one to Critical, quietly un-passes it.
+    const after: ProjectData = {
+      ...project,
+      nextActions: [...project.nextActions.filter((a) => !gateIds.includes(a.gateId)), ...result],
+    };
+    const flipped = project.gates
+      .filter((g) => isGatePassed(project, g.gateId) && !isGatePassed(after, g.gateId))
+      .map((g) => g.gateId);
+    if (flipped.length > 0) {
+      throw new BadRequestException(
+        `This change would un-pass ${flipped.join(', ')}, which has already passed — reopen it with Backtrack first (B4)`,
+      );
+    }
+    return result;
   }
 
   // A1/C5: market approvals need `market-track|approve`, and launch approval is
@@ -2676,6 +3187,18 @@ export class ProjectsService {
         const prev = row.marketTracks.find((t) => t.market === next.market);
         if (!prev) continue;
         let launchApproval = next.launchApproval;
+        // C5 the other way round (SME rule audit B25, 2026-10-04): moving the PIF
+        // off Approved while launch approval stands used to be kept as-is, because
+        // the revert below restored the previous value — which was Approved. The
+        // result was a launch approval resting on a PIF that is no longer approved.
+        // Refused outright: change launch approval first. Whether a market already
+        // on sale may reopen its PIF without revoking launch is not stated
+        // [ASSUMPTION: R5-Q40].
+        if (next.pifStatus !== 'Approved' && prev.launchApproval === 'Approved' && next.launchApproval === 'Approved') {
+          throw new BadRequestException(
+            `${next.market}: the PIF cannot leave Approved while launch approval stands — change the launch approval first (rule C5)`,
+          );
+        }
         if (launchApproval === 'Approved' && next.pifStatus !== 'Approved') {
           // C5 — keep the previous value rather than rejecting the whole save,
           // exactly as the store did.
@@ -2793,6 +3316,23 @@ export class ProjectsService {
         throw new BadRequestException('The current formula version cannot be superseded — create a new version first');
       }
 
+      // C3 (SME rule audit, 2026-10-04). A confirmed decision is the record a
+      // version was superseded on; a later "save draft" used to rewrite its facts
+      // while keeping the confirmer's name on them. It is now closed to edits.
+      const stored = project.supersessionDecisions.find(
+        (d) => d.version === input.version && d.market === input.market,
+      );
+      if (stored?.confirmedBy) {
+        throw new BadRequestException(
+          `The supersession decision for ${input.market} was confirmed by ${stored.confirmedBy} and can no longer be changed`,
+        );
+      }
+      // Confirming moves a version towards Superseded, so it needs an authority —
+      // until the review team says whose (one signature or several), the
+      // per-market approval capability stands in [ASSUMPTION: R5-Q8].
+      if (input.confirm && !(await this.permissions.canApproveMarketTrack(user))) {
+        throw new ForbiddenException('Confirming a supersession decision needs market approval authority (market-track|approve)');
+      }
       const draft = { ...input, confirmedBy: input.confirm ? user.displayName : undefined };
       if (input.confirm) {
         const gaps = supersessionGaps(draft);
@@ -2829,9 +3369,10 @@ export class ProjectsService {
         where: { projectId: id, version: input.version },
       });
       const complete = decisions.filter((d) => supersessionGaps(toSupersessionDecision(d)).length === 0);
-      const allMarketsDecided =
-        project.identity.markets.length > 0 &&
-        project.identity.markets.every((m) => complete.some((d) => d.market === m));
+      // Withdrawn markets owe no decision (SME rule audit A9) — the same list
+      // `marketsAwaitingSupersession` reads, so the UI and this agree.
+      const owed = activeMarkets(project);
+      const allMarketsDecided = owed.length > 0 && owed.every((m) => complete.some((d) => d.market === m));
       const state = allMarketsDecided ? 'Superseded' : 'Transition in Progress';
       await tx.formulaVersion.update({ where: { id: version.id }, data: { status: state } });
 
@@ -2840,7 +3381,7 @@ export class ProjectsService {
         market: input.market,
         confirmed: !!input.confirm,
         versionState: state,
-        marketsRemaining: project.identity.markets.filter((m) => !complete.some((d) => d.market === m)),
+        marketsRemaining: owed.filter((m) => !complete.some((d) => d.market === m)),
       };
     });
   }
@@ -2853,9 +3394,39 @@ export class ProjectsService {
     approvals: ProjectData['studyApprovals'],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
-    return this.mutate(user, id, expectedVersion, 'study_approvals.updated', async (tx, row) => {
+    return this.mutate(user, id, expectedVersion, 'study_approvals.updated', async (tx, row, project) => {
+      // C9: the study approval trail sits on the Study Protocol register, so it
+      // follows that register's gate lock.
+      if (isGateRefLocked(project, getRegisterConfig('studyProtocolSetup')?.gate)) {
+        throw new ForbiddenException('The study approval trail belongs to gate 08, which has passed — it is read-only (use Backtrack)');
+      }
+      // C5 (SME rule audit, 2026-10-04): the department C2 compares used to be
+      // whatever the browser sent, and the check was skipped when either was blank
+      // — so independence could be satisfied by typing a different department, or
+      // by typing none. The department is now each named person's SSO department,
+      // and a named person must be a real account with one.
+      const resolved: ProjectData['studyApprovals'] = [];
+      for (const a of approvals) {
+        const name = a.name?.trim();
+        if (!name) {
+          resolved.push({ ...a, department: undefined });
+          continue;
+        }
+        const person = await tx.user.findFirst({
+          where: { displayName: { equals: name, mode: 'insensitive' }, active: true },
+          include: { department: true },
+        });
+        if (!person) throw new BadRequestException(`${a.role}: "${name}" is not an active user`);
+        resolved.push({ ...a, department: person.department?.name ?? undefined });
+      }
+      approvals = resolved;
       const author = approvals.find((a) => a.role === 'Study Author');
       const independent = approvals.find((a) => a.role === 'Independent Reviewer');
+      if (author?.name?.trim() && independent?.name?.trim() && (!author.department || !independent.department)) {
+        throw new BadRequestException(
+          `Independence cannot be checked: ${!author.department ? author.name : independent.name} has no department on their account (rule C2)`,
+        );
+      }
       if (
         author?.department?.trim() &&
         independent?.department?.trim() &&
@@ -2970,6 +3541,25 @@ export class ProjectsService {
 
     const version = input.version.trim();
     if (!version) throw new BadRequestException('A formula version is required');
+    // F5 (SME rule audit C1, 2026-10-04): "the change initiator may propose the
+    // classification, but an authorised technical or quality reviewer must
+    // confirm it." The confirmer used to be a typed name and nothing checked who
+    // created a version at all. Now the person creating it is the confirmer, and
+    // must hold Technical or Quality authority. Whether the initiator and the
+    // confirmer may be the same person is ours to ask [ASSUMPTION: R5-Q42].
+    if (!(await this.holdsAnyCapability(user, [...FORMULA_CLASSIFICATION_CAPABILITIES]))) {
+      throw new ForbiddenException(
+        'Creating a formula version confirms its Major/Minor classification, which needs Technical or Quality authority (F5)',
+      );
+    }
+    // Any ticked impact area makes it Major — the modal enforced this, the API did not.
+    const majorCriteria = (input.majorCriteria ?? []).filter((c) => MAJOR_CHANGE_CRITERIA.some((m) => m.id === c));
+    if (majorCriteria.length !== (input.majorCriteria ?? []).length) {
+      throw new BadRequestException('Unknown change-impact criterion');
+    }
+    if (majorCriteria.length > 0 && input.changeType !== 'Major') {
+      throw new BadRequestException('A change that touches any impact area is Major (F5)');
+    }
 
     const envelope = await this.mutate(
       user,
@@ -3008,7 +3598,10 @@ export class ProjectsService {
             previousVersionId: previous?.id,
             changeType: input.changeType,
             reason: input.reason ?? null,
-            initiatedBy: input.initiatedBy ?? user.displayName,
+            // C8/C1: who did it comes from the session, never from the request.
+            initiatedBy: user.displayName,
+            majorCriteria,
+            classificationConfirmedBy: user.displayName,
             status: 'Active',
           },
         });
@@ -3028,7 +3621,11 @@ export class ProjectsService {
               percentWw: l.percentWw,
               costPerKg: l.costPerKg,
               evidenceLink: l.evidenceLink,
+              methodRef: l.methodRef,
               notes: l.notes,
+              fromCosmetri: l.fromCosmetri,
+              reconciled: l.reconciled,
+              rmDisplayName: l.rmDisplayName,
             })),
           });
         }
@@ -3036,6 +3633,8 @@ export class ProjectsService {
         await tx.marketTrack.updateMany({ where: { projectId: id }, data: { formulaVersionId: created.id } });
 
         let reopened: string[] = [];
+        // B5: the gate signatures this version invalidated, kept on the audit row.
+        let clearedGateSignOffs: Prisma.JsonObject[] = [];
         if (input.changeType === 'Major') {
           const toIdx = gateIndex('SG04');
           const fromIdx = gateIndex('SG09');
@@ -3087,7 +3686,7 @@ export class ProjectsService {
           await tx.backtrackEvent.create({
             data: {
               projectId: id,
-              initiatedBy: input.initiatedBy?.trim() || user.displayName,
+              initiatedBy: user.displayName,
               reason: `Formula version ${project.formulaVersion} -> ${version} (Major)${input.reason ? ` — ${input.reason}` : ''}`,
               fromGateId: 'SG09',
               toGateId: 'SG04',
@@ -3100,6 +3699,8 @@ export class ProjectsService {
             where: { projectId: id, gateId: { in: reopened } },
             data: { status: 'Not Started', decision: null },
           });
+          clearedGateSignOffs = await this.clearGateSignOffs(tx, id, reopened);
+          await this.clearPreWorkAcceptance(tx, id, GATES[toIdx].phase);
 
           // Register closing (2026-08-27) — same reopen-in-lockstep fix as
           // backtrack() above, needed here too since this is the same
@@ -3161,7 +3762,7 @@ export class ProjectsService {
             data: {
               changeId: `FC-${String(nextFc).padStart(3, '0')}`,
               productFamilySku: project.identity.productSku,
-              requestedByNpd: input.initiatedBy ?? user.displayName,
+              requestedByNpd: user.displayName,
               dateRequested: new Date().toISOString().slice(0, 10),
               changeTitle: `Formula version ${project.formulaVersion} -> ${version} (${input.changeType})`,
               explanation: input.reason ?? '',
@@ -3172,7 +3773,7 @@ export class ProjectsService {
           },
         });
 
-        return { version, changeType: input.changeType, reopenedGateIds: reopened };
+        return { version, changeType: input.changeType, reopenedGateIds: reopened, clearedGateSignOffs };
       },
     );
 
@@ -3190,7 +3791,47 @@ export class ProjectsService {
     records: ChangeRecord[],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
-    return this.mutate(user, id, expectedVersion, 'changes.updated', async (tx) => {
+    // The risk level decides whether an open change hard-blocks Gate 11, so a
+    // value off the shared scale (a typo, a lower-case 'critical') must not reach
+    // the rule engine, which compares exact values.
+    for (const c of records) {
+      for (const area of c.impactAreas ?? []) assertOneOf(`${c.changeId}: impact area`, area, CHANGE_IMPACT_AREAS);
+    }
+    const badRisk = records.find((c) => !(RISK_LEVELS as readonly string[]).includes(c.riskLevel));
+    if (badRisk) {
+      throw new BadRequestException(
+        `${badRisk.changeId}: risk level "${badRisk.riskLevel}" is not one of ${RISK_LEVELS.join(' / ')}`,
+      );
+    }
+    return this.mutate(user, id, expectedVersion, 'changes.updated', async (tx, _row, project) => {
+      // C2 (SME rule audit, 2026-10-04). The list was replaced wholesale, so any
+      // save could drop a change record — including an open one that was holding
+      // a gate (F9) — and the audit said only how many rows there were. Now only a
+      // Draft, which was never submitted, may be discarded; anything further along
+      // ends in a closing status, so its history stays (B4). And the audit names
+      // what changed, record by record.
+      const before = new Map(project.changes.map((c) => [c.changeId, c]));
+      const incomingIds = new Set(records.map((c) => c.changeId));
+      const removed = project.changes.filter((c) => !incomingIds.has(c.changeId));
+      const notDraft = removed.filter((c) => c.status !== 'Draft');
+      if (notDraft.length > 0) {
+        throw new BadRequestException(
+          `${notDraft.map((c) => c.changeId).join(', ')} cannot be deleted — only a Draft can. Close it with Rejected, Cancelled or Superseded instead, so its history stays`,
+        );
+      }
+      const edited: { changeId: string; fields: string[] }[] = [];
+      const added: string[] = [];
+      for (const c of records) {
+        const old = before.get(c.changeId);
+        if (!old) {
+          added.push(c.changeId);
+          continue;
+        }
+        const fields = (Object.keys({ ...old, ...c }) as (keyof ChangeRecord)[]).filter(
+          (k) => k !== 'projectId' && JSON.stringify(old[k] ?? null) !== JSON.stringify(c[k] ?? null),
+        );
+        if (fields.length > 0) edited.push({ changeId: c.changeId, fields });
+      }
       await tx.changeRecord.deleteMany({ where: { projectId: id } });
       if (records.length > 0) {
         await tx.changeRecord.createMany({
@@ -3225,7 +3866,12 @@ export class ProjectsService {
           })),
         });
       }
-      return { records: records.length };
+      return {
+        records: records.length,
+        added,
+        removed: removed.map((c) => c.changeId),
+        edited,
+      } as unknown as Prisma.InputJsonValue;
     });
   }
 
@@ -3249,6 +3895,9 @@ export class ProjectsService {
     nextGate: GateRecord,
     openChangeGateNumbers: Set<string>,
     strict: boolean,
+    // Readiness items to leave out — only ever this gate's own sign-off items,
+    // when a per-market approver signs one lane while others are still open (B2).
+    skipItemIds: string[] = [],
   ): GateRecord['decision'] {
     if (requested !== 'Proceed' && requested !== 'Proceed with Conditions') return requested;
 
@@ -3290,10 +3939,11 @@ export class ProjectsService {
 
     // F1/C7: Mandatory evidence blocks both decisions; Proceed with Conditions
     // clears only the softer open-non-critical-next-action blocker.
-    const blockers =
+    const blockers = (
       requested === 'Proceed'
         ? gateBlockers(project, gateId, requested)
-        : hardGateBlockers(project, gateId);
+        : hardGateBlockers(project, gateId)
+    ).filter((b) => !skipItemIds.includes(b.id));
     if (blockers.length > 0) {
       return reject(
         `Gate ${gateId}: "${requested}" is not valid yet — ${blockers.map((b) => b.label).join('; ')}`,
@@ -3301,6 +3951,83 @@ export class ProjectsService {
     }
     void changes;
     return requested;
+  }
+
+  // B5 (SME rule audit, 2026-10-04): reopening a gate — Backtrack (B4) or a Major
+  // formula version (A2) — invalidated the PHASE sign-offs and the register
+  // closings but left the GATE sign-offs standing, so a reopened gate still carried
+  // the three signatures given for the evidence that was just thrown open. Clears
+  // the signature on every lane of the reopened gates, keeping the nomination (the
+  // same people re-sign), and returns what was cleared so the caller can put it on
+  // the audit record — B4's "never deletes" for a signature means it stays
+  // readable somewhere after it stops counting.
+  private async clearGateSignOffs(tx: Prisma.TransactionClient, projectId: string, gateIds: string[]): Promise<Prisma.JsonObject[]> {
+    if (gateIds.length === 0) return [];
+    const signed = await tx.gateSignOff.findMany({
+      where: { projectId, gateId: { in: gateIds }, signedAt: { not: null } },
+    });
+    if (signed.length === 0) return [];
+    await tx.gateSignOff.updateMany({
+      where: { id: { in: signed.map((g) => g.id) } },
+      data: {
+        name: null,
+        initials: null,
+        signedByUserId: null,
+        signedAt: null,
+        roleAtSigning: null,
+        decision: null,
+        comment: null,
+        signatureImage: null,
+        signatureVerifiedAt: null,
+        snapshot: Prisma.DbNull,
+      },
+    });
+    return signed.map((g) => ({
+      gateId: g.gateId,
+      market: g.market,
+      role: g.role,
+      name: g.name,
+      signedByUserId: g.signedByUserId,
+      signedAt: g.signedAt?.toISOString() ?? null,
+      roleAtSigning: g.roleAtSigning,
+      decision: g.decision,
+      comment: g.comment,
+    }));
+  }
+
+  // C4: phases AFTER the one a reopen goes back to are locked again, so what is
+  // entered in them from now on is pre-work again (F13) — the acceptance given
+  // when they first opened no longer covers it.
+  private async clearPreWorkAcceptance(tx: Prisma.TransactionClient, projectId: string, reopenedPhase: number): Promise<void> {
+    await tx.phaseClosure.updateMany({
+      where: { projectId, phase: { gt: reopenedPhase } },
+      data: { preWorkAcceptedBy: null, preWorkAcceptedDate: null },
+    });
+  }
+
+  // The readiness items on this gate that read its own sign-off.
+  private signOffItemIds(gateId: string): string[] {
+    return (GATE_READINESS[gateId] ?? []).filter((r) => r.check.kind === 'gateSignedOff').map((r) => r.id);
+  }
+
+  // B3 (SME rule audit, 2026-10-04) — question 29(5): "the approver's decision
+  // IS the gate decision … no separate duplicate decision after approval." The
+  // Gate Flow dropdown was a second way to record the same thing, and the one
+  // that let a gate pass on Proceed although its approver had signed Hold. So it
+  // can no longer record a passing decision at all, nor change any decision once
+  // an approver has signed on this gate — withdrawing that signature is the way.
+  private assertDecisionNotSignedElsewhere(project: ProjectData, gateId: string, existing: GateRecord, requested: GateRecord['decision']): void {
+    if ((requested ?? null) === (existing.decision ?? null)) return;
+    if (requested && GATE_PASSING_DECISIONS.includes(requested)) {
+      throw new BadRequestException(
+        `Gate ${gateId}: "${requested}" is recorded by the approver's sign-off, not set directly (question 29(5))`,
+      );
+    }
+    if (project.gateSignOffs.some((g) => g.gateId === gateId && g.role === 'Approved by' && g.signedAt)) {
+      throw new BadRequestException(
+        `Gate ${gateId}: an approver has signed this gate, so its decision is theirs — withdraw that signature to change it`,
+      );
+    }
   }
 
   // Gate numbers with an open change control record, for the F9 guard. Change
@@ -3348,7 +4075,9 @@ export class ProjectsService {
       // Round 4 questions 32(c) / 34(d). Inside the transaction because it reads
       // the project's flagged findings and open changes, which `assertCanDecide`
       // above cannot see — that runs before the row is loaded.
+      if ('gapAssessor' in patch) assertSelfAttested('Gap assessor', existing.gapAssessor, patch.gapAssessor, user.displayName);
       if ('decision' in patch) {
+        this.assertDecisionNotSignedElsewhere(project, gateId, existing, patch.decision);
         await this.assertCanCarryConditions(user, project, gateId, patch.decision);
       }
       const decision = this.resolveDecision(
@@ -3418,7 +4147,11 @@ export class ProjectsService {
         // false` treatment `resolveDecision` gets here: a missing grant is an
         // authorisation failure, not a rule the bulk save can quietly decline to
         // apply. Silently dropping it would tell the user their save succeeded.
+        if ('gapAssessor' in update) {
+          assertSelfAttested(`${update.gateId} gap assessor`, existing.gapAssessor, update.gapAssessor, user.displayName);
+        }
         if ('decision' in update) {
+          this.assertDecisionNotSignedElsewhere(project, update.gateId, existing, update.decision);
           await this.assertCanCarryConditions(user, project, update.gateId, update.decision);
         }
         const decision = this.resolveDecision(
@@ -3521,7 +4254,9 @@ export class ProjectsService {
       const event = await tx.backtrackEvent.create({
         data: {
           projectId: id,
-          initiatedBy: body.initiatedBy?.trim() || undefined,
+          // C8 (SME rule audit, 2026-10-04): the person who backtracked is the
+          // signed-in user — B4's "who" cannot be a value the client chooses.
+          initiatedBy: user.displayName,
           reason: body.reason.trim(),
           fromGateId: body.fromGateId,
           toGateId: body.toGateId,
@@ -3535,6 +4270,8 @@ export class ProjectsService {
         where: { projectId: id, gateId: { in: affected.map((g) => g.gateId) } },
         data: { status: 'Not Started', decision: null },
       });
+      const previousGateSignOffs = await this.clearGateSignOffs(tx, id, affected.map((g) => g.gateId));
+      await this.clearPreWorkAcceptance(tx, id, GATES[toIdx].phase);
 
       for (const phase of affectedPhases) {
         const closure = row.phaseClosures.find((c) => c.phase === phase);
@@ -3595,7 +4332,7 @@ export class ProjectsService {
           entityType: 'backtrack_event',
           entityId: event.id,
           action: 'project.backtracked',
-          before: { previousGates, previousSignOffs } as unknown as Prisma.InputJsonValue,
+          before: { previousGates, previousSignOffs, previousGateSignOffs } as unknown as Prisma.InputJsonValue,
           after: {
             fromGateId: body.fromGateId,
             toGateId: body.toGateId,
@@ -3643,7 +4380,14 @@ export class ProjectsService {
     await tx.$queryRaw`SELECT id FROM projects WHERE id = ${id} FOR UPDATE`;
     const row = await this.loadOrThrow(tx, id);
     this.assertMutable(row);
-    if (Number.isInteger(expectedVersion) && expectedVersion !== row.version) {
+    // C12 (SME rule audit, 2026-10-04): a missing version used to skip the check
+    // entirely, so any client that left it out wrote last-write-wins — exactly
+    // what BACKEND_PLAN §3 principle 8 exists to prevent. Every project write the
+    // web makes sends one; a write without one is refused rather than trusted.
+    if (!Number.isInteger(expectedVersion)) {
+      throw new BadRequestException('expectedVersion is required — reload the project and try again');
+    }
+    if (expectedVersion !== row.version) {
       throw new ConflictException({
         message: 'This project was updated by someone else — reload before saving',
         expectedVersion,
@@ -3658,6 +4402,10 @@ export class ProjectsService {
   }
 
   private gateWriteData(next: Partial<GateRecord>): Prisma.GateRecordUpdateInput {
+    if ('status' in next) assertOneOf('Stage status', next.status, STAGE_STATUSES);
+    if ('decision' in next) assertOneOf('Gate decision', next.decision, GATE_DECISIONS);
+    if ('gapCriticality' in next) assertOneOf('Gap criticality', next.gapCriticality, RISK_LEVELS);
+    if ('gapImpactCategory' in next) assertOneOf('Gap impact category', next.gapImpactCategory, GAP_IMPACT_CATEGORIES);
     const data: Prisma.GateRecordUpdateInput = {};
     if ('status' in next) data.status = next.status;
     if ('decision' in next) data.decision = next.decision ?? null;

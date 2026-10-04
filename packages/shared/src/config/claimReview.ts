@@ -90,7 +90,33 @@ export const UNEVALUATED_C1_CONDITIONS: string[] = [];
 // equivalent list, so the shape was borrowed rather than invented. CONFIRMED by
 // Round 4 question 27(a), 2026-08-24: "Accept the proposed Regulatory review
 // fields … For a triggered claim, all five must be completed."
-export const CLAIM_REVIEW_COLUMNS = ['regulatoryReviewOutcome', 'regulatoryReviewer', 'regulatoryReviewDate'];
+//
+// The list carried only the first three until 2026-10-04 (SME rule audit B19),
+// although the answer says all five — rationale and evidence link were never
+// required.
+export const CLAIM_REVIEW_COLUMNS = [
+  'regulatoryReviewOutcome',
+  'regulatoryReviewer',
+  'regulatoryReviewDate',
+  'regulatoryReviewRationale',
+  'regulatoryReviewEvidence',
+];
+
+// The outcomes that let a reviewed claim stand at Gate 3. "Not Approved" and
+// "Further Information Required" are recorded reviews, but not ones a claim can
+// go forward on: the claim must be reworded (which voids the review and asks
+// for a new one) or removed. That reading is ours [ASSUMPTION: R5-Q35].
+// Question 28(2)'s Technical half, required only of a claim the Claims Library
+// does not cover. Same five-field shape as above [ASSUMPTION: R5-Q36].
+export const CLAIM_TECHNICAL_REVIEW_COLUMNS = [
+  'technicalReviewOutcome',
+  'technicalReviewer',
+  'technicalReviewDate',
+  'technicalReviewRationale',
+  'technicalReviewEvidence',
+];
+
+export const CLAIM_REVIEW_OUTCOMES_PASSING: readonly string[] = ['Approved', 'Approved with Conditions'];
 
 // C1's "the claim varies from previously approved wording", made checkable
 // 2026-08-11 (project owner: at first declaration there IS no previous wording —

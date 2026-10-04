@@ -2,8 +2,17 @@ import { useMemo } from 'react';
 import { Alert, Checkbox, Input, Select, Tooltip } from 'antd';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
-import { contradictoryClaimRows, publishedInfoViolations, wordingDiffers, wordingSimilarity } from '@mbc360/shared/utils/claimEvidence';
+import {
+  CLAIM_EXEMPTION_CAPABILITY,
+  contradictoryClaimRows,
+  publishedInfoViolations,
+  wordingDiffers,
+  wordingSimilarity,
+} from '@mbc360/shared/utils/claimEvidence';
 import DynamicTable, { type CellApi } from './DynamicTable';
+import { useSession } from '../auth/useSession';
+import { useAppStore } from '../store/useAppStore';
+import { EMPTY_GRANTS, hasCapability } from '../utils/permissions';
 
 // Published_Info_Approval: the generic register table (DynamicTable, 2026-10-02
 // concept) plus this register's own cell rules — it was a fork of the whole table
@@ -37,6 +46,7 @@ export default function PublishedInfoApprovalTable({
   config,
   rows,
   claimEvidenceRows,
+  skuClaimRows,
   onSave,
   readOnly,
   readOnlyReason,
@@ -47,6 +57,9 @@ export default function PublishedInfoApprovalTable({
   // Live Claim -> Evidence Traceability rows for this project — the picker's
   // source list, and the source of the read-only master wording column.
   claimEvidenceRows: RegisterRow[];
+  // SKU claim register rows — where a claim's approval for a market and channel
+  // is recorded (Round 4 question 30(c)).
+  skuClaimRows: RegisterRow[];
   onSave: (rows: RegisterRow[]) => void;
   readOnly?: boolean;
   readOnlyReason?: string;
@@ -96,6 +109,12 @@ export default function PublishedInfoApprovalTable({
     };
   };
 
+  // Real roles, not the "View as" preview: confirming is a real act on real data.
+  const session = useSession();
+  const grants = useAppStore((st) => st.permissionGrid?.grants ?? EMPTY_GRANTS);
+  const canConfirmExemption =
+    session.isAdmin || hasCapability(grants, (session.user?.roles ?? []).map((r) => r.key), CLAIM_EXEMPTION_CAPABILITY);
+
   const renderCell = (column: RegisterColumn, row: RegisterRow, _index: number, api: CellApi): React.ReactNode | undefined => {
     switch (column.key) {
       // No input by design: the API stamps this from the signed-in account when
@@ -109,6 +128,28 @@ export default function PublishedInfoApprovalTable({
           <span className="rt-muted" style={{ fontSize: 12 }}>
             {row.noProductClaim ? 'recorded when you save' : 'no exemption declared'}
           </span>
+        );
+      }
+      // Question 30(e) / C7: confirmed only by an explicit act of a Technical or
+      // Regulatory reviewer — ticking "Confirm exemption" asks the server to
+      // stamp it from the session on the next save. Saving the table for any
+      // other reason confirms nothing.
+      case 'noProductClaimConfirmedBy': {
+        const confirmed = String(row.noProductClaimConfirmedBy ?? '').trim();
+        if (confirmed) return <span className="rt-static">{confirmed}</span>;
+        if (!row.noProductClaim) {
+          return <span className="rt-muted" style={{ fontSize: 12 }}>no exemption declared</span>;
+        }
+        if (api.readOnly || !canConfirmExemption) {
+          return <span className="rt-muted" style={{ fontSize: 12 }}>awaiting a Technical or Regulatory reviewer</span>;
+        }
+        return (
+          <Checkbox
+            checked={row.confirmNoProductClaim === true}
+            onChange={(e) => api.patch('confirmNoProductClaim', e.target.checked)}
+          >
+            Confirm exemption (recorded as you on save)
+          </Checkbox>
         );
       }
       // Read-only, rendered from the claim rather than the row's stored copy so
@@ -157,8 +198,8 @@ export default function PublishedInfoApprovalTable({
       }
       case 'claimId': {
         const claimId = String(row.claimId ?? '');
-        const violation = publishedInfoViolations(api.draft, claimEvidenceRows).find((v) => v.row === row);
-        const isViolation = violation?.kind === 'unlinked' || violation?.kind === 'unsupported';
+        const violation = publishedInfoViolations(api.draft, claimEvidenceRows, skuClaimRows).find((v) => v.row === row);
+        const isViolation = violation?.kind === 'unlinked' || violation?.kind === 'unsupported' || violation?.kind === 'use';
         const exempt = !!row.noProductClaim;
         return (
           <Tooltip
@@ -204,7 +245,7 @@ export default function PublishedInfoApprovalTable({
       }
       case 'exactWording': {
         const adaptation = adaptationFor(row);
-        const violation = publishedInfoViolations(api.draft, claimEvidenceRows).find((v) => v.row === row);
+        const violation = publishedInfoViolations(api.draft, claimEvidenceRows, skuClaimRows).find((v) => v.row === row);
         return (
           <>
             <Input.TextArea
@@ -243,10 +284,10 @@ export default function PublishedInfoApprovalTable({
       subtitleText={(row) =>
         [row.publishedItem, row.channel].map((v) => String(v ?? '').trim()).filter(Boolean).join(' · ')
       }
-      rowHasError={(row, draft) => publishedInfoViolations(draft, claimEvidenceRows).some((v) => v.row === row)}
+      rowHasError={(row, draft) => publishedInfoViolations(draft, claimEvidenceRows, skuClaimRows).some((v) => v.row === row)}
       saveBlockers={(draft) => {
         // All three D2 release conditions, from the same function the API calls.
-        const violations = publishedInfoViolations(draft, claimEvidenceRows);
+        const violations = publishedInfoViolations(draft, claimEvidenceRows, skuClaimRows);
         // Both cells are disabled to keep this impossible, so a row can only
         // reach this state through data from elsewhere — but the guard exists at
         // both layers regardless (BACKEND_PLAN §3 principle 7).
@@ -260,7 +301,7 @@ export default function PublishedInfoApprovalTable({
       }}
       notices={(draft) => {
         if (readOnly) return null;
-        const violations = publishedInfoViolations(draft, claimEvidenceRows);
+        const violations = publishedInfoViolations(draft, claimEvidenceRows, skuClaimRows);
         if (violations.length > 0) {
           return (
             <Alert

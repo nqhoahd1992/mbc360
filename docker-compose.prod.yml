@@ -25,11 +25,11 @@
 #   AUTH_REDIRECT_URI=...     (must exactly match the Entra app registration's
 #                              redirect URI; defaults to
 #                              ${APP_BASE_URL}/api/auth/callback if unset)
-#   AUTH_AUTO_ADMIN_ROLE=...  (optional, default off — TEMPORARY dev-phase
-#                              flag; "true" auto-grants admin to every
-#                              zero-role Microsoft 365 sign-in, with NO
-#                              production lockout. Leave unset/false once
-#                              real users are on this deployment.)
+#   PINNED_ADMINS=...         (optional, comma-separated emails — each is made
+#                              sure to exist, be active and hold System
+#                              Administrator on EVERY api start, i.e. every
+#                              deploy. This is how a deployment gets its
+#                              first administrator.)
 #   WEB_IMAGE / API_IMAGE / MIGRATE_IMAGE
 #                             (optional registry image refs; defaults build locally)
 services:
@@ -82,7 +82,7 @@ services:
       AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
       APP_BASE_URL: ${APP_BASE_URL}
       AUTH_REDIRECT_URI: ${AUTH_REDIRECT_URI}
-      AUTH_AUTO_ADMIN_ROLE: ${AUTH_AUTO_ADMIN_ROLE:-false}
+      PINNED_ADMINS: ${PINNED_ADMINS:-}
     depends_on:
       postgres:
         condition: service_healthy

@@ -34,6 +34,7 @@ export type ReadinessTier = 'Mandatory' | 'Conditional' | 'Supporting';
 // capture yet.
 import { UNEVALUATED_C1_CONDITIONS } from './claimReview';
 import { NO_VULNERABLE_GROUP } from './vulnerableGroups';
+import { GATE4_DISPOSITION_PROHIBITED } from './registers';
 
 export type ReadinessTrigger =
   | 'skincareForTwo'
@@ -351,6 +352,24 @@ export type ReadinessCheck =
   // Rule E2: the built-in ASEAN PIF checklist is complete. Conditional on an
   // ASEAN market being selected.
   | { kind: 'aseanChecklistComplete' }
+  // Gate 7 Final Safety Sign-off: every question Completed, except that the
+  // pregnancy / breastfeeding row may be N/A with a rationale (in Notes) on a
+  // product whose maternal trigger has been assessed as not applying (Round 3
+  // E1). Never vacuous: the register is `mode: 'fixed'` with ten seeded rows.
+  | { kind: 'finalSafetySignOffComplete' }
+  // Rule C3: every automatic match between a Formula BOM line and a watch-list
+  // group has been taken up on that group's row — the row is no longer at the
+  // untouched status that says the ingredient is absent. Vacuous on an empty
+  // formula, which is why it sits at Gate 7, after `bomHasLines` (Gate 5).
+  | { kind: 'bomMatchesTakenUp'; list: 'prohibited' | 'pbCaution' }
+  // Round 4 question 19(d): "if no claims are proposed, this must be explicitly
+  // recorded". Satisfied only when the claim ledger is EMPTY and the Gate 3 Key
+  // Gate Check on claims is N/A with a justification — the explicit record. Lets
+  // the claim items that presuppose a claim (classification, claim areas,
+  // evidence route) pass on a genuinely claim-free product instead of forcing
+  // one to be invented. Never vacuous: an unticked row or a ledger with rows
+  // leaves it unsatisfied.
+  | { kind: 'noClaimsDeclared' }
   // Round 4 question 22(b): on a checklist section declaring `requiresPrimary`,
   // exactly one SELECTED option is marked Primary. Never vacuous — with nothing
   // selected there is no primary either, so it blocks.
@@ -370,7 +389,10 @@ export type ReadinessCheck =
   | { kind: 'identityMarketsRecorded' }
   // Round 4 question 36(b): the Costing / Commercial Feasibility Status is set to
   // something other than 'Not Started', with a rationale where it is N/A.
-  | { kind: 'costingStatusRecorded' }
+  // `feasibleOnly`: the status must also SAY feasible — "Commercially Feasible",
+  // or N/A with a rationale. Used where a Must commercial requirement makes a
+  // failed or unresolved costing something to Hold or Proceed with Conditions on.
+  | { kind: 'costingStatusRecorded'; feasibleOnly?: boolean }
   // Round 4 question 6: every row of a watch-list register carries one of the six
   // Gate 4 dispositions. "Gate 4 must not pass with unassessed rows", so a blank
   // is a block and Proceed with Conditions does not clear it.
@@ -950,11 +972,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg03-claims',
       label: 'Proposed claims list',
       tier: 'Mandatory',
+      // A claim-free product passes on the explicit "no claims" record instead
+      // (question 19(d)); see `noClaimsDeclared`.
       check: {
-        kind: 'allOf',
+        kind: 'anyOf',
         checks: [
-          { kind: 'gateCheckDone', gate: '03', check: 'Claim/benefit areas selected and evidence route identified' },
-          { kind: 'checklistHasSelection', section: 'claimAreas' },
+          { kind: 'noClaimsDeclared' },
+          {
+            kind: 'allOf',
+            checks: [
+              { kind: 'gateCheckDone', gate: '03', check: 'Claim/benefit areas selected and evidence route identified' },
+              { kind: 'checklistHasSelection', section: 'claimAreas' },
+            ],
+          },
         ],
       },
     },
@@ -981,10 +1011,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // must be explicitly recorded" — `registerRowsComplete` is non-vacuous, so an
       // empty ledger fails, and the explicit record is the sibling item
       // `sg03-no-claims` below.
+      // 2026-10-04 (SME rule audit A7): an empty ledger used to fail this item
+      // even when `sg03-no-claims` was satisfied, so a claim-free product could
+      // never pass Gate 3. The explicit record now satisfies it too.
       check: {
-        kind: 'registerRowsComplete',
-        register: 'claimEvidenceTraceability',
-        columns: ['claimId', 'approvedWording', 'claimCategory', 'claimRisk', 'preliminaryEvidenceRequirement'],
+        kind: 'anyOf',
+        checks: [
+          { kind: 'noClaimsDeclared' },
+          {
+            kind: 'registerRowsComplete',
+            register: 'claimEvidenceTraceability',
+            columns: ['claimId', 'approvedWording', 'claimCategory', 'claimRisk', 'preliminaryEvidenceRequirement'],
+          },
+        ],
       },
     },
     {
@@ -1018,11 +1057,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg03-evidence-reqs',
       label: 'Evidence requirements identified for each proposed claim',
       tier: 'Mandatory',
+      // "for each proposed claim" — with no claims proposed there is nothing to
+      // identify, so the explicit "no claims" record satisfies it.
       check: {
-        kind: 'allOf',
+        kind: 'anyOf',
         checks: [
-          { kind: 'gateCheckDone', gate: '03', check: 'Claim/benefit areas selected and evidence route identified' },
-          { kind: 'checklistHasSelection', section: 'evidenceRoute' },
+          { kind: 'noClaimsDeclared' },
+          {
+            kind: 'allOf',
+            checks: [
+              { kind: 'gateCheckDone', gate: '03', check: 'Claim/benefit areas selected and evidence route identified' },
+              { kind: 'checklistHasSelection', section: 'evidenceRoute' },
+            ],
+          },
         ],
       },
     },
@@ -1325,7 +1372,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'No unresolved "Prohibited - remove" findings',
       tier: 'Mandatory',
       // Auto-evaluated hard block: the confirmed C7 example (Gate 04 side).
-      check: { kind: 'registerNoBadRows', register: 'prohibitedIngredients', column: 'productStatus', badValues: ['Prohibited - remove'] },
+      // The Gate 4 disposition column (question 6) carries its own "Prohibited —
+      // remove", and question 32(a) keeps it "a separate direct hard block". It was
+      // read by no rule until 2026-10-04 (SME rule audit B16), so a row a reviewer
+      // had dispositioned as prohibited blocked nothing.
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'registerNoBadRows', register: 'prohibitedIngredients', column: 'productStatus', badValues: ['Prohibited - remove'] },
+          { kind: 'registerNoBadRows', register: 'prohibitedIngredients', column: 'gate4Disposition', badValues: [GATE4_DISPOSITION_PROHIBITED] },
+        ],
+      },
     },
     {
       id: 'sg04-pb-screen',
@@ -1351,12 +1408,24 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: {
         kind: 'allOf',
         checks: [
+          // Reworked 2026-10-04 (SME rule audit B17). This used to hard-block
+          // "Needs Safety / Regulatory Review" outright, so a row a qualified
+          // reviewer had assessed as non-critical, with a controlled action
+          // linked, still could not pass under Proceed with Conditions — which
+          // question 6 allows and question 32(e) applies to this list. Those
+          // flagged rows are judged by the reviewer-trail items
+          // (`sg04-watchlist-reviewed` / `-conditional`), which read both
+          // watch-lists. What stays a direct block here is a breached limit —
+          // "Exceeds limit - reformulate", which it used to let through although
+          // question 6 forbids conditions where "a mandatory restriction is
+          // breached" — and a "Prohibited — remove" disposition (B16).
           {
             kind: 'registerNoBadRows',
             register: 'pbCautionLimits',
             column: 'productStatus',
-            badValues: ['Needs Safety Review', 'Needs Regulatory Review'],
+            badValues: ['Exceeds limit - reformulate'],
           },
+          { kind: 'registerNoBadRows', register: 'pbCautionLimits', column: 'gate4Disposition', badValues: [GATE4_DISPOSITION_PROHIBITED] },
           { kind: 'watchlistDispositioned', register: 'pbCautionLimits' },
         ],
       },
@@ -1545,11 +1614,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // Proceed with Conditions — which is what "Hold or Proceed with
       // Conditions rather than being ignored" describes.
       id: 'sg05-costing-must',
-      label: 'Costing status recorded — this project is commercially dependent',
+      label: 'Costing shows the project commercially feasible — this project is commercially dependent',
       tier: 'Conditional',
       trigger: 'commercialRequirementIsMust',
       clearedByConditions: true,
-      check: { kind: 'costingStatusRecorded' },
+      // "Recorded" alone let "Not Feasible" through a plain Proceed — the very
+      // failure the answer says must not be ignored (SME rule audit B11,
+      // 2026-10-04). Only "Commercially Feasible" (or a justified N/A) passes a
+      // plain Proceed now; anything else — including "Feasible with Conditions"
+      // and a status still "In Progress" — needs Hold or Proceed with Conditions.
+      // Those two placements are ours [ASSUMPTION: R5-Q32].
+      check: { kind: 'costingStatusRecorded', feasibleOnly: true },
     },
     {
       // Not an F1-named item — same generalizable rule as prior gates' extra
@@ -1781,26 +1856,62 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg07-final-safety',
       label: 'Final formulation safety review completed',
       tier: 'Mandatory',
-      // Every one of the 10 Final Safety Sign-off questions must be Completed.
-      // `status` (not evidenceLink) because that column carries the register's
-      // own done/outstanding semantics.
-      check: {
-        kind: 'registerNoBadRows',
-        register: 'formulationSafetyFinalSignOff',
-        column: 'status',
-        badValues: ['Not Started', 'In Progress', 'On Hold', 'Backtracked'],
-      },
+      // Every one of the 10 Final Safety Sign-off questions must be Completed —
+      // except the pregnancy / breastfeeding question, which a product with no
+      // maternal target user records as N/A with a rationale (Round 3 E1,
+      // 2026-10-04 fix: it used to be required of every product).
+      check: { kind: 'finalSafetySignOffComplete' },
+    },
+    {
+      // Rule C3 (SME rule audit B15, 2026-10-04): "Whenever a Formula BOM is
+      // entered, MBc360 automatically compares ingredients against [the lists] …
+      // and immediately flags potential issues for review." The comparison ran
+      // (`bomWatchMatches`) but only coloured the BOM screen — nothing tied the
+      // flag to the screen a reviewer closes, so a register still reading "No
+      // formula match recorded" passed beside a formula that matched it. F3 says
+      // automatic matches are screening flags that "do not replace qualified
+      // review", so the app does not write the verdict; it requires that a person
+      // has moved the matched row off its untouched status. What counts as taking
+      // a flag up is our reading [ASSUMPTION: R5-Q34].
+      id: 'sg07-bom-matches-prohibited',
+      label: 'Every automatic Formula BOM match is taken up on the Prohibited Ingredient Watch-list',
+      tier: 'Mandatory',
+      source: 'f-series',
+      nonVacuousBecause: 'the check walks Formula BOM lines, and `bomHasLines` at Gate 5 has already required a formula',
+      check: { kind: 'bomMatchesTakenUp', list: 'prohibited' },
+    },
+    {
+      // The maternal half of the same rule — only meaningful where the maternal
+      // caution list applies at all.
+      id: 'sg07-bom-matches-pb',
+      label: 'Every automatic Formula BOM match is taken up on the Pregnancy/Breastfeeding Caution list',
+      tier: 'Conditional',
+      trigger: 'skincareForTwo',
+      source: 'f-series',
+      nonVacuousBecause: 'the check walks Formula BOM lines, and `bomHasLines` at Gate 5 has already required a formula',
+      check: { kind: 'bomMatchesTakenUp', list: 'pbCaution' },
     },
     {
       id: 'sg07-prohibited-closed',
-      label: 'Prohibited ingredient screen closed (no "REVIEW" / "Prohibited - remove" rows)',
+      label: 'Prohibited ingredient screen closed (no "REVIEW", "Needs … Review" or "Prohibited - remove" rows)',
       tier: 'Mandatory',
       // Auto-evaluated hard block: the headline C7 example (Gate 07 side).
+      // "Needs Safety Review" added 2026-10-04 (SME rule audit B18): question
+      // 32(a) names it as one of the three flagged statuses, and Gate 7 "must
+      // formally close" every one (question 6) — it was the only flagged value
+      // that could reach Gate 7 open. The disposition leg carries B16's hard
+      // block to the gate that closes the screen.
       check: {
-        kind: 'registerNoBadRows',
-        register: 'prohibitedIngredients',
-        column: 'productStatus',
-        badValues: ['REVIEW - possible formula match', 'Prohibited - remove', 'Needs Regulatory Review'],
+        kind: 'allOf',
+        checks: [
+          {
+            kind: 'registerNoBadRows',
+            register: 'prohibitedIngredients',
+            column: 'productStatus',
+            badValues: ['REVIEW - possible formula match', 'Prohibited - remove', 'Needs Safety Review', 'Needs Regulatory Review'],
+          },
+          { kind: 'registerNoBadRows', register: 'prohibitedIngredients', column: 'gate4Disposition', badValues: [GATE4_DISPOSITION_PROHIBITED] },
+        ],
       },
     },
     {
@@ -1873,14 +1984,21 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // instead, and a general product should record N/A with a rationale —
       // today the `sg07-screen-check` Key Gate Check row is the only N/A route.
       check: {
-        kind: 'registerNoBadRows',
-        register: 'pbCautionLimits',
-        column: 'productStatus',
-        badValues: [
-          'Not assessed',
-          'Exceeds limit - reformulate',
-          'Needs Safety Review',
-          'Needs Regulatory Review',
+        kind: 'allOf',
+        checks: [
+          {
+            kind: 'registerNoBadRows',
+            register: 'pbCautionLimits',
+            column: 'productStatus',
+            badValues: [
+              'Not assessed',
+              'Exceeds limit - reformulate',
+              'Needs Safety Review',
+              'Needs Regulatory Review',
+            ],
+          },
+          // B16's "Prohibited — remove" disposition, closed at Gate 7 too.
+          { kind: 'registerNoBadRows', register: 'pbCautionLimits', column: 'gate4Disposition', badValues: [GATE4_DISPOSITION_PROHIBITED] },
         ],
       },
     },
@@ -1925,7 +2043,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // already provides a gate-level one — Final Safety Sign-off carries `owner`
       // and `decisionDate` per question — so that is used rather than reusing the
       // phase block, and the phase-level sign-off stays a separate B3 condition.
-      check: { kind: 'registerRowsComplete', register: 'formulationSafetyFinalSignOff', columns: ['owner', 'decisionDate'] },
+      //
+      // Superseded 2026-10-04 (SME rule audit B12): that register's `owner` cells
+      // are seeded, read-only function names, so the item was satisfied by typing
+      // ten dates — nobody was named and nobody approved anything. Round 4
+      // question 29(4) has since said who approves a safety decision at Gate 7:
+      // "Safety decision reviewed/approved by Safety/Scientific Review", enforced
+      // on the Gate 7 sign-off at the approver's step (`INDEPENDENT_FUNCTION_BY_GATE`).
+      // So this reads that sign-off. It deliberately shares `sg07-signoff`'s
+      // check, the same way `sg07-no-critical` shares `sg07-final-safety`'s.
+      check: { kind: 'gateSignedOff' },
     },
     {
       // E1 answered this one against us: "Please add a distinct safety-finding
@@ -2449,10 +2576,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     {
       id: 'sg10-pif-mapped',
       label: 'ASEAN PIF mapped',
-      tier: 'Mandatory',
+      // Conditional on an ASEAN market (2026-10-04 fix). It was Mandatory for
+      // every project, so an EU-only product could not pass Gate 10 without
+      // marking an ASEAN mapping "Completed". Round 3 E2: "Enforce the ASEAN
+      // checklist only where an ASEAN market is selected."
+      tier: 'Conditional',
+      trigger: 'aseanMarket',
       source: 'b3',
-      // Not an F1-named item — already mandatory-in-effect via B3, same as
-      // sg01-constraints; wiring it here only enforces it earlier.
       check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'ASEAN PIF mapped' },
     },
     {
@@ -2529,11 +2659,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Every claim on approved artwork is linked and Supported',
       tier: 'Mandatory',
       source: 'f-series',
+      // The note used to say the market/channel half was "checked on the
+      // Published Information record instead" — it was checked nowhere (SME rule
+      // audit B22, 2026-10-04). It is now checked here, against the artwork row's
+      // own market.
       coverageNote:
-        'the app checks the three of the five states that belong to the CLAIM itself — Pending, Unsupported and ' +
-        'Superseded, plus an unclassified or missing claim. The other two ("not approved for the market", "not approved ' +
-        'for the intended wording or channel") are properties of a market or channel use rather than of the claim, and ' +
-        'are checked on the Published Information record instead.',
+        'the app checks the claim\'s own state (Pending, Unsupported, Superseded, unclassified or missing), a Regulatory ' +
+        'review outcome of Not Approved or Further Information Required, and — for an artwork row that names a market — ' +
+        'that the SKU claim register approves the claim for that market. Artwork rows carry no channel, so "approved for ' +
+        'the intended channel" is checked on the Published Information record, and the wording comparison there too.',
       check: { kind: 'artworkClaimsSupported' },
     },
     {
@@ -2709,17 +2843,27 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Published product information approved',
       tier: 'Mandatory',
       // C6/F11: no row may still be short of a released/approved workflow state.
+      // "Regulatory Review Complete" and an empty state were both missing from
+      // the list until 2026-10-04 (SME rule audit B23) — a row could sit at either
+      // and pass. Both are still mid-workflow: Final Approval has not happened.
       check: {
-        kind: 'registerNoBadRows',
-        register: 'publishedInfoApproval',
-        column: 'workflowState',
-        badValues: [
-          'Draft',
-          'Evidence Gathering',
-          'Technical Review',
-          'Regulatory Review Required',
-          'Revision Required',
-          'Final Approval Pending',
+        kind: 'allOf',
+        checks: [
+          { kind: 'registerRowsComplete', register: 'publishedInfoApproval', columns: ['workflowState'] },
+          {
+            kind: 'registerNoBadRows',
+            register: 'publishedInfoApproval',
+            column: 'workflowState',
+            badValues: [
+              'Draft',
+              'Evidence Gathering',
+              'Technical Review',
+              'Regulatory Review Required',
+              'Regulatory Review Complete',
+              'Revision Required',
+              'Final Approval Pending',
+            ],
+          },
         ],
       },
     },
@@ -2822,7 +2966,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Product-performance feedback',
       tier: 'Conditional',
       trigger: 'productPerformanceFeedback',
-      check: { kind: 'checklistHasSelection', section: 'postMarketIssueType' },
+      // The evidence used to be `checklistHasSelection` on the issue-type list —
+      // the very tick that fires the trigger — so the item satisfied itself the
+      // moment it applied (SME rule audit B9, 2026-10-04). It now needs the Gate 12
+      // triage row: the feedback has been triaged and actions assigned. Which
+      // Key Gate Check row stands for "product-performance feedback reviewed" is
+      // our choice [ASSUMPTION: R5-Q30].
+      check: { kind: 'gateCheckDone', gate: '12', check: 'Complaints/issues triaged and CAPA/improvement actions assigned' },
     },
     {
       id: 'sg12-capa',

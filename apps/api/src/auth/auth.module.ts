@@ -5,6 +5,7 @@ import { loadAuthConfig } from './auth-config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { SessionAuthGuard } from './session-auth.guard';
+import { PinnedAdminsService } from './pinned-admins';
 
 @Module({
   imports: [
@@ -16,6 +17,8 @@ import { SessionAuthGuard } from './session-auth.guard';
   controllers: [AuthController],
   providers: [
     AuthService,
+    // Applies PINNED_ADMINS on every start (= every deploy).
+    PinnedAdminsService,
     // Global: every route requires a session unless marked @Public().
     { provide: APP_GUARD, useClass: SessionAuthGuard },
   ],

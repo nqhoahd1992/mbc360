@@ -32,6 +32,19 @@ export function activeMarketTracks(project: ProjectData): MarketTrack[] {
   return project.marketTracks.filter((t) => !isMarketWithdrawn(t));
 }
 
+// The project's markets minus the ones withdrawn — what a per-market obligation
+// (a Gate 10-12 sign-off lane, a supersession decision) is owed for. A market
+// with no track yet counts as active: nothing has withdrawn it.
+//
+// [ASSUMPTION: R5-Q28] Dropping a withdrawn market from the Gate 12 lanes is our
+// reading — post-market surveillance may still be owed for product already sold
+// there. Gates 10-11 and supersession are not in doubt: nothing more is going to
+// be launched or transitioned in a market the product has left.
+export function activeMarkets(project: ProjectData): string[] {
+  const withdrawn = new Set(project.marketTracks.filter(isMarketWithdrawn).map((t) => t.market));
+  return project.identity.markets.filter((m) => m.trim() !== '' && !withdrawn.has(m));
+}
+
 // Question 14's five project-level statuses. Deliberately DERIVED rather than
 // stored: a stored roll-up is a second copy of the per-market records, and the
 // answer's own warning is that "the launch of the first market must not cause all

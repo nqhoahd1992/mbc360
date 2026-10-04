@@ -18,6 +18,11 @@ export const ASEAN_CHECKLIST_REGISTER = 'pifChecklistAsean';
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
+// The values that let a market's row stand at Gate 10. N/A is here because it
+// carries its own rationale + reviewer requirement above.
+const CHECKLIST_DONE_STATUSES: string[] = ['Complete', CHECKLIST_NOT_APPLICABLE];
+const REGULATORY_APPROVAL_DONE: string[] = ['Approved', 'Approved with Conditions', CHECKLIST_NOT_APPLICABLE];
+
 export function isAseanMarket(market: string): boolean {
   return ASEAN_MARKETS.includes(market.trim());
 }
@@ -57,6 +62,14 @@ function checklistRowGap(row: Record<string, unknown>): string | null {
     text(row.status) === CHECKLIST_NOT_APPLICABLE || text(row.regulatoryApproval) === CHECKLIST_NOT_APPLICABLE;
   if (usesNotApplicable && text(row.naRationale) === '') return 'N/A recorded with no rationale';
   if (usesNotApplicable && text(row.naReviewer) === '') return 'N/A recorded with no authorised reviewer';
+  // Present is not the same as passing (SME rule audit B10, 2026-10-04): a row
+  // reading "Blocked" or "Not Approved" has every field filled and used to
+  // satisfy Gate 10. Which values count as done is our reading of the two lists
+  // question 35(a) supplied [ASSUMPTION: R5-Q31].
+  if (!CHECKLIST_DONE_STATUSES.includes(text(row.status))) return `checklist status is "${text(row.status)}"`;
+  if (!REGULATORY_APPROVAL_DONE.includes(text(row.regulatoryApproval))) {
+    return `regulatory approval is "${text(row.regulatoryApproval)}"`;
+  }
   return null;
 }
 

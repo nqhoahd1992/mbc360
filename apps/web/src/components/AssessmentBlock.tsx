@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { DatePicker, Input, Select } from 'antd';
+import { ConfigProvider, DatePicker, Input, Select } from 'antd';
 import dayjs from 'dayjs';
 import type { ProjectData } from '@mbc360/shared/types';
 import {
@@ -10,11 +10,12 @@ import {
   SCALE_UP_RISK_OPTIONS,
   familyUseAgeGroupList,
 } from '@mbc360/shared/types';
-import { ASSESSMENT_HOMES, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
+import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { ASSESSMENT_FIELDS, ASSESSMENT_HOMES, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
-import UserSelect from './UserSelect';
+import SelfAttestField from './SelfAttestField';
 import Notice from './Notice';
 import '../styles/concept.css';
 import './DynamicTable.css';
@@ -37,28 +38,9 @@ import './AssessmentsCard.css';
 type Assessments = ProjectData['assessments'];
 type Field = keyof Assessments;
 
-const FIELDS: Record<AssessmentKey, Field[]> = {
-  familyUse: ['familyUseAgeGroups', 'familyUseConfirmedBy', 'familyUseConfirmedDate'],
-  administrativeOnly: ['administrativeOnly', 'administrativeOnlyConfirmedBy'],
-  humanStudy: ['humanStudyPlanned'],
-  scaleUp: [
-    'scaleUpRiskIdentified',
-    'scaleUpRiskAssessor',
-    'scaleUpRiskAssessmentDate',
-    'scaleUpRiskDescription',
-    'scaleUpRiskRationale',
-    'scaleUpRiskActivity',
-    'scaleUpRiskEvidenceLink',
-  ],
-  changeControl: [
-    'changeControlRequired',
-    'changeControlReviewer',
-    'changeControlReviewDate',
-    'changeControlRationale',
-    'changeControlRecordId',
-    'changeControlEvidenceLink',
-  ],
-};
+// Which fields belong to which assessment — shared with the API, which locks
+// them once the assessment's gate has passed.
+const FIELDS: Record<AssessmentKey, readonly Field[]> = ASSESSMENT_FIELDS;
 
 // What leaving it blank costs — shown with the question rather than only in the
 // readiness panel.
@@ -71,7 +53,7 @@ const HINTS: Record<AssessmentKey, string> = {
   changeControl: 'Gate 12. Pending assessment blocks closure. An already-open change control counts as Yes on its own.',
 };
 
-function pick(source: Assessments, keys: Field[]): Assessments {
+function pick(source: Assessments, keys: readonly Field[]): Assessments {
   const out: Assessments = {};
   for (const k of keys) out[k] = source[k];
   return out;
@@ -110,6 +92,7 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
   const { draft, dirty, update, markSaved, discard } = useDraft(pick(project.assessments, keys));
   const set = <K extends Field>(key: K, value: Assessments[K]) => update((prev) => ({ ...prev, [key]: value }));
   const home = ASSESSMENT_HOMES.find((h) => h.key === which)!;
+  const locked = isGateRefLocked(project, home.gateId.slice(2));
 
   // Question 25(c): the family-use question exists only for a family-use
   // product — an always-visible unanswered field reads as an obligation, and
@@ -195,11 +178,10 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
         <div className="as-grid">
           <FieldBox label="Answer">{answerSelect('administrativeOnly', ADMINISTRATIVE_ONLY_OPTIONS)}</FieldBox>
           <FieldBox label="Confirmed by (authorised reviewer)" required={adminNeedsConfirmer}>
-            <UserSelect
-              style={{ width: '100%' }}
+            <SelfAttestField
               status={adminNeedsConfirmer ? 'error' : undefined}
               value={draft.administrativeOnlyConfirmedBy}
-              onChange={(v?: string) => set('administrativeOnlyConfirmedBy', v ?? '')}
+              onChange={(v) => set('administrativeOnlyConfirmedBy', v)}
             />
           </FieldBox>
         </div>
@@ -220,10 +202,9 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
             />
           </FieldBox>
           <FieldBox label="Confirmed by">
-            <UserSelect
-              style={{ width: '100%' }}
+            <SelfAttestField
               value={draft.familyUseConfirmedBy}
-              onChange={(v?: string) => set('familyUseConfirmedBy', v ?? '')}
+              onChange={(v) => set('familyUseConfirmedBy', v)}
             />
           </FieldBox>
           <FieldBox label="Confirmed on">{datePicker('familyUseConfirmedDate')}</FieldBox>
@@ -235,10 +216,9 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
         <div className="as-grid">
           <FieldBox label="Answer">{answerSelect('scaleUpRiskIdentified', SCALE_UP_RISK_OPTIONS)}</FieldBox>
           <FieldBox label="Assessor">
-            <UserSelect
-              style={{ width: '100%' }}
+            <SelfAttestField
               value={draft.scaleUpRiskAssessor}
-              onChange={(v?: string) => set('scaleUpRiskAssessor', v ?? '')}
+              onChange={(v) => set('scaleUpRiskAssessor', v)}
             />
           </FieldBox>
           <FieldBox label="Assessment date">{datePicker('scaleUpRiskAssessmentDate')}</FieldBox>
@@ -274,11 +254,10 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
         <div className="as-grid">
           <FieldBox label="Answer">{answerSelect('changeControlRequired', CHANGE_CONTROL_REQUIRED_OPTIONS)}</FieldBox>
           <FieldBox label="Reviewer" required={ccAnswer === 'No'}>
-            <UserSelect
-              style={{ width: '100%' }}
+            <SelfAttestField
               status={ccAnswer === 'No' && !draft.changeControlReviewer?.trim() ? 'error' : undefined}
               value={draft.changeControlReviewer}
-              onChange={(v?: string) => set('changeControlReviewer', v ?? '')}
+              onChange={(v) => set('changeControlReviewer', v)}
             />
           </FieldBox>
           <FieldBox label="Review date">{datePicker('changeControlReviewDate')}</FieldBox>
@@ -339,7 +318,12 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
         <h2 className="as-title">{home.title}</h2>
         <p className="as-desc">{HINTS[which]}</p>
       </div>
-      <div className="as-block">{body}</div>
+      {/* C9: answered at this gate; once it has passed the answer is read-only
+          (the API refuses changes too) — correcting it goes through Backtrack. */}
+      {locked && <Notice tone="info" title={`${home.gateId} has passed — this answer is read-only (use Backtrack to change it)`} />}
+      <ConfigProvider componentDisabled={locked}>
+        <div className="as-block">{body}</div>
+      </ConfigProvider>
       {(dirty || blockingReason) && (
         <div className="as-foot">
           {blockingReason && dirty && <Notice tone="warn" title={blockingReason} />}

@@ -12,6 +12,7 @@ import { NUMERIC_CELL } from '../utils/numeric';
 import { createEmptyRegisterRow } from '../store/factory';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
+import SelfAttestField from './SelfAttestField';
 import MarketSelect from './MarketSelect';
 import ClaimSelect from './ClaimSelect';
 import { findClaim, useClaimRows } from '../hooks/claimRows';
@@ -334,6 +335,9 @@ export default function DynamicTable({
           />
         );
       case 'user':
+        if (column.selfAttest) {
+          return <SelfAttestField value={value as string | undefined} onChange={(v) => patch(index, column.key, v)} />;
+        }
         return <UserSelect value={value as string | undefined} onChange={(v) => patch(index, column.key, v)} />;
       case 'select':
         return (

@@ -1,3 +1,4 @@
+import type { ProjectData } from '../types';
 import type { ReadinessTrigger } from './gateReadiness';
 
 // Where each explicit assessment lives (2026-10-03, project owner's request).
@@ -47,3 +48,30 @@ export const assessmentAnchor = (key: AssessmentKey): string => `sec-assessment-
 
 export const assessmentForTrigger = (trigger: ReadinessTrigger): AssessmentHome | undefined =>
   ASSESSMENT_HOMES.find((a) => a.trigger === trigger);
+
+// The fields each assessment owns. Read by its block (which drafts and saves only
+// these) and by the API, which locks them once the assessment's gate has passed
+// (SME rule audit C9, 2026-10-04) — changing the family-use age groups after
+// Gate 2 used to switch the whole infant pathway off with no Backtrack.
+export const ASSESSMENT_FIELDS: Record<AssessmentKey, readonly (keyof ProjectData['assessments'])[]> = {
+  familyUse: ['familyUseAgeGroups', 'familyUseConfirmedBy', 'familyUseConfirmedDate'],
+  administrativeOnly: ['administrativeOnly', 'administrativeOnlyConfirmedBy'],
+  humanStudy: ['humanStudyPlanned'],
+  scaleUp: [
+    'scaleUpRiskIdentified',
+    'scaleUpRiskAssessor',
+    'scaleUpRiskAssessmentDate',
+    'scaleUpRiskDescription',
+    'scaleUpRiskRationale',
+    'scaleUpRiskActivity',
+    'scaleUpRiskEvidenceLink',
+  ],
+  changeControl: [
+    'changeControlRequired',
+    'changeControlReviewer',
+    'changeControlReviewDate',
+    'changeControlRationale',
+    'changeControlRecordId',
+    'changeControlEvidenceLink',
+  ],
+};
