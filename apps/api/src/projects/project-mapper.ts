@@ -314,9 +314,13 @@ export function toProjectData(
     };
   }
 
-  // "Current" formula version = the Active one (the schema deliberately has no
-  // scalar field on Project — see the note at the top of schema.prisma).
-  const active = p.formulaVersions.find((v) => v.status === 'Active') ?? p.formulaVersions.at(-1);
+  // "Current" formula version = the NEWEST (the schema deliberately has no scalar
+  // field on Project — see the note at the top of schema.prisma). It used to be
+  // "the first Active one", which picked the OLD version once two could be Active
+  // at once — and since Round 4 question 2 they can: an older version stays Active
+  // on the markets where it is sold until the new one is approved there (F4/Q2,
+  // SME rule audit D, 2026-10-05).
+  const active = p.formulaVersions.at(-1);
   const superseded = p.formulaVersions.filter((v) => v.id !== active?.id);
   const versionById = new Map(p.formulaVersions.map((v) => [v.id, v.version]));
 
@@ -527,6 +531,8 @@ export function toProjectData(
     gateChangeLog,
     marketTracks: p.marketTracks.map((t) => ({
       market: t.market,
+      // F4: one track per market per formula version.
+      formulaVersion: (t.formulaVersionId ? versionById.get(t.formulaVersionId) : undefined) ?? active?.version ?? '',
       pifStatus: t.pifStatus as ProjectData['marketTracks'][number]['pifStatus'],
       regulatoryStatus: t.regulatoryStatus as ProjectData['marketTracks'][number]['regulatoryStatus'],
       claimsApproval: t.claimsApproval as ProjectData['marketTracks'][number]['claimsApproval'],
@@ -553,6 +559,9 @@ export function toProjectData(
     gateSignOffs: p.gateSignOffs.map((g) => ({
       gateId: g.gateId,
       ...(g.market ? { market: g.market } : {}),
+      ...(g.formulaVersionId && versionById.get(g.formulaVersionId)
+        ? { formulaVersion: versionById.get(g.formulaVersionId) }
+        : {}),
       role: g.role as GateSignOff['role'],
       ...(g.assignedToUserId ? { assignedToUserId: g.assignedToUserId } : {}),
       ...(g.assignedTo?.displayName ? { assignedToName: g.assignedTo.displayName } : {}),

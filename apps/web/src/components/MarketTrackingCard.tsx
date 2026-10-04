@@ -34,9 +34,12 @@ const STATUS_COLORS: Record<MarketApprovalStatus, string> = {
 export default function MarketTrackingCard({
   projectId,
   tracks,
+  currentVersion,
 }: {
   projectId: string;
+  // The current formula version's tracks plus older versions still on sale (F4).
   tracks: MarketTrack[];
+  currentVersion: string;
 }) {
   const setTracksBulk = useAppStore((s) => s.setMarketTracksBulk);
   const permissionView = usePermissionView();
@@ -46,6 +49,10 @@ export default function MarketTrackingCard({
   const canEdit = permissionView.roleKeys.some((k) => canEditMarketTrack(grants, k));
 
   const patch = (index: number, p: Partial<MarketTrack>) => update((prev) => patchArray(prev, index, p));
+  // F4: an older version's track is closed for approvals — its Gate 10-12 work
+  // was done for that formula. It stays on screen while that version is on sale,
+  // and only its withdrawal can still be recorded.
+  const isLegacy = (t: MarketTrack) => t.formulaVersion !== currentVersion;
   const save = () => {
     setTracksBulk(projectId, draft);
     markSaved();
@@ -59,7 +66,7 @@ export default function MarketTrackingCard({
     <Select
       style={{ width: 120 }}
       value={track[field]}
-      disabled={!canEdit}
+      disabled={!canEdit || isLegacy(track)}
       options={STATUS_OPTIONS.map((s) => ({
         value: s,
         label: <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
@@ -104,7 +111,7 @@ export default function MarketTrackingCard({
       )}
       <Table
         size="small"
-        rowKey={(t) => t.market}
+        rowKey={(t) => `${t.market}|${t.formulaVersion}`}
         dataSource={draft}
         pagination={false}
         sticky={TABLE_STICKY}
@@ -112,6 +119,18 @@ export default function MarketTrackingCard({
         locale={{ emptyText: 'No target markets recorded in the project identity' }}
         columns={[
           { title: 'Market', width: 120, fixed: 'left', render: (_, t) => <b>{t.market}</b> },
+          {
+            title: 'Formula version',
+            width: 140,
+            render: (_, t) =>
+              isLegacy(t) ? (
+                <Tooltip title="An earlier formula version still on sale here — it stays until it is withdrawn or superseded (F4)">
+                  <Tag>{t.formulaVersion} · on sale</Tag>
+                </Tooltip>
+              ) : (
+                <Tag color="blue">{t.formulaVersion}</Tag>
+              ),
+          },
           { title: 'PIF status', width: 140, render: (_, t, i) => statusSelect(t, i, 'pifStatus') },
           { title: 'Regulatory status', width: 140, render: (_, t, i) => statusSelect(t, i, 'regulatoryStatus') },
           { title: 'Claims approval', width: 140, render: (_, t, i) => statusSelect(t, i, 'claimsApproval') },
@@ -125,7 +144,7 @@ export default function MarketTrackingCard({
                   <Select
                     style={{ width: 120 }}
                     value={t.launchApproval}
-                    disabled={!pifApproved || !canEdit}
+                    disabled={!pifApproved || !canEdit || isLegacy(t)}
                     options={STATUS_OPTIONS.map((s) => ({
                       value: s,
                       label: <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
@@ -169,7 +188,7 @@ export default function MarketTrackingCard({
               <DatePicker
                 style={{ width: 130 }}
                 value={t.actualLaunchDate ? dayjs(t.actualLaunchDate) : null}
-                disabled={!canEdit || t.launchApproval !== 'Approved'}
+                disabled={!canEdit || t.launchApproval !== 'Approved' || isLegacy(t)}
                 placeholder={t.launchApproval === 'Approved' ? 'Date on sale' : 'Needs approval'}
                 onChange={(d) => patch(i, { actualLaunchDate: d ? d.format('YYYY-MM-DD') : undefined })}
               />

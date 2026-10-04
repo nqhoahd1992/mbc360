@@ -3,10 +3,11 @@ import { Alert, Card, DatePicker, Input, Table, Tag, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import type { PostLaunchReview, ProjectData } from '@mbc360/shared/types';
 import {
-  isMarketLaunched,
+  onMarketTracks,
   overdueReviews,
   projectLaunchStatus,
   reviewMilestonesFor,
+  reviewScheduleTracks,
 } from '@mbc360/shared/utils/postLaunch';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -50,8 +51,9 @@ export default function PostLaunchReviewCard({
   // Every milestone that exists today, whether or not anybody has touched it.
   const rows = useMemo(() => {
     const stored = new Map(project.postLaunchReviews.map((r) => [`${r.market}|${r.milestone}`, r]));
-    const derived: PostLaunchReview[] = project.marketTracks
-      .filter(isMarketLaunched)
+    // One schedule per market, dated from the earliest launch still on sale there
+    // (F4: an older version may still be on the shelf beside the new one).
+    const derived: PostLaunchReview[] = reviewScheduleTracks(project)
       .flatMap((track) =>
         reviewMilestonesFor(track, {
           enhanced,
@@ -91,7 +93,7 @@ export default function PostLaunchReviewCard({
         </span>
       }
     >
-      {project.marketTracks.every((t) => !isMarketLaunched(t)) ? (
+      {onMarketTracks(project).length === 0 ? (
         <Alert
           type="info"
           showIcon

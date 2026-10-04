@@ -536,9 +536,14 @@ model GateSignOff {
   // what changed", and a hash can only say that something did. "A project-wide
   // save counter is not sufficient" rules out projects.version explicitly.
   snapshot         Json?
+  // F4: a per-market lane (Gates 10-12) belongs to one formula version, so the old
+  // version's signatures stay as history and do not count for the new one. NULL
+  // on Gates 1-9, which are not per market.
+  formulaVersion   FormulaVersion? @relation(fields: [formulaVersionId], references: [id])
+  formulaVersionId String?
   updatedAt        DateTime @updatedAt
 
-  @@unique([projectId, gateId, market, role])
+  @@unique([projectId, gateId, market, formulaVersionId, role])
   @@index([projectId, gateId])
   @@map("gate_sign_offs")
 }
@@ -868,6 +873,7 @@ model FormulaVersion {
 
   bomLines     BomLine[]
   marketTracks MarketTrack[]
+  gateSignOffs GateSignOff[]
 
   @@unique([projectId, version])
   @@map("formula_versions")
@@ -969,7 +975,11 @@ model MarketTrack {
   withdrawnReason  String?
   updatedAt        DateTime        @updatedAt
 
-  @@unique([projectId, market])
+  // F4 (SME rule audit D, 2026-10-04): one track per market PER FORMULA VERSION.
+  // "Launched per-market Gate 10-12 tracks are preserved for the old formula
+  // version; a major change creates a new per-market Gate 10-12 track for the new
+  // version — concurrent versions are supported."
+  @@unique([projectId, market, formulaVersionId])
   @@map("market_tracks")
 }
 

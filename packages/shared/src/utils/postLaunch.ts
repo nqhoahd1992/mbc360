@@ -26,10 +26,57 @@ export function isMarketWithdrawn(track: MarketTrack): boolean {
   return text(track.withdrawnDate) !== '';
 }
 
-// "Active" markets are the ones still being sold into — a withdrawn market must
-// not keep a project off "Launched in all active markets" forever.
+// F4 (SME rule audit D, 2026-10-05): a market has one track PER FORMULA VERSION —
+// "launched per-market Gate 10-12 tracks are preserved for the old formula
+// version; a major change creates a new per-market Gate 10-12 track for the new
+// version". The CURRENT version's tracks are the ones Gates 10-12 work on.
+export function currentMarketTracks(project: ProjectData): MarketTrack[] {
+  return project.marketTracks.filter((t) => t.formulaVersion === project.formulaVersion);
+}
+
+// The current version's tracks still being pursued — a withdrawn market must not
+// keep a project off "Launched in all active markets" forever, nor hold a lane.
 export function activeMarketTracks(project: ProjectData): MarketTrack[] {
-  return project.marketTracks.filter((t) => !isMarketWithdrawn(t));
+  return currentMarketTracks(project).filter((t) => !isMarketWithdrawn(t));
+}
+
+// Question 2: a version leaves a market only through a confirmed supersession
+// decision for that market.
+export function isVersionSupersededIn(project: ProjectData, version: string, market: string): boolean {
+  return project.supersessionDecisions.some(
+    (d) => d.version === version && d.market === market && text(d.confirmedBy) !== '',
+  );
+}
+
+// Every track whose product is actually on sale: launched, not withdrawn, and —
+// for an older version — not yet superseded in that market. This is what
+// post-market obligations follow, whichever version is on the shelf (F4's
+// "old version stays on market until formally superseded/withdrawn/depleted").
+export function onMarketTracks(project: ProjectData): MarketTrack[] {
+  return project.marketTracks.filter(
+    (t) =>
+      isMarketLaunched(t) &&
+      !isMarketWithdrawn(t) &&
+      (t.formulaVersion === project.formulaVersion || !isVersionSupersededIn(project, t.formulaVersion, t.market)),
+  );
+}
+
+// Older-version tracks still on sale — shown apart from the current version's.
+export function legacyOnMarketTracks(project: ProjectData): MarketTrack[] {
+  return onMarketTracks(project).filter((t) => t.formulaVersion !== project.formulaVersion);
+}
+
+// One entry per market for the post-launch review schedule, dated from the
+// EARLIEST launch still on the market: the product has been on sale there since
+// then, whichever version it is now. Reviews stay keyed by market, not version
+// [ASSUMPTION: R5-Q53].
+function reviewTracksByMarket(project: ProjectData): MarketTrack[] {
+  const byMarket = new Map<string, MarketTrack>();
+  for (const t of onMarketTracks(project)) {
+    const seen = byMarket.get(t.market);
+    if (!seen || text(t.actualLaunchDate) < text(seen.actualLaunchDate)) byMarket.set(t.market, t);
+  }
+  return [...byMarket.values()];
 }
 
 // The project's markets minus the ones withdrawn — what a per-market obligation
@@ -41,7 +88,7 @@ export function activeMarketTracks(project: ProjectData): MarketTrack[] {
 // there. Gates 10-11 and supersession are not in doubt: nothing more is going to
 // be launched or transitioned in a market the product has left.
 export function activeMarkets(project: ProjectData): string[] {
-  const withdrawn = new Set(project.marketTracks.filter(isMarketWithdrawn).map((t) => t.market));
+  const withdrawn = new Set(currentMarketTracks(project).filter(isMarketWithdrawn).map((t) => t.market));
   return project.identity.markets.filter((m) => m.trim() !== '' && !withdrawn.has(m));
 }
 
@@ -51,9 +98,9 @@ export function activeMarkets(project: ProjectData): string[] {
 // other markets to be treated as launched" — which is exactly what a stored
 // summary drifting out of date would do.
 export function projectLaunchStatus(project: ProjectData): ProjectLaunchStatus {
-  const tracks = project.marketTracks;
+  const tracks = currentMarketTracks(project);
   if (tracks.length === 0) return 'Not launched';
-  if (tracks.every(isMarketWithdrawn)) return 'Withdrawn';
+  if (tracks.every(isMarketWithdrawn) && legacyOnMarketTracks(project).length === 0) return 'Withdrawn';
   // A formula version mid-transition is a project-level fact — question 2 puts the
   // outgoing version into "Transition in Progress" — and question 14 gives the
   // roll-up a matching value. Checked before the launch counts so a transition is
@@ -61,8 +108,10 @@ export function projectLaunchStatus(project: ProjectData): ProjectLaunchStatus {
   if (project.formulaVersionHistory.some((v) => v.state === 'Transition in Progress' || v.state === 'Transition Approved')) {
     return 'Market transition in progress';
   }
+  // A market counts as launched while any version is on sale there.
   const active = activeMarketTracks(project);
-  const launched = active.filter(isMarketLaunched);
+  const onSale = new Set(onMarketTracks(project).map((t) => t.market));
+  const launched = active.filter((t) => onSale.has(t.market));
   if (launched.length === 0) return 'Not launched';
   return launched.length === active.length ? 'Launched in all active markets' : 'Partially launched';
 }
@@ -140,6 +189,11 @@ export function reviewMilestonesFor(
 // them. `asOf` is passed in rather than read from the clock: this is a pure
 // function used by both the engine and the UI, and a rule whose answer depends on
 // when it is called is not testable.
+// The schedule a UI lists — same per-market view as overdueReviews.
+export function reviewScheduleTracks(project: ProjectData): MarketTrack[] {
+  return reviewTracksByMarket(project);
+}
+
 export function overdueReviews(
   project: ProjectData,
   opts: { enhanced: boolean; asOf: string; profiles?: readonly MarketProfile[] },
@@ -149,7 +203,7 @@ export function overdueReviews(
       .filter((r) => text(r.completedDate) !== '')
       .map((r) => `${r.market}|${r.milestone}`),
   );
-  return activeMarketTracks(project)
+  return reviewTracksByMarket(project)
     .flatMap((track) =>
       reviewMilestonesFor(track, {
         enhanced: opts.enhanced,

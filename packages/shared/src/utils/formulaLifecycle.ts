@@ -13,7 +13,7 @@ import type {
   ProjectData,
   SupersessionDecision,
 } from '../types';
-import { activeMarkets } from './postLaunch';
+import { isMarketLaunched, isMarketWithdrawn } from './postLaunch';
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
@@ -72,9 +72,22 @@ export function marketsAwaitingSupersession(project: ProjectData, version: strin
       .filter((d) => d.version === version && isSupersessionComplete(d))
       .map((d) => d.market),
   );
-  // Withdrawn markets are skipped (SME rule audit A9): there is no stock left
-  // there to transition, so a decision for them would be owed forever.
-  return activeMarkets(project).filter((m) => !done.has(m));
+  // F4 (SME rule audit D, 2026-10-05): the markets where THIS version is on sale —
+  // launched under it and not withdrawn. Withdrawn markets were already skipped
+  // (A9); a market where the version was never launched has nothing to
+  // transition either.
+  return versionMarkets(project, version).filter((m) => !done.has(m));
+}
+
+// Markets where `version` has been launched and is not withdrawn.
+export function versionMarkets(project: ProjectData, version: string): string[] {
+  return [
+    ...new Set(
+      project.marketTracks
+        .filter((t) => t.formulaVersion === version && isMarketLaunched(t) && !isMarketWithdrawn(t))
+        .map((t) => t.market),
+    ),
+  ];
 }
 
 // Whether a version may now move to Superseded — every market decided. Returns the
@@ -82,7 +95,7 @@ export function marketsAwaitingSupersession(project: ProjectData, version: strin
 // inferring it silently: the answer forbids the system deciding supersession, and
 // this only reports that the person-recorded decisions are all present.
 export function supersessionReady(project: ProjectData, version: string): boolean {
-  if (activeMarkets(project).length === 0) return false;
+  if (versionMarkets(project, version).length === 0) return false;
   return marketsAwaitingSupersession(project, version).length === 0;
 }
 

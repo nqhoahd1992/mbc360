@@ -16,6 +16,7 @@ import type { GateDecision, GateRecord, ProjectData, StageStatus } from '@mbc360
 import { GATE_FIELD_LABELS, GATES, GATE_DECISIONS, STAGE_STATUSES } from '@mbc360/shared/config/gates';
 import { GATE_PASSING_DECISIONS as PASSING } from '@mbc360/shared/config/gateSignOff';
 import { openChangesAffectingGate } from '@mbc360/shared/config/changeTriggers';
+import { activeMarketTracks } from '@mbc360/shared/utils/postLaunch';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
@@ -172,7 +173,12 @@ export default function GateFlowTable({
         // is that signature's — the dropdown cannot change it (the API refuses
         // too). Withdrawing the signature is the way to change it.
         approverSigned: project.gateSignOffs.some(
-          (g) => g.gateId === r.meta.id && g.role === 'Approved by' && !!g.signedAt,
+          (g) =>
+            g.gateId === r.meta.id &&
+            g.role === 'Approved by' &&
+            !!g.signedAt &&
+            // F4: an older formula version's lanes do not hold the current gate.
+            (!g.market || g.formulaVersion === project.formulaVersion),
         ),
         readinessChecklist,
         // Subset that even Proceed with Conditions can't clear (Critical next
@@ -191,7 +197,7 @@ export default function GateFlowTable({
         // project-level effect of a partially-ready market set is follow-up F4).
         marketsNotReady:
           r.meta.id === 'SG11'
-            ? project.marketTracks.filter((t) => t.launchApproval !== 'Approved' && t.launchApproval !== 'N/A')
+            ? activeMarketTracks(project).filter((t) => t.launchApproval !== 'Approved' && t.launchApproval !== 'N/A')
             : [],
         isCurrent: gateIndex(r.meta.id) === currentIdx,
         // B4 ("no silent corrections"): only the current gate is directly

@@ -632,6 +632,22 @@ Your A2 answer makes market-specific pack requirements mandatory where the marke
 
 ---
 
+## Question 52 — Does a Major formula version reopen Gates 10–12 as well?
+
+Your A2 answer reopens Gates 4–9 on a Major change; your later F4 answer gives the new version its own Gate 10–12 track in each market. A Major version now reopens Gates 4–12 for the new version, and the old version's Gate 10–12 tracks and signatures are kept as they were.
+
+**Question:** Should the project's Gate 10–12 records reopen for the new version, or only the per-market tracks start again?
+
+---
+
+## Question 53 — When does an older formula version change state, and how are reviews scheduled while two versions are on sale?
+
+Question 2 says "approval of the new version places the old version into Transition in Progress". We read approval as the new version's launch approval in a market where the old version is sold. A version that was never launched anywhere becomes Superseded as soon as a new one is created, since nothing needs transitioning. A Minor change reopens no gates, so the existing market records carry over to the new version and the old one starts transitioning at once. Post-launch reviews stay per market, dated from the earliest launch still on sale there.
+
+**Question:** Is launch approval the right moment, or Gate 10/11 approval? May a never-launched version be treated as Superseded straight away? Do post-launch reviews need to be kept per version?
+
+---
+
 ## Summary
 
 | # | Topic | Why it matters |
@@ -679,5 +695,7 @@ Your A2 answer makes market-specific pack requirements mandatory where the marke
 | 49 | Does adding a market after Gate 1 reopen earlier gates? | Built as "nothing reopened"; ours |
 | 50 | What proves the approved artwork version at Gate 11? | Built as "version and file named"; ours |
 | 51 | Where are a market's pack requirements recorded, and what closes the item? | Built as above; ours |
+| 52 | Does a Major formula version reopen Gates 10–12 as well? | Built as "Gates 4–12 reopen"; ours |
+| 53 | When does an older formula version change state, and how are reviews scheduled while two versions are on sale? | Built as above; ours |
 
 Questions 4 to 6, 10 to 12, 14 and 16 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

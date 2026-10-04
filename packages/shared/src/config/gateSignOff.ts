@@ -106,8 +106,14 @@ export function findGateSignOff(
   market: string | undefined,
   role: GateSignOffRole,
 ): GateSignOff | undefined {
+  // F4: on a per-market gate only the CURRENT formula version's lane counts — the
+  // old version's signatures are kept, but they attest to a different formula.
   return project.gateSignOffs.find(
-    (s) => s.gateId === gateId && (s.market ?? undefined) === market && s.role === role,
+    (s) =>
+      s.gateId === gateId &&
+      (s.market ?? undefined) === market &&
+      s.role === role &&
+      (!isPerMarketGate(gateId) || s.formulaVersion === project.formulaVersion),
   );
 }
 

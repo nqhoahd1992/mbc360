@@ -7,8 +7,8 @@ import {
   marketsAwaitingSupersession,
   supersessionGaps,
   transitioningVersions,
+  versionMarkets,
 } from '@mbc360/shared/utils/formulaLifecycle';
-import { activeMarkets } from '@mbc360/shared/utils/postLaunch';
 import { useAppStore } from '../store/useAppStore';
 import { TEXT } from '../theme/tokens';
 
@@ -152,7 +152,8 @@ export default function FormulaSupersessionCard({ project }: { project: ProjectD
               size="small"
               rowKey={(m) => m}
               pagination={false}
-              dataSource={activeMarkets(project)}
+              // F4: the markets where this version is on sale.
+              dataSource={versionMarkets(project, v.version)}
               expandable={{
                 expandedRowRender: (market) => {
                   const d = decisionFor(v.version, market);

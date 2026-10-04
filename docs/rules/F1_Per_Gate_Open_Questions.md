@@ -1528,6 +1528,8 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q49 | Thêm thị trường sau Gate 1 có phải mở lại các gate trước không | Rà soát luật SME (Q24/F4) | **rà soát 04/10/2026** |
 | R5-Q50 | "Approved artwork version" ở Gate 11 đọc những cột nào | Rà soát luật SME (Gate 11) | **rà soát 04/10/2026** |
 | R5-Q51 | Yêu cầu bao bì theo thị trường ghi ở đâu và chứng minh bằng gì | Rà soát luật SME (A2 (Gate 6)) | **rà soát 04/10/2026** |
+| R5-Q52 | Phiên bản Major có mở lại cả Gate 10–12 không | Rà soát luật SME (F4) | **rà soát 05/10/2026** |
+| R5-Q53 | Khi nào phiên bản cũ chuyển trạng thái, và lịch review khi hai phiên bản cùng bán | Rà soát luật SME (Q2/F4) | **rà soát 05/10/2026** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
 
@@ -2116,3 +2118,19 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Câu hỏi:** Yêu cầu bao bì theo thị trường nên do Regulatory ghi trên hồ sơ thị trường như vậy không? Bằng chứng đóng mục nên là gì?
 
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg06-market-pack`; `MarketProfile.packRequirements`.
+
+#### R5-Q52 · Phiên bản Major có mở lại cả Gate 10–12 không 🔴
+
+**Lộ ra khi xây F4/Q2 (05/10/2026, mục F4).** A2 nói phiên bản Major mở lại Gate 4–9. F4 (sau đó) nói phiên bản mới có track Gate 10–12 mới cho từng thị trường. Giờ phiên bản Major mở lại Gate 4–12 cho phiên bản mới; track và chữ ký Gate 10–12 của phiên bản cũ được giữ nguyên làm lịch sử.
+
+**Câu hỏi:** Khi có phiên bản Major, bản ghi Gate 10–12 của dự án có mở lại cho phiên bản mới không, hay chỉ track theo thị trường bắt đầu lại?
+
+**Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `createFormulaVersion` (khoảng `fromIdx`).
+
+#### R5-Q53 · Khi nào phiên bản cũ chuyển trạng thái, và lịch review khi hai phiên bản cùng bán 🔴
+
+**Lộ ra khi xây F4/Q2 (05/10/2026, mục Q2/F4).** Q2: *"approval of the new version places the old version into Transition in Progress"*. Đang hiểu "approval" là launch approval của phiên bản mới ở một thị trường đang bán phiên bản cũ. Phiên bản chưa từng launch ở đâu chuyển thẳng sang Superseded khi có phiên bản mới, vì không có gì để chuyển tiếp. Thay đổi Minor không mở lại gate, nên track hiện có chuyển sang phiên bản mới, và phiên bản cũ đang bán chuyển ngay sang Transition in Progress. Lịch review hậu mãi vẫn tính theo thị trường, từ ngày launch sớm nhất còn trên thị trường.
+
+**Câu hỏi:** "Approval of the new version" là launch approval ở thị trường đó, hay Gate 10/11 được duyệt? Phiên bản chưa từng bán có được coi là Superseded ngay không? Review hậu mãi có cần tách theo phiên bản không?
+
+**Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `createFormulaVersion`, `setMarketTracks`; `packages/shared/src/utils/postLaunch.ts` — `reviewTracksByMarket`.

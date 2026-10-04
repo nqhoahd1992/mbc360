@@ -9,6 +9,7 @@ import {
   WarningFilled,
 } from '@ant-design/icons';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { currentMarketTracks } from '@mbc360/shared/utils/postLaunch';
 import { useAppStore } from '../store/useAppStore';
 import { GATE_FIELD_LABELS, GATES, PHASES } from '@mbc360/shared/config/gates';
 import { isSignedOff } from '@mbc360/shared/types';
@@ -329,7 +330,7 @@ export default function ProjectOverview() {
           approval is blocked until its PIF is Approved (C5) — so for a project
           in Phase 4 this table IS the project's state, and Overview showed none
           of it. Read-only: it is captured on the Phase 4 page. */}
-      {project.marketTracks.length > 0 && (
+      {currentMarketTracks(project).length > 0 && (
         <section className="c-card po-card">
           <div className="po-card-head">
             <div>
@@ -354,7 +355,7 @@ export default function ProjectOverview() {
                 </tr>
               </thead>
               <tbody>
-                {project.marketTracks.map((t) => (
+                {currentMarketTracks(project).map((t) => (
                   <tr key={t.market}>
                     <td className="po-strong">{t.market}</td>
                     <td data-label="PIF"><StatusBadge value={t.pifStatus} /></td>

@@ -29,6 +29,7 @@ import GateChecksTable from '../components/GateChecksTable';
 import EightAnglesTable from '../components/EightAnglesTable';
 import SignOffBlock from '../components/SignOffBlock';
 import NextActionsCard from '../components/NextActionsCard';
+import { currentMarketTracks, legacyOnMarketTracks } from '@mbc360/shared/utils/postLaunch';
 import MarketTrackingCard from '../components/MarketTrackingCard';
 import PostLaunchReviewCard from '../components/PostLaunchReviewCard';
 import SectionJumpButton from '../components/SectionJumpButton';
@@ -492,7 +493,11 @@ export default function PhasePage() {
 
             {phase === 4 && tab === 'SG11' && (
               <div id="sec-market-tracking">
-                <MarketTrackingCard projectId={project.identity.id} tracks={project.marketTracks} />
+                <MarketTrackingCard
+                  projectId={project.identity.id}
+                  tracks={[...currentMarketTracks(project), ...legacyOnMarketTracks(project)]}
+                  currentVersion={project.formulaVersion}
+                />
               </div>
             )}
             {/* Round 4 questions 13 and 14: the schedule runs from each market's

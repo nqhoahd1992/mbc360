@@ -88,6 +88,7 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
 
   const marketTracks = identity.markets.map((market) => ({
     market,
+    formulaVersion: 'F1.0',
     pifStatus: 'Not Started' as const,
     regulatoryStatus: 'Not Started' as const,
     claimsApproval: 'Not Started' as const,

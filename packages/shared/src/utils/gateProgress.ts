@@ -46,7 +46,7 @@ import {
 } from './rmEvidence';
 import { WATCHLIST_REGISTER, watchlistConditionalRows, watchlistHardBlockers } from './watchlistReview';
 import { conditionalSafetyFindings, hardBlockingSafetyFindings } from './safetyFindings';
-import { activeMarketTracks, isMarketLaunched, overdueReviews } from './postLaunch';
+import { activeMarketTracks, currentMarketTracks, onMarketTracks, overdueReviews } from './postLaunch';
 import { PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
 import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
@@ -556,8 +556,10 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     // The middle one is the case question 14 exists to separate: an approval is
     // permission to sell, not selling.
     case 'productMarketed': {
-      if (project.marketTracks.some(isMarketLaunched)) return 'applies';
-      const approved = project.marketTracks.some((t) => t.launchApproval === 'Approved');
+      // F4: on sale in any version counts; an approval waiting for a launch date is
+      // read on the current version's tracks.
+      if (onMarketTracks(project).length > 0) return 'applies';
+      const approved = currentMarketTracks(project).some((t) => t.launchApproval === 'Approved');
       return approved ? 'notAssessed' : 'doesNotApply';
     }
 
@@ -565,7 +567,7 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     // review milestone is reached OR a relevant signal occurs". Both limbs, and
     // the signal limb reads the same issue-type list the PV/PMS trigger does.
     case 'postLaunchReviewDue': {
-      if (!project.marketTracks.some(isMarketLaunched)) return 'doesNotApply';
+      if (onMarketTracks(project).length === 0) return 'doesNotApply';
       const issues = selectedChecklistLabels(project, 'postMarketIssueType');
       const sources = selectedChecklistLabels(project, 'postMarketSources');
       if (issues.some((i) => EARLY_REVIEW_ISSUE_TYPES.includes(i))) return 'applies';
@@ -603,7 +605,7 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
       const actions = selectedChecklistLabels(project, 'postMarketAction');
       if (issues.some((i) => PERFORMANCE_ISSUE_TYPES.includes(i))) return 'applies';
       if (actions.includes('Product optimisation')) return 'applies';
-      if (!project.marketTracks.some(isMarketLaunched)) return 'doesNotApply';
+      if (onMarketTracks(project).length === 0) return 'doesNotApply';
       // The 1-month milestone exists only for an enhanced-surveillance product; this
       // passed `enhanced: false`, so that milestone never made the trigger fire
       // (SME rule audit D, 2026-10-04). Same derivation as postLaunchReviewsRecorded.

@@ -599,6 +599,10 @@ export interface GateSignOff {
   // version and launch date. Absent on every other gate — deliberately nullable
   // rather than a placeholder value, so the two shapes stay visibly different.
   market?: string;
+  // F4: a per-market lane belongs to one formula version, so the old version's
+  // signatures stay as history and do not count for the new one. Absent on
+  // Gates 1-9.
+  formulaVersion?: string;
   role: GateSignOffRole;
   // Nominated signer (the project Lead nominates; only that person may sign),
   // stored as the user id because this one is an authorisation input.
@@ -907,6 +911,9 @@ export type MarketApprovalStatus = (typeof MARKET_APPROVAL_STATUSES)[number];
 
 export interface MarketTrack {
   market: string;
+  // F4: the formula version this track belongs to — one track per market per
+  // version, so an older version stays on the market beside the new one.
+  formulaVersion: string;
   pifStatus: MarketApprovalStatus;
   regulatoryStatus: MarketApprovalStatus;
   claimsApproval: MarketApprovalStatus;

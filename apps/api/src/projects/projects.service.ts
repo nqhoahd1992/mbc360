@@ -56,14 +56,14 @@ import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateR
 import {
   GATE_PASSING_DECISIONS,
   INDEPENDENT_FUNCTION_BY_GATE,
+  findGateSignOff,
   gateSignOffMarkets,
   gateSignOffNeedsComment,
   isPerMarketGate,
   previousGateSignOffRole,
 } from '@mbc360/shared/config/gateSignOff';
 import { gateEvidenceSnapshot } from '@mbc360/shared/utils/gateSnapshot';
-import { supersessionGaps } from '@mbc360/shared/utils/formulaLifecycle';
-import { activeMarkets } from '@mbc360/shared/utils/postLaunch';
+import { supersessionGaps, versionMarkets } from '@mbc360/shared/utils/formulaLifecycle';
 import {
   CLAIM_EXEMPTION_CAPABILITY,
   REVISION_APPROVAL_CAPABILITIES,
@@ -1335,7 +1335,15 @@ export class ProjectsService {
     gateId: string,
     market: string | undefined,
   ) {
-    return tx.gateSignOff.findMany({ where: { projectId: id, gateId, market: market ?? null } });
+    // F4: a per-market lane belongs to the CURRENT formula version.
+    const formulaVersionId = market ? await this.currentVersionId(tx, id) : null;
+    return tx.gateSignOff.findMany({ where: { projectId: id, gateId, market: market ?? null, formulaVersionId } });
+  }
+
+  // The newest formula version — the current one (F4/Q2).
+  private async currentVersionId(tx: Prisma.TransactionClient, projectId: string): Promise<string | null> {
+    const v = await tx.formulaVersion.findFirst({ where: { projectId }, orderBy: { createdAt: 'desc' }, select: { id: true } });
+    return v?.id ?? null;
   }
 
   // Question 29(5): "Preparer confirms the record is complete and recommends a
@@ -1452,7 +1460,14 @@ export class ProjectsService {
           await tx.gateSignOff.update({ where: { id: current.id }, data: { assignedToUserId: userId } });
         } else {
           await tx.gateSignOff.create({
-            data: { projectId: id, gateId, market: market ?? null, role, assignedToUserId: userId },
+            data: {
+              projectId: id,
+              gateId,
+              market: market ?? null,
+              formulaVersionId: market ? await this.currentVersionId(tx, id) : null,
+              role,
+              assignedToUserId: userId,
+            },
           });
         }
       }
@@ -1469,7 +1484,13 @@ export class ProjectsService {
     code: string,
   ): Promise<{ stepUpToken: string }> {
     const existing = await this.prisma.gateSignOff.findFirst({
-      where: { projectId: id, gateId, market: market ?? null, role },
+      where: {
+        projectId: id,
+        gateId,
+        market: market ?? null,
+        formulaVersionId: market ? await this.currentVersionId(this.prisma, id) : null,
+        role,
+      },
     });
     if (!existing) throw new NotFoundException(`"${role}" has no nominated signer on ${gateId} yet`);
     if (existing.signedAt) throw new BadRequestException(`"${role}" is already signed — withdraw it first`);
@@ -1562,11 +1583,17 @@ export class ProjectsService {
           ...project,
           gateSignOffs: [
             ...project.gateSignOffs.filter(
-              (sofar) => !(sofar.gateId === gateId && (sofar.market ?? undefined) === market && sofar.role === role),
+              (sofar) =>
+                !(
+                  sofar.gateId === gateId &&
+                  (sofar.market ?? undefined) === market &&
+                  sofar.role === role &&
+                  (!market || sofar.formulaVersion === project.formulaVersion)
+                ),
             ),
             {
               gateId,
-              ...(market ? { market } : {}),
+              ...(market ? { market, formulaVersion: project.formulaVersion } : {}),
               role,
               signedByUserId: user.id,
               signedAt: new Date().toISOString(),
@@ -1590,8 +1617,9 @@ export class ProjectsService {
             (m) =>
               m !== market &&
               !GATE_PASSING_DECISIONS.includes(
-                pending.gateSignOffs.find((g) => g.gateId === gateId && g.market === m && g.role === 'Approved by' && g.signedAt)
-                  ?.decision ?? '',
+                (findGateSignOff(pending, gateId, m, 'Approved by')?.signedAt
+                  ? findGateSignOff(pending, gateId, m, 'Approved by')?.decision
+                  : undefined) ?? '',
               ),
           );
         this.resolveDecision(
@@ -1672,8 +1700,11 @@ export class ProjectsService {
           const laneDecision = (m: string | undefined) =>
             m === market
               ? decision
-              : project.gateSignOffs.find((g) => g.gateId === gateId && g.market === m && g.role === 'Approved by' && g.signedAt)
-                  ?.decision;
+              : (() => {
+                  // F4: the current formula version's lane only.
+                  const lane = findGateSignOff(project, gateId, m, 'Approved by');
+                  return lane?.signedAt ? lane.decision : undefined;
+                })();
           const decisions = lanes.map(laneDecision);
           if (decisions.some((d) => !d)) gateDecision = null;
           else if (decisions.every((d) => GATE_PASSING_DECISIONS.includes(d!))) {
@@ -2567,7 +2598,8 @@ export class ProjectsService {
       if (isGateRefLocked(project, '05')) {
         throw new ForbiddenException('The Formula BOM belongs to gate 05, which has passed — it is read-only (use Backtrack)');
       }
-      const active = row.formulaVersions.find((v) => v.status === 'Active') ?? row.formulaVersions.at(-1);
+      // The newest version is the current one (F4/Q2: two may be Active at once).
+      const active = row.formulaVersions.at(-1);
       if (!active) throw new BadRequestException('Project has no formula version to attach BOM lines to');
       // "From Cosmetri" is a fact about where a line came from, and it exempts the
       // line from F14 reconciliation and from the approved-for-use check — so a
@@ -2647,7 +2679,8 @@ export class ProjectsService {
       if (isGateRefLocked(project, '05')) {
         throw new ForbiddenException('The Formula BOM belongs to gate 05, which has passed — it is read-only (use Backtrack)');
       }
-      const active = row.formulaVersions.find((v) => v.status === 'Active') ?? row.formulaVersions.at(-1);
+      // The newest version is the current one (F4/Q2: two may be Active at once).
+      const active = row.formulaVersions.at(-1);
       if (!active) throw new BadRequestException('Project has no formula version to attach BOM lines to');
 
       await tx.bomLine.deleteMany({ where: { formulaVersionId: active.id } });
@@ -3215,8 +3248,13 @@ export class ProjectsService {
     }
     return this.mutate(user, id, expectedVersion, 'market_tracks.updated', async (tx, row) => {
       let blocked = 0;
+      // F4: a track is one market under one formula version.
+      const versionIdOf = new Map(row.formulaVersions.map((v) => [v.version, v.id]));
+      const currentVersion = row.formulaVersions.at(-1);
+      const transitioned: string[] = [];
       for (const next of tracks) {
-        const prev = row.marketTracks.find((t) => t.market === next.market);
+        const versionId = versionIdOf.get(next.formulaVersion) ?? currentVersion?.id;
+        const prev = row.marketTracks.find((t) => t.market === next.market && t.formulaVersionId === versionId);
         if (!prev) continue;
         let launchApproval = next.launchApproval;
         // C5 the other way round (SME rule audit B25, 2026-10-04): moving the PIF
@@ -3260,6 +3298,31 @@ export class ProjectsService {
         if (withdrawn && !next.withdrawnReason?.trim()) {
           throw new BadRequestException(`${next.market}: a reason is required to record a market withdrawal`);
         }
+        // Q2: launch approval of the NEW version in a market where an older
+        // version is on sale moves that older version to Transition in Progress —
+        // "approval of the new version places the old version into Transition in
+        // Progress". Only an Active older version moves; nothing reaches Superseded
+        // here, which only a person's per-market decision does.
+        if (
+          versionId === currentVersion?.id &&
+          launchApproval === 'Approved' &&
+          prev.launchApproval !== 'Approved'
+        ) {
+          const olderOnSale = row.marketTracks.filter(
+            (t) =>
+              t.market === next.market &&
+              t.formulaVersionId !== versionId &&
+              t.actualLaunchDate !== null &&
+              t.withdrawnDate === null,
+          );
+          for (const t of olderOnSale) {
+            const v = row.formulaVersions.find((fv) => fv.id === t.formulaVersionId);
+            if (v && v.status === 'Active' && !transitioned.includes(v.id)) {
+              await tx.formulaVersion.update({ where: { id: v.id }, data: { status: 'Transition in Progress' } });
+              transitioned.push(v.id);
+            }
+          }
+        }
         await tx.marketTrack.update({
           where: { id: prev.id },
           data: {
@@ -3276,7 +3339,11 @@ export class ProjectsService {
           },
         });
       }
-      return { tracks: tracks.length, launchBlockedByPif: blocked };
+      return {
+        tracks: tracks.length,
+        launchBlockedByPif: blocked,
+        versionsTransitioned: row.formulaVersions.filter((v) => transitioned.includes(v.id)).map((v) => v.version),
+      };
     });
   }
 
@@ -3339,8 +3406,9 @@ export class ProjectsService {
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
     return this.mutate(user, id, expectedVersion, 'supersession.updated', async (tx, row, project) => {
-      if (!project.identity.markets.includes(input.market)) {
-        throw new BadRequestException(`"${input.market}" is not a market on this project`);
+      // F4: a supersession decision is owed where THIS version is on sale.
+      if (!versionMarkets(project, input.version).includes(input.market)) {
+        throw new BadRequestException(`Formula version ${input.version} is not on sale in "${input.market}"`);
       }
       const version = row.formulaVersions.find((v) => v.version === input.version);
       if (!version) throw new NotFoundException(`Formula version "${input.version}" not found`);
@@ -3403,7 +3471,7 @@ export class ProjectsService {
       const complete = decisions.filter((d) => supersessionGaps(toSupersessionDecision(d)).length === 0);
       // Withdrawn markets owe no decision (SME rule audit A9) — the same list
       // `marketsAwaitingSupersession` reads, so the UI and this agree.
-      const owed = activeMarkets(project);
+      const owed = versionMarkets(project, input.version);
       const allMarketsDecided = owed.length > 0 && owed.every((m) => complete.some((d) => d.market === m));
       const state = allMarketsDecided ? 'Superseded' : 'Transition in Progress';
       await tx.formulaVersion.update({ where: { id: version.id }, data: { status: state } });
@@ -3602,7 +3670,7 @@ export class ProjectsService {
         if (version === project.formulaVersion) {
           throw new BadRequestException(`Project is already on formula version ${version}`);
         }
-        const previous = row.formulaVersions.find((v) => v.status === 'Active') ?? row.formulaVersions.at(-1);
+        const previous = row.formulaVersions.at(-1);
 
         // Move the outgoing version into TRANSITION, not Superseded. Round 4
         // question 2 (2026-08-29): "an older formula version does not
@@ -3617,11 +3685,30 @@ export class ProjectsService {
         //
         // The old version KEEPS its BOM lines, which is what makes the
         // version-compare feature work without a snapshot column.
+        //
+        // Q2 timing (SME rule audit D, 2026-10-05, project owner's choice): "approval
+        // of the new version places the old version into Transition in Progress" —
+        // approval, not creation. So a MAJOR version leaves the old one Active, still
+        // on sale in its markets, and setMarketTracks moves it to Transition in
+        // Progress when the new version is approved for launch in a market where the
+        // old one is sold. A MINOR version inherits the current tracks (below), so
+        // the old version is transitioning at once wherever it was sold. A version
+        // that was never launched anywhere has nothing to transition and goes
+        // straight to Superseded [ASSUMPTION: R5-Q53].
+        const previousOnSale = previous
+          ? row.marketTracks.some(
+              (t) => t.formulaVersionId === previous.id && t.actualLaunchDate !== null && t.withdrawnDate === null,
+            )
+          : false;
         if (previous) {
-          await tx.formulaVersion.update({
-            where: { id: previous.id },
-            data: { status: 'Transition in Progress' },
-          });
+          const nextState = !previousOnSale
+            ? 'Superseded'
+            : input.changeType === 'Major'
+              ? previous.status
+              : 'Transition in Progress';
+          if (nextState !== previous.status) {
+            await tx.formulaVersion.update({ where: { id: previous.id }, data: { status: nextState } });
+          }
         }
         const created = await tx.formulaVersion.create({
           data: {
@@ -3661,15 +3748,39 @@ export class ProjectsService {
             })),
           });
         }
-        // Market tracks follow the controlled version (F14/A1).
-        await tx.marketTrack.updateMany({ where: { projectId: id }, data: { formulaVersionId: created.id } });
+        // F4 (SME rule audit D, 2026-10-05): "launched per-market Gate 10-12 tracks
+        // are preserved for the old formula version; a major change creates a new
+        // per-market Gate 10-12 track for the new version". Every market the
+        // previous version was being pursued in (not withdrawn) gets a fresh track
+        // for the new version; the old tracks stay as they are. A MINOR change does
+        // not reopen any gate, so the current tracks carry over to the new version.
+        if (previous) {
+          const previousTracks = row.marketTracks.filter((t) => t.formulaVersionId === previous.id);
+          if (input.changeType === 'Major') {
+            const markets = previousTracks.filter((t) => t.withdrawnDate === null).map((t) => t.market);
+            if (markets.length > 0) {
+              await tx.marketTrack.createMany({
+                data: markets.map((market) => ({ projectId: id, market, formulaVersionId: created.id })),
+              });
+            }
+          } else if (previousTracks.length > 0) {
+            await tx.marketTrack.updateMany({
+              where: { id: { in: previousTracks.map((t) => t.id) } },
+              data: { formulaVersionId: created.id },
+            });
+          }
+        }
 
         let reopened: string[] = [];
         // B5: the gate signatures this version invalidated, kept on the audit row.
         let clearedGateSignOffs: Prisma.JsonObject[] = [];
         if (input.changeType === 'Major') {
+          // F4: the new version gets new Gate 10-12 tracks, so its project-level
+          // Gate 10-12 records reopen too — A2 named Gates 4-9 before F4 existed
+          // [ASSUMPTION: R5-Q52]. The old version's per-market lanes are kept: they
+          // belong to that version (see clearGateSignOffs).
           const toIdx = gateIndex('SG04');
-          const fromIdx = gateIndex('SG09');
+          const fromIdx = gateIndex('SG12');
           const affected = project.gates.filter((g) => {
             const idx = gateIndex(g.gateId);
             return idx >= toIdx && idx <= fromIdx;
@@ -3720,7 +3831,7 @@ export class ProjectsService {
               projectId: id,
               initiatedBy: user.displayName,
               reason: `Formula version ${project.formulaVersion} -> ${version} (Major)${input.reason ? ` — ${input.reason}` : ''}`,
-              fromGateId: 'SG09',
+              fromGateId: 'SG12',
               toGateId: 'SG04',
               reopenedGateIds: reopened,
               previousGates: affected.map((g) => ({ ...g })) as unknown as Prisma.InputJsonValue,
@@ -3995,8 +4106,16 @@ export class ProjectsService {
   // readable somewhere after it stops counting.
   private async clearGateSignOffs(tx: Prisma.TransactionClient, projectId: string, gateIds: string[]): Promise<Prisma.JsonObject[]> {
     if (gateIds.length === 0) return [];
+    // F4: an older formula version's per-market lanes are history for THAT
+    // version — reopening gates on the current version must not touch them.
+    const current = await this.currentVersionId(tx, projectId);
     const signed = await tx.gateSignOff.findMany({
-      where: { projectId, gateId: { in: gateIds }, signedAt: { not: null } },
+      where: {
+        projectId,
+        gateId: { in: gateIds },
+        signedAt: { not: null },
+        OR: [{ formulaVersionId: null }, { formulaVersionId: current }],
+      },
     });
     if (signed.length === 0) return [];
     await tx.gateSignOff.updateMany({
@@ -4055,7 +4174,16 @@ export class ProjectsService {
         `Gate ${gateId}: "${requested}" is recorded by the approver's sign-off, not set directly (question 29(5))`,
       );
     }
-    if (project.gateSignOffs.some((g) => g.gateId === gateId && g.role === 'Approved by' && g.signedAt)) {
+    // F4: an older formula version's lanes are history and do not hold this gate.
+    if (
+      project.gateSignOffs.some(
+        (g) =>
+          g.gateId === gateId &&
+          g.role === 'Approved by' &&
+          g.signedAt &&
+          (!g.market || g.formulaVersion === project.formulaVersion),
+      )
+    ) {
       throw new BadRequestException(
         `Gate ${gateId}: an approver has signed this gate, so its decision is theirs — withdraw that signature to change it`,
       );

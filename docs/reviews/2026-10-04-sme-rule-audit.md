@@ -180,7 +180,7 @@ Ký hiệu đường dẫn: `svc` = `apps/api/src/projects/projects.service.ts`,
 | Mục | Đã làm | Câu hỏi |
 |---|---|---|
 | E3(a)/Q18 | `sg10-reg-approval`, `sg11-gate10`, `sg11-launch` hết `manual`: đòi mọi thị trường đang hoạt động (bỏ qua thị trường đã rút) | R5-Q44 |
-| F4, Q2 | **Chưa làm** — cần mô hình track theo phiên bản công thức và định nghĩa "phiên bản mới được duyệt"; chờ chủ dự án chọn | — |
+| F4, Q2 | **Đã làm (05/10/2026, chủ dự án chọn phương án A cho F4).** Track thị trường và làn ký Gate 10–12 gắn với phiên bản công thức (migration `20261005090000_concurrent_formula_version_tracks`); phiên bản Major tạo track mới cho từng thị trường, giữ track cũ; "phiên bản hiện tại" là phiên bản mới nhất; phiên bản cũ giữ Active cho tới khi phiên bản mới được launch approval ở thị trường đang bán nó, rồi chuyển Transition in Progress; phiên bản chưa từng launch chuyển thẳng Superseded; supersession chỉ đòi ở thị trường phiên bản đó đang bán; thẻ theo dõi thị trường hiện cả phiên bản cũ còn trên thị trường. Thử 14 ca end-to-end | R5-Q52, R5-Q53 |
 | Q4/Q13 | Trigger dùng `enhanced` thật (mốc 1 tháng); tín hiệu kéo review sớm thêm "Quality issue" và nguồn "Regulator". **Chưa làm:** record review tín hiệu ngay lập tức; baseline/enhanced vẫn dùng chung một dòng Key Gate Check | R5-Q45 |
 | Q10/Q15 | Thêm "Product optimisation opportunity"; giữ mọi claim question (không phân biệt được) | R5-Q45 |
 | Q23(a) | Gate 2: để ngỏ dạng sản phẩm thì phải có Next Action ở Gate 5; Gate 5: trường mới "Confirmed product form" | R5-Q46 |

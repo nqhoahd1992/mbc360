@@ -13,6 +13,7 @@ import {
   SyncOutlined,
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
+import { currentMarketTracks } from '@mbc360/shared/utils/postLaunch';
 import { useAppStore } from '../store/useAppStore';
 import { GATES, PHASES } from '@mbc360/shared/config/gates';
 import { isSignedOff } from '@mbc360/shared/types';
@@ -93,7 +94,8 @@ export default function Dashboard() {
   const blockedGates = projects.flatMap((p) =>
     p.gates.filter((g) => g.status !== 'Not Started' && gateBlockers(p, g.gateId).length > 0),
   );
-  const allMarkets = projects.flatMap((p) => p.marketTracks);
+  // The current formula version's tracks — an older version's approvals are history.
+  const allMarkets = projects.flatMap((p) => currentMarketTracks(p));
   const launchReady = allMarkets.filter((t) => t.launchApproval === 'Approved').length;
 
   // `projects` holds whatever the last load asked for, and the Projects page can
