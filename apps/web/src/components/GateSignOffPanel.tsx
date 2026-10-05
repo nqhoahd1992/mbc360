@@ -15,7 +15,13 @@ import {
   gateSignOffNeedsComment,
   previousGateSignOffRole,
 } from '@mbc360/shared/config/gateSignOff';
-import { gateSignOffStaleChanges, isGatePassed } from '@mbc360/shared/utils/gateProgress';
+import {
+  currentGateIndex,
+  gateIndex,
+  gateSignOffStaleChanges,
+  isGatePassed,
+  isGateUnlocked,
+} from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { EMPTY_GRANTS, hasCapability } from '../utils/permissions';
 import { useSession } from '../auth/useSession';
@@ -67,6 +73,19 @@ export default function GateSignOffPanel({
   // would un-pass the gate with no Backtrack and no reopened range, which the
   // API refuses. The button used to render anyway and only failed on the click.
   const gatePassed = isGatePassed(project, gateId);
+  // B4: the server refuses a signature on any gate that is not the one open for
+  // work, and refuses every write at all on an archived project. The panel used
+  // to render the decision form, the comment box and a live Sign button on those
+  // gates anyway, so a future gate offered a whole signing form that the API
+  // would have rejected — and the reason it printed was the stage status, which
+  // is not why it was refused. (2026-10-05, user-reported.)
+  const archived = !!project.identity.archived;
+  const canSign = isGateUnlocked(project, gateId) && !archived;
+  const notOpenReason = archived
+    ? 'This project is archived and read-only — restore it before signing anything.'
+    : gateIndex(gateId) > currentGateIndex(project)
+      ? `${gateId} is not open for work yet — every gate before it has to pass first.`
+      : `${gateId} is no longer the gate open for work — reopen it with Backtrack to change its sign-off.`;
   const stageStatus = project.gates.find((g) => g.gateId === gateId)?.status ?? 'Not Started';
   const stageIncomplete = stageStatus !== 'Complete';
   const [drafts, setDrafts] = useState<Record<string, { decision?: string; comment?: string }>>({});
@@ -94,6 +113,7 @@ export default function GateSignOffPanel({
   // Why the Sign button is unavailable, as a tooltip rather than an unexplained
   // disabled button. Mirrors the server's guards — it does not replace them.
   const blockedReason = (market: string | undefined, role: GateSignOffRole): string | null => {
+    if (!canSign) return notOpenReason;
     const row = findGateSignOff(project, gateId, market, role);
     if (!row?.assignedToUserId) return "No signer nominated yet — the project's Lead nominates one";
     if (row.assignedToUserId !== session.user?.id) return `Nominated to ${row.assignedToName ?? 'somebody else'}`;
@@ -134,8 +154,16 @@ export default function GateSignOffPanel({
 
   return (
     <>
-      {/* Once, above the lanes: the stage status is the gate's, not a market's. */}
-      {stageIncomplete && (
+      {/* Once, above the lanes. The lock comes first: while the gate is not open
+          for work the stage status is not what is holding the signature up, and
+          printing that instead sends someone to fix the wrong field. */}
+      {!canSign ? (
+        <div className="concept-tokens gso-gate-hold">
+          <ClockCircleOutlined />
+          <span>{notOpenReason}</span>
+        </div>
+      ) : (
+        stageIncomplete && (
         <div className="concept-tokens gso-gate-hold">
           <ClockCircleOutlined />
           <span>
@@ -143,6 +171,7 @@ export default function GateSignOffPanel({
             Save the gate first if you have just changed it. Hold, Backtrack and Reject/Stop can still be signed.
           </span>
         </div>
+        )
       )}
       {lanes.map((market) => {
         const rows = GATE_SIGNOFF_ROLES.map(
@@ -228,7 +257,7 @@ export default function GateSignOffPanel({
                           <strong>{r.name}</strong>
                           {r.roleAtSigning && <span className="gso-muted"> · {r.roleAtSigning}</span>}
                         </>
-                      ) : isLead ? (
+                      ) : isLead && !archived ? (
                         <Select
                           allowClear
                           showSearch
@@ -260,7 +289,9 @@ export default function GateSignOffPanel({
                             </Tooltip>
                           )}
                           {r.signedByUserId === session.user?.id &&
-                            (gatePassed ? (
+                            (archived ? (
+                              <span className="gso-muted">Project archived — restore it to change this</span>
+                            ) : gatePassed ? (
                               <span className="gso-muted">Gate passed — reopen with Backtrack to change this</span>
                             ) : (
                               <Button size="small" danger onClick={() => setWithdrawing({ market, role: r.role })}>
@@ -279,7 +310,7 @@ export default function GateSignOffPanel({
                       <span className={`c-tag c-tag-dot ${r.decision === 'Proceed' ? 'c-tag-ok' : 'c-tag-warn'}`}>{r.decision}</span>
                       {r.comment ? <p className="gso-comment">{r.comment}</p> : <span className="gso-muted">No comment</span>}
                     </div>
-                  ) : isTurn && mine ? (
+                  ) : isTurn && mine && canSign ? (
                     <div className="gso-form">
                       {r.role === 'Approved by' && openChanges.length > 0 && (
                         // C10: F9's acknowledgement — recorded on this signature.
@@ -330,7 +361,10 @@ export default function GateSignOffPanel({
                       </div>
                     </div>
                   ) : (
-                    why && (
+                    // Not repeated per row while the gate is locked: the reason is the
+                    // same for all three and the banner above already carries it.
+                    why &&
+                    canSign && (
                       <div className="gso-wait">
                         <ClockCircleOutlined />
                         <span>{why}</span>
