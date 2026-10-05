@@ -660,6 +660,40 @@ Rows already recorded this way are untouched: they still display, still warn, an
 
 ---
 
+## Question 55 — Must a gate's stage status be Complete before anyone signs it off?
+
+Your question 29(1) lists "gate status and proposed decision" among the things a gate signature attests to, and we store the status inside the signed snapshot. That has a consequence you may not have intended: if the three signatures are taken while the stage status still reads In Progress, setting it to Complete afterwards changes the signed snapshot, so all three signatures go stale and all three people have to sign again.
+
+We have therefore held signing back: a signature carrying Proceed or Proceed with Conditions cannot be given until the stage status reads Complete, and the panel says so once at the top. Hold, Backtrack and Reject/Stop can still be signed at any status, because those do not claim the work is finished.
+
+**Question:** Is requiring the stage status to be Complete before a passing signature the behaviour you want? Or should a signature be allowed at any status, accepting that the later status change invalidates it?
+
+---
+
+## Question 56 — Must the three gate signatures be three different people?
+
+Your question 29(4) names one pair: "at all gates the reviewer must be a different authenticated person from the preparer". Your D1 answer points the other way for low-risk work — "where risk is low the same person may prepare several gate records".
+
+We had been enforcing two more pairs that neither answer mentions: the approver could not be the preparer, and the approver could not be the reviewer. Together those forced three different people on every one of the twelve gates, which a small team cannot always staff. We have removed both, so only your stated rule remains.
+
+What that now permits, and we want to be explicit about it: **the same person may prepare a gate and then approve it**, with a different person reviewing in between. Since the approver's decision is the gate decision, that is a person approving work they prepared.
+
+**Question:** Should the three signatures be three different people? If not everywhere, then where — only the seven critical gates, or only for safety, regulatory, claims and release decisions? And specifically: may the preparer also be the approver, or should that one stay refused?
+
+---
+
+## Question 57 — May a next action be raised against a gate that has already passed?
+
+Your B2 answer says open actions may exist only where the gate decision is Proceed with Conditions, and your F8 answer makes a Critical action block gate closure. Both describe which actions may EXIST when a gate passes. Neither says whether a NEW action may be raised afterwards.
+
+We have refused it, for both decisions. The reason is mechanical rather than a matter of taste: a gate's open actions are part of the evidence record its three signatures attest to (question 29(1)), so raising one afterwards makes all three signatures stale — and a gate that has passed cannot be re-signed, so the lane would stay stale with no way out. Reopening the gate with Backtrack is the route.
+
+What stays open on a passed gate: editing, progressing and closing the actions already listed, which is exactly what a gate that passed with conditions needs. Only adding is refused, and deleting already was.
+
+**Question:** Is refusing a new action on a passed gate right? If work is discovered afterwards, should it be raised against the next gate instead, or should the gate be reopened?
+
+---
+
 ## Summary
 
 | # | Topic | Why it matters |
@@ -671,6 +705,9 @@ Rows already recorded this way are untouched: they still display, still warn, an
 | 7–9 | Supersession signature · Claims Library criticality · scale-up areas | Designed, not built — redesign if wrong |
 | 10–12 | Phase sign-off: who nominates, whether the gate rules apply, drawn signature | Built in August, never put to you |
 | 54 | Whether a vulnerable group outside Gate 02 may be named on the screen | Narrows your 25(d) answer — built on the project owner's instruction |
+| 55 | Whether the stage status must be Complete before a gate is signed | Follows from 29(1) but is not stated there — built on the project owner's instruction |
+| 56 | Whether the three gate signatures must be three different people | A control we were enforcing beyond your answer, now removed — self-approval becomes possible |
+| 57 | Whether a next action may be raised on a gate that has passed | Refused on our reading of B2 — otherwise the gate's signatures go permanently stale |
 | 13–14 | A "Reject / Stop" decision that does not exist · whether Safety **or** Regulatory is enough | Two of your own answers name them; we did not invent either |
 | 15–16 | Who may open the reference-data pages · what makes a gap's action "controlled" | Both surfaced by using what we had just built |
 | 17 | Should a change-control trigger be limited to gates the project has passed | Not built yet — raised discussing the Change Control screen, no rework at stake either way |

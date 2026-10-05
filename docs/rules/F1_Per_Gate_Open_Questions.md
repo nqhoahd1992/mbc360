@@ -1531,6 +1531,9 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q52 | Phiên bản Major có mở lại cả Gate 10–12 không | Rà soát luật SME (F4) | **rà soát 05/10/2026** |
 | R5-Q53 | Khi nào phiên bản cũ chuyển trạng thái, và lịch review khi hai phiên bản cùng bán | Rà soát luật SME (Q2/F4) | **rà soát 05/10/2026** |
 | R5-Q54 | Có được ghi nhóm dễ tổn thương ngoài suy luận từ Cổng 02 không | Rà soát luật SME (25d) | **rà soát 05/10/2026** |
+| R5-Q55 | Stage status có phải Complete trước khi ký gate không | Rà soát luật SME (29.1) | **rà soát 05/10/2026** |
+| R5-Q56 | Ba chữ ký gate có phải ba người khác nhau không | Rà soát luật SME (29.4 / D1) | **rà soát 05/10/2026** |
+| R5-Q57 | Gate đã passed có được tạo Next Action mới không | Rà soát luật SME (B2 / F8 / 29.1) | **rà soát 05/10/2026** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
 
@@ -2145,3 +2148,39 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Câu hỏi:** Màn hình có nên giữ đúng câu 25(d) — cho phép nêu một nhóm Cổng 02 không suy ra, kèm cảnh báo và lý do — hay bắt sửa Target Users ở Cổng 02 trước là hành vi mong muốn?
 
 **Nếu trả lời khác:** `apps/web/src/components/VulnerableUserAssessmentTable.tsx` — hiện chỉ có một đường thêm nhóm (nút "Add row" cạnh nhóm còn thiếu trong khối Cổng 02), nên phải thêm lại một bộ chọn mở trên toàn bộ `options` của cột `vulnerableGroup`.
+
+#### R5-Q55 · Stage status có phải Complete trước khi ký gate không 🔴
+
+**Lộ ra khi chỉnh giao diện khối Gate sign-off (05/10/2026, chủ dự án yêu cầu).** Câu 29(1) liệt kê *"gate status and proposed decision"* trong những thứ chữ ký chứng thực, và `status` thật sự nằm trong `GateEvidenceSnapshot`. Hệ quả: ký đủ ba chữ ký khi status còn `In Progress`, rồi mới đổi sang `Complete`, thì `snapshotChanges` báo `Gate status: "In Progress" -> "Complete"` và **cả ba chữ ký thành Stale** — ba người phải ký lại.
+
+**Đang siết:** chữ ký mang quyết định `Proceed` hoặc `Proceed with Conditions` bị chặn cho tới khi status là `Complete`; `Hold`, `Backtrack`, `Reject/Stop` vẫn ký được ở mọi status, vì chúng không khẳng định công việc đã xong. Chỉ siết ở UI — engine và API không đổi, vì câu 29(1) nêu status là bằng chứng được ký mà **không** nói nó phải Complete trước.
+
+**Câu hỏi:** Bắt status phải Complete trước một chữ ký đạt có đúng ý không? Hay cho ký ở mọi status và chấp nhận việc đổi status sau đó làm chữ ký mất hiệu lực?
+
+**Nếu trả lời khác:** `apps/web/src/components/GateSignOffPanel.tsx` — bỏ nhánh `stageIncomplete` trong `blockedReason` và khối `gso-gate-hold`.
+
+#### R5-Q56 · Ba chữ ký gate có phải ba người khác nhau không 🔴
+
+**Lộ ra khi chủ dự án hỏi lại (05/10/2026).** Câu 29(4) chỉ nêu **một** cặp: *"at all gates the reviewer must be a different authenticated person from the preparer"*. D1 còn nới theo chiều ngược: *"where risk is low the same person may prepare several gate records"*.
+
+`assertIndependence` trước đó chặn **thêm hai cặp không có trong câu trả lời nào** — approver ≠ preparer và approver ≠ reviewer — nên trên thực tế bắt buộc **ba người khác nhau ở cả 12 cổng**. Thông báo lỗi còn ghi *"the reviewer and approver must be different people"*, một câu SME chưa bao giờ viết. Đã bỏ cả hai cặp theo yêu cầu của chủ dự án (nguyên tắc: SME không nói thì không cưỡng chế).
+
+**Hệ quả đã nêu rõ với chủ dự án trước khi sửa:** cùng một người giờ được **chuẩn bị rồi tự duyệt** một cổng (có người khác rà soát ở giữa). Vì chữ ký của người duyệt CHÍNH LÀ quyết định cổng, đây là tự phê duyệt công việc của mình — một chốt kiểm soát đã được hạ có ý thức, không phải sơ suất.
+
+**Vẫn giữ:** reviewer ≠ preparer ở mọi cổng, và yêu cầu chức năng độc lập ở 7 cổng trọng yếu (ít nhất một trong hai người rà soát/duyệt phải nắm capability tương ứng). Quy trình nghiên cứu trên người giữ nguyên luật khác-phòng-ban chặt hơn (C2).
+
+**Câu hỏi:** Ba chữ ký có phải ba người khác nhau? Nếu không phải mọi nơi thì ở đâu — chỉ 7 cổng trọng yếu, hay chỉ các quyết định an toàn/pháp lý/claim/xuất xưởng? Và riêng: preparer có được đồng thời là approver không?
+
+**Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `assertIndependence`, thêm lại hai nhánh đã bỏ.
+
+#### R5-Q57 · Gate đã passed có được tạo Next Action mới không 🔴
+
+**Lộ ra khi chủ dự án xem màn Phase (05/10/2026).** `R1-B2` nói *"open actions may exist only if the gate decision is Proceed with Conditions"*, `R2-F8` cho Critical chặn đóng gate. Cả hai nói về action **tồn tại** lúc gate qua, **không** nói về việc tạo mới **sau** khi gate đã qua.
+
+**Đã chặn, cho cả hai quyết định.** Lý do mang tính cơ chế chứ không phải khẩu vị: danh sách action đang mở của gate nằm trong `GateEvidenceSnapshot` (câu 29(1)), nên thêm một action sau khi gate qua làm **cả ba chữ ký thành Stale** — mà gate đã qua thì **không ký lại được** (`isGateUnlocked`), nên lane kẹt vĩnh viễn. Backtrack là lối ra.
+
+**Vẫn mở trên gate đã passed:** sửa, đẩy trạng thái và đóng các action đã có — đúng thứ một gate qua bằng `Proceed with Conditions` cần. Chỉ cấm thêm mới; xoá thì vốn đã cấm.
+
+**Câu hỏi:** Cấm tạo action mới trên gate đã passed có đúng không? Nếu phát hiện việc sau đó thì nên ghi vào gate kế tiếp, hay phải mở lại gate?
+
+**Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — vòng kiểm "Creation" trong `guardNextActions`; `apps/web/src/components/NextActionsCard.tsx` — `addBlocked`.

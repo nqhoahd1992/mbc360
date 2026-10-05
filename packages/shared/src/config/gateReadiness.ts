@@ -541,10 +541,11 @@ export interface ReadinessRequirement {
 // User-corrected 2026-07-28: that phase-level block is per-PHASE (shared
 // across several gates), which is a different thing from a per-GATE
 // confirmation, and the appendix repeats the line at every single gate, not
-// just once per phase — so each gate now gets its own `sgXX-signoff` item,
-// checking that the GATE's own Phase Gate Flow row (Owner + Evidence link)
-// has actually been filled in. The phase-level sign-off block is unchanged
-// and remains a separate B3 condition.
+// just once per phase — so each gate got its own `sgXX-signoff` item, which
+// at that point checked that the GATE's own Phase Gate Flow row (Owner +
+// Evidence link) had actually been filled in. (What those items read today is
+// settled two paragraphs down; the past tense here is deliberate.) The
+// phase-level sign-off block is unchanged and remains a separate B3 condition.
 //
 // Round 3 D1 (2026-08-07) rejected that reading in its own words: "Owner +
 // Evidence link is not equivalent to Prepared, Reviewed and Approved sign-off."
@@ -702,8 +703,12 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     },
     {
       // Added 2026-07-28 — every gate's F1 list ends with this same line (see
-      // the note above GATE_READINESS). Checks the Gate 01 Phase Gate Flow
-      // row's own Owner + Evidence link fields, not the phase-level sign-off.
+      // the note above GATE_READINESS). Reads the gate's own three recorded
+      // signatures (`gateSignedOff` -> `unsignedGateLanes`), not the Phase Gate
+      // Flow row's Owner + Evidence link, which is what it checked until the
+      // per-gate sign-off was built (Round 4 questions 18 and 29, 2026-08-29);
+      // Round 3 D1 rejected that earlier reading in its own words. The
+      // phase-level sign-off block stays a separate B3 condition.
       id: 'sg01-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
@@ -2172,14 +2177,18 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     {
       // Added 2026-07-28 — the SME's own Gate 7 list names this as a DISTINCT
       // 10th item, separate from "Required safety reviewer approval" above.
-      // User-confirmed reading (2026-07-28): unlike sg07-reviewer (a separate
-      // Final Safety Sign-off register) or the Phase 3 SignOffBlock
-      // (Prepared/Reviewed/Approved roles, evaluated per-PHASE, not per-gate),
-      // this item is the act of completing the Gate 07 row itself in the
-      // Phase Gate Flow table — Owner and Evidence link filled in, i.e. a
-      // named person has taken responsibility and left a review trail. Not
-      // vacuous: both fields start blank on a gate record and are only
-      // filled in when someone actually does so.
+      // Still distinct from its two neighbours, which is why it is its own item:
+      // sg07-reviewer reads the separate Final Safety Sign-off register, and the
+      // Phase 3 SignOffBlock is per-PHASE rather than per-gate.
+      //
+      // What it reads changed on 2026-08-29. Until then it checked the Gate 07
+      // Phase Gate Flow row's Owner + Evidence link — the reading Round 3 D1
+      // rejected ("Owner + Evidence link is not equivalent to Prepared, Reviewed
+      // and Approved sign-off"). It now reads the three real signatures
+      // (`gateSignedOff` -> `unsignedGateLanes`), each carrying an authenticated
+      // user, role, timestamp, decision, evidence snapshot and comment. Not
+      // vacuous: a gate starts with no sign-off rows at all, and an absent row
+      // counts as unsigned.
       id: 'sg07-signoff',
       label: 'Prepared, reviewed and approved sign-off',
       tier: 'Mandatory',
