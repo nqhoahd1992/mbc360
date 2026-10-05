@@ -1,5 +1,7 @@
 # MBc360 — Bảng câu hỏi xác nhận nghiệp vụ trước khi triển khai thực tế
 
+> **Cần đọc chính các quy tắc, sắp theo chủ đề?** `Business_Rules_Consolidated_VN.md` gộp mọi quy tắc đã xác nhận của cả bốn vòng vào một tài liệu sắp theo chủ đề, mỗi phát biểu đều gắn mã vòng và mã câu gốc. **File này vẫn là hồ sơ gốc** — câu hỏi như đã hỏi, câu trả lời như đã nhận, theo từng vòng — và đúng hơn bản tổng hợp khi hai bên mâu thuẫn.
+
 **Mục đích:** Trước khi phát triển backend/database chính thức cho hệ thống MBc360, cần bộ phận chuyên môn (Product Development / NPD / Quality / Regulatory) xác nhận các quy tắc nghiệp vụ dưới đây. Bản demo ReactJS hiện tại đã tạm áp dụng một số giả định để có thể trình bày luồng làm việc — các giả định này **cần được xác nhận hoặc điều chỉnh** trước khi xây dựng hệ thống thật.
 
 **Cách sử dụng:** Với mỗi mục, xin vui lòng xác nhận **Đúng / Sai / Cần điều chỉnh** và ghi chú câu trả lời vào phần "Quyết định của bộ phận chuyên môn".

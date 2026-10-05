@@ -1,5 +1,7 @@
 # MBc360 — Business Rules Confirmation Checklist (Pre-Implementation)
 
+> **Looking for the rules themselves, grouped by subject?** `Business_Rules_Consolidated_EN.md` merges every confirmed rule from all four rounds into one subject-ordered document, each statement tagged with the round and question it came from. **This file remains the record** — the question as asked, the answer as given, round by round — and wins over the consolidated version wherever they disagree.
+
 **Purpose:** Before building the production backend/database for the MBc360 system, the subject-matter team (Product Development / NPD / Quality / Regulatory) needs to confirm the business rules below. The current ReactJS demo already applies a set of working assumptions to demonstrate the workflow — these assumptions **must be confirmed or corrected** before the real system is built.
 
 **How to use this document:** For each item, please confirm **Correct / Incorrect / Needs adjustment** and record the answer under "Subject-matter team decision".
