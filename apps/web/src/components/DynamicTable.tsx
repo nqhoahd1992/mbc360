@@ -205,6 +205,17 @@ export default function DynamicTable({
       })
     : [];
   const softWarnings = readOnly ? [] : [...(warnings?.(draft) ?? []), ...libraryWarnings];
+  // Every reason Save is refused, in one list. It used to reach the user only
+  // as a tooltip on a disabled button, so the screen showed a greyed-out Save
+  // and nothing else — the same failure the gate decision dropdown had on
+  // 2026-07-22, where hiding the option hid the reason with it. A disabled
+  // control that does not say why reads as a broken button.
+  const saveProblems = [
+    ...(hasBlankRows
+      ? ['One or more rows have no data entered — fill in at least one field, or remove the row.']
+      : []),
+    ...blockers,
+  ];
   const save = () => {
     if (hasBlankRows || blockers.length > 0) return;
     onSave(draft);
@@ -432,6 +443,21 @@ export default function DynamicTable({
           <span>{readOnlyReason ?? 'This evidence belongs to a gate that has already passed. To correct it, Backtrack to reopen that gate first.'}</span>
         </div>
       )}
+      {saveProblems.length > 0 && (
+        <Alert
+          type="error"
+          showIcon
+          className="rt-alert"
+          title={saveProblems.length === 1 ? 'This cannot be saved yet' : `${saveProblems.length} things to fix before saving`}
+          description={
+            <ul style={{ margin: 0, paddingLeft: 18 }}>
+              {saveProblems.map((b) => (
+                <li key={b}>{b}</li>
+              ))}
+            </ul>
+          }
+        />
+      )}
       {softWarnings.length > 0 && (
         <Alert
           type="warning"
@@ -544,12 +570,8 @@ export default function DynamicTable({
               dirty={dirty}
               onSave={save}
               onDiscard={discard}
-              disabled={hasBlankRows || blockers.length > 0}
-              disabledReason={
-                hasBlankRows
-                  ? 'One or more rows have no data entered — fill in at least one field or remove the row before saving.'
-                  : blockers.join(' · ')
-              }
+              disabled={saveProblems.length > 0}
+              disabledReason={saveProblems.join(' · ')}
             />
           </div>
         </div>

@@ -131,6 +131,14 @@ export default function FormulaPropertiesCard({ project }: { project: ProjectDat
         )}
       </div>
 
+      {/* Said on screen, not only in the disabled button's tooltip: a Save that
+          is greyed out with no reason beside it reads as a broken button. */}
+      {!locked && dirty && rationaleMissing && (
+        <div className="bom-total-warn">
+          <ExclamationCircleOutlined />
+          <span>A documented rationale is required before this can be saved (SME Round 3, A3).</span>
+        </div>
+      )}
       {!locked && dirty && (
         <div className="rt-savebar bom-savebar">
           <div>
