@@ -29,6 +29,9 @@ export interface RecordListProps<T> {
   drawer: (row: T, index: number) => React.ReactNode;
   emptyText?: string;
   addLabel?: string;
+  // Why a row cannot be added right now. Set, it replaces the Add button with
+  // this line — a button that the server will refuse is worse than no button.
+  addDisabledReason?: string;
   // Returns the index of the row it added, so the drawer opens on it.
   onAdd?: () => number;
   onRemove?: (index: number) => void;
@@ -67,6 +70,7 @@ export default function RecordList<T>({
   drawer,
   emptyText = 'Nothing recorded yet.',
   addLabel = 'Add row',
+  addDisabledReason,
   onAdd,
   onRemove,
   isRowBlank,
@@ -220,7 +224,12 @@ export default function RecordList<T>({
             {rows.length === 0 && <li className="rt-empty">{emptyText}</li>}
           </ul>
         )}
-        {onAdd && (
+        {onAdd && addDisabledReason && (
+          <div className="rt-add">
+            <span className="rt-muted">{addDisabledReason}</span>
+          </div>
+        )}
+        {onAdd && !addDisabledReason && (
           <div className="rt-add">
             <Button type="dashed" block icon={<PlusOutlined />} onClick={() => {
                 const index = onAdd();

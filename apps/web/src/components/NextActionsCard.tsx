@@ -1,7 +1,8 @@
 import { DatePicker, Input, Select } from 'antd';
 import dayjs from 'dayjs';
-import type { NextAction, NextActionPriority, NextActionStatus } from '@mbc360/shared/types';
+import type { NextAction, NextActionPriority, NextActionStatus, ProjectData } from '@mbc360/shared/types';
 import { GATES } from '@mbc360/shared/config/gates';
+import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
@@ -26,10 +27,12 @@ const PRIORITY_TONE: Record<NextActionPriority, string> = { Low: '', Medium: 'c-
 // Since 2026-10-02 laid out as a RecordList: priority and status on the row,
 // everything else in the drawer; adding an action opens its drawer.
 export default function NextActionsCard({
+  project,
   projectId,
   gateIds,
   actions,
 }: {
+  project: ProjectData;
   projectId: string;
   gateIds: string[];
   actions: NextAction[];
@@ -46,6 +49,17 @@ export default function NextActionsCard({
   const gateNumber = (id: string) => GATES.find((g) => g.id === id)?.number ?? id;
 
   const patch = (index: number, p: Partial<NextAction>) => update((prev) => patchArray(prev, index, p));
+  // A new action always lands on the first gate this card covers, so that is the
+  // gate the rule reads. Once it has passed, its open-action list is part of the
+  // evidence its three signatures attest to and the gate can no longer be
+  // re-signed — adding one would leave the signatures permanently stale. Editing
+  // and closing what is already there stays open, which is what a gate carrying
+  // conditions needs. [ASSUMPTION: R5-Q57]
+  const addGateId = gateIds[0];
+  const addBlocked = isGatePassed(project, addGateId)
+    ? `${addGateId} has passed — a new action cannot be added to it. Reopen the gate with Backtrack, or close the actions already listed.`
+    : undefined;
+
   const addAction = () => {
     update((prev) => [
       ...prev,
@@ -146,6 +160,7 @@ export default function NextActionsCard({
       )}
       emptyText="No next actions recorded for this gate."
       addLabel="Add action"
+      addDisabledReason={addBlocked}
       onAdd={addAction}
       onRemove={removeAction}
       isRowBlank={(a) => !a.description.trim() && !a.owner && !a.dueDate}

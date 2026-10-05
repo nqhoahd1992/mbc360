@@ -395,7 +395,7 @@ export default function PhasePage() {
             <EightAnglesTable projectId={project.identity.id} phase={phase} angles={project.phaseClosures[phase].angles} />
           </div>
           <div id="sec-next-actions">
-            <NextActionsCard projectId={project.identity.id} gateIds={config.gateIds} actions={project.nextActions} />
+            <NextActionsCard project={project} projectId={project.identity.id} gateIds={config.gateIds} actions={project.nextActions} />
           </div>
           {closure?.preWork?.acceptedBy && (
             <p className="ph-small">
@@ -508,7 +508,7 @@ export default function PhasePage() {
             )}
 
             <div id="sec-next-actions">
-              <NextActionsCard projectId={project.identity.id} gateIds={[tab]} actions={project.nextActions} />
+              <NextActionsCard project={project} projectId={project.identity.id} gateIds={[tab]} actions={project.nextActions} />
             </div>
           </div>
 

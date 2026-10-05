@@ -1369,24 +1369,32 @@ export class ProjectsService {
   //
   // The human-study workflow keeps its stricter outside-department rule (C2); the
   // answer says so explicitly, and nothing here touches it.
+  //
+  // NARROWED BACK on 2026-10-05 (project owner: if the review team did not say it,
+  // do not enforce it). Two further pairs used to be refused here —
+  // approver != preparer and approver != reviewer — which together forced THREE
+  // distinct people on every one of the twelve gates. Neither appears in any
+  // answer: 29(4) names only reviewer != preparer, and D1 says the opposite way
+  // ("where risk is low the same person may prepare several gate records").
+  //
+  // What removing them permits, stated plainly because it is not obvious: the
+  // approver may now be the same person as the preparer, i.e. somebody can approve
+  // the gate they prepared, and the approver's decision IS the gate decision. That
+  // is a real loosening of a control, taken deliberately rather than by oversight.
+  // [ASSUMPTION: R5-Q56]
   private async assertIndependence(
     user: SessionUser,
     gateId: string,
     role: GateSignOffRole,
     rows: { role: string; signedByUserId: string | null }[],
   ): Promise<void> {
-    if (role !== 'Prepared by') {
+    // The one pair question 29(4) actually names.
+    if (role === 'Reviewed by') {
       const preparer = rows.find((r) => r.role === 'Prepared by')?.signedByUserId;
       if (preparer && preparer === user.id) {
         throw new ForbiddenException(
-          `You signed "Prepared by" on this gate — the reviewer and approver must be different people`,
+          `You signed "Prepared by" on this gate — the reviewer must be a different person`,
         );
-      }
-    }
-    if (role === 'Approved by') {
-      const reviewer = rows.find((r) => r.role === 'Reviewed by')?.signedByUserId;
-      if (reviewer && reviewer === user.id) {
-        throw new ForbiddenException('You signed "Reviewed by" on this gate — the approver must be a different person');
       }
     }
     const required = INDEPENDENT_FUNCTION_BY_GATE[gateId];
@@ -1441,6 +1449,25 @@ export class ProjectsService {
         throw new ForbiddenException(`Only the project's Lead (${project.identity.projectLead}) may nominate signers`);
       }
       const existing = await this.loadGateSignOffs(tx, id, gateId, market);
+
+      // Question 29(4)'s one stated pair, applied to the MERGED state: whoever
+      // would end up on "Reviewed by" must not be whoever is on "Prepared by",
+      // counting a signature as well as a nomination. Refusing it now spares the
+      // nominee discovering it at the authenticator prompt.
+      const wouldBe = (role: GateSignOffRole): string | null => {
+        if (role in assignees) return assignees[role] ?? null;
+        const row = existing.find((r: { role: string }) => r.role === role);
+        return row?.signedByUserId ?? row?.assignedToUserId ?? null;
+      };
+      const preparer = wouldBe('Prepared by');
+      const reviewer = wouldBe('Reviewed by');
+      if (preparer && reviewer && preparer === reviewer) {
+        const who = await tx.user.findUnique({ where: { id: preparer }, select: { displayName: true } });
+        throw new BadRequestException(
+          `${who?.displayName ?? 'That person'} cannot be both "Prepared by" and "Reviewed by" on the same gate — the reviewer must be a different person`,
+        );
+      }
+
       for (const [role, userId] of Object.entries(assignees) as [GateSignOffRole, string | null][]) {
         if (!(GATE_SIGNOFF_ROLES as readonly string[]).includes(role)) {
           throw new BadRequestException(`Unknown sign-off role "${role}"`);
@@ -3175,6 +3202,26 @@ export class ProjectsService {
       if (isGatePassed(project, old.gateId)) {
         throw new BadRequestException(
           `Action "${old.description}" belongs to ${old.gateId}, which has passed — it cannot be deleted (use Backtrack)`,
+        );
+      }
+    }
+
+    // Creation. A gate's OPEN actions are part of the evidence snapshot its three
+    // signatures attest to (gateSnapshot.ts), so a new one on a passed gate makes
+    // all three stale — and a passed gate cannot be re-signed ("not the gate
+    // currently open for work"), leaving the lane permanently stale with no way
+    // out. Editing and closing an action that already exists stays open, which is
+    // what a gate carrying conditions needs; only adding is refused.
+    //
+    // Our reading of B2 ("open actions may exist only if the gate decision is
+    // Proceed with Conditions"), which speaks about actions EXISTING, not about
+    // raising one after the gate has passed. Project owner's decision, 2026-10-05:
+    // refuse it for both decisions and use Backtrack. [ASSUMPTION: R5-Q57]
+    for (const a of incoming) {
+      if (before.has(a.id)) continue;
+      if (isGatePassed(project, a.gateId)) {
+        throw new BadRequestException(
+          `${a.gateId} has passed — a new next action cannot be added to it; reopen the gate with Backtrack`,
         );
       }
     }
