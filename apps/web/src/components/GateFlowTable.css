@@ -18,3 +18,4 @@
 .gfc-guidance:empty { display: none; }
 /* GateSignOffPanel's table has no scroll of its own; on a phone it would widen the page. */
 .gfc-guidance .ant-table-content { overflow-x: auto; }
+.gfc-nohistory { flex: none; color: var(--c-text-3); font-size: 13px; }

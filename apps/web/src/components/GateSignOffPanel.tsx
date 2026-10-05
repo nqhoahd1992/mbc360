@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Input, Modal, Select, Tooltip } from 'antd';
+import { CheckOutlined, ClockCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { GateSignOff, GateSignOffRole, ProjectData } from '@mbc360/shared/types';
 import { GATE_SIGNOFF_ROLES } from '@mbc360/shared/types';
@@ -7,14 +8,16 @@ import { GATE_DECISIONS, GATES } from '@mbc360/shared/config/gates';
 import { openChangesAffectingGate } from '@mbc360/shared/config/changeTriggers';
 import {
   CRITICAL_GATES,
+  GATE_PASSING_DECISIONS,
   INDEPENDENT_FUNCTION_BY_GATE,
   findGateSignOff,
   gateSignOffMarkets,
   gateSignOffNeedsComment,
   previousGateSignOffRole,
 } from '@mbc360/shared/config/gateSignOff';
-import { gateSignOffStaleChanges } from '@mbc360/shared/utils/gateProgress';
+import { gateSignOffStaleChanges, isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
+import { EMPTY_GRANTS, hasCapability } from '../utils/permissions';
 import { useSession } from '../auth/useSession';
 import { usePickerUsers } from '../hooks/useUserOptions';
 import { getMySignature, getMyTotpStatus } from '../api/accountApi';
@@ -49,6 +52,23 @@ export default function GateSignOffPanel({
     () => openChangesAffectingGate(allChanges, projectId, GATES.find((g) => g.id === gateId)?.number ?? ''),
     [allChanges, projectId, gateId],
   );
+  // The stage status is part of the snapshot every signature attests to
+  // (GateEvidenceSnapshot.status), so a passing signature taken before the work
+  // is marked Complete goes stale the moment it is — after three people have
+  // signed. Holding the signature until then is the project owner's decision
+  // (2026-10-05) and is deliberately UI-only: the API still accepts it, because
+  // question 29(1) names the status as signed evidence without saying it must be
+  // Complete first. [ASSUMPTION: R5-Q55]
+  // Question 29(4)'s critical-gate rule reads a nominee's CAPABILITY, so the
+  // panel needs the same permission grid the rest of the app uses. Admin
+  // short-circuits inside `hasCapability`, exactly as it does on the server.
+  const grants = useAppStore((st) => st.permissionGrid?.grants ?? EMPTY_GRANTS);
+  // B4: once the gate has PASSED its signatures are frozen — withdrawing one
+  // would un-pass the gate with no Backtrack and no reopened range, which the
+  // API refuses. The button used to render anyway and only failed on the click.
+  const gatePassed = isGatePassed(project, gateId);
+  const stageStatus = project.gates.find((g) => g.gateId === gateId)?.status ?? 'Not Started';
+  const stageIncomplete = stageStatus !== 'Complete';
   const [drafts, setDrafts] = useState<Record<string, { decision?: string; comment?: string }>>({});
   const [stepUp, setStepUp] = useState<{ market?: string; role: GateSignOffRole } | null>(null);
   const [withdrawing, setWithdrawing] = useState<{ market?: string; role: GateSignOffRole } | null>(null);
@@ -85,6 +105,9 @@ export default function GateSignOffPanel({
     if (!totpEnrolled) return 'Set up an authenticator app in My Account first';
     const d = draftOf(market, role);
     if (!d.decision) return 'Choose a decision first';
+    if (GATE_PASSING_DECISIONS.includes(d.decision) && stageIncomplete) {
+      return `Save the stage status as Complete first — it is currently "${stageStatus}", and a signature attests the gate's work is done`;
+    }
     if (gateSignOffNeedsComment(d.decision) && !d.comment?.trim()) {
       return `A comment is required when the decision is "${d.decision}"`;
     }
@@ -111,6 +134,16 @@ export default function GateSignOffPanel({
 
   return (
     <>
+      {/* Once, above the lanes: the stage status is the gate's, not a market's. */}
+      {stageIncomplete && (
+        <div className="concept-tokens gso-gate-hold">
+          <ClockCircleOutlined />
+          <span>
+            Signing is held until the <strong>saved</strong> stage status is Complete — it is currently "{stageStatus}".
+            Save the gate first if you have just changed it. Hold, Backtrack and Reject/Stop can still be signed.
+          </span>
+        </div>
+      )}
       {lanes.map((market) => {
         const rows = GATE_SIGNOFF_ROLES.map(
           (role) => findGateSignOff(project, gateId, market, role) ?? ({ gateId, market, role } as GateSignOff),
@@ -133,14 +166,61 @@ export default function GateSignOffPanel({
                 </Tooltip>
               )}
             </div>
-            {rows.map((r) => {
+            {/* A WARNING, not a block: the rule is about a SET ("at least one
+                reviewer or approver"), so until both are nominated the Lead may
+                still satisfy it with the other one. Refusing a half-finished
+                nomination would refuse a state that is on its way to valid. The
+                hard refusal stays at the approver's signature. */}
+            {independent &&
+              (() => {
+                const pick = (role: GateSignOffRole) => {
+                  const row = rows.find((x) => x.role === role);
+                  const id = row?.signedByUserId ?? row?.assignedToUserId ?? null;
+                  return id ? users.find((u) => u.id === id) : undefined;
+                };
+                const rev = pick('Reviewed by');
+                const app = pick('Approved by');
+                if (!rev || !app) return null;
+                const holds = (u: { roleKeys?: string[] }) =>
+                  independent.anyOf.some((cap) => hasCapability(grants, u.roleKeys ?? [], cap));
+                if (holds(rev) || holds(app)) return null;
+                return (
+                  <div className="gso-gate-warn">
+                    <ExclamationCircleOutlined />
+                    <span>
+                      Neither {rev.displayName} nor {app.displayName} represents <strong>{independent.label}</strong>,
+                      which this critical gate requires of the reviewer or the approver. The approval will be refused
+                      until one of them does.
+                    </span>
+                  </div>
+                );
+              })()}
+            {/* Question 29(4): the reviewer must differ from the preparer. Shown
+                in the picker rather than only when the nominee reaches the
+                authenticator prompt — the server refuses it at nomination too. */}
+            {rows.map((r, i) => {
+              const conflictWith: GateSignOffRole | null =
+                r.role === 'Reviewed by' ? 'Prepared by' : r.role === 'Prepared by' ? 'Reviewed by' : null;
+              const conflictRow = conflictWith ? rows.find((x) => x.role === conflictWith) : undefined;
+              const conflictUserId = conflictRow?.signedByUserId ?? conflictRow?.assignedToUserId ?? null;
               const stale = r.signedAt ? gateSignOffStaleChanges(project, gateId, market, r.role) : [];
               const why = r.signedAt ? null : blockedReason(market, r.role);
               const draft = draftOf(market, r.role);
               const needsComment = !!draft.decision && gateSignOffNeedsComment(draft.decision);
+              // Question 29(5) fixes the order, so only one step is ever
+              // actionable. Showing three identical decision forms at once said
+              // the opposite; the two that cannot be signed are now one line.
+              const isTurn = !r.signedAt && rows.slice(0, i).every((p) => p.signedAt);
+              const mine = r.assignedToUserId === session.user?.id;
               return (
-                <div key={r.role} className={`gso-row${r.signedAt ? ' gso-signed' : ''}`}>
+                <div key={r.role} className={`gso-row${r.signedAt ? ' gso-row-done' : ''}`}>
                   <div className="gso-line">
+                    <span
+                      className={`gso-step${r.signedAt ? ' gso-step-done' : isTurn ? ' gso-step-now' : ''}`}
+                      aria-hidden
+                    >
+                      {r.signedAt ? <CheckOutlined /> : i + 1}
+                    </span>
                     <span className="gso-role">{r.role}</span>
                     <div className="gso-signer">
                       {r.signedAt ? (
@@ -150,7 +230,6 @@ export default function GateSignOffPanel({
                         </>
                       ) : isLead ? (
                         <Select
-                          style={{ width: '100%', maxWidth: 320 }}
                           allowClear
                           showSearch
                           optionFilterProp="label"
@@ -159,6 +238,11 @@ export default function GateSignOffPanel({
                           options={users.map((u) => ({
                             value: u.id,
                             label: u.roleName ? `${u.displayName} — ${u.roleName}` : u.displayName,
+                            disabled: !!conflictUserId && u.id === conflictUserId,
+                            title:
+                              !!conflictUserId && u.id === conflictUserId
+                                ? `Already on "${conflictWith}" — the reviewer must be a different person`
+                                : undefined,
                           }))}
                           onChange={(v?: string) => setAssignees(projectId, gateId, market, [{ role: r.role, userId: v ?? null }])}
                         />
@@ -175,31 +259,27 @@ export default function GateSignOffPanel({
                               <span className="c-tag c-tag-bad">Stale — re-sign ({stale.length})</span>
                             </Tooltip>
                           )}
-                          {r.signedByUserId === session.user?.id && (
-                            <Button danger onClick={() => setWithdrawing({ market, role: r.role })}>
-                              Withdraw
-                            </Button>
-                          )}
+                          {r.signedByUserId === session.user?.id &&
+                            (gatePassed ? (
+                              <span className="gso-muted">Gate passed — reopen with Backtrack to change this</span>
+                            ) : (
+                              <Button size="small" danger onClick={() => setWithdrawing({ market, role: r.role })}>
+                                Withdraw
+                              </Button>
+                            ))}
                         </>
-                      ) : why ? (
-                        <Tooltip title={why}>
-                          <Button type="primary" disabled>
-                            Sign
-                          </Button>
-                        </Tooltip>
                       ) : (
-                        <Button type="primary" onClick={() => setStepUp({ market, role: r.role })}>
-                          Sign
-                        </Button>
+                        <span className="c-tag">{isTurn ? (mine ? 'Your turn' : 'Waiting to be signed') : 'Not yet'}</span>
                       )}
                     </div>
                   </div>
+
                   {r.signedAt ? (
                     <div className="gso-record">
                       <span className={`c-tag c-tag-dot ${r.decision === 'Proceed' ? 'c-tag-ok' : 'c-tag-warn'}`}>{r.decision}</span>
                       {r.comment ? <p className="gso-comment">{r.comment}</p> : <span className="gso-muted">No comment</span>}
                     </div>
-                  ) : (
+                  ) : isTurn && mine ? (
                     <div className="gso-form">
                       {r.role === 'Approved by' && openChanges.length > 0 && (
                         // C10: F9's acknowledgement — recorded on this signature.
@@ -232,7 +312,30 @@ export default function GateSignOffPanel({
                           onChange={(e) => patchDraft(market, r.role, { comment: e.target.value })}
                         />
                       </label>
+                      <div className="gso-submit">
+                        {why ? (
+                          <Tooltip title={why}>
+                            <span>
+                              <Button type="primary" disabled>
+                                Sign
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        ) : (
+                          <Button type="primary" onClick={() => setStepUp({ market, role: r.role })}>
+                            Sign
+                          </Button>
+                        )}
+                        {why && <span className="gso-muted">{why}</span>}
+                      </div>
                     </div>
+                  ) : (
+                    why && (
+                      <div className="gso-wait">
+                        <ClockCircleOutlined />
+                        <span>{why}</span>
+                      </div>
+                    )
                   )}
                 </div>
               );

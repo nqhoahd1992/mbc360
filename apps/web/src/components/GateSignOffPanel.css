@@ -1,18 +1,77 @@
-/* Gate sign-off (2026-10-02): one block per role, full-width comment. */
+/* Gate sign-off: three steps in a fixed sequence (question 29(5)), so the panel
+   shows the sequence rather than three equal forms. Only the step whose turn it
+   is carries a decision form; earlier steps collapse to their record and later
+   ones to one line saying what they are waiting for. Tokens from concept.css. */
 .gso { overflow: hidden; color: var(--c-text); font-size: 14px; }
-.gso-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--c-border-2); }
+
+.gso-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 14px 20px; border-bottom: 1px solid var(--c-border-2);
+}
 .gso-title { font-weight: 600; }
-.gso-row { display: grid; gap: 12px; padding: 14px 16px; }
+
+.gso-row { display: grid; gap: 10px; padding: 14px 20px; }
 .gso-row + .gso-row { border-top: 1px solid var(--c-border-2); }
-.gso-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
-.gso-role { width: 110px; flex-shrink: 0; font-weight: 500; }
-.gso-signer { flex: 1; min-width: 180px; }
-.gso-action { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.gso-row-done { background: var(--c-surface-2); }
+
+/* Step number | role | signer | action. The action never drops to a line of its
+   own at desktop width, which is what `margin-left: auto` on a wrapping flex row
+   kept doing. */
+.gso-line { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: center; gap: 8px 12px; }
+@media (min-width: 760px) {
+  .gso-line { grid-template-columns: 22px 104px minmax(0, 1fr) auto; }
+}
+.gso-step {
+  display: grid; place-items: center; width: 22px; height: 22px;
+  border: 1px solid var(--c-border); border-radius: 50%;
+  background: var(--c-surface); color: var(--c-text-3); font-size: 12px;
+}
+.gso-step-now { border-color: var(--c-primary); background: var(--c-primary); color: #fff; font-weight: 600; }
+.gso-step-done { border-color: var(--c-ok-line); background: var(--c-ok-bg); color: var(--c-ok); }
+.gso-role { font-weight: 500; }
+.gso-signer { min-width: 0; }
+.gso-signer .ant-select { width: 100%; max-width: 320px; }
+.gso-action { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+@media (max-width: 759px) {
+  .gso-role, .gso-signer, .gso-action { grid-column: 2; }
+}
 .gso-muted { color: var(--c-text-3); font-size: 13px; }
+
+/* A step that is not this person's, or not yet its turn: one line, no form, no
+   disabled Sign button — the reason already says what has to happen. */
+.gso-wait { display: flex; align-items: flex-start; gap: 8px; color: var(--c-text-3); font-size: 13px; }
+.gso-wait > .anticon { margin-top: 3px; }
+@media (min-width: 760px) { .gso-wait { padding-left: 34px; } }
+
 .gso-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 760px) { .gso-form { padding-left: 34px; } }
 @media (min-width: 900px) { .gso-form { grid-template-columns: 220px minmax(0, 1fr); } }
+.gso-form > .ant-alert { grid-column: 1 / -1; }
 .gso-form > label { min-width: 0; }
 .gso-label { display: block; margin-bottom: 6px; color: var(--c-text-2); font-size: 13px; }
 .gso-req { color: var(--c-warn); }
+.gso-submit { grid-column: 1 / -1; display: flex; gap: 8px; }
+
 .gso-record { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 12px; }
+@media (min-width: 760px) { .gso-record { padding-left: 34px; } }
 .gso-comment { flex: 1; min-width: 220px; margin: 0; color: var(--c-text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* The one place the stage-status trigger is stated, instead of the same line
+   repeating on all three role rows. */
+.gso-gate-hold {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 16px; border: 1px solid var(--c-warn-line); border-radius: 8px;
+  background: var(--c-warn-bg); color: var(--c-warn); font-size: 13px;
+}
+.gso-gate-hold > .anticon { margin-top: 2px; }
+.gso-gate-hold strong { color: inherit; }
+
+/* Critical-gate independent-function warning: said at nomination time, where it
+   can still be acted on, instead of only when the approver signs. */
+.gso-gate-warn {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 16px; border: 1px solid var(--c-bad-line); border-radius: 8px;
+  background: var(--c-bad-bg); color: var(--c-bad); font-size: 13px;
+}
+.gso-gate-warn > .anticon { margin-top: 2px; }
+.gso-gate-warn strong { color: inherit; }

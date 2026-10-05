@@ -581,9 +581,15 @@ export default function GateFlowTable({
                   </div>
                   <div className="gfc-purpose">{r.meta.purpose}</div>
                 </div>
-                <Button type="text" icon={<HistoryOutlined />} disabled={r.historyCount === 0} onClick={() => setHistoryFor(r.meta.id)}>
-                  {r.historyCount > 0 ? `History (${r.historyCount})` : 'No history'}
-                </Button>
+                {/* A disabled button still reads as something to press. With no
+                    history there is nothing to open, so it is plain muted text. */}
+                {r.historyCount > 0 ? (
+                  <Button size="small" type="text" icon={<HistoryOutlined />} onClick={() => setHistoryFor(r.meta.id)}>
+                    History ({r.historyCount})
+                  </Button>
+                ) : (
+                  <span className="gfc-nohistory">No history</span>
+                )}
               </div>
               <div className="gfc-fields">
                 {CARD_FIELDS.map((title) => (
