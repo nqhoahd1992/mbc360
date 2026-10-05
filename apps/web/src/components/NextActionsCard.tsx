@@ -4,6 +4,9 @@ import type { NextAction, NextActionPriority, NextActionStatus, ProjectData } fr
 import { GATES } from '@mbc360/shared/config/gates';
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
+import { useSession } from '../auth/useSession';
+import { usePermissionView } from '../auth/previewMode';
+import { EMPTY_GRANTS, canDecideGate } from '../utils/permissions';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
@@ -38,6 +41,9 @@ export default function NextActionsCard({
   actions: NextAction[];
 }) {
   const setActionsBulk = useAppStore((s) => s.setNextActionsBulk);
+  const session = useSession();
+  const permissionView = usePermissionView();
+  const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const rows = actions.filter((a) => gateIds.includes(a.gateId));
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
   const openCount = draft.filter((a) => !TERMINAL_STATUSES.includes(a.status)).length;
@@ -47,6 +53,50 @@ export default function NextActionsCard({
     return { value: id, label: `Gate ${meta?.number ?? id}` };
   });
   const gateNumber = (id: string) => GATES.find((g) => g.id === id)?.number ?? id;
+
+  // Why Closed / Cancelled are unavailable on this action, mirroring the two
+  // closure rules in the API's `guardNextActions`. Both used to be enforced only
+  // at Save, so the dropdown offered a status the server then refused — the
+  // owner of an action could pick Closed and only learn on Save that F8 forbids
+  // verifying your own work (2026-10-05, user-reported).
+  //
+  // Identity (owner, raiser, gate owner) reads the REAL signed-in person, since
+  // that is who the server authorises; the capability leg reads the permission
+  // view like every other on-screen capability check.
+  const me = session.user?.displayName;
+  const committedById = new Map(rows.map((r) => [r.id, r]));
+  const closeBlockedReason = (a: NextAction): string | null => {
+    const committed = committedById.get(a.id);
+    // The server only checks on ENTERING a terminal status, so an action that is
+    // already Closed or Cancelled may still be moved between the two.
+    if (committed && TERMINAL_STATUSES.includes(committed.status)) return null;
+    if ((a.owner ?? '').trim() !== '' && a.owner === me) {
+      return 'You own this action, so you cannot verify its own closure (F8). Set it to "Ready for Verification" and let its raiser, the gate owner or an authorised reviewer close it.';
+    }
+    if (a.priority === 'Critical') {
+      // A row not yet saved has no raiser on record; the server credits whoever
+      // first saves it, which is this person.
+      const raisedBy = committed ? committed.raisedBy : me;
+      const gateOwner = project.gates.find((g) => g.gateId === a.gateId)?.owner;
+      const allowed =
+        (!!me && me === raisedBy) ||
+        (!!gateOwner && me === gateOwner) ||
+        permissionView.roleKeys.some((k) => canDecideGate(grants, k, a.gateId));
+      if (!allowed) {
+        return `This action is Critical, so only its raiser, the ${a.gateId} gate owner or someone who may decide ${a.gateId} can close or cancel it (F8).`;
+      }
+    }
+    return null;
+  };
+  const statusOptions = (a: NextAction) => {
+    const why = closeBlockedReason(a);
+    return STATUS_OPTIONS.map((st) => ({
+      value: st,
+      label: st,
+      disabled: !!why && TERMINAL_STATUSES.includes(st),
+      title: why && TERMINAL_STATUSES.includes(st) ? why : undefined,
+    }));
+  };
 
   const patch = (index: number, p: Partial<NextAction>) => update((prev) => patchArray(prev, index, p));
   // A new action always lands on the first gate this card covers, so that is the
@@ -108,7 +158,7 @@ export default function NextActionsCard({
           label: 'Status',
           width: 184,
           render: (a, i) => (
-            <Select style={{ width: '100%' }} value={a.status} options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))} onChange={(v: NextActionStatus) => setStatus(i, v)} />
+            <Select style={{ width: '100%' }} value={a.status} options={statusOptions(a)} onChange={(v: NextActionStatus) => setStatus(i, v)} />
           ),
         },
       ]}
@@ -140,8 +190,12 @@ export default function NextActionsCard({
                 onChange={(v) => patch(i, { priority: v })}
               />
             </RecordField>
-            <RecordField label="Status">
-              <Select style={{ width: '100%' }} value={a.status} options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))} onChange={(v: NextActionStatus) => setStatus(i, v)} />
+            <RecordField label="Status" wide>
+              <Select style={{ width: '100%' }} value={a.status} options={statusOptions(a)} onChange={(v: NextActionStatus) => setStatus(i, v)} />
+              {/* Written out rather than left in the disabled options' tooltip:
+                  the useful part is what to do instead, and nobody hovers a
+                  dropdown entry they cannot click. */}
+              {closeBlockedReason(a) && <p className="rt-note">{closeBlockedReason(a)}</p>}
             </RecordField>
             {/* F8: verified & closed by someone other than the owner. Recorded by
                 the server as whoever moves the action to Closed or Cancelled —

@@ -31,6 +31,9 @@
 .rt-preview { display: -webkit-box; overflow: hidden; color: var(--c-text-2); font-size: 13px; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .rt-chev { color: var(--c-text-3); }
 .rt-static { color: var(--c-text-2); }
+/* A rule explained next to the control it disables, rather than only in the
+   disabled option's tooltip (2026-10-05). */
+.rt-note { margin: 6px 0 0; color: var(--c-text-2); font-size: 13px; text-wrap: pretty; }
 .rt-muted { color: var(--c-text-3); }
 .rt-gate { height: 18px; margin-left: 6px; padding: 0 4px; font-size: 11px; vertical-align: middle; }
 .rt-empty { padding: 32px 16px; color: var(--c-text-2); text-align: center; }
