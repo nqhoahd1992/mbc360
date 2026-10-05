@@ -496,26 +496,29 @@ export class ProjectsService {
   // Taken with the caller's client so a guard sees the reference data as of its own
   // transaction, not a value read before the row lock was taken.
   private async loadReference(tx: Prisma.TransactionClient): Promise<ProjectReferenceData> {
-    const [marketProfiles, rmRisk, claimsLibrary] = await Promise.all([
-      tx.marketProfile.findMany({
-        orderBy: { market: 'asc' },
-        include: { updatedBy: { select: { displayName: true } } },
-      }),
-      tx.rawMaterialRisk.findMany({
-        orderBy: { rmCode: 'asc' },
-        include: { updatedBy: { select: { displayName: true } } },
-      }),
-      // Round 4 question 28 (2026-08-30). Only the columns the rules read: C1's
-      // library condition needs the id and the status, and the UI picker needs the
-      // wording and classification. The applicability tags, approval stamps and
-      // revision history stay on the admin page — a project reads the library, it
-      // does not administer it, and shipping the whole table into every project
-      // envelope would be the same over-fetch the Cosmetri picker was fixed for.
-      tx.claimLibraryEntry.findMany({
-        orderBy: { wording: 'asc' },
-        select: { id: true, wording: true, claimCategory: true, claimRisk: true, status: true, revision: true },
-      }),
-    ]);
+    // Sequential, not Promise.all: `tx` is ONE pg connection for the whole
+    // transaction, so parallel queries on it are pipelined onto a single client.
+    // pg 8.22 deprecates that ("client.query() when the client is already
+    // executing a query") and pg 9 removes it; these were never actually
+    // concurrent, they were queued behind each other on that one connection.
+    const marketProfiles = await tx.marketProfile.findMany({
+      orderBy: { market: 'asc' },
+      include: { updatedBy: { select: { displayName: true } } },
+    });
+    const rmRisk = await tx.rawMaterialRisk.findMany({
+      orderBy: { rmCode: 'asc' },
+      include: { updatedBy: { select: { displayName: true } } },
+    });
+    // Round 4 question 28 (2026-08-30). Only the columns the rules read: C1's
+    // library condition needs the id and the status, and the UI picker needs the
+    // wording and classification. The applicability tags, approval stamps and
+    // revision history stay on the admin page — a project reads the library, it
+    // does not administer it, and shipping the whole table into every project
+    // envelope would be the same over-fetch the Cosmetri picker was fixed for.
+    const claimsLibrary = await tx.claimLibraryEntry.findMany({
+      orderBy: { wording: 'asc' },
+      select: { id: true, wording: true, claimCategory: true, claimRisk: true, status: true, revision: true },
+    });
     return {
       marketProfiles: marketProfiles.map((p) => ({
         id: p.id,
@@ -626,11 +629,10 @@ export class ProjectsService {
     await this.prisma.$transaction(async (tx) => {
       // Count what is about to be destroyed, so the tombstone below says how much
       // was lost rather than just naming the project.
-      const [gates, registerRows, auditRows] = await Promise.all([
-        tx.gateRecord.count({ where: { projectId: id } }),
-        tx.registerRow.count({ where: { projectId: id } }),
-        tx.auditEvent.count({ where: { projectId: id } }),
-      ]);
+      // Sequential: one transaction is one pg connection (see loadReference).
+      const gates = await tx.gateRecord.count({ where: { projectId: id } });
+      const registerRows = await tx.registerRow.count({ where: { projectId: id } });
+      const auditRows = await tx.auditEvent.count({ where: { projectId: id } });
 
       // A TOMBSTONE, written deliberately WITHOUT `projectId`.
       //
@@ -797,26 +799,25 @@ export class ProjectsService {
       // Rows are seeded from config and never added/removed, so they are matched
       // by their stable itemOrder rather than by array position.
       const byOrder = [...existing].sort((a, b) => a.itemOrder - b.itemOrder);
-      await Promise.all(
-        items.map((item, index) =>
-          tx.checklistItem.update({
-            where: { id: byOrder[index].id },
-            data: {
-              selected: item.selected,
-              status: item.status,
-              // Round 4 question 22(b). Un-selecting an option clears its Primary
-              // flag here rather than trusting the client to: a row that is
-              // primary but not selected is the one state
-              // `checklistPrimarySelected` treats as no answer at all, and it
-              // would be invisible on screen (the Primary control only renders on
-              // a selected row).
-              isPrimary: !!item.isPrimary && item.selected,
-              evidenceLink: item.evidenceLink ?? null,
-              notes: item.notes ?? null,
-            },
-          }),
-        ),
-      );
+      // Sequential: one transaction is one pg connection (see loadReference).
+      for (const [index, item] of items.entries()) {
+        await tx.checklistItem.update({
+          where: { id: byOrder[index].id },
+          data: {
+            selected: item.selected,
+            status: item.status,
+            // Round 4 question 22(b). Un-selecting an option clears its Primary
+            // flag here rather than trusting the client to: a row that is
+            // primary but not selected is the one state
+            // `checklistPrimarySelected` treats as no answer at all, and it
+            // would be invisible on screen (the Primary control only renders on
+            // a selected row).
+            isPrimary: !!item.isPrimary && item.selected,
+            evidenceLink: item.evidenceLink ?? null,
+            notes: item.notes ?? null,
+          },
+        });
+      }
       return { section, rows: items.length };
     });
   }
