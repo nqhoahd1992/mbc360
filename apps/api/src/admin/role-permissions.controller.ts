@@ -58,8 +58,11 @@ export class RolePermissionsController {
       // The SSO department (synced from Microsoft Graph) — read by the study
       // approval card, whose independence rule (C2) compares departments.
       department: u.department?.name ?? null,
-      roleKey: u.roles[0]?.role.key ?? null,
-      roleName: u.roles[0]?.role.name ?? null,
+      // Every role, not just the first: a user may hold several (2026-10-05).
+      // `roleKeys` is what a capability check reads; `roleName` stays a single
+      // display string so the ~6 picker tags keep working, now listing them all.
+      roleKeys: u.roles.map((r) => r.role.key),
+      roleName: u.roles.map((r) => r.role.name).join(' · ') || null,
     }));
   }
 

@@ -33,7 +33,7 @@ interface NewProjectForm {
 interface PickerUser {
   id: string;
   displayName: string;
-  roleKey: string | null;
+  // Every role the person holds, joined for the tag (a user may hold several).
   roleName: string | null;
 }
 

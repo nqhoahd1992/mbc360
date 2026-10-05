@@ -111,7 +111,7 @@ export class AdminUsersController {
   @Post('users')
   async createUser(
     @CurrentUser() currentUser: SessionUser,
-    @Body() body: { email?: string; displayName?: string; roleKey?: string | null },
+    @Body() body: { email?: string; displayName?: string; roleKeys?: string[] },
   ) {
     await this.requireAdmin(currentUser);
 
@@ -128,18 +128,17 @@ export class AdminUsersController {
       );
     }
 
-    const roleKey = body.roleKey || null;
-    let role: { id: string; key: string } | null = null;
-    if (roleKey) {
-      role = await this.prisma.role.findUnique({ where: { key: roleKey } });
-      if (!role) throw new BadRequestException(`Unknown role key: ${roleKey}`);
-    }
+    const roleKeys = [...new Set((body.roleKeys ?? []).map((k) => String(k).trim()).filter(Boolean))];
+    const roles = await this.prisma.role.findMany({ where: { key: { in: roleKeys } } });
+    const unknown = roleKeys.filter((k) => !roles.some((r) => r.key === k));
+    if (unknown.length > 0) throw new BadRequestException(`Unknown role key: ${unknown.join(', ')}`);
 
     const displayName = (body.displayName ?? '').trim() || email.split('@')[0];
 
     const created = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({ data: { email, displayName } });
-      if (role) {
+      // Sequential: one transaction is one pg connection.
+      for (const role of roles) {
         await tx.userRole.create({ data: { userId: user.id, roleId: role.id } });
       }
       const record = await tx.user.findUniqueOrThrow({
@@ -156,7 +155,7 @@ export class AdminUsersController {
           entityType: 'user',
           entityId: user.id,
           action: 'user.created',
-          after: { email, displayName, roles: roleKey ? [roleKey] : [] },
+          after: { email, displayName, roles: roleKeys },
         },
         tx,
       );
@@ -166,14 +165,25 @@ export class AdminUsersController {
     return this.toUserResponse(created);
   }
 
-  // Single role per user, matching the "View as" simulation this replaces:
-  // roleKey: null clears every role (contributor-only — can add evidence but
-  // cannot decide/approve/sign anything, per rule A4).
-  @Put('users/:id/role')
-  async setUserRole(
+  // A user may hold SEVERAL roles (2026-10-05, project owner). The database has
+  // always allowed it — `user_roles` is a join table — and PermissionsService
+  // already matches on `roleId: { in: ... }`, so authorisation needed no change.
+  // What was single was this endpoint and the Users page.
+  //
+  // Why it matters here: the 13 workbook review areas do not map one-to-one onto
+  // the 17 assignable roles, and a critical gate needs somebody who represents a
+  // particular function (question 29(4)). In a small team one person genuinely
+  // is both, say, Quality Reviewer and Regulatory Reviewer, and forcing a choice
+  // meant one of those gates could not be signed at all.
+  //
+  // An empty array clears every role. Since 2026-10-02 that locks the account
+  // out ("no role, no entry"), which is the intended way to suspend access
+  // without deactivating the record.
+  @Put('users/:id/roles')
+  async setUserRoles(
     @CurrentUser() currentUser: SessionUser,
     @Param('id') id: string,
-    @Body() body: { roleKey?: string | null },
+    @Body() body: { roleKeys?: string[] },
   ) {
     await this.requireAdmin(currentUser);
 
@@ -183,24 +193,25 @@ export class AdminUsersController {
     });
     if (!target) throw new BadRequestException('Unknown user');
 
-    const roleKey = body.roleKey ?? null;
-    // A pinned admin's role is re-applied on every deploy, so a change here
-    // would quietly come back. Refuse it and say where the setting lives.
-    if (isPinnedAdmin(target.email) && roleKey !== ADMIN_ROLE) {
+    if (!Array.isArray(body.roleKeys)) throw new BadRequestException('roleKeys must be an array');
+    const roleKeys = [...new Set(body.roleKeys.map((k) => String(k).trim()).filter(Boolean))];
+
+    // A pinned admin's roles are re-applied on every deploy, so dropping admin
+    // here would quietly come back. Other roles may be added alongside it.
+    if (isPinnedAdmin(target.email) && !roleKeys.includes(ADMIN_ROLE)) {
       throw new BadRequestException(
         `${target.email} is listed in PINNED_ADMINS and always holds the System Administrator role. Remove it from PINNED_ADMINS first.`,
       );
     }
-    let role: { id: string; key: string; name: string } | null = null;
-    if (roleKey) {
-      role = await this.prisma.role.findUnique({ where: { key: roleKey } });
-      if (!role) throw new BadRequestException(`Unknown role key: ${roleKey}`);
-    }
+    const roles = await this.prisma.role.findMany({ where: { key: { in: roleKeys } } });
+    const unknown = roleKeys.filter((k) => !roles.some((r) => r.key === k));
+    if (unknown.length > 0) throw new BadRequestException(`Unknown role key: ${unknown.join(', ')}`);
 
     const before = target.roles.map((r) => r.role.key);
     const updated = await this.prisma.$transaction(async (tx) => {
       await tx.userRole.deleteMany({ where: { userId: id } });
-      if (role) {
+      // Sequential, not Promise.all: one transaction is one pg connection.
+      for (const role of roles) {
         await tx.userRole.create({ data: { userId: id, roleId: role.id } });
       }
       const record = await tx.user.findUniqueOrThrow({
@@ -218,7 +229,7 @@ export class AdminUsersController {
           entityId: id,
           action: 'user.role_changed',
           before: { roles: before },
-          after: { roles: roleKey ? [roleKey] : [] },
+          after: { roles: roleKeys },
         },
         tx,
       );

@@ -18,6 +18,11 @@ export interface PickerUser {
   id: string;
   displayName: string;
   email?: string;
+  // EVERY role key, since a user may hold several (2026-10-05): the gate
+  // sign-off panel checks a nominee's capability against the permission grid,
+  // which is keyed by key. `roleName` is the display string for the tag and
+  // lists them all.
+  roleKeys?: string[];
   roleName?: string | null;
   department?: string | null;
 }

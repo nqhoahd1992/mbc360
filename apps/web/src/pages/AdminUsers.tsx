@@ -34,7 +34,7 @@ type Filter = 'active' | 'no-role' | 'inactive';
 interface NewUser {
   email: string;
   displayName?: string;
-  roleKey?: string | null;
+  roleKeys?: string[];
 }
 
 const NO_ROLE_PLACEHOLDER = 'No role (cannot sign in)';
@@ -118,7 +118,7 @@ export default function AdminUsers() {
         body: JSON.stringify({
           email: values.email,
           displayName: values.displayName,
-          roleKey: values.roleKey ?? null,
+          roleKeys: values.roleKeys ?? [],
         }),
       });
       if (!res.ok) {
@@ -140,14 +140,18 @@ export default function AdminUsers() {
     }
   };
 
-  const setRole = async (id: string, roleKey: string | null) => {
-    const res = await fetch(`/api/admin/users/${id}/role`, {
+  // A user may hold several roles (2026-10-05). The whole set is sent on every
+  // change — the endpoint replaces it — so removing the last one clears every
+  // role, which is how an account is locked out without deactivating it.
+  const saveRoles = async (id: string, roleKeys: string[]) => {
+    const res = await fetch(`/api/admin/users/${id}/roles`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roleKey }),
+      body: JSON.stringify({ roleKeys }),
     });
     if (!res.ok) {
-      message.error('Could not update role');
+      const body = await res.json().catch(() => undefined);
+      message.error(body?.message ?? 'Could not update roles');
       return;
     }
     replaceUser(await res.json());
@@ -223,10 +227,11 @@ export default function AdminUsers() {
       className="au-role"
       disabled={u.pinned}
       title={u.pinned ? PINNED_HELP : undefined}
-      value={u.roles[0]?.key ?? null}
-      onChange={(key) => void setRole(u.id, key ?? null)}
+      mode="multiple"
+      value={u.roles.map((r) => r.key)}
+      onChange={(keys: string[]) => void saveRoles(u.id, keys)}
       popupMatchSelectWidth={false}
-      allowClear
+      maxTagCount="responsive"
       showSearch={{ optionFilterProp: 'label' }}
       status={u.active && u.roles.length === 0 ? 'warning' : undefined}
       placeholder={NO_ROLE_PLACEHOLDER}
@@ -411,8 +416,18 @@ export default function AdminUsers() {
           <Form.Item name="displayName" label="Full name" extra="Optional — Microsoft 365 supplies it at first sign-in.">
             <Input placeholder="Nguyen Van A" autoComplete="off" />
           </Form.Item>
-          <Form.Item name="roleKey" label="Role" extra="Without a role they can sign in with Microsoft but cannot enter the app.">
-            <Select allowClear showSearch={{ optionFilterProp: 'label' }} placeholder={NO_ROLE_PLACEHOLDER} options={roleOptions} />
+          <Form.Item
+            name="roleKeys"
+            label="Roles"
+            extra="A user may hold several. Without any, they can sign in with Microsoft but cannot enter the app."
+          >
+            <Select
+              mode="multiple"
+              allowClear
+              showSearch={{ optionFilterProp: 'label' }}
+              placeholder={NO_ROLE_PLACEHOLDER}
+              options={roleOptions}
+            />
           </Form.Item>
         </Form>
       </Modal>
