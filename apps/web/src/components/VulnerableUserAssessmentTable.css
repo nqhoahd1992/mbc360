@@ -1,0 +1,67 @@
+/* Vulnerable-User Assessment (2026-10-05). Tokens from styles/concept.css;
+   sizes copied from the approved wireframe (option B) block by block. */
+.vua { display: grid; gap: 16px; min-width: 0; color: var(--c-text); font-size: 14px; }
+
+/* The yes/no question */
+.vua-ask { display: grid; gap: 14px; padding: 20px 22px; }
+.vua-q { margin: 0; font-size: 16px; font-weight: 600; }
+.vua-help { margin: 0; max-width: 70ch; color: var(--c-text-3); font-size: 13px; }
+.vua-opts { display: grid; gap: 10px; }
+@media (min-width: 720px) { .vua-opts { grid-template-columns: 1fr 1fr; } }
+.vua-opt {
+  display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 12px; padding: 14px 16px;
+  border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.vua-opt:hover:not(:disabled) { border-color: var(--c-primary); }
+.vua-opt:focus-visible { outline: 0; border-color: var(--c-primary); box-shadow: 0 0 0 3px rgb(9 88 217 / 20%); }
+.vua-opt[aria-checked='true'] { border-color: var(--c-primary); background: var(--c-primary-light); }
+.vua-opt:disabled { cursor: default; }
+.vua-dot { width: 18px; height: 18px; margin-top: 2px; border: 1px solid var(--c-border); border-radius: 50%; background: var(--c-surface); }
+.vua-opt[aria-checked='true'] .vua-dot { border: 5px solid var(--c-primary); }
+.vua-opt b { display: block; font-size: 14px; font-weight: 600; }
+.vua-opt span { color: var(--c-text-2); font-size: 13px; }
+
+/* Gate 02 target users, read-only */
+.vua-src { display: grid; gap: 10px; padding: 14px 16px; }
+.vua-src-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.vua-src-t { font-size: 14px; font-weight: 600; }
+.vua-src-list { display: grid; gap: 6px; }
+.vua-src-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; font-size: 13px; }
+.vua-src-row .vua-nm { flex: 1 1 auto; min-width: 0; }
+.vua-src-row > .anticon { flex: none; }
+.vua-src-ok > .anticon { color: var(--c-ok-dot); }
+.vua-src-miss > .anticon { color: var(--c-warn-dot); }
+.vua-src-none { color: var(--c-text-3); }
+.vua-src-none > .anticon { color: var(--c-border); }
+.vua-src-link { display: inline-flex; align-items: center; min-height: 24px; font-size: 13px; }
+
+/* One card per group */
+.vua-card { display: grid; gap: 12px; padding: 16px; border-bottom: 1px solid var(--c-border-2); }
+.vua-card:last-child { border-bottom: 0; }
+.vua-card-none { background: var(--c-surface-2); }
+.vua-card-h { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.vua-card-l { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.vua-card-t { font-size: 15px; font-weight: 600; }
+.vua-card-x { justify-self: end; }
+.vua-grid { display: grid; gap: 12px; }
+@media (min-width: 860px) { .vua-grid { grid-template-columns: 1fr 1fr; } }
+.vua-grid .vua-wide { grid-column: 1 / -1; }
+.vua-fld { display: grid; gap: 4px; min-width: 0; }
+.vua-fld > span { color: var(--c-text-2); font-size: 13px; }
+.vua-miss { color: var(--c-bad); }
+.vua-static { color: var(--c-text-2); }
+
+.vua-empty { padding: 32px 16px; color: var(--c-text-2); text-align: center; }
+.vua-empty .anticon { font-size: 28px; color: var(--c-text-3); }
+.vua-empty-t { margin-top: 10px; font-size: 15px; font-weight: 600; }
+.vua-empty p { margin: 6px auto 0; max-width: 52ch; color: var(--c-text-3); font-size: 13px; }
+
+.vua-lock { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface-2); color: var(--c-text-2); font-size: 13px; }
+.vua-lock > .anticon { margin-top: 3px; color: var(--c-text-3); }
+
+.vua-savebar { position: sticky; bottom: 0; z-index: 20; }
+.vua-savebar > div {
+  padding: 12px 16px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface);
+  box-shadow: 0 -4px 16px rgb(0 0 0 / 6%);
+}

@@ -648,6 +648,18 @@ Question 2 says "approval of the new version places the old version into Transit
 
 ---
 
+## Question 54 — May a vulnerable-user group be recorded that the Gate 02 target users do not imply?
+
+Your question 25(d) answer accepts a two-way check with deliberately different strengths: an exact contradiction is refused outright, while a renamed or broader group recorded with no matching target user gets "a warning plus rationale ... since the Safety/Regulatory reviewer may identify that context independently". We built it that way, and the rule engine and the API still behave that way.
+
+The Gate 02 screen has now been rebuilt, and on it the group picker offers **only** the groups the Gate 02 target users imply. A reviewer who wants to record, say, an oncology support context that no target user implies has to go back and change the Gate 02 target users first. Our reasoning: the two records exist to agree with each other, and a free choice on this screen is the thing that lets them drift apart. The cost is that the independent judgement your answer protects now has a longer route.
+
+Rows already recorded this way are untouched: they still display, still warn, and can still be removed.
+
+**Question:** Should the screen hold to your 25(d) answer and let a reviewer name a group Gate 02 does not imply, with a warning and a rationale? Or is requiring the Gate 02 target users to be corrected first the behaviour you want?
+
+---
+
 ## Summary
 
 | # | Topic | Why it matters |
@@ -658,6 +670,7 @@ Question 2 says "approval of the new version places the old version into Transit
 | 4–6 | Change-control granularity · superseded findings · Gate 4 dispositions | Already built on our reading — rework if wrong |
 | 7–9 | Supersession signature · Claims Library criticality · scale-up areas | Designed, not built — redesign if wrong |
 | 10–12 | Phase sign-off: who nominates, whether the gate rules apply, drawn signature | Built in August, never put to you |
+| 54 | Whether a vulnerable group outside Gate 02 may be named on the screen | Narrows your 25(d) answer — built on the project owner's instruction |
 | 13–14 | A "Reject / Stop" decision that does not exist · whether Safety **or** Regulatory is enough | Two of your own answers name them; we did not invent either |
 | 15–16 | Who may open the reference-data pages · what makes a gap's action "controlled" | Both surfaced by using what we had just built |
 | 17 | Should a change-control trigger be limited to gates the project has passed | Not built yet — raised discussing the Change Control screen, no rework at stake either way |

@@ -1530,6 +1530,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q51 | Yêu cầu bao bì theo thị trường ghi ở đâu và chứng minh bằng gì | Rà soát luật SME (A2 (Gate 6)) | **rà soát 04/10/2026** |
 | R5-Q52 | Phiên bản Major có mở lại cả Gate 10–12 không | Rà soát luật SME (F4) | **rà soát 05/10/2026** |
 | R5-Q53 | Khi nào phiên bản cũ chuyển trạng thái, và lịch review khi hai phiên bản cùng bán | Rà soát luật SME (Q2/F4) | **rà soát 05/10/2026** |
+| R5-Q54 | Có được ghi nhóm dễ tổn thương ngoài suy luận từ Cổng 02 không | Rà soát luật SME (25d) | **rà soát 05/10/2026** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
 
@@ -2134,3 +2135,13 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Câu hỏi:** "Approval of the new version" là launch approval ở thị trường đó, hay Gate 10/11 được duyệt? Phiên bản chưa từng bán có được coi là Superseded ngay không? Review hậu mãi có cần tách theo phiên bản không?
 
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `createFormulaVersion`, `setMarketTracks`; `packages/shared/src/utils/postLaunch.ts` — `reviewTracksByMarket`.
+
+#### R5-Q54 · Có được ghi nhóm dễ tổn thương mà Target Users ở Cổng 02 không suy ra không 🔴
+
+**Lộ ra khi dựng lại màn Vulnerable-User Assessment (05/10/2026, chủ dự án yêu cầu).** Câu 25(d) đã chốt hai chiều kiểm có độ chặt khác nhau: mâu thuẫn chính xác thì từ chối thẳng, còn nhóm được đổi tên hoặc rộng hơn mà không có Target User tương ứng thì *"cảnh báo kèm lý do tốt hơn là từ chối thẳng, vì người rà soát Safety/Regulatory có thể tự nhận diện bối cảnh một cách độc lập"*. Rule engine và API vẫn đúng như vậy — **chỉ màn hình bị thu hẹp**: bộ chọn nhóm giờ chỉ liệt kê nhóm mà Cổng 02 suy ra. Muốn ghi một nhóm ngoài danh sách đó thì phải sửa Target Users ở Cổng 02 trước. Dòng đã ghi từ trước vẫn hiện, vẫn cảnh báo, vẫn xoá được.
+
+**Lý do thu hẹp:** hai bản ghi tồn tại để khớp nhau, và quyền chọn tự do trên màn này chính là thứ làm chúng lệch nhau. Cái giá là phán đoán độc lập mà câu 25(d) bảo vệ giờ phải đi đường vòng.
+
+**Câu hỏi:** Màn hình có nên giữ đúng câu 25(d) — cho phép nêu một nhóm Cổng 02 không suy ra, kèm cảnh báo và lý do — hay bắt sửa Target Users ở Cổng 02 trước là hành vi mong muốn?
+
+**Nếu trả lời khác:** `apps/web/src/components/VulnerableUserAssessmentTable.tsx` — hiện chỉ có một đường thêm nhóm (nút "Add row" cạnh nhóm còn thiếu trong khối Cổng 02), nên phải thêm lại một bộ chọn mở trên toàn bộ `options` của cột `vulnerableGroup`.
