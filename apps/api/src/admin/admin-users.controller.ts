@@ -1,11 +1,13 @@
 import {
   BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Delete,
   ForbiddenException,
   Get,
   Param,
+  Post,
   Put,
 } from '@nestjs/common';
 import { AuditService } from '../audit/audit.service';
@@ -18,6 +20,11 @@ import { TotpService } from '../verification/totp.service';
 import { isPinnedAdmin } from '../auth/pinned-admins';
 
 const SSO_ROLE_KEYS = new Set(SSO_ROLES.map((r) => r.key));
+
+// Same shape PINNED_ADMINS accepts, for the same reason: the address is what
+// links this record to the person's Microsoft 365 account on their first
+// sign-in, so anything that is not an address is a record nobody can ever use.
+const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 // User & role management (the user's role is a decision made INSIDE MBc360,
 // never inferred from Graph/AD attributes — an SSO login only creates the
@@ -88,6 +95,75 @@ export class AdminUsersController {
       orderBy: { email: 'asc' },
     });
     return users.map((u) => this.toUserResponse(u));
+  }
+
+  // Pre-provision a colleague before their first sign-in. Nothing here grants
+  // a way IN: the person still signs in with Microsoft 365, and
+  // AuthService.upsertSsoUser links that login to this record by email
+  // (case-insensitively), exactly as it does for a PINNED_ADMINS account. What
+  // it buys is the order: without it a new starter must sign in, be refused for
+  // having no role, and only then appear in this list to be given one.
+  //
+  // `oid` is deliberately left empty — the Entra object id is the person's to
+  // present, not an administrator's to type — and so is the department, which
+  // is synced from Microsoft Graph at that first sign-in. The display name is a
+  // placeholder until then, same as PINNED_ADMINS.
+  @Post('users')
+  async createUser(
+    @CurrentUser() currentUser: SessionUser,
+    @Body() body: { email?: string; displayName?: string; roleKey?: string | null },
+  ) {
+    await this.requireAdmin(currentUser);
+
+    const email = (body.email ?? '').trim().toLowerCase();
+    if (!EMAIL_PATTERN.test(email)) {
+      throw new BadRequestException('A valid email address is required');
+    }
+    const existing = await this.prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `${existing.email} already exists — search for it in the list instead (it may be inactive).`,
+      );
+    }
+
+    const roleKey = body.roleKey || null;
+    let role: { id: string; key: string } | null = null;
+    if (roleKey) {
+      role = await this.prisma.role.findUnique({ where: { key: roleKey } });
+      if (!role) throw new BadRequestException(`Unknown role key: ${roleKey}`);
+    }
+
+    const displayName = (body.displayName ?? '').trim() || email.split('@')[0];
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({ data: { email, displayName } });
+      if (role) {
+        await tx.userRole.create({ data: { userId: user.id, roleId: role.id } });
+      }
+      const record = await tx.user.findUniqueOrThrow({
+        where: { id: user.id },
+        include: {
+          department: true,
+          roles: { include: { role: true } },
+          totp: { select: { activatedAt: true } },
+        },
+      });
+      await this.audit.record(
+        {
+          actorId: currentUser.id,
+          entityType: 'user',
+          entityId: user.id,
+          action: 'user.created',
+          after: { email, displayName, roles: roleKey ? [roleKey] : [] },
+        },
+        tx,
+      );
+      return record;
+    });
+
+    return this.toUserResponse(created);
   }
 
   // Single role per user, matching the "View as" simulation this replaces:
@@ -203,7 +279,7 @@ export class AdminUsersController {
 
   // Hard delete — reserved for accounts with no historical footprint (never
   // signed anything, edited a register row, uploaded an attachment, or
-  // acted in the audit trail). Any of that and the delete is refused: this
+  // acted in the audit trail) and not nominated to sign anything either. Any of that and the delete is refused: this
   // app's audit/sign-off relations to `User` are optional FKs with no
   // explicit `onDelete` (Prisma default = SetNull), so deleting a user who
   // DOES have history wouldn't remove those records — it would silently
@@ -226,16 +302,41 @@ export class AdminUsersController {
       );
     }
 
-    const [auditCount, registerRowCount, attachmentCount, signOffCount] = await Promise.all([
-      this.prisma.auditEvent.count({ where: { actorId: id } }),
-      this.prisma.registerRow.count({ where: { updatedById: id } }),
-      this.prisma.attachment.count({ where: { uploadedById: id } }),
-      this.prisma.signOff.count({ where: { signedByUserId: id } }),
-    ]);
-    const historyCount = auditCount + registerRowCount + attachmentCount + signOffCount;
+    // Every signature-bearing table, not just the phase sign-off this list
+    // started with (2026-07-23): the per-gate sign-off and the register closure
+    // sign-off both arrived later carrying their own signedByUserId, and until
+    // now were caught only by the audit counter standing in for them.
+    const [auditCount, registerRowCount, attachmentCount, signOffCount, gateSignOffCount, closureSignOffCount] =
+      await Promise.all([
+        this.prisma.auditEvent.count({ where: { actorId: id } }),
+        this.prisma.registerRow.count({ where: { updatedById: id } }),
+        this.prisma.attachment.count({ where: { uploadedById: id } }),
+        this.prisma.signOff.count({ where: { signedByUserId: id } }),
+        this.prisma.gateSignOff.count({ where: { signedByUserId: id } }),
+        this.prisma.registerClosureSignOff.count({ where: { signedByUserId: id } }),
+      ]);
+    const historyCount =
+      auditCount + registerRowCount + attachmentCount + signOffCount + gateSignOffCount + closureSignOffCount;
     if (historyCount > 0) {
       throw new BadRequestException(
         `Cannot delete ${target.email} — it has ${historyCount} historical record(s) (audit trail, register edits, attachments, or sign-offs) attached. Deactivate it instead to preserve the audit trail.`,
+      );
+    }
+
+    // Nominated to sign but has not signed yet: they have created nothing, so
+    // the rule above lets the delete through — and the nomination would be
+    // silently blanked (assignedToUserId is SetNull like the rest), leaving a
+    // sign-off row nobody is named on and no record that anybody ever was.
+    // Replacing a nominated signer is the project lead's decision, not a
+    // side effect of tidying up the user list.
+    const [phaseNominations, gateNominations] = await Promise.all([
+      this.prisma.signOff.count({ where: { assignedToUserId: id } }),
+      this.prisma.gateSignOff.count({ where: { assignedToUserId: id } }),
+    ]);
+    const nominationCount = phaseNominations + gateNominations;
+    if (nominationCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete ${target.email} — they are nominated to sign ${nominationCount} sign-off(s) that nobody has signed yet. Have the project lead nominate someone else first, or deactivate this account instead.`,
       );
     }
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Drawer, Grid, Input, Popconfirm, Select, Switch, message } from 'antd';
+import { Button, Drawer, Form, Grid, Input, Modal, Popconfirm, Select, Switch, message } from 'antd';
 import { Link } from 'react-router-dom';
-import { CloudOutlined, DeleteOutlined, RightOutlined, SafetyCertificateOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
+import { CloudOutlined, DeleteOutlined, PlusOutlined, RightOutlined, SafetyCertificateOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import Notice from '../components/Notice';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 import { usePermissionView } from '../auth/previewMode';
@@ -30,6 +30,12 @@ interface AdminRole {
 }
 
 type Filter = 'active' | 'no-role' | 'inactive';
+
+interface NewUser {
+  email: string;
+  displayName?: string;
+  roleKey?: string | null;
+}
 
 const NO_ROLE_PLACEHOLDER = 'No role (cannot sign in)';
 
@@ -65,6 +71,9 @@ export default function AdminUsers() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('active');
   const [openId, setOpenId] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [addForm] = Form.useForm<NewUser>();
+  const [saving, setSaving] = useState(false);
   useExclusiveDrawer(openId !== null, () => setOpenId(null));
 
   const load = async () => {
@@ -96,6 +105,41 @@ export default function AdminUsers() {
 
   const replaceUser = (updated: AdminUser) => setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
 
+  // Pre-provision somebody before their first sign-in, so they arrive with a
+  // role instead of being refused for having none. It creates no way in: the
+  // person still signs in with Microsoft 365, which links to this record by
+  // email — so the address has to be their real company one.
+  const createUser = async (values: NewUser) => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: values.email,
+          displayName: values.displayName,
+          roleKey: values.roleKey ?? null,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => undefined);
+        message.error(body?.message ?? 'Could not add the user');
+        return;
+      }
+      const created: AdminUser = await res.json();
+      setUsers((prev) => [...prev, created]);
+      setAdding(false);
+      addForm.resetFields();
+      // A user added with no role is invisible under the default filter, which
+      // would read as the add having failed.
+      setFilter(created.roles.length === 0 ? 'no-role' : 'active');
+      setQuery('');
+      message.success(`${created.displayName} added — they can sign in with Microsoft 365`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const setRole = async (id: string, roleKey: string | null) => {
     const res = await fetch(`/api/admin/users/${id}/role`, {
       method: 'PUT',
@@ -124,8 +168,9 @@ export default function AdminUsers() {
   };
 
   // Hard delete — the backend only allows this for an account with no
-  // historical footprint (never signed/edited/uploaded/audited anything); it
-  // refuses with a clear message otherwise. Deactivating (the Active switch)
+  // historical footprint (never signed/edited/uploaded/audited anything) that
+  // is not nominated to sign anything either; it refuses with a clear message
+  // otherwise. Deactivating (the Active switch)
   // is the right action for a user who has done real work.
   const deleteUser = async (id: string) => {
     const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
@@ -219,6 +264,9 @@ export default function AdminUsers() {
     <div className="concept au">
       <header className="au-header">
         <h1 className="au-title">Users</h1>
+        <Button className="au-add" type="primary" icon={<PlusOutlined />} onClick={() => setAdding(true)}>
+          Add user
+        </Button>
         {!loading && !failed && (
           <div className="au-meta">
             {counts.active} active
@@ -282,7 +330,7 @@ export default function AdminUsers() {
               <div className="au-empty">
                 <UserOutlined className="au-empty-icon" />
                 <div className="au-empty-title">{query ? `No user matches “${query}”` : 'No users here'}</div>
-                <p>People appear here after they sign in with Microsoft 365 once.</p>
+                <p>People appear here after they sign in with Microsoft 365 once, or when you add them.</p>
                 {query && <Button onClick={() => setQuery('')}>Clear search</Button>}
               </div>
             ) : (
@@ -334,6 +382,40 @@ export default function AdminUsers() {
           </div>
         </>
       )}
+
+      <Modal
+        open={adding}
+        title="Add user"
+        okText="Add user"
+        confirmLoading={saving}
+        onCancel={() => setAdding(false)}
+        onOk={() => void addForm.submit()}
+        rootClassName="concept-tokens"
+        destroyOnHidden
+      >
+        <p className="au-add-note">
+          Use their company Microsoft 365 address — that is what links this record to their account when they first sign
+          in. The name and department are replaced with the real ones at that point.
+        </p>
+        <Form form={addForm} layout="vertical" requiredMark={false} onFinish={(v) => void createUser(v)}>
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[
+              { required: true, message: 'An email address is required' },
+              { type: 'email', message: 'That is not a valid email address' },
+            ]}
+          >
+            <Input placeholder="name@maxbiocare.com" autoComplete="off" />
+          </Form.Item>
+          <Form.Item name="displayName" label="Full name" extra="Optional — Microsoft 365 supplies it at first sign-in.">
+            <Input placeholder="Nguyen Van A" autoComplete="off" />
+          </Form.Item>
+          <Form.Item name="roleKey" label="Role" extra="Without a role they can sign in with Microsoft but cannot enter the app.">
+            <Select allowClear showSearch={{ optionFilterProp: 'label' }} placeholder={NO_ROLE_PLACEHOLDER} options={roleOptions} />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       <Drawer
         open={!!open}
@@ -412,7 +494,7 @@ export default function AdminUsers() {
                 <Popconfirm
                   disabled={open.pinned}
                   title="Delete this user?"
-                  description="Only succeeds if the account has never signed, edited, uploaded, or acted in the audit trail."
+                  description="Only succeeds if the account has never signed, edited, uploaded or acted in the audit trail, and is not nominated to sign anything."
                   onConfirm={() => void deleteUser(open.id)}
                   okText="Delete"
                   okButtonProps={{ danger: true }}
