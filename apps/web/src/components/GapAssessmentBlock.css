@@ -1,0 +1,41 @@
+/* Gap assessment (2026-10-05 review). Was eight unlabelled controls at six
+   different hard-coded widths, floating on the gate card with no container.
+   Tokens from styles/concept.css; the grid matches `.gfc-fields` above it. */
+.gap { min-width: 0; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface); }
+
+.gap-head {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 12px;
+  padding: 12px 16px; border-bottom: 1px solid var(--c-border-2);
+}
+.gap-head-main { display: grid; gap: 2px; min-width: 0; flex: 1 1 320px; }
+.gap-title { font-size: 14px; font-weight: 600; }
+/* The state line lives in the header rather than in a full-width red banner:
+   "not yet assessed" is the normal first state of every gap, and an error
+   banner for a routine step teaches people to read past error banners. */
+.gap-state { color: var(--c-text-2); font-size: 13px; text-wrap: pretty; }
+.gap-state-open { color: var(--c-warn); }
+.gap-state-critical { color: var(--c-bad); }
+
+.gap-body { display: grid; gap: 16px; padding: 16px; }
+/* Two columns, not the four the gate fields above use: this card sits in a
+   ~536px column, so a quarter of it is ~122px — too narrow for the assessor
+   control, whose "Not recorded · Record as me" pair needs ~190px and wrapped
+   onto two lines at four columns. */
+.gap-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 640px) { .gap-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.gap-wide { grid-column: 1 / -1; }
+
+.gap-fld { display: grid; gap: 6px; min-width: 0; }
+.gap-label { color: var(--c-text-2); font-size: 13px; }
+.gap-req { color: var(--c-bad); }
+.gap-fld .ant-select,
+.gap-fld .ant-picker,
+.gap-fld .ant-input,
+.gap-fld .ant-input-affix-wrapper { width: 100% !important; }
+/* The assessor control sits in a field like every other one, so it stops reading
+   as a stray sentence between two dropdowns. */
+.gap-assessor { display: flex; align-items: center; gap: 8px; min-height: 32px; min-width: 0; }
+.gap-assessor .ant-btn { height: 32px; }
+
+.gap-static { color: var(--c-text-2); font-size: 13px; }
+.gap-locked { padding: 12px 16px; }
