@@ -28,7 +28,6 @@ export default function ChecklistSection({
   title,
   gate,
   items,
-  currentGateNumber,
   readOnly,
   // Why a given option cannot be UN-ticked right now (2026-08-11). Used for
   // Target Users, where un-ticking Pregnancy would orphan the Vulnerable-User
@@ -59,7 +58,6 @@ export default function ChecklistSection({
   const selectedCount = draft.filter((i) => i.selected).length;
   const hasSelection = draft.some((i) => i.status === 'Y');
   const required = isMandatoryChecklistSection(sectionKey) && !hasSelection;
-  const isCurrentGate = gate === currentGateNumber;
 
   const patch = (index: number, p: Partial<ChecklistItem>) => update((prev) => patchArray(prev, index, p));
   // Primary is single-valued: picking one clears the others, otherwise
@@ -86,7 +84,7 @@ export default function ChecklistSection({
   const open = openIndex === null ? undefined : draft[openIndex];
 
   return (
-    <div className={`concept-tokens c-card cl${required && isCurrentGate && !readOnly ? ' cl-required' : ''}`}>
+    <div className="concept-tokens c-card cl">
       <div className="cl-head">
         <div className="cl-title-row">
           <span className="cl-title">{title}</span>

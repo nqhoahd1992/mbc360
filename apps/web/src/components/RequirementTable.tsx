@@ -19,7 +19,6 @@ export default function RequirementTable({
   sectionKey,
   title,
   items,
-  currentGateNumber,
   isRowLocked,
   columns: visibleColumns,
   allowNotApplicable,
@@ -118,13 +117,13 @@ export default function RequirementTable({
           {r.requirement}
           {required(r) && (
             <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
-              <span className="rl-req"> *</span>
+              <span className="c-tag c-tag-bad" style={{ marginLeft: 8 }}>Required</span>
             </Tooltip>
           )}
         </>
       )}
       rowSubtitle={(r) => (shows('detail') ? r.requirementText : r.minimumRequirement) || undefined}
-      rowFlag={(r) => (required(r) && r.gate === currentGateNumber) || naMissing(r)}
+      rowFlag={naMissing}
       inline={[
         ...(shows('priority') ? [{ label: 'Priority', width: 168, render: priorityControl }] : []),
         ...(shows('status') ? [{ label: 'Status', width: 184, render: statusControl }] : []),

@@ -20,7 +20,6 @@ export default function GateChecksTable({
   projectId,
   title,
   checks,
-  currentGateNumber,
   isRowLocked,
 }: {
   projectId: string;
@@ -87,13 +86,12 @@ export default function GateChecksTable({
           {r.check}
           {required(r) && (
             <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
-              <span className="rl-req"> *</span>
+              <span className="c-tag c-tag-bad" style={{ marginLeft: 8 }}>Required</span>
             </Tooltip>
           )}
         </>
       )}
       rowSubtitle={(r) => (r.done ? [r.date, r.evidenceRef].filter(Boolean).join(' · ') : undefined)}
-      rowFlag={(r) => required(r) && r.gate === currentGateNumber}
       openIndex={openIndex}
       onOpenIndexChange={setOpenIndex}
       inline={[

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Input } from 'antd';
+import { Input, Tooltip } from 'antd';
 import type { ProjectData, ProjectIdentity } from '@mbc360/shared/types';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
@@ -80,6 +80,15 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
       <Input placeholder={placeholder} value={draft[field]} onChange={(e) => set(field, e.target.value)} />
     );
 
+  // The two fields behind Mandatory Gate 01 items (`sg01-scope`, `sg01-market-user`
+  // via `identityFieldFilled`) — flagged while empty, same tag as the checklists.
+  const requiredTag = (field: (typeof OPPORTUNITY_FIELDS)[number]) =>
+    !locked && !draft[field]?.trim() && (
+      <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
+        <span className="c-tag c-tag-bad" style={{ marginLeft: 8 }}>Required</span>
+      </Tooltip>
+    );
+
   // 2026-10-02: a plain labelled form (label above input) instead of a bordered
   // Descriptions grid, where each input was squeezed beside its label.
   return (
@@ -106,11 +115,11 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
           {text('requesterDepartment', 'Their department')}
         </label>
         <label className="rt-span-2">
-          <span className="rt-label">Initial target user / life-stage</span>
+          <span className="rt-label">Initial target user / life-stage</span>{requiredTag('initialTargetUsers')}
           {text('initialTargetUsers', 'e.g. general adult, pregnancy')}
         </label>
         <label className="rt-span-2">
-          <span className="rt-label">Initial product scope</span>
+          <span className="rt-label">Initial product scope</span>{requiredTag('initialScope')}
           {text('initialScope', 'Proposed product type, intended purpose, and the known boundaries of the request', 2)}
         </label>
       </div>

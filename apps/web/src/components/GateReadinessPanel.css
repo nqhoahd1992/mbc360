@@ -21,3 +21,10 @@
 .grp-tier { height: 18px; margin-left: 6px; padding: 0 6px; font-size: 11px; vertical-align: 1px; cursor: default; }
 .grp-note { margin-top: 2px; color: var(--c-text-3); font-size: 12px; text-wrap: pretty; }
 .grp-toggle { height: auto; padding: 0; font-size: 13px; justify-self: start; }
+.grp-parts { display: grid; gap: 2px; margin: 4px 0 0; padding: 0; list-style: none; }
+.grp-parts li { display: flex; align-items: flex-start; gap: 6px; line-height: 18px; font-size: 12px; }
+.grp-part-icon { flex-shrink: 0; margin-top: 2px; font-size: 11px; }
+.grp-part-open .grp-part-icon { color: var(--c-bad-dot); }
+.grp-part-met { color: var(--c-text-3); }
+.grp-part-met .grp-part-icon { color: var(--c-ok-dot); }
+.grp-parts-toggle { display: block; margin-top: 2px; font-size: 12px; color: var(--c-text-3); } .grp-parts-toggle .anticon { font-size: 9px; }

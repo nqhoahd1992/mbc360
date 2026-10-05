@@ -47,7 +47,7 @@ import {
 import { WATCHLIST_REGISTER, watchlistConditionalRows, watchlistHardBlockers } from './watchlistReview';
 import { conditionalSafetyFindings, hardBlockingSafetyFindings } from './safetyFindings';
 import { activeMarketTracks, currentMarketTracks, onMarketTracks, overdueReviews } from './postLaunch';
-import { PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
+import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
 import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
 import {
@@ -1534,8 +1534,21 @@ export interface GateBlocker {
 // (satisfied items in green) instead of the list disappearing once nothing
 // is left to complain about. `hardGateBlockers`/`gateBlockers` below are
 // just this list filtered to `!satisfied`, so the two can never drift.
+// One condition inside a composite (`allOf`) readiness item (2026-10-05, user-
+// raised: "Initial product scope" showed as ONE line though it needs four
+// things in three different places). `label` says what to DO, not what is wrong.
+export interface GateReadinessPart {
+  label: string;
+  satisfied: boolean;
+  link?: GateBlockerLink;
+}
+
 export interface GateReadinessItem extends GateBlocker {
   satisfied: boolean;
+  // The conditions a composite item is made of, in config order. Present only when
+  // there are at least two and every one could be described in words — a partial
+  // list would suggest the item is smaller than it is.
+  parts?: GateReadinessPart[];
   // True for a Mandatory item whose check is still `manual` (no wired data
   // source yet). Shown on the readiness panel for visibility — the team
   // asked to see these too, not just the ones we can actually verify — but
@@ -1696,6 +1709,105 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     default:
       return undefined;
   }
+}
+
+function checklistSectionTitle(section: string): string {
+  for (const phase of Object.values(PHASE_CONFIGS)) {
+    const found = phase.checklistSections.find((c) => c.key === section);
+    if (found) return found.title;
+  }
+  return section;
+}
+
+function requirementSectionTitle(section: string): string {
+  for (const phase of Object.values(PHASE_CONFIGS)) {
+    const found = phase.requirementSections.find((c) => c.key === section);
+    if (found) return found.title;
+  }
+  return section;
+}
+
+function registerTitle(key: string): string {
+  return REGISTER_CONFIGS.find((c) => c.key === key)?.title ?? key;
+}
+
+const IDENTITY_FIELD_LABELS: Record<string, string> = {
+  initialScope: 'Initial product scope',
+  initialTargetUsers: 'Initial target user / life-stage',
+};
+
+// What a user has to DO for one sub-check, or undefined when no plain wording
+// exists yet (the caller then shows the composite as a single line rather than
+// an incomplete list).
+function describeReadinessCheck(check: ReadinessCheck): string | undefined {
+  switch (check.kind) {
+    case 'gateCheckDone':
+      return `Tick the Key Gate Check "${check.check}"`;
+    case 'identityFieldFilled':
+      return `Fill in "${IDENTITY_FIELD_LABELS[check.field] ?? check.field}"`;
+    case 'identityMarketsRecorded':
+      return 'Record at least one country / market';
+    case 'checklistHasSelection':
+      return `Select at least one option in "${checklistSectionTitle(check.section)}"`;
+    case 'checklistPrimarySelected':
+      return `Mark exactly one option as Primary in "${checklistSectionTitle(check.section)}"`;
+    case 'requirementDone':
+      return `Complete "${check.requirement}"`;
+    case 'requirementsDispositioned':
+      return `Complete or mark N/A every row in "${requirementSectionTitle(check.section)}"`;
+    case 'registerHasRows':
+      return `Add at least one row to "${registerTitle(check.register)}"`;
+    case 'registerColumnFilled': {
+      const column = REGISTER_CONFIGS.find((c) => c.key === check.register)?.columns.find((c) => c.key === check.column);
+      return `Fill "${column?.label ?? check.column}" on every row of "${registerTitle(check.register)}"`;
+    }
+    case 'registerRowsComplete':
+      return `Complete every row of "${registerTitle(check.register)}"`;
+    case 'registerNoBadRows':
+      return `Resolve the flagged rows in "${registerTitle(check.register)}"`;
+    case 'registerSomeRow':
+      return `"${registerTitle(check.register)}" needs a row marked ${check.values.join(' / ')}`;
+    case 'watchlistDispositioned':
+      return `Disposition every flagged row in "${registerTitle(check.register)}"`;
+    case 'bomHasLines':
+      return 'Add at least one Formula BOM line';
+    case 'bomIdentityComplete':
+      return 'Give every Formula BOM line an ingredient (INCI) name';
+    case 'studyApprovalsComplete':
+      return 'Complete the study approval (all three roles)';
+    case 'vulnerableGroupsCovered':
+      return 'Cover every vulnerable group implied by the target users';
+    case 'rmEvidenceDispositioned':
+      return 'Disposition every raw-material evidence row';
+    case 'rmEvidenceNoneConditional':
+      return 'Leave no raw material on the conditional route';
+    case 'postLaunchReviewsRecorded':
+      return 'Record the post-launch reviews that are due';
+    default:
+      return undefined;
+  }
+}
+
+// Flatten nested allOf so each leaf condition is its own part.
+function leafChecks(check: ReadinessCheck): ReadinessCheck[] {
+  return check.kind === 'allOf' ? check.checks.flatMap(leafChecks) : [check];
+}
+
+function readinessParts(project: ProjectData, check: ReadinessCheck, gateId: string): GateReadinessPart[] | undefined {
+  if (check.kind !== 'allOf') return undefined;
+  const leaves = leafChecks(check);
+  if (leaves.length < 2) return undefined;
+  const parts: GateReadinessPart[] = [];
+  for (const leaf of leaves) {
+    const label = describeReadinessCheck(leaf);
+    if (!label) return undefined;
+    parts.push({
+      label,
+      satisfied: evaluateReadinessCheck(project, leaf, gateId).satisfied,
+      link: resolveCheckLink(gateId, leaf),
+    });
+  }
+  return parts;
 }
 
 // Every item that bears on whether this gate can pass — Critical next
@@ -1859,6 +1971,7 @@ export function gateReadinessChecklist(
       hardBlock: blocks && !req.clearedByConditions,
       advisory,
       link: resolveCheckLink(gateId, req.check),
+      parts: readinessParts(project, effectiveCheck, gateId),
       source: req.source,
       tier: req.tier,
       coverageNote: req.coverageNote,

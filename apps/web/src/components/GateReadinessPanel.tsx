@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { Button, Tooltip } from 'antd';
-import { CheckCircleFilled, CloseCircleFilled, ExclamationCircleFilled, ExportOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, CloseCircleFilled, DownOutlined, ExclamationCircleFilled, ExportOutlined, RightOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import type { ReadinessTier } from '@mbc360/shared/config/gateReadiness';
-import type { GateReadinessItem } from '@mbc360/shared/utils/gateProgress';
+import type { GateReadinessItem, GateReadinessPart } from '@mbc360/shared/utils/gateProgress';
 import '../styles/concept.css';
 import './GateReadinessPanel.css';
 
@@ -45,9 +46,35 @@ export default function GateReadinessPanel({
   // The Phase page rail prints its own "N blocking the decision" heading.
   hideSummary?: boolean;
 }) {
+  // Items whose condition list is open. Collapsed by default: the list is the
+  // detail behind one line, not something every reader needs on first look.
+  const [openParts, setOpenParts] = useState<ReadonlySet<string>>(new Set());
+  const toggleParts = (id: string) =>
+    setOpenParts((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   const blocking = items.filter((i) => !i.satisfied && i.hardBlock);
   const toConfirm = items.filter((i) => !i.satisfied && !i.hardBlock);
   const satisfied = items.filter((i) => i.satisfied);
+
+  // Same linking rule as an item: in place on the open page, a new tab elsewhere.
+  const renderPartLabel = (part: GateReadinessPart) => {
+    if (!part.link) return <span>{part.label}</span>;
+    const path = part.link.absolute ? part.link.href : `/projects/${projectId}${part.link.href}`;
+    const href = `${path}${part.link.scrollToId ? `?scrollTo=${part.link.scrollToId}` : ''}`;
+    return path === currentPath ? (
+      <Link to={href} className="grp-link">
+        {part.label}
+      </Link>
+    ) : (
+      <a href={`#${href}`} target="_blank" rel="noopener noreferrer" className="grp-link">
+        {part.label}
+        <ExportOutlined className="grp-ext" aria-label="opens in a new tab" />
+      </a>
+    );
+  };
 
   const renderItem = (item: GateReadinessItem) => {
     const state = item.satisfied ? 'met' : item.hardBlock ? 'blocking' : 'confirm';
@@ -93,6 +120,30 @@ export default function GateReadinessPanel({
               </Tooltip>
             )}
           </div>
+          {item.parts && !item.satisfied && (
+            <>
+              <Button
+                type="link"
+                size="small"
+                className="grp-toggle grp-parts-toggle"
+                icon={openParts.has(item.id) ? <DownOutlined /> : <RightOutlined />}
+                onClick={() => toggleParts(item.id)}
+                aria-expanded={openParts.has(item.id)}
+              >
+                {item.parts.filter((p) => p.satisfied).length}/{item.parts.length} steps done
+              </Button>
+              {openParts.has(item.id) && (
+                <ul className="grp-parts">
+                  {item.parts.map((part) => (
+                    <li key={part.label} className={part.satisfied ? 'grp-part-met' : 'grp-part-open'}>
+                      <span className="grp-part-icon">{part.satisfied ? <CheckCircleFilled /> : <CloseCircleFilled />}</span>
+                      {renderPartLabel(part)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
           {note && <div className="grp-note">{note}</div>}
           {item.source === 'dev-decision' && <div className="grp-note">{UNCONFIRMED_SOURCE_NOTE}</div>}
           {item.coverageNote && <div className="grp-note">Partly checked: {item.coverageNote}</div>}

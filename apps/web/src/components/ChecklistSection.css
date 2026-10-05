@@ -1,6 +1,5 @@
 /* Checklist option list as tick tiles (2026-10-02 Phase page concept). */
 .cl { display: grid; gap: 12px; padding: 16px 20px; color: var(--c-text); font-size: 14px; }
-.cl-required { border-color: var(--c-warn-line); background: #fffdf5; }
 .cl-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .cl-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .cl-title { font-weight: 600; }
