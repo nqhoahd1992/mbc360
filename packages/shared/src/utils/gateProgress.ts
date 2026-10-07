@@ -1595,6 +1595,14 @@ export interface GateReadinessItem extends GateBlocker {
   coverageNote?: string;
 }
 
+// Anchor id of ONE Key Gate Check row on the phase page, so a readiness item
+// that reads that check can highlight the row rather than the whole table.
+// Format `sec-gate-check-<gate>-<slug>`; PhasePage parses the gate back out.
+export function gateCheckAnchor(gate: string, check: string): string {
+  const slug = check.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return `sec-gate-check-${gate.toLowerCase()}-${slug}`;
+}
+
 // Resolve a per-gate phase-page anchor link for the phase that owns `gateId`.
 function phaseSectionLink(gateId: string, scrollToId: string): GateBlockerLink | undefined {
   const phase = GATES.find((g) => g.id === gateId)?.phase;
@@ -1621,7 +1629,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'requirementsNoOpenDeferrals':
       return phaseSectionLink(gateId, `sec-requirement-${check.section}`);
     case 'gateCheckDone':
-      return phaseSectionLink(gateId, 'sec-gate-checks');
+      return phaseSectionLink(gateId, gateCheckAnchor(check.gate, check.check));
     case 'nextActionsClosed':
       return phaseSectionLink(gateId, 'sec-next-actions');
     case 'gateSignedOff':
@@ -2021,7 +2029,15 @@ export function gateReadinessChecklist(
   // point of the mechanism, not a soft nicety.
   items.push(...unclosedRegistersBlocking(project, gateId));
 
-  return items;
+  // The gate sign-off goes LAST (user-reported 2026-10-07): the panel reads as
+  // the order the work happens — evidence, then next actions, then the three
+  // signatures that attest to all of it. Declared order in GATE_READINESS has
+  // the sign-off item ahead of the B3-derived evidence items, which put it above
+  // work that has to be finished before anyone can sign.
+  const signOffIds = new Set(
+    relevantReqs.filter((r) => r.check.kind === 'gateSignedOff' || r.check.kind === 'everyMarketGateSignedOff').map((r) => r.id),
+  );
+  return [...items.filter((i) => !signOffIds.has(i.id)), ...items.filter((i) => signOffIds.has(i.id))];
 }
 
 // Every register whose OWN highest listed gate (gateRefHighestGateId) is at

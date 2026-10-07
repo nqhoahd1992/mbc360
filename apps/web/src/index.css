@@ -78,8 +78,6 @@ html {
   scroll-padding-top: 80px;
 }
 
-/* Belt and braces for the deep-link targets themselves: scroll-padding covers
-   the scrolling container, scroll-margin covers the element. */
-[id^='sec-'] {
-  scroll-margin-top: 80px;
-}
+/* Deep-link targets need no scroll-margin of their own: scroll-padding on html
+   already stops them below the header. Setting both ADDS them (80 + 80), which
+   left a 160px gap above a section scrolled to. */

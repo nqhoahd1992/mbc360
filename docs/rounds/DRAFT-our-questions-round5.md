@@ -530,9 +530,9 @@ Question 30(c) requires blocking a claim that is not approved for the market or 
 
 ## Question 39 — When may an action owner close their own action?
 
-F8 says the owner cannot verify closure "where independent confirmation is required" but not when that is. We apply it to every action. A Critical action may only be closed or cancelled by whoever raised it, the gate owner, or someone entitled to decide that gate.
+F8 says the owner cannot verify closure "where independent confirmation is required" but not when that is. We apply it to every action. Closing or cancelling any action, whatever its priority, is limited to whoever raised it, the gate owner, or an authorised reviewer — which we have read as someone entitled to decide that gate.
 
-**Question:** Are there actions an owner may close themselves?
+**Question:** Are there actions an owner may close themselves? And who is the "authorised reviewer" of an action — a role, or someone named on each action?
 
 ---
 
@@ -694,6 +694,16 @@ What stays open on a passed gate: editing, progressing and closing the actions a
 
 ---
 
+## Question 58 — Who may delete a next action?
+
+Your F8 answer says who closes an action — the person who raised it, the gate owner or an authorised reviewer. It does not say who may delete one.
+
+We have made deletion stricter than closing: **only the person who raised the action may delete it**. The Project Lead and administrators may not either. A Critical action that is still open can never be deleted (it has to be cancelled, which records who verified it), and neither can any action on a gate that has already passed. An action saved before we recorded who raised it has no raiser, so nobody can delete it; it can only be cancelled.
+
+**Question:** Who should be allowed to delete a next action — only the person who raised it, also the Project Lead or an administrator, or nobody (cancel only)? Should a deleted action leave a trace?
+
+---
+
 ## Summary
 
 | # | Topic | Why it matters |
@@ -708,6 +718,7 @@ What stays open on a passed gate: editing, progressing and closing the actions a
 | 55 | Whether the stage status must be Complete before a gate is signed | Follows from 29(1) but is not stated there — built on the project owner's instruction |
 | 56 | Whether the three gate signatures must be three different people | A control we were enforcing beyond your answer, now removed — self-approval becomes possible |
 | 57 | Whether a next action may be raised on a gate that has passed | Refused on our reading of B2 — otherwise the gate's signatures go permanently stale |
+| 58 | Who may delete a next action | Built as "only whoever raised it" — F8 only says who closes; the project owner chose it |
 | 13–14 | A "Reject / Stop" decision that does not exist · whether Safety **or** Regulatory is enough | Two of your own answers name them; we did not invent either |
 | 15–16 | Who may open the reference-data pages · what makes a gap's action "controlled" | Both surfaced by using what we had just built |
 | 17 | Should a change-control trigger be limited to gates the project has passed | Not built yet — raised discussing the Change Control screen, no rework at stake either way |

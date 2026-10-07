@@ -1,0 +1,7 @@
+/* Required marker: always present on a mandatory field, red until it is satisfied. */
+.req-mark { margin-left: 4px; color: var(--c-bad); font-weight: 600; line-height: 1; cursor: help; }
+.req-mark-met { color: var(--c-text-3); font-weight: 400; }
+
+/* A mandatory text field that is still empty: a quiet red border (no extra line,
+   so nothing shifts when the first character is typed). */
+.ant-input.rt-unmet:not(:focus):not(:hover) { border-color: var(--c-bad-line); }

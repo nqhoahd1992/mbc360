@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Checkbox, DatePicker, Input, Select, Tooltip } from 'antd';
+import { Checkbox, DatePicker, Input, Select } from 'antd';
 import type { InputRef } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { GateCheck, YNNA } from '@mbc360/shared/types';
-import { isMandatoryGateCheck } from '@mbc360/shared/utils/gateProgress';
+import { gateCheckAnchor, isMandatoryGateCheck } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
+import RequiredMark from './RequiredMark';
 import SaveBar from './SaveBar';
 import RecordList, { RecordField } from './RecordList';
 
@@ -21,6 +22,7 @@ export default function GateChecksTable({
   title,
   checks,
   isRowLocked,
+  showGate = true,
 }: {
   projectId: string;
   title: string;
@@ -30,6 +32,8 @@ export default function GateChecksTable({
   currentGateNumber?: string;
   // Gate-level edit lock: a row whose gate has passed is read-only.
   isRowLocked?: (check: GateCheck) => boolean;
+  // Show each row's gate number. Off on a single gate's tab, where it is redundant.
+  showGate?: boolean;
 }) {
   const setChecksBulk = useAppStore((s) => s.setGateChecksBulk);
   // Draft holds the mutable GateCheck values in the order of `checks` — each
@@ -45,7 +49,6 @@ export default function GateChecksTable({
     );
     markSaved();
   };
-  const required = (r: GateCheck) => isMandatoryGateCheck(r.gate, r.check) && !r.done;
   // Ticking Done is half the record: the workbook asks every checked item for
   // its evidence/reference, method and initials. So ticking a row that has no
   // evidence yet opens its drawer with the cursor in Evidence (2026-10-02).
@@ -75,20 +78,21 @@ export default function GateChecksTable({
       count={`${doneCount}/${checks.length} done`}
       rows={draft}
       rowKey={(r) => `${r.gate}-${r.check}`}
-      rowBadge={(r) => (
-        <span className="c-tag" style={{ flexShrink: 0 }}>
-          {isRowLocked?.(r) && <LockOutlined />}
-          {r.gate}
-        </span>
-      )}
+      rowId={(r) => gateCheckAnchor(r.gate, r.check)}
+      rowBadge={(r) =>
+        // On a single gate's tab the gate number is redundant (the card sits under
+        // that gate); keep the badge only for the lock, or when rows span gates.
+        showGate || isRowLocked?.(r) ? (
+          <span className="c-tag" style={{ flexShrink: 0 }}>
+            {isRowLocked?.(r) && <LockOutlined />}
+            {showGate && r.gate}
+          </span>
+        ) : undefined
+      }
       rowTitle={(r) => (
         <>
-          {r.check}
-          {required(r) && (
-            <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
-              <span className="c-tag c-tag-bad" style={{ marginLeft: 8 }}>Required</span>
-            </Tooltip>
-          )}
+          <span className="rt-name-regular">{r.check}</span>
+          {isMandatoryGateCheck(r.gate, r.check) && <RequiredMark met={r.done} />}
         </>
       )}
       rowSubtitle={(r) => (r.done ? [r.date, r.evidenceRef].filter(Boolean).join(' · ') : undefined)}

@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "predev": "kill-port 5173 3000",
+    "predev": "kill-port 5273 3000",
     "dev": "npm run build -w @mbc360/shared && concurrently -k -n shared,api,web -c blue,magenta,green \"npm run dev -w @mbc360/shared\" \"npm run dev -w @mbc360/api\" \"npm run dev -w @mbc360/web\"",
     "db:setup": "docker compose -f docker-compose.dev.yml up -d && npm run db:migrate -w @mbc360/api && npm run db:seed -w @mbc360/api",
     "db:reset": "./reset-dev-data.sh",

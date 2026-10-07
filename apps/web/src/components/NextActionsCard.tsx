@@ -3,6 +3,12 @@ import dayjs from 'dayjs';
 import type { NextAction, NextActionPriority, NextActionStatus, ProjectData } from '@mbc360/shared/types';
 import { GATES } from '@mbc360/shared/config/gates';
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
+import {
+  NEXT_ACTION_RECORD_LOCK_REASON,
+  NEXT_ACTION_REMOVE_LOCK_REASON,
+  mayEditNextActionRecord,
+  mayRemoveNextAction,
+} from '@mbc360/shared/utils/nextActionAccess';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
 import { usePermissionView } from '../auth/previewMode';
@@ -65,6 +71,26 @@ export default function NextActionsCard({
   // view like every other on-screen capability check.
   const me = session.user?.displayName;
   const committedById = new Map(rows.map((r) => [r.id, r]));
+  // Who may edit or remove an action's record: its creator, the project Lead or
+  // a System Administrator (same predicate the API applies). A row not yet saved
+  // has no committed copy and is the current person's own. Status is not part
+  // of this — F8 above decides it. Identity reads the real session, as the server
+  // does.
+  const actor = {
+    displayName: me,
+    isProjectLead: !!me && project.identity.projectLead.trim() === me.trim(),
+    isAdmin: session.isAdmin,
+  };
+  const recordLocked = (a: NextAction): boolean => {
+    const committed = committedById.get(a.id);
+    return !!committed && !mayEditNextActionRecord(committed, actor);
+  };
+  // Removal is raiser-only [ASSUMPTION: R5-Q58]; a row not yet saved has no
+  // committed copy and is yours.
+  const removeLocked = (a: NextAction): boolean => {
+    const committed = committedById.get(a.id);
+    return !!committed && !mayRemoveNextAction(committed, actor);
+  };
   const closeBlockedReason = (a: NextAction): string | null => {
     const committed = committedById.get(a.id);
     // The server only checks on ENTERING a terminal status, so an action that is
@@ -73,18 +99,17 @@ export default function NextActionsCard({
     if ((a.owner ?? '').trim() !== '' && a.owner === me) {
       return 'You own this action, so you cannot verify its own closure (F8). Set it to "Ready for Verification" and let its raiser, the gate owner or an authorised reviewer close it.';
     }
-    if (a.priority === 'Critical') {
-      // A row not yet saved has no raiser on record; the server credits whoever
-      // first saves it, which is this person.
-      const raisedBy = committed ? committed.raisedBy : me;
-      const gateOwner = project.gates.find((g) => g.gateId === a.gateId)?.owner;
-      const allowed =
-        (!!me && me === raisedBy) ||
-        (!!gateOwner && me === gateOwner) ||
-        permissionView.roleKeys.some((k) => canDecideGate(grants, k, a.gateId));
-      if (!allowed) {
-        return `This action is Critical, so only its raiser, the ${a.gateId} gate owner or someone who may decide ${a.gateId} can close or cancel it (F8).`;
-      }
+    // F8: the raiser, the gate owner or an authorised reviewer closes — every
+    // priority. A row not yet saved has no raiser on record; the server credits
+    // whoever first saves it, which is this person.
+    const raisedBy = committed ? committed.raisedBy : me;
+    const gateOwner = project.gates.find((g) => g.gateId === a.gateId)?.owner;
+    const allowed =
+      (!!me && me === raisedBy) ||
+      (!!gateOwner && me === gateOwner) ||
+      permissionView.roleKeys.some((k) => canDecideGate(grants, k, a.gateId));
+    if (!allowed) {
+      return `Only the action's raiser, the ${a.gateId} gate owner or an authorised reviewer (someone who may decide ${a.gateId}) can close or cancel it (F8).`;
     }
     return null;
   };
@@ -148,6 +173,7 @@ export default function NextActionsCard({
           render: (a, i) => (
             <Select
               style={{ width: '100%' }}
+              disabled={recordLocked(a)}
               value={a.priority}
               options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: <span className={`c-tag ${PRIORITY_TONE[p]}`}>{p}</span> }))}
               onChange={(v) => patch(i, { priority: v })}
@@ -165,19 +191,21 @@ export default function NextActionsCard({
       drawerTitle={(a) => a.description || 'New action'}
       drawer={(a, i) => (
         <section>
+          {recordLocked(a) && <p className="rt-note">{NEXT_ACTION_RECORD_LOCK_REASON}</p>}
           <div className="rt-grid">
             <RecordField label="Description" wide>
-              <Input.TextArea autoSize={{ minRows: 2 }} value={a.description} placeholder="What must be done?" onChange={(e) => patch(i, { description: e.target.value })} />
+              <Input.TextArea autoSize={{ minRows: 2 }} disabled={recordLocked(a)} value={a.description} placeholder="What must be done?" onChange={(e) => patch(i, { description: e.target.value })} />
             </RecordField>
             <RecordField label="Gate">
-              <Select style={{ width: '100%' }} value={a.gateId} options={gateOptions} onChange={(v) => patch(i, { gateId: v })} />
+              <Select style={{ width: '100%' }} disabled={recordLocked(a)} value={a.gateId} options={gateOptions} onChange={(v) => patch(i, { gateId: v })} />
             </RecordField>
             <RecordField label="Owner">
-              <UserSelect value={a.owner} onChange={(v) => patch(i, { owner: v ?? '' })} />
+              <UserSelect disabled={recordLocked(a)} value={a.owner} onChange={(v) => patch(i, { owner: v ?? '' })} />
             </RecordField>
             <RecordField label="Due date">
               <DatePicker
                 style={{ width: '100%' }}
+                disabled={recordLocked(a)}
                 value={a.dueDate ? dayjs(a.dueDate) : null}
                 onChange={(d) => patch(i, { dueDate: d ? d.format('YYYY-MM-DD') : undefined })}
               />
@@ -185,6 +213,7 @@ export default function NextActionsCard({
             <RecordField label="Priority">
               <Select
                 style={{ width: '100%' }}
+                disabled={recordLocked(a)}
                 value={a.priority}
                 options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: p }))}
                 onChange={(v) => patch(i, { priority: v })}
@@ -217,6 +246,7 @@ export default function NextActionsCard({
       addDisabledReason={addBlocked}
       onAdd={addAction}
       onRemove={removeAction}
+      removeBlockedReason={(a) => (removeLocked(a) ? NEXT_ACTION_REMOVE_LOCK_REASON : undefined)}
       isRowBlank={(a) => !a.description.trim() && !a.owner && !a.dueDate}
       removeLabel="Remove action"
       footer={

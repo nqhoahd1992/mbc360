@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { Button, Drawer, Grid, Popconfirm } from 'antd';
+import { Button, Drawer, Grid, Popconfirm, Tooltip } from 'antd';
 import { DeleteOutlined, DownOutlined, PlusOutlined, RightOutlined, UpOutlined } from '@ant-design/icons';
 import '../styles/concept.css';
 import './DynamicTable.css';
@@ -17,6 +17,8 @@ export interface RecordListProps<T> {
   count?: React.ReactNode;
   rows: T[];
   rowKey: (row: T, index: number) => string;
+  // DOM id for a row, so a deep link can scroll to and highlight that one row.
+  rowId?: (row: T, index: number) => string | undefined;
   rowTitle: (row: T, index: number) => React.ReactNode;
   rowSubtitle?: (row: T, index: number) => React.ReactNode;
   // Small leading badge, e.g. the row's gate.
@@ -35,6 +37,9 @@ export interface RecordListProps<T> {
   // Returns the index of the row it added, so the drawer opens on it.
   onAdd?: () => number;
   onRemove?: (index: number) => void;
+  // Why THIS row may not be removed. Set, the drawer shows a disabled button with
+  // the reason instead of a Remove the server would refuse.
+  removeBlockedReason?: (row: T, index: number) => string | undefined;
   // True for a row with nothing typed into it: it is removed without the
   // confirmation step, since there is nothing to lose.
   isRowBlank?: (row: T, index: number) => boolean;
@@ -61,6 +66,7 @@ export default function RecordList<T>({
   count,
   rows,
   rowKey,
+  rowId,
   rowTitle,
   rowSubtitle,
   rowBadge,
@@ -73,6 +79,7 @@ export default function RecordList<T>({
   addDisabledReason,
   onAdd,
   onRemove,
+  removeBlockedReason,
   isRowBlank,
   removeLabel = 'Remove',
   footer,
@@ -158,6 +165,7 @@ export default function RecordList<T>({
               {rows.map((row, index) => (
                 <tr
                   key={rowKey(row, index)}
+                  id={rowId?.(row, index)}
                   className={`rt-row${rowFlag?.(row, index) ? ' rl-flag' : ''}`}
                   aria-selected={openIndex === index}
                   onClick={() => setOpenIndex(index)}
@@ -195,6 +203,7 @@ export default function RecordList<T>({
             {rows.map((row, index) => (
               <li
                 key={rowKey(row, index)}
+                id={rowId?.(row, index)}
                 className={`rt-row${rowFlag?.(row, index) ? ' rl-flag' : ''}`}
                 aria-selected={openIndex === index}
                 onClick={() => setOpenIndex(index)}
@@ -278,7 +287,15 @@ export default function RecordList<T>({
                   while reading as if the record were finished or saved — and
                   clashed with the "Done" tick on Key Gate Checks. */}
               {readOnly ? <span /> : <span className="rt-drawer-hint">Changes stay in this section's draft until you Save it.</span>}
-              {onRemove && open !== undefined && isRowBlank?.(open, openIndex) ? (
+              {onRemove && open !== undefined && removeBlockedReason?.(open, openIndex) ? (
+                <Tooltip title={removeBlockedReason(open, openIndex)}>
+                  <span>
+                    <Button danger icon={<DeleteOutlined />} disabled>
+                      {removeLabel}
+                    </Button>
+                  </span>
+                </Tooltip>
+              ) : onRemove && open !== undefined && isRowBlank?.(open, openIndex) ? (
                 <Button
                   danger
                   icon={<DeleteOutlined />}

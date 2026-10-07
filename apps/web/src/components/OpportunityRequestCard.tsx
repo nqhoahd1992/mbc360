@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
-import { Input, Tooltip } from 'antd';
+import { Input } from 'antd';
 import type { ProjectData, ProjectIdentity } from '@mbc360/shared/types';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import RequiredMark from './RequiredMark';
 import '../styles/concept.css';
 import './DynamicTable.css';
 
@@ -66,27 +67,29 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
     markSaved();
   };
 
+  // The two fields behind Mandatory Gate 01 items (`sg01-scope`, `sg01-market-user`):
+  // always marked required; the field itself only turns red while still empty.
+  const REQUIRED_FIELDS: ReadonlyArray<(typeof OPPORTUNITY_FIELDS)[number]> = ['initialTargetUsers', 'initialScope'];
+  const isUnmet = (field: (typeof OPPORTUNITY_FIELDS)[number]) => REQUIRED_FIELDS.includes(field) && !draft[field]?.trim();
+
   const text = (field: (typeof OPPORTUNITY_FIELDS)[number], placeholder: string, rows?: number) =>
     locked ? (
       <span className="rt-static">{draft[field] || '—'}</span>
     ) : rows ? (
       <Input.TextArea
         autoSize={{ minRows: rows, maxRows: 6 }}
+        className={isUnmet(field) ? 'rt-unmet' : undefined}
         placeholder={placeholder}
         value={draft[field]}
         onChange={(e) => set(field, e.target.value)}
       />
     ) : (
-      <Input placeholder={placeholder} value={draft[field]} onChange={(e) => set(field, e.target.value)} />
-    );
-
-  // The two fields behind Mandatory Gate 01 items (`sg01-scope`, `sg01-market-user`
-  // via `identityFieldFilled`) — flagged while empty, same tag as the checklists.
-  const requiredTag = (field: (typeof OPPORTUNITY_FIELDS)[number]) =>
-    !locked && !draft[field]?.trim() && (
-      <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
-        <span className="c-tag c-tag-bad" style={{ marginLeft: 8 }}>Required</span>
-      </Tooltip>
+      <Input
+        className={isUnmet(field) ? 'rt-unmet' : undefined}
+        placeholder={placeholder}
+        value={draft[field]}
+        onChange={(e) => set(field, e.target.value)}
+      />
     );
 
   // 2026-10-02: a plain labelled form (label above input) instead of a bordered
@@ -96,7 +99,6 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
       <div className="rt-head">
         <div className="rt-head-title">
           <span>Opportunity &amp; Request</span>
-          <span className="c-tag">Gate 01</span>
           {locked && <span className="c-tag">Read-only — gate passed</span>}
         </div>
         <p className="rt-head-desc">
@@ -115,11 +117,11 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
           {text('requesterDepartment', 'Their department')}
         </label>
         <label className="rt-span-2">
-          <span className="rt-label">Initial target user / life-stage</span>{requiredTag('initialTargetUsers')}
+          <span className="rt-label">Initial target user / life-stage<RequiredMark met={!isUnmet('initialTargetUsers')} /></span>
           {text('initialTargetUsers', 'e.g. general adult, pregnancy')}
         </label>
         <label className="rt-span-2">
-          <span className="rt-label">Initial product scope</span>{requiredTag('initialScope')}
+          <span className="rt-label">Initial product scope<RequiredMark met={!isUnmet('initialScope')} /></span>
           {text('initialScope', 'Proposed product type, intended purpose, and the known boundaries of the request', 2)}
         </label>
       </div>

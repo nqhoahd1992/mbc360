@@ -1534,6 +1534,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q55 | Stage status có phải Complete trước khi ký gate không | Rà soát luật SME (29.1) | **rà soát 05/10/2026** |
 | R5-Q56 | Ba chữ ký gate có phải ba người khác nhau không | Rà soát luật SME (29.4 / D1) | **rà soát 05/10/2026** |
 | R5-Q57 | Gate đã passed có được tạo Next Action mới không | Rà soát luật SME (B2 / F8 / 29.1) | **rà soát 05/10/2026** |
+| R5-Q58 | Ai được xoá một Next Action | F8 chỉ nói ai đóng | **chủ dự án hỏi 07/10/2026** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
 
@@ -2023,6 +2024,8 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Câu hỏi:** Có loại action nào chủ action được tự đóng không?
 
+**Cập nhật 07/10/2026:** người đóng action (raiser, chủ gate hoặc "authorised reviewer") giờ áp cho **mọi** mức ưu tiên, đúng chữ F8, không còn thu hẹp riêng cho Critical. "Authorised reviewer" đang đọc là người có quyền quyết định gate đó — F8 chưa nói reviewer là ai. **Câu hỏi thêm:** reviewer của một action là ai (vai nào, hay chọn theo từng action)?
+
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `guardNextActions`.
 
 #### R5-Q40 · Thị trường đã bán có được mở lại PIF mà giữ launch approval không 🔴
@@ -2184,3 +2187,13 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Câu hỏi:** Cấm tạo action mới trên gate đã passed có đúng không? Nếu phát hiện việc sau đó thì nên ghi vào gate kế tiếp, hay phải mở lại gate?
 
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — vòng kiểm "Creation" trong `guardNextActions`; `apps/web/src/components/NextActionsCard.tsx` — `addBlocked`.
+
+#### R5-Q58 · Ai được xoá một Next Action 🔴
+
+**Lộ ra khi chủ dự án hỏi lại (07/10/2026).** F8 chỉ nói ai **đóng** action (người nêu, chủ gate hoặc người rà soát được uỷ quyền); không nói gì về **xoá**. Chủ dự án chốt: **chỉ người đã nêu action (Raised by) mới được xoá**, kể cả Project Lead và quản trị viên cũng không. Đó là quyết định dựng, chưa phải luật SME xác nhận.
+
+**Hệ quả:** action cũ chưa có người nêu thì không ai xoá được (chỉ Cancel). Vẫn giữ nguyên các chặn có từ trước: action Critical đang mở không xoá được (phải Cancel để lại dấu vết xác nhận), và action của gate đã passed không xoá được (B4).
+
+**Câu hỏi:** Ai được xoá một Next Action — chỉ người nêu, hay cả Project Lead / quản trị viên, hay không ai (chỉ Cancel)? Có cần giữ dấu vết của action đã xoá không?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/nextActionAccess.ts` — `mayRemoveNextAction`; `apps/api/src/projects/projects.service.ts` — vòng "Removal" trong `guardNextActions`; `apps/web/src/components/NextActionsCard.tsx` — `removeLocked`.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { App, Button, Empty } from 'antd';
-import { CheckOutlined, LockOutlined } from '@ant-design/icons';
+import { App, Button, Empty, Tooltip } from 'antd';
+import { ArrowDownOutlined, CheckOutlined, LockOutlined } from '@ant-design/icons';
 import { useLocation, useParams, useSearchParams } from 'react-router-dom';
 import {
   currentGateIndex,
@@ -36,7 +36,6 @@ import SectionJumpButton from '../components/SectionJumpButton';
 import GateReadinessPanel from '../components/GateReadinessPanel';
 import AssessmentBlock, { isFamilyUseSelected } from '../components/AssessmentBlock';
 import { ASSESSMENT_HOMES, assessmentAnchor } from '@mbc360/shared/config/assessments';
-import Notice from '../components/Notice';
 import { useUnsavedCount } from '../hooks/unsavedRegistry';
 import '../styles/concept.css';
 import './PhasePage.css';
@@ -55,6 +54,21 @@ const PHASE_NOTES: Record<number, string> = {
 
 const CLOSE_TAB = 'close';
 
+// Pulse a ring around a section the page just scrolled to. Safe to call again
+// while a pulse is running: the class is removed and re-added after a reflow so
+// the animation restarts, and the previous timer is cancelled so it cannot strip
+// the new highlight early. Deliberately NOT tied to an effect cleanup — the
+// ?scrollTo= param is dropped right after the scroll, which re-runs that effect
+// and used to cancel the timer, leaving the class stuck on (so it never replayed).
+const flashTimers = new WeakMap<HTMLElement, number>();
+function flashSection(el: HTMLElement) {
+  window.clearTimeout(flashTimers.get(el));
+  el.classList.remove('ph-flash');
+  void el.offsetWidth;
+  el.classList.add('ph-flash');
+  flashTimers.set(el, window.setTimeout(() => el.classList.remove('ph-flash'), 1200));
+}
+
 export default function PhasePage() {
   const { projectId, phaseNo } = useParams();
   const phase = Number(phaseNo);
@@ -62,6 +76,13 @@ export default function PhasePage() {
   const acceptPreWork = useAppStore((s) => s.acceptPhasePreWork);
   const location = useLocation();
   const [showSatisfied, setShowSatisfied] = useState(false);
+  // Scroll a section into view. A section near the end of the page cannot reach
+  // the top (the page is not tall enough) and stops partway; the highlight ring
+  // the caller adds is what tells the user which card they were taken to.
+  const scrollToSection = (el: HTMLElement) => {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+  };
 
   const [searchParams, setSearchParams] = useSearchParams();
   const config = PHASE_CONFIGS[phase];
@@ -84,6 +105,12 @@ export default function PhasePage() {
       return tabForRef(config.checklistSections.find((s) => `sec-checklist-${s.key}` === anchor)?.gate);
     }
     if (anchor.startsWith('sec-requirement-')) return requirementTab(anchor.slice('sec-requirement-'.length));
+    if (anchor.startsWith('sec-gate-check-')) {
+      // sec-gate-check-<gate>-<slug>: the row lives on its own gate's tab, or on
+      // the close-out for a check that belongs to no gate of this phase.
+      const gateNumber = anchor.slice('sec-gate-check-'.length).split('-')[0];
+      return config.gateIds.find((id) => GATES.find((g) => g.id === id)?.number === gateNumber) ?? CLOSE_TAB;
+    }
     if (anchor === 'sec-eight-angles' || anchor === 'sec-sign-off') return CLOSE_TAB;
     if (anchor === 'sec-opportunity' || anchor === 'sec-identification') return config.gateIds[0];
     const assessment = ASSESSMENT_HOMES.find((a) => assessmentAnchor(a.key) === anchor);
@@ -158,11 +185,8 @@ export default function PhasePage() {
       }
       return;
     }
-    // Smooth scrolling is motion: honour the OS setting.
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-    el.classList.add('ph-flash');
-    const timer = setTimeout(() => el.classList.remove('ph-flash'), 2200);
+    scrollToSection(el);
+    flashSection(el);
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -171,7 +195,6 @@ export default function PhasePage() {
       },
       { replace: true },
     );
-    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, setSearchParams, tab]);
 
@@ -223,7 +246,6 @@ export default function PhasePage() {
           { id: 'sec-sign-off', label: 'Evidence Summary, Decision and Sign-Off' },
         ]
       : [
-          { id: 'sec-gate-flow', label: `Gate ${tabGateNumber} decision` },
           ...(phase === 1 && tab === config.gateIds[0]
             ? [
                 { id: 'sec-identification', label: 'Project Identification' },
@@ -235,6 +257,7 @@ export default function PhasePage() {
           ...assessments.map((a) => ({ id: assessmentAnchor(a.key), label: `Assessment: ${a.title}` })),
           ...(keyChecks.length ? [{ id: 'sec-gate-checks', label: 'Key Gate Checks' }] : []),
           { id: 'sec-next-actions', label: 'Next Actions' },
+          { id: 'sec-gate-flow', label: `Gate ${tabGateNumber} decision and sign-off` },
         ];
 
   const statusTag =
@@ -251,6 +274,112 @@ export default function PhasePage() {
         In progress · {progress.passedGates}/{progress.totalGates} gates passed
       </span>
     );
+
+  // One status strip instead of four stacked notices: each condition is a chip,
+  // the long explanation sits in its tooltip, the action (if any) beside it.
+  const lastGateNum = gateMeta(config.gateIds[config.gateIds.length - 1]).number;
+  const stripItems: React.ReactNode[] = [];
+  if (progress.state === 'locked') {
+    stripItems.push(
+      <Tooltip
+        key="locked"
+        title="Gates must be completed in order. You can still review and fill the forms (draft evidence, requirements, notes, risks, proposed actions), but the gate flow, sign-off and formal closure stay read-only. Anything entered now is pre-work: once this phase opens, its review owner or the project's Lead must review and accept this phase's entries before they count towards completion."
+      >
+        <span className="c-tag c-tag-warn c-tag-dot">Phase locked — entries are pre-work</span>
+      </Tooltip>,
+    );
+  }
+  if (showPreWorkReview) {
+    stripItems.push(
+      <Tooltip
+        key="prework"
+        title="If any data in this phase was entered before the phase opened (pre-work), the phase's review owner or the project's Lead must review and formally accept it before it contributes to completion."
+      >
+        <span className="c-tag c-tag-warn c-tag-dot">Pre-work not reviewed</span>
+      </Tooltip>,
+      <Button key="prework-accept" type="link" size="small" icon={<CheckOutlined />} onClick={() => acceptPreWork(project.identity.id, phase)}>
+        Accept pre-work
+      </Button>,
+    );
+  }
+  if (progress.awaitingApproval) {
+    stripItems.push(
+      <Tooltip key="await" title="Record the Prepared, Reviewed and Approved by sign-offs in the close-out to complete the phase and unlock the next one.">
+        <span className="c-tag c-tag-warn c-tag-dot">All gates passed — phase sign-off required</span>
+      </Tooltip>,
+    );
+    if (tab !== CLOSE_TAB) {
+      stripItems.push(
+        <Button key="await-go" type="link" size="small" onClick={() => selectTab(CLOSE_TAB)}>
+          Go to close-out
+        </Button>,
+      );
+    }
+  } else if (progress.state !== 'completed') {
+    stripItems.push(
+      <span key="after" className="ph-small">
+        Phase sign-off opens after Gate {lastGateNum}
+      </span>,
+    );
+  }
+  if (phase === 3 && s42Triggers.length > 0) {
+    const outstanding = s42Incomplete.length > 0;
+    stripItems.push(
+      <Tooltip
+        key="s42"
+        title={
+          outstanding
+            ? `Triggered by: ${s42Triggers.join(', ')}. Gate 07 is hard-blocked until the mandatory maternal and infant-contact safety sections are fully completed. Outstanding: ${s42Incomplete.join('; ')}.`
+            : `Triggered by: ${s42Triggers.join(', ')}. All mandatory maternal and infant-contact safety sections are complete — Gate 07 is no longer blocked by this screen.`
+        }
+      >
+        <span className={`c-tag c-tag-dot ${outstanding ? 'c-tag-bad' : 'c-tag-ok'}`}>
+          Skincare for Two {outstanding ? `— ${s42Incomplete.length} section(s) outstanding` : '— complete'}
+        </span>
+      </Tooltip>,
+    );
+  }
+  const statusStrip = stripItems.length > 0 && (
+    <div className="ph-strip">
+      {stripItems.map((item, i) => (
+        <span key={i} className="ph-strip-item">
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+
+  const goToDecision = () => {
+    const el = document.getElementById('sec-gate-flow');
+    if (!el) return;
+    scrollToSection(el);
+    flashSection(el);
+  };
+  const tabRecord = tab === CLOSE_TAB ? undefined : project.gates.find((r) => r.gateId === tab);
+  const hardBlocking = readiness.filter((i) => !i.satisfied && i.hardBlock).length;
+  const gateSummary = tabRecord && (
+    <div className="c-card ph-summary">
+      <div>
+        <div className="ph-summary-k">Status</div>
+        <span className="c-tag c-tag-dot">{tabRecord.status}</span>
+      </div>
+      <div>
+        <div className="ph-summary-k">Owner</div>
+        <div className="ph-summary-v">{tabRecord.owner || '—'}</div>
+      </div>
+      <div>
+        <div className="ph-summary-k">Due</div>
+        <div className="ph-summary-v">{tabRecord.dueDate || '—'}</div>
+      </div>
+      <div>
+        <div className="ph-summary-k">Readiness</div>
+        <div className={`ph-summary-v${hardBlocking ? ' ph-bad' : ''}`}>{hardBlocking ? `${hardBlocking} blocking` : 'Ready to decide'}</div>
+      </div>
+      <Button className="ph-summary-go" icon={<ArrowDownOutlined />} onClick={goToDecision}>
+        Go to decision
+      </Button>
+    </div>
+  );
 
   return (
     <div className="concept ph">
@@ -273,46 +402,6 @@ export default function PhasePage() {
         </p>
         {PHASE_NOTES[phase] && <p className="ph-note">{PHASE_NOTES[phase]}</p>}
       </div>
-
-      {progress.state === 'locked' && (
-        <Notice tone="info" title="This phase is locked — entries here count as pre-work">
-          Gates must be completed in order. You can still review and fill the forms below (draft evidence,
-          requirements, notes, risks, proposed actions), but the gate flow, sign-off and formal closure stay
-          read-only. Anything entered now is pre-work: once this phase opens, its review owner or the
-          project's Lead must review and accept this phase's entries before they count towards completion.
-          (Individual entries are not yet labelled as pre-work — the acceptance covers the phase as a whole.)
-        </Notice>
-      )}
-      {showPreWorkReview && (
-        <Notice
-          tone="warn"
-          title="Pre-work review required"
-          action={<Button onClick={() => acceptPreWork(project.identity.id, phase)}>Accept pre-work</Button>}
-        >
-          If any data in this phase was entered before the phase opened (pre-work), the phase's review owner or
-          the project's Lead must review and formally accept it before it contributes to completion.
-        </Notice>
-      )}
-      {progress.awaitingApproval && (
-        <Notice
-          tone="warn"
-          title="All gates passed — phase sign-off required"
-          action={tab !== CLOSE_TAB ? <Button type="primary" onClick={() => selectTab(CLOSE_TAB)}>Go to close-out</Button> : undefined}
-        >
-          Record the Prepared, Reviewed and Approved by sign-offs in the close-out to complete the phase and unlock
-          the next one.
-        </Notice>
-      )}
-      {phase === 3 && s42Triggers.length > 0 && (
-        <Notice
-          tone={s42Incomplete.length > 0 ? 'bad' : 'ok'}
-          title={`Skincare for Two active (triggered by: ${s42Triggers.join(', ')})`}
-        >
-          {s42Incomplete.length > 0
-            ? `Gate 07 is hard-blocked until the mandatory maternal and infant-contact safety sections are fully completed. Outstanding: ${s42Incomplete.join('; ')}.`
-            : 'All mandatory maternal and infant-contact safety sections are complete — Gate 07 is no longer blocked by this screen.'}
-        </Notice>
-      )}
 
       <nav className="c-card ph-steps" aria-label="Gates in this phase">
         {config.gateIds.map((id, k) => {
@@ -366,6 +455,7 @@ export default function PhasePage() {
           drawer, or one gate's unsaved Next Actions draft, onto another gate. */}
       {tab === CLOSE_TAB ? (
         <div className="ph-stack" key={CLOSE_TAB}>
+          {statusStrip}
           {keyChecks.length > 0 && (
             <div id="sec-gate-checks">
               <GateChecksTable
@@ -417,9 +507,8 @@ export default function PhasePage() {
       ) : (
         <div className="ph-body" key={tab}>
           <div className="ph-stack">
-            <div id="sec-gate-flow">
-              <GateFlowTable project={project} gateIds={[tab]} layout="card" hideReadiness />
-            </div>
+            {statusStrip}
+            {gateSummary}
 
             {/* Phase 1, Gate 01 only: Countries / Markets is Gate 1 evidence since
                 Round 4 question 24, so the identification card (editable markets)
@@ -483,7 +572,8 @@ export default function PhasePage() {
               <div id="sec-gate-checks">
                 <GateChecksTable
                   projectId={project.identity.id}
-                  title={`Key Gate Checks — Gate ${tabGateNumber}`}
+                  title="Key Gate Checks"
+                  showGate={false}
                   checks={keyChecks}
                   currentGateNumber={currentGateNum}
                   isRowLocked={(check) => isGateRefLocked(project, check.gate)}
@@ -510,6 +600,12 @@ export default function PhasePage() {
             <div id="sec-next-actions">
               <NextActionsCard project={project} projectId={project.identity.id} gateIds={[tab]} actions={project.nextActions} />
             </div>
+
+            {/* The decision and the three signatures come last: they attest to
+                the evidence above, so they are made after it, not before. */}
+            <div id="sec-gate-flow">
+              <GateFlowTable project={project} gateIds={[tab]} layout="card" hideReadiness />
+            </div>
           </div>
 
           <aside className="ph-rail">
@@ -534,6 +630,11 @@ export default function PhasePage() {
                   onToggleSatisfied={() => setShowSatisfied((v) => !v)}
                   hideSummary
                 />
+              </div>
+              <div className="ph-rail-foot">
+                <Button block type={hardBlocking ? 'default' : 'primary'} icon={<ArrowDownOutlined />} onClick={goToDecision}>
+                  {hardBlocking ? 'Go to decision' : 'Sign and decide'}
+                </Button>
               </div>
             </div>
             <div id="sec-key-links">

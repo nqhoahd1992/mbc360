@@ -34,6 +34,7 @@ import {
   type RegisterConfig,
 } from '@mbc360/shared/config/registers';
 import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
+import { mayEditNextActionRecord, mayRemoveNextAction, nextActionRecordChanged } from '@mbc360/shared/utils/nextActionAccess';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { gate11ConditionalChanges } from '@mbc360/shared/utils/changeImpact';
 import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
@@ -3190,10 +3191,24 @@ export class ProjectsService {
     const before = new Map(project.nextActions.map((a) => [a.id, a]));
     const incomingIds = new Set(incoming.map((a) => a.id));
 
+    // Who may change or delete an action's record (project owner's rule, 2026-10-07):
+    // its creator, the project Lead or an administrator. Status is F8's, below.
+    const actor = {
+      displayName: user.displayName,
+      isProjectLead: project.identity.projectLead.trim() === user.displayName.trim(),
+      isAdmin: this.permissions.isAdmin(user),
+    };
+
     // Removal. An open Critical action is closed by cancelling it, which carries a
     // verifier; deleting it would make the block vanish with no trail. And nothing
     // tied to a passed gate is deleted (B4: no silent corrections).
     for (const old of project.nextActions.filter((a) => gateIds.includes(a.gateId) && !incomingIds.has(a.id))) {
+      // Raiser-only deletion [ASSUMPTION: R5-Q58].
+      if (!mayRemoveNextAction(old, actor)) {
+        throw new ForbiddenException(
+          `Action "${old.description}" can only be removed by the person who raised it (${old.raisedBy ?? 'unrecorded'})`,
+        );
+      }
       if (old.priority === 'Critical' && !terminal(old.status)) {
         throw new BadRequestException(
           `Critical action "${old.description}" cannot be deleted while open — cancel it instead, which records who verified it`,
@@ -3229,6 +3244,11 @@ export class ProjectsService {
     const result: ProjectData['nextActions'] = [];
     for (const a of incoming) {
       const old = before.get(a.id);
+      if (old && nextActionRecordChanged(old, a) && !mayEditNextActionRecord(old, actor)) {
+        throw new ForbiddenException(
+          `Action "${old.description}" can only be edited by whoever created it (${old.raisedBy ?? 'unrecorded'}), the project Lead or a System Administrator — its Status can still be updated`,
+        );
+      }
       // Attribution is the server's: the raiser is whoever first saved the action,
       // the verifier whoever moved it to Closed or Cancelled.
       // An action saved before this rule has no raiser on record; it stays
@@ -3245,17 +3265,19 @@ export class ProjectsService {
             `"${a.description}": you own this action, so someone else — its raiser, the gate owner or an authorised reviewer — must verify and close it (F8)`,
           );
         }
-        if (a.priority === 'Critical') {
-          const gateOwner = project.gates.find((g) => g.gateId === a.gateId)?.owner;
-          const allowed =
-            user.displayName === raisedBy ||
-            (!!gateOwner && user.displayName === gateOwner) ||
-            (await this.permissions.hasPermission(user, `gate:${a.gateId}`, 'decide'));
-          if (!allowed) {
-            throw new ForbiddenException(
-              `"${a.description}" is Critical: only its raiser, the ${a.gateId} gate owner or someone who may decide ${a.gateId} can close or cancel it (F8)`,
-            );
-          }
+        // F8: the raiser, the relevant gate owner or an authorised reviewer verifies
+        // and closes — for every priority (F8 does not tier this by priority).
+        // "Authorised reviewer" is read as someone who may decide this gate, the only
+        // per-gate authorisation the app has [ASSUMPTION: R5-Q39].
+        const gateOwner = project.gates.find((g) => g.gateId === a.gateId)?.owner;
+        const allowed =
+          user.displayName === raisedBy ||
+          (!!gateOwner && user.displayName === gateOwner) ||
+          (await this.permissions.hasPermission(user, `gate:${a.gateId}`, 'decide'));
+        if (!allowed) {
+          throw new ForbiddenException(
+            `"${a.description}": only its raiser, the ${a.gateId} gate owner or an authorised reviewer (someone who may decide ${a.gateId}) can close or cancel it (F8)`,
+          );
         }
         verifiedBy = user.displayName;
       } else if (!terminal(a.status)) {

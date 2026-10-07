@@ -5,6 +5,7 @@ import type { ChecklistItem, YNNA } from '@mbc360/shared/types';
 import { isMandatoryChecklistSection } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
+import RequiredMark from './RequiredMark';
 import SaveBar from './SaveBar';
 import '../styles/concept.css';
 import './ChecklistSection.css';
@@ -26,7 +27,6 @@ export default function ChecklistSection({
   projectId,
   sectionKey,
   title,
-  gate,
   items,
   readOnly,
   // Why a given option cannot be UN-ticked right now (2026-08-11). Used for
@@ -38,6 +38,8 @@ export default function ChecklistSection({
   projectId: string;
   sectionKey: string;
   title: string;
+  // Which gate the section belongs to. Not displayed: the page already sits on
+  // that gate's tab.
   gate: string;
   items: ChecklistItem[];
   // Gate `number` (e.g. '02') currently open for work — see the highlight below.
@@ -57,7 +59,7 @@ export default function ChecklistSection({
   const screens = Grid.useBreakpoint();
   const selectedCount = draft.filter((i) => i.selected).length;
   const hasSelection = draft.some((i) => i.status === 'Y');
-  const required = isMandatoryChecklistSection(sectionKey) && !hasSelection;
+  const mandatory = isMandatoryChecklistSection(sectionKey);
 
   const patch = (index: number, p: Partial<ChecklistItem>) => update((prev) => patchArray(prev, index, p));
   // Primary is single-valued: picking one clears the others, otherwise
@@ -87,17 +89,19 @@ export default function ChecklistSection({
     <div className="concept-tokens c-card cl">
       <div className="cl-head">
         <div className="cl-title-row">
-          <span className="cl-title">{title}</span>
-          <span className="c-tag">Gate {gate}</span>
+          <span className="cl-title">
+            {title}
+            {mandatory && (
+              <RequiredMark
+                met={hasSelection}
+                title="At least one option must be recorded (status Y) before this gate can pass (F1/C7 mandatory evidence)"
+              />
+            )}
+          </span>
           {readOnly && (
             <span className="c-tag">
               <LockOutlined /> Read-only — gate passed
             </span>
-          )}
-          {required && !readOnly && (
-            <Tooltip title="At least one option must be recorded (status Y) before this gate can pass (F1/C7 mandatory evidence)">
-              <span className="c-tag c-tag-bad">Required</span>
-            </Tooltip>
           )}
         </div>
         <span className="cl-count">

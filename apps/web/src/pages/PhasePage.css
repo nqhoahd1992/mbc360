@@ -39,7 +39,44 @@
 .ph-rail-sub.ph-bad { color: var(--c-bad); }
 .ph-rail-body { padding: 8px 12px 12px; }
 
-/* Arrival highlight for a ?scrollTo= deep link. */
-.ph-flash { border-radius: 8px; animation: ph-flash 2.2s ease-out; }
-@keyframes ph-flash { 0%, 40% { background-color: #fffbe6; } 100% { background-color: transparent; } }
-@media (prefers-reduced-motion: reduce) { .ph-flash { animation: none; } }
+/* Arrival highlight for a ?scrollTo= deep link / "Go to decision": a ring that
+   pulses outward around the section for ~1s, so it is obvious which card the
+   page scrolled to even when it could not reach the top of the screen. */
+.ph-flash { border-radius: 8px; animation: ph-flash 1s ease-out; }
+@keyframes ph-flash {
+  0% { box-shadow: 0 0 0 2px var(--c-primary), 0 0 0 0 color-mix(in srgb, var(--c-primary) 45%, transparent); }
+  50% { box-shadow: 0 0 0 2px var(--c-primary), 0 0 0 8px color-mix(in srgb, var(--c-primary) 18%, transparent); }
+  100% { box-shadow: 0 0 0 2px transparent, 0 0 0 12px transparent; }
+}
+/* No movement: keep the ring, still for the same second. */
+@media (prefers-reduced-motion: reduce) { .ph-flash { animation: none; box-shadow: 0 0 0 2px var(--c-primary); } }
+
+/* Status strip (one line of chips replacing four stacked notices) and the gate
+   summary above the evidence; the decision itself sits at the end of the stack. */
+.ph-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface); }
+.ph-strip-item { display: inline-flex; align-items: center; }
+.ph-strip .ant-btn-link { padding: 0; height: auto; }
+.ph-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 20px; }
+.ph-summary-k { color: var(--c-text-3); font-size: 12px; }
+.ph-summary-v { font-size: 13px; font-weight: 500; }
+.ph-summary-v.ph-bad { color: var(--c-bad); }
+.ph-summary-go { margin-left: auto; }
+@media (max-width: 759px) { .ph-summary-go { width: 100%; margin-left: 0; } }
+.ph-rail-foot { padding: 12px; border-top: 1px solid var(--c-border-2); }
+
+/* A table row cannot take a box-shadow ring (collapsed borders), so a highlighted
+   row uses an inset outline plus a tint that fades out over the same second. */
+tr.ph-flash { animation: ph-flash-row 1s ease-out; }
+tr.ph-flash > td { animation: ph-flash-cell 1s ease-out; }
+@keyframes ph-flash-row {
+  0%, 60% { outline: 2px solid var(--c-primary); outline-offset: -2px; }
+  100% { outline: 2px solid transparent; outline-offset: -2px; }
+}
+@keyframes ph-flash-cell {
+  0%, 40% { background-color: color-mix(in srgb, var(--c-primary) 12%, transparent); }
+  100% { background-color: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  tr.ph-flash { animation: none; outline: 2px solid var(--c-primary); outline-offset: -2px; }
+  tr.ph-flash > td { animation: none; }
+}

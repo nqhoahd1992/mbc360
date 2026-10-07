@@ -1,4 +1,4 @@
-import { Input, Select, Tooltip } from 'antd';
+import { Input, Select } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import type { RequirementItem, RequirementStatus } from '@mbc360/shared/types';
 import type { RequirementColumnKey } from '@mbc360/shared/config/phases';
@@ -6,6 +6,7 @@ import { REQUIREMENT_NOT_APPLICABLE, REQUIREMENT_PRIORITIES, WORK_STATUSES } fro
 import { isMandatoryRequirementRow } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
+import RequiredMark from './RequiredMark';
 import SaveBar from './SaveBar';
 import RecordList, { RecordField } from './RecordList';
 
@@ -61,7 +62,6 @@ export default function RequirementTable({
     setSection(projectId, sectionKey, draft);
     markSaved();
   };
-  const required = (r: RequirementItem) => isMandatoryRequirementRow(sectionKey, r.requirement) && r.status !== 'Completed';
   // Switching AWAY from N/A drops the rationale in the same edit, so a stale
   // reason cannot sit beside a Completed row (the API clears it too).
   const setStatus = (i: number, v: RequirementStatus) =>
@@ -115,11 +115,7 @@ export default function RequirementTable({
       rowTitle={(r) => (
         <>
           {r.requirement}
-          {required(r) && (
-            <Tooltip title="Required to pass this gate (F1/C7 mandatory evidence)">
-              <span className="c-tag c-tag-bad" style={{ marginLeft: 8 }}>Required</span>
-            </Tooltip>
-          )}
+          {isMandatoryRequirementRow(sectionKey, r.requirement) && <RequiredMark met={r.status === 'Completed'} />}
         </>
       )}
       rowSubtitle={(r) => (shows('detail') ? r.requirementText : r.minimumRequirement) || undefined}

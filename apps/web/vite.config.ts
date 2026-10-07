@@ -13,6 +13,10 @@ const sharedSrc = path.resolve(dirname, '../../packages/shared/src')
 export default defineConfig(({ command }) => ({
   plugins: [react()],
   server: {
+    port: 5273,
+    // Fail instead of silently moving to another port, which would break
+    // the SSO redirect URI configured for this port.
+    strictPort: true,
     // Same-origin '/api' in dev mirrors the production nginx routing
     // ('/' -> web container, '/api' -> api container), so the frontend
     // always calls relative URLs and never deals with CORS.
