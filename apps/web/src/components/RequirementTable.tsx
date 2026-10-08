@@ -20,6 +20,7 @@ export default function RequirementTable({
   sectionKey,
   title,
   items,
+  viewedGateNumber,
   isRowLocked,
   columns: visibleColumns,
   allowNotApplicable,
@@ -31,6 +32,8 @@ export default function RequirementTable({
   // Gate `number` (e.g. '05') currently open for work — still-required rows of
   // that gate are flagged.
   currentGateNumber?: string;
+  // Gate tab being viewed: a row of that same gate needs no gate badge.
+  viewedGateNumber?: string;
   // Gate-level edit lock, per row (a section can span several gates).
   isRowLocked?: (item: RequirementItem) => boolean;
   // Which fields this section uses (RequirementSectionConfig.columns). Omitted =
@@ -104,12 +107,23 @@ export default function RequirementTable({
       rowKey={(r) => r.requirement}
       rowBadge={
         shows('gate')
-          ? (r) => (
-              <span className="c-tag" style={{ flexShrink: 0 }}>
-                {isRowLocked?.(r) && <LockOutlined />}
-                {r.gate}
-              </span>
-            )
+          ? (r) => {
+              // On a gate's own tab every row is that gate's, so the badge says
+              // nothing; keep only the lock marker there.
+              const sameGate = !!viewedGateNumber && r.gate === viewedGateNumber;
+              const locked = !!isRowLocked?.(r);
+              if (sameGate && !locked) return null;
+              return (
+                <span
+                  className="c-tag"
+                  style={{ flexShrink: 0 }}
+                  title={locked ? `Gate ${r.gate} has passed — this row is locked` : `Required by Gate ${r.gate}`}
+                >
+                  {locked && <LockOutlined />}
+                  {!sameGate && `Gate ${r.gate}`}
+                </span>
+              );
+            }
           : undefined
       }
       rowTitle={(r) => (

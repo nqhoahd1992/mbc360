@@ -11,7 +11,7 @@ import {
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { currentMarketTracks } from '@mbc360/shared/utils/postLaunch';
 import { useAppStore } from '../store/useAppStore';
-import { GATE_FIELD_LABELS, GATES, PHASES } from '@mbc360/shared/config/gates';
+import { GATE_FIELD_LABELS, GATES, PHASES, phaseLabel } from '@mbc360/shared/config/gates';
 import { isSignedOff } from '@mbc360/shared/types';
 import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import {
@@ -232,7 +232,7 @@ export default function ProjectOverview() {
                 <div className="po-phase-head">
                   <div className="po-phase-name">
                     <Link className="c-link po-phase-title" to={`/projects/${identity.id}/phase/${phase.phase}`}>
-                      {phase.title.split(' - ')[0]} · {phase.title.split(' - ')[1]}
+                      {phaseLabel(phase.phase)}
                     </Link>
                     {/* Locked / awaiting sign-off are phase STATE, not gate
                         counts — so they are tags beside the name. */}

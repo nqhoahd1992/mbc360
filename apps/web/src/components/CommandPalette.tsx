@@ -12,7 +12,7 @@ import {
 } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { PHASES } from '@mbc360/shared/config/gates';
+import { PHASES, phaseLabel } from '@mbc360/shared/config/gates';
 import { formatGate, getNavGroups, getRegisterConfig, navItemHref } from '@mbc360/shared/config/registers';
 import { currentGateNumber, phaseProgress } from '@mbc360/shared/utils/gateProgress';
 import { globalNavFor } from '../config/globalNav';
@@ -138,12 +138,11 @@ export default function CommandPalette({
         dedupeKey: `ws-overview-${id}`,
       });
       for (const ph of PHASES) {
-        const label = ph.subtitle.replace(/Gates [\d-]+ /, '').replace(/[()]/g, '');
         const progress = phaseProgress(activeProject, ph.phase);
         const gate = currentGateNumber(activeProject);
         list.push({
           id: `ws-phase-${ph.phase}-${id}`,
-          title: `Phase ${ph.phase} · ${label}`,
+          title: phaseLabel(ph.phase),
           group: ws,
           path: `/projects/${id}/phase/${ph.phase}`,
           keywords: ph.title,

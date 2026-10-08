@@ -1,4 +1,4 @@
-import { GATES, PHASES } from '@mbc360/shared/config/gates';
+import { GATES, phaseLabel } from '@mbc360/shared/config/gates';
 import type { PermissionDef } from './permissions';
 
 // The seven groups every screen shows capabilities in — the Roles editor and
@@ -58,10 +58,7 @@ export function buildCapabilityGroups(defs: PermissionDef[]): CapGroup[] {
       push('gate', { id: d.id, label: g ? `Gate ${g.number} — ${g.name}` : d.resource });
     } else if (d.resource.startsWith('phase:')) {
       const n = Number(d.resource.slice('phase:'.length));
-      const p = PHASES.find((x) => x.phase === n);
-      // "Gates 1-3 (Marketing)" → "Marketing", matching the sidebar's labels.
-      const area = p?.subtitle.match(/\(([^)]+)\)/)?.[1];
-      push('phase', { id: d.id, label: area ? `Phase ${n} · ${area}` : (p?.title ?? d.resource) });
+      push('phase', { id: d.id, label: phaseLabel(n) });
     } else {
       const known = CAP_LABELS[d.id];
       push(known?.group ?? 'other', { id: d.id, label: known?.label ?? d.description ?? d.id });

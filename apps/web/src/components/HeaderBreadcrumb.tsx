@@ -1,7 +1,8 @@
 import { Fragment, type ReactNode } from 'react';
 import { RightOutlined } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
-import { PHASES } from '@mbc360/shared/config/gates';
+import { GATES, phaseLabel } from '@mbc360/shared/config/gates';
+import { currentGateIndex, isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import {
   findNavGroupForRegister,
   getNavGroup,
@@ -17,11 +18,6 @@ interface Crumb {
   to?: string;
 }
 
-const phaseLabel = (n: number) => {
-  const ph = PHASES.find((p) => p.phase === n);
-  if (!ph) return `Phase ${n}`;
-  return `Phase ${n} · ${ph.subtitle.replace(/Gates [\d-]+ /, '').replace(/[()]/g, '')}`;
-};
 
 // Where you are, worked out from the route and the same nav config the
 // sidebar reads — so a page renamed there is renamed here too. The project's
@@ -88,6 +84,28 @@ function useCrumbs(): Crumb[] {
 
 export default function HeaderBreadcrumb({ fallback }: { fallback: ReactNode }) {
   const crumbs = useCrumbs();
+  const { pathname, search } = useLocation();
+  const projectId = pathname.match(/^\/projects\/([^/]+)/)?.[1];
+  const phaseNo = Number(pathname.match(/^\/projects\/[^/]+\/phase\/(\d+)/)?.[1]);
+  const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
+  // The gate being viewed: PhasePage keeps it in `?gate=`; with no param it
+  // opens on the project's current gate if that is in this phase (same default
+  // as PhasePage), else the phase's first gate. `close` is the close-out tab.
+  let chip: string | undefined;
+  if (project && phaseNo) {
+    const phaseGates = GATES.filter((g) => g.phase === phaseNo);
+    const requested = new URLSearchParams(search).get('gate');
+    if (requested === 'close') {
+      chip = 'Phase close-out';
+    } else {
+      const current = GATES[currentGateIndex(project)];
+      const gate =
+        phaseGates.find((g) => g.id === requested) ??
+        (current?.phase === phaseNo ? current : undefined) ??
+        (phaseGates.every((g) => isGatePassed(project, g.id)) ? undefined : phaseGates[0]);
+      chip = gate ? `Gate ${gate.number} · ${gate.name}` : 'Phase close-out';
+    }
+  }
   if (crumbs.length === 0) return <span className="hb-cur">{fallback}</span>;
   return (
     <nav className="hb" aria-label="Breadcrumb">
@@ -116,6 +134,11 @@ export default function HeaderBreadcrumb({ fallback }: { fallback: ReactNode }) 
           </Fragment>
         );
       })}
+      {chip && (
+        <span className="hb-gate" title="Gate you are viewing">
+          {chip}
+        </span>
+      )}
     </nav>
   );
 }

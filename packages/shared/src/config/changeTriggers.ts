@@ -1,4 +1,4 @@
-import { PHASES } from './gates';
+import { PHASES, phaseLabel } from './gates';
 import type { ChangeRecord, ChangeStatus } from '../types';
 
 // Change-control lifecycle statuses (confirmed rule F9), in workflow order.
@@ -332,9 +332,7 @@ export function triggerPhases(gates: string[]): number[] {
 
 // e.g. "Phase 2 · NPD"
 export function phaseShortLabel(phase: number): string {
-  const p = PHASES.find((x) => x.phase === phase);
-  const paren = p?.subtitle.match(/\(([^)]+)\)/)?.[1];
-  return paren ? `Phase ${phase} · ${paren}` : `Phase ${phase}`;
+  return phaseLabel(phase);
 }
 
 // F9: an OPEN change whose trigger names this gate (or ALL) soft-locks it. One

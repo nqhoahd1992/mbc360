@@ -13,7 +13,7 @@ import {
   DownOutlined,
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { GATES, PHASES } from '@mbc360/shared/config/gates';
+import { GATES, PHASES, phaseLabel } from '@mbc360/shared/config/gates';
 import {
   findNavGroupForRegister,
   formatGate,
@@ -290,7 +290,7 @@ function ProjectPanel() {
               key={ph.phase}
               to={to}
               icon={icon}
-              label={`Phase ${ph.phase} · ${ph.subtitle.replace(/Gates [\d-]+ /, '').replace(/[()]/g, '')}`}
+              label={phaseLabel(ph.phase)}
               meta={`${progress.passedGates}/${progress.totalGates}`}
               current={pathname === to}
             />

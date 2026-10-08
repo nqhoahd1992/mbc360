@@ -17,7 +17,7 @@ import {
   skincareForTwoTriggers,
 } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
-import { GATES, PHASES } from '@mbc360/shared/config/gates';
+import { GATES, PHASES, phaseLabel } from '@mbc360/shared/config/gates';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
 import OpportunityRequestCard from '../components/OpportunityRequestCard';
@@ -388,12 +388,12 @@ export default function PhasePage() {
       <div className="ph-header">
         <div className="ph-title-row">
           <h1 className="ph-title">
-            Phase {phase} · {meta.title.replace(/^Phase \d+\s*-\s*/, '')}
+            {phaseLabel(phase)}
           </h1>
           {statusTag}
         </div>
         <p className="ph-meta">
-          {project.identity.id} · {project.identity.productSku} · {meta.department}
+          {meta.name} · {project.identity.id} · {project.identity.productSku} · {meta.department}
           {reviewOwnerText && (
             <>
               {' '}· Review owner <b>{reviewOwnerText}</b>
@@ -557,6 +557,7 @@ export default function PhasePage() {
                   title={section.title}
                   items={project.requirements[section.key] ?? []}
                   currentGateNumber={currentGateNum}
+                  viewedGateNumber={GATES.find((g) => g.id === tab)?.number}
                   isRowLocked={(item) => isGateRefLocked(project, item.gate)}
                   columns={section.columns}
                   allowNotApplicable={section.allowNotApplicable}

@@ -13,6 +13,10 @@ export interface GateMeta {
 export interface PhaseMeta {
   phase: number;
   title: string;
+  /** Descriptive phase name without the "Phase N" prefix. */
+  name: string;
+  /** Short owning-area name used in every "Phase N · Area" label. */
+  area: string;
   subtitle: string;
   department: string;
   color: string;
@@ -22,6 +26,8 @@ export const PHASES: PhaseMeta[] = [
   {
     phase: 1,
     title: 'Phase 1 - User & Product Definition',
+    name: 'User & Product Definition',
+    area: 'Marketing',
     subtitle: 'Gates 1-3 (Marketing)',
     department: 'MARKETING / SALES / PROJECT OWNER',
     color: '#1677ff',
@@ -29,6 +35,8 @@ export const PHASES: PhaseMeta[] = [
   {
     phase: 2,
     title: 'Phase 2 - Ingredient & Formula Qualification',
+    name: 'Ingredient & Formula Qualification',
+    area: 'NPD',
     subtitle: 'Gates 4-6 (NPD)',
     department: 'NPD / R&I / PROCUREMENT / PACKAGING',
     color: '#722ed1',
@@ -36,6 +44,8 @@ export const PHASES: PhaseMeta[] = [
   {
     phase: 3,
     title: 'Phase 3 - Validation & Quality Control',
+    name: 'Validation & Quality Control',
+    area: 'Quality',
     subtitle: 'Gates 7-9 (Quality)',
     department: 'QUALITY / SAFETY / R&I / MANUFACTURING',
     color: '#fa8c16',
@@ -43,11 +53,19 @@ export const PHASES: PhaseMeta[] = [
   {
     phase: 4,
     title: 'Phase 4 - Evidence, Release & Improvement',
+    name: 'Evidence, Release & Improvement',
+    area: 'Reg + Mgt',
     subtitle: 'Gates 10-12 (Reg + Mgt)',
     department: 'REGULATORY / QUALITY / MANAGEMENT / SALES',
     color: '#52c41a',
   },
 ];
+
+/** The one display label for a phase, e.g. "Phase 2 · NPD". */
+export function phaseLabel(phase: number): string {
+  const p = PHASES.find((x) => x.phase === phase);
+  return p ? `Phase ${phase} · ${p.area}` : `Phase ${phase}`;
+}
 
 export const GATES: GateMeta[] = [
   {
