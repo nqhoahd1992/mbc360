@@ -40,7 +40,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
   SG07: {
     criticalSafetyFindings: ['criticalFinding', 'evidenceLink', 'findingStatus', 'linkedNextActionId', 'safetyReviewerConclusion', 'severity'],
     formulationSafetyFinalSignOff: ['notes', 'safetyQuestion', 'status'],
-    formulationSafetyMatrix: ['allergenIfra', 'exposureRationale', 'impurityProof', 'inciName', 'rmCode', 'safetyDecision'],
+    formulationSafetyMatrix: ['allergenIfra', 'coverageReference', 'coverageRoute', 'exposureRationale', 'impurityProof', 'inciName', 'rmCode', 'safetyDecision'],
     generalRestrictedCaution: ['assessmentOutcome'],
     pbCautionLimits: ['gate4Disposition', 'productStatus'],
     prohibitedIngredients: ['gate4Disposition', 'productStatus'],
@@ -57,7 +57,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     packagingSpecsArtwork: ['approval', 'claimIds', 'market'],
     pifChecklistAsean: ['status'],
     publishedInfoApproval: ['noProductClaim', 'noProductClaimConfirmedBy', 'workflowState'],
-    regulatoryChecklistStatus: ['checklistLink', 'dossierType', 'market', 'owner', 'regulatoryApproval', 'status'],
+    regulatoryChecklistStatus: ['checklistLink', 'dossierType', 'market', 'naRationale', 'naReviewer', 'owner', 'regulatoryApproval', 'status'],
     skuClaimsPifRegister: ['claimId', 'evidenceLink', 'market', 'pifLink'],
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
@@ -69,7 +69,6 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG12: {
-    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimRisk', 'claimSubjects', 'reviewedWording'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };
@@ -89,7 +88,6 @@ export const TRIGGER_READS_BY_GATE: Record<string, Record<string, string[]>> = {
     claimEvidenceTraceability: ['claimCategory', 'evidenceBasisRequired'],
   },
   SG12: {
-    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimRisk', 'claimSubjects', 'reviewedWording'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };

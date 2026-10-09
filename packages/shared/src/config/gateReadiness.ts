@@ -355,7 +355,10 @@ export type ReadinessCheck =
   // that cannot be closed for a product it does not apply to is the
   // `sg07-caution-closed` mistake repeated. Only used on sections that declare
   // `allowNotApplicable`, which is what makes 'N/A' selectable at all.
-  | { kind: 'requirementSectionDispositioned'; section: string }
+  // `gate`, when set, narrows the check to the rows tagged for that gate: a
+  // section that spans two gates (infantTesting: 08 and 09) must not make the
+  // earlier gate demand the later gate's rows.
+  | { kind: 'requirementSectionDispositioned'; section: string; gate?: string }
   // Rule E3(b): no open Change Control at Gate 11 is launch-impacting, High risk,
   // impacting formula/artwork/claims/safety/regulatory/packaging/release, or
   // unclassified. Blocks Proceed with Conditions too.
@@ -2376,7 +2379,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Conditional',
       trigger: 'infantContact',
       source: 'f-series',
-      check: { kind: 'requirementSectionDispositioned', section: 'infantTesting' },
+      check: { kind: 'requirementSectionDispositioned', section: 'infantTesting', gate: '08' },
     },
     {
       id: 'sg08-methods',
@@ -2543,6 +2546,17 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         'The eighteen affected areas that should also trigger it — manufacturing site, equipment scale, batch size, order of addition and the rest — are not read yet; they belong on the change record, which is being restructured.',
       // Shares the Key Gate Check above — its own wording covers "Pilot/scale-up".
       check: { kind: 'gateCheckDone', gate: '09', check: 'Pilot/scale-up and release criteria assessed' },
+    },
+    {
+      // Split out of `sg08-infant-testing` 2026-10-09: the five infantTesting rows tagged
+      // gate 09 (preservative efficacy, microbiology, stability, packaging compatibility,
+      // in-use testing) used to be demanded at Gate 8, before they could be run.
+      id: 'sg09-infant-testing',
+      label: 'Infant & Baby Safety — stability, microbiology and in-use testing triggered by use context and risk',
+      tier: 'Conditional',
+      trigger: 'infantContact',
+      source: 'f-series',
+      check: { kind: 'requirementSectionDispositioned', section: 'infantTesting', gate: '09' },
     },
     {
       id: 'sg09-deviations',

@@ -583,10 +583,11 @@ function sourcesOf(check: ReadinessCheck): EvidenceSource[] {
       return [checklistSourceOf(check.section)];
     case 'requirementDone':
     case 'requirementSectionComplete':
-    case 'requirementSectionDispositioned':
     case 'requirementsDispositioned':
     case 'requirementsNoOpenDeferrals':
       return [{ label: `requirement section ${check.section}`, lockRef: requirementSectionGates(check.section), laterGateOwns: true }];
+    case 'requirementSectionDispositioned':
+      return [{ label: `requirement section ${check.section}`, lockRef: check.gate ?? requirementSectionGates(check.section), laterGateOwns: true }];
     case 'registerHasRows':
     case 'registerColumnFilled':
     case 'registerNoBadRows':

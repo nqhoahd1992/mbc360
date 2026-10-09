@@ -750,6 +750,14 @@ We have read it as **Gate 7**: the reviewer columns (assessment, reviewer, date,
 
 **Question:** Is product status updated until Gate 7, or settled at Gate 4 together with the reviewer columns?
 
+## Question 64 — How is a formula ingredient matched to its row in the safety matrix?
+
+Your answer to question 23(b) says every ingredient in the final formula must show that it has been covered and linked to the relevant assessment. It does not say what ties a line of the formula to a row of the ingredient safety matrix.
+
+We match them by **raw-material code first** (the same code used on the Supplier & RM Evidence sheet) and by INCI name when no code is recorded. The matrix did not have a code column, so in practice only the INCI name was ever used; we have now added one. If two different materials share an INCI name — two suppliers, two grades — the code is what keeps them apart.
+
+**Question:** Should each formula ingredient be identified by its raw-material code when it is checked against the safety matrix, or is the INCI name enough?
+
 ---
 
 ## Summary
@@ -772,6 +780,7 @@ We have read it as **Gate 7**: the reviewer columns (assessment, reviewer, date,
 | 61 | Whether a closed or cancelled Critical action still forces Proceed with Conditions | Built as "no" — your answers only speak about open actions |
 | 62 | Where the release decision on the Stability & Release sheet is entered | Built as Gate 11 — your answers name a release pathway at Gate 11 but do not say where the column is filled in |
 | 63 | Until which gate the watch-list "product status" keeps being updated | Built as Gate 7 — question 6 does not say where it is settled |
+| 64 | Whether the ingredient safety matrix identifies each ingredient by raw-material code | Built with a code column, falling back to the INCI name — question 23(b) does not say what links a formula line to its row |
 | 13–14 | A "Reject / Stop" decision that does not exist · whether Safety **or** Regulatory is enough | Two of your own answers name them; we did not invent either |
 | 15–16 | Who may open the reference-data pages · what makes a gap's action "controlled" | Both surfaced by using what we had just built |
 | 17 | Should a change-control trigger be limited to gates the project has passed | Not built yet — raised discussing the Change Control screen, no rework at stake either way |

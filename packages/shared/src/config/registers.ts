@@ -2187,6 +2187,10 @@ export const formulationSafetyMatrix: RegisterConfig = {
   mode: 'register',
   gate: '07/10',
   columns: [
+    // [ASSUMPTION: R5-Q64] Added 2026-10-09: `uncoveredFormulaLines` has always tried
+    // rmCode before INCI, but this register had no such column, so only the INCI
+    // join ever ran and two materials sharing an INCI name matched the same row.
+    { key: 'rmCode', label: 'RM code', type: 'text', width: 110 },
     { key: 'inciName', label: 'Ingredient / INCI', type: 'text', width: 160 },
     { key: 'percentWw', label: '% w/w', type: 'number', width: 80 },
     { key: 'functionRole', label: 'Function', type: 'text', width: 130 },

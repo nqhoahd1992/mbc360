@@ -47,11 +47,11 @@ Mỗi mục ghi: chuyện gì, vì sao đáng bàn, hiện đang xử lý ra sao
 
 **D3. Post-launch reviews, lịch sử phiên bản công thức:** cùng cách với D1.
 
-## E. Lỗi cấu hình có từ trước, phát hiện trong lúc làm
+## E. Lỗi cấu hình có từ trước — đã sửa 2026-10-09
 
-**E1. Gate 8 đòi cả bảy dòng `infantTesting`, trong đó năm dòng gắn gate 09.** Một gate đòi dòng của gate sau.
+**E1. Gate 8 đòi cả bảy dòng `infantTesting`, trong đó năm dòng gắn gate 09.** Đã sửa: check `requirementSectionDispositioned` có thêm tham số `gate`, Gate 8 chỉ đọc hai dòng gắn 08, và mục mới `sg09-infant-testing` đọc năm dòng gắn 09. Không cần hỏi SME vì không đổi điều kiện nào, chỉ đặt mỗi dòng về đúng gate đã gắn.
 
-**E2. Check độ phủ công thức đọc cột `rmCode` của ma trận an toàn, nhưng sổ đó không có cột này.** Phép nối theo `rmCode` không bao giờ khớp, luôn rơi về `inciName`.
+**E2. Check độ phủ công thức đọc cột `rmCode` của ma trận an toàn, nhưng sổ đó không có cột này.** Phép nối theo `rmCode` không bao giờ khớp, luôn rơi về `inciName`. Đã sửa: thêm cột `rmCode` vào sổ (dòng cũ để trống, vẫn nối theo INCI). Việc dùng mã làm khóa nối là cách đọc của chúng ta, ghi ở R5-Q64.
 
 ## F. Chưa kiểm tra trên thực tế
 
