@@ -20,8 +20,8 @@ import NextActionSelect from './NextActionSelect';
 import ClaimsLibrarySelect from './ClaimsLibrarySelect';
 import RowRefSelect from './RowRefSelect';
 import RegisterSignatureCell from './RegisterSignatureCell';
-import { derivedColumnGate, spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
-import { cellFrozenBy, isNewRow, passedGateSet, rowRemovalBlock } from '@mbc360/shared/utils/registerRowLocks';
+import { spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
+import { cellFrozenBy, passedGateSet, rowsFrozenBy, rowsFrozenReason } from '@mbc360/shared/utils/registerRowLocks';
 import { useAppStore } from '../store/useAppStore';
 import '../styles/concept.css';
 import './DynamicTable.css';
@@ -170,11 +170,11 @@ export default function DynamicTable({
     () => (project ? passedGateSet(project) : new Set<string>()),
     [project],
   );
-  const frozenBy = (row: RegisterRow, columnKey: string) =>
-    isNewRow(config, row) ? undefined : cellFrozenBy(passedGates, config, row, columnKey);
+  const frozenBy = (columnKey: string) => cellFrozenBy(passedGates, config, columnKey);
+  // Once any column of the register is frozen rows can be neither added nor removed (SW-5).
+  const rowsFrozen = rowsFrozenBy(passedGates, config);
   const removeBlock = (row: RegisterRow) =>
-    removeBlockedReason?.(row) ??
-    (passedGates.size > 0 && !isNewRow(config, row) ? rowRemovalBlock(passedGates, config, row) : undefined);
+    removeBlockedReason?.(row) ?? (rowsFrozen ? rowsFrozenReason(rowsFrozen) : undefined);
   const [openIndex, setOpenRaw] = useState<number | null>(null);
   // The row "Add row" just created, until the drawer moves off it. Closing the
   // drawer on it while it is still blank discards it (2026-10-03, user-reported:
@@ -268,14 +268,15 @@ export default function DynamicTable({
       : undefined;
 
   const columnGate = (col: RegisterColumn) =>
-    spansSeveralGates(config.gate) ? (col.gate ?? derivedColumnGate(config.key, col.key)) : undefined;
+    // The gate that ENTERS the column, as declared — never a gate that merely reads it.
+    spansSeveralGates(config.gate) ? col.gate : undefined;
 
   // One editor per column type, used by the table cells and the drawer alike.
   const renderEditor = (column: RegisterColumn, row: RegisterRow, index: number) => {
     // Before the custom renderer on purpose: a register with its own cell editors
     // (Supplier & RM Evidence, Published Info) falls back to the generic read-only cell
     // when told `readOnly`, so a frozen cell is reported to it the same way.
-    const frozenGate = readOnly ? undefined : frozenBy(row, column.key);
+    const frozenGate = readOnly ? undefined : frozenBy(column.key);
     const custom = renderCell?.(column, row, index, {
       patch: (key, v) => patch(index, key, v),
       patchRow: (values) => update((prev) => patchArray(prev, index, values)),
@@ -585,9 +586,13 @@ export default function DynamicTable({
         )}
         {isRegister && (
           <div className="rt-add">
-            <Button type="dashed" block icon={<PlusOutlined />} onClick={addRow}>
-              Add row
-            </Button>
+            <Tooltip title={rowsFrozen ? rowsFrozenReason(rowsFrozen) : undefined}>
+              <span style={{ display: 'block' }}>
+                <Button type="dashed" block icon={<PlusOutlined />} onClick={addRow} disabled={!!rowsFrozen}>
+                  Add row
+                </Button>
+              </span>
+            </Tooltip>
             {extraActions?.(draft, update)}
           </div>
         )}

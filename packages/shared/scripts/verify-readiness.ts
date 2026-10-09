@@ -535,7 +535,7 @@ interface EvidenceSource {
   lockRef: string | undefined;
   note?: string;
   // The read is one SW-5 already covers: a generic register check whose columns are
-  // frozen at this gate (derivedColumnGate) and whose rows cannot be deleted once the
+  // frozen at this gate (declared column gate) and whose rows cannot be deleted once the
   // gate passes. Counted separately instead of reported as still editable.
   frozenPerCell?: boolean;
   // Covered by another software rule rather than by the per-cell freeze (e.g. 'SW-19').
@@ -793,6 +793,42 @@ function verifyRegisterReads(): void {
   walk(TRIGGER_READS_BY_GATE, true);
 }
 
+// S8 — every gate whose readiness reads a register must be named by it, either as a gate that ENTERS
+// data (`gate`) or as one that only READS it (`referenceGates`) — software rule SW-20, project owner
+// 2026-10-09. The `gate` list decides when columns freeze and when the whole register locks and has to
+// be closed, so a gate that merely re-checks the data must not keep the register open, and a gate
+// that enters data must not be left out. Reads alone cannot tell the two apart, so the answer has to
+// be written down on the register; this sweep only refuses silence.
+const registerGateNotes: string[] = [];
+function verifyRegisterGateLists(): void {
+  const readers = new Map<string, Set<string>>();
+  for (const reads of [REGISTER_READS_BY_GATE, TRIGGER_READS_BY_GATE]) {
+    for (const [gate, registers] of Object.entries(reads)) {
+      for (const register of Object.keys(registers)) (readers.get(register) ?? readers.set(register, new Set()).get(register)!).add(gate);
+    }
+  }
+  for (const [register, gates] of readers) {
+    const config = getRegisterConfig(register);
+    if (!config) continue; // reported by S6
+    const enters = new Set(gateRefGateIds(config.gate));
+    const reads = new Set(gateRefGateIds(config.referenceGates));
+    if (enters.size === 0) continue; // reported by S6
+    for (const g of reads) {
+      if (enters.has(g)) fail('S8', g, `register ${register}`, `${g} is in both gate ("${config.gate}") and referenceGates ("${config.referenceGates}") — it either enters data or only reads it`);
+    }
+    const unnamed = [...gates].filter((g) => !enters.has(g) && !reads.has(g)).sort();
+    if (unnamed.length > 0) {
+      fail('S8', unnamed[0], `register ${register}`, `readiness at ${unnamed.join(', ')} reads it but its gate list is "${config.gate}"${config.referenceGates ? ` and referenceGates "${config.referenceGates}"` : ''} — add ${unnamed.join(', ')} to gate (it enters data) or to referenceGates (it only reads)`);
+    }
+    // A declared column gate must be one the register names, or the column could never freeze.
+    for (const column of config.columns) {
+      if (!column.gate) continue;
+      const stray = gateRefGateIds(column.gate).filter((g) => !enters.has(g));
+      if (stray.length > 0) fail('S8', stray[0], `register ${register}.${column.key}`, `the column is entered at ${stray.join(', ')}, which is not in the register's gate list "${config.gate}"`);
+    }
+  }
+}
+
 // S7 — the checked-in column-read map must match a fresh trace.
 function verifyColumnReadsFresh(): void {
   const { reads, errors } = traceColumnReads();
@@ -856,6 +892,7 @@ verifySeededFixedRows();
 const openEvidence = verifyEvidenceFrozen();
 verifyRegisterReads();
 verifyColumnReadsFresh();
+verifyRegisterGateLists();
 const assumptions = verifyAssumptions();
 
 // Debt counters — not failures, but printed every run so they cannot drift
@@ -930,6 +967,11 @@ if (declaredExemptions.length > 0) {
   for (const e of declaredExemptions) console.log(`  ${e.gate} ${e.id}: ${e.why}`);
 }
 
+if (registerGateNotes.length > 0) {
+  console.log('\n--- S8: registers whose gate list names a gate that does not read them (allowed) ---');
+  for (const n of registerGateNotes) console.log(`  ${n}`);
+}
+
 if (notes.length > 0) {
   console.log('\n--- Ghi nhận (không phải lỗi) ---');
   for (const n of notes) console.log(`  ${n}`);
@@ -937,7 +979,7 @@ if (notes.length > 0) {
 
 if (failures.length === 0) {
   console.log(
-    '\n✅ S1 (tên tham chiếu) · S2 (register rỗng) · S3 (giá trị seed) · S4 (dev-decision đã hỏi) · S5 (resolve Vòng 4) · TAG (giả định): sạch · S6 (nguồn không có gate): sạch · S7 (bản đồ cột đọc): sạch\n',
+    '\n✅ S1 (tên tham chiếu) · S2 (register rỗng) · S3 (giá trị seed) · S4 (dev-decision đã hỏi) · S5 (resolve Vòng 4) · TAG (giả định): sạch · S6 (nguồn không có gate): sạch · S7 (bản đồ cột đọc): sạch · S8 (gate của sổ): sạch\n',
   );
   process.exit(0);
 }

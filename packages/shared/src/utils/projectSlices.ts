@@ -23,7 +23,7 @@
 import { ASSESSMENT_FIELDS, ASSESSMENT_HOMES } from '../config/assessments';
 import { PROJECT_SLICE_READS_BY_GATE } from '../config/registerColumnReads';
 import type { ProjectData } from '../types';
-import { gateOrder } from './registerRowBirth';
+import { gateOrder } from './gateRefs';
 
 // Stable text for any JSON-like value: object keys sorted so a re-saved record cannot look changed.
 function stable(value: unknown): string {

@@ -214,7 +214,7 @@ export async function run(base: string, db: Client): Promise<number> {
   r = await putClaims(() => [{ claimId: 'C-1', approvedWording: 'Hydrates skin', claimCategory: 'Cosmetic' }]);
   t('a claim row is saved while SG03 is the open gate', r.status < 300, short(r.json));
   const rows0 = (await project()).project.registers.claimEvidenceTraceability;
-  t('the server stamped the row with an id and its birth gate (SG03)', !!rows0[0].__rowId && rows0[0].__bornAtGate === 'SG03', short(rows0[0]));
+  t('the server no longer stamps rows (SW-4 was replaced by the row rule)', rows0[0].__rowId === undefined && rows0[0].__bornAtGate === undefined, short(rows0[0]));
   await complete('SG03');
   r = await sign('SG03', 'Prepared by');
   t('Prepared signs SG03', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
@@ -261,16 +261,11 @@ export async function run(base: string, db: Client): Promise<number> {
   pj = await project();
   t("...and SG03 is STILL passed (the later gate's work did not un-pass it)", gp.isGatePassed(pj.project, 'SG03') && (await stale('SG03', 'Approved by')).length === 0);
   r = await putClaims((rows) => [...rows, { claimId: 'C-2', approvedWording: 'A claim raised after SG03 passed' }]);
-  t('a NEW claim raised after SG03 passed is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
-  const rows1 = (await project()).project.registers.claimEvidenceTraceability;
-  t('...it was born at SG04, not SG03', rows1.find((x: any) => x.claimId === 'C-2')?.__bornAtGate === 'SG04', short(rows1.map((x: any) => [x.claimId, x.__bornAtGate])));
-  t('...and its arrival did not touch the Gate 3 signatures', (await stale('SG03', 'Prepared by')).length === 0 && gp.isGatePassed((await project()).project, 'SG03'));
-  r = await putClaims((rows) => rows.map((x: any) => (x.claimId === 'C-2' ? { ...x, approvedWording: 'Its wording can still be edited' } : x)));
-  t("the new claim's Gate 3 column is editable (it does not belong to SG03)", r.status < 300, `${r.status} ${short(r.json)}`);
+  t('adding a claim after SG03 passed is refused (403): part of the register belongs to Gate 3', r.status === 403 && String(r.json.message).includes('Rows cannot be added'), `${r.status} ${short(r.json)}`);
   r = await putClaims((rows) => rows.filter((x: any) => x.claimId !== 'C-1'));
-  t('deleting the claim SG03 signed is refused (403)', r.status === 403, `${r.status} ${short(r.json)}`);
-  r = await putClaims((rows) => rows.filter((x: any) => x.claimId !== 'C-2'));
-  t('deleting the claim raised after SG03 passed is allowed', r.status < 300, `${r.status} ${short(r.json)}`);
+  t('removing the claim Gate 3 signed is refused (403)', r.status === 403 && String(r.json.message).includes('Rows cannot be removed'), `${r.status} ${short(r.json)}`);
+  pj = await project();
+  t('SG03 is still passed and its signatures still current after the refused writes', gp.isGatePassed(pj.project, 'SG03') && (await stale('SG03', 'Approved by')).length === 0);
 
   // ============================================================ SG04 / SG05: BOM, costing
   console.log('\n--- Phase 1 closes (SG03 is the last gate of its phase, so SG04 only opens once the phase is signed)');
@@ -296,6 +291,11 @@ export async function run(base: string, db: Client): Promise<number> {
   await nominate('SG04');
   r = await putBom(100);
   t('a BOM line is saved while SG05 has not passed', r.status < 300, `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/registers/supplierRmEvidence`, {
+    rows: [{ rmCode: 'RM-1', inciName: 'Aqua', supplier: 'Acme', allergenStatement: 'none' }],
+    expectedVersion: await version(),
+  });
+  t('a supplier evidence row is saved while SG04 is the open gate', r.status < 300, `${r.status} ${short(r.json)}`);
   await complete('SG04');
   r = await sign('SG04', 'Prepared by');
   t('Prepared signs SG04', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
@@ -323,16 +323,35 @@ export async function run(base: string, db: Client): Promise<number> {
   pj = await project();
   t('SG04 passed', gp.isGatePassed(pj.project, 'SG04'));
 
-  console.log('\n--- SG04 has passed: the watch-list (a gate-07 register) columns Gate 4 owns versus the ones Gate 7 owns');
+  console.log('\n--- SG04 has passed: Supplier & RM Evidence (entered at Gates 4 and 7, only re-checked at 10 and 11)');
+  const putSupplier = async (mutate: (rows: any[]) => any[]) => {
+    const rows = ((await project()).project.registers.supplierRmEvidence ?? []).map((x: any) => ({ ...x }));
+    return api('admin', 'PUT', `/projects/${PROJECT}/registers/supplierRmEvidence`, { rows: mutate(rows), expectedVersion: await version() });
+  };
+  r = await putSupplier((rows) => {
+    rows[0].approvedForUse = true;
+    rows[0].evidenceStatus = '';
+    return rows;
+  });
+  t('the conclusion columns of the supplier register (Gate 7) can still be changed after SG04 passed', r.status < 300, `${r.status} ${short(r.json)}`);
+  r = await putSupplier((rows) => {
+    rows[0].allergenStatement = 'Changed after SG04';
+    return rows;
+  });
+  t('a screening column (allergenStatement, Gate 4) is frozen after SG04 passed (403)', r.status === 403 && String(r.json.message).includes('SG04'), `${r.status} ${short(r.json)}`);
+  r = await putSupplier((rows) => [...rows, { rmCode: 'RM-NEW', inciName: 'New material' }]);
+  t('a new material after SG04 is refused (403): it means going back to Gate 4', r.status === 403 && String(r.json.message).includes('Rows cannot be added'), `${r.status} ${short(r.json)}`);
+
+  console.log('\n--- the watch-list (gates 04 and 07): the columns Gate 4 enters versus the ones Gate 7 enters');
   const putWatch = async (patch: Record<string, string>) => {
     const rows = ((await project()).project.registers.prohibitedIngredients ?? []).map((x: any) => ({ ...x }));
     Object.assign(rows[0], patch);
     return api('admin', 'PUT', `/projects/${PROJECT}/registers/prohibitedIngredients`, { rows, expectedVersion: await version() });
   };
   r = await putWatch({ reviewerAssessment: 'Not a true match' });
-  t('reviewerAssessment is owned by Gate 4: once SG04 has passed it is frozen (403), although the register itself is gate 07', r.status === 403 && String(r.json.message).includes('SG04'), `${r.status} ${short(r.json)}`);
+  t('reviewerAssessment is entered at Gate 4: once SG04 has passed it is frozen (403), although the register stays open to Gate 7', r.status === 403 && String(r.json.message).includes('SG04'), `${r.status} ${short(r.json)}`);
   r = await putWatch({ productStatus: 'Not present - evidence linked' });
-  t('productStatus is read by Gates 4 and 7, so Gate 7 owns it: still editable after SG04 passed', r.status < 300, `${r.status} ${short(r.json)}`);
+  t('productStatus is Gate 7\'s column: still editable after SG04 passed', r.status < 300, `${r.status} ${short(r.json)}`);
   pj = await project();
   t('...and SG04 is still passed with its signature current (its change is information only)', gp.isGatePassed(pj.project, 'SG04') && (await stale('SG04', 'Approved by')).length === 0, short(await stale('SG04', 'Approved by')));
 

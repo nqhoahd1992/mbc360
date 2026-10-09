@@ -1,258 +1,185 @@
-// Verifies software rules SW-4 and SW-5 (docs/rules/Software_Rules.md): a register row
-// belongs only to the gates that had not passed when it was created, and a passed gate
-// freezes the cells it counted as evidence. Pure functions over hand-built rows and a
-// hand-built set of passed gates — no database, no API. Run: npm run verify:freeze
+// Verifies software rules SW-5 and SW-20 (docs/rules/Software_Rules.md): every register column is
+// owned by the gate that ENTERS it and freezes when that gate passes; a register cannot gain or
+// lose a row once any of its columns is frozen; a gate that only READS a register keeps nothing
+// open; and a gate's signature records the readiness data, accountable for what it and the earlier
+// gates own, informational for what later gates own. Pure functions over hand-built rows and a
+// hand-built set of passed gates, plus one project whose gates really pass on the real engine —
+// no database, no API. Run: npm run verify:freeze
 import { GATE_READINESS } from '../src/config/gateReadiness';
-import { columnOwnerGateIds } from '../src/utils/registerColumnGates';
 import { REGISTER_CONFIGS, getRegisterConfig } from '../src/config/registers';
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
-import { currentGateIndex, gateRefHighestGateId, isGatePassed } from '../src/utils/gateProgress';
+import { gateRefHighestGateId, isGatePassed } from '../src/utils/gateProgress';
 import { gateActionStates, gateEvidenceSnapshot, snapshotChanges, snapshotLaterChanges } from '../src/utils/gateSnapshot';
-import { projectAsOfGate } from '../src/utils/registerRowBirth';
-import {
-  bornGateOf,
-  cellFrozenBy,
-  passedGateSet,
-  registerFreezeViolations,
-  rowRemovalBlock,
-  stampRegisterRows,
-} from '../src/utils/registerRowLocks';
+import { columnOwnerGateIds } from '../src/utils/registerColumnGates';
+import { cellFrozenBy, passedGateSet, registerFreezeViolations, rowsFrozenBy } from '../src/utils/registerRowLocks';
 import type { ProjectData, RegisterRow } from '../src/types';
 
 let bad = 0;
-const t = (name: string, ok: boolean) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}`); if (!ok) bad++; };
-const claims = getRegisterConfig('claimEvidenceTraceability')!;   // gate 03/10/11
-const art = getRegisterConfig('packagingSpecsArtwork')!;          // gate 06/10/11
-const g3 = new Set(['SG01', 'SG02', 'SG03']);
+const t = (name: string, ok: boolean) => {
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}`);
+  if (!ok) bad++;
+};
+const upTo = (n: number): ReadonlySet<string> => new Set(Array.from({ length: n }, (_, i) => `SG${String(i + 1).padStart(2, '0')}`));
 
-const old: RegisterRow = { __rowId: 'a', claimId: 'C1', approvedWording: 'w', claimCategory: 'Cosmetic', notes: 'n' };
-const late: RegisterRow = { __rowId: 'b', __bornAtGate: 'SG10', claimId: 'C2', approvedWording: '' };
+const claims = getRegisterConfig('claimEvidenceTraceability')!; // enters at 03 / 05 / 08 / 10, read by 12
+const supplier = getRegisterConfig('supplierRmEvidence')!; // enters at 04 / 07, only re-checked at 10 / 11
+const watch = getRegisterConfig('prohibitedIngredients')!; // fixed register, 04 / 07
+const stability = getRegisterConfig('stabilityRelease')!; // 09 / 11
+const claim: RegisterRow = { claimId: 'C-1', approvedWording: 'wording', claimCategory: 'Cosmetic', mechanism: 'm', evidenceGrade: 'A', revisionRoute: 'r' };
 
-// SW-5: gate-03 columns freeze for an old row once SG03 passed...
-t('gate-03 column frozen on old row after SG03', cellFrozenBy(g3, claims, old, 'approvedWording') === 'SG03');
-t('gate-03 column NOT frozen before SG03 passes', cellFrozenBy(new Set(['SG01', 'SG02']), claims, old, 'approvedWording') === undefined);
-// ...but not on a row born at SG10 (it belongs to later gates only)
-t('same column open on a row born at SG10', cellFrozenBy(g3, claims, late, 'approvedWording') === undefined);
-t('late row column freezes once SG10 passes', cellFrozenBy(new Set([...g3, 'SG04','SG05','SG06','SG07','SG08','SG09','SG10']), claims, late, 'approvedWording') === 'SG10');
-// an unattributed column keeps the old whole-register behaviour (frozen only when 03/10/11 all passed)
-t('unattributed column open after SG03 only', cellFrozenBy(g3, claims, old, 'notes') === undefined);
+// --- who owns a column ----------------------------------------------------------------------
+t('claim ledger: a declared column gate is its owner', columnOwnerGateIds('claimEvidenceTraceability', 'evidenceGrade').join() === 'SG08');
+t('claim ledger: mechanism is entered at Gate 5, revisionRoute at Gate 10',
+  columnOwnerGateIds('claimEvidenceTraceability', 'mechanism').join() === 'SG05' && columnOwnerGateIds('claimEvidenceTraceability', 'revisionRoute').join() === 'SG10');
+t('a column with no declared gate belongs to the LAST gate of the register (supplier notes -> SG07)', columnOwnerGateIds('supplierRmEvidence', 'notes').join() === 'SG07');
+t('supplier: the conclusion columns are Gate 7\'s, the screening columns Gate 4\'s',
+  columnOwnerGateIds('supplierRmEvidence', 'approvedForUse').join() === 'SG07' && columnOwnerGateIds('supplierRmEvidence', 'evidenceStatus').join() === 'SG07' &&
+    columnOwnerGateIds('supplierRmEvidence', 'allergenStatement').join() === 'SG04');
+t('a gate that only reads a register owns none of its columns (supplier is read at 10 and 11)',
+  supplier.columns.every((c) => !columnOwnerGateIds('supplierRmEvidence', c.key).some((g) => g === 'SG10' || g === 'SG11')));
+t('stability: releaseDecision is Gate 11\'s, the results Gate 9\'s',
+  columnOwnerGateIds('stabilityRelease', 'releaseDecision').join() === 'SG11' && columnOwnerGateIds('stabilityRelease', 'result').join() === 'SG09');
+t('watch-list: review columns Gate 4, productStatus Gate 7',
+  columnOwnerGateIds('prohibitedIngredients', 'reviewerAssessment').join() === 'SG04' && columnOwnerGateIds('prohibitedIngredients', 'productStatus').join() === 'SG07');
 
-// violations: editing a frozen cell
-const edit = registerFreezeViolations(g3, claims, [old], [{ ...old, approvedWording: 'changed' }]);
-t('editing a frozen cell is a violation', edit.length === 1 && edit[0].includes('SG03'));
-t('editing an open cell is fine', registerFreezeViolations(g3, claims, [old], [{ ...old, notes: 'x' }]).length === 0);
-t('new row filling the same column is fine', registerFreezeViolations(g3, claims, [old], [old, { claimId: 'C3', approvedWording: 'new' }]).length === 0);
-// deletion
-t('deleting an evidence row is refused', registerFreezeViolations(g3, claims, [old], []).length === 1);
-t('deleting a row born after the gate passed is allowed while no later gate has passed', registerFreezeViolations(g3, claims, [old, late], [old]).length === 0);
-t('row removal block names the gate', (rowRemovalBlock(g3, claims, old) ?? '').includes('SG03'));
-// matching is by id, not position: reorder must not look like an edit
-t('reordering rows is not an edit', registerFreezeViolations(g3, claims, [old, late], [late, old]).length === 0);
-t('swapping which row has the frozen value IS an edit', registerFreezeViolations(g3, claims, [old, late], [{ ...late, __rowId: 'a' }, { ...old, __rowId: 'b' }]).length >= 1);
+// --- cells freeze when their gate passes ------------------------------------------------------
+t('claim: a Gate 3 column is open before SG03 passes', cellFrozenBy(upTo(2), claims, 'approvedWording') === undefined);
+t('claim: ...and frozen by SG03 once it has passed', cellFrozenBy(upTo(3), claims, 'approvedWording') === 'SG03');
+t('claim: the Gate 8 / Gate 5 / Gate 10 columns of the same row are still open', ['evidenceGrade', 'mechanism', 'revisionRoute'].every((c) => cellFrozenBy(upTo(3), claims, c) === undefined));
+t('claim: after SG08 the Gate 8 column is frozen too, the Gate 10 one is not',
+  cellFrozenBy(upTo(8), claims, 'evidenceGrade') === 'SG08' && cellFrozenBy(upTo(8), claims, 'revisionRoute') === undefined);
+t('supplier: allergenStatement frozen after SG04, approvedForUse still open until SG07',
+  cellFrozenBy(upTo(4), supplier, 'allergenStatement') === 'SG04' && cellFrozenBy(upTo(6), supplier, 'approvedForUse') === undefined && cellFrozenBy(upTo(7), supplier, 'approvedForUse') === 'SG07');
+t('supplier: Gates 10 and 11 passing change nothing that was not already frozen', cellFrozenBy(upTo(11), supplier, 'rmCode') === 'SG04');
+t('a register with no gate never freezes a cell', cellFrozenBy(upTo(12), getRegisterConfig('testReportIndex')!, 'notes') === undefined);
 
-// stamping
-let n = 0; const id = () => `new${++n}`;
-const stamped = stampRegisterRows('SG07', claims, [old, late], [{ ...late, __bornAtGate: 'SG01' }, { ...old, __bornAtGate: 'SG12' }, { claimId: 'Z' }, { claimId: 'Y', __rowId: 'a' }], id);
-t('client cannot change an existing row birth', stamped[0].__bornAtGate === 'SG10' && stamped[0].__rowId === 'b');
-t('client cannot invent a birth on a legacy row', stamped[1].__bornAtGate === undefined && stamped[1].__rowId === 'a');
-t('new row gets id and current gate', stamped[2].__rowId === 'new1' && stamped[2].__bornAtGate === 'SG07');
-t('reusing an existing id on a second row makes it a NEW row', stamped[3].__rowId !== 'a' && stamped[3].__bornAtGate === 'SG07');
-t('fixed registers are not stamped', stampRegisterRows('SG07', getRegisterConfig('prohibitedIngredients')!, [], [{ x: 1 }], id)[0].__rowId === undefined);
+// --- rows ---------------------------------------------------------------------------------------
+t('claim: rows are free before any column is frozen', rowsFrozenBy(upTo(2), claims) === undefined);
+t('claim: once SG03 has passed, rows cannot be added or removed', rowsFrozenBy(upTo(3), claims) === 'SG03');
+t('supplier: rows frozen from SG04 (a new material after screening means going back)', rowsFrozenBy(upTo(4), supplier) === 'SG04' && rowsFrozenBy(upTo(3), supplier) === undefined);
+t('a fixed register never gains or loses a row', rowsFrozenBy(upTo(12), watch) === undefined);
+t('stability: rows frozen from SG09', rowsFrozenBy(upTo(9), stability) === 'SG09' && rowsFrozenBy(upTo(8), stability) === undefined);
 
-// SW-4 view
-const project = { registers: { claimEvidenceTraceability: [old, late], other: [old] } } as unknown as ProjectData;
-t('gate 03 does not see a row born at SG10', projectAsOfGate(project, 'SG03').registers.claimEvidenceTraceability.length === 1);
-t('gate 10 sees it', projectAsOfGate(project, 'SG10').registers.claimEvidenceTraceability.length === 2);
-t('legacy row visible to every gate', projectAsOfGate(project, 'SG01').registers.claimEvidenceTraceability.length === 1);
-t('untouched project returned as-is', projectAsOfGate({ registers: { a: [old] } } as unknown as ProjectData, 'SG03') !== undefined);
-t('artwork register: gate-06 column frozen after SG06', cellFrozenBy(new Set(['SG06']), art, old, 'compatibilityEvidence') === 'SG06');
+// --- what a save may do -------------------------------------------------------------------------
+const edit = (patch: Record<string, string>): RegisterRow[] => [{ ...claim, ...patch }];
+t('editing a frozen cell is refused and names the gate', registerFreezeViolations(upTo(3), claims, [claim], edit({ approvedWording: 'changed' })).some((v) => v.includes('SG03')));
+t('editing an open cell of the same row is fine', registerFreezeViolations(upTo(3), claims, [claim], edit({ evidenceGrade: 'B' })).length === 0);
+t('adding a row after SG03 is refused', registerFreezeViolations(upTo(3), claims, [claim], [claim, { claimId: 'C-2' }]).some((v) => v.startsWith('Rows cannot be added')));
+t('removing a row after SG03 is refused', registerFreezeViolations(upTo(3), claims, [claim], []).some((v) => v.startsWith('Rows cannot be removed')));
+t('adding and removing rows is fine before SG03', registerFreezeViolations(upTo(2), claims, [claim], [claim, { claimId: 'C-2' }]).length === 0 && registerFreezeViolations(upTo(2), claims, [claim], []).length === 0);
+t('an unchanged save is always fine', registerFreezeViolations(upTo(12), claims, [claim], [{ ...claim }]).length === 0);
 
-// ---------------------------------------------------------------------------------------
-// A real project with gates that have genuinely PASSED, evaluated by the real engine.
-// Readiness lists of SG01-SG03 are emptied in THIS process only (the same trick the manual
-// API run used) so those gates can pass on decision + register closure alone; nothing in
-// config is changed on disk. This is the regression test for the bug found 2026-10-09:
-// a row created while a gate has passed but its phase is not yet closed was stamped with
-// the PASSED gate and froze immediately.
-// ---------------------------------------------------------------------------------------
+// --- a project whose gates really pass on the real engine ---------------------------------------
+// The readiness lists of SG01-SG03 are cut down to their sign-off item IN THIS PROCESS ONLY so those
+// gates can pass on decision, register closing and (below) signatures alone.
 const originalSg03 = [...GATE_READINESS.SG03];
-for (const g of ['SG01', 'SG02', 'SG03']) GATE_READINESS[g].length = 0;
-const identity = { id: 'T-1', productCode: 'T', projectLead: 'x', markets: [], reviewers: {} } as unknown as Parameters<typeof createEmptyProject>[0];
-const live = createEmptyProject(identity);
-t('empty project: no gate passed, a new row is born at SG01', bornGateOf(live) === 'SG01');
+for (const g of ['SG01', 'SG02', 'SG03']) GATE_READINESS[g] = GATE_READINESS[g].filter((r) => r.check.kind === 'gateSignedOff');
+const live = createEmptyProject({ id: 'T-1', productCode: 'T', projectLead: 'x', markets: ['Vietnam'], reviewers: {} } as never);
+t('empty project: nothing has passed', passedGateSet(live).size === 0);
 for (const g of ['SG01', 'SG02', 'SG03']) {
-  const rec = live.gates.find((x) => x.gateId === g)!;
-  rec.status = 'Complete';
-  rec.decision = 'Proceed';
+  const record = live.gates.find((x) => x.gateId === g)!;
+  record.status = 'Complete';
+  record.decision = 'Proceed';
 }
-const signed = { signedByUserId: 'u', signedAt: '2026-01-01T00:00:00Z' };
+const signedAt = { signedByUserId: 'u', signedAt: '2026-01-01T00:00:00Z' };
 for (const cfg of REGISTER_CONFIGS) {
   if (['SG01', 'SG02', 'SG03'].includes(gateRefHighestGateId(cfg.gate) ?? '')) {
-    live.registerClosures[cfg.key] = { signOffs: [{ role: 'Review owner', ...signed }, { role: 'Co-sign', ...signed }] } as never;
+    live.registerClosures[cfg.key] = { signOffs: [{ role: 'Review owner', ...signedAt }, { role: 'Co-sign', ...signedAt }] } as never;
   }
 }
-t('SG01-SG03 really pass on the real engine', ['SG01', 'SG02', 'SG03'].every((g) => isGatePassed(live, g)));
-t('...while the phase is not closed, currentGateIndex still sits on SG03', currentGateIndex(live) === 2);
-t('a row created now is born at SG04, NOT at the passed SG03', bornGateOf(live) === 'SG04');
+// Three signatures per gate, each carrying the snapshot of the moment they were given.
+const sign = (project: ProjectData, gates: string[]) => {
+  for (const g of gates) {
+    const snapshot = gateEvidenceSnapshot(project, g);
+    for (const role of ['Prepared by', 'Reviewed by', 'Approved by'] as const) {
+      project.gateSignOffs.push({ gateId: g, role, ...signedAt, name: 'n', decision: 'Proceed', snapshot } as never);
+    }
+  }
+};
+sign(live, ['SG01', 'SG02', 'SG03']);
+const passedLive = passedGateSet(live);
+t('SG01-SG03 really pass on the real engine', ['SG01', 'SG02', 'SG03'].every((g) => passedLive.has(g)) && isGatePassed(live, 'SG03'));
+t('real engine: the claim ledger freezes its Gate 3 columns and its rows, not its Gate 8 column',
+  cellFrozenBy(passedLive, claims, 'approvedWording') === 'SG03' && rowsFrozenBy(passedLive, claims) === 'SG03' && cellFrozenBy(passedLive, claims, 'evidenceGrade') === undefined);
+t('real engine: a save that adds a claim is refused, one that fills the Gate 8 column is not',
+  registerFreezeViolations(passedLive, claims, [claim], [claim, { claimId: 'C-2' }]).length > 0 && registerFreezeViolations(passedLive, claims, [claim], edit({ evidenceGrade: 'B' })).length === 0);
 
-const passed = passedGateSet(live);
-const oldRow: RegisterRow = { __rowId: 'o', __bornAtGate: 'SG01', claimId: 'C-1', approvedWording: 'signed text' };
-const newRow: RegisterRow = { __rowId: 'n', __bornAtGate: bornGateOf(live), claimId: 'C-2', approvedWording: 'draft' };
-t('real engine: row from before the pass is frozen on its gate-03 cell', cellFrozenBy(passed, claims, oldRow, 'approvedWording') === 'SG03');
-t('real engine: row created after the pass is not frozen by SG03', cellFrozenBy(passed, claims, newRow, 'approvedWording') === undefined);
-t('real engine: the new row can be deleted, the old one cannot',
-  registerFreezeViolations(passed, claims, [oldRow, newRow], [oldRow]).length === 0 &&
-    registerFreezeViolations(passed, claims, [oldRow, newRow], [newRow]).length === 1);
-
-// SW-4 on the signature snapshot: a late row must not turn a gate's signatures stale.
-// The snapshot digests only registers the gate's readiness READS, so SG03's real list is put
-// back first — with it emptied this section would pass for the wrong reason.
-GATE_READINESS.SG03.push(...originalSg03);
-live.registers.claimEvidenceTraceability = [oldRow];
-t('SG03 snapshot does digest the claim register (test is not vacuous)', 'claimEvidenceTraceability' in gateEvidenceSnapshot(live, 'SG03').registers);
-const before = JSON.stringify(gateEvidenceSnapshot(live, 'SG03'));
-live.registers.claimEvidenceTraceability = [oldRow, newRow];
-t('SG03 snapshot ignores a row created after SG03 passed', JSON.stringify(gateEvidenceSnapshot(live, 'SG03')) === before);
-live.registers.claimEvidenceTraceability = [oldRow, { claimId: 'C-9', approvedWording: 'unstamped legacy' }];
-t('...but an unstamped legacy row still changes it (belongs to every gate)', JSON.stringify(gateEvidenceSnapshot(live, 'SG03')) !== before);
-
-// ---------------------------------------------------------------------------------------
-// SW-5: a signature attests only the columns its gate reads AND owns, and only its own rows.
-// ---------------------------------------------------------------------------------------
+// --- signatures: accountable for what this gate and earlier gates own ------------------------------
+// SG03's real readiness list is put back so its snapshot digests the registers it reads.
+GATE_READINESS.SG03 = originalSg03;
 const stale = (gate: string, before: ReturnType<typeof gateEvidenceSnapshot>, after: ProjectData) =>
   snapshotChanges(before, gateEvidenceSnapshot(after, gate), gateActionStates(after, gate));
-const withClaim = (patch: Record<string, string>): ProjectData => ({
-  ...live,
-  registers: { ...live.registers, claimEvidenceTraceability: [{ ...oldRow, ...patch }] },
-});
-live.registers.claimEvidenceTraceability = [oldRow];
-const sg03Signed = gateEvidenceSnapshot(live, 'SG03');
-t('snapshot records the cells this gate attests', !!sg03Signed.registerCells && 'claimEvidenceTraceability' in sg03Signed.registerCells);
-t('a Gate 3 column (approvedWording) changing makes the Gate 3 signature stale',
-  stale('SG03', sg03Signed, withClaim({ approvedWording: 'changed' })).some((c) => c.startsWith('Register changed')));
-t('a Gate 8 column (evidenceGrade) changing does NOT make the Gate 3 signature stale', stale('SG03', sg03Signed, withClaim({ evidenceGrade: 'A' })).length === 0);
-t('a Gate 5 column (mechanism) changing does NOT make it stale', stale('SG03', sg03Signed, withClaim({ mechanism: 'm' })).length === 0);
-t('a Gate 10 column (revisionRoute) changing does NOT make it stale', stale('SG03', sg03Signed, withClaim({ revisionRoute: 'r' })).length === 0);
-t('deleting a claim row DOES make it stale',
-  stale('SG03', sg03Signed, { ...live, registers: { ...live.registers, claimEvidenceTraceability: [] } }).length > 0);
+const ledger = (rows: RegisterRow[]): ProjectData => ({ ...live, registers: { ...live.registers, claimEvidenceTraceability: rows } });
+const baseline = ledger([claim]);
+const sg03 = gateEvidenceSnapshot(baseline, 'SG03');
+t('the SG03 snapshot digests the claim ledger (the test is not vacuous)', !!sg03.registerCells && 'claimEvidenceTraceability' in sg03.registerCells);
+t('a Gate 3 column changing makes the Gate 3 signature stale', stale('SG03', sg03, ledger(edit({ approvedWording: 'changed' }))).some((c) => c.startsWith('Register changed')));
+t('a Gate 8 / 5 / 10 column changing does NOT make it stale (a later gate is still to finish it)',
+  ['evidenceGrade', 'mechanism', 'revisionRoute'].every((c) => stale('SG03', sg03, ledger(edit({ [c]: 'x' }))).length === 0));
+t('...but the change is reported as information',
+  snapshotLaterChanges(sg03, gateEvidenceSnapshot(ledger(edit({ evidenceGrade: 'B' })), 'SG03')).some((c) => c.includes('later gate')));
+t('deleting the claim before SG03 passes makes the signature stale', stale('SG03', sg03, ledger([])).length > 0);
+t('nothing reported when nothing changed', stale('SG03', sg03, baseline).length === 0 && snapshotLaterChanges(sg03, gateEvidenceSnapshot(baseline, 'SG03')).length === 0);
 
-// A signature taken before registerCells existed is still compared on the whole register,
-// exactly as it always was — neither declared stale nor silently weakened.
-const legacy = { ...sg03Signed } as Partial<typeof sg03Signed>;
+// A signature taken before the cells were recorded is still compared on the whole register.
+const legacy = { ...sg03 } as Partial<typeof sg03>;
 delete legacy.registerCells;
-t('a legacy snapshot (no registerCells) still notices ANY column of the register changing',
-  stale('SG03', legacy as typeof sg03Signed, withClaim({ evidenceGrade: 'A' })).some((c) => c.startsWith('Register changed')));
-t('...and is not stale when nothing changed', stale('SG03', legacy as typeof sg03Signed, live).length === 0);
+delete legacy.registerLater;
+t('a legacy snapshot still notices ANY column of the register changing', stale('SG03', legacy as typeof sg03, ledger(edit({ evidenceGrade: 'B' }))).some((c) => c.startsWith('Register changed')));
+t('...is not stale when nothing changed and reports no later-gate information',
+  stale('SG03', legacy as typeof sg03, baseline).length === 0 && snapshotLaterChanges(legacy as typeof sg03, gateEvidenceSnapshot(ledger(edit({ evidenceGrade: 'B' })), 'SG03')).length === 0);
 
-// A column two gates read belongs to the LATER one: the earlier gate's signature does not
-// attest it, so the later gate can finish it without un-passing the earlier gate.
-const watch = (patch: Record<string, string>): ProjectData => ({
+// A later gate approves the data of the earlier ones: Gate 7 is accountable for a Gate 4 column.
+const withWatch = (patch: Record<string, string>): ProjectData => ({
   ...live,
-  registers: {
-    ...live.registers,
-    prohibitedIngredients: (live.registers.prohibitedIngredients ?? []).map((r, i) => (i === 0 ? { ...r, ...patch } : r)),
-  },
+  registers: { ...live.registers, prohibitedIngredients: (live.registers.prohibitedIngredients ?? []).map((r, i) => (i === 0 ? { ...r, ...patch } : r)) },
 });
-const sg04Signed = gateEvidenceSnapshot(live, 'SG04');
-t('Gate 4 reads prohibitedIngredients.productStatus but Gate 7 reads it too, so Gate 4 does not attest it',
-  stale('SG04', sg04Signed, watch({ productStatus: 'Prohibited - remove' })).length === 0);
-t('Gate 4 DOES attest the review columns only it reads (reviewerAssessment)',
-  stale('SG04', sg04Signed, watch({ reviewerAssessment: 'Critical' })).some((c) => c.startsWith('Register changed')));
-const sg07Signed = gateEvidenceSnapshot(live, 'SG07');
-t('Gate 7 DOES attest the shared column it owns (productStatus)',
-  stale('SG07', sg07Signed, watch({ productStatus: 'Prohibited - remove' })).some((c) => c.startsWith('Register changed')));
-
-// Freezing follows the same ownership: once Gate 3 has passed its own column is frozen while a
-// later gate's column of the same row is not.
-t('Gate 3 column frozen once SG03 passed; Gate 8 column of the same row still editable',
-  cellFrozenBy(passed, claims, oldRow, 'approvedWording') === 'SG03' &&
-    cellFrozenBy(passed, claims, oldRow, 'evidenceGrade') === undefined);
-
-// A checklist section that spans gates ('08-09') is signed at the LAST gate of its list. Before,
-// the raw string was compared, so it belonged to no gate and was in no signature at all.
-t('testingFamilies (gate 08-09) is in the Gate 9 snapshot', 'testingFamilies' in gateEvidenceSnapshot(live, 'SG09').checklists);
-t('...and not in the Gate 8 snapshot, which the later gate owns', !('testingFamilies' in gateEvidenceSnapshot(live, 'SG08').checklists));
-t('a single-gate checklist (targetUsers, gate 02) is still in its own snapshot', 'targetUsers' in gateEvidenceSnapshot(live, 'SG02').checklists);
-const sg09Before = gateEvidenceSnapshot(live, 'SG09');
-const ticked = { ...live, checklists: { ...live.checklists, testingFamilies: (live.checklists.testingFamilies ?? []).map((i, n) => (n === 0 ? { ...i, selected: true } : i)) } };
-t('ticking a testing family makes the Gate 9 signature stale',
-  snapshotChanges(sg09Before, gateEvidenceSnapshot(ticked, 'SG09'), gateActionStates(ticked, 'SG09')).some((c) => c.startsWith('Checklist changed')));
-const legacyNoSection = { ...sg09Before, checklists: Object.fromEntries(Object.entries(sg09Before.checklists).filter(([k]) => k !== 'testingFamilies')) };
-t('a signature that never recorded the section is not stale because the section is now in scope',
-  snapshotChanges(legacyNoSection, gateEvidenceSnapshot(live, 'SG09'), gateActionStates(live, 'SG09')).filter((c) => c.startsWith('Checklist')).length === 0);
-
-// The signer approves everything filled in, including columns of future gates, and a later gate
-// approves the data of the earlier ones too:
-//   - a later gate's signature is accountable for the columns EARLIER gates own;
-//   - an earlier gate's signature RECORDS the columns later gates own, but a change to them is
-//     information only and never makes it stale.
+const sg04 = gateEvidenceSnapshot(live, 'SG04');
+const sg07 = gateEvidenceSnapshot(live, 'SG07');
 t('Gate 7 is accountable for a Gate 4 column (reviewerAssessment): changing it makes the Gate 7 signature stale',
-  stale('SG07', sg07Signed, watch({ reviewerAssessment: 'Critical' })).some((c) => c.startsWith('Register changed')));
-const laterNote = snapshotLaterChanges(sg04Signed, gateEvidenceSnapshot(watch({ productStatus: 'Prohibited - remove' }), 'SG04'));
-t('Gate 4 records productStatus (owned by Gate 7): a change is reported as information', laterNote.length > 0 && laterNote[0].includes('later gate'));
-t('...and that same change does not make the Gate 4 signature stale',
-  stale('SG04', sg04Signed, watch({ productStatus: 'Prohibited - remove' })).length === 0);
-const claimLater = snapshotLaterChanges(sg03Signed, gateEvidenceSnapshot(withClaim({ evidenceGrade: 'A' }), 'SG03'));
-t('Gate 3 records the claim columns later gates own: a Gate 8 edit is information, not staleness',
-  claimLater.length > 0 && stale('SG03', sg03Signed, withClaim({ evidenceGrade: 'A' })).length === 0);
-t('nothing reported when nothing changed', snapshotLaterChanges(sg03Signed, gateEvidenceSnapshot(live, 'SG03')).length === 0);
-const legacyNoLater = { ...sg03Signed } as Partial<typeof sg03Signed>;
-delete legacyNoLater.registerLater;
-t('a legacy snapshot (no registerLater) reports no later-gate information', snapshotLaterChanges(legacyNoLater as typeof sg03Signed, gateEvidenceSnapshot(withClaim({ evidenceGrade: 'A' }), 'SG03')).length === 0);
+  stale('SG07', sg07, withWatch({ reviewerAssessment: 'Critical' })).some((c) => c.startsWith('Register changed')));
+t('Gate 4 records productStatus, which Gate 7 owns: a change is information, not staleness',
+  stale('SG04', sg04, withWatch({ productStatus: 'Prohibited - remove' })).length === 0 &&
+    snapshotLaterChanges(sg04, gateEvidenceSnapshot(withWatch({ productStatus: 'Prohibited - remove' }), 'SG04')).length > 0);
+t('Gate 7 is accountable for the productStatus it owns', stale('SG07', sg07, withWatch({ productStatus: 'Prohibited - remove' })).some((c) => c.startsWith('Register changed')));
 
-// ---------------------------------------------------------------------------------------
-// The rest of what readiness reads (not registers): BOM, costing, assessments, identity,
-// per-market and change records. Same two parts: accountable (owned by this gate or earlier) and
-// recorded-for-information (owned by a later gate, or by none because there is no gate lock yet).
-// ---------------------------------------------------------------------------------------
+// --- a checklist section that spans gates ('08-09') is signed at the LAST gate of its list -------------
+t('testingFamilies (gate 08-09) is in the Gate 9 snapshot and not in the Gate 8 one',
+  'testingFamilies' in gateEvidenceSnapshot(live, 'SG09').checklists && !('testingFamilies' in gateEvidenceSnapshot(live, 'SG08').checklists));
+t('a single-gate checklist (targetUsers, gate 02) is in its own snapshot', 'targetUsers' in gateEvidenceSnapshot(live, 'SG02').checklists);
+const sg09 = gateEvidenceSnapshot(live, 'SG09');
+const ticked = { ...live, checklists: { ...live.checklists, testingFamilies: (live.checklists.testingFamilies ?? []).map((i, n) => (n === 0 ? { ...i, selected: true } : i)) } };
+t('ticking a testing family makes the Gate 9 signature stale', stale('SG09', sg09, ticked).some((c) => c.startsWith('Checklist changed')));
+const noSection = { ...sg09, checklists: Object.fromEntries(Object.entries(sg09.checklists).filter(([k]) => k !== 'testingFamilies')) };
+t('a signature that never recorded the section is not stale because the section is now in scope',
+  stale('SG09', noSection, live).filter((c) => c.startsWith('Checklist')).length === 0);
+
+// --- everything else readiness reads: BOM, costing, identity, assessments, markets -------------------------
 const line = { rmCode: 'RM-9', inciName: 'Aqua', percent: 100, fromCosmetri: false, reconciled: false } as never;
 const withBom: ProjectData = { ...live, bom: [line] };
 const snapAt = (g: string) => gateEvidenceSnapshot(live, g);
-const diff = (g: string, before: ReturnType<typeof gateEvidenceSnapshot>, after: ProjectData) => stale(g, before, after);
-t('Gate 5 owns the Formula BOM: changing it makes the Gate 5 signature stale',
-  diff('SG05', snapAt('SG05'), withBom).some((c) => c === 'Formula BOM changed'));
-t('Gate 7 is accountable for the BOM too (Gate 5 owns it, Gate 5 is earlier)',
-  diff('SG07', snapAt('SG07'), withBom).some((c) => c === 'Formula BOM changed'));
-t('Gate 4 reads the BOM but Gate 5 owns it: a change is information only, not staleness',
-  diff('SG04', snapAt('SG04'), withBom).length === 0 &&
-    snapshotLaterChanges(snapAt('SG04'), gateEvidenceSnapshot(withBom, 'SG04')).some((c) => c.startsWith('Formula BOM changed')));
+t('Gate 5 owns the Formula BOM: changing it makes the Gate 5 signature stale', stale('SG05', snapAt('SG05'), withBom).includes('Formula BOM changed'));
+t('Gate 7 is accountable for the BOM too (Gate 5 is earlier)', stale('SG07', snapAt('SG07'), withBom).includes('Formula BOM changed'));
+t('Gate 4 reads the BOM but Gate 5 owns it: information only',
+  stale('SG04', snapAt('SG04'), withBom).length === 0 && snapshotLaterChanges(snapAt('SG04'), gateEvidenceSnapshot(withBom, 'SG04')).some((c) => c.startsWith('Formula BOM changed')));
 const withTrack: ProjectData = { ...live, marketTracks: [{ market: 'Vietnam', regulatoryStatus: 'Approved' } as never] };
-t('Market tracks have no gate lock and no owner: a change is information only at Gate 10',
-  diff('SG10', snapAt('SG10'), withTrack).length === 0 &&
-    snapshotLaterChanges(snapAt('SG10'), gateEvidenceSnapshot(withTrack, 'SG10')).some((c) => c.startsWith('Market tracking changed')));
+t('market tracks have no gate lock and no owner: information only at Gate 10',
+  stale('SG10', snapAt('SG10'), withTrack).length === 0 && snapshotLaterChanges(snapAt('SG10'), gateEvidenceSnapshot(withTrack, 'SG10')).some((c) => c.startsWith('Market tracking changed')));
 const withScope: ProjectData = { ...live, identity: { ...live.identity, initialScope: 'a new scope' } };
-t('Gate 1 owns the identity fields it reads: changing initialScope makes the Gate 1 signature stale',
-  diff('SG01', snapAt('SG01'), withScope).some((c) => c.startsWith('Project identity')));
+t('Gate 1 owns the identity fields it reads: changing initialScope makes the Gate 1 signature stale', stale('SG01', snapAt('SG01'), withScope).some((c) => c.startsWith('Project identity')));
 t('a change that touches nothing readiness reads (the project lead) changes nothing',
-  diff('SG01', snapAt('SG01'), { ...live, identity: { ...live.identity, projectLead: 'someone else' } }).length === 0);
+  stale('SG01', snapAt('SG01'), { ...live, identity: { ...live.identity, projectLead: 'someone else' } }).length === 0);
 const withAssessment: ProjectData = { ...live, assessments: { ...live.assessments, scaleUpRisk: 'Yes' } as never };
-t('an assessment owned by a later gate (scale-up, Gate 9) is information at Gate 4, not staleness',
-  diff('SG04', snapAt('SG04'), withAssessment).length === 0);
-const legacyNoData = { ...snapAt('SG05') } as Partial<ReturnType<typeof gateEvidenceSnapshot>>;
-delete legacyNoData.projectData;
-delete legacyNoData.projectDataLater;
+t('an assessment owned by a later gate (scale-up, Gate 9) is information at Gate 4', stale('SG04', snapAt('SG04'), withAssessment).length === 0);
+const noData = { ...snapAt('SG05') } as Partial<ReturnType<typeof gateEvidenceSnapshot>>;
+delete noData.projectData;
+delete noData.projectDataLater;
 t('a legacy snapshot (no projectData) is not stale because the BOM is now recorded',
-  diff('SG05', legacyNoData as ReturnType<typeof gateEvidenceSnapshot>, withBom).filter((c) => c.includes('BOM')).length === 0);
-
-// A column owned by an EARLIER gate than its register's own gate freezes when the owner passes. The
-// watch-lists are gate 07, but Gate 4 owns their review columns; the old rule skipped single-gate
-// registers and left those columns open until Gate 7 had passed.
-const watchCfg = getRegisterConfig('prohibitedIngredients')!;
-const upTo = (n: number) => new Set(Array.from({ length: n }, (_, i) => `SG${String(i + 1).padStart(2, '0')}`));
-t('watch-list: the register is single-gate (07) yet Gate 4 owns reviewerAssessment',
-  watchCfg.gate === '07' && columnOwnerGateIds('prohibitedIngredients', 'reviewerAssessment').join() === 'SG04');
-t('...so that column is frozen once SG04 passed, before SG07 has', cellFrozenBy(upTo(4), watchCfg, { reviewerAssessment: 'x' }, 'reviewerAssessment') === 'SG04');
-t('...and open while SG04 has not', cellFrozenBy(upTo(3), watchCfg, { reviewerAssessment: 'x' }, 'reviewerAssessment') === undefined);
-t('...while productStatus (read by SG04 AND SG07, so owned by SG07) stays open until SG07 passes',
-  cellFrozenBy(upTo(6), watchCfg, { productStatus: 'x' }, 'productStatus') === undefined && cellFrozenBy(upTo(7), watchCfg, { productStatus: 'x' }, 'productStatus') === 'SG07');
-
-// Adding a market after Gate 1 is allowed by design (F4) and must not un-pass any gate: the markets
-// are recorded in the signature but owned by no gate, so the change is information only.
+  stale('SG05', noData as ReturnType<typeof gateEvidenceSnapshot>, withBom).filter((c) => c.includes('BOM')).length === 0);
 const withMarket: ProjectData = { ...live, identity: { ...live.identity, markets: [...(live.identity.markets ?? []), 'A new market'] } };
-t('adding a market after Gate 1 does NOT make the Gate 1 signature stale', diff('SG01', snapAt('SG01'), withMarket).length === 0);
-t('...and the Gate 10 signature (which reads the markets) stays current too', diff('SG10', snapAt('SG10'), withMarket).length === 0);
-t('...but the new market is reported as information',
-  snapshotLaterChanges(snapAt('SG01'), gateEvidenceSnapshot(withMarket, 'SG01')).some((c) => c.startsWith('Project markets changed')));
-t('changing initialScope still makes Gate 1 stale (scope is Gate 1 data)', diff('SG01', snapAt('SG01'), withScope).some((c) => c.startsWith('Project identity')));
+t('adding a market after Gate 1 does NOT make the Gate 1 or Gate 10 signature stale',
+  stale('SG01', snapAt('SG01'), withMarket).length === 0 && stale('SG10', snapAt('SG10'), withMarket).length === 0);
+t('...but the new market is reported as information', snapshotLaterChanges(snapAt('SG01'), gateEvidenceSnapshot(withMarket, 'SG01')).some((c) => c.startsWith('Project markets changed')));
 
-console.log(bad === 0 ? '\nall passed' : `\n${bad} FAILED`); process.exit(bad === 0 ? 0 : 1);
+console.log(bad === 0 ? '\nall passed' : `\n${bad} FAILED`);
+process.exit(bad === 0 ? 0 : 1);

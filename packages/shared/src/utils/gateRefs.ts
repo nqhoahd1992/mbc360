@@ -16,3 +16,8 @@ export function gateRefGateIds(gateRef: string | undefined): string[] {
     .map((n) => GATES.find((g) => g.number === n.trim())?.id)
     .filter((id): id is string => !!id);
 }
+
+// Position of a gate in the strict order, -1 for something that is not a gate.
+export function gateOrder(gateId: string): number {
+  return GATES.findIndex((g) => g.id === gateId);
+}

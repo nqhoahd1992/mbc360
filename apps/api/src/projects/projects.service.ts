@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -43,12 +42,7 @@ import {
 } from '@mbc360/shared/utils/nextActionAccess';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { gate11ConditionalChanges } from '@mbc360/shared/utils/changeImpact';
-import {
-  bornGateOf,
-  passedGateSet,
-  registerFreezeViolations,
-  stampRegisterRows,
-} from '@mbc360/shared/utils/registerRowLocks';
+import { passedGateSet, registerFreezeViolations } from '@mbc360/shared/utils/registerRowLocks';
 import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
 import { RM_EVIDENCE_REGISTER, rmEvidenceContradictions } from '@mbc360/shared/utils/rmEvidence';
 import {
@@ -2163,10 +2157,12 @@ export class ProjectsService {
       // array; rowOrder IS the array index). Known limitation, inherited
       // from that same positional-identity choice, not new here: a row moved
       // to a different position reads as one delete + one add, not a move.
-      // SW-4: every row gets a server-owned id and the gate that was open when it was
-      // first saved, so a row created after a gate passed is not part of that gate's
-      // evidence. Whatever the client sent for either is discarded.
-      const stampedRows = stampRegisterRows(bornGateOf(project), config, committedRegisterRows, rowsToWrite, () => randomUUID());
+      // Rows written while the SW-4 row stamps existed carry two server-owned keys that nothing reads any
+      // more; they are dropped here so the data cleans itself on the next save.
+      const stampedRows = rowsToWrite.map((row) => {
+        const { __rowId: _id, __bornAtGate: _born, ...rest } = row as Record<string, unknown>;
+        return rest as RegisterRow;
+      });
       const rowDiff = this.diffRegisterRows(project.registers[registerKey] ?? [], stampedRows);
       await tx.registerRow.deleteMany({ where: { projectId: id, registerKey } });
       if (stampedRows.length > 0) {
@@ -2782,9 +2778,6 @@ export class ProjectsService {
             updatedById: user.id,
             data: {
               ...createEmptyRegisterRow('supplierRmEvidence'),
-              // SW-4: same identity and birth gate a row saved through the register gets.
-              __rowId: randomUUID(),
-              __bornAtGate: bornGateOf(project),
               rmCode: `RM-${r.rmId}`,
               inciName: r.inciName,
               supplier: r.supplierName,
@@ -4018,9 +4011,6 @@ export class ProjectsService {
             rowOrder: existingRows,
             updatedById: user.id,
             data: {
-              // SW-4: same identity and birth gate a row saved through the register gets.
-              __rowId: randomUUID(),
-              __bornAtGate: bornGateOf(project),
               changeId: `FC-${String(nextFc).padStart(3, '0')}`,
               productFamilySku: project.identity.productSku,
               requestedByNpd: user.displayName,

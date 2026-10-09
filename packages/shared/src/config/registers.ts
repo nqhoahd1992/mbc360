@@ -150,7 +150,15 @@ export interface RegisterConfig {
   workbookTab?: string;
   description?: string;
   mode: 'register' | 'fixed'; // register = user adds/removes rows; fixed = predefined rows
+  // The gates that ENTER data in this register (software rules SW-5 and SW-20). Decides when a
+  // column freezes (the gate that owns it passing) and when the whole register locks and has to
+  // be closed (the last gate in the list).
   gate?: string;
+  // Gates whose readiness only READS this register: they re-check what an earlier gate entered
+  // and change nothing, so they must not keep the register open. Every gate whose readiness
+  // reads a register is in `gate` or here — verify:readiness sweep S8 fails otherwise, so that
+  // "entered or only read?" is always a decision somebody wrote down. Not shown on screen.
+  referenceGates?: string;
   columns: RegisterColumn[];
   fixedRows?: RegisterRow[];
   // "REVIEW OWNER" of the source sheet, as a STRUCTURE (which role owns/co-
@@ -655,33 +663,36 @@ const supplierRmEvidence: RegisterConfig = {
   sheetName: 'Supplier_RM_Evidence',
   description: 'Capture supplier documents once per material and link them into Formulation_Safety and PIF.',
   mode: 'register',
-  gate: '04',
+  // SME Round 4 question 31: Gate 4 gives every candidate a conclusion, a conditional acceptance is closed before Gate 7 (entered at Gate 7), and Gates 10 and 11 only re-check the materials in the formula. Conclusion columns are Gate 7's, the rest Gate 4's.
+  gate: '04/07',
+  referenceGates: '10/11',
   columns: [
-    { key: 'rmCode', label: 'RM code', type: 'text', width: 90 },
-    { key: 'inciName', label: 'Ingredient / INCI', type: 'text', width: 180 },
-    { key: 'approvedForUse', label: 'Approved for use?', type: 'checkbox', width: 90 },
+    { key: 'rmCode', label: 'RM code', type: 'text', width: 90, gate: '04' },
+    { key: 'inciName', label: 'Ingredient / INCI', type: 'text', width: 180, gate: '04' },
+    { key: 'approvedForUse', label: 'Approved for use?', type: 'checkbox', width: 90, gate: '07' },
     // D4. Starts at "Incomplete — evidence review required" for every new row, so
     // an unreviewed material says so from the moment it exists. Cleared by ticking
     // Approved for use (the reviewed-and-usable outcome), or set to one of the
     // other two dispositions.
     {
       key: 'evidenceStatus',
+      gate: '07',
       label: 'Evidence review status',
       type: 'select',
       width: 220,
       options: RM_EVIDENCE_STATUS_OPTIONS,
       defaultValue: RM_EVIDENCE_INCOMPLETE,
     },
-    { key: 'supplier', label: 'Supplier', type: 'text', width: 140 },
-    { key: 'grade', label: 'Grade / trade name', type: 'text', width: 140 },
-    { key: 'sdsLink', label: 'SDS link', type: 'text', width: 120 },
-    { key: 'coaLink', label: 'CoA link', type: 'text', width: 120 },
-    { key: 'tdsLink', label: 'TDS / spec link', type: 'text', width: 120 },
-    { key: 'allergenStatement', label: 'Allergen statement', type: 'text', width: 150 },
-    { key: 'impurities', label: 'Impurities / heavy metals', type: 'text', width: 150 },
-    { key: 'microInfo', label: 'Micro / preservative info', type: 'text', width: 150 },
-    { key: 'originProof', label: 'Origin / vegan / natural proof', type: 'text', width: 160 },
-    { key: 'regulatoryStatus', label: 'Regulatory status', type: 'text', width: 150 },
+    { key: 'supplier', label: 'Supplier', type: 'text', width: 140, gate: '04' },
+    { key: 'grade', label: 'Grade / trade name', type: 'text', width: 140, gate: '04' },
+    { key: 'sdsLink', label: 'SDS link', type: 'text', width: 120, gate: '04' },
+    { key: 'coaLink', label: 'CoA link', type: 'text', width: 120, gate: '04' },
+    { key: 'tdsLink', label: 'TDS / spec link', type: 'text', width: 120, gate: '04' },
+    { key: 'allergenStatement', label: 'Allergen statement', type: 'text', width: 150, gate: '04' },
+    { key: 'impurities', label: 'Impurities / heavy metals', type: 'text', width: 150, gate: '04' },
+    { key: 'microInfo', label: 'Micro / preservative info', type: 'text', width: 150, gate: '04' },
+    { key: 'originProof', label: 'Origin / vegan / natural proof', type: 'text', width: 160, gate: '04' },
+    { key: 'regulatoryStatus', label: 'Regulatory status', type: 'text', width: 150, gate: '04' },
     { key: 'owner', label: 'Owner', type: 'user', width: 130 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
@@ -694,7 +705,8 @@ const prohibitedIngredients: RegisterConfig = {
   sheetName: 'Prohibited_Ingredients',
   description: 'Product-specific absence proof. Regulatory must confirm current market status before release.',
   mode: 'fixed',
-  gate: '07',
+  // SME Round 4 question 6: Gate 4 screens and dispositions every row, and Gate 7 formally closes every restricted or caution issue. [ASSUMPTION: R5-Q63] productStatus is a screening result updated until Gate 7; reading it as Gate 7's column is ours.
+  gate: '04/07',
   columns: [
     { key: 'ingredientGroup', label: 'Ingredient / group', type: 'text', width: 170, editable: false },
     { key: 'functionRole', label: 'Function', type: 'text', width: 150, editable: false },
@@ -703,6 +715,7 @@ const prohibitedIngredients: RegisterConfig = {
     { key: 'applicableProducts', label: 'Applicable products', type: 'text', width: 160, editable: false },
     {
       key: 'productStatus',
+      gate: '07',
       label: 'Product status',
       type: 'select',
       width: 200,
@@ -729,20 +742,20 @@ const prohibitedIngredients: RegisterConfig = {
     // this one holds the reviewer's DISPOSITION of that result. Blank is the
     // unassessed state Gate 4 must not pass with, so it deliberately has no
     // `defaultValue` [ASSUMPTION: R5-Q10].
-    { key: 'gate4Disposition', label: 'Gate 4 disposition', type: 'select', width: 190, options: [...GATE4_DISPOSITION_OPTIONS] },
+    { key: 'gate4Disposition', label: 'Gate 4 disposition', type: 'select', width: 190, options: [...GATE4_DISPOSITION_OPTIONS], gate: '04' },
     // Rule D3 — the reviewer trail a flagged result must carry before Gate 4 can
     // move. Every field here is one D3 names; only the Resolution status VALUES
     // and the flagged-status scope are ours (see WATCHLIST_* in this file).
-    { key: 'reviewerAssessment', label: 'Reviewer assessment', type: 'select', width: 190, options: WATCHLIST_ASSESSMENT_OPTIONS },
-    { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140 },
-    { key: 'reviewDate', label: 'Review date', type: 'date', width: 120 },
-    { key: 'reviewRationale', label: 'Rationale', type: 'textarea', width: 220 },
+    { key: 'reviewerAssessment', label: 'Reviewer assessment', type: 'select', width: 190, options: WATCHLIST_ASSESSMENT_OPTIONS, gate: '04' },
+    { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140, gate: '04' },
+    { key: 'reviewDate', label: 'Review date', type: 'date', width: 120, gate: '04' },
+    { key: 'reviewRationale', label: 'Rationale', type: 'textarea', width: 220, gate: '04' },
     // "A genuine controlled Next Action must be used. A note alone is not
     // sufficient." So this is a picker over the project's real Next Actions, and
     // an id that resolves to nothing is rejected — not free text.
-    { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 220 },
+    { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 220, gate: '04' },
     { key: 'resolutionStatus', label: 'Resolution status', type: 'select', width: 120, options: WATCHLIST_RESOLUTION_OPTIONS },
-    { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
+    { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140, gate: '04' },
     { key: 'owner', label: 'Owner', type: 'user', width: 110 },
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 130, editable: false },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
@@ -769,7 +782,8 @@ const pbCautionLimits: RegisterConfig = {
   sheetName: 'PB_Caution_Limits',
   description: 'Product-specific concentration and exposure check for maternal products.',
   mode: 'fixed',
-  gate: '07',
+  // Same split as the prohibited list (SME Round 4 question 6 and 32(e)). [ASSUMPTION: R5-Q63]
+  gate: '04/07',
   columns: [
     { key: 'ingredientGroup', label: 'Ingredient / group', type: 'text', width: 190, editable: false },
     { key: 'functionRole', label: 'Function', type: 'text', width: 160, editable: false },
@@ -778,6 +792,7 @@ const pbCautionLimits: RegisterConfig = {
     { key: 'applicableProducts', label: 'Applicable products', type: 'text', width: 160, editable: false },
     {
       key: 'productStatus',
+      gate: '07',
       label: 'Product status',
       type: 'select',
       width: 200,
@@ -794,7 +809,7 @@ const pbCautionLimits: RegisterConfig = {
     // Round 4 question 6 (2026-08-29) — same column, same reason, as on the
     // Prohibited Ingredient Watch-list above. Required at Gate 4 only when the
     // maternal pathway is triggered, since this whole register is that pathway.
-    { key: 'gate4Disposition', label: 'Gate 4 disposition', type: 'select', width: 190, options: [...GATE4_DISPOSITION_OPTIONS] },
+    { key: 'gate4Disposition', label: 'Gate 4 disposition', type: 'select', width: 190, options: [...GATE4_DISPOSITION_OPTIONS], gate: '04' },
     // Round 4 question 32(e) (2026-08-24): "The Pregnancy/Breastfeeding Caution
     // list uses the same reviewer-trail fields for flagged findings." We asked
     // this ourselves — D3's wording said "each flagged watch-list result" while
@@ -803,13 +818,13 @@ const pbCautionLimits: RegisterConfig = {
     // Deliberately the SAME column keys as `prohibitedIngredients` above, not
     // parallel ones: `watchlistReview.ts` reads rows by key, so identical keys mean
     // one implementation serves both registers instead of two that can drift.
-    { key: 'reviewerAssessment', label: 'Reviewer assessment', type: 'select', width: 190, options: WATCHLIST_ASSESSMENT_OPTIONS },
-    { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140 },
-    { key: 'reviewDate', label: 'Review date', type: 'date', width: 120 },
-    { key: 'reviewRationale', label: 'Rationale', type: 'textarea', width: 220 },
-    { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 220 },
+    { key: 'reviewerAssessment', label: 'Reviewer assessment', type: 'select', width: 190, options: WATCHLIST_ASSESSMENT_OPTIONS, gate: '04' },
+    { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140, gate: '04' },
+    { key: 'reviewDate', label: 'Review date', type: 'date', width: 120, gate: '04' },
+    { key: 'reviewRationale', label: 'Rationale', type: 'textarea', width: 220, gate: '04' },
+    { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 220, gate: '04' },
     { key: 'resolutionStatus', label: 'Resolution status', type: 'select', width: 120, options: WATCHLIST_RESOLUTION_OPTIONS },
-    { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
+    { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140, gate: '04' },
     { key: 'owner', label: 'Owner', type: 'user', width: 130 },
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 150, editable: false },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
@@ -1031,19 +1046,20 @@ const stabilityRelease: RegisterConfig = {
   sheetName: 'Stability_Release',
   description: 'Use for accelerated/real-time stability, package compatibility and final release decisions.',
   mode: 'register',
-  gate: '09',
+  // Gate 9 records stability and compatibility results; Gate 11 (Quality release pathway) records the final release decision. [ASSUMPTION: R5-Q62] The SME lists "Quality release pathway" at Gate 11 and a release-readiness conclusion at Gate 9 but does not say where this column is entered.
+  gate: '09/11',
   columns: [
-    { key: 'productSku', label: 'Product/SKU', type: 'text', width: 150 },
-    { key: 'formulaVersion', label: 'Formula version', type: 'text', width: 110 },
-    { key: 'packComponent', label: 'Pack / component', type: 'text', width: 130 },
-    { key: 'batch', label: 'Batch', type: 'text', width: 100 },
-    { key: 'condition', label: 'Condition', type: 'text', width: 120 },
-    { key: 'timepoint', label: 'Timepoint', type: 'text', width: 100 },
-    { key: 'parameter', label: 'Parameter', type: 'text', width: 120 },
-    { key: 'acceptanceCriteria', label: 'Acceptance criteria', type: 'text', width: 150 },
-    { key: 'result', label: 'Result', type: 'text', width: 120 },
-    { key: 'reportLink', label: 'Report link', type: 'text', width: 130 },
-    { key: 'releaseDecision', label: 'Release decision', type: 'text', width: 140 },
+    { key: 'productSku', label: 'Product/SKU', type: 'text', width: 150, gate: '09' },
+    { key: 'formulaVersion', label: 'Formula version', type: 'text', width: 110, gate: '09' },
+    { key: 'packComponent', label: 'Pack / component', type: 'text', width: 130, gate: '09' },
+    { key: 'batch', label: 'Batch', type: 'text', width: 100, gate: '09' },
+    { key: 'condition', label: 'Condition', type: 'text', width: 120, gate: '09' },
+    { key: 'timepoint', label: 'Timepoint', type: 'text', width: 100, gate: '09' },
+    { key: 'parameter', label: 'Parameter', type: 'text', width: 120, gate: '09' },
+    { key: 'acceptanceCriteria', label: 'Acceptance criteria', type: 'text', width: 150, gate: '09' },
+    { key: 'result', label: 'Result', type: 'text', width: 120, gate: '09' },
+    { key: 'reportLink', label: 'Report link', type: 'text', width: 130, gate: '09' },
+    { key: 'releaseDecision', label: 'Release decision', type: 'text', width: 140, gate: '11' },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
@@ -1324,6 +1340,8 @@ const packagingSpecsArtwork: RegisterConfig = {
   sheetName: 'Packaging_Specs_Artwork',
   description: 'Development evidence for planned package/artwork (not the change log).',
   mode: 'register',
+  // Columns the readiness of Gate 6 (specification) and Gate 10 (artwork approval and claims) demand carry their
+  // own gate; Gate 11 is part of the list because the label is still being finished there.
   gate: '06/10/11',
   columns: [
     // Round 4 question 30(c), 2026-08-29: "final artwork approval is represented
@@ -1332,18 +1350,18 @@ const packagingSpecsArtwork: RegisterConfig = {
     // Unsupported · Not approved for the market · Superseded · Not approved for
     // the intended wording or channel. One row can carry several claims, so this
     // is the multi-value form; `artworkClaimBlockers` reads it.
-    { key: 'claimIds', label: 'Claim IDs on this artwork', type: 'text', width: 220 },
+    { key: 'claimIds', label: 'Claim IDs on this artwork', type: 'text', width: 220, gate: '10' },
     { key: 'component', label: 'Component', type: 'text', width: 140 },
     { key: 'materialConstruction', label: 'Material / construction', type: 'text', width: 150 },
-    { key: 'supplier', label: 'Supplier', type: 'text', width: 130 },
-    { key: 'specLink', label: 'Spec link', type: 'text', width: 120 },
-    { key: 'compatibilityEvidence', label: 'Compatibility evidence', type: 'text', width: 160 },
+    { key: 'supplier', label: 'Supplier', type: 'text', width: 130, gate: '06' },
+    { key: 'specLink', label: 'Spec link', type: 'text', width: 120, gate: '06' },
+    { key: 'compatibilityEvidence', label: 'Compatibility evidence', type: 'text', width: 160, gate: '06' },
     { key: 'migrationRisk', label: 'Migration/contact risk', type: 'text', width: 160 },
-    { key: 'artworkVersion', label: 'Artwork / label version', type: 'text', width: 150 },
+    { key: 'artworkVersion', label: 'Artwork / label version', type: 'text', width: 150, gate: '06' },
     { key: 'packCodeBarcode', label: 'Pack code / barcode', type: 'text', width: 140 },
-    { key: 'market', label: 'Market', type: 'market', width: 110 },
+    { key: 'market', label: 'Market', type: 'market', width: 110, gate: '10' },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 130 },
-    { key: 'approval', label: 'Approval', type: 'text', width: 120 },
+    { key: 'approval', label: 'Approval', type: 'text', width: 120, gate: '10' },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
@@ -1989,7 +2007,9 @@ const vulnerableUserAssessment: RegisterConfig = {
   description:
     'Explicit recognition of whether this product touches a vulnerable-use group. A general-adult product must still record "No vulnerable-user group identified".',
   mode: 'register',
+  // SME Round 3 B5 puts the vulnerable-user flags at Gate 2. Gate 12 only reads which groups the product serves, for post-market surveillance.
   gate: '02',
+  referenceGates: '12',
   // No explicit reviewOwner — inherits dept-npd-frontend's group default
   // (Project Manager). Was REVIEW_SPECS.quality (Sankar) when this register
   // briefly sat under Production Support; moved 2026-08-27, see the note on
@@ -2754,7 +2774,9 @@ export const targetProductProfile: RegisterConfig = {
   sheetName: '3. Target Product & Tech',
   description: 'Agree BEFORE development; every row measurable. Complete before formula lock (Gate 5).',
   mode: 'fixed',
+  // NPD Front-End Roadmap (v2 workbook): the target product profile is completed before the formula lock at Gate 5. Gate 3 only reads it, as a progress nudge.
   gate: '05',
+  referenceGates: '03',
   reviewOwner: REVIEW_SPECS.ri,
   columns: [
     { key: 'attribute', label: 'Attribute / parameter', type: 'text', width: 200, editable: false },
@@ -2896,7 +2918,9 @@ export const claimEvidenceTraceability: RegisterConfig = {
   // registers have already re-typed its wording. Locking still needs EVERY listed
   // gate passed, so the ledger stays writable through PIF and Published
   // Information work exactly as before.
-  gate: '03/10/11',
+  // Entered at Gates 3, 5, 8 and 10 (each column carries its own gate). Gate 12 only reads the classification for post-market review.
+  gate: '03/05/08/10',
+  referenceGates: '12',
   reviewOwner: REVIEW_SPECS.npdEvidence,
   columns: [
     // Per-column gates (2026-08-11). A claim row is filled in over three gates, so

@@ -39,7 +39,6 @@ import type { GateEvidenceSnapshot, ProjectData, RegisterRow } from '../types';
 import { PHASE_CONFIGS } from '../config/phases';
 import { REGISTER_CONFIGS } from '../config/registers';
 import { NEXT_ACTION_PRIORITIES, NEXT_ACTION_TERMINAL_STATUSES } from '../types';
-import { ROW_ID_KEY, projectAsOfGate } from './registerRowBirth';
 import { gateRefGateIds } from './gateRefs';
 import { columnsByAccountability, registersReadByGate } from './registerColumnGates';
 import { projectSliceDigests } from './projectSlices';
@@ -109,28 +108,20 @@ function digestRequirements(project: ProjectData, gateNumber: string): Record<st
   return out;
 }
 
-// A register reduced to what the gate attests: the rows that belong to it (the caller passes
-// the project as the gate sees it) and, per row, only the columns the gate reads and owns.
-// A row is named by its server-written id so deleting or replacing one is a change even when
-// the surviving cells look alike; rows with no id (a fixed register's seeded rows) are named
-// by position.
+// A register reduced to the columns given, row by row. Rows are named by position: once any
+// column of a register is frozen rows can no longer be added, removed or reordered, so a position
+// stays the same row for as long as a signature that covers it can be current.
 function digestRegisterCells(rows: RegisterRow[], columns: string[]): string {
   return rows
-    .map((row, index) => {
-      const id = typeof row[ROW_ID_KEY] === 'string' && row[ROW_ID_KEY] !== '' ? String(row[ROW_ID_KEY]) : `#${index}`;
-      return [id, ...columns.map((key) => `${key}=${String(row[key] ?? '')}`)].join('|');
-    })
+    .map((row, index) => [`#${index}`, ...columns.map((key) => `${key}=${String(row[key] ?? '')}`)].join('|'))
     .join('\n');
 }
 
 export function gateEvidenceSnapshot(
-  fullProject: ProjectData,
+  project: ProjectData,
   gateId: string,
   market?: string,
 ): GateEvidenceSnapshot {
-  // SW-4: a register row created after this gate passed is not part of what its
-  // signatures attest to, so it must not turn them stale.
-  const project = projectAsOfGate(fullProject, gateId);
   const record = project.gates.find((g) => g.gateId === gateId);
   const gateNumber = gateId.replace('SG', '');
   const registers: Record<string, string> = {};
