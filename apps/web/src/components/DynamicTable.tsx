@@ -21,6 +21,8 @@ import ClaimsLibrarySelect from './ClaimsLibrarySelect';
 import RowRefSelect from './RowRefSelect';
 import RegisterSignatureCell from './RegisterSignatureCell';
 import { derivedColumnGate, spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
+import { cellFrozenBy, isNewRow, passedGateSet, rowRemovalBlock } from '@mbc360/shared/utils/registerRowLocks';
+import { useAppStore } from '../store/useAppStore';
 import '../styles/concept.css';
 import './DynamicTable.css';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
@@ -154,6 +156,21 @@ export default function DynamicTable({
   // project — the same index the bulk save writes as `rowOrder`.
   const { projectId } = useParams();
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
+  // SW-5: a gate that has passed freezes the cells it counted as evidence and the rows
+  // they sit on, even while the register as a whole is still open to a later gate. The
+  // server refuses the same writes with the same shared functions; this just stops the
+  // table offering an edit it would reject. Only registers spanning several gates need
+  // it — a single-gate register is wholly read-only via `readOnly`.
+  const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
+  const passedGates = useMemo(
+    () => (project && spansSeveralGates(config.gate) ? passedGateSet(project) : new Set<string>()),
+    [project, config.gate],
+  );
+  const frozenBy = (row: RegisterRow, columnKey: string) =>
+    isNewRow(config, row) ? undefined : cellFrozenBy(passedGates, config, row, columnKey);
+  const removeBlock = (row: RegisterRow) =>
+    removeBlockedReason?.(row) ??
+    (passedGates.size > 0 && !isNewRow(config, row) ? rowRemovalBlock(passedGates, config, row) : undefined);
   const [openIndex, setOpenRaw] = useState<number | null>(null);
   // The row "Add row" just created, until the drawer moves off it. Closing the
   // drawer on it while it is still blank discards it (2026-10-03, user-reported:
@@ -186,7 +203,7 @@ export default function DynamicTable({
   };
   const removeRow = (index: number) => {
     // Defence in depth — the button is disabled for this case too.
-    if (removeBlockedReason?.(draft[index])) return;
+    if (removeBlock(draft[index])) return;
     update((prev) => prev.filter((_, i) => i !== index));
     // Already removed — skip the blank-row discard so it is not removed twice.
     setFreshIndex(null);
@@ -251,15 +268,19 @@ export default function DynamicTable({
 
   // One editor per column type, used by the table cells and the drawer alike.
   const renderEditor = (column: RegisterColumn, row: RegisterRow, index: number) => {
+    // Before the custom renderer on purpose: a register with its own cell editors
+    // (Supplier & RM Evidence, Published Info) falls back to the generic read-only cell
+    // when told `readOnly`, so a frozen cell is reported to it the same way.
+    const frozenGate = readOnly ? undefined : frozenBy(row, column.key);
     const custom = renderCell?.(column, row, index, {
       patch: (key, v) => patch(index, key, v),
       patchRow: (values) => update((prev) => patchArray(prev, index, values)),
-      readOnly: !!readOnly,
+      readOnly: !!readOnly || !!frozenGate,
       draft,
     });
     if (custom !== undefined) return custom;
 
-    const editable = column.editable !== false && !readOnly;
+    const editable = column.editable !== false && !readOnly && !frozenGate;
     const value = row[column.key];
 
     // A column marked `inheritFromClaim` is not entered here at all: it shows
@@ -300,10 +321,15 @@ export default function DynamicTable({
       if (column.type === 'checkbox') return <Checkbox checked={!!value} disabled />;
       // Read-only, a library link shows the entry's wording rather than its id.
       if (column.type === 'claimsLibraryRef') return <ClaimsLibrarySelect value={value as string | undefined} disabled onChange={() => {}} />;
-      return (
+      const shown = (
         <span className="rt-static" style={column.type === 'number' ? NUMERIC_CELL : undefined}>
           {text(value) || '—'}
         </span>
+      );
+      return frozenGate ? (
+        <Tooltip title={`Frozen — ${frozenGate} has passed. Backtrack to reopen it.`}>{shown}</Tooltip>
+      ) : (
+        shown
       );
     }
 
@@ -612,7 +638,7 @@ export default function DynamicTable({
                   while reading as if the row were finished or saved. */}
               <span className="rt-drawer-hint">Changes stay in this section's draft until you Save it.</span>
               {isRegister && (
-              <Tooltip title={removeBlockedReason?.(draft[openIndex])}>
+              <Tooltip title={removeBlock(draft[openIndex])}>
                 <span>
                   {/* A row nobody has typed into has nothing to lose, so it goes
                       without the "Remove this row?" step (user-requested,
@@ -621,7 +647,7 @@ export default function DynamicTable({
                     <Button
                       danger
                       icon={<DeleteOutlined />}
-                      disabled={!!removeBlockedReason?.(draft[openIndex])}
+                      disabled={!!removeBlock(draft[openIndex])}
                       onClick={() => removeRow(openIndex)}
                     >
                       Remove row
@@ -631,10 +657,10 @@ export default function DynamicTable({
                       title="Remove this row?"
                       okButtonProps={{ danger: true }}
                       okText="Remove"
-                      disabled={!!removeBlockedReason?.(draft[openIndex])}
+                      disabled={!!removeBlock(draft[openIndex])}
                       onConfirm={() => removeRow(openIndex)}
                     >
-                      <Button danger icon={<DeleteOutlined />} disabled={!!removeBlockedReason?.(draft[openIndex])}>
+                      <Button danger icon={<DeleteOutlined />} disabled={!!removeBlock(draft[openIndex])}>
                         Remove row
                       </Button>
                     </Popconfirm>

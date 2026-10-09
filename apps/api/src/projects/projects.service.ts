@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -37,6 +38,12 @@ import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
 import { mayEditNextActionRecord, mayRemoveNextAction, nextActionRecordChanged } from '@mbc360/shared/utils/nextActionAccess';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { gate11ConditionalChanges } from '@mbc360/shared/utils/changeImpact';
+import {
+  bornGateOf,
+  passedGateSet,
+  registerFreezeViolations,
+  stampRegisterRows,
+} from '@mbc360/shared/utils/registerRowLocks';
 import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
 import { RM_EVIDENCE_REGISTER, rmEvidenceContradictions } from '@mbc360/shared/utils/rmEvidence';
 import {
@@ -1935,7 +1942,7 @@ export class ProjectsService {
         changes.push({ rowOrder: i, changeType: 'added', after });
       } else if (before !== undefined && after === undefined) {
         changes.push({ rowOrder: i, changeType: 'deleted', before });
-      } else if (before !== undefined && after !== undefined && JSON.stringify(before) !== JSON.stringify(after)) {
+      } else if (before !== undefined && after !== undefined && JSON.stringify(before, Object.keys(before).sort()) !== JSON.stringify(after, Object.keys(after).sort())) {
         changes.push({ rowOrder: i, changeType: 'edited', before, after });
       }
     }
@@ -1967,6 +1974,19 @@ export class ProjectsService {
       if (isRegisterClosed(project.registerClosures[registerKey])) {
         throw new ForbiddenException(
           `Register "${registerKey}" is closed — it is read-only until reopened (withdraw a closing signature, or Backtrack past its gate)`,
+        );
+      }
+      // SW-5 (docs/rules/Software_Rules.md): a gate that has passed freezes the cells
+      // it counted as evidence and the rows they sit on — per cell, not per register,
+      // so a register shared with a later gate no longer stays open under a signature.
+      // Evaluated by the same shared function the table uses to grey the cell.
+      const committedRegisterRows = project.registers[registerKey] ?? [];
+      const freezeViolations = registerFreezeViolations(passedGateSet(project), config, committedRegisterRows, rows);
+      if (freezeViolations.length > 0) {
+        throw new ForbiddenException(
+          `Register "${registerKey}": ${freezeViolations.slice(0, 5).join('; ')}${
+            freezeViolations.length > 5 ? ` (and ${freezeViolations.length - 5} more)` : ''
+          }`,
         );
       }
       // A `select` cell may only hold one of its own options (2026-08-29). Until
@@ -2138,11 +2158,15 @@ export class ProjectsService {
       // array; rowOrder IS the array index). Known limitation, inherited
       // from that same positional-identity choice, not new here: a row moved
       // to a different position reads as one delete + one add, not a move.
-      const rowDiff = this.diffRegisterRows(project.registers[registerKey] ?? [], rowsToWrite);
+      // SW-4: every row gets a server-owned id and the gate that was open when it was
+      // first saved, so a row created after a gate passed is not part of that gate's
+      // evidence. Whatever the client sent for either is discarded.
+      const stampedRows = stampRegisterRows(bornGateOf(project), config, committedRegisterRows, rowsToWrite, () => randomUUID());
+      const rowDiff = this.diffRegisterRows(project.registers[registerKey] ?? [], stampedRows);
       await tx.registerRow.deleteMany({ where: { projectId: id, registerKey } });
-      if (rowsToWrite.length > 0) {
+      if (stampedRows.length > 0) {
         await tx.registerRow.createMany({
-          data: rowsToWrite.map((data, rowOrder) => ({
+          data: stampedRows.map((data, rowOrder) => ({
             projectId: id,
             registerKey,
             rowOrder,
@@ -2151,7 +2175,7 @@ export class ProjectsService {
           })),
         });
       }
-      return { registerKey, rows: rowsToWrite.length, changes: rowDiff };
+      return { registerKey, rows: stampedRows.length, changes: rowDiff };
     });
   }
 
@@ -2753,6 +2777,9 @@ export class ProjectsService {
             updatedById: user.id,
             data: {
               ...createEmptyRegisterRow('supplierRmEvidence'),
+              // SW-4: same identity and birth gate a row saved through the register gets.
+              __rowId: randomUUID(),
+              __bornAtGate: bornGateOf(project),
               rmCode: `RM-${r.rmId}`,
               inciName: r.inciName,
               supplier: r.supplierName,
@@ -3973,6 +4000,9 @@ export class ProjectsService {
             rowOrder: existingRows,
             updatedById: user.id,
             data: {
+              // SW-4: same identity and birth gate a row saved through the register gets.
+              __rowId: randomUUID(),
+              __bornAtGate: bornGateOf(project),
               changeId: `FC-${String(nextFc).padStart(3, '0')}`,
               productFamilySku: project.identity.productSku,
               requestedByNpd: user.displayName,

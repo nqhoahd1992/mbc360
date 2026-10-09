@@ -5,6 +5,7 @@ import type { GateSignOffRole } from '../types';
 import { COSTING_STATUS_NOT_APPLICABLE, GATES, REQUIREMENT_NOT_APPLICABLE } from '../config/gates';
 import { GATE_PASSING_DECISIONS, findGateSignOff, gateSignOffMarkets, isGateSignOffSigned } from '../config/gateSignOff';
 import { gateEvidenceSnapshot, snapshotChanges } from './gateSnapshot';
+import { projectAsOfGate } from './registerRowBirth';
 import { isChangeOpen } from '../config/changeTriggers';
 import {
   CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE,
@@ -1831,10 +1832,14 @@ function readinessParts(project: ProjectData, check: ReadinessCheck, gateId: str
 // before committing it. Defaults to the gate's currently committed decision
 // when omitted.
 export function gateReadinessChecklist(
-  project: ProjectData,
+  fullProject: ProjectData,
   gateId: string,
   decisionOverride?: GateRecord['decision'],
 ): GateReadinessItem[] {
+  // SW-4: this gate sees only the register rows that belong to it. A row created
+  // after the gate passed was never part of what it was signed on, so it can
+  // neither satisfy nor un-satisfy any item here.
+  const project = projectAsOfGate(fullProject, gateId);
   const items: GateReadinessItem[] = [];
 
   // C1: Skincare for Two hard-blocks Gate 07 until the mandatory maternal and

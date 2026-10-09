@@ -40,6 +40,7 @@ import { GATE_READINESS, type ReadinessCheck } from '../config/gateReadiness';
 import { PHASE_CONFIGS } from '../config/phases';
 import { REGISTER_CONFIGS } from '../config/registers';
 import { NEXT_ACTION_TERMINAL_STATUSES } from '../types';
+import { projectAsOfGate } from './registerRowBirth';
 
 // Deliberately NOT imported from gateProgress, which is a one-line filter there:
 // gateProgress reads THIS module (the `gateSignedOff` check needs the snapshot to
@@ -51,7 +52,7 @@ const ARTWORK_REGISTER = 'packagingSpecsArtwork';
 
 // Every register key the gate's own readiness checks read. Walked through `allOf`,
 // because a merged item hides its legs behind one entry.
-function registersReadAtGate(gateId: string): string[] {
+export function registersReadAtGate(gateId: string): string[] {
   const keys = new Set<string>();
   const walk = (check: ReadinessCheck): void => {
     if (check.kind === 'allOf' || check.kind === 'anyOf') {
@@ -110,10 +111,13 @@ function digestRequirements(project: ProjectData, gateNumber: string): Record<st
 }
 
 export function gateEvidenceSnapshot(
-  project: ProjectData,
+  fullProject: ProjectData,
   gateId: string,
   market?: string,
 ): GateEvidenceSnapshot {
+  // SW-4: a register row created after this gate passed is not part of what its
+  // signatures attest to, so it must not turn them stale.
+  const project = projectAsOfGate(fullProject, gateId);
   const record = project.gates.find((g) => g.gateId === gateId);
   const gateNumber = gateId.replace('SG', '');
   const registers: Record<string, string> = {};

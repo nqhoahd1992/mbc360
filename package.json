@@ -19,7 +19,8 @@
     "preview": "npm run preview -w @mbc360/web",
     "verify:scaffold": "tsx packages/shared/scripts/check-scaffold-drift.ts",
     "verify:totp": "tsx apps/api/scripts/verify-totp.ts",
-    "verify:nav": "tsx apps/web/scripts/check-nav-coverage.ts"
+    "verify:nav": "tsx apps/web/scripts/check-nav-coverage.ts",
+    "verify:freeze": "tsx packages/shared/scripts/verify-register-freeze.ts"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
