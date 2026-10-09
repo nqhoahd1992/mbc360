@@ -25,6 +25,17 @@ const PROJECT = 'MBC-2026-001';
 const ROLES = ['Prepared by', 'Reviewed by', 'Approved by'] as const;
 type Role = (typeof ROLES)[number];
 const WHO: Record<Role, string> = { 'Prepared by': 'tuan', 'Reviewed by': 'sekar', 'Approved by': 'admin' };
+// A code is valid for one 30-second step and may be used once, so one account can sign only about
+// twice a minute. Each role therefore has a POOL of equivalent accounts (clones of the same user, same
+// roles) and each gate lane signs with its own, which is what keeps the run to a few minutes instead of
+// waiting on the code window. Which account signs a lane makes no difference to any rule under test.
+const POOL = 8;
+const TEMPLATE_EMAIL: Record<Role, string> = {
+  'Prepared by': 'tuan@demo.mbc360.local',
+  'Reviewed by': 'sekar@demo.mbc360.local',
+  'Approved by': 'app.admin@maxbiocare.com',
+};
+const poolKey = (role: Role, n: number) => (n === 0 ? WHO[role] : `${WHO[role]}${n}`);
 
 interface Session {
   email: string;
@@ -70,6 +81,14 @@ export async function run(base: string, db: Client): Promise<number> {
     sessions[key] = { email, cookie, id: '', lastStep: 0 };
     sessions[key].id = (await api(key, 'GET', '/auth/me')).json?.id ?? '';
   }
+  // One pool slot per gate lane (gate + market), in the order lanes are first met; the same lane keeps
+  // the same signers, so a withdraw or a re-sign is done by the person who signed.
+  const lanes = new Map<string, number>();
+  const signerKey = (gate: string, role: Role, market?: string): string => {
+    const lane = `${gate}|${market ?? ''}`;
+    if (!lanes.has(lane)) lanes.set(lane, lanes.size % POOL);
+    return poolKey(role, lanes.get(lane) as number);
+  };
   const project = async () => (await api('admin', 'GET', `/projects/${PROJECT}`)).json;
   const version = async () => (await project()).version as number;
 
@@ -92,17 +111,29 @@ export async function run(base: string, db: Client): Promise<number> {
     const a = await api(key, 'POST', '/account/totp/activate', { code: await code(key) });
     if (a.status >= 300) throw new Error(`activate ${key}: ${a.status} ${short(a.json)}`);
   }
-  async function sign(gate: string, role: Role, market?: string) {
-    const key = WHO[role];
-    const su = await api(key, 'POST', `/projects/${PROJECT}/gates/${gate}/sign-offs/step-up`, { role, market, code: await code(key) });
+  // What the signer is shown first: the whole snapshot and the hash the signature is bound to.
+  const previewOf = async (key: string, gate: string, market?: string) =>
+    (await api(key, 'GET', `/projects/${PROJECT}/gates/${gate}/sign-offs/preview${market ? `?market=${encodeURIComponent(market)}` : ''}`)).json;
+  // `between` runs after the preview and before the submit — where somebody else's edit lands.
+  async function sign(gate: string, role: Role, market?: string, between?: () => Promise<void>) {
+    const key = signerKey(gate, role, market);
+    const preview = await previewOf(key, gate, market);
+    const su = await api(key, 'POST', `/projects/${PROJECT}/gates/${gate}/sign-offs/step-up`, {
+      role,
+      market,
+      code: await code(key),
+      expectedHash: preview.hash,
+    });
     if (su.status >= 300) return { status: su.status, json: su.json, stage: 'step-up' };
+    if (between) await between();
     const r = await api(key, 'POST', `/projects/${PROJECT}/gates/${gate}/sign-offs/sign`, {
       role,
       market,
       decision: 'Proceed',
       comment: 'checked',
       stepUpToken: su.json.stepUpToken,
-      expectedVersion: await version(),
+      expectedHash: preview.hash,
+      seen: { snapshot: preview.snapshot, previewedAt: preview.previewedAt },
     });
     return { ...r, stage: 'sign' };
   }
@@ -111,11 +142,40 @@ export async function run(base: string, db: Client): Promise<number> {
   const nominate = async (gate: string, market?: string) =>
     api('admin', 'PUT', `/projects/${PROJECT}/gates/${gate}/sign-off-assignees`, {
       market,
-      assignments: ROLES.map((role) => ({ role, userId: sessions[WHO[role]].id })),
+      assignments: ROLES.map((role) => ({ role, userId: sessions[signerKey(gate, role, market)].id })),
       expectedVersion: await version(),
     });
   const complete = async (gate: string) =>
     api('admin', 'PUT', `/projects/${PROJECT}/gates/${gate}`, { status: 'Complete', expectedVersion: await version() });
+  // ---- phase sign-off helpers (the same three roles, one lane per phase) ------------------------
+  const phaseKey = (phase: number, role: Role) => signerKey(`PHASE${phase}`, role);
+  const nominatePhase = async (phase: number) =>
+    api('admin', 'PUT', `/projects/${PROJECT}/phases/${phase}/sign-off-assignees`, {
+      assignments: ROLES.map((role) => ({ role, userId: sessions[phaseKey(phase, role)].id })),
+      expectedVersion: await version(),
+    });
+  async function signPhase(phase: number, role: Role, between?: () => Promise<void>) {
+    const key = phaseKey(phase, role);
+    const su = await api(key, 'POST', `/projects/${PROJECT}/phases/${phase}/sign-offs/step-up`, { role, code: await code(key) });
+    if (su.status >= 300) return { status: su.status, json: su.json, stage: 'step-up' };
+    if (between) await between();
+    const out = await api(key, 'POST', `/projects/${PROJECT}/phases/${phase}/sign-offs/sign`, {
+      role,
+      decision: 'Proceed',
+      comments: 'checked',
+      stepUpToken: su.json.stepUpToken,
+    });
+    return { ...out, stage: 'sign' };
+  }
+  // Closing a phase the way a person does: nominate, then three real signatures.
+  async function closePhaseBySigning(phase: number) {
+    const n = await nominatePhase(phase);
+    t(`Phase ${phase} signers are nominated`, n.status < 300, short(n.json));
+    for (const role of ROLES) {
+      const out = await signPhase(phase, role);
+      t(`${role} signs Phase ${phase}`, out.status < 300, `${out.stage} ${out.status} ${short(out.json)}`);
+    }
+  }
   const putClaims = async (mutate: (rows: any[]) => any[]) => {
     const current = (await project()).project.registers.claimEvidenceTraceability ?? [];
     return api('admin', 'PUT', `/projects/${PROJECT}/registers/claimEvidenceTraceability`, {
@@ -128,8 +188,28 @@ export async function run(base: string, db: Client): Promise<number> {
   await login('admin', 'app.admin@maxbiocare.com');
   await login('tuan', 'tuan@demo.mbc360.local');
   await login('sekar', 'sekar@demo.mbc360.local');
-  for (const key of ['admin', 'tuan', 'sekar']) await enroll(key);
-  t('three accounts enrolled an authenticator with real codes', true);
+  // Clone the three signer accounts POOL-1 times (same department, same roles) so lanes can sign in parallel.
+  for (const role of ROLES) {
+    for (let n = 1; n < POOL; n += 1) {
+      const email = `e2e.${poolKey(role, n)}@demo.mbc360.local`;
+      await db.query(
+        `INSERT INTO users (id, email, "displayName", "departmentId", active, "createdAt", "updatedAt")
+         SELECT md5(random()::text || clock_timestamp()::text), $2, "displayName" || ' #' || $3::text, "departmentId", true, now(), now()
+         FROM users WHERE email = $1`,
+        [TEMPLATE_EMAIL[role], email, n],
+      );
+      await db.query(
+        `INSERT INTO user_roles ("userId", "roleId")
+         SELECT c.id, ur."roleId" FROM users c, users s JOIN user_roles ur ON ur."userId" = s.id
+         WHERE c.email = $2 AND s.email = $1`,
+        [TEMPLATE_EMAIL[role], email],
+      );
+      await login(poolKey(role, n), email);
+    }
+  }
+  const accounts = Object.keys(sessions);
+  await Promise.all(accounts.map((key) => enroll(key)));
+  t(`${accounts.length} accounts enrolled an authenticator with real codes`, true);
 
   // Register closing is a precondition of passing a gate, and a CLOSED register is read-only — so a
   // gate's registers are closed only when that gate is about to pass, as in real use, never earlier.
@@ -154,7 +234,7 @@ export async function run(base: string, db: Client): Promise<number> {
   // Key Gate Checks are part of a gate's evidence (and of its signature snapshot), and phase closing
   // requires them all done. Ticking them AFTER a gate was signed would turn that signature stale, so
   // they are ticked before anything is signed — as a real project must do.
-  await db.query(`UPDATE gate_checks SET done = true, ynna = 'Y' WHERE "projectId" = $1 AND gate IN ('01','02','03','04','05','06','07','08','09')`, [PROJECT]);
+  await db.query(`UPDATE gate_checks SET done = true, ynna = 'Y' WHERE "projectId" = $1 AND gate IN ('01','02','03','04','05','06','07','08','09','10','11','12','ALL')`, [PROJECT]);
 
   // ============================================================ SG01: identity data
   console.log('\n--- SG01 (the identity fields are Gate 1 data)');
@@ -181,7 +261,7 @@ export async function run(base: string, db: Client): Promise<number> {
   t('editing initialScope (Gate 1 data) is accepted before the gate has passed', r.status < 300, short(r.json));
   const s1 = await stale('SG01', 'Prepared by');
   t('...and it makes the Prepared signature stale, naming what changed', s1.some((c) => c.startsWith('Project identity')), short(s1));
-  r = await api('tuan', 'POST', `/projects/${PROJECT}/gates/SG01/sign-offs/withdraw`, {
+  r = await api(signerKey('SG01', 'Prepared by'), 'POST', `/projects/${PROJECT}/gates/SG01/sign-offs/withdraw`, {
     role: 'Prepared by',
     reason: 'scope changed',
     expectedVersion: await version(),
@@ -216,10 +296,49 @@ export async function run(base: string, db: Client): Promise<number> {
   const rows0 = (await project()).project.registers.claimEvidenceTraceability;
   t('the server no longer stamps rows (SW-4 was replaced by the row rule)', rows0[0].__rowId === undefined && rows0[0].__bornAtGate === undefined, short(rows0[0]));
   await complete('SG03');
-  r = await sign('SG03', 'Prepared by');
-  t('Prepared signs SG03', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
+  // The signing preview and the content hash (2026-10-09). Somebody else edits between the signer's
+  // preview and the submit.
+  const pv = await previewOf(signerKey('SG03', 'Prepared by'), 'SG03');
+  t('the preview carries a hash and the full snapshot', typeof pv.hash === 'string' && pv.hash.length === 64 && !!pv.snapshot?.registerCells, short(Object.keys(pv)));
+  const pv2 = await previewOf(signerKey('SG03', 'Prepared by'), 'SG03');
+  t('two previews of unchanged evidence give the same hash', pv.hash === pv2.hash);
+  r = await sign('SG03', 'Prepared by', undefined, async () => {
+    await putClaims((rows) => {
+      rows[0].approvedWording = 'Edited while the signer was reading';
+      return rows;
+    });
+  });
+  t('a change to what is being signed, made after the preview, refuses the submit (422)', r.status === 422 && r.json?.code === 'GATE_CONTENT_CHANGED', `${r.stage} ${r.status} ${short(r.json)}`);
+  t('...naming what changed', (r.json?.changes ?? []).some((c: string) => c.includes('approvedWording')), short(r.json?.changes));
+  t('...and who changed it', (r.json?.editedBy ?? []).length > 0, short(r.json?.editedBy));
+  t('...and nothing was signed', (await stale('SG03', 'Prepared by')).length === 0 && !(await project()).project.gateSignOffs.some((s: any) => s.gateId === 'SG03' && s.signedAt), '');
+  await putClaims((rows) => {
+    rows[0].approvedWording = 'Hydrates skin';
+    return rows;
+  });
+  r = await sign('SG03', 'Prepared by', undefined, async () => {
+    await putClaims((rows) => {
+      rows[0].evidenceGrade = 'A';
+      return rows;
+    });
+  });
+  t('a change to a later gate\'s column after the preview does NOT stop the signature', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
+  // A code bound to one version of the evidence cannot sign another.
+  const keyP = signerKey('SG03', 'Reviewed by');
+  const old = await previewOf(keyP, 'SG03');
+  const suOld = await api(keyP, 'POST', `/projects/${PROJECT}/gates/SG03/sign-offs/step-up`, { role: 'Reviewed by', code: await code(keyP), expectedHash: old.hash });
+  r = await api(keyP, 'POST', `/projects/${PROJECT}/gates/SG03/sign-offs/sign`, {
+    role: 'Reviewed by',
+    decision: 'Proceed',
+    comment: 'checked',
+    stepUpToken: suOld.json.stepUpToken,
+    expectedHash: 'f'.repeat(64),
+  });
+  t('a step-up proof bound to one hash cannot sign with another', r.status === 422 || r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await api(keyP, 'POST', `/projects/${PROJECT}/gates/SG03/sign-offs/sign`, { role: 'Reviewed by', decision: 'Proceed', comment: 'x', stepUpToken: 'x' });
+  t('a submit with no hash is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
   r = await putClaims((rows) => {
-    rows[0].evidenceGrade = 'A';
+    rows[0].evidenceGrade = 'B';
     return rows;
   });
   t('filling a Gate 8 column (evidenceGrade) of the signed claim is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
@@ -274,11 +393,59 @@ export async function run(base: string, db: Client): Promise<number> {
       WHERE "phaseClosureId" IN (SELECT id FROM phase_closures WHERE "projectId" = $1 AND phase = 1)`,
     [PROJECT],
   );
-  await db.query(
-    `UPDATE sign_offs SET name = 'x', initials = 'x', decision = 'Proceed', "signedByUserId" = $2, "signedAt" = now(), date = now()
-      WHERE "phaseClosureId" IN (SELECT id FROM phase_closures WHERE "projectId" = $1 AND phase = 1)`,
-    [PROJECT, sessions.admin.id],
-  );
+  // The phase signatures are real (SW-22), with a change elsewhere in the project landing between the
+  // code and the signature, which used to refuse it (409).
+  const phaseAngles = async () => (await project()).project.phaseClosures[1].angles;
+  // Nomination is the Lead's; a plain account that is not the Lead may not.
+  r = await api('tuan', 'PUT', `/projects/${PROJECT}/phases/1/sign-off-assignees`, {
+    assignments: [{ role: 'Prepared by', userId: sessions[phaseKey(1, 'Prepared by')].id }],
+    expectedVersion: await version(),
+  });
+  t('somebody who is not the project Lead cannot nominate a phase signer (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await signPhase(1, 'Prepared by');
+  t('signing with nobody nominated is refused (400)', r.status === 400 || r.status === 403 || r.status === 404, `${r.stage} ${r.status} ${short(r.json)}`);
+  r = await nominatePhase(1);
+  t('Phase 1 signers are nominated by the Lead', r.status < 300, short(r.json));
+  r = await api(phaseKey(1, 'Reviewed by'), 'POST', `/projects/${PROJECT}/phases/1/sign-offs/sign`, { role: 'Prepared by', decision: 'Proceed', comments: 'x', stepUpToken: 'x' });
+  t("signing somebody else's row is refused (403)", r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await api(phaseKey(1, 'Prepared by'), 'POST', `/projects/${PROJECT}/phases/1/sign-offs/sign`, { role: 'Prepared by', decision: 'Hold', stepUpToken: 'x' });
+  t('a decision other than a plain Proceed needs a comment (400)', r.status === 400 && String(r.json?.message).includes('comment'), `${r.status} ${short(r.json)}`);
+  r = await api(phaseKey(1, 'Prepared by'), 'POST', `/projects/${PROJECT}/phases/1/sign-offs/sign`, { role: 'Prepared by', decision: 'Proceed', comments: 'x' });
+  t('signing without an authenticator step-up is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  // Phase 2 is far from closed, so its closure conditions refuse a signature.
+  r = await nominatePhase(2);
+  r = await signPhase(2, 'Prepared by');
+  t('a phase whose closure conditions are not met cannot be signed (400)', r.status === 400 && String(r.json?.message).includes('closure conditions'), `${r.stage} ${r.status} ${short(r.json)}`);
+  const originalBatch = (await project()).project.costing.batchSizeKg;
+  r = await signPhase(1, 'Prepared by', async () => {
+    // Somebody edits something unrelated (costing, Gate 5 data) after the signer entered the code.
+    await api('admin', 'PUT', `/projects/${PROJECT}/costing`, { patch: { batchSizeKg: 123 }, expectedVersion: await version() });
+  });
+  t('a phase signature is not refused because the project changed elsewhere meanwhile', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/phases/1/angles`, { angles: await phaseAngles(), expectedVersion: await version() });
+  t('with a phase signature standing, the 8 Angles are read-only (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/phases/1/evidence-summary`, { value: 'changed', expectedVersion: await version() });
+  t('...and so is the evidence summary (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'POST', `/projects/${PROJECT}/phases/1/accept-pre-work`, { expectedVersion: await version() });
+  t('...and so is accepting pre-work (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/phases/1/sign-off-assignees`, {
+    assignments: [{ role: 'Prepared by', userId: sessions[phaseKey(1, 'Reviewed by')].id }],
+    expectedVersion: await version(),
+  });
+  t('a signed row cannot be reassigned (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await api(phaseKey(1, 'Reviewed by'), 'POST', `/projects/${PROJECT}/phases/1/sign-offs/withdraw`, { role: 'Prepared by', reason: 'not mine' });
+  t("somebody else cannot withdraw another person's signature (403)", r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await api(phaseKey(1, 'Prepared by'), 'POST', `/projects/${PROJECT}/phases/1/sign-offs/withdraw`, { role: 'Prepared by', reason: '' });
+  t('withdrawing needs a reason (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await api(phaseKey(1, 'Prepared by'), 'POST', `/projects/${PROJECT}/phases/1/sign-offs/withdraw`, { role: 'Prepared by', reason: 'angles to correct' });
+  t('the signer withdraws, with no project version needed', r.status < 300, short(r.json));
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/phases/1/angles`, { angles: await phaseAngles(), expectedVersion: await version() });
+  t('...and the angles are editable again', r.status < 300, `${r.status} ${short(r.json)}`);
+  for (const role of ROLES) {
+    r = await signPhase(1, role);
+    t(`${role} signs Phase 1`, r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
+  }
+  await api('admin', 'PUT', `/projects/${PROJECT}/costing`, { patch: { batchSizeKg: originalBatch }, expectedVersion: await version() });
   pj = await project();
   t('Phase 1 is complete, so the project moves on to SG04', gp.phaseCompletionChecklist(pj.project, 1).signOffsComplete && gp.currentGateIndex(pj.project) === 3, `index ${gp.currentGateIndex(pj.project)} ${short(gp.phaseCompletionChecklist(pj.project, 1))}`);
 
@@ -432,11 +599,7 @@ export async function run(base: string, db: Client): Promise<number> {
       WHERE "phaseClosureId" IN (SELECT id FROM phase_closures WHERE "projectId" = $1 AND phase = 2)`,
     [PROJECT],
   );
-  await db.query(
-    `UPDATE sign_offs SET name = 'x', initials = 'x', decision = 'Proceed', "signedByUserId" = $2, "signedAt" = now(), date = now()
-      WHERE "phaseClosureId" IN (SELECT id FROM phase_closures WHERE "projectId" = $1 AND phase = 2)`,
-    [PROJECT, sessions.admin.id],
-  );
+  await closePhaseBySigning(2);
   pj = await project();
   t('Phase 2 is complete, so the project moves on to SG07', gp.phaseCompletionChecklist(pj.project, 2).signOffsComplete && gp.currentGateIndex(pj.project) === 6, `index ${gp.currentGateIndex(pj.project)} ${short(gp.phaseCompletionChecklist(pj.project, 2))}`);
   await nominate('SG07');
@@ -543,11 +706,7 @@ export async function run(base: string, db: Client): Promise<number> {
       WHERE "phaseClosureId" IN (SELECT id FROM phase_closures WHERE "projectId" = $1 AND phase = 3)`,
     [PROJECT],
   );
-  await db.query(
-    `UPDATE sign_offs SET name = 'x', initials = 'x', decision = 'Proceed', "signedByUserId" = $2, "signedAt" = now(), date = now()
-      WHERE "phaseClosureId" IN (SELECT id FROM phase_closures WHERE "projectId" = $1 AND phase = 3)`,
-    [PROJECT, sessions.admin.id],
-  );
+  await closePhaseBySigning(3);
   pj = await project();
   t('Phase 3 is complete, so the project moves on to SG10', gp.phaseCompletionChecklist(pj.project, 3).signOffsComplete && gp.currentGateIndex(pj.project) === 9, `index ${gp.currentGateIndex(pj.project)} ${short(gp.phaseCompletionChecklist(pj.project, 3))}`);
   // The demo project sells in several markets; each one is a lane that must be signed separately.
@@ -641,6 +800,28 @@ export async function run(base: string, db: Client): Promise<number> {
     const all = await Promise.all(lanes.flatMap((m) => ROLES.map((role) => stale(g, role, m))));
     t(`${g}: no signature is stale${perMarket ? ' (both lanes)' : ''}`, all.every((c) => c.length === 0), short(all));
   }
+
+  console.log('\n--- Phase 4 closes by signature; its own data is then read-only');
+  await db.query(
+    `UPDATE angle_rows SET covered = true, ynna = 'Y'
+      WHERE "phaseClosureId" IN (SELECT id FROM phase_closures WHERE "projectId" = $1 AND phase = 4)`,
+    [PROJECT],
+  );
+  // Requirement rows tagged 'ALL' (the change-control closure checks) belong to no gate, so no gate
+  // freezes them; Phase 4's signature does.
+  const closureRows = async () => (await project()).project.requirements.changeControlClosure as any[];
+  const putClosure = async (status: string) => {
+    const rows = (await closureRows()).map((x: any) => ({ ...x }));
+    rows[0].status = status;
+    return api('admin', 'PUT', `/projects/${PROJECT}/requirements/changeControlClosure`, { items: rows, expectedVersion: await version() });
+  };
+  r = await putClosure('In Progress');
+  t('before Phase 4 is signed, a closure row can be edited', r.status < 300 && (await closureRows())[0].status === 'In Progress', `${r.status} ${short(r.json)}`);
+  await closePhaseBySigning(4);
+  pj = await project();
+  t('Phase 4 is complete', gp.phaseCompletionChecklist(pj.project, 4).signOffsComplete, short(gp.phaseCompletionChecklist(pj.project, 4)));
+  await putClosure('Completed');
+  t('under a standing Phase 4 signature the closure rows are read-only (the edit is skipped)', (await closureRows())[0].status === 'In Progress', short((await closureRows())[0]));
 
   console.log('\n--- a new market is added after every gate has passed (allowed after Gate 1 by design, F4)');
   r = await api('admin', 'PUT', `/projects/${PROJECT}/markets`, { markets: [...MARKETS, 'Singapore'], expectedVersion: await version() });

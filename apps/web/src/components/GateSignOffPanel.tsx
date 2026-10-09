@@ -2,7 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Input, Modal, Select, Tooltip } from 'antd';
 import { CheckOutlined, ClockCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { GateSignOff, GateSignOffRole, ProjectData } from '@mbc360/shared/types';
+import type {
+  GateContentChangedBody,
+  GateSignOff,
+  GateSignOffRole,
+  GateSigningPreview,
+  ProjectData,
+} from '@mbc360/shared/types';
 import { GATE_SIGNOFF_ROLES } from '@mbc360/shared/types';
 import { GATE_DECISIONS, GATES } from '@mbc360/shared/config/gates';
 import { openChangesAffectingGate } from '@mbc360/shared/config/changeTriggers';
@@ -28,6 +34,7 @@ import { useSession } from '../auth/useSession';
 import { usePickerUsers } from '../hooks/useUserOptions';
 import { getMySignature, getMyTotpStatus } from '../api/accountApi';
 import GateSignOffStepUpModal from './GateSignOffStepUpModal';
+import GateSignPreviewModal from './GateSignPreviewModal';
 import '../styles/concept.css';
 import './GateSignOffPanel.css';
 
@@ -89,7 +96,10 @@ export default function GateSignOffPanel({
   const stageStatus = project.gates.find((g) => g.gateId === gateId)?.status ?? 'Not Started';
   const stageIncomplete = stageStatus !== 'Complete';
   const [drafts, setDrafts] = useState<Record<string, { decision?: string; comment?: string }>>({});
-  const [stepUp, setStepUp] = useState<{ market?: string; role: GateSignOffRole } | null>(null);
+  // Sign opens the preview first (everything the signature attests to), then the authenticator step.
+  const [reviewing, setReviewing] = useState<{ market?: string; role: GateSignOffRole } | null>(null);
+  const [stepUp, setStepUp] = useState<{ market?: string; role: GateSignOffRole; preview: GateSigningPreview } | null>(null);
+  const [changed, setChanged] = useState<GateContentChangedBody | null>(null);
   const [withdrawing, setWithdrawing] = useState<{ market?: string; role: GateSignOffRole } | null>(null);
   const [reason, setReason] = useState('');
   const [hasSignature, setHasSignature] = useState(false);
@@ -353,7 +363,13 @@ export default function GateSignOffPanel({
                             </span>
                           </Tooltip>
                         ) : (
-                          <Button type="primary" onClick={() => setStepUp({ market, role: r.role })}>
+                          <Button
+                            type="primary"
+                            onClick={() => {
+                              setChanged(null);
+                              setReviewing({ market, role: r.role });
+                            }}
+                          >
                             Sign
                           </Button>
                         )}
@@ -397,12 +413,31 @@ export default function GateSignOffPanel({
         />
       </Modal>
 
+      <GateSignPreviewModal
+        open={reviewing !== null}
+        projectId={projectId}
+        gateId={gateId}
+        market={reviewing?.market}
+        roleLabel={reviewing?.role ?? ''}
+        changed={changed}
+        onCancel={() => {
+          setReviewing(null);
+          setChanged(null);
+        }}
+        onContinue={(preview) => {
+          if (!reviewing) return;
+          setStepUp({ ...reviewing, preview });
+          setReviewing(null);
+        }}
+      />
+
       <GateSignOffStepUpModal
         open={stepUp !== null}
         projectId={projectId}
         gateId={gateId}
         market={stepUp?.market}
         role={stepUp?.role ?? 'Prepared by'}
+        expectedHash={stepUp?.preview.hash ?? ''}
         onClose={() => setStepUp(null)}
         onVerified={(token) => {
           const target = stepUp;
@@ -413,6 +448,14 @@ export default function GateSignOffPanel({
             decision: d.decision,
             comment: d.comment,
             stepUpToken: token,
+            expectedHash: target.preview.hash,
+            seen: { snapshot: target.preview.snapshot, previewedAt: target.preview.previewedAt },
+          }).then((refusal) => {
+            // The evidence changed while the signer was reading: show what, and let them review again.
+            if (refusal) {
+              setChanged(refusal);
+              setReviewing({ market: target.market, role: target.role });
+            }
           });
         }}
       />

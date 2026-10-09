@@ -4,7 +4,9 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import {
   COSTING_FEASIBILITY_STATUSES,
   GATES,
@@ -69,7 +71,12 @@ import {
   isPerMarketGate,
   previousGateSignOffRole,
 } from '@mbc360/shared/config/gateSignOff';
-import { gateEvidenceSnapshot } from '@mbc360/shared/utils/gateSnapshot';
+import {
+  canonicalJson,
+  describeGateContentChanges,
+  gateEvidenceSnapshot,
+  gateSnapshotSignedPart,
+} from '@mbc360/shared/utils/gateSnapshot';
 import { supersessionGaps, versionMarkets } from '@mbc360/shared/utils/formulaLifecycle';
 import {
   CLAIM_EXEMPTION_CAPABILITY,
@@ -88,6 +95,8 @@ import {
   phaseProgress,
   isGateUnlocked,
   phaseCompletionChecklist,
+  PHASE_DATA_LOCKED_REASON,
+  isPhaseDataLocked,
 } from '@mbc360/shared/utils/gateProgress';
 import {
   ADMINISTRATIVE_ONLY_OPTIONS,
@@ -101,7 +110,7 @@ import {
   SCALE_UP_RISK_OPTIONS,
   isRegisterClosed,
 } from '@mbc360/shared/types';
-import type { GateSignOffRole, NextActionStatus } from '@mbc360/shared/types';
+import type { GateSignOffRole, GateSigningPreview, NextActionStatus } from '@mbc360/shared/types';
 import type {
   AngleRow,
   ChangeRecord,
@@ -727,7 +736,10 @@ export class ProjectsService {
   private async mutate(
     user: SessionUser,
     id: string,
-    expectedVersion: number,
+    // `null` skips the project-wide version check. Used by gate signing ONLY, which is guarded by a
+    // content hash of what is being signed instead, so other people can keep working on the project
+    // while a signer reads. The row lock still serialises the write.
+    expectedVersion: number | null,
     action: string,
     write: (
       tx: Prisma.TransactionClient,
@@ -864,7 +876,8 @@ export class ProjectsService {
       let skipped = 0;
       for (const [index, item] of items.entries()) {
         const target = existing[index];
-        if (isGateRefLocked(project, target.gate)) {
+        // Rows tagged 'ALL' belong to no gate, so no gate locks them; Phase 4's signature does (SW-22).
+        if (isGateRefLocked(project, target.gate) || (target.gate === 'ALL' && isPhaseDataLocked(project, 4))) {
           skipped++;
           continue;
         }
@@ -931,6 +944,12 @@ export class ProjectsService {
     });
   }
 
+  private assertPhaseDataOpen(project: ProjectData, phase: number): void {
+    if (isPhaseDataLocked(project, phase)) {
+      throw new ForbiddenException(`Phase ${phase}: ${PHASE_DATA_LOCKED_REASON}`);
+    }
+  }
+
   private async phaseClosureId(tx: Prisma.TransactionClient, id: string, phase: number): Promise<string> {
     const closure = await tx.phaseClosure.findUnique({
       where: { projectId_phase: { projectId: id, phase } },
@@ -947,7 +966,8 @@ export class ProjectsService {
     angles: AngleRow[],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
-    return this.mutate(user, id, expectedVersion, 'angles.updated', async (tx) => {
+    return this.mutate(user, id, expectedVersion, 'angles.updated', async (tx, _row, project) => {
+      this.assertPhaseDataOpen(project, phase);
       const closureId = await this.phaseClosureId(tx, id, phase);
       for (const a of angles) {
         await tx.angleRow.update({
@@ -1116,9 +1136,11 @@ export class ProjectsService {
     phase: number,
     role: SignOff['role'],
     input: { decision?: string; comments?: string; stepUpToken?: string },
-    expectedVersion: number,
   ): Promise<ProjectEnvelope> {
-    return this.mutate(user, id, expectedVersion, 'sign_off.signed', async (tx, row, project) => {
+    // No project-wide version: whether the phase may be signed is decided from the data inside the
+    // locked transaction (closure conditions, B3), so an edit elsewhere in the project must not
+    // refuse a signature. The row lock still serialises it.
+    return this.mutate(user, id, null, 'sign_off.signed', async (tx, row, project) => {
       const closureId = await this.phaseClosureId(tx, id, phase);
       const existing = await tx.signOff.findFirst({ where: { phaseClosureId: closureId, role } });
       if (!existing) throw new NotFoundException(`Sign-off row "${role}" not found on phase ${phase}`);
@@ -1266,11 +1288,10 @@ export class ProjectsService {
     phase: number,
     role: SignOff['role'],
     reason: string,
-    expectedVersion: number,
   ): Promise<ProjectEnvelope> {
     const why = reason?.trim();
     if (!why) throw new BadRequestException('A reason is required to withdraw a signature');
-    return this.mutate(user, id, expectedVersion, 'sign_off.withdrawn', async (tx) => {
+    return this.mutate(user, id, null, 'sign_off.withdrawn', async (tx) => {
       const closureId = await this.phaseClosureId(tx, id, phase);
       const existing = await tx.signOff.findFirst({ where: { phaseClosureId: closureId, role } });
       if (!existing) throw new NotFoundException(`Sign-off row "${role}" not found on phase ${phase}`);
@@ -1317,8 +1338,36 @@ export class ProjectsService {
   // Rows are created lazily (`upsert`) rather than scaffolded: the per-market
   // lanes depend on a market list that changes during the project.
 
-  private gateSignOffStepUpPurpose(id: string, gateId: string, market: string | undefined, role: string): string {
-    return `gate_sign_off:${id}:${gateId}:${market ?? ''}:${role}`;
+  // The proof is bound to the CONTENT the signer was shown (its hash), so a code entered for one
+  // version of the evidence cannot sign another.
+  private gateSignOffStepUpPurpose(
+    id: string,
+    gateId: string,
+    market: string | undefined,
+    role: string,
+    contentHash: string,
+  ): string {
+    return `gate_sign_off:${id}:${gateId}:${market ?? ''}:${role}:${contentHash}`;
+  }
+
+  private gateContentHash(snapshot: ReturnType<typeof gateEvidenceSnapshot>): string {
+    return createHash('sha256').update(canonicalJson(gateSnapshotSignedPart(snapshot))).digest('hex');
+  }
+
+  // What the signer reads before signing: the whole gate snapshot and the hash their signature will
+  // be bound to. Read-only — nothing is written, and any signed-in user may read project data.
+  async previewGateSignOff(id: string, gateId: string, market: string | undefined): Promise<GateSigningPreview> {
+    const row = await this.loadOrThrow(this.prisma, id);
+    const project = toProjectData(row, [], await this.loadReference(this.prisma));
+    this.assertGateLane(project, gateId, market);
+    const snapshot = gateEvidenceSnapshot(project, gateId, market);
+    return {
+      gateId,
+      ...(market ? { market } : {}),
+      hash: this.gateContentHash(snapshot),
+      previewedAt: new Date().toISOString(),
+      snapshot,
+    };
   }
 
   // A lane must be one the project actually has. Without this a caller could sign
@@ -1517,7 +1566,9 @@ export class ProjectsService {
     market: string | undefined,
     role: GateSignOffRole,
     code: string,
+    expectedHash: string,
   ): Promise<{ stepUpToken: string }> {
+    if (!expectedHash) throw new BadRequestException('expectedHash is required — open the signing preview first');
     const existing = await this.prisma.gateSignOff.findFirst({
       where: {
         projectId: id,
@@ -1535,7 +1586,7 @@ export class ProjectsService {
     const signature = await this.prisma.userSignature.findUnique({ where: { userId: user.id } });
     if (!signature) throw new BadRequestException('Save a signature in My Account before signing');
     await this.totp.verifyForStepUp(user.id, code);
-    const purpose = this.gateSignOffStepUpPurpose(id, gateId, market, role);
+    const purpose = this.gateSignOffStepUpPurpose(id, gateId, market, role, expectedHash);
     const proof = await this.prisma.stepUpProof.create({ data: { userId: user.id, purpose, channel: 'totp' } });
     const stepUpToken = await this.jwt.signAsync(
       { sub: user.id, typ: 'gate_sign_off_step_up', proof: proof.id, purpose },
@@ -1550,10 +1601,17 @@ export class ProjectsService {
     gateId: string,
     market: string | undefined,
     role: GateSignOffRole,
-    input: { decision?: string; comment?: string; stepUpToken?: string },
-    expectedVersion: number,
+    input: {
+      decision?: string;
+      comment?: string;
+      stepUpToken?: string;
+      expectedHash?: string;
+      // What the signer was shown and when. Used ONLY to word a refusal (what changed, who by); the
+      // hash alone decides, and a snapshot that does not hash to `expectedHash` is ignored.
+      seen?: { snapshot?: ReturnType<typeof gateEvidenceSnapshot>; previewedAt?: string };
+    },
   ): Promise<ProjectEnvelope> {
-    return this.mutate(user, id, expectedVersion, 'gate_sign_off.signed', async (tx, _row, project) => {
+    return this.mutate(user, id, null, 'gate_sign_off.signed', async (tx, _row, project) => {
       this.assertGateLane(project, gateId, market);
       // B4 (SME rule audit, 2026-10-04): a sign-off is part of working the gate,
       // so it follows the same lock as every other gate edit — only the gate open
@@ -1670,6 +1728,44 @@ export class ProjectsService {
         );
       }
 
+      // The signer signs what they were SHOWN. Compared here, inside the row-locked transaction, so
+      // the content cannot change between this check and the write. Other people's edits elsewhere
+      // do not matter — only the part of the snapshot this signature is accountable for is hashed.
+      const snapshot = gateEvidenceSnapshot(project, gateId, market);
+      if (!input.expectedHash) {
+        throw new BadRequestException('expectedHash is required — open the signing preview first');
+      }
+      if (this.gateContentHash(snapshot) !== input.expectedHash) {
+        const seen = input.seen?.snapshot;
+        const seenValid = seen !== undefined && this.gateContentHash(seen) === input.expectedHash;
+        const changes = seenValid ? describeGateContentChanges(seen, snapshot) : [];
+        const since = input.seen?.previewedAt ? new Date(input.seen.previewedAt) : undefined;
+        const edits =
+          since && !Number.isNaN(since.getTime())
+            ? await tx.auditEvent.findMany({
+                where: { projectId: id, occurredAt: { gt: since }, actorId: { not: user.id } },
+                include: { actor: { select: { displayName: true } } },
+                orderBy: { occurredAt: 'asc' },
+                take: 50,
+              })
+            : [];
+        const seenBy = new Set<string>();
+        const editedBy = edits
+          .map((e) => ({ by: e.actor?.displayName ?? 'someone', action: e.action, at: e.occurredAt.toISOString() }))
+          .filter((e) => {
+            const key = `${e.by}|${e.action}`;
+            if (seenBy.has(key)) return false;
+            seenBy.add(key);
+            return true;
+          });
+        throw new UnprocessableEntityException({
+          code: 'GATE_CONTENT_CHANGED',
+          message: 'The evidence for this gate changed after you opened the signing preview — review it again before signing.',
+          changes,
+          editedBy,
+        });
+      }
+
       let signatureImage: string | null = null;
       {
         if (!input.stepUpToken) {
@@ -1681,7 +1777,7 @@ export class ProjectsService {
         } catch {
           throw new BadRequestException('Verification expired or invalid — enter a new code');
         }
-        const expectedPurpose = this.gateSignOffStepUpPurpose(id, gateId, market, role);
+        const expectedPurpose = this.gateSignOffStepUpPurpose(id, gateId, market, role, input.expectedHash);
         if (payload.typ !== 'gate_sign_off_step_up' || payload.sub !== user.id || payload.purpose !== expectedPurpose) {
           throw new BadRequestException('Verification does not match this sign-off');
         }
@@ -1700,7 +1796,6 @@ export class ProjectsService {
       // Question 29(1). Taken here, inside the row-locked transaction, so it is
       // exactly the evidence that existed at the moment of signing — and stored in
       // full, because the answer requires the system to say what changed later.
-      const snapshot = gateEvidenceSnapshot(project, gateId, market);
       const now = new Date();
       await tx.gateSignOff.update({
         where: { id: existing.id },
@@ -1848,7 +1943,8 @@ export class ProjectsService {
     value: string,
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
-    return this.mutate(user, id, expectedVersion, 'evidence_summary.updated', async (tx) => {
+    return this.mutate(user, id, expectedVersion, 'evidence_summary.updated', async (tx, _row, project) => {
+      this.assertPhaseDataOpen(project, phase);
       await tx.phaseClosure.update({
         where: { projectId_phase: { projectId: id, phase } },
         data: { evidenceSummary: value },
@@ -1896,6 +1992,7 @@ export class ProjectsService {
       // "by the responsible owner once the phase opens". Both halves were missing:
       // anyone could accept, and could do it while the phase was still locked —
       // i.e. before there was anything for an owner to review.
+      this.assertPhaseDataOpen(project, phase);
       if (phaseProgress(project, phase).state === 'locked') {
         throw new BadRequestException(`Phase ${phase} has not opened yet — its pre-work is accepted once it opens (F13)`);
       }
@@ -4643,11 +4740,12 @@ export class ProjectsService {
   private async loadVersionLocked(
     tx: Prisma.TransactionClient,
     id: string,
-    expectedVersion: number,
+    expectedVersion: number | null,
   ): Promise<ProjectWithAll> {
     await tx.$queryRaw`SELECT id FROM projects WHERE id = ${id} FOR UPDATE`;
     const row = await this.loadOrThrow(tx, id);
     this.assertMutable(row);
+    if (expectedVersion === null) return row;
     // C12 (SME rule audit, 2026-10-04): a missing version used to skip the check
     // entirely, so any client that left it out wrote last-write-wins — exactly
     // what BACKEND_PLAN §3 principle 8 exists to prevent. Every project write the

@@ -120,6 +120,8 @@ export default function SignOffBlock({
   // B3: sign-off only becomes available once the phase's other closure
   // conditions are met. N/A items count only when justified.
   const locked = !checklist.canSignOff;
+  // SW-22: a standing phase signature freezes the evidence summary along with the angles and pre-work.
+  const dataLocked = closure.signOffs.some((s) => isSignedOff(s));
   const missing = [
     !checklist.gatesPassed && 'all gates passed',
     !checklist.keyChecksDone && 'key gate checks done (or justified N/A)',
@@ -240,6 +242,7 @@ export default function SignOffBlock({
         </div>
         <Input.TextArea
           rows={3}
+          disabled={dataLocked}
           value={draft.evidenceSummary}
           onChange={(e) => update({ evidenceSummary: e.target.value })}
         />

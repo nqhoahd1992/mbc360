@@ -13,6 +13,8 @@ import type {
   RegisterClosureRole,
   RegisterRow,
   RequirementItem,
+  GateEvidenceSnapshot,
+  GateSigningPreview,
   GateSignOffRole,
   SignOff,
 } from '@mbc360/shared/types';
@@ -224,11 +226,10 @@ export const signSignOff = (
   // The step-up token is required: a sign-off always attaches the signer's
   // saved signature (project owner, 2026-08-22).
   input: { decision?: string; comments?: string; stepUpToken: string },
-  expectedVersion: number,
 ) =>
   request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/sign`, {
     method: 'POST',
-    body: JSON.stringify({ role, ...input, expectedVersion }),
+    body: JSON.stringify({ role, ...input }),
   });
 
 export const withdrawSignOff = (
@@ -236,11 +237,10 @@ export const withdrawSignOff = (
   phase: number,
   role: SignOff['role'],
   reason: string,
-  expectedVersion: number,
 ) =>
   request<ProjectEnvelope>(
     `/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/withdraw`,
-    { method: 'POST', body: JSON.stringify({ role, reason, expectedVersion }) },
+    { method: 'POST', body: JSON.stringify({ role, reason }) },
   );
 
 // Round 4 questions 2 and 13 — the per-market post-market records.
@@ -267,29 +267,49 @@ export const setGateSignOffAssignees = (
   v: number,
 ) => put(id, `gates/${gateId}/sign-off-assignees`, { market, assignments }, v);
 
+// What the signer reads before signing, and the hash their signature is bound to.
+export const previewGateSignOff = (
+  id: string,
+  gateId: string,
+  market: string | undefined,
+): Promise<GateSigningPreview> =>
+  request(
+    `/projects/${encodeURIComponent(id)}/gates/${gateId}/sign-offs/preview${
+      market ? `?market=${encodeURIComponent(market)}` : ''
+    }`,
+  );
+
 export const verifyGateSignOffStepUp = (
   id: string,
   gateId: string,
   market: string | undefined,
   role: GateSignOffRole,
   code: string,
+  expectedHash: string,
 ): Promise<{ stepUpToken: string }> =>
   request(`/projects/${encodeURIComponent(id)}/gates/${gateId}/sign-offs/step-up`, {
     method: 'POST',
-    body: JSON.stringify({ market, role, code }),
+    body: JSON.stringify({ market, role, code, expectedHash }),
   });
 
+// No expectedVersion: signing is guarded by the content hash of what was shown, so other people may
+// keep working on the project while the signer reads.
 export const signGateSignOff = (
   id: string,
   gateId: string,
   market: string | undefined,
   role: GateSignOffRole,
-  input: { decision?: string; comment?: string; stepUpToken: string },
-  expectedVersion: number,
+  input: {
+    decision?: string;
+    comment?: string;
+    stepUpToken: string;
+    expectedHash: string;
+    seen: { snapshot: GateEvidenceSnapshot; previewedAt: string };
+  },
 ) =>
   request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/gates/${gateId}/sign-offs/sign`, {
     method: 'POST',
-    body: JSON.stringify({ market, role, ...input, expectedVersion }),
+    body: JSON.stringify({ market, role, ...input }),
   });
 
 export const withdrawGateSignOff = (

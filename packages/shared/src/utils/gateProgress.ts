@@ -1119,7 +1119,9 @@ export function evaluateReadinessCheck(
     // not optional — without it "N/A" is a way to clear a row by clicking, which
     // is the opposite of what a disposition is.
     case 'requirementSectionDispositioned': {
-      const rows = project.requirements[check.section] ?? [];
+      const rows = (project.requirements[check.section] ?? []).filter(
+        (r) => check.gate === undefined || r.gate === check.gate,
+      );
       return {
         evaluable: true,
         satisfied:
@@ -2207,6 +2209,20 @@ export function isPhaseApproved(project: ProjectData, phase: number): boolean {
   const approval = closure.signOffs.find((s) => s.role === 'Approved by');
   return isSignedOff(approval) && GATE_PASSING_DECISIONS.includes(approval?.decision ?? '');
 }
+
+// SW-22 (2026-10-09): once any of a phase's three signatures stands, the data that signature covers
+// and that no gate locks — the 8 Angles, the evidence summary, the pre-work acceptance and, for
+// Phase 4, the requirement rows that belong to no gate ('ALL', the change-control closure checks) —
+// is read-only. The gates' own evidence
+// is already frozen by the gates, so what the phase signature adds is exactly this list. To change
+// any of it the signer withdraws the signature (which needs a reason), so a change can never happen
+// silently under a signature.
+export function isPhaseDataLocked(project: ProjectData, phase: number): boolean {
+  return (project.phaseClosures[phase]?.signOffs ?? []).some((s) => isSignedOff(s));
+}
+
+export const PHASE_DATA_LOCKED_REASON =
+  'A phase signature stands — withdraw it first (with a reason) to change this.';
 
 export function isLastGateOfPhase(index: number): boolean {
   const meta = GATES[index];

@@ -16,10 +16,13 @@ export default function EightAnglesTable({
   projectId,
   phase,
   angles,
+  locked = false,
 }: {
   projectId: string;
   phase: number;
   angles: AngleRow[];
+  // A phase signature stands (SW-22): nothing here can change until it is withdrawn.
+  locked?: boolean;
 }) {
   const setAnglesBulk = useAppStore((s) => s.setAnglesBulk);
   const { draft, dirty, update, markSaved, discard } = useDraft(angles);
@@ -52,6 +55,7 @@ export default function EightAnglesTable({
       title="8 Angles Coverage"
       description="Apply to the phase before gate closure — covered, or N/A with a justification in the comments."
       count={`${covered}/8 covered`}
+      readOnly={locked}
       rows={draft}
       rowKey={(r) => r.angle}
       rowTitle={(r) => r.angle}
@@ -62,36 +66,36 @@ export default function EightAnglesTable({
         {
           label: 'Covered',
           width: 88,
-          render: (r, i) => <Checkbox checked={r.covered} onChange={(e) => toggleCovered(i, e.target.checked)} />,
+          render: (r, i) => <Checkbox disabled={locked} checked={r.covered} onChange={(e) => toggleCovered(i, e.target.checked)} />,
         },
         {
           label: 'Y/N/NA',
           width: 112,
-          render: (r, i) => <Select style={{ width: 90 }} value={r.ynna} options={YNNA_OPTIONS} onChange={(v: YNNA) => patch(i, { ynna: v })} />,
+          render: (r, i) => <Select disabled={locked} style={{ width: 90 }} value={r.ynna} options={YNNA_OPTIONS} onChange={(v: YNNA) => patch(i, { ynna: v })} />,
         },
       ]}
       drawer={(r, i) => (
         <section>
           <div className="rt-grid">
             <RecordField label="Covered">
-              <Checkbox checked={r.covered} onChange={(e) => toggleCovered(i, e.target.checked)}>
+              <Checkbox disabled={locked} checked={r.covered} onChange={(e) => toggleCovered(i, e.target.checked)}>
                 {r.covered ? 'Covered' : 'Not covered'}
               </Checkbox>
             </RecordField>
             <RecordField label="Y/N/NA">
-              <Select style={{ width: '100%' }} value={r.ynna} options={YNNA_OPTIONS} onChange={(v: YNNA) => patch(i, { ynna: v })} />
+              <Select disabled={locked} style={{ width: '100%' }} value={r.ynna} options={YNNA_OPTIONS} onChange={(v: YNNA) => patch(i, { ynna: v })} />
             </RecordField>
             <RecordField label="Date">
-              <DatePicker style={{ width: '100%' }} value={r.date ? dayjs(r.date) : null} onChange={(d) => patch(i, { date: d ? d.format('YYYY-MM-DD') : undefined })} />
+              <DatePicker disabled={locked} style={{ width: '100%' }} value={r.date ? dayjs(r.date) : null} onChange={(d) => patch(i, { date: d ? d.format('YYYY-MM-DD') : undefined })} />
             </RecordField>
             <RecordField label="Initials">
-              <Input value={r.initials} onChange={(e) => patch(i, { initials: e.target.value })} />
+              <Input disabled={locked} value={r.initials} onChange={(e) => patch(i, { initials: e.target.value })} />
             </RecordField>
             <RecordField label="Evidence / reference" wide>
-              <Input ref={evidenceRef} value={r.evidenceRef} onChange={(e) => patch(i, { evidenceRef: e.target.value })} />
+              <Input disabled={locked} ref={evidenceRef} value={r.evidenceRef} onChange={(e) => patch(i, { evidenceRef: e.target.value })} />
             </RecordField>
             <RecordField label="Comments" wide>
-              <Input.TextArea autoSize={{ minRows: 2 }} value={r.comments} onChange={(e) => patch(i, { comments: e.target.value })} />
+              <Input.TextArea disabled={locked} autoSize={{ minRows: 2 }} value={r.comments} onChange={(e) => patch(i, { comments: e.target.value })} />
             </RecordField>
           </div>
         </section>

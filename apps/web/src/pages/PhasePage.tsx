@@ -15,6 +15,7 @@ import {
   phaseProgress,
   skincareForTwoIncompleteSections,
   skincareForTwoTriggers,
+  isPhaseDataLocked,
 } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { GATES, PHASES, phaseLabel } from '@mbc360/shared/config/gates';
@@ -297,7 +298,7 @@ export default function PhasePage() {
       >
         <span className="c-tag c-tag-warn c-tag-dot">Pre-work not reviewed</span>
       </Tooltip>,
-      <Button key="prework-accept" type="link" size="small" icon={<CheckOutlined />} onClick={() => acceptPreWork(project.identity.id, phase)}>
+      <Button key="prework-accept" type="link" size="small" icon={<CheckOutlined />} disabled={isPhaseDataLocked(project, phase)} onClick={() => acceptPreWork(project.identity.id, phase)}>
         Accept pre-work
       </Button>,
     );
@@ -475,14 +476,19 @@ export default function PhasePage() {
                 title={section.title}
                 items={project.requirements[section.key] ?? []}
                 currentGateNumber={currentGateNum}
-                isRowLocked={(item) => isGateRefLocked(project, item.gate)}
+                isRowLocked={(item) => isGateRefLocked(project, item.gate) || (item.gate === 'ALL' && isPhaseDataLocked(project, 4))}
                 columns={section.columns}
                 allowNotApplicable={section.allowNotApplicable}
               />
             </div>
           ))}
           <div id="sec-eight-angles">
-            <EightAnglesTable projectId={project.identity.id} phase={phase} angles={project.phaseClosures[phase].angles} />
+            <EightAnglesTable
+              projectId={project.identity.id}
+              phase={phase}
+              angles={project.phaseClosures[phase].angles}
+              locked={isPhaseDataLocked(project, phase)}
+            />
           </div>
           <div id="sec-next-actions">
             <NextActionsCard project={project} projectId={project.identity.id} gateIds={config.gateIds} actions={project.nextActions} />
@@ -558,7 +564,7 @@ export default function PhasePage() {
                   items={project.requirements[section.key] ?? []}
                   currentGateNumber={currentGateNum}
                   viewedGateNumber={GATES.find((g) => g.id === tab)?.number}
-                  isRowLocked={(item) => isGateRefLocked(project, item.gate)}
+                  isRowLocked={(item) => isGateRefLocked(project, item.gate) || (item.gate === 'ALL' && isPhaseDataLocked(project, 4))}
                   columns={section.columns}
                   allowNotApplicable={section.allowNotApplicable}
                 />

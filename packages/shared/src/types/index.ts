@@ -678,6 +678,25 @@ export interface GateEvidenceSnapshot {
   artworkVersion?: string;
 }
 
+// What the signer is shown before signing, and the hash their signature is bound to. The hash covers
+// the part of the snapshot the signer is accountable for (see gateSnapshotSignedPart); `snapshot`
+// carries everything, including what later gates own, which the screen shows for information.
+export interface GateSigningPreview {
+  gateId: string;
+  market?: string;
+  hash: string;
+  previewedAt: string;
+  snapshot: GateEvidenceSnapshot;
+}
+
+// The body of the refusal when the content changed between the preview and the submit.
+export interface GateContentChangedBody {
+  code: 'GATE_CONTENT_CHANGED';
+  message: string;
+  changes: string[];
+  editedBy: { by: string; action: string; at: string }[];
+}
+
 export interface ProjectAssessments {
   // Question 8 — "Change Control required?", with the five supporting fields the
   // answer lists. Held at PROJECT level, not per finding, because the app has no

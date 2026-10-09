@@ -137,6 +137,12 @@ Mỗi suy đoán có mã `Rn-Qm`, được gắn thẻ `[ASSUMPTION: Rn-Qm]` ở
 ### SW-17. Bảng sửa được dùng bản nháp cục bộ và nút Save — *Đã xây*
 Không ghi vào store theo từng phím gõ. Dùng `useDraft` và `SaveBar`.
 
+### SW-21. Ký gate: xem toàn bộ dữ liệu trước, chữ ký gắn với mã băm nội dung — *Đã xây* (2026-10-09)
+Bấm Ký mở một cửa sổ hiển thị toàn bộ snapshot mà chữ ký xác nhận (Key Gate Check, checklist, yêu cầu, các cột sổ gate này chịu trách nhiệm, dữ liệu dự án, action còn mở). Người ký tiếp tục sang bước authenticator, và mã xác thực gắn với mã băm SHA-256 của nội dung đó. Khi nộp, server tính lại mã băm trong transaction đã khóa hàng. Nếu phần người ký chịu trách nhiệm đã đổi thì từ chối (422) kèm danh sách chỗ đổi và người sửa, người ký xem lại. Phần của gate sau và sổ ngoài phạm vi không nằm trong mã băm, nên người khác vẫn đóng góp được trong lúc ký. Chữ ký gate không còn dùng số phiên bản của cả dự án. Thực thi: `previewGateSignOff`, `signGateSignOff` trong `projects.service.ts`; `gateSnapshotSignedPart` và `describeGateContentChanges` trong `gateSnapshot.ts`; kiểm tra bằng `verify:e2e`.
+
+### SW-22. Chữ ký đóng phase: khóa dữ liệu cấp phase khi còn chữ ký, và ký không phụ thuộc phiên bản cả dự án — *Đã xây* (2026-10-09)
+Chữ ký đóng phase chỉ chốt thêm những thứ các gate không khóa: 8 Angles, evidence summary, xác nhận pre-work và, với Phase 4, các dòng yêu cầu không thuộc gate nào (gate `ALL`, nhóm kiểm tra đóng change control). Khi còn bất kỳ chữ ký phase nào đứng vững, các mục đó chỉ đọc (server từ chối 403, giao diện vô hiệu hóa). Muốn sửa thì người ký rút chữ ký kèm lý do. Chữ ký và rút chữ ký phase không còn kiểm tra `expectedVersion` của cả dự án, vì điều kiện đóng phase đã được server kiểm tra lại trong transaction đã khóa hàng; sửa dữ liệu ở nơi khác không làm lần ký bị 409. Không làm cửa sổ xem trước như SW-21, vì dữ liệu của các gate đã được ký và khóa. Thực thi: `isPhaseDataLocked` trong `gateProgress.ts`; `assertPhaseDataOpen` trong `projects.service.ts`; kiểm tra bằng `verify:e2e`. Chưa khóa: liên kết nhanh của phase (`PUT …/key-links`), cố ý để sửa được.
+
 ### SW-18. Ô ngày dùng `DatePicker` của antd, không dùng `<input type="date">` — *Đã xây* (2026-08-26)
 Giá trị lưu dạng chuỗi `YYYY-MM-DD`.
 

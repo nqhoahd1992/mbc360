@@ -14,6 +14,7 @@ export default function GateSignOffStepUpModal({
   gateId,
   market,
   role,
+  expectedHash,
   onClose,
   onVerified,
 }: {
@@ -22,6 +23,8 @@ export default function GateSignOffStepUpModal({
   gateId: string;
   market?: string;
   role: GateSignOffRole;
+  // The content fingerprint the signer reviewed; the proof is bound to it.
+  expectedHash: string;
   onClose: () => void;
   onVerified: (stepUpToken: string) => void;
 }) {
@@ -43,7 +46,7 @@ export default function GateSignOffStepUpModal({
     setVerifying(true);
     setError(null);
     try {
-      const { stepUpToken } = await verifyGateSignOffStepUp(projectId, gateId, market, role, code);
+      const { stepUpToken } = await verifyGateSignOffStepUp(projectId, gateId, market, role, code, expectedHash);
       setCode('');
       onVerified(stepUpToken);
     } catch (e) {

@@ -18,6 +18,7 @@ import type {
   ChecklistItem,
   GateCheck,
   GateRecord,
+  GateEvidenceSnapshot,
   GateSignOffRole,
   ProjectData,
   RegisterClosureSignOff,
@@ -287,7 +288,6 @@ export class ProjectsController {
       decision?: string;
       comments?: string;
       stepUpToken?: string;
-      expectedVersion: number;
     },
   ): Promise<ProjectEnvelope> {
     return this.projects.signSignOff(
@@ -300,7 +300,6 @@ export class ProjectsController {
         comments: body.comments,
         stepUpToken: body.stepUpToken,
       },
-      body.expectedVersion,
     );
   }
 
@@ -309,16 +308,9 @@ export class ProjectsController {
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('phase') phase: string,
-    @Body() body: { role: SignOff['role']; reason: string; expectedVersion: number },
+    @Body() body: { role: SignOff['role']; reason: string },
   ): Promise<ProjectEnvelope> {
-    return this.projects.withdrawSignOff(
-      user,
-      id,
-      Number(phase),
-      body.role,
-      body.reason,
-      body.expectedVersion,
-    );
+    return this.projects.withdrawSignOff(user, id, Number(phase), body.role, body.reason);
   }
 
   @Put(':id/phases/:phase/evidence-summary')
@@ -589,7 +581,7 @@ export class ProjectsController {
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('gateId') gateId: string,
-    @Body() body: { market?: string; role: GateSignOffRole; code: string },
+    @Body() body: { market?: string; role: GateSignOffRole; code: string; expectedHash: string },
   ) {
     return this.projects.verifyGateSignOffStepUp(
       user,
@@ -598,7 +590,18 @@ export class ProjectsController {
       body.market?.trim() || undefined,
       body.role,
       body.code,
+      body.expectedHash,
     );
+  }
+
+  // What the signer reads before signing, and the hash the signature is bound to.
+  @Get(':id/gates/:gateId/sign-offs/preview')
+  previewGateSignOff(
+    @Param('id') id: string,
+    @Param('gateId') gateId: string,
+    @Query('market') market?: string,
+  ) {
+    return this.projects.previewGateSignOff(id, gateId, market?.trim() || undefined);
   }
 
   @Post(':id/gates/:gateId/sign-offs/sign')
@@ -613,18 +616,17 @@ export class ProjectsController {
       decision?: string;
       comment?: string;
       stepUpToken?: string;
-      expectedVersion: number;
+      expectedHash?: string;
+      seen?: { snapshot?: GateEvidenceSnapshot; previewedAt?: string };
     },
   ): Promise<ProjectEnvelope> {
-    return this.projects.signGateSignOff(
-      user,
-      id,
-      gateId,
-      body.market?.trim() || undefined,
-      body.role,
-      { decision: body.decision, comment: body.comment, stepUpToken: body.stepUpToken },
-      body.expectedVersion,
-    );
+    return this.projects.signGateSignOff(user, id, gateId, body.market?.trim() || undefined, body.role, {
+      decision: body.decision,
+      comment: body.comment,
+      stepUpToken: body.stepUpToken,
+      expectedHash: body.expectedHash,
+      seen: body.seen,
+    });
   }
 
   @Post(':id/gates/:gateId/sign-offs/withdraw')

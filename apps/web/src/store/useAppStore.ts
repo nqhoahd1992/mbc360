@@ -22,6 +22,8 @@ import type {
   RegisterClosureRole,
   RegisterRow,
   RequirementItem,
+  GateContentChangedBody,
+  GateEvidenceSnapshot,
   GateSignOffRole,
   SignOff,
   StudyApproval,
@@ -172,13 +174,21 @@ interface AppState {
     market: string | undefined,
     assignments: { role: GateSignOffRole; userId?: string | null }[],
   ) => void;
+  // Resolves to null when signed, or to the server's account of what changed when the evidence was
+  // edited between the preview and the submit (so the caller can show it instead of a toast).
   signGateSignOff: (
     id: string,
     gateId: string,
     market: string | undefined,
     role: GateSignOffRole,
-    input: { decision?: string; comment?: string; stepUpToken: string },
-  ) => Promise<void>;
+    input: {
+      decision?: string;
+      comment?: string;
+      stepUpToken: string;
+      expectedHash: string;
+      seen: { snapshot: GateEvidenceSnapshot; previewedAt: string };
+    },
+  ) => Promise<GateContentChangedBody | null>;
   withdrawGateSignOff: (
     id: string,
     gateId: string,
@@ -299,20 +309,24 @@ export const useAppStore = create<AppState>()(
       const tryWriteSection = async (
         id: string,
         call: (version: number) => Promise<projectsApi.ProjectEnvelope>,
+        // True when the caller reports this failure itself (the signing preview shows what changed),
+        // so no toast: the project is still reloaded.
+        handled?: () => boolean,
       ): Promise<boolean> => {
         try {
           applyEnvelope(await call(get().projectVersions[id] ?? 0));
           return true;
         } catch (err) {
           const conflict = err instanceof projectsApi.ApiError && err.isConflict;
-          message.error(
-            conflict
-              ? 'This project was changed by someone else — your edit was not saved. The page has been refreshed.'
-              : err instanceof Error
-                ? err.message
-                : 'Could not save — please try again.',
-            8,
-          );
+          if (!handled?.())
+            message.error(
+              conflict
+                ? 'This project was changed by someone else — your edit was not saved. The page has been refreshed.'
+                : err instanceof Error
+                  ? err.message
+                  : 'Could not save — please try again.',
+              8,
+            );
           try {
             applyEnvelope(await projectsApi.getProject(id));
           } catch {
@@ -531,17 +545,34 @@ export const useAppStore = create<AppState>()(
         setSignOffAssignees: (id, phase, assignments) =>
           writeSection(id, (v) => projectsApi.setSignOffAssignees(id, phase, assignments, v)),
         signSignOff: (id, phase, role, input) =>
-          writeSection(id, (v) => projectsApi.signSignOff(id, phase, role, input, v)),
+          writeSection(id, () => projectsApi.signSignOff(id, phase, role, input)),
         withdrawSignOff: (id, phase, role, reason) =>
-          writeSection(id, (v) => projectsApi.withdrawSignOff(id, phase, role, reason, v)),
+          writeSection(id, () => projectsApi.withdrawSignOff(id, phase, role, reason)),
         setPostLaunchReviews: (id, reviews) =>
           writeSection(id, (v) => projectsApi.setPostLaunchReviews(id, reviews, v)),
         setSupersessionDecision: (id, decision) =>
           writeSection(id, (v) => projectsApi.setSupersessionDecision(id, decision, v)),
         setGateSignOffAssignees: (id, gateId, market, assignments) =>
           writeSection(id, (v) => projectsApi.setGateSignOffAssignees(id, gateId, market, assignments, v)),
-        signGateSignOff: (id, gateId, market, role, input) =>
-          writeSection(id, (v) => projectsApi.signGateSignOff(id, gateId, market, role, input, v)),
+        signGateSignOff: async (id, gateId, market, role, input) => {
+          let changed: GateContentChangedBody | null = null;
+          await tryWriteSection(
+            id,
+            async () => {
+              try {
+                return await projectsApi.signGateSignOff(id, gateId, market, role, input);
+              } catch (err) {
+                const body = err instanceof projectsApi.ApiError ? (err.body as GateContentChangedBody | undefined) : undefined;
+                if (err instanceof projectsApi.ApiError && err.status === 422 && body?.code === 'GATE_CONTENT_CHANGED') {
+                  changed = body;
+                }
+                throw err;
+              }
+            },
+            () => changed !== null,
+          );
+          return changed;
+        },
         withdrawGateSignOff: (id, gateId, market, role, reason) =>
           writeSection(id, (v) => projectsApi.withdrawGateSignOff(id, gateId, market, role, reason, v)),
         setEvidenceSummary: (id, phase, value) =>

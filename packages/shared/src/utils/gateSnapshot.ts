@@ -315,3 +315,103 @@ export function snapshotChanges(
 
   return changes;
 }
+
+// ---------------------------------------------------------------------------------------------
+// The signing preview (2026-10-09, project owner's request).
+//
+// Before signing, the signer sees the whole snapshot on one screen and the signature is bound to a
+// content hash of it. What the hash covers is exactly what the signer is ACCOUNTABLE for: the
+// whole-register digest (`registers`) and the parts owned by a LATER gate (`registerLater`,
+// `projectDataLater`) are left out. The first duplicates `registerCells` plus `registerLater`; the
+// other two are information only (SW-5), and including them would let a later gate's ordinary work
+// stop an earlier gate being signed. Other people may therefore keep contributing while a signer is
+// reading; only a change to what is being signed stops the submit.
+//
+// The hash itself is computed by the API (it needs a hash function, and this module is also
+// bundled into the browser). Everything that decides WHAT is hashed lives here so both sides agree.
+export function gateSnapshotSignedPart(snapshot: GateEvidenceSnapshot): Omit<
+  GateEvidenceSnapshot,
+  'registers' | 'registerLater' | 'projectDataLater'
+> {
+  const { registers: _registers, registerLater: _registerLater, projectDataLater: _later, ...signed } = snapshot;
+  void _registers;
+  void _registerLater;
+  void _later;
+  return signed;
+}
+
+// JSON with object keys sorted at every level, so two equal snapshots always serialise equally
+// whatever order their keys were built in.
+export function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+// "#3|rmCode=RM-1|inciName=Aqua" per line -> rows of column -> value. Values that themselves hold
+// a '|' or a newline split wrongly; this is only used to word a difference, never to decide one.
+function parseCellDigest(digest: string): Record<string, string>[] {
+  if (digest === '') return [];
+  return digest.split('\n').map((line) => {
+    const row: Record<string, string> = {};
+    for (const part of line.split('|')) {
+      const at = part.indexOf('=');
+      if (at > 0) row[part.slice(0, at)] = part.slice(at + 1);
+    }
+    return row;
+  });
+}
+
+function describeRegisterDifference(key: string, before: string, after: string): string[] {
+  const was = parseCellDigest(before);
+  const now = parseCellDigest(after);
+  const out: string[] = [];
+  const rows = Math.max(was.length, now.length);
+  for (let i = 0; i < rows; i += 1) {
+    if (!was[i]) out.push(`Register ${key}: row ${i + 1} added`);
+    else if (!now[i]) out.push(`Register ${key}: row ${i + 1} removed`);
+    else {
+      for (const column of new Set([...Object.keys(was[i]), ...Object.keys(now[i])])) {
+        if ((was[i][column] ?? '') !== (now[i][column] ?? '')) {
+          out.push(`Register ${key}: row ${i + 1} "${column}" changed`);
+        }
+      }
+    }
+  }
+  return out.length > 0 ? out : [`Register changed: ${key}`];
+}
+
+// Why a signer's hash no longer matches: what the signer saw against what is there now, in words.
+// Stricter than `snapshotChanges` (which deliberately ignores carrying out a condition), because a
+// signer who read "Action X — In progress" is entitled to be told it now says "Closed".
+export function describeGateContentChanges(seen: GateEvidenceSnapshot, now: GateEvidenceSnapshot): string[] {
+  const out = new Set<string>();
+  const states: GateActionState[] = now.openActions.map((a) => ({ ...a }));
+  for (const change of snapshotChanges(seen, now, states)) {
+    // Replaced by the row-level wording below where the register is read cell by cell.
+    if (!/^Register changed: /.test(change)) out.add(change);
+  }
+  if (seen.registerCells && now.registerCells) {
+    for (const [key, digest] of Object.entries(now.registerCells)) {
+      const before = seen.registerCells[key] ?? '';
+      if (before !== digest) for (const line of describeRegisterDifference(key, before, digest)) out.add(line);
+    }
+  }
+  const seenActions = new Map(seen.openActions.map((a) => [a.id, a]));
+  const nowActions = new Map(now.openActions.map((a) => [a.id, a]));
+  for (const [id, a] of nowActions) {
+    const was = seenActions.get(id);
+    if (!was) continue;
+    if (was.status !== a.status) out.add(`Action "${a.title || id}": status ${was.status} -> ${a.status}`);
+    if (was.priority !== a.priority) out.add(`Action "${a.title || id}": priority ${was.priority} -> ${a.priority}`);
+  }
+  for (const [id, a] of seenActions) {
+    if (!nowActions.has(id)) out.add(`Action "${a.title || id}" is no longer open`);
+  }
+  return [...out];
+}
