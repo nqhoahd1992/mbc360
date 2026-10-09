@@ -654,6 +654,24 @@ export interface GateEvidenceSnapshot {
   // plus every register row this gate reads, reduced to a stable string.
   evidenceLinks: string[];
   registers: Record<string, string>;
+  // The same registers reduced to what THIS gate is accountable for (SW-5): every column
+  // owned by this gate or an earlier one, over the rows that belong to it (SW-4). A change to
+  // these makes the signature stale. A later gate completing its own columns does not — that
+  // part is in `registerLater`. Absent on signatures taken before this existed — those are
+  // compared on `registers` above, exactly as before, instead of being declared stale.
+  registerCells?: Record<string, string>;
+  // The columns owned by a LATER gate, as they were when the signer approved the content.
+  // Recorded because the signer approves everything filled in at that moment, but compared
+  // for information only: the later gate is still to finish them.
+  registerLater?: Record<string, string>;
+  // The same two-part record for the parts of the project that are not registers but that
+  // readiness reads: the Formula BOM, costing, formula properties, the assessments, the study
+  // approval trail, the identity fields and the per-market / change records. `projectData`
+  // is what this gate is accountable for (owned by it or an earlier gate); `projectDataLater`
+  // is recorded but informational (owned by a later gate, or by none because that data has no
+  // gate lock yet). Absent on signatures taken before this existed.
+  projectData?: Record<string, string>;
+  projectDataLater?: Record<string, string>;
   // "Open actions and conditions".
   openActions: { id: string; title: string; status: string; priority: string }[];
   formulaVersion: string;

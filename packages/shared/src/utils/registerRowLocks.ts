@@ -21,9 +21,10 @@
 import type { RegisterConfig } from '../config/registers';
 import { GATES } from '../config/gates';
 import type { ProjectData, RegisterRow } from '../types';
-import { gateRefGateIds, isGatePassed } from './gateProgress';
+import { isGatePassed } from './gateProgress';
+import { gateRefGateIds } from './gateRefs';
 import { registersReadAtGate } from './gateSnapshot';
-import { derivedColumnGate, spansSeveralGates } from './registerColumnGates';
+import { columnOwnerGateIds, spansSeveralGates } from './registerColumnGates';
 import {
   BORN_AFTER_ALL_GATES,
   ROW_BORN_KEY,
@@ -58,7 +59,10 @@ function freezingGateIds(config: RegisterConfig, columnKey: string, row: Registe
   if (!spansSeveralGates(config.gate)) return []; // single-gate: the whole-register lock covers it
   const column = config.columns.find((c) => c.key === columnKey);
   if (!column || column.type === 'signature') return [];
-  const owners = gateRefGateIds(column.gate ?? derivedColumnGate(config.key, columnKey) ?? config.gate);
+  // The column's owner gate (sheet attribution first, else the last gate that reads it —
+  // registerColumnGates.ts); a column nothing reads keeps the register's own gate list.
+  const ownerIds = columnOwnerGateIds(config.key, columnKey);
+  const owners = ownerIds.length > 0 ? ownerIds : gateRefGateIds(config.gate);
   if (owners.length === 0) return [];
   const born = rowBornOrder(row);
   if (born >= GATES.length) return []; // created after every gate: belongs to none

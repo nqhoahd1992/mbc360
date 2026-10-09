@@ -36,11 +36,13 @@
 // wider one would invalidate signatures for edits to gates that have nothing to
 // do with this one [ASSUMPTION: R5-Q7].
 import type { GateEvidenceSnapshot, ProjectData, RegisterRow } from '../types';
-import { GATE_READINESS, type ReadinessCheck } from '../config/gateReadiness';
 import { PHASE_CONFIGS } from '../config/phases';
 import { REGISTER_CONFIGS } from '../config/registers';
 import { NEXT_ACTION_PRIORITIES, NEXT_ACTION_TERMINAL_STATUSES } from '../types';
-import { projectAsOfGate } from './registerRowBirth';
+import { ROW_ID_KEY, projectAsOfGate } from './registerRowBirth';
+import { gateRefGateIds } from './gateRefs';
+import { columnsByAccountability, registersReadByGate } from './registerColumnGates';
+import { projectSliceDigests } from './projectSlices';
 
 // Deliberately NOT imported from gateProgress, which is a one-line filter there:
 // gateProgress reads THIS module (the `gateSignedOff` check needs the snapshot to
@@ -50,19 +52,11 @@ import { projectAsOfGate } from './registerRowBirth';
 
 const ARTWORK_REGISTER = 'packagingSpecsArtwork';
 
-// Every register key the gate's own readiness checks read. Walked through `allOf`,
-// because a merged item hides its legs behind one entry.
+// Every register the gate's readiness reads — generic checks AND the bespoke ones and the
+// triggers, which the old walk over `'register' in check` could not see. Measured, see
+// registerColumnGates.ts.
 export function registersReadAtGate(gateId: string): string[] {
-  const keys = new Set<string>();
-  const walk = (check: ReadinessCheck): void => {
-    if (check.kind === 'allOf' || check.kind === 'anyOf') {
-      check.checks.forEach(walk);
-      return;
-    }
-    if ('register' in check && typeof check.register === 'string') keys.add(check.register);
-  };
-  for (const req of GATE_READINESS[gateId] ?? []) walk(req.check);
-  return [...keys];
+  return registersReadByGate(gateId);
 }
 
 // A register reduced to one stable string. Column order comes from CONFIG, not
@@ -86,7 +80,12 @@ function digestChecklists(project: ProjectData, gateNumber: string): Record<stri
   const out: Record<string, string> = {};
   for (const config of Object.values(PHASE_CONFIGS)) {
     for (const section of config.checklistSections) {
-      if (section.gate !== gateNumber) continue;
+      // A section can span gates ('08-09'); the later gate owns it, as for a register column
+      // (registerColumnGates.ts), so it is signed at the LAST gate of its list. Comparing the
+      // raw string, as this did, meant a section tagged '08-09' belonged to no gate at all and
+      // was never in any signature.
+      const owners = gateRefGateIds(section.gate);
+      if (owners.length === 0 ? section.gate !== gateNumber : owners[owners.length - 1] !== `SG${gateNumber}`) continue;
       out[section.key] = (project.checklists[section.key] ?? [])
         .map((i) => `${i.label}=${i.selected ? 'Y' : 'N'}/${i.status}/${i.isPrimary ? 'P' : ''}/${i.evidenceLink ?? ''}`)
         .join('|');
@@ -110,6 +109,20 @@ function digestRequirements(project: ProjectData, gateNumber: string): Record<st
   return out;
 }
 
+// A register reduced to what the gate attests: the rows that belong to it (the caller passes
+// the project as the gate sees it) and, per row, only the columns the gate reads and owns.
+// A row is named by its server-written id so deleting or replacing one is a change even when
+// the surviving cells look alike; rows with no id (a fixed register's seeded rows) are named
+// by position.
+function digestRegisterCells(rows: RegisterRow[], columns: string[]): string {
+  return rows
+    .map((row, index) => {
+      const id = typeof row[ROW_ID_KEY] === 'string' && row[ROW_ID_KEY] !== '' ? String(row[ROW_ID_KEY]) : `#${index}`;
+      return [id, ...columns.map((key) => `${key}=${String(row[key] ?? '')}`)].join('|');
+    })
+    .join('\n');
+}
+
 export function gateEvidenceSnapshot(
   fullProject: ProjectData,
   gateId: string,
@@ -127,7 +140,15 @@ export function gateEvidenceSnapshot(
       project.registers[key] ?? [],
     );
   }
+  const registerCells: Record<string, string> = {};
+  const registerLater: Record<string, string> = {};
+  for (const key of registersReadAtGate(gateId)) {
+    const { settled, later } = columnsByAccountability(gateId, key);
+    registerCells[key] = digestRegisterCells(project.registers[key] ?? [], settled);
+    registerLater[key] = digestRegisterCells(project.registers[key] ?? [], later);
+  }
   const artworkRows = project.registers[ARTWORK_REGISTER] ?? [];
+  const slices = projectSliceDigests(project, gateId);
   return {
     gateId,
     ...(market ? { market } : {}),
@@ -139,6 +160,10 @@ export function gateEvidenceSnapshot(
       .map((c) => ({ check: c.check, done: c.done, ynna: c.ynna, ...(c.notes ? { notes: c.notes } : {}) })),
     evidenceLinks: [record?.evidenceLink ?? ''].filter((l) => l !== ''),
     registers,
+    registerCells,
+    registerLater,
+    projectData: slices.settled,
+    projectDataLater: slices.later,
     openActions: project.nextActions
       .filter((a) => a.gateId === gateId && !NEXT_ACTION_TERMINAL_STATUSES.includes(a.status))
       .map((a) => ({ id: a.id, title: a.description, status: a.status, priority: a.priority })),
@@ -171,6 +196,44 @@ export function gateActionStates(project: ProjectData, gateId: string): GateActi
     .map((a) => ({ id: a.id, title: a.description, status: a.status, priority: a.priority }));
 }
 
+// What changed since signing in columns a LATER gate owns. Information only — it never makes a
+// signature stale, because that gate is still to finish those columns (SW-5). Empty for a
+// signature taken before this was recorded.
+const PROJECT_DATA_LABELS: Record<string, string> = {
+  identity: 'Project identity (scope, target users, markets)',
+  bom: 'Formula BOM',
+  costing: 'Costing',
+  formulaProperties: 'Formula properties',
+  studyApprovals: 'Study approval trail',
+  marketTracks: 'Market tracking',
+  changes: 'Change records',
+  postLaunchReviews: 'Post-launch reviews',
+  formulaVersionHistory: 'Formula version history',
+  'assessments:familyUse': 'Assessment: family use',
+  'assessments:administrativeOnly': 'Assessment: administrative-only change',
+  'assessments:humanStudy': 'Assessment: human study',
+  'assessments:scaleUp': 'Assessment: scale-up risk',
+  'assessments:changeControl': 'Assessment: change control',
+};
+
+export function snapshotLaterChanges(before: GateEvidenceSnapshot, after: GateEvidenceSnapshot): string[] {
+  const out: string[] = [];
+  if (before.projectDataLater && after.projectDataLater) {
+    for (const [name, digest] of Object.entries(after.projectDataLater)) {
+      if (name in before.projectDataLater && before.projectDataLater[name] !== digest) {
+        out.push(`${PROJECT_DATA_LABELS[name] ?? name} changed since signing (owned by a later gate or not gate-locked)`);
+      }
+    }
+  }
+  if (!before.registerLater || !after.registerLater) return out;
+  for (const [key, digest] of Object.entries(after.registerLater)) {
+    if (key in before.registerLater && before.registerLater[key] !== digest) {
+      out.push(`Register ${key}: columns owned by a later gate changed since signing`);
+    }
+  }
+  return out;
+}
+
 export function snapshotChanges(
   before: GateEvidenceSnapshot,
   after: GateEvidenceSnapshot,
@@ -186,7 +249,8 @@ export function snapshotChanges(
   }
 
   for (const [key, digest] of Object.entries(after.checklists)) {
-    if ((before.checklists[key] ?? '') !== digest) changes.push(`Checklist changed: ${key}`);
+    // A section the signature never recorded predates it being in scope: not a change.
+    if (key in before.checklists && before.checklists[key] !== digest) changes.push(`Checklist changed: ${key}`);
   }
   for (const [key, digest] of Object.entries(after.requirements)) {
     if ((before.requirements[key] ?? '') !== digest) changes.push(`Requirements changed: ${key}`);
@@ -201,11 +265,32 @@ export function snapshotChanges(
     }
   }
 
-  for (const [key, digest] of Object.entries(after.registers)) {
-    if ((before.registers[key] ?? '') !== digest) changes.push(`Register changed: ${key}`);
+  // A signature taken with `registerCells` is compared on what that gate is accountable for
+  // (the columns it and earlier gates own, over its own rows). One taken before that existed is compared on the whole-register
+  // digest, as it always was — treating it as current would silently weaken it, and treating
+  // it as stale would invalidate signatures on evidence nobody has touched.
+  if (before.registerCells && after.registerCells) {
+    for (const [key, digest] of Object.entries(after.registerCells)) {
+      if ((before.registerCells[key] ?? '') !== digest) changes.push(`Register changed: ${key}`);
+    }
+    for (const key of Object.keys(before.registerCells)) {
+      if (!(key in after.registerCells)) changes.push(`Register no longer read at this gate: ${key}`);
+    }
+  } else {
+    for (const [key, digest] of Object.entries(after.registers)) {
+      if ((before.registers[key] ?? '') !== digest) changes.push(`Register changed: ${key}`);
+    }
+    for (const key of Object.keys(before.registers)) {
+      if (!(key in after.registers)) changes.push(`Register no longer read at this gate: ${key}`);
+    }
   }
-  for (const key of Object.keys(before.registers)) {
-    if (!(key in after.registers)) changes.push(`Register no longer read at this gate: ${key}`);
+
+  // The BOM, costing, assessments and the rest of what readiness reads that is not a register.
+  // Compared only when the signature recorded it (older ones did not).
+  if (before.projectData && after.projectData) {
+    for (const [name, digest] of Object.entries(after.projectData)) {
+      if (name in before.projectData && before.projectData[name] !== digest) changes.push(`${PROJECT_DATA_LABELS[name] ?? name} changed`);
+    }
   }
 
   // The open actions of a gate are the CONDITIONS its Approved signature accepted, so what

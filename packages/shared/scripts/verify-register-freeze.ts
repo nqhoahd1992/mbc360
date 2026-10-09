@@ -6,7 +6,7 @@ import { GATE_READINESS } from '../src/config/gateReadiness';
 import { REGISTER_CONFIGS, getRegisterConfig } from '../src/config/registers';
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
 import { currentGateIndex, gateRefHighestGateId, isGatePassed } from '../src/utils/gateProgress';
-import { gateEvidenceSnapshot } from '../src/utils/gateSnapshot';
+import { gateActionStates, gateEvidenceSnapshot, snapshotChanges, snapshotLaterChanges } from '../src/utils/gateSnapshot';
 import { projectAsOfGate } from '../src/utils/registerRowBirth';
 import {
   bornGateOf,
@@ -114,4 +114,123 @@ live.registers.claimEvidenceTraceability = [oldRow, newRow];
 t('SG03 snapshot ignores a row created after SG03 passed', JSON.stringify(gateEvidenceSnapshot(live, 'SG03')) === before);
 live.registers.claimEvidenceTraceability = [oldRow, { claimId: 'C-9', approvedWording: 'unstamped legacy' }];
 t('...but an unstamped legacy row still changes it (belongs to every gate)', JSON.stringify(gateEvidenceSnapshot(live, 'SG03')) !== before);
+
+// ---------------------------------------------------------------------------------------
+// SW-5: a signature attests only the columns its gate reads AND owns, and only its own rows.
+// ---------------------------------------------------------------------------------------
+const stale = (gate: string, before: ReturnType<typeof gateEvidenceSnapshot>, after: ProjectData) =>
+  snapshotChanges(before, gateEvidenceSnapshot(after, gate), gateActionStates(after, gate));
+const withClaim = (patch: Record<string, string>): ProjectData => ({
+  ...live,
+  registers: { ...live.registers, claimEvidenceTraceability: [{ ...oldRow, ...patch }] },
+});
+live.registers.claimEvidenceTraceability = [oldRow];
+const sg03Signed = gateEvidenceSnapshot(live, 'SG03');
+t('snapshot records the cells this gate attests', !!sg03Signed.registerCells && 'claimEvidenceTraceability' in sg03Signed.registerCells);
+t('a Gate 3 column (approvedWording) changing makes the Gate 3 signature stale',
+  stale('SG03', sg03Signed, withClaim({ approvedWording: 'changed' })).some((c) => c.startsWith('Register changed')));
+t('a Gate 8 column (evidenceGrade) changing does NOT make the Gate 3 signature stale', stale('SG03', sg03Signed, withClaim({ evidenceGrade: 'A' })).length === 0);
+t('a Gate 5 column (mechanism) changing does NOT make it stale', stale('SG03', sg03Signed, withClaim({ mechanism: 'm' })).length === 0);
+t('a Gate 10 column (revisionRoute) changing does NOT make it stale', stale('SG03', sg03Signed, withClaim({ revisionRoute: 'r' })).length === 0);
+t('deleting a claim row DOES make it stale',
+  stale('SG03', sg03Signed, { ...live, registers: { ...live.registers, claimEvidenceTraceability: [] } }).length > 0);
+
+// A signature taken before registerCells existed is still compared on the whole register,
+// exactly as it always was — neither declared stale nor silently weakened.
+const legacy = { ...sg03Signed } as Partial<typeof sg03Signed>;
+delete legacy.registerCells;
+t('a legacy snapshot (no registerCells) still notices ANY column of the register changing',
+  stale('SG03', legacy as typeof sg03Signed, withClaim({ evidenceGrade: 'A' })).some((c) => c.startsWith('Register changed')));
+t('...and is not stale when nothing changed', stale('SG03', legacy as typeof sg03Signed, live).length === 0);
+
+// A column two gates read belongs to the LATER one: the earlier gate's signature does not
+// attest it, so the later gate can finish it without un-passing the earlier gate.
+const watch = (patch: Record<string, string>): ProjectData => ({
+  ...live,
+  registers: {
+    ...live.registers,
+    prohibitedIngredients: (live.registers.prohibitedIngredients ?? []).map((r, i) => (i === 0 ? { ...r, ...patch } : r)),
+  },
+});
+const sg04Signed = gateEvidenceSnapshot(live, 'SG04');
+t('Gate 4 reads prohibitedIngredients.productStatus but Gate 7 reads it too, so Gate 4 does not attest it',
+  stale('SG04', sg04Signed, watch({ productStatus: 'Prohibited - remove' })).length === 0);
+t('Gate 4 DOES attest the review columns only it reads (reviewerAssessment)',
+  stale('SG04', sg04Signed, watch({ reviewerAssessment: 'Critical' })).some((c) => c.startsWith('Register changed')));
+const sg07Signed = gateEvidenceSnapshot(live, 'SG07');
+t('Gate 7 DOES attest the shared column it owns (productStatus)',
+  stale('SG07', sg07Signed, watch({ productStatus: 'Prohibited - remove' })).some((c) => c.startsWith('Register changed')));
+
+// Freezing follows the same ownership: once Gate 3 has passed its own column is frozen while a
+// later gate's column of the same row is not.
+t('Gate 3 column frozen once SG03 passed; Gate 8 column of the same row still editable',
+  cellFrozenBy(passed, claims, oldRow, 'approvedWording') === 'SG03' &&
+    cellFrozenBy(passed, claims, oldRow, 'evidenceGrade') === undefined);
+
+// A checklist section that spans gates ('08-09') is signed at the LAST gate of its list. Before,
+// the raw string was compared, so it belonged to no gate and was in no signature at all.
+t('testingFamilies (gate 08-09) is in the Gate 9 snapshot', 'testingFamilies' in gateEvidenceSnapshot(live, 'SG09').checklists);
+t('...and not in the Gate 8 snapshot, which the later gate owns', !('testingFamilies' in gateEvidenceSnapshot(live, 'SG08').checklists));
+t('a single-gate checklist (targetUsers, gate 02) is still in its own snapshot', 'targetUsers' in gateEvidenceSnapshot(live, 'SG02').checklists);
+const sg09Before = gateEvidenceSnapshot(live, 'SG09');
+const ticked = { ...live, checklists: { ...live.checklists, testingFamilies: (live.checklists.testingFamilies ?? []).map((i, n) => (n === 0 ? { ...i, selected: true } : i)) } };
+t('ticking a testing family makes the Gate 9 signature stale',
+  snapshotChanges(sg09Before, gateEvidenceSnapshot(ticked, 'SG09'), gateActionStates(ticked, 'SG09')).some((c) => c.startsWith('Checklist changed')));
+const legacyNoSection = { ...sg09Before, checklists: Object.fromEntries(Object.entries(sg09Before.checklists).filter(([k]) => k !== 'testingFamilies')) };
+t('a signature that never recorded the section is not stale because the section is now in scope',
+  snapshotChanges(legacyNoSection, gateEvidenceSnapshot(live, 'SG09'), gateActionStates(live, 'SG09')).filter((c) => c.startsWith('Checklist')).length === 0);
+
+// The signer approves everything filled in, including columns of future gates, and a later gate
+// approves the data of the earlier ones too:
+//   - a later gate's signature is accountable for the columns EARLIER gates own;
+//   - an earlier gate's signature RECORDS the columns later gates own, but a change to them is
+//     information only and never makes it stale.
+t('Gate 7 is accountable for a Gate 4 column (reviewerAssessment): changing it makes the Gate 7 signature stale',
+  stale('SG07', sg07Signed, watch({ reviewerAssessment: 'Critical' })).some((c) => c.startsWith('Register changed')));
+const laterNote = snapshotLaterChanges(sg04Signed, gateEvidenceSnapshot(watch({ productStatus: 'Prohibited - remove' }), 'SG04'));
+t('Gate 4 records productStatus (owned by Gate 7): a change is reported as information', laterNote.length > 0 && laterNote[0].includes('later gate'));
+t('...and that same change does not make the Gate 4 signature stale',
+  stale('SG04', sg04Signed, watch({ productStatus: 'Prohibited - remove' })).length === 0);
+const claimLater = snapshotLaterChanges(sg03Signed, gateEvidenceSnapshot(withClaim({ evidenceGrade: 'A' }), 'SG03'));
+t('Gate 3 records the claim columns later gates own: a Gate 8 edit is information, not staleness',
+  claimLater.length > 0 && stale('SG03', sg03Signed, withClaim({ evidenceGrade: 'A' })).length === 0);
+t('nothing reported when nothing changed', snapshotLaterChanges(sg03Signed, gateEvidenceSnapshot(live, 'SG03')).length === 0);
+const legacyNoLater = { ...sg03Signed } as Partial<typeof sg03Signed>;
+delete legacyNoLater.registerLater;
+t('a legacy snapshot (no registerLater) reports no later-gate information', snapshotLaterChanges(legacyNoLater as typeof sg03Signed, gateEvidenceSnapshot(withClaim({ evidenceGrade: 'A' }), 'SG03')).length === 0);
+
+// ---------------------------------------------------------------------------------------
+// The rest of what readiness reads (not registers): BOM, costing, assessments, identity,
+// per-market and change records. Same two parts: accountable (owned by this gate or earlier) and
+// recorded-for-information (owned by a later gate, or by none because there is no gate lock yet).
+// ---------------------------------------------------------------------------------------
+const line = { rmCode: 'RM-9', inciName: 'Aqua', percent: 100, fromCosmetri: false, reconciled: false } as never;
+const withBom: ProjectData = { ...live, bom: [line] };
+const snapAt = (g: string) => gateEvidenceSnapshot(live, g);
+const diff = (g: string, before: ReturnType<typeof gateEvidenceSnapshot>, after: ProjectData) => stale(g, before, after);
+t('Gate 5 owns the Formula BOM: changing it makes the Gate 5 signature stale',
+  diff('SG05', snapAt('SG05'), withBom).some((c) => c === 'Formula BOM changed'));
+t('Gate 7 is accountable for the BOM too (Gate 5 owns it, Gate 5 is earlier)',
+  diff('SG07', snapAt('SG07'), withBom).some((c) => c === 'Formula BOM changed'));
+t('Gate 4 reads the BOM but Gate 5 owns it: a change is information only, not staleness',
+  diff('SG04', snapAt('SG04'), withBom).length === 0 &&
+    snapshotLaterChanges(snapAt('SG04'), gateEvidenceSnapshot(withBom, 'SG04')).some((c) => c.startsWith('Formula BOM changed')));
+const withTrack: ProjectData = { ...live, marketTracks: [{ market: 'Vietnam', regulatoryStatus: 'Approved' } as never] };
+t('Market tracks have no gate lock and no owner: a change is information only at Gate 10',
+  diff('SG10', snapAt('SG10'), withTrack).length === 0 &&
+    snapshotLaterChanges(snapAt('SG10'), gateEvidenceSnapshot(withTrack, 'SG10')).some((c) => c.startsWith('Market tracking changed')));
+const withScope: ProjectData = { ...live, identity: { ...live.identity, initialScope: 'a new scope' } };
+t('Gate 1 owns the identity fields it reads: changing initialScope makes the Gate 1 signature stale',
+  diff('SG01', snapAt('SG01'), withScope).some((c) => c.startsWith('Project identity')));
+t('a change that touches nothing readiness reads (the project lead) changes nothing',
+  diff('SG01', snapAt('SG01'), { ...live, identity: { ...live.identity, projectLead: 'someone else' } }).length === 0);
+const withAssessment: ProjectData = { ...live, assessments: { ...live.assessments, scaleUpRisk: 'Yes' } as never };
+t('an assessment owned by a later gate (scale-up, Gate 9) is information at Gate 4, not staleness',
+  diff('SG04', snapAt('SG04'), withAssessment).length === 0);
+const legacyNoData = { ...snapAt('SG05') } as Partial<ReturnType<typeof gateEvidenceSnapshot>>;
+delete legacyNoData.projectData;
+delete legacyNoData.projectDataLater;
+t('a legacy snapshot (no projectData) is not stale because the BOM is now recorded',
+  diff('SG05', legacyNoData as ReturnType<typeof gateEvidenceSnapshot>, withBom).filter((c) => c.includes('BOM')).length === 0);
+
 console.log(bad === 0 ? '\nall passed' : `\n${bad} FAILED`); process.exit(bad === 0 ? 0 : 1);

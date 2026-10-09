@@ -6,6 +6,8 @@ import { COSTING_STATUS_NOT_APPLICABLE, GATES, REQUIREMENT_NOT_APPLICABLE } from
 import { GATE_PASSING_DECISIONS, findGateSignOff, gateSignOffMarkets, isGateSignOffSigned } from '../config/gateSignOff';
 import { gateActionStates, gateEvidenceSnapshot, snapshotChanges } from './gateSnapshot';
 import { projectAsOfGate } from './registerRowBirth';
+import { gateRefGateIds } from './gateRefs';
+export { gateRefGateIds } from './gateRefs';
 import { isChangeOpen } from '../config/changeTriggers';
 import {
   CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE,
@@ -983,7 +985,7 @@ export function finalSafetySignOffGaps(project: ProjectData): string[] {
 // Evaluate a requirement's check against live project data. `evaluable` is false
 // for `manual` checks (no linked data source yet — shown for confirmation, never
 // hard-blocks); when false, `satisfied` is meaningless (reported as false/pending).
-function evaluateReadinessCheck(
+export function evaluateReadinessCheck(
   project: ProjectData,
   check: ReadinessCheck,
   // Which gate is being evaluated. Only `gateSignedOff` needs it — every other
@@ -2174,16 +2176,6 @@ export function isAwaitingDecision(project: ProjectData, gateId: string): boolea
 // checklist section as '08-09' while every register uses '04/07' — both mean
 // the same "these gates" list (fixed 2026-07-25: the dash form used to parse
 // to nothing, so that one section could never lock).
-export function gateRefGateIds(gateRef: string | undefined): string[] {
-  if (!gateRef) return [];
-  const ref = gateRef.trim();
-  if (ref === '' || ref.toUpperCase() === 'ALL') return [];
-  return ref
-    .split(/[/-]/)
-    .map((n) => GATES.find((g) => g.number === n.trim())?.id)
-    .filter((id): id is string => !!id);
-}
-
 export function isGateRefLocked(project: ProjectData, gateRef: string | undefined): boolean {
   const gateIds = gateRefGateIds(gateRef);
   if (gateIds.length === 0) return false;

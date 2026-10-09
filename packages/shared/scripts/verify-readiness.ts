@@ -72,6 +72,10 @@ import {
 import { PHASE_CONFIGS } from '../src/config/phases';
 import { getRegisterConfig } from '../src/config/registers';
 import { RM_EVIDENCE_REGISTER } from '../src/utils/rmEvidence';
+import { REGISTER_READS_BY_GATE, TRIGGER_READS_BY_GATE } from '../src/config/registerColumnReads';
+import { columnOwnerGateIds } from '../src/utils/registerColumnGates';
+import { gateRefGateIds } from '../src/utils/gateRefs';
+import { renderColumnReadsFile, traceColumnReads } from './column-reads-lib';
 import { ASEAN_CHECKLIST_REGISTER, MARKET_DOSSIER_REGISTER } from '../src/utils/marketDossier';
 import { NO_VULNERABLE_GROUP, TARGET_USER_TO_VULNERABLE_GROUP } from '../src/config/vulnerableGroups';
 
@@ -534,6 +538,10 @@ interface EvidenceSource {
   // frozen at this gate (derivedColumnGate) and whose rows cannot be deleted once the
   // gate passes. Counted separately instead of reported as still editable.
   frozenPerCell?: boolean;
+  // Covered by another software rule rather than by the per-cell freeze (e.g. 'SW-19').
+  coveredBy?: string;
+  // A section whose gate list continues past the reading gate: the later gate owns it.
+  laterGateOwns?: boolean;
 }
 
 const registerSource = (key: string): EvidenceSource => ({
@@ -556,7 +564,7 @@ function checklistSourceOf(section: string): EvidenceSource {
   const gate = Object.values(PHASE_CONFIGS)
     .flatMap((p) => p.checklistSections)
     .find((s) => s.key === section)?.gate;
-  return { label: `checklist ${section}`, lockRef: gate };
+  return { label: `checklist ${section}`, lockRef: gate, laterGateOwns: true };
 }
 
 function sourcesOf(check: ReadinessCheck): EvidenceSource[] {
@@ -578,7 +586,7 @@ function sourcesOf(check: ReadinessCheck): EvidenceSource[] {
     case 'requirementSectionDispositioned':
     case 'requirementsDispositioned':
     case 'requirementsNoOpenDeferrals':
-      return [{ label: `requirement section ${check.section}`, lockRef: requirementSectionGates(check.section) }];
+      return [{ label: `requirement section ${check.section}`, lockRef: requirementSectionGates(check.section), laterGateOwns: true }];
     case 'registerHasRows':
     case 'registerColumnFilled':
     case 'registerNoBadRows':
@@ -644,7 +652,7 @@ function sourcesOf(check: ReadinessCheck): EvidenceSource[] {
       return [{ label: `gate row ${check.gate}`, lockRef: check.gate.replace('SG', '') }];
     case 'nextActionAtGate':
     case 'nextActionsClosed':
-      return [{ label: 'Next Actions', lockRef: 'NONE', note: 'SW-19: adding or deleting is refused on a passed gate, closed or cancelled actions are frozen, an open condition can be progressed but not rewritten or given a lower priority' }];
+      return [{ label: 'Next Actions', lockRef: 'NONE', coveredBy: 'SW-19', note: 'SW-19: adding or deleting is refused on a passed gate, a closed or cancelled action is frozen, and an open one can only have its Status, Owner and Due date changed' }];
     case 'everyMarket':
     case 'postLaunchReviewsRecorded':
       return [{ label: 'market tracks', lockRef: 'NONE', note: 'setMarketTracks has no gate lock' }];
@@ -673,7 +681,14 @@ function verifyEvidenceFrozen(): OpenEvidence[] {
     const gateNumber = Number(gate.replace('SG', ''));
     for (const req of reqs) {
       for (const source of sourcesOf(req.check)) {
+        // Registers are judged from the measured trace below (verifyRegisterReads): it sees the
+        // bespoke checks and the triggers, which this walk maps by hand.
+        if (source.label.startsWith('register ')) continue;
         let openUntil: string;
+        if (source.coveredBy) {
+          coveredBySw5.add(`${gate}:${req.id}:${source.label}`);
+          continue;
+        }
         if (source.lockRef === 'NONE') openUntil = 'no lock';
         else {
           const numbers = (source.lockRef ?? '')
@@ -686,7 +701,16 @@ function verifyEvidenceFrozen(): OpenEvidence[] {
             coveredBySw5.add(`${gate}:${req.id}:${source.label}`);
             continue;
           }
-          else openUntil = `Gate ${String(Math.max(...numbers)).padStart(2, '0')}`;
+          else if (source.laterGateOwns) {
+            // Shared with a later gate that signs and freezes it (SW-5, owner = last reader).
+            registerReadStats.shared.push({
+              gate,
+              register: source.label,
+              column: '(section)',
+              owner: `Gate ${String(Math.max(...numbers)).padStart(2, '0')}`,
+            });
+            continue;
+          } else openUntil = `Gate ${String(Math.max(...numbers)).padStart(2, '0')}`;
         }
         const key = `${source.label}|${openUntil}`;
         const entry = open.get(key) ?? { source, openUntil, readAt: new Map<string, string[]>() };
@@ -710,6 +734,79 @@ function verifyEvidenceFrozen(): OpenEvidence[] {
     );
   }
   return [...open.values()];
+}
+
+// What the measured trace says about every register read by a gate (SW-3, SW-5).
+//   - FAILS when a gate reads a register that carries no gate at all (SW-3): such a register
+//     can never lock, so the gate would pass on evidence that stays editable forever.
+//   - FAILS when the trace names a register or column that does not exist.
+//   - Counts, per column, whether the gate that reads it also OWNS it (so it is signed and
+//     frozen there) or a later gate does (so it is signed and frozen there instead). The
+//     second group is listed: it is the one place a change to data a gate's readiness reads
+//     deliberately does not make that gate's signature stale.
+interface SharedRead {
+  gate: string;
+  register: string;
+  column: string;
+  owner: string;
+}
+const registerReadStats = { reads: 0, ownedHere: 0, rowsOnly: 0, shared: [] as SharedRead[] };
+
+function verifyRegisterReads(): void {
+  const walk = (reads: Record<string, Record<string, string[]>>, byTrigger: boolean) => {
+    for (const [gate, registers] of Object.entries(reads)) {
+      for (const [register, columns] of Object.entries(registers)) {
+        const config = getRegisterConfig(register);
+        if (!config) {
+          fail('S6', gate, register, `the trace says readiness reads register "${register}", which does not exist in REGISTER_CONFIGS`);
+          continue;
+        }
+        if (gateRefGateIds(config.gate).length === 0) {
+          fail(
+            'S6',
+            gate,
+            `register ${register}`,
+            `carries no gate (gate "${config.gate ?? 'unset'}"), so it never locks, yet readiness at ${gate} reads it — give it a gate or stop reading it there`
+          );
+        }
+        if (columns.length === 0) {
+          registerReadStats.rowsOnly++;
+          continue;
+        }
+        const known = new Set(config.columns.map((c) => c.key));
+        for (const column of columns) {
+          if (!known.has(column)) {
+            // Not a build failure: it is a read that can only ever see undefined, which is a
+            // latent bug in the check rather than a configuration the sweep can judge.
+            notes.push(`[S6] ${gate} reads ${register}.${column}, a column the register does not have — the read always sees an empty value`);
+            continue;
+          }
+          registerReadStats.reads++;
+          const owners = columnOwnerGateIds(register, column);
+          if (owners.length === 0 || owners.includes(gate)) registerReadStats.ownedHere++;
+          else registerReadStats.shared.push({ gate: byTrigger ? `${gate} (trigger)` : gate, register, column, owner: owners.join('/') });
+        }
+      }
+    }
+  };
+  walk(REGISTER_READS_BY_GATE, false);
+  walk(TRIGGER_READS_BY_GATE, true);
+}
+
+// S7 — the checked-in column-read map must match a fresh trace.
+function verifyColumnReadsFresh(): void {
+  const { reads, errors } = traceColumnReads();
+  for (const e of errors) fail('S7', '—', 'trace', `a check threw while being traced, so the trace is incomplete for it: ${e}`);
+  const expected = renderColumnReadsFile(reads).replace(/\r\n/g, '\n');
+  const actual = readFileSync(join(REPO_ROOT, 'packages/shared/src/config/registerColumnReads.ts'), 'utf8').replace(/\r\n/g, '\n');
+  if (expected !== actual) {
+    fail(
+      'S7',
+      '—',
+      'registerColumnReads.ts',
+      'no longer matches what readiness reads — a check, trigger or register changed. Run `npm run generate:column-reads` and commit the result'
+    );
+  }
 }
 
 function verifyAssumptions(): { tagged: number; ids: Set<string> } {
@@ -757,6 +854,8 @@ for (const entry of entries) verifyNames(entry);
 verifyVacuity();
 verifySeededFixedRows();
 const openEvidence = verifyEvidenceFrozen();
+verifyRegisterReads();
+verifyColumnReadsFresh();
 const assumptions = verifyAssumptions();
 
 // Debt counters — not failures, but printed every run so they cannot drift
@@ -811,6 +910,12 @@ console.log(
   `\n--- S6: evidence still editable after its gate passes (${openEvidence.length} sources, ${openItemCount} readiness items) ---`,
 );
 console.log(`  ${coveredBySw5.size} further reads are covered by SW-5 (per-cell freeze) and no longer listed.`);
+console.log(
+  `  Register reads (measured): ${registerReadStats.reads} columns across ${Object.keys(REGISTER_READS_BY_GATE).length} gates — ${registerReadStats.ownedHere} owned by the gate that reads them, ${registerReadStats.shared.length} owned by a LATER gate, ${registerReadStats.rowsOnly} registers read for their rows only.`,
+);
+for (const shared of registerReadStats.shared) {
+  console.log(`    ${shared.gate} reads ${shared.register}.${shared.column}, signed by ${shared.owner} (its signature records the column, but a later change to it does not make that signature stale)`);
+}
 for (const e of [...openEvidence].sort((a, b) => a.source.label.localeCompare(b.source.label))) {
   const reads = [...e.readAt.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -832,7 +937,7 @@ if (notes.length > 0) {
 
 if (failures.length === 0) {
   console.log(
-    '\n✅ S1 (tên tham chiếu) · S2 (register rỗng) · S3 (giá trị seed) · S4 (dev-decision đã hỏi) · S5 (resolve Vòng 4) · TAG (giả định): sạch · S6 (nguồn không có gate): sạch\n',
+    '\n✅ S1 (tên tham chiếu) · S2 (register rỗng) · S3 (giá trị seed) · S4 (dev-decision đã hỏi) · S5 (resolve Vòng 4) · TAG (giả định): sạch · S6 (nguồn không có gate): sạch · S7 (bản đồ cột đọc): sạch\n',
   );
   process.exit(0);
 }
