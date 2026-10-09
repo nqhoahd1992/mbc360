@@ -1537,6 +1537,8 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q58 | Ai được xoá một Next Action | F8 chỉ nói ai đóng | **chủ dự án hỏi 07/10/2026** |
 | R5-Q59 | Thực hiện một điều kiện của gate Proceed with Conditions có làm chữ ký phải ký lại không | Rà soát luật SME (29.1 / B2) | **chủ dự án quyết 09/10/2026** |
 | R5-Q60 | Action Critical còn mở có chặn cả Proceed with Conditions không | Rà soát luật SME (F8) | **lộ ra 09/10/2026** |
+| R5-Q62 | Cột "Release decision" của sổ Stability & Release được nhập ở Gate 9 hay Gate 11 | Rà soát luật SME (F1 Gate 9 / Gate 11) | **chủ dự án giao chọn 09/10/2026** |
+| R5-Q63 | Cột "Product status" của hai sổ watch-list được nhập tới Gate 7 hay chỉ ở Gate 4 | Rà soát luật SME (Round 4 câu 6) | **lộ ra 09/10/2026** |
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
@@ -2230,3 +2232,23 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Câu hỏi:** Sau khi một action Critical đã được đóng hoặc huỷ, gate có được Proceed thuần không, hay vì gate từng mang một vấn đề Critical nên vẫn chỉ được Proceed with Conditions? Một action Critical bị huỷ vì tạo nhầm có tính như đã từng có vấn đề Critical không?
 
 **Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — mục `critical-next-actions` trong `gateReadinessChecklist` (thêm một mục mềm đọc các action Critical đã đóng hoặc huỷ, được Proceed with Conditions xoá).
+
+#### R5-Q62 · Cột "Release decision" của sổ Stability & Release được nhập ở Gate 9 hay Gate 11 🔴
+
+**Lộ ra 09/10/2026, khi gắn gate nhập cho từng cột của sổ dùng chung.** Sổ `stabilityRelease` được Gate 9 (kết quả ổn định, tương thích) và Gate 11 (mục "Quality release pathway") đọc. F1 liệt kê ở Gate 9 *"Release-readiness conclusion"* và ở Gate 11 *"Quality release pathway"*, nhưng không nói thẳng cột "Release decision" của sổ do gate nào nhập.
+
+**Chủ dự án không biết và giao chọn cái hợp lý hơn; hiện chọn Gate 11.** Lý do: Gate 9 kết luận mức *sẵn sàng* phát hành (readiness), còn quyết định phát hành thật (release decision) thuộc Gate 11 "Production and Launch", là gate có hard block phát hành theo từng thị trường. Hệ quả: sổ có gate `09/11`, cột `releaseDecision` thuộc Gate 11, các cột kết quả ổn định thuộc Gate 9. Sau khi Gate 9 pass thì các cột kết quả bị đóng băng và không thêm hay xoá hàng được; `releaseDecision` vẫn mở tới khi Gate 11 pass.
+
+**Câu hỏi:** Quyết định phát hành ("Release decision") được ghi ở Gate 9 hay ở Gate 11? Nếu ở Gate 9 thì Gate 11 chỉ kiểm tra lại.
+
+**Nếu trả lời khác:** `packages/shared/src/config/registers.ts` — `stabilityRelease`: `gate`, `referenceGates` và `gate` của cột `releaseDecision`.
+
+#### R5-Q63 · Cột "Product status" của hai sổ watch-list được nhập tới Gate 7 hay chỉ ở Gate 4 🔴
+
+**Lộ ra 09/10/2026, cùng đợt.** Câu 6 của Round 4 nói Gate 4 sàng lọc và đưa ra kết luận cho mọi dòng, còn Gate 7 *"phải chính thức đóng mọi vấn đề restricted hoặc caution liên quan đến công thức cuối"*. Cột `productStatus` là kết quả sàng lọc tự động đối chiếu công thức; câu 6 không nói nó được chốt ở gate nào.
+
+**Hiện đọc là Gate 7:** các cột review (người đánh giá, ngày, lý do, hành động liên kết, bằng chứng, disposition Gate 4) thuộc Gate 4 và đóng băng khi Gate 4 pass; `productStatus` và các cột còn lại thuộc Gate 7. Sổ có gate `04/07`. Nếu thực tế công thức đổi sau Gate 4 thì `productStatus` còn phải cập nhật tới Gate 7, nên khóa nó ở Gate 4 sẽ buộc Backtrack vì một việc bình thường.
+
+**Câu hỏi:** Trạng thái sản phẩm so với watch-list được cập nhật tới Gate 7, hay chốt ở Gate 4 cùng các cột review?
+
+**Nếu trả lời khác:** `packages/shared/src/config/registers.ts` — `prohibitedIngredients` và `pbCautionLimits`: `gate` của cột `productStatus`.

@@ -732,6 +732,26 @@ We have therefore not added that restriction: once a Critical action is Closed o
 
 ---
 
+## Question 62 — Where is the release decision on the Stability & Release sheet entered?
+
+Your answer to Gate 9 lists a *release-readiness conclusion*, and your answer to Gate 11 lists a *quality release pathway*. The Stability, Compatibility & Release Evidence sheet has a "Release decision" column, and neither answer says at which gate it is filled in.
+
+We have read it as **Gate 11**: Gate 9 concludes that the product is ready for release, and the decision to release is part of Production and Launch, which is also where release is blocked market by market. So Gate 9 owns the stability and compatibility results, and once Gate 9 has passed those results are read-only; the release decision stays open until Gate 11.
+
+**Question:** Is the release decision recorded at Gate 11, or at Gate 9 with Gate 11 only checking it again?
+
+---
+
+## Question 63 — How long does the "product status" of the two watch-lists keep being updated?
+
+Your answer to question 6 says Gate 4 screens and gives a conclusion for every row, and Gate 7 must formally close every restricted or caution issue that applies to the final formula. The "product status" column is the automatic result of comparing the formula with the watch-list; your answer does not say at which gate it is settled.
+
+We have read it as **Gate 7**: the reviewer columns (assessment, reviewer, date, rationale, linked action, evidence, Gate 4 disposition) are Gate 4's and become read-only when Gate 4 passes, while product status keeps following the formula until Gate 7. If it were frozen at Gate 4, any normal formula change afterwards would force the project back to Gate 4.
+
+**Question:** Is product status updated until Gate 7, or settled at Gate 4 together with the reviewer columns?
+
+---
+
 ## Summary
 
 | # | Topic | Why it matters |
@@ -750,6 +770,8 @@ We have therefore not added that restriction: once a Critical action is Closed o
 | 59 | Whether carrying out a condition after signing means re-signing | Your 29(1) and B2 answers read literally disagree — we read the open actions as the accepted conditions |
 | 60 | Whether an open Critical action blocks Proceed with Conditions too | Built as "blocks every decision" — our reading of the word "normal" in F8 |
 | 61 | Whether a closed or cancelled Critical action still forces Proceed with Conditions | Built as "no" — your answers only speak about open actions |
+| 62 | Where the release decision on the Stability & Release sheet is entered | Built as Gate 11 — your answers name a release pathway at Gate 11 but do not say where the column is filled in |
+| 63 | Until which gate the watch-list "product status" keeps being updated | Built as Gate 7 — question 6 does not say where it is settled |
 | 13–14 | A "Reject / Stop" decision that does not exist · whether Safety **or** Regulatory is enough | Two of your own answers name them; we did not invent either |
 | 15–16 | Who may open the reference-data pages · what makes a gap's action "controlled" | Both surfaced by using what we had just built |
 | 17 | Should a change-control trigger be limited to gates the project has passed | Not built yet — raised discussing the Change Control screen, no rework at stake either way |
