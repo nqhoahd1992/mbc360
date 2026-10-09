@@ -644,7 +644,7 @@ function sourcesOf(check: ReadinessCheck): EvidenceSource[] {
       return [{ label: `gate row ${check.gate}`, lockRef: check.gate.replace('SG', '') }];
     case 'nextActionAtGate':
     case 'nextActionsClosed':
-      return [{ label: 'Next Actions', lockRef: 'NONE', note: 'adding or deleting is refused on a passed gate, editing or closing is not' }];
+      return [{ label: 'Next Actions', lockRef: 'NONE', note: 'SW-19: adding or deleting is refused on a passed gate, closed or cancelled actions are frozen, an open condition can be progressed but not rewritten or given a lower priority' }];
     case 'everyMarket':
     case 'postLaunchReviewsRecorded':
       return [{ label: 'market tracks', lockRef: 'NONE', note: 'setMarketTracks has no gate lock' }];

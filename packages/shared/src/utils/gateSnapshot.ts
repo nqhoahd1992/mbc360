@@ -39,7 +39,7 @@ import type { GateEvidenceSnapshot, ProjectData, RegisterRow } from '../types';
 import { GATE_READINESS, type ReadinessCheck } from '../config/gateReadiness';
 import { PHASE_CONFIGS } from '../config/phases';
 import { REGISTER_CONFIGS } from '../config/registers';
-import { NEXT_ACTION_TERMINAL_STATUSES } from '../types';
+import { NEXT_ACTION_PRIORITIES, NEXT_ACTION_TERMINAL_STATUSES } from '../types';
 import { projectAsOfGate } from './registerRowBirth';
 
 // Deliberately NOT imported from gateProgress, which is a one-line filter there:
@@ -155,7 +155,27 @@ export function gateEvidenceSnapshot(
 // What changed between the snapshot a signature attests to and the project as it
 // stands — question 29(1)'s "the system identifies what changed", in words a
 // person can act on rather than a diff of JSON.
-export function snapshotChanges(before: GateEvidenceSnapshot, after: GateEvidenceSnapshot): string[] {
+// Every Next Action of one gate as it stands now, open or not. The signature snapshot only
+// records the OPEN ones (the conditions accepted), so telling "closed since" apart from
+// "deleted since" needs the current state of all of them.
+export interface GateActionState {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+}
+
+export function gateActionStates(project: ProjectData, gateId: string): GateActionState[] {
+  return project.nextActions
+    .filter((a) => a.gateId === gateId)
+    .map((a) => ({ id: a.id, title: a.description, status: a.status, priority: a.priority }));
+}
+
+export function snapshotChanges(
+  before: GateEvidenceSnapshot,
+  after: GateEvidenceSnapshot,
+  currentActions: GateActionState[],
+): string[] {
   const changes: string[] = [];
   if (before.status !== after.status) changes.push(`Gate status: "${before.status}" -> "${after.status}"`);
   if (before.formulaVersion !== after.formulaVersion) {
@@ -188,16 +208,28 @@ export function snapshotChanges(before: GateEvidenceSnapshot, after: GateEvidenc
     if (!(key in after.registers)) changes.push(`Register no longer read at this gate: ${key}`);
   }
 
-  const beforeActions = new Map(before.openActions.map((a) => [a.id, a]));
-  for (const action of after.openActions) {
-    const was = beforeActions.get(action.id);
-    if (!was) changes.push(`New open action: ${action.title || action.id}`);
-    else if (was.status !== action.status || was.priority !== action.priority) {
-      changes.push(`Open action changed: ${action.title || action.id}`);
+  // The open actions of a gate are the CONDITIONS its Approved signature accepted, so what
+  // makes a signature stale is changing a condition or adding one — not carrying one out.
+  // Closing or cancelling an action, moving its status or reassigning it is fulfilment,
+  // and treating it as a change left a gate that passed with conditions unable to close
+  // them without Backtrack. Raising a priority is not a change to what was accepted
+  // either; whether a Critical action still blocks the gate is the readiness engine's
+  // call. [ASSUMPTION: R5-Q59]
+  const acceptedIds = new Set(before.openActions.map((a) => a.id));
+  const now = new Map(currentActions.map((a) => [a.id, a]));
+  const rank = (priority: string) => NEXT_ACTION_PRIORITIES.indexOf(priority as (typeof NEXT_ACTION_PRIORITIES)[number]);
+  for (const accepted of before.openActions) {
+    const current = now.get(accepted.id);
+    const name = accepted.title || accepted.id;
+    if (!current) changes.push(`Condition removed: ${name}`);
+    else {
+      if (current.title !== accepted.title) changes.push(`Condition reworded: ${name}`);
+      if (rank(current.priority) < rank(accepted.priority)) changes.push(`Condition priority lowered: ${name}`);
     }
   }
-  for (const action of before.openActions) {
-    if (!after.openActions.some((a) => a.id === action.id)) changes.push(`Action closed: ${action.title || action.id}`);
+  for (const action of currentActions) {
+    if (NEXT_ACTION_TERMINAL_STATUSES.includes(action.status as never) || acceptedIds.has(action.id)) continue;
+    changes.push(`New open action: ${action.title || action.id}`);
   }
 
   const evidenceBefore = before.evidenceLinks.join('|');

@@ -1535,6 +1535,9 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q56 | Ba chữ ký gate có phải ba người khác nhau không | Rà soát luật SME (29.4 / D1) | **rà soát 05/10/2026** |
 | R5-Q57 | Gate đã passed có được tạo Next Action mới không | Rà soát luật SME (B2 / F8 / 29.1) | **rà soát 05/10/2026** |
 | R5-Q58 | Ai được xoá một Next Action | F8 chỉ nói ai đóng | **chủ dự án hỏi 07/10/2026** |
+| R5-Q59 | Thực hiện một điều kiện của gate Proceed with Conditions có làm chữ ký phải ký lại không | Rà soát luật SME (29.1 / B2) | **chủ dự án quyết 09/10/2026** |
+| R5-Q60 | Action Critical còn mở có chặn cả Proceed with Conditions không | Rà soát luật SME (F8) | **lộ ra 09/10/2026** |
+| R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
 
@@ -2182,7 +2185,7 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Đã chặn, cho cả hai quyết định.** Lý do mang tính cơ chế chứ không phải khẩu vị: danh sách action đang mở của gate nằm trong `GateEvidenceSnapshot` (câu 29(1)), nên thêm một action sau khi gate qua làm **cả ba chữ ký thành Stale** — mà gate đã qua thì **không ký lại được** (`isGateUnlocked`), nên lane kẹt vĩnh viễn. Backtrack là lối ra.
 
-**Vẫn mở trên gate đã passed:** sửa, đẩy trạng thái và đóng các action đã có — đúng thứ một gate qua bằng `Proceed with Conditions` cần. Chỉ cấm thêm mới; xoá thì vốn đã cấm.
+**Đã sửa 09/10/2026:** đoạn này từng viết rằng sửa, đẩy trạng thái và đóng action đã có vẫn mở trên gate đã passed. **Sai** — chạy engine thật cho thấy đóng hoặc đổi trạng thái một action còn mở làm chữ ký stale và gate hết passed, nên bị chặn như thêm mới. Hệ quả là gate Proceed with Conditions không đóng được điều kiện của chính nó. Xem R5-Q59, là câu giải quyết việc này.
 
 **Câu hỏi:** Cấm tạo action mới trên gate đã passed có đúng không? Nếu phát hiện việc sau đó thì nên ghi vào gate kế tiếp, hay phải mở lại gate?
 
@@ -2197,3 +2200,33 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Câu hỏi:** Ai được xoá một Next Action — chỉ người nêu, hay cả Project Lead / quản trị viên, hay không ai (chỉ Cancel)? Có cần giữ dấu vết của action đã xoá không?
 
 **Nếu trả lời khác:** `packages/shared/src/utils/nextActionAccess.ts` — `mayRemoveNextAction`; `apps/api/src/projects/projects.service.ts` — vòng "Removal" trong `guardNextActions`; `apps/web/src/components/NextActionsCard.tsx` — `removeLocked`.
+
+#### R5-Q59 · Thực hiện một điều kiện của gate Proceed with Conditions có làm chữ ký phải ký lại không 🔴
+
+**Lộ ra 09/10/2026, khi đối chiếu luật Next Action với snapshot chữ ký.** Câu 29(1) nói snapshot chữ ký gồm *"open actions and conditions"* và *"if evidence within the signed snapshot changes after a signature … the signature becomes stale/invalidated … re-signing is required"*. `R1-B2` nói gate Proceed with Conditions mở gate kế *"while the outstanding actions are tracked"*, tức các action đó phải đóng được. Đọc theo chữ thì hai điều này mâu thuẫn: đóng một điều kiện làm danh sách action còn mở đổi, chữ ký stale, mà gate đã passed không ký lại được (B4). Trước 09/10/2026 hệ thống rơi đúng vào chỗ này — gate Proceed with Conditions không đóng được điều kiện của mình nếu không Backtrack.
+
+**Chủ dự án quyết (09/10/2026), chưa phải luật SME:** các action còn mở lúc ký là **các điều kiện đã chấp nhận**. Thực hiện chúng (đổi trạng thái, đóng, huỷ, đổi người phụ trách, đổi hạn) **không** làm chữ ký stale. Đổi *nội dung* điều kiện thì có: mô tả, gate, hạ priority, xoá, hoặc thêm điều kiện mới. Sau khi gate passed: action đã Closed/Cancelled bị đóng băng hoàn toàn; action còn mở **chỉ được sửa Status, Owner, Due date** — mô tả, gate và priority (cả tăng lẫn giảm) bị đóng băng.
+
+**Câu hỏi:** Có đúng là việc thực hiện một điều kiện sau khi ký không làm chữ ký phải ký lại không? Nếu không, một gate Proceed with Conditions đóng điều kiện của mình bằng cách nào mà không Backtrack?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/gateSnapshot.ts` — `snapshotChanges` (phần điều kiện đã chấp nhận); `packages/shared/src/utils/nextActionAccess.ts` — `nextActionFreeze`, `nextActionFreezeViolation`; `apps/api/src/projects/projects.service.ts` — `guardNextActions`; `apps/web/src/components/NextActionsCard.tsx` — `freezeOf`.
+
+#### R5-Q60 · Action Critical còn mở có chặn cả Proceed with Conditions không 🔴
+
+**Lộ ra 09/10/2026, khi chủ dự án nhớ lại rằng Proceed with Conditions cho action Critical đi qua.** F8 chỉ nói *"Critical actions must prevent normal gate closure"*. Code hiện đọc "normal" là mọi quyết định: một action Critical còn mở chặn **cả** Proceed with Conditions (`critical-next-actions`, `hardBlock: true`, không được xoá bởi Proceed with Conditions). Cách đọc khác, khớp với trí nhớ của chủ dự án: Critical chặn Proceed thường, còn Proceed with Conditions là đường đóng gate *không bình thường* nên cho qua. Cách đọc hiện tại chưa từng được ghi thành câu hỏi, và cũng chưa có dấu giả định; câu này bù lại.
+
+**Chủ dự án xác nhận giữ cách đọc chặt hơn (09/10/2026):** *"Action Critical còn mở vẫn chặn mọi quyết định"* — kể cả Proceed with Conditions. Đây là quyết định của chủ dự án, chưa phải luật SME, nên câu hỏi vẫn mở. Hệ quả: nâng một điều kiện lên Critical sau khi ký làm gate hết passed và bị chặn; lối thoát duy nhất là đóng hoặc huỷ action đó, vì hạ priority bị đóng băng sau khi gate passed (SW-19).
+
+**Câu hỏi:** Action Critical còn mở có chặn Proceed with Conditions không, hay chỉ chặn Proceed thường? Nếu chỉ chặn Proceed thường thì Critical có cần điều kiện gì thêm (người duyệt, lý do) khi đi qua không?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — mục `critical-next-actions` trong `gateReadinessChecklist` và `hardGateBlockers`.
+
+#### R5-Q61 · Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không 🔴
+
+**Chủ dự án chốt (09/10/2026), sau khi có người đề xuất ngược lại.** Một phiên khác từng viết rằng gate từng có action Critical, dù đã đóng hoặc huỷ, vẫn không được Proceed thuần mà chỉ qua được bằng Proceed with Conditions. Chủ dự án bác đề xuất đó và chốt: **khi action Critical đã Closed hoặc Cancelled thì nó không còn chặn gì, gate pass với Proceed thuần** (miễn không còn action mở nào). Căn cứ chủ dự án nêu: *"tôi tôn trọng SME first"* — rà lại toàn bộ câu trả lời của SME thì `R1-B2` chỉ nói action mở chỉ được tồn tại khi quyết định là Proceed with Conditions và *"otherwise all actions should normally be completed before gate closure"*, `F8` chỉ nói *"Critical actions must prevent normal gate closure"* — cả hai nói về action **còn mở**. Không có câu nào buộc một gate từng có vấn đề Critical phải đi bằng Proceed with Conditions.
+
+**Hiện xây như vậy:** chỉ action Critical **đang mở** chặn (`critical-next-actions`). Không có mục nào đọc lịch sử action Critical đã đóng. Việc không thêm ràng buộc đó là cách đọc của chúng ta về việc SME *không* nói, nên cần SME xác nhận chứ không coi là hiển nhiên.
+
+**Câu hỏi:** Sau khi một action Critical đã được đóng hoặc huỷ, gate có được Proceed thuần không, hay vì gate từng mang một vấn đề Critical nên vẫn chỉ được Proceed with Conditions? Một action Critical bị huỷ vì tạo nhầm có tính như đã từng có vấn đề Critical không?
+
+**Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — mục `critical-next-actions` trong `gateReadinessChecklist` (thêm một mục mềm đọc các action Critical đã đóng hoặc huỷ, được Proceed with Conditions xoá).

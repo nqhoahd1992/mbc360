@@ -35,7 +35,12 @@ import {
   type RegisterConfig,
 } from '@mbc360/shared/config/registers';
 import { diffGateRecord } from '@mbc360/shared/utils/gateDiff';
-import { mayEditNextActionRecord, mayRemoveNextAction, nextActionRecordChanged } from '@mbc360/shared/utils/nextActionAccess';
+import {
+  mayEditNextActionRecord,
+  mayRemoveNextAction,
+  nextActionFreezeViolation,
+  nextActionRecordChanged,
+} from '@mbc360/shared/utils/nextActionAccess';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { gate11ConditionalChanges } from '@mbc360/shared/utils/changeImpact';
 import {
@@ -3252,8 +3257,9 @@ export class ProjectsService {
     // signatures attest to (gateSnapshot.ts), so a new one on a passed gate makes
     // all three stale — and a passed gate cannot be re-signed ("not the gate
     // currently open for work"), leaving the lane permanently stale with no way
-    // out. Editing and closing an action that already exists stays open, which is
-    // what a gate carrying conditions needs; only adding is refused.
+    // out. Progressing or closing an action that already exists stays open, which is
+    // what a gate carrying conditions needs (SW-19 limits what may change); only
+    // adding is refused.
     //
     // Our reading of B2 ("open actions may exist only if the gate decision is
     // Proceed with Conditions"), which speaks about actions EXISTING, not about
@@ -3269,8 +3275,20 @@ export class ProjectsService {
     }
 
     const result: ProjectData['nextActions'] = [];
+    const passedCache = new Map<string, boolean>();
+    const gatePassed = (gateId: string) => {
+      if (!passedCache.has(gateId)) passedCache.set(gateId, isGatePassed(project, gateId));
+      return passedCache.get(gateId) as boolean;
+    };
     for (const a of incoming) {
       const old = before.get(a.id);
+      // SW-19: after its gate has passed a closed or cancelled action is frozen, and an
+      // open one (a condition the approval accepted) can only have its Status,
+      // Owner and Due date changed. [ASSUMPTION: R5-Q59]
+      if (old && gatePassed(old.gateId)) {
+        const frozen = nextActionFreezeViolation(old, a);
+        if (frozen) throw new BadRequestException(frozen);
+      }
       if (old && nextActionRecordChanged(old, a) && !mayEditNextActionRecord(old, actor)) {
         throw new ForbiddenException(
           `Action "${old.description}" can only be edited by whoever created it (${old.raisedBy ?? 'unrecorded'}), the project Lead or a System Administrator — its Status can still be updated`,

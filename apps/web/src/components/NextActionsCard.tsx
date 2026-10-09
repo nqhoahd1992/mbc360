@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import type { NextAction, NextActionPriority, NextActionStatus, ProjectData } from '@mbc360/shared/types';
 import { GATES } from '@mbc360/shared/config/gates';
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
+import { NEXT_ACTION_FROZEN_REASON, nextActionFreeze } from '@mbc360/shared/utils/nextActionAccess';
 import {
   NEXT_ACTION_RECORD_LOCK_REASON,
   NEXT_ACTION_REMOVE_LOCK_REASON,
@@ -84,6 +85,13 @@ export default function NextActionsCard({
   const recordLocked = (a: NextAction): boolean => {
     const committed = committedById.get(a.id);
     return !!committed && !mayEditNextActionRecord(committed, actor);
+  };
+  // SW-19: once the action's gate has passed, a closed or cancelled action is frozen and an
+  // open one (a condition the approval accepted) can be progressed but not rewritten or
+  // given a lower priority. The server applies the same function. [ASSUMPTION: R5-Q59]
+  const freezeOf = (a: NextAction) => {
+    const committed = committedById.get(a.id);
+    return nextActionFreeze(committed, !!committed && isGatePassed(project, committed.gateId));
   };
   // Removal is raiser-only [ASSUMPTION: R5-Q58]; a row not yet saved has no
   // committed copy and is yours.
@@ -173,7 +181,7 @@ export default function NextActionsCard({
           render: (a, i) => (
             <Select
               style={{ width: '100%' }}
-              disabled={recordLocked(a)}
+              disabled={recordLocked(a) || freezeOf(a).rewrite}
               value={a.priority}
               options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: <span className={`c-tag ${PRIORITY_TONE[p]}`}>{p}</span> }))}
               onChange={(v) => patch(i, { priority: v })}
@@ -184,7 +192,7 @@ export default function NextActionsCard({
           label: 'Status',
           width: 184,
           render: (a, i) => (
-            <Select style={{ width: '100%' }} value={a.status} options={statusOptions(a)} onChange={(v: NextActionStatus) => setStatus(i, v)} />
+            <Select style={{ width: '100%' }} disabled={freezeOf(a).all} value={a.status} options={statusOptions(a)} onChange={(v: NextActionStatus) => setStatus(i, v)} />
           ),
         },
       ]}
@@ -192,20 +200,21 @@ export default function NextActionsCard({
       drawer={(a, i) => (
         <section>
           {recordLocked(a) && <p className="rt-note">{NEXT_ACTION_RECORD_LOCK_REASON}</p>}
+          {freezeOf(a).rewrite && <p className="rt-note">{NEXT_ACTION_FROZEN_REASON}</p>}
           <div className="rt-grid">
             <RecordField label="Description" wide>
-              <Input.TextArea autoSize={{ minRows: 2 }} disabled={recordLocked(a)} value={a.description} placeholder="What must be done?" onChange={(e) => patch(i, { description: e.target.value })} />
+              <Input.TextArea autoSize={{ minRows: 2 }} disabled={recordLocked(a) || freezeOf(a).rewrite} value={a.description} placeholder="What must be done?" onChange={(e) => patch(i, { description: e.target.value })} />
             </RecordField>
             <RecordField label="Gate">
-              <Select style={{ width: '100%' }} disabled={recordLocked(a)} value={a.gateId} options={gateOptions} onChange={(v) => patch(i, { gateId: v })} />
+              <Select style={{ width: '100%' }} disabled={recordLocked(a) || freezeOf(a).rewrite} value={a.gateId} options={gateOptions} onChange={(v) => patch(i, { gateId: v })} />
             </RecordField>
             <RecordField label="Owner">
-              <UserSelect disabled={recordLocked(a)} value={a.owner} onChange={(v) => patch(i, { owner: v ?? '' })} />
+              <UserSelect disabled={recordLocked(a) || freezeOf(a).all} value={a.owner} onChange={(v) => patch(i, { owner: v ?? '' })} />
             </RecordField>
             <RecordField label="Due date">
               <DatePicker
                 style={{ width: '100%' }}
-                disabled={recordLocked(a)}
+                disabled={recordLocked(a) || freezeOf(a).all}
                 value={a.dueDate ? dayjs(a.dueDate) : null}
                 onChange={(d) => patch(i, { dueDate: d ? d.format('YYYY-MM-DD') : undefined })}
               />
@@ -213,14 +222,14 @@ export default function NextActionsCard({
             <RecordField label="Priority">
               <Select
                 style={{ width: '100%' }}
-                disabled={recordLocked(a)}
+                disabled={recordLocked(a) || freezeOf(a).rewrite}
                 value={a.priority}
                 options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: p }))}
                 onChange={(v) => patch(i, { priority: v })}
               />
             </RecordField>
             <RecordField label="Status" wide>
-              <Select style={{ width: '100%' }} value={a.status} options={statusOptions(a)} onChange={(v: NextActionStatus) => setStatus(i, v)} />
+              <Select style={{ width: '100%' }} disabled={freezeOf(a).all} value={a.status} options={statusOptions(a)} onChange={(v: NextActionStatus) => setStatus(i, v)} />
               {/* Written out rather than left in the disabled options' tooltip:
                   the useful part is what to do instead, and nobody hovers a
                   dropdown entry they cannot click. */}

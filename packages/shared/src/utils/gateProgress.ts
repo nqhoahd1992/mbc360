@@ -4,7 +4,7 @@ import { GATE_SIGNOFF_ROLES, NEXT_ACTION_TERMINAL_STATUSES, familyUseAgeGroupLis
 import type { GateSignOffRole } from '../types';
 import { COSTING_STATUS_NOT_APPLICABLE, GATES, REQUIREMENT_NOT_APPLICABLE } from '../config/gates';
 import { GATE_PASSING_DECISIONS, findGateSignOff, gateSignOffMarkets, isGateSignOffSigned } from '../config/gateSignOff';
-import { gateEvidenceSnapshot, snapshotChanges } from './gateSnapshot';
+import { gateActionStates, gateEvidenceSnapshot, snapshotChanges } from './gateSnapshot';
 import { projectAsOfGate } from './registerRowBirth';
 import { isChangeOpen } from '../config/changeTriggers';
 import {
@@ -750,7 +750,7 @@ export function gateSignOffStaleChanges(
 ): string[] {
   const signOff = findGateSignOff(project, gateId, market, role);
   if (!signOff?.signedAt || !signOff.snapshot) return [];
-  return snapshotChanges(signOff.snapshot, gateEvidenceSnapshot(project, gateId, market));
+  return snapshotChanges(signOff.snapshot, gateEvidenceSnapshot(project, gateId, market), gateActionStates(project, gateId));
 }
 
 // Every raw material this project uses, by the rmCode the overlay is keyed on.
@@ -2001,6 +2001,13 @@ export function gateReadinessChecklist(
   // Merging them into one item would hide which severity is actually the
   // problem and make the "clears with Proceed with Conditions" note (only
   // true for the non-critical item) ambiguous.
+  // [ASSUMPTION: R5-Q60] F8 says only that Critical actions "prevent normal gate
+  // closure"; reading "normal" as every decision is ours.
+  // [ASSUMPTION: R5-Q61] Only OPEN Critical actions block. Once a Critical action is
+  // Closed or Cancelled it no longer counts, so the gate can pass on a plain Proceed.
+  // The SME's B2 says all actions should normally be completed before closure and F8
+  // names only open Critical actions as blocking; that a once-Critical gate must still
+  // use Proceed with Conditions is not in either, so it is not enforced.
   const criticalOpen = openNextActions(project, gateId).filter((a) => a.priority === 'Critical');
   items.push({
     id: 'critical-next-actions',

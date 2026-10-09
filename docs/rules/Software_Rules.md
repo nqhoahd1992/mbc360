@@ -52,6 +52,21 @@ Snapshot được lưu đầy đủ và so sánh, hệ thống chỉ ra mục n�
 ### SW-9. Server là nơi thực thi duy nhất — *Đã xây*
 Mọi guard ở UI phải có bản tương ứng ở API, gọi cùng hàm trong `packages/shared`, không viết lại.
 
+### SW-19. Next Action quanh thời điểm gate pass — *Đã xây* (2026-10-09, chủ dự án quyết)
+**Trước khi gate pass** (đã có sẵn trong engine, nay được test):
+- Có action còn mở, không action nào là Critical: gate pass được nhưng phải chọn **Proceed with Conditions**. Proceed thường không pass.
+- Có ít nhất một action còn mở mang priority **Critical**: gate **không pass**, kể cả Proceed with Conditions.
+- Mọi action đã Closed hoặc Cancelled (hoặc không có action nào): gate pass với Proceed thường, **kể cả khi có action từng là Critical**. SME chỉ nói action Critical *còn mở* chặn gate; không nói gate từng có Critical phải đi bằng Proceed with Conditions (R5-Q61, chờ SME xác nhận).
+
+**Sau khi gate đã pass.** Các action còn mở chắc chắn không có action Critical (nếu có thì gate đã không pass). Chúng là **các điều kiện đã chấp nhận**:
+- Action đã **Closed hoặc Cancelled bị đóng băng hoàn toàn** (không mở lại, không sửa, không chuyển giữa Closed và Cancelled).
+- Action **còn mở** chỉ được sửa **Status, Owner, Due date**. Mô tả, gate và **priority (cả tăng lẫn giảm)** bị đóng băng. Vì vậy không thể nâng một điều kiện lên Critical sau khi gate đã pass.
+- Thực hiện một điều kiện (đổi status, đóng, huỷ, đổi người phụ trách, đổi hạn) **không** làm chữ ký stale. Đổi nội dung điều kiện thì có: mô tả, hạ priority, xoá, hoặc thêm điều kiện mới.
+- Thêm action mới vẫn bị chặn (R5-Q57), xoá vẫn bị chặn.
+
+Hai chỗ trong này dựa trên cách đọc của chúng ta về luật SME và chưa được SME xác nhận: việc "thực hiện điều kiện không làm chữ ký stale" là diễn giải câu 29(1) (R5-Q59), và việc Critical chặn cả Proceed with Conditions là cách đọc chữ "normal" của F8 (R5-Q60).
+Code: `nextActionAccess.ts` (`nextActionFreeze`, `nextActionFreezeViolation`), `gateSnapshot.ts` (`snapshotChanges`), `guardNextActions`, `NextActionsCard`. Kiểm tra: `npm run verify:actions`.
+
 ## 3. Quyền và truy cập
 
 ### SW-10. Không có role thì không vào được app — *Đã xây* (2026-10-02)
