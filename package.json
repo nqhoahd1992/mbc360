@@ -22,7 +22,8 @@
     "verify:nav": "tsx apps/web/scripts/check-nav-coverage.ts",
     "verify:freeze": "tsx packages/shared/scripts/verify-register-freeze.ts",
     "verify:actions": "tsx packages/shared/scripts/verify-next-action-freeze.ts",
-    "generate:column-reads": "tsx packages/shared/scripts/generate-column-reads.ts"
+    "generate:column-reads": "tsx packages/shared/scripts/generate-column-reads.ts",
+    "verify:e2e": "tsx apps/api/scripts/e2e/run.ts"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

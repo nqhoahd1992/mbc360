@@ -38,7 +38,9 @@ Cách hiện thực: mỗi cột có một **gate sở hữu**. Chữ ký của 
 
 **Phạm vi (chủ dự án, 09/10/2026): dữ liệu liên quan đến readiness, không phải mọi loại dữ liệu.** Chữ ký ghi những gì readiness của gate đó đọc. Ngoài các sổ, đó là: Formula BOM, costing, formula properties, năm assessment, study approval trail, các trường định danh dự án (scope, target users, markets), market tracks, change records, post-launch reviews và lịch sử phiên bản công thức. Phần nào gate đọc cũng được **đo** (`PROJECT_SLICE_READS_BY_GATE`), không khai tay. Chủ sở hữu theo khóa mà API đã có: định danh → Gate 01; BOM, costing, formula properties → Gate 05; mỗi assessment → gate có tab trả lời nó; study approvals → Gate 08. Market tracks, change records, post-launch reviews và lịch sử phiên bản **chưa có khóa theo gate nên chưa có chủ**: được ghi lại và báo khi đổi sau lúc ký, nhưng không bao giờ làm chữ ký stale. Các phần không liên quan readiness (reviewers, project lead, dữ liệu công ty như market profile) không nằm trong chữ ký.
 
-Cột **bị đóng băng khi gate sở hữu passed** (cho các hàng thuộc gate đó, SW-4). Hàng mà một gate đã passed dùng làm bằng chứng không xóa được. Luật này **không** giới hạn ai được điền hay điền lúc nào trước khi gate sở hữu pass: điền sớm cột của gate sau vẫn được (SME cho phép làm trước, F13, và A4 để bằng chứng mở cho người đóng góp).
+Cột **bị đóng băng khi gate sở hữu passed** (cho các hàng thuộc gate đó, SW-4). **Thị trường dự án** (`identity.markets`) không thuộc gate nào dù Gate 1 đọc nó: thêm thị trường sau Gate 1 được phép theo thiết kế (F4), nên nó chỉ được ghi nhận như thông tin và không làm chữ ký SG01 stale. Lỗi này lộ ra khi lên kịch bản SG10 và đã sửa.
+
+Áp cho **cả sổ chỉ có một gate**: watch-list thuộc gate 07 nhưng Gate 4 sở hữu các cột review của nó (`reviewerAssessment`…), nên các cột đó đóng băng khi SG04 pass chứ không đợi SG07. Lỗ hổng này do kịch bản ký thật qua HTTP lộ ra: khóa theo ô trước đó bỏ qua mọi sổ một gate. Hàng mà một gate đã passed dùng làm bằng chứng không xóa được. Luật này **không** giới hạn ai được điền hay điền lúc nào trước khi gate sở hữu pass: điền sớm cột của gate sau vẫn được (SME cho phép làm trước, F13, và A4 để bằng chứng mở cho người đóng góp).
 
 **Ai sở hữu cột** (theo thứ tự ưu tiên):
 1. `RegisterColumn.gate` ghi tay, khi sheet gốc nói rõ (sổ claim có trên hầu hết cột). Một lần đọc không bao giờ ghi đè: Gate 12 đọc lời claim để biết có cần bằng chứng hiệu quả không, nhưng lời claim vẫn là bằng chứng của Gate 3.
@@ -56,7 +58,7 @@ Một **trigger** đọc cột để quyết định một item có áp dụng k
 
 **Next Action** thuộc SW-19.
 
-Thực thi ở API (`setRegisterRows` từ chối, nêu ô và gate đã khóa) và ở bảng trên web (`DynamicTable`, kể cả Supplier & RM Evidence và Published Info vốn bọc nó: ô chỉ-đọc kèm gợi ý, nút xóa hàng vô hiệu hóa kèm lý do), cùng dùng một hàm. Kiểm tra: `npm run verify:freeze`.
+Thực thi ở API (`setRegisterRows` từ chối, nêu ô và gate đã khóa) và ở bảng trên web (`DynamicTable`, kể cả Supplier & RM Evidence và Published Info vốn bọc nó: ô chỉ-đọc kèm gợi ý, nút xóa hàng vô hiệu hóa kèm lý do), cùng dùng một hàm. Kiểm tra: `npm run verify:freeze` (logic thuần) và `npm run verify:e2e` (ký thật cả 12 gate qua HTTP với authenticator thật trên DB và API tạm (SG10–SG12 theo từng thị trường): dữ liệu định danh, sổ claim, BOM, costing, packaging, watch-list, assessment, sổ published-info, các luật khóa và chữ ký stale qua API thật).
 
 **Còn mở, vì cần một luật chứ không phải việc cơ học:**
 - **Market tracks** (Gate 10–12): `setMarketTracks` không có khóa theo gate. Khóa `launchApproval` sau Gate 11 sẽ cấm thu hồi phê duyệt phát hành khi sản phẩm đã bán, mà việc đó có thật ngoài đời (thu hồi, rút khỏi thị trường).

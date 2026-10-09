@@ -49,6 +49,7 @@ npm run verify:totp                 # RFC 6238 vectors against the hand-written 
 npm run generate:column-reads      # re-measure which register columns each gate reads (packages/shared/src/config/registerColumnReads.ts) — run it when verify:readiness reports S7; see SW-5 in docs/rules/Software_Rules.md
 npm run verify:freeze               # SW-4/SW-5: per-cell freeze, row birth gate, narrow signature snapshot
 npm run verify:actions              # SW-19: Next Actions before and after their gate passes
+npm run verify:e2e                  # after `npm run build`: real sign-off of all 12 gates over HTTP (SG10-SG12 per market) on a throwaway database + API (port 3199), then the SW-4/SW-5 freeze rules through the real API; local Postgres only, ~8 min
 npm run db:wipe-projects            # delete EVERY project (+ its data, audit trail, linked change records); keeps users/roles/reference data. --dry-run · --yes · --allow-remote
 ```
 
