@@ -4,6 +4,8 @@ Tài liệu này ghi các luật **do chủ dự án quyết định về cách 
 
 **Ranh giới với luật nghiệp vụ.** Nếu một luật nói *một sản phẩm mỹ phẩm phải đạt điều gì* (an toàn, claim, đăng ký thị trường) thì đó là của SME, và phải hỏi. Nếu nói *phần mềm bảo vệ dữ liệu và ghi vết như thế nào* thì đó là luật phần mềm và nằm ở đây. Nghi ngờ thì coi là luật nghiệp vụ và hỏi SME.
 
+Các trường hợp riêng và điểm chưa chắc của luật khóa và chữ ký được hoãn để xem sau trong [`Software_Rules_Review_Later.md`](Software_Rules_Review_Later.md).
+
 Mỗi luật có **Trạng thái**: `Đã xây` (code đang thực thi) hoặc `Đã chốt, chưa xây` (đã quyết, chưa có code).
 
 ---
