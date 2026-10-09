@@ -37,6 +37,18 @@
  *        the same manual bookkeeping that has drifted here four times, so the
  *        tick is checked against the markers rather than trusted.
  *
+ *   S6 — evidence a gate's readiness reads should be frozen once that gate passes
+ *        (added 2026-10-09). Two halves. FAILS when a readiness check reads a
+ *        source that carries no gate at all (a cross-cutting register — gate `ALL`
+ *        or unset), because such a source can never lock, so the gate would pass on
+ *        evidence that stays editable forever; the message names the source and the
+ *        gates that read it. REPORTS, without failing, a source shared with a LATER
+ *        gate (the edit lock needs every gate in its list passed), which is open
+ *        until that later gate passes; the rule that closes that half — freezing the
+ *        columns/rows a gate owns — is SW-5 (2026-10-09): generic register checks are now
+ *        covered per cell and counted separately; what is still listed is bespoke checks,
+ *        checklists, requirement sections and sources with no gate lock.
+ *
  * It also prints four debt counters — `manual` checks · Conditional items with no
  * trigger · triggers that cannot yet answer "not yet assessed"
  * (`TRIGGERS_WITHOUT_UNASSESSED_STATE`, Round 4 question 7) · open
@@ -60,6 +72,7 @@ import {
 import { PHASE_CONFIGS } from '../src/config/phases';
 import { getRegisterConfig } from '../src/config/registers';
 import { RM_EVIDENCE_REGISTER } from '../src/utils/rmEvidence';
+import { ASEAN_CHECKLIST_REGISTER, MARKET_DOSSIER_REGISTER } from '../src/utils/marketDossier';
 import { NO_VULNERABLE_GROUP, TARGET_USER_TO_VULNERABLE_GROUP } from '../src/config/vulnerableGroups';
 
 const REPO_ROOT = join(__dirname, '..', '..', '..');
@@ -494,6 +507,211 @@ function verifyRound4Tracking(rework: Map<number, { count: number; files: Set<st
   return { resolved, total: SENT_QUESTION_COUNT };
 }
 
+// ---------------------------------------------------------------------------
+// S6 — is the evidence a gate reads frozen once the gate passes?
+// ---------------------------------------------------------------------------
+//
+// `isGateRefLocked` freezes a source only when EVERY gate in its own `gate` list has
+// passed, so a source shared with a later gate stays editable after the earlier one
+// is signed. This sweep asks, per readiness item: when THIS gate passes and nothing
+// later has, is each source the item reads already read-only? It reports the sources
+// where the answer is no. Read-only on purpose: whether to freeze them, snapshot
+// them or let a stale signature be re-signed is a rule decision, not a config typo.
+//
+// `sourcesOf` ends in an exhaustive `never` check, so a NEW check kind will not
+// compile until someone says which store data it reads and where that is locked.
+// The lock refs mirror the guards in apps/api/src/projects/projects.service.ts
+// (setChecklistSection, setRequirementSection, setGateChecksBulk, setRegisterRows,
+// setBom/setCosting, setFormulaProperties, setIdentity, setStudyApprovals).
+
+interface EvidenceSource {
+  label: string;
+  // Gate list as written in config ('04/07'); 'NONE' = no gate lock exists at all;
+  // undefined or empty = the config carries no gate, so it never locks.
+  lockRef: string | undefined;
+  note?: string;
+  // The read is one SW-5 already covers: a generic register check whose columns are
+  // frozen at this gate (derivedColumnGate) and whose rows cannot be deleted once the
+  // gate passes. Counted separately instead of reported as still editable.
+  frozenPerCell?: boolean;
+}
+
+const registerSource = (key: string): EvidenceSource => ({
+  label: `register ${key}`,
+  lockRef: getRegisterConfig(key)?.gate,
+});
+const BOM_SOURCE: EvidenceSource = { label: 'Formula BOM', lockRef: '05' };
+
+function requirementSectionGates(section: string): string {
+  const gates = new Set<string>();
+  for (const phase of Object.values(PHASE_CONFIGS)) {
+    for (const s of phase.requirementSections) {
+      if (s.key === section) for (const r of s.rows) gates.add(r.gate);
+    }
+  }
+  return [...gates].join('/');
+}
+
+function checklistSourceOf(section: string): EvidenceSource {
+  const gate = Object.values(PHASE_CONFIGS)
+    .flatMap((p) => p.checklistSections)
+    .find((s) => s.key === section)?.gate;
+  return { label: `checklist ${section}`, lockRef: gate };
+}
+
+function sourcesOf(check: ReadinessCheck): EvidenceSource[] {
+  switch (check.kind) {
+    case 'allOf':
+    case 'anyOf':
+      return check.checks.flatMap(sourcesOf);
+    case 'manual':
+    case 'gateSignedOff':
+    case 'everyMarketGateSignedOff':
+      return []; // no data source, or the signature itself
+    case 'gateCheckDone':
+      return [{ label: `Key Gate Check "${check.check}"`, lockRef: check.gate }];
+    case 'checklistHasSelection':
+    case 'checklistPrimarySelected':
+      return [checklistSourceOf(check.section)];
+    case 'requirementDone':
+    case 'requirementSectionComplete':
+    case 'requirementSectionDispositioned':
+    case 'requirementsDispositioned':
+    case 'requirementsNoOpenDeferrals':
+      return [{ label: `requirement section ${check.section}`, lockRef: requirementSectionGates(check.section) }];
+    case 'registerHasRows':
+    case 'registerColumnFilled':
+    case 'registerNoBadRows':
+    case 'registerRowsComplete':
+    case 'registerSomeRow':
+      // Generic register checks name their columns, so SW-5 freezes exactly what they read.
+      return [{ ...registerSource(check.register), frozenPerCell: true }];
+    case 'watchlistDispositioned':
+      return [registerSource(check.register)];
+    case 'bomHasLines':
+    case 'bomIdentityComplete':
+    case 'bomReconciled':
+      return [BOM_SOURCE];
+    case 'bomMatchesTakenUp':
+      return [BOM_SOURCE, registerSource(check.list === 'prohibited' ? 'prohibitedIngredients' : 'pbCautionLimits')];
+    case 'formulaPropertyFilled':
+    case 'costingStatusRecorded':
+      return [{ label: 'Formula properties / costing', lockRef: '05' }];
+    case 'identityFieldFilled':
+      return [{ label: 'Gate 01 opportunity fields', lockRef: '01' }];
+    case 'identityMarketsRecorded':
+      return [{ label: 'identity.markets', lockRef: '01', note: 'adding a market stays open after Gate 1 by design' }];
+    case 'rmEvidenceDispositioned':
+    case 'rmEvidenceNoneConditional':
+      return [registerSource(RM_EVIDENCE_REGISTER), ...(check.scope === 'formula' ? [BOM_SOURCE] : [])];
+    case 'rmEvidenceHasUsable':
+    case 'rmEvidenceNonFormulaResolved':
+      return [registerSource(RM_EVIDENCE_REGISTER)];
+    case 'watchlistReviewed':
+    case 'watchlistNoneConditional':
+      return [registerSource('prohibitedIngredients'), registerSource('pbCautionLimits')];
+    case 'safetyMatrixCoversFormula':
+      return [registerSource('formulationSafetyMatrix'), BOM_SOURCE];
+    case 'noOpenCriticalSafetyFinding':
+    case 'noOpenMediumSafetyFinding':
+      return [registerSource('criticalSafetyFindings')];
+    case 'finalSafetySignOffComplete':
+      return [registerSource('formulationSafetyFinalSignOff')];
+    case 'studyApprovalsComplete':
+      return [registerSource('studyProtocolSetup')];
+    case 'claimsRegulatoryReviewed':
+    case 'claimExemptionsConfirmed':
+      return [registerSource('claimEvidenceTraceability')];
+    case 'noClaimsDeclared':
+      return [registerSource('claimEvidenceTraceability'), { label: 'Gate 03 claims Key Gate Check', lockRef: '03' }];
+    case 'artworkClaimsSupported':
+      return [registerSource('packagingSpecsArtwork'), registerSource('claimEvidenceTraceability')];
+    case 'vulnerableGroupsCovered':
+      return [registerSource('vulnerableUserAssessment'), checklistSourceOf('targetUsers')];
+    case 'skincareForTwo':
+      return [
+        checklistSourceOf('targetUsers'),
+        ...['skincareForTwo', 'infantSafety', 'pregnancySafety', 'breastfeedingSafety'].map((section) => ({
+          label: `requirement section ${section}`,
+          lockRef: requirementSectionGates(section),
+        })),
+      ];
+    case 'marketChecklistRecorded':
+      return [registerSource(MARKET_DOSSIER_REGISTER)];
+    case 'aseanChecklistComplete':
+      return [registerSource(ASEAN_CHECKLIST_REGISTER)];
+    case 'gateFieldFilled':
+      return [{ label: `gate row ${check.gate}`, lockRef: check.gate.replace('SG', '') }];
+    case 'nextActionAtGate':
+    case 'nextActionsClosed':
+      return [{ label: 'Next Actions', lockRef: 'NONE', note: 'adding or deleting is refused on a passed gate, editing or closing is not' }];
+    case 'everyMarket':
+    case 'postLaunchReviewsRecorded':
+      return [{ label: 'market tracks', lockRef: 'NONE', note: 'setMarketTracks has no gate lock' }];
+    case 'changeControlNoHardImpact':
+    case 'changeControlNoAdminImpact':
+      return [{ label: 'Change Control (global)', lockRef: 'NONE', note: 'has its own soft-lock, not a freeze' }];
+    default: {
+      const unmapped: never = check;
+      throw new Error(`S6: unclassified check kind ${JSON.stringify(unmapped)}`);
+    }
+  }
+}
+
+interface OpenEvidence {
+  source: EvidenceSource;
+  openUntil: string; // 'Gate 07' | 'never' | 'no lock'
+  readAt: Map<string, string[]>; // gate id -> readiness item ids
+}
+
+// Reads SW-5 now covers (cell and row freeze), counted so the report shows what was closed.
+const coveredBySw5 = new Set<string>();
+
+function verifyEvidenceFrozen(): OpenEvidence[] {
+  const open = new Map<string, OpenEvidence>();
+  for (const [gate, reqs] of Object.entries(GATE_READINESS)) {
+    const gateNumber = Number(gate.replace('SG', ''));
+    for (const req of reqs) {
+      for (const source of sourcesOf(req.check)) {
+        let openUntil: string;
+        if (source.lockRef === 'NONE') openUntil = 'no lock';
+        else {
+          const numbers = (source.lockRef ?? '')
+            .split(/[/-]/)
+            .map((n) => Number.parseInt(n, 10))
+            .filter((n) => !Number.isNaN(n));
+          if (numbers.length === 0) openUntil = 'never';
+          else if (numbers.every((n) => n <= gateNumber)) continue; // frozen once this gate passes
+          else if (source.frozenPerCell) {
+            coveredBySw5.add(`${gate}:${req.id}:${source.label}`);
+            continue;
+          }
+          else openUntil = `Gate ${String(Math.max(...numbers)).padStart(2, '0')}`;
+        }
+        const key = `${source.label}|${openUntil}`;
+        const entry = open.get(key) ?? { source, openUntil, readAt: new Map<string, string[]>() };
+        const ids = entry.readAt.get(gate) ?? [];
+        if (!ids.includes(req.id)) ids.push(req.id);
+        entry.readAt.set(gate, ids);
+        open.set(key, entry);
+      }
+    }
+  }
+  // A source with no gate can never lock, whatever happens to any gate: that is a
+  // config error, not a schedule, so it fails rather than being counted as debt.
+  for (const e of open.values()) {
+    if (e.openUntil !== 'never') continue;
+    const gates = [...e.readAt.keys()].sort().join(', ');
+    fail(
+      'S6',
+      gates,
+      e.source.label,
+      `carries no gate (gate "${e.source.lockRef ?? 'unset'}"), so it never locks, yet readiness at ${gates} reads it — give it a gate or stop reading it there`,
+    );
+  }
+  return [...open.values()];
+}
+
 function verifyAssumptions(): { tagged: number; ids: Set<string> } {
   const doc = readFileSync(join(REPO_ROOT, QUESTIONS_DOC), 'utf8');
   // Any round, not just Round 4 — the sweep silently ignored an `R5-Q1` tag
@@ -538,6 +756,7 @@ function verifyAssumptions(): { tagged: number; ids: Set<string> } {
 for (const entry of entries) verifyNames(entry);
 verifyVacuity();
 verifySeededFixedRows();
+const openEvidence = verifyEvidenceFrozen();
 const assumptions = verifyAssumptions();
 
 // Debt counters — not failures, but printed every run so they cannot drift
@@ -583,6 +802,24 @@ if (openWithDebt.length > 0) {
   console.log(`                               ${openWithDebt.map(([n, d]) => `câu ${n}×${d.count}`).join(' · ')}`);
 }
 
+// S6 — evidence shared with a later gate, still editable after the gate reading it has passed. A debt
+// counter, not a failure: see the S6 header for why no rule exists yet. (A source with no gate at all fails above.)
+const openItemCount = new Set(
+  openEvidence.flatMap((e) => [...e.readAt.entries()].flatMap(([gate, ids]) => ids.map((id) => `${gate}:${id}`))),
+).size;
+console.log(
+  `\n--- S6: evidence still editable after its gate passes (${openEvidence.length} sources, ${openItemCount} readiness items) ---`,
+);
+console.log(`  ${coveredBySw5.size} further reads are covered by SW-5 (per-cell freeze) and no longer listed.`);
+for (const e of [...openEvidence].sort((a, b) => a.source.label.localeCompare(b.source.label))) {
+  const reads = [...e.readAt.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([gate, ids]) => `${gate}: ${ids.join(', ')}`)
+    .join(' · ');
+  console.log(`  ${e.source.label}  [open until ${e.openUntil}]${e.source.note ? `  (${e.source.note})` : ''}`);
+  console.log(`      read by ${reads}`);
+}
+
 if (declaredExemptions.length > 0) {
   console.log(`\n--- Miễn trừ S2 đã khai (${declaredExemptions.length}) ---`);
   for (const e of declaredExemptions) console.log(`  ${e.gate} ${e.id}: ${e.why}`);
@@ -595,7 +832,7 @@ if (notes.length > 0) {
 
 if (failures.length === 0) {
   console.log(
-    '\n✅ S1 (tên tham chiếu) · S2 (register rỗng) · S3 (giá trị seed) · S4 (dev-decision đã hỏi) · S5 (resolve Vòng 4) · TAG (giả định): sạch\n',
+    '\n✅ S1 (tên tham chiếu) · S2 (register rỗng) · S3 (giá trị seed) · S4 (dev-decision đã hỏi) · S5 (resolve Vòng 4) · TAG (giả định): sạch · S6 (nguồn không có gate): sạch\n',
   );
   process.exit(0);
 }

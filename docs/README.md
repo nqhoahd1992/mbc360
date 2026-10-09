@@ -6,7 +6,7 @@ Bốn nhóm tài liệu, phân theo **tài liệu đó thay đổi như thế n�
 |---|---|---|
 | [`reference/`](reference/) | **Nguồn gốc** — workbook Excel, OpenAPI của Cosmetri | Chỉ khi bên ngoài phát hành bản mới |
 | [`rounds/`](rounds/) | **Trao đổi với SME**, theo timeline — mỗi file là một lần gửi/nhận, bất biến sau khi gửi | Không bao giờ sửa file cũ; chỉ thêm file mới |
-| [`rules/`](rules/) | **Hợp đồng nghiệp vụ đang sống** — tích luỹ đáp án của mọi vòng | Mỗi khi có đáp án mới hoặc phát sinh giả định mới |
+| [`rules/`](rules/) | **Hợp đồng nghiệp vụ đang sống** — tích luỹ đáp án của mọi vòng; kèm [`Software_Rules.md`](rules/Software_Rules.md) (luật phần mềm, không qua SME) | Mỗi khi có đáp án mới hoặc phát sinh giả định mới |
 | [`plans/`](plans/) · [`guides/`](guides/) | Kế hoạch kỹ thuật · hướng dẫn dev/vận hành | Theo tiến độ build |
 | [`archive/`](archive/) | Đã bị thay thế, giữ để tra lịch sử | Không dùng nữa |
 
@@ -20,6 +20,7 @@ Bốn nhóm tài liệu, phân theo **tài liệu đó thay đổi như thế n�
 |---|---|
 | **Dev mới** | [`guides/DEV_ONBOARDING_DOMAIN.md`](guides/DEV_ONBOARDING_DOMAIN.md) → [`rules/Business_Rules_Confirmation_VN.md`](rules/Business_Rules_Confirmation_VN.md) (cả file) → `plans/` |
 | **Sắp sửa `gateReadiness.ts`** | [`rules/Business_Rules_Confirmation_EN.md`](rules/Business_Rules_Confirmation_EN.md) → **Phụ lục 2** (mới nhất, nêu rõ code đang lệch luật ở đâu) → [`rules/F1_Conditional_Triggers.md`](rules/F1_Conditional_Triggers.md) |
+| **Sắp đổi cách phần mềm khóa dữ liệu, ký hoặc phân quyền** | [`rules/Software_Rules.md`](rules/Software_Rules.md) — luật do chủ dự án quyết định, không cần SME xác nhận |
 | **Cần biết còn nợ SME gì** | [`rules/F1_Per_Gate_Open_Questions.md`](rules/F1_Per_Gate_Open_Questions.md) → mục Round 4 |
 | **Deploy** | [`guides/DEPLOY.md`](guides/DEPLOY.md) |
 
