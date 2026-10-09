@@ -163,8 +163,12 @@ export default function DynamicTable({
   // it — a single-gate register is wholly read-only via `readOnly`.
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const passedGates = useMemo(
-    () => (project && spansSeveralGates(config.gate) ? passedGateSet(project) : new Set<string>()),
-    [project, config.gate],
+    // Not only for a register whose own gate list spans several gates: a column can be owned by an
+    // earlier gate than a single-gate register's own (the watch-lists are gate 07, Gate 4 owns their
+    // review columns), and it freezes when that owner passes. A register with no passed gate costs
+    // nothing: the set is empty and every cell stays as it was.
+    () => (project ? passedGateSet(project) : new Set<string>()),
+    [project],
   );
   const frozenBy = (row: RegisterRow, columnKey: string) =>
     isNewRow(config, row) ? undefined : cellFrozenBy(passedGates, config, row, columnKey);

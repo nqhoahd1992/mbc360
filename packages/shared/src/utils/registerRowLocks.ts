@@ -56,12 +56,16 @@ export function passedGateSet(project: ProjectData): ReadonlySet<string> {
 
 // The gates whose passing freezes this cell, for this row. Empty = never frozen.
 function freezingGateIds(config: RegisterConfig, columnKey: string, row: RegisterRow): string[] {
-  if (!spansSeveralGates(config.gate)) return []; // single-gate: the whole-register lock covers it
   const column = config.columns.find((c) => c.key === columnKey);
   if (!column || column.type === 'signature') return [];
   // The column's owner gate (sheet attribution first, else the last gate that reads it —
   // registerColumnGates.ts); a column nothing reads keeps the register's own gate list.
   const ownerIds = columnOwnerGateIds(config.key, columnKey);
+  // A column with an owner is frozen when THAT gate passes, even in a register whose own gate list is a
+  // single, later gate (the watch-lists are gate 07 but Gate 4 owns their review columns): the
+  // whole-register lock only fires when the register's last gate passes, which is too late for them.
+  // A column with no owner in a single-gate register is covered by that whole-register lock alone.
+  if (ownerIds.length === 0 && !spansSeveralGates(config.gate)) return [];
   const owners = ownerIds.length > 0 ? ownerIds : gateRefGateIds(config.gate);
   if (owners.length === 0) return [];
   const born = rowBornOrder(row);

@@ -8,7 +8,8 @@
 // written (column-reads-lib.ts, PROJECT_SLICE_READS_BY_GATE), so it cannot drift from the checks.
 //
 // Ownership follows the lock each one already has in the API:
-//   identity (opportunity fields, markets) ......... Gate 01
+//   identity (scope, target users) ................. Gate 01
+//   identity.markets ................................ none (adding a market stays open, F4)
 //   bom, costing, formulaProperties ................ Gate 05
 //   assessments ..................................... the gate whose tab answers each one
 //   studyApprovals .................................. Gate 08 (Study Protocol register's gate)
@@ -39,7 +40,7 @@ function stable(value: unknown): string {
 
 // The identity fields readiness reads. NOT the whole identity: the reviewers, the lead and the
 // archived flag are people and lifecycle, not evidence a gate depends on.
-const IDENTITY_FIELDS = ['initialScope', 'initialTargetUsers', 'markets'] as const;
+const IDENTITY_FIELDS = ['initialScope', 'initialTargetUsers'] as const;
 
 interface SliceDef {
   // Gate that owns it, or null = no gate lock exists, so no owner.
@@ -51,6 +52,13 @@ const SLICES: Record<string, SliceDef> = {
   identity: {
     owner: 'SG01',
     digest: (p) => stable(Object.fromEntries(IDENTITY_FIELDS.map((f) => [f, (p.identity as unknown as Record<string, unknown>)[f]]))),
+  },
+  // The markets are NOT Gate 1's to sign even though Gate 1 reads them: adding a market stays open
+  // after Gate 1 by design (F4), and the per-market lanes of Gates 10-12 grow with it. Owned by
+  // no gate, so a market added later is reported as information and never un-passes a gate.
+  'identity.markets': {
+    owner: null,
+    digest: (p) => stable([...(p.identity.markets ?? [])].sort()),
   },
   bom: { owner: 'SG05', digest: (p) => stable(p.bom) },
   costing: { owner: 'SG05', digest: (p) => stable(p.costing) },
@@ -81,6 +89,7 @@ function slicesReadByGate(gateId: string): string[] {
   const out: string[] = [];
   for (const slice of PROJECT_SLICE_READS_BY_GATE[gateId] ?? []) {
     if (slice === 'assessments') out.push(...ASSESSMENT_HOMES.map((h) => `assessments:${h.key}`));
+    else if (slice === 'identity') out.push('identity', 'identity.markets');
     else if (slice in SLICES) out.push(slice);
   }
   return out;

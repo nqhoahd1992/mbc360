@@ -3,6 +3,7 @@
 // freezes the cells it counted as evidence. Pure functions over hand-built rows and a
 // hand-built set of passed gates — no database, no API. Run: npm run verify:freeze
 import { GATE_READINESS } from '../src/config/gateReadiness';
+import { columnOwnerGateIds } from '../src/utils/registerColumnGates';
 import { REGISTER_CONFIGS, getRegisterConfig } from '../src/config/registers';
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
 import { currentGateIndex, gateRefHighestGateId, isGatePassed } from '../src/utils/gateProgress';
@@ -232,5 +233,26 @@ delete legacyNoData.projectData;
 delete legacyNoData.projectDataLater;
 t('a legacy snapshot (no projectData) is not stale because the BOM is now recorded',
   diff('SG05', legacyNoData as ReturnType<typeof gateEvidenceSnapshot>, withBom).filter((c) => c.includes('BOM')).length === 0);
+
+// A column owned by an EARLIER gate than its register's own gate freezes when the owner passes. The
+// watch-lists are gate 07, but Gate 4 owns their review columns; the old rule skipped single-gate
+// registers and left those columns open until Gate 7 had passed.
+const watchCfg = getRegisterConfig('prohibitedIngredients')!;
+const upTo = (n: number) => new Set(Array.from({ length: n }, (_, i) => `SG${String(i + 1).padStart(2, '0')}`));
+t('watch-list: the register is single-gate (07) yet Gate 4 owns reviewerAssessment',
+  watchCfg.gate === '07' && columnOwnerGateIds('prohibitedIngredients', 'reviewerAssessment').join() === 'SG04');
+t('...so that column is frozen once SG04 passed, before SG07 has', cellFrozenBy(upTo(4), watchCfg, { reviewerAssessment: 'x' }, 'reviewerAssessment') === 'SG04');
+t('...and open while SG04 has not', cellFrozenBy(upTo(3), watchCfg, { reviewerAssessment: 'x' }, 'reviewerAssessment') === undefined);
+t('...while productStatus (read by SG04 AND SG07, so owned by SG07) stays open until SG07 passes',
+  cellFrozenBy(upTo(6), watchCfg, { productStatus: 'x' }, 'productStatus') === undefined && cellFrozenBy(upTo(7), watchCfg, { productStatus: 'x' }, 'productStatus') === 'SG07');
+
+// Adding a market after Gate 1 is allowed by design (F4) and must not un-pass any gate: the markets
+// are recorded in the signature but owned by no gate, so the change is information only.
+const withMarket: ProjectData = { ...live, identity: { ...live.identity, markets: [...(live.identity.markets ?? []), 'A new market'] } };
+t('adding a market after Gate 1 does NOT make the Gate 1 signature stale', diff('SG01', snapAt('SG01'), withMarket).length === 0);
+t('...and the Gate 10 signature (which reads the markets) stays current too', diff('SG10', snapAt('SG10'), withMarket).length === 0);
+t('...but the new market is reported as information',
+  snapshotLaterChanges(snapAt('SG01'), gateEvidenceSnapshot(withMarket, 'SG01')).some((c) => c.startsWith('Project markets changed')));
+t('changing initialScope still makes Gate 1 stale (scope is Gate 1 data)', diff('SG01', snapAt('SG01'), withScope).some((c) => c.startsWith('Project identity')));
 
 console.log(bad === 0 ? '\nall passed' : `\n${bad} FAILED`); process.exit(bad === 0 ? 0 : 1);
