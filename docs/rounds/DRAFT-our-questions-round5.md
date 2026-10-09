@@ -688,7 +688,7 @@ Your B2 answer says open actions may exist only where the gate decision is Proce
 
 We have refused it, for both decisions. The reason is mechanical rather than a matter of taste: a gate's open actions are part of the evidence record its three signatures attest to (question 29(1)), so raising one afterwards makes all three signatures stale — and a gate that has passed cannot be re-signed, so the lane would stay stale with no way out. Reopening the gate with Backtrack is the route.
 
-What stays open on a passed gate: editing, progressing and closing the actions already listed, which is exactly what a gate that passed with conditions needs. Only adding is refused, and deleting already was.
+What stays open on a passed gate: an action that is still open can have its Status, Owner and Due date changed — so a condition can be carried out and closed — but nothing else about it. A closed or cancelled action is frozen. Adding is refused, and deleting already was. (See questions 59 to 61.)
 
 **Question:** Is refusing a new action on a passed gate right? If work is discovered afterwards, should it be raised against the next gate instead, or should the gate be reopened?
 
@@ -701,6 +701,34 @@ Your F8 answer says who closes an action — the person who raised it, the gate 
 We have made deletion stricter than closing: **only the person who raised the action may delete it**. The Project Lead and administrators may not either. A Critical action that is still open can never be deleted (it has to be cancelled, which records who verified it), and neither can any action on a gate that has already passed. An action saved before we recorded who raised it has no raiser, so nobody can delete it; it can only be cancelled.
 
 **Question:** Who should be allowed to delete a next action — only the person who raised it, also the Project Lead or an administrator, or nobody (cancel only)? Should a deleted action leave a trace?
+
+---
+
+## Question 59 — Does carrying out a condition of a gate that passed with conditions mean the signatures must be redone?
+
+Your answer to question 29(1) says the signed record includes "open actions and conditions", and that if evidence inside it changes after a signature, the signature becomes stale and re-signing is required. Your B2 answer says a gate that passes with conditions does so while the outstanding actions are tracked — so those actions must be able to be closed afterwards. Read literally, the two disagree: closing a condition changes the list of open actions, which would make all three signatures stale, and a gate that has passed cannot be re-signed. Until now the software fell into exactly that trap — a gate that passed with conditions could not close its own conditions without reopening the gate.
+
+We have read the open actions as **the conditions the approval accepted**. Carrying one out — moving its status, closing it, cancelling it, giving it a new owner or a new due date — does not make a signature stale. Changing what was accepted does: rewording a condition, lowering its priority, deleting it, or adding a new open one. After the gate has passed, an open action can only have its Status, Owner and Due date changed, and a closed or cancelled action cannot change at all.
+
+**Question:** Is it right that carrying out a condition after signing does not require re-signing? If not, how does a gate that passed with conditions close them without being reopened?
+
+---
+
+## Question 60 — Does an open Critical action block "Proceed with Conditions" as well, or only a plain Proceed?
+
+Your F8 answer says "Critical actions must prevent normal gate closure". We have read "normal" as "any decision": while a Critical action is open, the gate cannot pass at all, even with Proceed with Conditions. The other reading — a Critical action blocks a plain Proceed but Proceed with Conditions is the way through — is also possible, and it is how some of the team remember it.
+
+**Question:** May a gate pass with Proceed with Conditions while a Critical action is still open? If so, does that need anything extra (a named approver, a recorded reason)?
+
+---
+
+## Question 61 — Once a Critical action has been closed or cancelled, may the gate pass with a plain Proceed?
+
+Your B2 answer says all actions should normally be completed before a gate closes, and your F8 answer says Critical actions prevent normal closure. Both speak about actions that are still **open**. Neither says that a gate which once had a Critical action must use Proceed with Conditions even after that action has been closed or cancelled.
+
+We have therefore not added that restriction: once a Critical action is Closed or Cancelled it blocks nothing, and a gate with no open actions passes on a plain Proceed. This is a choice about something your answers do not say, so we would rather you confirmed it.
+
+**Question:** After a Critical action has been closed or cancelled, may the gate pass with a plain Proceed, or must it still use Proceed with Conditions because it once carried a Critical issue? Does a Critical action cancelled because it was raised by mistake count as having had a Critical issue?
 
 ---
 
@@ -719,6 +747,9 @@ We have made deletion stricter than closing: **only the person who raised the ac
 | 56 | Whether the three gate signatures must be three different people | A control we were enforcing beyond your answer, now removed — self-approval becomes possible |
 | 57 | Whether a next action may be raised on a gate that has passed | Refused on our reading of B2 — otherwise the gate's signatures go permanently stale |
 | 58 | Who may delete a next action | Built as "only whoever raised it" — F8 only says who closes; the project owner chose it |
+| 59 | Whether carrying out a condition after signing means re-signing | Your 29(1) and B2 answers read literally disagree — we read the open actions as the accepted conditions |
+| 60 | Whether an open Critical action blocks Proceed with Conditions too | Built as "blocks every decision" — our reading of the word "normal" in F8 |
+| 61 | Whether a closed or cancelled Critical action still forces Proceed with Conditions | Built as "no" — your answers only speak about open actions |
 | 13–14 | A "Reject / Stop" decision that does not exist · whether Safety **or** Regulatory is enough | Two of your own answers name them; we did not invent either |
 | 15–16 | Who may open the reference-data pages · what makes a gap's action "controlled" | Both surfaced by using what we had just built |
 | 17 | Should a change-control trigger be limited to gates the project has passed | Not built yet — raised discussing the Change Control screen, no rework at stake either way |
