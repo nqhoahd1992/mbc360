@@ -232,6 +232,9 @@ export default function CommandPalette({
   // match appears, so the top hit still comes first.
   const sections = useMemo(() => {
     const q = query.trim().toLowerCase();
+    // Letters and digits only, so '&', ',', '_' and '-' never stand between a person and a match.
+    const plain = (text: string) => text.toLowerCase().replace(/[^p{L}p{N}]+/gu, ' ');
+    const words = plain(q).split(' ').filter(Boolean);
     let ranked: Command[];
     if (!q) {
       const ws = activeProject ? `${activeProject.identity.id} · Workspace` : undefined;
@@ -245,7 +248,15 @@ export default function CommandPalette({
         .map((c) => {
           const hay = `${c.title} ${c.group} ${c.keywords ?? ''}`.toLowerCase();
           const titleIdx = c.title.toLowerCase().indexOf(q);
-          const score = titleIdx === 0 ? 0 : titleIdx > 0 ? 1 : hay.includes(q) ? 2 : -1;
+          let score = titleIdx === 0 ? 0 : titleIdx > 0 ? 1 : hay.includes(q) ? 2 : -1;
+          if (score < 0 && words.length > 0) {
+            // The words may appear in any order and with any punctuation between them: "Stability & Release"
+            // must find "Stability, Compatibility & Release Evidence" and the sheet "Stability_Release".
+            const hayWords = plain(`${c.title} ${c.group} ${c.keywords ?? ''}`);
+            if (words.every((w) => hayWords.includes(w))) {
+              score = words.every((w) => plain(c.title).includes(w)) ? 3 : 4;
+            }
+          }
           return { c, score };
         })
         .filter((x) => x.score >= 0)
