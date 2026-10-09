@@ -46,6 +46,9 @@ npm run db:seed -w @mbc360/api      # idempotent seeder: rule config + demo proj
 npm run db:setup                    # all three of the above in order — run this after a fresh clone or a wiped/new Postgres volume
 npm run db:reset                    # ./reset-dev-data.sh — wipe the dev DB and re-seed the standard dataset (keeps the Cosmetri tokens)
 npm run verify:totp                 # RFC 6238 vectors against the hand-written TOTP module (see the sign-off note below)
+npm run generate:column-reads      # re-measure which register columns each gate reads (packages/shared/src/config/registerColumnReads.ts) — run it when verify:readiness reports S7; see SW-5 in docs/rules/Software_Rules.md
+npm run verify:freeze               # SW-4/SW-5: per-cell freeze, row birth gate, narrow signature snapshot
+npm run verify:actions              # SW-19: Next Actions before and after their gate passes
 npm run db:wipe-projects            # delete EVERY project (+ its data, audit trail, linked change records); keeps users/roles/reference data. --dry-run · --yes · --allow-remote
 ```
 

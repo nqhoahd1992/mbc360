@@ -29,14 +29,42 @@ Cách làm: server ghi vào mỗi hàng một id ổn định (`__rowId`) và **
 - **Chưa làm:** hàng được tạo qua các đường khác ngoài lưu sổ (seed, import) chỉ có dấu ở hai nơi đã sửa (stub vật liệu từ Cosmetri, dòng FC khi đổi version công thức). Các đường còn lại tạo hàng không dấu, tức thuộc mọi gate.
 Code: `registerRowBirth.ts`, `registerRowLocks.ts` (`stampRegisterRows`), `setRegisterRows`. Migration `20261009120000_register_row_identity` chỉ gán id cho hàng có sẵn (dữ liệu, không đổi schema). Kiểm tra: `npm run verify:freeze` (cả logic thuần lẫn một dự án dựng bằng factory có SG01–SG03 passed thật, gồm ca hàng tạo lúc gate passed mà phase chưa đóng và snapshot bỏ qua hàng muộn; đã thử âm tính).
 
-### SW-5. Khóa theo cột và theo hàng trong sổ nhiều gate — *Đã xây một phần* (2026-10-09)
-Mỗi cột của sổ nhiều gate thuộc một gate. Khi gate đó passed thì cột bị khóa cho các hàng thuộc gate đó. Hàng mà một gate đã passed dùng làm bằng chứng không xóa được.
-Nguồn "cột thuộc gate nào": `RegisterColumn.gate` (ghi tay) rồi đến suy ra từ readiness (`derivedColumnGate`). **Cột không gate nào đọc thì không có chủ** và giữ cách khóa hiện tại, tức khóa khi mọi gate của sổ đã passed. Hàng sinh ra sau khi gate passed thì ô của nó không bị khóa bởi gate đó.
-Thực thi ở API (`setRegisterRows` từ chối, nêu ô và gate đã khóa) và ở bảng trên web (`DynamicTable`: ô chỉ-đọc kèm gợi ý, nút xóa hàng vô hiệu hóa kèm lý do), cùng dùng một hàm.
-- **Bảng riêng:** Supplier & RM Evidence và Published Info bọc `DynamicTable`, nên ô bị khóa cũng được tô xám ở đó (bảng báo cho trình vẽ ô riêng là chỉ-đọc).
-- **Chưa phủ:** các check riêng (watch-list, ma trận an toàn…) đọc cột mà config không khai, nên chưa được suy ra cột. Checklist, requirement section, Next Actions, market tracks và Change Control không thuộc cơ chế này.
-- **Đã kiểm thử đầu-cuối** (2026-10-09, API thật trên DB thử, gate SG01–SG03 được đặt passed bằng cách bỏ trống danh sách readiness của chúng trong tiến trình thử và đánh dấu chữ ký đóng sổ bằng SQL; không đổi code thật, không tắt authenticator): sửa ô của gate đã passed → 403, xóa hàng đó → 403, sửa ô không có chủ → 200, hàng tạo sau khi gate passed sửa và xóa được, hàng cũ không dấu vẫn được bảo vệ.
-Báo cáo S6 trong `verify:readiness` đếm phần đã phủ riêng và chỉ liệt kê phần còn mở.
+### SW-5. Người ký duyệt toàn bộ nội dung đang có; mỗi cột có một gate sở hữu — *Đã xây, còn hai nguồn chờ quyết định* (2026-10-09)
+**Nguyên tắc (chủ dự án):** người ký để gate pass đồng ý với **toàn bộ nội dung đang được điền**, kể cả các trường thuộc gate tương lai; và gate tương lai cũng phải phê duyệt dữ liệu liên quan đến gate cũ.
+
+Cách hiện thực: mỗi cột có một **gate sở hữu**. Chữ ký của gate G chia nội dung các sổ nó đọc làm hai phần, mỗi phần cho mọi cột của sổ, không chỉ cột mà check đọc:
+- **Phần chịu trách nhiệm** — các cột do G hoặc gate **trước** G sở hữu. Thay đổi ở đây làm chữ ký stale. Đây là cách gate sau "phê duyệt luôn dữ liệu của gate cũ": nó nằm trong snapshot của gate sau, và vì đã bị đóng băng từ khi gate cũ pass nên chỉ đổi được bằng Backtrack.
+- **Phần ghi nhận** — các cột do gate **sau** G sở hữu. Người ký duyệt những gì đang điền tại thời điểm ký và nó được lưu lại, nhưng gate sau còn phải hoàn thiện nên thay đổi ở đó **chỉ được báo thông tin, không làm chữ ký stale** (không thì công việc bình thường của gate sau sẽ mở lại gate trước). Ví dụ chữ ký Gate 3 ghi `evidenceGrade` (Gate 8); điền cột đó không làm Gate 3 stale.
+
+**Phạm vi (chủ dự án, 09/10/2026): dữ liệu liên quan đến readiness, không phải mọi loại dữ liệu.** Chữ ký ghi những gì readiness của gate đó đọc. Ngoài các sổ, đó là: Formula BOM, costing, formula properties, năm assessment, study approval trail, các trường định danh dự án (scope, target users, markets), market tracks, change records, post-launch reviews và lịch sử phiên bản công thức. Phần nào gate đọc cũng được **đo** (`PROJECT_SLICE_READS_BY_GATE`), không khai tay. Chủ sở hữu theo khóa mà API đã có: định danh → Gate 01; BOM, costing, formula properties → Gate 05; mỗi assessment → gate có tab trả lời nó; study approvals → Gate 08. Market tracks, change records, post-launch reviews và lịch sử phiên bản **chưa có khóa theo gate nên chưa có chủ**: được ghi lại và báo khi đổi sau lúc ký, nhưng không bao giờ làm chữ ký stale. Các phần không liên quan readiness (reviewers, project lead, dữ liệu công ty như market profile) không nằm trong chữ ký.
+
+Cột **bị đóng băng khi gate sở hữu passed** (cho các hàng thuộc gate đó, SW-4). Hàng mà một gate đã passed dùng làm bằng chứng không xóa được. Luật này **không** giới hạn ai được điền hay điền lúc nào trước khi gate sở hữu pass: điền sớm cột của gate sau vẫn được (SME cho phép làm trước, F13, và A4 để bằng chứng mở cho người đóng góp).
+
+**Ai sở hữu cột** (theo thứ tự ưu tiên):
+1. `RegisterColumn.gate` ghi tay, khi sheet gốc nói rõ (sổ claim có trên hầu hết cột). Một lần đọc không bao giờ ghi đè: Gate 12 đọc lời claim để biết có cần bằng chứng hiệu quả không, nhưng lời claim vẫn là bằng chứng của Gate 3.
+2. Nếu không: **gate đọc cột đó sau cùng** (chủ dự án quyết 09/10/2026). Cột hai gate cùng đọc thuộc về gate sau; gate trước không ký cột đó nên gate sau hoàn thiện được mà không làm gate trước hết pass. Gate trước vẫn ghi nhận cột đó trong chữ ký (xem trên), nhưng thay đổi sau này không làm chữ ký stale.
+3. Cột không ai đọc và không có khai báo: giữ cách khóa theo danh sách gate của cả sổ.
+Một **trigger** đọc cột để quyết định một item có áp dụng không thì không bao giờ sở hữu cột đó.
+
+**"Cột nào gate nào đọc" được đo, không viết tay.** `registerColumnReads.ts` do `npm run generate:column-reads` sinh ra bằng cách chạy từng check và trigger thật trên 120 dự án ngẫu nhiên (hạt giống cố định) trong khi ghi lại mọi truy cập cột. Cách này thấy được cả các check riêng và các nhánh điều kiện mà việc đọc code dễ sót. `verify:readiness` chạy lại phép đo và **fail nếu file lỗi thời** (S7); S6 fail nếu gate đọc một sổ không có gate (SW-3).
+
+**Chữ ký cũ** (không có `registerCells`) vẫn được so sánh theo cả sổ như trước, không bị coi là stale oan và cũng không bị nới lỏng. Một section checklist mà chữ ký cũ chưa từng ghi không bị tính là thay đổi.
+
+**Checklist trải nhiều gate** (`testingFamilies`, gate `08-09`) được ký ở gate cuối trong danh sách. Trước đây nó thuộc về không gate nào vì so sánh chuỗi `'08-09' !== '08'`, nên chưa từng nằm trong chữ ký nào.
+
+**Lưu ý:** việc gate còn "passed" không chỉ phụ thuộc chữ ký. Danh sách readiness của gate được tính lại trực tiếp, nên sửa một cột dùng chung theo cách làm một item của gate trước không còn thỏa (ví dụ đặt `productStatus` thành "Prohibited - remove" khi Gate 4 đã pass và Gate 7 chưa) vẫn làm gate trước hết pass. Đó là mong muốn: một nguyên liệu bị cấm phát hiện muộn phải chặn lại.
+
+**Next Action** thuộc SW-19.
+
+Thực thi ở API (`setRegisterRows` từ chối, nêu ô và gate đã khóa) và ở bảng trên web (`DynamicTable`, kể cả Supplier & RM Evidence và Published Info vốn bọc nó: ô chỉ-đọc kèm gợi ý, nút xóa hàng vô hiệu hóa kèm lý do), cùng dùng một hàm. Kiểm tra: `npm run verify:freeze`.
+
+**Còn mở, vì cần một luật chứ không phải việc cơ học:**
+- **Market tracks** (Gate 10–12): `setMarketTracks` không có khóa theo gate. Khóa `launchApproval` sau Gate 11 sẽ cấm thu hồi phê duyệt phát hành khi sản phẩm đã bán, mà việc đó có thật ngoài đời (thu hồi, rút khỏi thị trường).
+- **Change Control** (toàn cục, Gate 11): dữ liệu toàn cục với cơ chế soft-lock riêng; đóng băng nó theo gate không có nghĩa.
+
+**Hai phát hiện không thuộc SW-5, ghi lại để quyết riêng:**
+- Gate 8 yêu cầu cả bảy dòng của `infantTesting`, trong đó năm dòng gắn gate 09. Một gate đòi dòng của gate sau.
+- Check độ phủ công thức đọc `rmCode` của ma trận an toàn, nhưng sổ đó **không có cột `rmCode`**. Phép nối theo `rmCode` không bao giờ khớp và luôn rơi về `inciName`.
 
 ## 2. Chữ ký và ghi vết
 
