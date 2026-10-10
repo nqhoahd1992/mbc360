@@ -689,6 +689,23 @@ export interface GateSigningPreview {
   snapshot: GateEvidenceSnapshot;
 }
 
+// What a register-closing signature attests to, read before signing (the register's rows as they are
+// now) and the hash the signature is then bound to.
+export interface RegisterClosePreview {
+  registerKey: string;
+  title: string;
+  hash: string;
+  previewedAt: string;
+  columns: { key: string; label: string }[];
+  rows: Record<string, string>[];
+}
+
+// The body of the refusal when a register's content changed between the preview and the submit.
+export interface RegisterContentChangedBody {
+  code: 'REGISTER_CONTENT_CHANGED';
+  message: string;
+}
+
 // The body of the refusal when the content changed between the preview and the submit.
 export interface GateContentChangedBody {
   code: 'GATE_CONTENT_CHANGED';

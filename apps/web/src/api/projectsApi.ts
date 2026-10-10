@@ -15,6 +15,7 @@ import type {
   RequirementItem,
   GateEvidenceSnapshot,
   GateSigningPreview,
+  RegisterClosePreview,
   GateSignOffRole,
   SignOff,
 } from '@mbc360/shared/types';
@@ -374,15 +375,21 @@ export const withdrawRegisterRowSignature = (
 // exists: the signer for each role is derived server-side (and mirrored
 // client-side via registerClosureSignerRole in @mbc360/shared/config/reviewers)
 // straight from the register's own reviewOwner spec.
+// What the closer reads before signing: the register's rows as they are now, and the hash the
+// signature is bound to (same idea as previewGateSignOff).
+export const previewRegisterClose = (id: string, registerKey: string): Promise<RegisterClosePreview> =>
+  request(`/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/close/preview`);
+
 export const verifyRegisterCloseStepUp = (
   id: string,
   registerKey: string,
   role: RegisterClosureRole,
   code: string,
+  expectedHash: string,
 ): Promise<{ stepUpToken: string }> =>
   request(`/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/close/step-up`, {
     method: 'POST',
-    body: JSON.stringify({ role, code }),
+    body: JSON.stringify({ role, code, expectedHash }),
   });
 
 export const signRegisterClose = (
@@ -390,11 +397,11 @@ export const signRegisterClose = (
   registerKey: string,
   role: RegisterClosureRole,
   stepUpToken: string,
-  expectedVersion: number,
+  expectedHash: string,
 ) =>
   request<ProjectEnvelope>(
     `/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/close/sign`,
-    { method: 'POST', body: JSON.stringify({ role, stepUpToken, expectedVersion }) },
+    { method: 'POST', body: JSON.stringify({ role, stepUpToken, expectedHash }) },
   );
 
 export const withdrawRegisterClose = (

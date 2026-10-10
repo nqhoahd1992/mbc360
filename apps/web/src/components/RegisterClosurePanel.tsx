@@ -11,6 +11,7 @@ import { useSession } from '../auth/useSession';
 import { usePermissionView } from '../auth/previewMode';
 import { getMySignature, getMyTotpStatus } from '../api/accountApi';
 import RegisterCloseStepUpModal from './RegisterCloseStepUpModal';
+import RegisterClosePreviewModal from './RegisterClosePreviewModal';
 import { Link } from 'react-router-dom';
 import { TABLE_STICKY } from '../theme/tokens';
 
@@ -44,7 +45,9 @@ export default function RegisterClosurePanel({
 
   const [withdrawing, setWithdrawing] = useState<RegisterClosureRole | null>(null);
   const [reason, setReason] = useState('');
-  const [stepUpRole, setStepUpRole] = useState<RegisterClosureRole | null>(null);
+  // Sign opens the preview first (everything the signature attests to), then the authenticator step.
+  const [reviewing, setReviewing] = useState<RegisterClosureRole | null>(null);
+  const [stepUp, setStepUp] = useState<{ role: RegisterClosureRole; hash: string } | null>(null);
 
   // Same precondition as the phase sign-off: closing always attaches the
   // signer's saved signature and always asks for a fresh authenticator code.
@@ -88,8 +91,8 @@ export default function RegisterClosurePanel({
     return null;
   };
 
-  const sign = (row: RegisterClosureSignOff, stepUpToken: string) =>
-    signRegisterClose(projectId, registerKey, row.role, stepUpToken);
+  const sign = (row: RegisterClosureSignOff, stepUpToken: string, expectedHash: string) =>
+    signRegisterClose(projectId, registerKey, row.role, stepUpToken, expectedHash);
 
   const confirmWithdraw = () => {
     if (!withdrawing) return;
@@ -194,7 +197,7 @@ export default function RegisterClosurePanel({
                 <Space orientation="vertical" size={4}>
                   <Tooltip title={why ?? ''}>
                     <span>
-                      <Button size="small" type="primary" disabled={!!why} onClick={() => setStepUpRole(r.role)}>
+                      <Button size="small" type="primary" disabled={!!why} onClick={() => setReviewing(r.role)}>
                         Sign as me
                       </Button>
                     </span>
@@ -233,16 +236,31 @@ export default function RegisterClosurePanel({
           onChange={(e) => setReason(e.target.value)}
         />
       </Modal>
-      <RegisterCloseStepUpModal
-        open={stepUpRole !== null}
+      <RegisterClosePreviewModal
+        open={reviewing !== null}
         projectId={projectId}
         registerKey={registerKey}
-        role={stepUpRole ?? 'Review owner'}
-        onClose={() => setStepUpRole(null)}
+        roleLabel={reviewing ?? ''}
+        onCancel={() => setReviewing(null)}
+        onContinue={(preview) => {
+          if (!reviewing) return;
+          setStepUp({ role: reviewing, hash: preview.hash });
+          setReviewing(null);
+        }}
+      />
+      <RegisterCloseStepUpModal
+        open={stepUp !== null}
+        projectId={projectId}
+        registerKey={registerKey}
+        role={stepUp?.role ?? 'Review owner'}
+        expectedHash={stepUp?.hash ?? ''}
+        onClose={() => setStepUp(null)}
         onVerified={(token) => {
-          const row = signOffs.find((s) => s.role === stepUpRole);
-          setStepUpRole(null);
-          if (row) sign(row, token);
+          if (!stepUp) return;
+          const row = signOffs.find((s) => s.role === stepUp.role);
+          const hash = stepUp.hash;
+          setStepUp(null);
+          if (row) sign(row, token, hash);
         }}
       />
     </Card>

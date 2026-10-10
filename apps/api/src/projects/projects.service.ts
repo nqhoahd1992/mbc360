@@ -77,6 +77,7 @@ import {
   gateEvidenceSnapshot,
   gateSnapshotSignedPart,
 } from '@mbc360/shared/utils/gateSnapshot';
+import { registerClosureContent } from '@mbc360/shared/utils/registerClosureContent';
 import { supersessionGaps, versionMarkets } from '@mbc360/shared/utils/formulaLifecycle';
 import {
   CLAIM_EXEMPTION_CAPABILITY,
@@ -110,7 +111,7 @@ import {
   SCALE_UP_RISK_OPTIONS,
   isRegisterClosed,
 } from '@mbc360/shared/types';
-import type { GateSignOffRole, GateSigningPreview, NextActionStatus } from '@mbc360/shared/types';
+import type { GateSignOffRole, GateSigningPreview, NextActionStatus, RegisterClosePreview } from '@mbc360/shared/types';
 import type {
   AngleRow,
   ChangeRecord,
@@ -2556,8 +2557,42 @@ export class ProjectsService {
     return closure;
   }
 
-  private registerCloseStepUpPurpose(id: string, registerKey: string, role: string): string {
-    return `register_close:${id}:${registerKey}:${role}`;
+  // The proof is bound to the content hash, so a code entered for one version of the register cannot
+  // sign another — the same rule gate signatures follow (see gateStepUpPurpose).
+  private registerCloseStepUpPurpose(id: string, registerKey: string, role: string, contentHash: string): string {
+    return `register_close:${id}:${registerKey}:${role}:${contentHash}`;
+  }
+
+  private registerContentHash(project: ProjectData, registerKey: string): string {
+    const content = registerClosureContent(project, registerKey);
+    if (!content) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    return createHash('sha256').update(canonicalJson(content)).digest('hex');
+  }
+
+  // What the closer reads before signing: the register's rows as they are now and the hash their
+  // signature will be bound to. Read-only — nothing is written, and any signed-in user may read project data.
+  async previewRegisterClose(id: string, registerKey: string): Promise<RegisterClosePreview> {
+    const config = getRegisterConfig(registerKey);
+    if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    const row = await this.loadOrThrow(this.prisma, id);
+    const project = toProjectData(row, [], await this.loadReference(this.prisma));
+    const content = registerClosureContent(project, registerKey);
+    if (!content) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    return {
+      registerKey,
+      title: config.title,
+      hash: this.registerContentHash(project, registerKey),
+      previewedAt: new Date().toISOString(),
+      columns: content.columns,
+      rows: content.rows,
+    };
+  }
+
+  private registerContentChanged(): UnprocessableEntityException {
+    return new UnprocessableEntityException({
+      code: 'REGISTER_CONTENT_CHANGED',
+      message: 'This register changed after you opened the signing preview — review it again before signing.',
+    });
   }
 
   async verifyRegisterCloseStepUp(
@@ -2566,9 +2601,11 @@ export class ProjectsService {
     registerKey: string,
     role: RegisterClosureSignOff['role'],
     code: string,
+    expectedHash: string | undefined,
   ): Promise<{ stepUpToken: string }> {
     const config = getRegisterConfig(registerKey);
     if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    if (!expectedHash) throw new BadRequestException('expectedHash is required — open the signing preview first');
     const roleKey = this.registerClosureRoleKey(config, role);
     const reviewer = await this.prisma.projectReviewer.findUnique({
       where: { projectId_roleKey: { projectId: id, roleKey } },
@@ -2582,8 +2619,11 @@ export class ProjectsService {
     if (!signature) {
       throw new BadRequestException('Save a signature in My Account before signing');
     }
+    // Refused BEFORE the code is spent: a stale preview must not burn the signer's one-time code.
+    const current = toProjectData(await this.loadOrThrow(this.prisma, id), [], await this.loadReference(this.prisma));
+    if (this.registerContentHash(current, registerKey) !== expectedHash) throw this.registerContentChanged();
     await this.totp.verifyForStepUp(user.id, code);
-    const purpose = this.registerCloseStepUpPurpose(id, registerKey, role);
+    const purpose = this.registerCloseStepUpPurpose(id, registerKey, role, expectedHash);
     const proof = await this.prisma.stepUpProof.create({
       data: { userId: user.id, purpose, channel: 'totp' },
     });
@@ -2600,12 +2640,18 @@ export class ProjectsService {
     registerKey: string,
     role: RegisterClosureSignOff['role'],
     stepUpToken: string,
-    expectedVersion: number,
+    expectedHash: string | undefined,
   ): Promise<ProjectEnvelope> {
     const config = getRegisterConfig(registerKey);
     if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    if (!expectedHash) throw new BadRequestException('expectedHash is required — open the signing preview first');
     const roleKey = this.registerClosureRoleKey(config, role);
-    return this.mutate(user, id, expectedVersion, 'register_close.signed', async (tx, row) => {
+    // Guarded by the content hash instead of the project-wide version (as gate signing is), so other
+    // people can keep working on the project while the closer reads. The row lock still serialises the write.
+    return this.mutate(user, id, null, 'register_close.signed', async (tx, row, project) => {
+      // The closer signs what they were SHOWN. Compared here, inside the row-locked transaction, so the
+      // content cannot change between this check and the write.
+      if (this.registerContentHash(project, registerKey) !== expectedHash) throw this.registerContentChanged();
       const reviewer = await tx.projectReviewer.findUnique({
         where: { projectId_roleKey: { projectId: id, roleKey } },
       });
@@ -2630,7 +2676,7 @@ export class ProjectsService {
       } catch {
         throw new BadRequestException('Verification expired or invalid — enter a new code');
       }
-      const expectedPurpose = this.registerCloseStepUpPurpose(id, registerKey, role);
+      const expectedPurpose = this.registerCloseStepUpPurpose(id, registerKey, role, expectedHash);
       if (payload.typ !== 'register_close_step_up' || payload.sub !== user.id || payload.purpose !== expectedPurpose) {
         throw new BadRequestException('Verification does not match this signature');
       }

@@ -14,6 +14,7 @@ export default function RegisterCloseStepUpModal({
   projectId,
   registerKey,
   role,
+  expectedHash,
   onClose,
   onVerified,
 }: {
@@ -21,6 +22,8 @@ export default function RegisterCloseStepUpModal({
   projectId: string;
   registerKey: string;
   role: RegisterClosureRole;
+  // The fingerprint of the content the closer just reviewed; the code is bound to it.
+  expectedHash: string;
   onClose: () => void;
   onVerified: (stepUpToken: string) => void;
 }) {
@@ -42,7 +45,7 @@ export default function RegisterCloseStepUpModal({
     setVerifying(true);
     setError(null);
     try {
-      const { stepUpToken } = await verifyRegisterCloseStepUp(projectId, registerKey, role, code);
+      const { stepUpToken } = await verifyRegisterCloseStepUp(projectId, registerKey, role, code, expectedHash);
       setCode('');
       setError(null);
       onVerified(stepUpToken);

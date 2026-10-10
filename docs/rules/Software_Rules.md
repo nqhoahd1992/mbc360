@@ -107,6 +107,14 @@ Mọi guard ở UI phải có bản tương ứng ở API, gọi cùng hàm tron
 Hai chỗ trong này dựa trên cách đọc của chúng ta về luật SME và chưa được SME xác nhận: việc "thực hiện điều kiện không làm chữ ký stale" là diễn giải câu 29(1) (R5-Q59), và việc Critical chặn cả Proceed with Conditions là cách đọc chữ "normal" của F8 (R5-Q60).
 Code: `nextActionAccess.ts` (`nextActionFreeze`, `nextActionFreezeViolation`), `gateSnapshot.ts` (`snapshotChanges`), `guardNextActions`, `NextActionsCard`. Kiểm tra: `npm run verify:actions`.
 
+### SW-23. Mọi chữ ký cho xem nội dung trước khi ký — *Đã xây cho chữ ký gate và đóng sổ; chưa xây cho chữ ký phase và ô chữ ký trong sổ* (2026-10-10, chủ dự án đồng ý)
+Người ký phải thấy chính thứ chữ ký của mình xác nhận, ngay trước bước nhập mã, và chữ ký gắn với mã băm của nội dung đó chứ không gắn với phiên bản của cả dự án. Nếu nội dung đổi sau lúc xem, máy chủ từ chối (422) **trước khi tiêu mã xác thực**, và người ký xem lại. Người khác vẫn làm việc được trong lúc người ký đọc.
+- **Chữ ký gate:** đã có từ SW-21 (modal xem trước toàn bộ snapshot).
+- **Đóng sổ (Review owner, Co-sign):** đã xây 2026-10-10. `GET …/registers/:key/close/preview` trả các hàng và mã băm; bước xác thực và bước ký đều đòi `expectedHash`; sai mã băm trả 422 `REGISTER_CONTENT_CHANGED`. Nội dung được ký và nội dung được xem là cùng một hàm, `registerClosureContent` trong `packages/shared`. Kiểm thử: 15 case trong `apps/api/scripts/e2e/gate-signing.e2e.ts`.
+- **Chữ ký phase** và **ô chữ ký trong sổ** (như NP sign-off): chưa có modal xem trước, chỉ có bước nhập mã. Chưa xây.
+- **Chưa giải quyết:** mã băm chỉ bảo vệ khoảnh khắc ký. Sổ bị sửa sau khi Review owner ký và trước khi Co-sign ký thì chữ ký đầu không bị đánh dấu hết hiệu lực, vì chưa lưu mã băm theo từng chữ ký (cần đổi schema).
+Code: `RegisterClosePreviewModal.tsx`, `RegisterClosurePanel.tsx`, `previewRegisterClose` và `signRegisterClose` trong `projects.service.ts`.
+
 ## 3. Quyền và truy cập
 
 ### SW-10. Không có role thì không vào được app — *Đã xây* (2026-10-02)

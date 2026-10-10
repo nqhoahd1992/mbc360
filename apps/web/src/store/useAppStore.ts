@@ -249,6 +249,8 @@ interface AppState {
     registerKey: string,
     role: RegisterClosureRole,
     stepUpToken: string,
+    // The content hash the closer was shown; the server refuses the signature if the register changed since.
+    expectedHash: string,
   ) => void;
   withdrawRegisterClose: (
     id: string,
@@ -607,8 +609,8 @@ export const useAppStore = create<AppState>()(
           writeSection(id, (v) =>
             projectsApi.withdrawRegisterRowSignature(id, registerKey, rowIndex, column, reason, v),
           ),
-        signRegisterClose: (id, registerKey, role, stepUpToken) =>
-          writeSection(id, (v) => projectsApi.signRegisterClose(id, registerKey, role, stepUpToken, v)),
+        signRegisterClose: (id, registerKey, role, stepUpToken, expectedHash) =>
+          writeSection(id, () => projectsApi.signRegisterClose(id, registerKey, role, stepUpToken, expectedHash)),
         withdrawRegisterClose: (id, registerKey, role, reason) =>
           writeSection(id, (v) => projectsApi.withdrawRegisterClose(id, registerKey, role, reason, v)),
         setEvidenceItemsBulk: (id, items) =>

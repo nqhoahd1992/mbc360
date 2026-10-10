@@ -15,6 +15,7 @@ const { GATE_READINESS } = require(join(ROOT, 'packages/shared/dist/config/gateR
 const { REGISTER_CONFIGS } = require(join(ROOT, 'packages/shared/dist/config/registers.js'));
 const gp = require(join(ROOT, 'packages/shared/dist/utils/gateProgress.js'));
 const snap = require(join(ROOT, 'packages/shared/dist/utils/gateSnapshot.js'));
+const { registerClosureSignerRole } = require(join(ROOT, 'packages/shared/dist/config/reviewers.js'));
 /* eslint-enable @typescript-eslint/no-require-imports */
 // The same cut the API process makes (harness.js), so readiness evaluated in this process agrees.
 for (const gate of ['SG01', 'SG02', 'SG03', 'SG04', 'SG05', 'SG06', 'SG07', 'SG08', 'SG09', 'SG10', 'SG11', 'SG12']) {
@@ -210,6 +211,95 @@ export async function run(base: string, db: Client): Promise<number> {
   const accounts = Object.keys(sessions);
   await Promise.all(accounts.map((key) => enroll(key)));
   t(`${accounts.length} accounts enrolled an authenticator with real codes`, true);
+
+  // ============================================================ register closing: review before signing
+  console.log('\n--- register closing: the closer reads the register first, and the signature is bound to what they read');
+  {
+    // A free-form register (so a row can be added), owned by a person one of our accounts IS, and used
+    // late enough that nothing else in this run touches it.
+    const reviewerRows = (await db.query(`SELECT "roleKey", name FROM project_reviewers WHERE "projectId" = $1`, [PROJECT])).rows as {
+      roleKey: string;
+      name: string;
+    }[];
+    const nameOf = (roleKey: string) => reviewerRows.find((r) => r.roleKey === roleKey)?.name;
+    const accountName: Record<string, string> = {};
+    for (const key of ['tuan', 'sekar', 'admin']) {
+      accountName[key] = (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions[key].id])).rows[0]?.displayName;
+    }
+    let pick: { registerKey: string; signer: string; textColumn: string } | undefined;
+    for (const cfg of REGISTER_CONFIGS) {
+      if (cfg.mode !== 'register' || !cfg.reviewOwner) continue;
+      const highest = gp.gateRefHighestGateId(cfg.gate);
+      if (!highest || Number(highest.slice(2)) < 8) continue;
+      const owner = nameOf(registerClosureSignerRole(cfg.reviewOwner, 'Review owner'));
+      const signer = Object.keys(accountName).find((k) => accountName[k] === owner);
+      const textColumn = cfg.columns.find((c: any) => c.type === 'text')?.key;
+      if (signer && textColumn) {
+        pick = { registerKey: cfg.key, signer, textColumn };
+        break;
+      }
+    }
+    t('a free-form register whose Review owner is one of our accounts exists', !!pick, short(reviewerRows.slice(0, 3)));
+    if (pick) {
+      const { registerKey, signer, textColumn } = pick;
+      const base = `/projects/${PROJECT}/registers/${registerKey}/close`;
+      const signed = async (): Promise<boolean> =>
+        (
+          await db.query(
+            `SELECT count(*)::int AS n FROM register_closure_sign_offs s JOIN register_closures c ON c.id = s."closureId"
+              WHERE c."projectId" = $1 AND c."registerKey" = $2 AND s.role = 'Review owner' AND s."signedAt" IS NOT NULL`,
+            [PROJECT, registerKey],
+          )
+        ).rows[0].n === 1;
+      const addRow = async (text: string) => {
+        const cur = (await project()).project.registers[registerKey] ?? [];
+        return api('admin', 'PUT', `/projects/${PROJECT}/registers/${registerKey}`, {
+          rows: [...cur.map((x: any) => ({ ...x })), { [textColumn]: text }],
+          expectedVersion: await version(),
+        });
+      };
+
+      let pv = (await api(signer, 'GET', `${base}/preview`)).json;
+      t('the closing preview carries the register title, its columns, its rows and a 64-character hash',
+        typeof pv.hash === 'string' && pv.hash.length === 64 && Array.isArray(pv.columns) && pv.columns.length > 0 && Array.isArray(pv.rows) && typeof pv.title === 'string',
+        short(Object.keys(pv)));
+      const pv2 = (await api(signer, 'GET', `${base}/preview`)).json;
+      t('two previews of an unchanged register give the same hash', pv.hash === pv2.hash);
+
+      let r: any = await api(signer, 'POST', `${base}/step-up`, { role: 'Review owner', code: '000000' });
+      t('a step-up with no hash is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+      r = await api(signer, 'POST', `${base}/sign`, { role: 'Review owner', stepUpToken: 'x' });
+      t('a sign with no hash is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+
+      // A stale preview must be refused BEFORE the one-time code is spent, so the same code still works.
+      const oneCode = await code(signer);
+      r = await api(signer, 'POST', `${base}/step-up`, { role: 'Review owner', code: oneCode, expectedHash: 'f'.repeat(64) });
+      t('a step-up bound to a hash the register does not have is refused (422, REGISTER_CONTENT_CHANGED)',
+        r.status === 422 && r.json?.code === 'REGISTER_CONTENT_CHANGED', `${r.status} ${short(r.json)}`);
+      r = await api(signer, 'POST', `${base}/step-up`, { role: 'Review owner', code: oneCode, expectedHash: pv.hash });
+      t('...and that refusal did not spend the code: the same code then works with the right hash', r.status < 300 && !!r.json?.stepUpToken, `${r.status} ${short(r.json)}`);
+      const staleToken = r.json?.stepUpToken;
+
+      // Somebody else edits the register after the closer opened the preview.
+      r = await addRow('edited while the closer was reading');
+      t('another person edits the register after the preview', r.status < 300, `${r.status} ${short(r.json)}`);
+      r = await api(signer, 'POST', `${base}/sign`, { role: 'Review owner', stepUpToken: staleToken, expectedHash: pv.hash });
+      t('signing with the old hash is refused (422, REGISTER_CONTENT_CHANGED)', r.status === 422 && r.json?.code === 'REGISTER_CONTENT_CHANGED', `${r.status} ${short(r.json)}`);
+      t('...and nothing was signed', !(await signed()));
+
+      // Reviewing again gives a new hash, and that one signs.
+      const pv3 = (await api(signer, 'GET', `${base}/preview`)).json;
+      t('the new preview has a different hash and shows the new row', pv3.hash !== pv.hash && pv3.rows.length === pv.rows.length + 1, `${pv.rows.length} -> ${pv3.rows.length}`);
+      const su = await api(signer, 'POST', `${base}/step-up`, { role: 'Review owner', code: await code(signer), expectedHash: pv3.hash });
+      t('a step-up bound to the new hash is accepted', su.status < 300 && !!su.json?.stepUpToken, `${su.status} ${short(su.json)}`);
+      r = await api(signer, 'POST', `${base}/sign`, { role: 'Review owner', stepUpToken: su.json?.stepUpToken, expectedHash: pv3.hash });
+      t('signing with the hash of what was just reviewed succeeds', r.status < 300, `${r.status} ${short(r.json)}`);
+      t('...and the signature is recorded', await signed());
+      // The project version moved while the closer read; the signature never depended on it.
+      r = await api(signer, 'POST', `${base}/withdraw`, { role: 'Review owner', reason: 'e2e cleanup', expectedVersion: await version() });
+      t('the signer withdraws it again (leaves the register as it was)', r.status < 300 && !(await signed()), `${r.status} ${short(r.json)}`);
+    }
+  }
 
   // Register closing is a precondition of passing a gate, and a CLOSED register is read-only — so a
   // gate's registers are closed only when that gate is about to pass, as in real use, never earlier.

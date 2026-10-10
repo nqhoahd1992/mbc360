@@ -422,9 +422,15 @@ export class ProjectsController {
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('registerKey') registerKey: string,
-    @Body() body: { role: RegisterClosureSignOff['role']; code: string },
+    @Body() body: { role: RegisterClosureSignOff['role']; code: string; expectedHash?: string },
   ) {
-    return this.projects.verifyRegisterCloseStepUp(user, id, registerKey, body.role, body.code);
+    return this.projects.verifyRegisterCloseStepUp(user, id, registerKey, body.role, body.code, body.expectedHash);
+  }
+
+  // What the closer reads before signing — read-only, any signed-in user.
+  @Get(':id/registers/:registerKey/close/preview')
+  previewRegisterClose(@Param('id') id: string, @Param('registerKey') registerKey: string) {
+    return this.projects.previewRegisterClose(id, registerKey);
   }
 
   @Post(':id/registers/:registerKey/close/sign')
@@ -432,9 +438,9 @@ export class ProjectsController {
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('registerKey') registerKey: string,
-    @Body() body: { role: RegisterClosureSignOff['role']; stepUpToken: string; expectedVersion: number },
+    @Body() body: { role: RegisterClosureSignOff['role']; stepUpToken: string; expectedHash?: string },
   ): Promise<ProjectEnvelope> {
-    return this.projects.signRegisterClose(user, id, registerKey, body.role, body.stepUpToken, body.expectedVersion);
+    return this.projects.signRegisterClose(user, id, registerKey, body.role, body.stepUpToken, body.expectedHash);
   }
 
   @Post(':id/registers/:registerKey/close/withdraw')
