@@ -379,16 +379,134 @@ Your A2 answer makes market-specific pack requirements mandatory where the marke
 
 **(b) An empty field.** Today a market profile with the field left blank reads as "no market-specific requirement", so the item passes by itself. Your A2 asks for an explicit N/A with a rationale, and your question 7 says a missing assessment must never read as "does not apply". Should a blank Pack requirements field on a market the project sells into **block** until Regulatory has recorded either the requirements or N/A with a rationale?
 
-## Question 33 — A product with no claims, or a purely administrative change: which later registers still need rows?
+## Question 33 — Which registers may stay empty on a project, and which must always hold entries?
 
-Your Round-4 answer 19(d) lets a product explicitly propose **no claims**, recorded by an empty claim ledger plus the Gate 3 claims check closed as not applicable with a reason. Gate 3 now accepts that. We found that Gate 10 did not: it required the SKU claims register to have rows, so a claim-free product passed Gate 3 and could then never pass Gate 10. **We have extended your record to Gate 10** for the SKU claims register and its evidence check — a product that has recorded "no claims" needs no claim rows there.
+Your Round-4 answer 19(d) lets a product explicitly propose **no claims**, and Gate 3 accepts that. We then found that Gate 10 did not: it required the claims register to have entries, so a claim-free product passed Gate 3 and could never pass Gate 10. **We have extended your record to Gate 10** for those two registers. That made us check every register in the system, because requiring entries in a register that can legitimately be empty only makes someone invent one — and leaving it empty, with nothing to show anyone looked, makes "nobody checked" look like "nothing to find".
 
-Three other registers are still required to have rows on every project, and we are not sure that is right:
+Below is every one of the 82 registers, sorted by what the system **assumes today**. Please mark any row that is wrong. Rows marked ★ are the ones we are least sure about.
 
-- the **prospective evidence plan** at Gate 5 and the **detailed test protocol** at Gate 8 — a product with no claims still needs safety and stability testing, but may not need an evidence plan for claims;
-- the **competitor and current-solution landscape** at Gates 3 and 5 — there is no exception for a project recorded as administrative-only, although the separate benchmark review at Gate 3 does have one.
+### A. Must hold at least one entry by the gate shown (14 registers)
 
-**Question:** for a product with no claims, and for an administrative-only change, which of these three registers must still have rows? Is it right that Gate 10's claims register is waived on the "no claims" record alone?
+The gate cannot pass while the register is empty.
+
+| Register | Needed at Gate | Note |
+|---|---|---|
+| Development Brief | 2 |  |
+| Framed Scientific Research Questions | 2 |  |
+| Vulnerable-User Assessment | 2 | an explicit "No vulnerable-user group identified" entry counts (your Round-3 B5) |
+| Competitor Product Register — Identity, Claims & IP | 3, 5 | ★ no exception today for an administrative-only change |
+| Supplier & Raw Material Evidence | 4 |  |
+| Prospective Evidence Plan | 5 | ★ a product with no claims may not need an evidence plan |
+| Packaging Specs & Artwork Evidence | 6, 10 |  |
+| Ingredient-Level Safety Matrix | 7 |  |
+| Detailed Test Protocol | 8 | ★ a product with no claims still needs safety and stability testing, but perhaps not a claims test protocol |
+| Stability, Compatibility & Release Evidence | 9, 11 |  |
+| Published Information Approval | 10, 11 |  |
+| Regulatory Checklist Status (per market) | 10 | one entry for every market the project sells into |
+| GMP Manufacturing Links | 11 |  |
+| Released Label vs Current Artwork | 11 |  |
+
+### B. May stay empty only if the project records "no claims" (2 registers)
+
+| Register | Gate | What lets it stay empty |
+|---|---|---|
+| Claim -> Evidence Traceability | 3 | the project records that it proposes **no claims** (claims check marked not applicable, with a reason) |
+| SKU Claims / PIF Register | 10 | the same "no claims" record |
+
+### C. May stay empty, but someone must confirm they looked (2 registers)
+
+An empty register is a real answer here — a product with nothing restricted has nothing to list.
+
+| Register | Gate | What stands in for rows |
+|---|---|---|
+| General Restricted & Caution Assessment | 7 | a Key Gate Check, "General restricted and caution ingredient assessment completed", must be done (or N/A with a reason). Any row that is added must have an outcome. |
+| Critical Safety Findings | 7 | no row means no finding. The ten Final Safety Sign-off questions are what record that safety was looked at |
+
+### D. Reference sheets with rows already in place (34 sheets)
+
+The rows exist from the start; the team fills in the answer columns. The last column says whether a gate reads those answers.
+
+| Reference sheet | Gate | Do the gates read your answers? |
+|---|---|---|
+| ASEAN PIF Checklist (Closure) | 10 | Gate 10 (ASEAN markets) |
+| Final Safety Sign-off | 7, 10 | Gate 7 |
+| Needs & Scientific Basis — Gate Sign-Off | 2, 5 | Gates 2, 5 |
+| Pregnancy / Breastfeeding Caution Limits | 4, 7 | Gates 4, 7 (pregnancy / breastfeeding products) |
+| Prohibited Ingredient Watch-list | 4, 7 | Gates 4, 7 |
+| Study Protocol Setup | 8 | Gate 8 (human studies) |
+| Target Product & Tech — Sign-Off | 5 | Gate 5 |
+| Target Product Profile (TPP) | 5 | Gates 3, 5 |
+| ASEAN PIF / Dossier Map | 10 | no |
+| Anatomy, Physiology, Exposure Science & Contradictory Evidence | 2 | no |
+| Artwork Change Control | 6, 10, 11 | no |
+| Backbone / Platform Technology | 5 | no |
+| Carrier Review — Summary | 2 | no |
+| Change Templates / Forms | any | no |
+| Control & Sign-Off | — | no |
+| Efficacy Assurance Control | 5, 8 | no |
+| Evidence Hierarchy | — | no |
+| Evidence Template Index | — | no |
+| Formula Change Control | 5 | no |
+| Fragrance Safety & Allergen Evidence | 7 | no |
+| Landscape Decision Summary | 3 | no |
+| Literature-Search & Referencing Standard | — | no |
+| Literature-Search Method | 2 | no |
+| Medical / Safety Summary | 10 | no |
+| NPD Roadmap — Gap Register | — | no |
+| NPD Roadmap — Mandatory 4-Part Structure | — | no |
+| NPD Roadmap — Mandatory First Steps | — | no |
+| PIF Evidence Closure (Workflow) | 10, 11 | no |
+| Product / Project Identification | 4, 5, 8 | no |
+| Product Safety Profile | 7, 10 | no |
+| Publication Rules | 10, 11 | no |
+| System Requirements | — | no |
+| Transferability & Inference Rules | — | no |
+| Twinkle 5 Claims Map | 3, 10 | no |
+
+### E. No gate requires entries; may stay empty (30 registers)
+
+| Register | Gate | Note |
+|---|---|---|
+| Carrier / Emollient System Review | 2 |  |
+| Needs -> Technology Traceability Matrix | 2 |  |
+| Needs — Executive Brief | 2 |  |
+| Comparative Testing Protocol | 3 |  |
+| Current Solutions & Standard of Care | 3 |  |
+| Mechanism & Claims Evidence Map | 3, 10 |  |
+| Social Media & Marketing Campaign Register | 3, 11 |  |
+| Development Iteration Log | 4, 5, 8 |  |
+| Ingredient / Active Evidence Monograph | 4, 5 |  |
+| Ingredient Substitution Evidence | 4, 7 | ★ needed only if an ingredient was substituted |
+| Team Feedback & Competitor Benchmark Notes | 4, 5, 8 |  |
+| Formulation Change Register (NP Controlled) | 5, 7, 10 |  |
+| Potency & Process Control Evidence | 5, 8 |  |
+| Product Family & Version Register | 5, 6 |  |
+| Platform Rollout & Stock Confirmation | 6, 11 |  |
+| Shipment Label & Batch Verification | 6, 11 |  |
+| Eye Safety Evidence | 7, 8 |  |
+| Fragrance / Allergen Log | 7 |  |
+| Clinical / Human Evidence | 8, 10 |  |
+| Efficacy Study Plan | 8 |  |
+| Functional Efficacy Evidence | 8, 10 |  |
+| Microbiology & PET Evidence | 8 |  |
+| Participant / Sample Log | 8 |  |
+| HCP / Distributor Efficacy Answer | 10, 11 |  |
+| HCP Test Report Pack | 10, 11 |  |
+| PIF Evidence Export | 10, 11 |  |
+| Publication / Deployment Record | 10, 11 | ★ authorising material is not the same as publishing it; nothing requires this record to exist when material is published |
+| Batch Formula Trace | 11 |  |
+| MBc360 Feedback | — |  |
+| Test Report Index | any | ★ reports may already be linked from other sheets |
+
+**Questions:**
+
+**(a)** Is each register in group A really one that **no project** can legitimately leave empty? Which of them can, and what should stand in for entries (a confirming check, an explicit "none", or something else)?
+
+**(b)** Is each register in group E really optional? Is there any that must hold entries at a particular gate — or whenever some other condition applies, for example an ingredient substitution record whenever an ingredient was substituted?
+
+**(c)** For a product with **no claims**, and for an **administrative-only** change, which group-A registers still need entries? In particular the evidence plan (Gate 5), the detailed test protocol (Gate 8) and the competitor landscape (Gates 3 and 5), marked ★.
+
+**(d)** Is it right that Gate 10's claims register is waived on the "no claims" record alone?
 
 ---
 
@@ -428,6 +546,6 @@ Three other registers are still required to have rows on every project, and we a
 | 30 | At which gate the claim evidence basis and the release decision are filled in | Built at Gate 3 and Gate 11 |
 | 31 | What proves the approved artwork version at Gate 11 | Gate 11 and your Q30(c) read different records |
 | 32 | Where a market's pack requirements are recorded; whether blank means "none" | Built on the market profile; blank currently passes |
-| 33 | A product with no claims or an administrative-only change: which later registers still need rows | Gate 10 fixed on our reading; three other registers undecided |
+| 33 | Which registers may stay empty on a project and which must always hold entries (all 82 listed with today's assumption) | Gate 10 claims register fixed on our reading; the rest are our assumptions for you to mark |
 
 Questions 2 to 5, 9, 12 and 13 are cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

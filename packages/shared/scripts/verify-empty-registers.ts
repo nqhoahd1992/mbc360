@@ -4,12 +4,14 @@
 // and neither may let "nobody has looked" read as a pass. Pure functions over a hand-built project
 // on the real rule engine; no database, no API. Run: npm run verify:empty-registers
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
+import { GATE_READINESS, type ReadinessCheck } from '../src/config/gateReadiness';
+import { getRegisterConfig } from '../src/config/registers';
 import { gateReadinessChecklist, uncoveredFormulaLines } from '../src/utils/gateProgress';
 import type { ProjectData } from '../src/types';
 
 let bad = 0;
-const t = (name: string, ok: boolean) => {
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}`);
+const t = (name: string, ok: boolean, extra = '') => {
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok || !extra ? '' : `   ${extra}`}`);
   if (!ok) bad++;
 };
 const fresh = (): ProjectData =>
@@ -23,6 +25,47 @@ const setCheck = (p: ProjectData, gate: string, check: string, patch: Record<str
   if (!row) throw new Error(`gate check not found: ${gate} / ${check}`);
   Object.assign(row, patch);
 };
+
+// --- the list of registers that MUST hold entries is a decision, not an accident -----------------------
+// A Mandatory, unconditional `registerHasRows` / `registerRowsComplete` / `registerSomeRow` forces a
+// register to have rows on every project. For a register that can legitimately be empty that only makes
+// someone invent a row. This pins the exact set the review team is being asked to confirm
+// (docs/rounds/DRAFT-our-questions-round5.md, question 33, group A). Adding a register to it fails here
+// until somebody has asked whether it can be empty — and, if so, given it an explicit record instead.
+{
+  const ROW_KINDS = new Set(['registerHasRows', 'registerRowsComplete', 'registerSomeRow']);
+  const required = new Set<string>();
+  const waivable = new Set<string>();
+  const walk = (c: ReadinessCheck, mandatory: boolean, inAny: boolean) => {
+    if (c.kind === 'allOf') return c.checks.forEach((x) => walk(x, mandatory, inAny));
+    if (c.kind === 'anyOf') return c.checks.forEach((x) => walk(x, mandatory, true));
+    if (!ROW_KINDS.has(c.kind) || !mandatory) return;
+    const register = (c as { register: string }).register;
+    // A `mode: 'fixed'` register has its rows seeded at project creation, so "must have rows" is
+    // trivially met there and says nothing about whether the register can be empty.
+    if (getRegisterConfig(register)?.mode === 'fixed') return;
+    (inAny ? waivable : required).add(register);
+  };
+  for (const items of Object.values(GATE_READINESS)) {
+    for (const item of items) walk(item.check, item.tier === 'Mandatory' && !item.trigger, false);
+  }
+  // `regulatoryChecklistStatus` is required through `marketChecklistRecorded` (one entry per market), not a row kind.
+  const EXPECTED_REQUIRED = [
+    'competitorLandscape', 'developmentBrief', 'evidencePlanProspective', 'evidenceTestProtocol', 'formulationSafetyMatrix', 'gmpLinks',
+    'needsResearchQuestions', 'packagingSpecsArtwork', 'publishedInfoApproval', 'releasedLabelRegister',
+    'stabilityRelease', 'supplierRmEvidence', 'vulnerableUserAssessment',
+  ];
+  const EXPECTED_WAIVABLE = ['claimEvidenceTraceability', 'skuClaimsPifRegister'];
+  const diff = (a: string[], b: string[]) => a.filter((x) => !b.includes(x));
+  const gotRequired = [...required].filter((k) => !waivable.has(k)).sort();
+  t(`registers required to hold entries are exactly the 13 the review team is asked to confirm (+ per-market checklist)`,
+    diff(gotRequired, EXPECTED_REQUIRED).length === 0 && diff(EXPECTED_REQUIRED, gotRequired).length === 0,
+    `unexpected: ${diff(gotRequired, EXPECTED_REQUIRED).join(', ') || '-'}; missing: ${diff(EXPECTED_REQUIRED, gotRequired).join(', ') || '-'}`);
+  const gotWaivable = [...waivable].sort();
+  t('registers waivable by an explicit "no claims" record are exactly the 2 listed',
+    diff(gotWaivable, EXPECTED_WAIVABLE).length === 0 && diff(EXPECTED_WAIVABLE, gotWaivable).length === 0,
+    `got: ${gotWaivable.join(', ')}`);
+}
 
 // --- Gate 10: a product that explicitly proposes no claims ---------------------------------------
 {
