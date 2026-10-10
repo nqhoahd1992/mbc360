@@ -137,7 +137,10 @@ export default function GateReadinessPanel({
                   {item.parts.map((part) => (
                     <li key={part.label} className={part.satisfied ? 'grp-part-met' : 'grp-part-open'}>
                       <span className="grp-part-icon">{part.satisfied ? <CheckCircleFilled /> : <CloseCircleFilled />}</span>
-                      {renderPartLabel(part)}
+                      <span>
+                        {renderPartLabel(part)}
+                        {part.emptyNote && <span className="grp-part-empty">{part.emptyNote}</span>}
+                      </span>
                     </li>
                   ))}
                 </ul>

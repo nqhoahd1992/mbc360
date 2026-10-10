@@ -27,4 +27,5 @@
 .grp-part-open .grp-part-icon { color: var(--c-bad-dot); }
 .grp-part-met { color: var(--c-text-3); }
 .grp-part-met .grp-part-icon { color: var(--c-ok-dot); }
+.grp-part-empty { display: block; font-style: italic; color: var(--c-text-3); }
 .grp-parts-toggle { display: block; margin-top: 2px; font-size: 12px; color: var(--c-text-3); } .grp-parts-toggle .anticon { font-size: 9px; }

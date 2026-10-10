@@ -659,9 +659,11 @@ export const SAFETY_MATRIX_REGISTER = 'formulationSafetyMatrix';
 //
 // Matched by rmCode first and INCI second. The matrix's own identity column is
 // `inciName` (it predates rmCode existing anywhere), while a BOM line reliably has
-// rmCode, so both are tried rather than forcing one: requiring rmCode alone would
-// fail every matrix row typed before the Cosmetri import existed, and INCI alone
-// would mis-join two materials sharing an INCI name.
+// rmCode. When the BOM line carries a code, ONLY a matrix row carrying that same code
+// matches it (falling back to INCI solely for a row with no code of its own, i.e. typed
+// before the code column existed) — otherwise two materials sharing an INCI name, say two
+// suppliers, would be joined to each other's row. A line without a code falls back to INCI.
+// [ASSUMPTION: R5-Q64] — code as the identity is our reading.
 export function uncoveredFormulaLines(project: ProjectData): { label: string; reason: string }[] {
   const matrix = project.registers[SAFETY_MATRIX_REGISTER] ?? [];
   const out: { label: string; reason: string }[] = [];
@@ -672,7 +674,9 @@ export function uncoveredFormulaLines(project: ProjectData): { label: string; re
     const row = matrix.find((r) => {
       const rowCode = String(r.rmCode ?? '').trim();
       const rowInci = String(r.inciName ?? '').trim();
-      return (code !== '' && rowCode === code) || (inci !== '' && rowInci.toLowerCase() === inci.toLowerCase());
+      const inciMatches = inci !== '' && rowInci.toLowerCase() === inci.toLowerCase();
+      if (code !== '') return rowCode === code || (rowCode === '' && inciMatches);
+      return inciMatches;
     });
     if (!row) {
       out.push({ label, reason: 'no safety-matrix row' });
@@ -1545,6 +1549,9 @@ export interface GateReadinessPart {
   label: string;
   satisfied: boolean;
   link?: GateBlockerLink;
+  // Present when the part is satisfied ONLY because its register has no rows ("every row is filled"
+  // is vacuously true over nothing). Says so in plain words, so a green tick is not read as "reviewed".
+  emptyNote?: string;
 }
 
 export interface GateReadinessItem extends GateBlocker {
@@ -1813,11 +1820,20 @@ function readinessParts(project: ProjectData, check: ReadinessCheck, gateId: str
   for (const leaf of leaves) {
     const label = describeReadinessCheck(leaf);
     if (!label) return undefined;
-    parts.push({
-      label,
-      satisfied: evaluateReadinessCheck(project, leaf, gateId).satisfied,
-      link: resolveCheckLink(gateId, leaf),
-    });
+    const satisfied = evaluateReadinessCheck(project, leaf, gateId).satisfied;
+    const part: GateReadinessPart = { label, satisfied, link: resolveCheckLink(gateId, leaf) };
+    // Only the two "every row ..." kinds can be satisfied by an empty register. (registerRowsComplete
+    // deliberately is not: it treats no rows as incomplete.)
+    if (
+      satisfied &&
+      (leaf.kind === 'registerColumnFilled' || leaf.kind === 'registerNoBadRows') &&
+      (project.registers[leaf.register] ?? []).length === 0
+    ) {
+      part.emptyNote = leaves.some((l) => l.kind === 'gateCheckDone')
+        ? 'No rows recorded, so there is nothing to check here. The Key Gate Check in this list is what records that it was reviewed.'
+        : 'No rows recorded yet, so there is nothing to check here.';
+    }
+    parts.push(part);
   }
   return parts;
 }

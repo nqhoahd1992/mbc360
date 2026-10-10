@@ -295,6 +295,15 @@ export async function run(base: string, db: Client): Promise<number> {
   t('a claim row is saved while SG03 is the open gate', r.status < 300, short(r.json));
   const rows0 = (await project()).project.registers.claimEvidenceTraceability;
   t('the server no longer stamps rows (SW-4 was replaced by the row rule)', rows0[0].__rowId === undefined && rows0[0].__bornAtGate === undefined, short(rows0[0]));
+  // Guard parity (2026-10-10): the signing panel holds back a passing signature until the stage status
+  // is Complete, because the status is inside the signed snapshot. The server must refuse it too, or a
+  // direct call signs a gate whose work is not marked done and the later status change turns it stale.
+  const stageBefore = (await project()).project.gates.find((g: any) => g.gateId === 'SG03');
+  t('SG03 stage status is not Complete yet (precondition for the next case)', stageBefore.status !== 'Complete', short(stageBefore));
+  r = await sign('SG03', 'Prepared by');
+  t('signing Proceed while the stage status is not Complete is refused (400)', r.stage === 'sign' && r.status === 400, `${r.stage} ${r.status} ${short(r.json)}`);
+  t('...and the refusal says the stage must be Complete', /Complete/.test(JSON.stringify(r.json)), short(r.json));
+  t('...and nothing was signed', !(await project()).project.gateSignOffs.some((s: any) => s.gateId === 'SG03' && s.signedAt), '');
   await complete('SG03');
   // The signing preview and the content hash (2026-10-09). Somebody else edits between the signer's
   // preview and the submit.

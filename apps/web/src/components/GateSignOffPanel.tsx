@@ -178,7 +178,7 @@ export default function GateSignOffPanel({
           <ClockCircleOutlined />
           <span>
             Signing is held until the <strong>saved</strong> stage status is Complete — it is currently "{stageStatus}".
-            Save the gate first if you have just changed it. Hold, Backtrack and Reject/Stop can still be signed.
+            Save the gate first if you have just changed it. Hold and Backtrack can still be signed.
           </span>
         </div>
         )

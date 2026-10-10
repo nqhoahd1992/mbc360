@@ -1641,6 +1641,16 @@ export class ProjectsService {
       if (!(GATE_DECISIONS as readonly string[]).includes(decision)) {
         throw new BadRequestException(`"${decision}" is not a valid decision`);
       }
+      // Guard parity with the signing panel: a passing signature attests the gate's work is done, and
+      // the stage status is inside the signed snapshot — so signing Proceed while it still reads
+      // In Progress and completing it afterwards would turn all three signatures stale. The panel
+      // already holds this back; the server must refuse it too (SW-9). [ASSUMPTION: R5-Q55]
+      const stage = project.gates.find((g) => g.gateId === gateId);
+      if (GATE_PASSING_DECISIONS.includes(decision) && stage && stage.status !== 'Complete') {
+        throw new BadRequestException(
+          `The stage status of ${gateId} is "${stage.status}" — save it as Complete before a "${decision}" signature`,
+        );
+      }
       // Question 29(2): the ten decisions that require a comment, by name rather
       // than by "anything except Proceed" — four of the ten are decisions this
       // enum does not carry yet, and naming them now means adding one later

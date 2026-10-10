@@ -2040,6 +2040,9 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
             column: 'assessmentOutcome',
             badValues: ['Restricted - reformulate', 'Needs Safety Review', 'Needs Regulatory Review'],
           },
+          // A blank outcome is the unassessed state. `registerNoBadRows` compares against the listed
+          // values only, so a row added and left alone passed it; this leg is what makes it block.
+          { kind: 'registerColumnFilled', register: 'generalRestrictedCaution', column: 'assessmentOutcome' },
         ],
       },
     },
@@ -2705,7 +2708,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg10-claims-register',
       label: 'SKU-level claims register',
       tier: 'Mandatory',
-      check: { kind: 'registerHasRows', register: 'skuClaimsPifRegister' },
+      // A claim-free product legitimately has an EMPTY claims register. Gate 3 already lets it
+      // pass on the explicit "no claims" record (question 19(d)); without the same escape here it
+      // passed Gate 3 and then could never pass Gate 10. `noClaimsDeclared` is never vacuous: it
+      // needs an empty ledger AND the Gate 3 claims check closed as N/A with a reason.
+      // [ASSUMPTION: R5-Q65]
+      check: {
+        kind: 'anyOf',
+        checks: [{ kind: 'noClaimsDeclared' }, { kind: 'registerHasRows', register: 'skuClaimsPifRegister' }],
+      },
     },
     {
       id: 'sg10-claim-evidence',
@@ -2716,7 +2727,14 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // satisfied flag (found 2026-07-28 — same class as the Gate 06 fix).
       // PIF link added 2026-10-04 (SME rule audit D): Round 4 question 19(h) puts
       // "PIF/Product Master File attachment" among the Gate 10 claim fields.
-      check: { kind: 'registerRowsComplete', register: 'skuClaimsPifRegister', columns: ['evidenceLink', 'pifLink'] },
+      // [ASSUMPTION: R5-Q65] — a claim-free product has no claim rows to complete (see sg10-claims-register).
+      check: {
+        kind: 'anyOf',
+        checks: [
+          { kind: 'noClaimsDeclared' },
+          { kind: 'registerRowsComplete', register: 'skuClaimsPifRegister', columns: ['evidenceLink', 'pifLink'] },
+        ],
+      },
     },
     {
       id: 'sg10-safety-evidence',
