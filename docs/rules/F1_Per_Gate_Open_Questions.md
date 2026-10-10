@@ -1541,6 +1541,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q63 | Cột "Product status" của hai sổ watch-list được nhập tới Gate 7 hay chỉ ở Gate 4 | Rà soát luật SME (Round 4 câu 6) | **lộ ra 09/10/2026** |
 | R5-Q64 | Ma trận an toàn thành phần có cột mã nguyên liệu (`rmCode`) để nối với BOM không | Rà soát luật SME (Round 4 câu 23(b)) | **lộ ra 09/10/2026** |
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
+| R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
 
@@ -2263,3 +2264,17 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Câu hỏi:** Mỗi nguyên liệu trong công thức có được nhận diện bằng mã nguyên liệu (cùng mã với Supplier & RM Evidence) khi đối chiếu với ma trận an toàn, hay tên INCI là đủ?
 
 **Nếu trả lời khác:** `packages/shared/src/config/registers.ts` — `formulationSafetyMatrix`: cột `rmCode`; `packages/shared/src/utils/gateProgress.ts` — `uncoveredFormulaLines`: thứ tự khóa nối.
+
+#### R5-Q65 · Sản phẩm không có claim: những sổ nào sau Gate 3 vẫn phải có hàng 🔴
+
+**Lộ ra 10/10/2026, khi rà các điều kiện đòi sổ phải có hàng** (40 điều kiện, `registerHasRows` / `registerRowsComplete`). Phần lớn là sổ mà sản phẩm nào cũng có dữ liệu (bao bì, ổn định, ma trận an toàn, nhà cung cấp). Nhưng Round 4 câu 19(d) cho phép một sản phẩm **không có claim**, được ghi rõ bằng sổ claim trống cộng với Key Gate Check claim ở Gate 3 là N/A có lý do (`noClaimsDeclared`), và Gate 3 đã dùng lối thoát đó. Gate 10 thì không: `sg10-claims-register` đòi `skuClaimsPifRegister` có hàng và `sg10-claim-evidence` đòi mọi hàng đủ bằng chứng, nên một sản phẩm không claim qua Gate 3 rồi **không bao giờ qua được Gate 10**.
+
+**Đã sửa 10/10/2026** cho hai mục đó: cho phép `noClaimsDeclared` thay cho hàng claim, cùng điều kiện đã dùng ở Gate 3 (không vacuous: cần sổ claim rỗng và N/A có lý do). Đây là mở rộng lời SME sang gate sau, tín hiệu rất rõ vì không có nó thì sản phẩm không claim không thể hoàn tất.
+
+**Chưa sửa, vì không chắc đây có phải là sổ bắt buộc hay không** (cả ba đều do tài liệu v2 của chuyên gia hoặc F1 đặt là Mandatory):
+- `evidencePlanProspective` ở Gate 5 và `evidenceTestProtocol` ở Gate 8: kế hoạch và quy trình thử bằng chứng. Sản phẩm không claim vẫn cần thử an toàn và ổn định, nhưng có thể không cần kế hoạch bằng chứng cho claim.
+- `competitorLandscape` ở Gate 3 và Gate 5 (`sg03-npd-competitor-content`): không có ngoại lệ cho dự án chỉ hành chính (Administrative-only = Yes), trong khi `sg03-benchmark` lại có ngoại lệ đó.
+
+**Câu hỏi:** với một sản phẩm không có claim, và với một thay đổi chỉ hành chính, sổ nào trong ba sổ trên vẫn bắt buộc có hàng?
+
+**Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.

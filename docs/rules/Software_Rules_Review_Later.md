@@ -60,3 +60,31 @@ Mỗi mục ghi: chuyện gì, vì sao đáng bàn, hiện đang xử lý ra sao
 **F2. Ô tìm kiếm** (`CommandPalette`) vừa được sửa để tìm theo từ thay vì cụm liền; chưa thử trực tiếp.
 
 **F3. Migration `20261009120000_register_row_identity`** đã gán `__rowId` cho hàng cũ; cơ chế đó đã bị gỡ nên khóa này vô hại. API xóa dần khi lưu. Giữ migration vì đã áp dụng.
+
+## G. Câu hỏi bị gỡ khỏi vòng 5 vì là luật phần mềm (ghi 2026-10-10)
+
+Rà soát bản nháp vòng 5 cho thấy bảy câu (mã nội bộ R5-Q… giữ nguyên trong `F1_Per_Gate_Open_Questions.md`) hỏi SME về cách phần mềm khóa, ghi vết hoặc cấp quyền. Theo nguyên tắc ở `Software_Rules.md`, đó là quyết định của chủ dự án, nên đã gỡ khỏi bản gửi. Mỗi mục dưới đây ghi **hiện trạng code** để chủ dự án quyết; chưa mục nào được chốt.
+
+**G1. Một điều kiện dựng từ bảng, bảng rỗng có tính là "chưa đánh giá" không (R5-Q5).** SME đã trả lời nguyên tắc ở Round 4 câu 7. Phần còn lại là cách chứng minh "đã xét": hiện có 18 trigger, 10 cái đã có trạng thái chưa đánh giá, 8 cái dựng từ bảng nên bảng rỗng và "đã xét, không áp dụng" giống nhau (`TRIGGERS_WITHOUT_UNASSESSED_STATE`, `gateReadiness.ts`). Cần quyết: coi bảng rỗng là chưa đánh giá, hay thêm chỗ ghi "đã kiểm tra".
+
+**G2. Phạm vi snapshot chữ ký gate và khi nào chữ ký hết hiệu lực (R5-Q3 trở đi).** Đã nằm trong SW-5, SW-8 và SW-21. Điểm lệch "phải Complete mới được ký quyết định Proceed" chỉ chặn ở giao diện: **đã sửa 2026-10-10**, `signGateSignOff` giờ từ chối chữ ký Proceed hoặc Proceed with Conditions khi trạng thái stage chưa Complete (cùng điều kiện với panel). Xem cả R5-Q55, Q57, Q59.
+
+**G3. Chữ ký phase (R5-Q1, Q2, Q4).** (a) Lead được so khớp theo **tên** (`projects.service.ts`), hai người trùng tên đều nominate được; nên so theo user id. (b) Nominate người không có quyền approve: hiện chặn lúc ký, không chặn lúc nominate. (c) `recordVersion` của chữ ký phase là `row.version`, bộ đếm của cả dự án, đúng thứ SME ở Q29(1) đã bác cho gate; SW-22 cho phép nhưng chưa nói rõ cần snapshot riêng hay không. (d) Chữ ký vẽ tay và authenticator bắt buộc cho cả ba hàng (SW-7).
+
+**G4. Ai được xem trang dữ liệu tham chiếu công ty (R5-Q15).** Cả ba trang (market profile, raw material risk, claims library) đã build và đều `adminOnly`, trong khi người sửa là Regulatory, Technical, Safety. Đề xuất: hiện link cho ai giữ capability `reference:*|edit`.
+
+**G5. Claim: hai trường Claims Library mâu thuẫn thì cảnh báo hay chặn (R5-Q26).** Trường "declaration" hai giá trị là thiết kế của mình, SME chỉ yêu cầu claim mới phải được nhận diện là "New claim". Đề xuất: bỏ trường declaration, suy ra từ việc không có entry Approved.
+
+**G6. Ai được xóa Next Action (R5-Q58).** Hiện chỉ người tạo (`nextActionAccess.ts`, chủ dự án quyết 2026-10-07). Còn mở: audit `next_actions.updated` chỉ lưu số lượng nên action bị xóa không để lại tên (SW-6).
+
+**G7. Khóa sổ khi đóng sổ nhiều gate, và mở lại sổ (R5-Q21 c, e).** Ngưỡng đóng sổ là gate cao nhất trong `gateRefHighestGateId`; SW-20 đã đổi nghĩa "gate" của sổ thành gate nhập, nên cần kiểm tra lại ngưỡng này còn đúng không. Mở lại sổ hiện chỉ qua Backtrack.
+
+**G8. Phép nối công thức với ma trận an toàn (R5-Q64).** `uncoveredFormulaLines` (`gateProgress.ts`) nối bằng điều kiện OR theo `rmCode` hoặc `inciName`, **không ưu tiên mã** như comment nói: một dòng công thức mã X có thể khớp nhầm hàng ma trận mã Y cùng INCI. **Đã sửa 2026-10-10**: dòng có mã chỉ khớp hàng cùng mã (hoặc hàng chưa có mã nhưng cùng INCI); dòng không có mã khớp theo INCI. Kiểm tra bằng 4 trường hợp dữ liệu giả.
+
+## H. Lỗi cấu hình phát hiện khi rà soát vòng 5 (2026-10-10), chưa sửa
+
+**H1. Hàng `generalRestrictedCaution` bỏ trống outcome không chặn Gate 7.** `registerNoBadRows` chỉ so với `badValues`, mà chuỗi rỗng không nằm trong đó; comment trong `registers.ts` nói ngược lại. **Đã sửa 2026-10-10**: thêm nhánh `registerColumnFilled` vào item `sg07-general-caution`.
+
+**H2 (chờ SME, Câu 21 vòng 5). Gate 10 đọc "regulatory approval" ở hai nơi lệch nhau.** Sổ dossier chấp nhận "Approved with Conditions"; `MARKET_APPROVAL_STATUSES` không có giá trị này và check `everyMarket` chỉ chấp nhận Approved hoặc N/A.
+
+**H3 (chờ SME, Câu 32(b) vòng 5). Item pack requirements của thị trường coi "chưa nhập" là "không áp dụng"** (trigger `marketPackRequirements`), lệch A2 và Round 4 câu 7.

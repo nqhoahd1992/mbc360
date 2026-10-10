@@ -4,54 +4,36 @@
 >
 > **This file is still being written and will keep growing.** It is the sendable version of the internal list in `../rules/F1_Per_Gate_Open_Questions.md` → Round 5.
 >
-> **Project owner's decision, 2026-08-24:** send this only after all 36 Round-4 answers have been worked through, because until then the list is still moving. Round 4 proved the point — it was drafted on 9 August and sent on the 12th, and in those three days the act of building the answers produced nine more questions. Six of the questions below appeared the same way — while writing the code, running a test, or using a page an hour after building it.
+> **Project owner's decision, 2026-08-24:** send this only after all 36 Round-4 answers have been worked through, because until then the list is still moving. Round 4 proved the point — it was drafted on 9 August and sent on the 12th, and in those three days the act of building the answers produced nine more questions.
+>
+> **Consolidated 2026-10-10, then audited the same day against the code and against every SME answer so far.** Sixty-four questions became thirty-nine, and the audit then cut it to thirty-two, and a later review of registers that may legitimately be empty added one (thirty-three): seven questions were removed because they asked the subject-matter team about how the software protects or records data — that is the project owner's decision (`../rules/Software_Rules.md`), not theirs — or because they asked again what an earlier answer already settled. Several other questions were rewritten because they misquoted an answer, or described code that has since changed. The internal `R5-Qn` identifiers in the code and in `F1_Per_Gate_Open_Questions.md` are unchanged; only this sendable list was renumbered.
 >
 > **Rename this file to `YYYY-MM-DD-our-questions-round5.md` on the day it is sent**, and do not edit it afterwards — that is what makes this folder evidence rather than documentation.
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-Thank you for the Round 4 answers. They were complete enough to start building immediately, and **thirty-four of the thirty-six are finished**. The two that are not are waiting on answers below rather than on work: the scale-up affected-area list (question 19 here) and the reviewer acknowledgement in your question 16 (question 2 here). This list is what that building surfaced, plus four items left over from the phase sign-off work in August.
+Thank you for the Round 4 answers. They were complete enough to start building immediately, and **thirty-four of the thirty-six are finished**. The two that are not are waiting on answers below rather than on work: the scale-up affected-area list (question 7 here) and the reviewer acknowledgement in your question 16 (question 1 here). This list is what that building surfaced.
 
-Every question here follows the same pattern as last time: we have made a choice so that work could continue, the choice is running in the software now, and we would rather you corrected it than have it settle in silently. Where a question is still unbuilt we say so.
+Every question here asks about the cosmetic product, its evidence, its claims or its approvals — nothing about how the software stores or locks data. For each one we have made a choice so that work could continue, the choice is running now, and we would rather you corrected it than have it settle in silently. Where a question is still unbuilt we say so.
 
-You can reply by number, for example "3 — option (b)".
+Several questions have lettered parts. You can reply by number and letter, for example "3(a) — yes, 3(b) — option (ii)".
 
 ## What we need most, in order
 
-1. **Questions 1–3** — three decisions your Round-4 answers depend on that the answers themselves did not cover. They are holding back the largest remaining piece of work.
-2. **Questions 4–6** — already built on our own reading. If we read you wrongly these need rework, so we would rather know early.
-3. **Questions 7–9** — designed but not yet built. A wrong answer costs a redesign, not rework.
-4. **Questions 10–12** — the phase sign-off work from August, still open.
-5. **Questions 13–16** — smaller, but two of them name something your own answers assume exists and the software does not have.
-6. **Questions 17–18** — design choices worth confirming before we build, with no rework at stake either way.
-7. **Question 19** — the largest structural question in this list, and the one we have deliberately stopped work on until you answer it.
-8. **Question 20** — raised the same day as 17–18, nothing built yet either way.
-9. **Question 21** — already built, on the project owner's own instruction, before asking you. We would rather you corrected it now than have it settle in as though it were confirmed.
-10. **Questions 22–23** — from building your question-21 answer. Both are small, and 23(b) is a rule we are already running on our own reading.
-11. **Question 24** — a new screen your question-5 answer asked for, built and running. Four choices in it are ours.
+1. **Questions 1–2** — two decisions your Round-4 answers depend on that the answers themselves did not cover.
+2. **Questions 3–7** — already built on our own reading, or designed but not built. If we read you wrongly these need rework, so we would rather know early.
+3. **Questions 8–11** — smaller, but several name something your own answers assume exists and the software does not have.
+4. **Question 12** — the largest structural question in this list, and the one we have deliberately stopped work on until you answer it.
+5. **Questions 13–16** — change scope, register approval and "not applicable"; rules we are already running on our own reading.
+6. **Questions 17–33** — further readings of ours, each small; most are one-line confirmations.
 
 ---
 
-## Question 1 — When nobody has recorded the information a condition depends on, where does that get said?
-
-In Round 4 you answered that a missing assessment must never be read as meaning the condition does not apply, and that "not yet assessed" must block. That is now built and it closed a real hole: a formula nobody had classified used to pass both the preservative-strategy and preservative-efficacy requirements automatically, which is the case you named yourself.
-
-**What we could not finish.** Of the ten conditions the system evaluates, only three can currently say "not yet assessed":
-
-- the formula's microbiological classification, because it starts empty and only a person fills it in — this is the shape that works;
-- two new fields your Round-4 answers created, for change control and for human studies.
-
-The other seven are worked out from a table — the target users, the markets, the declared claims, the development type, the post-market sources. For those, **an empty table and a considered "no" look identical.** A project that has recorded no target users and a project whose team has confirmed there is no pregnancy or infant use produce exactly the same answer today.
-
-**What we would do without an answer.** Treat "the table is completely empty" as not-yet-assessed, and "the table has entries but none match" as assessed-and-does-not-apply. That needs no new fields. But it would mean a newly created project is blocked at several gates until someone opens each table, which is a real change to how a project starts, and it is a rule of ours rather than yours.
-
-**Question:** for a condition worked out from a table, should an empty table count as **not yet assessed** — blocking until someone confirms? Or does each one need its own explicit place for a person to record "checked, does not apply"? If the second, would that sit better as a Key Gate Check row per condition, or as a field on the table itself?
-
-## Question 2 — Who is the "responsible reviewer" of a single readiness item?
+## Question 1 — Who is the "responsible reviewer" of a single readiness item?
 
 You answered that where the system can work out from controlled data that a condition does not apply, it may generate the N/A reason itself — and that users should not retype a reason the system already produced. That half is built and working.
 
-The other half we cannot build yet. For safety-, regulatory-, claims- or release-critical items you said the generated rationale "must still be acknowledged by the responsible reviewer before gate closure". Nothing in the system says who the responsible reviewer of an individual item is. Your sign-off answer defines the roles very precisely for a **gate** — prepared, reviewed, approved, with the independent function named for critical gates — but a single gate carries ten to twenty items.
+The other half we cannot build yet. For safety-, regulatory-, claims- or release-critical items you said the generated rationale "must still be acknowledged by the responsible reviewer before gate closure". Nothing in the system says who the responsible reviewer of an individual item is. Your sign-off answer defines the roles very precisely for a **gate** — prepared, reviewed, approved, with the independent function named for critical gates — but a single gate carries between seven and more than twenty items.
 
 Three readings, with quite different amounts of work:
 
@@ -61,135 +43,71 @@ Three readings, with quite different amounts of work:
 
 **Question:** which of the three? And is "a critical item" the same thing as "any item on a critical gate", or a property of the individual item?
 
-## Question 3 — How much does a gate's signed evidence snapshot cover?
-
-**Now built, and building it raised one specific point we could not have seen from the answer alone.** The snapshot covers: every evidence register the gate's own rules read · the checklist sections and requirement rows belonging to that gate · its Key Gate Check rows · its evidence link · its open actions · the formula version · and, on a per-market gate, the packaging/artwork record. Changing any of them marks the signature stale and names what changed, as you asked.
-
-**Two things are deliberately left out, both for the same reason — including them makes the mechanism defeat itself:**
-
-**The gate decision.** Your point 1 lists "gate status and proposed decision" in the signed record, but your point 5 also says the approver's decision *is* the gate decision. So the decision is the sign-off's **output**. If it were inside the snapshot, the moment the approver signed, the record would change and all three signatures would go stale — the gate could never be completed: approve, all stale, re-sign, approve, stale again. The recommendation each person made is still recorded: every signature carries its own decision.
-
-**Our own conclusion about the gate's readiness verdict.** The shortest way to capture "applicable checklist results" would have been to store the system's own verdict on each of the gate's requirements. We did not, because one of those requirements is *"prepared, reviewed and approved sign-off"* — so answering "has this gate been signed off?" would mean reading a record that contains the answer to that question. We store the underlying checklists, requirements and registers directly instead.
-
-**The boundary itself, which is the original question.** You listed eight things in the signed record, and three are open-ended: "applicable checklist results", "mandatory and triggered evidence-register states", and "evidence links and document revisions". At Gate 10 that could mean around fifteen registers of several dozen rows each.
-
-This matters because of the rule you attached to it: if evidence inside the snapshot changes after a signature, the signature goes stale and re-signing is required. The wider the snapshot, the more often that happens — and a signature that goes stale every time anyone edits anything nearby is one people learn to ignore.
-
-**What we have done.** The snapshot covers every register the gate's own rules read, in full, plus the checklist and requirement rows tagged with that gate. So the boundary is set by the gate's own rules and cannot drift from "what actually blocks this gate".
-
-**Questions:** (a) is that boundary right? (b) should the gate decision be inside the signed record at all, given the loop above — and if so, in what form?
-
-## Question 4 — Is "is a change control needed?" answered once for the project, or once per finding?
+## Question 2 — Is "is a change control needed?" answered once for the project, or once per finding?
 
 You asked for an explicit step — Change Control required? Yes / No / Pending assessment — with the reviewer, date, rationale, the linked record where Yes, and an evidence link. Built, and Pending now blocks, as you specified.
 
-**Where we had to choose.** Your wording is "must block closure of the post-market finding", in the singular, which suggests one answer per finding. But the system has no record that represents a post-market finding:
-
-- the Post-Market / PV-PMS Feedback Sources table records **which sources** apply, not individual findings;
-- CAPA records are the resulting **actions** — and your own answer to a different question said CAPA is a resulting action, not a source;
-- the panel feedback register is internal product testing, not post-market.
+**Where we had to choose.** Your wording is "must block closure of the post-market finding", in the singular, which suggests one answer per finding. But the system has no record that represents a single post-market finding. Following your Round-4 answer, the old sixteen-option list is now three separate lists — Source, Issue type and Resulting action — but each is a set of boxes ticked once for the whole project, not a record per finding. CAPA records are the resulting **actions**, and the panel feedback register is internal product testing, not post-market.
 
 **What we built.** One answer per project, blocking the Gate 12 review closure — which is the nearest thing the system has to "closure of the post-market finding", since Gate 12 *is* the post-market review closure.
 
-**What that costs.** If a project has five findings and only one needs a change control, a single Yes/No cannot express that. The alternative is inventing a "post-market finding" record, which nobody asked for, in the same area where your Round-4 answer says the sixteen-option source list should be split into three — so it would very likely be built twice.
+**What that costs.** If a project has five findings and only one needs a change control, a single Yes/No cannot express that. The alternative is a new "post-market finding" record, which nobody asked for and which would sit in the middle of the area your Round-4 answer just restructured.
 
-**Question:** should this answer be recorded **once for the project**, as it is now, or **once per post-market finding**? If per finding, what constitutes a finding — is it the record that would come into being when the sixteen-option list is split?
+**Question:** should this answer be recorded **once for the project**, as it is now, or **once per post-market finding**? If per finding, what is a finding, and where in your process does one come into being?
 
-## Question 5 — Does a superseded safety finding need the same closing evidence as a closed one?
+## Question 3 — Does a superseded safety finding need the same closing evidence as a closed one?
 
 You gave the safety-finding status list six values, adding **Superseded** to the five-step lifecycle. Separately you specified what closing a High or Critical finding requires: the safety reviewer's conclusion, an evidence link, the linked action completed, verification, the verifier and a closure date.
 
 Superseded is not the same as closed. A finding is superseded when a later assessment of the same hazard replaces it — so its evidence arguably lives in the replacement, not in itself.
 
-**What we built** — the cautious reading: a superseded finding needs the same conclusion and evidence link as a closed one. A High or Critical finding should not become passable just by being marked superseded, and if it genuinely was replaced, saying so is one sentence.
+**What we built** — the cautious reading, for High and Critical findings only: a superseded finding needs the same safety conclusion, evidence link and **completed linked action** as a closed one. A High or Critical finding should not become passable just by being marked superseded, and if it genuinely was replaced, saying so is one sentence.
 
-**What that costs.** A superseded row left blank blocks Gate 7 indefinitely until someone fills it in, and asking for an "evidence link" on a finding that was replaced reads oddly.
+**What that costs.** A superseded row left blank blocks Gate 7 indefinitely until someone fills it in, and asking for a completed action and an evidence link on a finding that was replaced reads oddly — the action is the least sensible of the three.
 
-**Question:** does a superseded safety finding need the same closing record as a closed one? If not, should it instead point at the finding that replaced it?
+**Question:** does a superseded High or Critical finding need the same closing record as a closed one? If not, should it instead point at the finding that replaced it, and which of the three items (conclusion, evidence link, completed action) should still be required?
 
-## Question 6 — Do the six Gate 4 dispositions replace the current status list or extend it?
+## Question 4 — The two Gate 4 watch-list columns: what does each hold, who fills it, and until which gate?
 
-Two of your Round-4 answers land on the same column, and they do not quite line up.
+Three of our earlier questions turned out to be about the same two columns on the prohibited-ingredient and caution watch-lists: the **product status** and the **Gate 4 disposition**.
 
-You said every row at Gate 4 must be classified as one of six: *No issue identified · Needs Safety Review · Needs Regulatory Review · Prohibited — remove · Considered — not selected · Further information required.*
+**What exists now.** You said every row at Gate 4 must be classified as one of six: *No issue identified · Needs Safety Review · Needs Regulatory Review · Prohibited — remove · Considered — not selected · Further information required.* You also said "flagged" covers three statuses: *REVIEW — possible formula match · Needs Safety Review · Needs Regulatory Review.* "REVIEW — possible formula match" is in the flagged list but not in the six, and three of the six are not in the flagged list. So we kept **two columns**: the product status (the older list, including "possible formula match") and the Gate 4 disposition (your six). **Both are filled in by a person.** The system compares the formula with the watch-list and, at Gate 7, refuses to pass while a matching row still sits at the status it started with ("No formula match recorded" / "Not assessed"), but it never writes a verdict itself.
 
-You also said "flagged" covers three statuses: *REVIEW — possible formula match · Needs Safety Review · Needs Regulatory Review.*
+**(a)** Is two columns the right reading — what the screening found, and what the reviewer decided? Or should the six values replace the old status list altogether?
 
-**"REVIEW — possible formula match" is in the flagged list but not in the six.** And three of the six — No issue identified, Considered — not selected, Further information required — are not in the flagged list. Today one column holds both ideas.
+**(b)** Should the **system** set "REVIEW — possible formula match" by itself when the formula matches a watch-list row — rule C3 says it flags matches — or is it right that a person updates the row before Gate 7?
 
-Two ways to read it:
+**(c)** Until which gate is the product status updated? Your answer says Gate 4 screens and gives a conclusion for every row, and Gate 7 must formally close every restricted or caution issue that applies to the final formula. It does not say where the product status is settled. We read it as **Gate 7**: the reviewer columns (assessment, reviewer, date, rationale, linked action, evidence, Gate 4 disposition) are Gate 4's, while product status keeps following the formula until Gate 7. If it were settled at Gate 4, any normal formula change afterwards would force the project back to Gate 4. Is Gate 7 right?
 
-- **(a)** The six replace the current list, and "possible formula match" becomes the automatic *result of the screening check* rather than something a person chooses — so two columns: what the system found, and what the reviewer decided.
-- **(b)** The six are the full new list, "possible formula match" joins them as a seventh, and "flagged" is simply a subset.
+## Question 5 — Formula version supersession: who confirms the ten facts, and when does an old version change state?
 
-(a) is cleaner — the machine finds, the person decides, and those are two different facts — but it means moving existing data. (b) is cheaper and leaves one column doing two jobs.
+**Built.** An old formula version reaches *Superseded* only once a person has confirmed all ten facts you listed, for **each market where that version is sold**; nothing derives it.
 
-**Question:** do the six values **replace** the current status list or **extend** it? And is "possible formula match" a system-generated result or a person's choice?
+**(a) Who confirms?** Your answer lists ten things — the regulatory notification, the last release date, the stock disposition, the artwork transition, the Sales and Marketing communication and the rest — but does not say whose they are. Today one authorised person (anyone allowed to approve a market's launch) records all ten for a market, typing their own name. We *assume* the ten belong to different functions (Regulatory, Quality, Supply Chain, Sales, Packaging). Is that right — and should each fact be confirmed by its own function, or is one accountable person enough?
 
-## Question 7 — Who signs the decision to supersede a formula version?
+**(b) When does the old version change state?** Your question 2 says "approval of the new version places the old version into Transition in Progress". We read approval as the new version's **launch approval in a market where the old version is sold**. So after a Major change the old version stays *Active* until then; after a Minor change, which reopens no gates, it starts transitioning at once; and a version that was never launched anywhere becomes *Superseded* immediately, since nothing needs transitioning. Post-launch reviews stay per market, dated from the earliest launch still on sale there. Is launch approval the right moment, or Gate 10/11 approval? May a never-launched version be treated as Superseded straight away? Do post-launch reviews need to be kept per version?
 
-**Now built, and one detail is worth confirming.** A new formula version puts the old one into *Transition in Progress*, exactly as you said, and it reaches *Superseded* only once somebody has confirmed all ten facts for **every market the project sells into**. Nothing derives it.
+## Question 6 — Who decides that a change to a Claims Library entry is "critical"?
 
-
-You specified that an old formula version becomes Superseded only after an authorised person confirms ten things for the relevant market, and that this "must be recorded by a person — never inferred automatically by the system". We have not built it yet.
-
-Those ten facts sit with different functions: the regulatory notification with Regulatory, the last release date with Quality, the stock disposition with Supply Chain, the Sales and Marketing communication with Sales, the artwork transition with Packaging.
-
-**Question:** is the supersession decision **one signature** — and if so, whose — or a multi-role block like the Prepared / Reviewed / Approved sets? And does it need the second authentication step that phase sign-off now uses?
-
-## Question 8 — Who decides that a change to a Claims Library entry is "critical"?
-
-**The library is now built, which sharpens this question rather than answering it.** An entry needs both a Technical and a Regulatory approval before it counts as approved wording; withdrawing one lists every project claim, market and published record that depends on it, and flags them for re-review. What it does **not** do is remove anything from a market — because your answer says that should happen only where the change "is critical or required by Regulatory", and who makes that call is exactly what is asked below.
-
+**The library is built, which sharpens this question rather than answering it.** An entry needs both a Technical and a Regulatory approval before it counts as approved wording; withdrawing one lists every project claim, market and published record that depends on it, and flags them for re-review. What it does **not** do is remove anything from a market — because your answer says that should happen only where the change "is critical or required by Regulatory", and who makes that call is exactly what is asked below.
 
 You specified what happens when a library entry is changed or withdrawn: identify every linked claim, SKU, market and published material, assess the impact, raise change control where needed, flag material for re-review, and record the effective date and transition plan. Then: *"Changing or withdrawing must not automatically remove a product from the market unless the change is critical or required by Regulatory."*
 
 That sentence can pull a product that is on sale, so we do not want to interpret it.
 
-**Question:** is "critical" here the top level of the Low / Medium / High / Critical scale your other three answers agreed on? And who records it — Regulatory alone, or Technical and Regulatory together, the way you specified for approving a library entry in the first place?
+**(a)** Is "critical" here the top level of the Low / Medium / High / Critical scale your other three answers agreed on?
 
-## Question 9 — Which affected areas should the Gate 9 scale-up trigger read?
+**(b)** Who records it — Regulatory alone, or Technical and Regulatory together, the way you specified for approving a library entry in the first place?
 
-You listed eighteen areas that trigger a scale-up or pilot review — manufacturing site, equipment type or scale, batch size, order of addition, mixing speed, homogenisation, heating profile, hold time, filling method, water source and the rest.
+## Question 7 — The Gate 9 scale-up trigger: which areas does it read, and what is a "new formula"?
 
-We have built the other two limbs of that answer: a Major formula change triggers it, and so does the reviewer's own Yes / Pending answer. The eighteen areas are not read yet, because they belong on the change control record — and your Round-4 answers are also restructuring that same record (a fourth severity level, an eight-part final disposition). Adding another list to it now would mean doing it twice.
+Your Round 3 answer makes scale-up or pilot status mandatory for "new formulas, major reformulations …", and your Round 4 answer lists eighteen areas that trigger a scale-up or pilot review — manufacturing site, equipment type or scale, batch size, order of addition, mixing speed, homogenisation, heating profile, hold time, filling method, water source and the rest.
 
-**Question:** are those eighteen areas a list someone ticks on the change record, or are they guidance for the person answering "was a scale-up risk identified?" If they are a list, should it sit beside the impact classification you specified for Gate 11, or replace the free-text "affected area" field the record has now?
+**(a) The eighteen areas.** We have built the other limbs of that answer: a Major formula change triggers it, and so does the reviewer's own Yes / Pending answer. The eighteen areas are not read yet. Are they a list someone ticks on the change record, or guidance for the person answering "was a scale-up risk identified?" If they are a list, should it sit beside the impact areas the change record already carries for Gate 11, or replace its free-text "affected area" field? (Question 12 decides how many change records there are, so the two are best answered together.)
 
-## Question 10 — Who nominates the people who sign a phase, and who may withdraw a signature?
+**(b) "New formula".** We read a new formula as a project whose *Development / Change Type* at Gate 1 has **New development** ticked in any role, primary or secondary; a major reformulation is already caught by a Major formula version. Does that match what you mean by a new formula? Should a Reformulation that is not Major also count — and should a secondary tick count at all?
 
-*(Outstanding from 20 August.)* The phase sign-off block now works like this: the project's Lead nominates one person per row; only that person may sign it, as themselves; and the Approved-by row additionally requires the permission to approve that phase.
-
-Three points are ours, never put to you:
-
-**(a)** The Lead is matched **by name**, because that is what the project record stores. Two people with the same name would both be able to nominate.
-
-**(b)** **Only the signer may withdraw their own signature** (or an administrator), with a mandatory reason. We deliberately did not let the Lead withdraw one: a Lead who can remove a reviewer's signature can overturn a conclusion they disagree with. An administrator can, to handle someone who has left.
-
-**(c)** A row that has been signed cannot be reassigned — the signature must be withdrawn first, otherwise the table would show one person's signature beside another's name.
-
-**Question:** (a) should the person who nominates signers be the **project Lead** or the **Project Manager**? Those are two different things in the system. (b) Who may withdraw a signature — only the signer, or the Lead or Project Manager too? (c) If someone is nominated to sign the Approved-by row but their role does not carry approval permission, should that be **blocked** (as it is now) or should being nominated be enough?
-
-## Question 11 — Does the per-gate sign-off specification also apply to the phase sign-off block?
-
-*(Outstanding from 20 August.)* Your sign-off answer is written about gates, and it says the phase-level approval "remains as an additional phase-closure approval and is not replaced". We have applied its six fields — authenticated user, role at the time, timestamp, decision, record version, comment — to the **phase** block as well, on the reasoning that a signature is a signature.
-
-**Question:** was that right, or does the phase block have a lighter requirement than a gate? In particular, does the independence rule apply at phase level, where no phase is defined as critical?
-
-## Question 12 — Is a hand-drawn signature wanted at all, and must it be mandatory?
-
-*(Outstanding from 20 August.)* Signing a phase now requires two things beyond the six fields you listed: a signature the person has drawn once and saved, and a fresh code from an authenticator app.
-
-**Neither is in your specification.** The drawn image is our addition, on the reasoning that a printed or exported record reads as a real signature and that it replaces none of your six fields. The authenticator step protects it — anyone with access to a mailbox could produce an emailed code, which is the wrong shape for a signing act.
-
-Both are currently **mandatory**: a nominated signer who has not saved a signature or enrolled an authenticator cannot sign at all, and the phase cannot close until they set both up.
-
-**Question:** (a) is a hand-drawn signature wanted in the record, or are your six fields sufficient? If it is not wanted, the second factor should be reconsidered with it, since the two are currently tied together. (b) Should the second factor apply to all three rows — Prepared, Reviewed and Approved — or only to Approved? It applies to all three today.
-
----
----
-
-## Question 13 — Two of your rules name a "Reject / Stop" decision the gate dropdown does not have
+## Question 8 — Two of your rules name a "Reject / Stop" decision the gate dropdown does not have
 
 Your answer on critical gaps says a Critical gap **"must result in Hold, Backtrack or Reject/Stop"**, and your sign-off answer lists **Reject / Stop** among the decisions that require a mandatory comment. So it appears twice, in two separate answers.
 
@@ -199,70 +117,42 @@ We have not invented a sixth value — the workbook is the authority on that lis
 
 **Question:** should Reject / Stop become a sixth gate decision? If yes, what does it mean operationally that Hold does not already mean — does the project close, or does it return to an earlier phase? And is it available at every gate, or only where a Critical finding forces it?
 
----
+## Question 9 — "Safety or Regulatory authority": is one of the two enough?
 
-## Question 14 — "Safety or Regulatory authority": is one of the two enough?
+Your Gate 4 answer says a flagged watch-list row may be carried under Proceed with Conditions where, among other conditions, *"the gate approver has the required Safety or Regulatory authority"*.
 
-Your Gate 4 answer says a flagged watch-list row may be carried under Proceed with Conditions where, among other conditions, *"the gate approver holds Safety or Regulatory authority"*.
+We read it as: holding **either** authority is enough, so the software grants that permission to whoever holds either capability, as a real permission in the role grid rather than a name typed in a box. The word we could not resolve is "required".
 
-We read "or" literally: either one is sufficient. So the software now grants that permission to whoever holds **either** capability, and it is a real permission in the role grid rather than a name typed in a box.
+The reason we are asking rather than assuming: at Gate 4 the two functions judge different things. Safety judges whether a material is harmful; Regulatory judges whether it is permitted in the market. A material can be safe and not permitted, or permitted and not appropriate for this product. Your "flagged" list has three statuses, and they differ in whether one function is already named:
 
-The reason we are asking rather than assuming: at Gate 4 the two functions judge different things. Safety judges whether a material is harmful; Regulatory judges whether it is permitted in the market. A material can be safe and not permitted, or permitted and not appropriate for this product. If both judgements are needed, "or" is too weak.
+- **Needs Safety Review** and **Needs Regulatory Review** name a function.
+- **REVIEW — possible formula match** is raised by the comparison with the watch-list and names none.
 
-**Question:** for a flagged ingredient at Gate 4, is one of the two functions sufficient, or must both accept it? If one is enough, does that hold for every one of the eleven risk classifications, or are some of them specifically Safety's call?
+**Question:** (a) for a row flagged *Needs Safety Review*, must the approver hold Safety authority — and likewise Regulatory for *Needs Regulatory Review* — or does either function suffice? (b) For a *possible formula match*, which function, or either?
 
----
+## Question 10 — What makes an action "controlled", and where do its owner and due date live?
 
-## Question 15 — Who should be able to open the company reference-data pages?
+Your answers use the idea of a controlled action in three places, each leaving something open. One answer on the first settles the others.
 
-Three of your answers created company-level lists rather than per-project ones: the market profile Regulatory maintains, the raw-material risk overlay, and the Claims Library. Two of the three are now built and each has its own page.
+**(a) For a High gap.** Your critical-gap answer lets a High gap be carried conditionally where, among other conditions, *"a controlled action and due date are recorded"*. Your F7 answer already says what a controlled action is: *"A controlled Next Action is created. The action has an owner, due date and escalation condition."* But the eight fields you listed for a gap give **Required action** and **Action owner** as ordinary fields and no date, which reads like the self-contained version. So today the date half of the condition is **not enforced** — we have not guessed a ninth field, and the screen asks the user to put the date in the action text meanwhile. Should a High gap point at a tracked Next Action, as F7 describes? And does the same requirement apply to Medium and Low gaps?
 
-Each answer says clearly **who may edit** — Regulatory for market profiles, Technical / Safety / Regulatory for the risk overlay, Technical **and** Regulatory jointly for the Claims Library — and the software enforces exactly that on saving.
+**(b) The product form left open at Gate 2.** Your question 23(a) lets an early brief pass Gate 2 with the product form still open, "with a controlled action". We require an open Next Action at Gate 5, where the form is to be confirmed, and a new "Confirmed product form" field there. Must that action sit at Gate 5 and be about confirming the form, or is any controlled action enough?
 
-What no answer covers is who may **see** the page. The software today shows the link only to a System Administrator, which produces an odd result: the administrator sees the link but is not the person who maintains the data, while Regulatory maintains it but has to be sent a direct link to reach it.
+**(c) A deferred requirement.** See question 16 — it is the same choice for a Should or Could requirement row.
 
-**Question:** should these pages appear in the menu for anyone who is allowed to edit that list, or stay restricted to administrators with the maintainers reaching them another way? And should the three lists sit together under one heading, or separately beside the area each belongs to?
+## Question 11 — If a Change Control affects a gate that already passed, should that gate reopen automatically?
 
----
+Right now, opening a Change Control against a gate that has already passed does nothing to that gate. If Gate 5 was decided "Proceed" and the project has since moved on to Gate 10, opening a change that names Gate 5 leaves the "Proceed" exactly as it was — the only trace is a small warning tag on the Gate Flow screen. Closing the change is equally disconnected.
 
-## Question 16 — For a High gap, what makes an action "controlled", and where does its due date go?
+**What we would do without an answer.** Opening a Change Control against a passed gate would reopen exactly that gate — and only that gate — and the only decision allowed on it afterward would be "Proceed with Conditions".
 
-Your critical-gap answer lets a High gap be carried conditionally where, among other conditions, *"a controlled action and due date are recorded"*. Two things in that sentence are not settled by the eight fields you listed for a gap.
+**Where this meets your F9 answer.** F9 says *"Completed, Rejected, Cancelled and Superseded are treated as closed, provided the final disposition is recorded."* A change that reopened a gate raises a new point F9 did not have to consider: if the change is then **Rejected or Cancelled**, was the gate ever really affected? We have not decided; the two readings are that the gate must still be explicitly re-confirmed (never an automatic restore to what it said before), or that a rejected change releases it.
 
-**First, "controlled".** In the same round, on critical safety findings, you wrote that *"a controlled Next Action is required… Free text may describe the action but must not replace the controlled action record"* — so there, "controlled" means a tracked action record, not a typed sentence. But the gap field list gives **Required action** and **Action owner** as ordinary fields, which reads like the self-contained version. Both readings are defensible and they need different software: either the gap points at a tracked action, or it keeps its own two fields.
+**What we have not settled.** (i) Whether "reopen automatically" is the right shape at all, or whether correcting an already-passed gate should always stay a deliberate action a person takes, with Change Control limited to warning. Every existing case of a gate reopening is either a person choosing to, or a fixed block that a Major formula change reopens together; this would be the first time gates are picked one at a time. (ii) Whether restricting the next decision to "Proceed with Conditions" is enough, or re-deciding should also require a written explanation or a named person. (iii) What happens when two open changes name the same gate.
 
-**Second, the due date.** The eight fields you listed do not include a date for the action, so that half of the condition is currently **not enforced** — we have not guessed a ninth field, and the screen says so, asking the user to put the date in the action text meanwhile.
+**Question:** should opening a Change Control against an already-passed gate reopen it automatically? If yes, for every kind of change or only some, and what should happen if the change is rejected or cancelled? If no, what should happen instead of today's silent no-op?
 
-**Question:** for a High gap, is the required action a tracked Next Action of the kind you specified for safety findings, or two plain fields on the gap itself? And where should the action's due date be recorded?
-
----
-
-## Question 17 — Should the trigger you pick have to match how far the project has actually got?
-
-Right now Change Control lets you pick any trigger for any project, whatever gate that project is at. Each trigger declares which gates it affects — for example "Ingredient percentage or active level changed" affects Gates 5 and 8 — but nothing stops someone opening that same trigger against a project that is only at Gate 2, before any formula decision has even been made that there would be something to change.
-
-**The direction matters, and getting it backwards would break a case we already rely on.** A project that is past Gates 5 and 8 — say it is at Gate 11 — reopening a change tied to Gate 5 or 8 is exactly what this tool is for: formally amending a decision that was already locked in. That has to stay allowed. The odd case is the other direction: a project that has not yet reached a gate has nothing decided there yet to change.
-
-**What we would do without an answer.** Compare the trigger's gates against the highest gate the project has actually **passed** — not the gate it is currently working on, since anything still in progress gets edited directly rather than through a formal change record. A trigger marked as affecting every gate would stay available always, and with no project picked yet there is nothing to compare against, so the full list would stay open.
-
-**Question:** should the trigger someone can pick be limited by how far the project has progressed? If so, is the right boundary "the highest gate passed", or something else? And should a trigger that points ahead of the project's progress be blocked outright, or just flagged as unusual and left selectable?
-
-
----
-
-## Question 18 — Is "NP Controlled" a separate book, or an approval only NP may give?
-
-The Formulation Change Register is titled "NP Controlled" and has sixteen columns. Two of them are NP's: the commercial approval tick and the NP sign-off. The other fourteen — change ID, product, who requested it, the date, the title, the explanation, the reasons, the NPD and Regulatory actions, whether the market needs telling, whether it has been told, whether it is closed, and the overall status — are the same fourteen the Change Control log already keeps.
-
-In a spreadsheet a separate sheet is the only way to say "NP approves this". The software can say it directly: it can restrict the approval to NP's role, record NP's authenticated signature against it, and hold a gate open until that signature exists — none of which needs a second book.
-
-**What we have already changed, because it is right either way.** That NP sign-off was a box anyone could type a name into, and edit afterwards with nothing recorded. It is now a real signature: NP signs as themselves, confirms with a code from their authenticator app, and the system records the account, the role held at that moment, its own timestamp and NP's saved signature. The commercial approval tick is no longer a tick — it follows the signature. What we have **not** changed is where the record lives.
-
-**Question:** is the Formulation Change Register a book that needs to exist in its own right, or a view of the Change Control log filtered to formulation changes? If it is a view, is NP's approval an authority exercised on the shared record? And which role in the system is "NP" — we have provisionally given the approval to Final Approver, purely from the words "commercial authority", and it is one click to move it.
-
----
-
-## Question 19 — There are nine places a change gets written down. How many should there be?
+## Question 12 — There are nine places a change gets written down. How many should there be?
 
 This is the question we would most like answered, and the one we have stopped work on until you do.
 
@@ -297,7 +187,7 @@ So the heaviest change the system knows about is the one travelling the route th
 
 **2. Two sheets are doing two jobs at once.** Formula Change Control lists five *types* of change — one row for "ingredient added or removed", one for "pH or process changed", and so on — with who must sign each. But the same five rows also carry Old version, New version and Status, which belong to a *particular* change. So every ingredient change this product will ever have shares one Old version box. The second one overwrites the first.
 
-**3. The sheets refer to each other by typed text.** Eight columns across the workbook point from one change record at another — "Linked Change ID", "Change register ID", "Artwork Change Control ref" and so on. Every one of them is free text. Nothing checks that what is typed exists, and nothing notices when it does not.
+**3. The sheets refer to each other by typed text.** At least four columns point from one change record at another — "Change register ID", "Linked Change ID" (on two sheets) and "Artwork_Change_Control ref" — and every one is free text. Nothing checks that what is typed exists.
 
 **Our reading, which we would rather you corrected than accepted.** We think the workbook has several separate sheets because a spreadsheet has no other way to say "only NP approves this" or "show me only the artwork ones" — a separate sheet **is** the permission, and it **is** the filter. The software has permissions and filtered views already, so one record shown several ways might say exactly the same thing with none of the duplication. But that is us guessing at why the workbook was built as it was, and if the sheets are separate because the *business* treats them as genuinely different records, then merging them would be a serious mistake — one much harder to undo once real data is in the merged book than the duplication is to live with now.
 
@@ -311,344 +201,153 @@ So the heaviest change the system knows about is the one travelling the route th
 
 The middle one reads that way from its own contents: it warns that Vietnam needs about six months to re-register a formula change, and it asks whether a new registration or label is required and whether the market has been told. None of those questions mean anything about a formula still being trialled. If that is how your team sees it, these are **not** duplicates, merging them would be a serious mistake, and the real question is not whether to merge but **where the boundary between them sits**.
 
-**Question:**
+**Questions:**
 
 **(a)** In how your team actually works, is there **one** kind of change record, or **several genuinely different** kinds? If several, which are different, and what makes them different?
 
 **(b)** Of the nine above, which are meant to list the *types* of change, and which are meant to log the changes that actually happen?
 
-**(c)** Should raising a new formula version always create a change control record — and therefore hold Gates 5 and 8 open until it is closed?
+**(c)** Should raising a Major formula version always create a change control record?
 
 **(d)** When one change affects the formula, the artwork and a claim all at once, is that **one** record, or several linked records — one per area?
 
-**(e)** Should the cross-references between these sheets become real links, picked from a list, so a reference cannot point at something that does not exist?
+**(e)** Is the dividing line between the Development Iteration Log and the Formulation Change Register the moment the formula is **locked at Gate 5** — trials on one side, controlled changes on the other? If it is something else, what? (Today nothing enforces any line: the software will write a Formulation Change Register entry for a formula that has never been locked, which puts a development trial into the book meant for controlled changes.)
 
-**(f)** Is the dividing line between the Development Iteration Log and the Formulation Change Register the moment the formula is **locked at Gate 5** — trials on one side, controlled changes on the other? If it is something else, what? (Today nothing enforces any line: the software will write a Formulation Change Register entry for a formula that has never been locked, which puts a development trial into the book meant for controlled changes. We have not guessed a rule, because the right fix depends on this answer.)
+**(f) Is "NP Controlled" a separate book, or an approval only NP may give?** The Formulation Change Register has sixteen columns. Two are NP's: the commercial approval and the NP sign-off. The other fourteen — change ID, product, who requested it, the date, the title, the explanation, the reasons, the NPD and Regulatory actions, whether the market needs telling, whether it has been told, whether it is closed, and the overall status — are the same fourteen the Change Control log already keeps. Is the register a book in its own right, or a view of the Change Control log filtered to formulation changes, with NP's approval as an authority exercised on the shared record? And which role is "NP"? We have provisionally given the approval to the Final Approver role, purely from the words "commercial authority", and it is one click to move.
 
-**What we are doing meanwhile: nothing.** We could make one of these the master book tomorrow and show the others as filtered views of it, and it would look tidier immediately. We are not doing that, because if two of these records really are different things, we would then have to pull them apart again after they had been merged and filled with real data. Nothing is blocked by waiting; the duplication is visible rather than dangerous, with the single exception in point 1 above, which we will fix as soon as (c) is answered.
+**(g) Which records count as "a valid Change Control record"?** Your question 8 says *"If Yes, a valid Change Control record must be linked."* That used to be free text, so a typo or another project's record number satisfied it. It is now a choice from **this project's own Change Control records** (the CHG- numbers). Does a row of the Formulation Change Register (the FC- numbers) count as one? And does "valid" require anything beyond existing — that the record is still open, or covers the right kind of change?
 
----
+**What we are doing meanwhile:** nothing. We could make one of these the master book tomorrow and show the others as filtered views of it, and it would look tidier immediately. We are not doing that, because if two of these records really are different things, we would then have to pull them apart again after they had been merged and filled with real data. Nothing is blocked by waiting; the duplication is visible rather than dangerous, with the single exception in point 1 above, which we will fix as soon as (c) is answered.
 
-## Question 20 — If a Change Control affects a gate that already passed, should that gate reopen automatically?
+## Question 13 — Does adding a market, or a Major formula version, reopen earlier gates?
 
-Right now, opening a Change Control against a gate that has already passed does nothing to that gate. If Gate 5 was decided "Proceed" and the project has since moved on to Gate 10, opening a change that names Gate 5 leaves the "Proceed" exactly as it was — the only trace is a small warning tag on the Gate Flow screen, which nobody is likely to see again once work has moved on. Closing the change is equally disconnected: nothing checks the gate's state at all.
+Two cases of the same question — when a change in scope reopens what was already decided. (Question 11 asks the same about Change Control.)
 
-**What we would do without an answer.** Opening a Change Control against a gate that already passed would reopen exactly that gate — and only that gate, not everything between it and the gate currently being worked — using the same "gate open for work" mechanism the software already has (so nothing new needs building just to make it editable again). The only decision allowed on it afterward would be "Proceed with Conditions". The Change Control could not be closed — Completed, Rejected, Cancelled, or Superseded alike — until every gate it reopened had been decided again. We have already checked one part of this with the project owner: Rejected or Cancelled does not exempt this — even a change that ends up not being carried out still requires someone to explicitly re-confirm the gate, never an automatic restore to what it said before.
+**(a) Adding a market after Gate 1.** Your F4 answer says a new market *"may also trigger review of earlier gates where the new market has different ingredient, claim, packaging or safety requirements."* A market can now be added after Gate 1 without a backtrack, and nothing is reopened. Removing a market that has any history is refused; it is marked Withdrawn instead. Who decides that the new market "has different requirements" — for example Regulatory, when the market is added — and which gates does each kind of difference reopen?
 
-**What we have not settled.** (a) Whether "reopen the gate automatically" is the right shape at all, or whether correcting an already-passed gate should always stay a deliberate action a person takes (as it does everywhere else in the system today), with Change Control limited to warning rather than acting on its own. Every existing case of a gate reopening today is either a person explicitly choosing to reopen it, or a single fixed block of gates that a major formula change always reopens together — this would be the first time gates are picked one at a time, by whichever ones a change actually names, rather than as one connected block. (b) Whether restricting the next decision to "Proceed with Conditions" is enough protection on its own, or whether re-deciding a reopened gate should also require a written explanation or a specific person's sign-off. (c) What happens when two open changes both name the same gate — does closing one wait on the other too?
+**(b) A Major formula version.** Your A2 answer reopens Gates 4–9 on a Major change; your F4 answer gives the new version its own Gate 10–12 track in each market. We reopen Gates 4–12 for the new version, and keep the old version's Gate 10–12 tracks and signatures as they were. Should the project's Gate 10–12 records reopen for the new version, or only the per-market tracks start again?
 
-**Question:** should opening a Change Control against an already-passed gate reopen it automatically, restricted to "Proceed with Conditions" until re-decided, and hold the Change Control's own closure open until that happens? If yes, should this apply to every kind of change, or only some? If no, what should happen instead of today's silent no-op?
+## Question 14 — Is the "closing" approval on every evidence register the right shape?
 
----
+Every register shows a "Review owner · Co-sign" caption, but it used to be only text — anyone could add, edit or delete a row regardless of whose name was shown. The project owner asked for a deliberate **closing** approval: the Review owner and the Co-sign each sign, after which the register becomes read-only, and a gate cannot pass until every register tied to it has been closed. **It is built, on the project owner's instruction, before asking you** — this is a new rule, not something transcribed from the workbook, and we would rather you corrected it now than have it settle in as though it were confirmed because it works.
 
-## Question 21 — We have built a two-signature "closing" act for every evidence register. Is this the right shape?
+**(a)** Should this apply to **every** register tied to a gate — today that is 70 of the 82 registers — or only to a smaller set that is genuinely meant to be a controlled record — the way a couple of registers already had their own dedicated approval step before this?
 
-Every register currently shows a "Review owner · Co-sign" caption, but it is only text — anyone can add, edit or delete a row regardless of whose name is shown. The project owner asked us to give that caption real teeth: keep editing open to everyone, but add a deliberate **closing** act — the Review owner and the Co-sign each sign, using the same authenticator-and-saved-signature method already used to sign off a phase — after which the register becomes read-only. A gate could then not pass until every register that belongs to it (or an earlier gate) has been closed this way — closing becomes a condition of the gate passing, not something that happens automatically afterward the way it does today.
+**(b)** Is **two** approvals (Review owner and Co-sign) the right number and the right pair of roles, or should some registers need different or additional approval?
 
-**We have already built this in full**, on the project owner's own instruction, before asking you — about 68 registers now carry this closing requirement, with no separate list to configure, since it applies wherever a register is already tied to a specific gate. Every save to a register also now keeps a row-by-row record of what changed and who changed it, which did not exist before.
+**(c)** For some registers the Review owner and the Co-sign resolve to the **same person**, because no distinct Co-sign was ever named for that area — so "two approvals" is one person approving twice. We show a warning rather than blocking it. Should such areas get a distinct Co-sign? (Question 24 asks the wider question of when one person may hold two roles.)
 
-**Why we are asking anyway.** This is a genuinely new rule, not something transcribed from the workbook, and we would rather you corrected it now than have it settle in as though it were confirmed simply because it already works.
+## Question 15 — Can a Phase 2, 3 or 4 requirement row be marked "not applicable"?
 
-**Five open points:**
+Your answer to Round-4 question 21 gave the Phase 1 requirements table a third way to close a row: **N/A with a rationale**, because "the system must not require users to mark an empty requirement as Completed". That is built.
 
-**(a)** Should this closing requirement apply to **every** register tied to a gate (around 68 of them), or only to a smaller set that is genuinely meant to be a controlled record — the way a couple of registers already had their own dedicated approval step before this?
+The same situation exists on the Phase 2, 3 and 4 requirement tables. Those rows come from the workbook and are fixed, so a project can perfectly well have one that does not apply to it — the "compatibility / use-with constraints" row for a product with nothing to be used alongside, for example. Those tables still do **not** have the N/A option, because the gate rules that read them accept nothing but *Completed*; offering N/A there without changing those rules would let someone pick a status that can never satisfy the rule reading the row.
 
-**(b)** Is **two** signatures (Review owner and Co-sign) the right number and the right pair of roles, or should some registers need different or additional sign-off?
+**Question:** when a Phase 2–4 requirement row does not apply to a project, should it be closed as **N/A with a rationale** the same way Phase 1 can, or marked Completed with an explanation in the notes?
 
-**(c)** For a register tied to more than one gate, we close-gate it against the **highest** of those gates, matching how the register already becomes read-only today. Is that the right threshold?
+**Separately, for the six Infant & Baby Safety sections** — several rows carry your own qualifiers ("where relevant", "where appropriate"), and the Gates 8–9 list is written as a menu ("trigger by use context and risk") rather than a set of obligations. We gave those sections the N/A option for that reason. Is that right for them?
 
-**(d)** Building this exposed a real gap: for some registers, the Review owner and the Co-sign resolve to the **same person**, because no distinct Co-sign was ever named for that area — so "two signatures" is actually one person signing twice, not two independent people. We have left this as a visible warning rather than blocking it. Should specific areas like this get a distinct Co-sign assigned instead?
-
-**(e)** The only way to reopen a closed register right now is a Backtrack (which reopens the gate it depends on and the register together). Is that enough, or is a standalone way to reopen a register — without touching the gate — also needed?
-
-**Question:** does this closing mechanism match what you had in mind? If it needs to change, which of (a)–(e) is the one to fix first?
-
-## Question 22 — Can a Phase 2, 3 or 4 requirement row also be marked "not applicable"?
-
-Your answer to Round-4 question 21 gave the Phase 1 requirements table a third way to close a row: **N/A with a rationale**, because "the system must not require users to mark an empty requirement as Completed". That is now built.
-
-The same situation exists on the Phase 2, 3 and 4 requirement tables. Those rows come from the workbook and are fixed, so a project can perfectly well have one that does not apply to it — the "compatibility / use-with constraints" row for a product with nothing to be used alongside, for example.
-
-Since building your question-1 answer, the six new Infant & Baby Safety sections use it too — several of their rows carry your own qualifiers ("where relevant", "where appropriate"), and the Gates 8–9 list is written as a menu ("trigger by use context and risk") rather than a set of obligations, so forcing all seven test families onto every infant product would invent a rule you deliberately did not write.
-
-The other Phase 2–4 tables still do **not** have the N/A option, because the gate rules that read them accept nothing but *Completed*. Offering N/A there without changing those rules would let someone pick a status that can never satisfy the rule reading the row — the gate would simply stay blocked with nothing on screen explaining why.
-
-**Question:** when a Phase 2–4 requirement row does not apply to a project, should it be closed as **N/A with a rationale** the same way Phase 1 and the infant sections now can, or should it be marked Completed with an explanation in the notes? And is that escape right for the infant sections themselves?
-
----
-
-## Question 23 — Deferring a Should or Could requirement: who owns it, and when is it due?
+## Question 16 — Deferring a Should or Could requirement: who owns it, when is it due, and does every row need a priority?
 
 Your Round-4 answer to question 21 says a **Should** or **Could** requirement "may be deferred only through *Proceed with Conditions*, with an owner and due date". The first half is built: Gate 2 will not accept a plain *Proceed* while such a row is unfinished, and *Proceed with Conditions* clears it.
 
-The second half has nowhere to go. A requirement row has an **Owner** column but no due date, and the app's Next Actions — the only records that carry an owner, a due date and a closure — have no link to a requirement row.
+**(a)** The second half has nowhere to go. A requirement row has an **Owner** column but no due date, and the Next Actions — which carry an owner, a due date and an escalation condition, which is what F7 calls a controlled action — have no link to a requirement row. Should a deferred requirement simply gain a due-date field on its own row, or should deferring it **create a controlled Next Action** pointing back at that row? If the second, we would also block *Proceed with Conditions* at Gate 2 while a deferred row has no such action against it. (Question 10(a) is the same choice for a High gap; one answer should settle both.)
 
-**(a)** Should a deferred requirement simply gain a due-date field on its own row, or should deferring it **create a controlled Next Action** pointing back at that row — the way your answer to question 33 requires for a safety action? If it is the second, we would also block *Proceed with Conditions* at Gate 2 while a deferred row has no such action against it.
+**(b)** **Must every applicable requirement row carry a Must / Should / Could priority?** We have built it that way — a row that is neither N/A nor prioritised counts as unfinished at Gate 2. Our reasoning: your answer says every applicable row must be completed or formally deferred, and only a Should or Could row can be deferred, so a row nobody has ranked can be neither. But your answer says which values the priority takes, not that every row must have one, so this is our reading rather than yours.
 
-**(b)** **Must every applicable requirement row carry a Must / Should / Could priority?** We have built it that way — a row that is neither N/A nor prioritised counts as unfinished at Gate 2. Our reasoning: the rule "every Must requirement must be complete" cannot be checked over rows nobody has ranked. But your answer says which values the priority takes and what each obliges, not that every row must have one, so this is our reading rather than yours.
-
-**(c)** A consequence of (b) worth confirming separately. Your answer to question 36 says the costing status becomes blocking "where that commercial requirement is a **Must**" — so we read the priority on the *Target cost or commercial boundary* row to decide whether a project is commercially dependent. If nobody has prioritised that row, we currently treat it as **not yet assessed** and Gate 5 is blocked until someone answers, following your question-7 rule that a missing assessment must never be read as "does not apply". Is that right for this row, or should an unprioritised commercial boundary simply mean the project has no commercial constraint?
-
----
-
-## Question 24 — The new general restricted-and-caution screen: is this the right shape?
+## Question 17 — The general restricted-and-caution screen: is this the right shape?
 
 Your answer to Round-4 question 5 chose option (b): Gate 7 needs a **general** restricted-and-caution ingredient assessment for every product, with the maternal screen as an additional conditional layer and the infant screen as a third. All three layers now exist.
 
 Building it showed that two of the three were already there — the prohibited/restricted screen has always applied to every product, and the infant compartment was already conditional on infant contact. What was genuinely missing was general **caution**: every caution row in the system belonged to the maternal list. So that layer is new, and four choices in it are ours rather than yours.
 
-**(a) The new screen starts empty.** The two existing watch-lists ship twelve reference substances each because the workbook lists them. There is no equivalent list for general caution, and writing one ourselves would mean inventing regulatory reference data inside the system that exists to control it. So the new screen holds only the findings for the product in front of you. Is that right, or does the company already have a general restricted/caution list that should be loaded in?
+**(a) The new screen starts empty.** The two existing watch-lists ship twelve reference substances each because the workbook lists them. There is no equivalent list for general caution, and writing one ourselves would mean inventing regulatory reference data inside the system that exists to control it. Is that right, or does the company already have a general restricted/caution list that should be loaded in?
 
-**(b) "We looked and found nothing" is recorded as a separate tick.** An empty screen cannot tell "this product contains nothing restricted" from "nobody has looked", so there is a new Gate 7 checklist line — *General restricted and caution ingredient assessment completed* — that has to be ticked (or marked N/A with a reason) before Gate 7 can pass. Is that the right way to record it?
+**(b) "We looked and found nothing" is recorded as a separate Key Gate Check row.** An empty screen cannot tell "this product contains nothing restricted" from "nobody has looked", so there is a new Gate 7 Key Gate Check row — *General restricted and caution ingredient assessment completed* — that has to be done, or marked N/A with a justification, before Gate 7 can pass. Is that the right way to record it?
 
-**(c) It currently belongs to Gate 7 only.** Your answer was about Gate 7, so we kept it there. But a restricted ingredient is usually found during ingredient screening at Gate 4, and today a finding recorded here does not appear at Gate 4 at all. **Should this screen also be subject to the Gate 4 rules the other two watch-lists follow** — every row dispositioned, a reviewer trail on anything flagged?
+**(c) It currently belongs to Gate 7 only.** Your answer 6 has Gate 4 screen every relevant candidate and Gate 7 formally close every restricted or caution issue. A restricted ingredient is usually found during ingredient screening at Gate 4, but a finding recorded on this screen does not appear at Gate 4 at all. **Should this screen's findings also be dispositioned at Gate 4**, the way the other two watch-lists are — every row dispositioned, a reviewer trail on anything flagged?
 
 **(d) Its five outcome values** — No issue identified · Within limit, evidence linked · Restricted, reformulate · Needs Safety Review · Needs Regulatory Review — are assembled from the two existing screens, not supplied by you. The last three block Gate 7.
 
----
+## Question 18 — For claims, what are the publication channels, and when is a claim approved for a market and channel?
 
-## Question 25 — For the Publication / Deployment record, what are the channels?
+**(a) The Publication / Deployment record.** Your answer to question 30(d) separated the two events cleanly — *"Approved for Release means AUTHORISED for use"*, and actual publication is its own record — and listed all seven things it must capture: the real publication date · **channel** · market · URL, file or artwork reference · published version · person responsible · withdrawal or supersession date. Six of the seven have an obvious form. **Channel does not have a list of values.** We have built one from the channels the Published Information register already distinguishes, plus the one your answer names outright (*"for printed packaging the equivalent event may be Release to Print"*): Release to Print (packaging/label) · Website · Social media · Sales or distributor material · HCP or professional material · Retailer listing · Advertising · Other. Does the company have a standard channel list? If so, what is on it — and is "Release to Print" one of the channels, or a different kind of event alongside them?
 
-Your answer to question 30(d) separated the two events cleanly — *"Approved for Release means AUTHORISED for use"*, and actual publication is its own record — and listed all seven things it must capture: the real publication date · **channel** · market · URL, file or artwork reference · published version · person responsible · withdrawal or supersession date. Six of the seven have an obvious form. **Channel does not have a list of values.**
+**(b) Approved for a market and channel.** Your answer 19(b) puts the intended channel and market on the SKU / market / channel claim-use record. Your question 30(c) blocks an artwork-linked claim that is not approved for the market or channel. We read a claim as approved when its row on that record has status **Completed** and its intended channel covers the channel used. Is Completed the right value, or is a different one needed?
 
-We have built one from the channels the Published Information register already distinguishes, plus the one your answer names outright (*"for printed packaging the equivalent event may be Release to Print"*): Release to Print (packaging/label) · Website · Social media · Sales or distributor material · HCP or professional material · Retailer listing · Advertising · Other.
+## Question 19 — The claim review at Gate 3: "Not Approved", Technical review, and who approves a revision
 
-**Question:** does the company have a standard channel list? If so, what is on it — and is "Release to Print" one of the channels, or a different kind of event alongside them?
+**(a) A review outcome of "Not Approved".** Your question 27 accepts four outcomes but does not say which let a claim go forward. Only Approved and Approved with Conditions do now; Not Approved and Further Information Required block Gate 3 until the claim is reworded (which needs a new review) or removed. May a claim reviewed as "Not Approved" remain on the project's claim list when Gate 3 passes — for example as a claim still in development?
 
+**(b) Technical review of a new claim.** Your question 28(2) says a new claim triggers Regulatory and Technical review. There was nowhere to record the Technical review, so we added the same five fields you accepted for the Regulatory review: outcome, reviewer, date, rationale and evidence link. (The Technical review is not required when the claim is linked to an Approved Claims Library entry.) Does it need the same five fields, or something different?
 
----
+**(c) Who may record that a revision is approved?** Your question 26 freezes a claim revision once it receives "Regulatory or Gate 10 approval". The approval can now be recorded only by someone representing Regulatory or entitled to decide Gate 10, and only in their own name. Who is entitled to approve a claim revision?
 
-## Question 26 — A claim's two Claims Library fields disagree: warn, or block?
+## Question 20 — Gates 10–12 per market: withdrawn markets, and must every market be ready together?
 
-Your answer to question 28(2) gives each project claim two Claims Library fields: **which library entry** it reuses, and the **declaration** "Linked to Claims Library" or "New claim — not yet in Claims Library". The two can contradict each other — "Linked" with no entry chosen, or an entry chosen under "New claim". Your answer does not say what should happen then.
+**(a) After a market is withdrawn, is a Gate 12 sign-off still owed there?** Your answer to question 18 has the Prepared, Reviewed and Approved sign-offs recorded per market for Gates 10 and 11, and Gate 12 post-market reviews also running per market. We gave Gate 12 a per-market signing slot as well. Until now a withdrawn market kept its slot at every gate, so withdrawing from one country left Gates 10 to 12 blocked forever on a signature nobody would give. A withdrawn market now has **no** signing slot at Gates 10, 11 or 12. For Gates 10–11 and for supersession that seems certain — nothing more will be launched or transitioned there. For **Gate 12** it is our reading: product already sold in that country may still need post-market follow-up after withdrawal. After withdrawal from a market, is that market's Gate 12 sign-off (i) no longer required, (ii) still required for a set period, or (iii) still required like any market where the product is on sale?
 
-We now show a **warning** on the claim and above the table, and still allow it to be saved. We chose a warning because the Gate 3 review rule reads only the entry link, so neither contradiction changes what Gate 3 decides — it only makes the declaration misleading.
+**(b) Project-level pass.** Your E3(a) and question 18 have each market progress on its own, and the project can show "Some markets complete". The project still has **one** record for each of Gates 10 and 11, so it passes only when every active market has its regulatory approval, its Gate 10 sign-off and its launch approval — a ready market waits for the others. Is that roll-up enough, or do you want each market's gate decision recorded separately, so a ready market's gate is passed while another is still pending? (The second is a larger change.)
 
-**Questions:** (a) should such a contradiction **block saving**, or is a warning enough? (b) Should the declaration be dropped and **worked out** from whether an entry is chosen — or is declaring "New claim" a deliberate act you want a person to make?
+## Question 21 — Gate 10 — which checklist and approval values count as done for a market?
 
----
+Your question 35(a) gives the two value lists but not which values pass. We accept a checklist status of Complete and a regulatory approval of Approved or Approved with Conditions (each, or N/A with rationale and reviewer). Every other value — Not Approved, Blocked, Pending and so on — blocks Gate 10.
 
-## Question 27 — "A valid Change Control record" (question 8): which records count?
+One thing we found while checking: Gate 10 reads regulatory approval in two places, the market dossier register and the market's own status, and the market's own list has no "Approved with Conditions" value. We will bring the second into line with your answer once you have given it.
 
-Question 8 says *"If Yes, a valid Change Control record must be linked."* Until now that was a free-text field, so any text at all — a typo, or another project's record number — satisfied it.
+**Question:** is "Approved with Conditions" enough to pass Gate 10? Must the checklist be "Complete", or is another status acceptable?
 
-It is now a choice from **this project's own Change Control records** (the CHG- numbers), and the system refuses anything else. Reading "valid" as "exists on this project" is the narrowest reading we could find, but it is still ours.
+## Question 22 — A commercially dependent project — which costing results allow a plain Proceed?
 
-**Questions:** (a) Does a row of the Formulation Change Register (the FC- numbers) count as a Change Control record here? This ties to question 19, on how many change books there should be. (b) Does "valid" require anything beyond existing — for example that the record is still open, or covers the right kind of change?
+Your question 36(b) says that where the commercial requirement is a Must, failure leads to Hold or Proceed with Conditions. We allow a plain Proceed only on "Commercially Feasible" (or N/A with rationale). "Feasible with Conditions", "In Progress" and "Not Feasible" all require Hold or Proceed with Conditions.
 
----
+**Question:** do "Feasible with Conditions" and "In Progress" count as failure in the sense of question 36(b)?
 
-## Question 28 — After a market is withdrawn, is a Gate 12 sign-off still owed there?
+## Question 23 — Gate 12 — what shows product-performance feedback has been dealt with, and which signals bring a review forward?
 
-Your answer to question 18 has Gates 10 to 12 signed off per market. Until now, a market the product had been withdrawn from kept its signing slot, so withdrawing from one country left Gates 10 to 12 blocked forever on a signature nobody would give.
+**(a) What closes the item.** Your question 15 gives five triggers but does not say what evidence closes the item. It is now satisfied when the Gate 12 check "Complaints/issues triaged and CAPA/improvement actions assigned" is complete. When performance feedback has been received, is it enough that it was triaged and actions assigned, or is a separate performance review needed?
 
-A withdrawn market now has **no** signing slot at Gates 10, 11 or 12, and no longer needs a supersession decision. For Gates 10–11 and supersession that seems certain — nothing more will be launched or transitioned there. For **Gate 12** it is our reading: product already sold in that country may still need post-market follow-up after withdrawal.
+**(b) Which signals bring a post-launch review forward.** Your question 13 brings a review forward on "a significant adverse event, complaint trend, regulatory request or quality signal". We read these as: (i) a safety/adverse-event or quality issue recorded, or feedback whose source is a regulator. Nothing in the system records a complaint trend yet — (ii) where should a trend be recorded? Your question 10 counts only a claim question "concerning actual performance", but nothing records what a claim question is about, so every claim question counts — (iii) do you need claim questions about performance told apart from others?
 
-**Question:** after withdrawal from a market, is that market's Gate 12 sign-off (a) no longer required, (b) still required for a set period, or (c) still required like any market where the product is on sale?
+## Question 24 — When may one person hold two roles on the same record?
 
----
+Four of our choices are the same question in different places — whether the person who did one step may also do the next. Your answers name one pair explicitly.
 
-## Question 29 — Can a triggered conditional item still be marked "not applicable"?
+**(a) The three gate signatures.** Your question 29(4) says that at every gate the reviewer must be a different authenticated person from the preparer, and that at the seven critical gates the reviewer or the approver must represent the independent function. It does not say whether the **approver may also be the preparer**. Your D1 answer says *"where risk is low, the same person may prepare multiple gate records, but the reviewer or approver should be independent for safety-, regulatory-, claims- or release-critical decisions."* We read "multiple gate records" as the same person preparing **different gates**, not holding two roles on one gate. Today the same person **may** prepare a gate and then approve it, with a different person reviewing in between — and since the approver's decision is the gate decision, that is a person approving work they prepared. (We had been refusing that and removed it, since neither answer asks for it, and a small team cannot always staff three people.) Should that stay allowed — everywhere, or only at gates that are not critical — or must the approver differ from the preparer?
 
-Your Round 3 answer says a conditional item "hard-blocks only when its defined trigger applies". When the system has established that a trigger applies (for example, a scale-up risk has been recorded), we no longer accept "not applicable" on that item's gate check — only a completed one.
+**(b) Closing an action.** F8 says the owner cannot verify closure "where independent confirmation is required" but not when that is. We apply it to every action: closing or cancelling any action, whatever its priority, is limited to whoever raised it, the gate owner, or an authorised reviewer — which we have read as someone entitled to decide that gate. Are there actions an owner may close themselves? And who is the "authorised reviewer" of an action — a role, or someone named on each action?
 
-**Question:** Once the system knows a conditional item applies to the project, may a user still close it as "not applicable" with a reason, or must it be completed?
+**(c) Confirming a Major/Minor classification.** Your F5 answer says the initiator may propose the classification and an authorised technical or quality reviewer must confirm it. The system records the person creating the version as the confirmer, and only lets them confirm if they hold Technical or Quality authority. May one person — holding Technical or Quality authority — both propose and confirm, or must the confirmer be someone else?
 
----
+**(d) The phase approval.** Your sign-off answer says the phase-level approval "remains as an additional phase-closure approval". No phase is defined as critical, so independence between the three phase signers is shown as a warning, not enforced. Should it be enforced for any phase?
 
-## Question 30 — Gate 12 — what shows product-performance feedback has been dealt with?
+## Question 25 — A Critical action and the gate decision: what does it block, and for how long?
 
-Question 15 gives five triggers but does not say what evidence closes the item. It is now satisfied when the Gate 12 check "Complaints/issues triaged and CAPA/improvement actions assigned" is complete.
+**(a) Does an open Critical action block "Proceed with Conditions" as well, or only a plain Proceed?** Your F8 answer says "Critical actions must prevent normal gate closure." We have read "normal" as "any decision": while a Critical action is open, the gate cannot pass at all, even with Proceed with Conditions. The other reading — a Critical action blocks only a plain Proceed, and Proceed with Conditions is the way through — is also possible. May a gate pass with Proceed with Conditions while a Critical action is still open? If so, does that need anything extra (a named approver, a recorded reason)?
 
-**Question:** When performance feedback has been received, is it enough that it was triaged and actions assigned, or is a separate performance review needed?
+**(b) Once a Critical action has been closed or cancelled.** Your B2 answer says all actions should normally be completed before a gate closes, and your F8 answer says Critical actions prevent normal closure. Both speak about actions that are still **open**. Neither says that a gate which once had a Critical action must use Proceed with Conditions even after that action has been closed or cancelled. We have therefore not added that restriction: once a Critical action is Closed or Cancelled it blocks nothing, and a gate with no open actions passes on a plain Proceed. May the gate pass with a plain Proceed after that, or must it still use Proceed with Conditions because it once carried a Critical issue? Does a Critical action cancelled because it was raised by mistake count as having had a Critical issue?
 
----
+## Question 26 — A market whose launch approval stands — may its PIF be reopened?
 
-## Question 31 — Gate 10 — which checklist and approval values count as done for a market?
+Rule C5 makes launch approval depend on an approved PIF. The system now refuses to move a PIF off Approved while that market's launch approval is still Approved; the launch approval must not stay Approved in the same save.
 
-Question 35(a) gives the two value lists but not which values pass. We accept a checklist status of Complete and a regulatory approval of Approved or Approved with Conditions (each, or N/A with rationale and reviewer). Every other value — Not Approved, Blocked, Pending and so on — blocks Gate 10.
+**Question:** when the PIF of a market already on sale must be updated (after a formula change, say), does its launch approval have to be withdrawn in the meantime?
 
-**Question:** Is "Approved with Conditions" enough to pass Gate 10? Must the checklist be "Complete", or is another status acceptable?
+## Question 27 — A deviation record when something is released without approval
 
----
-
-## Question 32 — A commercially dependent project — which costing results allow a plain Proceed?
-
-Question 36(b) says that where the commercial requirement is a Must, failure leads to Hold or Proceed with Conditions. We allow a plain Proceed only on "Commercially Feasible" (or N/A with rationale). "Feasible with Conditions", "In Progress" and "Not Feasible" all require Hold or Proceed with Conditions.
-
-**Question:** Do "Feasible with Conditions" and "In Progress" count as failure in the sense of question 36(b)?
-
----
-
-## Question 33 — How is a Critical or High gap closed?
-
-A gap graded Critical or High now stays in force even after the gate's status leaves Gap. Before, changing the status and recording Proceed in one step bypassed the grading. It is closed by clearing the gap assessment, which is logged in the gate's history.
-
-**Question:** When a gap is resolved, should closing it be recorded by clearing the assessment, or by a separate "resolved" state with a named person confirming it?
-
----
-
-## Question 34 — Automatic ingredient matches — what counts as having taken a flag up?
-
-Rule C3 says the system compares the formula with the watch-lists and flags matches. At Gate 7, every watch-list group the formula matches must now have had its row moved off the status it started with ("No formula match recorded" / "Not assessed"). The system does not write the verdict itself.
-
-**Question:** Should an automatic match set the watch-list row to "REVIEW – possible formula match" by itself, or is it right that a reviewer updates the row before Gate 7?
-
----
-
-## Question 35 — A claim review outcome of "Not Approved" at Gate 3
-
-Question 27 accepts four outcomes but does not say which let a claim go forward. Only Approved and Approved with Conditions do now; Not Approved and Further Information Required block Gate 3 until the claim is reworded (which needs a new review) or removed.
-
-**Question:** May a claim reviewed as "Not Approved" remain on the project's claim list when Gate 3 passes — for example as a claim still in development?
-
----
-
-## Question 36 — Technical review of a new claim — which fields?
-
-Question 28(2) says a new claim triggers Regulatory and Technical review. There was nowhere to record the Technical review. We added the same five fields you accepted for the Regulatory review in question 27: outcome, reviewer, date, rationale and evidence link.
-
-**Question:** Does the Technical review need the same five fields, or something different?
-
----
-
-## Question 37 — Who may record that a claim revision is approved?
-
-Question 26 freezes a claim revision once it receives "Regulatory or Gate 10 approval". The approval can now be recorded only by someone representing Regulatory or entitled to decide Gate 10, and only in their own name.
-
-**Question:** Who is entitled to approve a claim revision?
-
----
-
-## Question 38 — Where is a claim's approval for a market and channel recorded?
-
-Question 30(c) requires blocking a claim that is not approved for the market or channel. We read that approval from the SKU claims register: a row for that claim and market with status Completed, whose intended channel covers the channel used.
-
-**Question:** Where — and with which value — is it recorded that a claim is approved for a given market and channel?
-
----
-
-## Question 39 — When may an action owner close their own action?
-
-F8 says the owner cannot verify closure "where independent confirmation is required" but not when that is. We apply it to every action. Closing or cancelling any action, whatever its priority, is limited to whoever raised it, the gate owner, or an authorised reviewer — which we have read as someone entitled to decide that gate.
-
-**Question:** Are there actions an owner may close themselves? And who is the "authorised reviewer" of an action — a role, or someone named on each action?
-
----
-
-## Question 40 — A market already on sale — may its PIF be reopened while launch approval stands?
-
-Rule C5 makes launch approval depend on an approved PIF. The system now refuses to move a PIF off Approved while that market's launch approval stands; launch approval has to be changed first.
-
-**Question:** When the PIF of a market already on sale must be updated (after a formula change, say), does its launch approval have to be withdrawn in the meantime?
-
----
-
-## Question 41 — A deviation record when something is released without approval
-
-Your F11 answer says that "releasing without approval generates a deviation/violation record". Inside the system this cannot happen: material cannot be marked approved or released until every step is complete. Two cases remain that the system cannot prevent, because publishing itself happens outside it: material published without ever entering the workflow, and material released correctly that later stops being valid (its claim is revised, its Claims Library entry is withdrawn, or its review date passes). For now such incidents are logged as a CAPA.
+Your F11 answer says that "releasing without approval generates a deviation/violation record". Inside the system, material cannot be **saved** as approved or released until every step is complete. Two cases remain that the system cannot prevent, because publishing itself happens outside it: material published without ever entering the workflow, and material released correctly that later stops being valid (its claim is revised, its Claims Library entry is withdrawn, or its review date passes). For now such incidents are logged as a CAPA.
 
 **Questions:** (a) Does blocking release inside the system meet the requirement for what happens in it? (b) What should a deviation record contain? (c) Should an open deviation block Gate 11 or Gate 12? (d) Should the system warn when released material is no longer valid?
 
----
+## Question 28 — Who accepts a phase's pre-work?
 
-## Question 42 — May the person who creates a formula version also confirm its Major/Minor classification?
+Your F13 answer says early entries *"should be visibly marked Pre-work / Entered Before Gate Opened and retain the entry date and user"*, and that once the phase opens *"the responsible owner must review and formally accept or update the pre-work"*. **We have built the acceptance but not the marking**: acceptance covers the phase as a whole, and individual entries are not marked yet. That is work we owe you, not a question; we mention it so you do not think it was overlooked.
 
-Your F5 answer says the initiator may propose the classification and an authorised technical or quality reviewer must confirm it. The system now records the person creating the version as the confirmer, and only lets them do so if they hold Technical or Quality authority. Previously the confirmer was a typed name.
+What we need from you is the other half. We allow the phase's assigned review owner, or the project's Lead, to accept it, and only once the phase has opened.
 
-**Question:** May one person — holding Technical or Quality authority — both propose and confirm, or must the confirmer be someone else?
+**Question:** who should be able to accept a phase's pre-work?
 
----
-
-## Question 43 — Who accepts a phase's pre-work?
-
-Your F13 answer says early entries must be reviewed and accepted by "the responsible owner" once the phase opens. We allow the phase's assigned review owner or the project's Lead to accept it, and only once the phase has opened. The system does not yet mark individual entries as pre-work; acceptance covers the phase as a whole.
-
-**Question:** Who should be able to accept a phase's pre-work? And do you need individual entries marked as pre-work, or is accepting the phase as a whole enough?
-
----
-
-## Question 44 — Gates 10–11: must every market be ready before the project passes?
-
-Your answers have Gates 10 and 11 run per market. The project still has one record for each gate, so the system now requires every active market to have its regulatory approval, its Gate 10 sign-off and its launch approval before the project passes. No unready market gets through, but a ready market waits for the others.
-
-**Question:** May a market that is ready launch while another is still pending? If so, each market needs its own gate progress, which is a larger change.
-
----
-
-## Question 45 — Which signals bring a post-launch review forward, and which claim questions count as performance?
-
-Question 13 brings a review forward on "a significant adverse event, complaint trend, regulatory request or quality signal". We read these as: a safety/adverse-event or quality issue recorded, or feedback whose source is a regulator. Nothing in the system records a complaint trend yet. Question 10 counts only a claim question "concerning actual performance", but nothing records what a claim question is about, so every claim question counts.
-
-**Question:** Are those readings right? Where should a complaint trend be recorded? Do you need claim questions about performance told apart from others?
-
----
-
-## Question 46 — The controlled action when the product form is left open at Gate 2
-
-Question 23(a) lets an early brief pass Gate 2 with the product form still open, "with a controlled action". We require an open Next Action at Gate 5, where the form is to be confirmed. The confirmation itself is a new "Confirmed product form" field at Gate 5, because the Gate 2 list is locked once Gate 2 passes.
-
-**Question:** Must that action sit at Gate 5 and be about confirming the form, or is any controlled action enough?
-
----
-
-## Question 47 — At which gate must a claim's evidence basis be recorded?
-
-Your question-36(a) answer adds an "Evidence basis required" field to every claim and exempts some Cosmetic claims through it, but does not say when it must be filled in. We require it at Gate 3, beside the preliminary evidence requirement.
-
-**Question:** Is Gate 3 right, or should it be later — Gate 8 or Gate 10?
-
----
-
-## Question 48 — What marks a "new formula" for the scale-up requirement?
-
-Your Round 3 answer makes scale-up or pilot status mandatory for "new formulas, major reformulations …". We read a new formula as the Gate 1 project type "New development"; a major reformulation is already caught by a Major formula version.
-
-**Question:** Does "New development" match what you mean by a new formula? Should a Reformulation that is not Major also count?
-
----
-
-## Question 49 — Does adding a market after Gate 1 reopen earlier gates?
-
-Your F4 answer says adding a market creates a new track and "may re-trigger earlier gates if that market differs". A market can now be added after Gate 1 without a backtrack, and nothing is reopened. Removing a market that has any history is refused; it is marked Withdrawn instead.
-
-**Question:** When must adding a market reopen earlier gates, and which ones?
-
----
-
-## Question 50 — What proves the approved artwork version at Gate 11?
-
-Gate 11's "Approved artwork version" used to be satisfied by any row on the Released Label Control register. Each row must now name the new label version and the new artwork file.
-
-**Question:** Which fields should prove it — does it need an approval status or a release date as well?
-
----
-
-## Question 51 — Where are a market's pack requirements recorded, and what closes the item?
-
-Your A2 answer makes market-specific pack requirements mandatory where the market has specific requirements (language, warnings, ingredient declaration and so on). We added a "Pack requirements" field to Regulatory's market profile; if it is filled in for a market the project sells into, the item applies. It is closed by the Gate 6 check "Artwork/label needs and pack compatibility triggers identified".
-
-**Question:** Should Regulatory record these on the market profile like this? What should close the item?
-
----
-
-## Question 52 — Does a Major formula version reopen Gates 10–12 as well?
-
-Your A2 answer reopens Gates 4–9 on a Major change; your later F4 answer gives the new version its own Gate 10–12 track in each market. A Major version now reopens Gates 4–12 for the new version, and the old version's Gate 10–12 tracks and signatures are kept as they were.
-
-**Question:** Should the project's Gate 10–12 records reopen for the new version, or only the per-market tracks start again?
-
----
-
-## Question 53 — When does an older formula version change state, and how are reviews scheduled while two versions are on sale?
-
-Question 2 says "approval of the new version places the old version into Transition in Progress". We read approval as the new version's launch approval in a market where the old version is sold. A version that was never launched anywhere becomes Superseded as soon as a new one is created, since nothing needs transitioning. A Minor change reopens no gates, so the existing market records carry over to the new version and the old one starts transitioning at once. Post-launch reviews stay per market, dated from the earliest launch still on sale there.
-
-**Question:** Is launch approval the right moment, or Gate 10/11 approval? May a never-launched version be treated as Superseded straight away? Do post-launch reviews need to be kept per version?
-
----
-
-## Question 54 — May a vulnerable-user group be recorded that the Gate 02 target users do not imply?
+## Question 29 — A vulnerable-user group the Gate 02 target users do not imply
 
 Your question 25(d) answer accepts a two-way check with deliberately different strengths: an exact contradiction is refused outright, while a renamed or broader group recorded with no matching target user gets "a warning plus rationale ... since the Safety/Regulatory reviewer may identify that context independently". We built it that way, and the rule engine and the API still behave that way.
 
@@ -656,107 +355,40 @@ The Gate 02 screen has now been rebuilt, and on it the group picker offers **onl
 
 Rows already recorded this way are untouched: they still display, still warn, and can still be removed.
 
-**Question:** Should the screen hold to your 25(d) answer and let a reviewer name a group Gate 02 does not imply, with a warning and a rationale? Or is requiring the Gate 02 target users to be corrected first the behaviour you want?
+**Question:** should the screen hold to your 25(d) answer and let a reviewer name a group Gate 02 does not imply, with a warning and a rationale? Or is requiring the Gate 02 target users to be corrected first the behaviour you want?
 
----
+## Question 30 — At which gate is each of these columns filled in?
 
-## Question 55 — Must a gate's stage status be Complete before anyone signs it off?
+Two columns where your answers say what is recorded but not at which gate. The answer decides when the column stops being editable. (The watch-list "product status" column is the same kind of question and is in question 4(c).)
 
-Your question 29(1) lists "gate status and proposed decision" among the things a gate signature attests to, and we store the status inside the signed snapshot. That has a consequence you may not have intended: if the three signatures are taken while the stage status still reads In Progress, setting it to Complete afterwards changes the signed snapshot, so all three signatures go stale and all three people have to sign again.
+**(a) A claim's "Evidence basis required".** Your question-36(a) answer adds this field to every claim but does not say when it must be filled in. We use it to exempt some Cosmetic claims (a claim declared as ingredient-level evidence, or as no performance claim, may rely on ingredient evidence), and we require it at Gate 3, beside the preliminary evidence requirement. Is Gate 3 right, or should it be later — Gate 8 or Gate 10?
 
-We have therefore held signing back: a signature carrying Proceed or Proceed with Conditions cannot be given until the stage status reads Complete, and the panel says so once at the top. Hold, Backtrack and Reject/Stop can still be signed at any status, because those do not claim the work is finished.
+**(b) "Release decision" on the Stability, Compatibility & Release Evidence sheet.** Your answer to Gate 9 lists a *release-readiness conclusion*, and your answer to Gate 11 lists a *quality release pathway*. The sheet has a "Release decision" column, and neither answer says at which gate it is filled in. We read it as **Gate 11**: Gate 9 concludes that the product is ready for release, and the decision to release is part of Production and Launch, which is also where release is blocked market by market. So the stability and compatibility results belong to Gate 9, and the release decision stays open until Gate 11. Is the release decision recorded at Gate 11, or at Gate 9 with Gate 11 only checking it again?
 
-**Question:** Is requiring the stage status to be Complete before a passing signature the behaviour you want? Or should a signature be allowed at any status, accepting that the later status change invalidates it?
+## Question 31 — What proves the approved artwork version at Gate 11?
 
----
+Your question 30(c) says final artwork approval is *"represented in the Packaging/Artwork Approval record, which must link every Claim ID on the artwork"*. Gate 10 reads that record. At Gate 11, "Approved artwork version" is read from the **Released Label Control** register instead: each row must name the new label version and the new artwork file. That register also carries a "new label released" tick and a market release date, which we do not check.
 
-## Question 56 — Must the three gate signatures be three different people?
+**Question:** should Gate 11's "Approved artwork version" read the approval on the Packaging/Artwork Approval record, the Released Label Control register, or both — and is the Released Label Control register simply the market-release record, with the approval itself living only on the packaging record?
 
-Your question 29(4) names one pair: "at all gates the reviewer must be a different authenticated person from the preparer". Your D1 answer points the other way for low-risk work — "where risk is low the same person may prepare several gate records".
+## Question 32 — Where are a market's pack requirements recorded, and what closes the item?
 
-We had been enforcing two more pairs that neither answer mentions: the approver could not be the preparer, and the approver could not be the reviewer. Together those forced three different people on every one of the twelve gates, which a small team cannot always staff. We have removed both, so only your stated rule remains.
+Your A2 answer makes market-specific pack requirements mandatory where the market has specific requirements (language, warnings, ingredient declaration and so on), and says that where none applies the user should record N/A with a rationale.
 
-What that now permits, and we want to be explicit about it: **the same person may prepare a gate and then approve it**, with a different person reviewing in between. Since the approver's decision is the gate decision, that is a person approving work they prepared.
+**(a) Where.** We added a "Pack requirements" field to Regulatory's market profile; if it is filled in for a market the project sells into, the item applies, and it is closed by the Gate 6 check "Artwork/label needs and pack compatibility triggers identified". Should Regulatory record these on the market profile like this? What should close the item?
 
-**Question:** Should the three signatures be three different people? If not everywhere, then where — only the seven critical gates, or only for safety, regulatory, claims and release decisions? And specifically: may the preparer also be the approver, or should that one stay refused?
+**(b) An empty field.** Today a market profile with the field left blank reads as "no market-specific requirement", so the item passes by itself. Your A2 asks for an explicit N/A with a rationale, and your question 7 says a missing assessment must never read as "does not apply". Should a blank Pack requirements field on a market the project sells into **block** until Regulatory has recorded either the requirements or N/A with a rationale?
 
----
+## Question 33 — A product with no claims, or a purely administrative change: which later registers still need rows?
 
-## Question 57 — May a next action be raised against a gate that has already passed?
+Your Round-4 answer 19(d) lets a product explicitly propose **no claims**, recorded by an empty claim ledger plus the Gate 3 claims check closed as not applicable with a reason. Gate 3 now accepts that. We found that Gate 10 did not: it required the SKU claims register to have rows, so a claim-free product passed Gate 3 and could then never pass Gate 10. **We have extended your record to Gate 10** for the SKU claims register and its evidence check — a product that has recorded "no claims" needs no claim rows there.
 
-Your B2 answer says open actions may exist only where the gate decision is Proceed with Conditions, and your F8 answer makes a Critical action block gate closure. Both describe which actions may EXIST when a gate passes. Neither says whether a NEW action may be raised afterwards.
+Three other registers are still required to have rows on every project, and we are not sure that is right:
 
-We have refused it, for both decisions. The reason is mechanical rather than a matter of taste: a gate's open actions are part of the evidence record its three signatures attest to (question 29(1)), so raising one afterwards makes all three signatures stale — and a gate that has passed cannot be re-signed, so the lane would stay stale with no way out. Reopening the gate with Backtrack is the route.
+- the **prospective evidence plan** at Gate 5 and the **detailed test protocol** at Gate 8 — a product with no claims still needs safety and stability testing, but may not need an evidence plan for claims;
+- the **competitor and current-solution landscape** at Gates 3 and 5 — there is no exception for a project recorded as administrative-only, although the separate benchmark review at Gate 3 does have one.
 
-What stays open on a passed gate: an action that is still open can have its Status, Owner and Due date changed — so a condition can be carried out and closed — but nothing else about it. A closed or cancelled action is frozen. Adding is refused, and deleting already was. (See questions 59 to 61.)
-
-**Question:** Is refusing a new action on a passed gate right? If work is discovered afterwards, should it be raised against the next gate instead, or should the gate be reopened?
-
----
-
-## Question 58 — Who may delete a next action?
-
-Your F8 answer says who closes an action — the person who raised it, the gate owner or an authorised reviewer. It does not say who may delete one.
-
-We have made deletion stricter than closing: **only the person who raised the action may delete it**. The Project Lead and administrators may not either. A Critical action that is still open can never be deleted (it has to be cancelled, which records who verified it), and neither can any action on a gate that has already passed. An action saved before we recorded who raised it has no raiser, so nobody can delete it; it can only be cancelled.
-
-**Question:** Who should be allowed to delete a next action — only the person who raised it, also the Project Lead or an administrator, or nobody (cancel only)? Should a deleted action leave a trace?
-
----
-
-## Question 59 — Does carrying out a condition of a gate that passed with conditions mean the signatures must be redone?
-
-Your answer to question 29(1) says the signed record includes "open actions and conditions", and that if evidence inside it changes after a signature, the signature becomes stale and re-signing is required. Your B2 answer says a gate that passes with conditions does so while the outstanding actions are tracked — so those actions must be able to be closed afterwards. Read literally, the two disagree: closing a condition changes the list of open actions, which would make all three signatures stale, and a gate that has passed cannot be re-signed. Until now the software fell into exactly that trap — a gate that passed with conditions could not close its own conditions without reopening the gate.
-
-We have read the open actions as **the conditions the approval accepted**. Carrying one out — moving its status, closing it, cancelling it, giving it a new owner or a new due date — does not make a signature stale. Changing what was accepted does: rewording a condition, lowering its priority, deleting it, or adding a new open one. After the gate has passed, an open action can only have its Status, Owner and Due date changed, and a closed or cancelled action cannot change at all.
-
-**Question:** Is it right that carrying out a condition after signing does not require re-signing? If not, how does a gate that passed with conditions close them without being reopened?
-
----
-
-## Question 60 — Does an open Critical action block "Proceed with Conditions" as well, or only a plain Proceed?
-
-Your F8 answer says "Critical actions must prevent normal gate closure". We have read "normal" as "any decision": while a Critical action is open, the gate cannot pass at all, even with Proceed with Conditions. The other reading — a Critical action blocks a plain Proceed but Proceed with Conditions is the way through — is also possible, and it is how some of the team remember it.
-
-**Question:** May a gate pass with Proceed with Conditions while a Critical action is still open? If so, does that need anything extra (a named approver, a recorded reason)?
-
----
-
-## Question 61 — Once a Critical action has been closed or cancelled, may the gate pass with a plain Proceed?
-
-Your B2 answer says all actions should normally be completed before a gate closes, and your F8 answer says Critical actions prevent normal closure. Both speak about actions that are still **open**. Neither says that a gate which once had a Critical action must use Proceed with Conditions even after that action has been closed or cancelled.
-
-We have therefore not added that restriction: once a Critical action is Closed or Cancelled it blocks nothing, and a gate with no open actions passes on a plain Proceed. This is a choice about something your answers do not say, so we would rather you confirmed it.
-
-**Question:** After a Critical action has been closed or cancelled, may the gate pass with a plain Proceed, or must it still use Proceed with Conditions because it once carried a Critical issue? Does a Critical action cancelled because it was raised by mistake count as having had a Critical issue?
-
----
-
-## Question 62 — Where is the release decision on the Stability & Release sheet entered?
-
-Your answer to Gate 9 lists a *release-readiness conclusion*, and your answer to Gate 11 lists a *quality release pathway*. The Stability, Compatibility & Release Evidence sheet has a "Release decision" column, and neither answer says at which gate it is filled in.
-
-We have read it as **Gate 11**: Gate 9 concludes that the product is ready for release, and the decision to release is part of Production and Launch, which is also where release is blocked market by market. So Gate 9 owns the stability and compatibility results, and once Gate 9 has passed those results are read-only; the release decision stays open until Gate 11.
-
-**Question:** Is the release decision recorded at Gate 11, or at Gate 9 with Gate 11 only checking it again?
-
----
-
-## Question 63 — How long does the "product status" of the two watch-lists keep being updated?
-
-Your answer to question 6 says Gate 4 screens and gives a conclusion for every row, and Gate 7 must formally close every restricted or caution issue that applies to the final formula. The "product status" column is the automatic result of comparing the formula with the watch-list; your answer does not say at which gate it is settled.
-
-We have read it as **Gate 7**: the reviewer columns (assessment, reviewer, date, rationale, linked action, evidence, Gate 4 disposition) are Gate 4's and become read-only when Gate 4 passes, while product status keeps following the formula until Gate 7. If it were frozen at Gate 4, any normal formula change afterwards would force the project back to Gate 4.
-
-**Question:** Is product status updated until Gate 7, or settled at Gate 4 together with the reviewer columns?
-
-## Question 64 — How is a formula ingredient matched to its row in the safety matrix?
-
-Your answer to question 23(b) says every ingredient in the final formula must show that it has been covered and linked to the relevant assessment. It does not say what ties a line of the formula to a row of the ingredient safety matrix.
-
-We match them by **raw-material code first** (the same code used on the Supplier & RM Evidence sheet) and by INCI name when no code is recorded. The matrix did not have a code column, so in practice only the INCI name was ever used; we have now added one. If two different materials share an INCI name — two suppliers, two grades — the code is what keeps them apart.
-
-**Question:** Should each formula ingredient be identified by its raw-material code when it is checked against the safety matrix, or is the INCI name enough?
+**Question:** for a product with no claims, and for an administrative-only change, which of these three registers must still have rows? Is it right that Gate 10's claims register is waived on the "no claims" record alone?
 
 ---
 
@@ -764,61 +396,38 @@ We match them by **raw-material code first** (the same code used on the Supplier
 
 | # | Topic | Why it matters |
 |---|---|---|
-| 1 | Where "not yet assessed" gets recorded, for seven conditions | Blocks finishing the change you asked for; affects how every project starts |
-| 2 | Who the responsible reviewer of an item is | Blocks the acknowledgement half of the auto-generated N/A |
-| 3 | How much a gate's signed snapshot covers | Decides how often a signature goes stale — the largest remaining build |
-| 4–6 | Change-control granularity · superseded findings · Gate 4 dispositions | Already built on our reading — rework if wrong |
-| 7–9 | Supersession signature · Claims Library criticality · scale-up areas | Designed, not built — redesign if wrong |
-| 10–12 | Phase sign-off: who nominates, whether the gate rules apply, drawn signature | Built in August, never put to you |
-| 54 | Whether a vulnerable group outside Gate 02 may be named on the screen | Narrows your 25(d) answer — built on the project owner's instruction |
-| 55 | Whether the stage status must be Complete before a gate is signed | Follows from 29(1) but is not stated there — built on the project owner's instruction |
-| 56 | Whether the three gate signatures must be three different people | A control we were enforcing beyond your answer, now removed — self-approval becomes possible |
-| 57 | Whether a next action may be raised on a gate that has passed | Refused on our reading of B2 — otherwise the gate's signatures go permanently stale |
-| 58 | Who may delete a next action | Built as "only whoever raised it" — F8 only says who closes; the project owner chose it |
-| 59 | Whether carrying out a condition after signing means re-signing | Your 29(1) and B2 answers read literally disagree — we read the open actions as the accepted conditions |
-| 60 | Whether an open Critical action blocks Proceed with Conditions too | Built as "blocks every decision" — our reading of the word "normal" in F8 |
-| 61 | Whether a closed or cancelled Critical action still forces Proceed with Conditions | Built as "no" — your answers only speak about open actions |
-| 62 | Where the release decision on the Stability & Release sheet is entered | Built as Gate 11 — your answers name a release pathway at Gate 11 but do not say where the column is filled in |
-| 63 | Until which gate the watch-list "product status" keeps being updated | Built as Gate 7 — question 6 does not say where it is settled |
-| 64 | Whether the ingredient safety matrix identifies each ingredient by raw-material code | Built with a code column, falling back to the INCI name — question 23(b) does not say what links a formula line to its row |
-| 13–14 | A "Reject / Stop" decision that does not exist · whether Safety **or** Regulatory is enough | Two of your own answers name them; we did not invent either |
-| 15–16 | Who may open the reference-data pages · what makes a gap's action "controlled" | Both surfaced by using what we had just built |
-| 17 | Should a change-control trigger be limited to gates the project has passed | Not built yet — raised discussing the Change Control screen, no rework at stake either way |
-| 18 | Whether "NP Controlled" is a book or an authority | The signature is already fixed; where the record lives is not |
-| 19 | **Nine places a change is written down — how many should there be** | **Work stopped until answered.** One measurable consequence: a major formula change never reaches the change-control side at all, so Gate 11 never weighs it |
-| 20 | Should Change Control auto-reopen a gate it affects that already passed | Not built yet — raised the same day as 17–18, no rework at stake either way |
-| 21 | **A two-signature "closing" act for every evidence register — is this the right shape** | **Already built, before asking you.** ~68 registers now require it; five open points on scope, signer count, and reopening |
-| 22 | Can a Phase 2–4 requirement row be marked "not applicable" too | Your question-21 answer gave Phase 1 that escape; the same case exists on the other three |
-| 23 | Deferring a Should/Could requirement — owner, due date, and whether every row needs a priority | 23(b) is running on our reading now; 23(c) currently blocks Gate 5 on an unprioritised cost row |
-| 24 | The new general restricted-and-caution screen — shape, and whether it belongs to Gate 4 too | Built for your question-5 answer; four choices in it are ours, and (c) may be a real gap |
-| 25 | What channels the Publication / Deployment record should offer | Your question-30 answer lists the field but no values; ours is assembled, not supplied |
-| 26 | A claim's two Claims Library fields contradict each other — warn or block | Built as a warning; blocking would be a rule your answer does not state |
-| 27 | Which records count as "a valid Change Control record" for question 8 | Now limited to the project's own CHG- records; FC- rows tie to question 19 |
-| 28 | Whether a withdrawn market still owes a Gate 12 sign-off | Built as "no longer owed"; Gates 10–11 are not in doubt |
-| 29 | Can a triggered conditional item still be marked "not applicable"? | Built as "must be completed"; Our reading of your answer |
-| 30 | Gate 12 — what shows product-performance feedback has been dealt with? | Built as "triaged and actions assigned"; Which record stands for the item is ours |
-| 31 | Gate 10 — which checklist and approval values count as done for a market? | Built as above; Which values pass is ours |
-| 32 | A commercially dependent project — which costing results allow a plain Proceed? | Built as above; The placement of the two middle values is ours |
-| 33 | How is a Critical or High gap closed? | Built as "clear the assessment"; Ours |
-| 34 | Automatic ingredient matches — what counts as having taken a flag up? | Built as "a reviewer updates the row"; Ours |
-| 35 | A claim review outcome of "Not Approved" at Gate 3 | Built as "blocks Gate 3"; Ours |
-| 36 | Technical review of a new claim — which fields? | Built with five fields; The shape is ours |
-| 37 | Who may record that a claim revision is approved? | Built as above; Ours |
-| 38 | Where is a claim's approval for a market and channel recorded? | Built as above; The record and value are ours |
-| 39 | When may an action owner close their own action? | Built as "never"; Ours |
-| 40 | A market already on sale — may its PIF be reopened while launch approval stands? | Built as "withdraw first"; Ours |
-| 41 | A deviation record when something is released without approval | Not built — blocking inside the system for now, CAPA for the rest; your (a)–(d) decide what to build |
-| 42 | May the person who creates a formula version also confirm its Major/Minor classification? | Built as "the same person may, with the authority"; ours |
-| 43 | Who accepts a phase's pre-work? | Built as "phase review owner or project Lead"; ours |
-| 44 | Gates 10–11: must every market be ready before the project passes? | Built as "every active market"; ours |
-| 45 | Which signals bring a post-launch review forward, and which claim questions count as performance? | Built as above; ours |
-| 46 | The controlled action when the product form is left open at Gate 2 | Built as "a Next Action at Gate 5"; ours |
-| 47 | At which gate must a claim's evidence basis be recorded? | Built at Gate 3; ours |
-| 48 | What marks a "new formula" for the scale-up requirement? | Built as "New development"; ours |
-| 49 | Does adding a market after Gate 1 reopen earlier gates? | Built as "nothing reopened"; ours |
-| 50 | What proves the approved artwork version at Gate 11? | Built as "version and file named"; ours |
-| 51 | Where are a market's pack requirements recorded, and what closes the item? | Built as above; ours |
-| 52 | Does a Major formula version reopen Gates 10–12 as well? | Built as "Gates 4–12 reopen"; ours |
-| 53 | When does an older formula version change state, and how are reviews scheduled while two versions are on sale? | Built as above; ours |
+| 1 | Who the responsible reviewer of an item is | Blocks the acknowledgement half of the auto-generated N/A |
+| 2 | Change-control answer once per project or per finding | Built on our reading — rework if wrong |
+| 3 | Superseded safety findings | Built on our reading — rework if wrong |
+| 4 | The two Gate 4 watch-list columns: what each holds, who fills it, until which gate | Built on our reading — rework if wrong |
+| 5 | Formula version supersession: who confirms, and when the old version changes state | Built; confirmer and trigger moment are ours |
+| 6 | Who decides a Claims Library change is "critical" | Designed, not built — it can pull a product from the market |
+| 7 | Scale-up trigger: the eighteen areas, and what a "new formula" is | Waiting on the answer; depends on question 12 |
+| 8 | A "Reject / Stop" decision that does not exist | Two of your own answers name it; we did not invent it |
+| 9 | Whether Safety **or** Regulatory authority is enough | Built as "either" |
+| 10 | What a "controlled action" is for a gap, and the product form at Gate 2 | Built partly; the date half of a High gap is not enforced |
+| 11 | Should Change Control reopen a gate that already passed | Not built — and how it meets your F9 answer on rejected changes |
+| 12 | **Nine places a change is written down — how many should there be** (incl. "NP Controlled" and which records count as valid) | **Work stopped until answered.** A major formula change never reaches the change-control side, so Gate 11 never weighs it |
+| 13 | Does adding a market or a Major version reopen earlier gates | Built as "Major reopens 4–12; adding a market reopens nothing" |
+| 14 | The two-approval "closing" act on registers | **Already built, before asking you** |
+| 15 | Can a Phase 2–4 requirement row be N/A | Your Round-4 answer gave Phase 1 that escape; the same case exists on the other three |
+| 16 | Deferring a Should/Could requirement; whether every row needs a priority | 16(b) is running on our reading now |
+| 17 | The general restricted-and-caution screen | Built; four choices ours, and (c) may be a real gap |
+| 18 | Publication channels; when a claim is approved for a market and channel | Your answer lists the field but no values; ours is assembled |
+| 19 | Claim review at Gate 3: "Not Approved", Technical review fields, who approves a revision | Built as above; ours |
+| 20 | Gates 10–12 per market: withdrawn markets; whether every market must be ready together | Built as "no Gate 12 slot after withdrawal; every active market" |
+| 21 | Gate 10: which checklist and approval values pass | Built as above; ours |
+| 22 | Costing results that allow a plain Proceed | Placement of the two middle values is ours |
+| 23 | Gate 12: what closes product-performance feedback; which signals bring a review forward | Built as above; ours |
+| 24 | When one person may hold two roles on the same record | Removed two extra checks — a gate preparer may now approve it |
+| 25 | A Critical action and the gate decision | Built as "open blocks every decision; closed blocks nothing" |
+| 26 | A market whose launch approval stands — may its PIF be reopened | Built as "launch approval must not stay Approved" |
+| 27 | A deviation record when something is released without approval | Not built — your (a)–(d) decide what to build |
+| 28 | Who accepts a phase's pre-work | Built as "phase review owner or project Lead"; the per-entry marking you asked for is owed |
+| 29 | A vulnerable-user group Gate 02 does not imply | Narrows your 25(d) answer — built on the project owner's instruction |
+| 30 | At which gate the claim evidence basis and the release decision are filled in | Built at Gate 3 and Gate 11 |
+| 31 | What proves the approved artwork version at Gate 11 | Gate 11 and your Q30(c) read different records |
+| 32 | Where a market's pack requirements are recorded; whether blank means "none" | Built on the market profile; blank currently passes |
+| 33 | A product with no claims or an administrative-only change: which later registers still need rows | Gate 10 fixed on our reading; three other registers undecided |
 
-Questions 4 to 6, 10 to 12, 14 and 16 are all cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
+Questions 2 to 5, 9, 12 and 13 are cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.
