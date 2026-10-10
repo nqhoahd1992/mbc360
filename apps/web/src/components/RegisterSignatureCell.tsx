@@ -46,6 +46,8 @@ export default function RegisterSignatureCell({
   const signedRole = row[keys.role] as string | undefined;
   const signedAt = row[keys.at] as string | undefined;
   const signedImage = row[keys.image] as string | undefined;
+  // Set by the server when the row changed after it was signed: the signature no longer counts.
+  const stale = !!row[keys.stale];
 
   const { user } = useSession();
   const { isAdmin, roleKeys } = usePermissionView();
@@ -113,7 +115,7 @@ export default function RegisterSignatureCell({
     setReason('');
   };
 
-  if (signedUserId) {
+  if (signedUserId && !stale) {
     const detail = (
       <div style={{ maxWidth: 280, display: 'grid', gap: 6, fontSize: 12 }}>
         <div>
@@ -168,10 +170,23 @@ export default function RegisterSignatureCell({
     );
   }
 
-  if (readOnly) return <span style={{ color: TEXT.secondary }}>Not signed</span>;
+  if (readOnly) {
+    return (
+      <span style={{ color: TEXT.secondary }}>
+        {stale ? `Out of date (was signed by ${signedName ?? 'someone'})` : 'Not signed'}
+      </span>
+    );
+  }
 
   return (
     <>
+      {stale && (
+        <Tooltip title="The row changed after it was signed, so the signature no longer counts. Sign again to confirm what it says now.">
+          <Tag color="warning" style={{ margin: '0 4px 4px 0' }}>
+            Out of date — signed by {signedName}
+          </Tag>
+        </Tooltip>
+      )}
       <Space size={4}>
         <Tooltip
           title={

@@ -73,6 +73,10 @@ export interface RegisterColumn {
   // field it replaces wearing a different hat, so it is required in practice —
   // `verifyRegisterSignatureColumn` on the API refuses a column that omits it.
   signCapability?: string;
+  // A column whose value is DERIVED from a signature column (the "Approved by NP?" tick follows the NP
+  // signature). It is not part of what that signature vouches for: counting it would make the row look
+  // edited the instant it was signed, because signing is what sets it.
+  derivedFromSignature?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -100,7 +104,7 @@ export interface RegisterColumn {
 // The double underscore marks them as machine-managed: `isRegisterRowBlank` and
 // the API's carry-over both key off `SIGNATURE_FIELD_SUFFIXES` rather than a
 // per-register list that would drift.
-export const SIGNATURE_FIELD_SUFFIXES = ['__userId', '__role', '__at', '__image'] as const;
+export const SIGNATURE_FIELD_SUFFIXES = ['__userId', '__role', '__at', '__image', '__hash', '__stale'] as const;
 
 export function signatureFieldKeys(columnKey: string): {
   name: string;
@@ -108,6 +112,12 @@ export function signatureFieldKeys(columnKey: string): {
   role: string;
   at: string;
   image: string;
+  // The content hash of the row at the moment it was signed (server-written). Missing on a signature
+  // recorded before staleness was tracked, which reads as "unknown", never as "stale".
+  hash: string;
+  // NEVER stored. The server sets it on every read when the row no longer hashes to `hash`, so the
+  // screen can say the signature is out of date without being able to compute a SHA-256 itself.
+  stale: string;
 } {
   return {
     name: columnKey,
@@ -115,6 +125,8 @@ export function signatureFieldKeys(columnKey: string): {
     role: `${columnKey}__role`,
     at: `${columnKey}__at`,
     image: `${columnKey}__image`,
+    hash: `${columnKey}__hash`,
+    stale: `${columnKey}__stale`,
   };
 }
 
@@ -1908,7 +1920,7 @@ const formulationChangeRegister: RegisterConfig = {
     // tick anyone can set is not an approval, and the pair "approved" + "who"
     // held as two independent cells is how a row comes to claim an approval no
     // one gave. The server sets it on sign and clears it on withdraw.
-    { key: 'approvedByNp', label: 'Approved by NP? (commercial)', type: 'checkbox', width: 100, editable: false },
+    { key: 'approvedByNp', label: 'Approved by NP? (commercial)', type: 'checkbox', width: 100, editable: false, derivedFromSignature: 'npSignOff' },
     { key: 'changeTitle', label: 'Change title', type: 'text', width: 160 },
     { key: 'explanation', label: 'Explanation - what changed', type: 'textarea', width: 220 },
     { key: 'reasons', label: 'Reasons', type: 'textarea', width: 180 },

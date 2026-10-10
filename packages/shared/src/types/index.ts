@@ -426,14 +426,23 @@ export interface RegisterClosureSignOff {
   recordVersion?: number;
   signatureImage?: string;
   signatureVerifiedAt?: string;
+  // Set by the SERVER on every read, never stored: the register no longer hashes to what this signer
+  // was shown when they signed. A stale signature does not count (see isRegisterClosureSigned).
+  stale?: boolean;
 }
 
 export interface RegisterClosureState {
   signOffs: RegisterClosureSignOff[]; // 0-2 rows; missing role = not yet signed
 }
 
+// A signature that exists but whose register changed afterwards: it records who signed, and it no longer
+// counts. Re-signing (or withdrawing) is how it is cleared.
+export function isRegisterClosureStale(signOff: RegisterClosureSignOff | undefined): boolean {
+  return !!(signOff?.signedByUserId && signOff.signedAt && signOff.stale);
+}
+
 export function isRegisterClosureSigned(signOff: RegisterClosureSignOff | undefined): boolean {
-  return !!(signOff?.signedByUserId && signOff.signedAt);
+  return !!(signOff?.signedByUserId && signOff.signedAt) && !signOff?.stale;
 }
 
 // Closed = BOTH roles signed. A register with no RegisterClosureState at all

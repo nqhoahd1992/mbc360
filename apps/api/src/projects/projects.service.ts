@@ -79,6 +79,7 @@ import {
 } from '@mbc360/shared/utils/gateSnapshot';
 import { phaseSignContent } from '@mbc360/shared/utils/phaseSignContent';
 import { registerClosureContent, registerRowSignContent } from '@mbc360/shared/utils/registerClosureContent';
+import { registerContentHashOf, registerRowContentHashOf, rowHashFromCells } from './content-hash';
 import { supersessionGaps, versionMarkets } from '@mbc360/shared/utils/formulaLifecycle';
 import {
   CLAIM_EXEMPTION_CAPABILITY,
@@ -2386,11 +2387,21 @@ export class ProjectsService {
         for (const key of Object.values(signatureFieldKeys(col.key))) delete out[index][key];
       }
     }
+    // `stale` is computed on read (project-mapper) and must never be written: the committed rows handed in
+    // here come from that read, so without this it would be persisted as if it were a fact about the row.
+    for (const row of out) for (const col of cols) delete row[signatureFieldKeys(col.key).stale];
     // The derived "approved?" tick that pairs with the signature. Held as its
     // own column so the table can show it, but it states the same fact the
-    // signature does, so the signature decides it.
+    // signature does, so the signature decides it — for as long as it still counts. A signature whose
+    // row has since changed is stale (the hash it was signed with no longer matches), and a signature
+    // recorded before hashes existed has none to compare, which reads as "still counts".
     if (cols.some((c) => c.key === 'npSignOff')) {
-      for (const row of out) row.approvedByNp = !!row[signatureFieldKeys('npSignOff').userId];
+      const keys = signatureFieldKeys('npSignOff');
+      out.forEach((row, index) => {
+        const stored = row[keys.hash];
+        const current = typeof stored === 'string' && stored !== '' ? rowHashFromCells(config.key, index, 'npSignOff', row) : undefined;
+        row.approvedByNp = !!row[keys.userId] && (current === undefined || current === stored);
+      });
     }
     return out;
   }
@@ -2407,10 +2418,9 @@ export class ProjectsService {
   }
 
   private registerRowContentHash(project: ProjectData, registerKey: string, rowIndex: number, column: string): string {
-    const content = registerRowSignContent(project, registerKey, rowIndex, column);
-    if (!content) throw new NotFoundException(`Row ${rowIndex + 1} not found on register "${registerKey}"`);
-    // The position and the column are part of what is signed, not only the cells.
-    return createHash('sha256').update(canonicalJson({ rowIndex, column, ...content })).digest('hex');
+    const hash = registerRowContentHashOf(project, registerKey, rowIndex, column);
+    if (!hash) throw new NotFoundException(`Row ${rowIndex + 1} not found on register "${registerKey}"`);
+    return hash;
   }
 
   // What the signer reads before signing: the row as it is now and the hash the signature is bound to.
@@ -2514,7 +2524,10 @@ export class ProjectsService {
       if (!target) throw new NotFoundException(`Row ${rowIndex + 1} not found on register "${registerKey}"`);
       const data = { ...(target.data as RegisterRow) };
       const keys = signatureFieldKeys(column);
-      if (data[keys.userId]) {
+      // A signature whose row changed afterwards is stale: it no longer counts, and signing again
+      // replaces it. Withdrawing first stays possible but is no longer required.
+      const rowIsStale = !!project.registers[registerKey]?.[rowIndex]?.[keys.stale];
+      if (data[keys.userId] && !rowIsStale) {
         throw new BadRequestException(
           `"${col.label}" was already signed by ${String(data[keys.name] ?? 'another user')} — withdraw it first`,
         );
@@ -2558,6 +2571,9 @@ export class ProjectsService {
       data[keys.role] = user.roles.map((r) => r.role.name).join(', ') || '';
       data[keys.at] = now.toISOString();
       data[keys.image] = saved.imageData;
+      // What the signer was shown. A later edit makes the signature stale by no longer matching it.
+      data[keys.hash] = expectedHash;
+      delete data[keys.stale];
       if (column === 'npSignOff') data.approvedByNp = true;
       await tx.registerRow.update({
         where: { id: target.id },
@@ -2657,9 +2673,9 @@ export class ProjectsService {
   }
 
   private registerContentHash(project: ProjectData, registerKey: string): string {
-    const content = registerClosureContent(project, registerKey);
-    if (!content) throw new BadRequestException(`Unknown register "${registerKey}"`);
-    return createHash('sha256').update(canonicalJson(content)).digest('hex');
+    const hash = registerContentHashOf(project, registerKey);
+    if (!hash) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    return hash;
   }
 
   // What the closer reads before signing: the register's rows as they are now and the hash their
@@ -2755,7 +2771,10 @@ export class ProjectsService {
       const existing = await tx.registerClosureSignOff.findUnique({
         where: { closureId_role: { closureId: closure.id, role } },
       });
-      if (existing?.signedAt) {
+      // A signature whose register changed afterwards is stale: it no longer counts, and signing again
+      // replaces it. Withdrawing first stays possible but is no longer required.
+      const alreadyStale = !!project.registerClosures[registerKey]?.signOffs.find((x) => x.role === role)?.stale;
+      if (existing?.signedAt && !alreadyStale) {
         throw new BadRequestException(`"${role}" was already signed by ${existing.name ?? 'another user'} — withdraw it first`);
       }
       if (!stepUpToken) {
@@ -2799,6 +2818,8 @@ export class ProjectsService {
           recordVersion: row.version,
           signatureImage: saved.imageData,
           signatureVerifiedAt: now,
+          // What the closer was shown. A later edit makes the signature stale by no longer matching it.
+          contentHash: expectedHash,
         },
       });
       return { registerKey, role, recordVersion: row.version };
@@ -2839,6 +2860,7 @@ export class ProjectsService {
           recordVersion: null,
           signatureImage: null,
           signatureVerifiedAt: null,
+          contentHash: null,
         },
       });
       return { registerKey, role, reason: why };
@@ -4218,6 +4240,7 @@ export class ProjectsService {
                 recordVersion: null,
                 signatureImage: null,
                 signatureVerifiedAt: null,
+                contentHash: null,
               },
             });
           }
@@ -4834,6 +4857,7 @@ export class ProjectsService {
             recordVersion: null,
             signatureImage: null,
             signatureVerifiedAt: null,
+            contentHash: null,
           },
         });
       }

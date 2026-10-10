@@ -304,9 +304,58 @@ export async function run(base: string, db: Client): Promise<number> {
       r = await api(signer, 'POST', `${base}/sign`, { role: 'Review owner', stepUpToken: su.json?.stepUpToken, expectedHash: pv3.hash });
       t('signing with the hash of what was just reviewed succeeds', r.status < 300, `${r.status} ${short(r.json)}`);
       t('...and the signature is recorded', await signed());
+
+      // ---- a closing signature stops counting when the register changes after it was signed -------------
+      {
+        const closureRow = async () =>
+          ((await project()).project.registerClosures[registerKey]?.signOffs ?? []).find((x: any) => x.role === 'Review owner');
+        const dbHash = async (): Promise<string | null> =>
+          (
+            await db.query(
+              `SELECT s."contentHash" FROM register_closure_sign_offs s JOIN register_closures c ON c.id = s."closureId"
+                WHERE c."projectId" = $1 AND c."registerKey" = $2 AND s.role = 'Review owner'`,
+              [PROJECT, registerKey],
+            )
+          ).rows[0]?.contentHash ?? null;
+        t('right after signing, the signature stored the hash of what was shown and is not stale',
+          (await dbHash()) === pv3.hash && !(await closureRow())?.stale, `${await dbHash()} ${short(await closureRow())}`);
+        r = await addRow('changed AFTER the Review owner signed');
+        t('the register is edited after one of the two signatures (it is not closed yet, so it stays editable)', r.status < 300, `${r.status} ${short(r.json)}`);
+        t('the Review owner signature is now stale', (await closureRow())?.stale === true, short(await closureRow()));
+        const stored = await dbHash();
+        t('...and the stale flag was computed, not stored: the stored hash is still the one that was signed', stored === pv3.hash, String(stored));
+
+        const pv4 = (await api(signer, 'GET', `${base}/preview`)).json;
+        const su4 = await api(signer, 'POST', `${base}/step-up`, { role: 'Review owner', code: await code(signer), expectedHash: pv4.hash });
+        r = await api(signer, 'POST', `${base}/sign`, { role: 'Review owner', stepUpToken: su4.json?.stepUpToken, expectedHash: pv4.hash });
+        t('a stale signature is replaced by signing again, without withdrawing first', r.status < 300, `${r.status} ${short(r.json)}`);
+        t('...after which it counts again and carries the new hash', !(await closureRow())?.stale && (await dbHash()) === pv4.hash, short(await closureRow()));
+
+        // A signature recorded before hashes existed has nothing to compare with: unknown is never stale.
+        await db.query(
+          `UPDATE register_closure_sign_offs SET "contentHash" = NULL
+            WHERE role = 'Review owner' AND "closureId" IN (SELECT id FROM register_closures WHERE "projectId" = $1 AND "registerKey" = $2)`,
+          [PROJECT, registerKey],
+        );
+        r = await addRow('changed again, after a signature that has no stored hash');
+        t('a signature recorded without a hash is never marked stale', r.status < 300 && !(await closureRow())?.stale, short(await closureRow()));
+      }
+      // Put a hash back, so that "withdrawing clears it" below proves something (the legacy case left it NULL).
+      await db.query(
+        `UPDATE register_closure_sign_offs SET "contentHash" = 'to-be-cleared'
+          WHERE role = 'Review owner' AND "closureId" IN (SELECT id FROM register_closures WHERE "projectId" = $1 AND "registerKey" = $2)`,
+        [PROJECT, registerKey],
+      );
       // The project version moved while the closer read; the signature never depended on it.
       r = await api(signer, 'POST', `${base}/withdraw`, { role: 'Review owner', reason: 'e2e cleanup', expectedVersion: await version() });
       t('the signer withdraws it again (leaves the register as it was)', r.status < 300 && !(await signed()), `${r.status} ${short(r.json)}`);
+      t('...and withdrawing clears the stored hash', (
+        await db.query(
+          `SELECT s."contentHash" FROM register_closure_sign_offs s JOIN register_closures c ON c.id = s."closureId"
+            WHERE c."projectId" = $1 AND c."registerKey" = $2 AND s.role = 'Review owner'`,
+          [PROJECT, registerKey],
+        )
+      ).rows[0]?.contentHash == null);
     }
   }
 
@@ -372,6 +421,54 @@ export async function run(base: string, db: Client): Promise<number> {
       r = await api(signer, 'POST', `${base}/sign`, { column, stepUpToken: su.json?.stepUpToken, expectedHash: pv3.hash });
       t('signing with the hash of what was just reviewed succeeds', r.status < 300, `${r.status} ${short(r.json)}`);
       t('...and the signature is recorded', await isSigned());
+
+      // ---- a cell signature stops counting when its row changes after it was signed ---------------------
+      {
+        const dbRow = async (): Promise<Record<string, unknown>> =>
+          (
+            await db.query(`SELECT data FROM register_rows WHERE "projectId" = $1 AND "registerKey" = $2 AND "rowOrder" = $3`, [PROJECT, registerKey, index])
+          ).rows[0]?.data ?? {};
+        const fresh = (await regRows())[index];
+        t('right after signing the row is not stale and the derived approved tick is on (the tick is not part of what was signed)',
+          !fresh['npSignOff__stale'] && fresh['approvedByNp'] === true, short(fresh));
+        t('the signature stored the hash of what was shown', (await dbRow())['npSignOff__hash'] === pv3.hash, short(await dbRow()));
+
+        const cur2 = await regRows();
+        cur2[index] = { ...cur2[index], [textColumn]: 'e2e text changed AFTER it was signed', npSignOff__hash: 'forged', npSignOff__stale: false };
+        r = await putRows(cur2.map((x) => ({ ...x })));
+        t('the row is edited after it was signed (the client also tries to forge the hash and the stale flag)', r.status < 300, `${r.status} ${short(r.json)}`);
+        const afterEdit = (await regRows())[index];
+        t('the signature is now stale and the approved tick is off', afterEdit['npSignOff__stale'] === true && afterEdit['approvedByNp'] === false, short(afterEdit));
+        const stored = await dbRow();
+        t('...the forged hash was ignored, and the stale flag was never stored', stored['npSignOff__hash'] === pv3.hash && !('npSignOff__stale' in stored), short(stored));
+
+        // Edited AGAIN while stale: this time the committed copy the server reads already carries the computed
+        // flag, which is exactly how it could be written back by mistake.
+        const cur2b = await regRows();
+        cur2b[index] = { ...cur2b[index], [textColumn]: 'e2e text changed a second time, while the signature was already stale' };
+        r = await putRows(cur2b.map((x) => ({ ...x })));
+        const storedAgain = await dbRow();
+        t('editing it again while it is stale still never stores the flag', r.status < 300 && !('npSignOff__stale' in storedAgain) && storedAgain['npSignOff__hash'] === pv3.hash, short(storedAgain));
+
+        const pv4 = (await api(signer, 'GET', `${base}/preview?column=${column}`)).json;
+        const su4 = await api(signer, 'POST', `${base}/step-up`, { column, code: await code(signer), expectedHash: pv4.hash });
+        r = await api(signer, 'POST', `${base}/sign`, { column, stepUpToken: su4.json?.stepUpToken, expectedHash: pv4.hash });
+        t('a stale signature is replaced by signing again, without withdrawing first', r.status < 300, `${r.status} ${short(r.json)}`);
+        const resigned = (await regRows())[index];
+        t('...after which it counts again, the tick is back on, and the new hash is stored',
+          !resigned['npSignOff__stale'] && resigned['approvedByNp'] === true && (await dbRow())['npSignOff__hash'] === pv4.hash, short(resigned));
+
+        // A signature recorded before hashes existed has nothing to compare with: unknown is never stale.
+        await db.query(
+          `UPDATE register_rows SET data = data - 'npSignOff__hash' WHERE "projectId" = $1 AND "registerKey" = $2 AND "rowOrder" = $3`,
+          [PROJECT, registerKey, index],
+        );
+        const cur3 = await regRows();
+        cur3[index] = { ...cur3[index], [textColumn]: 'e2e text changed once more, after a signature with no stored hash' };
+        r = await putRows(cur3.map((x) => ({ ...x })));
+        const legacy = (await regRows())[index];
+        t('a signature recorded without a hash is never marked stale', r.status < 300 && !legacy['npSignOff__stale'] && legacy['approvedByNp'] === true, short(legacy));
+      }
 
       // Clean up: withdraw, then remove the row so later steps see the register as it was.
       r = await api(signer, 'POST', `${base}/withdraw`, { column, reason: 'e2e cleanup', expectedVersion: await version() });

@@ -597,6 +597,10 @@ model RegisterClosureSignOff {
   recordVersion       Int?
   signatureImage      String?
   signatureVerifiedAt DateTime?
+  // SHA-256 of the register's content as the signer was shown it. The register is compared with this on
+  // every read: if it no longer matches, the signature is stale. NULL on a signature recorded before this
+  // existed, which reads as "unknown" and never as stale — nothing was captured to compare with.
+  contentHash         String?
 
   @@unique([closureId, role])
   @@map("register_closure_sign_offs")

@@ -29,12 +29,33 @@ export function registerClosureContent(project: ProjectData, registerKey: string
 }
 
 // What a signature CELL on one register row attests to: that row's cells, in the register's column
-// order. The column being signed is left out (it is empty until the signature exists, and its own
-// fields are the signature, not content being vouched for). Same single definition for the preview and
-// the hash, as above. Returns undefined when the register or the row does not exist.
+// order. Left out: the column being signed (it is empty until the signature exists, and its own fields
+// are the signature, not content being vouched for) and any column DERIVED from it (see
+// `derivedFromSignature`). Same single definition for the preview and the hash. Returns undefined when
+// the register does not exist.
 export interface RegisterRowSignContent {
   columns: { key: string; label: string }[];
   row: Record<string, string>;
+}
+
+const cellText = (v: unknown): string =>
+  v === undefined || v === null ? '' : typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v);
+
+// The cells of ONE row, from the row itself — so the server can compute the content of a row it is about
+// to write, not only of one that is already stored.
+export function registerRowCells(
+  registerKey: string,
+  source: Record<string, unknown>,
+  signatureColumn: string,
+): RegisterRowSignContent | undefined {
+  const config = getRegisterConfig(registerKey);
+  if (!config) return undefined;
+  const columns = config.columns
+    .filter((c) => c.key !== signatureColumn && c.derivedFromSignature !== signatureColumn)
+    .map((c) => ({ key: c.key, label: c.label }));
+  const row: Record<string, string> = {};
+  for (const c of columns) row[c.key] = cellText(source[c.key]);
+  return { columns, row };
 }
 
 export function registerRowSignContent(
@@ -43,11 +64,7 @@ export function registerRowSignContent(
   rowIndex: number,
   signatureColumn: string,
 ): RegisterRowSignContent | undefined {
-  const content = registerClosureContent(project, registerKey);
   const source = project.registers[registerKey]?.[rowIndex];
-  if (!content || !source || !Number.isInteger(rowIndex) || rowIndex < 0) return undefined;
-  const columns = content.columns.filter((c) => c.key !== signatureColumn);
-  const row: Record<string, string> = {};
-  for (const c of columns) row[c.key] = content.rows[rowIndex][c.key] ?? '';
-  return { columns, row };
+  if (!source || !Number.isInteger(rowIndex) || rowIndex < 0) return undefined;
+  return registerRowCells(registerKey, source, signatureColumn);
 }

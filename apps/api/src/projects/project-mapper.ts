@@ -14,6 +14,8 @@
 // needs checklists/gateChecks/registers/bom/nextActions to evaluate readiness,
 // and a response missing them would make pages for later phases render empty.
 import { GATES } from '@mbc360/shared/config/gates';
+import { REGISTER_CONFIGS, signatureColumns, signatureFieldKeys } from '@mbc360/shared/config/registers';
+import { registerContentHashOf, registerRowContentHashOf } from './content-hash';
 import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
 import type {
   BacktrackEvent,
@@ -354,7 +356,7 @@ export function toProjectData(
     return row ? toGateRecord(row) : { gateId: meta.id, status: 'Not Started' as const };
   });
 
-  return {
+  const project: ProjectData = {
     identity: {
       id: p.id,
       productCode: p.productCode,
@@ -599,4 +601,40 @@ export function toProjectData(
     })),
     reference,
   };
+  annotateStaleSignatures(p, project);
+  return project;
+}
+
+// A signature records the hash of what its signer was shown. If what is there now no longer hashes to
+// that, the signature is STALE: it still says who signed, and it no longer counts. Computed here, on every
+// read, because the browser cannot compute a SHA-256 and the rule engine must read the same answer on
+// both sides — `stale` rides on the data so `isRegisterClosed` agrees in the API guard and on the screen.
+//
+// A signature with no stored hash (recorded before this existed) is never marked stale: nothing was
+// captured to compare with, and inventing a hash from today's content would claim the signer saw it.
+function annotateStaleSignatures(p: ProjectWithAll, project: ProjectData): void {
+  for (const closure of p.registerClosures) {
+    const state = project.registerClosures[closure.registerKey];
+    if (!state) continue;
+    const current = registerContentHashOf(project, closure.registerKey);
+    closure.signOffs.forEach((s, i) => {
+      if (s.signedAt && s.contentHash && current && s.contentHash !== current) state.signOffs[i].stale = true;
+    });
+  }
+  for (const config of REGISTER_CONFIGS) {
+    const columns = signatureColumns(config);
+    if (columns.length === 0) continue;
+    (project.registers[config.key] ?? []).forEach((row, index) => {
+      for (const column of columns) {
+        const keys = signatureFieldKeys(column.key);
+        if (!row[keys.userId]) continue;
+        const stored = row[keys.hash];
+        const current = registerRowContentHashOf(project, config.key, index, column.key);
+        const stale = typeof stored === 'string' && stored !== '' && !!current && stored !== current;
+        if (stale) row[keys.stale] = true;
+        // The derived "approved?" tick follows the signature only while the signature still counts.
+        if (column.key === 'npSignOff') row.approvedByNp = !stale;
+      }
+    });
+  }
 }

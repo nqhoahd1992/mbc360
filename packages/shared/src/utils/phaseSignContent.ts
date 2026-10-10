@@ -1,4 +1,4 @@
-import { GATES } from '../config/gates';
+import { EIGHT_ANGLES, GATES } from '../config/gates';
 import { PHASE_CONFIGS } from '../config/phases';
 import type { ProjectData } from '../types';
 
@@ -23,6 +23,17 @@ export interface PhaseSignContent {
   phase: number;
   sections: PhaseSignSection[];
 }
+
+// The database gives NO order for some of what is read here (the 8 Angles have no ordering column, and
+// Next Actions created in one transaction share a `createdAt`), and a hash that depends on row order
+// would refuse a signature because the same data came back in a different sequence. So everything that
+// has no defined order is put in a fixed one here: the Angles in their canonical order, the actions by
+// gate and then id.
+const angleRank = (angle: string): number => {
+  const at = (EIGHT_ANGLES as readonly string[]).indexOf(angle);
+  return at === -1 ? Number.MAX_SAFE_INTEGER : at;
+};
+const byText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 const s = (v: unknown): string => (v === undefined || v === null ? '' : typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v));
 const cols = (...pairs: [string, string][]) => pairs.map(([key, label]) => ({ key, label }));
@@ -102,7 +113,9 @@ export function phaseSignContent(project: ProjectData, phase: number): PhaseSign
   sections.push({
     title: '8 Angles coverage',
     columns: cols(['angle', 'Angle'], ['covered', 'Covered'], ['ynna', 'Y / N / N/A'], ['date', 'Date'], ['evidenceRef', 'Evidence'], ['internalLink', 'Internal link'], ['comments', 'Comments']),
-    rows: (closure?.angles ?? []).map((a) => ({ angle: s(a.angle), covered: s(a.covered), ynna: yn(s(a.ynna)), date: s(a.date), evidenceRef: s(a.evidenceRef), internalLink: s(a.internalLink), comments: s(a.comments) })),
+    rows: [...(closure?.angles ?? [])]
+      .sort((a, b) => angleRank(a.angle) - angleRank(b.angle) || byText(a.angle, b.angle))
+      .map((a) => ({ angle: s(a.angle), covered: s(a.covered), ynna: yn(s(a.ynna)), date: s(a.date), evidenceRef: s(a.evidenceRef), internalLink: s(a.internalLink), comments: s(a.comments) })),
   });
 
   sections.push({
@@ -110,6 +123,7 @@ export function phaseSignContent(project: ProjectData, phase: number): PhaseSign
     columns: cols(['gate', 'Gate'], ['description', 'Action'], ['owner', 'Owner'], ['dueDate', 'Due date'], ['priority', 'Priority'], ['status', 'Status']),
     rows: project.nextActions
       .filter((a) => gates.some((g) => g.id === a.gateId))
+      .sort((a, b) => byText(a.gateId, b.gateId) || byText(a.id, b.id))
       .map((a) => ({ gate: s(a.gateId), description: s(a.description), owner: s(a.owner), dueDate: s(a.dueDate), priority: s(a.priority), status: s(a.status) })),
   });
 

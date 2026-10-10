@@ -3,7 +3,7 @@ import { Alert, Button, Card, Input, Modal, Space, Table, Tag, Tooltip, Typograp
 import { LockOutlined, UnlockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { RegisterClosureRole, RegisterClosureSignOff, RegisterClosureState } from '@mbc360/shared/types';
-import { isRegisterClosureSigned, isRegisterClosed } from '@mbc360/shared/types';
+import { isRegisterClosureSigned, isRegisterClosureStale, isRegisterClosed } from '@mbc360/shared/types';
 import type { ReviewOwnerSpec } from '@mbc360/shared/config/reviewers';
 import { registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import { useAppStore } from '../store/useAppStore';
@@ -195,6 +195,12 @@ export default function RegisterClosurePanel({
               const why = blockedReason(r);
               return (
                 <Space orientation="vertical" size={4}>
+                  {isRegisterClosureStale(r) && (
+                    <Typography.Text type="warning" style={{ fontSize: 12 }}>
+                      Signed by {r.name} on {r.signedAt ? dayjs(r.signedAt).format('YYYY-MM-DD HH:mm') : '—'}, but the register
+                      changed after that, so it no longer counts. Sign again to confirm what it says now.
+                    </Typography.Text>
+                  )}
                   <Tooltip title={why ?? ''}>
                     <span>
                       <Button size="small" type="primary" disabled={!!why} onClick={() => setReviewing(r.role)}>
