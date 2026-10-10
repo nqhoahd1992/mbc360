@@ -14,6 +14,7 @@ export default function SignatureStepUpModal({
   projectId,
   phase,
   role,
+  expectedHash,
   onClose,
   onVerified,
 }: {
@@ -21,6 +22,8 @@ export default function SignatureStepUpModal({
   projectId: string;
   phase: number;
   role: SignOff['role'];
+  // The fingerprint of the content the signer just reviewed; the code is bound to it.
+  expectedHash: string;
   onClose: () => void;
   onVerified: (stepUpToken: string) => void;
 }) {
@@ -42,7 +45,7 @@ export default function SignatureStepUpModal({
     setVerifying(true);
     setError(null);
     try {
-      const { stepUpToken } = await verifySignOffStepUp(projectId, phase, role, code);
+      const { stepUpToken } = await verifySignOffStepUp(projectId, phase, role, code, expectedHash);
       setCode('');
       setError(null);
       onVerified(stepUpToken);

@@ -15,6 +15,7 @@ import type {
   RequirementItem,
   GateEvidenceSnapshot,
   GateSigningPreview,
+  PhaseSignPreview,
   RegisterClosePreview,
   RegisterRowSignPreview,
   GateSignOffRole,
@@ -210,15 +211,21 @@ export const setSignOffAssignees = (
 // existed. One step, not two: a code read off the signer's authenticator app is
 // exchanged for the short-lived proof token signSignOff requires. There is
 // nothing to "request" — the app is already generating codes.
+// What the signer reads before signing a phase: everything the phase page shows for it, and the hash
+// the signature is bound to (same idea as previewGateSignOff).
+export const previewPhaseSignOff = (id: string, phase: number): Promise<PhaseSignPreview> =>
+  request(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/preview`);
+
 export const verifySignOffStepUp = (
   id: string,
   phase: number,
   role: SignOff['role'],
   code: string,
+  expectedHash: string,
 ): Promise<{ stepUpToken: string }> =>
   request(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/step-up`, {
     method: 'POST',
-    body: JSON.stringify({ role, code }),
+    body: JSON.stringify({ role, code, expectedHash }),
   });
 
 export const signSignOff = (
@@ -226,8 +233,9 @@ export const signSignOff = (
   phase: number,
   role: SignOff['role'],
   // The step-up token is required: a sign-off always attaches the signer's
-  // saved signature (project owner, 2026-08-22).
-  input: { decision?: string; comments?: string; stepUpToken: string },
+  // saved signature (project owner, 2026-08-22). The hash is what the signer
+  // was shown in the preview (2026-10-10).
+  input: { decision?: string; comments?: string; stepUpToken: string; expectedHash: string },
 ) =>
   request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/sign`, {
     method: 'POST',

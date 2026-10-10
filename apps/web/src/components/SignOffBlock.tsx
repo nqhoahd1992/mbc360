@@ -28,6 +28,7 @@ import { useDraft } from '../hooks/useDraft';
 import { getMySignature, getMyTotpStatus } from '../api/accountApi';
 import SaveBar from './SaveBar';
 import SignatureStepUpModal from './SignatureStepUpModal';
+import PhaseSignPreviewModal from './PhaseSignPreviewModal';
 import { Link } from 'react-router-dom';
 import { TABLE_STICKY } from '../theme/tokens';
 
@@ -111,7 +112,10 @@ export default function SignOffBlock({
       .then((r) => setTotpEnrolled(r.enrolled))
       .catch(() => setTotpEnrolled(false));
   }, []);
-  const [stepUpRole, setStepUpRole] = useState<SignOff['role'] | null>(null);
+  // Sign opens the preview first (everything the phase page shows, which the signature attests to), then
+  // the authenticator step.
+  const [reviewingRole, setReviewingRole] = useState<SignOff['role'] | null>(null);
+  const [stepUp, setStepUp] = useState<{ role: SignOff['role']; hash: string } | null>(null);
 
   const rowDraft = (role: string): RowDraft => rows[role] ?? {};
   const patchRow = (role: string, patch: RowDraft) =>
@@ -181,12 +185,13 @@ export default function SignOffBlock({
 
   // Always signed WITH the signature and a verified step-up — there is no
   // second, weaker path any more.
-  const sign = (row: SignOff, stepUpToken: string) => {
+  const sign = (row: SignOff, stepUpToken: string, expectedHash: string) => {
     const d = rowDraft(row.role);
     signSignOff(projectId, phase, row.role, {
       decision: d.decision,
       comments: d.comments,
       stepUpToken,
+      expectedHash,
     });
   };
 
@@ -355,7 +360,7 @@ export default function SignOffBlock({
                         size="small"
                         type="primary"
                         disabled={!!why}
-                        onClick={() => setStepUpRole(r.role)}
+                        onClick={() => setReviewingRole(r.role)}
                       >
                         Sign as me
                       </Button>
@@ -438,16 +443,31 @@ export default function SignOffBlock({
           onChange={(e) => setReason(e.target.value)}
         />
       </Modal>
-      <SignatureStepUpModal
-        open={stepUpRole !== null}
+      <PhaseSignPreviewModal
+        open={reviewingRole !== null}
         projectId={projectId}
         phase={phase}
-        role={stepUpRole ?? 'Prepared by'}
-        onClose={() => setStepUpRole(null)}
+        roleLabel={reviewingRole ?? ''}
+        onCancel={() => setReviewingRole(null)}
+        onContinue={(preview) => {
+          if (!reviewingRole) return;
+          setStepUp({ role: reviewingRole, hash: preview.hash });
+          setReviewingRole(null);
+        }}
+      />
+      <SignatureStepUpModal
+        open={stepUp !== null}
+        projectId={projectId}
+        phase={phase}
+        role={stepUp?.role ?? 'Prepared by'}
+        expectedHash={stepUp?.hash ?? ''}
+        onClose={() => setStepUp(null)}
         onVerified={(token) => {
-          const row = closure.signOffs.find((s) => s.role === stepUpRole);
-          setStepUpRole(null);
-          if (row) sign(row, token);
+          if (!stepUp) return;
+          const row = closure.signOffs.find((s) => s.role === stepUp.role);
+          const hash = stepUp.hash;
+          setStepUp(null);
+          if (row) sign(row, token, hash);
         }}
       />
     </Card>

@@ -272,9 +272,15 @@ export class ProjectsController {
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('phase') phase: string,
-    @Body() body: { role: SignOff['role']; code: string },
+    @Body() body: { role: SignOff['role']; code: string; expectedHash?: string },
   ) {
-    return this.projects.verifySignOffStepUp(user, id, Number(phase), body.role, body.code);
+    return this.projects.verifySignOffStepUp(user, id, Number(phase), body.role, body.code, body.expectedHash);
+  }
+
+  // What the signer reads before signing a phase — read-only, any signed-in user.
+  @Get(':id/phases/:phase/sign-offs/preview')
+  previewPhaseSignOff(@Param('id') id: string, @Param('phase') phase: string) {
+    return this.projects.previewPhaseSignOff(id, Number(phase));
   }
 
   @Post(':id/phases/:phase/sign-offs/sign')
@@ -288,6 +294,7 @@ export class ProjectsController {
       decision?: string;
       comments?: string;
       stepUpToken?: string;
+      expectedHash?: string;
     },
   ): Promise<ProjectEnvelope> {
     return this.projects.signSignOff(
@@ -299,6 +306,7 @@ export class ProjectsController {
         decision: body.decision,
         comments: body.comments,
         stepUpToken: body.stepUpToken,
+        expectedHash: body.expectedHash,
       },
     );
   }

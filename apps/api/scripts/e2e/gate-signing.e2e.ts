@@ -155,9 +155,17 @@ export async function run(base: string, db: Client): Promise<number> {
       assignments: ROLES.map((role) => ({ role, userId: sessions[phaseKey(phase, role)].id })),
       expectedVersion: await version(),
     });
+  // What the phase signer is shown first: everything the phase page shows, and the hash the signature is bound to.
+  const phasePreviewOf = async (key: string, phase: number) =>
+    (await api(key, 'GET', `/projects/${PROJECT}/phases/${phase}/sign-offs/preview`)).json;
   async function signPhase(phase: number, role: Role, between?: () => Promise<void>) {
     const key = phaseKey(phase, role);
-    const su = await api(key, 'POST', `/projects/${PROJECT}/phases/${phase}/sign-offs/step-up`, { role, code: await code(key) });
+    const preview = await phasePreviewOf(key, phase);
+    const su = await api(key, 'POST', `/projects/${PROJECT}/phases/${phase}/sign-offs/step-up`, {
+      role,
+      code: await code(key),
+      expectedHash: preview.hash,
+    });
     if (su.status >= 300) return { status: su.status, json: su.json, stage: 'step-up' };
     if (between) await between();
     const out = await api(key, 'POST', `/projects/${PROJECT}/phases/${phase}/sign-offs/sign`, {
@@ -165,6 +173,7 @@ export async function run(base: string, db: Client): Promise<number> {
       decision: 'Proceed',
       comments: 'checked',
       stepUpToken: su.json.stepUpToken,
+      expectedHash: preview.hash,
     });
     return { ...out, stage: 'sign' };
   }
@@ -586,6 +595,51 @@ export async function run(base: string, db: Client): Promise<number> {
   r = await nominatePhase(2);
   r = await signPhase(2, 'Prepared by');
   t('a phase whose closure conditions are not met cannot be signed (400)', r.status === 400 && String(r.json?.message).includes('closure conditions'), `${r.stage} ${r.status} ${short(r.json)}`);
+  // ---- a phase signature: the signer reads what the phase page shows, and signs exactly that ----------
+  console.log('\n--- phase signing: the signer reads the phase first, and the signature is bound to what they read');
+  {
+    const key = phaseKey(1, 'Prepared by');
+    const base = `/projects/${PROJECT}/phases/1/sign-offs`;
+    const pv = await phasePreviewOf(key, 1);
+    const titles: string[] = (pv.sections ?? []).map((x: any) => x.title);
+    t('the phase preview carries a 64-character hash and the sections of the phase page',
+      typeof pv.hash === 'string' && pv.hash.length === 64 && titles.includes('Phase gate flow') && titles.includes('8 Angles coverage') && titles.includes('Next Actions') && titles.includes('Key Gate Checks'),
+      short(titles));
+    const flow = (pv.sections ?? []).find((x: any) => x.title === 'Phase gate flow');
+    t('the gate flow lists the three gates of Phase 1, all passed', flow?.rows?.length === 3 && flow.rows.every((x: any) => x.decision === 'Proceed'), short(flow?.rows));
+    const pv2 = await phasePreviewOf(key, 1);
+    t('two previews of an unchanged phase give the same hash', pv.hash === pv2.hash);
+    t('a preview of an unknown phase is refused (400)', (await api(key, 'GET', `/projects/${PROJECT}/phases/9/sign-offs/preview`)).status === 400);
+
+    let r: any = await api(key, 'POST', `${base}/step-up`, { role: 'Prepared by', code: '000000' });
+    t('a phase step-up with no hash is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await api(key, 'POST', `${base}/sign`, { role: 'Prepared by', decision: 'Proceed', stepUpToken: 'x' });
+    t('a phase sign with no hash is refused (400, naming the hash)', r.status === 400 && String(r.json?.message).includes('expectedHash'), `${r.status} ${short(r.json)}`);
+
+    // A stale preview must be refused BEFORE the one-time code is spent, so the same code still works.
+    const oneCode = await code(key);
+    r = await api(key, 'POST', `${base}/step-up`, { role: 'Prepared by', code: oneCode, expectedHash: 'f'.repeat(64) });
+    t('a phase step-up bound to a hash the phase does not have is refused (422, PHASE_CONTENT_CHANGED)',
+      r.status === 422 && r.json?.code === 'PHASE_CONTENT_CHANGED', `${r.status} ${short(r.json)}`);
+    r = await api(key, 'POST', `${base}/step-up`, { role: 'Prepared by', code: oneCode, expectedHash: pv.hash });
+    t('...and that refusal did not spend the code: the same code then works with the right hash', r.status < 300 && !!r.json?.stepUpToken, `${r.status} ${short(r.json)}`);
+    const staleToken = r.json?.stepUpToken;
+
+    // Somebody changes something the phase page shows (an 8 Angles comment) after the signer opened the preview.
+    const original = await phaseAngles();
+    const edited = original.map((a: any, i: number) => (i === 0 ? { ...a, comments: 'edited while the signer was reading' } : a));
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/phases/1/angles`, { angles: edited, expectedVersion: await version() });
+    t('another person edits an 8 Angles comment after the preview', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await api(key, 'POST', `${base}/sign`, { role: 'Prepared by', decision: 'Proceed', comments: 'checked', stepUpToken: staleToken, expectedHash: pv.hash });
+    t('signing with the old hash is refused (422, PHASE_CONTENT_CHANGED)', r.status === 422 && r.json?.code === 'PHASE_CONTENT_CHANGED', `${r.status} ${short(r.json)}`);
+    t('...and nothing was signed', !(await project()).project.phaseClosures[1].signOffs.some((x: any) => x.signedAt));
+    const pv3 = await phasePreviewOf(key, 1);
+    const angles3 = (pv3.sections ?? []).find((x: any) => x.title === '8 Angles coverage');
+    t('the new preview has a different hash and shows the edited comment', pv3.hash !== pv.hash && angles3?.rows?.some((x: any) => x.comments === 'edited while the signer was reading'), `${pv.hash.slice(0, 8)} -> ${pv3.hash.slice(0, 8)}`);
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/phases/1/angles`, { angles: original, expectedVersion: await version() });
+    t('the angle comment is put back', r.status < 300, `${r.status} ${short(r.json)}`);
+  }
+
   const originalBatch = (await project()).project.costing.batchSizeKg;
   r = await signPhase(1, 'Prepared by', async () => {
     // Somebody edits something unrelated (costing, Gate 5 data) after the signer entered the code.

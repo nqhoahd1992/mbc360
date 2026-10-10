@@ -714,6 +714,15 @@ export interface RegisterRowSignPreview {
   row: Record<string, string>;
 }
 
+// What a phase signature attests to, read before signing (everything the phase page shows for that
+// phase, as it is now) and the hash the signature is bound to.
+export interface PhaseSignPreview {
+  phase: number;
+  hash: string;
+  previewedAt: string;
+  sections: { title: string; columns: { key: string; label: string }[]; rows: Record<string, string>[] }[];
+}
+
 // The body of the refusal when a register's content changed between the preview and the submit.
 export interface RegisterContentChangedBody {
   code: 'REGISTER_CONTENT_CHANGED';

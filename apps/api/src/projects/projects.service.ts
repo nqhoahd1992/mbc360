@@ -77,6 +77,7 @@ import {
   gateEvidenceSnapshot,
   gateSnapshotSignedPart,
 } from '@mbc360/shared/utils/gateSnapshot';
+import { phaseSignContent } from '@mbc360/shared/utils/phaseSignContent';
 import { registerClosureContent, registerRowSignContent } from '@mbc360/shared/utils/registerClosureContent';
 import { supersessionGaps, versionMarkets } from '@mbc360/shared/utils/formulaLifecycle';
 import {
@@ -111,7 +112,7 @@ import {
   SCALE_UP_RISK_OPTIONS,
   isRegisterClosed,
 } from '@mbc360/shared/types';
-import type { GateSignOffRole, GateSigningPreview, NextActionStatus, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
+import type { GateSignOffRole, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
 import type {
   AngleRow,
   ChangeRecord,
@@ -391,8 +392,37 @@ export class ProjectsService {
 
   // Binds a step-up code/proof to the exact act — a code minted for one
   // sign-off can never be spent on another, even by the same user.
-  private signOffStepUpPurpose(id: string, phase: number, role: string): string {
-    return `sign_off:${id}:${phase}:${role}`;
+  // Bound to the content hash too, so a code entered for one version of the phase cannot sign another.
+  private signOffStepUpPurpose(id: string, phase: number, role: string, contentHash: string): string {
+    return `sign_off:${id}:${phase}:${role}:${contentHash}`;
+  }
+
+  private phaseContentHash(project: ProjectData, phase: number): string {
+    const content = phaseSignContent(project, phase);
+    if (!content) throw new BadRequestException(`Unknown phase ${phase}`);
+    return createHash('sha256').update(canonicalJson(content)).digest('hex');
+  }
+
+  // What the signer reads before signing a phase: everything the phase page shows for it, and the hash
+  // their signature is bound to. Read-only — nothing is written, and any signed-in user may read project data.
+  async previewPhaseSignOff(id: string, phase: number): Promise<PhaseSignPreview> {
+    const row = await this.loadOrThrow(this.prisma, id);
+    const project = toProjectData(row, [], await this.loadReference(this.prisma));
+    const content = phaseSignContent(project, phase);
+    if (!content) throw new BadRequestException(`Unknown phase ${phase}`);
+    return {
+      phase,
+      hash: this.phaseContentHash(project, phase),
+      previewedAt: new Date().toISOString(),
+      sections: content.sections,
+    };
+  }
+
+  private phaseContentChanged(): UnprocessableEntityException {
+    return new UnprocessableEntityException({
+      code: 'PHASE_CONTENT_CHANGED',
+      message: 'This phase changed after you opened the signing preview — review it again before signing.',
+    });
   }
 
   // A4 / F6: only a role granted `gate:<id>|decide` may record that gate's
@@ -1105,6 +1135,7 @@ export class ProjectsService {
     phase: number,
     role: SignOff['role'],
     code: string,
+    expectedHash: string | undefined,
   ): Promise<{ stepUpToken: string }> {
     const closureId = await this.phaseClosureId(this.prisma, id, phase);
     const existing = await this.prisma.signOff.findFirst({ where: { phaseClosureId: closureId, role } });
@@ -1119,8 +1150,12 @@ export class ProjectsService {
     if (!signature) {
       throw new BadRequestException('Save a signature in My Account before attaching one to a sign-off');
     }
+    if (!expectedHash) throw new BadRequestException('expectedHash is required — open the signing preview first');
+    // Refused BEFORE the code is spent: a stale preview must not burn the signer's one-time code.
+    const current = toProjectData(await this.loadOrThrow(this.prisma, id), [], await this.loadReference(this.prisma));
+    if (this.phaseContentHash(current, phase) !== expectedHash) throw this.phaseContentChanged();
     await this.totp.verifyForStepUp(user.id, code);
-    const purpose = this.signOffStepUpPurpose(id, phase, role);
+    const purpose = this.signOffStepUpPurpose(id, phase, role, expectedHash);
     const proof = await this.prisma.stepUpProof.create({
       data: { userId: user.id, purpose, channel: 'totp' },
     });
@@ -1136,7 +1171,7 @@ export class ProjectsService {
     id: string,
     phase: number,
     role: SignOff['role'],
-    input: { decision?: string; comments?: string; stepUpToken?: string },
+    input: { decision?: string; comments?: string; stepUpToken?: string; expectedHash?: string },
   ): Promise<ProjectEnvelope> {
     // No project-wide version: whether the phase may be signed is decided from the data inside the
     // locked transaction (closure conditions, B3), so an edit elsewhere in the project must not
@@ -1206,6 +1241,14 @@ export class ProjectsService {
         throw new BadRequestException(`A comment is required when the decision is "${decision}"`);
       }
 
+      // The signer signs what they were SHOWN (project owner, 2026-10-10: the data on the phase's own
+      // screen is the scope). Compared here, inside the row-locked transaction, so the content cannot
+      // change between this check and the write.
+      if (!input.expectedHash) {
+        throw new BadRequestException('expectedHash is required — open the signing preview first');
+      }
+      if (this.phaseContentHash(project, phase) !== input.expectedHash) throw this.phaseContentChanged();
+
       // MANDATORY since 2026-08-22 (project owner): every sign-off carries the
       // signer's saved signature and a fresh authenticator code. It was opt-in
       // for one day, which left a weaker no-image path in place and meant the
@@ -1229,7 +1272,7 @@ export class ProjectsService {
         } catch {
           throw new BadRequestException('Verification expired or invalid — enter a new code');
         }
-        const expectedPurpose = this.signOffStepUpPurpose(id, phase, role);
+        const expectedPurpose = this.signOffStepUpPurpose(id, phase, role, input.expectedHash);
         if (payload.typ !== 'sign_off_step_up' || payload.sub !== user.id || payload.purpose !== expectedPurpose) {
           throw new BadRequestException('Verification does not match this sign-off');
         }

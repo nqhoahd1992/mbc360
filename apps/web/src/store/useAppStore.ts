@@ -159,7 +159,8 @@ interface AppState {
     // signature, verified by a fresh authenticator code (project owner,
     // 2026-08-22)
     // (2026-08-21) for attaching a saved signature — see SignOffBlock.tsx.
-    input: { decision?: string; comments?: string; stepUpToken: string },
+    // expectedHash: what the signer was shown in the preview (2026-10-10).
+    input: { decision?: string; comments?: string; stepUpToken: string; expectedHash: string },
   ) => void;
   withdrawSignOff: (id: string, phase: number, role: SignOff['role'], reason: string) => void;
   setPostLaunchReviews: (id: string, reviews: ProjectData['postLaunchReviews']) => void;
