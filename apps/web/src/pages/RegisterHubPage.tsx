@@ -11,7 +11,7 @@ import {
 } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
 import { isGateRefLocked, gateRefHighestGateId } from '@mbc360/shared/utils/gateProgress';
-import { isRegisterClosed } from '@mbc360/shared/types';
+import { hasStandingClosureSignature, isRegisterClosed } from '@mbc360/shared/types';
 import DynamicTable from '../components/DynamicTable';
 import VulnerableUserAssessmentTable from '../components/VulnerableUserAssessmentTable';
 import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
@@ -139,10 +139,15 @@ export default function RegisterHubPage() {
     // closeable at all — the same universe isGateRefLocked already applies to.
     const closed = isRegisterClosed(project.registerClosures[registerKey]);
     const closeable = !!gateRefHighestGateId(config.gate);
-    const locked = isGateRefLocked(project, config.gate) || closed;
+    // ANY closing signature that still counts locks the register: the two signers must attest to the same
+    // content, so it cannot move under the first one.
+    const standing = hasStandingClosureSignature(project.registerClosures[registerKey]);
+    const locked = isGateRefLocked(project, config.gate) || standing;
     const lockedReason = closed
       ? 'Closed — both Review owner and Co-sign have signed. To correct it, withdraw a signature in the Register Closing card above, or Backtrack past the gate that depends on it.'
-      : undefined; // undefined falls back to the gate-passed message, the other lock reason
+      : standing
+        ? 'A closing signature stands, so this register is read-only — both signers must attest to the same content. To change it, withdraw that signature in the Register Closing card (with a reason).'
+        : undefined; // undefined falls back to the gate-passed message, the other lock reason
 
     // Redesigned 2026-10-02 (wireframe option A): its own page layout — header,
     // progress, decision table + detail drawer, closing at the bottom. The pilot

@@ -445,6 +445,13 @@ export function isRegisterClosureSigned(signOff: RegisterClosureSignOff | undefi
   return !!(signOff?.signedByUserId && signOff.signedAt) && !signOff?.stale;
 }
 
+// ANY closing signature that still counts. While one stands, the register is read-only: both signers must
+// have attested to the same content, so it cannot move under the first signature (project owner,
+// 2026-10-11). Withdrawing the signature is how it is opened again.
+export function hasStandingClosureSignature(state: RegisterClosureState | undefined): boolean {
+  return !!state?.signOffs.some((s) => isRegisterClosureSigned(s));
+}
+
 // Closed = BOTH roles signed. A register with no RegisterClosureState at all
 // (not yet scaffolded, or a register with no specific gate — see
 // gateRefHighestGateId) is never closed.

@@ -80,6 +80,7 @@ import {
 import { phaseSignContent } from '@mbc360/shared/utils/phaseSignContent';
 import { registerClosureContent, registerRowSignContent } from '@mbc360/shared/utils/registerClosureContent';
 import { registerContentHashOf, registerRowContentHashOf, rowHashFromCells } from './content-hash';
+import { registerRowCells } from '@mbc360/shared/utils/registerClosureContent';
 import { supersessionGaps, versionMarkets } from '@mbc360/shared/utils/formulaLifecycle';
 import {
   CLAIM_EXEMPTION_CAPABILITY,
@@ -92,6 +93,7 @@ import {
   gateBlockers,
   gateIndex,
   gateRefHighestGateId,
+  gateSignOffStaleChanges,
   hardGateBlockers,
   isGatePassed,
   isGateRefLocked,
@@ -111,7 +113,7 @@ import {
   RISK_LEVELS,
   NEXT_ACTION_TERMINAL_STATUSES,
   SCALE_UP_RISK_OPTIONS,
-  isRegisterClosed,
+  hasStandingClosureSignature,
 } from '@mbc360/shared/types';
 import type { GateSignOffRole, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
 import type {
@@ -753,6 +755,59 @@ export class ProjectsService {
     return this.envelope(await this.loadOrThrow(this.prisma, id));
   }
 
+  // ----------------------------------------------- a standing signature locks what it vouches for ----
+  //
+  // Prepared, Reviewed and Approved must attest to ONE content. So while any of them stands on a gate that
+  // has not passed yet, the data that gate is accountable for cannot change (project owner, 2026-10-11).
+  // Data that belongs to LATER gates stays open to contribution — the gate's snapshot only counts what the
+  // gate owns (SW-5) — and so does the state of an accepted condition (SW-19). Withdrawing the signature
+  // is how the content is opened again.
+  //
+  // One central check rather than a guard in every write path: whatever the write was, compare what each
+  // standing signature was given against what it would now be given, and refuse a write that CHANGES it.
+  // Changes that were already there before this write do not count against it.
+  //
+  // A passed gate is skipped: its evidence is already frozen by the pass lock, and its signatures are
+  // cleared in the same transaction if the gate is reopened.
+  private standingGateSignatures(project: ProjectData): { gateId: string; market?: string; role: GateSignOffRole; before: Set<string> }[] {
+    const lanes: { gateId: string; market?: string; role: GateSignOffRole; before: Set<string> }[] = [];
+    const passed = new Map<string, boolean>();
+    for (const s of project.gateSignOffs) {
+      if (!s.signedAt) continue;
+      if (!passed.has(s.gateId)) passed.set(s.gateId, isGatePassed(project, s.gateId));
+      if (passed.get(s.gateId)) continue;
+      lanes.push({
+        gateId: s.gateId,
+        market: s.market ?? undefined,
+        role: s.role as GateSignOffRole,
+        before: new Set(gateSignOffStaleChanges(project, s.gateId, s.market ?? undefined, s.role as GateSignOffRole)),
+      });
+    }
+    return lanes;
+  }
+
+  private async assertSignedContentUnchanged(
+    tx: Prisma.TransactionClient,
+    id: string,
+    lanes: { gateId: string; market?: string; role: GateSignOffRole; before: Set<string> }[],
+  ): Promise<void> {
+    if (lanes.length === 0) return;
+    const after = toProjectData(await this.loadOrThrow(tx, id), [], await this.loadReference(tx));
+    for (const lane of lanes) {
+      const stillStands = after.gateSignOffs.some(
+        (s) => s.gateId === lane.gateId && (s.market ?? undefined) === lane.market && s.role === lane.role && !!s.signedAt,
+      );
+      if (!stillStands) continue; // this very write cleared it (a withdrawal, a Backtrack, a new formula version)
+      const introduced = gateSignOffStaleChanges(after, lane.gateId, lane.market, lane.role).filter((c) => !lane.before.has(c));
+      if (introduced.length > 0) {
+        throw new ForbiddenException(
+          `Gate ${lane.gateId}${lane.market ? ` (${lane.market})` : ''} has a "${lane.role}" signature standing, so what it signed is locked: ` +
+            `${introduced.join('; ')}. Withdraw the signature (with a reason) to change it.`,
+        );
+      }
+    }
+  }
+
   // ------------------------------------------------- section mutations ----
   //
   // M3 Phase 2-6 (2026-07-26): every remaining `ProjectData` field moves off the
@@ -781,7 +836,14 @@ export class ProjectsService {
   ): Promise<ProjectEnvelope> {
     await this.prisma.$transaction(async (tx) => {
       const row = await this.loadVersionLocked(tx, id, expectedVersion);
-      const after = await write(tx, row, toProjectData(row, [], await this.loadReference(tx)));
+      const project = toProjectData(row, [], await this.loadReference(tx));
+      // The signing acts and a new formula version do not change what a signature vouches for, or clear it
+      // themselves; checking them would only cost a second load.
+      const lanes = /^(gate_sign_off|sign_off|register_close|register_signature|formula_version)\./.test(action)
+        ? []
+        : this.standingGateSignatures(project);
+      const after = await write(tx, row, project);
+      await this.assertSignedContentUnchanged(tx, id, lanes);
       await this.bumpVersion(tx, id);
       await this.audit.record(
         {
@@ -2122,9 +2184,11 @@ export class ProjectsService {
       // not a consequence of it having passed. Both checks stay — closing
       // does not replace the gate-based lock, it adds an earlier trigger for
       // the same read-only state.
-      if (isRegisterClosed(project.registerClosures[registerKey])) {
+      // ANY closing signature that still counts locks the register, not only both: the two signers must
+      // attest to the same content, so it cannot move under the first one (project owner, 2026-10-11).
+      if (hasStandingClosureSignature(project.registerClosures[registerKey])) {
         throw new ForbiddenException(
-          `Register "${registerKey}" is closed — it is read-only until reopened (withdraw a closing signature, or Backtrack past its gate)`,
+          `Register "${registerKey}" has a closing signature standing — it is read-only until that signature is withdrawn (with a reason), or until a Backtrack past its gate`,
         );
       }
       // SW-5 (docs/rules/Software_Rules.md): a gate that has passed freezes the cells
@@ -2375,6 +2439,18 @@ export class ProjectsService {
           );
         }
         if (index >= out.length) continue;
+        // A signature that still counts locks the row it vouches for: whoever signed attested to THESE cells
+        // (project owner, 2026-10-11). Changing one means withdrawing the signature first. A stale signature
+        // (the row was already out of step with it, e.g. an out-of-band edit) does not lock anything.
+        if (prev[keys.userId] && !prev[keys.stale]) {
+          const was = registerRowCells(config.key, prev, col.key);
+          const now = registerRowCells(config.key, out[index], col.key);
+          if (JSON.stringify(was) !== JSON.stringify(now)) {
+            throw new ForbiddenException(
+              `Row ${index + 1} carries a signature (${col.label}), so what it signed is locked — withdraw the signature (with a reason) to change it`,
+            );
+          }
+        }
         for (const key of Object.values(keys)) {
           if (prev[key] === undefined) delete out[index][key];
           else out[index][key] = prev[key];
@@ -4600,6 +4676,7 @@ export class ProjectsService {
     const projectId = await this.prisma.$transaction(async (tx) => {
       const row = await this.loadVersionLocked(tx, id, expectedVersion);
       const project = toProjectData(row, [], await this.loadReference(tx));
+      const signedLanes = this.standingGateSignatures(project);
       const existing = project.gates.find((g) => g.gateId === gateId);
       if (!existing) throw new NotFoundException(`Gate ${gateId} not found on project ${id}`);
       // B4: only the single gate currently open for work may be edited directly.
@@ -4636,6 +4713,7 @@ export class ProjectsService {
         where: { projectId_gateId: { projectId: id, gateId } },
         data: this.gateWriteData(next),
       });
+      await this.assertSignedContentUnchanged(tx, id, signedLanes);
       await this.bumpVersion(tx, id);
       await this.audit.record(
         {
@@ -4673,6 +4751,7 @@ export class ProjectsService {
     await this.prisma.$transaction(async (tx) => {
       const row = await this.loadVersionLocked(tx, id, expectedVersion);
       const project = toProjectData(row, [], await this.loadReference(tx));
+      const signedLanes = this.standingGateSignatures(project);
       const openChanges = await this.openChangeGateNumbers(tx, id);
       let wrote = false;
 
@@ -4722,7 +4801,10 @@ export class ProjectsService {
         );
         wrote = true;
       }
-      if (wrote) await this.bumpVersion(tx, id);
+      if (wrote) {
+        await this.assertSignedContentUnchanged(tx, id, signedLanes);
+        await this.bumpVersion(tx, id);
+      }
     });
     return this.envelope(await this.loadOrThrow(this.prisma, id));
   }

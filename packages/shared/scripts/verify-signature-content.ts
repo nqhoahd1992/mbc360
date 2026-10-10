@@ -5,6 +5,8 @@
 // Run: npm run verify:signature-content
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
 import { phaseSignContent } from '../src/utils/phaseSignContent';
+import { gateEvidenceSnapshot } from '../src/utils/gateSnapshot';
+import { gateSignOffStaleChanges } from '../src/utils/gateProgress';
 import { registerRowCells } from '../src/utils/registerClosureContent';
 import type { ProjectData } from '../src/types';
 
@@ -72,6 +74,63 @@ const clone = (p: ProjectData): ProjectData => JSON.parse(JSON.stringify(p));
   const edited = registerRowCells('formulationChangeRegister', { ...row, changeTitle: 'Reformulated again' }, 'npSignOff');
   t('editing a real column does change the content', JSON.stringify(edited) !== JSON.stringify(withTick));
   t('an unknown register has no row content', registerRowCells('noSuchRegister', row, 'npSignOff') === undefined);
+}
+
+// --- what a standing gate signature locks, and what it leaves open -------------------------------------
+// The API refuses a write that introduces a change `gateSignOffStaleChanges` reports. So the rule "the data
+// the gate owns is locked, an accepted condition may be carried out, later gates may still contribute" is
+// exactly what that function says — pinned here on a hand-built signed gate.
+{
+  const GATE = 'SG08';
+  const signed = (): ProjectData => {
+    const p = fresh();
+    p.nextActions = [{ id: 'cond-1', gateId: GATE, description: 'carry out the accepted condition', owner: 'A', status: 'Open', priority: 'Medium' }] as never;
+    p.gateSignOffs = [
+      { gateId: GATE, role: 'Prepared by', signedByUserId: 'u1', signedAt: '2026-01-01T00:00:00Z', snapshot: gateEvidenceSnapshot(p, GATE) } as never,
+    ];
+    return p;
+  };
+  const changes = (p: ProjectData) => gateSignOffStaleChanges(p, GATE, undefined, 'Prepared by');
+
+  t('an untouched signed gate reports no change', changes(signed()).length === 0);
+
+  const progressed = signed();
+  progressed.nextActions[0].status = 'In Progress' as never;
+  progressed.nextActions[0].owner = 'B';
+  t('carrying out an accepted condition (status, owner) is allowed under a standing signature', changes(progressed).length === 0, JSON.stringify(changes(progressed)));
+
+  const closed = signed();
+  closed.nextActions[0].status = 'Closed' as never;
+  t('closing an accepted condition is allowed under a standing signature', changes(closed).length === 0, JSON.stringify(changes(closed)));
+
+  const added = signed();
+  added.nextActions.push({ id: 'cond-2', gateId: GATE, description: 'a brand new condition', status: 'Open', priority: 'Medium' } as never);
+  t('adding a NEW open condition is a change to what was signed (locked)', changes(added).length > 0);
+
+  const reworded = signed();
+  reworded.nextActions[0].description = 'quietly reworded';
+  t('rewording an accepted condition is a change to what was signed (locked)', changes(reworded).length > 0);
+
+  const linkEdit = signed();
+  linkEdit.gates.find((g) => g.gateId === GATE)!.evidenceLink = 'https://example.com/changed';
+  t("changing the gate's evidence link is a change to what was signed (locked)", changes(linkEdit).length > 0);
+
+  const statusEdit = signed();
+  statusEdit.gates.find((g) => g.gateId === GATE)!.status = 'In Progress';
+  t("changing the gate's stage status is a change to what was signed (locked)", changes(statusEdit).length > 0);
+
+  // The signed content is the SME's list for question 29(1): status, evidence, links, actions. A note, the
+  // owner and the due date are how the gate is run, not evidence it is signed on.
+  const adminEdit = signed();
+  const record = adminEdit.gates.find((g) => g.gateId === GATE)!;
+  record.notes = 'a note added after signing';
+  record.owner = 'Somebody else';
+  record.dueDate = '2030-01-01';
+  t('the gate notes, owner and due date are not part of what was signed (they stay editable)', changes(adminEdit).length === 0, JSON.stringify(changes(adminEdit)));
+
+  const laterGate = signed();
+  laterGate.nextActions.push({ id: 'later-1', gateId: 'SG10', description: 'work on a later gate', status: 'Open', priority: 'Medium' } as never);
+  t('a Next Action on a LATER gate is not part of what this gate signed (later gates still contribute)', changes(laterGate).length === 0, JSON.stringify(changes(laterGate)));
 }
 
 console.log(bad === 0 ? '\nAll cases passed.' : `\n${bad} case(s) FAILED.`);

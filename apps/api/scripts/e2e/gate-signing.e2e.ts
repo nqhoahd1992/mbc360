@@ -305,7 +305,7 @@ export async function run(base: string, db: Client): Promise<number> {
       t('signing with the hash of what was just reviewed succeeds', r.status < 300, `${r.status} ${short(r.json)}`);
       t('...and the signature is recorded', await signed());
 
-      // ---- a closing signature stops counting when the register changes after it was signed -------------
+      // ---- while a closing signature stands the register is LOCKED; stale only catches what got past that ----
       {
         const closureRow = async () =>
           ((await project()).project.registerClosures[registerKey]?.signOffs ?? []).find((x: any) => x.role === 'Review owner');
@@ -317,13 +317,24 @@ export async function run(base: string, db: Client): Promise<number> {
               [PROJECT, registerKey],
             )
           ).rows[0]?.contentHash ?? null;
+        // A change nobody can make through the API (somebody with database access, a bug, an old import):
+        // the only way a signed register can now differ from what was signed.
+        const outOfBandEdit = async (text: string) =>
+          db.query(
+            `UPDATE register_rows SET data = jsonb_set(data, ARRAY[$3], to_jsonb($4::text))
+              WHERE id = (SELECT id FROM register_rows WHERE "projectId" = $1 AND "registerKey" = $2 ORDER BY "rowOrder" LIMIT 1)`,
+            [PROJECT, registerKey, textColumn, text],
+          );
         t('right after signing, the signature stored the hash of what was shown and is not stale',
           (await dbHash()) === pv3.hash && !(await closureRow())?.stale, `${await dbHash()} ${short(await closureRow())}`);
         r = await addRow('changed AFTER the Review owner signed');
-        t('the register is edited after one of the two signatures (it is not closed yet, so it stays editable)', r.status < 300, `${r.status} ${short(r.json)}`);
-        t('the Review owner signature is now stale', (await closureRow())?.stale === true, short(await closureRow()));
-        const stored = await dbHash();
-        t('...and the stale flag was computed, not stored: the stored hash is still the one that was signed', stored === pv3.hash, String(stored));
+        t('while ONE of the two closing signatures stands, the register is read-only (403)',
+          r.status === 403 && String(r.json?.message).includes('closing signature standing'), `${r.status} ${short(r.json)}`);
+        t('...and the signature is still current', !(await closureRow())?.stale, short(await closureRow()));
+
+        await outOfBandEdit('changed out of band, after the Review owner signed');
+        t('a change that got past the lock (out of band) makes the signature stale', (await closureRow())?.stale === true, short(await closureRow()));
+        t('...the stale flag was computed, not stored: the stored hash is still the one that was signed', (await dbHash()) === pv3.hash, String(await dbHash()));
 
         const pv4 = (await api(signer, 'GET', `${base}/preview`)).json;
         const su4 = await api(signer, 'POST', `${base}/step-up`, { role: 'Review owner', code: await code(signer), expectedHash: pv4.hash });
@@ -337,8 +348,8 @@ export async function run(base: string, db: Client): Promise<number> {
             WHERE role = 'Review owner' AND "closureId" IN (SELECT id FROM register_closures WHERE "projectId" = $1 AND "registerKey" = $2)`,
           [PROJECT, registerKey],
         );
-        r = await addRow('changed again, after a signature that has no stored hash');
-        t('a signature recorded without a hash is never marked stale', r.status < 300 && !(await closureRow())?.stale, short(await closureRow()));
+        await outOfBandEdit('changed out of band again, after a signature that has no stored hash');
+        t('a signature recorded without a hash is never marked stale', !(await closureRow())?.stale, short(await closureRow()));
       }
       // Put a hash back, so that "withdrawing clears it" below proves something (the legacy case left it NULL).
       await db.query(
@@ -422,12 +433,17 @@ export async function run(base: string, db: Client): Promise<number> {
       t('signing with the hash of what was just reviewed succeeds', r.status < 300, `${r.status} ${short(r.json)}`);
       t('...and the signature is recorded', await isSigned());
 
-      // ---- a cell signature stops counting when its row changes after it was signed ---------------------
+      // ---- while a cell signature stands its row is LOCKED; stale only catches what got past that --------
       {
         const dbRow = async (): Promise<Record<string, unknown>> =>
           (
             await db.query(`SELECT data FROM register_rows WHERE "projectId" = $1 AND "registerKey" = $2 AND "rowOrder" = $3`, [PROJECT, registerKey, index])
           ).rows[0]?.data ?? {};
+        const outOfBandEdit = async (text: string) =>
+          db.query(
+            `UPDATE register_rows SET data = jsonb_set(data, ARRAY[$4], to_jsonb($5::text)) WHERE "projectId" = $1 AND "registerKey" = $2 AND "rowOrder" = $3`,
+            [PROJECT, registerKey, index, textColumn, text],
+          );
         const fresh = (await regRows())[index];
         t('right after signing the row is not stale and the derived approved tick is on (the tick is not part of what was signed)',
           !fresh['npSignOff__stale'] && fresh['approvedByNp'] === true, short(fresh));
@@ -436,19 +452,25 @@ export async function run(base: string, db: Client): Promise<number> {
         const cur2 = await regRows();
         cur2[index] = { ...cur2[index], [textColumn]: 'e2e text changed AFTER it was signed', npSignOff__hash: 'forged', npSignOff__stale: false };
         r = await putRows(cur2.map((x) => ({ ...x })));
-        t('the row is edited after it was signed (the client also tries to forge the hash and the stale flag)', r.status < 300, `${r.status} ${short(r.json)}`);
-        const afterEdit = (await regRows())[index];
-        t('the signature is now stale and the approved tick is off', afterEdit['npSignOff__stale'] === true && afterEdit['approvedByNp'] === false, short(afterEdit));
-        const stored = await dbRow();
-        t('...the forged hash was ignored, and the stale flag was never stored', stored['npSignOff__hash'] === pv3.hash && !('npSignOff__stale' in stored), short(stored));
+        t('a signed row cannot be edited (403), and the client forging the hash and the stale flag changes nothing',
+          r.status === 403 && String(r.json?.message).includes('locked'), `${r.status} ${short(r.json)}`);
+        const kept = await dbRow();
+        t('...the stored row, its hash and its approved tick are untouched',
+          kept[textColumn] === pv3.row?.[textColumn] && kept['npSignOff__hash'] === pv3.hash && kept['approvedByNp'] === true, short(kept));
+        t('a different row of the same register can still be edited (only the signed row is locked)', (await regRows()).length >= 1);
 
-        // Edited AGAIN while stale: this time the committed copy the server reads already carries the computed
-        // flag, which is exactly how it could be written back by mistake.
+        await outOfBandEdit('e2e text changed out of band, after it was signed');
+        const afterEdit = (await regRows())[index];
+        t('a change that got past the lock (out of band) makes the signature stale and turns the approved tick off',
+          afterEdit['npSignOff__stale'] === true && afterEdit['approvedByNp'] === false, short(afterEdit));
+        // Edited through the API while stale: a stale signature locks nothing, and the committed copy the
+        // server reads already carries the computed flag, which is exactly how it could be written back.
         const cur2b = await regRows();
-        cur2b[index] = { ...cur2b[index], [textColumn]: 'e2e text changed a second time, while the signature was already stale' };
+        cur2b[index] = { ...cur2b[index], [textColumn]: 'e2e text changed again through the API, while the signature was already stale' };
         r = await putRows(cur2b.map((x) => ({ ...x })));
         const storedAgain = await dbRow();
-        t('editing it again while it is stale still never stores the flag', r.status < 300 && !('npSignOff__stale' in storedAgain) && storedAgain['npSignOff__hash'] === pv3.hash, short(storedAgain));
+        t('a stale signature does not lock the row, and the flag is still never stored',
+          r.status < 300 && !('npSignOff__stale' in storedAgain) && storedAgain['npSignOff__hash'] === pv3.hash, `${r.status} ${short(storedAgain)}`);
 
         const pv4 = (await api(signer, 'GET', `${base}/preview?column=${column}`)).json;
         const su4 = await api(signer, 'POST', `${base}/step-up`, { column, code: await code(signer), expectedHash: pv4.hash });
@@ -463,11 +485,9 @@ export async function run(base: string, db: Client): Promise<number> {
           `UPDATE register_rows SET data = data - 'npSignOff__hash' WHERE "projectId" = $1 AND "registerKey" = $2 AND "rowOrder" = $3`,
           [PROJECT, registerKey, index],
         );
-        const cur3 = await regRows();
-        cur3[index] = { ...cur3[index], [textColumn]: 'e2e text changed once more, after a signature with no stored hash' };
-        r = await putRows(cur3.map((x) => ({ ...x })));
+        await outOfBandEdit('e2e text changed out of band once more, after a signature with no stored hash');
         const legacy = (await regRows())[index];
-        t('a signature recorded without a hash is never marked stale', r.status < 300 && !legacy['npSignOff__stale'] && legacy['approvedByNp'] === true, short(legacy));
+        t('a signature recorded without a hash is never marked stale', !legacy['npSignOff__stale'] && legacy['approvedByNp'] === true, short(legacy));
       }
 
       // Clean up: withdraw, then remove the row so later steps see the register as it was.
@@ -525,15 +545,20 @@ export async function run(base: string, db: Client): Promise<number> {
     patch: { initialScope: 'A different scope after signing' },
     expectedVersion: await version(),
   });
-  t('editing initialScope (Gate 1 data) is accepted before the gate has passed', r.status < 300, short(r.json));
-  const s1 = await stale('SG01', 'Prepared by');
-  t('...and it makes the Prepared signature stale, naming what changed', s1.some((c) => c.startsWith('Project identity')), short(s1));
+  t('editing initialScope (Gate 1 data) while the Prepared signature stands is refused (403), naming what is locked',
+    r.status === 403 && String(r.json?.message).includes('Project identity') && String(r.json?.message).includes('locked'), `${r.status} ${short(r.json)}`);
+  t('...and the signature is still current', (await stale('SG01', 'Prepared by')).length === 0, short(await stale('SG01', 'Prepared by')));
   r = await api(signerKey('SG01', 'Prepared by'), 'POST', `/projects/${PROJECT}/gates/SG01/sign-offs/withdraw`, {
     role: 'Prepared by',
     reason: 'scope changed',
     expectedVersion: await version(),
   });
-  t('Prepared withdraws the stale signature', r.status < 300, short(r.json));
+  t('Prepared withdraws the signature (the way to change what was signed)', r.status < 300, short(r.json));
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/identity`, {
+    patch: { initialScope: 'A different scope after signing' },
+    expectedVersion: await version(),
+  });
+  t('...after which the same edit is accepted', r.status < 300, short(r.json));
   for (const role of ROLES) {
     r = await sign('SG01', role);
     t(`${role} signs SG01`, r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
@@ -628,13 +653,9 @@ export async function run(base: string, db: Client): Promise<number> {
     rows[0].approvedWording = 'Hydrates skin deeply';
     return rows;
   });
-  t('editing the Gate 3 column (approvedWording) is accepted while SG03 has not passed', r.status < 300, short(r.json));
-  t('...and it makes the signature stale', (await stale('SG03', 'Prepared by')).some((c) => c.startsWith('Register changed')), short(await stale('SG03', 'Prepared by')));
-  await putClaims((rows) => {
-    rows[0].approvedWording = 'Hydrates skin';
-    return rows;
-  });
-  t('putting the wording back makes the signature current again', (await stale('SG03', 'Prepared by')).length === 0, short(await stale('SG03', 'Prepared by')));
+  t('editing the Gate 3 column (approvedWording) while the Prepared signature stands is refused (403)',
+    r.status === 403 && String(r.json?.message).includes('Register changed'), `${r.status} ${short(r.json)}`);
+  t('...and the signature is still current', (await stale('SG03', 'Prepared by')).length === 0, short(await stale('SG03', 'Prepared by')));
   for (const role of ['Reviewed by', 'Approved by'] as const) {
     r = await sign('SG03', role);
     t(`${role} signs SG03`, r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
@@ -856,15 +877,11 @@ export async function run(base: string, db: Client): Promise<number> {
     )
   ).rows[0];
   t('the SG05 snapshot records the BOM and costing as its own accountable data', sg05 && sg05.bom === true && sg05.costing === true, short(sg05));
-  await putBom(90);
-  t('changing the BOM makes the SG05 Prepared signature stale, naming it', (await stale('SG05', 'Prepared by')).includes('Formula BOM changed'), short(await stale('SG05', 'Prepared by')));
-  await putBom(100);
-  t('putting the BOM back makes it current again', (await stale('SG05', 'Prepared by')).length === 0, short(await stale('SG05', 'Prepared by')));
+  r = await putBom(90);
+  t('changing the BOM (Gate 5 data) while the Prepared signature stands is refused (403)', r.status === 403 && String(r.json?.message).includes('Formula BOM'), `${r.status} ${short(r.json)}`);
   r = await api('admin', 'PUT', `/projects/${PROJECT}/costing`, { patch: { batchSizeKg: 250 }, expectedVersion: await version() });
-  t('a costing change is accepted before SG05 passes', r.status < 300, `${r.status} ${short(r.json)}`);
-  t('...and it makes the signature stale', (await stale('SG05', 'Prepared by')).some((c) => c.startsWith('Costing')), short(await stale('SG05', 'Prepared by')));
-  await api('admin', 'PUT', `/projects/${PROJECT}/costing`, { patch: { batchSizeKg: 100 }, expectedVersion: await version() });
-  t('restoring the costing makes it current again', (await stale('SG05', 'Prepared by')).length === 0, short(await stale('SG05', 'Prepared by')));
+  t('...and so is a costing change (403)', r.status === 403 && String(r.json?.message).includes('Costing'), `${r.status} ${short(r.json)}`);
+  t('...and the signature is still current', (await stale('SG05', 'Prepared by')).length === 0, short(await stale('SG05', 'Prepared by')));
   for (const role of ['Reviewed by', 'Approved by'] as const) {
     r = await sign('SG05', role);
     t(`${role} signs SG05`, r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
@@ -940,10 +957,9 @@ export async function run(base: string, db: Client): Promise<number> {
   t('...for the shared watch-list column it owns (productStatus)', sg07 && sg07.watch_status === true, short(sg07));
   t('...and for the Gate 4 watch-list column (reviewerAssessment): Gate 7 approves Gate 4 data as well', sg07 && sg07.watch_review === true, short(sg07));
   r = await putWatch({ productStatus: 'Present within restriction' });
-  t('changing productStatus (Gate 7 data) before SG07 passes is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
-  t('...and it makes the SG07 Prepared signature stale', (await stale('SG07', 'Prepared by')).some((c) => c.startsWith('Register changed')), short(await stale('SG07', 'Prepared by')));
-  await putWatch({ productStatus: 'Not present - evidence linked' });
-  t('putting it back makes the signature current again', (await stale('SG07', 'Prepared by')).length === 0, short(await stale('SG07', 'Prepared by')));
+  t('changing productStatus (Gate 7 data) while the Prepared signature stands is refused (403)',
+    r.status === 403 && String(r.json?.message).includes('Register changed'), `${r.status} ${short(r.json)}`);
+  t('...and the SG07 signature is still current', (await stale('SG07', 'Prepared by')).length === 0, short(await stale('SG07', 'Prepared by')));
   t('the SG07 registers are closed now that SG07 is about to pass', (await closeRegistersOf(['SG07'])) > 0);
   for (const role of ['Reviewed by', 'Approved by'] as const) {
     r = await sign('SG07', role);
@@ -975,10 +991,10 @@ export async function run(base: string, db: Client): Promise<number> {
   await complete('SG08');
   r = await sign('SG08', 'Prepared by');
   t('Prepared signs SG08', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
-  await putAssess({ humanStudyPlanned: 'Undecided' });
-  t('changing the assessment makes the SG08 signature stale, naming it', (await stale('SG08', 'Prepared by')).some((c) => c.startsWith('Assessment: human study')), short(await stale('SG08', 'Prepared by')));
-  await putAssess({ humanStudyPlanned: 'No' });
-  t('putting it back makes the signature current again', (await stale('SG08', 'Prepared by')).length === 0, short(await stale('SG08', 'Prepared by')));
+  r = await putAssess({ humanStudyPlanned: 'Undecided' });
+  t('changing the assessment (Gate 8 data) while the Prepared signature stands is refused (403)',
+    r.status === 403 && String(r.json?.message).includes('Assessment: human study'), `${r.status} ${short(r.json)}`);
+  t('...and the SG08 signature is still current', (await stale('SG08', 'Prepared by')).length === 0, short(await stale('SG08', 'Prepared by')));
   t('the SG08 registers are closed now that SG08 is about to pass', (await closeRegistersOf(['SG08'])) >= 0);
   for (const role of ['Reviewed by', 'Approved by'] as const) {
     r = await sign('SG08', role);
@@ -1005,9 +1021,10 @@ export async function run(base: string, db: Client): Promise<number> {
     )
   ).rows[0];
   t('the SG09 snapshot is accountable for the formula properties (Gate 5 owns them) and for its own scale-up assessment', sg09 && sg09.fp === true && sg09.scale === true, short(sg09));
-  await putAssess({ scaleUpRiskIdentified: 'Pending assessment' });
-  t('changing the scale-up assessment makes the SG09 signature stale', (await stale('SG09', 'Prepared by')).some((c) => c.startsWith('Assessment: scale-up')), short(await stale('SG09', 'Prepared by')));
-  await putAssess({ scaleUpRiskIdentified: 'No' });
+  r = await putAssess({ scaleUpRiskIdentified: 'Pending assessment' });
+  t('changing the scale-up assessment (Gate 9 data) while the Prepared signature stands is refused (403)',
+    r.status === 403 && String(r.json?.message).includes('Assessment: scale-up'), `${r.status} ${short(r.json)}`);
+  t('...and the SG09 signature is still current', (await stale('SG09', 'Prepared by')).length === 0, short(await stale('SG09', 'Prepared by')));
   r = await api('admin', 'PUT', `/projects/${PROJECT}/formula-properties`, { patch: { microRationale: 'changed late' }, expectedVersion: await version() });
   t('the formula properties (Gate 5 data) are read-only now that SG05 has passed (403)', r.status === 403, `${r.status} ${short(r.json)}`);
   t('the SG09 registers are closed now that SG09 is about to pass', (await closeRegistersOf(['SG09'])) >= 0);

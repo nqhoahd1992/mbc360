@@ -3,7 +3,7 @@ import { Alert, Button, Card, Input, Modal, Space, Table, Tag, Tooltip, Typograp
 import { LockOutlined, UnlockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { RegisterClosureRole, RegisterClosureSignOff, RegisterClosureState } from '@mbc360/shared/types';
-import { isRegisterClosureSigned, isRegisterClosureStale, isRegisterClosed } from '@mbc360/shared/types';
+import { hasStandingClosureSignature, isRegisterClosureSigned, isRegisterClosureStale, isRegisterClosed } from '@mbc360/shared/types';
 import type { ReviewOwnerSpec } from '@mbc360/shared/config/reviewers';
 import { registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import { useAppStore } from '../store/useAppStore';
@@ -81,6 +81,7 @@ export default function RegisterClosurePanel({
   const sameSignerForBothRoles = roleKeyFor('Review owner') === roleKeyFor('Co-sign');
 
   const closed = isRegisterClosed(closure);
+  const standing = hasStandingClosureSignature(closure);
 
   const blockedReason = (row: RegisterClosureSignOff): string | null => {
     const assignedName = nameFor(row.role);
@@ -129,6 +130,15 @@ export default function RegisterClosurePanel({
           style={{ marginBottom: 12 }}
           title={`Both roles resolve to the same person (${nameFor('Review owner') ?? 'unassigned'})`}
           description="This register's review-owner spec declares no distinct Co-sign, so closing it needs the same person to sign twice rather than a genuinely independent second signature."
+        />
+      )}
+      {standing && !closed && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 12 }}
+          title="Locked while a signature stands"
+          description="One of the two signatures is in place, so the register is read-only: both signers must attest to the same content. To change it, the signer withdraws their signature (with a reason)."
         />
       )}
       <Table

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Input, Modal, Select, Tooltip } from 'antd';
-import { CheckOutlined, ClockCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { CheckOutlined, ClockCircleOutlined, ExclamationCircleOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type {
   GateContentChangedBody,
@@ -111,6 +111,7 @@ export default function GateSignOffPanel({
   }, []);
 
   const lanes = useMemo(() => gateSignOffMarkets(project, gateId), [project, gateId]);
+  const anySigned = project.gateSignOffs.some((s) => s.gateId === gateId && !!s.signedAt);
   const isLead = project.identity.projectLead === session.user?.displayName;
   const critical = CRITICAL_GATES.includes(gateId);
   const independent = INDEPENDENT_FUNCTION_BY_GATE[gateId];
@@ -167,6 +168,16 @@ export default function GateSignOffPanel({
       {/* Once, above the lanes. The lock comes first: while the gate is not open
           for work the stage status is not what is holding the signature up, and
           printing that instead sends someone to fix the wrong field. */}
+      {anySigned && !gatePassed && (
+        <div className="concept-tokens gso-gate-hold">
+          <LockOutlined />
+          <span>
+            A signature stands on this gate, so the evidence it signed is <strong>locked</strong>: Prepared, Reviewed and
+            Approved must all attest to the same content. Data that belongs to later gates can still be added. To change
+            what was signed, withdraw the signatures (latest first, each with a reason).
+          </span>
+        </div>
+      )}
       {!canSign ? (
         <div className="concept-tokens gso-gate-hold">
           <ClockCircleOutlined />
