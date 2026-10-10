@@ -301,6 +301,77 @@ export async function run(base: string, db: Client): Promise<number> {
     }
   }
 
+  // ============================================================ signature cell: review before signing
+  console.log('\n--- a signature cell: the signer reads the row first, and the signature is bound to what they read');
+  {
+    const registerKey = 'formulationChangeRegister';
+    const column = 'npSignOff';
+    const cfg = REGISTER_CONFIGS.find((c: any) => c.key === registerKey);
+    const textColumn = cfg?.columns.find((c: any) => c.type === 'text')?.key as string | undefined;
+    t('the register with a signature column exists', !!cfg && !!textColumn);
+    if (cfg && textColumn) {
+      const signer = 'admin';
+      const regRows = async () => ((await project()).project.registers[registerKey] ?? []) as any[];
+      const putRows = async (rows: any[]) =>
+        api('admin', 'PUT', `/projects/${PROJECT}/registers/${registerKey}`, { rows, expectedVersion: await version() });
+      const before = await regRows();
+      const index = before.length;
+      let r: any = await putRows([...before.map((x) => ({ ...x })), { [textColumn]: 'e2e original text' }]);
+      t('a row is added to sign', r.status < 300, `${r.status} ${short(r.json)}`);
+      const base = `/projects/${PROJECT}/registers/${registerKey}/rows/${index}/signature`;
+      const isSigned = async () => !!(await regRows())[index]?.['npSignOff__userId'];
+
+      const pv = (await api(signer, 'GET', `${base}/preview?column=${column}`)).json;
+      t('the preview carries title, column label, the row and a 64-character hash',
+        typeof pv.hash === 'string' && pv.hash.length === 64 && typeof pv.title === 'string' && pv.columnLabel === cfg.columns.find((c: any) => c.key === column).label && pv.row?.[textColumn] === 'e2e original text',
+        short(pv));
+      t('the column being signed is not part of what is shown', !pv.columns?.some((c: any) => c.key === column));
+      const pv2 = (await api(signer, 'GET', `${base}/preview?column=${column}`)).json;
+      t('two previews of an unchanged row give the same hash', pv.hash === pv2.hash);
+      r = await api(signer, 'GET', `/projects/${PROJECT}/registers/${registerKey}/rows/9999/signature/preview?column=${column}`);
+      t('a preview of a row that does not exist is refused (404)', r.status === 404, `${r.status} ${short(r.json)}`);
+      r = await api(signer, 'GET', `${base}/preview?column=${textColumn}`);
+      t('a preview for a column that is not a signature column is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+
+      r = await api(signer, 'POST', `${base}/step-up`, { column, code: '000000' });
+      t('a step-up with no hash is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+      r = await api(signer, 'POST', `${base}/sign`, { column, stepUpToken: 'x' });
+      t('a sign with no hash is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+
+      const oneCode = await code(signer);
+      r = await api(signer, 'POST', `${base}/step-up`, { column, code: oneCode, expectedHash: 'f'.repeat(64) });
+      t('a step-up bound to a hash the row does not have is refused (422, REGISTER_CONTENT_CHANGED)',
+        r.status === 422 && r.json?.code === 'REGISTER_CONTENT_CHANGED', `${r.status} ${short(r.json)}`);
+      r = await api(signer, 'POST', `${base}/step-up`, { column, code: oneCode, expectedHash: pv.hash });
+      t('...and that refusal did not spend the code: the same code then works with the right hash', r.status < 300 && !!r.json?.stepUpToken, `${r.status} ${short(r.json)}`);
+      const staleToken = r.json?.stepUpToken;
+
+      // Somebody else edits the row after the signer opened the preview.
+      const cur = await regRows();
+      cur[index] = { ...cur[index], [textColumn]: 'e2e text edited while the signer was reading' };
+      r = await putRows(cur.map((x) => ({ ...x })));
+      t('another person edits the row after the preview', r.status < 300, `${r.status} ${short(r.json)}`);
+      r = await api(signer, 'POST', `${base}/sign`, { column, stepUpToken: staleToken, expectedHash: pv.hash });
+      t('signing with the old hash is refused (422, REGISTER_CONTENT_CHANGED)', r.status === 422 && r.json?.code === 'REGISTER_CONTENT_CHANGED', `${r.status} ${short(r.json)}`);
+      t('...and nothing was signed', !(await isSigned()));
+
+      const pv3 = (await api(signer, 'GET', `${base}/preview?column=${column}`)).json;
+      t('the new preview has a different hash and shows the edited text',
+        pv3.hash !== pv.hash && String(pv3.row?.[textColumn]).includes('edited while the signer was reading'), short(pv3.row));
+      const su = await api(signer, 'POST', `${base}/step-up`, { column, code: await code(signer), expectedHash: pv3.hash });
+      t('a step-up bound to the new hash is accepted', su.status < 300 && !!su.json?.stepUpToken, `${su.status} ${short(su.json)}`);
+      r = await api(signer, 'POST', `${base}/sign`, { column, stepUpToken: su.json?.stepUpToken, expectedHash: pv3.hash });
+      t('signing with the hash of what was just reviewed succeeds', r.status < 300, `${r.status} ${short(r.json)}`);
+      t('...and the signature is recorded', await isSigned());
+
+      // Clean up: withdraw, then remove the row so later steps see the register as it was.
+      r = await api(signer, 'POST', `${base}/withdraw`, { column, reason: 'e2e cleanup', expectedVersion: await version() });
+      t('the signer withdraws it again', r.status < 300 && !(await isSigned()), `${r.status} ${short(r.json)}`);
+      r = await putRows(before.map((x) => ({ ...x })));
+      t('the test row is removed again', r.status < 300 && (await regRows()).length === before.length, `${r.status} ${short(r.json)}`);
+    }
+  }
+
   // Register closing is a precondition of passing a gate, and a CLOSED register is read-only — so a
   // gate's registers are closed only when that gate is about to pass, as in real use, never earlier.
   // The closing signatures themselves are not under test.

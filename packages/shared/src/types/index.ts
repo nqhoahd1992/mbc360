@@ -700,6 +700,20 @@ export interface RegisterClosePreview {
   rows: Record<string, string>[];
 }
 
+// What a signature cell on one register row attests to: that row, as it is now, and the hash the
+// signature is bound to.
+export interface RegisterRowSignPreview {
+  registerKey: string;
+  title: string;
+  rowIndex: number;
+  column: string;
+  columnLabel: string;
+  hash: string;
+  previewedAt: string;
+  columns: { key: string; label: string }[];
+  row: Record<string, string>;
+}
+
 // The body of the refusal when a register's content changed between the preview and the submit.
 export interface RegisterContentChangedBody {
   code: 'REGISTER_CONTENT_CHANGED';

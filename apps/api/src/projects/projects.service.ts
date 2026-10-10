@@ -77,7 +77,7 @@ import {
   gateEvidenceSnapshot,
   gateSnapshotSignedPart,
 } from '@mbc360/shared/utils/gateSnapshot';
-import { registerClosureContent } from '@mbc360/shared/utils/registerClosureContent';
+import { registerClosureContent, registerRowSignContent } from '@mbc360/shared/utils/registerClosureContent';
 import { supersessionGaps, versionMarkets } from '@mbc360/shared/utils/formulaLifecycle';
 import {
   CLAIM_EXEMPTION_CAPABILITY,
@@ -111,7 +111,7 @@ import {
   SCALE_UP_RISK_OPTIONS,
   isRegisterClosed,
 } from '@mbc360/shared/types';
-import type { GateSignOffRole, GateSigningPreview, NextActionStatus, RegisterClosePreview } from '@mbc360/shared/types';
+import type { GateSignOffRole, GateSigningPreview, NextActionStatus, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
 import type {
   AngleRow,
   ChangeRecord,
@@ -2352,13 +2352,49 @@ export class ProjectsService {
     return out;
   }
 
+  // Bound to the content hash, so a code entered for one version of the row cannot sign another.
   private registerSignatureStepUpPurpose(
     id: string,
     registerKey: string,
     rowIndex: number,
     column: string,
+    contentHash: string,
   ): string {
-    return `register_signature:${id}:${registerKey}:${rowIndex}:${column}`;
+    return `register_signature:${id}:${registerKey}:${rowIndex}:${column}:${contentHash}`;
+  }
+
+  private registerRowContentHash(project: ProjectData, registerKey: string, rowIndex: number, column: string): string {
+    const content = registerRowSignContent(project, registerKey, rowIndex, column);
+    if (!content) throw new NotFoundException(`Row ${rowIndex + 1} not found on register "${registerKey}"`);
+    // The position and the column are part of what is signed, not only the cells.
+    return createHash('sha256').update(canonicalJson({ rowIndex, column, ...content })).digest('hex');
+  }
+
+  // What the signer reads before signing: the row as it is now and the hash the signature is bound to.
+  // Read-only — nothing is written, and any signed-in user may read project data.
+  async previewRegisterRowSignature(
+    id: string,
+    registerKey: string,
+    rowIndex: number,
+    column: string,
+  ): Promise<RegisterRowSignPreview> {
+    const config = getRegisterConfig(registerKey);
+    if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    const { col } = this.registerSignatureColumn(config, column);
+    const project = toProjectData(await this.loadOrThrow(this.prisma, id), [], await this.loadReference(this.prisma));
+    const content = registerRowSignContent(project, registerKey, rowIndex, column);
+    if (!content) throw new NotFoundException(`Row ${rowIndex + 1} not found on register "${registerKey}"`);
+    return {
+      registerKey,
+      title: config.title,
+      rowIndex,
+      column,
+      columnLabel: col.label,
+      hash: this.registerRowContentHash(project, registerKey, rowIndex, column),
+      previewedAt: new Date().toISOString(),
+      columns: content.columns,
+      row: content.row,
+    };
   }
 
   // One step, not two — same shape as the phase sign-off step-up: a code read
@@ -2371,10 +2407,12 @@ export class ProjectsService {
     rowIndex: number,
     column: string,
     code: string,
+    expectedHash: string | undefined,
   ): Promise<{ stepUpToken: string }> {
     const config = getRegisterConfig(registerKey);
     if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
     const { col, resource, action } = this.registerSignatureColumn(config, column);
+    if (!expectedHash) throw new BadRequestException('expectedHash is required — open the signing preview first');
     if (!(await this.permissions.hasPermission(user, resource, action))) {
       throw new ForbiddenException(`Your role may not sign "${col.label}" (needs ${col.signCapability})`);
     }
@@ -2382,8 +2420,13 @@ export class ProjectsService {
     if (!signature) {
       throw new BadRequestException('Save a signature in My Account before signing');
     }
+    // Refused BEFORE the code is spent: a stale preview must not burn the signer's one-time code.
+    const current = toProjectData(await this.loadOrThrow(this.prisma, id), [], await this.loadReference(this.prisma));
+    if (this.registerRowContentHash(current, registerKey, rowIndex, column) !== expectedHash) {
+      throw this.registerContentChanged();
+    }
     await this.totp.verifyForStepUp(user.id, code);
-    const purpose = this.registerSignatureStepUpPurpose(id, registerKey, rowIndex, column);
+    const purpose = this.registerSignatureStepUpPurpose(id, registerKey, rowIndex, column, expectedHash);
     const proof = await this.prisma.stepUpProof.create({
       data: { userId: user.id, purpose, channel: 'totp' },
     });
@@ -2401,12 +2444,19 @@ export class ProjectsService {
     rowIndex: number,
     column: string,
     stepUpToken: string,
-    expectedVersion: number,
+    expectedHash: string | undefined,
   ): Promise<ProjectEnvelope> {
     const config = getRegisterConfig(registerKey);
     if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
     const { col, resource, action } = this.registerSignatureColumn(config, column);
-    return this.mutate(user, id, expectedVersion, 'register_signature.signed', async (tx, row, project) => {
+    if (!expectedHash) throw new BadRequestException('expectedHash is required — open the signing preview first');
+    // Guarded by the content hash instead of the project-wide version (as gate signing is), so other
+    // people can keep working while the signer reads. The row lock still serialises the write.
+    return this.mutate(user, id, null, 'register_signature.signed', async (tx, row, project) => {
+      // The signer signs what they were SHOWN, compared inside the row-locked transaction.
+      if (this.registerRowContentHash(project, registerKey, rowIndex, column) !== expectedHash) {
+        throw this.registerContentChanged();
+      }
       if (isGateRefLocked(project, config.gate)) {
         throw new ForbiddenException(
           `Register "${registerKey}" belongs to gate ${config.gate}, which has passed — it is read-only (use Backtrack)`,
@@ -2441,7 +2491,7 @@ export class ProjectsService {
       } catch {
         throw new BadRequestException('Verification expired or invalid — enter a new code');
       }
-      const expectedPurpose = this.registerSignatureStepUpPurpose(id, registerKey, rowIndex, column);
+      const expectedPurpose = this.registerSignatureStepUpPurpose(id, registerKey, rowIndex, column, expectedHash);
       if (
         payload.typ !== 'register_signature_step_up' ||
         payload.sub !== user.id ||

@@ -16,6 +16,7 @@ import type {
   GateEvidenceSnapshot,
   GateSigningPreview,
   RegisterClosePreview,
+  RegisterRowSignPreview,
   GateSignOffRole,
   SignOff,
 } from '@mbc360/shared/types';
@@ -330,16 +331,29 @@ export const withdrawGateSignOff = (
 // Formulation Change Register's NP approval) is never written by the bulk
 // register save — signing is an act, so it has its own three calls, mirroring
 // the phase sign-off exactly.
+// What the signer reads before signing a signature cell: the row as it is now, and the hash the
+// signature is bound to (same idea as previewGateSignOff and previewRegisterClose).
+export const previewRegisterRowSignature = (
+  id: string,
+  registerKey: string,
+  rowIndex: number,
+  column: string,
+): Promise<RegisterRowSignPreview> =>
+  request(
+    `/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/rows/${rowIndex}/signature/preview?column=${encodeURIComponent(column)}`,
+  );
+
 export const verifyRegisterSignatureStepUp = (
   id: string,
   registerKey: string,
   rowIndex: number,
   column: string,
   code: string,
+  expectedHash: string,
 ): Promise<{ stepUpToken: string }> =>
   request(
     `/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/rows/${rowIndex}/signature/step-up`,
-    { method: 'POST', body: JSON.stringify({ column, code }) },
+    { method: 'POST', body: JSON.stringify({ column, code, expectedHash }) },
   );
 
 export const signRegisterRow = (
@@ -348,11 +362,11 @@ export const signRegisterRow = (
   rowIndex: number,
   column: string,
   stepUpToken: string,
-  expectedVersion: number,
+  expectedHash: string,
 ) =>
   request<ProjectEnvelope>(
     `/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/rows/${rowIndex}/signature/sign`,
-    { method: 'POST', body: JSON.stringify({ column, stepUpToken, expectedVersion }) },
+    { method: 'POST', body: JSON.stringify({ column, stepUpToken, expectedHash }) },
   );
 
 export const withdrawRegisterRowSignature = (

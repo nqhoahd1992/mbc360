@@ -8,6 +8,7 @@ import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
 import { usePermissionView } from '../auth/previewMode';
 import { verifyRegisterSignatureStepUp } from '../api/projectsApi';
+import RegisterRowSignPreviewModal from './RegisterRowSignPreviewModal';
 import { canSignRegisterColumn } from '../utils/permissions';
 import { EMPTY_GRANTS } from '../utils/permissions';
 import { TEXT } from '../theme/tokens';
@@ -52,7 +53,10 @@ export default function RegisterSignatureCell({
   const signRegisterRow = useAppStore((s) => s.signRegisterRow);
   const withdrawRegisterSignature = useAppStore((s) => s.withdrawRegisterSignature);
 
-  const [signOpen, setSignOpen] = useState(false);
+  // Sign opens the preview first (the row the signature attests to), then the authenticator step.
+  const [reviewing, setReviewing] = useState(false);
+  const [signHash, setSignHash] = useState<string | null>(null);
+  const signOpen = signHash !== null;
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [code, setCode] = useState('');
   const [reason, setReason] = useState('');
@@ -69,7 +73,7 @@ export default function RegisterSignatureCell({
   const mayWithdraw = !!signedUserId && (signedUserId === user?.id || isAdmin);
 
   const closeSign = () => {
-    setSignOpen(false);
+    setSignHash(null);
     setCode('');
     setError(null);
   };
@@ -79,6 +83,7 @@ export default function RegisterSignatureCell({
       setError('Enter the 6 digits currently shown in your authenticator app');
       return;
     }
+    if (!signHash) return;
     setBusy(true);
     setError(null);
     try {
@@ -88,10 +93,11 @@ export default function RegisterSignatureCell({
         rowIndex,
         column.key,
         code,
+        signHash,
       );
       // The store surfaces a server rejection itself and re-fetches, so there is
       // nothing to catch here beyond the step-up call above.
-      signRegisterRow(projectId, registerKey, rowIndex, column.key, stepUpToken);
+      signRegisterRow(projectId, registerKey, rowIndex, column.key, stepUpToken, signHash);
       closeSign();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Verification failed');
@@ -174,11 +180,24 @@ export default function RegisterSignatureCell({
               : `Your role may not sign this (needs ${column.signCapability})`
           }
         >
-          <Button size="small" icon={<EditOutlined />} disabled={!maySign} onClick={() => setSignOpen(true)}>
+          <Button size="small" icon={<EditOutlined />} disabled={!maySign} onClick={() => setReviewing(true)}>
             Sign
           </Button>
         </Tooltip>
       </Space>
+      <RegisterRowSignPreviewModal
+        open={reviewing}
+        projectId={projectId}
+        registerKey={registerKey}
+        rowIndex={rowIndex}
+        column={column.key}
+        columnLabel={column.label}
+        onCancel={() => setReviewing(false)}
+        onContinue={(preview) => {
+          setReviewing(false);
+          setSignHash(preview.hash);
+        }}
+      />
       <Modal
         open={signOpen}
         title={`Sign "${column.label}"`}

@@ -362,7 +362,7 @@ export class ProjectsController {
     @Param('id') id: string,
     @Param('registerKey') registerKey: string,
     @Param('rowIndex') rowIndex: string,
-    @Body() body: { column: string; code: string },
+    @Body() body: { column: string; code: string; expectedHash?: string },
   ) {
     return this.projects.verifyRegisterSignatureStepUp(
       user,
@@ -371,7 +371,19 @@ export class ProjectsController {
       Number(rowIndex),
       body.column,
       body.code,
+      body.expectedHash,
     );
+  }
+
+  // What the signer reads before signing a signature cell — read-only, any signed-in user.
+  @Get(':id/registers/:registerKey/rows/:rowIndex/signature/preview')
+  previewRegisterRowSignature(
+    @Param('id') id: string,
+    @Param('registerKey') registerKey: string,
+    @Param('rowIndex') rowIndex: string,
+    @Query('column') column: string,
+  ) {
+    return this.projects.previewRegisterRowSignature(id, registerKey, Number(rowIndex), column ?? '');
   }
 
   @Post(':id/registers/:registerKey/rows/:rowIndex/signature/sign')
@@ -380,7 +392,7 @@ export class ProjectsController {
     @Param('id') id: string,
     @Param('registerKey') registerKey: string,
     @Param('rowIndex') rowIndex: string,
-    @Body() body: { column: string; stepUpToken: string; expectedVersion: number },
+    @Body() body: { column: string; stepUpToken: string; expectedHash?: string },
   ): Promise<ProjectEnvelope> {
     return this.projects.signRegisterRow(
       user,
@@ -389,7 +401,7 @@ export class ProjectsController {
       Number(rowIndex),
       body.column,
       body.stepUpToken,
-      body.expectedVersion,
+      body.expectedHash,
     );
   }
 

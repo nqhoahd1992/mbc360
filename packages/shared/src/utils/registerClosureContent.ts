@@ -27,3 +27,27 @@ export function registerClosureContent(project: ProjectData, registerKey: string
   });
   return { columns, rows };
 }
+
+// What a signature CELL on one register row attests to: that row's cells, in the register's column
+// order. The column being signed is left out (it is empty until the signature exists, and its own
+// fields are the signature, not content being vouched for). Same single definition for the preview and
+// the hash, as above. Returns undefined when the register or the row does not exist.
+export interface RegisterRowSignContent {
+  columns: { key: string; label: string }[];
+  row: Record<string, string>;
+}
+
+export function registerRowSignContent(
+  project: ProjectData,
+  registerKey: string,
+  rowIndex: number,
+  signatureColumn: string,
+): RegisterRowSignContent | undefined {
+  const content = registerClosureContent(project, registerKey);
+  const source = project.registers[registerKey]?.[rowIndex];
+  if (!content || !source || !Number.isInteger(rowIndex) || rowIndex < 0) return undefined;
+  const columns = content.columns.filter((c) => c.key !== signatureColumn);
+  const row: Record<string, string> = {};
+  for (const c of columns) row[c.key] = content.rows[rowIndex][c.key] ?? '';
+  return { columns, row };
+}

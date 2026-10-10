@@ -233,6 +233,8 @@ interface AppState {
     rowIndex: number,
     column: string,
     stepUpToken: string,
+    // The content hash the signer was shown; the server refuses the signature if the row changed since.
+    expectedHash: string,
   ) => void;
   withdrawRegisterSignature: (
     id: string,
@@ -601,9 +603,9 @@ export const useAppStore = create<AppState>()(
           writeSection(id, (v) => projectsApi.setPackagingBom(id, lines, v)),
         setRegisterRowsBulk: (id, registerKey, rows) =>
           writeSection(id, (v) => projectsApi.setRegisterRows(id, registerKey, rows, v)),
-        signRegisterRow: (id, registerKey, rowIndex, column, stepUpToken) =>
-          writeSection(id, (v) =>
-            projectsApi.signRegisterRow(id, registerKey, rowIndex, column, stepUpToken, v),
+        signRegisterRow: (id, registerKey, rowIndex, column, stepUpToken, expectedHash) =>
+          writeSection(id, () =>
+            projectsApi.signRegisterRow(id, registerKey, rowIndex, column, stepUpToken, expectedHash),
           ),
         withdrawRegisterSignature: (id, registerKey, rowIndex, column, reason) =>
           writeSection(id, (v) =>
