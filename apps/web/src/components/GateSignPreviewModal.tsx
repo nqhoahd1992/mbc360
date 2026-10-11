@@ -579,7 +579,7 @@ export default function GateSignPreviewModal({
           aria-labelledby="gsp-decision-label"
           value={decision}
           onChange={(e) => onDecisionChange({ decision: e.target.value })}
-          options={GATE_DECISIONS.map((d) => ({ value: d, label: d }))}
+          options={GATE_DECISIONS.filter((d) => d !== 'Backtrack').map((d) => ({ value: d, label: d }))}
         />
         <div className="gsp-field-label" style={{ marginTop: 12 }}>
           Comment{' '}

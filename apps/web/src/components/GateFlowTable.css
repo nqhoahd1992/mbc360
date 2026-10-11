@@ -27,3 +27,5 @@
 .gfc-signoff { display: grid; gap: 12px; min-width: 0; }
 .gfc-signoff:empty { display: none; }
 .gfc-req { color: var(--c-bad); font-weight: 600; cursor: help; }
+.gfc-decision-empty { color: var(--c-text-3); }
+.gfc-decision { display: inline-flex; min-height: 32px; align-items: center; }

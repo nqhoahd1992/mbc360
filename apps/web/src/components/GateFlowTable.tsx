@@ -12,8 +12,8 @@ import {
   WarningFilled,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { GateDecision, GateRecord, ProjectData, StageStatus } from '@mbc360/shared/types';
-import { GATE_FIELD_LABELS, GATES, GATE_DECISIONS, STAGE_STATUSES } from '@mbc360/shared/config/gates';
+import type { GateRecord, ProjectData, StageStatus } from '@mbc360/shared/types';
+import { GATE_FIELD_LABELS, GATES, STAGE_STATUSES } from '@mbc360/shared/config/gates';
 import { GATE_PASSING_DECISIONS as PASSING, gateFlowMissing } from '@mbc360/shared/config/gateSignOff';
 import { openChangesAffectingGate } from '@mbc360/shared/config/changeTriggers';
 import { activeMarketTracks } from '@mbc360/shared/utils/postLaunch';
@@ -21,7 +21,6 @@ import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { currentGateIndex, gateIndex, gateReadinessChecklist, isAwaitingDecision, isGatePassed } from '@mbc360/shared/utils/gateProgress';
-import { roleLabel } from '../utils/roles';
 import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
 import './GateFlowTable.css';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -421,56 +420,20 @@ export default function GateFlowTable({
           {
             title: 'Gate decision',
             width: 170,
+            // Read-only (2026-10-11, project owner): the decision is the approver's, chosen in their signing
+            // modal (SME 29(5)), so it is shown here and never edited. Backtrack is an action, not a decision.
             render: (_, r) => (
-              <span>
-                <Tooltip
-                  title={
-                    !r.canDecide
-                      ? `Only ${r.meta.primaryOwner} can record this gate's decision — ${permissionView.previewing ? `previewing as ${roleLabel(permissionView.previewRole!)}` : 'your role is not granted it'}`
-                      : r.approverSigned
-                        ? "Recorded by the approver's sign-off — withdraw that signature to change it"
-                        : undefined
-                  }
-                >
-                  <Select
-                    allowClear
-                    placeholder="Awaiting sign-off"
-                    style={{ width: 140 }}
-                    value={r.draftRecord.decision}
-                    disabled={r.locked || !r.canDecide || r.approverSigned}
-                    options={GATE_DECISIONS.map((d) => ({
-                      value: d,
-                      // Question 29(5): "the approver's decision IS the gate
-                      // decision" — Proceed and Proceed with Conditions are
-                      // recorded by the approver signing in the sign-off panel
-                      // below, never set here (SME rule audit B3, 2026-10-04).
-                      label: PASSING.includes(d) ? `${d} — via approver sign-off` : d,
-                      // Proceed / Proceed with Conditions are deliberately left
-                      // selectable even when they'd currently be rejected — B1/
-                      // F1/C7 still enforce the rule (via the Save-blocked
-                      // banner/button below and the store guard), but disabling
-                      // the option outright hid *why* from the user. Only
-                      // Backtrack (reopens an EARLIER gate — Gate 1 has none)
-                      // stays disabled here, since there's no "what's missing"
-                      // explanation that would apply to it.
-                      disabled: (d === 'Backtrack' && r.meta.id === 'SG01') || (PASSING.includes(d) && d !== r.draftRecord.decision),
-                    }))}
-                    onChange={(v: GateDecision | undefined) => {
-                      if (v === 'Backtrack') {
-                        openBacktrackModal(r.meta.id);
-                        return;
-                      }
-                      // F9's acknowledgement moved to the approver's sign-off
-                      // (SME rule audit C10, 2026-10-04): it was a confirm
-                      // dialog that wrote a line into the editable notes. Only
-                      // the approver's signature records Proceed / Proceed with
-                      // Conditions now, and it records which open changes it
-                      // accepted.
-                      patch(r.draftIndex, { decision: v });
-                    }}
-                  />
-                </Tooltip>
-              </span>
+              <Tooltip title="Chosen by the approver in the signing modal — it cannot be edited here">
+                <span className="gfc-decision">
+                  {r.record.decision ? (
+                    <span className={`c-tag c-tag-dot ${PASSING.includes(r.record.decision) ? 'c-tag-ok' : 'c-tag-warn'}`}>
+                      {r.record.decision}
+                    </span>
+                  ) : (
+                    <span className="gfc-decision-empty">Not decided yet</span>
+                  )}
+                </span>
+              </Tooltip>
             ),
           },
           {
@@ -597,6 +560,11 @@ export default function GateFlowTable({
                 </div>
                 {/* A disabled button still reads as something to press. With no
                     history there is nothing to open, so it is plain muted text. */}
+                {r.meta.id !== 'SG01' && !r.locked && r.canDecide && !r.approverSigned && (
+                  <Button size="small" type="text" onClick={() => openBacktrackModal(r.meta.id)}>
+                    Backtrack…
+                  </Button>
+                )}
                 {r.historyCount > 0 ? (
                   <Button size="small" type="text" icon={<HistoryOutlined />} onClick={() => setHistoryFor(r.meta.id)}>
                     History ({r.historyCount})
