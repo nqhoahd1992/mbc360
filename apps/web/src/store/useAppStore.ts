@@ -202,7 +202,7 @@ interface AppState {
   acceptPhasePreWork: (id: string, phase: number) => void;
   setEvidenceSummary: (id: string, phase: number, value: string) => void;
   // The phase banner's "(provide link here)" shortcuts, keyed by workbook label.
-  setPhaseKeyLinks: (id: string, phase: number, links: Record<string, string>) => void;
+  setPhaseKeyLinks: (id: string, phase: number, links: Record<string, string>) => Promise<boolean>;
 
   setBom: (id: string, lines: BomLine[]) => void;
   // Resolves true once the server has imported the formula (false on failure,
@@ -585,7 +585,7 @@ export const useAppStore = create<AppState>()(
         setEvidenceSummary: (id, phase, value) =>
           writeSection(id, (v) => projectsApi.setEvidenceSummary(id, phase, value, v)),
         setPhaseKeyLinks: (id, phase, links) =>
-          writeSection(id, (v) => projectsApi.setPhaseKeyLinks(id, phase, links, v)),
+          tryWriteSection(id, (v) => projectsApi.setPhaseKeyLinks(id, phase, links, v)),
         // F13: the acceptor is taken from the session server-side, so the
         // `acceptedBy` argument is no longer trusted (kept for signature parity).
         acceptPhasePreWork: (id, phase) =>

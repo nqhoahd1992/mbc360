@@ -1,0 +1,30 @@
+/* Key records strip under the phase heading. Tokens from concept.css. */
+.pkl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 8px; }
+.pkl-title { display: inline-flex; align-items: center; gap: 6px; color: var(--c-text-2); font-size: 13px; font-weight: 600; }
+.pkl-count { color: var(--c-text-3); font-weight: 400; font-variant-numeric: tabular-nums; }
+.pkl-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+
+.pkl-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 10px;
+  border: 1px solid var(--c-border-2); border-radius: 6px; font: inherit; font-size: 13px; line-height: 20px;
+  background: var(--c-surface); color: var(--c-text); text-decoration: none;
+}
+.pkl-chip-on { border-color: var(--c-border); }
+a.pkl-chip-on:hover, .pkl-split-main:hover { color: var(--c-primary); }
+.pkl-chip-on .anticon { color: var(--c-primary); }
+.pkl-chip-off { border-style: dashed; border-color: var(--c-border); background: transparent; color: var(--c-text-3); cursor: pointer; }
+.pkl-chip-off:hover:not(:disabled) { color: var(--c-primary); border-color: var(--c-primary); }
+.pkl-chip-off:disabled { cursor: not-allowed; opacity: 0.6; }
+.pkl-chip:focus-visible, .pkl-split-edit:focus-visible, .pkl-split-main:focus-visible { outline: 2px solid var(--c-primary); outline-offset: 2px; }
+
+.pkl-split { padding: 0; gap: 0; overflow: hidden; }
+.pkl-split-main { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 10px; color: var(--c-text); text-decoration: none; }
+.pkl-split-edit {
+  display: inline-grid; place-items: center; align-self: stretch; width: 28px; border: 0; border-left: 1px solid var(--c-border-2);
+  background: transparent; color: var(--c-text-3); cursor: pointer;
+}
+.pkl-split-edit:hover { color: var(--c-primary); background: var(--c-surface-2); }
+
+.pkl-editor { display: grid; gap: 8px; width: min(360px, 80vw); }
+.pkl-editor-label { font-weight: 600; font-size: 14px; }
+.pkl-editor-actions { display: flex; justify-content: flex-end; gap: 8px; }

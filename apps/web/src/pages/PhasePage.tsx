@@ -402,6 +402,7 @@ export default function PhasePage() {
           )}
         </p>
         {PHASE_NOTES[phase] && <p className="ph-note">{PHASE_NOTES[phase]}</p>}
+        <PhaseKeyLinksCard links={config.keyLinks} project={project} phase={phase} />
       </div>
 
       <nav className="c-card ph-steps" aria-label="Gates in this phase">
@@ -508,7 +509,6 @@ export default function PhasePage() {
               projectLead={project.identity.projectLead}
             />
           </div>
-          <PhaseKeyLinksCard links={config.keyLinks} project={project} phase={phase} />
         </div>
       ) : (
         <div className="ph-body" key={tab}>
@@ -643,9 +643,6 @@ export default function PhasePage() {
                   {hardBlocking ? 'Go to decision' : 'Sign and decide'}
                 </Button>
               </div>
-            </div>
-            <div id="sec-key-links">
-              <PhaseKeyLinksCard links={config.keyLinks} project={project} phase={phase} />
             </div>
           </aside>
         </div>

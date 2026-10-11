@@ -1,36 +1,73 @@
 import { useMemo, useState } from 'react';
-import { Card, Input, Tooltip } from 'antd';
-import { DownOutlined, ExportOutlined, RightOutlined } from '@ant-design/icons';
+import { Button, Input, Popover, Tooltip } from 'antd';
+import { EditOutlined, ExportOutlined, LinkOutlined, PlusOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import type { PhaseKeyLinkConfig } from '@mbc360/shared/config/phases';
 import type { ProjectData } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
-import { useDraft } from '../hooks/useDraft';
-import SaveBar from './SaveBar';
+import './PhaseKeyLinksCard.css';
 
-// The four shortcuts each phase sheet carries in its banner (cells E3/G3/I3/K3),
-// rendered above Project Identification exactly where the workbook puts them.
-// Content and mapping rules live in PhaseKeyLinkConfig — see config/phases.ts.
+// The four shortcuts each phase sheet carries in its banner (cells E3/G3/I3/K3), as one strip under the
+// phase heading, where the workbook puts them (2026-10-11, project owner's choice B). It was a card in the
+// side rail of every gate tab, which read as noise next to the gate's readiness.
 //
-// Two kinds of row, and the difference is the whole point:
-//   - a shortcut this app replaced (Formula BOM, PIF Checklist, …) is a link to
-//     that page; there is nothing to type, the destination is the app itself;
-//   - a shortcut that stays an outside document (Success Criteria Package,
-//     Marketing Campaign Brief, …) gets the input the workbook draws as
-//     "(provide link here)", stored per project on the phase closure.
+// Two kinds of chip, and the difference is the whole point:
+//   - a shortcut this app replaced (Formula BOM, PIF Checklist, …) is a link to that page;
+//   - a shortcut that stays an outside document (Success Criteria Package, Marketing Campaign Brief, …) is a
+//     chip for the link recorded per project on the phase closure. Recorded: the chip opens it and a pencil
+//     edits it. Not recorded: a dashed "+" chip, dimmed, that opens the box to paste one.
 //
-// No row ships with a default URL, including Phase 2's Ingredient Registry, whose
-// workbook cell does carry one — see the note on it in config/phases.ts.
-// Collapsed by default: these are shortcuts, not something to read on every gate tab (2026-10-11). The one
-// line says how many are linked, so a missing one is still visible. The open/closed choice is remembered
-// per browser; a pending edit keeps it open so unsaved text is never hidden.
-const OPEN_KEY = 'mbc360.keyLinksOpen';
-function readOpen(): boolean {
-  try {
-    return window.localStorage.getItem(OPEN_KEY) === '1';
-  } catch {
-    return false;
-  }
+// No row ships with a default URL, including Phase 2's Ingredient Registry — see config/phases.ts.
+// Editing is its own small Save (a popover is a commit point, like the app's other modal-gated flows), so
+// there is no page-level draft here.
+function LinkEditor({
+  link,
+  value,
+  onSave,
+  onClose,
+}: {
+  link: PhaseKeyLinkConfig;
+  value: string;
+  onSave: (next: string) => Promise<boolean>;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState(value);
+  const [saving, setSaving] = useState(false);
+  const submit = async () => {
+    setSaving(true);
+    try {
+      // Closes only once the server has it; a refusal leaves what was typed.
+      if (await onSave(text.trim())) onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <form
+      className="pkl-editor"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+    >
+      <label className="pkl-editor-label" htmlFor={`pkl-${link.label}`}>
+        {link.label}
+      </label>
+      <Input
+        id={`pkl-${link.label}`}
+        autoFocus
+        placeholder="Paste the link here"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+      />
+      <div className="pkl-editor-actions">
+        <Button onClick={onClose}>Cancel</Button>
+        <Button type="primary" htmlType="submit" loading={saving} disabled={text.trim() === value.trim()}>
+          Save
+        </Button>
+      </div>
+    </form>
+  );
 }
 
 export default function PhaseKeyLinksCard({
@@ -45,99 +82,91 @@ export default function PhaseKeyLinksCard({
   const setPhaseKeyLinks = useAppStore((s) => s.setPhaseKeyLinks);
   const projectId = project.identity.id;
   const archived = !!project.identity.archived;
-  const external = links.filter((l) => !l.href);
+  const [editing, setEditing] = useState<string | null>(null);
 
-  // Compared by value inside useDraft, so deriving this inline is safe.
-  const committed = useMemo<Record<string, string>>(
-    () => Object.fromEntries(external.map((l) => [l.label, project.phaseClosures[phase]?.keyLinks?.[l.label] ?? ''])),
-    [external, project.phaseClosures, phase],
-  );
-  const { draft, dirty, update, markSaved, discard } = useDraft(committed);
-
-  const save = () => {
-    setPhaseKeyLinks(projectId, phase, draft);
-    markSaved();
-  };
-
-  const [openChoice, setOpenChoice] = useState(readOpen);
-  const toggle = () => {
-    const next = !openChoice;
-    setOpenChoice(next);
-    try {
-      window.localStorage.setItem(OPEN_KEY, next ? '1' : '0');
-    } catch {
-      // Remembering is a convenience; the card still works without it.
-    }
-  };
+  const recorded = useMemo<Record<string, string>>(() => {
+    const saved = project.phaseClosures[phase]?.keyLinks ?? {};
+    return Object.fromEntries(links.filter((l) => !l.href).map((l) => [l.label, (saved[l.label] ?? '').trim()]));
+  }, [links, project.phaseClosures, phase]);
 
   if (links.length === 0) return null;
 
-  const open = openChoice || dirty;
-  const linked = links.length - external.filter((l) => !(committed[l.label] ?? '').trim()).length;
+  // The whole map is sent each time, so saving one chip never drops another.
+  const saveOne = (label: string) => (next: string) => setPhaseKeyLinks(projectId, phase, { ...recorded, [label]: next });
+  const linked = links.filter((l) => l.href || recorded[l.label]).length;
 
   return (
-    <Card
-      size="small"
-      title={
-        <button
-          type="button"
-          onClick={toggle}
-          aria-expanded={open}
-          aria-controls="phase-key-links-body"
-          disabled={dirty}
-          style={{
-            display: 'flex', width: '100%', alignItems: 'center', gap: 8, padding: 0, border: 0,
-            background: 'none', font: 'inherit', fontWeight: 600, textAlign: 'left', cursor: dirty ? 'default' : 'pointer',
-          }}
-        >
-          {open ? <DownOutlined style={{ fontSize: 11 }} /> : <RightOutlined style={{ fontSize: 11 }} />}
-          <span style={{ flex: 1 }}>Key records</span>
-          <span style={{ fontWeight: 400, fontSize: 13, color: linked === links.length ? '#237804' : '#6b6b6b' }}>
-            {linked} of {links.length} linked
-          </span>
-        </button>
-      }
-      styles={{ header: open ? undefined : { borderBottom: 0 }, body: open ? undefined : { display: 'none' } }}
-    >
-      <div id="phase-key-links-body" hidden={!open}>
-      <div style={{ display: 'grid', gap: 8 }}>
+    <div className="pkl" role="group" aria-label="Key records for this phase">
+      <span className="pkl-title">
+        Key records
+        <span className="pkl-count">
+          {linked}/{links.length}
+        </span>
+      </span>
+      <div className="pkl-chips">
         {links.map((link) => {
           if (link.href) {
             const to = link.absolute ? link.href : `/projects/${projectId}${link.href}`;
             return (
-              <div key={link.label} style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                <span style={{ width: 220, flexShrink: 0, color: '#595959' }}>{link.label}</span>
-                <Link to={to} style={{ fontWeight: 500 }}>
-                  Open in MBc360
-                </Link>
-              </div>
+              <Link key={link.label} to={to} className="pkl-chip pkl-chip-on">
+                <LinkOutlined />
+                {link.label}
+              </Link>
             );
           }
-
-          const target = draft[link.label]?.trim();
+          const url = recorded[link.label];
+          const editor = (
+            <LinkEditor
+              link={link}
+              value={url}
+              onSave={saveOne(link.label)}
+              onClose={() => setEditing(null)}
+            />
+          );
           return (
-            <div key={link.label} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-              <Tooltip title="Kept outside MBc360 — record the link to it here, as the workbook's own sheet does.">
-                <span style={{ width: 220, flexShrink: 0, color: '#595959' }}>{link.label}</span>
-              </Tooltip>
-              <Input
-                style={{ flex: '1 1 320px', maxWidth: 520 }}
-                placeholder="Provide link here"
-                value={draft[link.label] ?? ''}
-                disabled={archived}
-                onChange={(e) => update((prev) => ({ ...prev, [link.label]: e.target.value }))}
-              />
-              {target && (
-                <a href={target} target="_blank" rel="noopener noreferrer">
-                  Open <ExportOutlined />
-                </a>
+            <Popover
+              key={link.label}
+              open={editing === link.label}
+              onOpenChange={(o) => !o && setEditing(null)}
+              trigger="click"
+              placement="bottomLeft"
+              destroyOnHidden
+              content={editor}
+            >
+              {url ? (
+                <span className="pkl-chip pkl-chip-on pkl-split">
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="pkl-split-main">
+                    <ExportOutlined />
+                    {link.label}
+                  </a>
+                  {!archived && (
+                    <Tooltip title="Change the link">
+                      <button type="button" className="pkl-split-edit" aria-label={`Change the ${link.label} link`} onClick={() => setEditing(link.label)}>
+                        <EditOutlined />
+                      </button>
+                    </Tooltip>
+                  )}
+                </span>
+              ) : (
+                <Tooltip
+                  open={editing === link.label ? false : undefined}
+                  title={archived ? 'The project is archived' : 'Kept outside MBC360 — record the link to it here'}
+                >
+                  <button
+                    type="button"
+                    className="pkl-chip pkl-chip-off"
+                    disabled={archived}
+                    onClick={() => setEditing(link.label)}
+                  >
+                    <PlusOutlined />
+                    {link.label}
+                  </button>
+                </Tooltip>
               )}
-            </div>
+            </Popover>
           );
         })}
       </div>
-      {external.length > 0 && !archived && <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />}
-      </div>
-    </Card>
+    </div>
   );
 }
