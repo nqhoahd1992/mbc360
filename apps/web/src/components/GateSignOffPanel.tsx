@@ -10,7 +10,7 @@ import type {
   ProjectData,
 } from '@mbc360/shared/types';
 import { GATE_SIGNOFF_ROLES } from '@mbc360/shared/types';
-import { GATE_DECISIONS, GATES } from '@mbc360/shared/config/gates';
+import { GATES } from '@mbc360/shared/config/gates';
 import { openChangesAffectingGate } from '@mbc360/shared/config/changeTriggers';
 import {
   CRITICAL_GATES,
@@ -134,13 +134,18 @@ export default function GateSignOffPanel({
     }
     if (!hasSignature) return 'Save a signature in My Account first';
     if (!totpEnrolled) return 'Set up an authenticator app in My Account first';
+    return null;
+  };
+
+  // What is wrong with the decision itself, shown in the review modal where it is entered.
+  const decisionProblem = (market: string | undefined, role: GateSignOffRole): string | null => {
     const d = draftOf(market, role);
-    if (!d.decision) return 'Choose a decision first';
+    if (!d.decision) return 'Choose a decision to continue.';
     if (GATE_PASSING_DECISIONS.includes(d.decision) && stageIncomplete) {
-      return `Save the stage status as Complete first — it is currently "${stageStatus}", and a signature attests the gate's work is done`;
+      return `Save the stage status as Complete first — it is currently "${stageStatus}", and a signature attests the gate's work is done.`;
     }
     if (gateSignOffNeedsComment(d.decision) && !d.comment?.trim()) {
-      return `A comment is required when the decision is "${d.decision}"`;
+      return `A comment is required when the decision is "${d.decision}".`;
     }
     return null;
   };
@@ -255,8 +260,6 @@ export default function GateSignOffPanel({
               const conflictUserId = conflictRow?.signedByUserId ?? conflictRow?.assignedToUserId ?? null;
               const stale = r.signedAt ? gateSignOffStaleChanges(project, gateId, market, r.role) : [];
               const why = r.signedAt ? null : blockedReason(market, r.role);
-              const draft = draftOf(market, r.role);
-              const needsComment = !!draft.decision && gateSignOffNeedsComment(draft.decision);
               // Question 29(5) fixes the order, so only one step is ever
               // actionable. Showing three identical decision forms at once said
               // the opposite; the two that cannot be signed are now one line.
@@ -333,43 +336,12 @@ export default function GateSignOffPanel({
                     </div>
                   ) : isTurn && mine && canSign ? (
                     <div className="gso-form">
-                      {r.role === 'Approved by' && openChanges.length > 0 && (
-                        // C10: F9's acknowledgement — recorded on this signature.
-                        <Alert
-                          type="warning"
-                          showIcon
-                          title={`Open change control affects this gate: ${openChanges.map((c) => c.changeId).join(', ')}. A plain Proceed is refused; signing Proceed with Conditions records that you accept ${openChanges.length > 1 ? 'them' : 'it'}.`}
-                        />
-                      )}
-                      <label>
-                        <span className="gso-label">Decision</span>
-                        <Select
-                          style={{ width: '100%' }}
-                          allowClear
-                          placeholder="Decision"
-                          value={draft.decision}
-                          options={GATE_DECISIONS.map((d) => ({ value: d, label: d }))}
-                          onChange={(v?: string) => patchDraft(market, r.role, { decision: v })}
-                        />
-                      </label>
-                      <label>
-                        <span className="gso-label">
-                          Comment{needsComment && <span className="gso-req"> * required for "{draft.decision}"</span>}
-                        </span>
-                        <Input.TextArea
-                          autoSize={{ minRows: 2, maxRows: 10 }}
-                          status={needsComment && !draft.comment?.trim() ? 'warning' : undefined}
-                          placeholder="Required for anything other than a clean Proceed"
-                          value={draft.comment}
-                          onChange={(e) => patchDraft(market, r.role, { comment: e.target.value })}
-                        />
-                      </label>
                       <div className="gso-submit">
                         {why ? (
                           <Tooltip title={why}>
                             <span>
                               <Button type="primary" disabled>
-                                Sign
+                                Review & sign
                               </Button>
                             </span>
                           </Tooltip>
@@ -381,7 +353,7 @@ export default function GateSignOffPanel({
                               setReviewing({ market, role: r.role });
                             }}
                           >
-                            Sign
+                            Review & sign
                           </Button>
                         )}
                         {why && <span className="gso-muted">{why}</span>}
@@ -430,6 +402,15 @@ export default function GateSignOffPanel({
         gateId={gateId}
         market={reviewing?.market}
         roleLabel={reviewing?.role ?? ''}
+        decision={reviewing ? draftOf(reviewing.market, reviewing.role).decision : undefined}
+        comment={reviewing ? draftOf(reviewing.market, reviewing.role).comment : undefined}
+        onDecisionChange={(p) => reviewing && patchDraft(reviewing.market, reviewing.role, p)}
+        problem={reviewing ? decisionProblem(reviewing.market, reviewing.role) : null}
+        warning={
+          reviewing?.role === 'Approved by' && openChanges.length > 0
+            ? `Open change control affects this gate: ${openChanges.map((c) => c.changeId).join(', ')}. A plain Proceed is refused; signing Proceed with Conditions records that you accept ${openChanges.length > 1 ? 'them' : 'it'}.`
+            : null
+        }
         changed={changed}
         onCancel={() => {
           setReviewing(null);

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Collapse, Modal, Spin, Table, Tag, Typography } from 'antd';
+import { Alert, Collapse, Input, Modal, Select, Spin, Table, Tag, Typography } from 'antd';
+import { GATE_DECISIONS } from '@mbc360/shared/config/gates';
+import { gateSignOffNeedsComment } from '@mbc360/shared/config/gateSignOff';
 import type { GateContentChangedBody, GateEvidenceSnapshot, GateSigningPreview } from '@mbc360/shared/types';
 import { REGISTER_CONFIGS } from '@mbc360/shared/config/registers';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
@@ -258,6 +260,11 @@ export default function GateSignPreviewModal({
   gateId,
   market,
   roleLabel,
+  decision,
+  comment,
+  onDecisionChange,
+  problem,
+  warning,
   changed,
   onCancel,
   onContinue,
@@ -267,6 +274,15 @@ export default function GateSignPreviewModal({
   gateId: string;
   market?: string;
   roleLabel: string;
+  // The signer's decision and comment are entered HERE, beside the evidence they attest to, and kept by the
+  // caller so they survive a re-review after the evidence changed.
+  decision?: string;
+  comment?: string;
+  onDecisionChange: (p: { decision?: string; comment?: string }) => void;
+  // Why the decision cannot be signed yet (none chosen, comment missing, stage not Complete), or null.
+  problem: string | null;
+  // A warning about the decision itself (open change control), shown above the form.
+  warning?: string | null;
   // The refusal from the last attempt, when the evidence changed after the previous preview.
   changed: GateContentChangedBody | null;
   onCancel: () => void;
@@ -304,7 +320,7 @@ export default function GateSignPreviewModal({
       width={920}
       title={`Review before signing — ${roleLabel}, ${gateId}${market ? ` (${market})` : ''}`}
       okText="Continue to sign"
-      okButtonProps={{ disabled: !preview || loading }}
+      okButtonProps={{ disabled: !preview || loading || !!problem }}
       onOk={() => preview && onContinue(preview)}
       onCancel={onCancel}
       destroyOnClose
@@ -335,6 +351,41 @@ export default function GateSignPreviewModal({
         />
       )}
       {error && <Alert type="error" showIcon message={error} />}
+      <div style={{ marginBottom: 16 }}>
+        {warning && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={warning} />}
+        <div style={{ marginBottom: 8 }}>
+          <Typography.Text strong>Your decision</Typography.Text>
+          <Select
+            style={{ width: '100%', marginTop: 4 }}
+            allowClear
+            placeholder="Decision"
+            value={decision}
+            options={GATE_DECISIONS.map((d) => ({ value: d, label: d }))}
+            onChange={(v?: string) => onDecisionChange({ decision: v })}
+          />
+        </div>
+        <div>
+          <Typography.Text strong>
+            Comment
+            {!!decision && gateSignOffNeedsComment(decision) && (
+              <Typography.Text type="danger"> * required for "{decision}"</Typography.Text>
+            )}
+          </Typography.Text>
+          <Input.TextArea
+            style={{ marginTop: 4 }}
+            autoSize={{ minRows: 2, maxRows: 8 }}
+            status={!!decision && gateSignOffNeedsComment(decision) && !comment?.trim() ? 'warning' : undefined}
+            placeholder="Required for anything other than a clean Proceed"
+            value={comment}
+            onChange={(e) => onDecisionChange({ comment: e.target.value })}
+          />
+        </div>
+        {problem && (
+          <Typography.Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
+            {problem}
+          </Typography.Text>
+        )}
+      </div>
       {loading && !preview && <Spin />}
       {preview && (
         <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
