@@ -1,6 +1,14 @@
 /* Account menu. The identity block is information, not a command: it reads at full contrast and has no
    hover state (antd greys a `disabled` item out, which made the user's own name look switched off). */
-.auth-trigger { display: inline-flex; align-items: center; gap: 8px; padding: 2px 6px 2px 2px; border-radius: 999px; }
+.auth-trigger {
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px 2px 2px; margin: 0;
+  border: 0; border-radius: 999px; background: transparent; font: inherit; cursor: pointer;
+  transition: background-color 0.15s;
+}
+.auth-trigger:hover, .auth-trigger.ant-dropdown-open { background: rgba(0, 0, 0, 0.06); }
+.auth-trigger:focus { outline: none; }
+/* Keyboard focus only: a thin ring in the app's primary colour, not the browser's heavy default. */
+.auth-trigger:focus-visible { outline: 2px solid #0958d9; outline-offset: 2px; }
 .auth-trigger-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .auth-trigger-caret { font-size: 10px; color: #6b6b6b; }
 

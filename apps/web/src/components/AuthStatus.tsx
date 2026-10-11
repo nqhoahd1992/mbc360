@@ -62,7 +62,7 @@ export default function AuthStatus({ user, onLogout, compact }: AuthStatusProps)
     >
       <button
         type="button"
-        className="auth-trigger ant-btn ant-btn-text"
+        className="auth-trigger"
         aria-label={`Account menu: ${user.displayName}`}
         aria-haspopup="menu"
         title={`${user.displayName} — account menu`}
