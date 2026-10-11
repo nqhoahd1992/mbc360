@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Collapse, Input, Modal, Select, Spin, Table, Tag, Typography } from 'antd';
-import { GATE_DECISIONS } from '@mbc360/shared/config/gates';
+import { Alert, Button, Collapse, Input, Modal, Radio, Spin, Table, Typography } from 'antd';
+import { CheckCircleFilled, ExclamationCircleFilled } from '@ant-design/icons';
+import { GATES, GATE_DECISIONS } from '@mbc360/shared/config/gates';
 import { gateSignOffNeedsComment } from '@mbc360/shared/config/gateSignOff';
 import type { GateContentChangedBody, GateEvidenceSnapshot, GateSigningPreview } from '@mbc360/shared/types';
 import { REGISTER_CONFIGS } from '@mbc360/shared/config/registers';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import { PROJECT_DATA_LABELS } from '@mbc360/shared/utils/gateSnapshot';
 import { previewGateSignOff } from '../api/projectsApi';
+import '../styles/concept.css';
+import './GateSignPreviewModal.css';
 
 // The whole of what a signature attests to, on one screen, before the authenticator step. The gate's
 // evidence comes from many pages, so the signer cannot be expected to have looked at all of it; the
@@ -131,20 +134,22 @@ function ProjectDataBody({ digest }: { digest: string }) {
   return <Value value={parsed} />;
 }
 
-function Block({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
+function Section({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 12 }}>
-      <Typography.Text strong>{title}</Typography.Text>
-      {count !== undefined && <Tag style={{ marginLeft: 8 }}>{count}</Tag>}
-      <div style={{ marginTop: 6 }}>{children}</div>
-    </div>
+    <section className="gsp-section">
+      <h3 className="gsp-h">
+        {title}
+        {count !== undefined && <span className="gsp-count">{count}</span>}
+      </h3>
+      {children}
+    </section>
   );
 }
 
 function Lines({ lines }: { lines: string[] }) {
   if (lines.length === 0) return <Typography.Text type="secondary">Nothing recorded.</Typography.Text>;
   return (
-    <ul style={{ margin: 0, paddingLeft: 18 }}>
+    <ul className="gsp-lines">
       {lines.map((l, i) => (
         <li key={i}>{l}</li>
       ))}
@@ -170,54 +175,116 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
   const accountableData = Object.entries(snapshot.projectData ?? {});
   const laterRegisters = Object.entries(snapshot.registerLater ?? {}).filter(([, d]) => d !== '');
   const laterData = Object.entries(snapshot.projectDataLater ?? {});
+  const checklists = Object.entries(snapshot.checklists);
+  const requirements = Object.entries(snapshot.requirements);
+  const doneChecks = snapshot.gateChecks.filter((c) => c.done).length;
+
+  // Sections with nothing in them collapse into ONE line at the end instead of five headings
+  // that each say "0": the reader still sees they were covered, without scrolling past them.
+  const empty = [
+    ...(snapshot.gateChecks.length === 0 ? ['Key Gate Checks'] : []),
+    ...(checklists.length === 0 ? ['Checklists'] : []),
+    ...(requirements.length === 0 ? ['Requirements'] : []),
+    ...(accountableRegisters.length === 0 ? ['Registers'] : []),
+    ...(snapshot.openActions.length === 0 ? ['Open actions accepted as conditions'] : []),
+  ];
 
   return (
     <>
-      <Block title="Gate">
-        <Lines
-          lines={[
-            `Stage status: ${snapshot.status}`,
-            `Formula version: ${snapshot.formulaVersion}`,
-            ...(snapshot.market ? [`Market: ${snapshot.market}`] : []),
-            ...snapshot.evidenceLinks.map((l) => `Evidence link: ${l}`),
-          ]}
-        />
-      </Block>
-      <Block title="Key Gate Checks" count={snapshot.gateChecks.length}>
-        <Lines
-          lines={snapshot.gateChecks.map(
-            (c) => `${c.check} — ${c.done ? 'done' : 'not done'} (${c.ynna || 'no answer'})${c.notes ? ` — ${c.notes}` : ''}`,
-          )}
-        />
-      </Block>
-      <Block title="Checklists (ticked options)" count={Object.keys(snapshot.checklists).length}>
-        {Object.entries(snapshot.checklists).map(([key, digest]) => (
-          <div key={key} style={{ marginBottom: 6 }}>
-            <Typography.Text type="secondary">{SECTION_TITLES[key] ?? humanize(key)}</Typography.Text>
-            <Lines lines={tickedChecklist(digest)} />
-          </div>
+      <div className="gsp-facts">
+        <span className="gsp-fact">
+          <span className="gsp-fact-k">Stage status</span>
+          <strong>{snapshot.status}</strong>
+        </span>
+        <span className="gsp-fact">
+          <span className="gsp-fact-k">Formula version</span>
+          <strong>{snapshot.formulaVersion}</strong>
+        </span>
+        {snapshot.market && (
+          <span className="gsp-fact">
+            <span className="gsp-fact-k">Market</span>
+            <strong>{snapshot.market}</strong>
+          </span>
+        )}
+        {snapshot.evidenceLinks.map((l) => (
+          <span className="gsp-fact" key={l}>
+            <span className="gsp-fact-k">Evidence link</span>
+            <strong>{l}</strong>
+          </span>
         ))}
-      </Block>
-      <Block title="Requirements owned by this gate" count={Object.keys(snapshot.requirements).length}>
-        {Object.entries(snapshot.requirements).map(([key, digest]) => (
-          <div key={key} style={{ marginBottom: 6 }}>
-            <Typography.Text type="secondary">{SECTION_TITLES[key] ?? humanize(key)}</Typography.Text>
-            <Lines lines={requirementLines(digest)} />
+      </div>
+
+      {snapshot.gateChecks.length > 0 && (
+        <Section title="Key Gate Checks">
+          <ul className="gsp-checks">
+            {snapshot.gateChecks.map((c) => (
+              <li key={c.check}>
+                {c.done ? (
+                  <CheckCircleFilled className="gsp-ok" aria-label="Done" />
+                ) : (
+                  <ExclamationCircleFilled className="gsp-warn" aria-label="Not done" />
+                )}
+                <span className="gsp-check-text">
+                  {c.check}
+                  {c.notes && <span className="gsp-note"> — {c.notes}</span>}
+                </span>
+                <span className="gsp-ynna">{c.ynna || 'No answer'}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="gsp-sub">
+            {doneChecks} of {snapshot.gateChecks.length} done
           </div>
-        ))}
-      </Block>
-      <Block title="Registers (columns this gate is accountable for)" count={accountableRegisters.length}>
-        <Collapse
-          size="small"
-          items={accountableRegisters.map(([key, digest]) => ({
-            key,
-            label: `${REGISTER_CONFIGS.find((c) => c.key === key)?.title ?? key} — ${digest ? digest.split('\n').length : 0} row(s)`,
-            children: <RegisterBlock registerKey={key} digest={digest} />,
-          }))}
-        />
-      </Block>
+        </Section>
+      )}
+
+      {checklists.length > 0 && (
+        <Section title="Ticked checklist options">
+          {checklists.map(([key, digest]) => (
+            <div key={key} className="gsp-group">
+              <div className="gsp-group-title">{SECTION_TITLES[key] ?? humanize(key)}</div>
+              <div className="gsp-chips">
+                {tickedChecklist(digest).length === 0 ? (
+                  <Typography.Text type="secondary">None ticked.</Typography.Text>
+                ) : (
+                  tickedChecklist(digest).map((o) => (
+                    <span className="gsp-chip" key={o}>
+                      {o}
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+          ))}
+        </Section>
+      )}
+
+      {requirements.length > 0 && (
+        <Section title="Requirements owned by this gate" count={requirements.length}>
+          {requirements.map(([key, digest]) => (
+            <div key={key} className="gsp-group">
+              <div className="gsp-group-title">{SECTION_TITLES[key] ?? humanize(key)}</div>
+              <Lines lines={requirementLines(digest)} />
+            </div>
+          ))}
+        </Section>
+      )}
+
+      {accountableRegisters.length > 0 && (
+        <Section title="Registers this gate is accountable for" count={accountableRegisters.length}>
+          <Collapse
+            size="small"
+            items={accountableRegisters.map(([key, digest]) => ({
+              key,
+              label: `${REGISTER_CONFIGS.find((c) => c.key === key)?.title ?? key} — ${digest ? digest.split('\n').length : 0} row(s)`,
+              children: <RegisterBlock registerKey={key} digest={digest} />,
+            }))}
+          />
+        </Section>
+      )}
+
       {accountableData.length > 0 && (
-        <Block title="Other project data this gate is accountable for" count={accountableData.length}>
+        <Section title="Other project data this gate is accountable for" count={accountableData.length}>
           <Collapse
             size="small"
             items={accountableData.map(([name, digest]) => ({
@@ -226,13 +293,18 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
               children: <ProjectDataBody digest={digest} />,
             }))}
           />
-        </Block>
+        </Section>
       )}
-      <Block title="Open actions accepted as conditions" count={snapshot.openActions.length}>
-        <Lines lines={snapshot.openActions.map((a) => `${a.title || a.id} — ${a.status}, ${a.priority}`)} />
-      </Block>
+
+      {snapshot.openActions.length > 0 && (
+        <Section title="Open actions accepted as conditions" count={snapshot.openActions.length}>
+          <Lines lines={snapshot.openActions.map((a) => `${a.title || a.id} — ${a.status}, ${a.priority}`)} />
+        </Section>
+      )}
+
       {(laterRegisters.length > 0 || laterData.length > 0) && (
-        <Block title="Filled in by later gates — shown for information; a change here does not stop you signing">
+        <Section title="Filled in by later gates">
+          <p className="gsp-sub gsp-sub-first">Shown for information. A change here does not stop you signing.</p>
           <Collapse
             size="small"
             items={[
@@ -248,8 +320,10 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
               })),
             ]}
           />
-        </Block>
+        </Section>
       )}
+
+      {empty.length > 0 && <p className="gsp-empty">Nothing recorded for: {empty.join(' · ')}.</p>}
     </>
   );
 }
@@ -314,21 +388,48 @@ export default function GateSignPreviewModal({
     };
   }, [open, projectId, gateId, market, changed]);
 
+  const needsComment = !!decision && gateSignOffNeedsComment(decision);
+  const gateName = GATES.find((g) => g.id === gateId)?.name;
+
   return (
     <Modal
       open={open}
-      width={920}
-      title={`Review before signing — ${roleLabel}, ${gateId}${market ? ` (${market})` : ''}`}
-      okText="Continue to sign"
-      okButtonProps={{ disabled: !preview || loading || !!problem }}
-      onOk={() => preview && onContinue(preview)}
+      width={840}
+      style={{ top: 24 }}
+      rootClassName="concept-tokens gsp-modal"
+      title={
+        <div className="gsp-title">
+          <span className="gsp-title-main">Review before signing</span>
+          <span className="gsp-title-meta">
+            <span className="gsp-role">{roleLabel}</span>
+            <span>
+              {gateId}
+              {gateName ? ` · ${gateName}` : ''}
+              {market ? ` · ${market}` : ''}
+            </span>
+          </span>
+        </div>
+      }
       onCancel={onCancel}
       destroyOnClose
+      footer={
+        <div className="gsp-footer">
+          <span className="gsp-fingerprint">
+            {preview ? `Fingerprint ${preview.hash.slice(0, 12)} · loaded ${new Date(preview.previewedAt).toLocaleTimeString()}` : ''}
+          </span>
+          <span className="gsp-footer-actions">
+            <Button onClick={onCancel}>Cancel</Button>
+            <Button type="primary" disabled={!preview || loading || !!problem} onClick={() => preview && onContinue(preview)}>
+              Continue to sign
+            </Button>
+          </span>
+        </div>
+      }
     >
-      <Typography.Paragraph type="secondary">
-        This is everything your signature will attest to, as it is right now. If any of it changes before you
-        submit, you will be asked to review it again.
-      </Typography.Paragraph>
+      <p className="gsp-intro">
+        Your signature attests to everything below as it is now. If any of it changes before you submit, you will be
+        asked to review it again.
+      </p>
       {changed && (
         <Alert
           type="warning"
@@ -353,52 +454,41 @@ export default function GateSignPreviewModal({
       {error && <Alert type="error" showIcon message={error} />}
       {loading && !preview && <Spin />}
       {preview && (
-        <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
+        <div className="gsp-scroll" tabIndex={0} aria-label="Evidence this signature attests to">
           <SnapshotBody snapshot={preview.snapshot} />
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Content fingerprint {preview.hash.slice(0, 16)}… · loaded {new Date(preview.previewedAt).toLocaleTimeString()}
-          </Typography.Text>
         </div>
       )}
-      <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--ant-color-border-secondary, #f0f0f0)' }}>
+
+      <div className="gsp-decision">
         {warning && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={warning} />}
-        <div style={{ marginBottom: 8 }}>
-          <Typography.Text strong>
-            Your decision <Typography.Text type="danger">*</Typography.Text>
-          </Typography.Text>
-          <Select
-            style={{ width: '100%', marginTop: 4 }}
-            allowClear
-            placeholder="Decision"
-            status={!decision ? 'warning' : undefined}
-            value={decision}
-            options={GATE_DECISIONS.map((d) => ({ value: d, label: d }))}
-            onChange={(v?: string) => onDecisionChange({ decision: v })}
-          />
+        <div className="gsp-field-label" id="gsp-decision-label">
+          Your decision <span className="gsp-req">*</span>
         </div>
-        <div>
-          <Typography.Text strong>
-            Comment
-            {!!decision && gateSignOffNeedsComment(decision) ? (
-              <Typography.Text type="danger"> * required for "{decision}"</Typography.Text>
-            ) : (
-              <Typography.Text type="secondary"> (optional for a clean Proceed)</Typography.Text>
-            )}
-          </Typography.Text>
-          <Input.TextArea
-            style={{ marginTop: 4 }}
-            autoSize={{ minRows: 2, maxRows: 8 }}
-            status={!!decision && gateSignOffNeedsComment(decision) && !comment?.trim() ? 'warning' : undefined}
-            placeholder="Required for anything other than a clean Proceed"
-            value={comment}
-            onChange={(e) => onDecisionChange({ comment: e.target.value })}
-          />
+        <Radio.Group
+          className="gsp-radios"
+          optionType="button"
+          buttonStyle="solid"
+          aria-labelledby="gsp-decision-label"
+          value={decision}
+          onChange={(e) => onDecisionChange({ decision: e.target.value })}
+          options={GATE_DECISIONS.map((d) => ({ value: d, label: d }))}
+        />
+        <div className="gsp-field-label" style={{ marginTop: 12 }}>
+          Comment{' '}
+          {needsComment ? (
+            <span className="gsp-req">* required for “{decision}”</span>
+          ) : (
+            <span className="gsp-optional">· optional for a clean Proceed</span>
+          )}
         </div>
-        {problem && (
-          <Typography.Text type="secondary" style={{ display: 'block', marginTop: 6 }}>
-            {problem}
-          </Typography.Text>
-        )}
+        <Input.TextArea
+          autoSize={{ minRows: 2, maxRows: 6 }}
+          status={needsComment && !comment?.trim() ? 'warning' : undefined}
+          placeholder={needsComment ? 'Say why — this is recorded with your signature' : 'Add a note for the record (optional)'}
+          value={comment}
+          onChange={(e) => onDecisionChange({ comment: e.target.value })}
+        />
+        {problem && <div className="gsp-problem">{problem}</div>}
       </div>
     </Modal>
   );
