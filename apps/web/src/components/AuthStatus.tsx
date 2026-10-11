@@ -24,32 +24,32 @@ export default function AuthStatus({ user, onLogout, compact }: AuthStatusProps)
   return (
     <Dropdown
       trigger={['click']}
+      // The identity block is part of the popup, not a menu item: as an item it took antd's hover
+      // background and padding (and swallowed its own chips' tint).
+      popupRender={(menu) => (
+        <div className="auth-pop">
+          <div className="auth-info-row">
+            <UserAvatar name={user.displayName} seed={user.id} size={40} />
+            <div className="auth-info-text">
+              <div className="auth-info-name">{user.displayName}</div>
+              <div className="auth-info-email">{user.email}</div>
+              {(user.roles.length > 0 || user.department) && (
+                <div className="auth-info-meta">
+                  {user.roles.map((r) => (
+                    <span className="auth-info-chip" key={r.key}>
+                      {r.name}
+                    </span>
+                  ))}
+                  {user.department && <span className="auth-info-chip">{user.department}</span>}
+                </div>
+              )}
+            </div>
+          </div>
+          {menu}
+        </div>
+      )}
       menu={{
         items: [
-          {
-            key: 'info',
-            className: 'auth-info',
-            label: (
-              <div className="auth-info-row">
-                <UserAvatar name={user.displayName} seed={user.id} size={40} />
-                <div className="auth-info-text">
-                  <div className="auth-info-name">{user.displayName}</div>
-                  <div className="auth-info-email">{user.email}</div>
-                  {(user.roles.length > 0 || user.department) && (
-                    <div className="auth-info-meta">
-                      {user.roles.map((r) => (
-                        <span className="auth-info-chip" key={r.key}>
-                          {r.name}
-                        </span>
-                      ))}
-                      {user.department && <span className="auth-info-chip">{user.department}</span>}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ),
-          },
-          { type: 'divider' },
           {
             key: 'account',
             label: <Link to="/account">My account</Link>,

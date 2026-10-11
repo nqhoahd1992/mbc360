@@ -12,11 +12,14 @@
 .auth-trigger-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .auth-trigger-caret { font-size: 10px; color: #6b6b6b; }
 
-.ant-dropdown-menu-item.auth-info,
-.ant-dropdown-menu-item.auth-info:hover { cursor: default; background: transparent; padding: 12px; }
-.auth-info-row { display: flex; align-items: center; gap: 12px; min-width: 240px; max-width: 320px; }
+.auth-pop {
+  min-width: 256px; max-width: 340px; background: #fff; border-radius: 8px; overflow: hidden;
+  box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
+}
+.auth-pop .ant-dropdown-menu { box-shadow: none; border-radius: 0; border-top: 1px solid #f0f0f0; }
+.auth-info-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
 .auth-info-text { min-width: 0; line-height: 1.4; }
 .auth-info-name { font-weight: 600; color: #1f1f1f; overflow-wrap: anywhere; }
 .auth-info-email { font-size: 13px; color: #595959; overflow-wrap: anywhere; }
-.auth-info-meta { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+.auth-info-meta { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
 .auth-info-chip { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 4px; background: #f5f5f5; color: #595959; font-size: 12px; }
