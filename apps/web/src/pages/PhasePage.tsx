@@ -351,23 +351,39 @@ export default function PhasePage() {
     </div>
   );
 
-  const goToDecision = () => {
-    const el = document.getElementById('sec-gate-flow');
+  const tabRecord = tab === CLOSE_TAB ? undefined : project.gates.find((r) => r.gateId === tab);
+  // The sign-off item can only be satisfied BY signing, so it is not counted as something still blocking the
+  // way to the sign-off, and it carries no link of its own: the one button below is the way in (2026-10-11).
+  const signoffId = `sg${tabGateNumber}-signoff`;
+  const readinessItems = readiness.map((i) => (i.id === signoffId ? { ...i, link: undefined } : i));
+  const hardBlocking = readiness.filter((i) => !i.satisfied && i.hardBlock && i.id !== signoffId).length;
+  const goSignoff = () => {
+    const el = document.getElementById('sec-gate-signoff');
     if (!el) return;
     scrollToSection(el);
     flashSection(el);
   };
-  const tabRecord = tab === CLOSE_TAB ? undefined : project.gates.find((r) => r.gateId === tab);
-  const hardBlocking = readiness.filter((i) => !i.satisfied && i.hardBlock).length;
+  // Grey while anything else still blocks; blue with a single soft pulse once only the signatures are left.
+  const signoffButton = (block?: boolean) => (
+    <Tooltip title={hardBlocking ? `${hardBlocking} item${hardBlocking === 1 ? '' : 's'} still blocking — you can still open the sign-off` : undefined}>
+      <Button
+        block={block}
+        type={hardBlocking ? 'default' : 'primary'}
+        className={hardBlocking ? 'ph-go ph-go-wait' : 'ph-go ph-go-ready'}
+        icon={<ArrowDownOutlined />}
+        onClick={goSignoff}
+      >
+        Go to sign-off
+      </Button>
+    </Tooltip>
+  );
   const gateSummary = tabRecord && (
     <div className="c-card ph-summary">
       <div>
         <div className="ph-summary-k">Readiness</div>
-        <div className={`ph-summary-v${hardBlocking ? ' ph-bad' : ''}`}>{hardBlocking ? `${hardBlocking} blocking` : 'Ready to decide'}</div>
+        <div className={`ph-summary-v${hardBlocking ? ' ph-bad' : ''}`}>{hardBlocking ? `${hardBlocking} blocking` : 'Ready to sign'}</div>
       </div>
-      <Button className="ph-summary-go" icon={<ArrowDownOutlined />} onClick={goToDecision}>
-        Go to decision
-      </Button>
+      <span className="ph-summary-go">{signoffButton()}</span>
     </div>
   );
 
@@ -617,18 +633,18 @@ export default function PhasePage() {
             <div className="c-card ph-rail-card">
               <div className="ph-rail-head">
                 <div className="ph-rail-title">Gate {tabGateNumber} readiness</div>
-                <div className={`ph-rail-sub${readiness.some((i) => !i.satisfied && i.hardBlock) ? ' ph-bad' : ''}`}>
+                <div className={`ph-rail-sub${hardBlocking ? ' ph-bad' : ''}`}>
                   {stepState(tab) === 'passed'
                     ? 'Passed'
-                    : readiness.some((i) => !i.satisfied && i.hardBlock)
-                      ? `${readiness.filter((i) => !i.satisfied && i.hardBlock).length} blocking the decision`
-                      : 'Nothing blocking — ready to decide'}
+                    : hardBlocking
+                      ? `${hardBlocking} blocking the sign-off`
+                      : 'Ready for the signatures'}
                 </div>
               </div>
               <div className="ph-rail-body">
                 <GateReadinessPanel
                   gateNumber={tabGateNumber ?? ''}
-                  items={readiness}
+                  items={readinessItems}
                   projectId={project.identity.id}
                   currentPath={location.pathname}
                   showSatisfied={showSatisfied}
@@ -637,9 +653,7 @@ export default function PhasePage() {
                 />
               </div>
               <div className="ph-rail-foot">
-                <Button block type={hardBlocking ? 'default' : 'primary'} icon={<ArrowDownOutlined />} onClick={goToDecision}>
-                  {hardBlocking ? 'Go to decision' : 'Sign and decide'}
-                </Button>
+                {signoffButton(true)}
               </div>
             </div>
           </aside>
