@@ -77,9 +77,10 @@ export default function PostMarketCapa() {
   const id = project.identity.id;
 
   const patch = (index: number, p: Partial<CapaRecord>) => update((prev) => patchArray(prev, index, p));
-  const save = () => {
-    setCapaBulk(id, draft);
-    markSaved();
+  const save = async () => {
+    const ok = await setCapaBulk(id, draft);
+    if (ok) markSaved();
+    return ok;
   };
 
   // The drawer closes only once the server has the record. A refused write (locked data, a conflict) leaves it
@@ -233,7 +234,7 @@ export default function PostMarketCapa() {
             </span>
           )
         }
-        footer={<DrawerSaveFooter dirty={dirty} onSave={save} />}
+        footer={<DrawerSaveFooter dirty={dirty} onSave={save} onClose={() => setOpenId(null)} />}
       >
         {open && (
           <div className="pm-detail">

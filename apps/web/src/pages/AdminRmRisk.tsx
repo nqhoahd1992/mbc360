@@ -169,9 +169,11 @@ export default function AdminRmRisk() {
       message.success(`${changedRows.length} raw material(s) classified`);
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Could not save');
+      return false;
     } finally {
       setSaving(false);
     }
+    return true;
   };
 
   // The revision history of the material whose drawer is open, read on demand.
@@ -379,7 +381,7 @@ export default function AdminRmRisk() {
         footer={
           canEdit ? (
             <div className="rt-drawer-foot">
-              <DrawerSaveFooter dirty={dirty} onSave={save} saving={saving} />
+              <DrawerSaveFooter dirty={dirty} onSave={save} saving={saving} onClose={() => setOpenCode(null)} />
               {open?.isNew && (
                 <Button danger onClick={() => removeNew(open.rmCode)}>
                   Remove

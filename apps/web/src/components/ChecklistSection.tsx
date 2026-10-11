@@ -67,9 +67,10 @@ export default function ChecklistSection({
   // `checklistPrimarySelected` could be left permanently unsatisfiable.
   const setPrimary = (index: number) => update((prev) => prev.map((item, i) => ({ ...item, isPrimary: i === index })));
   const primaryMissing = requiresPrimary && draft.some((i) => i.selected) && !draft.some((i) => i.selected && i.isPrimary);
-  const save = () => {
-    setSection(projectId, sectionKey, draft);
-    markSaved();
+  const save = async () => {
+    const ok = await setSection(projectId, sectionKey, draft);
+    if (ok) markSaved();
+    return ok;
   };
 
   const toggle = (index: number) => {
@@ -193,7 +194,7 @@ export default function ChecklistSection({
             </div>
           )
         }
-        footer={readOnly ? undefined : <DrawerSaveFooter dirty={dirty} onSave={save} />}
+        footer={readOnly ? undefined : <DrawerSaveFooter dirty={dirty} onSave={save} onClose={() => setOpenIndex(null)} />}
       >
         {open && openIndex !== null && (
           <div className="cl-form">

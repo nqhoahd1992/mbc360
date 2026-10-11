@@ -159,9 +159,11 @@ export default function AdminMarketProfiles() {
       message.success(`${changedMarkets.length} market profile(s) saved`);
     } catch (err) {
       message.error(err instanceof Error ? err.message : 'Could not save');
+      return false;
     } finally {
       setSaving(false);
     }
+    return true;
   };
 
   // The revision history of the market whose drawer is open, read on demand.
@@ -344,7 +346,7 @@ export default function AdminMarketProfiles() {
             </span>
           )
         }
-        footer={canEdit ? <DrawerSaveFooter dirty={dirty} onSave={save} saving={saving} /> : undefined}
+        footer={canEdit ? <DrawerSaveFooter dirty={dirty} onSave={save} saving={saving} onClose={() => setOpenMarket(null)} /> : undefined}
       >
         {open && (
           <div className="au-detail">

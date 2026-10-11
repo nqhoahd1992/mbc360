@@ -138,7 +138,7 @@ interface AppState {
     },
   ) => Promise<boolean>;
 
-  setChecklistSection: (id: string, section: string, items: ChecklistItem[]) => void;
+  setChecklistSection: (id: string, section: string, items: ChecklistItem[]) => Promise<boolean>;
   setRequirementSection: (id: string, section: string, items: RequirementItem[]) => void;
   setGateChecksBulk: (id: string, updates: { index: number; patch: Partial<GateCheck> }[]) => void;
   setAnglesBulk: (id: string, phase: number, angles: AngleRow[]) => void;
@@ -266,7 +266,7 @@ interface AppState {
   // The add* actions that open from a create drawer resolve to true only once the server has accepted the
   // record, so the drawer can stay open with what was typed when the write is refused (2026-10-11).
   addCapa: (id: string, record: CapaRecord) => Promise<boolean>;
-  setCapaBulk: (id: string, records: CapaRecord[]) => void;
+  setCapaBulk: (id: string, records: CapaRecord[]) => Promise<boolean>;
   addFeedback: (id: string, entry: FeedbackEntry) => Promise<boolean>;
 
   addChange: (record: ChangeRecord) => Promise<boolean>;
@@ -530,7 +530,7 @@ export const useAppStore = create<AppState>()(
         // that can actually enforce them. These actions keep their signatures so
         // no component changed.
         setChecklistSection: (id, section, items) =>
-          writeSection(id, (v) => projectsApi.setChecklistSection(id, section, items, v)),
+          tryWriteSection(id, (v) => projectsApi.setChecklistSection(id, section, items, v)),
         setRequirementSection: (id, section, items) =>
           writeSection(id, (v) => projectsApi.setRequirementSection(id, section, items, v)),
         // The store used to address gate checks by array index; the API uses the
@@ -621,7 +621,7 @@ export const useAppStore = create<AppState>()(
         setEvidenceItemsBulk: (id, items) =>
           writeSection(id, (v) => projectsApi.setEvidenceItems(id, items, v)),
 
-        setCapaBulk: (id, records) => writeSection(id, (v) => projectsApi.setCapa(id, records, v)),
+        setCapaBulk: (id, records) => tryWriteSection(id, (v) => projectsApi.setCapa(id, records, v)),
         addCapa: (id, record) => {
           const project = get().projects.find((p) => p.identity.id === id);
           return tryWriteSection(id, (v) => projectsApi.setCapa(id, [...(project?.capa ?? []), record], v));
