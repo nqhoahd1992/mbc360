@@ -66,3 +66,8 @@
 .gsp-fingerprint { font-size: 12px; color: var(--c-text-3); font-variant-numeric: tabular-nums; }
 .gsp-footer-actions { display: inline-flex; gap: 8px; margin-inline-start: auto; }
 .gsp-data { padding: 10px 12px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface-2); }
+.gsp-prose { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 22px; }
+.gsp-kv { margin-bottom: 4px; }
+.gsp-k { color: var(--c-text-3); }
+.gsp-meta { display: block; margin-top: 2px; font-size: 12px; line-height: 18px; color: var(--c-text-3); overflow-wrap: anywhere; }
+.gsp-options { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }

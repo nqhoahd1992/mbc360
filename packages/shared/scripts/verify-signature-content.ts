@@ -119,18 +119,68 @@ const clone = (p: ProjectData): ProjectData => JSON.parse(JSON.stringify(p));
   statusEdit.gates.find((g) => g.gateId === GATE)!.status = 'In Progress';
   t("changing the gate's stage status is a change to what was signed (locked)", changes(statusEdit).length > 0);
 
-  // The signed content is the SME's list for question 29(1): status, evidence, links, actions. A note, the
-  // owner and the due date are how the gate is run, not evidence it is signed on.
+  // 2026-10-11 (project owner): the gate's own page is the signed content, so its owner, due date and
+  // notes are locked too. Before, they were left editable as "how the gate is run".
   const adminEdit = signed();
   const record = adminEdit.gates.find((g) => g.gateId === GATE)!;
   record.notes = 'a note added after signing';
-  record.owner = 'Somebody else';
-  record.dueDate = '2030-01-01';
-  t('the gate notes, owner and due date are not part of what was signed (they stay editable)', changes(adminEdit).length === 0, JSON.stringify(changes(adminEdit)));
+  t('the gate notes are part of what was signed (locked)', changes(adminEdit).some((c) => /notes/i.test(c)), JSON.stringify(changes(adminEdit)));
+  const ownerEdit = signed();
+  ownerEdit.gates.find((g) => g.gateId === GATE)!.owner = 'Somebody else';
+  t('the gate owner is part of what was signed (locked)', changes(ownerEdit).some((c) => /owner/i.test(c)));
+  const dueEdit = signed();
+  dueEdit.gates.find((g) => g.gateId === GATE)!.dueDate = '2030-01-01';
+  t('the gate due date is part of what was signed (locked)', changes(dueEdit).some((c) => /due date/i.test(c)));
+
+  const gapEdit = signed();
+  gapEdit.gates.find((g) => g.gateId === GATE)!.gapRationale = 'rewritten';
+  t('the gap assessment is part of what was signed (locked)', changes(gapEdit).some((c) => /gap/i.test(c)));
+
+  // A signature taken before the full record existed is compared on what it did record: never stale for it.
+  const legacy = signed();
+  const snap = legacy.gateSignOffs[0].snapshot as unknown as Record<string, unknown>;
+  delete snap.fullRecord;
+  legacy.gates.find((g) => g.gateId === GATE)!.notes = 'edited after a legacy signature';
+  t('a signature that predates the full record is not stale because of it', changes(legacy).length === 0, JSON.stringify(changes(legacy)));
 
   const laterGate = signed();
   laterGate.nextActions.push({ id: 'later-1', gateId: 'SG10', description: 'work on a later gate', status: 'Open', priority: 'Medium' } as never);
   t('a Next Action on a LATER gate is not part of what this gate signed (later gates still contribute)', changes(laterGate).length === 0, JSON.stringify(changes(laterGate)));
+}
+
+// --- Gate 01: the requester and the free-text columns of the gate's own rows ---------------------------
+{
+  const GATE = 'SG01';
+  const signed = (): ProjectData => {
+    const p = fresh();
+    p.gateSignOffs = [{ gateId: GATE, role: 'Prepared by', signedByUserId: 'u1', signedAt: '2026-01-01T00:00:00Z', snapshot: gateEvidenceSnapshot(p, GATE) } as never];
+    return p;
+  };
+  const changes = (p: ProjectData) => gateSignOffStaleChanges(p, GATE, undefined, 'Prepared by');
+  t('Gate 01 untouched reports no change', changes(signed()).length === 0);
+
+  const name = signed();
+  name.identity.requesterName = 'Somebody new';
+  t('the requester name is part of what Gate 01 signed (locked)', changes(name).some((c) => /Requester name/.test(c)), JSON.stringify(changes(name)));
+  const dept = signed();
+  dept.identity.requesterDepartment = 'Sales';
+  t('the requester department is part of what Gate 01 signed (locked)', changes(dept).some((c) => /Requester department/.test(c)));
+
+  const check = signed();
+  const row = check.gateChecks.find((c) => c.gate === '01')!;
+  row.evidenceRef = 'DOC-42';
+  t('a Key Gate Check evidence reference is part of what was signed (locked)', changes(check).some((c) => /Key Gate Check details changed/.test(c)), JSON.stringify(changes(check)));
+  const initials = signed();
+  initials.gateChecks.find((c) => c.gate === '01')!.initials = 'HN';
+  t('a Key Gate Check initials cell is part of what was signed (locked)', changes(initials).some((c) => /Key Gate Check details changed/.test(c)));
+
+  const ownerFn = signed();
+  const section = Object.keys(ownerFn.checklists).find((k) => (ownerFn.checklists[k] ?? []).some((i) => i.gate === '01'))!;
+  ownerFn.checklists[section][0].notes = 'a note on an option';
+  t('a checklist option note is part of what was signed (locked)', changes(ownerFn).some((c) => /Checklist owners or notes changed/.test(c)), JSON.stringify(changes(ownerFn)));
+
+  // The request block is Gate 01's: another gate's snapshot does not carry it.
+  t('only Gate 01 carries the requester', gateEvidenceSnapshot(fresh(), 'SG02').fullRecord?.request === undefined && !!gateEvidenceSnapshot(fresh(), 'SG01').fullRecord?.request);
 }
 
 console.log(bad === 0 ? '\nAll cases passed.' : `\n${bad} case(s) FAILED.`);

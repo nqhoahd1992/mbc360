@@ -548,6 +548,17 @@ export async function run(base: string, db: Client): Promise<number> {
   t('editing initialScope (Gate 1 data) while the Prepared signature stands is refused (403), naming what is locked',
     r.status === 403 && String(r.json?.message).includes('Project identity') && String(r.json?.message).includes('locked'), `${r.status} ${short(r.json)}`);
   t('...and the signature is still current', (await stale('SG01', 'Prepared by')).length === 0, short(await stale('SG01', 'Prepared by')));
+  // 2026-10-11: the gate's whole page is signed content, so the requester and the gate card's own fields are locked too.
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/identity`, { patch: { requesterName: 'Someone else' }, expectedVersion: await version() });
+  t('editing the requester (Opportunity & Request) while the Prepared signature stands is refused (403)',
+    r.status === 403 && String(r.json?.message).includes('Requester name'), `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/gates/SG01`, { notes: 'a note after signing', expectedVersion: await version() });
+  t('editing the gate notes while the Prepared signature stands is refused (403)',
+    r.status === 403 && String(r.json?.message).includes('Gate notes'), `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/gates/SG01`, { owner: 'Somebody', expectedVersion: await version() });
+  t('editing the gate owner while the Prepared signature stands is refused (403)',
+    r.status === 403 && String(r.json?.message).includes('Gate owner'), `${r.status} ${short(r.json)}`);
+  t('...and the signature is still current after those refusals', (await stale('SG01', 'Prepared by')).length === 0, short(await stale('SG01', 'Prepared by')));
   r = await api(signerKey('SG01', 'Prepared by'), 'POST', `/projects/${PROJECT}/gates/SG01/sign-offs/withdraw`, {
     role: 'Prepared by',
     reason: 'scope changed',

@@ -688,10 +688,31 @@ export interface GateEvidenceSnapshot {
   // gate lock yet). Absent on signatures taken before this existed.
   projectData?: Record<string, string>;
   projectDataLater?: Record<string, string>;
+  // Everything the gate's own page shows that the lists above leave out (2026-10-11, project owner:
+  // "put all of the gate's information in"): the gate card's owner, due date, notes and gap
+  // assessment, the requester on Gate 01, and the owner / date / link / notes columns of the Key Gate
+  // Checks, checklist options and requirement rows. Structured rather than digested to a string so the
+  // signing review can print it as it appears on the page. Absent on signatures taken before this
+  // existed — those are compared on what they did record, exactly as before, never declared stale.
+  fullRecord?: GateFullRecord;
   // "Open actions and conditions".
   openActions: { id: string; title: string; status: string; priority: string }[];
   formulaVersion: string;
   artworkVersion?: string;
+}
+
+export interface GateFullRecord {
+  // The gate card's own fields. NOT `decision` (the sign-off's output, see above) and not `status`
+  // (already recorded above).
+  gate: Record<string, string>;
+  // Gate 01 only: the requester, from the Opportunity & Request card.
+  request?: Record<string, string>;
+  // Key Gate Check columns beyond done / Y-N-NA / notes, by check name.
+  gateChecks: Record<string, Record<string, string>>;
+  // Per checklist section, every option with its owner / function and notes.
+  checklists: Record<string, { label: string; owner: string; notes: string }[]>;
+  // Per requirement section, the rows' free-text columns.
+  requirements: Record<string, { requirement: string; requirementText: string; minimumRequirement: string; rationale: string; owner: string; notes: string }[]>;
 }
 
 // What the signer is shown before signing, and the hash their signature is bound to. The hash covers

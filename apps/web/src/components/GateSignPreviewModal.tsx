@@ -171,11 +171,16 @@ function Lines({ lines }: { lines: string[] }) {
 }
 
 function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
-  const tickedChecklist = (digest: string): string[] =>
+  // "label=Y/status/P/evidenceLink" per option (gateSnapshot.ts digestChecklists).
+  const tickedChecklist = (digest: string): { label: string; status: string; primary: boolean; link: string }[] =>
     digest
       .split('|')
       .filter((p) => p.includes('=Y/'))
-      .map((p) => p.replace(/=Y\/.*$/, ''));
+      .map((p) => {
+        const at = p.indexOf('=Y/');
+        const [status = '', primary = '', ...link] = p.slice(at + 3).split('/');
+        return { label: p.slice(0, at), status, primary: primary === 'P', link: link.join('/') };
+      });
   const requirementLines = (digest: string): string[] =>
     digest.split('|').filter(Boolean).map((p) => {
       // "requirement=status/priority/N-A rationale/evidence link" -> "requirement — status · priority · …"
@@ -191,6 +196,19 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
   const checklists = Object.entries(snapshot.checklists);
   const requirements = Object.entries(snapshot.requirements);
   const doneChecks = snapshot.gateChecks.filter((c) => c.done).length;
+  const full = snapshot.fullRecord;
+  const gateRec = full?.gate ?? {};
+  const GAP_LABELS: [string, string][] = [
+    ['gapCriticality', 'Criticality'],
+    ['gapImpactCategory', 'Impact category'],
+    ['gapAssessor', 'Assessor'],
+    ['gapAssessmentDate', 'Assessment date'],
+    ['gapRationale', 'Rationale'],
+    ['gapEvidenceLink', 'Evidence link'],
+    ['gapRequiredAction', 'Required action'],
+    ['gapActionOwner', 'Action owner'],
+  ];
+  const gapFields = GAP_LABELS.filter(([k]) => (gateRec[k] ?? '') !== '').map(([k, label]) => [label, gateRec[k]] as const);
 
   // Sections with nothing in them collapse into ONE line at the end instead of five headings
   // that each say "0": the reader still sees they were covered, without scrolling past them.
@@ -225,7 +243,36 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
             <strong>{l}</strong>
           </span>
         ))}
+        {gateRec.owner && (
+          <span className="gsp-fact">
+            <span className="gsp-fact-k">Owner</span>
+            <strong>{gateRec.owner}</strong>
+          </span>
+        )}
+        {gateRec.dueDate && (
+          <span className="gsp-fact">
+            <span className="gsp-fact-k">Due date</span>
+            <strong>{gateRec.dueDate}</strong>
+          </span>
+        )}
       </div>
+      {gateRec.notes && (
+        <Section title="Gate notes / blockers">
+          <p className="gsp-prose">{gateRec.notes}</p>
+        </Section>
+      )}
+      {gapFields.length > 0 && (
+        <Section title="Gap assessment">
+          <div className="gsp-data">
+            {gapFields.map(([label, value]) => (
+              <div key={label} className="gsp-kv">
+                <span className="gsp-k">{label}: </span>
+                {value}
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {snapshot.gateChecks.length > 0 && (
         <Section title="Key Gate Checks">
@@ -240,6 +287,15 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
                 <span className="gsp-check-text">
                   {c.check}
                   {c.notes && <span className="gsp-note"> — {c.notes}</span>}
+                  {(() => {
+                    const d = full?.gateChecks[c.check];
+                    const bits = d
+                      ? ([['Date', d.date], ['Initials', d.initials], ['Evidence', d.evidenceRef], ['Method', d.methodRef], ['Link', d.internalLink]] as const).filter(([, v]) => v)
+                      : [];
+                    return bits.length > 0 ? (
+                      <span className="gsp-meta">{bits.map(([k, v]) => `${k}: ${v}`).join(' · ')}</span>
+                    ) : null;
+                  })()}
                 </span>
                 <span className="gsp-ynna">{c.ynna || 'No answer'}</span>
               </li>
@@ -256,17 +312,28 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
           {checklists.map(([key, digest]) => (
             <div key={key} className="gsp-group">
               <div className="gsp-group-title">{SECTION_TITLES[key] ?? humanize(key)}</div>
-              <div className="gsp-chips">
-                {tickedChecklist(digest).length === 0 ? (
-                  <Typography.Text type="secondary">None ticked.</Typography.Text>
-                ) : (
-                  tickedChecklist(digest).map((o) => (
-                    <span className="gsp-chip" key={o}>
-                      {o}
-                    </span>
-                  ))
-                )}
-              </div>
+              {tickedChecklist(digest).length === 0 ? (
+                <Typography.Text type="secondary">None ticked.</Typography.Text>
+              ) : (
+                <ul className="gsp-options">
+                  {tickedChecklist(digest).map((o) => {
+                    const detail = full?.checklists[key]?.find((x) => x.label === o.label);
+                    const bits = [
+                      o.primary ? 'Primary' : '',
+                      o.status ? `Status ${o.status}` : '',
+                      detail?.owner ? `Owner / function: ${detail.owner}` : '',
+                      o.link ? `Link: ${o.link}` : '',
+                      detail?.notes ? `Notes: ${detail.notes}` : '',
+                    ].filter(Boolean);
+                    return (
+                      <li key={o.label}>
+                        <span className="gsp-chip">{o.label}</span>
+                        {bits.length > 0 && <span className="gsp-meta">{bits.join(' · ')}</span>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           ))}
         </Section>
@@ -278,6 +345,20 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
             <div key={key} className="gsp-group">
               <div className="gsp-group-title">{SECTION_TITLES[key] ?? humanize(key)}</div>
               <Lines lines={requirementLines(digest)} />
+              {(full?.requirements[key] ?? []).some((r) => r.owner || r.notes || r.requirementText) && (
+                <ul className="gsp-options">
+                  {(full?.requirements[key] ?? [])
+                    .filter((r) => r.owner || r.notes || r.requirementText)
+                    .map((r) => (
+                      <li key={r.requirement}>
+                        <span className="gsp-chip">{r.requirement}</span>
+                        <span className="gsp-meta">
+                          {[r.requirementText, r.owner && `Owner: ${r.owner}`, r.notes && `Notes: ${r.notes}`].filter(Boolean).join(' · ')}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              )}
             </div>
           ))}
         </Section>
@@ -302,6 +383,14 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
         (digest ?? '').length <= 600 ? (
           <Section key={name} title={dataTitle(name)}>
             <div className="gsp-data">
+              {name === 'identity' &&
+                full?.request &&
+                ([['Requester name', full.request.requesterName], ['Requester department', full.request.requesterDepartment]] as const).map(([label, value]) => (
+                  <div key={label} className="gsp-kv">
+                    <span className="gsp-k">{label}: </span>
+                    {value || DASH}
+                  </div>
+                ))}
               <ProjectDataBody digest={digest} />
             </div>
           </Section>

@@ -35,7 +35,7 @@
 // in the app. A narrower snapshot would let evidence change under a signature; a
 // wider one would invalidate signatures for edits to gates that have nothing to
 // do with this one [ASSUMPTION: R5-Q7].
-import type { GateEvidenceSnapshot, ProjectData, RegisterRow } from '../types';
+import type { GateEvidenceSnapshot, GateFullRecord, ProjectData, RegisterRow } from '../types';
 import { PHASE_CONFIGS } from '../config/phases';
 import { REGISTER_CONFIGS } from '../config/registers';
 import { NEXT_ACTION_PRIORITIES, NEXT_ACTION_TERMINAL_STATUSES } from '../types';
@@ -117,6 +117,74 @@ function digestRegisterCells(rows: RegisterRow[], columns: string[]): string {
     .join('\n');
 }
 
+const GATE_RECORD_FIELDS = [
+  'owner',
+  'dueDate',
+  'notes',
+  'gapCriticality',
+  'gapImpactCategory',
+  'gapAssessor',
+  'gapAssessmentDate',
+  'gapRationale',
+  'gapEvidenceLink',
+  'gapRequiredAction',
+  'gapActionOwner',
+] as const;
+const GATE_CHECK_DETAIL_FIELDS = ['date', 'evidenceRef', 'methodRef', 'internalLink', 'initials'] as const;
+
+// What the gate's own page shows beyond the lists above. Sections are chosen by the same ownership
+// rule as `digestChecklists`, so a section that moves gate cannot silently drop out of a signature.
+function gateFullRecord(project: ProjectData, gateId: string, gateNumber: string): GateFullRecord {
+  const record = project.gates.find((g) => g.gateId === gateId);
+  const gate: Record<string, string> = {};
+  for (const f of GATE_RECORD_FIELDS) gate[f] = String((record as Record<string, unknown> | undefined)?.[f] ?? '');
+
+  const gateChecks: GateFullRecord['gateChecks'] = {};
+  for (const c of project.gateChecks.filter((x) => x.gate === gateNumber)) {
+    gateChecks[c.check] = Object.fromEntries(GATE_CHECK_DETAIL_FIELDS.map((f) => [f, String(c[f] ?? '')]));
+  }
+
+  const checklists: GateFullRecord['checklists'] = {};
+  const requirements: GateFullRecord['requirements'] = {};
+  for (const config of Object.values(PHASE_CONFIGS)) {
+    for (const section of config.checklistSections) {
+      const owners = gateRefGateIds(section.gate);
+      if (owners.length === 0 ? section.gate !== gateNumber : owners[owners.length - 1] !== gateId) continue;
+      checklists[section.key] = (project.checklists[section.key] ?? []).map((i) => ({
+        label: i.label,
+        owner: i.ownerFunction ?? '',
+        notes: i.notes ?? '',
+      }));
+    }
+  }
+  for (const [section, rows] of Object.entries(project.requirements)) {
+    const mine = rows.filter((r) => r.gate === gateNumber);
+    if (mine.length === 0) continue;
+    requirements[section] = mine.map((r) => ({
+      requirement: r.requirement,
+      requirementText: r.requirementText ?? '',
+      minimumRequirement: r.minimumRequirement ?? '',
+      rationale: r.rationale ?? '',
+      owner: r.owner ?? '',
+      notes: r.notes ?? '',
+    }));
+  }
+  return {
+    gate,
+    ...(gateId === 'SG01'
+      ? {
+          request: {
+            requesterName: project.identity.requesterName ?? '',
+            requesterDepartment: project.identity.requesterDepartment ?? '',
+          },
+        }
+      : {}),
+    gateChecks,
+    checklists,
+    requirements,
+  };
+}
+
 export function gateEvidenceSnapshot(
   project: ProjectData,
   gateId: string,
@@ -155,6 +223,7 @@ export function gateEvidenceSnapshot(
     registerLater,
     projectData: slices.settled,
     projectDataLater: slices.later,
+    fullRecord: gateFullRecord(project, gateId, gateNumber),
     openActions: project.nextActions
       .filter((a) => a.gateId === gateId && !NEXT_ACTION_TERMINAL_STATUSES.includes(a.status))
       .map((a) => ({ id: a.id, title: a.description, status: a.status, priority: a.priority })),
@@ -254,6 +323,40 @@ export function snapshotChanges(
     if (!was) changes.push(`New Key Gate Check: "${check.check}"`);
     else if (was.done !== check.done || was.ynna !== check.ynna || (was.notes ?? '') !== (check.notes ?? '')) {
       changes.push(`Key Gate Check changed: "${check.check}"`);
+    }
+  }
+
+  // The gate page's own fields, the requester and the free-text columns of its rows. Compared only
+  // when the signature recorded them (2026-10-11); an older one is never stale because of them.
+  if (before.fullRecord && after.fullRecord) {
+    const was = before.fullRecord;
+    const now = after.fullRecord;
+    const GATE_LABELS: Record<string, string> = { owner: 'Gate owner', dueDate: 'Gate due date', notes: 'Gate notes / blockers' };
+    let gap = false;
+    for (const f of GATE_RECORD_FIELDS) {
+      if ((was.gate[f] ?? '') === (now.gate[f] ?? '')) continue;
+      if (GATE_LABELS[f]) changes.push(`${GATE_LABELS[f]} changed`);
+      else gap = true;
+    }
+    if (gap) changes.push('Gap assessment changed');
+    if (was.request && now.request) {
+      if ((was.request.requesterName ?? '') !== (now.request.requesterName ?? '')) changes.push('Requester name changed');
+      if ((was.request.requesterDepartment ?? '') !== (now.request.requesterDepartment ?? '')) changes.push('Requester department changed');
+    }
+    for (const [check, detail] of Object.entries(now.gateChecks)) {
+      if (check in was.gateChecks && JSON.stringify(was.gateChecks[check]) !== JSON.stringify(detail)) {
+        changes.push(`Key Gate Check details changed: "${check}"`);
+      }
+    }
+    for (const [key, rows] of Object.entries(now.checklists)) {
+      if (key in was.checklists && JSON.stringify(was.checklists[key]) !== JSON.stringify(rows)) {
+        changes.push(`Checklist owners or notes changed: ${key}`);
+      }
+    }
+    for (const [key, rows] of Object.entries(now.requirements)) {
+      if (key in was.requirements && JSON.stringify(was.requirements[key]) !== JSON.stringify(rows)) {
+        changes.push(`Requirement details changed: ${key}`);
+      }
     }
   }
 
