@@ -43,6 +43,7 @@ export default function GateFlowTable({
   gateIds,
   layout = 'table',
   hideReadiness,
+  part = 'all',
 }: {
   project: ProjectData;
   gateIds: string[];
@@ -53,6 +54,10 @@ export default function GateFlowTable({
   // The Phase page shows readiness in its own sticky rail, so the card layout
   // can leave it out rather than print the same list twice.
   hideReadiness?: boolean;
+  // Card layout only: the Phase Gate Flow card and the Gate sign-off card sit in different places on the page
+  // (the flow right after Project Identification, as in the workbook; the sign-off last), so each is rendered by
+  // its own instance. 'all' keeps both together.
+  part?: 'all' | 'flow' | 'signoff';
 }) {
   const setGatesBulk = useAppStore((s) => s.setGatesBulk);
   const backtrackGate = useAppStore((s) => s.backtrackGate);
@@ -574,7 +579,7 @@ export default function GateFlowTable({
             ];
             return (
             <div key={r.meta.id} className="gfc-gate">
-            <div className={`c-card gfc-card${r.passed ? ' gfc-passed' : ''}`}>
+            {part !== 'signoff' && <div className={`c-card gfc-card${r.passed ? ' gfc-passed' : ''}`}>
               <div className="gfc-head">
                 <div style={{ minWidth: 0 }}>
                   <div className="gfc-eyebrow">Phase Gate Flow</div>
@@ -621,9 +626,9 @@ export default function GateFlowTable({
                 </div>
               )}
               <div className="gfc-guidance">{renderGuidance(r, 'notices')}</div>
-            </div>
+            </div>}
             {/* The sign-off is its own card, below the flow it depends on. */}
-            <div className="gfc-signoff">{renderGuidance(r, 'signoff')}</div>
+            {part !== 'flow' && <div className="gfc-signoff">{renderGuidance(r, 'signoff')}</div>}
             </div>
             );
           })}

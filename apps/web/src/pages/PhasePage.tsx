@@ -250,15 +250,16 @@ export default function PhasePage() {
           ...(phase === 1 && tab === config.gateIds[0]
             ? [
                 { id: 'sec-identification', label: 'Project Identification' },
-                { id: 'sec-opportunity', label: 'Opportunity & Request (Gate 01)' },
               ]
             : []),
+          { id: 'sec-gate-flow', label: 'Phase Gate Flow' },
+          ...(phase === 1 && tab === config.gateIds[0] ? [{ id: 'sec-opportunity', label: 'Opportunity & Request (Gate 01)' }] : []),
           ...checklistSections.map((s) => ({ id: `sec-checklist-${s.key}`, label: s.title })),
           ...requirementSections.map((s) => ({ id: `sec-requirement-${s.key}`, label: s.title })),
           ...assessments.map((a) => ({ id: assessmentAnchor(a.key), label: `Assessment: ${a.title}` })),
           ...(keyChecks.length ? [{ id: 'sec-gate-checks', label: 'Key Gate Checks' }] : []),
           { id: 'sec-next-actions', label: 'Next Actions' },
-          { id: 'sec-gate-flow', label: `Gate ${tabGateNumber} decision and sign-off` },
+          { id: 'sec-gate-signoff', label: `Gate ${tabGateNumber} sign-off` },
         ];
 
   const statusTag =
@@ -524,10 +525,19 @@ export default function PhasePage() {
                 <div id="sec-identification">
                   <ProjectIdentificationCard project={project} editableMarkets />
                 </div>
-                <div id="sec-opportunity">
-                  <OpportunityRequestCard project={project} />
-                </div>
               </>
+            )}
+
+            {/* Phase Gate Flow comes right after Project Identification, as in the SME's workbook: its Stage
+                status is the gate's current state, so it is read and kept up to date first. */}
+            <div id="sec-gate-flow">
+              <GateFlowTable project={project} gateIds={[tab]} layout="card" hideReadiness part="flow" />
+            </div>
+
+            {phase === 1 && tab === config.gateIds[0] && (
+              <div id="sec-opportunity">
+                <OpportunityRequestCard project={project} />
+              </div>
             )}
 
             {checklistSections.map((section) => (
@@ -608,10 +618,9 @@ export default function PhasePage() {
               <NextActionsCard project={project} projectId={project.identity.id} gateIds={[tab]} actions={project.nextActions} />
             </div>
 
-            {/* The decision and the three signatures come last: they attest to
-                the evidence above, so they are made after it, not before. */}
-            <div id="sec-gate-flow">
-              <GateFlowTable project={project} gateIds={[tab]} layout="card" hideReadiness />
+            {/* The three signatures come last: they attest to the evidence above. */}
+            <div id="sec-gate-signoff">
+              <GateFlowTable project={project} gateIds={[tab]} layout="card" hideReadiness part="signoff" />
             </div>
           </div>
 
