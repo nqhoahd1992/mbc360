@@ -434,11 +434,10 @@ export default function GateFlowTable({
                 >
                   <Select
                     allowClear
-                    placeholder="Decision"
+                    placeholder="Awaiting sign-off"
                     style={{ width: 140 }}
                     value={r.draftRecord.decision}
                     disabled={r.locked || !r.canDecide || r.approverSigned}
-                    status={r.awaitingDecision ? 'warning' : undefined}
                     options={GATE_DECISIONS.map((d) => ({
                       value: d,
                       // Question 29(5): "the approver's decision IS the gate
