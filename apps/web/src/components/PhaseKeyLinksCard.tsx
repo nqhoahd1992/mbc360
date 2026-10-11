@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, Input, Tooltip } from 'antd';
-import { ExportOutlined } from '@ant-design/icons';
+import { DownOutlined, ExportOutlined, RightOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import type { PhaseKeyLinkConfig } from '@mbc360/shared/config/phases';
 import type { ProjectData } from '@mbc360/shared/types';
@@ -21,6 +21,18 @@ import SaveBar from './SaveBar';
 //
 // No row ships with a default URL, including Phase 2's Ingredient Registry, whose
 // workbook cell does carry one — see the note on it in config/phases.ts.
+// Collapsed by default: these are shortcuts, not something to read on every gate tab (2026-10-11). The one
+// line says how many are linked, so a missing one is still visible. The open/closed choice is remembered
+// per browser; a pending edit keeps it open so unsaved text is never hidden.
+const OPEN_KEY = 'mbc360.keyLinksOpen';
+function readOpen(): boolean {
+  try {
+    return window.localStorage.getItem(OPEN_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export default function PhaseKeyLinksCard({
   links,
   project,
@@ -47,10 +59,47 @@ export default function PhaseKeyLinksCard({
     markSaved();
   };
 
+  const [openChoice, setOpenChoice] = useState(readOpen);
+  const toggle = () => {
+    const next = !openChoice;
+    setOpenChoice(next);
+    try {
+      window.localStorage.setItem(OPEN_KEY, next ? '1' : '0');
+    } catch {
+      // Remembering is a convenience; the card still works without it.
+    }
+  };
+
   if (links.length === 0) return null;
 
+  const open = openChoice || dirty;
+  const linked = links.length - external.filter((l) => !(committed[l.label] ?? '').trim()).length;
+
   return (
-    <Card size="small" title="Key records for this phase">
+    <Card
+      size="small"
+      title={
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          aria-controls="phase-key-links-body"
+          disabled={dirty}
+          style={{
+            display: 'flex', width: '100%', alignItems: 'center', gap: 8, padding: 0, border: 0,
+            background: 'none', font: 'inherit', fontWeight: 600, textAlign: 'left', cursor: dirty ? 'default' : 'pointer',
+          }}
+        >
+          {open ? <DownOutlined style={{ fontSize: 11 }} /> : <RightOutlined style={{ fontSize: 11 }} />}
+          <span style={{ flex: 1 }}>Key records</span>
+          <span style={{ fontWeight: 400, fontSize: 13, color: linked === links.length ? '#237804' : '#6b6b6b' }}>
+            {linked} of {links.length} linked
+          </span>
+        </button>
+      }
+      styles={{ header: open ? undefined : { borderBottom: 0 }, body: open ? undefined : { display: 'none' } }}
+    >
+      <div id="phase-key-links-body" hidden={!open}>
       <div style={{ display: 'grid', gap: 8 }}>
         {links.map((link) => {
           if (link.href) {
@@ -88,6 +137,7 @@ export default function PhaseKeyLinksCard({
         })}
       </div>
       {external.length > 0 && !archived && <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />}
+      </div>
     </Card>
   );
 }
