@@ -213,6 +213,7 @@ export default function GateSignOffPanel({
             <div className="gso-head">
               <span className="gso-title">Gate sign-off</span>
               {market && <span className="c-tag">{market}</span>}
+              <span className="gso-progress">{rows.filter((x) => x.signedAt).length} of {rows.length} signed</span>
               {critical && (
                 <Tooltip
                   title={`A critical gate: the reviewer must be a different person from the preparer, and at least one reviewer or approver must represent ${independent?.label}.`}
@@ -265,6 +266,15 @@ export default function GateSignOffPanel({
               // the opposite; the two that cannot be signed are now one line.
               const isTurn = !r.signedAt && rows.slice(0, i).every((p) => p.signedAt);
               const mine = r.assignedToUserId === session.user?.id;
+              const waitText = !r.assignedToUserId
+                ? isLead && !archived
+                  ? null
+                  : 'Waiting for the project Lead to nominate a signer'
+                : isTurn && mine
+                  ? why
+                  : r.assignedToUserId !== session.user?.id && isTurn
+                    ? `Nominated to ${r.assignedToName ?? 'somebody else'} — waiting for them to sign`
+                    : why;
               return (
                 <div key={r.role} className={`gso-row${r.signedAt ? ' gso-row-done' : ''}`}>
                   <div className="gso-line">
@@ -324,7 +334,29 @@ export default function GateSignOffPanel({
                             ))}
                         </>
                       ) : (
-                        <span className="c-tag">{isTurn ? (mine ? 'Your turn' : 'Waiting to be signed') : 'Not yet'}</span>
+                        isTurn && mine && canSign ? (
+                          why ? (
+                            <Tooltip title={why}>
+                              <span>
+                                <Button type="primary" disabled>
+                                  Review & sign
+                                </Button>
+                              </span>
+                            </Tooltip>
+                          ) : (
+                            <Button
+                              type="primary"
+                              onClick={() => {
+                                setChanged(null);
+                                setReviewing({ market, role: r.role });
+                              }}
+                            >
+                              Review & sign
+                            </Button>
+                          )
+                        ) : (
+                          <span className="c-tag">{isTurn ? 'Waiting to be signed' : 'Not yet'}</span>
+                        )
                       )}
                     </div>
                   </div>
@@ -334,39 +366,14 @@ export default function GateSignOffPanel({
                       <span className={`c-tag c-tag-dot ${r.decision === 'Proceed' ? 'c-tag-ok' : 'c-tag-warn'}`}>{r.decision}</span>
                       {r.comment ? <p className="gso-comment">{r.comment}</p> : <span className="gso-muted">No comment</span>}
                     </div>
-                  ) : isTurn && mine && canSign ? (
-                    <div className="gso-form">
-                      <div className="gso-submit">
-                        {why ? (
-                          <Tooltip title={why}>
-                            <span>
-                              <Button type="primary" disabled>
-                                Review & sign
-                              </Button>
-                            </span>
-                          </Tooltip>
-                        ) : (
-                          <Button
-                            type="primary"
-                            onClick={() => {
-                              setChanged(null);
-                              setReviewing({ market, role: r.role });
-                            }}
-                          >
-                            Review & sign
-                          </Button>
-                        )}
-                        {why && <span className="gso-muted">{why}</span>}
-                      </div>
-                    </div>
                   ) : (
-                    // Not repeated per row while the gate is locked: the reason is the
-                    // same for all three and the banner above already carries it.
-                    why &&
+                    // One short line, only when there is something to do or wait for. The Lead is told nothing
+                    // about "the Lead nominates" — the empty picker above already says it.
+                    waitText &&
                     canSign && (
                       <div className="gso-wait">
                         <ClockCircleOutlined />
-                        <span>{why}</span>
+                        <span>{waitText}</span>
                       </div>
                     )
                   )}
