@@ -476,7 +476,7 @@ export default function GateFlowTable({
             width: 190,
             render: (_, r) => (
               <Input.TextArea
-                autoSize={{ minRows: 1, maxRows: 4 }}
+                autoSize={{ minRows: 3, maxRows: 8 }}
                 value={r.draftRecord.notes}
                 disabled={r.locked}
                 onChange={(e) => patch(r.draftIndex, { notes: e.target.value })}
@@ -584,7 +584,7 @@ export default function GateFlowTable({
               </div>
               <div className="gfc-fields">
                 {CARD_FIELDS.map((title) => (
-                  <label key={title} className={title === 'Notes / blockers' || title === 'Evidence / link' ? 'gfc-wide' : undefined}>
+                  <label key={title} className={title === 'Notes / blockers' ? 'gfc-full' : title === 'Evidence / link' ? 'gfc-full' : undefined}>
                     <span className="gfc-label">
                       {title}
                       {REQUIRED_FIELD_TITLES.includes(title) && (
