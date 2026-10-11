@@ -540,6 +540,8 @@ export default function GateFlowTable({
   ];
 
   // Card layout: the same column renderers, laid out as a form per gate.
+  // Stage status (must read Complete), Owner, Due date and Evidence / link: GATE_FLOW_REQUIRED + the stage rule (SW-26).
+  const REQUIRED_FIELD_TITLES = ['Stage status', 'Owner', 'Due date', 'Evidence / link'];
   const CARD_FIELDS = ['Stage status', 'Gate decision', 'Owner', 'Due date', 'Evidence / link', 'Notes / blockers'];
   const fieldFor = (title: string) => columns.find((c) => c.title === title) as { render: (v: unknown, r: Row, i: number) => React.ReactNode } | undefined;
 
@@ -607,7 +609,14 @@ export default function GateFlowTable({
               <div className="gfc-fields">
                 {CARD_FIELDS.map((title) => (
                   <label key={title} className={title === 'Notes / blockers' || title === 'Evidence / link' ? 'gfc-wide' : undefined}>
-                    <span className="gfc-label">{title}</span>
+                    <span className="gfc-label">
+                      {title}
+                      {REQUIRED_FIELD_TITLES.includes(title) && (
+                        <Tooltip title="Required before this gate can be signed off with a passing decision">
+                          <span className="gfc-req" aria-label="required"> *</span>
+                        </Tooltip>
+                      )}
+                    </span>
                     {fieldFor(title)?.render(undefined, r, r.draftIndex)}
                   </label>
                 ))}
