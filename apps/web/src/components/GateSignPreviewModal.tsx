@@ -71,6 +71,19 @@ const SECTION_TITLES: Record<string, string> = Object.fromEntries(
   Object.values(PHASE_CONFIGS).flatMap((p) => [...p.checklistSections, ...p.requirementSections].map((s) => [s.key, s.title])),
 );
 
+// Names as the page itself prints them, so the signer finds the same words they filled in.
+const FIELD_LABELS: Record<string, string> = {
+  requesterName: 'Requester name',
+  requesterDepartment: 'Requester department',
+  initialScope: 'Initial product scope',
+  initialTargetUsers: 'Initial target user / life-stage',
+};
+const DATA_TITLES: Record<string, string> = {
+  identity: 'Opportunity & Request',
+  'identity.markets': 'Countries / Markets',
+};
+const dataTitle = (name: string) => DATA_TITLES[name] ?? PROJECT_DATA_LABELS[name] ?? humanize(name);
+
 // "initialScope" -> "Initial scope".
 function humanize(key: string): string {
   const spaced = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_.]/g, ' ').trim();
@@ -100,7 +113,7 @@ function Value({ value }: { value: unknown }): React.ReactElement {
         rowKey="__n"
         dataSource={rows.map((r, i) => ({ ...r, __n: i }))}
         columns={cols.map((k) => ({
-          title: humanize(k),
+          title: FIELD_LABELS[k] ?? humanize(k),
           dataIndex: k,
           render: (v: unknown) => <Value value={v} />,
         }))}
@@ -113,7 +126,7 @@ function Value({ value }: { value: unknown }): React.ReactElement {
       <div>
         {entries.map(([k, v]) => (
           <div key={k} style={{ marginBottom: 4 }}>
-            <Typography.Text type="secondary">{humanize(k)}: </Typography.Text>
+            <Typography.Text type="secondary">{FIELD_LABELS[k] ?? humanize(k)}: </Typography.Text>
             <Value value={v} />
           </div>
         ))}
@@ -283,17 +296,23 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
         </Section>
       )}
 
-      {accountableData.length > 0 && (
-        <Section title="Other project data this gate is accountable for" count={accountableData.length}>
-          <Collapse
-            size="small"
-            items={accountableData.map(([name, digest]) => ({
-              key: name,
-              label: PROJECT_DATA_LABELS[name] ?? humanize(name),
-              children: <ProjectDataBody digest={digest} />,
-            }))}
-          />
-        </Section>
+      {/* Small slices (the Opportunity & Request fields, an assessment) are shown open: a collapsed row labelled
+          with a config name read as "missing". Large ones (BOM, costing) stay one click away. */}
+      {accountableData.map(([name, digest]) =>
+        (digest ?? '').length <= 600 ? (
+          <Section key={name} title={dataTitle(name)}>
+            <div className="gsp-data">
+              <ProjectDataBody digest={digest} />
+            </div>
+          </Section>
+        ) : (
+          <Section key={name} title={dataTitle(name)}>
+            <Collapse
+              size="small"
+              items={[{ key: name, label: `Show ${dataTitle(name).toLowerCase()}`, children: <ProjectDataBody digest={digest} /> }]}
+            />
+          </Section>
+        ),
       )}
 
       {snapshot.openActions.length > 0 && (
@@ -315,7 +334,7 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
               })),
               ...laterData.map(([name, digest]) => ({
                 key: `d-${name}`,
-                label: PROJECT_DATA_LABELS[name] ?? humanize(name),
+                label: dataTitle(name),
                 children: <ProjectDataBody digest={digest} />,
               })),
             ]}
