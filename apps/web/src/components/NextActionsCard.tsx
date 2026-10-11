@@ -160,6 +160,8 @@ export default function NextActionsCard({
 
   return (
     <RecordList
+      dirty={dirty}
+      onSave={save}
       title="Next Actions"
       description="Open actions block a plain Proceed (allowed only under Proceed with Conditions); a Critical action blocks the gate even under Proceed with Conditions."
       count={

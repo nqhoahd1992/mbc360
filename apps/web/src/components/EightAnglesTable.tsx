@@ -52,6 +52,8 @@ export default function EightAnglesTable({
 
   return (
     <RecordList
+      dirty={dirty}
+      onSave={save}
       title="8 Angles Coverage"
       description="Apply to the phase before gate closure — covered, or N/A with a justification in the comments."
       count={`${covered}/8 covered`}

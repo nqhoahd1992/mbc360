@@ -76,6 +76,7 @@ export default function ChangeControl() {
   const activeProjectId = useAppStore((s) => s.activeProjectId);
   const { draft, dirty, update, markSaved, discard } = useDraft(changes);
   const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [refOpen, setRefOpen] = useState(false);
   const [form] = Form.useForm<ChangeForm>();
   const selectedTriggerId = Form.useWatch('triggerId', form);
@@ -135,7 +136,13 @@ export default function ChangeControl() {
       dueDate: values.dueDate ? values.dueDate.format('YYYY-MM-DD') : undefined,
       status: 'Draft',
     };
-    addChange(record);
+    // Closes only once the server has the record; a refused write keeps the drawer open with the input.
+    setCreating(true);
+    try {
+      if (!(await addChange(record))) return;
+    } finally {
+      setCreating(false);
+    }
     message.success(`Change ${record.changeId} opened`);
     setOpen(false);
     form.resetFields();
@@ -241,6 +248,8 @@ export default function ChangeControl() {
         </div>
       ) : (
         <RecordList<ChangeRecord>
+          dirty={dirty}
+          onSave={saveChanges}
           title="Change Control & Communication Log"
           description="Open a change to see every field. Status, impact classification and the final disposition are edited in place and saved together."
           count={`${openCount} open of ${draft.length}`}
@@ -390,6 +399,7 @@ export default function ChangeControl() {
         title="Open Change Request"
         open={open}
         onOk={onCreate}
+        confirmLoading={creating}
         onCancel={() => setOpen(false)}
         okText="Open change"
         width={680}

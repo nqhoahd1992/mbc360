@@ -8,6 +8,7 @@ import { ASEAN_MARKETS } from '@mbc360/shared/config/registers';
 import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { canEditReferenceData, EMPTY_GRANTS } from '../utils/permissions';
+import DrawerSaveFooter from '../components/DrawerSaveFooter';
 import { useDraft } from '../hooks/useDraft';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 import '../styles/concept.css';
@@ -343,7 +344,7 @@ export default function AdminMarketProfiles() {
             </span>
           )
         }
-        footer={canEdit ? <span className="rt-drawer-hint">Changes stay in this page's draft until you Save it.</span> : undefined}
+        footer={canEdit ? <DrawerSaveFooter dirty={dirty} onSave={save} saving={saving} /> : undefined}
       >
         {open && (
           <div className="au-detail">

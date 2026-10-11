@@ -136,7 +136,7 @@ interface AppState {
       majorCriteria?: string[];
       classificationConfirmedBy?: string;
     },
-  ) => void;
+  ) => Promise<boolean>;
 
   setChecklistSection: (id: string, section: string, items: ChecklistItem[]) => void;
   setRequirementSection: (id: string, section: string, items: RequirementItem[]) => void;
@@ -263,11 +263,13 @@ interface AppState {
   ) => void;
 
   setEvidenceItemsBulk: (id: string, items: EvidenceItem[]) => void;
-  addCapa: (id: string, record: CapaRecord) => void;
+  // The add* actions that open from a create drawer resolve to true only once the server has accepted the
+  // record, so the drawer can stay open with what was typed when the write is refused (2026-10-11).
+  addCapa: (id: string, record: CapaRecord) => Promise<boolean>;
   setCapaBulk: (id: string, records: CapaRecord[]) => void;
-  addFeedback: (id: string, entry: FeedbackEntry) => void;
+  addFeedback: (id: string, entry: FeedbackEntry) => Promise<boolean>;
 
-  addChange: (record: ChangeRecord) => void;
+  addChange: (record: ChangeRecord) => Promise<boolean>;
   setChangesBulk: (records: ChangeRecord[]) => void;
 
 }
@@ -517,7 +519,7 @@ export const useAppStore = create<AppState>()(
         // forbids, and a half-applied cascade is the kind of thing a transaction
         // exists to prevent.
         createFormulaVersion: (id, input) =>
-          writeSection(id, (v) =>
+          tryWriteSection(id, (v) =>
             projectsApi.createFormulaVersion(id, input, v, projectsApi.newIdempotencyKey()),
           ),
 
@@ -622,11 +624,11 @@ export const useAppStore = create<AppState>()(
         setCapaBulk: (id, records) => writeSection(id, (v) => projectsApi.setCapa(id, records, v)),
         addCapa: (id, record) => {
           const project = get().projects.find((p) => p.identity.id === id);
-          return writeSection(id, (v) => projectsApi.setCapa(id, [...(project?.capa ?? []), record], v));
+          return tryWriteSection(id, (v) => projectsApi.setCapa(id, [...(project?.capa ?? []), record], v));
         },
         addFeedback: (id, entry) => {
           const project = get().projects.find((p) => p.identity.id === id);
-          return writeSection(id, (v) =>
+          return tryWriteSection(id, (v) =>
             projectsApi.setFeedback(id, [...(project?.feedback ?? []), entry], v),
           );
         },
@@ -646,9 +648,13 @@ export const useAppStore = create<AppState>()(
             ),
           ).then(() => undefined);
         },
+        // Writes only the record's own project (the old version rewrote every project's list on each add, so a
+        // conflict on an unrelated project could refuse it) and reports whether the server took it.
         addChange: (record) => {
-          const all = [...get().changes, record];
-          return (get() as AppState).setChangesBulk(all);
+          const pid = record.projectId;
+          if (!pid || !get().projects.some((p) => p.identity.id === pid)) return Promise.resolve(false);
+          const mine = get().changes.filter((c) => c.projectId === pid);
+          return tryWriteSection(pid, (v) => projectsApi.setChanges(pid, [...mine, record], v));
         },
 
 

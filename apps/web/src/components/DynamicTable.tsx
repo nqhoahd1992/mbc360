@@ -10,6 +10,7 @@ import type { RegisterRow } from '@mbc360/shared/types';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { NUMERIC_CELL } from '../utils/numeric';
 import { createEmptyRegisterRow } from '../store/factory';
+import DrawerSaveFooter from './DrawerSaveFooter';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
 import SelfAttestField from './SelfAttestField';
@@ -645,7 +646,14 @@ export default function DynamicTable({
             <div className="rt-drawer-foot">
               {/* No "Done" button: it only closed the drawer (the ✕ does that)
                   while reading as if the row were finished or saved. */}
-              <span className="rt-drawer-hint">Changes stay in this section's draft until you Save it.</span>
+              <DrawerSaveFooter
+                dirty={dirty}
+                onSave={save}
+                // The page-level rules that block Save (blank rows, validation) block it here too.
+                disabled={saveProblems.length > 0}
+                disabledReason={saveProblems[0]}
+                onSaveAndNext={openIndex < draft.length - 1 ? () => { save(); step(1); } : undefined}
+              />
               {isRegister && (
               <Tooltip title={removeBlock(draft[openIndex])}>
                 <span>

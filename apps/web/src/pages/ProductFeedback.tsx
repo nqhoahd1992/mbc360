@@ -56,6 +56,7 @@ export default function ProductFeedback() {
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const addFeedback = useAppStore((s) => s.addFeedback);
   const [adding, setAdding] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [openId, setOpenId] = useState<string | null>(null);
   const [form] = Form.useForm<FeedbackForm>();
@@ -79,11 +80,18 @@ export default function ProductFeedback() {
 
   const onCreate = async () => {
     const values = await form.validateFields();
-    addFeedback(id, {
-      ...values,
-      id: nextFeedbackId(entries),
-      dateTested: values.dateTested ? values.dateTested.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
-    });
+    // Closes only once the server has the entry; a refused write keeps the drawer open with the input.
+    setCreating(true);
+    try {
+      const saved = await addFeedback(id, {
+        ...values,
+        id: nextFeedbackId(entries),
+        dateTested: values.dateTested ? values.dateTested.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
+      });
+      if (!saved) return;
+    } finally {
+      setCreating(false);
+    }
     message.success('Feedback recorded');
     setAdding(false);
     form.resetFields();
@@ -282,6 +290,7 @@ export default function ProductFeedback() {
         title="Add panel feedback"
         open={adding}
         onOk={() => void onCreate()}
+        confirmLoading={creating}
         onCancel={() => setAdding(false)}
         okText="Save"
         width={620}

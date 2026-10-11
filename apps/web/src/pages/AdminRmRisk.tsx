@@ -8,6 +8,7 @@ import { RM_RISK_FLAGS } from '@mbc360/shared/config/referenceData';
 import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { canEditReferenceData, EMPTY_GRANTS } from '../utils/permissions';
+import DrawerSaveFooter from '../components/DrawerSaveFooter';
 import { useDraft } from '../hooks/useDraft';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 import Notice from '../components/Notice';
@@ -378,7 +379,7 @@ export default function AdminRmRisk() {
         footer={
           canEdit ? (
             <div className="rt-drawer-foot">
-              <span className="rt-drawer-hint">Changes stay in this page's draft until you Save it.</span>
+              <DrawerSaveFooter dirty={dirty} onSave={save} saving={saving} />
               {open?.isNew && (
                 <Button danger onClick={() => removeNew(open.rmCode)}>
                   Remove

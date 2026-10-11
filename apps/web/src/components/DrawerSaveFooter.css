@@ -1,0 +1,4 @@
+.dsf { flex: 1 1 auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.dsf-state { color: var(--c-text-3, #8c8c8c); font-size: 12px; }
+.dsf-dirty { color: var(--c-warn, #d48806); font-weight: 600; }
+.dsf-actions { display: inline-flex; gap: 8px; }

@@ -127,6 +127,13 @@ Prepared, Reviewed và Approved phải ký **cùng một nội dung**. Vì vậy
 - **Chưa làm:** giao diện chưa vô hiệu hóa từng ô nhập của gate (server từ chối và hiện thông báo; panel chữ ký gate và panel đóng sổ có cảnh báo). Trang sổ đã chuyển sang chỉ đọc.
 - **Kiểm thử:** `gate-signing.e2e.ts` (các case "bị từ chối 403, chữ ký còn hiệu lực" ở SG01, SG03, SG05, SG07, SG08, SG09, đóng sổ và ô chữ ký) và `verify:signature-content` (điểm miễn trừ, trên một gate đã ký dựng sẵn).
 
+### SW-25. Drawer: tạo bản ghi thì đóng khi server nhận, drawer chi tiết của bảng thì giữ mở và có Save, Save & next — *Đã xây* (2026-10-11, chủ dự án)
+Có hai loại drawer và chúng xử lý nút lưu khác nhau.
+- **Drawer tạo một bản ghi** (kết thúc bằng một lần chốt: nút OK): đóng **chỉ sau khi server đã nhận**. Nếu server từ chối (dữ liệu bị khóa, xung đột phiên bản), drawer mở nguyên và giữ những gì đã nhập, không hiện "đã thêm" rồi xóa form. `addCapa`, `addFeedback`, `addChange`, `createFormulaVersion` giờ trả `Promise<boolean>` (qua `tryWriteSection`) và có `confirmLoading` chống bấm hai lần. Đã đúng từ trước: tạo dự án, backtrack, nhập từ Cosmetri. `addChange` chỉ ghi dự án của chính bản ghi (trước đây ghi lại danh sách của mọi dự án mỗi lần thêm).
+- **Drawer chi tiết một hàng của bảng** (bản nháp dùng chung, lưu ở cấp trang): **không đóng khi lưu**, vì đó là chỗ làm việc đi qua nhiều hàng. Chân drawer có **Save** (ghi cả bảng, ở lại hàng) và **Save & next** (ghi rồi sang hàng kế tiếp, vắng mặt ở hàng cuối thay vì quay vòng), cùng chỉ báo "Unsaved changes". Quy tắc chặn lưu của trang (hàng trống, trùng dòng) chặn cả hai nút. Component dùng chung `DrawerSaveFooter`. Áp dụng cho watch-list, `DynamicTable`, `RecordList` (Requirement, Key Gate Checks, 8 Angles, Next Actions, Change Control, Evidence Summary, hai bảng BOM), `ChecklistSection`, CAPA và hai trang dữ liệu tham chiếu (market profile, raw material risk). Drawer không có điều hướng lên/xuống chỉ có Save.
+- **Chưa kiểm chứng trên trình duyệt:** mới qua typecheck, build và lint. Hành vi thật (drawer ở lại sau Save, đóng sau khi tạo thành công, ở lại khi bị từ chối) chưa được chạy.
+- **Giới hạn:** Save của bản nháp bảng vẫn là ghi rồi quên (kết quả server chỉ hiện qua thông báo lỗi và việc nạp lại), nên Save & next sang hàng kế ngay cả khi lần ghi bị từ chối; dữ liệu khi đó hiện lại giá trị thật sau khi nạp lại. Muốn chặn phải cho các hàm `set*Bulk` cũng trả kết quả, chưa làm.
+
 ## 3. Quyền và truy cập
 
 ### SW-10. Không có role thì không vào được app — *Đã xây* (2026-10-02)

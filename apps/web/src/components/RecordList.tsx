@@ -1,3 +1,4 @@
+import DrawerSaveFooter from './DrawerSaveFooter';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Button, Drawer, Grid, Popconfirm, Tooltip } from 'antd';
 import { DeleteOutlined, DownOutlined, PlusOutlined, RightOutlined, UpOutlined } from '@ant-design/icons';
@@ -55,6 +56,13 @@ export interface RecordListProps<T> {
   // Nothing in the list is editable (its gate has passed): the drawer drops
   // the "changes stay in the draft" hint, which would be untrue there.
   readOnly?: boolean;
+  // The caller's draft state, so the drawer can offer Save and Save & next itself (2026-10-11). Omitted =
+  // the drawer keeps its old hint and the page-level bar is the only way to save.
+  dirty?: boolean;
+  onSave?: () => void;
+  // A rule that blocks the save, as the caller's page-level bar shows it.
+  saveDisabled?: boolean;
+  saveDisabledReason?: string;
 }
 
 const INLINE_DEFAULT = 168;
@@ -87,6 +95,10 @@ export default function RecordList<T>({
   openIndex: controlledOpen,
   onOpenIndexChange,
   readOnly,
+  dirty,
+  onSave,
+  saveDisabled,
+  saveDisabledReason,
 }: RecordListProps<T>) {
   const [ownOpen, setOwnOpen] = useState<number | null>(null);
   const controlled = controlledOpen !== undefined;
@@ -286,7 +298,19 @@ export default function RecordList<T>({
               {/* No "Done" button: it only closed the drawer (the ✕ does that)
                   while reading as if the record were finished or saved — and
                   clashed with the "Done" tick on Key Gate Checks. */}
-              {readOnly ? <span /> : <span className="rt-drawer-hint">Changes stay in this section's draft until you Save it.</span>}
+              {readOnly ? (
+                <span />
+              ) : onSave ? (
+                <DrawerSaveFooter
+                  dirty={!!dirty}
+                  onSave={onSave}
+                  disabled={saveDisabled}
+                  disabledReason={saveDisabledReason}
+                  onSaveAndNext={openIndex < rows.length - 1 ? () => { onSave(); step(1); } : undefined}
+                />
+              ) : (
+                <span className="rt-drawer-hint">Changes stay in this section's draft until you Save it.</span>
+              )}
               {onRemove && open !== undefined && removeBlockedReason?.(open, openIndex) ? (
                 <Tooltip title={removeBlockedReason(open, openIndex)}>
                   <span>

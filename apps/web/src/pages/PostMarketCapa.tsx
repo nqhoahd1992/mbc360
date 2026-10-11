@@ -11,6 +11,7 @@ import UserSelect from '../components/UserSelect';
 import Notice from '../components/Notice';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
+import DrawerSaveFooter from '../components/DrawerSaveFooter';
 import SaveBar from '../components/SaveBar';
 import '../styles/concept.css';
 import './AdminUsers.css';
@@ -65,6 +66,7 @@ export default function PostMarketCapa() {
   const addCapa = useAppStore((s) => s.addCapa);
   const setCapaBulk = useAppStore((s) => s.setCapaBulk);
   const [adding, setAdding] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [openId, setOpenId] = useState<string | null>(null);
   const [form] = Form.useForm<CapaForm>();
@@ -80,10 +82,17 @@ export default function PostMarketCapa() {
     markSaved();
   };
 
+  // The drawer closes only once the server has the record. A refused write (locked data, a conflict) leaves it
+  // open with what was typed, instead of showing "added" and throwing the input away.
   const onCreate = async () => {
     const values = await form.validateFields();
     const record: CapaRecord = { ...values, id: nextRecordId(project.capa), status: 'Not Started' as WorkStatus };
-    addCapa(id, record);
+    setCreating(true);
+    try {
+      if (!(await addCapa(id, record))) return;
+    } finally {
+      setCreating(false);
+    }
     message.success(`Record ${record.id} added`);
     setAdding(false);
     form.resetFields();
@@ -224,7 +233,7 @@ export default function PostMarketCapa() {
             </span>
           )
         }
-        footer={<span className="pm-hint">Changes stay in this page's draft until you Save it.</span>}
+        footer={<DrawerSaveFooter dirty={dirty} onSave={save} />}
       >
         {open && (
           <div className="pm-detail">
@@ -276,6 +285,7 @@ export default function PostMarketCapa() {
         title="New post-market record"
         open={adding}
         onOk={() => void onCreate()}
+        confirmLoading={creating}
         onCancel={() => setAdding(false)}
         okText="Add"
         width={620}

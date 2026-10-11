@@ -32,6 +32,7 @@ export default function FormulaVersionModal({
 }) {
   const createFormulaVersion = useAppStore((s) => s.createFormulaVersion);
 
+  const [creating, setCreating] = useState(false);
   const [changeType, setChangeType] = useState<'Major' | 'Minor'>('Minor');
   const [majorCriteria, setMajorCriteria] = useState<string[]>([]);
   const [version, setVersion] = useState('');
@@ -68,13 +69,21 @@ export default function FormulaVersionModal({
     else applyChangeType('Minor');
   };
 
-  const onConfirm = () => {
-    createFormulaVersion(projectId, {
-      version: version.trim(),
-      changeType,
-      reason: reason.trim() || undefined,
-      majorCriteria: majorCriteria.length > 0 ? majorCriteria : undefined,
-    });
+  // Closes only once the server has created the version. A refused write (locked data, a conflict) keeps the
+  // drawer open with what was entered instead of announcing a version that does not exist.
+  const onConfirm = async () => {
+    setCreating(true);
+    try {
+      const created = await createFormulaVersion(projectId, {
+        version: version.trim(),
+        changeType,
+        reason: reason.trim() || undefined,
+        majorCriteria: majorCriteria.length > 0 ? majorCriteria : undefined,
+      });
+      if (!created) return;
+    } finally {
+      setCreating(false);
+    }
     message.success(
       changeType === 'Major'
         ? `Formula version ${version} created — Gates 4-9 reopened for rework.`
@@ -87,7 +96,8 @@ export default function FormulaVersionModal({
     <FormDrawer
       title={`New formula version (current: ${currentVersion})`}
       open={open}
-      onOk={onConfirm}
+      onOk={() => void onConfirm()}
+      confirmLoading={creating}
       onCancel={onClose}
       okText="Create version"
       okButtonProps={{

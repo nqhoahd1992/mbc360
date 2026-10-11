@@ -141,6 +141,8 @@ export default function EvidenceSummary() {
       </div>
 
       <RecordList
+      dirty={dirty}
+      onSave={save}
         title="Evidence areas"
         count={`${completed}/${draft.length} completed`}
         rows={rows}

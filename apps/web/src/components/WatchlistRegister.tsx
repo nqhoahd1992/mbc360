@@ -22,6 +22,7 @@ import {
   watchlistReviewGaps,
 } from '@mbc360/shared/utils/watchlistReview';
 import { patchArray, useDraft } from '../hooks/useDraft';
+import DrawerSaveFooter from './DrawerSaveFooter';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
 import NextActionSelect from './NextActionSelect';
@@ -365,7 +366,17 @@ export default function WatchlistRegister({
         mask={!screens.xxl}
         closable={false}
         rootClassName="concept-tokens"
-        footer={readOnly ? undefined : <span className="wl-muted">Changes stay in this section's draft until you Save it.</span>}
+        footer={
+          readOnly ? undefined : (
+            <DrawerSaveFooter
+              dirty={dirty}
+              onSave={save}
+              // Walks to the next row IN VIEW. There is none after the last one, so the button is absent
+              // there rather than wrapping round to the first (the arrows in the header still wrap).
+              onSaveAndNext={position >= 0 && position < visible.length - 1 ? () => { save(); step(1); } : undefined}
+            />
+          )
+        }
         title={
           openRow && (
             <div className="wl-drawer-head">

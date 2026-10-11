@@ -71,6 +71,8 @@ export default function GateChecksTable({
 
   return (
     <RecordList
+      dirty={dirty}
+      onSave={save}
       // Every row's gate has passed: nothing here can change, so the drawer
       // drops its "changes stay in the draft" hint.
       readOnly={draft.length > 0 && draft.every((r) => !!isRowLocked?.(r))}

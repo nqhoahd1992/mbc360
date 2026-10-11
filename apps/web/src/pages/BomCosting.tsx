@@ -549,6 +549,10 @@ export default function BomCosting() {
           )}
 
           <RecordList<BomLine>
+            dirty={bomDraft.dirty}
+            onSave={saveBom}
+            saveDisabled={bomSaveBlocked}
+            saveDisabledReason={formulaLocked ? LOCK_REASON : 'Resolve the issue(s) flagged above before saving.'}
             readOnly={formulaLocked}
             title={<>Formula BOM — {project.identity.productSku}</>}
             count={`${draftBom.length} line${draftBom.length === 1 ? '' : 's'}`}
@@ -831,6 +835,10 @@ export default function BomCosting() {
             </Notice>
           )}
           <RecordList<PackagingBomLine>
+            dirty={packagingDraft.dirty}
+            onSave={savePackaging}
+            saveDisabled={packagingLocked}
+            saveDisabledReason={LOCK_REASON}
             readOnly={packagingLocked}
             title="Packaging BOM"
             count={`${draftPackaging.length} component${draftPackaging.length === 1 ? '' : 's'}`}

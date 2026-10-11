@@ -6,6 +6,7 @@ import { isMandatoryChecklistSection } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import RequiredMark from './RequiredMark';
+import DrawerSaveFooter from './DrawerSaveFooter';
 import SaveBar from './SaveBar';
 import '../styles/concept.css';
 import './ChecklistSection.css';
@@ -192,7 +193,7 @@ export default function ChecklistSection({
             </div>
           )
         }
-        footer={readOnly ? undefined : <span className="cl-hint">Changes stay in this section's draft until you Save it.</span>}
+        footer={readOnly ? undefined : <DrawerSaveFooter dirty={dirty} onSave={save} />}
       >
         {open && openIndex !== null && (
           <div className="cl-form">
