@@ -504,7 +504,7 @@ export default function GateFlowTable({
   // Card layout: the same column renderers, laid out as a form per gate.
   // Stage status (must read Complete), Owner, Due date and Evidence / link: GATE_FLOW_REQUIRED + the stage rule (SW-26).
   const REQUIRED_FIELD_TITLES = ['Stage status', 'Owner', 'Due date', 'Evidence / link'];
-  const CARD_FIELDS = ['Stage status', 'Gate decision', 'Owner', 'Due date', 'Evidence / link', 'Notes / blockers'];
+  const CARD_FIELDS = ['Stage status', 'Owner', 'Due date', 'Evidence / link', 'Notes / blockers'];
   const fieldFor = (title: string) => columns.find((c) => c.title === title) as { render: (v: unknown, r: Row, i: number) => React.ReactNode } | undefined;
 
   const content = (
@@ -548,13 +548,22 @@ export default function GateFlowTable({
                 <div style={{ minWidth: 0 }}>
                   <div className="gfc-eyebrow">Phase Gate Flow</div>
                   <div className="gfc-title-row">
-                    {r.passed ? (
-                      <span className="c-tag c-tag-dot c-tag-ok">Passed · {r.record.decision}</span>
-                    ) : r.locked && !r.isCurrent ? (
+                    <span className="gfc-decision-line">
+                      <span className="gfc-decision-k">Gate decision</span>
+                      {r.record.decision ? (
+                        <span className={`c-tag c-tag-dot ${PASSING.includes(r.record.decision) ? 'c-tag-ok' : 'c-tag-warn'}`}>
+                          {r.record.decision}
+                        </span>
+                      ) : (
+                        <span className="gfc-decision-empty">Not decided yet</span>
+                      )}
+                      <span className="gfc-decision-note">set by the approver when signing</span>
+                    </span>
+                    {r.locked && !r.isCurrent && !r.passed && (
                       <span className="c-tag">
                         <LockOutlined /> {gateIndex(r.meta.id) > currentIdx ? 'Not open yet' : 'Read-only'}
                       </span>
-                    ) : null /* the plain status is the Stage status field just below */}
+                    )}
                     {r.openChanges.length > 0 && <span className="c-tag c-tag-warn">Open change</span>}
                   </div>
                 </div>
@@ -590,9 +599,11 @@ export default function GateFlowTable({
               </div>
               {!r.passed && !r.locked && (
                 <div className={`gfc-ready${flowTodo.length === 0 ? ' gfc-ready-ok' : ''}`}>
-                  {flowTodo.length === 0
-                    ? 'Phase Gate Flow is complete — ready for sign-off.'
-                    : `Complete and save before sign-off: ${flowTodo.join(' · ')}.`}
+                  {flowTodo.length === 0 ? (
+                    <><CheckCircleFilled /> Complete — ready for sign-off</>
+                  ) : (
+                    <>Before sign-off, complete and save: {flowTodo.join(' · ')}</>
+                  )}
                 </div>
               )}
               <div className="gfc-guidance">{renderGuidance(r, 'notices')}</div>
