@@ -389,7 +389,8 @@ export default function PhasePage() {
           {statusTag}
         </div>
         <p className="ph-meta">
-          {meta.name} · {project.identity.id} · {project.identity.productSku} · {meta.department}
+          {meta.name} · {project.identity.id} · {project.identity.productSku} · Responsible departments:{' '}
+          {meta.department.split('/').map((d) => d.trim().charAt(0) + d.trim().slice(1).toLowerCase()).join(', ')}
           {reviewOwnerText && (
             <>
               {' '}· Review owner <b>{reviewOwnerText}</b>
