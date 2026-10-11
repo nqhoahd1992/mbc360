@@ -452,6 +452,7 @@ export default function PhasePage() {
           </span>
         </button>
       </nav>
+      {tab !== CLOSE_TAB && gateMeta(tab)?.purpose && <p className="ph-gate-purpose">{gateMeta(tab)?.purpose}</p>}
 
       {/* Keyed by tab: every block below keeps its own draft and drawer state,
           and without a remount switching tabs carried them across — an open

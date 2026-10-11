@@ -584,9 +584,6 @@ export default function GateFlowTable({
                 <div style={{ minWidth: 0 }}>
                   <div className="gfc-eyebrow">Phase Gate Flow</div>
                   <div className="gfc-title-row">
-                    <span className="gfc-title">
-                      Gate {r.meta.number} · {r.meta.name}
-                    </span>
                     {r.passed ? (
                       <span className="c-tag c-tag-dot c-tag-ok">Passed · {r.record.decision}</span>
                     ) : r.locked && !r.isCurrent ? (
@@ -598,7 +595,6 @@ export default function GateFlowTable({
                     )}
                     {r.openChanges.length > 0 && <span className="c-tag c-tag-warn">Open change</span>}
                   </div>
-                  <div className="gfc-purpose">{r.meta.purpose}</div>
                 </div>
                 {/* A disabled button still reads as something to press. With no
                     history there is nothing to open, so it is plain muted text. */}

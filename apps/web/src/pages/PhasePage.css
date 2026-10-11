@@ -80,3 +80,4 @@ tr.ph-flash > td { animation: ph-flash-cell 1s ease-out; }
   tr.ph-flash { animation: none; outline: 2px solid var(--c-primary); outline-offset: -2px; }
   tr.ph-flash > td { animation: none; }
 }
+.ph-gate-purpose { margin: -4px 0 0; color: var(--c-text-2); font-size: 14px; text-wrap: pretty; }
