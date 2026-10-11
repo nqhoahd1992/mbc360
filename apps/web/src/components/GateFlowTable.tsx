@@ -324,7 +324,7 @@ export default function GateFlowTable({
                 </div>
               )}
               {r.awaitingDecision && !r.record.decision && (
-                <div style={{ fontSize: 12, color: '#d48806' }}>Pending — decision required to pass</div>
+                <div style={{ fontSize: 12, color: '#595959' }}>The gate decision is recorded when the approver signs below</div>
               )}
               </>}
               {part !== 'notices' && <>
