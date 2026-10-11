@@ -9,6 +9,7 @@ import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { canEditReferenceData, EMPTY_GRANTS } from '../utils/permissions';
 import DrawerSaveFooter from '../components/DrawerSaveFooter';
+import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import { useDraft } from '../hooks/useDraft';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 import '../styles/concept.css';
@@ -119,6 +120,7 @@ export default function AdminMarketProfiles() {
   }, [profiles]);
 
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
+  useCloseDrawerOnPageSave(dirty, openMarket !== null, () => setOpenMarket(null));
   const patch = (market: string, p: Partial<MarketProfile>) =>
     update((prev) => prev.map((r) => (r.market === market ? { ...r, ...p } : r)));
   const changedMarkets = draft.filter((d, i) => JSON.stringify(d) !== JSON.stringify(rows[i]));

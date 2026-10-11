@@ -7,6 +7,7 @@ import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import RequiredMark from './RequiredMark';
 import DrawerSaveFooter from './DrawerSaveFooter';
+import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import SaveBar from './SaveBar';
 import '../styles/concept.css';
 import './ChecklistSection.css';
@@ -57,6 +58,7 @@ export default function ChecklistSection({
   const [expanded, setExpanded] = useState(false);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   useExclusiveDrawer(openIndex !== null, () => setOpenIndex(null));
+  useCloseDrawerOnPageSave(dirty, openIndex !== null, () => setOpenIndex(null));
   const screens = Grid.useBreakpoint();
   const selectedCount = draft.filter((i) => i.selected).length;
   const hasSelection = draft.some((i) => i.status === 'Y');

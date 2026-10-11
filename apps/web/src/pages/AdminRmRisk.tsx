@@ -9,6 +9,7 @@ import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { canEditReferenceData, EMPTY_GRANTS } from '../utils/permissions';
 import DrawerSaveFooter from '../components/DrawerSaveFooter';
+import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import { useDraft } from '../hooks/useDraft';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 import Notice from '../components/Notice';
@@ -99,6 +100,7 @@ export default function AdminRmRisk() {
 
   const committed = useMemo<Row[]>(() => overlay ?? [], [overlay]);
   const { draft, dirty, update, markSaved, discard } = useDraft(committed);
+  useCloseDrawerOnPageSave(dirty, openCode !== null, () => setOpenCode(null));
 
   const patch = (rmCode: string, p: Partial<Row>) =>
     update((prev) => prev.map((r) => (r.rmCode === rmCode ? { ...r, ...p } : r)));

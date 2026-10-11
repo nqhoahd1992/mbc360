@@ -12,6 +12,7 @@ import Notice from '../components/Notice';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 import DrawerSaveFooter from '../components/DrawerSaveFooter';
+import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import SaveBar from '../components/SaveBar';
 import '../styles/concept.css';
 import './AdminUsers.css';
@@ -72,6 +73,7 @@ export default function PostMarketCapa() {
   const [form] = Form.useForm<CapaForm>();
   const { draft, dirty, update, markSaved, discard } = useDraft(project?.capa ?? []);
   useExclusiveDrawer(openId !== null, () => setOpenId(null));
+  useCloseDrawerOnPageSave(dirty, openId !== null, () => setOpenId(null));
 
   if (!project) return <Empty description="Project not found" />;
   const id = project.identity.id;

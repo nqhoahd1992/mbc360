@@ -1,4 +1,5 @@
 import DrawerSaveFooter from './DrawerSaveFooter';
+import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { Button, Drawer, Grid, Popconfirm, Tooltip } from 'antd';
 import { DeleteOutlined, DownOutlined, PlusOutlined, RightOutlined, UpOutlined } from '@ant-design/icons';
@@ -128,6 +129,7 @@ export default function RecordList<T>({
     setOpenRaw(null);
   };
   useExclusiveDrawer(openIndex !== null, () => setOpenIndex(null));
+  const markOwn = useCloseDrawerOnPageSave(!!dirty, openIndex !== null, () => setOpenIndex(null));
   const screens = Grid.useBreakpoint();
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -304,6 +306,7 @@ export default function RecordList<T>({
                 <DrawerSaveFooter
                   dirty={!!dirty}
                   onSave={onSave}
+                  onOwnAction={markOwn}
                   disabled={saveDisabled}
                   disabledReason={saveDisabledReason}
                   onSaveAndNext={openIndex < rows.length - 1 ? () => { onSave(); step(1); } : undefined}

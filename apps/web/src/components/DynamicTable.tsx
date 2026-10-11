@@ -11,6 +11,7 @@ import { patchArray, useDraft } from '../hooks/useDraft';
 import { NUMERIC_CELL } from '../utils/numeric';
 import { createEmptyRegisterRow } from '../store/factory';
 import DrawerSaveFooter from './DrawerSaveFooter';
+import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
 import SelfAttestField from './SelfAttestField';
@@ -196,6 +197,7 @@ export default function DynamicTable({
     setOpenRaw(next);
   };
   useExclusiveDrawer(openIndex !== null, () => setOpenIndex(null));
+  const markOwn = useCloseDrawerOnPageSave(dirty, openIndex !== null, () => setOpenIndex(null));
   const [wrapRef, width] = useWidth<HTMLDivElement>();
   const screens = Grid.useBreakpoint();
 
@@ -649,6 +651,7 @@ export default function DynamicTable({
               <DrawerSaveFooter
                 dirty={dirty}
                 onSave={save}
+                onOwnAction={markOwn}
                 // The page-level rules that block Save (blank rows, validation) block it here too.
                 disabled={saveProblems.length > 0}
                 disabledReason={saveProblems[0]}

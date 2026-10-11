@@ -21,6 +21,7 @@ export default function DrawerSaveFooter({
   onSave,
   onSaveAndNext,
   onClose,
+  onOwnAction,
   saving,
   disabled,
   disabledReason,
@@ -32,12 +33,15 @@ export default function DrawerSaveFooter({
   onSaveAndNext?: () => void | Promise<unknown>;
   // Present only when there is no next row: closes the drawer once the save was accepted.
   onClose?: () => void;
+  // Called before either button writes, so a page-level close-on-save knows this save came from the drawer.
+  onOwnAction?: () => void;
   saving?: boolean;
   // A rule that blocks the save (a duplicate line, a missing field), as the page-level bar shows it.
   disabled?: boolean;
   disabledReason?: string;
 }) {
   const saveThenClose = async () => {
+    onOwnAction?.();
     const result = await onSave();
     if (result !== false) onClose?.();
   };
@@ -51,7 +55,10 @@ export default function DrawerSaveFooter({
           Save
         </Button>
         {onSaveAndNext && (
-          <Button type="primary" onClick={() => void onSaveAndNext()} disabled={dirty && disabled} loading={saving}>
+          <Button type="primary" onClick={() => {
+              onOwnAction?.();
+              void onSaveAndNext();
+            }} disabled={dirty && disabled} loading={saving}>
             {dirty ? 'Save & next' : 'Next'}
           </Button>
         )}

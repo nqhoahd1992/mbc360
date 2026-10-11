@@ -23,6 +23,7 @@ import {
 } from '@mbc360/shared/utils/watchlistReview';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import DrawerSaveFooter from './DrawerSaveFooter';
+import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
 import NextActionSelect from './NextActionSelect';
@@ -81,6 +82,7 @@ export default function WatchlistRegister({
   const [filter, setFilter] = useState<Filter>('all');
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   useExclusiveDrawer(openIndex !== null, () => setOpenIndex(null));
+  const markOwn = useCloseDrawerOnPageSave(dirty, openIndex !== null, () => setOpenIndex(null));
   const screens = Grid.useBreakpoint();
 
   const patch = (index: number, values: Partial<RegisterRow>) => update((prev) => patchArray(prev, index, values));
@@ -371,6 +373,7 @@ export default function WatchlistRegister({
             <DrawerSaveFooter
               dirty={dirty}
               onSave={save}
+              onOwnAction={markOwn}
               // Walks to the next row IN VIEW. There is none after the last one, so the button is absent
               // there rather than wrapping round to the first (the arrows in the header still wrap).
               onSaveAndNext={position >= 0 && position < visible.length - 1 ? () => { save(); step(1); } : undefined}
