@@ -17,6 +17,7 @@ import {
   GATE_PASSING_DECISIONS,
   INDEPENDENT_FUNCTION_BY_GATE,
   findGateSignOff,
+  gateFlowMissing,
   gateSignOffMarkets,
   gateSignOffNeedsComment,
   previousGateSignOffRole,
@@ -95,6 +96,8 @@ export default function GateSignOffPanel({
       : `${gateId} is no longer the gate open for work — reopen it with Backtrack to change its sign-off.`;
   const stageStatus = project.gates.find((g) => g.gateId === gateId)?.status ?? 'Not Started';
   const stageIncomplete = stageStatus !== 'Complete';
+  // The Phase Gate Flow card above must be complete (SW-26): owner, due date and evidence link, as SAVED.
+  const flowMissing = gateFlowMissing(project, gateId);
   const [drafts, setDrafts] = useState<Record<string, { decision?: string; comment?: string }>>({});
   // Sign opens the preview first (everything the signature attests to), then the authenticator step.
   const [reviewing, setReviewing] = useState<{ market?: string; role: GateSignOffRole } | null>(null);
@@ -144,6 +147,9 @@ export default function GateSignOffPanel({
     if (GATE_PASSING_DECISIONS.includes(d.decision) && stageIncomplete) {
       return `Save the stage status as Complete first — it is currently "${stageStatus}", and a signature attests the gate's work is done.`;
     }
+    if (GATE_PASSING_DECISIONS.includes(d.decision) && flowMissing.length > 0) {
+      return `Complete the Phase Gate Flow first and save it: ${flowMissing.join(', ')}.`;
+    }
     if (gateSignOffNeedsComment(d.decision) && !d.comment?.trim()) {
       return `A comment is required when the decision is "${d.decision}".`;
     }
@@ -189,12 +195,12 @@ export default function GateSignOffPanel({
           <span>{notOpenReason}</span>
         </div>
       ) : (
-        stageIncomplete && (
+        (stageIncomplete || flowMissing.length > 0) && (
         <div className="concept-tokens gso-gate-hold">
           <ClockCircleOutlined />
           <span>
-            Signing is held until the <strong>saved</strong> stage status is Complete — it is currently "{stageStatus}".
-            Save the gate first if you have just changed it. Hold and Backtrack can still be signed.
+            Signing is held until the <strong>saved</strong> Phase Gate Flow above is complete. Hold and Backtrack can
+            still be signed.
           </span>
         </div>
         )

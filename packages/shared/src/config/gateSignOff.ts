@@ -133,3 +133,21 @@ export function previousGateSignOffRole(role: GateSignOffRole): GateSignOffRole 
 export function isGateSignOffSigned(signOff: GateSignOff | undefined): boolean {
   return !!signOff?.signedAt;
 }
+
+// What the Phase Gate Flow card must hold before anybody signs a gate off with a passing decision
+// (2026-10-11, project owner: the gate's own data is complete BEFORE the sign-off, never after). The
+// stage status must read Complete as well (checked separately) and the decision is the sign-off's own
+// output, so neither is listed. Notes / blockers stays optional: "no blockers" is a legitimate answer
+// and forcing text there only invites filler. This is a software rule (docs/rules/Software_Rules.md
+// SW-26), not a business rule, so it is not put to the review team.
+export const GATE_FLOW_REQUIRED: { field: 'owner' | 'dueDate' | 'evidenceLink'; label: string }[] = [
+  { field: 'owner', label: 'Owner' },
+  { field: 'dueDate', label: 'Due date' },
+  { field: 'evidenceLink', label: 'Evidence / link' },
+];
+
+// The labels of the required Phase Gate Flow fields that are still empty on the SAVED record.
+export function gateFlowMissing(project: ProjectData, gateId: string): string[] {
+  const record = project.gates.find((g) => g.gateId === gateId);
+  return GATE_FLOW_REQUIRED.filter((f) => !String(record?.[f.field] ?? '').trim()).map((f) => f.label);
+}

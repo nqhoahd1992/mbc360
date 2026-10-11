@@ -146,8 +146,15 @@ export async function run(base: string, db: Client): Promise<number> {
       assignments: ROLES.map((role) => ({ role, userId: sessions[signerKey(gate, role, market)].id })),
       expectedVersion: await version(),
     });
+  // SW-26: a passing signature needs the Phase Gate Flow card filled in (owner, due date, evidence link) as well as Complete.
   const complete = async (gate: string) =>
-    api('admin', 'PUT', `/projects/${PROJECT}/gates/${gate}`, { status: 'Complete', expectedVersion: await version() });
+    api('admin', 'PUT', `/projects/${PROJECT}/gates/${gate}`, {
+      status: 'Complete',
+      owner: 'e2e owner',
+      dueDate: '2030-01-01',
+      evidenceLink: 'https://example.com/e2e-evidence',
+      expectedVersion: await version(),
+    });
   // ---- phase sign-off helpers (the same three roles, one lane per phase) ------------------------
   const phaseKey = (phase: number, role: Role) => signerKey(`PHASE${phase}`, role);
   const nominatePhase = async (phase: number) =>
@@ -527,8 +534,16 @@ export async function run(base: string, db: Client): Promise<number> {
   console.log('\n--- SG01 (the identity fields are Gate 1 data)');
   let r: any = await nominate('SG01');
   t('SG01 nominations accepted', r.status < 300, short(r.json));
+  // SW-26: Complete alone is not enough — the owner, due date and evidence link of the Phase Gate Flow card
+  // must be saved before a passing signature, or the gate is signed on data that is still to be filled in.
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/gates/SG01`, { status: 'Complete', expectedVersion: await version() });
+  t('SG01 stage status set to Complete without the other Phase Gate Flow fields', r.status < 300, short(r.json));
+  r = await sign('SG01', 'Prepared by');
+  t('signing Proceed with the Phase Gate Flow incomplete is refused (400) and names what is missing',
+    r.stage === 'sign' && r.status === 400 && /Phase Gate Flow/.test(JSON.stringify(r.json)) && /Owner/.test(JSON.stringify(r.json)) && /Due date/.test(JSON.stringify(r.json)),
+    `${r.stage} ${r.status} ${short(r.json)}`);
   r = await complete('SG01');
-  t('SG01 stage status set to Complete', r.status < 300, short(r.json));
+  t('SG01 Phase Gate Flow completed (owner, due date, evidence link) and Complete', r.status < 300, short(r.json));
   r = await sign('SG01', 'Prepared by');
   t('Prepared by signs SG01 through a real step-up', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
   const row = (

@@ -14,7 +14,7 @@ import {
 import dayjs from 'dayjs';
 import type { GateDecision, GateRecord, ProjectData, StageStatus } from '@mbc360/shared/types';
 import { GATE_FIELD_LABELS, GATES, GATE_DECISIONS, STAGE_STATUSES } from '@mbc360/shared/config/gates';
-import { GATE_PASSING_DECISIONS as PASSING } from '@mbc360/shared/config/gateSignOff';
+import { GATE_PASSING_DECISIONS as PASSING, gateFlowMissing } from '@mbc360/shared/config/gateSignOff';
 import { openChangesAffectingGate } from '@mbc360/shared/config/changeTriggers';
 import { activeMarketTracks } from '@mbc360/shared/utils/postLaunch';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
@@ -295,8 +295,11 @@ export default function GateFlowTable({
   type Row = (typeof rows)[number];
   // Everything shown under a gate besides its own fields: restrictions, the gap
   // assessment, notices, the gate sign-off panel and (unless hidden) readiness.
-  const renderGuidance = (r: Row) => (
+  // `part` splits it for the card layout, where the sign-off is its own card BELOW the Phase Gate Flow card
+  // rather than a part of it (2026-10-11): 'notices' is what belongs to the flow card, 'signoff' the rest.
+  const renderGuidance = (r: Row, part: 'all' | 'notices' | 'signoff' = 'all') => (
             <div style={{ display: 'grid', gap: 4 }}>
+              {part !== 'signoff' && <>
               {!r.canDecide && !r.locked && (
                 <div style={{ fontSize: 12, color: TEXT.secondary }}>
                   Decision restricted to {r.meta.primaryOwner}
@@ -318,6 +321,8 @@ export default function GateFlowTable({
               {r.awaitingDecision && !r.record.decision && (
                 <div style={{ fontSize: 12, color: '#d48806' }}>Pending — decision required to pass</div>
               )}
+              </>}
+              {part !== 'notices' && <>
               {/* Per-gate sign-off (Round 4 questions 18/29, 2026-08-29). Sits with
                   the blocker checklist because a signature and the evidence it
                   attests to are one subject — and because `sgNN-signoff` is one
@@ -335,6 +340,7 @@ export default function GateFlowTable({
                   }
                 />
               )}
+              </>}
             </div>
   );
 
@@ -560,10 +566,18 @@ export default function GateFlowTable({
       )}
       {layout === 'card' ? (
         <div className="gfc-list">
-          {rows.map((r) => (
-            <div key={r.meta.id} className={`c-card gfc-card${r.passed ? ' gfc-passed' : ''}`}>
+          {rows.map((r) => {
+            // What still has to be SAVED before this gate can be signed off with a passing decision (SW-26).
+            const flowTodo = [
+              ...(r.record.status !== 'Complete' ? ['Stage status → Complete'] : []),
+              ...gateFlowMissing(project, r.meta.id),
+            ];
+            return (
+            <div key={r.meta.id} className="gfc-gate">
+            <div className={`c-card gfc-card${r.passed ? ' gfc-passed' : ''}`}>
               <div className="gfc-head">
                 <div style={{ minWidth: 0 }}>
+                  <div className="gfc-eyebrow">Phase Gate Flow</div>
                   <div className="gfc-title-row">
                     <span className="gfc-title">
                       Gate {r.meta.number} · {r.meta.name}
@@ -599,9 +613,20 @@ export default function GateFlowTable({
                   </label>
                 ))}
               </div>
-              <div className="gfc-guidance">{renderGuidance(r)}</div>
+              {!r.passed && !r.locked && (
+                <div className={`gfc-ready${flowTodo.length === 0 ? ' gfc-ready-ok' : ''}`}>
+                  {flowTodo.length === 0
+                    ? 'Phase Gate Flow is complete — ready for sign-off.'
+                    : `Complete and save before sign-off: ${flowTodo.join(' · ')}.`}
+                </div>
+              )}
+              <div className="gfc-guidance">{renderGuidance(r, 'notices')}</div>
             </div>
-          ))}
+            {/* The sign-off is its own card, below the flow it depends on. */}
+            <div className="gfc-signoff">{renderGuidance(r, 'signoff')}</div>
+            </div>
+            );
+          })}
         </div>
       ) : (
       <Table

@@ -19,3 +19,10 @@
 /* GateSignOffPanel's table has no scroll of its own; on a phone it would widen the page. */
 .gfc-guidance .ant-table-content { overflow-x: auto; }
 .gfc-nohistory { flex: none; color: var(--c-text-3); font-size: 13px; }
+
+.gfc-gate { display: grid; gap: 12px; min-width: 0; }
+.gfc-eyebrow { margin-bottom: 2px; color: var(--c-text-3); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.gfc-ready { margin: 0 20px 16px; padding: 8px 12px; border: 1px solid var(--c-warn-line); border-radius: 6px; background: var(--c-warn-bg); color: var(--c-warn); font-size: 13px; }
+.gfc-ready-ok { border-color: var(--c-ok-line); background: var(--c-ok-bg); color: var(--c-ok); }
+.gfc-signoff { display: grid; gap: 12px; min-width: 0; }
+.gfc-signoff:empty { display: none; }

@@ -66,6 +66,7 @@ import {
   GATE_PASSING_DECISIONS,
   INDEPENDENT_FUNCTION_BY_GATE,
   findGateSignOff,
+  gateFlowMissing,
   gateSignOffMarkets,
   gateSignOffNeedsComment,
   isPerMarketGate,
@@ -1756,6 +1757,15 @@ export class ProjectsService {
       if (GATE_PASSING_DECISIONS.includes(decision) && stage && stage.status !== 'Complete') {
         throw new BadRequestException(
           `The stage status of ${gateId} is "${stage.status}" — save it as Complete before a "${decision}" signature`,
+        );
+      }
+      // The Phase Gate Flow card is complete BEFORE a passing signature (SW-26): the owner, due date and
+      // evidence link are inside the signed snapshot, so filling them in afterwards would turn every
+      // signature stale — and the owner asked for the data to be there first.
+      const flowMissing = gateFlowMissing(project, gateId);
+      if (GATE_PASSING_DECISIONS.includes(decision) && flowMissing.length > 0) {
+        throw new BadRequestException(
+          `The Phase Gate Flow of ${gateId} is incomplete — save ${flowMissing.join(', ')} before a "${decision}" signature`,
         );
       }
       // Question 29(2): the ten decisions that require a comment, by name rather

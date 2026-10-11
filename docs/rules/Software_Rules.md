@@ -135,6 +135,12 @@ Có hai loại drawer và chúng xử lý nút lưu khác nhau.
 - **Chưa kiểm chứng trên trình duyệt:** mới qua typecheck, build và lint. Hành vi thật (drawer ở lại sau Save, đóng sau khi tạo thành công, ở lại khi bị từ chối) chưa được chạy.
 - **Giới hạn:** Save của bản nháp bảng vẫn là ghi rồi quên (kết quả server chỉ hiện qua thông báo lỗi và việc nạp lại), nên Save & next sang hàng kế ngay cả khi lần ghi bị từ chối; dữ liệu khi đó hiện lại giá trị thật sau khi nạp lại. Muốn chặn phải cho các hàm `set*Bulk` cũng trả kết quả, chưa làm.
 
+### SW-26. Phase Gate Flow đầy đủ dữ liệu trước khi ký gate — *Đã xây* (2026-10-11, chủ dự án)
+Card **Phase Gate Flow** (trạng thái stage, quyết định, owner, hạn, evidence link, ghi chú) là một card riêng, nằm **trên** card Gate sign-off, không dính vào nhau. Dữ liệu của nó phải đầy đủ **trước** khi ký, vì chúng nằm trong nội dung được ký (SW-24): điền sau khi ký sẽ làm cả ba chữ ký stale.
+- **Bắt buộc, đã LƯU, trước một chữ ký có quyết định cho qua gate:** stage status = Complete, **Owner, Due date, Evidence / link**. Notes / blockers không bắt buộc ("không có blocker" là câu trả lời hợp lệ). Quyết định không nằm trong danh sách vì nó là đầu ra của chữ ký (SW-21). Hold và Backtrack vẫn ký được khi chưa đủ.
+- **Hai lớp:** server từ chối 400 và nêu các trường còn thiếu (`gateFlowMissing` trong `config/gateSignOff.ts`, kiểm trong `signGateSignOff`); giao diện hiện dòng "Complete and save before sign-off: …" trong card Phase Gate Flow, dòng khóa trong card ký, và chặn nút Continue trong modal.
+- Đây là quy tắc phần mềm của chủ dự án, không đưa cho SME. Danh sách trường bắt buộc là lựa chọn của người viết; muốn thêm hay bớt thì sửa `GATE_FLOW_REQUIRED`.
+
 ## 3. Quyền và truy cập
 
 ### SW-10. Không có role thì không vào được app — *Đã xây* (2026-10-02)
