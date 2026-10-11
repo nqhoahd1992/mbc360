@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Collapse, Modal, Spin, Table, Tag, Typography } from 'antd';
 import type { GateContentChangedBody, GateEvidenceSnapshot, GateSigningPreview } from '@mbc360/shared/types';
 import { REGISTER_CONFIGS } from '@mbc360/shared/config/registers';
+import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
+import { PROJECT_DATA_LABELS } from '@mbc360/shared/utils/gateSnapshot';
 import { previewGateSignOff } from '../api/projectsApi';
 
 // The whole of what a signature attests to, on one screen, before the authenticator step. The gate's
@@ -59,6 +61,74 @@ function RegisterBlock({ registerKey, digest }: { registerKey: string; digest: s
   );
 }
 
+// The title a person sees for a checklist or requirement section, not its config key.
+const SECTION_TITLES: Record<string, string> = Object.fromEntries(
+  Object.values(PHASE_CONFIGS).flatMap((p) => [...p.checklistSections, ...p.requirementSections].map((s) => [s.key, s.title])),
+);
+
+// "initialScope" -> "Initial scope".
+function humanize(key: string): string {
+  const spaced = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_.]/g, ' ').trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
+}
+
+const DASH = <Typography.Text type="secondary">—</Typography.Text>;
+
+function isEmpty(v: unknown): boolean {
+  return v === null || v === undefined || v === '' || (Array.isArray(v) && v.length === 0);
+}
+
+// The server's project-data digests are stable JSON; shown as a person would read them: labelled
+// fields, lists as comma-separated text, lists of records as small tables, never braces and quotes.
+function Value({ value }: { value: unknown }): React.ReactElement {
+  if (isEmpty(value)) return DASH;
+  if (typeof value === 'boolean') return <>{value ? 'Yes' : 'No'}</>;
+  if (Array.isArray(value)) {
+    if (value.every((v) => v === null || typeof v !== 'object')) return <>{value.map(String).join(', ')}</>;
+    const rows = value.filter((v): v is Record<string, unknown> => !!v && typeof v === 'object');
+    const cols = [...new Set(rows.flatMap((r) => Object.keys(r)))].filter((k) => rows.some((r) => !isEmpty(r[k]) && typeof r[k] !== 'object'));
+    return (
+      <Table
+        size="small"
+        pagination={false}
+        scroll={{ x: 'max-content', y: 240 }}
+        rowKey="__n"
+        dataSource={rows.map((r, i) => ({ ...r, __n: i }))}
+        columns={cols.map((k) => ({
+          title: humanize(k),
+          dataIndex: k,
+          render: (v: unknown) => <Value value={v} />,
+        }))}
+      />
+    );
+  }
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>);
+    return (
+      <div>
+        {entries.map(([k, v]) => (
+          <div key={k} style={{ marginBottom: 4 }}>
+            <Typography.Text type="secondary">{humanize(k)}: </Typography.Text>
+            <Value value={v} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return <>{String(value)}</>;
+}
+
+function ProjectDataBody({ digest }: { digest: string }) {
+  if (!digest) return DASH;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(digest);
+  } catch {
+    return <>{digest}</>;
+  }
+  return <Value value={parsed} />;
+}
+
 function Block({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 12 }}>
@@ -87,7 +157,12 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
       .filter((p) => p.includes('=Y/'))
       .map((p) => p.replace(/=Y\/.*$/, ''));
   const requirementLines = (digest: string): string[] =>
-    digest.split('|').filter(Boolean).map((p) => p.replace('=', ' — ').replace(/\/+$/g, ''));
+    digest.split('|').filter(Boolean).map((p) => {
+      // "requirement=status/priority/N-A rationale/evidence link" -> "requirement — status · priority · …"
+      const at = p.indexOf('=');
+      const parts = p.slice(at + 1).split('/').filter(Boolean);
+      return parts.length ? `${p.slice(0, at)} — ${parts.join(' · ')}` : p.slice(0, at);
+    });
 
   const accountableRegisters = Object.entries(snapshot.registerCells ?? snapshot.registers);
   const accountableData = Object.entries(snapshot.projectData ?? {});
@@ -116,7 +191,7 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
       <Block title="Checklists (ticked options)" count={Object.keys(snapshot.checklists).length}>
         {Object.entries(snapshot.checklists).map(([key, digest]) => (
           <div key={key} style={{ marginBottom: 6 }}>
-            <Typography.Text type="secondary">{key}</Typography.Text>
+            <Typography.Text type="secondary">{SECTION_TITLES[key] ?? humanize(key)}</Typography.Text>
             <Lines lines={tickedChecklist(digest)} />
           </div>
         ))}
@@ -124,7 +199,7 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
       <Block title="Requirements owned by this gate" count={Object.keys(snapshot.requirements).length}>
         {Object.entries(snapshot.requirements).map(([key, digest]) => (
           <div key={key} style={{ marginBottom: 6 }}>
-            <Typography.Text type="secondary">{key}</Typography.Text>
+            <Typography.Text type="secondary">{SECTION_TITLES[key] ?? humanize(key)}</Typography.Text>
             <Lines lines={requirementLines(digest)} />
           </div>
         ))}
@@ -145,10 +220,8 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
             size="small"
             items={accountableData.map(([name, digest]) => ({
               key: name,
-              label: name,
-              children: (
-                <pre style={{ margin: 0, maxHeight: 240, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{digest || '—'}</pre>
-              ),
+              label: PROJECT_DATA_LABELS[name] ?? humanize(name),
+              children: <ProjectDataBody digest={digest} />,
             }))}
           />
         </Block>
@@ -168,10 +241,8 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
               })),
               ...laterData.map(([name, digest]) => ({
                 key: `d-${name}`,
-                label: name,
-                children: (
-                  <pre style={{ margin: 0, maxHeight: 240, overflow: 'auto', whiteSpace: 'pre-wrap' }}>{digest || '—'}</pre>
-                ),
+                label: PROJECT_DATA_LABELS[name] ?? humanize(name),
+                children: <ProjectDataBody digest={digest} />,
               })),
             ]}
           />

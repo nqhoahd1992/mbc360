@@ -190,7 +190,7 @@ export function gateActionStates(project: ProjectData, gateId: string): GateActi
 // What changed since signing in columns a LATER gate owns. Information only — it never makes a
 // signature stale, because that gate is still to finish those columns (SW-5). Empty for a
 // signature taken before this was recorded.
-const PROJECT_DATA_LABELS: Record<string, string> = {
+export const PROJECT_DATA_LABELS: Record<string, string> = {
   identity: 'Project identity (scope, target users)',
   'identity.markets': 'Project markets',
   bom: 'Formula BOM',
