@@ -42,6 +42,7 @@ All from the repo root:
 npm run dev       # build shared once, then run shared (tsc -w) + api (:3000) + web (Vite HMR) concurrently
 npm run build     # build shared -> api -> web (order matters: apps compile against shared's dist)
 npm run lint      # oxlint across the whole repo
+npm run check     # type-check shared + api + web WITHOUT writing anything (~6s). Use this while `npm run dev` is running: `npm run build` runs `nest build` with deleteOutDir, which wipes apps/api/dist under the running API watcher and takes the dev server down
 docker compose -f docker-compose.dev.yml up -d   # dev Postgres (apps are NOT containerized in dev)
 npm run db:migrate -w @mbc360/api   # prisma migrate dev (needs dev Postgres up + apps/api/.env, see .env.example)
 npm run db:seed -w @mbc360/api      # idempotent seeder: rule config + demo project scaffolded from shared config
