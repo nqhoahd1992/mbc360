@@ -326,6 +326,8 @@ export function snapshotChanges(
     }
   }
 
+  // Compared with canonicalJson, never JSON.stringify: the stored snapshot comes back from a Postgres jsonb
+  // column, which reorders object keys, and a key-order-sensitive compare called every fresh signature stale.
   // The gate page's own fields, the requester and the free-text columns of its rows. Compared only
   // when the signature recorded them (2026-10-11); an older one is never stale because of them.
   if (before.fullRecord && after.fullRecord) {
@@ -344,17 +346,17 @@ export function snapshotChanges(
       if ((was.request.requesterDepartment ?? '') !== (now.request.requesterDepartment ?? '')) changes.push('Requester department changed');
     }
     for (const [check, detail] of Object.entries(now.gateChecks)) {
-      if (check in was.gateChecks && JSON.stringify(was.gateChecks[check]) !== JSON.stringify(detail)) {
+      if (check in was.gateChecks && canonicalJson(was.gateChecks[check]) !== canonicalJson(detail)) {
         changes.push(`Key Gate Check details changed: "${check}"`);
       }
     }
     for (const [key, rows] of Object.entries(now.checklists)) {
-      if (key in was.checklists && JSON.stringify(was.checklists[key]) !== JSON.stringify(rows)) {
+      if (key in was.checklists && canonicalJson(was.checklists[key]) !== canonicalJson(rows)) {
         changes.push(`Checklist owners or notes changed: ${key}`);
       }
     }
     for (const [key, rows] of Object.entries(now.requirements)) {
-      if (key in was.requirements && JSON.stringify(was.requirements[key]) !== JSON.stringify(rows)) {
+      if (key in was.requirements && canonicalJson(was.requirements[key]) !== canonicalJson(rows)) {
         changes.push(`Requirement details changed: ${key}`);
       }
     }

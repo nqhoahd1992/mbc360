@@ -179,6 +179,14 @@ const clone = (p: ProjectData): ProjectData => JSON.parse(JSON.stringify(p));
   ownerFn.checklists[section][0].notes = 'a note on an option';
   t('a checklist option note is part of what was signed (locked)', changes(ownerFn).some((c) => /Checklist owners or notes changed/.test(c)), JSON.stringify(changes(ownerFn)));
 
+  // A snapshot read back from a jsonb column has its object keys reordered. That must not look like a change
+  // (found by the end-to-end run: every fresh signature came back stale).
+  const reordered = signed();
+  const stored = JSON.parse(JSON.stringify(reordered.gateSignOffs[0].snapshot), (_k, v) =>
+    v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => b.length - a.length || (a < b ? 1 : -1))) : v);
+  reordered.gateSignOffs[0].snapshot = stored;
+  t('a snapshot whose keys were reordered by storage is not stale', changes(reordered).length === 0, JSON.stringify(changes(reordered)));
+
   // The request block is Gate 01's: another gate's snapshot does not carry it.
   t('only Gate 01 carries the requester', gateEvidenceSnapshot(fresh(), 'SG02').fullRecord?.request === undefined && !!gateEvidenceSnapshot(fresh(), 'SG01').fullRecord?.request);
 }
