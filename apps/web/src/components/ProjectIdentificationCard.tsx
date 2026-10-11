@@ -5,6 +5,7 @@ import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import './ProjectIdentificationCard.css';
 
 // The workbook's PROJECT IDENTIFICATION block, transcribed: 10 parameters in two
 // column pairs (`A8:C12` Project ID → Brand / Customer, `D8:F12` Date opened →
@@ -62,11 +63,15 @@ export default function ProjectIdentificationCard({
         <Descriptions.Item label="Date Opened">{identity.dateOpened}</Descriptions.Item>
         <Descriptions.Item label="Target Launch">{identity.targetLaunchDate}</Descriptions.Item>
         <Descriptions.Item label="Owner / Department">{identity.ownerDepartment}</Descriptions.Item>
-        <Descriptions.Item label="Countries / Markets" span="filled">
+      </Descriptions>
+      <div className="pic-markets">
+        <div className="pic-markets-label" id="pic-markets-label">
+          Countries / Markets{editing && <span className="pic-req"> *</span>}
+        </div>
           {editing ? (
             <Select
               mode="multiple"
-              style={{ width: '100%', maxWidth: 640 }}
+              style={{ width: '100%' }}
               options={MARKET_OPTIONS}
               // Gate 1 passed: existing markets stay; tags cannot be removed.
               tagRender={
@@ -86,7 +91,8 @@ export default function ProjectIdentificationCard({
               // Required before Gate 1 can pass, so an empty list is flagged here
               // rather than only in the readiness panel.
               status={draft.length === 0 ? 'error' : undefined}
-              placeholder="Required before Gate 1 can pass"
+              aria-labelledby="pic-markets-label"
+              placeholder="Select the markets this project targets"
               onChange={(v: string[]) =>
                 update(() => (locked ? [...new Set([...identity.markets, ...v])] : v))
               }
@@ -101,9 +107,15 @@ export default function ProjectIdentificationCard({
               ))}
             </div>
           )}
-        </Descriptions.Item>
-      </Descriptions>
-      {editing && <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />}
+        {editing && draft.length === 0 && (
+          <div className="pic-markets-error">Add at least one market — required before Gate 1 can pass.</div>
+        )}
+      </div>
+      {editing && dirty && (
+        <div className="pic-footer">
+          <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
+        </div>
+      )}
     </Card>
   );
 }
