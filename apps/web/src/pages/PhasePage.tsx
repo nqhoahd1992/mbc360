@@ -362,18 +362,6 @@ export default function PhasePage() {
   const gateSummary = tabRecord && (
     <div className="c-card ph-summary">
       <div>
-        <div className="ph-summary-k">Status</div>
-        <span className="c-tag c-tag-dot">{tabRecord.status}</span>
-      </div>
-      <div>
-        <div className="ph-summary-k">Owner</div>
-        <div className="ph-summary-v">{tabRecord.owner || '—'}</div>
-      </div>
-      <div>
-        <div className="ph-summary-k">Due</div>
-        <div className="ph-summary-v">{tabRecord.dueDate || '—'}</div>
-      </div>
-      <div>
         <div className="ph-summary-k">Readiness</div>
         <div className={`ph-summary-v${hardBlocking ? ' ph-bad' : ''}`}>{hardBlocking ? `${hardBlocking} blocking` : 'Ready to decide'}</div>
       </div>

@@ -590,9 +590,7 @@ export default function GateFlowTable({
                       <span className="c-tag">
                         <LockOutlined /> {gateIndex(r.meta.id) > currentIdx ? 'Not open yet' : 'Read-only'}
                       </span>
-                    ) : (
-                      <span className="c-tag c-tag-dot">{r.record.status}</span>
-                    )}
+                    ) : null /* the plain status is the Stage status field just below */}
                     {r.openChanges.length > 0 && <span className="c-tag c-tag-warn">Open change</span>}
                   </div>
                 </div>
