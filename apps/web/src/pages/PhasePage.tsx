@@ -351,7 +351,6 @@ export default function PhasePage() {
     </div>
   );
 
-  const tabRecord = tab === CLOSE_TAB ? undefined : project.gates.find((r) => r.gateId === tab);
   // The sign-off item can only be satisfied BY signing, so it is not counted as something still blocking the
   // way to the sign-off, and it carries no link of its own: the one button below is the way in (2026-10-11).
   const signoffId = `sg${tabGateNumber}-signoff`;
@@ -376,15 +375,6 @@ export default function PhasePage() {
         Go to sign-off
       </Button>
     </Tooltip>
-  );
-  const gateSummary = tabRecord && (
-    <div className="c-card ph-summary">
-      <div>
-        <div className="ph-summary-k">Readiness</div>
-        <div className={`ph-summary-v${hardBlocking ? ' ph-bad' : ''}`}>{hardBlocking ? `${hardBlocking} blocking` : 'Ready to sign'}</div>
-      </div>
-      <span className="ph-summary-go">{signoffButton()}</span>
-    </div>
   );
 
   return (
@@ -520,7 +510,6 @@ export default function PhasePage() {
         <div className="ph-body" key={tab}>
           <div className="ph-stack">
             {statusStrip}
-            {gateSummary}
 
             {/* Phase 1, Gate 01 only: Countries / Markets is Gate 1 evidence since
                 Round 4 question 24, so the identification card (editable markets)
