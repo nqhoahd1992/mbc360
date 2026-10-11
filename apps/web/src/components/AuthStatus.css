@@ -1,0 +1,14 @@
+/* Account menu. The identity block is information, not a command: it reads at full contrast and has no
+   hover state (antd greys a `disabled` item out, which made the user's own name look switched off). */
+.auth-trigger { display: inline-flex; align-items: center; gap: 8px; padding: 2px 6px 2px 2px; border-radius: 999px; }
+.auth-trigger-name { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.auth-trigger-caret { font-size: 10px; color: #6b6b6b; }
+
+.ant-dropdown-menu-item.auth-info,
+.ant-dropdown-menu-item.auth-info:hover { cursor: default; background: transparent; padding: 12px; }
+.auth-info-row { display: flex; align-items: center; gap: 12px; min-width: 240px; max-width: 320px; }
+.auth-info-text { min-width: 0; line-height: 1.4; }
+.auth-info-name { font-weight: 600; color: #1f1f1f; overflow-wrap: anywhere; }
+.auth-info-email { font-size: 13px; color: #595959; overflow-wrap: anywhere; }
+.auth-info-meta { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+.auth-info-chip { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 4px; background: #f5f5f5; color: #595959; font-size: 12px; }

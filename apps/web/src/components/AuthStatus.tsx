@@ -1,7 +1,9 @@
-import { Avatar, Button, Dropdown, Typography } from 'antd';
-import { EditOutlined, LogoutOutlined, UserOutlined } from '@ant-design/icons';
+import { Dropdown } from 'antd';
+import { DownOutlined, EditOutlined, LogoutOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import type { SessionUser } from '../auth/useSession';
+import UserAvatar from './UserAvatar';
+import './AuthStatus.css';
 
 interface AuthStatusProps {
   user: SessionUser;
@@ -26,16 +28,26 @@ export default function AuthStatus({ user, onLogout, compact }: AuthStatusProps)
         items: [
           {
             key: 'info',
+            className: 'auth-info',
             label: (
-              <div style={{ lineHeight: 1.4, padding: '2px 0' }}>
-                <div style={{ fontWeight: 600 }}>{user.displayName}</div>
-                <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                  {user.email}
-                  {user.department ? ` · ${user.department}` : ''}
-                </Typography.Text>
+              <div className="auth-info-row">
+                <UserAvatar name={user.displayName} seed={user.id} size={40} />
+                <div className="auth-info-text">
+                  <div className="auth-info-name">{user.displayName}</div>
+                  <div className="auth-info-email">{user.email}</div>
+                  {(user.roles.length > 0 || user.department) && (
+                    <div className="auth-info-meta">
+                      {user.roles.map((r) => (
+                        <span className="auth-info-chip" key={r.key}>
+                          {r.name}
+                        </span>
+                      ))}
+                      {user.department && <span className="auth-info-chip">{user.department}</span>}
+                    </div>
+                  )}
+                </div>
               </div>
             ),
-            disabled: true,
           },
           { type: 'divider' },
           {
@@ -48,27 +60,17 @@ export default function AuthStatus({ user, onLogout, compact }: AuthStatusProps)
         ],
       }}
     >
-      <Button
-        type="text"
-        size="small"
-        aria-label={compact ? `Account: ${user.displayName}` : undefined}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, paddingInline: 6 }}
+      <button
+        type="button"
+        className="auth-trigger ant-btn ant-btn-text"
+        aria-label={`Account menu: ${user.displayName}`}
+        aria-haspopup="menu"
+        title={`${user.displayName} — account menu`}
       >
-        <Avatar size={22} icon={<UserOutlined />} />
-        {!compact && (
-        <span
-          style={{
-            fontSize: 13,
-            maxWidth: 140,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {user.displayName}
-        </span>
-        )}
-      </Button>
+        <UserAvatar name={user.displayName} seed={user.id} size={compact ? 32 : 28} />
+        {!compact && <span className="auth-trigger-name">{user.displayName}</span>}
+        <DownOutlined className="auth-trigger-caret" />
+      </button>
     </Dropdown>
   );
 }
