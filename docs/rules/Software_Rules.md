@@ -141,6 +141,9 @@ Card **Phase Gate Flow** (trạng thái stage, quyết định, owner, hạn, ev
 - **Hai lớp:** server từ chối 400 và nêu các trường còn thiếu (`gateFlowMissing` trong `config/gateSignOff.ts`, kiểm trong `signGateSignOff`); giao diện hiện dòng "Complete and save before sign-off: …" trong card Phase Gate Flow, dòng khóa trong card ký, và chặn nút Continue trong modal.
 - Đây là quy tắc phần mềm của chủ dự án, không đưa cho SME. Danh sách trường bắt buộc là lựa chọn của người viết; muốn thêm hay bớt thì sửa `GATE_FLOW_REQUIRED`.
 
+### SW-27. Quyết định khác nhau giữa Prepared, Reviewed và Approved chỉ được hiển thị, không bị chặn — *Đã xây* (2026-10-11, chủ dự án chọn mức A)
+Quyết định của **Approved by** vẫn là quyết định của gate (câu 29(5)); quyết định của Prepared và Reviewed là khuyến nghị của vai đó. Khi ba bên khác nhau, hệ thống không chặn và không bắt thêm comment, nhưng làm bất đồng **nhìn thấy được**: modal ký hiện khối "Already signed" (vai, người, quyết định, comment) phía trên ô chọn của người ký, kèm cảnh báo vàng nếu quyết định đang chọn khác; panel ký hiện thẻ "Decisions differ" ở đầu. Các mức nặng hơn đã đề xuất và không chọn: bắt comment khi người duyệt chọn thoáng hơn khuyến nghị (B), chặn hẳn (C).
+
 ## 3. Quyền và truy cập
 
 ### SW-10. Không có role thì không vào được app — *Đã xây* (2026-10-02)

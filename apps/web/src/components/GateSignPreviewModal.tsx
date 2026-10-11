@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Collapse, Input, Modal, Radio, Spin, Table, Typography } from 'antd';
 import { CheckCircleFilled, ExclamationCircleFilled } from '@ant-design/icons';
 import { GATES, GATE_DECISIONS } from '@mbc360/shared/config/gates';
-import { gateSignOffNeedsComment } from '@mbc360/shared/config/gateSignOff';
+import { GATE_PASSING_DECISIONS, gateSignOffNeedsComment } from '@mbc360/shared/config/gateSignOff';
 import type { GateContentChangedBody, GateEvidenceSnapshot, GateSigningPreview } from '@mbc360/shared/types';
 import { REGISTER_CONFIGS } from '@mbc360/shared/config/registers';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
@@ -447,6 +447,7 @@ export default function GateSignPreviewModal({
   onDecisionChange,
   problem,
   warning,
+  earlier = [],
   changed,
   onCancel,
   onContinue,
@@ -465,6 +466,9 @@ export default function GateSignPreviewModal({
   problem: string | null;
   // A warning about the decision itself (open change control), shown above the form.
   warning?: string | null;
+  // What the roles that already signed this lane decided and wrote, shown above the signer's own choice so a
+  // difference is seen, not discovered later (information only — nothing is blocked, SW-27).
+  earlier?: { role: string; name: string; decision: string; comment: string }[];
   // The refusal from the last attempt, when the evidence changed after the previous preview.
   changed: GateContentChangedBody | null;
   onCancel: () => void;
@@ -569,6 +573,35 @@ export default function GateSignPreviewModal({
 
       <div className="gsp-decision">
         {warning && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={warning} />}
+        {earlier.length > 0 && (
+          <div className="gsp-earlier">
+            <div className="gsp-field-label">Already signed</div>
+            <ul>
+              {earlier.map((e) => (
+                <li key={e.role}>
+                  <span className="gsp-earlier-who">
+                    {e.role} · {e.name}
+                  </span>
+                  <span className={`c-tag c-tag-dot ${GATE_PASSING_DECISIONS.includes(e.decision) ? 'c-tag-ok' : 'c-tag-warn'}`}>
+                    {e.decision}
+                  </span>
+                  {e.comment && <span className="gsp-earlier-comment">“{e.comment}”</span>}
+                </li>
+              ))}
+            </ul>
+            {!!decision && earlier.some((e) => e.decision !== decision) && (
+              <Alert
+                type="warning"
+                showIcon
+                style={{ marginTop: 8 }}
+                message={`Your decision (${decision}) differs from ${earlier
+                  .filter((e) => e.decision !== decision)
+                  .map((e) => `${e.role} (${e.decision})`)
+                  .join(' and ')}. You may still sign — yours is the gate decision.`}
+              />
+            )}
+          </div>
+        )}
         <div className="gsp-field-label" id="gsp-decision-label">
           Your decision <span className="gsp-req">*</span>
         </div>

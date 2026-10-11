@@ -219,7 +219,14 @@ export default function GateSignOffPanel({
             <div className="gso-head">
               <span className="gso-title">Gate sign-off</span>
               {market && <span className="c-tag">{market}</span>}
-              <span className="gso-progress">{rows.filter((x) => x.signedAt).length} of {rows.length} signed</span>
+              <span className="gso-progress">
+                {new Set(rows.filter((x) => x.signedAt && x.decision).map((x) => x.decision)).size > 1 && (
+                  <Tooltip title={rows.filter((x) => x.signedAt).map((x) => `${x.role}: ${x.decision}`).join(' · ')}>
+                    <span className="c-tag c-tag-warn" style={{ marginRight: 8 }}>Decisions differ</span>
+                  </Tooltip>
+                )}
+                {rows.filter((x) => x.signedAt).length} of {rows.length} signed
+              </span>
               {critical && (
                 <Tooltip
                   title={`A critical gate: the reviewer must be a different person from the preparer, and at least one reviewer or approver must represent ${independent?.label}.`}
@@ -419,6 +426,13 @@ export default function GateSignOffPanel({
         comment={reviewing ? draftOf(reviewing.market, reviewing.role).comment : undefined}
         onDecisionChange={(p) => reviewing && patchDraft(reviewing.market, reviewing.role, p)}
         problem={reviewing ? decisionProblem(reviewing.market, reviewing.role) : null}
+        earlier={
+          reviewing
+            ? GATE_SIGNOFF_ROLES.map((role) => findGateSignOff(project, gateId, reviewing.market, role))
+                .filter((s): s is GateSignOff => !!s && !!s.signedAt && s.role !== reviewing.role)
+                .map((s) => ({ role: s.role, name: s.name ?? '', decision: s.decision ?? '', comment: s.comment ?? '' }))
+            : []
+        }
         warning={
           reviewing?.role === 'Approved by' && openChanges.length > 0
             ? `Open change control affects this gate: ${openChanges.map((c) => c.changeId).join(', ')}. A plain Proceed is refused; signing Proceed with Conditions records that you accept ${openChanges.length > 1 ? 'them' : 'it'}.`
