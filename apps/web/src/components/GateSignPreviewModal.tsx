@@ -351,14 +351,26 @@ export default function GateSignPreviewModal({
         />
       )}
       {error && <Alert type="error" showIcon message={error} />}
-      <div style={{ marginBottom: 16 }}>
+      {loading && !preview && <Spin />}
+      {preview && (
+        <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
+          <SnapshotBody snapshot={preview.snapshot} />
+          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+            Content fingerprint {preview.hash.slice(0, 16)}… · loaded {new Date(preview.previewedAt).toLocaleTimeString()}
+          </Typography.Text>
+        </div>
+      )}
+      <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--ant-color-border-secondary, #f0f0f0)' }}>
         {warning && <Alert type="warning" showIcon style={{ marginBottom: 12 }} message={warning} />}
         <div style={{ marginBottom: 8 }}>
-          <Typography.Text strong>Your decision</Typography.Text>
+          <Typography.Text strong>
+            Your decision <Typography.Text type="danger">*</Typography.Text>
+          </Typography.Text>
           <Select
             style={{ width: '100%', marginTop: 4 }}
             allowClear
             placeholder="Decision"
+            status={!decision ? 'warning' : undefined}
             value={decision}
             options={GATE_DECISIONS.map((d) => ({ value: d, label: d }))}
             onChange={(v?: string) => onDecisionChange({ decision: v })}
@@ -367,8 +379,10 @@ export default function GateSignPreviewModal({
         <div>
           <Typography.Text strong>
             Comment
-            {!!decision && gateSignOffNeedsComment(decision) && (
+            {!!decision && gateSignOffNeedsComment(decision) ? (
               <Typography.Text type="danger"> * required for "{decision}"</Typography.Text>
+            ) : (
+              <Typography.Text type="secondary"> (optional for a clean Proceed)</Typography.Text>
             )}
           </Typography.Text>
           <Input.TextArea
@@ -386,15 +400,6 @@ export default function GateSignPreviewModal({
           </Typography.Text>
         )}
       </div>
-      {loading && !preview && <Spin />}
-      {preview && (
-        <div style={{ maxHeight: '60vh', overflow: 'auto' }}>
-          <SnapshotBody snapshot={preview.snapshot} />
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-            Content fingerprint {preview.hash.slice(0, 16)}… · loaded {new Date(preview.previewedAt).toLocaleTimeString()}
-          </Typography.Text>
-        </div>
-      )}
     </Modal>
   );
 }
