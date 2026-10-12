@@ -3,11 +3,11 @@ import { Alert, Button, Collapse, Input, Modal, Radio, Spin, Table, Typography }
 import { CheckCircleFilled, ExclamationCircleFilled } from '@ant-design/icons';
 import { GATES, GATE_DECISIONS } from '@mbc360/shared/config/gates';
 import { GATE_PASSING_DECISIONS, gateSignOffNeedsComment } from '@mbc360/shared/config/gateSignOff';
-import type { GateContentChangedBody, GateEvidenceSnapshot, GateSigningPreview } from '@mbc360/shared/types';
+import type { GateContentChangedBody, GateEvidenceSnapshot, GateSignOffRole, GateSigningPreview } from '@mbc360/shared/types';
 import { REGISTER_CONFIGS } from '@mbc360/shared/config/registers';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import { PROJECT_DATA_LABELS } from '@mbc360/shared/utils/gateSnapshot';
-import { previewGateSignOff } from '../api/projectsApi';
+import { previewGateSignOff, verifyGateSignOffStepUp } from '../api/projectsApi';
 import '../styles/concept.css';
 import './GateSignPreviewModal.css';
 
@@ -170,7 +170,7 @@ function Lines({ lines }: { lines: string[] }) {
   );
 }
 
-function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
+export function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
   // "label=Y/status/P/evidenceLink" per option (gateSnapshot.ts digestChecklists).
   const tickedChecklist = (digest: string): { label: string; status: string; primary: boolean; link: string }[] =>
     digest
@@ -227,10 +227,12 @@ function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
           <span className="gsp-fact-k">Stage status</span>
           <strong>{snapshot.status}</strong>
         </span>
-        <span className="gsp-fact">
-          <span className="gsp-fact-k">Formula version</span>
-          <strong>{snapshot.formulaVersion}</strong>
-        </span>
+        {snapshot.formulaVersion && (
+          <span className="gsp-fact">
+            <span className="gsp-fact-k">Formula version</span>
+            <strong>{snapshot.formulaVersion}</strong>
+          </span>
+        )}
         {snapshot.market && (
           <span className="gsp-fact">
             <span className="gsp-fact-k">Market</span>
@@ -442,6 +444,7 @@ export default function GateSignPreviewModal({
   gateId,
   market,
   roleLabel,
+  role,
   decision,
   comment,
   onDecisionChange,
@@ -450,13 +453,14 @@ export default function GateSignPreviewModal({
   earlier = [],
   changed,
   onCancel,
-  onContinue,
+  onSign,
 }: {
   open: boolean;
   projectId: string;
   gateId: string;
   market?: string;
   roleLabel: string;
+  role: GateSignOffRole;
   // The signer's decision and comment are entered HERE, beside the evidence they attest to, and kept by the
   // caller so they survive a re-review after the evidence changed.
   decision?: string;
@@ -472,11 +476,16 @@ export default function GateSignPreviewModal({
   // The refusal from the last attempt, when the evidence changed after the previous preview.
   changed: GateContentChangedBody | null;
   onCancel: () => void;
-  onContinue: (preview: GateSigningPreview) => void;
+  // Called once the authenticator code has been verified here, with the proof the signature spends.
+  onSign: (preview: GateSigningPreview, stepUpToken: string) => void;
 }) {
   const [preview, setPreview] = useState<GateSigningPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // The authenticator step is part of this same screen: one place to read, decide and confirm it is you.
+  const [code, setCode] = useState('');
+  const [signing, setSigning] = useState(false);
+  const [signError, setSignError] = useState<string | null>(null);
 
   // Reloaded every time it opens, and again when a refusal comes back: the point is that the signer
   // reads what is there NOW.
@@ -485,6 +494,8 @@ export default function GateSignPreviewModal({
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setCode('');
+    setSignError(null);
     previewGateSignOff(projectId, gateId, market)
       .then((p) => {
         if (!cancelled) setPreview(p);
@@ -499,6 +510,25 @@ export default function GateSignPreviewModal({
       cancelled = true;
     };
   }, [open, projectId, gateId, market, changed]);
+
+  const submit = async () => {
+    if (!preview || signing || loading || problem) return;
+    if (code.length !== 6) {
+      setSignError('Enter the 6 digits currently shown in your authenticator app');
+      return;
+    }
+    setSigning(true);
+    setSignError(null);
+    try {
+      const { stepUpToken } = await verifyGateSignOffStepUp(projectId, gateId, market, role, code, preview.hash);
+      setCode('');
+      onSign(preview, stepUpToken);
+    } catch (e) {
+      setSignError(e instanceof Error ? e.message : 'Verification failed');
+    } finally {
+      setSigning(false);
+    }
+  };
 
   const needsComment = !!decision && gateSignOffNeedsComment(decision);
   const gateName = GATES.find((g) => g.id === gateId)?.name;
@@ -531,8 +561,13 @@ export default function GateSignPreviewModal({
           </span>
           <span className="gsp-footer-actions">
             <Button onClick={onCancel}>Cancel</Button>
-            <Button type="primary" disabled={!preview || loading || !!problem} onClick={() => preview && onContinue(preview)}>
-              Continue to sign
+            <Button
+              type="primary"
+              loading={signing}
+              disabled={!preview || loading || !!problem || code.length !== 6}
+              onClick={submit}
+            >
+              Verify and sign
             </Button>
           </span>
         </div>
@@ -630,6 +665,26 @@ export default function GateSignPreviewModal({
           onChange={(e) => onDecisionChange({ comment: e.target.value })}
         />
         {problem && <div className="gsp-problem">{problem}</div>}
+
+        <div className="gsp-field-label" style={{ marginTop: 12 }}>
+          Authenticator code <span className="gsp-req">*</span>
+        </div>
+        <Input
+          className="gsp-code"
+          maxLength={6}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          spellCheck={false}
+          name="gateSignOtp"
+          placeholder="000000"
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+          onPressEnter={submit}
+        />
+        <div className="gsp-hint">
+          The current 6-digit code from your authenticator app. Signing attaches your saved signature to this gate.
+        </div>
+        {signError && <Alert type="error" showIcon style={{ marginTop: 8 }} message={signError} />}
       </div>
     </Modal>
   );

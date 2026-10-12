@@ -1,5 +1,6 @@
-import { Button, Space, Tooltip, Typography } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import { SaveOutlined, UndoOutlined } from '@ant-design/icons';
+import './SaveBar.css';
 
 // Paired with useDraft: appears only while a table/section has unsaved local
 // edits, and commits (or discards) them all at once in a single store write.
@@ -27,10 +28,13 @@ export default function SaveBar({
 }) {
   if (!dirty) return null;
   return (
-    <Space size={8} style={{ marginTop: 8 }}>
-      <Typography.Text type="warning" style={{ fontSize: 12 }}>
+    <div className="save-bar">
+      <Typography.Text type="warning" className="save-bar-note" style={{ fontSize: 12 }}>
         Unsaved changes
       </Typography.Text>
+      <Button size="small" icon={<UndoOutlined />} onClick={onDiscard} disabled={loading}>
+        Discard
+      </Button>
       {/* A disabled antd Button's root DOM node is a genuine `disabled`
           <button>, which doesn't fire the hover events Tooltip listens for —
           wrapping in a plain <span> gives it a non-disabled hover target
@@ -49,9 +53,6 @@ export default function SaveBar({
           </Button>
         </span>
       </Tooltip>
-      <Button size="small" icon={<UndoOutlined />} onClick={onDiscard} disabled={loading}>
-        Discard
-      </Button>
-    </Space>
+    </div>
   );
 }

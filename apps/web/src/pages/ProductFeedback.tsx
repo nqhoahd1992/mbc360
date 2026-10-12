@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, DatePicker, Drawer, Empty, Form, Grid, Input, Rate, Select, Switch, message } from 'antd';
+import { Button, DatePicker, Drawer, Empty, Form, Grid, Input, Rate, Switch, message } from 'antd';
+import ChoiceSelect from '../components/ChoiceSelect';
 import { MessageOutlined, PlusOutlined, RightOutlined, WarningOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
@@ -306,7 +307,7 @@ export default function ProductFeedback() {
               <Input />
             </Form.Item>
             <Form.Item name="gender" label="Gender">
-              <Select options={[{ value: 'F', label: 'F' }, { value: 'M', label: 'M' }]} />
+              <ChoiceSelect options={['F', 'M']} onChange={() => {}} />
             </Form.Item>
             <Form.Item name="dept" label="Dept / site" rules={[{ required: true, message: 'Enter the department or site' }]}>
               <Input />

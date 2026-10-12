@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Button, Drawer, Empty, Form, Grid, Input, Select, message } from 'antd';
+import ChoiceSelect from '../components/ChoiceSelect';
 import { InboxOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
@@ -216,7 +217,7 @@ export default function PostMarketCapa() {
             )}
           </div>
           {dirty && (
-            <div className="c-card pm-savebar">
+            <div className="page-savebar">
               <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
             </div>
           )}
@@ -310,7 +311,7 @@ export default function PostMarketCapa() {
               rules={[{ required: true }]}
               extra="Critical sits above High — the shared scale from Round 4, question 3."
             >
-              <Select options={RISK_LEVELS.map((r) => ({ value: r, label: r }))} />
+              <ChoiceSelect options={[...RISK_LEVELS]} onChange={() => {}} />
             </Form.Item>
             <Form.Item name="owner" label="Owner" rules={[{ required: true, message: 'Pick an owner' }]}>
               <UserSelect onChange={() => {}} />

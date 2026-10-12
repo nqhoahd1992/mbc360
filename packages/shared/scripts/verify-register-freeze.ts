@@ -163,8 +163,11 @@ t('Gate 7 is accountable for the BOM too (Gate 5 is earlier)', stale('SG07', sna
 t('Gate 4 reads the BOM but Gate 5 owns it: information only',
   stale('SG04', snapAt('SG04'), withBom).length === 0 && snapshotLaterChanges(snapAt('SG04'), gateEvidenceSnapshot(withBom, 'SG04')).some((c) => c.startsWith('Formula BOM changed')));
 const withTrack: ProjectData = { ...live, marketTracks: [{ market: 'Vietnam', regulatoryStatus: 'Approved' } as never] };
-t('market tracks have no gate lock and no owner: information only at Gate 10',
-  stale('SG10', snapAt('SG10'), withTrack).length === 0 && snapshotLaterChanges(snapAt('SG10'), gateEvidenceSnapshot(withTrack, 'SG10')).some((c) => c.startsWith('Market tracking changed')));
+t('market tracks have no owning gate: not in the snapshot, so a change is neither stale nor reported at Gate 10',
+  stale('SG10', snapAt('SG10'), withTrack).length === 0 &&
+    !('marketTracks' in (snapAt('SG10').projectData ?? {})) &&
+    !('marketTracks' in (snapAt('SG10').projectDataLater ?? {})) &&
+    snapshotLaterChanges(snapAt('SG10'), gateEvidenceSnapshot(withTrack, 'SG10')).length === 0);
 const withScope: ProjectData = { ...live, identity: { ...live.identity, initialScope: 'a new scope' } };
 t('Gate 1 owns the identity fields it reads: changing initialScope makes the Gate 1 signature stale', stale('SG01', snapAt('SG01'), withScope).some((c) => c.startsWith('Project identity')));
 t('a change that touches nothing readiness reads (the project lead) changes nothing',
@@ -179,7 +182,7 @@ t('a legacy snapshot (no projectData) is not stale because the BOM is now record
 const withMarket: ProjectData = { ...live, identity: { ...live.identity, markets: [...(live.identity.markets ?? []), 'A new market'] } };
 t('adding a market after Gate 1 does NOT make the Gate 1 or Gate 10 signature stale',
   stale('SG01', snapAt('SG01'), withMarket).length === 0 && stale('SG10', snapAt('SG10'), withMarket).length === 0);
-t('...but the new market is reported as information', snapshotLaterChanges(snapAt('SG01'), gateEvidenceSnapshot(withMarket, 'SG01')).some((c) => c.startsWith('Project markets changed')));
+t('...and the markets are not recorded in the snapshot at all (no owning gate)', snapshotLaterChanges(snapAt('SG01'), gateEvidenceSnapshot(withMarket, 'SG01')).length === 0 && !('identity.markets' in (snapAt('SG01').projectDataLater ?? {})));
 
 console.log(bad === 0 ? '\nall passed' : `\n${bad} FAILED`);
 process.exit(bad === 0 ? 0 : 1);

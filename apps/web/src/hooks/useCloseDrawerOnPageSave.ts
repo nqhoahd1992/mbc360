@@ -4,6 +4,8 @@ import { useEffect, useRef } from 'react';
 // nothing left to show — it closes (project owner, 2026-10-11). The drawer's OWN Save & next must keep it open,
 // so those call the returned `markOwn()` first and the transition they cause is ignored.
 // Only a real dirty → clean transition counts: a refused save leaves the draft dirty and the drawer open.
+// `markOwn()` returns a `release()`: a drawer save that was REFUSED calls it, so the flag does not linger and swallow the
+// next, genuine page-level save (which should still close the drawer).
 export function useCloseDrawerOnPageSave(dirty: boolean, isOpen: boolean, close: () => void) {
   const prevDirty = useRef(dirty);
   const own = useRef(false);
@@ -17,5 +19,8 @@ export function useCloseDrawerOnPageSave(dirty: boolean, isOpen: boolean, close:
   });
   return () => {
     own.current = true;
+    return () => {
+      own.current = false;
+    };
   };
 }

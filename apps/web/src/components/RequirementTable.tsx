@@ -61,9 +61,10 @@ export default function RequirementTable({
   ];
 
   const patch = (index: number, p: Partial<RequirementItem>) => update((prev) => patchArray(prev, index, p));
-  const save = () => {
-    setSection(projectId, sectionKey, draft);
-    markSaved();
+  const save = async () => {
+    const ok = await setSection(projectId, sectionKey, draft);
+    if (ok) markSaved();
+    return ok;
   };
   // Switching AWAY from N/A drops the rationale in the same edit, so a stale
   // reason cannot sit beside a Completed row (the API clears it too).
@@ -213,9 +214,7 @@ export default function RequirementTable({
       footer={
         dirty ? (
           <div className="rt-savebar">
-            <div>
-              <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
-            </div>
+            <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
           </div>
         ) : null
       }

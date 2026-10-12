@@ -11,12 +11,15 @@ import {
   gateRefGateIds,
   isGatePassed,
   isGateRefLocked,
+  isGateSignedStanding,
   phaseCompletionChecklist,
   phaseProgress,
   skincareForTwoIncompleteSections,
   skincareForTwoTriggers,
   isPhaseDataLocked,
+  type GateReadinessItem,
 } from '@mbc360/shared/utils/gateProgress';
+import { gateFlowMissing } from '@mbc360/shared/config/gateSignOff';
 import { useAppStore } from '../store/useAppStore';
 import { GATES, PHASES, phaseLabel } from '@mbc360/shared/config/gates';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
@@ -232,6 +235,16 @@ export default function PhasePage() {
     (a) => a.gateId === tab && (a.key !== 'familyUse' || isFamilyUseSelected(project)),
   );
 
+  // Gates with a signature standing on them: the evidence each owns is read-only (SW-24), the same lock the
+  // server enforces. A section is owned by its LAST gate (as the snapshot reads it); a row by its own gate number.
+  const signedGates = new Set(GATES.filter((g) => isGateSignedStanding(project, g.id)).map((g) => g.id));
+  const gateOfNumber = (n: string | undefined) => GATES.find((g) => g.number === n)?.id;
+  const rowSigned = (n: string | undefined) => signedGates.has(gateOfNumber(n) ?? '');
+  const sectionSigned = (ref: string | undefined) => {
+    const ids = gateRefGateIds(ref);
+    return signedGates.has(ids.length ? ids[ids.length - 1] : (gateOfNumber(ref) ?? ''));
+  };
+
   const readiness = tab === CLOSE_TAB ? [] : gateReadinessChecklist(project, tab);
   const blockingCount = (id: string) =>
     gateReadinessChecklist(project, id).filter((i) => !i.satisfied && i.hardBlock).length;
@@ -354,8 +367,29 @@ export default function PhasePage() {
   // The sign-off item can only be satisfied BY signing, so it is not counted as something still blocking the
   // way to the sign-off, and it carries no link of its own: the one button below is the way in (2026-10-11).
   const signoffId = `sg${tabGateNumber}-signoff`;
-  const readinessItems = readiness.map((i) => (i.id === signoffId ? { ...i, link: undefined } : i));
-  const hardBlocking = readiness.filter((i) => !i.satisfied && i.hardBlock && i.id !== signoffId).length;
+  // The Phase Gate Flow card must be complete and saved before anybody signs (SW-26). The card says so under its
+  // own fields, but the readiness panel is where the button's state comes from, so it lists it as an item too.
+  const flowMissing =
+    tab === CLOSE_TAB
+      ? []
+      : [
+          ...(project.gates.find((g) => g.gateId === tab)?.status !== 'Complete' ? ['Stage status → Complete'] : []),
+          ...gateFlowMissing(project, tab),
+        ];
+  const flowItem: GateReadinessItem = {
+    id: `sg${tabGateNumber}-gate-flow`,
+    label: flowMissing.length
+      ? `Phase Gate Flow — complete and save: ${flowMissing.join(' · ')}`
+      : 'Phase Gate Flow complete',
+    hardBlock: true,
+    satisfied: flowMissing.length === 0,
+    link: { href: `/phase/${phase}`, scrollToId: 'sec-gate-flow' },
+  };
+  const readinessItems = [
+    ...(tab === CLOSE_TAB ? [] : [flowItem]),
+    ...readiness.map((i) => (i.id === signoffId ? { ...i, link: undefined } : i)),
+  ];
+  const hardBlocking = readinessItems.filter((i) => !i.satisfied && i.hardBlock && i.id !== signoffId).length;
   const goSignoff = () => {
     const el = document.getElementById('sec-gate-signoff');
     if (!el) return;
@@ -462,7 +496,7 @@ export default function PhasePage() {
                 title="Key Gate Checks — all gates"
                 checks={keyChecks}
                 currentGateNumber={currentGateNum}
-                isRowLocked={(check) => isGateRefLocked(project, check.gate)}
+                isRowLocked={(check) => isGateRefLocked(project, check.gate) || rowSigned(check.gate)}
               />
             </div>
           )}
@@ -474,7 +508,7 @@ export default function PhasePage() {
                 title={section.title}
                 items={project.requirements[section.key] ?? []}
                 currentGateNumber={currentGateNum}
-                isRowLocked={(item) => isGateRefLocked(project, item.gate) || (item.gate === 'ALL' && isPhaseDataLocked(project, 4))}
+                isRowLocked={(item) => isGateRefLocked(project, item.gate) || rowSigned(item.gate) || (item.gate === 'ALL' && isPhaseDataLocked(project, 4))}
                 columns={section.columns}
                 allowNotApplicable={section.allowNotApplicable}
               />
@@ -554,7 +588,7 @@ export default function PhasePage() {
                   gate={section.gate}
                   items={project.checklists[section.key] ?? []}
                   currentGateNumber={currentGateNum}
-                  readOnly={isGateRefLocked(project, section.gate)}
+                  readOnly={isGateRefLocked(project, section.gate) || sectionSigned(section.gate)}
                   requiresPrimary={section.requiresPrimary}
                 />
               </div>
@@ -569,7 +603,7 @@ export default function PhasePage() {
                   items={project.requirements[section.key] ?? []}
                   currentGateNumber={currentGateNum}
                   viewedGateNumber={GATES.find((g) => g.id === tab)?.number}
-                  isRowLocked={(item) => isGateRefLocked(project, item.gate) || (item.gate === 'ALL' && isPhaseDataLocked(project, 4))}
+                  isRowLocked={(item) => isGateRefLocked(project, item.gate) || rowSigned(item.gate) || (item.gate === 'ALL' && isPhaseDataLocked(project, 4))}
                   columns={section.columns}
                   allowNotApplicable={section.allowNotApplicable}
                 />
@@ -588,7 +622,7 @@ export default function PhasePage() {
                   showGate={false}
                   checks={keyChecks}
                   currentGateNumber={currentGateNum}
-                  isRowLocked={(check) => isGateRefLocked(project, check.gate)}
+                  isRowLocked={(check) => isGateRefLocked(project, check.gate) || rowSigned(check.gate)}
                 />
               </div>
             )}
@@ -640,6 +674,7 @@ export default function PhasePage() {
                   showSatisfied={showSatisfied}
                   onToggleSatisfied={() => setShowSatisfied((v) => !v)}
                   hideSummary
+                  signatureItemId={signoffId}
                 />
               </div>
               <div className="ph-rail-foot">

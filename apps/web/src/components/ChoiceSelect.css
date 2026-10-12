@@ -1,0 +1,12 @@
+/* The buttons wrap onto a second line on a narrow column instead of overflowing it. */
+.choice-select { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice-select .ant-radio-button-wrapper {
+  height: auto; min-height: 40px; padding: 8px 16px; border-radius: 8px; line-height: 22px;
+  border-inline-start-width: 1px;
+}
+/* antd joins button-style radios into one bar with a divider; here each is its own button. */
+.choice-select .ant-radio-button-wrapper::before { display: none; }
+.choice-select .ant-radio-button-wrapper:first-child,
+.choice-select .ant-radio-button-wrapper:last-child { border-radius: 8px; }
+.choice-select-warning .ant-radio-button-wrapper-checked { border-color: var(--c-warn-dot); color: var(--c-warn); }
+.choice-select-error .ant-radio-button-wrapper { border-color: var(--c-bad-dot); }

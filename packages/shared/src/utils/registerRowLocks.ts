@@ -17,7 +17,7 @@
 import type { RegisterConfig } from '../config/registers';
 import { GATES } from '../config/gates';
 import type { ProjectData, RegisterRow } from '../types';
-import { isGatePassed } from './gateProgress';
+import { isGatePassed, isGateSignedStanding } from './gateProgress';
 import { gateOrder } from './gateRefs';
 import { columnOwnerGateIds } from './registerColumnGates';
 
@@ -26,6 +26,17 @@ import { columnOwnerGateIds } from './registerColumnGates';
 // render cost thousands of evaluations; every function below takes this set instead.
 export function passedGateSet(project: ProjectData): ReadonlySet<string> {
   return new Set(GATES.filter((g) => isGatePassed(project, g.id)).map((g) => g.id));
+}
+
+// The gates whose cells are frozen: those that have PASSED, plus those with a signature standing on them
+// (SW-24 — the signers attested to the data as it stands, so it cannot move under them; to change it the
+// signature is withdrawn, with a reason). The table and the API both freeze by THIS set, so a register's cells
+// grey out and the write is refused by the same answer. A column is frozen by its entering gate's signature;
+// columns of a LATER gate stay open, as SW-5 requires.
+export function frozenGateSet(project: ProjectData): ReadonlySet<string> {
+  const frozen = new Set(passedGateSet(project));
+  for (const g of GATES) if (!frozen.has(g.id) && isGateSignedStanding(project, g.id)) frozen.add(g.id);
+  return frozen;
 }
 
 // The gate that froze this column, or undefined while it is still open. A column owned by
@@ -55,7 +66,7 @@ export function rowsFrozenBy(passed: ReadonlySet<string>, config: RegisterConfig
 }
 
 export function rowsFrozenReason(gateId: string): string {
-  return `${gateId} has passed and part of this register belongs to it — rows can no longer be added or removed. Backtrack to reopen it.`;
+  return `${gateId} has passed or is signed, and part of this register belongs to it — rows can no longer be added or removed. Withdraw the signature, or Backtrack, to change it.`;
 }
 
 const blank = (v: unknown): string => (v === undefined || v === null ? '' : String(v));
@@ -85,7 +96,7 @@ export function registerFreezeViolations(
       const frozenBy = cellFrozenBy(passed, config, column.key);
       if (frozenBy && blank(committed[index][column.key]) !== blank(incoming[index][column.key])) {
         problems.push(
-          `Row ${index + 1} "${column.label}" is frozen by ${frozenBy}, which has passed — Backtrack to change it`,
+          `Row ${index + 1} "${column.label}" is frozen by ${frozenBy}, which has passed or is signed — withdraw the signature, or Backtrack, to change it`,
         );
       }
     }

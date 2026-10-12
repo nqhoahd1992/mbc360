@@ -76,3 +76,7 @@
 .gsp-earlier li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; }
 .gsp-earlier-who { color: var(--c-text-2); }
 .gsp-earlier-comment { flex-basis: 100%; color: var(--c-text-3); overflow-wrap: anywhere; white-space: pre-wrap; }
+
+/* The authenticator code is six digits: a narrow field, with a quiet hint under it. */
+.gsp-code { width: 200px; letter-spacing: 0.2em; font-variant-numeric: tabular-nums; }
+.gsp-hint { margin-top: 6px; color: var(--c-text-3); font-size: 12px; }

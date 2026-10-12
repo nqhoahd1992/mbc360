@@ -14,6 +14,7 @@ import type {
   RegisterRow,
   RequirementItem,
   GateEvidenceSnapshot,
+  GateSignedContent,
   GateSigningPreview,
   PhaseSignPreview,
   RegisterClosePreview,
@@ -286,6 +287,20 @@ export const previewGateSignOff = (
   request(
     `/projects/${encodeURIComponent(id)}/gates/${gateId}/sign-offs/preview${
       market ? `?market=${encodeURIComponent(market)}` : ''
+    }`,
+  );
+
+// The content a gate signature attested to, as it was when signed (also for one since withdrawn).
+export const getGateSignedContent = (
+  id: string,
+  gateId: string,
+  role: string,
+  signedAt: string,
+  market?: string,
+): Promise<GateSignedContent> =>
+  request(
+    `/projects/${encodeURIComponent(id)}/gates/${gateId}/sign-offs/content?role=${encodeURIComponent(role)}&signedAt=${encodeURIComponent(signedAt)}${
+      market ? `&market=${encodeURIComponent(market)}` : ''
     }`,
   );
 

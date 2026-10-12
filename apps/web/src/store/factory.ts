@@ -135,6 +135,7 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     changes: [],
     backtrackEvents: [],
     gateChangeLog: [],
+    gateSignOffLog: [],
     marketTracks,
     // Per-gate sign-off rows are created lazily by the API (on nomination or
     // signing), because the per-market lanes at Gates 10-12 depend on a market

@@ -33,11 +33,11 @@
 .ph-rail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
 @media (min-width: 1280px) { .ph-rail { position: sticky; top: 80px; } }
 .ph-rail-card { overflow: hidden; }
-.ph-rail-head { padding: 16px 16px 12px; border-bottom: 1px solid var(--c-border-2); }
-.ph-rail-title { font-weight: 600; }
+.ph-rail-head { padding: 14px 20px; border-bottom: 1px solid var(--c-border-2); }
+.ph-rail-title { font-size: 16px; font-weight: 600; line-height: 24px; }
 .ph-rail-sub { margin-top: 4px; color: var(--c-ok); font-size: 13px; }
 .ph-rail-sub.ph-bad { color: var(--c-bad); }
-.ph-rail-body { padding: 8px 12px 12px; }
+.ph-rail-body { padding: 8px 14px 12px; }
 
 /* Arrival highlight for a ?scrollTo= deep link / "Go to decision": a ring that
    pulses outward around the section for ~1s, so it is obvious which card the
@@ -83,6 +83,7 @@ tr.ph-flash > td { animation: ph-flash-cell 1s ease-out; }
 .ph-gate-purpose { margin: -4px 0 0; color: var(--c-text-2); font-size: 14px; text-wrap: pretty; }
 
 .ph-go-wait { color: var(--c-text-3); }
-@keyframes ph-go-pulse { 0% { box-shadow: 0 0 0 0 rgba(9, 88, 217, 0.45); } 100% { box-shadow: 0 0 0 10px rgba(9, 88, 217, 0); } }
-.ph-go-ready { animation: ph-go-pulse 1.2s ease-out 2; }
+@keyframes ph-go-pulse { 0% { box-shadow: 0 0 0 0 rgba(9, 88, 217, 0.45); } 60%, 100% { box-shadow: 0 0 0 10px rgba(9, 88, 217, 0); } }
+.ph-go-ready { animation: ph-go-pulse 2s ease-out infinite; }
+.ph-go-ready:hover { animation: none; }
 @media (prefers-reduced-motion: reduce) { .ph-go-ready { animation: none; } }

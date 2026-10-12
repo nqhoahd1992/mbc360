@@ -13,9 +13,10 @@
 //   bom, costing, formulaProperties ................ Gate 05
 //   assessments ..................................... the gate whose tab answers each one
 //   studyApprovals .................................. Gate 08 (Study Protocol register's gate)
-// Market tracks, change records, post-launch reviews and the formula version history have NO gate
-// lock (that is a separate decision), so they have no owner: they are recorded and reported when
-// they change after signing, but never make a signature stale.
+// Market tracks, change records, post-launch reviews, the formula version history and the project's
+// markets have NO owning gate. Data no gate owns is not part of any gate's or phase's signature, so it is
+// not recorded in the snapshot and not shown in the signing preview either (project owner: only what
+// affects a signature goes in). If the review team asks for one to be covered, give it an owner here first.
 //
 // Same split as for register columns: data owned by this gate or an earlier one is what the
 // signature is accountable for; data owned by a later gate, or by none, is recorded for the
@@ -105,6 +106,8 @@ export function projectSliceDigests(
   const here = gateOrder(gateId);
   for (const name of slicesReadByGate(gateId)) {
     const def = SLICES[name];
+    // No owning gate: not part of any signature, so not recorded at all.
+    if (def.owner === null) continue;
     const accountable = def.owner !== null && gateOrder(def.owner) <= here;
     (accountable ? settled : later)[name] = def.digest(project);
   }

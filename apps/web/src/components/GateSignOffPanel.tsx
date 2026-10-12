@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Input, Modal, Select, Tooltip } from 'antd';
-import { CheckOutlined, ClockCircleOutlined, ExclamationCircleOutlined, LockOutlined } from '@ant-design/icons';
+import { CheckOutlined, ClockCircleOutlined, ExclamationCircleOutlined, HistoryOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type {
   GateContentChangedBody,
   GateSignOff,
   GateSignOffRole,
-  GateSigningPreview,
   ProjectData,
 } from '@mbc360/shared/types';
 import { GATE_SIGNOFF_ROLES } from '@mbc360/shared/types';
@@ -25,17 +24,23 @@ import {
 import {
   currentGateIndex,
   gateIndex,
+  gateBlockers,
+  gateReadinessChecklist,
   gateSignOffStaleChanges,
+  hardGateBlockers,
   isGatePassed,
   isGateUnlocked,
 } from '@mbc360/shared/utils/gateProgress';
+import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
+import { isPerMarketGate } from '@mbc360/shared/config/gateSignOff';
 import { useAppStore } from '../store/useAppStore';
 import { EMPTY_GRANTS, hasCapability } from '../utils/permissions';
 import { useSession } from '../auth/useSession';
 import { usePickerUsers } from '../hooks/useUserOptions';
 import { getMySignature, getMyTotpStatus } from '../api/accountApi';
-import GateSignOffStepUpModal from './GateSignOffStepUpModal';
 import GateSignPreviewModal from './GateSignPreviewModal';
+import GateSignOffHistoryTable from './GateSignOffHistoryTable';
+import FormDrawer from './FormDrawer';
 import '../styles/concept.css';
 import './GateSignOffPanel.css';
 
@@ -98,10 +103,15 @@ export default function GateSignOffPanel({
   const stageIncomplete = stageStatus !== 'Complete';
   // The Phase Gate Flow card above must be complete (SW-26): owner, due date and evidence link, as SAVED.
   const flowMissing = gateFlowMissing(project, gateId);
+  // Everything else that still blocks this gate. The sign-off item is left out: it can only be satisfied BY signing.
+  const openBlockers = gateReadinessChecklist(project, gateId).filter(
+    (i) => !i.satisfied && i.hardBlock && i.id !== `${gateId.toLowerCase()}-signoff`,
+  ).length;
   const [drafts, setDrafts] = useState<Record<string, { decision?: string; comment?: string }>>({});
   // Sign opens the preview first (everything the signature attests to), then the authenticator step.
+  // Whose history is open: a lane (a market, or '' for the single lane of a gate without markets).
+  const [historyLane, setHistoryLane] = useState<string | null>(null);
   const [reviewing, setReviewing] = useState<{ market?: string; role: GateSignOffRole } | null>(null);
-  const [stepUp, setStepUp] = useState<{ market?: string; role: GateSignOffRole; preview: GateSigningPreview } | null>(null);
   const [changed, setChanged] = useState<GateContentChangedBody | null>(null);
   const [withdrawing, setWithdrawing] = useState<{ market?: string; role: GateSignOffRole } | null>(null);
   const [reason, setReason] = useState('');
@@ -114,6 +124,11 @@ export default function GateSignOffPanel({
   }, []);
 
   const lanes = useMemo(() => gateSignOffMarkets(project, gateId), [project, gateId]);
+  // Signatures given and withdrawn on this gate (for a per-market gate, on that market's lane), newest first.
+  const laneEvents = (market: string | undefined) =>
+    [...(project.gateSignOffLog ?? [])]
+      .filter((e) => e.gateId === gateId && (market ? e.market === market : true))
+      .reverse();
   const anySigned = project.gateSignOffs.some((s) => s.gateId === gateId && !!s.signedAt);
   const isLead = project.identity.projectLead === session.user?.displayName;
   const critical = CRITICAL_GATES.includes(gateId);
@@ -128,6 +143,10 @@ export default function GateSignOffPanel({
   // disabled button. Mirrors the server's guards — it does not replace them.
   const blockedReason = (market: string | undefined, role: GateSignOffRole): string | null => {
     if (!canSign) return notOpenReason;
+    // Nobody signs while the gate is still blocked: the readiness list has to be clear first.
+    if (stageIncomplete || flowMissing.length > 0 || openBlockers > 0) {
+      return "Signing opens once the Phase Gate Flow is saved as complete and nothing else is blocking this gate — see the readiness list.";
+    }
     const row = findGateSignOff(project, gateId, market, role);
     if (!row?.assignedToUserId) return "No signer nominated yet — the project's Lead nominates one";
     if (row.assignedToUserId !== session.user?.id) return `Nominated to ${row.assignedToName ?? 'somebody else'}`;
@@ -153,6 +172,64 @@ export default function GateSignOffPanel({
     if (gateSignOffNeedsComment(d.decision) && !d.comment?.trim()) {
       return `A comment is required when the decision is "${d.decision}".`;
     }
+    // The approver's decision IS the gate decision, so the same guards a direct decision meets apply here. Said in the
+    // modal, before the code is asked for, rather than as a refusal after it (the server states the same reasons).
+    if (role === 'Approved by' && GATE_PASSING_DECISIONS.includes(d.decision)) {
+      return approverDecisionProblem(market, d.decision as 'Proceed' | 'Proceed with Conditions');
+    }
+    return null;
+  };
+
+  // Mirrors the server's `resolveDecision` for the approver's signature, evaluated against the project AS IT WILL BE
+  // once this signature exists (its own sign-off item would otherwise block it by construction).
+  const approverDecisionProblem = (market: string | undefined, decision: 'Proceed' | 'Proceed with Conditions'): string | null => {
+    const gate = project.gates.find((g) => g.gateId === gateId);
+    if (!gate) return null;
+    const next = { ...gate, decision };
+    const verdict = gapBlocksDecision(next, decision);
+    if (verdict) {
+      const fix = verdict.missing?.length
+        ? `Record ${verdict.missing.join(', ')} on the gap assessment, or choose ${verdict.allowed.map((a) => `"${a}"`).join(' or ')} instead`
+        : `Record ${verdict.allowed.map((a) => `"${a}"`).join(' or ')} instead`;
+      return `"${decision}" is not valid — ${verdict.reason}. ${fix}.`;
+    }
+    if (decision === 'Proceed' && openChanges.length > 0) {
+      return `An open change control record affects this gate — record "Proceed with Conditions" instead (${openChanges.map((c) => c.changeId).join(', ')}).`;
+    }
+    const pending = {
+      ...project,
+      gateSignOffs: [
+        ...project.gateSignOffs.filter(
+          (x) => !(x.gateId === gateId && (x.market ?? undefined) === market && x.role === 'Approved by'),
+        ),
+        {
+          gateId,
+          ...(market ? { market, formulaVersion: project.formulaVersion } : {}),
+          role: 'Approved by' as const,
+          signedByUserId: session.user?.id,
+          signedAt: new Date().toISOString(),
+          decision,
+        } as GateSignOff,
+      ],
+    };
+    // On a per-market gate the other markets' lanes are not this approver's to sign: their being unsigned must not
+    // refuse this lane's approval.
+    const otherLanesOpen =
+      isPerMarketGate(gateId) &&
+      gateSignOffMarkets(pending, gateId).some(
+        (m) =>
+          m !== market &&
+          !GATE_PASSING_DECISIONS.includes(
+            (findGateSignOff(pending, gateId, m, 'Approved by')?.signedAt ? findGateSignOff(pending, gateId, m, 'Approved by')?.decision : undefined) ?? '',
+          ),
+      );
+    const signOffItem = `${gateId.toLowerCase()}-signoff`;
+    const blockers = (decision === 'Proceed' ? gateBlockers(pending, gateId, decision) : hardGateBlockers(pending, gateId)).filter(
+      (b) => !(otherLanesOpen && b.id === signOffItem),
+    );
+    if (blockers.length > 0) {
+      return `"${decision}" is not valid yet — ${blockers.map((b) => b.label).join('; ')}`;
+    }
     return null;
   };
 
@@ -174,13 +251,14 @@ export default function GateSignOffPanel({
     );
   }
 
-  return (
+  // What is holding the signatures up, said inside each sign-off card (under its title) rather than as a banner
+  // above it. The lock comes first: while the gate is not open for work the stage status is not what is holding the
+  // signature up, and printing that instead sends someone to fix the wrong field.
+  const flowTodo = [...(stageIncomplete ? ['Stage status → Complete'] : []), ...flowMissing];
+  const notices = (
     <>
-      {/* Once, above the lanes. The lock comes first: while the gate is not open
-          for work the stage status is not what is holding the signature up, and
-          printing that instead sends someone to fix the wrong field. */}
       {anySigned && !gatePassed && (
-        <div className="concept-tokens gso-gate-hold">
+        <div className="concept-tokens gso-gate-hold gso-notice">
           <LockOutlined />
           <span>
             A signature stands on this gate, so the evidence it signed is <strong>locked</strong>: Prepared, Reviewed and
@@ -190,21 +268,25 @@ export default function GateSignOffPanel({
         </div>
       )}
       {!canSign ? (
-        <div className="concept-tokens gso-gate-hold">
+        <div className="concept-tokens gso-gate-hold gso-notice">
           <ClockCircleOutlined />
           <span>{notOpenReason}</span>
         </div>
       ) : (
-        (stageIncomplete || flowMissing.length > 0) && (
-        <div className="concept-tokens gso-gate-hold">
-          <ClockCircleOutlined />
-          <span>
-            Signing is held until the <strong>saved</strong> Phase Gate Flow above is complete. Hold and Backtrack can
-            still be signed.
-          </span>
-        </div>
+        flowTodo.length > 0 && (
+          <div className="concept-tokens gso-gate-hold gso-notice">
+            <ClockCircleOutlined />
+            <span>
+              Before anyone can sign, complete the Phase Gate Flow above and <strong>save</strong> it: {flowTodo.join(' · ')}.
+            </span>
+          </div>
         )
       )}
+    </>
+  );
+
+  return (
+    <>
       {lanes.map((market) => {
         const rows = GATE_SIGNOFF_ROLES.map(
           (role) => findGateSignOff(project, gateId, market, role) ?? ({ gateId, market, role } as GateSignOff),
@@ -227,6 +309,9 @@ export default function GateSignOffPanel({
                 )}
                 {rows.filter((x) => x.signedAt).length} of {rows.length} signed
               </span>
+              <Button size="small" type="text" icon={<HistoryOutlined />} onClick={() => setHistoryLane(market ?? '')}>
+                History ({laneEvents(market).length})
+              </Button>
               {critical && (
                 <Tooltip
                   title={`A critical gate: the reviewer must be a different person from the preparer, and at least one reviewer or approver must represent ${independent?.label}.`}
@@ -235,6 +320,7 @@ export default function GateSignOffPanel({
                 </Tooltip>
               )}
             </div>
+            {notices}
             {/* A WARNING, not a block: the rule is about a SET ("at least one
                 reviewer or approver"), so until both are nominated the Lead may
                 still satisfy it with the other one. Refusing a half-finished
@@ -416,12 +502,27 @@ export default function GateSignOffPanel({
         />
       </Modal>
 
+      <FormDrawer
+        title={`Sign-off history — ${gateId}${historyLane ? ` · ${historyLane}` : ''}`}
+        open={historyLane !== null}
+        onCancel={() => setHistoryLane(null)}
+        footer={null}
+        width={820}
+      >
+        {historyLane !== null && laneEvents(historyLane || undefined).length === 0 ? (
+          <p className="gso-muted">Nothing has been signed or withdrawn on this gate yet.</p>
+        ) : (
+          historyLane !== null && <GateSignOffHistoryTable projectId={projectId} events={laneEvents(historyLane || undefined)} />
+        )}
+      </FormDrawer>
+
       <GateSignPreviewModal
         open={reviewing !== null}
         projectId={projectId}
         gateId={gateId}
         market={reviewing?.market}
         roleLabel={reviewing?.role ?? ''}
+        role={reviewing?.role ?? 'Prepared by'}
         decision={reviewing ? draftOf(reviewing.market, reviewing.role).decision : undefined}
         comment={reviewing ? draftOf(reviewing.market, reviewing.role).comment : undefined}
         onDecisionChange={(p) => reviewing && patchDraft(reviewing.market, reviewing.role, p)}
@@ -443,32 +544,17 @@ export default function GateSignOffPanel({
           setReviewing(null);
           setChanged(null);
         }}
-        onContinue={(preview) => {
-          if (!reviewing) return;
-          setStepUp({ ...reviewing, preview });
-          setReviewing(null);
-        }}
-      />
-
-      <GateSignOffStepUpModal
-        open={stepUp !== null}
-        projectId={projectId}
-        gateId={gateId}
-        market={stepUp?.market}
-        role={stepUp?.role ?? 'Prepared by'}
-        expectedHash={stepUp?.preview.hash ?? ''}
-        onClose={() => setStepUp(null)}
-        onVerified={(token) => {
-          const target = stepUp;
-          setStepUp(null);
+        onSign={(preview, token) => {
+          const target = reviewing;
           if (!target) return;
+          setReviewing(null);
           const d = draftOf(target.market, target.role);
           void sign(projectId, gateId, target.market, target.role, {
             decision: d.decision,
             comment: d.comment,
             stepUpToken: token,
-            expectedHash: target.preview.hash,
-            seen: { snapshot: target.preview.snapshot, previewedAt: target.preview.previewedAt },
+            expectedHash: preview.hash,
+            seen: { snapshot: preview.snapshot, previewedAt: preview.previewedAt },
           }).then((refusal) => {
             // The evidence changed while the signer was reading: show what, and let them review again.
             if (refusal) {

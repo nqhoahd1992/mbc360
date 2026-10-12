@@ -8,7 +8,7 @@
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
   padding: 14px 20px; border-bottom: 1px solid var(--c-border-2);
 }
-.gso-title { font-weight: 600; }
+.gso-title { font-size: 16px; font-weight: 600; line-height: 24px; }
 .gso-progress { margin-left: auto; color: var(--c-text-3); font-size: 13px; font-variant-numeric: tabular-nums; }
 
 .gso-row { display: grid; gap: 6px; padding: 12px 20px; }
@@ -59,6 +59,8 @@
 }
 .gso-gate-hold > .anticon { margin-top: 2px; }
 .gso-gate-hold strong { color: inherit; }
+/* Inside the sign-off card: a full-width strip under the title, not a box of its own. */
+.gso-notice { padding: 10px 20px; border-width: 0 0 1px; border-radius: 0; }
 
 /* Critical-gate independent-function warning: said at nomination time, where it
    can still be acted on, instead of only when the approver signs. */

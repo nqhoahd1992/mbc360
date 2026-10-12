@@ -1,7 +1,7 @@
 import { Alert, Card, DatePicker, Input, Select, Table, Tag } from 'antd';
 import UserSelect from './UserSelect';
 import { usePickerUsers } from '../hooks/useUserOptions';
-import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
 import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { CheckCircleFilled, SafetyCertificateOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -31,7 +31,10 @@ export default function StudyApprovalCard({
   // C9: the trail belongs to the Study Protocol register (gate 08); the API
   // refuses changes once that gate has passed.
   const project = useAppStore((st) => st.projects.find((p) => p.identity.id === projectId));
-  const locked = !!project && isGateRefLocked(project, getRegisterConfig('studyProtocolSetup')?.gate);
+  // Owned by Gate 08: read-only once it has passed, or while a signature stands on it (SW-24).
+  const locked =
+    !!project &&
+    (isGateRefLocked(project, getRegisterConfig('studyProtocolSetup')?.gate) || isGateSignedStanding(project, 'SG08'));
   const author = draft.find((a) => a.role === 'Study Author');
   const independent = draft.find((a) => a.role === 'Independent Reviewer');
   // C2: the same check the server runs, on the SSO departments shown below.
@@ -148,7 +151,7 @@ export default function StudyApprovalCard({
         disabled={sameDepartment || locked}
         disabledReason={
           locked
-            ? 'Gate 08 has passed — the approval trail is read-only (use Backtrack)'
+            ? 'Gate 08 has passed or is signed — the approval trail is read-only (withdraw the signature, or Backtrack)'
             : 'The Independent Reviewer must be from a different department than the Study Author (rule C2)'
         }
       />

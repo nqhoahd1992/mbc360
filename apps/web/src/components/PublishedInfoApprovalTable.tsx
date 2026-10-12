@@ -60,7 +60,7 @@ export default function PublishedInfoApprovalTable({
   // SKU claim register rows — where a claim's approval for a market and channel
   // is recorded (Round 4 question 30(c)).
   skuClaimRows: RegisterRow[];
-  onSave: (rows: RegisterRow[]) => void;
+  onSave: (rows: RegisterRow[]) => void | boolean | Promise<unknown>;
   readOnly?: boolean;
   readOnlyReason?: string;
   embedded?: boolean;

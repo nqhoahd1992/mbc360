@@ -36,6 +36,9 @@ export interface RegisterColumn {
   // the API refuses any other name, and the table offers "Record as me" instead
   // of a picker of everyone.
   selfAttest?: boolean;
+  // Required only while another column of the SAME row holds one of these values — e.g. the approval date of a brief that is
+  // marked Approved. Shown with a required mark, refused on save in the table and again by the API (guard parity).
+  requiredWhen?: { column: string; values: readonly string[] };
   // Read from the linked claim (Claim -> Evidence Traceability) instead of being
   // entered here, once the row's `claimRef` column names one — added 2026-08-11 so a
   // claim is classified ONCE, where it is declared, and every later use inherits.
@@ -220,6 +223,36 @@ export function invalidSelectValues(
     }
   });
   return bad;
+}
+
+// Is this column required on this row, because of what another column of the row says (`requiredWhen`)?
+export function isColumnRequiredFor(column: RegisterColumn, row: RegisterRow): boolean {
+  const rule = column.requiredWhen;
+  if (!rule) return false;
+  const trigger = row[rule.column];
+  return typeof trigger === 'string' && rule.values.includes(trigger);
+}
+
+// The columns a row must fill in but has not, per `requiredWhen`. A blank is empty or whitespace.
+export function missingRequiredColumns(config: RegisterConfig, row: RegisterRow): RegisterColumn[] {
+  return config.columns.filter((col) => {
+    if (!isColumnRequiredFor(col, row)) return false;
+    const v = row[col.key];
+    return v == null || String(v).trim() === '';
+  });
+}
+
+// Plain sentences, one per row and column, for the person who has to fix them (also the API's 400).
+export function missingRequiredProblems(config: RegisterConfig, rows: RegisterRow[]): string[] {
+  const problems: string[] = [];
+  rows.forEach((row, index) => {
+    for (const col of missingRequiredColumns(config, row)) {
+      const rule = col.requiredWhen!;
+      const trigger = config.columns.find((c) => c.key === rule.column)?.label ?? rule.column;
+      problems.push(`Row ${index + 1}: "${col.label}" is required when ${trigger} is ${String(row[rule.column])}`);
+    }
+  });
+  return problems;
 }
 
 export function isRegisterRowBlank(config: RegisterConfig, row: RegisterRow): boolean {
@@ -1999,7 +2032,8 @@ const developmentBrief: RegisterConfig = {
     { key: 'briefLink', label: 'Brief link', type: 'text', width: 200 },
     { key: 'briefVersion', label: 'Brief version', type: 'text', width: 110 },
     { key: 'briefOwner', label: 'Brief owner', type: 'user', width: 140 },
-    { key: 'approvalDate', label: 'Approval date', type: 'text', width: 120 },
+    // A date picker, and required once the brief is marked Approved — an approval with no date is not a record of one.
+    { key: 'approvalDate', label: 'Approval date', type: 'date', width: 120, requiredWhen: { column: 'briefStatus', values: ['Approved'] } },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
   ],
 };

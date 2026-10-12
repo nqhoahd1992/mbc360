@@ -2,11 +2,12 @@ import { Input, Select } from 'antd';
 import { ExclamationCircleOutlined, LockOutlined } from '@ant-design/icons';
 import type { ProjectData } from '@mbc360/shared/types';
 import { MICROBIOLOGICAL_SUSCEPTIBILITY_OPTIONS } from '@mbc360/shared/config/opportunity';
-import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
 import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '@mbc360/shared/config/phases';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import ChoiceSelect from './ChoiceSelect';
 import '../styles/concept.css';
 import './DynamicTable.css';
 import '../pages/BomCosting.css';
@@ -27,7 +28,8 @@ const WATER_INCI = /^(aqua|water|aqua \(water\)|water \(aqua\))$/i;
 
 export default function FormulaPropertiesCard({ project }: { project: ProjectData }) {
   const setFormulaProperties = useAppStore((s) => s.setFormulaProperties);
-  const locked = isGateRefLocked(project, '05');
+  // Read-only once Gate 05 has passed or while a signature stands on it (SW-24).
+  const locked = isGateRefLocked(project, '05') || isGateSignedStanding(project, 'SG05');
   const { draft, dirty, update, markSaved, discard } = useDraft(project.formulaProperties);
 
   const formOpen = (project.checklists['productType'] ?? []).some(
@@ -51,40 +53,35 @@ export default function FormulaPropertiesCard({ project }: { project: ProjectDat
             when the formula is recorded as susceptible.
           </div>
         </div>
-        {hasWater ? (
-          <span className="c-tag c-tag-dot">Composition contains water</span>
-        ) : (
-          <span className="c-tag">No water line in the composition</span>
-        )}
+        {hasWater && <span className="c-tag c-tag-dot">Composition contains water</span>}
       </div>
 
       <div className="bom-card-body">
         {locked && (
           <div className="rt-lock">
             <LockOutlined />
-            <span>Gate 05 has passed — formula properties are read-only. Use Backtrack to reopen.</span>
+            <span>Gate 05 has passed or is signed — formula properties are read-only. Withdraw the signature, or Backtrack, to change them.</span>
           </div>
         )}
 
         <div className="bom-form">
-          <label className="bom-field">
+          <div className="bom-field bom-span-all">
             <span className="bom-label">Microbiological susceptibility</span>
             {locked ? (
               <span className="rt-static">{value || '—'}</span>
             ) : (
-              <Select
-                style={{ width: '100%' }}
+              <ChoiceSelect
                 allowClear
                 status={contradictsBom ? 'warning' : undefined}
                 placeholder={hasWater ? 'Suggested: Susceptible' : 'Classify the formula'}
-                value={value || undefined}
-                options={MICROBIOLOGICAL_SUSCEPTIBILITY_OPTIONS.map((o) => ({ value: o, label: o }))}
-                onChange={(v?: string) => update((prev) => ({ ...prev, microSusceptibility: v ?? '' }))}
+                value={value}
+                options={[...MICROBIOLOGICAL_SUSCEPTIBILITY_OPTIONS]}
+                onChange={(v) => update((prev) => ({ ...prev, microSusceptibility: v ?? '' }))}
               />
             )}
-          </label>
+          </div>
 
-          <label className="bom-field bom-span-2">
+          <label className="bom-field bom-span-all">
             <span className="bom-label">
               Rationale {value === 'Susceptible' ? '(preservative strategy)' : '(why this product does not need preserving)'}
             </span>
@@ -129,33 +126,29 @@ export default function FormulaPropertiesCard({ project }: { project: ProjectDat
             </span>
           </div>
         )}
-      </div>
 
-      {/* Said on screen, not only in the disabled button's tooltip: a Save that
-          is greyed out with no reason beside it reads as a broken button. */}
-      {!locked && dirty && rationaleMissing && (
-        <div className="bom-total-warn">
-          <ExclamationCircleOutlined />
-          <span>A documented rationale is required before this can be saved (SME Round 3, A3).</span>
-        </div>
-      )}
-      {!locked && dirty && (
-        <div className="rt-savebar bom-savebar">
-          <div>
-            <SaveBar
-              dirty={dirty}
-              onSave={() => {
-                if (rationaleMissing) return;
-                setFormulaProperties(project.identity.id, draft);
-                markSaved();
-              }}
-              onDiscard={discard}
-              disabled={rationaleMissing}
-              disabledReason={rationaleMissing ? 'A documented rationale is required (SME Round 3, A3)' : undefined}
-            />
+        {/* Said on screen, not only in the disabled button's tooltip: a Save that
+            is greyed out with no reason beside it reads as a broken button. */}
+        {!locked && dirty && rationaleMissing && (
+          <div className="bom-total-warn">
+            <ExclamationCircleOutlined />
+            <span>A documented rationale is required before this can be saved (SME Round 3, A3).</span>
           </div>
-        </div>
-      )}
+        )}
+        {!locked && dirty && (
+          <SaveBar
+            dirty={dirty}
+            onSave={() => {
+              if (rationaleMissing) return;
+              setFormulaProperties(project.identity.id, draft);
+              markSaved();
+            }}
+            onDiscard={discard}
+            disabled={rationaleMissing}
+            disabledReason={rationaleMissing ? 'A documented rationale is required (SME Round 3, A3)' : undefined}
+          />
+        )}
+      </div>
     </div>
   );
 }

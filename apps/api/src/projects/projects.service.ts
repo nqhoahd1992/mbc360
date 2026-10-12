@@ -31,6 +31,7 @@ import {
   createEmptyRegisterRow,
   getRegisterConfig,
   invalidSelectValues,
+  missingRequiredProblems,
   signatureColumns,
   signatureFieldKeys,
   type RegisterConfig,
@@ -44,7 +45,7 @@ import {
 } from '@mbc360/shared/utils/nextActionAccess';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { gate11ConditionalChanges } from '@mbc360/shared/utils/changeImpact';
-import { passedGateSet, registerFreezeViolations } from '@mbc360/shared/utils/registerRowLocks';
+import { frozenGateSet, registerFreezeViolations } from '@mbc360/shared/utils/registerRowLocks';
 import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
 import { RM_EVIDENCE_REGISTER, rmEvidenceContradictions } from '@mbc360/shared/utils/rmEvidence';
 import {
@@ -91,6 +92,7 @@ import {
   revisionApprovalForgeries,
 } from '@mbc360/shared/utils/claimEvidence';
 import {
+  currentGateIndex,
   gateBlockers,
   gateIndex,
   gateRefHighestGateId,
@@ -116,7 +118,7 @@ import {
   SCALE_UP_RISK_OPTIONS,
   hasStandingClosureSignature,
 } from '@mbc360/shared/types';
-import type { GateSignOffRole, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
+import type { GateSignedContent, GateSignOffRole, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
 import type {
   AngleRow,
   ChangeRecord,
@@ -147,6 +149,7 @@ import {
   PROJECT_INCLUDE,
   toChangeRecords,
   toGateChangeLog,
+  toGateSignOffLog,
   toProjectData,
   toSupersessionDecision,
   type ProjectWithAll,
@@ -531,8 +534,19 @@ export class ProjectsService {
       include: { actor: { select: { displayName: true } } },
       orderBy: { occurredAt: 'asc' },
     });
+    // Signing and withdrawing a gate signature, newest last — the history popup reads these.
+    const signEvents = await this.prisma.auditEvent.findMany({
+      where: { projectId: row.id, action: { in: ['gate_sign_off.signed', 'gate_sign_off.withdrawn'] } },
+      include: { actor: { select: { displayName: true } } },
+      orderBy: { occurredAt: 'asc' },
+    });
     return {
-      project: toProjectData(row, toGateChangeLog(events), await this.loadReference(this.prisma)),
+      project: toProjectData(
+        row,
+        toGateChangeLog(events),
+        await this.loadReference(this.prisma),
+        toGateSignOffLog(signEvents),
+      ),
       version: row.version,
       changes: toChangeRecords(row) as ChangeRecord[],
     };
@@ -1478,6 +1492,34 @@ export class ProjectsService {
     };
   }
 
+  // The content a signature attested to, as it was when signed — also for a signature since withdrawn. Read-only, any
+  // signed-in user who may read the project. A signature given before the content began to be kept has none.
+  async signedGateContent(
+    id: string,
+    gateId: string,
+    market: string | undefined,
+    role: string,
+    signedAt: string,
+  ): Promise<GateSignedContent> {
+    await this.loadOrThrow(this.prisma, id);
+    const row = await this.prisma.auditEvent.findFirst({
+      where: {
+        projectId: id,
+        action: 'gate_sign_off.content',
+        AND: [
+          { after: { path: ['gateId'], equals: gateId } },
+          { after: { path: ['role'], equals: role } },
+          { after: { path: ['signedAt'], equals: signedAt } },
+          ...(market ? [{ after: { path: ['market'], equals: market } }] : []),
+        ],
+      },
+      orderBy: { occurredAt: 'desc' },
+    });
+    if (!row) throw new NotFoundException('The content of this signature was not kept (it was given before signed content was recorded)');
+    const a = row.after as unknown as { contentHash: string; snapshot: GateSignedContent['snapshot'] };
+    return { gateId, ...(market ? { market } : {}), role, signedAt, hash: a.contentHash, snapshot: a.snapshot };
+  }
+
   // A lane must be one the project actually has. Without this a caller could sign
   // Gate 10 for a market this project does not sell into, and that signature would
   // sit in the table forever satisfying nothing — or worse, a market-less Gate 10
@@ -1985,11 +2027,35 @@ export class ProjectsService {
         role === 'Approved by'
           ? openChangesAffectingGate(project.changes, project.identity.id, gateNumber).map((c) => c.changeId)
           : [];
+      // The content itself, in its own audit row: it is large, and the History list must not load it on every read. Kept
+      // so it can still be opened after the signature is withdrawn and the row wiped.
+      await this.audit.record(
+        {
+          actorId: user.id,
+          projectId: id,
+          entityType: 'gate_sign_off_content',
+          entityId: existing.id,
+          action: 'gate_sign_off.content',
+          after: {
+            gateId,
+            market: market ?? null,
+            role,
+            signedAt: now.toISOString(),
+            contentHash: this.gateContentHash(snapshot),
+            snapshot,
+          } as unknown as Prisma.InputJsonValue,
+        },
+        tx,
+      );
       return {
         gateId,
         market: market ?? null,
         role,
         decision,
+        // The whole of what was signed, kept so the gate's history can show it after a withdrawal has wiped the row.
+        comment: comment || null,
+        contentHash: this.gateContentHash(snapshot),
+        signedAt: now.toISOString(),
         gateDecisionRecorded: role === 'Approved by',
         gateDecision: gateDecision ?? null,
         acceptedOpenChanges,
@@ -2059,7 +2125,17 @@ export class ProjectsService {
           data: { decision: null },
         });
       }
-      return { gateId, market: market ?? null, role, reason: why, previousSigner: existing.name ?? null };
+      return {
+        gateId,
+        market: market ?? null,
+        role,
+        reason: why,
+        previousSigner: existing.name ?? null,
+        // What is being withdrawn: the row is wiped just above, so the audit is the only record of it.
+        previousDecision: existing.decision ?? null,
+        previousComment: existing.comment ?? null,
+        previousSignedAt: existing.signedAt.toISOString(),
+      };
     });
   }
 
@@ -2206,7 +2282,7 @@ export class ProjectsService {
       // so a register shared with a later gate no longer stays open under a signature.
       // Evaluated by the same shared function the table uses to grey the cell.
       const committedRegisterRows = project.registers[registerKey] ?? [];
-      const freezeViolations = registerFreezeViolations(passedGateSet(project), config, committedRegisterRows, rows);
+      const freezeViolations = registerFreezeViolations(frozenGateSet(project), config, committedRegisterRows, rows);
       if (freezeViolations.length > 0) {
         throw new ForbiddenException(
           `Register "${registerKey}": ${freezeViolations.slice(0, 5).join('; ')}${
@@ -2220,6 +2296,12 @@ export class ProjectsService {
       // readiness rule reading that column would decide a gate on it. Found while
       // verifying Round 4 question 6, whose new `gate4Disposition` is exactly such
       // a rule input. Blank stays legal: it is how an unanswered cell reads.
+      // A column required because of another cell of the row (an Approved brief needs its approval date) is checked here
+      // too, not only by the table.
+      const missingRequired = missingRequiredProblems(config, rows);
+      if (missingRequired.length > 0) {
+        throw new BadRequestException(missingRequired.slice(0, 5).join('; '));
+      }
       const badSelects = invalidSelectValues(config, rows);
       if (badSelects.length > 0) {
         throw new BadRequestException(
@@ -4129,6 +4211,10 @@ export class ProjectsService {
       expectedVersion,
       'formula_version.created',
       async (tx, row, project) => {
+        // Only while Gate 05 is the gate open for work (project owner's decision).
+        if (currentGateIndex(project) !== gateIndex('SG05')) {
+          throw new BadRequestException('A new formula version can be created only while Gate 05 is the open gate');
+        }
         if (version === project.formulaVersion) {
           throw new BadRequestException(`Project is already on formula version ${version}`);
         }
@@ -4332,6 +4418,10 @@ export class ProjectsService {
           }
         }
 
+        // Nothing here requires a Change Control record, and a record opened before or after is not
+        // consulted: whether the record must come first, and whether its approval is what permits a new
+        // version, is [ASSUMPTION: R5-Q66]. The Gate 05 condition at the top is the project owner's.
+        //
         // Formulation Change Register entry (A2).
         //
         // This writes an `FC-xxx` row into a SECOND change log, parallel to the

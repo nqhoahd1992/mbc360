@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { App, Button, DatePicker, Drawer, Grid, Input, Modal, Select, message } from 'antd';
+import { App, Button, DatePicker, Drawer, Grid, Input, Modal, message } from 'antd';
+import ChoiceSelect from '../components/ChoiceSelect';
 import { BookOutlined, CheckCircleFilled, CheckOutlined, InboxOutlined, PlusOutlined, RightOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { ClaimLibraryEntry } from '@mbc360/shared/config/referenceData';
@@ -559,13 +560,13 @@ export default function AdminClaimsLibrary() {
                 ))}
                 <label className="au-field">
                   <span className="au-field-label">Audience</span>
-                  <Select
+                  <ChoiceSelect
                     allowClear
                     disabled={!editable}
                     placeholder="Consumer / professional"
                     value={form.audience || undefined}
-                    options={CLAIM_LIBRARY_AUDIENCES.map((a) => ({ value: a, label: a }))}
-                    onChange={(v?: string) => set('audience', v)}
+                    options={[...CLAIM_LIBRARY_AUDIENCES]}
+                    onChange={(v) => set('audience', v)}
                   />
                 </label>
                 <label className="au-field mp-wide">

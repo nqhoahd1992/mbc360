@@ -8,7 +8,7 @@
 .grp-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
 .grp-item { display: flex; align-items: flex-start; gap: 8px; padding: 4px 6px; border-radius: 6px; }
 .grp-item:hover { background: rgb(0 0 0 / 3%); }
-.grp-icon { flex-shrink: 0; margin-top: 2px; font-size: 14px; }
+.grp-icon { display: flex; align-items: center; flex-shrink: 0; height: 20px; font-size: 14px; }
 .grp-blocking .grp-icon { color: var(--c-bad-dot); }
 .grp-confirm .grp-icon { color: var(--c-warn-dot); }
 .grp-met .grp-icon { color: var(--c-ok-dot); }

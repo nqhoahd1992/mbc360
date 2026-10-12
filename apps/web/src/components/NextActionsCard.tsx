@@ -151,9 +151,10 @@ export default function NextActionsCard({
     return draft.length;
   };
   const removeAction = (index: number) => update((prev) => prev.filter((_, i) => i !== index));
-  const save = () => {
-    setActionsBulk(projectId, gateIds, draft);
-    markSaved();
+  const save = async () => {
+    const ok = await setActionsBulk(projectId, gateIds, draft);
+    if (ok) markSaved();
+    return ok;
   };
   const setStatus = (i: number, v: NextActionStatus) =>
     patch(i, { status: v, dateCompleted: v === 'Closed' ? dayjs().format('YYYY-MM-DD') : undefined });
@@ -263,9 +264,7 @@ export default function NextActionsCard({
       footer={
         dirty ? (
           <div className="rt-savebar">
-            <div>
-              <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
-            </div>
+            <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
           </div>
         ) : null
       }

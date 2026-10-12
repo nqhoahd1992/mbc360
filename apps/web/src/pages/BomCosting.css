@@ -57,3 +57,8 @@
 .bom-ok { color: var(--c-ok); }
 .bom-warn { color: var(--c-warn); }
 .bom-bad { color: var(--c-bad); }
+
+/* The Save bar sits inside the card body, whose grid gap already spaces it from the content above. */
+.bom-card-body > .save-bar { margin-top: 0; }
+
+.bom-span-all { grid-column: 1 / -1; }

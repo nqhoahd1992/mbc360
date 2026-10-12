@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { Input } from 'antd';
 import type { ProjectData, ProjectIdentity } from '@mbc360/shared/types';
-import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import RequiredMark from './RequiredMark';
+import DepartmentPicker from './DepartmentPicker';
 import '../styles/concept.css';
 import './DynamicTable.css';
 
@@ -51,7 +52,8 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
   // Gate 1 evidence, so it freezes once Gate 1 genuinely passes (rule B4) —
   // correcting it afterwards requires Backtrack. The server enforces the same
   // rule; this only avoids offering an edit the API would refuse.
-  const locked = isGateRefLocked(project, '01');
+  // Read-only once Gate 01 has passed, or while a signature stands on it (SW-24).
+  const locked = isGateRefLocked(project, '01') || isGateSignedStanding(project, 'SG01');
 
   // Compared by value inside useDraft, so deriving this inline is safe.
   const committed = useMemo<OpportunityPatch>(
@@ -99,7 +101,7 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
       <div className="rt-head">
         <div className="rt-head-title">
           <span>Opportunity &amp; Request</span>
-          {locked && <span className="c-tag">Read-only — gate passed</span>}
+          {locked && <span className="c-tag">Read-only — gate passed or signed</span>}
         </div>
         <p className="rt-head-desc">
           Who filed the request, and the initial scope and user. These are preliminary — Gate 02 confirms, refines and
@@ -114,7 +116,15 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
         </label>
         <label>
           <span className="rt-label">Requester department</span>
-          {text('requesterDepartment', 'Their department')}
+          {locked ? (
+            <span className="rt-static">{draft.requesterDepartment || '—'}</span>
+          ) : (
+            <DepartmentPicker
+              value={draft.requesterDepartment ?? ''}
+              onChange={(v) => set('requesterDepartment', v)}
+              placeholder="Choose their department…"
+            />
+          )}
         </label>
         <label className="rt-span-2">
           <span className="rt-label">Initial target user / life-stage<RequiredMark met={!isUnmet('initialTargetUsers')} /></span>
@@ -125,12 +135,10 @@ export default function OpportunityRequestCard({ project }: { project: ProjectDa
           {text('initialScope', 'Proposed product type, intended purpose, and the known boundaries of the request', 2)}
         </label>
       </div>
-      {locked && <p className="rt-head-desc" style={{ margin: 0 }}>Gate 01 has passed — use Backtrack to reopen this record.</p>}
+      {locked && <p className="rt-head-desc" style={{ margin: 0 }}>Gate 01 has passed or is signed — withdraw the signatures, or use Backtrack, to change this record.</p>}
       {!locked && dirty && (
         <div className="rt-savebar">
-          <div>
-            <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
-          </div>
+          <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
         </div>
       )}
     </div>

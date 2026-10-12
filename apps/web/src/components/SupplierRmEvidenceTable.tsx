@@ -34,7 +34,7 @@ export default function SupplierRmEvidenceTable({
   // BOM first. Checked against the committed `project.bom`, since this table's
   // Save cycle is independent from BomCosting's.
   bom: BomLine[];
-  onSave: (rows: RegisterRow[]) => void;
+  onSave: (rows: RegisterRow[]) => void | boolean | Promise<unknown>;
   readOnly?: boolean;
   readOnlyReason?: string;
   embedded?: boolean;

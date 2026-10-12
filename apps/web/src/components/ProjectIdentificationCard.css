@@ -2,4 +2,9 @@
 .pic-markets-label { margin-bottom: 6px; color: #595959; font-size: 14px; }
 .pic-req { color: #cf1322; font-weight: 600; }
 .pic-markets-error { margin-top: 4px; color: #cf1322; font-size: 13px; }
-.pic-footer { margin: 12px -12px -4px; padding: 10px 12px 0; border-top: 1px solid #f0f0f0; }
+.pic-footer { margin: 0; padding: 0; }
+
+/* Same title and side padding as the other cards on the phase page (16px / 600, 20px). */
+.pic-card.ant-card .ant-card-head { min-height: 0; padding: 0 20px; }
+.pic-card.ant-card .ant-card-head-title { padding: 14px 0; font-size: 16px; font-weight: 600; line-height: 24px; }
+.pic-card.ant-card .ant-card-body { padding: 16px 20px; }

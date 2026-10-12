@@ -52,7 +52,7 @@ export default function ProjectIdentificationCard({
   };
 
   return (
-    <Card size="small" title="Project Identification">
+    <Card size="small" title="Project Identification" className="pic-card">
       <Descriptions size="small" column={{ xs: 1, sm: 2, md: 3 }}>
         <Descriptions.Item label="Project ID">{identity.id}</Descriptions.Item>
         <Descriptions.Item label="Product Code">{identity.productCode}</Descriptions.Item>

@@ -630,6 +630,18 @@ export class ProjectsController {
     return this.projects.previewGateSignOff(id, gateId, market?.trim() || undefined);
   }
 
+  // The content a gate signature attested to, kept at signing — readable after the signature is withdrawn.
+  @Get(':id/gates/:gateId/sign-offs/content')
+  signedGateContent(
+    @Param('id') id: string,
+    @Param('gateId') gateId: string,
+    @Query('role') role: string,
+    @Query('signedAt') signedAt: string,
+    @Query('market') market?: string,
+  ) {
+    return this.projects.signedGateContent(id, gateId, market?.trim() || undefined, role, signedAt);
+  }
+
   @Post(':id/gates/:gateId/sign-offs/sign')
   signGateSignOff(
     @CurrentUser() user: SessionUser,

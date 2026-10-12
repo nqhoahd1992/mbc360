@@ -10,11 +10,12 @@ import {
   SCALE_UP_RISK_OPTIONS,
   familyUseAgeGroupList,
 } from '@mbc360/shared/types';
-import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
 import { ASSESSMENT_FIELDS, ASSESSMENT_HOMES, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
+import ChoiceSelect from './ChoiceSelect';
 import SelfAttestField from './SelfAttestField';
 import Notice from './Notice';
 import '../styles/concept.css';
@@ -92,7 +93,8 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
   const { draft, dirty, update, markSaved, discard } = useDraft(pick(project.assessments, keys));
   const set = <K extends Field>(key: K, value: Assessments[K]) => update((prev) => ({ ...prev, [key]: value }));
   const home = ASSESSMENT_HOMES.find((h) => h.key === which)!;
-  const locked = isGateRefLocked(project, home.gateId.slice(2));
+  // Answered at this gate: read-only once it has passed, or while a signature stands on it (SW-24).
+  const locked = isGateRefLocked(project, home.gateId.slice(2)) || isGateSignedStanding(project, home.gateId);
 
   // Question 25(c): the family-use question exists only for a family-use
   // product — an always-visible unanswered field reads as an obligation, and
@@ -135,13 +137,12 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
   );
 
   const answerSelect = (field: Field, options: readonly string[]) => (
-    <Select
-      style={{ width: '100%' }}
+    <ChoiceSelect
       allowClear
       placeholder="Not yet assessed"
       value={draft[field] || undefined}
-      options={options.map((o) => ({ value: o, label: o }))}
-      onChange={(v?: string) => set(field, v ?? '')}
+      options={[...options]}
+      onChange={(v) => set(field, v ?? '')}
     />
   );
   const datePicker = (field: Field) => (
@@ -320,7 +321,7 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
       </div>
       {/* C9: answered at this gate; once it has passed the answer is read-only
           (the API refuses changes too) — correcting it goes through Backtrack. */}
-      {locked && <Notice tone="info" title={`${home.gateId} has passed — this answer is read-only (use Backtrack to change it)`} />}
+      {locked && <Notice tone="info" title={`${home.gateId} has passed or is signed — this answer is read-only (withdraw the signature, or Backtrack, to change it)`} />}
       <ConfigProvider componentDisabled={locked}>
         <div className="as-block">{body}</div>
       </ConfigProvider>
@@ -328,19 +329,17 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
         <div className="as-foot">
           {blockingReason && dirty && <Notice tone="warn" title={blockingReason} />}
           <div className="rt-savebar">
-            <div>
-              <SaveBar
-                dirty={dirty}
-                onSave={() => {
-                  if (blockingReason) return;
-                  setAssessments(project.identity.id, draft);
-                  markSaved();
-                }}
-                onDiscard={discard}
-                disabled={!!blockingReason}
-                disabledReason={blockingReason}
-              />
-            </div>
+            <SaveBar
+              dirty={dirty}
+              onSave={() => {
+                if (blockingReason) return;
+                setAssessments(project.identity.id, draft);
+                markSaved();
+              }}
+              onDiscard={discard}
+              disabled={!!blockingReason}
+              disabledReason={blockingReason}
+            />
           </div>
         </div>
       )}

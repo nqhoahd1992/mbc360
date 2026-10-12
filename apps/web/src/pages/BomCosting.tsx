@@ -11,7 +11,7 @@ import FormulaVersionModal from '../components/FormulaVersionModal';
 import { formulaVersionState } from '@mbc360/shared/utils/formulaLifecycle';
 import FormulaSupersessionCard from '../components/FormulaSupersessionCard';
 import FormulaVersionCompareModal, { type FormulaVersionOption } from '../components/FormulaVersionCompareModal';
-import { hasReachedPhase, isGateRefLocked, positionSentence } from '@mbc360/shared/utils/gateProgress';
+import { currentGateIndex, gateIndex, hasReachedPhase, isGateRefLocked, isGateSignedStanding, positionSentence } from '@mbc360/shared/utils/gateProgress';
 import { bomWatchMatches } from '@mbc360/shared/utils/ingredientWatch';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
 import { composeReviewOwner, type ReviewOwnerSpec } from '@mbc360/shared/config/reviewers';
@@ -105,6 +105,8 @@ export default function BomCosting() {
   // Each of the three BOM/Costing sheets belongs to a different department, so the
   // page can render just one section (via /bom/:section) or all of them (/bom).
   const showFormula = !section || section === 'formula';
+  // A new formula version can be created only while Gate 05 is the gate open for work (project owner's decision).
+  const formulaVersionOpen = currentGateIndex(project) === gateIndex('SG05');
   const showPackaging = !section || section === 'packaging';
   const showCosting = !section || section === 'costing';
 
@@ -167,10 +169,11 @@ export default function BomCosting() {
   // Gate-level edit lock (2026-07-23): Formula BOM & Costing belong to Gate 05,
   // Packaging BOM to Gate 06 — read-only once that gate has passed (edit via
   // Backtrack). `formulaLocked` also gates New-version / Import / Add line.
-  const formulaLocked = isGateRefLocked(project, '05');
+  // Also read-only while a signature stands on Gate 05: the signers attested to this composition (SW-24).
+  const formulaLocked = isGateRefLocked(project, '05') || isGateSignedStanding(project, 'SG05');
   const packagingLocked = isGateRefLocked(project, '06');
   const LOCK_REASON =
-    'This gate has already passed — its evidence is read-only. Backtrack to reopen the gate first if you need to correct it.';
+    'This gate has passed or is signed — its evidence is read-only. Withdraw the signature, or Backtrack, to change it.';
 
   const bomSaveBlocked =
     hasDuplicateRawMaterials || hasEmptyRawMaterialLines || hasUnapprovedManualLines || formulaLocked;
@@ -434,7 +437,13 @@ export default function BomCosting() {
         </p>
         {showFormula && (
           <div className="bom-head-actions">
-            <Button onClick={() => setVersionOpen(true)}>New formula version</Button>
+            <Tooltip title={formulaVersionOpen ? undefined : 'Available only while Gate 05 is the open gate.'}>
+              <span>
+                <Button disabled={!formulaVersionOpen} onClick={() => setVersionOpen(true)}>
+                  New formula version
+                </Button>
+              </span>
+            </Tooltip>
             <Tooltip
               title={
                 formulaLocked
@@ -730,15 +739,13 @@ export default function BomCosting() {
                 )}
                 {bomDraft.dirty && (
                   <div className="rt-savebar">
-                    <div>
-                      <SaveBar
-                        dirty={bomDraft.dirty}
-                        onSave={saveBom}
-                        onDiscard={bomDraft.discard}
-                        disabled={bomSaveBlocked}
-                        disabledReason={formulaLocked ? LOCK_REASON : 'Resolve the issue(s) flagged above before saving.'}
-                      />
-                    </div>
+                    <SaveBar
+                      dirty={bomDraft.dirty}
+                      onSave={saveBom}
+                      onDiscard={bomDraft.discard}
+                      disabled={bomSaveBlocked}
+                      disabledReason={formulaLocked ? LOCK_REASON : 'Resolve the issue(s) flagged above before saving.'}
+                    />
                   </div>
                 )}
               </>
@@ -1003,15 +1010,13 @@ export default function BomCosting() {
                 )}
                 {packagingDraft.dirty && (
                   <div className="rt-savebar">
-                    <div>
-                      <SaveBar
-                        dirty={packagingDraft.dirty}
-                        onSave={savePackaging}
-                        onDiscard={packagingDraft.discard}
-                        disabled={packagingLocked}
-                        disabledReason={LOCK_REASON}
-                      />
-                    </div>
+                    <SaveBar
+                      dirty={packagingDraft.dirty}
+                      onSave={savePackaging}
+                      onDiscard={packagingDraft.discard}
+                      disabled={packagingLocked}
+                      disabledReason={LOCK_REASON}
+                    />
                   </div>
                 )}
               </>
@@ -1236,7 +1241,7 @@ export default function BomCosting() {
                       }
                     />
                   </label>
-                  <label className="bom-field bom-span-2">
+                  <label className="bom-field bom-span-all">
                     <span className="bom-label">Assumptions or conditions</span>
                     <Input.TextArea
                       autoSize={{ minRows: 2, maxRows: 4 }}
@@ -1271,15 +1276,13 @@ export default function BomCosting() {
             </div>
             {costingDraft.dirty && (
               <div className="rt-savebar bom-savebar">
-                <div>
-                  <SaveBar
-                    dirty={costingDraft.dirty}
-                    onSave={saveCosting}
-                    onDiscard={costingDraft.discard}
-                    disabled={formulaLocked}
-                    disabledReason={LOCK_REASON}
-                  />
-                </div>
+                <SaveBar
+                  dirty={costingDraft.dirty}
+                  onSave={saveCosting}
+                  onDiscard={costingDraft.discard}
+                  disabled={formulaLocked}
+                  disabledReason={LOCK_REASON}
+                />
               </div>
             )}
           </div>

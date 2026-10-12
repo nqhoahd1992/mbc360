@@ -1,10 +1,11 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Checkbox, DatePicker, Drawer, Grid, Input, InputNumber, Popconfirm, Select, Tooltip } from 'antd';
 import { DeleteOutlined, DownOutlined, LockOutlined, PlusOutlined, RightOutlined, UpOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useParams } from 'react-router-dom';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
-import { isRegisterRowBlank } from '@mbc360/shared/config/registers';
+import { isColumnRequiredFor, isRegisterRowBlank, missingRequiredProblems } from '@mbc360/shared/config/registers';
+import RequiredMark from './RequiredMark';
 import { claimLibraryLinkMismatch } from '@mbc360/shared/config/referenceData';
 import type { RegisterRow } from '@mbc360/shared/types';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -23,7 +24,7 @@ import ClaimsLibrarySelect from './ClaimsLibrarySelect';
 import RowRefSelect from './RowRefSelect';
 import RegisterSignatureCell from './RegisterSignatureCell';
 import { spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
-import { cellFrozenBy, passedGateSet, rowsFrozenBy, rowsFrozenReason } from '@mbc360/shared/utils/registerRowLocks';
+import { cellFrozenBy, frozenGateSet, rowsFrozenBy, rowsFrozenReason } from '@mbc360/shared/utils/registerRowLocks';
 import { useAppStore } from '../store/useAppStore';
 import '../styles/concept.css';
 import './DynamicTable.css';
@@ -133,7 +134,7 @@ export default function DynamicTable({
 }: {
   config: RegisterConfig;
   rows: RegisterRow[];
-  onSave: (rows: RegisterRow[]) => void;
+  onSave: (rows: RegisterRow[]) => void | boolean | Promise<unknown>;
   reviewOwnerText?: string;
   readOnly?: boolean;
   readOnlyReason?: string;
@@ -169,7 +170,7 @@ export default function DynamicTable({
     // earlier gate than a single-gate register's own (the watch-lists are gate 07, Gate 4 owns their
     // review columns), and it freezes when that owner passes. A register with no passed gate costs
     // nothing: the set is empty and every cell stays as it was.
-    () => (project ? passedGateSet(project) : new Set<string>()),
+    () => (project ? frozenGateSet(project) : new Set<string>()),
     [project],
   );
   const frozenBy = (columnKey: string) => cellFrozenBy(passedGates, config, columnKey);
@@ -198,6 +199,12 @@ export default function DynamicTable({
   };
   useExclusiveDrawer(openIndex !== null, () => setOpenIndex(null));
   const markOwn = useCloseDrawerOnPageSave(dirty, openIndex !== null, () => setOpenIndex(null));
+  // Discard (or a refused save that reloaded the data) can remove the very row the drawer shows — a row added in this draft.
+  // The index is then stale: let go of it, and of the "fresh row" marker, so nothing reads or deletes a row by a dead index.
+  useEffect(() => {
+    if (openIndex !== null && openIndex >= draft.length) setOpenRaw(null);
+    if (!dirty) setFreshIndex(null);
+  }, [openIndex, draft.length, dirty]);
   const [wrapRef, width] = useWidth<HTMLDivElement>();
   const screens = Grid.useBreakpoint();
 
@@ -234,16 +241,22 @@ export default function DynamicTable({
   // and nothing else — the same failure the gate decision dropdown had on
   // 2026-07-22, where hiding the option hid the reason with it. A disabled
   // control that does not say why reads as a broken button.
+  // A column required because of another cell of the row (an Approved brief needs its approval date).
+  const requiredProblems = readOnly ? [] : missingRequiredProblems(config, draft);
   const saveProblems = [
     ...(hasBlankRows
       ? ['One or more rows have no data entered — fill in at least one field, or remove the row.']
       : []),
+    ...requiredProblems,
     ...blockers,
   ];
-  const save = () => {
-    if (hasBlankRows || blockers.length > 0) return;
-    onSave(draft);
+  // Resolves false when nothing was saved — a rule blocked it, or the server refused — so a drawer that closes on Save
+  // stays open with what was typed, and the draft stays dirty to be corrected and tried again.
+  const save = async (): Promise<boolean> => {
+    if (hasBlankRows || blockers.length > 0 || requiredProblems.length > 0) return false;
+    if ((await onSave(draft)) === false) return false;
     markSaved();
+    return true;
   };
 
   const identity = config.columns[0];
@@ -335,7 +348,7 @@ export default function DynamicTable({
         </span>
       );
       return frozenGate ? (
-        <Tooltip title={`Frozen — ${frozenGate} has passed. Backtrack to reopen it.`}>{shown}</Tooltip>
+        <Tooltip title={`Frozen — ${frozenGate} has passed or is signed. Withdraw the signature, or Backtrack, to change it.`}>{shown}</Tooltip>
       ) : (
         shown
       );
@@ -402,6 +415,7 @@ export default function DynamicTable({
         return (
           <DatePicker
             style={{ width: '100%' }}
+            status={isColumnRequiredFor(column, row) && !value ? 'error' : undefined}
             value={value ? dayjs(String(value)) : null}
             onChange={(d) => patch(index, column.key, d ? d.format('YYYY-MM-DD') : undefined)}
           />
@@ -602,16 +616,15 @@ export default function DynamicTable({
       </div>
 
       {dirty && (
-        <div className="rt-savebar">
-          <div>
-            <SaveBar
-              dirty={dirty}
-              onSave={save}
-              onDiscard={discard}
-              disabled={saveProblems.length > 0}
-              disabledReason={saveProblems.join(' · ')}
-            />
-          </div>
+        // Embedded in a page there is no card around it, so the bar is a padded card of its own.
+        <div className={embedded ? 'page-savebar' : 'rt-savebar'}>
+          <SaveBar
+            dirty={dirty}
+            onSave={save}
+            onDiscard={discard}
+            disabled={saveProblems.length > 0}
+            disabledReason={saveProblems.join(' · ')}
+          />
         </div>
       )}
 
@@ -644,7 +657,7 @@ export default function DynamicTable({
           )
         }
         footer={
-          !readOnly && openIndex !== null ? (
+          !readOnly && openRow !== undefined && openIndex !== null ? (
             <div className="rt-drawer-foot">
               {/* No "Done" button: it only closed the drawer (the ✕ does that)
                   while reading as if the row were finished or saved. */}
@@ -652,10 +665,12 @@ export default function DynamicTable({
                 dirty={dirty}
                 onSave={save}
                 onOwnAction={markOwn}
+                // Save closes the drawer (project owner, 2026-10-12); Save & next is the way to keep walking the rows.
+                onClose={() => setOpenIndex(null)}
                 // The page-level rules that block Save (blank rows, validation) block it here too.
                 disabled={saveProblems.length > 0}
                 disabledReason={saveProblems[0]}
-                onSaveAndNext={openIndex < draft.length - 1 ? () => { save(); step(1); } : undefined}
+                onSaveAndNext={openIndex < draft.length - 1 ? async () => { const ok = await save(); if (ok) step(1); return ok; } : undefined}
               />
               {isRegister && (
               <Tooltip title={removeBlock(draft[openIndex])}>
@@ -705,6 +720,7 @@ export default function DynamicTable({
                     >
                       <span className="rt-label">
                         {col.label}
+                        {isColumnRequiredFor(col, openRow) && <RequiredMark met={!!openRow[col.key]} title="Required while the row is in this state" />}
                         {columnGate(col) && <span className="c-tag rt-gate">G{columnGate(col)}</span>}
                       </span>
                       {renderEditor(col, openRow, openIndex)}

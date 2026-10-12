@@ -39,7 +39,7 @@ import type { GateEvidenceSnapshot, GateFullRecord, ProjectData, RegisterRow } f
 import { PHASE_CONFIGS } from '../config/phases';
 import { REGISTER_CONFIGS } from '../config/registers';
 import { NEXT_ACTION_PRIORITIES, NEXT_ACTION_TERMINAL_STATUSES } from '../types';
-import { gateRefGateIds } from './gateRefs';
+import { gateOrder, gateRefGateIds } from './gateRefs';
 import { columnsByAccountability, registersReadByGate } from './registerColumnGates';
 import { projectSliceDigests } from './projectSlices';
 
@@ -227,7 +227,9 @@ export function gateEvidenceSnapshot(
     openActions: project.nextActions
       .filter((a) => a.gateId === gateId && !NEXT_ACTION_TERMINAL_STATUSES.includes(a.status))
       .map((a) => ({ id: a.id, title: a.description, status: a.status, priority: a.priority })),
-    formulaVersion: project.formulaVersion,
+    // Only from Gate 05 on: before the formula is locked a version means nothing to the gate, and recording it
+    // earlier made a Gate 1-4 signature go stale when somebody created a version on the Formula BOM page.
+    ...(gateOrder(gateId) >= gateOrder('SG05') ? { formulaVersion: project.formulaVersion } : {}),
     // "Artwork version where relevant" — only for the per-market gates that carry
     // artwork at all; recording it everywhere would make a Gate 2 signature go
     // stale because somebody edited a label.
@@ -302,7 +304,8 @@ export function snapshotChanges(
 ): string[] {
   const changes: string[] = [];
   if (before.status !== after.status) changes.push(`Gate status: "${before.status}" -> "${after.status}"`);
-  if (before.formulaVersion !== after.formulaVersion) {
+  // Compared only when both sides recorded it (a gate before 05 never does).
+  if (before.formulaVersion !== undefined && after.formulaVersion !== undefined && before.formulaVersion !== after.formulaVersion) {
     changes.push(`Formula version: ${before.formulaVersion} -> ${after.formulaVersion}`);
   }
   if ((before.artworkVersion ?? '') !== (after.artworkVersion ?? '')) {

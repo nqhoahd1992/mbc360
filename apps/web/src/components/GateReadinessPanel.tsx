@@ -36,6 +36,7 @@ export default function GateReadinessPanel({
   showSatisfied,
   onToggleSatisfied,
   hideSummary,
+  signatureItemId,
 }: {
   gateNumber: string;
   items: GateReadinessItem[];
@@ -45,6 +46,8 @@ export default function GateReadinessPanel({
   onToggleSatisfied: () => void;
   // The Phase page rail prints its own "N blocking the decision" heading.
   hideSummary?: boolean;
+  // Id of the item that only signing can satisfy; listed under "Signatures", not "Before sign-off".
+  signatureItemId?: string;
 }) {
   // Items whose condition list is open. Collapsed by default: the list is the
   // detail behind one line, not something every reader needs on first look.
@@ -56,6 +59,10 @@ export default function GateReadinessPanel({
       return next;
     });
   const blocking = items.filter((i) => !i.satisfied && i.hardBlock);
+  // The sign-off item is only satisfied BY signing, so when the caller names it, it is listed apart from what has
+  // to be done before signing and is not part of that count.
+  const signatures = blocking.filter((i) => i.id === signatureItemId);
+  const beforeSignOff = signatureItemId ? blocking.filter((i) => i.id !== signatureItemId) : blocking;
   const toConfirm = items.filter((i) => !i.satisfied && !i.hardBlock);
   const satisfied = items.filter((i) => i.satisfied);
 
@@ -174,7 +181,8 @@ export default function GateReadinessPanel({
             : `Gate ${gateNumber} readiness — nothing blocking`}
         </div>
       )}
-      {group('Blocking now', blocking)}
+      {group(signatureItemId ? 'Before sign-off' : 'Blocking now', beforeSignOff)}
+      {group('Signatures', signatures)}
       {group('Will not block, but confirm', toConfirm)}
       {satisfied.length > 0 && (
         <div className="grp-group">

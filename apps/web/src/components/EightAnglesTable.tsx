@@ -29,9 +29,10 @@ export default function EightAnglesTable({
   const covered = draft.filter((a) => a.covered).length;
 
   const patch = (index: number, p: Partial<AngleRow>) => update((prev) => patchArray(prev, index, p));
-  const save = () => {
-    setAnglesBulk(projectId, phase, draft);
-    markSaved();
+  const save = async () => {
+    const ok = await setAnglesBulk(projectId, phase, draft);
+    if (ok) markSaved();
+    return ok;
   };
   // Same as Key Gate Checks: ticking Covered on an angle with no evidence yet
   // opens its drawer with the cursor in Evidence / reference.
@@ -105,9 +106,7 @@ export default function EightAnglesTable({
       footer={
         dirty ? (
           <div className="rt-savebar">
-            <div>
-              <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
-            </div>
+            <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
           </div>
         ) : null
       }

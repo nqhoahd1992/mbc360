@@ -23,6 +23,7 @@ import type {
   ChecklistItem,
   EvidenceItem,
   GateChangeLogEntry,
+  GateSignOffEvent,
   FormulaVersionRecord,
   GateEvidenceSnapshot,
   GateSignOff,
@@ -205,6 +206,37 @@ export function toGateChangeLog(
   return entries;
 }
 
+// Signing and withdrawing a gate signature are audited too (action gate_sign_off.signed / .withdrawn); the sign-off
+// history a gate shows is read from those rows. Older rows lack the new details, so every field is optional.
+export function toGateSignOffLog(
+  events: { id: string; occurredAt: Date; action: string; after: Prisma.JsonValue; actor: { displayName: string } | null }[],
+): GateSignOffEvent[] {
+  const out: GateSignOffEvent[] = [];
+  for (const e of events) {
+    const a = (e.after ?? {}) as Record<string, unknown>;
+    const str = (k: string) => (typeof a[k] === 'string' && a[k] !== '' ? (a[k] as string) : undefined);
+    const gateId = str('gateId');
+    const role = str('role');
+    if (!gateId || !role) continue;
+    const signed = e.action === 'gate_sign_off.signed';
+    out.push({
+      id: e.id,
+      gateId,
+      market: str('market'),
+      role,
+      kind: signed ? 'signed' : 'withdrawn',
+      decision: signed ? str('decision') : str('previousDecision'),
+      comment: signed ? str('comment') : str('previousComment'),
+      reason: signed ? undefined : str('reason'),
+      signedAt: signed ? str('signedAt') : str('previousSignedAt'),
+      by: e.actor?.displayName ?? (signed ? undefined : str('previousSigner')),
+      date: dateTime(e.occurredAt),
+      contentHash: signed ? str('contentHash') : undefined,
+    });
+  }
+  return out;
+}
+
 // Change Control rows are project-scoped in the database but the store keeps one
 // global list, so they are returned alongside ProjectData rather than inside it.
 export function toChangeRecords(p: ProjectWithAll) {
@@ -247,6 +279,8 @@ export function toProjectData(
   p: ProjectWithAll,
   gateChangeLog: GateChangeLogEntry[],
   reference: ProjectReferenceData,
+  // Display-only history of signing and withdrawing; nothing in the rule engine reads it, so it may be left out.
+  gateSignOffLog: GateSignOffEvent[] = [],
 ): ProjectData {
   const checklists: Record<string, ChecklistItem[]> = {};
   for (const item of p.checklistItems) {
@@ -531,6 +565,7 @@ export function toProjectData(
       }),
     ),
     gateChangeLog,
+    gateSignOffLog,
     marketTracks: p.marketTracks.map((t) => ({
       market: t.market,
       // F4: one track per market per formula version.

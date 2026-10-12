@@ -42,12 +42,13 @@ export default function GateChecksTable({
   const doneCount = draft.filter((c) => c.done).length;
 
   const patch = (index: number, p: Partial<GateCheck>) => update((prev) => patchArray(prev, index, p));
-  const save = () => {
-    setChecksBulk(
+  const save = async () => {
+    const ok = await setChecksBulk(
       projectId,
       checks.map((c, i) => ({ index: c.index, patch: draft[i] })),
     );
-    markSaved();
+    if (ok) markSaved();
+    return ok;
   };
   // Ticking Done is half the record: the workbook asks every checked item for
   // its evidence/reference, method and initials. So ticking a row that has no
@@ -166,9 +167,7 @@ export default function GateChecksTable({
       footer={
         dirty ? (
           <div className="rt-savebar">
-            <div>
-              <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
-            </div>
+            <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
           </div>
         ) : null
       }

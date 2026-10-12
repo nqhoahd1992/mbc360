@@ -3,6 +3,7 @@ import UserSelect from '../components/UserSelect';
 import ChangeDispositionBlock from '../components/ChangeDispositionBlock';
 import { isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
 import { AutoComplete, Button, DatePicker, Form, Input, Select, Switch, message, Tooltip } from 'antd';
+import ChoiceSelect from '../components/ChoiceSelect';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
@@ -150,9 +151,10 @@ export default function ChangeControl() {
 
   const patchChange = (changeId: string, patch: Partial<ChangeRecord>) =>
     update((prev) => prev.map((c) => (c.changeId === changeId ? { ...c, ...patch } : c)));
-  const saveChanges = () => {
-    setChangesBulk(draft);
-    markSaved();
+  const saveChanges = async () => {
+    const ok = await setChangesBulk(draft);
+    if (ok) markSaved();
+    return ok;
   };
 
   const openCount = draft.filter((c) => isChangeOpen(c.status)).length;
@@ -236,6 +238,8 @@ export default function ChangeControl() {
       </header>
 
       {draft.length === 0 ? (
+        // "before the change is made, not after" is OUR wording, not the review team's — whether a record may
+        // also be opened afterwards, to log a change that already happened, is [ASSUMPTION: R5-Q66].
         <div className="c-card cc-empty">
           <div className="cc-empty-title">No change requests yet</div>
           <p className="cc-empty-text">
@@ -306,11 +310,10 @@ export default function ChangeControl() {
                         grow as its impact becomes known, and High/Critical is what
                         makes an open change hard-block Gate 11. */}
                     <RecordField label="Risk level">
-                      <Select
-                        style={{ width: '100%' }}
+                      <ChoiceSelect
                         value={c.riskLevel}
-                        options={RISK_LEVELS.map((r) => ({ value: r, label: r }))}
-                        onChange={(v: RiskLevel) => patchChange(c.changeId, { riskLevel: v })}
+                        options={[...RISK_LEVELS]}
+                        onChange={(v) => v && patchChange(c.changeId, { riskLevel: v as RiskLevel })}
                       />
                     </RecordField>
                     {/* Editable here, not only on the create form: rule E3(b) makes
@@ -357,9 +360,7 @@ export default function ChangeControl() {
           footer={
             dirty && (
               <div className="rt-savebar">
-                <div>
-                  <SaveBar dirty={dirty} onSave={saveChanges} onDiscard={discard} />
-                </div>
+                <SaveBar dirty={dirty} onSave={saveChanges} onDiscard={discard} />
               </div>
             )
           }
@@ -471,7 +472,7 @@ export default function ChangeControl() {
             <Form.Item name="riskLevel" label="Risk level" rules={[{ required: true }]}>
               {/* The shared four-level scale (Round 4 question 34(a): Critical is a
                   separate level above High). */}
-              <Select options={RISK_LEVELS.map((r) => ({ value: r, label: r }))} />
+              <ChoiceSelect options={[...RISK_LEVELS]} onChange={() => {}} />
             </Form.Item>
             <Form.Item name="oldVersion" label="Old version">
               <AutoComplete

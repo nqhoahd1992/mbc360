@@ -46,7 +46,7 @@ export interface TracedReads {
   triggers: ColumnReads;
 }
 
-const SCENARIOS = 120;
+const SCENARIOS = 400;
 
 // mulberry32 — tiny, deterministic.
 function rng(seed: number): () => number {

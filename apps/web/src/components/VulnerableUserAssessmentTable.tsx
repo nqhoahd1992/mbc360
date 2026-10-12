@@ -10,7 +10,7 @@ import {
 } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import type { ProjectData, RegisterRow } from '@mbc360/shared/types';
-import { createEmptyRegisterRow } from '@mbc360/shared/config/registers';
+import { createEmptyRegisterRow, getRegisterConfig } from '@mbc360/shared/config/registers';
 import { NO_VULNERABLE_GROUP, TARGET_USER_TO_VULNERABLE_GROUP } from '@mbc360/shared/config/vulnerableGroups';
 import {
   VULNERABLE_REGISTER,
@@ -20,7 +20,9 @@ import {
   vulnerableSaveBlockers,
 } from '@mbc360/shared/utils/vulnerableUsers';
 import { useDraft } from '../hooks/useDraft';
+import { useRegisterFreeze } from '../hooks/useRegisterFreeze';
 import SaveBar from './SaveBar';
+import RequiredMark from './RequiredMark';
 import UserSelect from './UserSelect';
 import '../styles/concept.css';
 import './VulnerableUserAssessmentTable.css';
@@ -78,18 +80,26 @@ export default function VulnerableUserAssessmentTable({
 }: {
   project: ProjectData;
   rows: RegisterRow[];
-  onSave: (rows: RegisterRow[]) => void;
+  onSave: (rows: RegisterRow[]) => void | boolean | Promise<unknown>;
   readOnly: boolean;
   readOnlyReason?: string;
 }) {
   const { draft, dirty, update, markSaved, discard } = useDraft<RegisterRow[]>(rows);
+  // Columns frozen by a gate that has passed or is signed (SW-5, SW-24) are shown read-only, and once any is frozen
+  // groups can be neither added nor removed — the server refuses both.
+  const freeze = useRegisterFreeze(project, getRegisterConfig(VULNERABLE_REGISTER)!);
+  const rowsOff = readOnly || !!freeze.rowsFrozen;
+  const off = (columnKey: string) => readOnly || freeze.isFrozen(columnKey);
 
   const implied = expectedVulnerableGroups(project);
-  const sourceOf = (group: string) =>
+  // The Gate 02 target users that imply a group. Shown only when they are NOT simply the group's own name:
+  // for "Postpartum" the target user is also "Postpartum", and printing it twice read as duplicated data.
+  const sourcesOf = (group: string) =>
     Object.entries(TARGET_USER_TO_VULNERABLE_GROUP)
       .filter(([, g]) => g === group)
       .map(([user]) => user)
-      .find((user) => (project.checklists['targetUsers'] ?? []).some((i) => i.selected && i.label === user));
+      .filter((user) => (project.checklists['targetUsers'] ?? []).some((i) => i.selected && i.label === user))
+      .filter((user) => user !== group);
 
   const saysNone = draft.some((r) => groupOf(r) === NO_VULNERABLE_GROUP);
   const named = draft.filter((r) => groupOf(r) !== NO_VULNERABLE_GROUP);
@@ -121,9 +131,10 @@ export default function VulnerableUserAssessmentTable({
   const patch = (index: number, key: string, value: string | undefined) =>
     update(draft.map((r, i) => (i === index ? { ...r, [key]: value ?? '' } : r)));
 
-  const save = () => {
+  const save = async () => {
     if (saveProblems.length > 0) return;
-    onSave(draft);
+    // Only settled once the server took it, so a refused save keeps the draft to be corrected.
+    if ((await onSave(draft)) === false) return;
     markSaved();
   };
 
@@ -196,7 +207,7 @@ export default function VulnerableUserAssessmentTable({
             role="radio"
             className="vua-opt"
             aria-checked={answered && mode === 'some'}
-            disabled={readOnly}
+            disabled={rowsOff}
             onClick={chooseSome}
           >
             <span className="vua-dot" />
@@ -210,7 +221,7 @@ export default function VulnerableUserAssessmentTable({
             role="radio"
             className="vua-opt"
             aria-checked={mode === 'none'}
-            disabled={readOnly}
+            disabled={rowsOff}
             onClick={chooseNone}
           >
             <span className="vua-dot" />
@@ -245,8 +256,8 @@ export default function VulnerableUserAssessmentTable({
                   <div key={group} className={`vua-src-row ${has ? 'vua-src-ok' : 'vua-src-miss'}`}>
                     {has ? <CheckOutlined /> : <ExclamationCircleOutlined />}
                     <span className="vua-nm">{group}</span>
-                    <span className="c-tag">{sourceOf(group)}</span>
-                    {!has && !readOnly && (
+                    {sourcesOf(group).length > 0 && <span className="c-tag">from {sourcesOf(group).join(', ')}</span>}
+                    {!has && !rowsOff && (
                       <Button size="small" onClick={() => addGroup(group)}>
                         Add row
                       </Button>
@@ -283,7 +294,6 @@ export default function VulnerableUserAssessmentTable({
               draft.map((row, index) => {
                 const group = groupOf(row);
                 if (group === NO_VULNERABLE_GROUP) return null;
-                const missing = missingOn(row);
                 return (
                   <div key={`${group}-${index}`} className="vua-card">
                     <div className="vua-card-h">
@@ -294,18 +304,13 @@ export default function VulnerableUserAssessmentTable({
                         ) : (
                           <span className="c-tag c-tag-warn">Raised by Safety / Regulatory</span>
                         )}
-                        {missing.length > 0 ? (
-                          <span className="c-tag c-tag-bad">{missing.length} missing</span>
-                        ) : (
-                          <span className="c-tag c-tag-ok">Complete</span>
-                        )}
                       </span>
                       <span className="vua-card-x">
-                        <Tooltip title={readOnly ? undefined : 'Remove this group'}>
+                        <Tooltip title={rowsOff ? freeze.rowsFrozenReason : 'Remove this group'}>
                           <Button
                             size="small"
                             icon={<DeleteOutlined />}
-                            disabled={readOnly}
+                            disabled={rowsOff}
                             aria-label={`Remove ${group}`}
                             onClick={() => removeGroup(group)}
                           />
@@ -314,8 +319,11 @@ export default function VulnerableUserAssessmentTable({
                     </div>
                     <div className="vua-grid">
                       <label className="vua-fld">
-                        <span>Applicable safety pathway</span>
-                        {readOnly ? (
+                        <span>
+                          Applicable safety pathway
+                          <RequiredMark met={!!text(row.safetyPathway)} title="Required before this can be saved" />
+                        </span>
+                        {off('safetyPathway') ? (
                           <span className="vua-static">{text(row.safetyPathway) || '—'}</span>
                         ) : (
                           <Select
@@ -332,9 +340,9 @@ export default function VulnerableUserAssessmentTable({
                       <label className="vua-fld">
                         <span>
                           Responsible reviewer
-                          {!text(row.responsibleReviewer) && <span className="vua-miss"> · required</span>}
+                          <RequiredMark met={!!text(row.responsibleReviewer)} title="Required before this can be saved" />
                         </span>
-                        {readOnly ? (
+                        {off('responsibleReviewer') ? (
                           <span className="vua-static">{text(row.responsibleReviewer) || '—'}</span>
                         ) : (
                           <UserSelect
@@ -346,8 +354,11 @@ export default function VulnerableUserAssessmentTable({
                         )}
                       </label>
                       <label className="vua-fld vua-wide">
-                        <span>Additional assessments required</span>
-                        {readOnly ? (
+                        <span>
+                          Additional assessments required
+                          <RequiredMark met={!!text(row.additionalAssessments)} title="Required before this can be saved" />
+                        </span>
+                        {off('additionalAssessments') ? (
                           <span className="vua-static">{text(row.additionalAssessments) || '—'}</span>
                         ) : (
                           <Input.TextArea
@@ -382,16 +393,14 @@ export default function VulnerableUserAssessmentTable({
       )}
 
       {dirty && !readOnly && (
-        <div className="vua-savebar">
-          <div>
-            <SaveBar
-              dirty={dirty}
-              onSave={save}
-              onDiscard={discard}
-              disabled={saveProblems.length > 0}
-              disabledReason={saveProblems.join(' · ')}
-            />
-          </div>
+        <div className="page-savebar">
+          <SaveBar
+            dirty={dirty}
+            onSave={save}
+            onDiscard={discard}
+            disabled={saveProblems.length > 0}
+            disabledReason={saveProblems.join(' · ')}
+          />
         </div>
       )}
     </div>

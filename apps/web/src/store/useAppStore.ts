@@ -116,7 +116,7 @@ interface AppState {
   // per-phase FILTERED subset of the full list) — replaces that whole subset
   // (additions/edits/removals) while leaving other gates' actions untouched.
   // Pairs with useDraft so the whole card can be freely edited and saved once.
-  setNextActionsBulk: (id: string, gateIds: string[], updated: NextAction[]) => void;
+  setNextActionsBulk: (id: string, gateIds: string[], updated: NextAction[]) => Promise<boolean>;
 
   setMarketTracksBulk: (id: string, tracks: MarketTrack[]) => void;
 
@@ -139,9 +139,9 @@ interface AppState {
   ) => Promise<boolean>;
 
   setChecklistSection: (id: string, section: string, items: ChecklistItem[]) => Promise<boolean>;
-  setRequirementSection: (id: string, section: string, items: RequirementItem[]) => void;
-  setGateChecksBulk: (id: string, updates: { index: number; patch: Partial<GateCheck> }[]) => void;
-  setAnglesBulk: (id: string, phase: number, angles: AngleRow[]) => void;
+  setRequirementSection: (id: string, section: string, items: RequirementItem[]) => Promise<boolean>;
+  setGateChecksBulk: (id: string, updates: { index: number; patch: Partial<GateCheck> }[]) => Promise<boolean>;
+  setAnglesBulk: (id: string, phase: number, angles: AngleRow[]) => Promise<boolean>;
   // D1: a signature is an act, so it is three actions, not a table write.
   // Assigning belongs to the project's Lead; signing and withdrawing belong to
   // the assigned signer. Everything recorded ON the signature (who, role, time,
@@ -224,7 +224,7 @@ interface AppState {
   setPowerAppsUrl: (url: string) => void;
   setGraphConfig: (patch: Partial<GraphSettings>) => void;
 
-  setRegisterRowsBulk: (id: string, registerKey: string, rows: RegisterRow[]) => void;
+  setRegisterRowsBulk: (id: string, registerKey: string, rows: RegisterRow[]) => Promise<boolean>;
   // A `signature` column is never part of the bulk save above — the server
   // refuses to take one from a table write, because a value that proves who
   // approved something cannot be a value the client sends (2026-08-26).
@@ -262,7 +262,7 @@ interface AppState {
     reason: string,
   ) => void;
 
-  setEvidenceItemsBulk: (id: string, items: EvidenceItem[]) => void;
+  setEvidenceItemsBulk: (id: string, items: EvidenceItem[]) => Promise<boolean>;
   // The add* actions that open from a create drawer resolve to true only once the server has accepted the
   // record, so the drawer can stay open with what was typed when the write is refused (2026-10-11).
   addCapa: (id: string, record: CapaRecord) => Promise<boolean>;
@@ -270,7 +270,7 @@ interface AppState {
   addFeedback: (id: string, entry: FeedbackEntry) => Promise<boolean>;
 
   addChange: (record: ChangeRecord) => Promise<boolean>;
-  setChangesBulk: (records: ChangeRecord[]) => void;
+  setChangesBulk: (records: ChangeRecord[]) => Promise<boolean>;
 
 }
 
@@ -496,7 +496,7 @@ export const useAppStore = create<AppState>()(
 
 
         setNextActionsBulk: (id, gateIds, updated) =>
-          writeSection(id, (v) => projectsApi.setNextActions(id, gateIds, updated, v)),
+          tryWriteSection(id, (v) => projectsApi.setNextActions(id, gateIds, updated, v)),
 
         // C5 (launch approval blocked until PIF is Approved) and the
         // `market-track|approve` permission are now enforced by the API — the
@@ -532,23 +532,23 @@ export const useAppStore = create<AppState>()(
         setChecklistSection: (id, section, items) =>
           tryWriteSection(id, (v) => projectsApi.setChecklistSection(id, section, items, v)),
         setRequirementSection: (id, section, items) =>
-          writeSection(id, (v) => projectsApi.setRequirementSection(id, section, items, v)),
+          tryWriteSection(id, (v) => projectsApi.setRequirementSection(id, section, items, v)),
         // The store used to address gate checks by array index; the API uses the
         // row's real identity (gate, check), so the index is resolved here while
         // the caller's signature stays unchanged.
         setGateChecksBulk: (id, updates) => {
           const project = get().projects.find((p) => p.identity.id === id);
-          if (!project) return Promise.resolve();
+          if (!project) return Promise.resolve(false);
           const resolved = updates
             .map(({ index, patch }) => {
               const row = project.gateChecks[index];
               return row ? { gate: row.gate, check: row.check, patch } : null;
             })
             .filter((u): u is { gate: string; check: string; patch: Partial<GateCheck> } => u !== null);
-          return writeSection(id, (v) => projectsApi.setGateChecks(id, resolved, v));
+          return tryWriteSection(id, (v) => projectsApi.setGateChecks(id, resolved, v));
         },
         setAnglesBulk: (id, phase, angles) =>
-          writeSection(id, (v) => projectsApi.setAngles(id, phase, angles, v)),
+          tryWriteSection(id, (v) => projectsApi.setAngles(id, phase, angles, v)),
         setSignOffAssignees: (id, phase, assignments) =>
           writeSection(id, (v) => projectsApi.setSignOffAssignees(id, phase, assignments, v)),
         signSignOff: (id, phase, role, input) =>
@@ -605,7 +605,7 @@ export const useAppStore = create<AppState>()(
         setPackagingBomBulk: (id, lines) =>
           writeSection(id, (v) => projectsApi.setPackagingBom(id, lines, v)),
         setRegisterRowsBulk: (id, registerKey, rows) =>
-          writeSection(id, (v) => projectsApi.setRegisterRows(id, registerKey, rows, v)),
+          tryWriteSection(id, (v) => projectsApi.setRegisterRows(id, registerKey, rows, v)),
         signRegisterRow: (id, registerKey, rowIndex, column, stepUpToken, expectedHash) =>
           writeSection(id, () =>
             projectsApi.signRegisterRow(id, registerKey, rowIndex, column, stepUpToken, expectedHash),
@@ -619,7 +619,7 @@ export const useAppStore = create<AppState>()(
         withdrawRegisterClose: (id, registerKey, role, reason) =>
           writeSection(id, (v) => projectsApi.withdrawRegisterClose(id, registerKey, role, reason, v)),
         setEvidenceItemsBulk: (id, items) =>
-          writeSection(id, (v) => projectsApi.setEvidenceItems(id, items, v)),
+          tryWriteSection(id, (v) => projectsApi.setEvidenceItems(id, items, v)),
 
         setCapaBulk: (id, records) => tryWriteSection(id, (v) => projectsApi.setCapa(id, records, v)),
         addCapa: (id, record) => {
@@ -644,9 +644,9 @@ export const useAppStore = create<AppState>()(
           set({ changes: records });
           return Promise.all(
             [...byProject].map(([pid, rows]) =>
-              writeSection(pid, (v) => projectsApi.setChanges(pid, rows, v)),
+              tryWriteSection(pid, (v) => projectsApi.setChanges(pid, rows, v)),
             ),
-          ).then(() => undefined);
+          ).then((results) => results.every(Boolean));
         },
         // Writes only the record's own project (the old version rewrote every project's list on each add, so a
         // conflict on an unrelated project could refuse it) and reports whether the server took it.

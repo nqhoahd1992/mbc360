@@ -2,7 +2,7 @@
    styles/concept.css via the `.concept-tokens` wrapper. */
 .gfc { display: grid; gap: 12px; min-width: 0; color: var(--c-text); font-size: 14px; }
 .gfc-list { display: grid; gap: 16px; }
-.gfc-card { min-width: 0; }
+.gfc-card { min-width: 0; padding-bottom: 16px; }
 .gfc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 20px 0; }
 .gfc-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .gfc-title { font-weight: 600; }
@@ -14,24 +14,28 @@
 .gfc-fields .ant-select,
 .gfc-fields .ant-picker { width: 100% !important; }
 .gfc-label { display: block; margin-bottom: 6px; color: var(--c-text-2); font-size: 13px; }
-.gfc-guidance { display: grid; gap: 8px; padding: 0 20px 16px; }
+.gfc-guidance { display: grid; gap: 8px; padding: 0 20px; }
 .gfc-guidance:empty { display: none; }
 /* GateSignOffPanel's table has no scroll of its own; on a phone it would widen the page. */
 .gfc-guidance .ant-table-content { overflow-x: auto; }
 .gfc-nohistory { flex: none; color: var(--c-text-3); font-size: 13px; }
 
 .gfc-gate { display: grid; gap: 12px; min-width: 0; }
-.gfc-eyebrow { margin-bottom: 2px; color: var(--c-text-3); font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.gfc-eyebrow { margin-bottom: 2px; color: var(--c-text); font-size: 16px; font-weight: 600; line-height: 24px; }
 .gfc-signoff { display: grid; gap: 12px; min-width: 0; }
 .gfc-signoff:empty { display: none; }
-.gfc-req { color: var(--c-bad); font-weight: 600; cursor: help; }
-.gfc-decision-empty { color: var(--c-text-3); }
+.gfc-req { color: var(--c-bad); cursor: help; }
+.gfc-decision-empty { color: var(--c-text-2); }
 .gfc-decision { display: inline-flex; min-height: 32px; align-items: center; }
-.gfc-ready { margin: 0 20px 16px; font-size: 13px; color: var(--c-warn); }
+.gfc-ready { margin: 0 20px 12px; font-size: 13px; color: var(--c-warn); }
 .gfc-ready-ok { color: var(--c-ok); }
-.gfc-decision-line { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.gfc-decision-k { color: var(--c-text-2); font-size: 14px; }
-.gfc-decision-note { color: var(--c-text-3); font-size: 13px; }
+.gfc-decision-line { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.gfc-decision-k { color: var(--c-text-3); font-size: 13px; }
+.gfc-decision-note { color: var(--c-text-3); font-size: 12px; }
+.gfc-decision-note::before { content: "·"; margin-right: 10px; }
 .gfc-head { align-items: flex-start; }
 .gfc-eyebrow { margin-bottom: 6px; }
 .gfc-fields textarea { min-height: 72px; }
+
+/* This card has no padding of its own (each part carries its 20px), so the Save bar gets the side margin itself. */
+.gfc-card .save-bar { margin: 4px 20px 0; padding: 12px 0 0; }

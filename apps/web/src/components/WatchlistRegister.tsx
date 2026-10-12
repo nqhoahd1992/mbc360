@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, DatePicker, Drawer, Grid, Input, InputNumber, Select, Tooltip } from 'antd';
+import ChoiceSelect from './ChoiceSelect';
 import {
   CheckCircleOutlined,
   ClockCircleOutlined,
@@ -22,6 +23,7 @@ import {
   watchlistReviewGaps,
 } from '@mbc360/shared/utils/watchlistReview';
 import { patchArray, useDraft } from '../hooks/useDraft';
+import { useRegisterFreeze } from '../hooks/useRegisterFreeze';
 import DrawerSaveFooter from './DrawerSaveFooter';
 import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import SaveBar from './SaveBar';
@@ -73,12 +75,15 @@ export default function WatchlistRegister({
   config: RegisterConfig;
   rows: RegisterRow[];
   parent?: NavGroup;
-  onSave: (rows: RegisterRow[]) => void;
+  // Resolve false when the server refused the write.
+  onSave: (rows: RegisterRow[]) => void | boolean | Promise<unknown>;
   readOnly: boolean;
   readOnlyReason?: string;
   closeable: boolean;
 }) {
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
+  // Cells frozen by a gate that has passed or is signed (SW-5, SW-24) are greyed out, as the server will refuse them.
+  const freeze = useRegisterFreeze(project, config);
   const [filter, setFilter] = useState<Filter>('all');
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   useExclusiveDrawer(openIndex !== null, () => setOpenIndex(null));
@@ -143,9 +148,10 @@ export default function WatchlistRegister({
             : state === 'done',
     );
 
-  const save = () => {
-    onSave(draft);
+  const save = async (): Promise<boolean> => {
+    if ((await onSave(draft)) === false) return false;
     markSaved();
+    return true;
   };
 
   const stateCell = (row: RegisterRow, state: RowState) => {
@@ -198,7 +204,7 @@ export default function WatchlistRegister({
       value={text(row.productStatus) || undefined}
       placeholder="Select…"
       options={columnOptions(config, 'productStatus')}
-      disabled={readOnly}
+      disabled={readOnly || freeze.isFrozen('productStatus')}
       popupMatchSelectWidth={false}
       onChange={(v: string) => patch(index, { productStatus: v })}
     />
@@ -210,7 +216,7 @@ export default function WatchlistRegister({
       placeholder="Not dispositioned"
       allowClear
       options={columnOptions(config, 'gate4Disposition')}
-      disabled={readOnly}
+      disabled={readOnly || freeze.isFrozen('gate4Disposition')}
       popupMatchSelectWidth={false}
       onChange={(v?: string) => patch(index, { gate4Disposition: v ?? '' })}
     />
@@ -227,6 +233,10 @@ export default function WatchlistRegister({
 
   // Drawer navigation walks the rows currently in view, in register order.
   const openRow = openIndex === null ? undefined : draft[openIndex];
+  // A stale index (the row is gone after Discard) is dropped, not read.
+  useEffect(() => {
+    if (openIndex !== null && openIndex >= draft.length) setOpenIndex(null);
+  }, [openIndex, draft.length]);
   const position = visible.findIndex((v) => v.index === openIndex);
   const step = (delta: number) => {
     if (visible.length === 0) return;
@@ -344,10 +354,8 @@ export default function WatchlistRegister({
       </div>
 
       {dirty && !readOnly && (
-        <div className="wl-savebar">
-          <div>
-            <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
-          </div>
+        <div className="page-savebar">
+          <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
         </div>
       )}
 
@@ -374,9 +382,10 @@ export default function WatchlistRegister({
               dirty={dirty}
               onSave={save}
               onOwnAction={markOwn}
+              onClose={() => setOpenIndex(null)}
               // Walks to the next row IN VIEW. There is none after the last one, so the button is absent
               // there rather than wrapping round to the first (the arrows in the header still wrap).
-              onSaveAndNext={position >= 0 && position < visible.length - 1 ? () => { save(); step(1); } : undefined}
+              onSaveAndNext={position >= 0 && position < visible.length - 1 ? async () => { const ok = await save(); if (ok) step(1); return ok; } : undefined}
             />
           )
         }
@@ -409,6 +418,7 @@ export default function WatchlistRegister({
             gaps={watchlistReviewGaps(draftProject, openRow)}
             hits={bomHits.get(text(openRow.ingredientGroup)) ?? []}
             readOnly={readOnly}
+            isFrozen={freeze.isFrozen}
             onPatch={(values) => patch(openIndex, values)}
           />
         )}
@@ -435,6 +445,7 @@ function RowDetail({
   gaps,
   hits,
   readOnly,
+  isFrozen,
   onPatch,
 }: {
   config: RegisterConfig;
@@ -442,8 +453,11 @@ function RowDetail({
   gaps: string[];
   hits: { line: number; inciName: string; hit: WatchHit }[];
   readOnly: boolean;
+  // True for a column frozen by a gate that has passed or is signed.
+  isFrozen: (columnKey: string) => boolean;
   onPatch: (values: Partial<RegisterRow>) => void;
 }) {
+  const off = (columnKey: string) => readOnly || isFrozen(columnKey);
   const flagged = isFlaggedWatchlistRow(row);
   const hasTrailData = ['reviewerAssessment', 'reviewer', 'reviewDate', 'reviewRationale', 'linkedNextActionId'].some(
     (k) => text(row[k]) !== '',
@@ -485,7 +499,7 @@ function RowDetail({
               style={{ width: '100%' }}
               value={text(row.productStatus) || undefined}
               options={columnOptions(config, 'productStatus')}
-              disabled={readOnly}
+              disabled={off('productStatus')}
               onChange={(v: string) => onPatch({ productStatus: v })}
             />
           </label>
@@ -497,13 +511,13 @@ function RowDetail({
               placeholder="Not dispositioned"
               allowClear
               options={columnOptions(config, 'gate4Disposition')}
-              disabled={readOnly}
+              disabled={off('gate4Disposition')}
               onChange={(v?: string) => onPatch({ gate4Disposition: v ?? '' })}
             />
           </label>
           <label>
             <span className="wl-field-label">Owner</span>
-            <UserSelect value={text(row.owner) || undefined} disabled={readOnly} placeholder="Select a user" onChange={(v) => onPatch({ owner: v ?? '' })} />
+            <UserSelect value={text(row.owner) || undefined} disabled={off('owner')} placeholder="Select a user" onChange={(v) => onPatch({ owner: v ?? '' })} />
           </label>
           <label>
             <span className="wl-field-label">Formula match count</span>
@@ -511,7 +525,7 @@ function RowDetail({
               style={{ width: '100%' }}
               min={0}
               value={typeof row.formulaMatchCount === 'number' ? row.formulaMatchCount : undefined}
-              disabled={readOnly}
+              disabled={off('formulaMatchCount')}
               onChange={(v) => onPatch({ formulaMatchCount: v ?? undefined })}
             />
           </label>
@@ -520,7 +534,7 @@ function RowDetail({
             <Input
               value={text(row.evidenceLink)}
               placeholder="Link to CoA, supplier declaration or report"
-              disabled={readOnly}
+              disabled={off('evidenceLink')}
               onChange={(e) => onPatch({ evidenceLink: e.target.value })}
             />
           </label>
@@ -542,38 +556,36 @@ function RowDetail({
             <div className="wl-grid">
               <label>
                 <span className={req}>Reviewer assessment</span>
-                <Select
-                  style={{ width: '100%' }}
+                <ChoiceSelect
                   value={text(row.reviewerAssessment) || undefined}
                   placeholder="Select…"
                   allowClear
                   options={columnOptions(config, 'reviewerAssessment')}
-                  disabled={readOnly}
-                  onChange={(v?: string) => onPatch({ reviewerAssessment: v ?? '' })}
+                  disabled={off('reviewerAssessment')}
+                  onChange={(v) => onPatch({ reviewerAssessment: v ?? '' })}
                 />
               </label>
               <label>
                 <span className="wl-field-label">Resolution status</span>
-                <Select
-                  style={{ width: '100%' }}
+                <ChoiceSelect
                   value={text(row.resolutionStatus) || undefined}
                   placeholder="Select…"
                   allowClear
                   options={columnOptions(config, 'resolutionStatus')}
-                  disabled={readOnly}
-                  onChange={(v?: string) => onPatch({ resolutionStatus: v ?? '' })}
+                  disabled={off('resolutionStatus')}
+                  onChange={(v) => onPatch({ resolutionStatus: v ?? '' })}
                 />
               </label>
               <label>
                 <span className={req}>Reviewer</span>
-                <UserSelect value={text(row.reviewer) || undefined} disabled={readOnly} placeholder="Select a user" onChange={(v) => onPatch({ reviewer: v ?? '' })} />
+                <UserSelect value={text(row.reviewer) || undefined} disabled={off('reviewer')} placeholder="Select a user" onChange={(v) => onPatch({ reviewer: v ?? '' })} />
               </label>
               <label>
                 <span className={req}>Review date</span>
                 <DatePicker
                   style={{ width: '100%' }}
                   value={text(row.reviewDate) ? dayjs(text(row.reviewDate)) : null}
-                  disabled={readOnly}
+                  disabled={off('reviewDate')}
                   onChange={(d) => onPatch({ reviewDate: d ? d.format('YYYY-MM-DD') : '' })}
                 />
               </label>
@@ -583,13 +595,13 @@ function RowDetail({
                   autoSize={{ minRows: 3 }}
                   value={text(row.reviewRationale)}
                   placeholder="Why this assessment"
-                  disabled={readOnly}
+                  disabled={off('reviewRationale')}
                   onChange={(e) => onPatch({ reviewRationale: e.target.value })}
                 />
               </label>
               <label className="wl-span-2">
                 <span className="wl-field-label">Linked Next Action</span>
-                <NextActionSelect value={text(row.linkedNextActionId) || undefined} disabled={readOnly} onChange={(v) => onPatch({ linkedNextActionId: v })} />
+                <NextActionSelect value={text(row.linkedNextActionId) || undefined} disabled={off('linkedNextActionId')} onChange={(v) => onPatch({ linkedNextActionId: v })} />
               </label>
             </div>
           </>
@@ -606,7 +618,7 @@ function RowDetail({
           <Input.TextArea
             autoSize={{ minRows: 2 }}
             value={text(row.notes)}
-            disabled={readOnly}
+            disabled={off('notes')}
             onChange={(e) => onPatch({ notes: e.target.value })}
           />
         </label>

@@ -6,7 +6,7 @@
 >
 > **Project owner's decision, 2026-08-24:** send this only after all 36 Round-4 answers have been worked through, because until then the list is still moving. Round 4 proved the point — it was drafted on 9 August and sent on the 12th, and in those three days the act of building the answers produced nine more questions.
 >
-> **Consolidated 2026-10-10, then audited the same day against the code and against every SME answer so far.** Sixty-four questions became thirty-nine, and the audit then cut it to thirty-two, and a later review of registers that may legitimately be empty added one (thirty-three): seven questions were removed because they asked the subject-matter team about how the software protects or records data — that is the project owner's decision (`../rules/Software_Rules.md`), not theirs — or because they asked again what an earlier answer already settled. Several other questions were rewritten because they misquoted an answer, or described code that has since changed. The internal `R5-Qn` identifiers in the code and in `F1_Per_Gate_Open_Questions.md` are unchanged; only this sendable list was renumbered.
+> **Consolidated 2026-10-10, then audited the same day against the code and against every SME answer so far.** Sixty-four questions became thirty-nine, and the audit then cut it to thirty-two, and a later review of registers that may legitimately be empty added one (thirty-three), and a review of how Change Control relates to a change added another (thirty-four): seven questions were removed because they asked the subject-matter team about how the software protects or records data — that is the project owner's decision (`../rules/Software_Rules.md`), not theirs — or because they asked again what an earlier answer already settled. Several other questions were rewritten because they misquoted an answer, or described code that has since changed. The internal `R5-Qn` identifiers in the code and in `F1_Per_Gate_Open_Questions.md` are unchanged; only this sendable list was renumbered.
 >
 > **Rename this file to `YYYY-MM-DD-our-questions-round5.md` on the day it is sent**, and do not edit it afterwards — that is what makes this folder evidence rather than documentation.
 
@@ -25,7 +25,7 @@ Several questions have lettered parts. You can reply by number and letter, for e
 3. **Questions 8–11** — smaller, but several name something your own answers assume exists and the software does not have.
 4. **Question 12** — the largest structural question in this list, and the one we have deliberately stopped work on until you answer it.
 5. **Questions 13–16** — change scope, register approval and "not applicable"; rules we are already running on our own reading.
-6. **Questions 17–33** — further readings of ours, each small; most are one-line confirmations.
+6. **Questions 17–34** — further readings of ours, each small; most are one-line confirmations.
 
 ---
 
@@ -142,7 +142,9 @@ Your answers use the idea of a controlled action in three places, each leaving s
 
 ## Question 11 — If a Change Control affects a gate that already passed, should that gate reopen automatically?
 
-Right now, opening a Change Control against a gate that has already passed does nothing to that gate. If Gate 5 was decided "Proceed" and the project has since moved on to Gate 10, opening a change that names Gate 5 leaves the "Proceed" exactly as it was — the only trace is a small warning tag on the Gate Flow screen. Closing the change is equally disconnected.
+Right now, for Gates 1 to 10, opening a Change Control against a gate that has already passed does nothing to that gate. If Gate 5 was decided "Proceed" and the project has since moved on to Gate 10, opening a change that names Gate 5 leaves the "Proceed" exactly as it was — the only trace is a small warning tag on the Gate Flow screen. Closing the change is equally disconnected.
+
+**Gate 11 behaves differently, and we only noticed this while checking.** Gate 11 weighs the open change records directly. If a change that is Critical or High risk, launch-impacting, unclassified, or touching formula, artwork, claims, safety, regulatory, packaging or release is opened **after** Gate 11 was signed, Gate 11's "no blocking change" item fails again, and because a gate counts as passed only while none of its items fails, Gate 11 can stop being passed **on its own** — with no one reopening it and no record of why. We confirmed the item fails by test; we have not yet watched a fully signed Gate 11 fall in the application. Gate 12 may behave the same way through its post-market review item, which we have not checked.
 
 **What we would do without an answer.** Opening a Change Control against a passed gate would reopen exactly that gate — and only that gate — and the only decision allowed on it afterward would be "Proceed with Conditions".
 
@@ -150,7 +152,7 @@ Right now, opening a Change Control against a gate that has already passed does 
 
 **What we have not settled.** (i) Whether "reopen automatically" is the right shape at all, or whether correcting an already-passed gate should always stay a deliberate action a person takes, with Change Control limited to warning. Every existing case of a gate reopening is either a person choosing to, or a fixed block that a Major formula change reopens together; this would be the first time gates are picked one at a time. (ii) Whether restricting the next decision to "Proceed with Conditions" is enough, or re-deciding should also require a written explanation or a named person. (iii) What happens when two open changes name the same gate.
 
-**Question:** should opening a Change Control against an already-passed gate reopen it automatically? If yes, for every kind of change or only some, and what should happen if the change is rejected or cancelled? If no, what should happen instead of today's silent no-op?
+**Question:** should opening a Change Control against an already-passed gate reopen it automatically? If yes, for every kind of change or only some, and what should happen if the change is rejected or cancelled? If no, what should happen instead of today's silent no-op? And for Gates 11 and 12 specifically: is it right that an open change can make a signed gate stop being passed by itself, or should correcting a signed gate always be a deliberate step a person takes?
 
 ## Question 12 — There are nine places a change gets written down. How many should there be?
 
@@ -508,6 +510,20 @@ The rows exist from the start; the team fills in the answer columns. The last co
 
 **(d)** Is it right that Gate 10's claims register is waived on the "no claims" record alone?
 
+## Question 34 — Is a Change Control opened before a change is made, or can it record one afterwards?
+
+Today the system puts no order on these two things. Opening a Change Control record does not create or lead to a new formula version, and creating a formula version does not need a Change Control record. (Question 12 asks whether they should be one book; this asks about the **order**.) The Change Control screen tells people to open a record *"before the change is made, not after"* — that wording is ours, not yours — and the status path (Draft → Submitted → Under Review → Approved, implementation pending → In Implementation → Completed) suggests approval comes before the work, but that is only our reading.
+
+**What runs today.** A record can be opened before, after, or never. A new formula version can be created without any record. Separately, on the project owner's instruction, a new formula version can only be created while **Gate 05** is the gate open for work.
+
+**(a)** Must a Change Control be opened **and approved before** the change is carried out, or may it be opened **afterwards** to record a change that already happened (for example a supplier substituting a raw material at short notice)?
+
+**(b)** For a formula change, is an approved Change Control record a **precondition** for creating the new formula version, or is the version created first and the record written afterwards?
+
+**(c)** If recording afterwards is allowed, should it behave differently — for example not hold the gates, because the change has already happened?
+
+**(d)** A formula version can currently be created only while Gate 05 is open. Once Gate 05 has passed (Gate 06 onwards, including after launch), how should an approved formula change be made — by backtracking to Gate 05 and creating the version there, or by some other route?
+
 ---
 
 ## Summary
@@ -524,7 +540,7 @@ The rows exist from the start; the team fills in the answer columns. The last co
 | 8 | A "Reject / Stop" decision that does not exist | Two of your own answers name it; we did not invent it |
 | 9 | Whether Safety **or** Regulatory authority is enough | Built as "either" |
 | 10 | What a "controlled action" is for a gap, and the product form at Gate 2 | Built partly; the date half of a High gap is not enforced |
-| 11 | Should Change Control reopen a gate that already passed | Not built — and how it meets your F9 answer on rejected changes |
+| 11 | Should Change Control reopen a gate that already passed | Not built — and how it meets your F9 answer on rejected changes; a signed Gate 11 can already fall on its own |
 | 12 | **Nine places a change is written down — how many should there be** (incl. "NP Controlled" and which records count as valid) | **Work stopped until answered.** A major formula change never reaches the change-control side, so Gate 11 never weighs it |
 | 13 | Does adding a market or a Major version reopen earlier gates | Built as "Major reopens 4–12; adding a market reopens nothing" |
 | 14 | The two-approval "closing" act on registers | **Already built, before asking you** |
@@ -547,5 +563,6 @@ The rows exist from the start; the team fills in the answer columns. The last co
 | 31 | What proves the approved artwork version at Gate 11 | Gate 11 and your Q30(c) read different records |
 | 32 | Where a market's pack requirements are recorded; whether blank means "none" | Built on the market profile; blank currently passes |
 | 33 | Which registers may stay empty on a project and which must always hold entries (all 82 listed with today's assumption) | Gate 10 claims register fixed on our reading; the rest are our assumptions for you to mark |
+| 34 | Is a Change Control opened before a change is made or can it record one afterwards; is it a precondition for a new formula version | Nothing enforces an order today; a new formula version can only be created while Gate 05 is the open gate |
 
 Questions 2 to 5, 9, 12 and 13 are cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

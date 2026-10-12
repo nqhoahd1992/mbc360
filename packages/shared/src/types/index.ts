@@ -287,6 +287,41 @@ export interface GateFieldChange {
   to?: string;
 }
 
+// One signing or withdrawing act on a gate's three-role sign-off, read from the append-only audit trail. A withdrawal wipes
+// the signature row itself (decision, comment, snapshot), so THIS is the only place what was withdrawn stays readable
+// (B4 — no silent corrections). Entries recorded before the audit carried the details have only what was then stored.
+export interface GateSignOffEvent {
+  id: string;
+  gateId: string;
+  market?: string;
+  role: string;
+  kind: 'signed' | 'withdrawn';
+  // The signature's decision and comment — for a withdrawal, those of the signature that was withdrawn.
+  decision?: string;
+  comment?: string;
+  // Withdrawals only: why.
+  reason?: string;
+  // When the signature was given (ISO). Present on a withdrawal, and on a signing recorded since the content began to be kept.
+  // With the gate, market and role it names the signed content that can be opened.
+  signedAt?: string;
+  // Who did it (the account that signed, or that withdrew) and when.
+  by?: string;
+  date: string;
+  // The content fingerprint the signature was bound to (signing only).
+  contentHash?: string;
+}
+
+// The exact content a gate signature attested to, kept at the moment of signing: it stays readable after the signature
+// is withdrawn (the row itself is wiped).
+export interface GateSignedContent {
+  gateId: string;
+  market?: string;
+  role: string;
+  signedAt: string;
+  hash: string;
+  snapshot: GateEvidenceSnapshot;
+}
+
 export interface GateChangeLogEntry {
   id: string;
   gateId: string;
@@ -697,7 +732,9 @@ export interface GateEvidenceSnapshot {
   fullRecord?: GateFullRecord;
   // "Open actions and conditions".
   openActions: { id: string; title: string; status: string; priority: string }[];
-  formulaVersion: string;
+  // Recorded only from Gate 05 on, where the formula is locked and versions begin to mean something; absent
+  // on earlier gates (and on signatures made before this rule), which are then never compared on it.
+  formulaVersion?: string;
   artworkVersion?: string;
 }
 
@@ -1280,6 +1317,7 @@ export interface ProjectData {
   changes: ChangeRecord[];
   backtrackEvents: BacktrackEvent[]; // immutable backtrack audit log (rule B4)
   gateChangeLog: GateChangeLogEntry[]; // immutable log of ordinary Phase Gate Flow field edits
+  gateSignOffLog: GateSignOffEvent[]; // immutable log of gate sign-off signatures and withdrawals
   marketTracks: MarketTrack[]; // per-market Gate 10-12 tracking (rules A1/C5)
   studyApprovals: StudyApproval[]; // dedicated study approval workflow (rule C2)
   // Per-gate sign-off records (Round 4 questions 18/29). Sparse: a row exists only

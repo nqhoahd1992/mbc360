@@ -81,3 +81,9 @@ html {
 /* Deep-link targets need no scroll-margin of their own: scroll-padding on html
    already stops them below the header. Setting both ADDS them (80 + 80), which
    left a 160px gap above a section scrolled to. */
+
+/* Every textarea in the app starts at the same height. !important because antd's autoSize writes its own
+   inline min-height; taller content still grows the box (autoSize) or scrolls (fixed rows). */
+textarea.ant-input {
+  min-height: 96px !important;
+}

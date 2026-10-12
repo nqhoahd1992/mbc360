@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Button, Drawer, Grid, Input, Radio, Select, Tooltip } from 'antd';
+import { Alert, Drawer, Grid, Input, Radio, Select, Tooltip } from 'antd';
 import { CheckOutlined, LinkOutlined, LockOutlined } from '@ant-design/icons';
 import type { ChecklistItem, YNNA } from '@mbc360/shared/types';
 import { isMandatoryChecklistSection } from '@mbc360/shared/utils/gateProgress';
@@ -14,9 +14,6 @@ import './ChecklistSection.css';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 
 const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v }));
-// Long option lists (Product Type has 28, Claim Areas 32) show this many plus
-// every selected option until expanded — the unselected tail is rarely read.
-const COLLAPSED_COUNT = 12;
 
 // One workbook option list (Target Users, Product Type, …), redesigned
 // 2026-10-02 (Phase page wireframe option A): a grid of tick tiles instead of a
@@ -55,7 +52,6 @@ export default function ChecklistSection({
 }) {
   const setSection = useAppStore((s) => s.setChecklistSection);
   const { draft, dirty, update, markSaved, discard } = useDraft(items);
-  const [expanded, setExpanded] = useState(false);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   useExclusiveDrawer(openIndex !== null, () => setOpenIndex(null));
   useCloseDrawerOnPageSave(dirty, openIndex !== null, () => setOpenIndex(null));
@@ -83,10 +79,8 @@ export default function ChecklistSection({
     patch(index, { selected: !item.selected, status: !item.selected ? 'Y' : 'NA' });
   };
 
-  const visible = draft
-    .map((item, index) => ({ item, index }))
-    .filter(({ item, index }) => expanded || index < COLLAPSED_COUNT || item.selected);
-  const hiddenCount = draft.length - visible.length;
+  // Every option is always shown, however long the list.
+  const visible = draft.map((item, index) => ({ item, index }));
   const open = openIndex === null ? undefined : draft[openIndex];
 
   return (
@@ -104,7 +98,7 @@ export default function ChecklistSection({
           </span>
           {readOnly && (
             <span className="c-tag">
-              <LockOutlined /> Read-only — gate passed
+              <LockOutlined /> Read-only — gate passed or signed
             </span>
           )}
         </div>
@@ -166,13 +160,6 @@ export default function ChecklistSection({
           );
         })}
       </div>
-      {(hiddenCount > 0 || expanded) && draft.length > COLLAPSED_COUNT && (
-        <div className="cl-more">
-          <Button type="link" onClick={() => setExpanded((v) => !v)} style={{ paddingInline: 0 }}>
-            {expanded ? 'Show fewer options' : `Show ${hiddenCount} more options`}
-          </Button>
-        </div>
-      )}
 
       {!readOnly && dirty && (
         <div className="cl-save">

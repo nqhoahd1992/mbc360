@@ -20,7 +20,7 @@ import { activeMarketTracks } from '@mbc360/shared/utils/postLaunch';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
-import { currentGateIndex, gateIndex, gateReadinessChecklist, isAwaitingDecision, isGatePassed } from '@mbc360/shared/utils/gateProgress';
+import { currentGateIndex, gateIndex, gateReadinessChecklist, isAwaitingDecision, isGatePassed, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
 import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
 import './GateFlowTable.css';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -214,6 +214,8 @@ export default function GateFlowTable({
         // editable regardless of which gate is current (the server refuses the
         // write too — this only avoids offering an action that would be refused).
         locked: gateIndex(r.meta.id) !== currentIdx || archived,
+        // SW-24: a standing signature makes this gate's own record read-only (the server refuses the write).
+        signedLocked: isGateSignedStanding(project, r.meta.id),
         historyCount:
           project.gateChangeLog.filter((e) => e.gateId === r.meta.id).length +
           project.backtrackEvents.filter(
@@ -288,6 +290,17 @@ export default function GateFlowTable({
       .catch(reportWriteError);
   };
 
+  // In the card layout this sits inside the gate's card; in the table layout it follows the table.
+  const flowSaveBar = (
+    <SaveBar
+      dirty={dirty}
+      onSave={save}
+      onDiscard={discard}
+      disabled={saveBlockedRows.length > 0}
+      disabledReason="Resolve the issue(s) flagged above before saving."
+    />
+  );
+
   const backtrackFromMeta = backtrackFrom ? GATES.find((g) => g.id === backtrackFrom) : undefined;
   const backtrackTargetOptions = backtrackFrom
     ? GATES.filter((g) => gateIndex(g.id) < gateIndex(backtrackFrom)).map((g) => ({
@@ -315,7 +328,7 @@ export default function GateFlowTable({
                   leave the gate blocked with no field to fix it. */}
               {(r.draftRecord.status === 'Gap' ||
                 ['Critical', 'High'].includes(r.draftRecord.gapCriticality ?? '')) && (
-                <GapAssessmentBlock gate={r.draftRecord} locked={r.locked} onChange={(p) => patch(r.draftIndex, p)} />
+                <GapAssessmentBlock gate={r.draftRecord} locked={r.locked || r.signedLocked} onChange={(p) => patch(r.draftIndex, p)} />
               )}
               {r.openChanges.length > 0 && (
                 <div style={{ fontSize: 12, color: '#d48806' }}>
@@ -411,7 +424,7 @@ export default function GateFlowTable({
               <Select
                 style={{ width: 130 }}
                 value={r.draftRecord.status}
-                disabled={r.locked}
+                disabled={r.locked || r.signedLocked}
                 options={STAGE_STATUSES.map((s) => ({ value: s, label: s }))}
                 onChange={(v: StageStatus) => patch(r.draftIndex, { status: v })}
               />
@@ -430,7 +443,7 @@ export default function GateFlowTable({
                       {r.record.decision}
                     </span>
                   ) : (
-                    <span className="gfc-decision-empty">Not decided yet</span>
+                    <span className="c-tag gfc-decision-empty">Not decided yet</span>
                   )}
                 </span>
               </Tooltip>
@@ -443,7 +456,7 @@ export default function GateFlowTable({
               <UserSelect
                 value={r.draftRecord.owner}
                 placeholder={r.meta.primaryOwner}
-                disabled={r.locked}
+                disabled={r.locked || r.signedLocked}
                 onChange={(v) => patch(r.draftIndex, { owner: v })}
               />
             ),
@@ -454,7 +467,7 @@ export default function GateFlowTable({
             render: (_, r) => (
               <DatePicker
                 value={r.draftRecord.dueDate ? dayjs(r.draftRecord.dueDate) : null}
-                disabled={r.locked}
+                disabled={r.locked || r.signedLocked}
                 onChange={(d) => patch(r.draftIndex, { dueDate: d ? d.format('YYYY-MM-DD') : undefined })}
               />
             ),
@@ -466,7 +479,7 @@ export default function GateFlowTable({
               <Input
                 value={r.draftRecord.evidenceLink}
                 placeholder="link"
-                disabled={r.locked}
+                disabled={r.locked || r.signedLocked}
                 onChange={(e) => patch(r.draftIndex, { evidenceLink: e.target.value })}
               />
             ),
@@ -478,7 +491,7 @@ export default function GateFlowTable({
               <Input.TextArea
                 autoSize={{ minRows: 3, maxRows: 8 }}
                 value={r.draftRecord.notes}
-                disabled={r.locked}
+                disabled={r.locked || r.signedLocked}
                 onChange={(e) => patch(r.draftIndex, { notes: e.target.value })}
               />
             ),
@@ -555,7 +568,7 @@ export default function GateFlowTable({
                           {r.record.decision}
                         </span>
                       ) : (
-                        <span className="gfc-decision-empty">Not decided yet</span>
+                        <span className="c-tag gfc-decision-empty">Not decided yet</span>
                       )}
                       <span className="gfc-decision-note">set by the approver when signing</span>
                     </span>
@@ -565,6 +578,13 @@ export default function GateFlowTable({
                       </span>
                     )}
                     {r.openChanges.length > 0 && <span className="c-tag c-tag-warn">Open change</span>}
+                    {r.signedLocked && !r.passed && (
+                      <Tooltip title="A signature stands on this gate. Withdraw it (latest first, with a reason) to change this record.">
+                        <span className="c-tag">
+                          <LockOutlined /> Locked by a signature
+                        </span>
+                      </Tooltip>
+                    )}
                   </div>
                 </div>
                 {/* A disabled button still reads as something to press. With no
@@ -607,6 +627,7 @@ export default function GateFlowTable({
                 </div>
               )}
               <div className="gfc-guidance">{renderGuidance(r, 'notices')}</div>
+              {flowSaveBar}
             </div>}
             {/* The sign-off is its own card, below the flow it depends on. */}
             {part !== 'flow' && <div className="gfc-signoff">{renderGuidance(r, 'signoff')}</div>}
@@ -638,13 +659,7 @@ export default function GateFlowTable({
         columns={columns}
       />
       )}
-      <SaveBar
-        dirty={dirty}
-        onSave={save}
-        onDiscard={discard}
-        disabled={saveBlockedRows.length > 0}
-        disabledReason="Resolve the issue(s) flagged above before saving."
-      />
+      {layout !== 'card' && flowSaveBar}
 
       <FormDrawer
         title={backtrackFromMeta ? `Backtrack from Gate ${backtrackFromMeta.number}` : 'Backtrack'}
@@ -696,7 +711,7 @@ export default function GateFlowTable({
       </FormDrawer>
 
       <FormDrawer
-        title={historyGateMeta ? `Change history — Gate ${historyGateMeta.number}` : 'Change history'}
+        title={historyGateMeta ? `History — Gate ${historyGateMeta.number}` : 'Change history'}
         open={!!historyFor}
         onCancel={() => setHistoryFor(null)}
         footer={null}

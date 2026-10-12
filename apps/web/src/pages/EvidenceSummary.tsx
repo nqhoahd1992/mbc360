@@ -63,9 +63,10 @@ export default function EvidenceSummary() {
   const id = project.identity.id;
 
   const patch = (index: number, p: Partial<EvidenceItem>) => update((prev) => patchArray(prev, index, p));
-  const save = () => {
-    setEvidenceItemsBulk(id, draft);
-    markSaved();
+  const save = async () => {
+    const ok = await setEvidenceItemsBulk(id, draft);
+    if (ok) markSaved();
+    return ok;
   };
 
   const completed = draft.filter(isDone).length;
@@ -218,9 +219,7 @@ export default function EvidenceSummary() {
         footer={
           dirty ? (
             <div className="rt-savebar">
-              <div>
-                <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
-              </div>
+              <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
             </div>
           ) : null
         }

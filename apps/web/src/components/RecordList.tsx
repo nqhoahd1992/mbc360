@@ -1,6 +1,6 @@
 import DrawerSaveFooter from './DrawerSaveFooter';
 import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Button, Drawer, Grid, Popconfirm, Tooltip } from 'antd';
 import { DeleteOutlined, DownOutlined, PlusOutlined, RightOutlined, UpOutlined } from '@ant-design/icons';
 import '../styles/concept.css';
@@ -60,7 +60,8 @@ export interface RecordListProps<T> {
   // The caller's draft state, so the drawer can offer Save and Save & next itself (2026-10-11). Omitted =
   // the drawer keeps its old hint and the page-level bar is the only way to save.
   dirty?: boolean;
-  onSave?: () => void;
+  // Resolve false when nothing was saved (refused by a rule or by the server): the drawer then stays open.
+  onSave?: () => void | boolean | Promise<unknown>;
   // A rule that blocks the save, as the caller's page-level bar shows it.
   saveDisabled?: boolean;
   saveDisabledReason?: string;
@@ -144,6 +145,12 @@ export default function RecordList<T>({
   const tableMode = width >= TABLE_MIN;
   const stop = (e: React.MouseEvent) => e.stopPropagation();
   const open = openIndex === null ? undefined : rows[openIndex];
+  // The row the drawer shows can vanish under it (Discard removes a row added in this draft): close it rather than read a dead index.
+  const closeDrawer = useRef(setOpenIndex);
+  closeDrawer.current = setOpenIndex;
+  useEffect(() => {
+    if (openIndex !== null && openIndex >= rows.length) closeDrawer.current(null);
+  }, [openIndex, rows.length]);
   const step = (delta: number) => {
     if (openIndex === null || rows.length === 0) return;
     setOpenIndex((openIndex + delta + rows.length) % rows.length);
@@ -295,7 +302,7 @@ export default function RecordList<T>({
           )
         }
         footer={
-          openIndex !== null ? (
+          open !== undefined && openIndex !== null ? (
             <div className="rt-drawer-foot">
               {/* No "Done" button: it only closed the drawer (the ✕ does that)
                   while reading as if the record were finished or saved — and
@@ -307,9 +314,10 @@ export default function RecordList<T>({
                   dirty={!!dirty}
                   onSave={onSave}
                   onOwnAction={markOwn}
+                  onClose={() => setOpenIndex(null)}
                   disabled={saveDisabled}
                   disabledReason={saveDisabledReason}
-                  onSaveAndNext={openIndex < rows.length - 1 ? () => { onSave(); step(1); } : undefined}
+                  onSaveAndNext={openIndex < rows.length - 1 ? async () => { const ok = (await onSave()) !== false; if (ok) step(1); return ok; } : undefined}
                 />
               ) : (
                 <span className="rt-drawer-hint">Changes stay in this section's draft until you Save it.</span>

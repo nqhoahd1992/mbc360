@@ -1,7 +1,7 @@
 /* Generic register table (2026-10-02 concept). Tokens from styles/concept.css. */
 .rt { display: grid; gap: 12px; min-width: 0; color: var(--c-text); font-size: 14px; }
-.rt-standalone { padding: 16px; }
-.rt-head-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; }
+.rt-standalone { padding: 16px 20px; }
+.rt-head-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 16px; font-weight: 600; line-height: 24px; }
 .rt-head-desc { margin: 4px 0 0; color: var(--c-text-3); font-size: 13px; }
 .rt-lock { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface-2); color: var(--c-text-2); font-size: 13px; }
 .rt-lock > .anticon { margin-top: 3px; color: var(--c-text-3); }
@@ -48,11 +48,7 @@
 
 .rt-add { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--c-border-2); }
 
-.rt-savebar { position: sticky; bottom: 0; z-index: 20; }
-.rt-savebar > div {
-  padding: 12px 16px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface);
-  box-shadow: 0 -4px 16px rgb(0 0 0 / 6%);
-}
+.rt-savebar { position: sticky; bottom: 0; z-index: 20; background: var(--c-surface); }
 
 /* Drawer */
 .rt-drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }

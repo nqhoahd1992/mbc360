@@ -2,7 +2,7 @@
 .cl { display: grid; gap: 12px; padding: 16px 20px; color: var(--c-text); font-size: 14px; }
 .cl-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .cl-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.cl-title { font-weight: 600; }
+.cl-title { font-size: 16px; font-weight: 600; line-height: 24px; }
 .cl-count { color: var(--c-text-3); font-size: 13px; }
 .cl-alert { margin: 0; }
 
@@ -38,8 +38,7 @@
 .cl-detail-filled { color: var(--c-link); }
 .cl-detail-missing { color: var(--c-warn); }
 .cl-detail-missing::after { content: ''; position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--c-warn-dot); }
-.cl-more { margin-top: -4px; }
-.cl-save { padding-top: 4px; }
+.cl-save { padding-top: 0; }
 
 .cl-drawer-sub { color: var(--c-text-3); font-size: 12px; font-weight: 400; }
 .cl-form { display: grid; gap: 16px; }

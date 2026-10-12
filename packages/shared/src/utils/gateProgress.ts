@@ -758,6 +758,21 @@ export function gateSignOffStaleChanges(
   return snapshotChanges(signOff.snapshot, gateEvidenceSnapshot(project, gateId, market), gateActionStates(project, gateId));
 }
 
+// SW-24: does a signature currently stand on this gate? Only a signature that is still current counts — one
+// whose evidence has since changed (a stale one) holds nothing, exactly as the server's
+// `assertSignedContentUnchanged` reads it. The UI uses this to show the gate's own evidence as read-only,
+// so a person is not offered an edit the server will refuse with a 403.
+export function isGateSignedStanding(project: ProjectData, gateId: string): boolean {
+  return project.gateSignOffs.some(
+    (s) =>
+      s.gateId === gateId &&
+      !!s.signedAt &&
+      // An older formula version's per-market lanes do not hold the current gate.
+      (!s.market || s.formulaVersion === project.formulaVersion) &&
+      gateSignOffStaleChanges(project, gateId, s.market, s.role).length === 0,
+  );
+}
+
 // Every raw material this project uses, by the rmCode the overlay is keyed on.
 //
 // The union of two surfaces on purpose. Supplier & RM Evidence is the Gate 4
@@ -1180,6 +1195,9 @@ export function evaluateReadinessCheck(
         evaluable: true,
         satisfied: project.nextActions.some((a) => a.gateId === check.gate && a.status !== 'Cancelled'),
       };
+    // Read LIVE: an open change opened AFTER Gate 11 was signed makes this item fail again, and `isGatePassed`
+    // recomputes from the blockers, so the gate can stop being passed with no Backtrack and no record of why.
+    // Whether that is intended is [ASSUMPTION: R5-Q20].
     case 'changeControlNoHardImpact':
       return { evaluable: true, satisfied: gate11HardBlockingChanges(project, project.changes).length === 0 };
     case 'changeControlNoAdminImpact':

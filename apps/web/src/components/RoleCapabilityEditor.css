@@ -50,8 +50,8 @@
 .rce-change { margin-left: 8px; }
 
 .rce-savebar {
-  position: sticky; bottom: 16px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
-  padding: 12px 16px; box-shadow: 0 -4px 12px rgb(0 0 0 / 6%);
+  position: sticky; bottom: 16px; z-index: 20; display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  padding: 14px 20px; /* same box as the page-level Save bar (SaveBar.css): padded card, no shadow */
 }
 .rce-savebar-text { flex: 1; min-width: 200px; font-size: 13px; }
 .rce-savebar-actions { display: flex; gap: 8px; margin-left: auto; }

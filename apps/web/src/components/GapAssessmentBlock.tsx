@@ -1,4 +1,5 @@
 import { DatePicker, Input, Select } from 'antd';
+import ChoiceSelect from './ChoiceSelect';
 import dayjs from 'dayjs';
 import type { GateRecord, RiskLevel } from '@mbc360/shared/types';
 import { GAP_IMPACT_CATEGORIES, RISK_LEVELS } from '@mbc360/shared/types';
@@ -84,16 +85,16 @@ export default function GapAssessmentBlock({
               <span className="gap-label">
                 Criticality{!graded && <span className="gap-req"> · required</span>}
               </span>
-              <Select
+              <ChoiceSelect
                 allowClear
                 status={graded ? undefined : 'error'}
                 placeholder="Select a level"
                 value={gate.gapCriticality}
-                options={RISK_LEVELS.map((o) => ({ value: o, label: o }))}
+                options={[...RISK_LEVELS]}
                 // Cleared as '' rather than undefined: undefined is dropped by
                 // JSON.stringify, so a cleared grade never reached the server and
                 // came back on reload. The API stores '' as NULL.
-                onChange={(v?: RiskLevel) => onChange({ gapCriticality: v ?? ('' as RiskLevel) })}
+                onChange={(v) => onChange({ gapCriticality: (v ?? '') as RiskLevel })}
               />
             </label>
 

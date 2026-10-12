@@ -1,0 +1,17 @@
+/* The one Save / Discard footer: sits inside whatever card holds the edits, divided from the content by a
+   hairline. No box, no shadow of its own — a card inside a card read as clutter. */
+.save-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--c-border-2, #f0f0f0);
+}
+/* Status text on the left; Discard then the primary Save pushed to the right edge. */
+.save-bar-note { margin-right: auto; }
+
+/* The one look of a Save bar that sits on the PAGE, outside any card (an embedded register table, the Watchlist, the
+   Vulnerable-User Assessment): a padded card of its own, stuck to the bottom of the window while the page scrolls. Inside
+   a card the footer needs no box (.save-bar alone). */
+.page-savebar {
+  position: sticky; bottom: 16px; z-index: 20; padding: 0 20px 14px;
+  background: var(--c-surface); border: 1px solid var(--c-border-2); border-radius: 8px;
+}
+.page-savebar .save-bar { margin-top: 0; padding-top: 14px; border-top: 0; }
