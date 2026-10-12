@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { App, Button, Empty, Tooltip } from 'antd';
-import { ArrowDownOutlined, CheckOutlined, LockOutlined } from '@ant-design/icons';
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowDownOutlined, ArrowRightOutlined, CheckOutlined, LockOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   currentGateIndex,
   currentGateNumber,
@@ -83,10 +84,27 @@ export default function PhasePage() {
   // Scroll a section into view. A section near the end of the page cannot reach
   // the top (the page is not tall enough) and stops partway; the highlight ring
   // the caller adds is what tells the user which card they were taken to.
-  const scrollToSection = (el: HTMLElement) => {
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
-  };
+  // Resolves once the scroll has finished, so the caller can flash the section only when the user is looking at
+  // it (not while it is still travelling past).
+  const scrollToSection = (el: HTMLElement): Promise<void> =>
+    new Promise((resolve) => {
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduceMotion) {
+        el.scrollIntoView({ behavior: 'auto', block: 'start' });
+        resolve();
+        return;
+      }
+      let timer = 0;
+      const done = () => {
+        window.clearTimeout(timer);
+        window.removeEventListener('scrollend', done);
+        resolve();
+      };
+      // `scrollend` is not in every browser; a scroll that never moves (already there) never fires it either.
+      window.addEventListener('scrollend', done, { once: true });
+      timer = window.setTimeout(done, 1200);
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 
   const [searchParams, setSearchParams] = useSearchParams();
   const config = PHASE_CONFIGS[phase];
@@ -135,6 +153,7 @@ export default function PhasePage() {
         : config?.gateIds[0] ?? CLOSE_TAB;
   const requested = searchParams.get('gate');
   const tab = requested && (requested === CLOSE_TAB || config?.gateIds.includes(requested)) ? requested : defaultTab;
+  const navigate = useNavigate();
   const unsaved = useUnsavedCount();
   const { modal } = App.useApp();
   const goToTab = (next: string) =>
@@ -189,8 +208,7 @@ export default function PhasePage() {
       }
       return;
     }
-    scrollToSection(el);
-    flashSection(el);
+    void scrollToSection(el).then(() => flashSection(el));
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -393,23 +411,76 @@ export default function PhasePage() {
   const goSignoff = () => {
     const el = document.getElementById('sec-gate-signoff');
     if (!el) return;
-    scrollToSection(el);
-    flashSection(el);
+    void scrollToSection(el).then(() => flashSection(el));
   };
+  // Once this gate has passed (three signatures recorded) the button stops pointing at the sign-off and points at
+  // what comes next: the next gate, this phase's close-out, or the next phase.
+  const gatePassed = tab !== CLOSE_TAB && stepState(tab) === 'passed';
+  const nextGateId = config.gateIds[config.gateIds.indexOf(tab) + 1];
+  const nextPhaseMeta = PHASES.find((p) => p.phase === phase + 1);
+  const lastSignedAt = project.gateSignOffs
+    .filter((x) => x.gateId === tab && x.signedAt)
+    .map((x) => x.signedAt as string)
+    .sort()
+    .pop();
+  const nextStep: { label: string; hint?: string; disabledReason?: string; go: () => void } | null = !gatePassed
+    ? null
+    : nextGateId
+      ? {
+          label: `Next · Gate ${gateMeta(nextGateId).number}`,
+          hint: gateMeta(nextGateId).name,
+          disabledReason:
+            stepState(nextGateId) === 'locked'
+              ? `Gate ${gateMeta(nextGateId).number} is not open for work yet — every gate before it has to pass first.`
+              : undefined,
+          go: () => selectTab(nextGateId),
+        }
+      : progress.state !== 'completed'
+        ? { label: 'Next · Close-out', hint: 'Phase sign-off', go: () => selectTab(CLOSE_TAB) }
+        : nextPhaseMeta
+          ? {
+              label: `Next · Phase ${nextPhaseMeta.phase}`,
+              hint: nextPhaseMeta.title,
+              go: () => navigate(`/projects/${project.identity.id}/phase/${nextPhaseMeta.phase}`),
+            }
+          : null;
   // Grey while anything else still blocks; blue with a single soft pulse once only the signatures are left.
-  const signoffButton = (block?: boolean) => (
-    <Tooltip title={hardBlocking ? `${hardBlocking} item${hardBlocking === 1 ? '' : 's'} still blocking — you can still open the sign-off` : undefined}>
-      <Button
-        block={block}
-        type={hardBlocking ? 'default' : 'primary'}
-        className={hardBlocking ? 'ph-go ph-go-wait' : 'ph-go ph-go-ready'}
-        icon={<ArrowDownOutlined />}
-        onClick={goSignoff}
-      >
-        Go to sign-off
-      </Button>
-    </Tooltip>
-  );
+  const signoffButton = (block?: boolean) => {
+    if (nextStep) {
+      return (
+        <Tooltip title={nextStep.disabledReason}>
+          <span style={{ display: 'block' }}>
+            <Button
+              block={block}
+              type="primary"
+              className={`ph-go ph-go-next${nextStep.disabledReason ? '' : ' ph-go-ready'}`}
+              disabled={!!nextStep.disabledReason}
+              onClick={nextStep.go}
+            >
+              <span className="ph-go-text">
+                <span className="ph-go-kicker">{nextStep.label}</span>
+                <span className="ph-go-title">{nextStep.hint ?? 'Open'}</span>
+              </span>
+              <ArrowRightOutlined />
+            </Button>
+          </span>
+        </Tooltip>
+      );
+    }
+    return (
+      <Tooltip title={hardBlocking ? `${hardBlocking} item${hardBlocking === 1 ? '' : 's'} still blocking — you can still open the sign-off` : undefined}>
+        <Button
+          block={block}
+          type={hardBlocking ? 'default' : 'primary'}
+          className={hardBlocking ? 'ph-go ph-go-wait' : 'ph-go ph-go-ready'}
+          icon={<ArrowDownOutlined />}
+          onClick={goSignoff}
+        >
+          Go to sign-off
+        </Button>
+      </Tooltip>
+    );
+  };
 
   return (
     <div className="concept ph">
@@ -668,6 +739,7 @@ export default function PhasePage() {
               <div className="ph-rail-body">
                 <GateReadinessPanel
                   gateNumber={tabGateNumber ?? ''}
+                  keepGate={tab}
                   items={readinessItems}
                   projectId={project.identity.id}
                   currentPath={location.pathname}
@@ -678,6 +750,13 @@ export default function PhasePage() {
                 />
               </div>
               <div className="ph-rail-foot">
+                {gatePassed && lastSignedAt && (
+                  <button type="button" className="ph-signed-line" onClick={goSignoff}>
+                    <CheckOutlined />
+                    <span>Signed by 3 of 3 · {dayjs(lastSignedAt).format('YYYY-MM-DD HH:mm')}</span>
+                    <span className="ph-signed-view">View <ArrowDownOutlined /></span>
+                  </button>
+                )}
                 {signoffButton(true)}
               </div>
             </div>

@@ -37,8 +37,11 @@ export default function GateReadinessPanel({
   onToggleSatisfied,
   hideSummary,
   signatureItemId,
+  keepGate,
 }: {
   gateNumber: string;
+  /** Gate tab to stay on when a link points at a section of the page already open (a link carrying no `gate` falls back to the CURRENT gate, which is the wrong tab once this gate has passed). */
+  keepGate?: string;
   items: GateReadinessItem[];
   projectId?: string;
   currentPath: string;
@@ -70,7 +73,7 @@ export default function GateReadinessPanel({
   const renderPartLabel = (part: GateReadinessPart) => {
     if (!part.link) return <span>{part.label}</span>;
     const path = part.link.absolute ? part.link.href : `/projects/${projectId}${part.link.href}`;
-    const href = `${path}${part.link.scrollToId ? `?scrollTo=${part.link.scrollToId}` : ''}`;
+    const href = `${path}${part.link.scrollToId ? `?scrollTo=${part.link.scrollToId}${keepGate && path === currentPath ? `&gate=${keepGate}` : ''}` : ''}`;
     return path === currentPath ? (
       <Link to={href} className="grp-link">
         {part.label}
@@ -88,7 +91,9 @@ export default function GateReadinessPanel({
     const icon =
       state === 'met' ? <CheckCircleFilled /> : state === 'blocking' ? <CloseCircleFilled /> : <ExclamationCircleFilled />;
     const targetPath = item.link ? (item.link.absolute ? item.link.href : `/projects/${projectId}${item.link.href}`) : undefined;
-    const targetHref = targetPath ? `${targetPath}${item.link?.scrollToId ? `?scrollTo=${item.link.scrollToId}` : ''}` : undefined;
+    const targetHref = targetPath
+      ? `${targetPath}${item.link?.scrollToId ? `?scrollTo=${item.link.scrollToId}${keepGate && targetPath === currentPath ? `&gate=${keepGate}` : ''}` : ''}`
+      : undefined;
     // A link to a section on the page already open here navigates + scrolls in
     // place; a link to a DIFFERENT page (a register, the BOM page…) opens in a
     // new browser tab, so the gate view being read is not replaced.

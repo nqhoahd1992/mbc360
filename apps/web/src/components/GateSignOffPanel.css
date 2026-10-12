@@ -71,3 +71,5 @@
 }
 .gso-gate-warn > .anticon { margin-top: 2px; }
 .gso-gate-warn strong { color: inherit; }
+.gso-gate-ok { border-color: var(--c-border-2); background: var(--c-surface-2, #fafafa); color: var(--c-text-2); }
+.gso-gate-ok > .anticon { color: var(--c-ok, #389e0d); }

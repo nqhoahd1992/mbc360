@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Input, Modal, Select, Tooltip } from 'antd';
-import { CheckOutlined, ClockCircleOutlined, ExclamationCircleOutlined, HistoryOutlined, LockOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, CheckOutlined, ClockCircleOutlined, ExclamationCircleOutlined, HistoryOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type {
   GateContentChangedBody,
@@ -267,7 +267,12 @@ export default function GateSignOffPanel({
           </span>
         </div>
       )}
-      {!canSign ? (
+      {!canSign && gatePassed && !archived ? (
+        <div className="concept-tokens gso-gate-hold gso-gate-ok gso-notice">
+          <CheckCircleOutlined />
+          <span>Gate passed — the signatures are locked. Reopen the gate with Backtrack to change them.</span>
+        </div>
+      ) : !canSign ? (
         <div className="concept-tokens gso-gate-hold gso-notice">
           <ClockCircleOutlined />
           <span>{notOpenReason}</span>
@@ -424,9 +429,7 @@ export default function GateSignOffPanel({
                           {r.signedByUserId === session.user?.id &&
                             (archived ? (
                               <span className="gso-muted">Project archived — restore it to change this</span>
-                            ) : gatePassed ? (
-                              <span className="gso-muted">Gate passed — reopen with Backtrack to change this</span>
-                            ) : (
+                            ) : gatePassed ? null : (
                               <Button size="small" danger onClick={() => setWithdrawing({ market, role: r.role })}>
                                 Withdraw
                               </Button>
