@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import UserSelect from '../components/UserSelect';
 import ChangeDispositionBlock from '../components/ChangeDispositionBlock';
 import { isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
@@ -19,6 +19,7 @@ import {
   type ChangeTriggerCategory,
   type RaciRole,
 } from '@mbc360/shared/config/changeTriggers';
+import { changeTriggerAvailability, earliestTriggerGate } from '@mbc360/shared/utils/changeAccess';
 import StatusBadge from '../components/StatusBadge';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from '../components/SaveBar';
@@ -44,10 +45,6 @@ const RACI_ROLE_TONE: Record<RaciRole, string> = {
   'Informed / acknowledgement': '',
 };
 
-const triggerSelectOptions = TRIGGER_CATEGORIES.map((cat) => ({
-  label: cat,
-  options: CHANGE_TRIGGERS.filter((t) => t.category === cat).map((t) => ({ value: t.id, label: t.label })),
-}));
 
 interface ChangeForm {
   triggerId?: string;
@@ -89,6 +86,23 @@ export default function ChangeControl() {
   // change may supersede something neither list holds (a supplier spec revision,
   // a document rev). Suggesting is right here; constraining would not be.
   const selectedProjectId = Form.useWatch('projectId', form);
+  // SW-30: a trigger is offered as selectable only once the chosen project has passed the
+  // earliest gate it names — until then there is nothing locked to correct. With no project
+  // chosen yet nothing can be compared, so every trigger stays selectable and the server
+  // (which always knows the project) is the one that refuses.
+  const triggerProject = projects.find((x) => x.identity.id === selectedProjectId);
+  const triggerSelectOptions = TRIGGER_CATEGORIES.map((cat) => ({
+    label: cat,
+    options: CHANGE_TRIGGERS.filter((t) => t.category === cat).map((t) => {
+      const a = triggerProject ? changeTriggerAvailability(triggerProject, t) : undefined;
+      return {
+        value: t.id,
+        label: a && !a.allowed ? `${t.label} — available once Gate ${earliestTriggerGate(t)?.number} has passed` : t.label,
+        disabled: !!a && !a.allowed,
+        title: a && !a.allowed ? a.reason : undefined,
+      };
+    }),
+  }));
   const oldVersionOptions = useMemo(() => {
     const p = projects.find((x) => x.identity.id === selectedProjectId);
     if (!p) return [];
@@ -100,6 +114,14 @@ export default function ChangeControl() {
       { label: 'Artwork / label version', options: uniq(artwork).map((v) => ({ value: v })) },
     ].filter((g) => g.options.length > 0);
   }, [projects, selectedProjectId]);
+
+  // Switching to a project that has not yet reached the chosen trigger's gate would leave a trigger
+  // selected that the server will refuse; clear it so the person picks again (SW-30).
+  useEffect(() => {
+    const t = getChangeTrigger(form.getFieldValue('triggerId'));
+    const p = projects.find((x) => x.identity.id === selectedProjectId);
+    if (t && p && !changeTriggerAvailability(p, t).allowed) form.setFieldsValue({ triggerId: undefined });
+  }, [form, projects, selectedProjectId]);
 
   // Default is Yes (see initialValues); only hide the message when explicitly No.
   const commRequired = Form.useWatch('communicationRequired', form) !== false;
@@ -407,15 +429,11 @@ export default function ChangeControl() {
       >
         <Form form={form} layout="vertical" initialValues={{ riskLevel: 'Medium', communicationRequired: true }}>
           <Form.Item name="triggerId" label="Trigger / event" rules={[{ required: true }]}>
-            {/* Every trigger is offered for every project, whatever gate it is
-                at — not filtered against how far the project has actually
-                progressed (2026-08-26, user-raised: a project at Gate 2
-                picking a Gate 10 trigger has nothing there yet to change,
-                while a project past Gate 5/8 reopening a Gate 5/8 trigger is
-                exactly what Change Control is for, so the filter — if any —
-                must compare against the highest gate PASSED, not just
-                disallow "not the current gate"). Left unrestricted for now
-                [ASSUMPTION: R5-Q17]. */}
+            {/* SW-30 (2026-10-13): triggers the chosen project is not yet allowed to open are
+                shown but disabled, with the gate that has to pass first. The comparison is
+                with the highest gate PASSED, not the current one — a project that has
+                passed Gate 5/8 reopening a Gate 5/8 trigger is exactly what Change
+                Control is for, while data at the gate still open is edited directly. */}
             <Select
               showSearch
               optionFilterProp="label"

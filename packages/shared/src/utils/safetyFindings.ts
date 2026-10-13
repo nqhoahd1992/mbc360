@@ -32,10 +32,9 @@ const isOpen = (row: RegisterRow): boolean => !RESOLUTION_CLOSED_STATES.includes
 
 // Question 33(e): "Closing a High or Critical finding requires: Safety reviewer
 // conclusion · Evidence link · Linked action completed · Verification · Verifier ·
-// Closure date." THREE of the six are checkable — the two text columns, and the
-// linked action, which became checkable when question 33(c) added the picker.
-// Verification, verifier and closure date have no columns yet and are disclosed on
-// the readiness item rather than quietly dropped.
+// Closure date." All six are checked: the two text columns, the linked action (which
+// became checkable when question 33(c) added the picker), and — since 2026-10-13 —
+// the Verification, Verifier and Closure date columns that had been missing.
 //
 // "Linked action completed" is read as: there is a controlled action and it has
 // reached a terminal status. A cancelled action does not count, matching the
@@ -49,8 +48,39 @@ const isOpen = (row: RegisterRow): boolean => !RESOLUTION_CLOSED_STATES.includes
 // replaced, saying so in the conclusion is a sentence, not a burden. But it is a
 // blocking behaviour on a safety gate resting on an unstated rule
 // [ASSUMPTION: R5-Q12].
+// A Superseded finding has to name the finding that replaced it (project owner, 2026-10-13): a different row of this
+// register, picked by its Finding ID. A finding cannot supersede itself, and a pointer at nothing is no pointer.
+// Applies to every severity — "superseded" without a replacement is an unexplained disappearance whatever the grade.
+// [ASSUMPTION: R5-Q12]
+function supersededWithoutReplacement(project: ProjectData, row: RegisterRow): boolean {
+  if (text(row.findingStatus) !== 'Superseded') return false;
+  const target = text(row.supersededBy);
+  if (target === '' || target === text(row.findingId)) return true;
+  return !safetyFindingRows(project).some((other) => other !== row && text(other.findingId) === target);
+}
+
+// Is "Superseded" a choice for the row at `index`? Only when another row with a Finding ID exists to be its replacement
+// — otherwise the status could be picked and never completed (project owner, 2026-10-13). Read from the rows as SAVED,
+// the same ones the "Superseded by" picker offers, so what is allowed here is always something that can be picked there.
+export function canChooseSuperseded(rows: readonly RegisterRow[], index: number): boolean {
+  const own = text(rows[index]?.findingId);
+  return rows.some((r, i) => i !== index && text(r.findingId) !== '' && text(r.findingId) !== own);
+}
+
+// The Finding IDs of the findings that name `row` as their replacement ("Replaces" on the replacement). Read from the rows
+// as given, so a draft shows it before it is saved. Only Superseded rows count, matching the rule that a pointer
+// means something only while the status says so.
+export function findingsReplacedBy(rows: readonly RegisterRow[], row: RegisterRow): string[] {
+  const id = text(row.findingId);
+  if (id === '') return [];
+  return rows
+    .filter((r) => r !== row && text(r.findingStatus) === 'Superseded' && text(r.supersededBy) === id && text(r.findingId) !== '')
+    .map((r) => text(r.findingId));
+}
+
 function closedWithoutClosureRecord(project: ProjectData, row: RegisterRow): boolean {
   if (text(row.safetyReviewerConclusion) === '' || text(row.evidenceLink) === '') return true;
+  if (text(row.verification) === '' || text(row.verifier) === '' || text(row.closureDate) === '') return true;
   const action = linkedNextAction(project, row);
   return !isControlledAction(action) || !NEXT_ACTION_TERMINAL_STATUSES.includes(action!.status);
 }
@@ -111,6 +141,7 @@ export function hardBlockingSafetyFindings(project: ProjectData): RegisterRow[] 
   return safetyFindingRows(project).filter((row) => {
     const severity = severityOf(row);
     if (severity === '') return true;
+    if (supersededWithoutReplacement(project, row)) return true;
     if (severity === 'Medium') return isOpen(row) && missingControlledAction(project, row);
     if (!RISK_LEVELS_HARD_BLOCKING.includes(severity as never)) return false;
     return isOpen(row) || closedWithoutClosureRecord(project, row);

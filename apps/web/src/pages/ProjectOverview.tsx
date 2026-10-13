@@ -23,6 +23,8 @@ import {
   type GateState,
 } from '@mbc360/shared/utils/gateProgress';
 import AssessmentSummary from '../components/AssessmentSummary';
+import { marketsAwaitingSupersession, transitioningVersions } from '@mbc360/shared/utils/formulaLifecycle';
+import { useSession } from '../auth/useSession';
 import Notice from '../components/Notice';
 import StatusBadge from '../components/StatusBadge';
 import '../styles/concept.css';
@@ -53,12 +55,19 @@ export default function ProjectOverview() {
   const navigate = useNavigate();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const changes = useAppStore((s) => s.changes);
+  const session = useSession();
   const [showAllBacktracks, setShowAllBacktracks] = useState(false);
   const [showAllGateChanges, setShowAllGateChanges] = useState(false);
 
   if (!project) return <Empty description="Project not found" />;
 
   const identity = project.identity;
+  // Older formula versions waiting for a person to confirm their per-market supersession facts.
+  const supersessionWaiting = transitioningVersions(project)
+    .map((v) => ({ version: v.version, markets: marketsAwaitingSupersession(project, v.version) }))
+    .filter((w) => w.markets.length > 0);
+  const canConfirmSupersession =
+    !!session.user && (session.isAdmin || identity.projectLead.trim() === session.user.displayName.trim());
   const done = project.gates.filter((g) => isGatePassed(project, g.gateId)).length;
 
   // What this project needs from someone right now. Every one of these was
@@ -147,6 +156,23 @@ export default function ProjectOverview() {
         <Notice tone="warn" title="This project is archived — read-only">
           Archived {archived.at.slice(0, 10)}
           {archived.by ? ` by ${archived.by}` : ''}. Restore it from All Projects to make changes again.
+        </Notice>
+      )}
+
+      {/* Round 4 question 2: an older formula version in transition is only closed by a person confirming ten facts per
+          market. That screen lives on the Formula BOM page, so a Lead who never opens it would never know it is waiting —
+          this says so and links there. [ASSUMPTION: R5-Q8] */}
+      {supersessionWaiting.length > 0 && (
+        <Notice
+          tone="warn"
+          title={`Formula ${supersessionWaiting.map((w) => w.version).join(', ')} ${supersessionWaiting.length === 1 ? 'is' : 'are'} in transition — a supersession decision is still needed in ${supersessionWaiting.reduce((n, w) => n + w.markets.length, 0)} market(s)`}
+          action={
+            <Link to={`/projects/${identity.id}/bom?scrollTo=sec-supersession`} className="po-notice-link">
+              {canConfirmSupersession ? 'Go to Formula BOM' : `Waiting for ${identity.projectLead || 'the project Lead'} — view`}
+            </Link>
+          }
+        >
+          {supersessionWaiting.map((w) => `${w.version}: ${w.markets.join(', ')}`).join(' · ')}
         </Notice>
       )}
 

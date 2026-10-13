@@ -6,6 +6,8 @@ import { COSTING_STATUS_NOT_APPLICABLE, GATES, REQUIREMENT_NOT_APPLICABLE } from
 import { GATE_PASSING_DECISIONS, findGateSignOff, gateSignOffMarkets, isGateSignOffSigned } from '../config/gateSignOff';
 import { gateActionStates, gateEvidenceSnapshot, snapshotChanges } from './gateSnapshot';
 import { gateRefGateIds } from './gateRefs';
+import { acknowledgementState, isCriticalForAcknowledgement } from './readinessAck';
+import { isPendingAnswer } from './changeControlAssessments';
 export { gateRefGateIds } from './gateRefs';
 import { isChangeOpen } from '../config/changeTriggers';
 import {
@@ -270,14 +272,18 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     // answered Yes. `Pending assessment` — and no answer at all — is the third
     // state, which blocks rather than passing.
     case 'openChangeControl': {
+      // One assessment per post-market finding (2026-10-13). A finding still Pending — or never
+      // answered — dominates everything else: "must block closure of the post-market finding"
+      // cannot be satisfied by some OTHER finding having a record open. Then an open record, or a
+      // Yes, makes the item apply. An empty list is not "nothing to assess" — a review that found
+      // nothing records one entry answered No — so it blocks too [ASSUMPTION: R5-Q11].
+      const entries = project.changeControlAssessments ?? [];
+      if (entries.some((e) => isPendingAnswer(e))) return 'notAssessed';
       const recordOpen = project.changes.some(
         (c) => (!c.projectId || c.projectId === project.identity.id) && isChangeOpen(c.status),
       );
-      if (recordOpen) return 'applies';
-      const answer = project.assessments.changeControlRequired?.trim() ?? '';
-      if (answer === '') return 'notAssessed';
-      if (answer === 'Pending assessment') return 'notAssessed';
-      return answer === 'Yes' ? 'applies' : 'doesNotApply';
+      if (recordOpen || entries.some((e) => (e.answer ?? '').trim() === 'Yes')) return 'applies';
+      return entries.length === 0 ? 'notAssessed' : 'doesNotApply';
     }
 
     // A3, Gate 12: three of seven limbs. The Post-Market Sources checklist carries
@@ -497,13 +503,11 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     // temperature · hold time · pre-processing · transfer method · filling method
     // · water quality · process aid · packaging/filling interface, and more.
     //
-    // Not built, and deliberately not guessed at: those areas belong on the change
-    // record, whose `affectedArea` is free text today and which question 34 is
-    // about to restructure (a fourth severity level, an eight-field disposition).
-    // Adding a nineteenth taxonomy to that record now would mean doing it twice.
-    // So a project whose only scale-up risk is a site transfer or a batch-size
-    // change does NOT trigger this yet unless someone answers Yes by hand
-    // [R4-REWORK: câu 12].
+    // The areas are not a trigger of their own. They describe CHANGES, and a change in one of them after Gate 9 has passed
+    // cannot be decided by this gate's readiness (it is closed) — that is Change Control reopening the gate, Round 5
+    // question 11. Before Gate 9 passes they are guidance for the person answering "Scale-up risk identified?", shown beside
+    // that question (`SCALE_UP_REVIEW_AREAS`). So a project whose only scale-up risk is a site transfer or a batch-size
+    // change triggers this only when someone answers Yes [R4-REWORK: câu 12].
     case 'scaleUpRiskIdentified': {
       const majorChange = project.formulaVersionHistory.some((v) => v.changeType === 'Major');
       if (majorChange) return 'applies';
@@ -917,7 +921,7 @@ const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   infantContact:
     'this is a Family use product and nobody has confirmed which age groups it is for, so whether infants are included is unknown (Phase 1 -> Gate 02)',
   aseanMarket: 'no market has been recorded for this project yet',
-  openChangeControl: 'nobody has assessed whether a change control record should be opened for this finding (Phase 4 -> Gate 12)',
+  openChangeControl: 'a post-market finding has not been assessed for a change control, or none has been recorded at all — a review that found nothing records one assessment answered No (Phase 4 -> Gate 12)',
   claimNeedsPerformanceEvidence: 'no claim has been declared yet, so no claim carries an evidence category',
   pvPmsRequired: 'nothing has been recorded on Post-Market Sources and no vulnerable-user assessment exists, so it is unknown whether enhanced surveillance applies',
   claimNeedsRegulatoryReview: 'no claim has been declared yet, so no claim carries a category or risk level',
@@ -1622,6 +1626,25 @@ export interface GateReadinessItem extends GateBlocker {
   // Set when the app enforces only part of the rule (C1 today): the conditions it
   // cannot evaluate, so a green tick never reads as "the whole rule is met".
   coverageNote?: string;
+  // Present only on an auto-generated "not applicable" item that is CRITICAL
+  // (Round 4 question 16): the generated reason must be acknowledged by the
+  // responsible reviewer before the gate can close. `state` says whether it has
+  // been; `rationale` is the exact text being acknowledged (the server writes this
+  // value, never the client's); `by`/`at` describe the current acknowledgement.
+  // An item that is really a LIST of things to open one by one (today: every register that must be closed
+  // before the gate can pass — 70 of them at Gate 7). The panel shows it as a short line and opens a list so the
+  // person can go straight to the register that is still open, instead of reading a truncated run of names.
+  list?: {
+    title: string;
+    rows: { key: string; title: string; done: boolean; href: string }[];
+  };
+  acknowledgement?: {
+    state: 'acknowledged' | 'rejected' | 'stale' | 'missing';
+    rationale: string;
+    by?: string;
+    at?: string;
+    comment?: string; // the reason, when the reviewer did NOT acknowledge it
+  };
 }
 
 // Anchor id of ONE Key Gate Check row on the phase page, so a readiness item
@@ -1969,11 +1992,41 @@ export function gateReadinessChecklist(
     // adds that for a safety-, regulatory-, claims- or release-critical item the
     // generated rationale "must still be acknowledged by the responsible reviewer
     // before gate closure". Who the responsible reviewer of an ITEM is (as opposed
-    // to a gate, which question 29 defines) is not settled [ASSUMPTION: R5-Q6].
+    // to a gate, which question 29 defines) is decided in utils/readinessAck.ts
+    // [ASSUMPTION: R5-Q6].
     if (triggerState === 'doesNotApply') {
+      const rationale = `${req.label} — not triggered for this project (${TRIGGER_INACTIVE_EXPLANATIONS[req.trigger!]}), so this passes automatically`;
+      if (isCriticalForAcknowledgement(gateId, req.id)) {
+        // A critical item's generated reason does not close by itself: the
+        // responsible reviewer must acknowledge THIS wording. It is a hard block
+        // that Proceed with Conditions does not clear — the answer says "before gate
+        // closure", and a conditional proceed is a way of closing it.
+        const { state, ack } = acknowledgementState(project, gateId, req.id, rationale);
+        const done = state === 'acknowledged';
+        items.push({
+          id: req.id,
+          label: done
+            ? rationale
+            : `${req.label} — not triggered for this project (${TRIGGER_INACTIVE_EXPLANATIONS[req.trigger!]}); ${
+                state === 'stale'
+                  ? 'the earlier assessment no longer matches, so the responsible reviewer must assess it again'
+                  : state === 'rejected'
+                    ? `the responsible reviewer did not acknowledge this reason${ack?.comment ? ` (${ack.comment})` : ''}`
+                    : 'the responsible reviewer must acknowledge this reason before the gate can close'
+              }`,
+          satisfied: done,
+          hardBlock: !done,
+          advisory: done || undefined,
+          source: req.source,
+          tier: req.tier,
+          coverageNote: req.coverageNote,
+          acknowledgement: { state, rationale, by: ack?.acknowledgedByName, at: ack?.acknowledgedAt, comment: ack?.comment },
+        });
+        continue;
+      }
       items.push({
         id: req.id,
-        label: `${req.label} — not triggered for this project (${TRIGGER_INACTIVE_EXPLANATIONS[req.trigger!]}), so this passes automatically`,
+        label: rationale,
         satisfied: true,
         hardBlock: false,
         // Deliberately NOT `advisory` from `blocks` above: an item whose
@@ -2116,7 +2169,13 @@ function unclosedRegistersBlocking(project: ProjectData, gateId: string): GateRe
     return !!thresholdId && gateIndex(thresholdId) <= currentIdx;
   });
   if (relevant.length === 0) return [];
-  const unclosed = relevant.filter((config) => !isRegisterClosed(project.registerClosures[config.key]));
+  const closedOf = (key: string) => isRegisterClosed(project.registerClosures[key]);
+  const unclosed = relevant.filter((config) => !closedOf(config.key));
+  // One row per register, in workbook order, each with the page that closes it.
+  const list = {
+    title: 'Registers that must be closed',
+    rows: relevant.map((c) => ({ key: c.key, title: c.title, done: closedOf(c.key), href: `/registers/reg/${c.key}` })),
+  };
   if (unclosed.length === 0) {
     return [
       {
@@ -2124,17 +2183,17 @@ function unclosedRegistersBlocking(project: ProjectData, gateId: string): GateRe
         label: `${relevant.length} register(s) closed (Review owner + Co-sign)`,
         satisfied: true,
         hardBlock: true,
+        list,
       },
     ];
   }
-  const shown = unclosed.slice(0, 8).map((c) => c.title);
-  const names = shown.join(', ') + (unclosed.length > shown.length ? `, +${unclosed.length - shown.length} more` : '');
   return [
     {
       id: 'unclosed-registers',
-      label: `${unclosed.length} of ${relevant.length} register(s) must be closed (Review owner + Co-sign) before this gate can pass: ${names}`,
+      label: `${unclosed.length} of ${relevant.length} register(s) must be closed (Review owner + Co-sign) before this gate can pass`,
       satisfied: false,
       hardBlock: true,
+      list,
     },
   ];
 }

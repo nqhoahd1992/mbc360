@@ -146,6 +146,29 @@ Card **Phase Gate Flow** (trạng thái stage, quyết định, owner, hạn, ev
 ### SW-27. Quyết định khác nhau giữa Prepared, Reviewed và Approved chỉ được hiển thị, không bị chặn — *Đã xây* (2026-10-11, chủ dự án chọn mức A)
 Quyết định của **Approved by** vẫn là quyết định của gate (câu 29(5)); quyết định của Prepared và Reviewed là khuyến nghị của vai đó. Khi ba bên khác nhau, hệ thống không chặn và không bắt thêm comment, nhưng làm bất đồng **nhìn thấy được**: modal ký hiện khối "Already signed" (vai, người, quyết định, comment) phía trên ô chọn của người ký, kèm cảnh báo vàng nếu quyết định đang chọn khác; panel ký hiện thẻ "Decisions differ" ở đầu. Các mức nặng hơn đã đề xuất và không chọn: bắt comment khi người duyệt chọn thoáng hơn khuyến nghị (B), chặn hẳn (C).
 
+### SW-29. Đánh giá lý do N/A tự sinh của item critical: một dòng cho mỗi item, người được nominate "Reviewed by" của phase sửa thẳng vào đó — *Đã xây* (2026-10-13, chủ dự án; cách đọc nghiệp vụ là `[ASSUMPTION: R5-Q6]`)
+Vòng 4 câu 16 cho phép hệ thống tự sinh lý do N/A, nhưng với item safety-, regulatory-, claims- hoặc release-critical thì lý do đó "must still be acknowledged by the responsible reviewer before gate closure". Item nào là critical và ai là reviewer là cách đọc của mình (câu hỏi số 1 của Vòng 5); phần ghi và bảo vệ dữ liệu dưới đây là quyết định của chủ dự án.
+- **Ai được ghi hoặc sửa:** chỉ người mà Lead đã nominate ở dòng **Reviewed by** trong chữ ký **phase** của gate đó (`responsibleReviewer`, `utils/readinessAck.ts`). Admin cũng không làm thay. Chưa nominate thì không ai làm được, gate vẫn bị chặn, và trang phase nhắc Lead nominate.
+- **Một dòng cho mỗi (gate, item), sửa tại chỗ:** bảng `readiness_acknowledgements` có unique `(projectId, gateId, itemId)`. Người được nominate chọn **Acknowledged** hoặc **Not acknowledged** (bắt buộc kèm lý do), và có thể đổi ý bất cứ lúc nào trước khi gate passed. Người mới thay người cũ thì ghi đè đúng dòng đó (tên người, thời điểm đổi theo); người cũ không làm thêm được (403).
+- **Không có gì bị xóa:** mỗi lần sửa là một audit event `readiness_ack.recorded` mang giá trị **trước** và **sau** (kết quả, lý do, người, thời điểm, câu chữ). Lịch sử này hiện ngay dưới item (nút "History (n)" trong panel readiness, liệt kê từng lần sửa: ai, kết quả, lý do, lúc nào, từ cũ đến mới); server dựng nó từ audit (`toReadinessAckLog` trong `project-mapper.ts` → `ProjectData.readinessAckLog`), cùng cách với lịch sử chữ ký gate (SW-28). Dòng giữ ảnh chụp tên và vai trò vì tài khoản có thể bị đổi tên hoặc xóa.
+- **Not acknowledged là một quyết định có hiệu lực:** item chặn gate như chưa xác nhận, nhưng nói rõ lý do reviewer đưa ra. Ghi lại đúng điều đã ghi (cùng người, kết quả, lý do, câu chữ) bị từ chối vì không có gì đổi (400).
+- **Gắn với đúng câu chữ:** server ghi lý do do engine sinh ra lúc đó, client chỉ gửi (gate, item, kết quả, lý do) nên không đánh giá được câu chữ chưa thấy. Nếu sự thật đằng sau đổi (ví dụ thêm target user mẹ bầu, hoặc lý do đổi chữ), dòng cũ không còn khớp và item bị chặn lại ("stale").
+- **Chặn cứng, Proceed with Conditions không gỡ được:** item chưa được xác nhận là hard block, vì câu trả lời nói "trước khi đóng gate". Nó chặn cả quyết định Proceed của người Approved (câu 29(5)).
+- **Khóa:** gate đã passed thì không sửa nữa (400); cần Backtrack để mở lại.
+- **Nơi thực thi:** `gateReadinessChecklist` (`gateProgress.ts`), `ProjectsService.acknowledgeReadinessItem` (`POST /projects/:id/readiness-acknowledgements`), các nút ở panel readiness và dòng nhắc ở trang phase. Danh sách critical là một hằng số duy nhất (`isCriticalForAcknowledgement`, mặc định theo 7 gate critical của câu 29(3), chỉnh từng item ở `CRITICAL_ITEM_OVERRIDES`).
+- **Kiểm thử:** `npm run verify:ack` (luật) và các case SG07 trong `gate-signing.e2e.ts` (nominate, 403, 400, sửa tại chỗ, Not acknowledged, audit trước/sau).
+- **Dữ liệu cũ:** không có gì để chuyển. Mọi dự án có item critical tự sinh N/A bắt đầu ở trạng thái chưa xác nhận, đúng cho một kiểm soát chưa tồn tại hôm qua.
+
+### SW-30. Chỉ mở được Change Control khi gate sớm nhất mà loại thay đổi đó đụng tới đã passed — *Đã xây* (2026-10-13, chủ dự án: "việc thuộc logic mà dev quyết được, không cần hỏi SME")
+Change Control là cách chính thức để sửa một thứ đã bị **khóa** ở một gate. Gate chưa passed thì dữ liệu của nó vẫn đang sửa trực tiếp, nên không có gì để đưa vào kiểm soát thay đổi. Và một Change Control đang mở khóa mềm (F9) mọi gate mà loại thay đổi của nó nêu tên, nên một cái mở quá sớm sẽ giữ im lặng các gate mà dự án chưa tới.
+- **Quy tắc:** mỗi loại thay đổi (`CHANGE_TRIGGERS`) đã khai danh sách gate nó ảnh hưởng. Loại đó dùng được khi dự án đã **passed gate sớm nhất** trong danh sách. Loại khai `ALL` thì luôn dùng được. Không cần thêm dữ liệu cấu hình nào.
+- **"Passed", không phải "đang ở":** gate đang mở để làm việc không tính, vì dữ liệu của nó đang sửa trực tiếp. Ví dụ "Ingredient added or removed" (Gate 05, 08) dùng được từ khi Gate 05 passed, không cần đợi tới Gate 08 (gate đó dự án chưa tới và cũng không cần tới).
+- **Chỉ kiểm bản ghi MỚI:** sửa một Change Control đã có luôn được, nên dữ liệu cũ không bị khóa nhầm.
+- **Hai lớp:** server từ chối 400 và nói gate nào phải passed trước (`changeTriggerAvailability` trong `utils/changeAccess.ts`, gọi từ `ProjectsService.setChanges`); trang Change Control hiện loại thay đổi chưa dùng được ở dạng mờ, kèm "available once Gate NN has passed", và tự bỏ chọn nếu đổi sang dự án chưa tới.
+- **Chưa chọn dự án thì giao diện chưa so sánh được gì**, nên mọi loại vẫn chọn được và server là nơi từ chối.
+- **Kiểm thử:** `npm run verify:change-access` (luật) và các case đầu `gate-signing.e2e.ts` (Gate 1 không mở được thay đổi công thức hay hồ sơ, loại `ALL` mở được).
+- **Dữ liệu cũ:** không có gì để chuyển. Quy tắc chỉ áp cho bản ghi tạo từ nay.
+
 ## 3. Quyền và truy cập
 
 ### SW-10. Không có role thì không vào được app — *Đã xây* (2026-10-02)

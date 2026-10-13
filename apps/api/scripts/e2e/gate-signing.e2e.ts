@@ -19,7 +19,7 @@ const { registerClosureSignerRole } = require(join(ROOT, 'packages/shared/dist/c
 /* eslint-enable @typescript-eslint/no-require-imports */
 // The same cut the API process makes (harness.js), so readiness evaluated in this process agrees.
 for (const gate of ['SG01', 'SG02', 'SG03', 'SG04', 'SG05', 'SG06', 'SG07', 'SG08', 'SG09', 'SG10', 'SG11', 'SG12']) {
-  GATE_READINESS[gate] = GATE_READINESS[gate].filter((item: { check: { kind: string } }) => item.check.kind === 'gateSignedOff');
+  GATE_READINESS[gate] = GATE_READINESS[gate].filter((item: { check: { kind: string } }) => item.check.kind === 'gateSignedOff' || item.id === 'sg07-maternal-caution');
 }
 
 const PROJECT = 'MBC-2026-001';
@@ -530,6 +530,69 @@ export async function run(base: string, db: Client): Promise<number> {
   // they are ticked before anything is signed — as a real project must do.
   await db.query(`UPDATE gate_checks SET done = true, ynna = 'Y' WHERE "projectId" = $1 AND gate IN ('01','02','03','04','05','06','07','08','09','10','11','12','ALL')`, [PROJECT]);
 
+  // ============================================================ Change Control: when may one be opened (SW-30)
+  console.log('\n--- Change Control: a trigger is available once its earliest gate has passed (SW-30)');
+  const newChange = (changeId: string, triggerId: string) => ({
+    changeId,
+    projectId: PROJECT,
+    triggerId,
+    trigger: triggerId,
+    productSku: 'e2e',
+    affectedArea: 'e2e',
+    riskLevel: 'Low',
+    communicationRequired: false,
+    status: 'Draft',
+    owner: 'e2e owner',
+  });
+  const putChanges = async (records: unknown[]) =>
+    api('admin', 'PUT', `/projects/${PROJECT}/changes`, { records, expectedVersion: await version() });
+  let cr: any = await putChanges([newChange('CHG-E2E-1', 'formula-ingredient')]);
+  t('a Gate 1 project cannot open a formula change (earliest gate 05 has not passed) (400)', cr.status === 400 && /Gate 05 has not passed/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putChanges([newChange('CHG-E2E-2', 'pif-launch')]);
+  t('...nor a dossier change (earliest gate 10) (400)', cr.status === 400, `${cr.status} ${short(cr.json)}`);
+  const cpj = await project();
+  t('...and the refusal recorded nothing', (cpj.changes ?? []).length === 0, short(cpj.changes));
+  cr = await putChanges([newChange('CHG-E2E-3', 'pif-any-change')]);
+  t('a trigger naming ALL gates can be opened at any time', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+  cr = await putChanges([]);
+  t('...and a Draft can be discarded again (leaves the run as it found it)', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+
+  // ---- the Change Control assessment, listed per post-market finding (Round 4 question 8, R5-Q11)
+  console.log('\n--- Change Control assessment: one entry per post-market finding');
+  const me = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
+  const putAssessments = async (entries: unknown[]) =>
+    api('admin', 'PUT', `/projects/${PROJECT}/change-control-assessments`, { entries, expectedVersion: await version() });
+  const mk = (await project()).project.identity.markets[0] as string;
+  const noEntry = (finding: string, over: Record<string, unknown> = {}) => ({
+    id: '', finding, answer: 'No', reviewer: me, rationale: 'within the expected range', ...over,
+  });
+  cr = await putAssessments([noEntry('Rising complaints', { answer: 'Yes', reviewer: undefined, rationale: undefined })]);
+  t('Yes without a linked record is refused (400)', cr.status === 400 && /Yes needs a linked/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putAssessments([noEntry('Rising complaints', { rationale: undefined })]);
+  t('No without a rationale is refused (400)', cr.status === 400 && /No needs both/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putAssessments([noEntry('Rising complaints', { answer: 'Yes', linkedRecordId: 'CHG-999', reviewer: undefined, rationale: undefined })]);
+  t('a record that is not on this project is refused (400)', cr.status === 400 && /not a change record of this project/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putAssessments([noEntry('Rising complaints', { reviewer: 'Somebody Else' })]);
+  t('a reviewer that is not the person saving is refused (400)', cr.status === 400 && /can only be set to yourself/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putAssessments([noEntry('')]);
+  t('an entry that does not say which finding it is about is refused (400)', cr.status === 400, `${cr.status} ${short(cr.json)}`);
+  cr = await putAssessments([noEntry('Rising complaints'), noEntry('Eye irritation, Singapore', { answer: 'Pending assessment', reviewer: undefined, rationale: undefined, market: mk })]);
+  t('two findings are recorded as two entries', cr.status < 300 && (cr.json?.project?.changeControlAssessments ?? []).length === 2, `${cr.status} ${short(cr.json)}`);
+  let list: any[] = cr.json?.project?.changeControlAssessments ?? [];
+  t('...in the order given, each with its own id and its market', list[0]?.finding === 'Rising complaints' && list[1]?.market === mk && !!list[0]?.id && list[0].id !== list[1]?.id, short(list));
+  t('...and the Pending one holds Gate 12 on the Change-control item', gp.evaluateTrigger(cr.json.project, 'openChangeControl') === 'notAssessed');
+  const keptId = list[0].id;
+  cr = await putAssessments([{ ...list[0], finding: 'Rising irritation complaints (renamed)' }]);
+  list = cr.json?.project?.changeControlAssessments ?? [];
+  t('saving with an existing id edits it in place, and leaving the other out removes it', cr.status < 300 && list.length === 1 && list[0].id === keptId && /renamed/.test(list[0].finding), `${cr.status} ${short(cr.json)}`);
+  t('...so with only a No left, the item no longer applies', gp.evaluateTrigger(cr.json.project, 'openChangeControl') === 'doesNotApply');
+  const ccAudit = (
+    await db.query(`SELECT after FROM audit_events WHERE "projectId" = $1 AND action = 'change_control_assessments.updated' ORDER BY "occurredAt" DESC, id DESC LIMIT 1`, [PROJECT])
+  ).rows[0]?.after;
+  t('the audit event names what was removed, so nothing disappears silently', Array.isArray(ccAudit?.removed) && ccAudit.removed.length === 1 && /Eye irritation/.test(ccAudit.removed[0].finding), short(ccAudit));
+  cr = await putAssessments([]);
+  t('an empty list is accepted as a save, and then blocks the gate again (not "nothing to assess")', cr.status < 300 && gp.evaluateTrigger(cr.json.project, 'openChangeControl') === 'notAssessed', `${cr.status} ${short(cr.json)}`);
+
   // ============================================================ SG01: identity data
   console.log('\n--- SG01 (the identity fields are Gate 1 data)');
   let r: any = await nominate('SG01');
@@ -987,12 +1050,121 @@ export async function run(base: string, db: Client): Promise<number> {
     r.status === 403 && String(r.json?.message).includes('Register changed'), `${r.status} ${short(r.json)}`);
   t('...and the SG07 signature is still current', (await stale('SG07', 'Prepared by')).length === 0, short(await stale('SG07', 'Prepared by')));
   t('the SG07 registers are closed now that SG07 is about to pass', (await closeRegistersOf(['SG07'])) > 0);
-  for (const role of ['Reviewed by', 'Approved by'] as const) {
-    r = await sign('SG07', role);
-    t(`${role} signs SG07`, r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
-  }
+  r = await sign('SG07', 'Reviewed by');
+  t('Reviewed signs SG07', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
+
+  // ---- Round 4 question 16 [ASSUMPTION: R5-Q6]: a critical item's auto-generated N/A must be acknowledged
+  // by the phase's nominated "Reviewed by" before the gate can close. The kept item is
+  // sg07-maternal-caution: this project has no pregnancy/breastfeeding user, so its N/A is generated.
+  console.log('\n--- SG07: acknowledging a generated N/A (question 16)');
+  const ACK_ITEM = 'sg07-maternal-caution';
+  const ackItem = (p: any) => gp.gateReadinessChecklist(p, 'SG07').find((i: any) => i.id === ACK_ITEM);
+  const postAck = async (key: string, gateId: string, itemId: string) =>
+    api(key, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId, itemId, expectedVersion: await version() });
+  const ackRows = async () =>
+    (
+      await db.query(
+        `SELECT "acknowledgedByUserId", "acknowledgedByName", "acknowledgedAs", rationale FROM readiness_acknowledgements
+          WHERE "projectId" = $1 AND "gateId" = 'SG07' AND "itemId" = $2 ORDER BY "acknowledgedAt", id`,
+        [PROJECT, ACK_ITEM],
+      )
+    ).rows;
+  pj = await project();
+  t('the critical auto-N/A waits for an acknowledgement and blocks SG07', ackItem(pj.project)?.acknowledgement?.state === 'missing' && gp.hardGateBlockers(pj.project, 'SG07').some((b: any) => b.id === ACK_ITEM), short(ackItem(pj.project)));
+  r = await sign('SG07', 'Approved by');
+  t('the Approved signature (the gate decision) is refused while it is unacknowledged (400)', r.status === 400, `${r.stage} ${r.status} ${short(r.json)}`);
+  pj = await project();
+  t('...and the gate did not pass', !gp.isGatePassed(pj.project, 'SG07'));
+
+  // The seeder nominates Phase 3's signers on the demo project, so clear the Reviewed by lane first.
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/phases/3/sign-off-assignees`, {
+    assignments: [{ role: 'Reviewed by', userId: null }],
+    expectedVersion: await version(),
+  });
+  t('Phase 3 has no Reviewed by nominated', r.status < 300, short(r.json));
+  r = await postAck('admin', 'SG07', ACK_ITEM);
+  t('nobody is nominated as Reviewed by on Phase 3: even an admin cannot acknowledge (400)', r.status === 400 && /nominat/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await nominatePhase(3);
+  t('the Lead nominates the Phase 3 signers', r.status < 300, short(r.json));
+  const reviewerKey = phaseKey(3, 'Reviewed by');
+  r = await postAck('admin', 'SG07', ACK_ITEM);
+  t('a person who is not the nominated Reviewed by cannot acknowledge — an admin included (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await postAck(reviewerKey, 'SG07', 'sg07-signoff');
+  t('an item that is not waiting for an acknowledgement is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await postAck(reviewerKey, 'SG99', ACK_ITEM);
+  t('an unknown gate is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await postAck(reviewerKey, 'SG07', ACK_ITEM);
+  t('the nominated Reviewed by acknowledges', r.status < 300, `${r.status} ${short(r.json)}`);
+  pj = await project();
+  t('...the item is satisfied and says who acknowledged', ackItem(pj.project)?.satisfied === true && ackItem(pj.project)?.acknowledgement?.state === 'acknowledged' && !!ackItem(pj.project)?.acknowledgement?.by, short(ackItem(pj.project)));
+  const first = await ackRows();
+  t('...recorded from the session with the wording the engine generated, not anything the client sent',
+    first.length === 1 && first[0].acknowledgedByUserId === sessions[reviewerKey].id && first[0].rationale === ackItem(pj.project)?.acknowledgement?.rationale && first[0].acknowledgedAs === 'Reviewed by — Phase 3', short(first));
+  r = await postAck(reviewerKey, 'SG07', ACK_ITEM);
+  t('the same person acknowledging the same wording twice is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+
+  // Re-nominating moves the right; what was recorded stays, and the new reviewer may confirm again.
+  const newReviewer = sessions[signerKey('SG07', 'Reviewed by')];
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/phases/3/sign-off-assignees`, {
+    assignments: [{ role: 'Reviewed by', userId: newReviewer.id }],
+    expectedVersion: await version(),
+  });
+  t('the Lead re-nominates a different Reviewed by for Phase 3', r.status < 300, short(r.json));
+  r = await postAck(reviewerKey, 'SG07', ACK_ITEM);
+  t('the previous reviewer can no longer acknowledge (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  pj = await project();
+  t('...and the earlier acknowledgement still counts', ackItem(pj.project)?.satisfied === true);
+  r = await postAck(signerKey('SG07', 'Reviewed by'), 'SG07', ACK_ITEM);
+  t('the new reviewer may acknowledge again', r.status < 300, `${r.status} ${short(r.json)}`);
+  const edited = await ackRows();
+  t('...still ONE row: the new reviewer edited it in place', edited.length === 1 && edited[0].acknowledgedByUserId === newReviewer.id, short(edited));
+  pj = await project();
+  t("...and the item now reads the new reviewer's name", ackItem(pj.project)?.acknowledgement?.by === edited[0].acknowledgedByName, short(ackItem(pj.project)));
+
+  // The new reviewer disagrees with the reason: that is a recorded decision, with a reason, and it blocks.
+  const newKey = signerKey('SG07', 'Reviewed by');
+  const postNot = async (comment?: string) =>
+    api(newKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId: 'SG07', itemId: ACK_ITEM, outcome: 'Not acknowledged', comment, expectedVersion: await version() });
+  r = await postNot(undefined);
+  t('"Not acknowledged" without a reason is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await api(newKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId: 'SG07', itemId: ACK_ITEM, outcome: 'Maybe', expectedVersion: await version() });
+  t('an unknown outcome is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await postNot('the next release adds a pregnancy user');
+  t('"Not acknowledged" with a reason is recorded', r.status < 300, `${r.status} ${short(r.json)}`);
+  pj = await project();
+  t('...the item is rejected and blocks again, saying why', ackItem(pj.project)?.acknowledgement?.state === 'rejected' && ackItem(pj.project)?.satisfied === false && /pregnancy user/.test(String(ackItem(pj.project)?.label)), short(ackItem(pj.project)));
+  t('...it is still ONE row (edited in place)', (await ackRows()).length === 1);
+  r = await sign('SG07', 'Approved by');
+  t('the Approved signature is refused while the reviewer has not acknowledged (400)', r.status === 400, `${r.stage} ${r.status} ${short(r.json)}`);
+  r = await postNot('the next release adds a pregnancy user');
+  t('recording the same thing again is refused as no change (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await postAck(newKey, 'SG07', ACK_ITEM);
+  t('the reviewer changes their mind: acknowledged again, in place', r.status < 300, `${r.status} ${short(r.json)}`);
+  const final = await ackRows();
+  t('...still one row, now Acknowledged with no stale reason', final.length === 1, short(final));
+  const trail = (
+    await db.query(
+      `SELECT after FROM audit_events WHERE "projectId" = $1 AND action = 'readiness_ack.recorded' ORDER BY "occurredAt", id`,
+      [PROJECT],
+    )
+  ).rows.map((x: any) => x.after);
+  t('the audit trail keeps every edit with the values before and after',
+    trail.length === 4 && trail[0].before === null && trail[0].after.by === first[0].acknowledgedByName && trail[1].before?.by === first[0].acknowledgedByName && trail[2].after.outcome === 'Not acknowledged' && trail[2].before?.outcome === 'Acknowledged' && trail[3].before?.outcome === 'Not acknowledged', short(trail));
+  pj = await project();
+  const ackLog = (pj.project.readinessAckLog ?? []).filter((e: any) => e.gateId === 'SG07' && e.itemId === ACK_ITEM);
+  t('the envelope carries the edit history of the entry, oldest first, read from the audit trail',
+    ackLog.length === 4 && ackLog[0].outcome === 'Acknowledged' && ackLog[0].by === first[0].acknowledgedByName && ackLog[1].by === edited[0].acknowledgedByName && ackLog[2].outcome === 'Not acknowledged' && /pregnancy user/.test(String(ackLog[2].comment)) && ackLog[3].outcome === 'Acknowledged', short(ackLog));
+  r = await nominatePhase(3);
+  t('the Phase 3 nomination goes back to the standard lanes (the later phase close-out uses them)', r.status < 300, short(r.json));
+
+  r = await sign('SG07', 'Approved by');
+  t('Approved signs SG07 once the reason is acknowledged', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
   pj = await project();
   t('SG07 passed', gp.isGatePassed(pj.project, 'SG07'));
+  r = await postAck(signerKey('SG07', 'Reviewed by'), 'SG07', ACK_ITEM);
+  t('once SG07 has passed, acknowledgements are read-only (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  const audit = (await db.query(`SELECT count(*)::int AS n FROM audit_events WHERE "projectId" = $1 AND action = 'readiness_ack.recorded'`, [PROJECT])).rows[0];
+  t('each edit left an audit row (four in all)', audit.n === 4, short(audit));
   r = await putWatch({ productStatus: 'Present within restriction' });
   t('after SG07 passed, the watch-list is read-only (403)', r.status === 403, `${r.status} ${short(r.json)}`);
   pj = await project();

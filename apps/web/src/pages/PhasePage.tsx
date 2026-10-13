@@ -23,6 +23,8 @@ import {
 import { gateFlowMissing } from '@mbc360/shared/config/gateSignOff';
 import { useAppStore } from '../store/useAppStore';
 import { GATES, PHASES, phaseLabel } from '@mbc360/shared/config/gates';
+import { responsibleReviewer } from '@mbc360/shared/utils/readinessAck';
+import { useSession } from '../auth/useSession';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
 import OpportunityRequestCard from '../components/OpportunityRequestCard';
@@ -40,6 +42,7 @@ import PostLaunchReviewCard from '../components/PostLaunchReviewCard';
 import SectionJumpButton from '../components/SectionJumpButton';
 import GateReadinessPanel from '../components/GateReadinessPanel';
 import AssessmentBlock, { isFamilyUseSelected } from '../components/AssessmentBlock';
+import ChangeControlAssessments from '../components/ChangeControlAssessments';
 import { ASSESSMENT_HOMES, assessmentAnchor } from '@mbc360/shared/config/assessments';
 import { useUnsavedCount } from '../hooks/unsavedRegistry';
 import '../styles/concept.css';
@@ -79,6 +82,7 @@ export default function PhasePage() {
   const phase = Number(phaseNo);
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const acceptPreWork = useAppStore((s) => s.acceptPhasePreWork);
+  const { user: sessionUser } = useSession();
   const location = useLocation();
   const [showSatisfied, setShowSatisfied] = useState(false);
   // Scroll a section into view. A section near the end of the page cannot reach
@@ -334,6 +338,46 @@ export default function PhasePage() {
         Accept pre-work
       </Button>,
     );
+  }
+  // Round 4 question 16: an auto-generated "not applicable" on a critical item has
+  // to be acknowledged by the phase's nominated "Reviewed by" before its gate can
+  // close. Nobody can until the Lead nominates one, so say so up here rather than
+  // leaving a blocker whose fix is on another tab [ASSUMPTION: R5-Q6].
+  const pendingAcks = config.gateIds.flatMap((gid) =>
+    isGatePassed(project, gid)
+      ? []
+      : gateReadinessChecklist(project, gid)
+          .filter((i) => i.acknowledgement && i.acknowledgement.state !== 'acknowledged')
+          .map((i) => ({ gid, id: i.id })),
+  );
+  if (pendingAcks.length > 0) {
+    const ackReviewer = responsibleReviewer(project, config.gateIds[0]);
+    const ackCount = `${pendingAcks.length} generated “not applicable” reason${pendingAcks.length === 1 ? '' : 's'}`;
+    if (!ackReviewer?.userId) {
+      stripItems.push(
+        <Tooltip
+          key="ack-nominate"
+          title="Some items on this phase's critical gates do not apply to this project and the system wrote the reason itself, but such a reason must still be acknowledged by the responsible reviewer before the gate can close. The responsible reviewer is whoever is nominated as “Reviewed by” on this phase's sign-off."
+        >
+          <span className="c-tag c-tag-warn c-tag-dot">{ackCount} need a responsible reviewer — nominate “Reviewed by”</span>
+        </Tooltip>,
+        <Button key="ack-nominate-go" type="link" size="small" onClick={() => selectTab(CLOSE_TAB)}>
+          Go to sign-offs
+        </Button>,
+      );
+    } else {
+      const mine = ackReviewer.userId === sessionUser?.id;
+      stripItems.push(
+        <Tooltip
+          key="ack-wait"
+          title="Each one is acknowledged on its gate's readiness list, by the person nominated as “Reviewed by” on this phase's sign-off."
+        >
+          <span className="c-tag c-tag-warn c-tag-dot">
+            {mine ? `${ackCount} await your acknowledgement` : `${ackCount} await ${ackReviewer.name ?? 'the nominated reviewer'}`}
+          </span>
+        </Tooltip>,
+      );
+    }
   }
   if (progress.awaitingApproval) {
     stripItems.push(
@@ -682,7 +726,11 @@ export default function PhasePage() {
             ))}
 
             {assessments.map((a) => (
-              <AssessmentBlock key={a.key} project={project} which={a.key} />
+              a.key === 'changeControl' ? (
+                <ChangeControlAssessments key={a.key} project={project} />
+              ) : (
+                <AssessmentBlock key={a.key} project={project} which={a.key} />
+              )
             ))}
 
             {keyChecks.length > 0 && (
@@ -739,6 +787,7 @@ export default function PhasePage() {
               <div className="ph-rail-body">
                 <GateReadinessPanel
                   gateNumber={tabGateNumber ?? ''}
+                  project={project}
                   keepGate={tab}
                   items={readinessItems}
                   projectId={project.identity.id}

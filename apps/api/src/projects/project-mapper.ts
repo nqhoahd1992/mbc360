@@ -36,6 +36,8 @@ import type {
   RegisterRow,
   RequirementItem,
   SignOff,
+  ReadinessAckEvent,
+  ReadinessAcknowledgement,
   SupersessionDecision,
 } from '@mbc360/shared/types';
 import type { Prisma } from '../generated/prisma/client';
@@ -67,6 +69,8 @@ export const PROJECT_INCLUDE = {
   costing: true,
   postLaunchReviews: { orderBy: [{ market: 'asc' }, { dueDate: 'asc' }] },
   supersessionDecisions: { orderBy: [{ version: 'asc' }, { market: 'asc' }] },
+  readinessAcknowledgements: { orderBy: [{ acknowledgedAt: 'asc' }, { id: 'asc' }] },
+  changeControlAssessments: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
   gateSignOffs: {
     orderBy: [{ gateId: 'asc' }, { market: 'asc' }, { role: 'asc' }],
     include: { assignedTo: { select: { displayName: true } } },
@@ -237,6 +241,29 @@ export function toGateSignOffLog(
   return out;
 }
 
+// Every edit of a readiness acknowledgement is audited (action readiness_ack.recorded) with the entry as it is NOW in
+// `after`; the history an item shows is read from those rows, oldest first.
+export function toReadinessAckLog(
+  events: { id: string; occurredAt: Date; after: Prisma.JsonValue; actor: { displayName: string } | null }[],
+): ReadinessAckEvent[] {
+  const out: ReadinessAckEvent[] = [];
+  for (const e of events) {
+    const a = (e.after ?? {}) as { gateId?: string; itemId?: string; after?: { outcome?: string; comment?: string | null; by?: string } };
+    const now = a.after;
+    if (!a.gateId || !a.itemId || !now?.outcome) continue;
+    out.push({
+      id: e.id,
+      gateId: a.gateId,
+      itemId: a.itemId,
+      outcome: now.outcome as ReadinessAckEvent['outcome'],
+      ...(now.comment ? { comment: now.comment } : {}),
+      by: e.actor?.displayName ?? now.by ?? 'Unknown',
+      date: dateTime(e.occurredAt),
+    });
+  }
+  return out;
+}
+
 // Change Control rows are project-scoped in the database but the store keeps one
 // global list, so they are returned alongside ProjectData rather than inside it.
 export function toChangeRecords(p: ProjectWithAll) {
@@ -281,6 +308,7 @@ export function toProjectData(
   reference: ProjectReferenceData,
   // Display-only history of signing and withdrawing; nothing in the rule engine reads it, so it may be left out.
   gateSignOffLog: GateSignOffEvent[] = [],
+  readinessAckLog: ReadinessAckEvent[] = [],
 ): ProjectData {
   const checklists: Record<string, ChecklistItem[]> = {};
   for (const item of p.checklistItems) {
@@ -458,12 +486,6 @@ export function toProjectData(
     // the engine reads an absent value as `notAssessed` and must not be handed a
     // blank string that looks like a considered answer.
     assessments: {
-      ...(p.changeControlRequired ? { changeControlRequired: p.changeControlRequired } : {}),
-      ...(p.changeControlReviewer ? { changeControlReviewer: p.changeControlReviewer } : {}),
-      ...(p.changeControlReviewDate ? { changeControlReviewDate: p.changeControlReviewDate } : {}),
-      ...(p.changeControlRationale ? { changeControlRationale: p.changeControlRationale } : {}),
-      ...(p.changeControlRecordId ? { changeControlRecordId: p.changeControlRecordId } : {}),
-      ...(p.changeControlEvidenceLink ? { changeControlEvidenceLink: p.changeControlEvidenceLink } : {}),
       ...(p.humanStudyPlanned ? { humanStudyPlanned: p.humanStudyPlanned } : {}),
       ...(p.administrativeOnly ? { administrativeOnly: p.administrativeOnly } : {}),
       ...(p.administrativeOnlyConfirmedBy ? { administrativeOnlyConfirmedBy: p.administrativeOnlyConfirmedBy } : {}),
@@ -566,6 +588,7 @@ export function toProjectData(
     ),
     gateChangeLog,
     gateSignOffLog,
+    readinessAckLog,
     marketTracks: p.marketTracks.map((t) => ({
       market: t.market,
       // F4: one track per market per formula version.
@@ -593,6 +616,29 @@ export function toProjectData(
       notes: opt(r.notes),
     })),
     supersessionDecisions: p.supersessionDecisions.map(toSupersessionDecision),
+    changeControlAssessments: p.changeControlAssessments.map((a) => ({
+      id: a.id,
+      finding: a.finding,
+      ...(a.market ? { market: a.market } : {}),
+      answer: a.answer,
+      ...(a.linkedRecordId ? { linkedRecordId: a.linkedRecordId } : {}),
+      ...(a.reviewer ? { reviewer: a.reviewer } : {}),
+      ...(a.reviewDate ? { reviewDate: a.reviewDate } : {}),
+      ...(a.rationale ? { rationale: a.rationale } : {}),
+      ...(a.evidenceLink ? { evidenceLink: a.evidenceLink } : {}),
+    })),
+    readinessAcknowledgements: p.readinessAcknowledgements.map((a) => ({
+      id: a.id,
+      gateId: a.gateId,
+      itemId: a.itemId,
+      rationale: a.rationale,
+      outcome: a.outcome as ReadinessAcknowledgement['outcome'],
+      ...(a.comment ? { comment: a.comment } : {}),
+      ...(a.acknowledgedByUserId ? { acknowledgedByUserId: a.acknowledgedByUserId } : {}),
+      acknowledgedByName: a.acknowledgedByName,
+      acknowledgedAs: a.acknowledgedAs,
+      acknowledgedAt: a.acknowledgedAt.toISOString(),
+    })),
     gateSignOffs: p.gateSignOffs.map((g) => ({
       gateId: g.gateId,
       ...(g.market ? { market: g.market } : {}),

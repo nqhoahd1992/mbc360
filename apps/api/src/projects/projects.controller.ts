@@ -14,6 +14,7 @@ import { GATE_DECISIONS, STAGE_STATUSES } from '@mbc360/shared/config/gates';
 import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
 import type {
   AngleRow,
+  ChangeControlAssessment,
   ChangeRecord,
   ChecklistItem,
   GateCheck,
@@ -339,6 +340,27 @@ export class ProjectsController {
     @Body() body: { links: Record<string, string>; expectedVersion: number },
   ): Promise<ProjectEnvelope> {
     return this.projects.setPhaseKeyLinks(user, id, Number(phase), body.links ?? {}, body.expectedVersion);
+  }
+
+  // Round 4 question 16 — the responsible reviewer assesses an auto-generated N/A
+  // reason on a critical item (acknowledged, or not with a reason), editing the one
+  // row in place. The wording and the actor are server-side.
+  @Post(':id/readiness-acknowledgements')
+  acknowledgeReadinessItem(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { gateId: string; itemId: string; outcome?: string; comment?: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    if (!body?.gateId || !body?.itemId) throw new BadRequestException('gateId and itemId are required');
+    return this.projects.acknowledgeReadinessItem(
+      user,
+      id,
+      body.gateId,
+      body.itemId,
+      body.outcome ?? 'Acknowledged',
+      body.comment,
+      body.expectedVersion,
+    );
   }
 
   @Post(':id/phases/:phase/accept-pre-work')
@@ -738,6 +760,17 @@ export class ProjectsController {
     @Body() body: { entries: ProjectData['feedback']; expectedVersion: number },
   ): Promise<ProjectEnvelope> {
     return this.projects.setFeedback(user, id, body.entries ?? [], body.expectedVersion);
+  }
+
+  // Round 4 question 8 — the Change Control assessment, one entry per post-market finding; the list is replaced.
+  @Put(':id/change-control-assessments')
+  setChangeControlAssessments(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { entries: ChangeControlAssessment[]; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    if (!Array.isArray(body?.entries)) throw new BadRequestException('entries must be a list');
+    return this.projects.setChangeControlAssessments(user, id, body.entries, body.expectedVersion);
   }
 
   @Put(':id/changes')

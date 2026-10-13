@@ -38,7 +38,11 @@ export interface RegisterColumn {
   selfAttest?: boolean;
   // Required only while another column of the SAME row holds one of these values — e.g. the approval date of a brief that is
   // marked Approved. Shown with a required mark, refused on save in the table and again by the API (guard parity).
-  requiredWhen?: { column: string; values: readonly string[] };
+  // An identifier: no two rows of the register may hold the same value (blank is not a value). Refused on save in the
+  // table and again by the API; compared without regard to case or surrounding spaces.
+  unique?: true;
+  // `and` adds a second condition that must hold too (e.g. Closed AND High/Critical severity).
+  requiredWhen?: { column: string; values: readonly string[]; and?: { column: string; values: readonly string[] } };
   // Read from the linked claim (Claim -> Evidence Traceability) instead of being
   // entered here, once the row's `claimRef` column names one — added 2026-08-11 so a
   // claim is classified ONCE, where it is declared, and every later use inherits.
@@ -229,8 +233,11 @@ export function invalidSelectValues(
 export function isColumnRequiredFor(column: RegisterColumn, row: RegisterRow): boolean {
   const rule = column.requiredWhen;
   if (!rule) return false;
-  const trigger = row[rule.column];
-  return typeof trigger === 'string' && rule.values.includes(trigger);
+  const holds = (r: { column: string; values: readonly string[] }) => {
+    const v = row[r.column];
+    return typeof v === 'string' && r.values.includes(v);
+  };
+  return holds(rule) && (!rule.and || holds(rule.and));
 }
 
 // The columns a row must fill in but has not, per `requiredWhen`. A blank is empty or whitespace.
@@ -249,9 +256,31 @@ export function missingRequiredProblems(config: RegisterConfig, rows: RegisterRo
     for (const col of missingRequiredColumns(config, row)) {
       const rule = col.requiredWhen!;
       const trigger = config.columns.find((c) => c.key === rule.column)?.label ?? rule.column;
-      problems.push(`Row ${index + 1}: "${col.label}" is required when ${trigger} is ${String(row[rule.column])}`);
+      const also = rule.and ? ` and ${config.columns.find((c) => c.key === rule.and!.column)?.label ?? rule.and.column} is ${String(row[rule.and.column])}` : '';
+      problems.push(`Row ${index + 1}: "${col.label}" is required when ${trigger} is ${String(row[rule.column])}${also}`);
     }
   });
+  return problems;
+}
+
+// Plain sentences for every value that appears on more than one row of a `unique` column (also the API's 400).
+export function duplicateValueProblems(config: RegisterConfig, rows: RegisterRow[]): string[] {
+  const problems: string[] = [];
+  for (const col of config.columns.filter((c) => c.unique)) {
+    const seen = new Map<string, number[]>();
+    rows.forEach((row, index) => {
+      const raw = row[col.key];
+      const v = raw == null ? '' : String(raw).trim();
+      if (v === '') return;
+      const key = v.toLowerCase();
+      seen.set(key, [...(seen.get(key) ?? []), index + 1]);
+    });
+    for (const [, at] of seen) {
+      if (at.length < 2) continue;
+      const shown = rows[at[0] - 1][col.key];
+      problems.push(`"${col.label}" ${String(shown).trim()} is used on rows ${at.join(', ')} — it must be different on every row`);
+    }
+  }
   return problems;
 }
 
@@ -748,7 +777,7 @@ const prohibitedIngredients: RegisterConfig = {
   key: 'prohibitedIngredients',
   title: 'Prohibited Ingredient Watch-list',
   sheetName: 'Prohibited_Ingredients',
-  description: 'Product-specific absence proof. Regulatory must confirm current market status before release.',
+  description: 'Product-specific absence proof. Regulatory must confirm current market status before external use.',
   mode: 'fixed',
   // SME Round 4 question 6: Gate 4 screens and dispositions every row, and Gate 7 formally closes every restricted or caution issue. [ASSUMPTION: R5-Q63] productStatus is a screening result updated until Gate 7; reading it as Gate 7's column is ours.
   gate: '04/07',
@@ -756,8 +785,10 @@ const prohibitedIngredients: RegisterConfig = {
     { key: 'ingredientGroup', label: 'Ingredient / group', type: 'text', width: 170, editable: false },
     { key: 'functionRole', label: 'Function', type: 'text', width: 150, editable: false },
     { key: 'statusLevel', label: 'Status / level', type: 'text', width: 200, editable: false },
-    { key: 'whyItMatters', label: 'Why it matters', type: 'text', width: 220, editable: false },
+    { key: 'whyItMatters', label: 'Why it matters for maternal skincare', type: 'text', width: 220, editable: false },
     { key: 'applicableProducts', label: 'Applicable products', type: 'text', width: 160, editable: false },
+    // The sheet's own "Reference / source" column (F) — dropped in the first transcription and put back 2026-10-13.
+    { key: 'referenceSource', label: 'Reference / source', type: 'text', width: 200, editable: false },
     {
       key: 'productStatus',
       gate: '07',
@@ -787,7 +818,7 @@ const prohibitedIngredients: RegisterConfig = {
     // this one holds the reviewer's DISPOSITION of that result. Blank is the
     // unassessed state Gate 4 must not pass with, so it deliberately has no
     // `defaultValue` [ASSUMPTION: R5-Q10].
-    { key: 'gate4Disposition', label: 'Gate 4 disposition', type: 'select', width: 190, options: [...GATE4_DISPOSITION_OPTIONS], gate: '04' },
+    { key: 'gate4Disposition', label: 'Classification', type: 'select', width: 190, options: [...GATE4_DISPOSITION_OPTIONS], gate: '04' },
     // Rule D3 — the reviewer trail a flagged result must carry before Gate 4 can
     // move. Every field here is one D3 names; only the Resolution status VALUES
     // and the flagged-status scope are ours (see WATCHLIST_* in this file).
@@ -806,18 +837,18 @@ const prohibitedIngredients: RegisterConfig = {
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
   ],
   fixedRows: [
-    { ingredientGroup: 'Parabens', functionRole: 'Preservatives', statusLevel: 'Restricted; example levels include 0.4% individually / 0.14% combined', whyItMatters: 'Endocrine and reproductive-health concerns for longer-chain parabens', applicableProducts: 'All cosmetics', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Confirm current market limits before release.' },
-    { ingredientGroup: 'Phthalates', functionRole: 'Plasticizers / solvents / fragrance stabilizers', statusLevel: 'Restricted/prohibited for DEHP, DBP, DIBP, BBP under REACH classification', whyItMatters: 'Endocrine disruption and reproductive toxicity concerns', applicableProducts: 'Fragrances, nail polish, sprays, washes, lotions', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Check fragrance and packaging-contact documents.' },
-    { ingredientGroup: 'Cyclomethicone D4/D5/D6', functionRole: 'Emollients / solvents', statusLevel: 'D4 banned; D5/D6 restricted in some contexts', whyItMatters: 'Bioaccumulation, reproductive and PBT/vPvB concerns', applicableProducts: 'Wash-off and leave-on cosmetics', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Check exact substance and product type.' },
-    { ingredientGroup: 'Triclosan', functionRole: 'Preservative / antimicrobial', statusLevel: 'Restricted in specific product types', whyItMatters: 'Endocrine/thyroid and fetal neurodevelopment concerns', applicableProducts: 'Toothpaste, soaps, deodorants, nail products', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Confirm product-specific permissibility.' },
-    { ingredientGroup: 'Benzophenone', functionRole: 'UV filter / light stabilizer / fragrance ingredient', statusLevel: 'Prohibited/restricted in some markets', whyItMatters: 'Carcinogenicity, endocrine activity and transfer concerns', applicableProducts: 'Sunscreens, anti-ageing creams, fragrances', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Also review oxybenzone/BP-3 caution rows.' },
-    { ingredientGroup: 'Methanol', functionRole: 'Denaturant', statusLevel: 'Restricted level in denatured alcohol systems', whyItMatters: 'Neurotoxicity and placental-transfer concern', applicableProducts: 'Products containing denatured alcohol', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Check CoA/specification.' },
-    { ingredientGroup: 'Heavy metals Pb Hg Cd As', functionRole: 'Contaminants / impurities', statusLevel: 'Prohibited; trace limits vary by market', whyItMatters: 'Neurotoxicity, nephrotoxicity, carcinogenicity', applicableProducts: 'All cosmetics', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Quality', linkedGate: '04_Ingredient_Screening', notes: 'Attach CoA or finished-product heavy metal report.' },
-    { ingredientGroup: 'Lilial BMHCA', functionRole: 'Fragrance ingredient', statusLevel: 'Prohibited in EU and high concern for maternal use', whyItMatters: 'Reproductive toxicity classification and breast milk concern', applicableProducts: 'Fragranced cosmetics', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Attach fragrance declaration.' },
-    { ingredientGroup: 'Retinol Retinyl Palmitate Tretinoin', functionRole: 'Anti-ageing active', statusLevel: 'Restricted; pregnancy caution / contraindicated in some markets', whyItMatters: 'Teratogenicity and cumulative exposure concerns', applicableProducts: 'Body lotions, face creams, serums', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory / Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Assess with PB_Caution_Limits and label warnings.' },
-    { ingredientGroup: '4-Methylbenzylidene Camphor 4-MBC', functionRole: 'UV filter', statusLevel: 'Prohibited/restricted in some markets', whyItMatters: 'Endocrine disruption and breast milk detection', applicableProducts: 'Sunscreens, SPF day creams', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Confirm exact market status.' },
-    { ingredientGroup: 'Formaldehyde releasers', functionRole: 'Preservative / hardening agent', statusLevel: 'Prohibited/restricted as preservative depending on market', whyItMatters: 'Carcinogenicity, sensitisation and reproductive concerns', applicableProducts: 'Hair straightening, eyelash glues, preserved products', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory / Safety', linkedGate: '04_Ingredient_Screening', notes: 'Check preservative system and supplier declaration.' },
-    { ingredientGroup: 'Bisphenol S', functionRole: 'Plasticizer / stabilizer', statusLevel: 'Prohibited/restricted in some contexts', whyItMatters: 'Endocrine/reproductive toxicity concern', applicableProducts: 'Packaging-contact risk, nail products, coatings', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '06_Packaging_Artwork', notes: 'Review packaging-contact evidence.' },
+    { ingredientGroup: 'Parabens', functionRole: 'Preservatives', statusLevel: 'Restricted; example levels include 0.4% individually / 0.14% combined', whyItMatters: 'Endocrine and reproductive-health concerns for longer-chain parabens', applicableProducts: 'All cosmetics', referenceSource: 'Safety validation table / current market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Confirm current market limits before release.' },
+    { ingredientGroup: 'Phthalates', functionRole: 'Plasticizers / solvents / fragrance stabilizers', statusLevel: 'Restricted/prohibited for DEHP, DBP, DIBP, BBP under REACH classifications', whyItMatters: 'Endocrine disruption and reproductive toxicity concerns', applicableProducts: 'Fragrances, nail polish, sprays, washes, lotions', referenceSource: 'Safety validation table / current market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Check fragrance and packaging-contact documents.' },
+    { ingredientGroup: 'Cyclomethicone D4/D5/D6', functionRole: 'Emollients / solvents', statusLevel: 'D4 banned; D5/D6 restricted in some contexts', whyItMatters: 'Bioaccumulation, reproductive and PBT/vPvB concerns', applicableProducts: 'Wash-off and leave-on cosmetics', referenceSource: 'Safety validation table / current market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Check exact substance and product type.' },
+    { ingredientGroup: 'Triclosan', functionRole: 'Preservative / antimicrobial', statusLevel: 'Restricted in specific product types', whyItMatters: 'Endocrine/thyroid and fetal neurodevelopment concerns', applicableProducts: 'Toothpaste, soaps, deodorants, nail products', referenceSource: 'Safety validation table / current market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Confirm product-specific permissibility.' },
+    { ingredientGroup: 'Benzophenone', functionRole: 'UV filter / light stabilizer / fragrance ingredient', statusLevel: 'Prohibited/restricted in some markets', whyItMatters: 'Carcinogenicity, endocrine activity and transplacental-exposure concern', applicableProducts: 'Sunscreens, anti-ageing creams, fragrances', referenceSource: 'Safety validation table / current market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Also review oxybenzone/BP-3 caution rows.' },
+    { ingredientGroup: 'Methanol', functionRole: 'Denaturant', statusLevel: 'Restricted level in denatured alcohol systems', whyItMatters: 'Neurotoxicity and placental-transfer concern at high exposure', applicableProducts: 'Products containing denatured alcohol', referenceSource: 'Safety validation table / current market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Check CoA/specification.' },
+    { ingredientGroup: 'Heavy metals Pb Hg Cd As', functionRole: 'Contaminants / impurities', statusLevel: 'Prohibited; trace limits vary by market', whyItMatters: 'Neurotoxicity, nephrotoxicity, carcinogenicity and fetal-development concern', applicableProducts: 'All cosmetics', referenceSource: 'CoA/heavy metal test / market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Quality', linkedGate: '04_Ingredient_Screening', notes: 'Attach CoA or finished-product heavy metal report.' },
+    { ingredientGroup: 'Lilial BMHCA', functionRole: 'Fragrance ingredient', statusLevel: 'Prohibited in EU and high concern for maternal products', whyItMatters: 'Reproductive toxicity classification and breast milk detection concern', applicableProducts: 'Fragranced cosmetics', referenceSource: 'IFRA / allergen / market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Attach fragrance declaration.' },
+    { ingredientGroup: 'Retinol Retinyl Palmitate Tretinoin', functionRole: 'Anti-ageing active', statusLevel: 'Restricted; pregnancy caution / contraindication logic', whyItMatters: 'Teratogenicity and cumulative exposure concerns', applicableProducts: 'Body lotions, face creams, serums', referenceSource: 'Safety validation table / current market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory / Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Assess with PB_Caution_Limits and label warnings.' },
+    { ingredientGroup: '4-Methylbenzylidene Camphor 4-MBC', functionRole: 'UV filter', statusLevel: 'Prohibited/restricted in some markets', whyItMatters: 'Endocrine disruption and breast milk detection concern', applicableProducts: 'Sunscreens, SPF day creams', referenceSource: 'Safety validation table / current market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Confirm exact market status.' },
+    { ingredientGroup: 'Formaldehyde releasers', functionRole: 'Preservative / hardening agent', statusLevel: 'Prohibited/restricted as preservative depending on market/product', whyItMatters: 'Carcinogenicity, sensitisation and reproductive concern', applicableProducts: 'Hair straightening, eyelash glues, preserved products', referenceSource: 'Safety validation table / current market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory / Safety', linkedGate: '04_Ingredient_Screening', notes: 'Check preservative system and supplier declaration.' },
+    { ingredientGroup: 'Bisphenol S', functionRole: 'Plasticizer / stabilizer', statusLevel: 'Prohibited/restricted in some contexts', whyItMatters: 'Endocrine/reproductive toxicity concern', applicableProducts: 'Packaging-contact risk, nail products, coatings', referenceSource: 'Packaging/contact-material reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '06_Packaging_Artwork', notes: 'Review packaging-contact evidence.' },
   ],
 };
 
@@ -825,7 +856,7 @@ const pbCautionLimits: RegisterConfig = {
   key: 'pbCautionLimits',
   title: 'Pregnancy / Breastfeeding Caution Limits',
   sheetName: 'PB_Caution_Limits',
-  description: 'Product-specific concentration and exposure check for maternal products.',
+  description: 'Product-specific concentration and exposure check for maternal products. Use alongside Formula_BOM and Formulation_Safety.',
   mode: 'fixed',
   // Same split as the prohibited list (SME Round 4 question 6 and 32(e)). [ASSUMPTION: R5-Q63]
   gate: '04/07',
@@ -835,6 +866,8 @@ const pbCautionLimits: RegisterConfig = {
     { key: 'statusLimitGuidance', label: 'Status / default limit guidance', type: 'text', width: 220, editable: false },
     { key: 'whyCautionRequired', label: 'Why caution is required', type: 'text', width: 220, editable: false },
     { key: 'applicableProducts', label: 'Applicable products', type: 'text', width: 160, editable: false },
+    // The sheet's own "Reference / source" column (F) — dropped in the first transcription and put back 2026-10-13.
+    { key: 'referenceSource', label: 'Reference / source', type: 'text', width: 200, editable: false },
     {
       key: 'productStatus',
       gate: '07',
@@ -854,7 +887,7 @@ const pbCautionLimits: RegisterConfig = {
     // Round 4 question 6 (2026-08-29) — same column, same reason, as on the
     // Prohibited Ingredient Watch-list above. Required at Gate 4 only when the
     // maternal pathway is triggered, since this whole register is that pathway.
-    { key: 'gate4Disposition', label: 'Gate 4 disposition', type: 'select', width: 190, options: [...GATE4_DISPOSITION_OPTIONS], gate: '04' },
+    { key: 'gate4Disposition', label: 'Classification', type: 'select', width: 190, options: [...GATE4_DISPOSITION_OPTIONS], gate: '04' },
     // Round 4 question 32(e) (2026-08-24): "The Pregnancy/Breastfeeding Caution
     // list uses the same reviewer-trail fields for flagged findings." We asked
     // this ourselves — D3's wording said "each flagged watch-list result" while
@@ -875,18 +908,18 @@ const pbCautionLimits: RegisterConfig = {
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
   ],
   fixedRows: [
-    { ingredientGroup: 'Oxybenzone (Benzophenone-3)', functionRole: 'Chemical UV filter', statusLimitGuidance: 'Caution; mineral alternatives often preferred for pregnancy positioning', whyCautionRequired: 'Systemic absorption, breast milk detection and endocrine activity concern', applicableProducts: 'Sunscreens, SPF moisturizers', productStatus: 'Not assessed', owner: 'Regulatory / Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Record exact % and market limits.' },
-    { ingredientGroup: 'Homosalate', functionRole: 'Chemical UV filter', statusLimitGuidance: 'Restricted/caution in some markets', whyCautionRequired: 'Endocrine and systemic absorption concerns', applicableProducts: 'SPF face products', productStatus: 'Not assessed', owner: 'Regulatory / Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Check current SCCS/market status.' },
-    { ingredientGroup: 'Hydroquinone', functionRole: 'Skin-lightening active', statusLimitGuidance: 'Caution/avoid pregnancy; high absorption concern', whyCautionRequired: 'High dermal absorption and insufficient pregnancy data', applicableProducts: 'Melasma/brightening products', productStatus: 'Not assessed', owner: 'Regulatory / Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Use substitution sheet if excluded.' },
-    { ingredientGroup: 'Essential oils', functionRole: 'Fragrance / therapeutic / antimicrobial', statusLimitGuidance: 'Caution; specify exact oil and level', whyCautionRequired: 'Placental transfer potential and specific oil concerns', applicableProducts: 'Fragranced skincare, body oils', productStatus: 'Not assessed', owner: 'Safety / R&I', linkedGate: '07_Maternal_Baby_Safety', notes: 'Attach IFRA/allergen details.' },
-    { ingredientGroup: 'Caffeine topical', functionRole: 'Antioxidant / vasoconstrictor', statusLimitGuidance: 'Caution; consider total caffeine exposure', whyCautionRequired: 'Cumulative exposure with dietary caffeine', applicableProducts: 'Eye/body/scalp products', productStatus: 'Not assessed', owner: 'Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Record MoS/exposure rationale.' },
-    { ingredientGroup: 'Arnica montana', functionRole: 'Anti-inflammatory / anti-bruising botanical', statusLimitGuidance: 'Caution; topical only; avoid near nipples', whyCautionRequired: 'Neonatal/breastfeeding transfer and sensitisation concern', applicableProducts: 'Anti-bruising creams, massage balms', productStatus: 'Not assessed', owner: 'Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Define use-area restrictions.' },
-    { ingredientGroup: 'BHT', functionRole: 'Antioxidant / stabiliser', statusLimitGuidance: 'Caution; check current max and endocrine review', whyCautionRequired: 'Systemic organ effects at high doses and weak endocrine signal', applicableProducts: 'Moisturisers, SPF, lip products', productStatus: 'Not assessed', owner: 'Safety / Regulatory', linkedGate: '07_Maternal_Baby_Safety', notes: 'Attach concentration justification.' },
-    { ingredientGroup: 'BHA', functionRole: 'Antioxidant / preservative', statusLimitGuidance: 'Caution; low permitted level contexts', whyCautionRequired: 'Carcinogenicity/endocrine/reproductive concerns', applicableProducts: 'Leave-on skincare, lip balms', productStatus: 'Not assessed', owner: 'Safety / Regulatory', linkedGate: '07_Maternal_Baby_Safety', notes: 'Attach concentration justification.' },
-    { ingredientGroup: 'Kojic acid', functionRole: 'Brightening active', statusLimitGuidance: 'Caution; check current limit', whyCautionRequired: 'Limited pregnancy data and endocrine thyroid concern', applicableProducts: 'Brightening/melasma products', productStatus: 'Not assessed', owner: 'Safety / Regulatory', linkedGate: '07_Maternal_Baby_Safety', notes: 'Assess if safer substitute exists.' },
-    { ingredientGroup: 'Licorice root extract', functionRole: 'Brightening / soothing botanical', statusLimitGuidance: 'Caution; check glycyrrhizin content', whyCautionRequired: 'Placental cortisol-barrier mechanism and oral-exposure literature', applicableProducts: 'Brightening/soothing products', productStatus: 'Not assessed', owner: 'Safety / R&I', linkedGate: '07_Maternal_Baby_Safety', notes: 'Attach botanical spec and active content.' },
-    { ingredientGroup: 'Salicylic acid / salicylates', functionRole: 'BHA exfoliant / anti-acne', statusLimitGuidance: 'Caution; topical limits and product type matter', whyCautionRequired: 'Dermal absorption, breast milk transfer and high-dose literature', applicableProducts: 'Acne, toners, cleansers', productStatus: 'Not assessed', owner: 'Safety / Regulatory', linkedGate: '07_Maternal_Baby_Safety', notes: 'Assess total salicylate exposure.' },
-    { ingredientGroup: 'Glycerin for vulvovaginal use', functionRole: 'Humectant / solvent', statusLimitGuidance: 'Caution for intimate products', whyCautionRequired: 'Vaginal epithelial permeability/osmotic concern', applicableProducts: 'Feminine washes/intimate products', productStatus: 'Not assessed', owner: 'Safety / R&I', linkedGate: '07_Maternal_Baby_Safety', notes: 'Only relevant to intimate-use products.' },
+    { ingredientGroup: 'Oxybenzone (Benzophenone-3)', functionRole: 'Chemical UV filter', statusLimitGuidance: 'Caution; mineral alternatives often preferred for pregnancy positioning', whyCautionRequired: 'Systemic absorption, breast milk detection and endocrine activity concerns', applicableProducts: 'Sunscreens, SPF moisturizers', referenceSource: 'Caution table / current market reference', productStatus: 'Not assessed', owner: 'Regulatory / Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Record exact % and market limits.' },
+    { ingredientGroup: 'Homosalate', functionRole: 'Chemical UV filter', statusLimitGuidance: 'Restricted/caution in some markets', whyCautionRequired: 'Endocrine and systemic absorption concerns', applicableProducts: 'SPF face products', referenceSource: 'Caution table / current market reference', productStatus: 'Not assessed', owner: 'Regulatory / Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Check current SCCS/market status.' },
+    { ingredientGroup: 'Hydroquinone', functionRole: 'Skin-lightening active', statusLimitGuidance: 'Caution/avoid pregnancy; high absorption concern', whyCautionRequired: 'High dermal absorption and insufficient pregnancy data', applicableProducts: 'Melasma/brightening products', referenceSource: 'Caution table / current market reference', productStatus: 'Not assessed', owner: 'Regulatory / Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Use substitution sheet if excluded.' },
+    { ingredientGroup: 'Essential oils', functionRole: 'Fragrance / therapeutic / antimicrobial', statusLimitGuidance: 'Caution; specify exact oil and level', whyCautionRequired: 'Placental transfer potential and specific oil/lactation concerns', applicableProducts: 'Fragranced skincare, body oils', referenceSource: 'Caution table / IFRA / supplier declaration', productStatus: 'Not assessed', owner: 'Safety / R&I', linkedGate: '07_Maternal_Baby_Safety', notes: 'Attach IFRA/allergen details.' },
+    { ingredientGroup: 'Caffeine topical', functionRole: 'Antioxidant / vasoconstrictor', statusLimitGuidance: 'Caution; consider total caffeine exposure', whyCautionRequired: 'Cumulative exposure with dietary caffeine', applicableProducts: 'Eye/body/scalp products', referenceSource: 'Caution table / tox rationale', productStatus: 'Not assessed', owner: 'Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Record MoS/exposure rationale.' },
+    { ingredientGroup: 'Arnica montana', functionRole: 'Anti-inflammatory / anti-bruising botanical', statusLimitGuidance: 'Caution; topical only; avoid near nipples', whyCautionRequired: 'Neonatal/breastfeeding transfer and sensitisation concerns', applicableProducts: 'Anti-bruising creams, massage balms', referenceSource: 'Caution table / botanical safety', productStatus: 'Not assessed', owner: 'Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Define use-area restrictions.' },
+    { ingredientGroup: 'BHT', functionRole: 'Antioxidant / stabiliser', statusLimitGuidance: 'Caution; check current max and endocrine review', whyCautionRequired: 'Systemic organ effects at high doses and weak endocrine signals', applicableProducts: 'Moisturisers, SPF, lip products', referenceSource: 'Caution table / market reference', productStatus: 'Not assessed', owner: 'Safety / Regulatory', linkedGate: '07_Maternal_Baby_Safety', notes: 'Attach concentration justification.' },
+    { ingredientGroup: 'BHA', functionRole: 'Antioxidant / preservative', statusLimitGuidance: 'Caution; low permitted level contexts', whyCautionRequired: 'Carcinogenicity/endocrine/reproductive concern in animal data', applicableProducts: 'Leave-on skincare, lip balms', referenceSource: 'Caution table / market reference', productStatus: 'Not assessed', owner: 'Safety / Regulatory', linkedGate: '07_Maternal_Baby_Safety', notes: 'Attach concentration justification.' },
+    { ingredientGroup: 'Kojic acid', functionRole: 'Brightening active', statusLimitGuidance: 'Caution; check current limit', whyCautionRequired: 'Limited pregnancy data and endocrine thyroid flags', applicableProducts: 'Brightening/melasma products', referenceSource: 'Caution table / market reference', productStatus: 'Not assessed', owner: 'Safety / Regulatory', linkedGate: '07_Maternal_Baby_Safety', notes: 'Assess if safer substitute exists.' },
+    { ingredientGroup: 'Licorice root extract', functionRole: 'Brightening / soothing botanical', statusLimitGuidance: 'Caution; check glycyrrhizin content', whyCautionRequired: 'Placental cortisol-barrier mechanism and oral exposure concerns', applicableProducts: 'Brightening/soothing products', referenceSource: 'Caution table / supplier spec', productStatus: 'Not assessed', owner: 'Safety / R&I', linkedGate: '07_Maternal_Baby_Safety', notes: 'Attach botanical spec and active content.' },
+    { ingredientGroup: 'Salicylic acid / salicylates', functionRole: 'BHA exfoliant / anti-acne', statusLimitGuidance: 'Caution; topical limits and product type matter', whyCautionRequired: 'Dermal absorption, breast milk transfer and high-dose salicylate concern', applicableProducts: 'Acne, toners, cleansers', referenceSource: 'Caution/substitution table', productStatus: 'Not assessed', owner: 'Safety / Regulatory', linkedGate: '07_Maternal_Baby_Safety', notes: 'Assess total salicylate exposure.' },
+    { ingredientGroup: 'Glycerin for vulvovaginal use', functionRole: 'Humectant / solvent', statusLimitGuidance: 'Caution for intimate products', whyCautionRequired: 'Vaginal epithelial permeability/osmotic concerns', applicableProducts: 'Feminine washes/intimate products', referenceSource: 'Caution table / tox rationale', productStatus: 'Not assessed', owner: 'Safety / R&I', linkedGate: '07_Maternal_Baby_Safety', notes: 'Only relevant to intimate-use products.' },
   ],
 };
 
@@ -2274,18 +2307,28 @@ export const formulationSafetyMatrix: RegisterConfig = {
 // because a project may legitimately have no critical safety finding at all; the
 // confirmation that someone LOOKED is the Final Safety Sign-off, per E1's "not
 // solely".
+// Question 33(e): closing a High or Critical finding needs the six facts, so each is marked required (and refused on
+// save) once the row is Closed or Superseded AND graded High or Critical. Medium and Low are not asked.
+const CLOSED_HIGH = {
+  column: 'findingStatus',
+  values: ['Closed', 'Superseded'],
+  and: { column: 'severity', values: ['High', 'Critical'] },
+} as const;
+
 export const criticalSafetyFindings: RegisterConfig = {
   key: 'criticalSafetyFindings',
   title: 'Critical Safety Findings',
   sheetName: 'Formulation_Safety',
   description:
-    'One row per safety finding raised during the safety review (rule E1). Gate 7 cannot pass while any finding marked critical is still open, and closing one requires the safety reviewer\'s conclusion and an evidence link. A project with no findings leaves this empty — the confirmation that the review happened is the Final Safety Sign-off below.',
+    'One row per safety finding raised during the safety review (rule E1). Gate 7 cannot pass while any finding marked critical is still open, and closing a High or Critical one requires the safety reviewer\'s conclusion, an evidence link, a completed linked action, the verification, the verifier and the closure date. A project with no findings leaves this empty — the confirmation that the review happened is the Final Safety Sign-off below.',
   mode: 'register',
   gate: '07',
   columns: [
     // E1's own first field, verbatim as a two-value list rather than a checkbox:
     // an unticked box cannot be told apart from "nobody has judged this yet",
     // which is the state that has to block.
+    // The row's own identifier, so another finding can point at it (a Superseded finding names its replacement).
+    { key: 'findingId', label: 'Finding ID', type: 'text', width: 100, unique: true },
     { key: 'criticalFinding', label: 'Critical safety finding identified', type: 'select', width: 170, options: ['Yes', 'No'] },
     { key: 'findingDescription', label: 'Finding description', type: 'textarea', width: 240 },
     { key: 'affectedContext', label: 'Affected ingredient / formula / use context', type: 'textarea', width: 220 },
@@ -2302,11 +2345,34 @@ export const criticalSafetyFindings: RegisterConfig = {
     // Both columns therefore stay — the sentence explicitly permits the free text,
     // it just refuses to let it stand alone. The picker is what Gate 7 reads.
     { key: 'requiredAction', label: 'Required action (description)', type: 'textarea', width: 200 },
-    { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 200 },
+    { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 200, requiredWhen: CLOSED_HIGH },
     { key: 'owner', label: 'Owner', type: 'user', width: 140 },
     { key: 'findingStatus', label: 'Status', type: 'select', width: 110, options: SAFETY_FINDING_STATUS_OPTIONS },
-    { key: 'safetyReviewerConclusion', label: 'Safety reviewer conclusion', type: 'textarea', width: 220 },
-    { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 150 },
+    // A superseded finding is one a LATER assessment replaced, so it has to say which one (project owner, 2026-10-13).
+    // Picked from this register's own Finding IDs rather than typed, so a typo cannot point at nothing.
+    // [ASSUMPTION: R5-Q12]
+    {
+      key: 'supersededBy',
+      label: 'Superseded by',
+      type: 'rowRef',
+      refRegister: 'criticalSafetyFindings',
+      refColumn: 'findingId',
+      width: 150,
+      requiredWhen: { column: 'findingStatus', values: ['Superseded'] },
+    },
+    // The other direction, for reading only: which findings point at THIS one as their replacement. Never stored — it is
+    // worked out from the other rows' "Superseded by" (see `findingsReplacedBy`), so it cannot disagree with them.
+    { key: 'replaces', label: 'Replaces', type: 'text', width: 130, editable: false },
+    { key: 'safetyReviewerConclusion', label: 'Safety reviewer conclusion', type: 'textarea', width: 220, requiredWhen: CLOSED_HIGH },
+    { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 150, requiredWhen: CLOSED_HIGH },
+    // The other three things question 33(e) lists for closing a High or Critical finding: "Verification · Verifier
+    // · Closure date". They had no columns, so the rule checked only three of the six and said so on the readiness
+    // item. Added 2026-10-13 — they are NOT required of every row (only a High or Critical finding that is closed
+    // needs them, which `requiredWhen` cannot express because it ignores severity), so the rule engine reads them,
+    // not the table's required mark.
+    { key: 'verification', label: 'Verification', type: 'textarea', width: 220, requiredWhen: CLOSED_HIGH },
+    { key: 'verifier', label: 'Verifier', type: 'user', width: 150, selfAttest: true, requiredWhen: CLOSED_HIGH },
+    { key: 'closureDate', label: 'Closure date', type: 'date', width: 130, requiredWhen: CLOSED_HIGH },
   ],
 };
 

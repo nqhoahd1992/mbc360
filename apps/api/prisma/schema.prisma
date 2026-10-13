@@ -58,6 +58,7 @@ model User {
   claimLibraryEntries  ClaimLibraryEntry[]
   gateSignOffs         GateSignOff[] @relation("GateSignOffSignedBy")
   gateSignOffsAssigned GateSignOff[] @relation("GateSignOffAssignedTo")
+  readinessAcknowledgements ReadinessAcknowledgement[] @relation("ReadinessAckBy")
   registerClosureSignOffs RegisterClosureSignOff[] @relation("RegisterClosureSignedBy")
   reviewerOf   ProjectReviewer[]
   archivedProjects Project[]     @relation("ProjectArchivedBy")
@@ -171,12 +172,8 @@ model Project {
   // infers from other data. Every column starts NULL and that is load-bearing:
   // NULL means nobody has answered, which BLOCKS. See ProjectAssessments in
   // packages/shared/src/types/index.ts for why the option lists differ.
-  changeControlRequired         String?
-  changeControlReviewer         String?
-  changeControlReviewDate       String?
-  changeControlRationale        String?
-  changeControlRecordId         String?
-  changeControlEvidenceLink     String?
+  // (The Change Control assessment of question 8 used to be six columns here; since 2026-10-13 it is a
+  // LIST, one entry per post-market finding — see ChangeControlAssessment.)
   humanStudyPlanned             String?
   administrativeOnly            String?
   administrativeOnlyConfirmedBy String?
@@ -213,6 +210,8 @@ model Project {
   gateSignOffs     GateSignOff[]
   postLaunchReviews     PostLaunchReview[]
   supersessionDecisions SupersessionDecision[]
+  readinessAcknowledgements ReadinessAcknowledgement[]
+  changeControlAssessments ChangeControlAssessment[]
   reviewers        ProjectReviewer[]
   gates            GateRecord[]
   nextActions      NextAction[]
@@ -487,6 +486,57 @@ model SupersessionDecision {
 
   @@unique([projectId, version, market])
   @@map("supersession_decisions")
+}
+
+// A responsible reviewer's assessment of an auto-generated "not applicable"
+// reason (Round 4 question 16; who the reviewer is and which items are critical
+// is our reading, R5-Q6). ONE row per item, edited in place by whoever is the
+// nominated reviewer at the time (SW-29): acknowledging, or recording that they do
+// NOT acknowledge it with a reason. Nothing is deleted — every edit is an audit
+// event carrying the values before and after — and the row snapshots the name and
+// capacity because the account may later be renamed or deleted.
+model ReadinessAcknowledgement {
+  id                   String   @id @default(cuid())
+  project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId            String
+  gateId               String
+  itemId               String
+  rationale            String // the exact generated wording that was assessed
+  outcome              String   @default("Acknowledged") // 'Acknowledged' | 'Not acknowledged'
+  comment              String? // required when the outcome is 'Not acknowledged'
+  acknowledgedBy       User?    @relation("ReadinessAckBy", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
+  acknowledgedByUserId String?
+  acknowledgedByName   String
+  acknowledgedAs       String
+  acknowledgedAt       DateTime @default(now())
+
+  @@unique([projectId, gateId, itemId])
+  @@map("readiness_acknowledgements")
+}
+
+// One Change Control assessment of a post-market finding (Round 4 question 8), LISTED per
+// finding since 2026-10-13: the SME wrote "the post-market finding" but never said one per
+// project, so the finer granularity is the default (R5-Q11). `finding` and `market` are our
+// addition. Rows are replaced as a list by PUT .../change-control-assessments; `sortOrder` keeps
+// the order the reviewer put them in.
+model ChangeControlAssessment {
+  id             String   @id @default(cuid())
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId      String
+  sortOrder      Int
+  finding        String
+  market         String?
+  answer         String // 'Yes' | 'No' | 'Pending assessment' | '' (counts as Pending)
+  linkedRecordId String?
+  reviewer       String?
+  reviewDate     String?
+  rationale      String?
+  evidenceLink   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([projectId, sortOrder])
+  @@map("change_control_assessments")
 }
 
 // Per-gate sign-off (Round 4 questions 18 and 29, 2026-08-29). A NEW table rather

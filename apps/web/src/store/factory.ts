@@ -147,6 +147,9 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     // none. The review SCHEDULE is derived from each market's actual launch date;
     // nothing is scaffolded.
     supersessionDecisions: [],
+    readinessAcknowledgements: [],
+    changeControlAssessments: [],
+    readinessAckLog: [],
     postLaunchReviews: [],
     studyApprovals: [
       { role: 'Study Author' },

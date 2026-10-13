@@ -5,6 +5,7 @@ import type {
   AngleRow,
   BomLine,
   CapaRecord,
+  ChangeControlAssessment,
   ChangeRecord,
   ChecklistItem,
   CostingInputs,
@@ -200,6 +201,18 @@ interface AppState {
   // F13: the responsible owner accepts a phase's pre-work once it has opened.
   // Who accepted is the signed-in user, recorded by the server.
   acceptPhasePreWork: (id: string, phase: number) => void;
+  // Round 4 question 8, one entry per post-market finding; the list is replaced.
+  setChangeControlAssessments: (id: string, entries: ChangeControlAssessment[]) => Promise<void>;
+  // Round 4 question 16: the nominated "Reviewed by" assesses an auto-generated N/A
+  // reason on a critical readiness item (acknowledged, or not with a reason),
+  // editing the one row in place. The wording and the actor are the server's.
+  acknowledgeReadinessItem: (
+    id: string,
+    gateId: string,
+    itemId: string,
+    outcome: 'Acknowledged' | 'Not acknowledged',
+    comment?: string,
+  ) => Promise<void>;
   setEvidenceSummary: (id: string, phase: number, value: string) => void;
   // The phase banner's "(provide link here)" shortcuts, keyed by workbook label.
   setPhaseKeyLinks: (id: string, phase: number, links: Record<string, string>) => Promise<boolean>;
@@ -590,6 +603,11 @@ export const useAppStore = create<AppState>()(
         // `acceptedBy` argument is no longer trusted (kept for signature parity).
         acceptPhasePreWork: (id, phase) =>
           writeSection(id, (v) => projectsApi.acceptPreWork(id, phase, v)),
+
+        setChangeControlAssessments: (id, entries) =>
+          writeSection(id, (v) => projectsApi.setChangeControlAssessments(id, entries, v)),
+        acknowledgeReadinessItem: (id, gateId, itemId, outcome, comment) =>
+          writeSection(id, (v) => projectsApi.acknowledgeReadinessItem(id, gateId, itemId, outcome, comment, v)),
 
         setBom: (id, lines) => writeSection(id, (v) => projectsApi.setBom(id, lines, v)),
         importCosmetriBom: (id, formulaId) =>

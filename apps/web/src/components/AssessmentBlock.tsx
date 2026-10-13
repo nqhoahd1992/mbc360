@@ -4,14 +4,13 @@ import dayjs from 'dayjs';
 import type { ProjectData } from '@mbc360/shared/types';
 import {
   ADMINISTRATIVE_ONLY_OPTIONS,
-  CHANGE_CONTROL_REQUIRED_OPTIONS,
   FAMILY_USE_AGE_GROUPS,
   HUMAN_STUDY_PLANNED_OPTIONS,
   SCALE_UP_RISK_OPTIONS,
   familyUseAgeGroupList,
 } from '@mbc360/shared/types';
 import { isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
-import { ASSESSMENT_FIELDS, ASSESSMENT_HOMES, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
+import { ASSESSMENT_FIELDS, ASSESSMENT_HOMES, SCALE_UP_REVIEW_AREAS, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
@@ -45,13 +44,13 @@ const FIELDS: Record<AssessmentKey, readonly Field[]> = ASSESSMENT_FIELDS;
 
 // What leaving it blank costs — shown with the question rather than only in the
 // readiness panel.
-const HINTS: Record<AssessmentKey, string> = {
+// (The Change Control assessment is a LIST with its own component, ChangeControlAssessments.)
+const HINTS: Record<Exclude<AssessmentKey, 'changeControl'>, string> = {
   familyUse:
     'Decides the infant pathway at Gates 2, 4, 5, 6, 7, 8-9 and 10. Family use is not a vulnerable population on its own, but leaving this unanswered blocks the pathway from being decided either way. Including Infant 0+ activates it.',
   administrativeOnly: 'Gate 03. Only a confirmed Yes exempts the project from competitor and benchmark review.',
   humanStudy: 'Gate 08. Undecided blocks the gate.',
   scaleUp: 'Gate 09. Pending assessment blocks the gate. A Major formula change counts as identified on its own.',
-  changeControl: 'Gate 12. Pending assessment blocks closure. An already-open change control counts as Yes on its own.',
 };
 
 function pick(source: Assessments, keys: readonly Field[]): Assessments {
@@ -87,7 +86,7 @@ export function isFamilyUseSelected(project: ProjectData): boolean {
   return (project.checklists['targetUsers'] ?? []).some((i) => i.selected && i.label === 'Family use');
 }
 
-export default function AssessmentBlock({ project, which }: { project: ProjectData; which: AssessmentKey }) {
+export default function AssessmentBlock({ project, which }: { project: ProjectData; which: Exclude<AssessmentKey, 'changeControl'> }) {
   const setAssessments = useAppStore((s) => s.setAssessments);
   const keys = FIELDS[which];
   const { draft, dirty, update, markSaved, discard } = useDraft(pick(project.assessments, keys));
@@ -102,19 +101,6 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
   // `infantContact` limb in evaluateTrigger.
   if (which === 'familyUse' && !isFamilyUseSelected(project)) return null;
 
-  // Question 8: "If Yes, a valid Change Control record must be linked. If No, the
-  // rationale and reviewer must be recorded." Both are enforced before Save so a
-  // half-recorded answer never reaches the engine as though it were complete.
-  const ccAnswer = draft.changeControlRequired?.trim() ?? '';
-  const ccNeedsRecord = which === 'changeControl' && ccAnswer === 'Yes' && !draft.changeControlRecordId?.trim();
-  const ccRecordUnknown =
-    which === 'changeControl' &&
-    !!draft.changeControlRecordId?.trim() &&
-    !project.changes.some((c) => c.changeId === draft.changeControlRecordId?.trim());
-  const ccNeedsRationale =
-    which === 'changeControl' &&
-    ccAnswer === 'No' &&
-    (!draft.changeControlRationale?.trim() || !draft.changeControlReviewer?.trim());
   // Question 11: "The classification must be confirmed by an authorised
   // reviewer." An unconfirmed Yes is not an exemption.
   const adminNeedsConfirmer =
@@ -122,13 +108,9 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
     (draft.administrativeOnly?.trim() ?? '') === 'Yes' &&
     !draft.administrativeOnlyConfirmedBy?.trim();
 
-  const blockingReason = ccNeedsRecord
-    ? 'Change Control required = Yes needs a linked Change Control record'
-    : ccNeedsRationale
-      ? 'Change Control required = No needs both a reviewer and a rationale'
-      : adminNeedsConfirmer
-        ? 'An administrative-only classification must name the authorised reviewer who confirmed it'
-        : undefined;
+  const blockingReason = adminNeedsConfirmer
+    ? 'An administrative-only classification must name the authorised reviewer who confirmed it'
+    : undefined;
 
   // Mirrors the `humanStudyPlanned` limb in evaluateTrigger — a started protocol
   // counts as Yes on its own. Read here only to say so on screen.
@@ -215,7 +197,20 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
     case 'scaleUp':
       body = (
         <div className="as-grid">
-          <FieldBox label="Answer">{answerSelect('scaleUpRiskIdentified', SCALE_UP_RISK_OPTIONS)}</FieldBox>
+          <FieldBox label="Answer" wide>
+            {answerSelect('scaleUpRiskIdentified', SCALE_UP_RISK_OPTIONS)}
+          </FieldBox>
+          <div className="as-wide">
+            <details className="as-areas">
+              <summary>Changes that should prompt a scale-up or pilot review ({SCALE_UP_REVIEW_AREAS.length})</summary>
+              <ul>
+                {SCALE_UP_REVIEW_AREAS.map((a) => (
+                  <li key={a}>{a}</li>
+                ))}
+              </ul>
+            </details>
+          </div>
+          {/* Who and when, then where the evidence is: three short fields share one row. */}
           <FieldBox label="Assessor">
             <SelfAttestField
               value={draft.scaleUpRiskAssessor}
@@ -223,23 +218,6 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
             />
           </FieldBox>
           <FieldBox label="Assessment date">{datePicker('scaleUpRiskAssessmentDate')}</FieldBox>
-          <FieldBox label="Risk description" wide>
-            <Input.TextArea
-              autoSize={{ minRows: 1, maxRows: 3 }}
-              value={draft.scaleUpRiskDescription}
-              onChange={(e) => set('scaleUpRiskDescription', e.target.value)}
-            />
-          </FieldBox>
-          <FieldBox label="Rationale" wide>
-            <Input.TextArea
-              autoSize={{ minRows: 1, maxRows: 3 }}
-              value={draft.scaleUpRiskRationale}
-              onChange={(e) => set('scaleUpRiskRationale', e.target.value)}
-            />
-          </FieldBox>
-          <FieldBox label="Required pilot or scale-up activity">
-            <Input value={draft.scaleUpRiskActivity} onChange={(e) => set('scaleUpRiskActivity', e.target.value)} />
-          </FieldBox>
           <FieldBox label="Evidence link">
             <Input
               placeholder="link / folder"
@@ -247,65 +225,25 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
               onChange={(e) => set('scaleUpRiskEvidenceLink', e.target.value)}
             />
           </FieldBox>
-        </div>
-      );
-      break;
-    case 'changeControl':
-      body = (
-        <div className="as-grid">
-          <FieldBox label="Answer">{answerSelect('changeControlRequired', CHANGE_CONTROL_REQUIRED_OPTIONS)}</FieldBox>
-          <FieldBox label="Reviewer" required={ccAnswer === 'No'}>
-            <SelfAttestField
-              status={ccAnswer === 'No' && !draft.changeControlReviewer?.trim() ? 'error' : undefined}
-              value={draft.changeControlReviewer}
-              onChange={(v) => set('changeControlReviewer', v)}
-            />
-          </FieldBox>
-          <FieldBox label="Review date">{datePicker('changeControlReviewDate')}</FieldBox>
-          <FieldBox label="Rationale" wide required={ccAnswer === 'No'}>
+          {/* The long answers take the full width. */}
+          <FieldBox label="Risk description" wide>
             <Input.TextArea
-              autoSize={{ minRows: 1, maxRows: 3 }}
-              status={ccNeedsRationale && !draft.changeControlRationale?.trim() ? 'error' : undefined}
-              value={draft.changeControlRationale}
-              onChange={(e) => set('changeControlRationale', e.target.value)}
-            />
-          </FieldBox>
-          <FieldBox label="Linked Change Control record" required={ccAnswer === 'Yes'}>
-            {/* A picker over this project's change records, not a text box:
-                question 8 asks for a VALID record, and the server refuses an id
-                that is not one of them. */}
-            <Select
               style={{ width: '100%' }}
-              allowClear
-              showSearch={{ optionFilterProp: 'label' }}
-              popupMatchSelectWidth={false}
-              status={ccNeedsRecord || ccRecordUnknown ? 'error' : undefined}
-              placeholder={project.changes.length === 0 ? 'No change record on this project yet' : 'Required when Yes'}
-              notFoundContent="Open one on the Change Control page first"
-              value={draft.changeControlRecordId || undefined}
-              options={[
-                ...(ccRecordUnknown
-                  ? [
-                      {
-                        value: draft.changeControlRecordId as string,
-                        label: `${draft.changeControlRecordId} — not a change record of this project`,
-                      },
-                    ]
-                  : []),
-                ...project.changes.map((c) => ({
-                  value: c.changeId,
-                  label: `${c.changeId} — ${c.trigger || c.affectedArea || 'change'} · ${c.status}`,
-                })),
-              ]}
-              onChange={(v?: string) => set('changeControlRecordId', v ?? '')}
+              autoSize={{ minRows: 3, maxRows: 6 }}
+              value={draft.scaleUpRiskDescription}
+              onChange={(e) => set('scaleUpRiskDescription', e.target.value)}
             />
           </FieldBox>
-          <FieldBox label="Evidence link">
-            <Input
-              placeholder="link / folder"
-              value={draft.changeControlEvidenceLink}
-              onChange={(e) => set('changeControlEvidenceLink', e.target.value)}
+          <FieldBox label="Rationale" wide>
+            <Input.TextArea
+              style={{ width: '100%' }}
+              autoSize={{ minRows: 3, maxRows: 6 }}
+              value={draft.scaleUpRiskRationale}
+              onChange={(e) => set('scaleUpRiskRationale', e.target.value)}
             />
+          </FieldBox>
+          <FieldBox label="Required pilot or scale-up activity" wide>
+            <Input value={draft.scaleUpRiskActivity} onChange={(e) => set('scaleUpRiskActivity', e.target.value)} />
           </FieldBox>
         </div>
       );

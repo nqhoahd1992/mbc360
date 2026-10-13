@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Input, Modal, Select, Tooltip } from 'antd';
+import { Alert, Button, Input, Modal, Segmented, Select, Tooltip } from 'antd';
 import { CheckCircleOutlined, CheckOutlined, ClockCircleOutlined, ExclamationCircleOutlined, HistoryOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type {
@@ -111,6 +111,8 @@ export default function GateSignOffPanel({
   // Sign opens the preview first (everything the signature attests to), then the authenticator step.
   // Whose history is open: a lane (a market, or '' for the single lane of a gate without markets).
   const [historyLane, setHistoryLane] = useState<string | null>(null);
+  // Which market's lane is showing on a per-market gate (undefined = the first one still waiting).
+  const [activeLane, setActiveLane] = useState<string | undefined>(undefined);
   const [reviewing, setReviewing] = useState<{ market?: string; role: GateSignOffRole } | null>(null);
   const [changed, setChanged] = useState<GateContentChangedBody | null>(null);
   const [withdrawing, setWithdrawing] = useState<{ market?: string; role: GateSignOffRole } | null>(null);
@@ -290,9 +292,22 @@ export default function GateSignOffPanel({
     </>
   );
 
+  // A per-market gate (10-12) needs three signatures PER MARKET (question 18), which stacked one full card per
+  // market and repeated the same three rows down the page. The rule is unchanged; the screen now shows ONE card and
+  // a switcher between the markets, each labelled with its own progress so nothing is hidden behind a tab.
+  const laneProgress = (m: string | undefined) =>
+    GATE_SIGNOFF_ROLES.filter((role) => findGateSignOff(project, gateId, m, role)?.signedAt).length;
+  const shownLane =
+    lanes.length > 1
+      ? activeLane !== undefined && lanes.includes(activeLane)
+        ? activeLane
+        : (lanes.find((m) => laneProgress(m) < GATE_SIGNOFF_ROLES.length) ?? lanes[0])
+      : undefined;
+  const visibleLanes = shownLane !== undefined ? [shownLane] : lanes;
+
   return (
     <>
-      {lanes.map((market) => {
+      {visibleLanes.map((market) => {
         const rows = GATE_SIGNOFF_ROLES.map(
           (role) => findGateSignOff(project, gateId, market, role) ?? ({ gateId, market, role } as GateSignOff),
         );
@@ -305,7 +320,27 @@ export default function GateSignOffPanel({
           <div key={market ?? '_'} className="concept-tokens c-card gso">
             <div className="gso-head">
               <span className="gso-title">Gate sign-off</span>
-              {market && <span className="c-tag">{market}</span>}
+              {lanes.length > 1 ? (
+                <Segmented
+                  size="small"
+                  className="gso-lanes"
+                  value={shownLane}
+                  onChange={(v) => setActiveLane(String(v))}
+                  options={lanes.map((m) => ({
+                    value: m as string,
+                    label: (
+                      <span className="gso-lane">
+                        {m}
+                        <span className={laneProgress(m) === GATE_SIGNOFF_ROLES.length ? 'gso-lane-done' : 'gso-lane-n'}>
+                          {laneProgress(m) === GATE_SIGNOFF_ROLES.length ? <CheckCircleOutlined /> : `${laneProgress(m)}/${GATE_SIGNOFF_ROLES.length}`}
+                        </span>
+                      </span>
+                    ),
+                  }))}
+                />
+              ) : (
+                market && <span className="c-tag">{market}</span>
+              )}
               <span className="gso-progress">
                 {new Set(rows.filter((x) => x.signedAt && x.decision).map((x) => x.decision)).size > 1 && (
                   <Tooltip title={rows.filter((x) => x.signedAt).map((x) => `${x.role}: ${x.decision}`).join(' · ')}>

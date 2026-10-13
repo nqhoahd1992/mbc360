@@ -44,6 +44,32 @@ export const ASSESSMENT_HOMES: AssessmentHome[] = [
   },
 ];
 
+// Round 4 question 12: the areas whose change should prompt a scale-up or pilot review, transcribed verbatim and in the
+// answer's order. They are GUIDANCE for whoever answers "Scale-up risk identified?" — shown beside that question — and not a
+// list that triggers anything by itself: a change in one of them AFTER Gate 9 has passed is Change Control's business
+// (does it reopen the gate — Round 5 question 11), and reading them at Gate 9 once it is closed would decide nothing.
+// [R4-REWORK: câu 12]
+export const SCALE_UP_REVIEW_AREAS: readonly string[] = [
+  'Formula composition',
+  'Active or preservative concentration',
+  'Manufacturing site',
+  'Equipment type or equipment scale',
+  'Batch size',
+  'Order of addition',
+  'Mixing speed or time',
+  'Homogenisation',
+  'Heating or cooling profile',
+  'Maximum temperature',
+  'Hold time',
+  'Pre-processing or ingredient hydration',
+  'Transfer method',
+  'Filling method',
+  'Water quality or process-water source',
+  'Process aid',
+  'Packaging/filling interface',
+  'Any change identified by Manufacturing, Quality or R&I as potentially affecting product performance',
+];
+
 export const assessmentAnchor = (key: AssessmentKey): string => `sec-assessment-${key}`;
 
 export const assessmentForTrigger = (trigger: ReadinessTrigger): AssessmentHome | undefined =>
@@ -66,12 +92,7 @@ export const ASSESSMENT_FIELDS: Record<AssessmentKey, readonly (keyof ProjectDat
     'scaleUpRiskActivity',
     'scaleUpRiskEvidenceLink',
   ],
-  changeControl: [
-    'changeControlRequired',
-    'changeControlReviewer',
-    'changeControlReviewDate',
-    'changeControlRationale',
-    'changeControlRecordId',
-    'changeControlEvidenceLink',
-  ],
+  // A list of entries with its own endpoint and lock (ProjectData.changeControlAssessments), so it owns no
+  // column of `ProjectData.assessments`.
+  changeControl: [],
 };

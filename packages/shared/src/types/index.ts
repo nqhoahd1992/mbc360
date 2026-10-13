@@ -811,21 +811,24 @@ export interface GateContentChangedBody {
   editedBy: { by: string; action: string; at: string }[];
 }
 
+// One Change Control assessment of a post-market finding (Round 4 question 8), listed per finding.
+// `finding` and `market` are our addition (the answer lists neither) — they say which finding an entry
+// is about, which matters once there can be several and Gate 12 runs per market. [ASSUMPTION: R5-Q11]
+export interface ChangeControlAssessment {
+  id: string;
+  finding: string;
+  market?: string;
+  answer: string; // 'Yes' | 'No' | 'Pending assessment' ('' counts as Pending)
+  linkedRecordId?: string; // a change record of this project; required when Yes
+  reviewer?: string; // required when No
+  reviewDate?: string; // YYYY-MM-DD
+  rationale?: string; // required when No
+  evidenceLink?: string;
+}
+
 export interface ProjectAssessments {
-  // Question 8 — "Change Control required?", with the five supporting fields the
-  // answer lists. Held at PROJECT level, not per finding, because the app has no
-  // per-finding record to hang it on: `postMarketSources` is a checklist of which
-  // sources apply and `capa` records are the resulting actions, neither of which is
-  // "the finding". Blocking Gate 12 is the nearest faithful reading of "must block
-  // closure of the post-market finding", since Gate 12 IS the post-market review
-  // closure — but the granularity is ours, not theirs [ASSUMPTION: R5-Q11].
-  changeControlRequired?: string;
-  changeControlReviewer?: string;
-  changeControlReviewDate?: string;
-  changeControlRationale?: string;
-  // Required when the answer is Yes: "a valid Change Control record must be linked".
-  changeControlRecordId?: string;
-  changeControlEvidenceLink?: string;
+  // Question 8 — "Change Control required?" is NOT held here any more: it is a LIST, one entry per
+  // post-market finding (`ProjectData.changeControlAssessments`), since 2026-10-13.
   // Question 9 — set to 'Yes' automatically when a Study Protocol is started, per
   // "Creating a Study Protocol automatically sets the answer to Yes"; a person can
   // still answer it directly before that.
@@ -1287,6 +1290,45 @@ export interface ProjectIdentity {
 // free-form record; RegisterConfig (config/registers.ts) declares the real columns.
 export type RegisterRow = Record<string, string | number | boolean | undefined>;
 
+// A responsible reviewer's assessment of an AUTO-GENERATED "not applicable"
+// reason (Round 4 question 16: for a safety-, regulatory-, claims- or
+// release-critical item the generated rationale "must still be acknowledged by the
+// responsible reviewer before gate closure"). ONE row per (gate, item), edited in
+// place by whoever is the nominated reviewer at the time — acknowledging it, or
+// recording that they do NOT with a reason. Nothing is deleted: every edit is an
+// audit event carrying the values before and after. The row only counts while its
+// `rationale` still equals the rationale the engine generates today — if the facts
+// behind the "not applicable" changed, it is an assessment of words nobody is
+// reading any more. Who may edit it is decided in utils/readinessAck.ts
+// [ASSUMPTION: R5-Q6].
+export const READINESS_ACK_OUTCOMES = ['Acknowledged', 'Not acknowledged'] as const;
+export type ReadinessAckOutcome = (typeof READINESS_ACK_OUTCOMES)[number];
+
+// One edit of a readiness acknowledgement, read from the append-only audit trail (the row itself is edited in
+// place, so this is the only place what it said before stays readable — B4, no silent corrections). Oldest first.
+export interface ReadinessAckEvent {
+  id: string;
+  gateId: string;
+  itemId: string;
+  outcome: ReadinessAckOutcome;
+  comment?: string;
+  by: string;
+  date: string; // ISO
+}
+
+export interface ReadinessAcknowledgement {
+  id: string;
+  gateId: string;
+  itemId: string;
+  rationale: string; // the generated explanation that was assessed, verbatim
+  outcome: ReadinessAckOutcome;
+  comment?: string; // required when the outcome is 'Not acknowledged'
+  acknowledgedByUserId?: string; // undefined once that account has been deleted
+  acknowledgedByName: string; // snapshot — survives a rename or deletion
+  acknowledgedAs: string; // e.g. "Reviewed by — Phase 3", snapshot of the capacity
+  acknowledgedAt: string; // ISO timestamp, server clock, of the LAST edit
+}
+
 export interface ProjectData {
   identity: ProjectIdentity;
   gates: GateRecord[];
@@ -1330,6 +1372,12 @@ export interface ProjectData {
   // post-launch reviews. Both are append-mostly records of acts, not settings.
   supersessionDecisions: SupersessionDecision[];
   postLaunchReviews: PostLaunchReview[];
+  // Reviewer acknowledgements of auto-generated N/A reasons — append-only.
+  readinessAcknowledgements: ReadinessAcknowledgement[];
+  // Round 4 question 8, listed per post-market finding (2026-10-13) — see ChangeControlAssessment.
+  changeControlAssessments: ChangeControlAssessment[];
+  // The edit history of those entries, read from the audit trail (never written by a store action).
+  readinessAckLog: ReadinessAckEvent[];
   // Company reference data resolved for THIS project — read-only, refreshed on
   // every read, never written by a store action. See ProjectReferenceData above.
   reference: ProjectReferenceData;

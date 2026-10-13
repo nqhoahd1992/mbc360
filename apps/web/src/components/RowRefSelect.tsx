@@ -25,11 +25,14 @@ export default function RowRefSelect({
   value,
   onChange,
   disabled,
+  exclude,
 }: {
   column: RegisterColumn;
   value?: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  // A value that must not be offered — the row's own identifier when a register points at itself.
+  exclude?: string;
 }) {
   const { projectId } = useParams();
   const rows = useAppStore(
@@ -46,12 +49,12 @@ export default function RowRefSelect({
     const seen = new Set<string>();
     return rows.flatMap((r) => {
       const id = text(r[refColumn]);
-      if (!id || seen.has(id)) return [];
+      if (!id || seen.has(id) || id === exclude) return [];
       seen.add(id);
       const extra = describe ? text(r[describe.key]) : '';
       return [{ value: id, label: extra ? `${id} — ${extra}` : id }];
     });
-  }, [rows, target, refColumn]);
+  }, [rows, target, refColumn, exclude]);
 
   // A reference already recorded stays visible even if its target is gone or
   // renamed, so it can be seen and fixed rather than silently cleared.

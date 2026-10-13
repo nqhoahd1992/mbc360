@@ -1,6 +1,7 @@
 import { Alert, Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
+import { findingsReplacedBy } from '@mbc360/shared/utils/safetyFindings';
 import { criticalSafetyFindings, formulationSafetyFinalSignOff, formulationSafetyMatrix, formulationSafetyProfile } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked, uncoveredFormulaLines } from '@mbc360/shared/utils/gateProgress';
@@ -88,6 +89,13 @@ export default function FormulationSafety() {
         rows={project.registers[criticalSafetyFindings.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, criticalSafetyFindings.key, rows)}
         readOnly={isGateRefLocked(project, criticalSafetyFindings.gate)}
+        // What a reviewer scans a list of findings by: how bad, where it stands, who is acting on it. (Left to itself the table
+        // took the first four short controls, which dropped Status.)
+        tableColumns={['severity', 'findingStatus', 'linkedNextActionId', 'owner']}
+        // "Replaces" is not entered: it lists the findings that name this one as their replacement.
+        renderCell={(column, row, _index, api) =>
+          column.key === 'replaces' ? findingsReplacedBy(api.draft, row).join(', ') || <span className="rt-muted">—</span> : undefined
+        }
       />
 
       <DynamicTable

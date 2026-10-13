@@ -20,7 +20,7 @@
 .grp-ext { margin-left: 4px; color: var(--c-text-3); font-size: 11px; }
 .grp-tier { height: 18px; margin-left: 6px; padding: 0 6px; font-size: 11px; vertical-align: 1px; cursor: default; }
 .grp-note { margin-top: 2px; color: var(--c-text-3); font-size: 12px; text-wrap: pretty; }
-.grp-toggle { height: auto; padding: 0; font-size: 13px; justify-self: start; }
+.grp-toggle { height: auto; padding: 0; font-size: 13px; line-height: 20px; justify-self: start; }
 .grp-parts { display: grid; gap: 2px; margin: 4px 0 0; padding: 0; list-style: none; }
 .grp-parts li { display: flex; align-items: flex-start; gap: 6px; line-height: 18px; font-size: 12px; }
 .grp-part-icon { flex-shrink: 0; margin-top: 2px; font-size: 11px; }
@@ -29,3 +29,10 @@
 .grp-part-met .grp-part-icon { color: var(--c-ok-dot); }
 .grp-part-empty { display: block; font-style: italic; color: var(--c-text-3); }
 .grp-parts-toggle { display: block; margin-top: 2px; font-size: 12px; color: var(--c-text-3); } .grp-parts-toggle .anticon { font-size: 9px; }
+
+.grp-ack-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.grp-ack-reject { display: grid; gap: 6px; margin-top: 4px; max-width: 420px; }
+.grp-ack-history { display: grid; gap: 2px; margin: 2px 0 0; padding: 0 0 0 4px; list-style: none; color: var(--c-text-3); font-size: 12px; }
+.grp-listbtn { display: block; padding: 0; border: 0; background: none; font: inherit; line-height: 20px; text-align: left; cursor: pointer; }
+.grp-listbtn-hint { display: block; margin-top: 6px; color: var(--c-link); font-size: 13px; line-height: 20px; }
+.grp-listbtn:hover .grp-listbtn-hint { text-decoration: underline; }

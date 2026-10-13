@@ -3,6 +3,7 @@
 // through the Vite proxy (never an absolute origin — see CLAUDE.md).
 import type {
   AngleRow,
+  ChangeControlAssessment,
   ChangeRecord,
   ChecklistItem,
   CostingInputs,
@@ -464,6 +465,22 @@ export const acceptPreWork = (id: string, phase: number, expectedVersion: number
     `/projects/${encodeURIComponent(id)}/phases/${phase}/accept-pre-work`,
     { method: 'POST', body: JSON.stringify({ expectedVersion }) },
   );
+
+export const acknowledgeReadinessItem = (
+  id: string,
+  gateId: string,
+  itemId: string,
+  outcome: 'Acknowledged' | 'Not acknowledged',
+  comment: string | undefined,
+  expectedVersion: number,
+) =>
+  request<ProjectEnvelope>(
+    `/projects/${encodeURIComponent(id)}/readiness-acknowledgements`,
+    { method: 'POST', body: JSON.stringify({ gateId, itemId, outcome, comment, expectedVersion }) },
+  );
+
+export const setChangeControlAssessments = (id: string, entries: ChangeControlAssessment[], v: number) =>
+  put(id, 'change-control-assessments', { entries }, v);
 
 export const setRegisterRows = (id: string, registerKey: string, rows: RegisterRow[], v: number) =>
   put(id, `registers/${encodeURIComponent(registerKey)}`, { rows }, v);

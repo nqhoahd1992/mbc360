@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Button } from 'antd';
 import './DrawerSaveFooter.css';
 
@@ -25,6 +26,7 @@ export default function DrawerSaveFooter({
   saving,
   disabled,
   disabledReason,
+  leading,
 }: {
   dirty: boolean;
   // Resolve `false` when the write was refused; anything else counts as accepted.
@@ -41,6 +43,9 @@ export default function DrawerSaveFooter({
   // A rule that blocks the save (a duplicate line, a missing field), as the page-level bar shows it.
   disabled?: boolean;
   disabledReason?: string;
+  // A secondary, destructive action that belongs to the row (Remove row). Sits at the left of the buttons, on their line, so
+  // the footer reads as: what is going on / [what can be undone ... what saves].
+  leading?: ReactNode;
 }) {
   const saveThenClose = async () => {
     const release = onOwnAction?.();
@@ -49,10 +54,11 @@ export default function DrawerSaveFooter({
     else release?.();
   };
   return (
-    <div className="dsf">
+    <div className={leading ? 'dsf dsf-stacked' : 'dsf'}>
       <span className={`dsf-state${dirty ? ' dsf-dirty' : ''}`} role="status">
         {disabled && disabledReason ? disabledReason : dirty ? 'Unsaved changes' : 'All changes saved'}
       </span>
+      {leading && <span className="dsf-lead">{leading}</span>}
       <span className="dsf-actions">
         <Button onClick={() => void saveThenClose()} disabled={!dirty || disabled} loading={saving}>
           Save

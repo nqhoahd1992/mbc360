@@ -31,6 +31,7 @@ import {
   createEmptyRegisterRow,
   getRegisterConfig,
   invalidSelectValues,
+  duplicateValueProblems,
   missingRequiredProblems,
   signatureColumns,
   signatureFieldKeys,
@@ -79,6 +80,10 @@ import {
   gateEvidenceSnapshot,
   gateSnapshotSignedPart,
 } from '@mbc360/shared/utils/gateSnapshot';
+import { currentAcknowledgement, responsibleReviewer } from '@mbc360/shared/utils/readinessAck';
+import { changeControlAssessmentProblems } from '@mbc360/shared/utils/changeControlAssessments';
+import { changeTriggerAvailability } from '@mbc360/shared/utils/changeAccess';
+import { READINESS_ACK_OUTCOMES } from '@mbc360/shared/types';
 import { phaseSignContent } from '@mbc360/shared/utils/phaseSignContent';
 import { registerClosureContent, registerRowSignContent } from '@mbc360/shared/utils/registerClosureContent';
 import { registerContentHashOf, registerRowContentHashOf, rowHashFromCells } from './content-hash';
@@ -99,6 +104,7 @@ import {
   gateSignOffStaleChanges,
   hardGateBlockers,
   isGatePassed,
+  gateReadinessChecklist,
   isGateRefLocked,
   phaseProgress,
   isGateUnlocked,
@@ -108,7 +114,6 @@ import {
 } from '@mbc360/shared/utils/gateProgress';
 import {
   ADMINISTRATIVE_ONLY_OPTIONS,
-  CHANGE_CONTROL_REQUIRED_OPTIONS,
   FAMILY_USE_AGE_GROUPS,
   GAP_IMPACT_CATEGORIES,
   GATE_SIGNOFF_ROLES,
@@ -121,6 +126,7 @@ import {
 import type { GateSignedContent, GateSignOffRole, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
 import type {
   AngleRow,
+  ChangeControlAssessment,
   ChangeRecord,
   ChecklistItem,
   GateCheck,
@@ -150,6 +156,7 @@ import {
   toChangeRecords,
   toGateChangeLog,
   toGateSignOffLog,
+  toReadinessAckLog,
   toProjectData,
   toSupersessionDecision,
   type ProjectWithAll,
@@ -162,12 +169,6 @@ import { createProjectWithScaffold, type NewProjectInput } from './project-scaff
 // makes the compiler reject a name that is not a real field on the type, which is
 // the typo guard this list would otherwise need a test for.
 const ASSESSMENT_FIELDS = [
-  'changeControlRequired',
-  'changeControlReviewer',
-  'changeControlReviewDate',
-  'changeControlRationale',
-  'changeControlRecordId',
-  'changeControlEvidenceLink',
   'humanStudyPlanned',
   'administrativeOnly',
   'administrativeOnlyConfirmedBy',
@@ -234,7 +235,6 @@ function assertSelfAttested(label: string, before: unknown, after: unknown, acto
 
 // The single-answer assessment fields and the list each must come from.
 const ASSESSMENT_ANSWER_LISTS: Partial<Record<keyof ProjectData['assessments'], readonly string[]>> = {
-  changeControlRequired: CHANGE_CONTROL_REQUIRED_OPTIONS,
   humanStudyPlanned: HUMAN_STUDY_PLANNED_OPTIONS,
   administrativeOnly: ADMINISTRATIVE_ONLY_OPTIONS,
   scaleUpRiskIdentified: SCALE_UP_RISK_OPTIONS,
@@ -540,12 +540,19 @@ export class ProjectsService {
       include: { actor: { select: { displayName: true } } },
       orderBy: { occurredAt: 'asc' },
     });
+    // Every edit of a reviewer's acknowledgement of a generated N/A reason (SW-29), oldest first.
+    const ackEvents = await this.prisma.auditEvent.findMany({
+      where: { projectId: row.id, action: 'readiness_ack.recorded' },
+      include: { actor: { select: { displayName: true } } },
+      orderBy: { occurredAt: 'asc' },
+    });
     return {
       project: toProjectData(
         row,
         toGateChangeLog(events),
         await this.loadReference(this.prisma),
         toGateSignOffLog(signEvents),
+        toReadinessAckLog(ackEvents),
       ),
       version: row.version,
       changes: toChangeRecords(row) as ChangeRecord[],
@@ -2219,6 +2226,103 @@ export class ProjectsService {
     });
   }
 
+  // Round 4 question 16: the responsible reviewer assesses an auto-generated
+  // "not applicable" reason on a CRITICAL readiness item before its gate closes —
+  // acknowledging it, or recording that they do not (with a reason).
+  // Who that is, and which items are critical, is our reading [ASSUMPTION: R5-Q6]
+  // and lives in @mbc360/shared/utils/readinessAck.ts — this method only enforces it.
+  //
+  // ONE row per (gate, item), edited in place by whoever is the nominated reviewer
+  // now (SW-29): a new reviewer overwrites the previous one's row, and the same
+  // person may change their own. Nothing is deleted — the audit event carries the
+  // row as it was and as it is now. The wording that is recorded is the one the
+  // engine generates NOW, from the locked project row; the client sends only
+  // (gate, item, outcome, comment), so it cannot assess wording it did not see, and
+  // the actor is always the session user.
+  async acknowledgeReadinessItem(
+    user: SessionUser,
+    id: string,
+    gateId: string,
+    itemId: string,
+    outcome: string,
+    comment: string | undefined,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    if (!(READINESS_ACK_OUTCOMES as readonly string[]).includes(outcome)) {
+      throw new BadRequestException(`outcome must be one of: ${READINESS_ACK_OUTCOMES.join(', ')}`);
+    }
+    const note = comment?.trim() || undefined;
+    if (outcome === 'Not acknowledged' && !note) {
+      throw new BadRequestException('A reason is required when you do not acknowledge it');
+    }
+    return this.mutate(user, id, expectedVersion, 'readiness_ack.recorded', async (tx, _row, project) => {
+      if (!GATES.some((g) => g.id === gateId)) throw new BadRequestException(`Unknown gate "${gateId}"`);
+      if (isGatePassed(project, gateId)) {
+        throw new BadRequestException(
+          `${gateId} has already passed — its evidence is read-only. Backtrack to reopen it if an acknowledgement has to be corrected`,
+        );
+      }
+      const item = gateReadinessChecklist(project, gateId).find((i) => i.id === itemId);
+      if (!item?.acknowledgement) {
+        throw new BadRequestException(
+          `"${itemId}" is not waiting for an acknowledgement at ${gateId} — it is not a critical item whose "not applicable" was generated by the system`,
+        );
+      }
+      const reviewer = responsibleReviewer(project, gateId);
+      if (!reviewer?.userId) {
+        throw new BadRequestException(
+          `Nobody is nominated as "Reviewed by" on Phase ${reviewer?.phase ?? '?'}'s sign-off yet, so nobody can acknowledge this — the project's Lead nominates one`,
+        );
+      }
+      if (reviewer.userId !== user.id) {
+        throw new ForbiddenException(
+          `Only ${reviewer.name ?? 'the nominated reviewer'} — nominated as "Reviewed by" on Phase ${reviewer.phase}'s sign-off — may acknowledge this`,
+        );
+      }
+      const before = currentAcknowledgement(project, gateId, itemId);
+      const rationale = item.acknowledgement.rationale;
+      if (
+        before &&
+        before.rationale === rationale &&
+        before.outcome === outcome &&
+        before.acknowledgedByUserId === user.id &&
+        (before.comment ?? undefined) === (outcome === 'Not acknowledged' ? note : undefined)
+      ) {
+        throw new BadRequestException('Nothing to change — this is already what you recorded');
+      }
+      const data = {
+        rationale,
+        outcome,
+        comment: outcome === 'Not acknowledged' ? note : null,
+        acknowledgedByUserId: user.id,
+        acknowledgedByName: user.displayName,
+        acknowledgedAs: `Reviewed by — Phase ${reviewer.phase}`,
+        acknowledgedAt: new Date(),
+      };
+      await tx.readinessAcknowledgement.upsert({
+        where: { projectId_gateId_itemId: { projectId: id, gateId, itemId } },
+        create: { projectId: id, gateId, itemId, ...data },
+        update: data,
+      });
+      // The audit event is the history of this row (nothing here is ever deleted), so it carries
+      // what the row said before this edit as well as what it says now.
+      return {
+        gateId,
+        itemId,
+        before: before
+          ? {
+              outcome: before.outcome,
+              comment: before.comment ?? null,
+              by: before.acknowledgedByName,
+              at: before.acknowledgedAt,
+              rationale: before.rationale,
+            }
+          : null,
+        after: { outcome, comment: data.comment ?? null, by: user.displayName, rationale },
+      };
+    });
+  }
+
   // --- Phase 3: registers / evidence ---
 
   // One endpoint for all ~76 registers: the rows are JSONB, so the shape is the
@@ -2302,6 +2406,8 @@ export class ProjectsService {
       if (missingRequired.length > 0) {
         throw new BadRequestException(missingRequired.slice(0, 5).join('; '));
       }
+      const duplicates = duplicateValueProblems(config, rows);
+      if (duplicates.length > 0) throw new BadRequestException(duplicates.slice(0, 5).join('; '));
       const badSelects = invalidSelectValues(config, rows);
       if (badSelects.length > 0) {
         throw new BadRequestException(
@@ -3355,7 +3461,6 @@ export class ProjectsService {
       }
       for (const [field, label] of [
         ['administrativeOnlyConfirmedBy', 'Administrative-only "confirmed by"'],
-        ['changeControlReviewer', 'Change Control reviewer'],
         ['scaleUpRiskAssessor', 'Scale-up risk assessor'],
         ['familyUseConfirmedBy', 'Family use "confirmed by"'],
       ] as const) {
@@ -3364,34 +3469,6 @@ export class ProjectsService {
       const merged = { ...project.assessments, ...patch };
       const value = (k: keyof ProjectData['assessments']) => (merged[k] ?? '').trim();
 
-      // Question 8: "If Yes, a valid Change Control record must be linked. If No,
-      // the rationale and reviewer must be recorded."
-      if (value('changeControlRequired') === 'Yes' && value('changeControlRecordId') === '') {
-        throw new BadRequestException(
-          'Change Control required = "Yes" needs a linked Change Control record (Round 4, question 8)',
-        );
-      }
-      // "A VALID Change Control record" — so the link must name a change record
-      // that exists on this project, not any non-empty text. Before 2026-10-02 the
-      // field was a free-text box and a typo, or a record id from another project,
-      // satisfied the rule. Whether every kind of change book counts (the CHG-
-      // records here versus the FC- Formulation Change Register rows) is part of
-      // the still-open question on how many change books there should be
-      // [ASSUMPTION: R5-Q27].
-      const recordId = value('changeControlRecordId');
-      if (recordId !== '' && !project.changes.some((c) => c.changeId === recordId)) {
-        throw new BadRequestException(
-          `Linked Change Control record "${recordId}" is not a change record of this project (Round 4, question 8)`,
-        );
-      }
-      if (
-        value('changeControlRequired') === 'No' &&
-        (value('changeControlRationale') === '' || value('changeControlReviewer') === '')
-      ) {
-        throw new BadRequestException(
-          'Change Control required = "No" needs both the reviewer and the rationale recorded (Round 4, question 8)',
-        );
-      }
       // Question 11: "The classification must be confirmed by an authorised
       // reviewer." An unconfirmed Yes is not an exemption, so it must not be
       // storable as one — the competitor-review trigger reads both fields.
@@ -3403,6 +3480,83 @@ export class ProjectsService {
 
       await tx.project.update({ where: { id }, data });
       return { fields: Object.keys(data) };
+    });
+  }
+
+  // Round 4 question 8, listed per post-market finding (2026-10-13). The whole list is replaced, like
+  // a register: existing entries keep their id, a new one has none, and anything missing from the list is
+  // removed — the audit event names what was added, changed and removed, so nothing disappears silently.
+  // The same shared function that the Gate 12 block reads decides what is wrong with an entry
+  // (changeControlAssessmentProblems), so the screen and this refusal cannot disagree.
+  async setChangeControlAssessments(
+    user: SessionUser,
+    id: string,
+    entries: ChangeControlAssessment[],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'change_control_assessments.updated', async (tx, _row, project) => {
+      // Answered at Gate 12 (C9): once it has passed the answers are evidence it passed on.
+      if (isGateRefLocked(project, '12')) {
+        throw new ForbiddenException(
+          'The Change Control assessment is answered at SG12, which has passed — it is read-only (use Backtrack)',
+        );
+      }
+      const clean = entries.map((e) => ({
+        id: typeof e.id === 'string' ? e.id : '',
+        finding: (e.finding ?? '').trim(),
+        market: (e.market ?? '').trim() || undefined,
+        answer: (e.answer ?? '').trim(),
+        linkedRecordId: (e.linkedRecordId ?? '').trim() || undefined,
+        reviewer: (e.reviewer ?? '').trim() || undefined,
+        reviewDate: (e.reviewDate ?? '').trim() || undefined,
+        rationale: (e.rationale ?? '').trim() || undefined,
+        evidenceLink: (e.evidenceLink ?? '').trim() || undefined,
+      }));
+      const problems = changeControlAssessmentProblems(clean, {
+        changeIds: project.changes.map((c) => c.changeId),
+        markets: project.identity.markets,
+      });
+      if (problems.length > 0) throw new BadRequestException(problems.join('; '));
+
+      const before = new Map(project.changeControlAssessments.map((a) => [a.id, a]));
+      // Who reviewed is an act, so a reviewer that is new or changed must be the person saving (C6).
+      for (const e of clean) {
+        assertSelfAttested('Change Control reviewer', before.get(e.id)?.reviewer, e.reviewer, user.displayName);
+      }
+      const keep = new Set(clean.map((e) => e.id).filter((x) => before.has(x)));
+      const removed = project.changeControlAssessments.filter((a) => !keep.has(a.id));
+      if (removed.length > 0) {
+        await tx.changeControlAssessment.deleteMany({ where: { projectId: id, id: { in: removed.map((a) => a.id) } } });
+      }
+      const added: string[] = [];
+      const changed: string[] = [];
+      for (const [index, e] of clean.entries()) {
+        const data = {
+          sortOrder: index,
+          finding: e.finding,
+          market: e.market ?? null,
+          answer: e.answer,
+          linkedRecordId: e.linkedRecordId ?? null,
+          reviewer: e.reviewer ?? null,
+          reviewDate: e.reviewDate ?? null,
+          rationale: e.rationale ?? null,
+          evidenceLink: e.evidenceLink ?? null,
+        };
+        if (before.has(e.id)) {
+          await tx.changeControlAssessment.update({ where: { id: e.id }, data });
+          const old = before.get(e.id)!;
+          if (JSON.stringify({ ...old, id: undefined }) !== JSON.stringify({ ...e, id: undefined })) changed.push(e.finding);
+        } else {
+          await tx.changeControlAssessment.create({ data: { projectId: id, ...data } });
+          added.push(e.finding);
+        }
+      }
+      return {
+        added,
+        changed,
+        removed: removed.map((a) => ({ finding: a.finding, answer: a.answer, reviewer: a.reviewer ?? null })),
+        count: clean.length,
+      };
     });
   }
 
@@ -3971,11 +4125,13 @@ export class ProjectsService {
           `The supersession decision for ${input.market} was confirmed by ${stored.confirmedBy} and can no longer be changed`,
         );
       }
-      // Confirming moves a version towards Superseded, so it needs an authority —
-      // until the review team says whose (one signature or several), the
-      // per-market approval capability stands in [ASSUMPTION: R5-Q8].
-      if (input.confirm && !(await this.permissions.canApproveMarketTrack(user))) {
-        throw new ForbiddenException('Confirming a supersession decision needs market approval authority (market-track|approve)');
+      // Confirming moves a version towards Superseded, so it needs an authority. The answer says "an authorised
+      // person" and not whose; the project owner's reading (2026-10-13) is the project's Lead, with an
+      // administrator keeping full rights as everywhere else. [ASSUMPTION: R5-Q8]
+      if (input.confirm && !this.permissions.isAdmin(user) && project.identity.projectLead.trim() !== user.displayName.trim()) {
+        throw new ForbiddenException(
+          `Only the project's Lead (${project.identity.projectLead}) may confirm a supersession decision`,
+        );
       }
       const draft = { ...input, confirmedBy: input.confirm ? user.displayName : undefined };
       if (input.confirm) {
@@ -4520,6 +4676,13 @@ export class ProjectsService {
       for (const c of records) {
         const old = before.get(c.changeId);
         if (!old) {
+          // SW-30: a new change is only accepted once its trigger's earliest gate has passed.
+          // Only NEW records are checked — editing one that already exists must stay possible.
+          const trig = c.triggerId ? getChangeTrigger(c.triggerId) : undefined;
+          const availability = trig ? changeTriggerAvailability(project, trig) : undefined;
+          if (availability && !availability.allowed) {
+            throw new BadRequestException(`${c.changeId}: "${trig!.label}" cannot be opened yet — ${availability.reason}`);
+          }
           added.push(c.changeId);
           continue;
         }

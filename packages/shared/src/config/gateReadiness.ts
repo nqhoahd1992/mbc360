@@ -57,8 +57,9 @@ export type ReadinessTrigger =
   //
   // ✅ Round 4 question 8 (2026-08-24) made the second limb machine-readable by
   // recording the judgement instead of inferring it, and it is built: the trigger
-  // reads an OPEN record OR `assessments.changeControlRequired`, whose "Pending
-  // assessment" — and unanswered — both resolve to `notAssessed` and block.
+  // reads an OPEN record OR the list of assessments (one per post-market finding,
+  // 2026-10-13), where any "Pending assessment" — or unanswered — entry, and an empty
+  // list, resolve to `notAssessed` and block.
   | 'openChangeControl'
   // A3, Gate 12: "Mandatory where required by product category, market, company
   // policy, safety signal, vulnerable-user population, complaint trend or
@@ -2158,9 +2159,6 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg07-no-critical',
       label: 'No unresolved critical or high safety finding',
       tier: 'Mandatory',
-      coverageNote:
-        'the app checks the reviewer conclusion, the evidence link and a completed controlled action before a High or Critical finding counts as closed. ' +
-        'It cannot yet check the remaining three the review team named — verification, the verifier and a closure date — as the register has no columns for them.',
       check: { kind: 'noOpenCriticalSafetyFinding' },
     },
     {
@@ -2546,7 +2544,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       trigger: 'scaleUpRiskIdentified',
       coverageNote:
         'triggered by a Major formula change or by the reviewer’s own Yes / Pending answer. ' +
-        'The eighteen affected areas that should also trigger it — manufacturing site, equipment scale, batch size, order of addition and the rest — are not read yet; they belong on the change record, which is being restructured.',
+        'The eighteen areas whose change should prompt a scale-up review (manufacturing site, equipment scale, batch size and the rest) are shown beside the reviewer’s question as guidance; they do not trigger it by themselves.',
       // Shares the Key Gate Check above — its own wording covers "Pilot/scale-up".
       check: { kind: 'gateCheckDone', gate: '09', check: 'Pilot/scale-up and release criteria assessed' },
     },
@@ -3155,13 +3153,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // recorded one, and it is built: the trigger reads an open record OR the
       // reviewer's explicit answer, with Pending and unanswered both blocking.
       //
-      // What remains disclosed is the GRANULARITY: the answer is held once per
-      // project, because the app has no per-finding record to attach it to
+      // 2026-10-13: the answer is now held PER FINDING (one entry each), so the granularity
+      // is no longer the gap; what remains is that nothing proves every finding was listed
       // [ASSUMPTION: R5-Q11].
       trigger: 'openChangeControl',
       coverageNote:
-        'the app checks whether a change control record is open, or whether a reviewer has recorded an explicit Yes / No answer. ' +
-        'That answer is held once for the project, not per post-market finding — the app has no per-finding record to attach it to.',
+        'the app checks whether a change control record is open, and that every post-market finding the reviewer listed has been answered (Yes with a linked record, or No with a reviewer and reason). ' +
+        'It cannot know whether a finding was left off the list — what counts as a finding is the reviewer\'s call.',
       label: 'Change-control links',
       // Supporting -> Conditional 2026-08-09: A1 says so in as many words
       // ("change from Supporting to Conditional"). Behaviour is unchanged for

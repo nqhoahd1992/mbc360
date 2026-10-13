@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Alert, App, Button, Card, Checkbox, DatePicker, Input, Space, Table, Tag, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import type { ProjectData, SupersessionDecision } from '@mbc360/shared/types';
@@ -10,6 +11,7 @@ import {
   versionMarkets,
 } from '@mbc360/shared/utils/formulaLifecycle';
 import { useAppStore } from '../store/useAppStore';
+import { useSession } from '../auth/useSession';
 import { TEXT } from '../theme/tokens';
 
 // Round 4 question 2 — the per-market supersession decision (2026-08-30).
@@ -74,6 +76,9 @@ function blankDecision(version: string, market: string): SupersessionDecision {
 export default function FormulaSupersessionCard({ project }: { project: ProjectData }) {
   const setDecision = useAppStore((s) => s.setSupersessionDecision);
   const { message } = App.useApp();
+  const session = useSession();
+  // The project's Lead confirms (an administrator keeps full rights) — the server enforces the same rule. [ASSUMPTION: R5-Q8]
+  const canConfirm = !!session.user && (session.isAdmin || project.identity.projectLead.trim() === session.user.displayName.trim());
   // Local drafts, keyed by version+market. Not `useDraft`: the endpoint writes ONE
   // market at a time (confirming is an act that stamps who decided and when), so
   // there is no bulk save for a SaveBar to drive — the same reason the modal-gated
@@ -82,6 +87,12 @@ export default function FormulaSupersessionCard({ project }: { project: ProjectD
   const [busy, setBusy] = useState<DraftKey | null>(null);
 
   const versions = useMemo(() => transitioningVersions(project), [project]);
+  // The Project Overview links here with ?scrollTo=sec-supersession.
+  const { search } = useLocation();
+  const wanted = new URLSearchParams(search).get('scrollTo') === 'sec-supersession';
+  useEffect(() => {
+    if (wanted && versions.length > 0) document.getElementById('sec-supersession')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [wanted, versions.length]);
   if (versions.length === 0) return null;
 
   const stored = new Map(project.supersessionDecisions.map((d) => [`${d.version}|${d.market}`, d]));
@@ -117,7 +128,7 @@ export default function FormulaSupersessionCard({ project }: { project: ProjectD
   };
 
   return (
-    <Card title="Formula supersession (per market)" style={{ marginTop: 16 }}>
+    <Card id="sec-supersession" title="Formula supersession (per market)" style={{ marginTop: 16 }}>
       <Alert
         type="info"
         showIcon
@@ -216,13 +227,16 @@ export default function FormulaSupersessionCard({ project }: { project: ProjectD
                           </Button>
                           <Tooltip
                             title={
-                              supersessionGaps(d).length > 0
-                                ? `Still missing: ${supersessionGaps(d).join('; ')}`
-                                : undefined
+                              !canConfirm
+                                ? `Only the project's Lead (${project.identity.projectLead}) confirms a supersession decision`
+                                : supersessionGaps(d).length > 0
+                                  ? `Still missing: ${supersessionGaps(d).join('; ')}`
+                                  : undefined
                             }
                           >
                             <Button
                               type="primary"
+                              disabled={!canConfirm}
                               loading={busy === key}
                               // Deliberately NOT disabled on an incomplete draft: the
                               // server names every missing fact in its rejection, which

@@ -1,0 +1,14 @@
+/* The list behind a readiness item that is a list of things to open (registers still to close). */
+.grl { display: grid; gap: 12px; color: var(--c-text); font-size: 14px; }
+.grl-tools { display: grid; gap: 8px; }
+.grl-list { display: grid; margin: 0; padding: 0; max-height: 56vh; overflow-y: auto; list-style: none; border: 1px solid var(--c-border-2); border-radius: 8px; }
+.grl-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; }
+.grl-row + .grl-row { border-top: 1px solid var(--c-border-2); }
+.grl-main { flex: 1; min-width: 0; }
+.grl-title { line-height: 20px; text-wrap: pretty; }
+.grl-group { margin-top: 2px; color: var(--c-text-3); font-size: 12px; }
+.grl-open { flex-shrink: 0; color: var(--c-link); font-size: 13px; white-space: nowrap; }
+.grl-open:hover { text-decoration: underline; }
+.grl-hint { margin: 0; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
+/* A long title must not run under the close button. */
+.grl-modal .ant-modal-title { padding-right: 40px; }

@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Checkbox, DatePicker, Drawer, Grid, Input, InputNumber, Popconfirm, Select, Tooltip } from 'antd';
+import { SAFETY_FINDINGS_REGISTER, canChooseSuperseded } from '@mbc360/shared/utils/safetyFindings';
+import { Alert, Button, Checkbox, DatePicker, Drawer, Grid, Input, InputNumber, Select, Tooltip } from 'antd';
 import { DeleteOutlined, DownOutlined, LockOutlined, PlusOutlined, RightOutlined, UpOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useParams } from 'react-router-dom';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
-import { isColumnRequiredFor, isRegisterRowBlank, missingRequiredProblems } from '@mbc360/shared/config/registers';
+import { duplicateValueProblems, isColumnRequiredFor, isRegisterRowBlank, missingRequiredProblems } from '@mbc360/shared/config/registers';
 import RequiredMark from './RequiredMark';
 import { claimLibraryLinkMismatch } from '@mbc360/shared/config/referenceData';
 import type { RegisterRow } from '@mbc360/shared/types';
@@ -248,6 +249,7 @@ export default function DynamicTable({
       ? ['One or more rows have no data entered — fill in at least one field, or remove the row.']
       : []),
     ...requiredProblems,
+    ...(readOnly ? [] : duplicateValueProblems(config, draft)),
     ...blockers,
   ];
   // Resolves false when nothing was saved — a rule blocked it, or the server refused — so a drawer that closes on Save
@@ -363,7 +365,14 @@ export default function DynamicTable({
       case 'nextActionRef':
         return <NextActionSelect value={value as string | undefined} onChange={(v) => patch(index, column.key, v)} />;
       case 'rowRef':
-        return <RowRefSelect column={column} value={value as string | undefined} onChange={(v) => patch(index, column.key, v)} />;
+        return (
+          <RowRefSelect
+            column={column}
+            value={value as string | undefined}
+            exclude={column.refRegister === config.key ? text(row[column.refColumn ?? '']) || undefined : undefined}
+            onChange={(v) => patch(index, column.key, v)}
+          />
+        );
       case 'claimsLibraryRef':
         return (
           <ClaimsLibrarySelect
@@ -407,7 +416,14 @@ export default function DynamicTable({
             popupMatchSelectWidth={false}
             placeholder="Select…"
             value={(value as string | undefined) || undefined}
-            options={(column.options ?? []).map((o) => ({ value: o, label: o }))}
+            options={(column.options ?? []).map((o) => ({
+              value: o,
+              label: o,
+              // "Superseded" needs a finding to point at; with none, it is shown but cannot be chosen.
+              ...(config.key === SAFETY_FINDINGS_REGISTER && column.key === 'findingStatus' && o === 'Superseded' && value !== 'Superseded' && !canChooseSuperseded(rows, index)
+                ? { disabled: true, title: 'Needs another finding with a Finding ID to point at — save one first' }
+                : {}),
+            }))}
             onChange={(v) => patch(index, column.key, v)}
           />
         );
@@ -471,6 +487,27 @@ export default function DynamicTable({
     if (openIndex === null || draft.length === 0) return;
     setOpenIndex((openIndex + delta + draft.length) % draft.length);
   };
+
+  // Which fields of the detail drawer take a whole row. Long text always does; a short field pairs with the next short one,
+  // and one left without a partner (before a long field, or last) takes the row itself — otherwise it sat alone in half a
+  // row with nothing beside it, which made the form read as scattered.
+  const fullWidthFields = (() => {
+    const wide = (c: RegisterColumn) => c.type === 'textarea' || c.type === 'multiSelect' || c.type === 'signature';
+    const full = new Set<number>();
+    let i = 0;
+    while (i < editable.length) {
+      if (wide(editable[i])) {
+        full.add(i);
+        i += 1;
+      } else if (i + 1 < editable.length && !wide(editable[i + 1])) {
+        i += 2;
+      } else {
+        full.add(i);
+        i += 1;
+      }
+    }
+    return full;
+  })();
 
   return (
     <div className={embedded ? 'rt' : 'concept-tokens rt c-card rt-standalone'}>
@@ -670,39 +707,27 @@ export default function DynamicTable({
                 // The page-level rules that block Save (blank rows, validation) block it here too.
                 disabled={saveProblems.length > 0}
                 disabledReason={saveProblems[0]}
-                onSaveAndNext={openIndex < draft.length - 1 ? async () => { const ok = await save(); if (ok) step(1); return ok; } : undefined}
-              />
-              {isRegister && (
+                leading={isRegister ? (
+                  <>
               <Tooltip title={removeBlock(draft[openIndex])}>
                 <span>
-                  {/* A row nobody has typed into has nothing to lose, so it goes
-                      without the "Remove this row?" step (user-requested,
-                      2026-10-02); a row with data still asks. */}
-                  {isRegisterRowBlank(config, draft[openIndex]) ? (
-                    <Button
-                      danger
-                      icon={<DeleteOutlined />}
-                      disabled={!!removeBlock(draft[openIndex])}
-                      onClick={() => removeRow(openIndex)}
-                    >
-                      Remove row
-                    </Button>
-                  ) : (
-                    <Popconfirm
-                      title="Remove this row?"
-                      okButtonProps={{ danger: true }}
-                      okText="Remove"
-                      disabled={!!removeBlock(draft[openIndex])}
-                      onConfirm={() => removeRow(openIndex)}
-                    >
-                      <Button danger icon={<DeleteOutlined />} disabled={!!removeBlock(draft[openIndex])}>
-                        Remove row
-                      </Button>
-                    </Popconfirm>
-                  )}
+                  {/* No "Remove this row?" step: the removal only changes the draft, and Discard (or leaving the
+                      page) brings the row back until the table is saved. */}
+                  <Button
+                    danger
+                    type="text"
+                    icon={<DeleteOutlined />}
+                    disabled={!!removeBlock(draft[openIndex])}
+                    onClick={() => removeRow(openIndex)}
+                  >
+                    Remove row
+                  </Button>
                 </span>
               </Tooltip>
-              )}
+                  </>
+                ) : undefined}
+                onSaveAndNext={openIndex < draft.length - 1 ? async () => { const ok = await save(); if (ok) step(1); return ok; } : undefined}
+              />
             </div>
           ) : undefined
         }
@@ -713,11 +738,8 @@ export default function DynamicTable({
               <section>
                 <div className="rt-sec-title">{readOnly ? 'Details' : 'Edit'}</div>
                 <div className="rt-grid">
-                  {editable.map((col) => (
-                    <label
-                      key={col.key}
-                      className={col.type === 'textarea' || col.type === 'multiSelect' || col.type === 'signature' ? 'rt-span-2' : undefined}
-                    >
+                  {editable.map((col, ci) => (
+                    <label key={col.key} className={fullWidthFields.has(ci) ? 'rt-span-2' : undefined}>
                       <span className="rt-label">
                         {col.label}
                         {isColumnRequiredFor(col, openRow) && <RequiredMark met={!!openRow[col.key]} title="Required while the row is in this state" />}

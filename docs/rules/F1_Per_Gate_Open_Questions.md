@@ -1401,7 +1401,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | R5-Q14 | **14** | "Safety **hoặc** Regulatory authority" — một trong hai là đủ, hay cần cả hai |
 | R5-Q15 | **15** | Trang dữ liệu tham chiếu cấp công ty: ai *thấy*, ai *sửa* |
 | R5-Q16 | **16** | Gap High — "controlled action" nghĩa là Next Action có kiểm soát?, và due date ghi đâu |
-| R5-Q17 | **17** | Trigger Change Control có nên giới hạn theo gate dự án đã pass không |
+| ✅ R5-Q17 | — | Trigger Change Control giới hạn theo gate đã pass — đã quyết là quy tắc phần mềm SW-30 (13/10/2026), không gửi SME |
 | R5-Q18 | **18** | "NP Controlled" là một cuốn sổ riêng, hay là thẩm quyền phê duyệt trên sổ chung |
 | R5-Q19 | **19** | Chín cuốn sổ change control chồng lấn nhau — cuốn nào là sổ sự kiện, cuốn nào là sách luật |
 | R5-Q20 | **20** | Change Control chạm gate đã pass — có tự mở lại gate đó không, và Reject/Cancel có cần quyết định lại |
@@ -1583,7 +1583,13 @@ Ba cách đọc, ba lượng công việc rất khác nhau:
 
 **Câu hỏi:** cách nào? Và "item critical" ở đây có cùng nghĩa với "gate critical" của câu 29 (tức mọi item ở Gate 3/4/7/8/9/10/11) hay là một tính chất riêng của từng item?
 
-**Nếu trả lời khác:** chỗ sẽ build là `gateReadinessChecklist()` (`gateProgress.ts`) + một bảng acknowledgement mới; hằng số danh sách gate critical đặt cạnh phép kiểm độc lập của câu 29.
+**Cập nhật 13/10/2026 — đã build theo giả định, và câu hỏi gửi SME đổi hình dạng.** Chủ dự án chọn: hỏi SME bằng **bảng 31 item** (mọi item Conditional có trigger — chỉ những item này mới có thể sinh N/A) để họ phân loại critical, và build luôn phần còn lại theo giả định rồi sửa khi có đáp án. Giả định đang chạy:
+- **Critical = item nằm trên 7 gate critical của câu 29(3)** (18/31 item). Cách đọc cơ học, không ai xét từng item. Cột "Second look" của bản nháp đánh dấu 8 item mà quy tắc này và nội dung item có vẻ lệch (`sg02-infant-context`, `sg03-benchmark`, `sg05-preservative`, `sg05-infant-formula`, `sg06-infant-packaging`, `sg06-market-pack`, `sg12-pms-baseline`, `sg12-pv-pms`).
+- **Responsible reviewer = người Lead nominate ở dòng "Reviewed by" của chữ ký phase** chứa gate (không phải lane Reviewer của gate: lane đó nominate lười theo từng thị trường, còn nominate của phase có từ ngày tạo dự án). Đổi người: người cũ không làm thêm được; **một dòng cho mỗi item, người mới sửa thẳng vào dòng đó** (có thể ghi "Not acknowledged" kèm lý do để bác bỏ cái trước); không xóa gì, audit giữ giá trị trước và sau. Các hành vi này là quyết định phần mềm của chủ dự án, ghi ở `Software_Rules.md` SW-29, không hỏi SME.
+- **Xác nhận hết hiệu lực khi lý do đổi** (sự thật đằng sau N/A đổi): đây là cách đọc của mình, hỏi ở câu 1(c).
+- **Chưa nominate thì không ai xác nhận được** → item chặn gate, và trang phase nhắc Lead nominate.
+
+**Chỗ sửa khi SME trả lời:** phân loại từng item → `CRITICAL_ITEM_OVERRIDES` trong `packages/shared/src/utils/readinessAck.ts` (một dòng `itemId: true|false` mỗi item, `verify:ack` kiểm số lượng mặc định 18/31 và phải sửa theo); ai là reviewer → `responsibleReviewer()` cùng file (đổi sang lane gate, chủ review area hoặc người chỉ định từng item; hai phương án sau cần thêm chỗ lưu); xác nhận hết hiệu lực → `acknowledgementState()`; chức năng độc lập cho item safety (câu 1(b)) → thêm kiểm capability vào `ProjectsService.acknowledgeReadinessItem`. Nơi dùng: `gateReadinessChecklist()` (`gateProgress.ts`), `POST /projects/:id/readiness-acknowledgements`, `GateReadinessPanel.tsx`, `PhasePage.tsx`. Kiểm thử: `npm run verify:ack`, các case SG07 trong `gate-signing.e2e.ts`.
 
 #### R5-Q7 · Ảnh chụp bằng chứng theo gate gồm chính xác những gì 🔴
 
@@ -1610,6 +1616,8 @@ Ba cách đọc, ba lượng công việc rất khác nhau:
 #### R5-Q8 · Ai ký quyết định supersession theo thị trường 🔴
 
 **Đáp án Vòng 4 câu 2** liệt kê 10 dữ kiện phải xác nhận để một phiên bản công thức cũ chuyển từ *Transition in Progress* sang *Superseded*, và nhấn mạnh *"The supersession decision must be recorded by a person — never inferred automatically by the system."*
+
+**Cập nhật 13/10/2026 (chủ dự án):** "an authorised person" được đọc là **Project Lead của dự án** (admin vẫn giữ toàn quyền như mọi chỗ khác). Trước đó là quyền duyệt launch thị trường (`market-track|approve`). Server từ chối xác nhận nếu người gọi không phải Lead hay admin (403, nêu tên Lead); thẻ trên trang Formula BOM khóa nút Confirm với chú thích tương tự. Vẫn là cách đọc của mình, hỏi ở câu 5(a) bản nháp: SME có thể muốn mỗi chức năng tự xác nhận phần của mình.
 
 **Cái đáp án không nói:** *"an authorised person"* là ai. Mười dữ kiện trải khắp Regulatory (thông báo/đăng ký), Quality (lô cuối được xuất xưởng), Supply Chain (xử lý tồn kho), Sales & Marketing (truyền thông) và Packaging (chuyển tiếp artwork) — nên không hiển nhiên đây là một chữ ký hay năm chữ ký.
 
@@ -1648,27 +1656,27 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 
 **Đã build 24/08/2026** cùng nhóm 1. Câu 8 yêu cầu một bước đánh giá tường minh — *"Change Control required? → Yes / No / Pending assessment"* kèm reviewer · ngày · lý do · Change Control ID liên kết (khi Yes) · evidence link — và **"Pending assessment must block closure of the post-market finding"**.
 
-**Chỗ phải chọn:** đáp án nói *"the post-market finding"* ở số ít, nghĩa là mỗi phát hiện một câu trả lời. Nhưng app **không có bản ghi "post-market finding"** nào để gắn vào:
+**Cập nhật 13/10/2026 — đã ĐỔI sang từng phát hiện, theo chủ dự án.** Lập luận của chủ dự án: đáp án viết *"the post-market finding"* ở số ít và **không** nói mỗi dự án chỉ có một; khi SME không nói rõ độ mịn thì mặc định là mịn hơn (nhiều mục), vì một ô cho cả dự án làm mất thông tin — nhất là ở Gate 12, vốn kéo dài nhiều năm và chạy theo từng thị trường (Q13/Q14). Cách làm trước đó (một đáp án cấp dự án, ghi ở 24/08) là suy đoán chọn cách rẻ nhất vì app chưa có bản ghi "phát hiện".
 
-| Ứng viên | Vì sao không phải "the finding" |
-|---|---|
-| checklist `postMarketSources` | là danh sách **nguồn** nào có áp dụng (16 option), không phải từng phát hiện |
-| `project.capa` | là **hành động kết quả** — và chính câu 10 nói "CAPA là resulting action, không phải nguồn feedback" |
-| `project.feedback` | phản hồi panel nội bộ, không phải phát hiện hậu thị trường |
+**Đang chạy:**
+- Khối ở Gate 12 là **danh sách** `ProjectData.changeControlAssessments` (bảng `change_control_assessments`, `PUT /projects/:id/change-control-assessments` thay cả danh sách; mỗi lần lưu ghi audit nêu cái thêm, đổi, xóa). Mỗi mục: **Linked Change Control record (trường đầu tiên; chọn bản ghi thì Answer tự thành Yes)** · Answer (Yes/No/Pending assessment) · Reviewer · Review date · Rationale · Evidence link, đúng danh sách SME; cộng hai trường **của mình thêm**: **Finding** (bắt buộc — để biết mục nói về phát hiện nào) và **Market** (tùy chọn, vì Gate 12 chạy theo từng thị trường).
+- Luật của SME áp cho từng mục: Yes cần bản ghi liên kết hợp lệ của dự án; No cần reviewer và lý do; Pending (và để trống) chặn Gate 12. Một hàm dùng chung (`changeControlAssessmentProblems`) quyết định mục sai ở đâu, đọc bởi cả màn hình và API. Reviewer mới/đổi phải là người đang lưu (C6). Gate 12 đã passed thì khóa (C9).
+- **Trigger `openChangeControl`:** mục Pending/trống nào cũng chặn và **thắng** mọi thứ khác (không để một bản ghi đang mở của phát hiện KHÁC gỡ chặn cho một phát hiện chưa đánh giá); sau đó bản ghi đang mở hoặc một Yes thì áp dụng; **danh sách rỗng vẫn chặn** — một kỳ review không có phát hiện nào cần Change Control phải ghi MỘT mục trả lời No kèm lý do (chủ dự án chọn, 13/10/2026), để "chưa ai xem" khác "xem rồi, không có gì".
+- Migration `20261013140000_change_control_assessment_list` chuyển đáp án cấp dự án cũ thành một mục (finding = "Post-market review (carried over from the project-level answer)") rồi mới bỏ 6 cột.
 
-**Đã làm:** giữ câu trả lời ở **cấp dự án** (`ProjectAssessments.changeControlRequired`), và Pending/chưa trả lời thì chặn **Gate 12**. Lập luận: `sg12-signoff` là *"Prepared, reviewed and approved review closure"* — Gate 12 **chính là** việc đóng kỳ review hậu thị trường, nên chặn Gate 12 là cách đọc sát nhất mà dữ liệu hiện có cho phép. Item mang `coverageNote` nói rõ câu trả lời là một-cho-cả-dự-án.
+**Còn mở, đưa SME (câu 2 bản nháp):** (1) cách đọc theo từng phát hiện có đúng không; (2) **cái gì tạo thành một "phát hiện"** và nó phát sinh ở đâu trong quy trình của họ (mình chỉ cho nhập mô tả tự do); (3) hai trường Finding và Market có đủ để phân biệt các mục không.
 
-**Cái mất khi làm vậy:** có 5 phát hiện mà chỉ 1 cần Change Control thì một ô Yes/No cấp dự án không diễn tả được. Đổi lại, làm per-finding nghĩa là **phát minh ra bản ghi "post-market finding"** — một register mới không ai yêu cầu, ở đúng vùng mà câu 10 đang bảo tách lại 16 option thành ba danh sách, nên rất dễ phải làm hai lần.
-
-**Câu hỏi:** câu trả lời này nên ghi **một lần cho cả dự án** (đang làm vậy), hay **từng phát hiện hậu thị trường một**? Nếu là từng phát hiện, xin cho biết cái gì tạo thành một "phát hiện" trong hệ thống — nó có phải là thứ sẽ ra đời khi tách ba danh sách của câu 10 không?
-
-**Nếu trả lời khác:** `ProjectAssessments` trong `packages/shared/src/types/index.ts` (chuyển 6 trường sang một register mới), nhánh `openChangeControl` trong `evaluateTrigger()` ở `utils/gateProgress.ts`, và `AssessmentBlock.tsx`.
+**Nếu trả lời khác:** `utils/changeControlAssessments.ts` (luật từng mục), nhánh `openChangeControl` trong `evaluateTrigger()` (`utils/gateProgress.ts`), `ChangeControlAssessments.tsx`, `ProjectsService.setChangeControlAssessments`.
 
 #### R5-Q12 · Một safety finding `Superseded` có cần kết luận + bằng chứng như `Closed` không 🔴
 
 **Đã build 24/08/2026** cùng nhóm 2. Câu 33(b) cấp bộ trạng thái mới cho safety finding: Open · Under Review · Action Pending · Verification Pending · Closed · **Superseded**. Câu 33(e) nói riêng về việc *đóng*: *"Closing a High or Critical finding requires: Safety reviewer conclusion · Evidence link · Linked action completed · Verification · Verifier · Closure date."*
 
 **Chỗ không có đáp án:** `Superseded` không phải `Closed`. Một finding bị thay thế bởi đánh giá sau về cùng mối nguy — bằng chứng của nó nằm ở *finding thay thế*, không phải ở chính nó. Nên câu 33(e) có áp cho `Superseded` hay không thì đáp án không nói.
+
+**Cập nhật 13/10/2026:** ba thứ còn thiếu của câu 33(e) — **Verification · Verifier · Closure date** — đã có cột (`verification`, `verifier` tự xác nhận bằng người đang đăng nhập, `closureDate`), nên luật giờ kiểm đủ **sáu** thứ, cho cả `Closed` lẫn `Superseded` ở finding High/Critical. Đây là lời SME (33(e)) chứ không phải suy đoán; riêng việc áp cho `Superseded` vẫn là của mình (câu hỏi này). Dữ liệu cũ: các dòng High/Critical đã đóng trước đây sẽ chặn Gate 7 cho tới khi điền đủ ba cột mới (đúng ý SME, không có gì để chuyển).
+
+**Cập nhật 13/10/2026 (chủ dự án):** một finding `Superseded` **bắt buộc trỏ tới finding thay thế** — cột `supersededBy` (`rowRef` vào `findingId` của chính sổ này, `requiredWhen` status = Superseded), thêm cột `findingId`. Không chọn được `Superseded` khi chưa có finding nào khác có Finding ID (`canChooseSuperseded`, đọc dữ liệu đã lưu, cùng nguồn với bộ chọn); trỏ vào chính nó hoặc vào thứ không tồn tại thì Gate 7 vẫn chặn (`supersededWithoutReplacement`, mọi mức severity). Phần còn mở cho SME: khi đã có con trỏ thì còn cần bao nhiêu trong sáu thứ.
 
 **Đã làm — hướng an toàn:** áp cùng yêu cầu. Một finding High/Critical **không** được trở thành qua-được-gate chỉ nhờ bị đánh dấu Superseded; và nếu nó thật sự đã bị thay thế thì viết điều đó vào ô kết luận là một câu, không phải một gánh nặng.
 
@@ -1749,7 +1757,10 @@ Ba cách sửa, ba mức việc:
 
 **Nếu trả lời khác:** `HIGH_GAP_CONTROLS` + `missingHighGapControls()` trong `packages/shared/src/utils/gapCriticality.ts` · danh sách trường `gap*` trong `packages/shared/src/types/index.ts` và `GATE_RECORD_FIELDS`/`GATE_FIELD_LABELS` · `GAP_ASSESSMENT_FIELDS` trong `apps/api/src/projects/projects.service.ts` · `apps/web/src/components/GapAssessmentBlock.tsx` · và một migration trên `gate_records`.
 
-#### R5-Q17 · Change Control: trigger có nên giới hạn theo gate dự án đã pass không 🔴
+#### ✅ R5-Q17 · Change Control: trigger có nên giới hạn theo gate dự án đã pass không — ĐÃ QUYẾT 13/10/2026 (quy tắc phần mềm SW-30, không hỏi SME)
+
+**Chủ dự án quyết (13/10/2026):** đây là logic của phần mềm, không phải quy tắc mỹ phẩm, nên dev quyết và không đưa vào Round 5. Đã build thành **SW-30** (`Software_Rules.md`): loại thay đổi dùng được khi dự án đã **passed gate sớm nhất** nó nêu tên (`ALL` luôn dùng được; gate đang mở không tính). Phần phân tích bên dưới giữ nguyên làm lý do; chỗ khác duy nhất là ngưỡng chọn là "gate sớm nhất đã passed" chứ không phải "gate cao nhất đã passed". Hai cái này chỉ khác nhau khi so với loại khai nhiều gate: dùng "cao nhất" thì "Ingredient added or removed" (Gate 05, 08) chỉ mở được từ Gate 08, quá muộn vì công thức khóa ở Gate 05.
+
 
 **Phát hiện khi thảo luận UI trang Change Control (26/08/2026).** Trang `/change-control` hiện cho chọn **bất kỳ trigger nào** trong `CHANGE_TRIGGERS`, cho **bất kỳ dự án nào**, không đối chiếu với tiến độ gate thật của dự án đó. Mỗi trigger tự khai `gates` nó ảnh hưởng (ví dụ *"Ingredient percentage or active level changed"* → Gate 05/08) — nhưng không gì ngăn 1 dự án đang ở Gate 02 chọn 1 trigger chỉ liên quan Gate 10 (ASEAN PIF, dossier...), dù ở gate đó dự án chưa từng có quyết định/dữ liệu nào được chốt để mà "change".
 

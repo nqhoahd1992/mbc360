@@ -73,3 +73,9 @@
 .gso-gate-warn strong { color: inherit; }
 .gso-gate-ok { border-color: var(--c-border-2); background: var(--c-surface-2, #fafafa); color: var(--c-text-2); }
 .gso-gate-ok > .anticon { color: var(--c-ok, #389e0d); }
+
+/* Market switcher of a per-market gate: one card, one lane showing, each market carrying its own progress. */
+.gso-lanes { max-width: 100%; }
+.gso-lane { display: inline-flex; align-items: center; gap: 6px; }
+.gso-lane-n { color: var(--c-text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.gso-lane-done { color: var(--c-ok); }

@@ -29,83 +29,177 @@ Several questions have lettered parts. You can reply by number and letter, for e
 
 ---
 
-## Question 1 — Who is the "responsible reviewer" of a single readiness item?
+## Question 1 — Which readiness items are "critical", and who is the "responsible reviewer" of them?
 
 You answered that where the system can work out from controlled data that a condition does not apply, it may generate the N/A reason itself — and that users should not retype a reason the system already produced. That half is built and working.
 
-The other half we cannot build yet. For safety-, regulatory-, claims- or release-critical items you said the generated rationale "must still be acknowledged by the responsible reviewer before gate closure". Nothing in the system says who the responsible reviewer of an individual item is. Your sign-off answer defines the roles very precisely for a **gate** — prepared, reviewed, approved, with the independent function named for critical gates — but a single gate carries between seven and more than twenty items.
+The other half needed two things your answer did not name. For safety-, regulatory-, claims- or release-critical items you said the generated rationale "must still be acknowledged by the responsible reviewer before gate closure". So we need to know **(i) which items count as critical**, and **(ii) who the responsible reviewer of an item is**. Your sign-off answer defines roles precisely for a *gate* — prepared, reviewed, approved, with an independent function named for seven critical gates — but a single gate carries between seven and more than twenty items, and nothing ties one item to one person.
 
-Three readings, with quite different amounts of work:
+**One example, used throughout this question.** Gate 7 has the item *"Maternal (pregnancy / breastfeeding) caution assessment closed"*. On a project whose target users are general adults only, nobody needs to do a maternal assessment, so the system writes the reason itself: *"not triggered for this project (no pregnancy, breastfeeding or postpartum target user), so this passes automatically."* Your answer means that for a safety item like this one, a reviewer must still read that sentence and acknowledge it before Gate 7 can close. Everything below is about who that reviewer is, which items need it, and what happens afterwards.
 
-1. **The gate's reviewer** acknowledges all of that gate's auto-generated N/As at once. Cheapest, and it fits the fact that your four words "safety-, regulatory-, claims- or release-critical" are the same four you used about gates.
-2. **The owner of the review area** the item's evidence belongs to — the system already records those thirteen people per project. Closer to the plain meaning of "responsible", but an item that reads several registers has several owners.
-3. **A person nominated per item.** Most precise, most work, and nowhere to record it today.
+**What is running now, on our own reading.** A generated N/A can only happen on the 31 items in the table below (they are the only ones that apply "only when" something is true; Mandatory items never get one, and Supporting items need no acknowledgement, as you said).
 
-**Question:** which of the three? And is "a critical item" the same thing as "any item on a critical gate", or a property of the individual item?
+- **Which items are critical:** an item is critical when it sits on one of your seven critical gates (3, 4, 7, 8, 9, 10, 11). That is a mechanical reading — we did not judge item by item. It makes 18 of the 31 critical.
+  *Example:* the Gate 7 maternal item above is critical, because Gate 7 is a critical gate. Gate 5's "Product form confirmed (left open at Gate 2)" is not (Gate 5 is not on your list), so when the form was confirmed at Gate 2 it simply passes by itself and nobody acknowledges anything.
+- **Who acknowledges:** the person the project Lead nominated as **"Reviewed by"** on that item's *phase* sign-off. Until someone is nominated nobody can acknowledge, so the gate stays blocked and the phase page tells the Lead to nominate.
+  *Example:* Phase 3's sign-off lists "Reviewed by: Sekar". Sekar acknowledges the Gate 7 maternal reason; nobody else can — not the project Lead and not an administrator. If the Lead later replaces Sekar with Chris, Sekar can no longer change it and Chris can: Chris may confirm it, or record that they do **not** acknowledge it (with a reason), which puts Gate 7 back on hold. There is one entry per item, edited in place; what it said before is kept in the change history.
+- **If the situation changes after an acknowledgement, the old acknowledgement stops counting.**
+  *Example:* Sekar acknowledged the reason above. Two weeks later Marketing ticks "Pregnancy" under the Gate 2 target users. The reason Sekar read is no longer true: the maternal assessment now genuinely applies, and Sekar's acknowledgement of "not triggered" cannot stand in for it — the item is then judged on the real evidence like any other. A milder case: the system's wording of the reason changes while the item is still "not applicable"; the earlier acknowledgement covered the old words, so the reviewer has to confirm the new ones.
 
-## Question 2 — Is "is a change control needed?" answered once for the project, or once per finding?
+| # | Gate | Item | Is generated as "not applicable" when… | On a critical gate? (our reading) | Second look? |
+|---|---|---|---|---|---|
+| 1 | 2 | Product form left open — a controlled action tracks its confirmation at Gate 5 | the product form was confirmed at Gate 2 | No | |
+| 2 | 2 | Infant & Baby Safety — intended infant-use context recorded | no infant use (Infant 0+ not a target user; family-use age groups exclude infants) | No | Reads as safety |
+| 3 | 3 | Competitor or benchmark review where applicable | the project is neither new nor repositioned (administrative-only confirmed) | **Yes** | Reads as commercial, not critical |
+| 4 | 3 | Regulatory review of high-risk or borderline claims | no claim meets any condition for Regulatory review | **Yes** | |
+| 5 | 4 | Pregnancy/breastfeeding caution screen | no pregnancy, breastfeeding or postpartum target user | **Yes** | |
+| 6 | 4 | Allergen, impurity and contaminant review where relevant | no raw material in the formula carries a risk flag | **Yes** | |
+| 7 | 4 | Infant & Baby Safety — ingredient and raw-material suitability | no infant use | **Yes** | |
+| 8 | 5 | Product form confirmed (left open at Gate 2) | the form was confirmed at Gate 2 | No | |
+| 9 | 5 | Preservative strategy where applicable | the formula is not microbiologically susceptible (e.g. anhydrous) | No | Reads as safety |
+| 10 | 5 | Infant & Baby Safety — formula-level assessment | no infant use | No | Reads as safety |
+| 11 | 5 | Costing shows the project commercially feasible | target cost is not marked Must | No | |
+| 12 | 6 | Infant & Baby Safety — packaging and instructions | no infant use | No | Reads as safety |
+| 13 | 6 | Market-specific pack requirements | no selected market has special pack requirements | No | Reads as regulatory / release |
+| 14 | 7 | Every automatic Formula BOM match is taken up on the Pregnancy/Breastfeeding Caution list | no pregnancy, breastfeeding or postpartum target user | **Yes** | |
+| 15 | 7 | Maternal (pregnancy / breastfeeding) caution assessment closed | same | **Yes** | |
+| 16 | 7 | Maternal and infant-contact assessment (when Skincare for Two is triggered) | same | **Yes** | |
+| 17 | 7 | Infant / baby-contact safety compartment completed (INF-01 to INF-08) | no infant use | **Yes** | |
+| 18 | 8 | Infant & Baby Safety — testing triggered by use context and risk | no infant use | **Yes** | |
+| 19 | 8 | Human-study approval workflow completed before participant recruitment | no human study planned | **Yes** | |
+| 20 | 9 | Preservative efficacy status where applicable | the formula is not microbiologically susceptible | **Yes** | |
+| 21 | 9 | Scale-up or pilot status where applicable | no scale-up risk identified (and no Major formula change) | **Yes** | |
+| 22 | 9 | Infant & Baby Safety — stability, microbiology and in-use testing | no infant use | **Yes** | |
+| 23 | 10 | ASEAN PIF checklist complete | no ASEAN market selected | **Yes** | |
+| 24 | 10 | ASEAN PIF mapped | no ASEAN market selected | **Yes** | |
+| 25 | 10 | Infant & Baby Safety — PIF content and infant claim evidence | no infant use | **Yes** | |
+| 26 | 10 | Product-performance evidence attached where relevant | no claim needs performance evidence | **Yes** | |
+| 27 | 12 | Scheduled market feedback review | no post-launch review milestone has been reached | No | |
+| 28 | 12 | Baseline post-market surveillance review | the product has not launched in any market | No | Reads as regulatory |
+| 29 | 12 | Enhanced PV/PMS review where applicable | none of the enhanced-surveillance conditions applies | No | Reads as safety / regulatory |
+| 30 | 12 | Product-performance feedback | no product-performance feedback has been recorded | No | |
+| 31 | 12 | Change-control links | no Change Control record is open | No | |
 
-You asked for an explicit step — Change Control required? Yes / No / Pending assessment — with the reviewer, date, rationale, the linked record where Yes, and an evidence link. Built, and Pending now blocks, as you specified.
+Gate 11 has no item of this kind.
 
-**Where we had to choose.** Your wording is "must block closure of the post-market finding", in the singular, which suggests one answer per finding. But the system has no record that represents a single post-market finding. Following your Round-4 answer, the old sixteen-option list is now three separate lists — Source, Issue type and Resulting action — but each is a set of boxes ticked once for the whole project, not a record per finding. CAPA records are the resulting **actions**, and the panel feedback register is internal product testing, not post-market.
+**Questions:**
 
-**What we built.** One answer per project, blocking the Gate 12 review closure — which is the nearest thing the system has to "closure of the post-market finding", since Gate 12 *is* the post-market review closure.
+**(a) Which items are critical?** Please mark each row of the table critical or not critical, and for the critical ones say which of your four areas it is (safety, regulatory, claims, release). Where our reading is right, "agreed" is enough. The "Second look" column shows where our gate-based rule and the wording of the item seem to disagree — those are the ones we are least sure of.
+*For instance:* row 3, "Competitor or benchmark review" (not triggered because the project is neither new nor repositioned), sits on Gate 3, a critical gate, but is market research rather than claims. Should a reviewer really have to acknowledge it? And row 29, "Enhanced PV/PMS review" (not triggered because no enhanced-surveillance condition applies), is on Gate 12, which is not on your list — yet it reads as safety / regulatory. Should it be critical?
 
-**What that costs.** If a project has five findings and only one needs a change control, a single Yes/No cannot express that. The alternative is a new "post-market finding" record, which nobody asked for and which would sit in the middle of the area your Round-4 answer just restructured.
+**(b) Is the phase's "Reviewed by" the right person?** The alternatives are the reviewer of the individual *gate*, the owner of the review area the item's evidence belongs to, or a person named item by item.
+*For instance:* on Phase 3 the "Reviewed by" is usually Quality. The Gate 7 maternal item is a safety item, and your sign-off answer requires the Safety / Scientific Review function to review the safety decision itself. Should the acknowledgement of that reason come from Safety instead of whoever reviews the phase?
 
-**Question:** should this answer be recorded **once for the project**, as it is now, or **once per post-market finding**? If per finding, what is a finding, and where in your process does one come into being?
+**(c) Does an acknowledgement stop counting if the situation changes?**
+*For instance:* the reviewer acknowledged "no pregnancy or breastfeeding user", and Marketing later adds a pregnancy user. Do you agree the earlier acknowledgement must stop counting — so the maternal assessment is then required for real — rather than remain as an approval of something that is no longer true?
+
+## Question 2 — Change Control assessment of post-market findings: one entry per finding, and what counts as a "finding"?
+
+You asked for an explicit step — "Change Control required? Yes / No / Pending assessment" — with the reviewer, the date, the rationale, the linked Change Control record where the answer is Yes, and an evidence link, and you said Pending must block closure of "the post-market finding". Built.
+
+**Where we had to choose.** Your wording is in the singular ("the post-market finding") but does not say whether there is one assessment per project or one per finding. We first recorded **one answer for the whole project**. We have changed that to **one entry per finding**, because Gate 12 runs for years and per market, and a single answer cannot say which finding it was about.
+
+*Example:* a product sold in Vietnam and Singapore. At the 3-month review, Vietnam shows a rising number of mild irritation complaints and Singapore shows one report of an allergic reaction. Now there are two entries. The irritation trend is answered **No** — reviewer Sekar, reason "within the expected range". The allergic reaction is answered **Yes**, and linked to the Change Control record opened for it. Before, a single answer for the project could not tell those two apart, and a "No" given at 3 months would still be sitting there at 12 months when something far more serious appeared.
+
+**Why a Yes needs the link and a No needs a reason.** A Change Control that exists already shows who opened it. The assessment matters most when **nothing was opened**: it is the only record of whether somebody decided "no change control needed" or nobody looked. So the first field of each entry is the linked record, and a No carries its reviewer and reason.
+
+**What we built.**
+- Each entry has: the linked Change Control record, the answer, the reviewer, the review date, the rationale, the evidence link — and two fields **we added**: **Finding** (what the entry is about, required) and **Market** (optional).
+- A Yes needs a valid linked record; a No needs the reviewer and the reason; a Pending (or unanswered) entry blocks Gate 12.
+- **An empty list still blocks.** A review that found nothing needing a change control records one entry answered **No**, with the reason ("no finding this period needed a change control").
+
+**Questions:**
+
+**(a) One entry per finding — is that right?** Or should it be one per review (for example one at the 3-month review, one at 12 months), or one per market?
+
+**(b) What is a "finding" in your process, and where does one come from?**
+*For instance:* is a single complaint a finding, or only a complaint trend? Is a regulator's request one? An adverse-event report? A distributor's claim challenge? We only let the reviewer describe it in words; if you have a definition, we can offer a list instead.
+
+**(c) Is a "No" entry the right way to say a review found nothing needing a change control?** The alternative is a separate statement ("no findings this period") that is not an assessment.
+
+**(d) Are Finding and Market enough to tell the entries apart?** Or is there something else you would want on each (for example the source: complaint, safety signal, regulatory request)?
 
 ## Question 3 — Does a superseded safety finding need the same closing evidence as a closed one?
 
-You gave the safety-finding status list six values, adding **Superseded** to the five-step lifecycle. Separately you specified what closing a High or Critical finding requires: the safety reviewer's conclusion, an evidence link, the linked action completed, verification, the verifier and a closure date.
+You gave the safety-finding status list six values, adding **Superseded** to the five-step lifecycle. Separately you specified what closing a High or Critical finding requires: the safety reviewer's conclusion, an evidence link, the linked action completed, the verification, the verifier and a closure date. All six are now recorded and checked.
 
 Superseded is not the same as closed. A finding is superseded when a later assessment of the same hazard replaces it — so its evidence arguably lives in the replacement, not in itself.
 
-**What we built** — the cautious reading, for High and Critical findings only: a superseded finding needs the same safety conclusion, evidence link and **completed linked action** as a closed one. A High or Critical finding should not become passable just by being marked superseded, and if it genuinely was replaced, saying so is one sentence.
+*Example:* in March a **High** finding is raised: "preservative level close to the limit in the trial batch". In May, a reassessment with new stability data produces a replacement finding: "within the limit". The March finding is marked **Superseded**. All the real evidence now sits with the May finding.
 
-**What that costs.** A superseded row left blank blocks Gate 7 indefinitely until someone fills it in, and asking for a completed action and an evidence link on a finding that was replaced reads oddly — the action is the least sensible of the three.
+**What we built.** Two things, the first of which is our own addition (you did not ask for it):
+- **A superseded finding must name the finding that replaced it.** "Superseded" can only be chosen once the register has another finding to point at, and the replacement is picked from the register's own Finding IDs, so it cannot point at itself or at nothing.
+- **The cautious reading of your closure list** (High and Critical findings only): a superseded finding needs the same six things as a closed one, so that a High or Critical finding does not become passable just by being marked superseded.
 
-**Question:** does a superseded High or Critical finding need the same closing record as a closed one? If not, should it instead point at the finding that replaced it, and which of the three items (conclusion, evidence link, completed action) should still be required?
+**What that costs.** In the example, the March finding would still have to carry a safety conclusion, an evidence link, a completed linked action, a verification, a verifier and a closure date, even though the May finding already holds the evidence. A superseded row left incomplete blocks Gate 7. The completed action is the least sensible of the six for a replaced finding.
+
+**Questions:**
+
+**(a)** Does a superseded High or Critical finding need the same closing record as a closed one?
+
+**(b)** If not, which of the six should still be required of it, now that it points at its replacement? *For instance:* only the safety reviewer's conclusion saying why it was replaced, plus the closure date — and nothing else.
 
 ## Question 4 — The two Gate 4 watch-list columns: what does each hold, who fills it, and until which gate?
 
-Three of our earlier questions turned out to be about the same two columns on the prohibited-ingredient and caution watch-lists: the **product status** and the **Gate 4 disposition**.
+Three of our earlier questions turned out to be about the same two columns on the prohibited-ingredient and caution watch-lists: the **product status** and the **classification**.
 
-**What exists now.** You said every row at Gate 4 must be classified as one of six: *No issue identified · Needs Safety Review · Needs Regulatory Review · Prohibited — remove · Considered — not selected · Further information required.* You also said "flagged" covers three statuses: *REVIEW — possible formula match · Needs Safety Review · Needs Regulatory Review.* "REVIEW — possible formula match" is in the flagged list but not in the six, and three of the six are not in the flagged list. So we kept **two columns**: the product status (the older list, including "possible formula match") and the Gate 4 disposition (your six). **Both are filled in by a person.** The system compares the formula with the watch-list and, at Gate 7, refuses to pass while a matching row still sits at the status it started with ("No formula match recorded" / "Not assessed"), but it never writes a verdict itself.
+**What exists now.** You said every row at Gate 4 must be classified as one of six: *No issue identified · Needs Safety Review · Needs Regulatory Review · Prohibited — remove · Considered — not selected · Further information required.* You also said "flagged" covers three statuses: *REVIEW — possible formula match · Needs Safety Review · Needs Regulatory Review.* "REVIEW — possible formula match" is in the flagged list but not in the six, and three of the six are not in the flagged list. So we kept **two columns**: the product status (the older list, including "possible formula match") and the classification (your six). **Both are filled in by a person.** The system compares the formula with the watch-list and, at Gate 7, refuses to pass while a matching row still sits at the status it started with ("No formula match recorded" / "Not assessed"), but it never writes a verdict itself.
 
 **(a)** Is two columns the right reading — what the screening found, and what the reviewer decided? Or should the six values replace the old status list altogether?
 
 **(b)** Should the **system** set "REVIEW — possible formula match" by itself when the formula matches a watch-list row — rule C3 says it flags matches — or is it right that a person updates the row before Gate 7?
 
-**(c)** Until which gate is the product status updated? Your answer says Gate 4 screens and gives a conclusion for every row, and Gate 7 must formally close every restricted or caution issue that applies to the final formula. It does not say where the product status is settled. We read it as **Gate 7**: the reviewer columns (assessment, reviewer, date, rationale, linked action, evidence, Gate 4 disposition) are Gate 4's, while product status keeps following the formula until Gate 7. If it were settled at Gate 4, any normal formula change afterwards would force the project back to Gate 4. Is Gate 7 right?
+**(c)** Until which gate is the product status updated? Your answer says Gate 4 screens and gives a conclusion for every row, and Gate 7 must formally close every restricted or caution issue that applies to the final formula. It does not say where the product status is settled. We read it as **Gate 7**: the reviewer columns (assessment, reviewer, date, rationale, linked action, evidence, classification) are Gate 4's, while product status keeps following the formula until Gate 7. If it were settled at Gate 4, any normal formula change afterwards would force the project back to Gate 4. Is Gate 7 right?
 
 ## Question 5 — Formula version supersession: who confirms the ten facts, and when does an old version change state?
 
 **Built.** An old formula version reaches *Superseded* only once a person has confirmed all ten facts you listed, for **each market where that version is sold**; nothing derives it.
 
-**(a) Who confirms?** Your answer lists ten things — the regulatory notification, the last release date, the stock disposition, the artwork transition, the Sales and Marketing communication and the rest — but does not say whose they are. Today one authorised person (anyone allowed to approve a market's launch) records all ten for a market, typing their own name. We *assume* the ten belong to different functions (Regulatory, Quality, Supply Chain, Sales, Packaging). Is that right — and should each fact be confirmed by its own function, or is one accountable person enough?
+*Example:* the product is sold in Vietnam and Australia under formula **F1.0**. A Major change creates **F2.0**, and F1.0 stays *Active* (still on sale). In March F2.0 is approved for launch in Vietnam, so F1.0 moves to *Transition in Progress* there. Now, for Vietnam, someone must record the last release date of F1.0, what happens to the remaining stock, which artwork and ingredient list change, whether the regulator was notified, the PIF update, the Sales and Marketing message, and so on. Only when all ten are confirmed does F1.0 become *Superseded* in Vietnam. Australia is decided separately.
 
-**(b) When does the old version change state?** Your question 2 says "approval of the new version places the old version into Transition in Progress". We read approval as the new version's **launch approval in a market where the old version is sold**. So after a Major change the old version stays *Active* until then; after a Minor change, which reopens no gates, it starts transitioning at once; and a version that was never launched anywhere becomes *Superseded* immediately, since nothing needs transitioning. Post-launch reviews stay per market, dated from the earliest launch still on sale there. Is launch approval the right moment, or Gate 10/11 approval? May a never-launched version be treated as Superseded straight away? Do post-launch reviews need to be kept per version?
+**(a) Who confirms?** Your answer says "an authorised person" but not whose. We read it as **the project's Lead**, who records and confirms all ten for a market under their own name (an administrator can too). But the ten facts clearly belong to different functions — in the example, the stock belongs to Supply Chain and the regulator notification to Regulatory. Is one accountable person (the Lead) enough, or should each fact be confirmed by its own function?
+
+**(b) When does the old version change state?** Your question 2 says "approval of the new version places the old version into Transition in Progress". We read "approval" as the new version's **launch approval in a market where the old version is sold**. So after a Major change the old version stays *Active* until then (as in the example). Is launch approval the right moment, or is it Gate 10 or Gate 11 approval?
+
+**(c) A Minor change.** A Minor change reopens no gates, so we start the old version transitioning **at once** wherever it is sold, without waiting for a launch approval. Is that right?
+
+**(d) A version that was never launched.** If the old version was never on sale anywhere, we mark it *Superseded* straight away, since there is nothing to transition. May it be treated that way?
+
+**(e) Post-launch reviews.** While two versions are on sale in the same market, we keep the post-launch reviews **per market**, dated from the earliest launch still on sale there. Do the reviews need to be kept per version instead?
 
 ## Question 6 — Who decides that a change to a Claims Library entry is "critical"?
 
-**The library is built, which sharpens this question rather than answering it.** An entry needs both a Technical and a Regulatory approval before it counts as approved wording; withdrawing one lists every project claim, market and published record that depends on it, and flags them for re-review. What it does **not** do is remove anything from a market — because your answer says that should happen only where the change "is critical or required by Regulatory", and who makes that call is exactly what is asked below.
+**The library is built, which sharpens this question rather than answering it.** An entry needs both a Technical and a Regulatory approval before it counts as approved wording. Withdrawing an entry now requires a reason, an effective date and a transition plan, and lists every project claim, SKU, market and published record that depends on it, across all projects. The affected claims then no longer count as covered by approved wording, so they go back to Regulatory review.
+
+**What it does not do:** it does not take anything off a market, and it does not open a Change Control by itself. Your answer says a product must not be removed "unless the change is critical or required by Regulatory", and who makes that call is what is asked below.
 
 You specified what happens when a library entry is changed or withdrawn: identify every linked claim, SKU, market and published material, assess the impact, raise change control where needed, flag material for re-review, and record the effective date and transition plan. Then: *"Changing or withdrawing must not automatically remove a product from the market unless the change is critical or required by Regulatory."*
 
 That sentence can pull a product that is on sale, so we do not want to interpret it.
 
+*Example:* the library entry "Hydrates for 24 hours" is used by 6 claims, on 3 SKUs, in Vietnam and Singapore, and appears on 2 published web pages. Regulatory finds the 24-hour test no longer supports the wording and withdraws the entry. We list all of those, and the 6 claims go back to Regulatory review. Nothing is taken off sale and no Change Control is opened. Should the product be pulled in Vietnam because Regulatory says so? Who decides that this withdrawal is "critical"?
+
 **(a)** Is "critical" here the top level of the Low / Medium / High / Critical scale your other three answers agreed on?
 
 **(b)** Who records it — Regulatory alone, or Technical and Regulatory together, the way you specified for approving a library entry in the first place?
 
-## Question 7 — The Gate 9 scale-up trigger: which areas does it read, and what is a "new formula"?
+**(c)** Your answer says to create a Change Control "where required". Should withdrawing or changing an entry open one automatically, or only when someone judges it necessary — and if so, who?
 
-Your Round 3 answer makes scale-up or pilot status mandatory for "new formulas, major reformulations …", and your Round 4 answer lists eighteen areas that trigger a scale-up or pilot review — manufacturing site, equipment type or scale, batch size, order of addition, mixing speed, homogenisation, heating profile, hold time, filling method, water source and the rest.
+## Question 7 — The Gate 9 scale-up trigger: what are the eighteen areas for, and what is a "new formula"?
 
-**(a) The eighteen areas.** We have built the other limbs of that answer: a Major formula change triggers it, and so does the reviewer's own Yes / Pending answer. The eighteen areas are not read yet. Are they a list someone ticks on the change record, or guidance for the person answering "was a scale-up risk identified?" If they are a list, should it sit beside the impact areas the change record already carries for Gate 11, or replace its free-text "affected area" field? (Question 12 decides how many change records there are, so the two are best answered together.)
+Your Round 3 answer makes scale-up or pilot status mandatory for "new formulas, major reformulations …", and your Round 4 answer lists eighteen areas that trigger a scale-up or pilot review — manufacturing site, equipment type or scale, batch size, order of addition, mixing speed, homogenisation, heating profile, hold time, filling method, water source and the rest. It also adds a question, "Scale-up risk identified? Yes / No / Pending assessment", where Pending blocks Gate 9.
 
-**(b) "New formula".** We read a new formula as a project whose *Development / Change Type* at Gate 1 has **New development** ticked in any role, primary or secondary; a major reformulation is already caught by a Major formula version. Does that match what you mean by a new formula? Should a Reformulation that is not Major also count — and should a secondary tick count at all?
+**What we built.** At Gate 9 the scale-up item applies when **any** of these holds: a Major formula change exists; the project's *Development / Change Type* at Gate 1 has **New development** ticked (primary or secondary); or the reviewer answered Yes. A blank or Pending answer blocks the gate. The eighteen areas are shown beside the reviewer's question as a reminder of what should prompt the review.
+
+**(a) What are the eighteen areas for?** They describe *changes*, and a change usually happens after the process was settled. We therefore did **not** make them an automatic trigger at Gate 9: once Gate 9 has passed, reading them there would decide nothing, because the gate is closed. What should happen when such a change arrives after Gate 9 is the question of whether a Change Control reopens a passed gate (question 11). Before Gate 9 passes, we treat the list as guidance for whoever answers "Scale-up risk identified?".
+
+*Example:* during Gate 6 the factory is changed and the batch size goes from 50 kg to 500 kg. By Gate 9 nobody remembers it. The reviewer sees the eighteen areas beside the question and answers **Yes**. A different project changes the factory **after** Gate 9 has passed: that is for the Change Control to reopen Gate 9, not for Gate 9 to notice.
+
+Is that the right use of the list — guidance before Gate 9, and Change Control after it? Or did you want a list of areas that someone ticks on a change record and that switches the Gate 9 item on by itself?
+
+**(b) "New formula".** We read a new formula as a project whose *Development / Change Type* has **New development** ticked in any role; a major reformulation is already caught by a Major formula version. Does that match what you mean? Should a Reformulation that is not Major also count, and should a secondary tick count at all?
+
+**(c) A "No" on a new development.** Because a new development always switches the item on, the reviewer's answer **No** is ignored for it: a new formula can never be declared free of scale-up risk. Is that what you intend?
 
 ## Question 8 — Two of your rules name a "Reject / Stop" decision the gate dropdown does not have
 

@@ -38,7 +38,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     packagingSpecsArtwork: ['artworkVersion', 'compatibilityEvidence', 'specLink', 'supplier'],
   },
   SG07: {
-    criticalSafetyFindings: ['criticalFinding', 'evidenceLink', 'findingStatus', 'linkedNextActionId', 'safetyReviewerConclusion', 'severity'],
+    criticalSafetyFindings: ['closureDate', 'criticalFinding', 'evidenceLink', 'findingId', 'findingStatus', 'linkedNextActionId', 'safetyReviewerConclusion', 'severity', 'supersededBy', 'verification', 'verifier'],
     formulationSafetyFinalSignOff: ['notes', 'safetyQuestion', 'status'],
     formulationSafetyMatrix: ['allergenIfra', 'coverageReference', 'coverageRoute', 'exposureRationale', 'impurityProof', 'inciName', 'rmCode', 'safetyDecision'],
     generalRestrictedCaution: ['assessmentOutcome'],
@@ -58,7 +58,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     pifChecklistAsean: ['status'],
     publishedInfoApproval: ['noProductClaim', 'noProductClaimConfirmedBy', 'workflowState'],
     regulatoryChecklistStatus: ['checklistLink', 'dossierType', 'market', 'naRationale', 'naReviewer', 'owner', 'regulatoryApproval', 'status'],
-    skuClaimsPifRegister: ['claimId', 'evidenceLink', 'market', 'pifLink', 'status'],
+    skuClaimsPifRegister: ['claimId', 'evidenceLink', 'market', 'pifLink'],
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG11: {

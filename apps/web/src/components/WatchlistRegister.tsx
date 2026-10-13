@@ -38,7 +38,7 @@ import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 // Prohibited Ingredient Watch-list, redesigned 2026-10-02 (wireframe option A).
 //
 // The generic DynamicTable put all 19 columns side by side, so every column a
-// reviewer actually WORKS in (product status, Gate 4 disposition, the D3 review
+// reviewer actually WORKS in (product status, classification, the D3 review
 // trail) sat past the right edge behind a horizontal scroll, under ~780px of
 // identification and signing cards. Here the table keeps only what a decision is
 // made with — the group, its Formula BOM match, the two dropdowns, whether the
@@ -296,7 +296,7 @@ export default function WatchlistRegister({
               <th>Ingredient / group</th>
               <th style={{ width: 128 }}>Formula BOM</th>
               <th style={{ width: 200 }}>Product status</th>
-              <th style={{ width: 200 }}>Gate 4 disposition</th>
+              <th style={{ width: 200 }}>Classification</th>
               <th style={{ width: 160 }}>Review</th>
               <th className="wl-col-owner" style={{ width: 132 }}>Owner</th>
               <th style={{ width: 36 }} aria-label="Open" />
@@ -504,7 +504,7 @@ function RowDetail({
             />
           </label>
           <label>
-            <span className="wl-field-label wl-req">Gate 4 disposition</span>
+            <span className="wl-field-label wl-req">Classification</span>
             <Select
               style={{ width: '100%' }}
               value={text(row.gate4Disposition) || undefined}

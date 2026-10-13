@@ -2,3 +2,8 @@
 .dsf-state { color: var(--c-text-3, #8c8c8c); font-size: 12px; }
 .dsf-dirty { color: var(--c-warn, #d48806); font-weight: 600; }
 .dsf-actions { display: inline-flex; gap: 8px; }
+/* With a row-level action (Remove row): the state line gets a row of its own, then [Remove row ........ Save  Save & next]. */
+.dsf-stacked { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px 8px; }
+.dsf-stacked .dsf-state { grid-column: 1 / -1; }
+.dsf-stacked .dsf-lead { justify-self: start; }
+.dsf-stacked .dsf-actions { justify-self: end; flex-wrap: nowrap; }

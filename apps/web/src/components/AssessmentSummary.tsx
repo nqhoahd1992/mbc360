@@ -5,6 +5,7 @@ import { familyUseAgeGroupList } from '@mbc360/shared/types';
 import { GATES } from '@mbc360/shared/config/gates';
 import { ASSESSMENT_HOMES, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
 import { evaluateTrigger } from '@mbc360/shared/utils/gateProgress';
+import { isPendingAnswer } from '@mbc360/shared/utils/changeControlAssessments';
 import { isFamilyUseSelected } from './AssessmentBlock';
 import '../styles/concept.css';
 import './AssessmentsCard.css';
@@ -41,10 +42,15 @@ function status(project: ProjectData, key: AssessmentKey): { text: string; tone:
       return waiting
         ? { text: v(a.scaleUpRiskIdentified) || 'Not yet assessed', tone: 'warn' }
         : { text: v(a.scaleUpRiskIdentified) || 'Counts as identified (Major formula change)', tone: 'ok' };
-    case 'changeControl':
-      return waiting
-        ? { text: v(a.changeControlRequired) || 'Not yet assessed', tone: 'warn' }
-        : { text: v(a.changeControlRequired) || 'Counts as Yes (a change control is open)', tone: 'ok' };
+    case 'changeControl': {
+      const list = project.changeControlAssessments ?? [];
+      if (waiting) {
+        const pending = list.filter((e) => isPendingAnswer(e)).length;
+        return { text: list.length === 0 ? 'Not yet assessed' : `${pending} of ${list.length} assessment(s) still pending`, tone: 'warn' };
+      }
+      const yes = list.filter((e) => (e.answer ?? '').trim() === 'Yes').length;
+      return { text: list.length === 0 ? 'Counts as Yes (a change control is open)' : `${list.length} assessment(s) — ${yes} Yes`, tone: 'ok' };
+    }
   }
 }
 

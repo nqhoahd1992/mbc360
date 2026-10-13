@@ -1,0 +1,18 @@
+/* One entry of the Gate 12 Change Control assessment list. */
+.cca-entry { display: grid; gap: 14px; padding: 16px 20px; border: 1px solid var(--c-border-2); border-radius: 12px; }
+.cca-entry-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.cca-entry-title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.cca-entry-sub { min-width: 0; overflow: hidden; color: var(--c-text-3); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.cca-entry-tools { display: flex; flex-shrink: 0; align-items: center; gap: 8px; }
+
+/* 12 columns so a row can be 8+4, 4+4+4 or full width — the three-column .as-grid cannot say "the answer takes a row". */
+.cca-grid { display: grid; gap: 16px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.cca-grid > * { grid-column: span 12; min-width: 0; }
+@media (min-width: 768px) {
+  .cca-grid > .cca-8 { grid-column: span 8; }
+  .cca-grid > .cca-4 { grid-column: span 4; }
+}
+.cca-grid > label { display: block; }
+.cca-answer { display: grid; gap: 6px; }
+.cca-answer .as-label { margin-bottom: 0; }
+.cca-hint { color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }

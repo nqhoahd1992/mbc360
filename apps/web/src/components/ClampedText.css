@@ -1,0 +1,4 @@
+.clamp-text-closed { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; }
+/* Same look as every other text link in the readiness list (.grp-toggle, .grp-listbtn-hint): 13px, link colour, 6px under the text. */
+.clamp-toggle { display: block; margin-top: 6px; padding: 0; border: 0; background: none; color: var(--c-link); font: inherit; font-size: 13px; line-height: 20px; cursor: pointer; }
+.clamp-toggle:hover { text-decoration: underline; }
