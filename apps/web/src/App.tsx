@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, App as AntApp, ConfigProvider, Drawer, Layout, Button, Grid, Spin } from 'antd';
 import { EyeOutlined, MenuOutlined, SearchOutlined } from '@ant-design/icons';
-import { HashRouter, Route, Routes, useLocation, useNavigationType } from 'react-router-dom';
+import { HashRouter, Route, Routes, matchPath, useLocation, useNavigationType } from 'react-router-dom';
 import { useAppStore } from './store/useAppStore';
 import { useSession } from './auth/useSession';
 import { setPreviewWriteLock, usePermissionView } from './auth/previewMode';
@@ -85,6 +85,13 @@ function Shell() {
     // are frozen too — see App.css.
     document.body.classList.toggle('app-previewing', permissionView.previewing);
   }, [permissionView.previewing]);
+  // SW-31: a stopped project is final and read-only. The server already refuses every write; this freezes the
+  // controls on screen too, the same way a preview does, for whichever project the route is showing.
+  const routeProjectId = matchPath('/projects/:projectId/*', useLocation().pathname)?.params.projectId;
+  const projectStopped = useAppStore((s) => !!routeProjectId && !!s.projects.find((p) => p.identity.id === routeProjectId)?.identity.stopped);
+  useEffect(() => {
+    document.body.classList.toggle('app-frozen', projectStopped);
+  }, [projectStopped]);
   const projectsLoading = useAppStore((s) => s.projectsLoading);
   const projectsError = useAppStore((s) => s.projectsError);
   const projectCount = useAppStore((s) => s.projects.length);
@@ -331,7 +338,7 @@ function Shell() {
           // componentDisabled greys every antd control on the page (and in the
           // drawers it opens) while previewing, so the read-only state is
           // visible, not just refused on Save. Links and rows still work.
-          <ConfigProvider componentDisabled={permissionView.previewing}>
+          <ConfigProvider componentDisabled={permissionView.previewing || projectStopped}>
           <Routes key={location.pathname}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/projects" element={<ProjectList />} />

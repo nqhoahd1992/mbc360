@@ -248,6 +248,8 @@ export default function ProductFeedback() {
       )}
 
       <Drawer
+
+        closable={{ placement: 'end' }}
         open={!!open}
         onClose={() => setOpenId(null)}
         size={screens.md ? 480 : '100%'}

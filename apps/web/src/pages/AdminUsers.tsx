@@ -433,6 +433,8 @@ export default function AdminUsers() {
       </Modal>
 
       <Drawer
+
+        closable={{ placement: 'end' }}
         open={!!open}
         onClose={() => setOpenId(null)}
         size={screens.md ? 480 : '100%'}

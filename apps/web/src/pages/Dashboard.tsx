@@ -101,8 +101,8 @@ export default function Dashboard() {
   // `projects` holds whatever the last load asked for, and the Projects page can
   // ask for archived ones too (`?includeArchived=1`) — so "Active projects"
   // has to exclude them explicitly rather than count the array.
-  const activeProjects = projects.filter((p) => !p.identity.archived);
-  const archivedCount = projects.length - activeProjects.length;
+  const activeProjects = projects.filter((p) => !p.identity.archived && !p.identity.stopped);
+  const archivedCount = projects.filter((p) => !!p.identity.archived).length;
 
   // Critical next actions are the ones that block even Proceed with Conditions
   // (F8), so they belong in the headline number, not only in the overdue count.

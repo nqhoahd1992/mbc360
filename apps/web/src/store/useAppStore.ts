@@ -85,6 +85,7 @@ interface AppState {
   loadProject: (id: string) => Promise<void>;
   // Archive / restore a project (needs `project|archive`; the server enforces).
   setProjectArchived: (id: string, archived: boolean) => Promise<void>;
+  stopProject: (id: string, comment: string) => Promise<void>;
   // Whether the Projects list currently includes archived projects.
   showArchivedProjects: boolean;
   setShowArchivedProjects: (show: boolean) => Promise<void>;
@@ -459,6 +460,11 @@ export const useAppStore = create<AppState>()(
         setProjectArchived: async (id, archived) => {
           await projectsApi.setProjectArchived(id, archived);
           await (get() as AppState).loadProjects(get().showArchivedProjects);
+        },
+
+        // Final (SW-31). The response is the stopped project, so it replaces the cached one.
+        stopProject: async (id, comment) => {
+          applyEnvelope(await projectsApi.stopProject(id, comment));
         },
 
         showArchivedProjects: false,

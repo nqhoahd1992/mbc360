@@ -368,6 +368,8 @@ export default function AdminRmRisk() {
       )}
 
       <Drawer
+
+        closable={{ placement: 'end' }}
         open={!!open}
         onClose={() => setOpenCode(null)}
         size={screens.md ? 520 : '100%'}

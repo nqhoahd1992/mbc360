@@ -349,7 +349,7 @@ export default function GateSignOffPanel({
                 )}
                 {rows.filter((x) => x.signedAt).length} of {rows.length} signed
               </span>
-              <Button size="small" type="text" icon={<HistoryOutlined />} onClick={() => setHistoryLane(market ?? '')}>
+              <Button size="small" type="text" disabled={false} icon={<HistoryOutlined />} onClick={() => setHistoryLane(market ?? '')}>
                 History ({laneEvents(market).length})
               </Button>
               {critical && (

@@ -67,7 +67,7 @@ export default function GateFlowTable({
   const { user } = useSession();
   const location = useLocation();
   const projectId = project.identity.id;
-  const archived = !!project.identity.archived;
+  const archived = !!project.identity.archived || !!project.identity.stopped;
   const gates = project.gates;
   const currentIdx = currentGateIndex(project);
 
@@ -528,8 +528,12 @@ export default function GateFlowTable({
           type="warning"
           showIcon
           style={{ marginBottom: 12 }}
-          title="This project is archived — read-only"
-          description="Restore it from the Projects list to make changes. Nothing has been deleted."
+          title={project.identity.stopped ? 'This project was stopped — final and read-only' : 'This project is archived — read-only'}
+          description={
+            project.identity.stopped
+              ? 'A stopped project can never be changed again. Nothing has been deleted.'
+              : 'Restore it from the Projects list to make changes. Nothing has been deleted.'
+          }
         />
       )}
       {saveBlockedRows.length > 0 && (
@@ -596,7 +600,7 @@ export default function GateFlowTable({
                   </Button>
                 )}
                 {r.historyCount > 0 ? (
-                  <Button size="small" type="text" icon={<HistoryOutlined />} onClick={() => setHistoryFor(r.meta.id)}>
+                  <Button size="small" type="text" disabled={false} icon={<HistoryOutlined />} onClick={() => setHistoryFor(r.meta.id)}>
                     History ({r.historyCount})
                   </Button>
                 ) : (

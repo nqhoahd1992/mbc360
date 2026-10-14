@@ -152,6 +152,7 @@ export default function GateReadinessPanel({
             type="link"
             size="small"
             className="grp-toggle"
+            disabled={false}
             icon={historyOpen.has(item.id) ? <DownOutlined /> : <RightOutlined />}
             onClick={() =>
               setHistoryOpen((prev) => {

@@ -106,6 +106,14 @@ export function setProjectArchived(id: string, archived: boolean): Promise<Proje
   );
 }
 
+// Stop is final (SW-31): Lead or admin, only while a Critical gap stands. The server writes the grounds.
+export function stopProject(id: string, comment: string): Promise<ProjectEnvelope> {
+  return request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/stop`, {
+    method: 'POST',
+    body: JSON.stringify({ comment }),
+  });
+}
+
 export function getProject(id: string): Promise<ProjectEnvelope> {
   return request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}`);
 }

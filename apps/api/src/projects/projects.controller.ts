@@ -176,6 +176,16 @@ export class ProjectsController {
     return this.projects.setArchived(user, id, false);
   }
 
+  // Stop — the final end of a project (SW-31). Lead or admin; the server decides whether it is allowed.
+  @Post(':id/stop')
+  stop(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { comment?: string },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.stopProject(user, id, body?.comment);
+  }
+
   @Put(':id/gates/:gateId')
   updateGate(
     @CurrentUser() user: SessionUser,

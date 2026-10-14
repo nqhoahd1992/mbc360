@@ -55,8 +55,8 @@ export const INDEPENDENT_FUNCTION_CAPABILITIES: readonly string[] = [
 // `GATE_DECISIONS` enum does not carry (Reject/Stop · Approved with Conditions ·
 // Not Approved · Further Information Required) and two are acts rather than
 // decisions (Delegated approval · Override or exception) — they are listed anyway
-// so that adding any of them later cannot silently skip the comment rule. The
-// missing Reject/Stop decision is [ASSUMPTION: R5-Q13].
+// so that adding any of them later cannot silently skip the comment rule. Reject/Stop
+// is not a gate decision: it is the final state of the project (SW-31, `utils/projectStop.ts`).
 export const DECISIONS_REQUIRING_COMMENT: readonly string[] = [
   'Proceed with Conditions',
   'Hold',

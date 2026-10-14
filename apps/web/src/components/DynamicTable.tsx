@@ -684,9 +684,9 @@ export default function DynamicTable({
                 {rowSubtitle(openRow) && <div className="rt-sub">{rowSubtitle(openRow)}</div>}
               </div>
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                <Button type="text" icon={<UpOutlined />} aria-label="Previous row" onClick={() => step(-1)} />
-                <Button type="text" icon={<DownOutlined />} aria-label="Next row" onClick={() => step(1)} />
-                <Button type="text" aria-label="Close" onClick={() => setOpenIndex(null)}>
+                <Button type="text" disabled={false} icon={<UpOutlined />} aria-label="Previous row" onClick={() => step(-1)} />
+                <Button type="text" disabled={false} icon={<DownOutlined />} aria-label="Next row" onClick={() => step(1)} />
+                <Button type="text" disabled={false} aria-label="Close" onClick={() => setOpenIndex(null)}>
                   ✕
                 </Button>
               </div>

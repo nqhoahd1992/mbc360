@@ -1,4 +1,7 @@
 import { DatePicker, Input, Select } from 'antd';
+import { useParams } from 'react-router-dom';
+import { useAppStore } from '../store/useAppStore';
+import StopProjectAction from './StopProjectAction';
 import ChoiceSelect from './ChoiceSelect';
 import dayjs from 'dayjs';
 import type { GateRecord, RiskLevel } from '@mbc360/shared/types';
@@ -35,6 +38,10 @@ export default function GapAssessmentBlock({
   locked: boolean;
   onChange: (patch: Partial<GateRecord>) => void;
 }) {
+  const { projectId } = useParams();
+  const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
+  // What the server will check is the SAVED record; the grade on screen may not be saved yet.
+  const savedGrade = project?.gates.find((g) => g.gateId === gate.gateId)?.gapCriticality ?? '';
   const criticality = gate.gapCriticality ?? '';
   const graded = criticality !== '';
 
@@ -70,16 +77,17 @@ export default function GapAssessmentBlock({
       <div className="gap-head">
         <div className="gap-head-main">
           <span className="gap-title">Gap assessment</span>
-          <span className={`gap-state ${state.tone}`}>{state.text}</span>
+          <span className={`gap-state ${state.tone}`}>
+            {state.text}
+            {criticality === 'Critical' && ' If the project cannot go on, it can be stopped instead (final).'}
+          </span>
+          {/* SW-31: a Critical gap is the one condition under which the project may be stopped. Only the project Lead or
+              an administrator sees the button; it is disabled until the Critical grade is saved. */}
+          {criticality === 'Critical' && project && <StopProjectAction project={project} unsaved={savedGrade !== 'Critical'} />}
         </div>
       </div>
 
-      {locked ? (
-        <div className="gap-locked gap-static">
-          {criticality || '—'} · {gate.gapImpactCategory || '—'} · assessed by {gate.gapAssessor || '—'}
-        </div>
-      ) : (
-        <div className="gap-body">
+      <div className="gap-body">
           <div className="gap-grid">
             <label className="gap-fld">
               <span className="gap-label">
@@ -87,6 +95,7 @@ export default function GapAssessmentBlock({
               </span>
               <ChoiceSelect
                 allowClear
+                disabled={locked}
                 status={graded ? undefined : 'error'}
                 placeholder="Select a level"
                 value={gate.gapCriticality}
@@ -102,6 +111,7 @@ export default function GapAssessmentBlock({
               <span className="gap-label">Impact category</span>
               <Select
                 allowClear
+                disabled={locked}
                 placeholder="Select a category"
                 value={gate.gapImpactCategory || undefined}
                 options={GAP_IMPACT_CATEGORIES.map((o) => ({ value: o, label: o }))}
@@ -122,6 +132,7 @@ export default function GapAssessmentBlock({
             <label className="gap-fld">
               <span className="gap-label">Assessment date</span>
               <DatePicker
+                disabled={locked}
                 value={gate.gapAssessmentDate ? dayjs(gate.gapAssessmentDate) : null}
                 onChange={(d) => onChange({ gapAssessmentDate: d ? d.format('YYYY-MM-DD') : '' })}
               />
@@ -130,6 +141,7 @@ export default function GapAssessmentBlock({
             <label className="gap-fld gap-wide">
               <span className="gap-label">Rationale</span>
               <Input.TextArea
+                disabled={locked}
                 autoSize={{ minRows: 3, maxRows: 8 }}
                 placeholder="Why this gap carries the criticality recorded above"
                 value={gate.gapRationale}
@@ -142,6 +154,7 @@ export default function GapAssessmentBlock({
                 Required action{needs('required action') && <span className="gap-req"> · required</span>}
               </span>
               <Input
+                disabled={locked}
                 placeholder="What has to happen about this gap"
                 value={gate.gapRequiredAction}
                 onChange={(e) => onChange({ gapRequiredAction: e.target.value })}
@@ -153,6 +166,7 @@ export default function GapAssessmentBlock({
                 Action owner{needs('action owner') && <span className="gap-req"> · required</span>}
               </span>
               <UserSelect
+                disabled={locked}
                 placeholder="Select a person"
                 value={gate.gapActionOwner}
                 onChange={(v?: string) => onChange({ gapActionOwner: v ?? '' })}
@@ -162,14 +176,14 @@ export default function GapAssessmentBlock({
             <label className="gap-fld">
               <span className="gap-label">Evidence link</span>
               <Input
+                disabled={locked}
                 placeholder="Link to the evidence"
                 value={gate.gapEvidenceLink}
                 onChange={(e) => onChange({ gapEvidenceLink: e.target.value })}
               />
             </label>
           </div>
-        </div>
-      )}
+      </div>
     </section>
   );
 }

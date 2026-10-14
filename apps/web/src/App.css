@@ -174,10 +174,14 @@ a.hb-link:hover {
    Scoped to the page and its drawers: the header, sidebar and ⌘K palette stay
    usable. */
 .app-previewing #main-content :is(input, textarea, .ant-select, .ant-picker, .ant-checkbox-wrapper, .ant-radio-wrapper, .ant-switch, .ant-input-number, .ant-upload),
-.app-previewing .ant-drawer :is(input, textarea, .ant-select, .ant-picker, .ant-checkbox-wrapper, .ant-radio-wrapper, .ant-switch, .ant-input-number, .ant-upload) {
+.app-previewing .ant-drawer :is(input, textarea, .ant-select, .ant-picker, .ant-checkbox-wrapper, .ant-radio-wrapper, .ant-switch, .ant-input-number, .ant-upload),
+.app-frozen #main-content :is(input, textarea, .ant-select, .ant-picker, .ant-checkbox-wrapper, .ant-radio-wrapper, .ant-switch, .ant-input-number, .ant-upload),
+.app-frozen .ant-drawer :is(input, textarea, .ant-select, .ant-picker, .ant-checkbox-wrapper, .ant-radio-wrapper, .ant-switch, .ant-input-number, .ant-upload) {
   pointer-events: none;
 }
 .app-previewing #main-content :is(.ant-input, .ant-input-affix-wrapper, .ant-picker),
-.app-previewing .ant-drawer :is(.ant-input, .ant-input-affix-wrapper, .ant-picker) {
+.app-previewing .ant-drawer :is(.ant-input, .ant-input-affix-wrapper, .ant-picker),
+.app-frozen #main-content :is(.ant-input, .ant-input-affix-wrapper, .ant-picker),
+.app-frozen .ant-drawer :is(.ant-input, .ant-input-affix-wrapper, .ant-picker) {
   background-color: #fafafa;
 }

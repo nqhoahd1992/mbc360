@@ -225,6 +225,8 @@ export default function PostMarketCapa() {
       )}
 
       <Drawer
+
+        closable={{ placement: 'end' }}
         open={!!open}
         onClose={() => setOpenId(null)}
         size={screens.md ? 520 : '100%'}

@@ -16,6 +16,7 @@ import {
   STAGE_STATUSES,
   WORK_STATUSES,
 } from '@mbc360/shared/config/gates';
+import { projectStopGrounds, stopRefusal } from '@mbc360/shared/utils/projectStop';
 import {
   CHANGE_IMPACT_AREAS,
   FORMULA_CLASSIFICATION_CAPABILITIES,
@@ -264,6 +265,7 @@ export interface ProjectListItem {
   version: number;
   archivedAt?: string;
   archivedBy?: string;
+  stoppedAt?: string;
 }
 
 // What every read/write returns: the full ProjectData plus the version the
@@ -517,6 +519,7 @@ export class ProjectsService {
       version: p.version,
       archivedAt: p.archivedAt ? p.archivedAt.toISOString().slice(0, 10) : undefined,
       archivedBy: p.archivedBy?.displayName,
+      stoppedAt: p.stoppedAt ? p.stoppedAt.toISOString().slice(0, 10) : undefined,
     }));
   }
 
@@ -656,8 +659,15 @@ export class ProjectsService {
       throw new BadRequestException(`Product code "${input.productCode}" already exists`);
     }
 
+    // Two requests with the same id can both pass the checks above (a double click sends two keys); the
+    // loser hits the primary key. Say so plainly instead of answering 500.
     const projectId = await this.prisma.$transaction(async (tx) => {
-      const { projectId } = await createProjectWithScaffold(tx, input);
+      const { projectId } = await createProjectWithScaffold(tx, input).catch((err: unknown) => {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          throw new ConflictException(`Project "${input.id ?? input.productCode}" already exists — it may have just been created`);
+        }
+        throw err;
+      });
       await this.audit.record(
         {
           actorId,
@@ -770,6 +780,51 @@ export class ProjectsService {
           action: archived ? 'project.archived' : 'project.restored',
           before: { archivedAt: row.archivedAt?.toISOString() ?? null },
           after: { archivedAt: archived ? new Date().toISOString() : null },
+        },
+        tx,
+      );
+    });
+    return this.envelope(await this.loadOrThrow(this.prisma, id));
+  }
+
+  // Stop (SW-31, project owner 2026-10-14): the final end of a project that cannot go on. Only the project's
+  // Lead or an administrator may do it, only while a Critical gap assessment stands (`projectStopGrounds`), and
+  // never while a market is launched. The server writes WHY from the project's own data at that moment; the
+  // caller supplies only the comment. Not reversible.
+  async stopProject(user: SessionUser, id: string, comment: string | undefined): Promise<ProjectEnvelope> {
+    const text = (comment ?? '').trim();
+    if (text === '') throw new BadRequestException('A comment explaining why the project is stopped is required');
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM projects WHERE id = ${id} FOR UPDATE`;
+      const row = await this.loadOrThrow(tx, id);
+      const project = toProjectData(row, [], await this.loadReference(tx));
+      if (!this.permissions.isAdmin(user) && project.identity.projectLead.trim() !== user.displayName.trim()) {
+        throw new ForbiddenException(`Only the project's Lead (${project.identity.projectLead}) or an administrator may stop it`);
+      }
+      const refusal = stopRefusal(project);
+      if (refusal) throw new BadRequestException(refusal);
+      const grounds = projectStopGrounds(project);
+      const atGate = GATES[currentGateIndex(project)]?.id ?? null;
+      await tx.project.update({
+        where: { id },
+        data: {
+          stoppedAt: new Date(),
+          stoppedById: user.id,
+          stopAtGate: atGate,
+          stopComment: text,
+          stopGrounds: grounds as unknown as Prisma.InputJsonValue,
+          version: { increment: 1 },
+        },
+      });
+      await this.audit.record(
+        {
+          actorId: user.id,
+          projectId: id,
+          entityType: 'project',
+          entityId: id,
+          action: 'project.stopped',
+          before: { stoppedAt: null },
+          after: { stoppedAt: new Date().toISOString(), atGate, comment: text, grounds } as unknown as Prisma.InputJsonValue,
         },
         tx,
       );
@@ -5245,7 +5300,12 @@ export class ProjectsService {
   // of the archive) or `remove` (an admin must still be able to delete an
   // archived project — that is the natural archive-then-delete flow); both do
   // their own lookup precisely so they bypass this.
-  private assertMutable(row: { id: string; archivedAt: Date | null }): void {
+  private assertMutable(row: { id: string; archivedAt: Date | null; stoppedAt?: Date | null }): void {
+    // SW-31: a stopped project is final. Unlike an archive there is no way back, so nothing bypasses this
+    // except deletion by an administrator.
+    if (row.stoppedAt) {
+      throw new ForbiddenException(`Project ${row.id} was stopped and is read-only — it cannot be changed again`);
+    }
     if (row.archivedAt) {
       throw new ForbiddenException(
         `Project ${row.id} is archived and read-only — restore it before making changes`,

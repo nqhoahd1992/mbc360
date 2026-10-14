@@ -17,9 +17,9 @@ import type { GateDecision, GateRecord } from '../types';
 export interface GapVerdict {
   reason: string;
   // What the user can do instead. Question 3 says a Critical gap "must result in
-  // Hold, Backtrack or Reject/Stop"; only the first two exist as decisions in this
-  // app, and the workbook's own dropdown is the authority on that list, so we do
-  // not invent a third [ASSUMPTION: R5-Q13].
+  // Hold, Backtrack or Reject/Stop"; the first two are gate decisions. Reject/Stop
+  // is the project's own final state (SW-31, `utils/projectStop.ts`), not a dropdown value —
+  // the workbook owns that list.
   allowed: GateDecision[];
   // Fields that, once recorded, make the REFUSED decision valid — i.e. the remedy
   // is data entry, not a different decision.

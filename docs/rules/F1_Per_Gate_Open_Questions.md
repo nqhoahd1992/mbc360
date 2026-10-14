@@ -1397,7 +1397,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | R5-Q1 | **10** | Ai chỉ định người ký phase, ai được gỡ chữ ký |
 | R5-Q2 | **11** | D1 có áp cho khối chữ ký phase không |
 | R5-Q4 | **12** | Chữ ký vẽ tay + yếu tố thứ hai — có cần, và bắt buộc tới mức nào |
-| R5-Q13 | **13** | Thiếu quyết định `Reject / Stop` — câu 3 và 29 đều nêu, dropdown workbook không có |
+| ✅ R5-Q13 | — | (đã quyết là SW-31, không gửi SME) Thiếu quyết định `Reject / Stop` — câu 3 và 29 đều nêu, dropdown workbook không có |
 | R5-Q14 | **14** | "Safety **hoặc** Regulatory authority" — một trong hai là đủ, hay cần cả hai |
 | R5-Q15 | **15** | Trang dữ liệu tham chiếu cấp công ty: ai *thấy*, ai *sửa* |
 | R5-Q16 | **16** | Gap High — "controlled action" nghĩa là Next Action có kiểm soát?, và due date ghi đâu |
@@ -1686,7 +1686,7 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 
 **Nếu trả lời khác:** `closedWithoutEvidence` và `RESOLUTION_CLOSED_STATES` trong `packages/shared/src/utils/safetyFindings.ts` + `config/registers.ts`.
 
-#### R5-Q13 · Câu 3 nói "Hold, Backtrack **hoặc Reject/Stop**" — app không có quyết định Reject/Stop 🔴
+#### ✅ R5-Q13 · ĐÃ QUYẾT 14/10/2026 — Stop là trạng thái cuối của dự án (quy tắc phần mềm SW-31, không hỏi SME). Câu 3 nói "Hold, Backtrack **hoặc Reject/Stop**" — app không có quyết định Reject/Stop 🔴
 
 **Đã build 24/08/2026** cùng nhóm 2. Câu 3 nói một gap **Critical** *"must result in **Hold, Backtrack or Reject/Stop**"*.
 
@@ -1698,7 +1698,9 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 
 **Câu hỏi:** `Reject/Stop` có phải một quyết định gate thứ sáu cần thêm vào dropdown không? Nếu có, nó khác `Hold` ở chỗ nào về hệ quả — dự án có bị đóng/lưu trữ luôn không, hay chỉ là một nhãn khác? Nếu không cần thêm, thì `Hold` và `Backtrack` có đủ cho một gap Critical không?
 
-**Nếu trả lời khác:** `GATE_DECISIONS` trong `packages/shared/src/config/gates.ts` và `GateDecision` trong `types/index.ts`; các mảng `allowed` trong `packages/shared/src/utils/gapCriticality.ts`.
+**Đã quyết (14/10/2026, chủ dự án):** Reject/Stop không vào dropdown; nó là một trạng thái cuối cùng của dự án, chỉ Lead hoặc admin bấm, chỉ khi có gap Critical, kèm comment bắt buộc và lý do hệ thống tự ghi. Chi tiết ở SW-31 trong `Software_Rules.md`.
+
+**(Cũ) Nếu trả lời khác:** `GATE_DECISIONS` trong `packages/shared/src/config/gates.ts` và `GateDecision` trong `types/index.ts`; các mảng `allowed` trong `packages/shared/src/utils/gapCriticality.ts`.
 
 #### R5-Q14 · "Safety **hoặc** Regulatory authority" — bên nào cho finding nào 🔴
 

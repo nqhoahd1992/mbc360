@@ -168,6 +168,8 @@ export default function ChecklistSection({
       )}
 
       <Drawer
+
+        closable={{ placement: 'end' }}
         open={open !== undefined}
         onClose={() => setOpenIndex(null)}
         size={screens.md ? 480 : '100%'}

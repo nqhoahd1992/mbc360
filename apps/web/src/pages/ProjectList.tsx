@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Checkbox, DatePicker, Empty, Form, Input, Pagination, Popconfirm, Popover, Select, Tag, Tooltip, message } from 'antd';
 import { ArrowRightOutlined, PlusOutlined, DeleteOutlined, InboxOutlined, UndoOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
@@ -90,7 +90,21 @@ export default function ProjectList() {
     .options.filter((o) => !o.startsWith('Other'))
     .map((o) => ({ value: o, label: o }));
 
+  // A second click while the first request is in flight would send a second POST with the same id.
+  const [creating, setCreating] = useState(false);
+  const creatingRef = useRef(false);
   const onCreate = async () => {
+    if (creatingRef.current) return;
+    creatingRef.current = true;
+    setCreating(true);
+    try {
+      await submitCreate();
+    } finally {
+      creatingRef.current = false;
+      setCreating(false);
+    }
+  };
+  const submitCreate = async () => {
     const values = await form.validateFields();
     if (projects.some((p) => p.identity.id === values.id)) {
       message.error('Project ID already exists');
@@ -123,8 +137,8 @@ export default function ProjectList() {
   const pageCount = Math.max(1, Math.ceil(projects.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const pageRows = projects.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const activeCount = projects.filter((p) => !p.identity.archived).length;
-  const archivedCount = projects.length - activeCount;
+  const activeCount = projects.filter((p) => !p.identity.archived && !p.identity.stopped).length;
+  const archivedCount = projects.filter((p) => !!p.identity.archived).length;
 
   const isMe = (name: string) => !!myName && name.trim().toLowerCase() === myName.trim().toLowerCase();
 
@@ -345,6 +359,11 @@ export default function ProjectList() {
                         <Link className="c-link pl-id-name" to={`/projects/${p.identity.id}`}>
                           {p.identity.productSku || p.identity.id}
                         </Link>
+                        {p.identity.stopped && (
+                          <Tooltip title={`Stopped ${p.identity.stopped.at} — final and read-only.`}>
+                            <span className="c-tag c-tag-dot c-tag-bad">Stopped</span>
+                          </Tooltip>
+                        )}
                         {p.identity.archived && (
                           <Tooltip
                             title={`Archived ${p.identity.archived.at}${p.identity.archived.by ? ` by ${p.identity.archived.by}` : ''} — restore it to resume work.`}
@@ -426,6 +445,7 @@ export default function ProjectList() {
         title="New Project — Project Identification"
         open={open}
         onOk={onCreate}
+        confirmLoading={creating}
         onCancel={() => setOpen(false)}
         okText="Create"
         width={720}

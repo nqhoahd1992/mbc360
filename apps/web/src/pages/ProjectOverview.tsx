@@ -23,6 +23,8 @@ import {
   type GateState,
 } from '@mbc360/shared/utils/gateProgress';
 import AssessmentSummary from '../components/AssessmentSummary';
+import ProjectTeamCard from '../components/ProjectTeamCard';
+import StopProjectCard from '../components/StopProjectCard';
 import { marketsAwaitingSupersession, transitioningVersions } from '@mbc360/shared/utils/formulaLifecycle';
 import { useSession } from '../auth/useSession';
 import Notice from '../components/Notice';
@@ -123,6 +125,11 @@ export default function ProjectOverview() {
               <LockOutlined /> Archived
             </span>
           )}
+          {identity.stopped && (
+            <span className="c-tag c-tag-dot c-tag-bad">
+              <LockOutlined /> Stopped
+            </span>
+          )}
         </div>
         {/* The identification parameters, as context: they are write-once at
             creation (markets are edited on Phase 1), so a card of them here was
@@ -158,6 +165,8 @@ export default function ProjectOverview() {
           {archived.by ? ` by ${archived.by}` : ''}. Restore it from All Projects to make changes again.
         </Notice>
       )}
+
+      <StopProjectCard project={project} />
 
       {/* Round 4 question 2: an older formula version in transition is only closed by a person confirming ten facts per
           market. That screen lives on the Formula BOM page, so a Lead who never opens it would never know it is waiting —
@@ -351,6 +360,8 @@ export default function ProjectOverview() {
           })}
         </div>
       </section>
+
+      <ProjectTeamCard project={project} />
 
       {/* Gates 10-12 are tracked PER MARKET (rule A1), and a market's launch
           approval is blocked until its PIF is Approved (C5) — so for a project

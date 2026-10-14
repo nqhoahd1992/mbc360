@@ -62,6 +62,7 @@ model User {
   registerClosureSignOffs RegisterClosureSignOff[] @relation("RegisterClosureSignedBy")
   reviewerOf   ProjectReviewer[]
   archivedProjects Project[]     @relation("ProjectArchivedBy")
+  stoppedProjects  Project[]     @relation("ProjectStoppedBy")
   signature    UserSignature?
   oneTimeCodes OneTimeCode[]
   totp         UserTotp?
@@ -203,6 +204,14 @@ model Project {
   archivedAt       DateTime?
   archivedBy       User?     @relation("ProjectArchivedBy", fields: [archivedById], references: [id])
   archivedById     String?
+  // Stop (SW-31): the final, irreversible end of a project, read-only like an archive. `stopGrounds` is what
+  // the system found when it was stopped (written by the server), `stopComment` is the Lead's own reason.
+  stoppedAt        DateTime?
+  stoppedBy        User?     @relation("ProjectStoppedBy", fields: [stoppedById], references: [id])
+  stoppedById      String?
+  stopAtGate       String?
+  stopComment      String?
+  stopGrounds      Json?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

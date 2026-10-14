@@ -39,6 +39,7 @@ import type {
   ReadinessAckEvent,
   ReadinessAcknowledgement,
   SupersessionDecision,
+  ProjectStopGround,
 } from '@mbc360/shared/types';
 import type { Prisma } from '../generated/prisma/client';
 
@@ -47,6 +48,7 @@ export const PROJECT_INCLUDE = {
   markets: { orderBy: { market: 'asc' } },
   reviewers: true,
   archivedBy: { select: { displayName: true } },
+  stoppedBy: { select: { displayName: true } },
   gates: true,
   checklistItems: { orderBy: [{ sectionKey: 'asc' }, { itemOrder: 'asc' }] },
   requirementItems: { orderBy: [{ sectionKey: 'asc' }, { itemOrder: 'asc' }] },
@@ -440,6 +442,17 @@ export function toProjectData(
       reviewers,
       ...(p.archivedAt
         ? { archived: { at: p.archivedAt.toISOString().slice(0, 10), by: p.archivedBy?.displayName } }
+        : {}),
+      ...(p.stoppedAt
+        ? {
+            stopped: {
+              at: p.stoppedAt.toISOString().slice(0, 10),
+              by: p.stoppedBy?.displayName,
+              ...(p.stopAtGate ? { atGate: p.stopAtGate } : {}),
+              comment: p.stopComment ?? '',
+              grounds: (Array.isArray(p.stopGrounds) ? p.stopGrounds : []) as unknown as ProjectStopGround[],
+            },
+          }
         : {}),
     },
     gates,

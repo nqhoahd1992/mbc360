@@ -52,7 +52,7 @@ export default function FormDrawer({
 
   const defaultFooter = (
     <div className="fd-foot">
-      <Button onClick={onCancel}>{cancelText}</Button>
+      <Button disabled={false} onClick={onCancel}>{cancelText}</Button>
       {onOk && (
         <Button type="primary" loading={confirmLoading} {...okButtonProps} onClick={onOk}>
           {okText}
@@ -65,6 +65,7 @@ export default function FormDrawer({
 
   return (
     <Drawer
+      closable={{ placement: 'end' }}
       open={open}
       title={title}
       onClose={onCancel}

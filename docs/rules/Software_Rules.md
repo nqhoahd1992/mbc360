@@ -169,6 +169,17 @@ Change Control là cách chính thức để sửa một thứ đã bị **khóa
 - **Kiểm thử:** `npm run verify:change-access` (luật) và các case đầu `gate-signing.e2e.ts` (Gate 1 không mở được thay đổi công thức hay hồ sơ, loại `ALL` mở được).
 - **Dữ liệu cũ:** không có gì để chuyển. Quy tắc chỉ áp cho bản ghi tạo từ nay.
 
+### SW-31. Stop là điểm dừng cuối cùng của dự án, một trạng thái của Project — *Đã xây* (2026-10-14, chủ dự án)
+SME nhắc "Reject/Stop" như lối ra của gap Critical nhưng dropdown Gate decision của workbook không có giá trị đó. Chủ dự án quyết: **Stop không phải một quyết định gate mà là trạng thái của dự án**, nên dropdown của workbook không bị đụng. Không hỏi SME (R5-Q13 đóng).
+- **Cuối cùng, không hoàn tác.** Dự án đã Stop khóa chỉ đọc đúng như hiện trạng (dùng chung cơ chế khóa của Archive, `assertMutable`). Không ai mở lại được, kể cả admin; admin vẫn xóa được dự án. Việc đang mở (Next Action, Change Control) giữ nguyên làm lịch sử.
+- **Ai bấm:** Project Lead của dự án đó hoặc admin. Không có capability riêng.
+- **Chỉ khi thật sự mắc kẹt:** hiện chỉ khi có ít nhất một gate mang đánh giá gap **Critical** (lời SME: "Critical gaps must result in Hold, Backtrack or Reject/Stop"). Danh sách lý do nằm ở một hàm duy nhất, `projectStopGrounds` trong `utils/projectStop.ts`, để thêm lý do khác sau này không phải sửa chỗ khác.
+- **Đánh giá phải đầy đủ (14/10/2026, sau khi chủ dự án chỉ ra Stop được với grade Critical trơ trọi):** một gap Critical chỉ là lý do Stop khi đã có **Impact category, Assessor, Assessment date và Rationale**. Một grade không có gì đi kèm không phải "formal criticality assessment" của Q3, và dự án đã Stop không sửa lại được nên lý do ghi lúc Stop phải đủ. Required action, Action owner và Evidence link không bắt buộc (dự án đang kết thúc, không còn hành động tiếp). Thiếu trường nào thì nút Stop mờ và nói đúng trường đó (`missingStopAssessment`).
+- **Từ chối khi còn market đã launch mà chưa Withdrawn** (nghĩa vụ hậu mãi còn nguyên): phải withdraw market trước.
+- **Hệ thống tự ghi lý do:** server chụp các gap Critical (gate, impact category, rationale, người và ngày đánh giá, hành động yêu cầu), gate đang mở, người dừng và thời điểm — người dừng không nhập những thứ này — cộng với **comment bắt buộc** của người dừng. Ghi vào cột trên `projects` và một audit event `project.stopped`.
+- **Hiển thị:** thẻ trên Project Overview (nút Stop và khung xác nhận cho Lead/admin, banner sau khi dừng), nhãn Stopped trên danh sách dự án, không tính vào "active" ở Dashboard. Dự án Stopped vẫn hiện trong danh sách mặc định. Gợi ý Stop ở các chỗ vướng (ví dụ thông báo gap Critical) làm sau.
+- **Dữ liệu cũ:** migration `20261014090000_project_stop` chỉ thêm cột; mọi dự án hiện có là chưa Stop.
+
 ## 3. Quyền và truy cập
 
 ### SW-10. Không có role thì không vào được app — *Đã xây* (2026-10-02)

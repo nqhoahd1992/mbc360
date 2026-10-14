@@ -966,9 +966,9 @@ export default function GateRulesMap() {
                 )}
               </div>
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                <Button type="text" icon={<UpOutlined />} aria-label="Previous" onClick={() => step(-1)} />
-                <Button type="text" icon={<DownOutlined />} aria-label="Next" onClick={() => step(1)} />
-                <Button type="text" aria-label="Close" onClick={() => setOpenKey(null)}>
+                <Button type="text" disabled={false} icon={<UpOutlined />} aria-label="Previous" onClick={() => step(-1)} />
+                <Button type="text" disabled={false} icon={<DownOutlined />} aria-label="Next" onClick={() => step(1)} />
+                <Button type="text" disabled={false} aria-label="Close" onClick={() => setOpenKey(null)}>
                   ✕
                 </Button>
               </div>

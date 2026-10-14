@@ -442,6 +442,8 @@ export default function AdminClaimsLibrary() {
       </div>
 
       <Drawer
+
+        closable={{ placement: 'end' }}
         open={openId !== null && (isNew || !!open)}
         onClose={close}
         size={screens.md ? 560 : '100%'}

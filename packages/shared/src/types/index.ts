@@ -1215,6 +1215,19 @@ export interface ChangeRecord {
   notes?: string;
 }
 
+// One reason the system found for stopping a project (SW-31). Today only a Critical gap assessment
+// qualifies; the list lives in `utils/projectStop.ts` so a further ground is added in one place.
+export interface ProjectStopGround {
+  kind: 'critical-gap';
+  gateId: string;
+  criticality: string;
+  impactCategory?: string;
+  rationale?: string;
+  assessor?: string;
+  assessmentDate?: string;
+  requiredAction?: string;
+}
+
 export interface ProjectIdentity {
   id: string;
   productCode: string;
@@ -1236,6 +1249,10 @@ export interface ProjectIdentity {
   // hides the project from the default list; only a role holding
   // `project|archive` may set it. Absent = active.
   archived?: { at: string; by?: string };
+  // Set when the project was stopped (SW-31): the final end of a project that can no longer go on.
+  // Irreversible and read-only. `grounds` is what the SYSTEM found at that moment, written by the server,
+  // beside the `comment` the person who stopped it gave.
+  stopped?: { at: string; by?: string; atGate?: string; comment: string; grounds: ProjectStopGround[] };
   // ---------------------------------------------------------------------
   // Gate 1 "Opportunity & Request" capture (2026-08-09, SME Round 3 B1/B2/B3).
   // Deliberately OPTIONAL here and NOT required on the Create New Project form,

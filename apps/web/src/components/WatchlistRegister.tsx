@@ -403,9 +403,9 @@ export default function WatchlistRegister({
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                <Button type="text" icon={<UpOutlined />} aria-label="Previous group" onClick={() => step(-1)} />
-                <Button type="text" icon={<DownOutlined />} aria-label="Next group" onClick={() => step(1)} />
-                <Button type="text" aria-label="Close" onClick={() => setOpenIndex(null)}>✕</Button>
+                <Button type="text" disabled={false} icon={<UpOutlined />} aria-label="Previous group" onClick={() => step(-1)} />
+                <Button type="text" disabled={false} icon={<DownOutlined />} aria-label="Next group" onClick={() => step(1)} />
+                <Button type="text" disabled={false} aria-label="Close" onClick={() => setOpenIndex(null)}>✕</Button>
               </div>
             </div>
           )

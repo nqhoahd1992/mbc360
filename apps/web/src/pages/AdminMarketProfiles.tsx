@@ -336,6 +336,8 @@ export default function AdminMarketProfiles() {
       )}
 
       <Drawer
+
+        closable={{ placement: 'end' }}
         open={!!open}
         onClose={() => setOpenMarket(null)}
         size={screens.md ? 520 : '100%'}
