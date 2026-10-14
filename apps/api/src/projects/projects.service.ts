@@ -124,7 +124,7 @@ import {
   SCALE_UP_RISK_OPTIONS,
   hasStandingClosureSignature,
 } from '@mbc360/shared/types';
-import type { GateSignedContent, GateSignOffRole, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
+import type { GateSignedContent, GateSignOffRole, PhaseSignedContent, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
 import type {
   AngleRow,
   ChangeControlAssessment,
@@ -157,6 +157,7 @@ import {
   toChangeRecords,
   toGateChangeLog,
   toGateSignOffLog,
+  toPhaseSignOffLog,
   toReadinessAckLog,
   toProjectData,
   toSupersessionDecision,
@@ -427,6 +428,27 @@ export class ProjectsService {
     };
   }
 
+  // The content a phase signature attested to, as it was when signed — also for a signature since withdrawn. Read-only, any
+  // signed-in user who may read the project. A signature given before the content began to be kept has none.
+  async signedPhaseContent(id: string, phase: number, role: string, signedAt: string): Promise<PhaseSignedContent> {
+    await this.loadOrThrow(this.prisma, id);
+    const row = await this.prisma.auditEvent.findFirst({
+      where: {
+        projectId: id,
+        action: 'sign_off.content',
+        AND: [
+          { after: { path: ['phase'], equals: phase } },
+          { after: { path: ['role'], equals: role } },
+          { after: { path: ['signedAt'], equals: signedAt } },
+        ],
+      },
+      orderBy: { occurredAt: 'desc' },
+    });
+    if (!row) throw new NotFoundException('The content of this signature was not kept (it was given before signed content was recorded)');
+    const a = row.after as unknown as { contentHash: string; sections: PhaseSignedContent['sections'] };
+    return { phase, role, signedAt, hash: a.contentHash, sections: a.sections };
+  }
+
   private phaseContentChanged(): UnprocessableEntityException {
     return new UnprocessableEntityException({
       code: 'PHASE_CONTENT_CHANGED',
@@ -543,6 +565,12 @@ export class ProjectsService {
       include: { actor: { select: { displayName: true } } },
       orderBy: { occurredAt: 'asc' },
     });
+    // Signing and withdrawing a PHASE signature, newest last — the phase's History drawer reads these.
+    const phaseSignEvents = await this.prisma.auditEvent.findMany({
+      where: { projectId: row.id, action: { in: ['sign_off.signed', 'sign_off.withdrawn'] } },
+      include: { actor: { select: { displayName: true } } },
+      orderBy: { occurredAt: 'asc' },
+    });
     // Every edit of a reviewer's acknowledgement of a generated N/A reason (SW-29), oldest first.
     const ackEvents = await this.prisma.auditEvent.findMany({
       where: { projectId: row.id, action: 'readiness_ack.recorded' },
@@ -556,6 +584,7 @@ export class ProjectsService {
         await this.loadReference(this.prisma),
         toGateSignOffLog(signEvents),
         toReadinessAckLog(ackEvents),
+        toPhaseSignOffLog(phaseSignEvents),
       ),
       version: row.version,
       changes: toChangeRecords(row) as ChangeRecord[],
@@ -1335,6 +1364,9 @@ export class ProjectsService {
           `"${role}" is assigned to somebody else — only the assigned signer may sign it`,
         );
       }
+      // The three phase signatures are an order, like a gate's (project owner, 2026-10-14): Prepared by, then
+      // Reviewed by, then Approved by. A review of nothing, or an approval before the review, is not a sign-off.
+      this.assertSequence(await tx.signOff.findMany({ where: { phaseClosureId: closureId } }), role as GateSignOffRole);
       // The "Approved by" row is a phase APPROVAL on top of being a signature,
       // so being assigned is necessary but not sufficient: the role must also
       // hold `phase:N|approve` (project owner's decision, 2026-08-20).
@@ -1457,7 +1489,36 @@ export class ProjectsService {
           signatureVerifiedAt: signatureImage ? now : null,
         },
       });
-      return { phase, role, decision, recordVersion: row.version, signatureAttached: !!signatureImage };
+      // The exact content this signature was given for, kept in full (it is what `expectedHash` fingerprints), so the
+      // phase's History can show it after the row is wiped by a withdrawal. A separate row from the act itself because it
+      // is large; the same arrangement as a gate's `gate_sign_off.content`.
+      await this.audit.record(
+        {
+          actorId: user.id,
+          projectId: id,
+          entityType: 'sign_off_content',
+          entityId: existing.id,
+          action: 'sign_off.content',
+          after: {
+            phase,
+            role,
+            signedAt: now.toISOString(),
+            contentHash: input.expectedHash,
+            sections: phaseSignContent(project, phase)?.sections ?? [],
+          } as unknown as Prisma.InputJsonValue,
+        },
+        tx,
+      );
+      return {
+        phase,
+        role,
+        decision,
+        // What was signed, kept on the audit row so the phase's History can still show it after a withdrawal wipes the row.
+        comment: comments || null,
+        signedAt: now.toISOString(),
+        recordVersion: row.version,
+        signatureAttached: !!signatureImage,
+      };
     });
   }
 
@@ -1485,6 +1546,17 @@ export class ProjectsService {
           `Only ${existing.name ?? 'the signer'} may withdraw this signature`,
         );
       }
+      // The order runs the other way too: releasing the preparer's signature while a reviewer's still stands would leave
+      // a review of nothing. Later signatures are withdrawn first.
+      const later = GATE_SIGNOFF_ROLES.slice(GATE_SIGNOFF_ROLES.indexOf(role as GateSignOffRole) + 1);
+      const standing = (await tx.signOff.findMany({ where: { phaseClosureId: closureId } })).filter(
+        (r) => later.includes(r.role as GateSignOffRole) && r.signedAt,
+      );
+      if (standing.length > 0) {
+        throw new BadRequestException(
+          `Withdraw ${standing.map((r) => `"${r.role}"`).join(' and ')} first — a later signature rests on this one`,
+        );
+      }
       await tx.signOff.update({
         where: { id: existing.id },
         data: {
@@ -1503,7 +1575,16 @@ export class ProjectsService {
           // signer unless the Lead changes it.
         },
       });
-      return { phase, role, reason: why, previousSigner: existing.name ?? null };
+      return {
+        phase,
+        role,
+        reason: why,
+        previousSigner: existing.name ?? null,
+        // What is being withdrawn: the row is wiped just above, so the audit is the only record of it.
+        previousDecision: existing.decision ?? null,
+        previousComment: existing.comments ?? null,
+        previousSignedAt: existing.signedAt.toISOString(),
+      };
     });
   }
 

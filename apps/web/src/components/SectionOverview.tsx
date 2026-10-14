@@ -152,7 +152,7 @@ export default function SectionOverview({
               {filter === 'due' && current ? `Nothing in this section is due at Gate ${current.number}` : 'No sheet here'}
             </div>
             <p>Every sheet in this section belongs to another state.</p>
-            <Button onClick={() => setFilter('all')}>Show all sheets</Button>
+            <Button disabled={false} onClick={() => setFilter('all')}>Show all sheets</Button>
           </div>
         ) : (
           visible.map((s) => (

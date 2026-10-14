@@ -24,6 +24,7 @@ import type {
   EvidenceItem,
   GateChangeLogEntry,
   GateSignOffEvent,
+  PhaseSignOffEvent,
   FormulaVersionRecord,
   GateEvidenceSnapshot,
   GateSignOff,
@@ -243,6 +244,36 @@ export function toGateSignOffLog(
   return out;
 }
 
+// Signing and withdrawing a PHASE signature are audited too (action sign_off.signed / .withdrawn); the History drawer of
+// the phase's sign-off card reads these rows. A withdrawal wipes the signature row, so the audit is the only record of what
+// it said. Rows recorded before the audit carried the details have only what was then stored.
+export function toPhaseSignOffLog(
+  events: { id: string; occurredAt: Date; action: string; after: Prisma.JsonValue; actor: { displayName: string } | null }[],
+): PhaseSignOffEvent[] {
+  const out: PhaseSignOffEvent[] = [];
+  for (const e of events) {
+    const a = (e.after ?? {}) as Record<string, unknown>;
+    const str = (k: string) => (typeof a[k] === 'string' && a[k] !== '' ? (a[k] as string) : undefined);
+    const role = str('role');
+    const phase = typeof a['phase'] === 'number' ? (a['phase'] as number) : undefined;
+    if (!role || phase === undefined) continue;
+    const signed = e.action === 'sign_off.signed';
+    out.push({
+      id: e.id,
+      phase,
+      role,
+      kind: signed ? 'signed' : 'withdrawn',
+      decision: signed ? str('decision') : str('previousDecision'),
+      comment: signed ? str('comment') : str('previousComment'),
+      reason: signed ? undefined : str('reason'),
+      signedAt: signed ? str('signedAt') : str('previousSignedAt'),
+      by: e.actor?.displayName ?? (signed ? undefined : str('previousSigner')),
+      date: dateTime(e.occurredAt),
+    });
+  }
+  return out;
+}
+
 // Every edit of a readiness acknowledgement is audited (action readiness_ack.recorded) with the entry as it is NOW in
 // `after`; the history an item shows is read from those rows, oldest first.
 export function toReadinessAckLog(
@@ -311,6 +342,7 @@ export function toProjectData(
   // Display-only history of signing and withdrawing; nothing in the rule engine reads it, so it may be left out.
   gateSignOffLog: GateSignOffEvent[] = [],
   readinessAckLog: ReadinessAckEvent[] = [],
+  phaseSignOffLog: PhaseSignOffEvent[] = [],
 ): ProjectData {
   const checklists: Record<string, ChecklistItem[]> = {};
   for (const item of p.checklistItems) {
@@ -602,6 +634,7 @@ export function toProjectData(
     gateChangeLog,
     gateSignOffLog,
     readinessAckLog,
+    phaseSignOffLog,
     marketTracks: p.marketTracks.map((t) => ({
       market: t.market,
       // F4: one track per market per formula version.

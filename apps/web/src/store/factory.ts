@@ -150,6 +150,7 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     readinessAcknowledgements: [],
     changeControlAssessments: [],
     readinessAckLog: [],
+    phaseSignOffLog: [],
     postLaunchReviews: [],
     studyApprovals: [
       { role: 'Study Author' },

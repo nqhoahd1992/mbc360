@@ -209,7 +209,7 @@ export default function ProductFeedback() {
             {visible.length === 0 ? (
               <div className="au-empty">
                 <div className="au-empty-title">No entry here</div>
-                <Button onClick={() => setFilter('all')}>Show all</Button>
+                <Button disabled={false} onClick={() => setFilter('all')}>Show all</Button>
               </div>
             ) : (
               visible.map((e) => (

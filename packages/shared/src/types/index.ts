@@ -290,6 +290,20 @@ export interface GateFieldChange {
 // One signing or withdrawing act on a gate's three-role sign-off, read from the append-only audit trail. A withdrawal wipes
 // the signature row itself (decision, comment, snapshot), so THIS is the only place what was withdrawn stays readable
 // (B4 — no silent corrections). Entries recorded before the audit carried the details have only what was then stored.
+// One signing or withdrawing act on a PHASE's three-role sign-off, read from the audit trail (same idea as GateSignOffEvent).
+export interface PhaseSignOffEvent {
+  id: string;
+  phase: number;
+  role: string;
+  kind: 'signed' | 'withdrawn';
+  decision?: string;
+  comment?: string;
+  reason?: string;
+  signedAt?: string;
+  by?: string;
+  date: string;
+}
+
 export interface GateSignOffEvent {
   id: string;
   gateId: string;
@@ -786,6 +800,22 @@ export interface RegisterRowSignPreview {
   previewedAt: string;
   columns: { key: string; label: string }[];
   row: Record<string, string>;
+}
+
+// The exact content a PHASE signature attested to, kept at the moment of signing: it stays readable after the signature
+// is withdrawn (the row itself is wiped). Same idea as GateSignedContent.
+export interface PhaseSignedContent {
+  phase: number;
+  role: string;
+  signedAt: string;
+  hash: string;
+  sections: { title: string; columns: { key: string; label: string }[]; rows: Record<string, string>[] }[];
+}
+
+// The body of the refusal when a phase changed between the preview and the submit.
+export interface PhaseContentChangedBody {
+  code: 'PHASE_CONTENT_CHANGED';
+  message: string;
 }
 
 // What a phase signature attests to, read before signing (everything the phase page shows for that
@@ -1395,6 +1425,7 @@ export interface ProjectData {
   changeControlAssessments: ChangeControlAssessment[];
   // The edit history of those entries, read from the audit trail (never written by a store action).
   readinessAckLog: ReadinessAckEvent[];
+  phaseSignOffLog: PhaseSignOffEvent[]; // immutable log of phase sign-off signatures and withdrawals
   // Company reference data resolved for THIS project — read-only, refreshed on
   // every read, never written by a store action. See ProjectReferenceData above.
   reference: ProjectReferenceData;

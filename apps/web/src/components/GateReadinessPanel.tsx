@@ -312,6 +312,7 @@ export default function GateReadinessPanel({
               <Button
                 type="link"
                 size="small"
+                disabled={false}
                 className="grp-toggle grp-parts-toggle"
                 icon={openParts.has(item.id) ? <DownOutlined /> : <RightOutlined />}
                 onClick={() => toggleParts(item.id)}
@@ -373,7 +374,7 @@ export default function GateReadinessPanel({
       {group('Will not block, but confirm', toConfirm)}
       {satisfied.length > 0 && (
         <div className="grp-group">
-          <Button type="link" size="small" className="grp-toggle" onClick={onToggleSatisfied} aria-expanded={showSatisfied}>
+          <Button type="link" size="small" disabled={false} className="grp-toggle" onClick={onToggleSatisfied} aria-expanded={showSatisfied}>
             {showSatisfied ? 'Hide' : 'Show'} {satisfied.length} already met
           </Button>
           {showSatisfied && <ul className="grp-list">{satisfied.map(renderItem)}</ul>}

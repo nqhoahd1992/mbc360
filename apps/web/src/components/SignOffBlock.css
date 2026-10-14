@@ -1,0 +1,14 @@
+/* Phase sign-off: the gate sign-off card's shape (GateSignOffPanel.css supplies .gso-*), plus the two parts it does not
+   have — the phase's evidence summary above the steps, and the decision form inside the step that is yours to sign. */
+.pso-summary { display: grid; gap: 8px; padding: 14px 20px; border-bottom: 1px solid var(--c-border-2); }
+.pso-label { font-weight: 600; font-size: 14px; }
+.pso-summary .ant-input { width: 100%; }
+
+.pso-form { display: grid; gap: 12px; padding-top: 4px; }
+@media (min-width: 760px) {
+  .pso-form { grid-template-columns: 220px minmax(0, 1fr); padding-left: 34px; align-items: start; }
+  .pso-note { grid-column: 1 / -1; }
+}
+.pso-fld { display: grid; gap: 6px; min-width: 0; }
+.pso-fld .ant-select, .pso-fld .ant-input { width: 100%; }
+.pso-signature { max-width: 160px; max-height: 50px; width: auto; object-fit: contain; }

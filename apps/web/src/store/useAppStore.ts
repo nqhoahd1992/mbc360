@@ -24,6 +24,7 @@ import type {
   RegisterRow,
   RequirementItem,
   GateContentChangedBody,
+  PhaseContentChangedBody,
   GateEvidenceSnapshot,
   GateSignOffRole,
   SignOff,
@@ -163,7 +164,7 @@ interface AppState {
     // (2026-08-21) for attaching a saved signature — see SignOffBlock.tsx.
     // expectedHash: what the signer was shown in the preview (2026-10-10).
     input: { decision?: string; comments?: string; stepUpToken: string; expectedHash: string },
-  ) => void;
+  ) => Promise<PhaseContentChangedBody | null>;
   withdrawSignOff: (id: string, phase: number, role: SignOff['role'], reason: string) => void;
   setPostLaunchReviews: (id: string, reviews: ProjectData['postLaunchReviews']) => void;
   setSupersessionDecision: (
@@ -570,8 +571,27 @@ export const useAppStore = create<AppState>()(
           tryWriteSection(id, (v) => projectsApi.setAngles(id, phase, angles, v)),
         setSignOffAssignees: (id, phase, assignments) =>
           writeSection(id, (v) => projectsApi.setSignOffAssignees(id, phase, assignments, v)),
-        signSignOff: (id, phase, role, input) =>
-          writeSection(id, () => projectsApi.signSignOff(id, phase, role, input)),
+        // Resolves with the refusal body when the phase changed while the signer was reading (so the screen can say
+        // so and reopen the review), or null once it was signed.
+        signSignOff: async (id, phase, role, input) => {
+          let changed: PhaseContentChangedBody | null = null;
+          await tryWriteSection(
+            id,
+            async () => {
+              try {
+                return await projectsApi.signSignOff(id, phase, role, input);
+              } catch (err) {
+                const body = err instanceof projectsApi.ApiError ? (err.body as PhaseContentChangedBody | undefined) : undefined;
+                if (err instanceof projectsApi.ApiError && err.status === 422 && body?.code === 'PHASE_CONTENT_CHANGED') {
+                  changed = body;
+                }
+                throw err;
+              }
+            },
+            () => changed !== null,
+          );
+          return changed;
+        },
         withdrawSignOff: (id, phase, role, reason) =>
           writeSection(id, () => projectsApi.withdrawSignOff(id, phase, role, reason)),
         setPostLaunchReviews: (id, reviews) =>

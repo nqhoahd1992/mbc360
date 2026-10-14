@@ -18,6 +18,7 @@ import type {
   GateSignedContent,
   GateSigningPreview,
   PhaseSignPreview,
+  PhaseSignedContent,
   RegisterClosePreview,
   RegisterRowSignPreview,
   GateSignOffRole,
@@ -225,6 +226,12 @@ export const setSignOffAssignees = (
 // the signature is bound to (same idea as previewGateSignOff).
 export const previewPhaseSignOff = (id: string, phase: number): Promise<PhaseSignPreview> =>
   request(`/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/preview`);
+
+// The content a phase signature attested to, as it was when signed (also for one since withdrawn).
+export const getPhaseSignedContent = (id: string, phase: number, role: string, signedAt: string): Promise<PhaseSignedContent> =>
+  request(
+    `/projects/${encodeURIComponent(id)}/phases/${phase}/sign-offs/content?role=${encodeURIComponent(role)}&signedAt=${encodeURIComponent(signedAt)}`,
+  );
 
 export const verifySignOffStepUp = (
   id: string,

@@ -361,7 +361,7 @@ export default function PhasePage() {
         >
           <span className="c-tag c-tag-warn c-tag-dot">{ackCount} need a responsible reviewer — nominate “Reviewed by”</span>
         </Tooltip>,
-        <Button key="ack-nominate-go" type="link" size="small" onClick={() => selectTab(CLOSE_TAB)}>
+        <Button key="ack-nominate-go" type="link" size="small" disabled={false} onClick={() => selectTab(CLOSE_TAB)}>
           Go to sign-offs
         </Button>,
       );
@@ -387,7 +387,7 @@ export default function PhasePage() {
     );
     if (tab !== CLOSE_TAB) {
       stripItems.push(
-        <Button key="await-go" type="link" size="small" onClick={() => selectTab(CLOSE_TAB)}>
+        <Button key="await-go" type="link" size="small" disabled={false} onClick={() => selectTab(CLOSE_TAB)}>
           Go to close-out
         </Button>,
       );
@@ -515,6 +515,7 @@ export default function PhasePage() {
       <Tooltip title={hardBlocking ? `${hardBlocking} item${hardBlocking === 1 ? '' : 's'} still blocking — you can still open the sign-off` : undefined}>
         <Button
           block={block}
+          disabled={false}
           type={hardBlocking ? 'default' : 'primary'}
           className={hardBlocking ? 'ph-go ph-go-wait' : 'ph-go ph-go-ready'}
           icon={<ArrowDownOutlined />}

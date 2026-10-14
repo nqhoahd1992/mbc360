@@ -1,24 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  Button,
-  Card,
-  Input,
-  Modal,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
-import { LockOutlined } from '@ant-design/icons';
+import { Alert, Button, Input, Modal, Select, Spin, Table, Tooltip } from 'antd';
+import { ArrowLeftOutlined, CheckOutlined, ClockCircleOutlined, ExclamationCircleOutlined, HistoryOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import type { SignOff } from '@mbc360/shared/types';
+import type { PhaseSignedContent, PhaseSignOffEvent, SignOff } from '@mbc360/shared/types';
 import { isSignedOff } from '@mbc360/shared/types';
 import type { PhaseClosure } from '@mbc360/shared/types';
 import type { PhaseCompletionChecklist } from '@mbc360/shared/utils/gateProgress';
-import { GATE_DECISIONS, PHASES } from '@mbc360/shared/config/gates';
+import { PHASES } from '@mbc360/shared/config/gates';
+import { gateSignOffNeedsComment } from '@mbc360/shared/config/gateSignOff';
 import { useAppStore } from '../store/useAppStore';
 import { canApprovePhase, EMPTY_GRANTS } from '../utils/permissions';
 import { useSession } from '../auth/useSession';
@@ -26,11 +15,14 @@ import { usePermissionView } from '../auth/previewMode';
 import { usePickerUsers } from '../hooks/useUserOptions';
 import { useDraft } from '../hooks/useDraft';
 import { getMySignature, getMyTotpStatus } from '../api/accountApi';
+import { getPhaseSignedContent } from '../api/projectsApi';
 import SaveBar from './SaveBar';
 import SignatureStepUpModal from './SignatureStepUpModal';
-import PhaseSignPreviewModal from './PhaseSignPreviewModal';
+import FormDrawer from './FormDrawer';
+import PhaseSignPreviewModal, { PhaseContentSections } from './PhaseSignPreviewModal';
 import { Link } from 'react-router-dom';
-import { TABLE_STICKY } from '../theme/tokens';
+import './GateSignOffPanel.css';
+import './SignOffBlock.css';
 
 // Phase sign-off, rebuilt 2026-08-20 around rule D1's requirement that a
 // sign-off record an AUTHENTICATED user, the role held, date/time, decision,
@@ -72,6 +64,33 @@ export default function SignOffBlock({
   checklist: PhaseCompletionChecklist;
   projectLead: string;
 }) {
+  const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
+  const historyEvents = (project?.phaseSignOffLog ?? []).filter((e) => e.phase === phase).slice().reverse();
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [viewing, setViewing] = useState<PhaseSignOffEvent | null>(null);
+  const [viewed, setViewed] = useState<PhaseSignedContent | null>(null);
+  const [viewError, setViewError] = useState<string | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
+  useEffect(() => {
+    if (!viewing?.signedAt) return;
+    let cancelled = false;
+    setViewLoading(true);
+    setViewed(null);
+    setViewError(null);
+    getPhaseSignedContent(projectId, phase, viewing.role, viewing.signedAt)
+      .then((c) => {
+        if (!cancelled) setViewed(c);
+      })
+      .catch((e) => {
+        if (!cancelled) setViewError(e instanceof Error ? e.message : 'Could not load the signed content');
+      })
+      .finally(() => {
+        if (!cancelled) setViewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [viewing, projectId, phase]);
   const setEvidenceSummary = useAppStore((s) => s.setEvidenceSummary);
   const setSignOffAssignees = useAppStore((s) => s.setSignOffAssignees);
   const signSignOff = useAppStore((s) => s.signSignOff);
@@ -115,6 +134,7 @@ export default function SignOffBlock({
   // Sign opens the preview first (everything the phase page shows, which the signature attests to), then
   // the authenticator step.
   const [reviewingRole, setReviewingRole] = useState<SignOff['role'] | null>(null);
+  const [contentChanged, setContentChanged] = useState(false);
   const [stepUp, setStepUp] = useState<{ role: SignOff['role']; hash: string } | null>(null);
 
   const rowDraft = (role: string): RowDraft => rows[role] ?? {};
@@ -175,9 +195,14 @@ export default function SignOffBlock({
     }
     if (!hasSignature) return 'Save a signature in My Account first — every sign-off attaches it';
     if (!totpEnrolled) return 'Set up an authenticator app in My Account first';
-    const d = rowDraft(row.role);
+    return null;
+  };
+
+  // What the signer has not given yet; read in the signing preview, where the decision and comment are entered.
+  const decisionProblem = (role: string): string | null => {
+    const d = rowDraft(role);
     if (!d.decision) return 'Choose a decision first';
-    if (d.decision !== 'Proceed' && !d.comments?.trim()) {
+    if (gateSignOffNeedsComment(d.decision) && !d.comments?.trim()) {
       return `A comment is required when the decision is "${d.decision}"`;
     }
     return null;
@@ -187,11 +212,17 @@ export default function SignOffBlock({
   // second, weaker path any more.
   const sign = (row: SignOff, stepUpToken: string, expectedHash: string) => {
     const d = rowDraft(row.role);
-    signSignOff(projectId, phase, row.role, {
+    void signSignOff(projectId, phase, row.role, {
       decision: d.decision,
       comments: d.comments,
       stepUpToken,
       expectedHash,
+    }).then((refusal) => {
+      // The phase changed while the signer was reading: nothing was recorded; show the new content and let them read again.
+      if (refusal) {
+        setContentChanged(true);
+        setReviewingRole(row.role);
+      }
     });
   };
 
@@ -202,225 +233,180 @@ export default function SignOffBlock({
     setReason('');
   };
 
+  const signedCount = closure.signOffs.filter((x) => isSignedOff(x)).length;
+  const hold = (icon: React.ReactNode, body: React.ReactNode) => (
+    <div className="concept-tokens gso-gate-hold gso-notice">
+      {icon}
+      <span>{body}</span>
+    </div>
+  );
+
   return (
-    <Card size="small" title="Evidence Summary, Decision and Sign-Off">
-      {locked && (
-        <Alert
-          type="warning"
-          showIcon
-          icon={<LockOutlined />}
-          style={{ marginBottom: 12 }}
-          title="Sign-off locked — closure conditions not yet met"
-          description={`Still required before sign-off: ${missing.join('; ')}.`}
-        />
-      )}
-      {isLead && unassigned.length > 0 && (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 12 }}
-          title={`You are this project's Lead — nominate a signer for: ${unassigned.join(', ')}`}
-          description="Only the person nominated for a row can sign it, and they sign as themselves."
-        />
-      )}
-      {!isLead && (
-        <Alert
-          type="info"
-          showIcon
-          style={{ marginBottom: 12 }}
-          title={`Signers are nominated by this project's Lead (${projectLead})`}
-          description="You can sign a row nominated to you; you cannot sign for anyone else, and no field here records a signature on somebody's behalf."
-        />
-      )}
-      {sharedSigner && (
-        <Alert
-          type="warning"
-          showIcon
-          style={{ marginBottom: 12 }}
-          title={`${sharedSigner.name} has signed more than one role on this phase`}
-          description="Rule D1 requires an independent reviewer or approver for safety-, regulatory-, claims- or release-critical decisions. This is not blocked here — it is recorded so it is visible."
-        />
-      )}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ marginBottom: 4, fontWeight: 600 }}>
-          Evidence summary / decision rationale
+    <>
+      {/* The same shape as the gate sign-off card (GateSignOffPanel): a titled card, one numbered step per role, and
+          the person, the action and the record of each step on its own line. */}
+      <div className="concept-tokens c-card gso">
+        <div className="gso-head">
+          <span className="gso-title">Phase {phase} sign-off</span>
+          <span className="gso-progress">
+            {signedCount} of {closure.signOffs.length} signed
+          </span>
+          <Button size="small" type="text" disabled={false} icon={<HistoryOutlined />} onClick={() => setHistoryOpen(true)}>
+            History ({historyEvents.length})
+          </Button>
         </div>
-        <Input.TextArea
-          rows={3}
-          disabled={dataLocked}
-          value={draft.evidenceSummary}
-          onChange={(e) => update({ evidenceSummary: e.target.value })}
-        />
+        {locked &&
+          hold(
+            <LockOutlined />,
+            <>
+              <strong>Sign-off locked</strong> — closure conditions not yet met. Still required: {missing.join('; ')}.
+            </>,
+          )}
+        {isLead &&
+          unassigned.length > 0 &&
+          hold(
+            <ClockCircleOutlined />,
+            <>
+              You are this project's Lead — nominate a signer for: <strong>{unassigned.join(', ')}</strong>. Only the nominated person
+              can sign, as themselves.
+            </>,
+          )}
+        {!isLead &&
+          hold(
+            <ClockCircleOutlined />,
+            <>
+              Signers are nominated by this project's Lead ({projectLead}). You can sign a row nominated to you, never for anyone else.
+            </>,
+          )}
+        {sharedSigner && (
+          <div className="gso-gate-warn gso-notice">
+            <ExclamationCircleOutlined />
+            <span>
+              <strong>{sharedSigner.name}</strong> has signed more than one role on this phase. Rule D1 requires an independent
+              reviewer or approver for safety-, regulatory-, claims- or release-critical decisions. This is not blocked here — it is
+              recorded so it is visible.
+            </span>
+          </div>
+        )}
+
+        <div className="pso-summary">
+          <div className="pso-label">Evidence summary / decision rationale</div>
+          <Input.TextArea
+            autoSize={{ minRows: 3, maxRows: 10 }}
+            disabled={dataLocked}
+            value={draft.evidenceSummary}
+            onChange={(e) => update({ evidenceSummary: e.target.value })}
+          />
+          <SaveBar
+            dirty={dirty}
+            onSave={() => {
+              setEvidenceSummary(projectId, phase, draft.evidenceSummary);
+              markSaved();
+            }}
+            onDiscard={discard}
+          />
+        </div>
+
+        {closure.signOffs.map((r, i) => {
+          const signed = isSignedOff(r);
+          const mine = !!me && r.assignedToUserId === me.id;
+          const why = signed ? null : blockedReason(r);
+          // A fixed order, as on a gate: only the step whose turn it is can be signed.
+          const isTurn = !signed && closure.signOffs.slice(0, i).every((p) => isSignedOff(p));
+          const laterStanding = closure.signOffs.slice(i + 1).some((p) => isSignedOff(p));
+          const previous = closure.signOffs[i - 1];
+          return (
+            <div key={r.role} className={`gso-row${signed ? ' gso-row-done' : ''}`}>
+              <div className="gso-line">
+                <span className={`gso-step${signed ? ' gso-step-done' : isTurn && !locked ? ' gso-step-now' : ''}`} aria-hidden>
+                  {signed ? <CheckOutlined /> : i + 1}
+                </span>
+                <span className="gso-role">{r.role}</span>
+                <div className="gso-signer">
+                  {signed ? (
+                    <>
+                      <strong>{r.name}</strong>
+                      {r.roleAtSigning && <span className="gso-muted"> · {r.roleAtSigning}</span>}
+                    </>
+                  ) : isLead ? (
+                    <Select
+                      allowClear
+                      showSearch
+                      optionFilterProp="label"
+                      placeholder="Nominate a signer"
+                      value={r.assignedToUserId}
+                      options={userOptions.map((o) => ({
+                        value: o.value,
+                        label: o.roleName && o.roleName !== '—' ? `${o.label} — ${o.roleName}` : o.label,
+                      }))}
+                      onChange={(v?: string) => assign(r.role, v)}
+                    />
+                  ) : (
+                    <span className="gso-muted">{r.assignedToName ?? 'Not nominated yet'}</span>
+                  )}
+                </div>
+                <div className="gso-action">
+                  {signed ? (
+                    <>
+                      <span className="gso-muted">
+                        Signed {r.signedAt ? dayjs(r.signedAt).format('YYYY-MM-DD HH:mm') : '—'} · record v{r.recordVersion ?? '—'}
+                      </span>
+                      {(r.signedByUserId === me?.id || isAdmin) &&
+                        (laterStanding ? (
+                          <span className="gso-muted">Withdraw the later signature first</span>
+                        ) : (
+                          <Button size="small" danger onClick={() => setWithdrawing(r.role)}>
+                            Withdraw
+                          </Button>
+                        ))}
+                    </>
+                  ) : mine && isTurn ? (
+                    <Tooltip title={why ?? ''}>
+                      <span>
+                        <Button type="primary" disabled={!!why} onClick={() => setReviewingRole(r.role)}>
+                          Review & sign
+                        </Button>
+                      </span>
+                    </Tooltip>
+                  ) : (
+                    <span className="c-tag">{!r.assignedToUserId ? 'Not nominated' : isTurn ? 'Waiting to be signed' : 'Not yet'}</span>
+                  )}
+                </div>
+              </div>
+
+              {signed ? (
+                <div className="gso-record">
+                  <span className={`c-tag c-tag-dot ${r.decision === 'Proceed' ? 'c-tag-ok' : 'c-tag-warn'}`}>{r.decision ?? '—'}</span>
+                  {r.comments ? <p className="gso-comment">{r.comments}</p> : <span className="gso-muted">No comment</span>}
+                  {r.signatureImage && <img className="pso-signature" src={r.signatureImage} alt={`${r.name}'s signature`} />}
+                </div>
+              ) : (
+                // One short line, only when there is something to do or wait for.
+                <div className="gso-wait">
+                  <ClockCircleOutlined />
+                  <span>
+                    {!r.assignedToUserId
+                      ? isLead
+                        ? 'Nominate a signer above'
+                        : `Waiting for the project Lead (${projectLead}) to nominate a signer`
+                      : !isTurn
+                        ? `Waiting for "${previous?.role}" to be signed first — the order is fixed`
+                        : mine
+                          ? (why ?? 'Review the phase, record your decision and sign with your saved signature and a fresh authenticator code.')
+                          : `Nominated to ${r.assignedToName ?? 'somebody else'} — waiting for them to sign`}
+                    {mine && isTurn && (!hasSignature || !totpEnrolled) && (
+                      <>
+                        {' '}
+                        <Link to="/account">{!hasSignature ? 'Add a signature' : 'Set up an authenticator'} in My Account</Link>
+                      </>
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
-      <Table
-        size="small"
-        rowKey={(r) => r.role}
-        dataSource={closure.signOffs}
-        pagination={false}
-        sticky={TABLE_STICKY}
-        scroll={{ x: 1000 }}
-        columns={[
-          { title: 'Role', width: 110, dataIndex: 'role', fixed: 'left', render: (v) => <b>{v}</b> },
-          {
-            title: 'Nominated signer',
-            width: 200,
-            render: (_, r: SignOff) =>
-              isSignedOff(r) || !isLead ? (
-                <span>{r.assignedToName ?? <Typography.Text type="secondary">Not nominated</Typography.Text>}</span>
-              ) : (
-                <Select
-                  allowClear
-                  showSearch
-                  style={{ width: '100%', minWidth: 140 }}
-                  placeholder="Select a person"
-                  optionFilterProp="label"
-                  value={r.assignedToUserId}
-                  options={userOptions}
-                  optionRender={(opt) => (
-                    <span>
-                      {opt.data.label}
-                      <Tag style={{ marginLeft: 6 }}>{opt.data.roleName}</Tag>
-                    </span>
-                  )}
-                  onChange={(v?: string) => assign(r.role, v)}
-                />
-              ),
-          },
-          {
-            title: 'Signature',
-            width: 260,
-            render: (_, r: SignOff) => {
-              if (isSignedOff(r)) {
-                const mine = r.signedByUserId === me?.id;
-                return (
-                  <Space orientation="vertical" size={0}>
-                    <span>
-                      <Tag color="green">Signed</Tag>
-                      {/* Not bold: the Role column already carries this row's
-                          weight, and the green tag marks the state. */}
-                      <span>{r.name}</span>
-                    </span>
-                    {r.signatureImage && (
-                      <img
-                        src={r.signatureImage}
-                        alt={`${r.name}'s signature`}
-                        width={160}
-                        height={50}
-                        style={{
-                          maxWidth: 160,
-                          maxHeight: 50,
-                          width: 'auto',
-                          display: 'block',
-                          margin: '2px 0',
-                          objectFit: 'contain',
-                        }}
-                      />
-                    )}
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      {r.roleAtSigning ?? 'role not recorded'} ·{' '}
-                      {r.signedAt ? dayjs(r.signedAt).format('YYYY-MM-DD HH:mm') : '—'} · record v
-                      {r.recordVersion ?? '—'}
-                    </Typography.Text>
-                    {(mine || isAdmin) && (
-                      <Button
-                        size="small"
-                        type="link"
-                        danger
-                        style={{ paddingLeft: 0 }}
-                        onClick={() => setWithdrawing(r.role)}
-                      >
-                        Withdraw
-                      </Button>
-                    )}
-                  </Space>
-                );
-              }
-              if (!r.assignedToUserId) {
-                return <Typography.Text type="secondary">Awaiting nomination</Typography.Text>;
-              }
-              if (r.assignedToUserId !== me?.id) {
-                return (
-                  <Typography.Text type="secondary">Awaiting {r.assignedToName}</Typography.Text>
-                );
-              }
-              const why = blockedReason(r);
-              return (
-                <Space orientation="vertical" size={4}>
-                  {/* One path only. The old opt-in checkbox and the plain
-                      "Sign as me" beside it are gone: a sign-off always carries
-                      the signer's saved signature and always asks for a fresh
-                      authenticator code (project owner, 2026-08-22), so the
-                      second factor covers the act and not just the image. */}
-                  <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    Signs with your saved signature
-                  </Typography.Text>
-                  <Tooltip title={why ?? ''}>
-                    <span>
-                      <Button
-                        size="small"
-                        type="primary"
-                        disabled={!!why}
-                        onClick={() => setReviewingRole(r.role)}
-                      >
-                        Sign as me
-                      </Button>
-                    </span>
-                  </Tooltip>
-                  {(!hasSignature || !totpEnrolled) && (
-                    <Link to="/account" style={{ fontSize: 12 }}>
-                      {!hasSignature ? 'Add a signature' : 'Set up an authenticator'} in My Account
-                    </Link>
-                  )}
-                </Space>
-              );
-            },
-          },
-          {
-            title: 'Decision',
-            width: 160,
-            render: (_, r: SignOff) =>
-              isSignedOff(r) ? (
-                <span>{r.decision ?? '—'}</span>
-              ) : r.assignedToUserId === me?.id ? (
-                <Select
-                  allowClear
-                  style={{ width: 150 }}
-                  value={rowDraft(r.role).decision}
-                  disabled={locked}
-                  options={GATE_DECISIONS.map((d) => ({ value: d, label: d }))}
-                  onChange={(v?: string) => patchRow(r.role, { decision: v })}
-                />
-              ) : (
-                <Typography.Text type="secondary">—</Typography.Text>
-              ),
-          },
-          {
-            title: 'Comments / conditions',
-            width: 260,
-            render: (_, r: SignOff) =>
-              isSignedOff(r) ? (
-                <span>{r.comments ?? '—'}</span>
-              ) : r.assignedToUserId === me?.id ? (
-                <Input
-                  value={rowDraft(r.role).comments}
-                  disabled={locked}
-                  placeholder="Required unless the decision is Proceed"
-                  onChange={(e) => patchRow(r.role, { comments: e.target.value })}
-                />
-              ) : (
-                <Typography.Text type="secondary">—</Typography.Text>
-              ),
-          },
-        ]}
-      />
-      <SaveBar
-        dirty={dirty}
-        onSave={() => {
-          setEvidenceSummary(projectId, phase, draft.evidenceSummary);
-          markSaved();
-        }}
-        onDiscard={discard}
-      />
       <Modal
         open={withdrawing !== null}
         title={`Withdraw the "${withdrawing}" signature`}
@@ -448,8 +434,20 @@ export default function SignOffBlock({
         projectId={projectId}
         phase={phase}
         roleLabel={reviewingRole ?? ''}
-        onCancel={() => setReviewingRole(null)}
+        decision={reviewingRole ? rowDraft(reviewingRole).decision : undefined}
+        comment={reviewingRole ? rowDraft(reviewingRole).comments : undefined}
+        onChange={(patch) => reviewingRole && patchRow(reviewingRole, patch)}
+        problem={reviewingRole ? decisionProblem(reviewingRole) : null}
+        earlier={closure.signOffs
+          .filter((x) => isSignedOff(x) && x.role !== reviewingRole)
+          .map((x) => ({ role: x.role, name: x.name ?? '', decision: x.decision ?? '', comment: x.comments ?? '' }))}
+        changed={contentChanged}
+        onCancel={() => {
+          setReviewingRole(null);
+          setContentChanged(false);
+        }}
         onContinue={(preview) => {
+          setContentChanged(false);
           if (!reviewingRole) return;
           setStepUp({ role: reviewingRole, hash: preview.hash });
           setReviewingRole(null);
@@ -470,6 +468,82 @@ export default function SignOffBlock({
           if (row) sign(row, token, hash);
         }}
       />
-    </Card>
+      <FormDrawer
+        title={`Sign-off history — Phase ${phase}`}
+        open={historyOpen}
+        onCancel={() => {
+          setHistoryOpen(false);
+          setViewing(null);
+        }}
+        footer={null}
+        width={980}
+      >
+        {viewing ? (
+          <div>
+            <Button type="link" icon={<ArrowLeftOutlined />} style={{ paddingInline: 0 }} onClick={() => setViewing(null)}>
+              Back to history
+            </Button>
+            <h3 style={{ margin: '4px 0 8px', fontSize: 16 }}>
+              Signed content — {viewing.role}, Phase {phase}
+            </h3>
+            <p className="gso-muted" style={{ marginTop: 0 }}>
+              Exactly what this signature attested to, as it stood when it was given
+              {viewing.signedAt ? ` (${viewing.signedAt.slice(0, 16).replace('T', ' ')})` : ''}
+              {viewed ? ` · fingerprint ${viewed.hash.slice(0, 12)}` : ''}.
+              {viewing.kind === 'withdrawn' ? ' The signature has since been withdrawn.' : ''}
+            </p>
+            {viewLoading && <Spin />}
+            {viewError && <Alert type="info" showIcon title={viewError} />}
+            {viewed && <PhaseContentSections sections={viewed.sections} />}
+          </div>
+        ) : historyEvents.length === 0 ? (
+          <p className="gso-muted">Nothing has been signed or withdrawn on this phase yet.</p>
+        ) : (
+          <Table
+            size="small"
+            pagination={false}
+            rowKey={(e) => e.id}
+            dataSource={historyEvents}
+            columns={[
+              { title: 'Date', width: 140, dataIndex: 'date' },
+              {
+                title: 'Act',
+                width: 170,
+                render: (_, e) => (
+                  <span className={`c-tag ${e.kind === 'signed' ? 'c-tag-ok' : 'c-tag-warn'}`}>
+                    {e.kind === 'signed' ? 'Signed' : 'Withdrawn'} · {e.role}
+                  </span>
+                ),
+              },
+              { title: 'By', width: 140, render: (_, e) => e.by ?? '—' },
+              {
+                title: 'Detail',
+                render: (_, e) => (
+                  <>
+                  <span className="gso-muted">
+                    {[
+                      e.decision ? `Decision: ${e.decision}` : e.kind === 'signed' ? 'Decision not recorded' : undefined,
+                      e.comment ? `Comment: “${e.comment}”` : undefined,
+                      e.kind === 'withdrawn' && e.signedAt ? `Had signed: ${e.signedAt.slice(0, 16).replace('T', ' ')}` : undefined,
+                      e.reason ? `Reason: ${e.reason}` : undefined,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                  {e.signedAt && (
+                    <div>
+                      <Button type="link" size="small" disabled={false} style={{ paddingInline: 0 }} onClick={() => setViewing(e)}>
+                        View what was {e.kind === 'signed' ? 'signed' : 'signed and withdrawn'}
+                      </Button>
+                    </div>
+                  )}
+                  </>
+                ),
+              },
+            ]}
+          />
+        )}
+      </FormDrawer>
+    </>
   );
 }

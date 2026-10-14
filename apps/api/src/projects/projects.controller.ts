@@ -294,6 +294,17 @@ export class ProjectsController {
     return this.projects.previewPhaseSignOff(id, Number(phase));
   }
 
+  // The content a phase signature attested to, as it was when signed (also for one since withdrawn).
+  @Get(':id/phases/:phase/sign-offs/content')
+  signedPhaseContent(
+    @Param('id') id: string,
+    @Param('phase') phase: string,
+    @Query('role') role: string,
+    @Query('signedAt') signedAt: string,
+  ) {
+    return this.projects.signedPhaseContent(id, Number(phase), role, signedAt);
+  }
+
   @Post(':id/phases/:phase/sign-offs/sign')
   signSignOff(
     @CurrentUser() user: SessionUser,

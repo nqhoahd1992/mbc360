@@ -181,7 +181,7 @@ export default function PostMarketCapa() {
             {visible.length === 0 ? (
               <div className="au-empty">
                 <div className="au-empty-title">No record here</div>
-                <Button onClick={() => setFilter('all')}>Show all</Button>
+                <Button disabled={false} onClick={() => setFilter('all')}>Show all</Button>
               </div>
             ) : (
               visible.map(({ r }) => (

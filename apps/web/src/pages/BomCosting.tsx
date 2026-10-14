@@ -758,7 +758,7 @@ export default function BomCosting() {
         <div className="c-card bom-card">
           <div className="bom-card-head">
             <div className="bom-card-title">Formula version history (audit)</div>
-            <Button onClick={() => setCompare({})}>Compare versions</Button>
+            <Button disabled={false} onClick={() => setCompare({})}>Compare versions</Button>
           </div>
           <div className="bom-table-wrap">
             <Table
@@ -801,7 +801,7 @@ export default function BomCosting() {
                   width: 90,
                   fixed: 'right',
                   render: (_, r) => (
-                    <Button type="link" onClick={() => setCompare({ from: r.previousVersion, to: r.version })}>
+                    <Button type="link" disabled={false} onClick={() => setCompare({ from: r.previousVersion, to: r.version })}>
                       Compare
                     </Button>
                   ),
