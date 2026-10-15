@@ -32,6 +32,7 @@
     "verify:empty-registers": "tsx packages/shared/scripts/verify-empty-registers.ts",
     "verify:signature-content": "tsx packages/shared/scripts/verify-signature-content.ts",
     "verify:freeze": "tsx packages/shared/scripts/verify-register-freeze.ts",
+    "verify:register-closure": "tsx packages/shared/scripts/verify-register-closure.ts",
     "verify:actions": "tsx packages/shared/scripts/verify-next-action-freeze.ts",
     "generate:column-reads": "tsx packages/shared/scripts/generate-column-reads.ts",
     "verify:e2e": "tsx apps/api/scripts/e2e/run.ts"

@@ -14,6 +14,7 @@ const ROOT = resolve(__dirname, '..', '..', '..', '..');
 const { GATE_READINESS } = require(join(ROOT, 'packages/shared/dist/config/gateReadiness.js'));
 const { REGISTER_CONFIGS } = require(join(ROOT, 'packages/shared/dist/config/registers.js'));
 const gp = require(join(ROOT, 'packages/shared/dist/utils/gateProgress.js'));
+const rc = require(join(ROOT, 'packages/shared/dist/utils/registerClosures.js'));
 const snap = require(join(ROOT, 'packages/shared/dist/utils/gateSnapshot.js'));
 const { registerClosureSignerRole } = require(join(ROOT, 'packages/shared/dist/config/reviewers.js'));
 /* eslint-enable @typescript-eslint/no-require-imports */
@@ -259,29 +260,31 @@ export async function run(base: string, db: Client): Promise<number> {
     for (const key of ['tuan', 'sekar', 'admin']) {
       accountName[key] = (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions[key].id])).rows[0]?.displayName;
     }
-    let pick: { registerKey: string; signer: string; textColumn: string } | undefined;
+    let pick: { registerKey: string; gateId: string; signer: string; textColumn: string } | undefined;
     for (const cfg of REGISTER_CONFIGS) {
-      if (cfg.mode !== 'register' || !cfg.reviewOwner) continue;
-      const highest = gp.gateRefHighestGateId(cfg.gate);
-      if (!highest || Number(highest.slice(2)) < 8) continue;
-      const owner = nameOf(registerClosureSignerRole(cfg.reviewOwner, 'Review owner'));
+      const spec = rc.registerReviewSpec(cfg);
+      if (cfg.mode !== 'register' || !spec) continue;
+      const gateId = rc.registerClosureGateIds(cfg).find((g: string) => Number(g.slice(2)) >= 8);
+      if (!gateId) continue;
+      const owner = nameOf(registerClosureSignerRole(spec, 'Review owner'));
       const signer = Object.keys(accountName).find((k) => accountName[k] === owner);
-      const textColumn = cfg.columns.find((c: any) => c.type === 'text')?.key;
+      // A column this gate closes: it is what the closure will lock.
+      const textColumn = rc.closureColumns(cfg, gateId).find((k: string) => cfg.columns.find((c: any) => c.key === k)?.type === 'text');
       if (signer && textColumn) {
-        pick = { registerKey: cfg.key, signer, textColumn };
+        pick = { registerKey: cfg.key, gateId, signer, textColumn };
         break;
       }
     }
     t('a free-form register whose Review owner is one of our accounts exists', !!pick, short(reviewerRows.slice(0, 3)));
     if (pick) {
-      const { registerKey, signer, textColumn } = pick;
+      const { registerKey, gateId, signer, textColumn } = pick;
       const base = `/projects/${PROJECT}/registers/${registerKey}/close`;
       const signed = async (): Promise<boolean> =>
         (
           await db.query(
             `SELECT count(*)::int AS n FROM register_closure_sign_offs s JOIN register_closures c ON c.id = s."closureId"
-              WHERE c."projectId" = $1 AND c."registerKey" = $2 AND s.role = 'Review owner' AND s."signedAt" IS NOT NULL`,
-            [PROJECT, registerKey],
+              WHERE c."projectId" = $1 AND c."registerKey" = $2 AND c."gateId" = $3 AND s.role = 'Review owner' AND s."signedAt" IS NOT NULL`,
+            [PROJECT, registerKey, gateId],
           )
         ).rows[0].n === 1;
       const addRow = async (text: string) => {
@@ -292,53 +295,53 @@ export async function run(base: string, db: Client): Promise<number> {
         });
       };
 
-      let pv = (await api(signer, 'GET', `${base}/preview`)).json;
+      let pv = (await api(signer, 'GET', `${base}/preview?gateId=${gateId}`)).json;
       t('the closing preview carries the register title, its columns, its rows and a 64-character hash',
         typeof pv.hash === 'string' && pv.hash.length === 64 && Array.isArray(pv.columns) && pv.columns.length > 0 && Array.isArray(pv.rows) && typeof pv.title === 'string',
         short(Object.keys(pv)));
-      const pv2 = (await api(signer, 'GET', `${base}/preview`)).json;
+      const pv2 = (await api(signer, 'GET', `${base}/preview?gateId=${gateId}`)).json;
       t('two previews of an unchanged register give the same hash', pv.hash === pv2.hash);
 
-      let r: any = await api(signer, 'POST', `${base}/step-up`, { role: 'Review owner', code: '000000' });
+      let r: any = await api(signer, 'POST', `${base}/step-up`, { gateId, role: 'Review owner', code: '000000' });
       t('a step-up with no hash is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
-      r = await api(signer, 'POST', `${base}/sign`, { role: 'Review owner', stepUpToken: 'x' });
+      r = await api(signer, 'POST', `${base}/sign`, { gateId, role: 'Review owner', stepUpToken: 'x' });
       t('a sign with no hash is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
 
       // A stale preview must be refused BEFORE the one-time code is spent, so the same code still works.
       const oneCode = await code(signer);
-      r = await api(signer, 'POST', `${base}/step-up`, { role: 'Review owner', code: oneCode, expectedHash: 'f'.repeat(64) });
+      r = await api(signer, 'POST', `${base}/step-up`, { gateId, role: 'Review owner', code: oneCode, expectedHash: 'f'.repeat(64) });
       t('a step-up bound to a hash the register does not have is refused (422, REGISTER_CONTENT_CHANGED)',
         r.status === 422 && r.json?.code === 'REGISTER_CONTENT_CHANGED', `${r.status} ${short(r.json)}`);
-      r = await api(signer, 'POST', `${base}/step-up`, { role: 'Review owner', code: oneCode, expectedHash: pv.hash });
+      r = await api(signer, 'POST', `${base}/step-up`, { gateId, role: 'Review owner', code: oneCode, expectedHash: pv.hash });
       t('...and that refusal did not spend the code: the same code then works with the right hash', r.status < 300 && !!r.json?.stepUpToken, `${r.status} ${short(r.json)}`);
       const staleToken = r.json?.stepUpToken;
 
       // Somebody else edits the register after the closer opened the preview.
       r = await addRow('edited while the closer was reading');
       t('another person edits the register after the preview', r.status < 300, `${r.status} ${short(r.json)}`);
-      r = await api(signer, 'POST', `${base}/sign`, { role: 'Review owner', stepUpToken: staleToken, expectedHash: pv.hash });
+      r = await api(signer, 'POST', `${base}/sign`, { gateId, role: 'Review owner', stepUpToken: staleToken, expectedHash: pv.hash });
       t('signing with the old hash is refused (422, REGISTER_CONTENT_CHANGED)', r.status === 422 && r.json?.code === 'REGISTER_CONTENT_CHANGED', `${r.status} ${short(r.json)}`);
       t('...and nothing was signed', !(await signed()));
 
       // Reviewing again gives a new hash, and that one signs.
-      const pv3 = (await api(signer, 'GET', `${base}/preview`)).json;
+      const pv3 = (await api(signer, 'GET', `${base}/preview?gateId=${gateId}`)).json;
       t('the new preview has a different hash and shows the new row', pv3.hash !== pv.hash && pv3.rows.length === pv.rows.length + 1, `${pv.rows.length} -> ${pv3.rows.length}`);
-      const su = await api(signer, 'POST', `${base}/step-up`, { role: 'Review owner', code: await code(signer), expectedHash: pv3.hash });
+      const su = await api(signer, 'POST', `${base}/step-up`, { gateId, role: 'Review owner', code: await code(signer), expectedHash: pv3.hash });
       t('a step-up bound to the new hash is accepted', su.status < 300 && !!su.json?.stepUpToken, `${su.status} ${short(su.json)}`);
-      r = await api(signer, 'POST', `${base}/sign`, { role: 'Review owner', stepUpToken: su.json?.stepUpToken, expectedHash: pv3.hash });
+      r = await api(signer, 'POST', `${base}/sign`, { gateId, role: 'Review owner', stepUpToken: su.json?.stepUpToken, expectedHash: pv3.hash });
       t('signing with the hash of what was just reviewed succeeds', r.status < 300, `${r.status} ${short(r.json)}`);
       t('...and the signature is recorded', await signed());
 
       // ---- while a closing signature stands the register is LOCKED; stale only catches what got past that ----
       {
         const closureRow = async () =>
-          ((await project()).project.registerClosures[registerKey]?.signOffs ?? []).find((x: any) => x.role === 'Review owner');
+          ((await project()).project.registerClosures[`${registerKey}|${gateId}`]?.signOffs ?? []).find((x: any) => x.role === 'Review owner');
         const dbHash = async (): Promise<string | null> =>
           (
             await db.query(
               `SELECT s."contentHash" FROM register_closure_sign_offs s JOIN register_closures c ON c.id = s."closureId"
-                WHERE c."projectId" = $1 AND c."registerKey" = $2 AND s.role = 'Review owner'`,
-              [PROJECT, registerKey],
+                WHERE c."projectId" = $1 AND c."registerKey" = $2 AND c."gateId" = $3 AND s.role = 'Review owner'`,
+              [PROJECT, registerKey, gateId],
             )
           ).rows[0]?.contentHash ?? null;
         // A change nobody can make through the API (somebody with database access, a bug, an old import):
@@ -352,25 +355,25 @@ export async function run(base: string, db: Client): Promise<number> {
         t('right after signing, the signature stored the hash of what was shown and is not stale',
           (await dbHash()) === pv3.hash && !(await closureRow())?.stale, `${await dbHash()} ${short(await closureRow())}`);
         r = await addRow('changed AFTER the Review owner signed');
-        t('while ONE of the two closing signatures stands, the register is read-only (403)',
-          r.status === 403 && String(r.json?.message).includes('closing signature standing'), `${r.status} ${short(r.json)}`);
+        t('while ONE of the two closing signatures stands, the register gains no row (403)',
+          r.status === 403 && String(r.json?.message).includes('Rows cannot be added'), `${r.status} ${short(r.json)}`);
         t('...and the signature is still current', !(await closureRow())?.stale, short(await closureRow()));
 
         await outOfBandEdit('changed out of band, after the Review owner signed');
         t('a change that got past the lock (out of band) makes the signature stale', (await closureRow())?.stale === true, short(await closureRow()));
         t('...the stale flag was computed, not stored: the stored hash is still the one that was signed', (await dbHash()) === pv3.hash, String(await dbHash()));
 
-        const pv4 = (await api(signer, 'GET', `${base}/preview`)).json;
-        const su4 = await api(signer, 'POST', `${base}/step-up`, { role: 'Review owner', code: await code(signer), expectedHash: pv4.hash });
-        r = await api(signer, 'POST', `${base}/sign`, { role: 'Review owner', stepUpToken: su4.json?.stepUpToken, expectedHash: pv4.hash });
+        const pv4 = (await api(signer, 'GET', `${base}/preview?gateId=${gateId}`)).json;
+        const su4 = await api(signer, 'POST', `${base}/step-up`, { gateId, role: 'Review owner', code: await code(signer), expectedHash: pv4.hash });
+        r = await api(signer, 'POST', `${base}/sign`, { gateId, role: 'Review owner', stepUpToken: su4.json?.stepUpToken, expectedHash: pv4.hash });
         t('a stale signature is replaced by signing again, without withdrawing first', r.status < 300, `${r.status} ${short(r.json)}`);
         t('...after which it counts again and carries the new hash', !(await closureRow())?.stale && (await dbHash()) === pv4.hash, short(await closureRow()));
 
         // A signature recorded before hashes existed has nothing to compare with: unknown is never stale.
         await db.query(
           `UPDATE register_closure_sign_offs SET "contentHash" = NULL
-            WHERE role = 'Review owner' AND "closureId" IN (SELECT id FROM register_closures WHERE "projectId" = $1 AND "registerKey" = $2)`,
-          [PROJECT, registerKey],
+            WHERE role = 'Review owner' AND "closureId" IN (SELECT id FROM register_closures WHERE "projectId" = $1 AND "registerKey" = $2 AND "gateId" = $3)`,
+          [PROJECT, registerKey, gateId],
         );
         await outOfBandEdit('changed out of band again, after a signature that has no stored hash');
         t('a signature recorded without a hash is never marked stale', !(await closureRow())?.stale, short(await closureRow()));
@@ -378,17 +381,17 @@ export async function run(base: string, db: Client): Promise<number> {
       // Put a hash back, so that "withdrawing clears it" below proves something (the legacy case left it NULL).
       await db.query(
         `UPDATE register_closure_sign_offs SET "contentHash" = 'to-be-cleared'
-          WHERE role = 'Review owner' AND "closureId" IN (SELECT id FROM register_closures WHERE "projectId" = $1 AND "registerKey" = $2)`,
-        [PROJECT, registerKey],
+          WHERE role = 'Review owner' AND "closureId" IN (SELECT id FROM register_closures WHERE "projectId" = $1 AND "registerKey" = $2 AND "gateId" = $3)`,
+        [PROJECT, registerKey, gateId],
       );
       // The project version moved while the closer read; the signature never depended on it.
-      r = await api(signer, 'POST', `${base}/withdraw`, { role: 'Review owner', reason: 'e2e cleanup', expectedVersion: await version() });
+      r = await api(signer, 'POST', `${base}/withdraw`, { gateId, role: 'Review owner', reason: 'e2e cleanup', expectedVersion: await version() });
       t('the signer withdraws it again (leaves the register as it was)', r.status < 300 && !(await signed()), `${r.status} ${short(r.json)}`);
       t('...and withdrawing clears the stored hash', (
         await db.query(
           `SELECT s."contentHash" FROM register_closure_sign_offs s JOIN register_closures c ON c.id = s."closureId"
-            WHERE c."projectId" = $1 AND c."registerKey" = $2 AND s.role = 'Review owner'`,
-          [PROJECT, registerKey],
+            WHERE c."projectId" = $1 AND c."registerKey" = $2 AND c."gateId" = $3 AND s.role = 'Review owner'`,
+          [PROJECT, registerKey, gateId],
         )
       ).rows[0]?.contentHash == null);
     }
@@ -526,22 +529,30 @@ export async function run(base: string, db: Client): Promise<number> {
   // gate's registers are closed only when that gate is about to pass, as in real use, never earlier.
   // The closing signatures themselves are not under test.
   const closeRegistersOf = async (gates: string[]): Promise<number> => {
-    const keys: string[] = REGISTER_CONFIGS.filter((c: any) => gates.includes(gp.gateRefHighestGateId(c.gate) ?? '')).map((c: any) => c.key);
-    await db.query(
-      `UPDATE register_closure_sign_offs s SET name = 'x', "signedByUserId" = $1, "signedAt" = now()
-         FROM register_closures c
-        WHERE c.id = s."closureId" AND c."projectId" = $2 AND c."registerKey" = ANY($3)`,
-      [sessions.admin.id, PROJECT, keys],
-    );
-    const closed = await db.query(
-      `SELECT count(*)::int AS n FROM register_closure_sign_offs s JOIN register_closures c ON c.id = s."closureId"
-        WHERE c."projectId" = $1 AND s."signedAt" IS NOT NULL AND c."registerKey" = ANY($2)`,
-      [PROJECT, keys],
-    );
-    return closed.rows[0].n === keys.length * 2 ? keys.length : -1;
+    // Closures are created when somebody signs (SW-36), per register AND gate, so they are written here directly.
+    let count = 0;
+    for (const gate of gates) {
+      for (const { registerKey } of rc.requiredRegisterClosures(gate)) {
+        const closure = await db.query(
+          `INSERT INTO register_closures (id, "projectId", "registerKey", "gateId") VALUES (gen_random_uuid()::text, $1, $2, $3)
+             ON CONFLICT ("projectId", "registerKey", "gateId") DO UPDATE SET "gateId" = EXCLUDED."gateId" RETURNING id`,
+          [PROJECT, registerKey, gate],
+        );
+        for (const role of ['Review owner', 'Co-sign']) {
+          await db.query(
+            `INSERT INTO register_closure_sign_offs (id, "closureId", role, name, "signedByUserId", "signedAt")
+               VALUES (gen_random_uuid()::text, $1, $2, 'x', $3, now())
+               ON CONFLICT ("closureId", role) DO UPDATE SET name = 'x', "signedByUserId" = $3, "signedAt" = now()`,
+            [closure.rows[0].id, role, sessions.admin.id],
+          );
+        }
+        count += 1;
+      }
+    }
+    return count;
   };
-  const upToSg06 = ['SG01', 'SG02', 'SG03', 'SG04', 'SG05', 'SG06'];
-  t('the registers of SG01-SG06 are closed', (await closeRegistersOf(upToSg06)) > 0);
+  // A register is closed per gate and a closure locks its rows (SW-36), so each gate's registers are closed only when that
+  // gate is about to pass, as in real use.
   // Key Gate Checks are part of a gate's evidence (and of its signature snapshot), and phase closing
   // requires them all done. Ticking them AFTER a gate was signed would turn that signature stale, so
   // they are ticked before anything is signed — as a real project must do.
@@ -622,6 +633,7 @@ export async function run(base: string, db: Client): Promise<number> {
   t('signing Proceed with the Phase Gate Flow incomplete is refused (400) and names what is missing',
     r.stage === 'sign' && r.status === 400 && /Phase Gate Flow/.test(JSON.stringify(r.json)) && /Owner/.test(JSON.stringify(r.json)) && /Due date/.test(JSON.stringify(r.json)),
     `${r.stage} ${r.status} ${short(r.json)}`);
+  await closeRegistersOf(['SG01']);
   r = await complete('SG01');
   t('SG01 Phase Gate Flow completed (owner, due date, evidence link) and Complete', r.status < 300, short(r.json));
   r = await sign('SG01', 'Prepared by');
@@ -678,6 +690,7 @@ export async function run(base: string, db: Client): Promise<number> {
   // ============================================================ SG02
   console.log('\n--- SG02 (only to move the project to SG03)');
   await nominate('SG02');
+  await closeRegistersOf(['SG02']);
   await complete('SG02');
   for (const role of ROLES) {
     r = await sign('SG02', role);
@@ -777,6 +790,8 @@ export async function run(base: string, db: Client): Promise<number> {
   t('editing the Gate 3 column (approvedWording) while the Prepared signature stands is refused (403)',
     r.status === 403 && String(r.json?.message).includes('Register changed'), `${r.status} ${short(r.json)}`);
   t('...and the signature is still current', (await stale('SG03', 'Prepared by')).length === 0, short(await stale('SG03', 'Prepared by')));
+  // Closed only now: a closure locks the same Gate 3 columns, and the cases above are about the signature's own lock.
+  await closeRegistersOf(['SG03']);
   for (const role of ['Reviewed by', 'Approved by'] as const) {
     r = await sign('SG03', role);
     t(`${role} signs SG03`, r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
@@ -926,6 +941,7 @@ export async function run(base: string, db: Client): Promise<number> {
     expectedVersion: await version(),
   });
   t('a supplier evidence row is saved while SG04 is the open gate', r.status < 300, `${r.status} ${short(r.json)}`);
+  await closeRegistersOf(['SG04']);
   await complete('SG04');
   r = await sign('SG04', 'Prepared by');
   t('Prepared signs SG04', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
@@ -987,6 +1003,7 @@ export async function run(base: string, db: Client): Promise<number> {
 
   console.log('\n--- SG05 (the Formula BOM, costing and formula properties are Gate 5 data)');
   await nominate('SG05');
+  await closeRegistersOf(['SG05']);
   await complete('SG05');
   r = await sign('SG05', 'Prepared by');
   t('Prepared signs SG05', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
@@ -1027,6 +1044,7 @@ export async function run(base: string, db: Client): Promise<number> {
   await nominate('SG06');
   r = await putArt(() => [{ artworkVersion: 'v1', supplier: 'Acme Pack', specLink: 'https://example.test/spec' }]);
   t('a packaging row is saved while SG06 is the open gate', r.status < 300, `${r.status} ${short(r.json)}`);
+  await closeRegistersOf(['SG06']);
   await complete('SG06');
   for (const role of ROLES) {
     r = await sign('SG06', role);

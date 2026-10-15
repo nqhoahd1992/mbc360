@@ -47,7 +47,6 @@ import {
 } from '@mbc360/shared/utils/nextActionAccess';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { gate11ConditionalChanges } from '@mbc360/shared/utils/changeImpact';
-import { frozenGateSet, registerFreezeViolations } from '@mbc360/shared/utils/registerRowLocks';
 import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
 import { RM_EVIDENCE_REGISTER, rmEvidenceContradictions } from '@mbc360/shared/utils/rmEvidence';
 import { registerAccessReason, registerAccessViolations } from '@mbc360/shared/utils/registerAccess';
@@ -95,6 +94,7 @@ import { changeTriggerAvailability } from '@mbc360/shared/utils/changeAccess';
 import { READINESS_ACK_OUTCOMES } from '@mbc360/shared/types';
 import { phaseSignContent } from '@mbc360/shared/utils/phaseSignContent';
 import { registerClosureContent, registerRowSignContent } from '@mbc360/shared/utils/registerClosureContent';
+import { closureKey, registerClosureGateIds, registerLockViolations, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import { registerContentHashOf, registerRowContentHashOf, rowHashFromCells } from './content-hash';
 import { registerRowCells } from '@mbc360/shared/utils/registerClosureContent';
 import { supersessionGaps, versionMarkets } from '@mbc360/shared/utils/formulaLifecycle';
@@ -130,7 +130,6 @@ import {
   RISK_LEVELS,
   NEXT_ACTION_TERMINAL_STATUSES,
   SCALE_UP_RISK_OPTIONS,
-  hasStandingClosureSignature,
 } from '@mbc360/shared/types';
 import type { GateSignedContent, GateSignOffRole, PhaseSignedContent, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
 import type {
@@ -2611,23 +2610,14 @@ export class ProjectsService {
       // not a consequence of it having passed. Both checks stay — closing
       // does not replace the gate-based lock, it adds an earlier trigger for
       // the same read-only state.
-      // ANY closing signature that still counts locks the register, not only both: the two signers must
-      // attest to the same content, so it cannot move under the first one (project owner, 2026-10-11).
-      if (hasStandingClosureSignature(project.registerClosures[registerKey])) {
-        throw new ForbiddenException(
-          `Register "${registerKey}" has a closing signature standing — it is read-only until that signature is withdrawn (with a reason), or until a Backtrack past its gate`,
-        );
-      }
-      // SW-5 (docs/rules/Software_Rules.md): a gate that has passed freezes the cells
-      // it counted as evidence and the rows they sit on — per cell, not per register,
-      // so a register shared with a later gate no longer stays open under a signature.
-      // Evaluated by the same shared function the table uses to grey the cell.
+      // SW-36: what a closing signature locks is exactly the columns settled at the gate it was signed for (and, on a free-form
+      // register, the rows). Nothing is frozen automatically by a gate passing — the lock is the consequence of the signatures.
       const committedRegisterRows = project.registers[registerKey] ?? [];
-      const freezeViolations = registerFreezeViolations(frozenGateSet(project), config, committedRegisterRows, rows);
-      if (freezeViolations.length > 0) {
+      const lockViolations = registerLockViolations(project, config, committedRegisterRows, rows);
+      if (lockViolations.length > 0) {
         throw new ForbiddenException(
-          `Register "${registerKey}": ${freezeViolations.slice(0, 5).join('; ')}${
-            freezeViolations.length > 5 ? ` (and ${freezeViolations.length - 5} more)` : ''
+          `Register "${registerKey}": ${lockViolations.slice(0, 5).join('; ')}${
+            lockViolations.length > 5 ? ` (and ${lockViolations.length - 5} more)` : ''
           }`,
         );
       }
@@ -3192,26 +3182,37 @@ export class ProjectsService {
   // — so whoever project_reviewers already names for that role is who may
   // sign, nothing to assign first.
 
+  // A closure is for one gate (SW-36): the gate must be one this register is actually closed at.
+  private assertClosureGate(config: RegisterConfig, gateId: string | undefined): string {
+    if (!gateId || !registerClosureGateIds(config).includes(gateId)) {
+      throw new BadRequestException(
+        `Register "${config.key}" is closed at ${registerClosureGateIds(config).join(', ') || 'no gate'} — "${gateId ?? ''}" is not one of them`,
+      );
+    }
+    return gateId;
+  }
+
   private registerClosureRoleKey(config: RegisterConfig, role: RegisterClosureSignOff['role']): string {
-    if (!config.reviewOwner) {
+    const spec = registerReviewSpec(config);
+    if (!spec) {
       throw new BadRequestException(
         `Register "${config.key}" has no review owner configured — it cannot be closed`,
       );
     }
     // Shared with the frontend closing panel (packages/shared/src/config/reviewers.ts)
     // — never re-derive this independently.
-    return registerClosureSignerRole(config.reviewOwner, role);
+    return registerClosureSignerRole(spec, role);
   }
 
   // Older projects (created before this feature) never had these rows
   // scaffolded — rather than depend on scaffold timing, find-or-create them
   // here too, the same "additive backfill" pattern seedDemoProject already
   // uses for project_reviewers.
-  private async ensureRegisterClosure(tx: Prisma.TransactionClient, projectId: string, registerKey: string) {
+  private async ensureRegisterClosure(tx: Prisma.TransactionClient, projectId: string, registerKey: string, gateId: string) {
     const closure = await tx.registerClosure.upsert({
-      where: { projectId_registerKey: { projectId, registerKey } },
+      where: { projectId_registerKey_gateId: { projectId, registerKey, gateId } },
       update: {},
-      create: { projectId, registerKey },
+      create: { projectId, registerKey, gateId },
     });
     for (const role of ['Review owner', 'Co-sign'] as const) {
       await tx.registerClosureSignOff.upsert({
@@ -3225,29 +3226,31 @@ export class ProjectsService {
 
   // The proof is bound to the content hash, so a code entered for one version of the register cannot
   // sign another — the same rule gate signatures follow (see gateStepUpPurpose).
-  private registerCloseStepUpPurpose(id: string, registerKey: string, role: string, contentHash: string): string {
-    return `register_close:${id}:${registerKey}:${role}:${contentHash}`;
+  private registerCloseStepUpPurpose(id: string, registerKey: string, gateId: string, role: string, contentHash: string): string {
+    return `register_close:${id}:${registerKey}:${gateId}:${role}:${contentHash}`;
   }
 
-  private registerContentHash(project: ProjectData, registerKey: string): string {
-    const hash = registerContentHashOf(project, registerKey);
+  private registerContentHash(project: ProjectData, registerKey: string, gateId: string): string {
+    const hash = registerContentHashOf(project, registerKey, gateId);
     if (!hash) throw new BadRequestException(`Unknown register "${registerKey}"`);
     return hash;
   }
 
   // What the closer reads before signing: the register's rows as they are now and the hash their
   // signature will be bound to. Read-only — nothing is written, and any signed-in user may read project data.
-  async previewRegisterClose(id: string, registerKey: string): Promise<RegisterClosePreview> {
+  async previewRegisterClose(id: string, registerKey: string, gateIdIn: string | undefined): Promise<RegisterClosePreview> {
     const config = getRegisterConfig(registerKey);
     if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    const gateId = this.assertClosureGate(config, gateIdIn);
     const row = await this.loadOrThrow(this.prisma, id);
     const project = toProjectData(row, [], await this.loadReference(this.prisma));
-    const content = registerClosureContent(project, registerKey);
+    const content = registerClosureContent(project, registerKey, gateId);
     if (!content) throw new BadRequestException(`Unknown register "${registerKey}"`);
     return {
       registerKey,
+      gateId,
       title: config.title,
-      hash: this.registerContentHash(project, registerKey),
+      hash: this.registerContentHash(project, registerKey, gateId),
       previewedAt: new Date().toISOString(),
       columns: content.columns,
       rows: content.rows,
@@ -3265,12 +3268,14 @@ export class ProjectsService {
     user: SessionUser,
     id: string,
     registerKey: string,
+    gateIdIn: string | undefined,
     role: RegisterClosureSignOff['role'],
     code: string,
     expectedHash: string | undefined,
   ): Promise<{ stepUpToken: string }> {
     const config = getRegisterConfig(registerKey);
     if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    const gateId = this.assertClosureGate(config, gateIdIn);
     if (!expectedHash) throw new BadRequestException('expectedHash is required — open the signing preview first');
     const roleKey = this.registerClosureRoleKey(config, role);
     const reviewer = await this.prisma.projectReviewer.findUnique({
@@ -3287,9 +3292,9 @@ export class ProjectsService {
     }
     // Refused BEFORE the code is spent: a stale preview must not burn the signer's one-time code.
     const current = toProjectData(await this.loadOrThrow(this.prisma, id), [], await this.loadReference(this.prisma));
-    if (this.registerContentHash(current, registerKey) !== expectedHash) throw this.registerContentChanged();
+    if (this.registerContentHash(current, registerKey, gateId) !== expectedHash) throw this.registerContentChanged();
     await this.totp.verifyForStepUp(user.id, code);
-    const purpose = this.registerCloseStepUpPurpose(id, registerKey, role, expectedHash);
+    const purpose = this.registerCloseStepUpPurpose(id, registerKey, gateId, role, expectedHash);
     const proof = await this.prisma.stepUpProof.create({
       data: { userId: user.id, purpose, channel: 'totp' },
     });
@@ -3304,12 +3309,14 @@ export class ProjectsService {
     user: SessionUser,
     id: string,
     registerKey: string,
+    gateIdIn: string | undefined,
     role: RegisterClosureSignOff['role'],
     stepUpToken: string,
     expectedHash: string | undefined,
   ): Promise<ProjectEnvelope> {
     const config = getRegisterConfig(registerKey);
     if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    const gateId = this.assertClosureGate(config, gateIdIn);
     if (!expectedHash) throw new BadRequestException('expectedHash is required — open the signing preview first');
     const roleKey = this.registerClosureRoleKey(config, role);
     // Guarded by the content hash instead of the project-wide version (as gate signing is), so other
@@ -3317,20 +3324,20 @@ export class ProjectsService {
     return this.mutate(user, id, null, 'register_close.signed', async (tx, row, project) => {
       // The closer signs what they were SHOWN. Compared here, inside the row-locked transaction, so the
       // content cannot change between this check and the write.
-      if (this.registerContentHash(project, registerKey) !== expectedHash) throw this.registerContentChanged();
+      if (this.registerContentHash(project, registerKey, gateId) !== expectedHash) throw this.registerContentChanged();
       const reviewer = await tx.projectReviewer.findUnique({
         where: { projectId_roleKey: { projectId: id, roleKey } },
       });
       if (!reviewer || reviewer.name.trim() !== user.displayName.trim()) {
         throw new ForbiddenException(`"${role}" for "${registerKey}" is assigned to somebody else`);
       }
-      const closure = await this.ensureRegisterClosure(tx, id, registerKey);
+      const closure = await this.ensureRegisterClosure(tx, id, registerKey, gateId);
       const existing = await tx.registerClosureSignOff.findUnique({
         where: { closureId_role: { closureId: closure.id, role } },
       });
       // A signature whose register changed afterwards is stale: it no longer counts, and signing again
       // replaces it. Withdrawing first stays possible but is no longer required.
-      const alreadyStale = !!project.registerClosures[registerKey]?.signOffs.find((x) => x.role === role)?.stale;
+      const alreadyStale = !!project.registerClosures[closureKey(registerKey, gateId)]?.signOffs.find((x) => x.role === role)?.stale;
       if (existing?.signedAt && !alreadyStale) {
         throw new BadRequestException(`"${role}" was already signed by ${existing.name ?? 'another user'} — withdraw it first`);
       }
@@ -3345,7 +3352,7 @@ export class ProjectsService {
       } catch {
         throw new BadRequestException('Verification expired or invalid — enter a new code');
       }
-      const expectedPurpose = this.registerCloseStepUpPurpose(id, registerKey, role, expectedHash);
+      const expectedPurpose = this.registerCloseStepUpPurpose(id, registerKey, gateId, role, expectedHash);
       if (payload.typ !== 'register_close_step_up' || payload.sub !== user.id || payload.purpose !== expectedPurpose) {
         throw new BadRequestException('Verification does not match this signature');
       }
@@ -3379,7 +3386,7 @@ export class ProjectsService {
           contentHash: expectedHash,
         },
       });
-      return { registerKey, role, recordVersion: row.version };
+      return { registerKey, gateId, role, recordVersion: row.version };
     });
   }
 
@@ -3390,6 +3397,7 @@ export class ProjectsService {
     user: SessionUser,
     id: string,
     registerKey: string,
+    gateIdIn: string | undefined,
     role: RegisterClosureSignOff['role'],
     reason: string,
     expectedVersion: number,
@@ -3398,8 +3406,13 @@ export class ProjectsService {
     if (!why) throw new BadRequestException('A reason is required to withdraw a signature');
     const config = getRegisterConfig(registerKey);
     if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
-    return this.mutate(user, id, expectedVersion, 'register_close.withdrawn', async (tx) => {
-      const closure = await tx.registerClosure.findUnique({ where: { projectId_registerKey: { projectId: id, registerKey } } });
+    const gateId = this.assertClosureGate(config, gateIdIn);
+    return this.mutate(user, id, expectedVersion, 'register_close.withdrawn', async (tx, _row, project) => {
+      // Like a gate signature, a closure given for a gate that has PASSED cannot be withdrawn: only Backtrack reopens it.
+      if (isGatePassed(project, gateId)) {
+        throw new ForbiddenException(`${gateId} has passed, so its closing signatures stand — use Backtrack to reopen it`);
+      }
+      const closure = await tx.registerClosure.findUnique({ where: { projectId_registerKey_gateId: { projectId: id, registerKey, gateId } } });
       const existing = closure
         ? await tx.registerClosureSignOff.findUnique({ where: { closureId_role: { closureId: closure.id, role } } })
         : null;
@@ -3420,7 +3433,7 @@ export class ProjectsService {
           contentHash: null,
         },
       });
-      return { registerKey, role, reason: why };
+      return { registerKey, gateId, role, reason: why };
     });
   }
 

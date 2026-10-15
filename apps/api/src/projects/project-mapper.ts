@@ -16,6 +16,7 @@
 import { GATES } from '@mbc360/shared/config/gates';
 import { REGISTER_CONFIGS, signatureColumns, signatureFieldKeys } from '@mbc360/shared/config/registers';
 import { registerContentHashOf, registerRowContentHashOf } from './content-hash';
+import { closureKey } from '@mbc360/shared/utils/registerClosures';
 import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
 import type {
   BacktrackEvent,
@@ -382,7 +383,7 @@ export function toProjectData(
 
   const registerClosures: Record<string, RegisterClosureState> = {};
   for (const closure of p.registerClosures) {
-    registerClosures[closure.registerKey] = { signOffs: closure.signOffs.map(toRegisterClosureSignOff) };
+    registerClosures[closureKey(closure.registerKey, closure.gateId)] = { signOffs: closure.signOffs.map(toRegisterClosureSignOff) };
   }
 
   const phaseClosures: ProjectData['phaseClosures'] = {};
@@ -742,9 +743,9 @@ export function toProjectData(
 // captured to compare with, and inventing a hash from today's content would claim the signer saw it.
 function annotateStaleSignatures(p: ProjectWithAll, project: ProjectData): void {
   for (const closure of p.registerClosures) {
-    const state = project.registerClosures[closure.registerKey];
+    const state = project.registerClosures[closureKey(closure.registerKey, closure.gateId)];
     if (!state) continue;
-    const current = registerContentHashOf(project, closure.registerKey);
+    const current = registerContentHashOf(project, closure.registerKey, closure.gateId);
     closure.signOffs.forEach((s, i) => {
       if (s.signedAt && s.contentHash && current && s.contentHash !== current) state.signOffs[i].stale = true;
     });

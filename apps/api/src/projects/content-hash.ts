@@ -10,8 +10,9 @@ import { registerClosureContent, registerRowCells, registerRowSignContent } from
 const sha256 = (value: unknown): string => createHash('sha256').update(canonicalJson(value)).digest('hex');
 
 // A closing signature on a whole register.
-export function registerContentHashOf(project: ProjectData, registerKey: string): string | undefined {
-  const content = registerClosureContent(project, registerKey);
+// A closure is signed FOR A GATE (SW-36), so the hash is over that gate's settled columns only.
+export function registerContentHashOf(project: ProjectData, registerKey: string, gateId?: string): string | undefined {
+  const content = registerClosureContent(project, registerKey, gateId);
   return content ? sha256(content) : undefined;
 }
 

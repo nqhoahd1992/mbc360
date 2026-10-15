@@ -14,8 +14,54 @@ import RegisterCloseStepUpModal from './RegisterCloseStepUpModal';
 import RegisterClosePreviewModal from './RegisterClosePreviewModal';
 import { Link } from 'react-router-dom';
 import { TABLE_STICKY } from '../theme/tokens';
+import { GATES } from '@mbc360/shared/config/gates';
+import { getRegisterConfig } from '@mbc360/shared/config/registers';
+import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
+import { closureColumns, closureKey, registerClosureGateIds } from '@mbc360/shared/utils/registerClosures';
 
 const CLOSURE_ROLES: RegisterClosureRole[] = ['Review owner', 'Co-sign'];
+
+// A register is closed once PER GATE that needs it (SW-36): one card per gate, each attesting to — and locking — the columns
+// settled at that gate. Nothing locks until somebody signs; the readiness list makes the gate wait for it.
+export default function RegisterClosurePanel({
+  projectId,
+  registerKey,
+  spec,
+  reviewers,
+  closures,
+}: {
+  projectId: string;
+  registerKey: string;
+  spec: ReviewOwnerSpec;
+  reviewers: Record<string, string> | undefined;
+  closures: Record<string, RegisterClosureState>;
+}) {
+  const config = getRegisterConfig(registerKey);
+  if (!config) return null;
+  const gates = registerClosureGateIds(config);
+  return (
+    <>
+      {gates.map((gateId) => {
+        const columns = closureColumns(config, gateId)
+          .map((key) => config.columns.find((c) => c.key === key)?.label ?? key)
+          .join(', ');
+        return (
+          <GateClosureCard
+            key={gateId}
+            projectId={projectId}
+            registerKey={registerKey}
+            gateId={gateId}
+            gateLabel={GATES.find((g) => g.id === gateId)?.name ?? gateId}
+            columns={columns}
+            spec={spec}
+            reviewers={reviewers}
+            closure={closures[closureKey(registerKey, gateId)]}
+          />
+        );
+      })}
+    </>
+  );
+}
 
 // Register closing (2026-08-27, user-requested): editing a register stays
 // open to anyone (rule A4, untouched) — but a deliberate two-signature act
@@ -25,15 +71,21 @@ const CLOSURE_ROLES: RegisterClosureRole[] = ['Review owner', 'Co-sign'];
 // (the signer is derived straight from the register's own reviewOwner spec —
 // see registerClosureSignerRole), and no decision/comment fields (closing IS
 // the act; there is nothing else to record).
-export default function RegisterClosurePanel({
+function GateClosureCard({
   projectId,
   registerKey,
+  gateId,
+  gateLabel,
+  columns,
   spec,
   reviewers,
   closure,
 }: {
   projectId: string;
   registerKey: string;
+  gateId: string;
+  gateLabel: string;
+  columns: string;
   spec: ReviewOwnerSpec;
   reviewers: Record<string, string> | undefined;
   closure: RegisterClosureState | undefined;
@@ -42,6 +94,11 @@ export default function RegisterClosurePanel({
   const withdrawRegisterClose = useAppStore((s) => s.withdrawRegisterClose);
   const { user: me } = useSession();
   const { isAdmin } = usePermissionView();
+  // A closure given for a gate that has passed stands until Backtrack, like the gate's own signatures (SW-36).
+  const gatePassed = useAppStore((st) => {
+    const project = st.projects.find((x) => x.identity.id === projectId);
+    return !!project && isGatePassed(project, gateId);
+  });
 
   const [withdrawing, setWithdrawing] = useState<RegisterClosureRole | null>(null);
   const [reason, setReason] = useState('');
@@ -93,25 +150,25 @@ export default function RegisterClosurePanel({
   };
 
   const sign = (row: RegisterClosureSignOff, stepUpToken: string, expectedHash: string) =>
-    signRegisterClose(projectId, registerKey, row.role, stepUpToken, expectedHash);
+    signRegisterClose(projectId, registerKey, gateId, row.role, stepUpToken, expectedHash);
 
   const confirmWithdraw = () => {
     if (!withdrawing) return;
-    withdrawRegisterClose(projectId, registerKey, withdrawing, reason);
+    withdrawRegisterClose(projectId, registerKey, gateId, withdrawing, reason);
     setWithdrawing(null);
     setReason('');
   };
 
   return (
-    <Card size="small" title="Register Closing">
+    <Card size="small" title={`Register closing — ${gateId} ${gateLabel}`}>
       {closed ? (
         <Alert
           type="success"
           showIcon
           icon={<LockOutlined />}
           style={{ marginBottom: 12 }}
-          title="Closed — read-only"
-          description="Both signatures are recorded. To correct this register, withdraw a signature below, or Backtrack past the gate that depends on it."
+          title="Closed for this gate"
+          description={`Both signatures are recorded. This locks the columns settled at ${gateId}: ${columns}. To correct them, withdraw a signature below, or Backtrack past the gate.`}
         />
       ) : (
         <Alert
@@ -119,8 +176,8 @@ export default function RegisterClosurePanel({
           showIcon
           icon={<UnlockOutlined />}
           style={{ marginBottom: 12 }}
-          title="Open — anyone may add, edit or delete rows"
-          description="Closing needs both signatures below, and is required before the gate that depends on this register can pass."
+          title="Open"
+          description={`Closing for ${gateId} needs both signatures below and is required before that gate can pass. It attests to, and locks, these columns: ${columns}.`}
         />
       )}
       {sameSignerForBothRoles && (
@@ -138,7 +195,7 @@ export default function RegisterClosurePanel({
           showIcon
           style={{ marginBottom: 12 }}
           title="Locked while a signature stands"
-          description="One of the two signatures is in place, so the register is read-only: both signers must attest to the same content. To change it, the signer withdraws their signature (with a reason)."
+          description="One of the two signatures is in place, so these columns are read-only: both signers must attest to the same content. To change them, the signer withdraws their signature (with a reason)."
         />
       )}
       <Table
@@ -188,7 +245,7 @@ export default function RegisterClosurePanel({
                       {r.signedAt ? dayjs(r.signedAt).format('YYYY-MM-DD HH:mm') : '—'} · record v
                       {r.recordVersion ?? '—'}
                     </Typography.Text>
-                    {(mine || isAdmin) && (
+                    {(mine || isAdmin) && !gatePassed && (
                       <Button
                         size="small"
                         type="link"
@@ -256,6 +313,7 @@ export default function RegisterClosurePanel({
         open={reviewing !== null}
         projectId={projectId}
         registerKey={registerKey}
+        gateId={gateId}
         roleLabel={reviewing ?? ''}
         onCancel={() => setReviewing(null)}
         onContinue={(preview) => {
@@ -268,6 +326,7 @@ export default function RegisterClosurePanel({
         open={stepUp !== null}
         projectId={projectId}
         registerKey={registerKey}
+        gateId={gateId}
         role={stepUp?.role ?? 'Review owner'}
         expectedHash={stepUp?.hash ?? ''}
         onClose={() => setStepUp(null)}

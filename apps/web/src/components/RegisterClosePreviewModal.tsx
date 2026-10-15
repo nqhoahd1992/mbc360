@@ -12,6 +12,7 @@ export default function RegisterClosePreviewModal({
   open,
   projectId,
   registerKey,
+  gateId,
   roleLabel,
   onCancel,
   onContinue,
@@ -19,6 +20,7 @@ export default function RegisterClosePreviewModal({
   open: boolean;
   projectId: string;
   registerKey: string;
+  gateId: string;
   roleLabel: string;
   onCancel: () => void;
   onContinue: (preview: RegisterClosePreview) => void;
@@ -34,7 +36,7 @@ export default function RegisterClosePreviewModal({
     setLoading(true);
     setError(null);
     setPreview(null);
-    previewRegisterClose(projectId, registerKey)
+    previewRegisterClose(projectId, registerKey, gateId)
       .then((p) => {
         if (!cancelled) setPreview(p);
       })
@@ -47,7 +49,7 @@ export default function RegisterClosePreviewModal({
     return () => {
       cancelled = true;
     };
-  }, [open, projectId, registerKey]);
+  }, [open, projectId, registerKey, gateId]);
 
   return (
     <Modal

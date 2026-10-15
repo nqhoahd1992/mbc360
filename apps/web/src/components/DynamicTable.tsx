@@ -26,7 +26,7 @@ import ClaimsLibrarySelect from './ClaimsLibrarySelect';
 import RowRefSelect from './RowRefSelect';
 import RegisterSignatureCell from './RegisterSignatureCell';
 import { spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
-import { cellFrozenBy, frozenGateSet, rowsFrozenBy, rowsFrozenReason } from '@mbc360/shared/utils/registerRowLocks';
+import { registerLockReason, registerLocks } from '@mbc360/shared/utils/registerClosures';
 import { useAppStore } from '../store/useAppStore';
 import { useRegisterAccess } from '../hooks/useRegisterAccess';
 import '../styles/concept.css';
@@ -168,17 +168,15 @@ export default function DynamicTable({
   // table offering an edit it would reject. Only registers spanning several gates need
   // it — a single-gate register is wholly read-only via `readOnly`.
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
-  const passedGates = useMemo(
-    // Not only for a register whose own gate list spans several gates: a column can be owned by an
-    // earlier gate than a single-gate register's own (the watch-lists are gate 07, Gate 4 owns their
-    // review columns), and it freezes when that owner passes. A register with no passed gate costs
-    // nothing: the set is empty and every cell stays as it was.
-    () => (project ? frozenGateSet(project) : new Set<string>()),
-    [project],
+  // SW-36: the locks are the consequence of closing signatures standing on this register — never of a gate passing by itself.
+  const locks = useMemo(
+    () => (project ? registerLocks(project, config) : { columns: new Map<string, string>(), rows: undefined }),
+    [project, config],
   );
-  const frozenBy = (columnKey: string) => cellFrozenBy(passedGates, config, columnKey);
-  // Once any column of the register is frozen rows can be neither added nor removed (SW-5).
-  const rowsFrozen = rowsFrozenBy(passedGates, config);
+  const frozenBy = (columnKey: string) => locks.columns.get(columnKey);
+  // Once a closure stands on a free-form register rows can be neither added nor removed.
+  const rowsFrozen = locks.rows;
+  const rowsFrozenReason = registerLockReason;
   // SW-34: important cells and rows are the register's assigned people's alone.
   const access = useRegisterAccess(project, config);
   const removeBlock = (row: RegisterRow) =>

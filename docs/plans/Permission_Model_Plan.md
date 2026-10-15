@@ -84,7 +84,7 @@ Lý do: quyết định chuyên môn (Regulatory/Safety chấp nhận finding) �
 | **1** (đã xây 15/10/2026) | Watch-list: Reviewer là ô chọn người, ứng viên theo role đúng chức năng của finding; chỉ người được chọn ghi Non-critical / Further information required; giữ `accept-*` làm danh sách ứng viên; cập nhật SW-32, câu 9 | `check`, `verify:readiness`, `verify:watchlist-authority`, thử API |
 | **2** (đã xây 15/10/2026; các biểu mẫu trang phase chưa áp) | Cờ `sensitive` trên cột cấu hình; khóa mọi sổ theo phân công (server 403 + giao diện mờ); ba sổ ngoại lệ | `verify:freeze`, ca mới cho quyền theo sổ, thử API |
 | **3** (đã xây 15/10/2026; `verify:e2e` chưa chạy lại) | Khối người đại diện chức năng ở bảy gate quan trọng; khóa khối ba chữ ký (giao diện và server); ứng viên theo role | ca mới trong `verify:e2e`, thử API |
-| **4** | Đóng sổ theo gate (A): bản chụp theo cột, mục readiness, migration chuyển chữ ký đóng cũ | `verify:readiness`, `verify:scaffold`, `generate:column-reads`, `verify:e2e` |
+| **4** (đã xây 15/10/2026; `verify:e2e` chạy lại cùng giai đoạn 5; phạm vi khóa là cột "đã chốt", xem §10 và SW-36) | Đóng sổ theo gate (A): bản chụp theo cột, mục readiness, migration chuyển chữ ký đóng cũ | `verify:readiness`, `verify:scaffold`, `generate:column-reads`, `verify:e2e` |
 | **5** | Gỡ `gate:decide`, `phase:approve`, `market-track|approve` khỏi seed và Role Editor; migration xóa quyền đã cấp; chạy `verify:e2e` đầy đủ | `verify:e2e` (DB riêng, khoảng 8 phút), `check`, `lint` |
 
 Mỗi giai đoạn kết thúc bằng một commit riêng, chạy đủ bộ kiểm chứng của CLAUDE.md (build gốc, `verify:readiness`, `verify:scaffold`, `lint`, script gần nhất và một kiểm tra trực tiếp hành vi mới).
@@ -95,3 +95,34 @@ Mỗi giai đoạn kết thúc bằng một commit riêng, chạy đủ bộ ki�
 - GĐ 2 áp lên toàn bộ ~82 sổ: cần danh sách cột `sensitive` được chủ dự án duyệt trước khi bật khóa.
 - GĐ 4 đổi nghĩa chữ ký đóng sổ: cần kiểm thử migration trên dữ liệu có chữ ký đóng sẵn.
 - Dev server đang chạy: không dùng `npm run build` và không kill tiến trình; dùng `npm run check` và API tạm trên cổng khác.
+
+## 10. Giai đoạn 4 chi tiết: đóng sổ theo gate (chốt 15/10/2026; đã xây, SW-36)
+
+> **Điều chỉnh khi xây:** phạm vi khóa/băm của một chữ ký đóng là các cột **đã chốt** tại gate đó (thuộc gate đó hoặc sớm hơn, `columnsByAccountability`), không phải "các cột gate đó đọc" như mục 10.1(2)–(3) viết ban đầu, vì cột Product status của watch-list được Gate 4 đọc nhưng còn cập nhật đến Gate 7. Hàm gom lý do khóa là `registerLockViolations` / `registerLockReason` trong `utils/registerClosures.ts`.
+
+### 10.1 Điều đã chốt
+1. **Mỗi chữ ký đóng thuộc một cặp (sổ, gate).** Tại gate G cần đóng: mọi sổ mà readiness của G **đọc** (theo `REGISTER_READS_BY_GATE`) + sổ mà G là gate cao nhất nhưng không gate nào đọc (sổ chỉ là bằng chứng, giữ hành vi cũ). Chỉ tính ở đúng gate đó, không cộng dồn.
+2. **Đóng khóa phần G đọc:** các cột G đọc ở sổ và việc thêm/xóa dòng. Sổ mà G chỉ đọc "có dòng" thì chỉ khóa số dòng. Sổ bằng chứng thuần thì khóa cả sổ. Cột không ai đọc vẫn sửa được.
+3. **Mã băm** chỉ gồm các cột được khóa và số dòng. **Hiện chưa có dự án nào (chủ dự án xác nhận 15/10/2026), nên không chuyển dữ liệu cũ:** migration chỉ đổi cấu trúc và dừng với thông báo nếu bất ngờ gặp hàng đóng sổ.
+4. **Hàng chữ ký tạo lười** (khi ký hoặc rút), như chữ ký gate; không hàng nghĩa là chưa ký. Bỏ phần kiểm hàng đóng sổ khỏi `verify:scaffold`.
+5. **Bỏ khóa tự động theo gate đã qua (SW-5) cho sổ.** Khóa của sổ chỉ còn hai nguồn đều do chữ ký: chữ ký đóng sổ, và chữ ký gate đang đứng (không còn bỏ qua gate đã qua). Backtrack vẫn là cách mở duy nhất. Dữ liệu **không phải sổ** (BOM, chi phí, bao bì BOM, checklist, requirement, Key Gate Check, Next Action) **giữ khóa tự động khi gate qua** vì chưa có cơ chế chốt thay thế.
+6. **Không rút được chữ ký đóng sổ của một gate đã qua** (chỉ Backtrack), như chữ ký gate.
+7. **Gom mọi lý do khóa của sổ vào một hàm duy nhất** `registerLockReason(project, config, columnKey, row)` trong `packages/shared`, server và giao diện cùng đọc, trả về lý do (đóng cho Gate N / chữ ký gate N đang đứng) hoặc rỗng.
+
+### 10.2 Việc phải làm
+| Bước | Nội dung |
+|---|---|
+| 1 | Schema: `RegisterClosure` thêm `gateId`, khóa duy nhất `(projectId, registerKey, gateId)`. Migration chỉ đổi cấu trúc (không chuyển dữ liệu; dừng nếu còn hàng đóng sổ). Dựng danh sách cặp sổ-gate cần đóng từ cấu hình |
+| 2 | Shared: hàm `requiredRegisterClosures(gateId)`; `registerClosureContent(project, key, gateId)` băm theo cột; khóa kiểu `registerKey|gateId` cho `project.registerClosures`; `registerLockReason` |
+| 3 | Server: mapper (stale theo cặp), preview, step-up, sign, withdraw nhận `gateId`; `setRegisterRows` dùng `registerLockReason` thay `isGateRefLocked` cho sổ và `hasStandingClosureSignature`; bỏ qua việc bỏ qua gate đã qua trong khóa chữ ký gate; từ chối rút chữ ký đóng của gate đã qua |
+| 4 | Readiness: `unclosedRegistersBlocking` theo `requiredRegisterClosures(G)`, liên kết tới khối đóng của gate đó |
+| 5 | Giao diện: trang sổ hiện một khối đóng cho mỗi gate đọc nó (có modal xem trước các cột của gate đó); bảng và ngăn chi tiết làm mờ ô bằng `registerLockReason`; panel readiness liệt kê sổ cần đóng ở gate hiện tại |
+| 6 | Cập nhật `verify:freeze`, `verify:actions`, `verify-register-freeze`, `check-scaffold-drift`, `seed-gate-project.ts` (đóng sổ theo cặp), các ca `verify:e2e` về đóng sổ; thêm `verify:register-closure` cho các luật mới |
+| 7 | Ghi SW-5 (sửa), SW mới cho đóng sổ theo gate; cập nhật CLAUDE.md |
+
+### 10.3 Kiểm chứng
+`check`, `verify:readiness`, `verify:scaffold`, `generate:column-reads`, `verify:freeze`, `verify:actions`, `verify:register-closure` (mới), `lint`; thử API trên DB tạm (đóng sổ cho Gate 4 khóa đúng cột Gate 4, cột Gate 7 vẫn sửa được, thêm dòng bị từ chối, rút chữ ký đóng của gate đã qua bị từ chối); `verify:e2e` đầy đủ ở giai đoạn 5.
+
+### 10.4 Rủi ro
+- Đổi khóa của sổ chạm nhiều đường ghi: cần `registerLockReason` là điểm gọi duy nhất, nếu không giao diện và server sẽ lệch.
+- Dev server đang chạy: không dùng `npm run build`; thử bằng API tạm trên cổng khác.

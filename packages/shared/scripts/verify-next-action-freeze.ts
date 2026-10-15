@@ -8,9 +8,9 @@
 // sign-off item IN THIS PROCESS ONLY, so they can pass without every unrelated item.
 // Run: npm run verify:actions
 import { GATE_READINESS } from '../src/config/gateReadiness';
-import { REGISTER_CONFIGS } from '../src/config/registers';
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
-import { gateRefHighestGateId, gateBlockers, gateSignOffStaleChanges, isGatePassed } from '../src/utils/gateProgress';
+import { gateBlockers, gateSignOffStaleChanges, isGatePassed } from '../src/utils/gateProgress';
+import { closureKey, requiredRegisterClosures } from '../src/utils/registerClosures';
 import { gateEvidenceSnapshot } from '../src/utils/gateSnapshot';
 import { nextActionFreeze, nextActionFreezeViolation } from '../src/utils/nextActionAccess';
 import type { NextAction, ProjectData } from '../src/types';
@@ -29,9 +29,9 @@ for (const g of ['SG01', 'SG02', 'SG03']) {
   record.decision = 'Proceed with Conditions';
 }
 const signed = { signedByUserId: 'u', signedAt: '2026-01-01T00:00:00Z' };
-for (const c of REGISTER_CONFIGS) {
-  if (['SG01', 'SG02', 'SG03'].includes(gateRefHighestGateId(c.gate) ?? '')) {
-    base.registerClosures[c.key] = { signOffs: [{ role: 'Review owner', ...signed }, { role: 'Co-sign', ...signed }] } as never;
+for (const g of ['SG01', 'SG02', 'SG03']) {
+  for (const { registerKey } of requiredRegisterClosures(g)) {
+    base.registerClosures[closureKey(registerKey, g)] = { signOffs: [{ role: 'Review owner', ...signed }, { role: 'Co-sign', ...signed }] } as never;
   }
 }
 const act = (id: string, status: string, priority: string, extra: Partial<NextAction> = {}): NextAction =>

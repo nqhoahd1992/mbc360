@@ -1,5 +1,6 @@
 import { getRegisterConfig } from '../config/registers';
 import type { ProjectData } from '../types';
+import { closureColumns } from './registerClosures';
 
 // What a closing signature on a register attests to: the register's rows exactly as they stand, in the
 // column order the register itself declares. This is the ONE definition — the signing preview shows it
@@ -13,10 +14,12 @@ export interface RegisterClosureContent {
   rows: Record<string, string>[];
 }
 
-export function registerClosureContent(project: ProjectData, registerKey: string): RegisterClosureContent | undefined {
+// With `gateId` the content is only what a closure at that gate attests to: the register's settled columns at that gate (SW-36).
+export function registerClosureContent(project: ProjectData, registerKey: string, gateId?: string): RegisterClosureContent | undefined {
   const config = getRegisterConfig(registerKey);
   if (!config) return undefined;
-  const columns = config.columns.map((c) => ({ key: c.key, label: c.label }));
+  const covered = gateId ? new Set(closureColumns(config, gateId)) : undefined;
+  const columns = config.columns.filter((c) => !covered || covered.has(c.key)).map((c) => ({ key: c.key, label: c.label }));
   const rows = (project.registers[registerKey] ?? []).map((row) => {
     const cells: Record<string, string> = {};
     for (const c of columns) {

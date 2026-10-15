@@ -783,6 +783,7 @@ export interface GateSigningPreview {
 // now) and the hash the signature is then bound to.
 export interface RegisterClosePreview {
   registerKey: string;
+  gateId: string;
   title: string;
   hash: string;
   previewedAt: string;

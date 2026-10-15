@@ -214,6 +214,14 @@ Round 4 Q29(3)–(4) (nguyên văn): ở bảy gate quan trọng (3, 4, 7, 8, 9,
 - Kiểm tra cũ "người review hoặc duyệt giữ quyền chức năng" ở bước ký Approved vẫn chạy như lớp phòng thủ. Gate không quan trọng (1, 2, 5, 6, 12) không có khối này.
 - Gate đã ký dở trước thay đổi này: chữ ký đã có giữ nguyên; các chữ ký mới chờ Lead chỉ định người đại diện.
 
+### SW-36. Đóng sổ theo từng gate; khóa của sổ là hệ quả của chữ ký, không tự động — *Đã xây* (2026-10-15, chủ dự án; kế hoạch giai đoạn 4)
+- **Một sổ được đóng một lần cho mỗi gate cần nó.** Gate G cần đóng: mọi sổ mà readiness của G **đọc** (`REGISTER_READS_BY_GATE`) cộng sổ mà G là gate cuối của danh sách nhưng không gate nào đọc; chỉ tính khi gate đó có cột đã "chốt" (`registerClosureGateIds`). Chữ ký đóng thuộc cặp (sổ, gate): Review owner + Co-sign cho **gate đó**, một chữ ký đóng cho gate sớm hơn không tính cho gate sau (`unclosedRegistersBlocking`).
+- **Chữ ký đóng xác nhận và khóa các cột đã chốt tại gate đó**: cột thuộc gate đó hoặc gate sớm hơn (cùng cách chia `columnsByAccountability` mà chữ ký gate dùng), bỏ cột chữ ký. Cột chỉ gate sau nhập vẫn sửa được. Sổ tự do không thêm/xóa hàng được khi còn chữ ký đóng. Mã băm chỉ gồm các cột đó. Chọn "đã chốt" thay vì "gate đọc" vì Product status của watch-list được Gate 4 đọc nhưng còn được cập nhật đến Gate 7.
+- **Không còn khóa tự động theo gate pass đối với sổ (thay phần SW-5/SW-24 cho sổ):** gate qua không tự đóng băng cột; việc khóa chỉ do chữ ký đóng (và chữ ký gate đang đứng nhờ snapshot). Vì mỗi gate chỉ pass khi sổ đã đóng, trên thực tế sổ vẫn được khóa trước khi gate qua. Khóa cả sổ khi mọi gate của nó đã pass (`isGateRefLocked`) vẫn giữ. Dữ liệu không phải sổ (BOM, chi phí, checklist, requirement, Key Gate Check, Next Action) giữ khóa tự động.
+- **Chữ ký đóng của gate đã pass không rút được** (chỉ Backtrack), như chữ ký gate. Rút chữ ký của gate chưa pass cần lý do như trước.
+- Hàng đóng sổ tạo lười khi ký (không còn scaffold), nên `verify:scaffold` không kiểm phần này nữa. Hàm dùng chung: `utils/registerClosures.ts` (server từ chối và bảng làm mờ cùng một câu trả lời). Kiểm: `npm run verify:register-closure`, `verify:e2e`.
+- Chưa có dự án nào khi đổi (chủ dự án xác nhận 15/10/2026): migration `20261015150000_register_closure_per_gate` chỉ đổi cấu trúc và dừng nếu gặp hàng đóng sổ.
+
 ## 3. Quyền và truy cập
 
 ### SW-10. Không có role thì không vào được app — *Đã xây* (2026-10-02)

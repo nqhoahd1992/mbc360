@@ -20,7 +20,9 @@ import {
   GATE4_DISPOSITION_OPTIONS,
   REGISTER_CONFIGS,
   SAFETY_COVERAGE_INDIVIDUAL,
+  type RegisterConfig,
 } from '../config/registers';
+import { closureStateAt, requiredRegisterClosures } from './registerClosures';
 import {
   CLAIM_CATEGORIES_NEEDING_REVIEW,
   CLAIM_REVIEWED_WORDING_COLUMN,
@@ -2176,24 +2178,24 @@ export function gateReadinessChecklist(
 // genuinely cannot pass while any of them is open), only the PRESENTATION
 // collapses to one line so the panel stays readable.
 function unclosedRegistersBlocking(project: ProjectData, gateId: string): GateReadinessItem[] {
-  const currentIdx = gateIndex(gateId);
-  const relevant = REGISTER_CONFIGS.filter((config) => {
-    const thresholdId = gateRefHighestGateId(config.gate);
-    return !!thresholdId && gateIndex(thresholdId) <= currentIdx;
-  });
+  // SW-36: a register is closed PER GATE. This gate needs the closure of every register its readiness reads (and of the registers it
+  // is the last gate of), each signed by the Review owner and Co-sign for THIS gate — a closure given for an earlier gate does not count.
+  const relevant = requiredRegisterClosures(gateId)
+    .map(({ registerKey }) => REGISTER_CONFIGS.find((c) => c.key === registerKey))
+    .filter((c): c is RegisterConfig => !!c);
   if (relevant.length === 0) return [];
-  const closedOf = (key: string) => isRegisterClosed(project.registerClosures[key]);
+  const closedOf = (key: string) => isRegisterClosed(closureStateAt(project, key, gateId));
   const unclosed = relevant.filter((config) => !closedOf(config.key));
   // One row per register, in workbook order, each with the page that closes it.
   const list = {
-    title: 'Registers that must be closed',
+    title: `Registers that must be closed for ${gateId}`,
     rows: relevant.map((c) => ({ key: c.key, title: c.title, done: closedOf(c.key), href: `/registers/reg/${c.key}` })),
   };
   if (unclosed.length === 0) {
     return [
       {
         id: 'unclosed-registers',
-        label: `${relevant.length} register(s) closed (Review owner + Co-sign)`,
+        label: `${relevant.length} register(s) closed for this gate (Review owner + Co-sign)`,
         satisfied: true,
         hardBlock: true,
         list,
@@ -2203,7 +2205,7 @@ function unclosedRegistersBlocking(project: ProjectData, gateId: string): GateRe
   return [
     {
       id: 'unclosed-registers',
-      label: `${unclosed.length} of ${relevant.length} register(s) must be closed (Review owner + Co-sign) before this gate can pass`,
+      label: `${unclosed.length} of ${relevant.length} register(s) must be closed for this gate (Review owner + Co-sign) before it can pass`,
       satisfied: false,
       hardBlock: true,
       list,

@@ -334,10 +334,10 @@ async function closeRegisters(ctx: Ctx, adminId: string, gate: string): Promise<
   const keys = (item?.list?.rows ?? []).filter((r) => !r.done).map((r) => r.key);
   const now = new Date();
   for (const key of keys) {
-    const hash = registerContentHashOf(project, key);
+    const hash = registerContentHashOf(project, key, gate);
     const closure = await prisma.registerClosure.upsert({
-      where: { projectId_registerKey: { projectId: ctx.id, registerKey: key } },
-      create: { projectId: ctx.id, registerKey: key },
+      where: { projectId_registerKey_gateId: { projectId: ctx.id, registerKey: key, gateId: gate } },
+      create: { projectId: ctx.id, registerKey: key, gateId: gate },
       update: {},
     });
     for (const role of ['Review owner', 'Co-sign']) {

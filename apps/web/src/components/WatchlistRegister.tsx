@@ -44,6 +44,7 @@ import { usePermissionView } from '../auth/previewMode';
 import { EMPTY_GRANTS, hasCapability } from '../utils/permissions';
 import NextActionSelect from './NextActionSelect';
 import RegisterClosurePanel from './RegisterClosurePanel';
+import { registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import RegisterPageHeader from './RegisterPageHeader';
 import '../styles/concept.css';
 import './WatchlistRegister.css';
@@ -382,13 +383,13 @@ export default function WatchlistRegister({
         </div>
       )}
 
-      {closeable && config.reviewOwner && (
+      {closeable && registerReviewSpec(config) && (
         <RegisterClosurePanel
           projectId={project.identity.id}
           registerKey={config.key}
-          spec={config.reviewOwner}
+          spec={registerReviewSpec(config)!}
           reviewers={project.identity.reviewers}
-          closure={project.registerClosures[config.key]}
+          closures={project.registerClosures}
         />
       )}
 

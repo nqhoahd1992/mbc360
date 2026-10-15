@@ -10,8 +10,8 @@ import {
   type RegisterConfig,
 } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
-import { isGateRefLocked, gateRefHighestGateId } from '@mbc360/shared/utils/gateProgress';
-import { hasStandingClosureSignature, isRegisterClosed } from '@mbc360/shared/types';
+import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import DynamicTable from '../components/DynamicTable';
 import VulnerableUserAssessmentTable from '../components/VulnerableUserAssessmentTable';
 import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
@@ -135,19 +135,13 @@ export default function RegisterHubPage() {
     // — a deliberate two-signature act (Review owner + Co-sign), rather than a
     // consequence of the gate having passed (closing is now a PRECONDITION for
     // that gate — see unclosedRegistersBlocking in gateProgress.ts). Only
-    // registers with a specific gate (gateRefHighestGateId defined) are
-    // closeable at all — the same universe isGateRefLocked already applies to.
-    const closed = isRegisterClosed(project.registerClosures[registerKey]);
-    const closeable = !!gateRefHighestGateId(config.gate);
-    // ANY closing signature that still counts locks the register: the two signers must attest to the same
-    // content, so it cannot move under the first one.
-    const standing = hasStandingClosureSignature(project.registerClosures[registerKey]);
-    const locked = isGateRefLocked(project, config.gate) || standing;
-    const lockedReason = closed
-      ? 'Closed — both Review owner and Co-sign have signed. To correct it, withdraw a signature in the Register Closing card above, or Backtrack past the gate that depends on it.'
-      : standing
-        ? 'A closing signature stands, so this register is read-only — both signers must attest to the same content. To change it, withdraw that signature in the Register Closing card (with a reason).'
-        : undefined; // undefined falls back to the gate-passed message, the other lock reason
+    // registers with a gate that settles something (registerClosureGateIds) are
+    // closeable at all.
+    const closeable = registerClosureGateIds(config).length > 0;
+    // SW-36: a closing signature locks only the columns settled at its gate (the table greys those cells itself);
+    // the register as a whole is read-only only once every gate it belongs to has passed.
+    const locked = isGateRefLocked(project, config.gate);
+    const lockedReason = undefined; // undefined falls back to the gate-passed message
 
     // Redesigned 2026-10-02 (wireframe option A): its own page layout — header,
     // progress, decision table + detail drawer, closing at the bottom. The pilot
@@ -244,13 +238,13 @@ export default function RegisterHubPage() {
             embedded
           />
         )}
-        {closeable && config.reviewOwner && (
+        {closeable && registerReviewSpec(config) && (
           <RegisterClosurePanel
             projectId={id}
             registerKey={registerKey}
-            spec={config.reviewOwner}
+            spec={registerReviewSpec(config)!}
             reviewers={project.identity.reviewers}
-            closure={project.registerClosures[registerKey]}
+            closures={project.registerClosures}
           />
         )}
       </div>

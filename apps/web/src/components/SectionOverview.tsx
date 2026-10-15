@@ -6,7 +6,7 @@ import { GATES } from '@mbc360/shared/config/gates';
 import { getRegisterConfig, navItemHref, type NavGroup, type NavItem } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import type { ProjectData } from '@mbc360/shared/types';
-import { isRegisterClosed } from '@mbc360/shared/types';
+import { isRegisterFullyClosed } from '@mbc360/shared/utils/registerClosures';
 import { currentGateIndex, gateRefGateIds, isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import '../styles/concept.css';
 import '../pages/AdminUsers.css';
@@ -65,7 +65,7 @@ export default function SectionOverview({
       gateNumbers: gateIds.map((g) => GATES.find((x) => x.id === g)?.number ?? g),
       due: !!current && gateIds.includes(current.id),
       locked: isGateRefLocked(project, item.gate),
-      closed: !!item.registerKey && isRegisterClosed(project.registerClosures[item.registerKey]),
+      closed: !!config && isRegisterFullyClosed(project, config),
       isPage: !config,
       rows: rows.length,
       completed: statusCol ? rows.filter((r) => r.status === 'Completed' || r.status === 'Complete').length : undefined,

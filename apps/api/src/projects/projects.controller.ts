@@ -485,15 +485,15 @@ export class ProjectsController {
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('registerKey') registerKey: string,
-    @Body() body: { role: RegisterClosureSignOff['role']; code: string; expectedHash?: string },
+    @Body() body: { gateId?: string; role: RegisterClosureSignOff['role']; code: string; expectedHash?: string },
   ) {
-    return this.projects.verifyRegisterCloseStepUp(user, id, registerKey, body.role, body.code, body.expectedHash);
+    return this.projects.verifyRegisterCloseStepUp(user, id, registerKey, body.gateId, body.role, body.code, body.expectedHash);
   }
 
   // What the closer reads before signing — read-only, any signed-in user.
   @Get(':id/registers/:registerKey/close/preview')
-  previewRegisterClose(@Param('id') id: string, @Param('registerKey') registerKey: string) {
-    return this.projects.previewRegisterClose(id, registerKey);
+  previewRegisterClose(@Param('id') id: string, @Param('registerKey') registerKey: string, @Query('gateId') gateId?: string) {
+    return this.projects.previewRegisterClose(id, registerKey, gateId);
   }
 
   @Post(':id/registers/:registerKey/close/sign')
@@ -501,9 +501,9 @@ export class ProjectsController {
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('registerKey') registerKey: string,
-    @Body() body: { role: RegisterClosureSignOff['role']; stepUpToken: string; expectedHash?: string },
+    @Body() body: { gateId?: string; role: RegisterClosureSignOff['role']; stepUpToken: string; expectedHash?: string },
   ): Promise<ProjectEnvelope> {
-    return this.projects.signRegisterClose(user, id, registerKey, body.role, body.stepUpToken, body.expectedHash);
+    return this.projects.signRegisterClose(user, id, registerKey, body.gateId, body.role, body.stepUpToken, body.expectedHash);
   }
 
   @Post(':id/registers/:registerKey/close/withdraw')
@@ -511,9 +511,9 @@ export class ProjectsController {
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('registerKey') registerKey: string,
-    @Body() body: { role: RegisterClosureSignOff['role']; reason: string; expectedVersion: number },
+    @Body() body: { gateId?: string; role: RegisterClosureSignOff['role']; reason: string; expectedVersion: number },
   ): Promise<ProjectEnvelope> {
-    return this.projects.withdrawRegisterClose(user, id, registerKey, body.role, body.reason, body.expectedVersion);
+    return this.projects.withdrawRegisterClose(user, id, registerKey, body.gateId, body.role, body.reason, body.expectedVersion);
   }
 
   @Put(':id/evidence')

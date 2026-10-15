@@ -637,9 +637,11 @@ model RegisterClosure {
   project     Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId   String
   registerKey String // RegisterConfig.key
+  // A register is closed per gate (SW-36): this closure attests to, and locks, the register's settled columns at THIS gate.
+  gateId      String
   signOffs    RegisterClosureSignOff[]
 
-  @@unique([projectId, registerKey])
+  @@unique([projectId, registerKey, gateId])
   @@map("register_closures")
 }
 

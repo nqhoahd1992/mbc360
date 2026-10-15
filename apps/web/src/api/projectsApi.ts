@@ -439,43 +439,48 @@ export const withdrawRegisterRowSignature = (
 // straight from the register's own reviewOwner spec.
 // What the closer reads before signing: the register's rows as they are now, and the hash the
 // signature is bound to (same idea as previewGateSignOff).
-export const previewRegisterClose = (id: string, registerKey: string): Promise<RegisterClosePreview> =>
-  request(`/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/close/preview`);
+export const previewRegisterClose = (id: string, registerKey: string, gateId: string): Promise<RegisterClosePreview> =>
+  request(
+    `/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/close/preview?gateId=${encodeURIComponent(gateId)}`,
+  );
 
 export const verifyRegisterCloseStepUp = (
   id: string,
   registerKey: string,
+  gateId: string,
   role: RegisterClosureRole,
   code: string,
   expectedHash: string,
 ): Promise<{ stepUpToken: string }> =>
   request(`/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/close/step-up`, {
     method: 'POST',
-    body: JSON.stringify({ role, code, expectedHash }),
+    body: JSON.stringify({ gateId, role, code, expectedHash }),
   });
 
 export const signRegisterClose = (
   id: string,
   registerKey: string,
+  gateId: string,
   role: RegisterClosureRole,
   stepUpToken: string,
   expectedHash: string,
 ) =>
   request<ProjectEnvelope>(
     `/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/close/sign`,
-    { method: 'POST', body: JSON.stringify({ role, stepUpToken, expectedHash }) },
+    { method: 'POST', body: JSON.stringify({ gateId, role, stepUpToken, expectedHash }) },
   );
 
 export const withdrawRegisterClose = (
   id: string,
   registerKey: string,
+  gateId: string,
   role: RegisterClosureRole,
   reason: string,
   expectedVersion: number,
 ) =>
   request<ProjectEnvelope>(
     `/projects/${encodeURIComponent(id)}/registers/${encodeURIComponent(registerKey)}/close/withdraw`,
-    { method: 'POST', body: JSON.stringify({ role, reason, expectedVersion }) },
+    { method: 'POST', body: JSON.stringify({ gateId, role, reason, expectedVersion }) },
   );
 
 export const setEvidenceSummary = (id: string, phase: number, value: string, v: number) =>
