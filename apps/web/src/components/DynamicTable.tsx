@@ -28,6 +28,7 @@ import RegisterSignatureCell from './RegisterSignatureCell';
 import { spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
 import { cellFrozenBy, frozenGateSet, rowsFrozenBy, rowsFrozenReason } from '@mbc360/shared/utils/registerRowLocks';
 import { useAppStore } from '../store/useAppStore';
+import { useRegisterAccess } from '../hooks/useRegisterAccess';
 import '../styles/concept.css';
 import './DynamicTable.css';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
@@ -178,8 +179,11 @@ export default function DynamicTable({
   const frozenBy = (columnKey: string) => cellFrozenBy(passedGates, config, columnKey);
   // Once any column of the register is frozen rows can be neither added nor removed (SW-5).
   const rowsFrozen = rowsFrozenBy(passedGates, config);
+  // SW-34: important cells and rows are the register's assigned people's alone.
+  const access = useRegisterAccess(project, config);
   const removeBlock = (row: RegisterRow) =>
-    removeBlockedReason?.(row) ?? (rowsFrozen ? rowsFrozenReason(rowsFrozen) : undefined);
+    removeBlockedReason?.(row) ??
+    (rowsFrozen ? rowsFrozenReason(rowsFrozen) : access.canChangeRows ? undefined : access.reason);
   const [openIndex, setOpenRaw] = useState<number | null>(null);
   // The row "Add row" just created, until the drawer moves off it. Closing the
   // drawer on it while it is still blank discards it (2026-10-03, user-reported:
@@ -299,7 +303,7 @@ export default function DynamicTable({
     const custom = renderCell?.(column, row, index, {
       patch: (key, v) => patch(index, key, v),
       patchRow: (values) => update((prev) => patchArray(prev, index, values)),
-      readOnly: !!readOnly || !!frozenGate,
+      readOnly: !!readOnly || !!frozenGate || access.cellBlocked(column.key, row),
       draft,
     });
     if (custom !== undefined) return custom;
@@ -307,7 +311,7 @@ export default function DynamicTable({
     // A gate reference is read-only by nature: shown as the gate it names, linking to it.
     if (column.gateLink) return <GateLink value={text(row[column.key])} />;
 
-    const editable = column.editable !== false && !readOnly && !frozenGate;
+    const editable = column.editable !== false && !readOnly && !frozenGate && !access.cellBlocked(column.key, row);
     const value = row[column.key];
 
     // A column marked `inheritFromClaim` is not entered here at all: it shows
@@ -644,9 +648,9 @@ export default function DynamicTable({
         )}
         {isRegister && (
           <div className="rt-add">
-            <Tooltip title={rowsFrozen ? rowsFrozenReason(rowsFrozen) : undefined}>
+            <Tooltip title={rowsFrozen ? rowsFrozenReason(rowsFrozen) : access.canChangeRows ? undefined : access.reason}>
               <span style={{ display: 'block' }}>
-                <Button type="dashed" block icon={<PlusOutlined />} onClick={addRow} disabled={!!rowsFrozen}>
+                <Button type="dashed" block icon={<PlusOutlined />} onClick={addRow} disabled={!!rowsFrozen || !access.canChangeRows}>
                   Add row
                 </Button>
               </span>

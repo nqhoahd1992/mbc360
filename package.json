@@ -19,6 +19,7 @@
     "lint": "oxlint",
     "verify:readiness": "tsx packages/shared/scripts/verify-readiness.ts",
     "verify:ack": "tsx packages/shared/scripts/verify-readiness-ack.ts",
+    "verify:register-access": "tsx packages/shared/scripts/verify-register-access.ts",
     "verify:watchlist-authority": "tsx packages/shared/scripts/verify-watchlist-authority.ts",
     "verify:project-stop": "tsx packages/shared/scripts/verify-project-stop.ts",
     "verify:change-access": "tsx packages/shared/scripts/verify-change-access.ts",

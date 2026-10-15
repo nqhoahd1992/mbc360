@@ -36,6 +36,7 @@ import DrawerSaveFooter from './DrawerSaveFooter';
 import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import SaveBar from './SaveBar';
 import { usePickerUsers } from '../hooks/useUserOptions';
+import { useRegisterAccess } from '../hooks/useRegisterAccess';
 import { useSession } from '../auth/useSession';
 import GateLink from './GateLink';
 import { useAppStore } from '../store/useAppStore';
@@ -104,6 +105,8 @@ export default function WatchlistRegister({
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
   // Cells frozen by a gate that has passed or is signed (SW-5, SW-24) are greyed out, as the server will refuse them.
   const freeze = useRegisterFreeze(project, config);
+  // SW-34: important cells are the register's assigned people's alone (the Reviewer named on a row counts for that row).
+  const access = useRegisterAccess(project, config);
   const [filter, setFilter] = useState<Filter>('all');
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   useExclusiveDrawer(openIndex !== null, () => setOpenIndex(null));
@@ -224,7 +227,7 @@ export default function WatchlistRegister({
       value={text(row.productStatus) || undefined}
       placeholder="Select…"
       options={columnOptions(config, 'productStatus')}
-      disabled={readOnly || freeze.isFrozen('productStatus')}
+      disabled={readOnly || freeze.isFrozen('productStatus') || access.cellBlocked('productStatus', row)}
       popupMatchSelectWidth={false}
       onChange={(v: string) => patch(index, { productStatus: v })}
     />
@@ -236,7 +239,7 @@ export default function WatchlistRegister({
       placeholder="Not dispositioned"
       allowClear
       options={columnOptions(config, 'gate4Disposition')}
-      disabled={readOnly || freeze.isFrozen('gate4Disposition')}
+      disabled={readOnly || freeze.isFrozen('gate4Disposition') || access.cellBlocked('gate4Disposition', row)}
       popupMatchSelectWidth={false}
       onChange={(v?: string) => patch(index, { gate4Disposition: v ?? '' })}
     />
@@ -438,7 +441,7 @@ export default function WatchlistRegister({
             gaps={watchlistReviewGaps(draftProject, openRow)}
             hits={bomHits.get(text(openRow.ingredientGroup)) ?? []}
             readOnly={readOnly}
-            isFrozen={freeze.isFrozen}
+            isFrozen={(key) => freeze.isFrozen(key) || access.cellBlocked(key, openRow)}
             onPatch={(values) => patch(openIndex, values)}
           />
         )}

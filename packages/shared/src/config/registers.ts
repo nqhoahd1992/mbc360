@@ -41,6 +41,9 @@ export interface RegisterColumn {
   // An identifier: no two rows of the register may hold the same value (blank is not a value). Refused on save in the
   // table and again by the API; compared without regard to case or surrounding spaces.
   unique?: true;
+  // Whether changing this column needs the register's assigned people (SW-34). Left unset it follows the column's kind: a status,
+  // an assessment, an approval tick, a signature, or a person who recorded an act is important; text, dates, numbers and links are not.
+  sensitive?: boolean;
   // A workbook gate reference ("04_Ingredient_Screening") shown as "Gate 04 · <name>" and linking to that gate's page.
   gateLink?: true;
   // `and` adds a second condition that must hold too (e.g. Closed AND High/Critical severity).

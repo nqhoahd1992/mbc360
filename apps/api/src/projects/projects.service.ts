@@ -50,6 +50,7 @@ import { gate11ConditionalChanges } from '@mbc360/shared/utils/changeImpact';
 import { frozenGateSet, registerFreezeViolations } from '@mbc360/shared/utils/registerRowLocks';
 import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
 import { RM_EVIDENCE_REGISTER, rmEvidenceContradictions } from '@mbc360/shared/utils/rmEvidence';
+import { registerAccessReason, registerAccessViolations } from '@mbc360/shared/utils/registerAccess';
 import {
   WATCHLIST_REGISTERS,
   brokenNextActionLinks,
@@ -2567,6 +2568,21 @@ export class ProjectsService {
           const old = (recordId && committedRows.find((c) => String(c.recordId ?? '').trim() === recordId)) || committedRows[i];
           for (const c of attestColumns) assertSelfAttested(c.label, old?.[c.key], r[c.key], user.displayName);
         });
+      }
+      // SW-34: the important cells of a register (a status, an assessment, an approval, a signature, who did something) and its
+      // rows are the assigned people's alone — the register's Review owner, Co-review and Co-sign on this project, the Lead, an
+      // administrator, and the Reviewer named on a row for that row. Plain information stays open to every user of the project.
+      {
+        const violations = registerAccessViolations(
+          project,
+          config,
+          project.registers[registerKey] ?? [],
+          rows,
+          { displayName: user.displayName, isAdmin: this.permissions.isAdmin(user) },
+        );
+        if (violations.length > 0) {
+          throw new ForbiddenException(`${registerAccessReason(config)} — not allowed here: ${violations.slice(0, 6).join('; ')}`);
+        }
       }
       // SW-32: the Reviewer of a finding is a person picked from those who hold the authority the finding needs (its status, else
       // its Owner), and recording an assessment that lets a finding ride on Proceed with Conditions — the acceptance — is done by
