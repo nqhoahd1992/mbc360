@@ -222,6 +222,15 @@ Round 4 Q29(3)–(4) (nguyên văn): ở bảy gate quan trọng (3, 4, 7, 8, 9,
 - Hàng đóng sổ tạo lười khi ký (không còn scaffold), nên `verify:scaffold` không kiểm phần này nữa. Hàm dùng chung: `utils/registerClosures.ts` (server từ chối và bảng làm mờ cùng một câu trả lời). Kiểm: `npm run verify:register-closure`, `verify:e2e`.
 - Chưa có dự án nào khi đổi (chủ dự án xác nhận 15/10/2026): migration `20261015150000_register_closure_per_gate` chỉ đổi cấu trúc và dừng nếu gặp hàng đóng sổ.
 
+### SW-37. Trong dự án, quyết định gate, duyệt phase và duyệt market theo phân công, không theo Role Editor — *Đã xây* (2026-10-15, chủ dự án; kế hoạch giai đoạn 5)
+Ba quyền `gate:SGxx|decide`, `phase:N|approve`, `market-track|approve` đã bỏ (migration `20261015180000_remove_gate_phase_market_capabilities` xóa dòng quyền và mọi lần cấp). Role Editor chỉ còn việc cấp dự án và các màn hình ngoài dự án. Thay bằng (`utils/projectAuthority.ts`, server từ chối và giao diện làm mờ cùng một câu trả lời):
+- **Ghi quyết định gate và Backtrack** (tính trên gate bị backtrack từ đó): người được chỉ định **Approved by** của gate đó (mọi market), Lead dự án, Admin. Người ký Approved ghi quyết định chính bằng chữ ký (q29(5)); việc được Lead chỉ định chính là thẩm quyền nên bước ký không kiểm thêm.
+- **Ký Approved by của phase:** chỉ cần là người Lead đã chỉ định (trước đây còn cần `phase:N|approve`).
+- **Đổi duyệt market (PIF, regulatory, claims, launch):** người được gán vai Regulatory và Project Manager của dự án, Lead, Admin. [ASSUMPTION: R5-Q69] đây là cách đọc của chúng ta về "only Regulatory can approve regulatory decisions" (A4), vì không còn cấp theo role.
+- **Duyệt revision claim (q26):** người đại diện Regulatory (quyền `gate-signoff|represent-regulatory`) **hoặc** người ghi được quyết định Gate 10 theo quy tắc trên.
+- **Đóng/hủy Next Action** (F8): người ghi quyết định của gate đó theo quy tắc trên thay cho "ai được quyết định gate".
+- Kiểm: `npm run verify:project-authority`, `verify:e2e`.
+
 ## 3. Quyền và truy cập
 
 ### SW-10. Không có role thì không vào được app — *Đã xây* (2026-10-02)

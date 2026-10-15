@@ -30,15 +30,12 @@ const CAP_LABELS: Record<string, { group: string; label: string }> = {
   'reference:rm-risk|edit': { group: 'reference', label: 'Edit the raw-material risk overlay' },
   'reference:claims-library|edit': { group: 'reference', label: 'Edit and propose Claims Library entries' },
   'formulation-change|approve-commercial': { group: 'commercial', label: 'Sign the commercial (NP) approval on a formulation change' },
-  'market-track|approve': { group: 'commercial', label: 'Approve market PIF, regulatory, claims and launch statuses' },
   // Deleting a project is deliberately NOT a capability: it is an isAdmin()
   // check in the API, so it cannot be handed to another role from here.
   'project|archive': { group: 'commercial', label: 'Archive and restore a project' },
 };
 
 const GROUP_META: Omit<CapGroup, 'caps'>[] = [
-  { key: 'gate', title: 'Gate decisions', hint: 'Record the decision that passes a gate' },
-  { key: 'phase', title: 'Phase approvals', hint: 'Sign the “Approved by” row that closes a phase' },
   { key: 'signoff', title: 'Gate sign-off representation', hint: "Count as that function on a critical gate's sign-off" },
   { key: 'claims', title: 'Claims' },
   { key: 'accept', title: 'Accept under conditions', hint: 'Carry an open item under Proceed with Conditions' },

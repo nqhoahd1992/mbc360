@@ -165,9 +165,10 @@ export const REVISION_APPROVAL_COLUMNS = ['revisionApprovedBy', 'revisionApprove
 
 // Question 26: a revision is frozen once it "receives Regulatory or Gate 10
 // approval". Who may record that approval is our reading of those two words —
-// a Regulatory representative, or someone who may decide Gate 10
+// a Regulatory representative (the capability below), or someone who may decide Gate 10 on this project
+// (its nominated Approved-by signer, the Lead or an administrator: `canDecideGate` in projectAuthority.ts)
 // [ASSUMPTION: R5-Q37].
-export const REVISION_APPROVAL_CAPABILITIES = ['gate-signoff|represent-regulatory', 'gate:SG10|decide'] as const;
+export const REVISION_APPROVAL_CAPABILITIES = ['gate-signoff|represent-regulatory'] as const;
 
 // Rows whose "Revision approved by" is newly set or changed in this save to
 // anyone other than `actorName`. An approval names the person who gave it; a

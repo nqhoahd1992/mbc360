@@ -835,6 +835,12 @@ export async function run(base: string, db: Client): Promise<number> {
     expectedVersion: await version(),
   });
   t('somebody who is not the project Lead cannot nominate a phase signer (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  // SW-37: inside a project authority is assignment — a person who is neither the gate's nominated approver nor the Lead
+  // nor an administrator records no decision, and a person outside Regulatory / Project Manager changes no market approval.
+  r = await api('tuan', 'PUT', `/projects/${PROJECT}/gates/SG04`, { decision: 'Proceed', expectedVersion: await version() });
+  t('a person who is not the gate approver, the Lead or an administrator cannot record a gate decision (403)', r.status === 403 && String(r.json?.message).includes('Approved by'), `${r.status} ${short(r.json)}`);
+  r = await api('tuan', 'PUT', `/projects/${PROJECT}/market-tracks`, { tracks: [], expectedVersion: await version() });
+  t('...nor change market approvals (403)', r.status === 403 && String(r.json?.message).includes('Regulatory'), `${r.status} ${short(r.json)}`);
   r = await signPhase(1, 'Prepared by');
   t('signing with nobody nominated is refused (400)', r.status === 400 || r.status === 403 || r.status === 404, `${r.stage} ${r.status} ${short(r.json)}`);
   r = await nominatePhase(1);

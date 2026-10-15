@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Popconfirm } from 'antd';
 import { RightOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
-import { GATES, PHASES } from '@mbc360/shared/config/gates';
 import { reviewRoleLabel, rolesAssignedTo } from '@mbc360/shared/config/reviewers';
 import {
   deleteMySignature,
@@ -70,13 +69,8 @@ export default function MyAccount() {
   const capabilities = useMemo(() => {
     const roleKeys = (user?.roles ?? []).map((r) => r.key);
     const granted = new Set(roleKeys.flatMap((key) => permissionGrid?.grants[key] ?? []));
-    const gateNumbers = GATES.filter((g) => granted.has(`gate:${g.id}|decide`)).map((g) => g.number);
-    const phaseNumbers = PHASES.filter((p) => granted.has(`phase:${p.phase}|approve`)).map((p) => p.phase);
     return {
       granted,
-      gateNumbers,
-      phaseNumbers,
-      marketTrack: granted.has('market-track|approve'),
       archive: granted.has('project|archive'),
       any: granted.size > 0,
     };

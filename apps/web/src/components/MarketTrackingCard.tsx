@@ -5,7 +5,8 @@ import type { MarketApprovalStatus, MarketTrack } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { roleLabel } from '../utils/roles';
-import { canEditMarketTrack, EMPTY_GRANTS } from '../utils/permissions';
+import { canChangeMarketTracks, MARKET_TRACKS_REASON } from '@mbc360/shared/utils/projectAuthority';
+import { useSession } from '../auth/useSession';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import { TEXT, TABLE_STICKY } from '../theme/tokens';
@@ -43,10 +44,11 @@ export default function MarketTrackingCard({
 }) {
   const setTracksBulk = useAppStore((s) => s.setMarketTracksBulk);
   const permissionView = usePermissionView();
-  const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
+  const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
+  const { user } = useSession();
   const { draft, dirty, update, markSaved, discard } = useDraft(tracks);
-  // A4 example ruling: "only Regulatory can approve regulatory decisions".
-  const canEdit = permissionView.roleKeys.some((k) => canEditMarketTrack(grants, k));
+  // SW-37: the project's Regulatory and Project Manager people, the Lead and administrators.
+  const canEdit = !!project && canChangeMarketTracks(project, { displayName: user?.displayName ?? '', isAdmin: permissionView.isAdmin });
 
   const patch = (index: number, p: Partial<MarketTrack>) => update((prev) => patchArray(prev, index, p));
   // F4: an older version's track is closed for approvals — its Gate 10-12 work
@@ -105,8 +107,8 @@ export default function MarketTrackingCard({
           type="info"
           showIcon
           style={{ marginBottom: 12 }}
-          title={`Market approvals are restricted to Regulatory — ${permissionView.previewing ? `previewing as ${roleLabel(permissionView.previewRole!)}` : 'your role is not granted it'}`}
-          description="Notes stay open to contributors. RBAC demo simulation — the real role matrix is pending confirmation (F6)."
+          title={`${MARKET_TRACKS_REASON}${permissionView.previewing ? ` — previewing as ${roleLabel(permissionView.previewRole!)}` : ''}`}
+          description="Notes stay open to contributors."
         />
       )}
       <Table

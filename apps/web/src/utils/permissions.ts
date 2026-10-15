@@ -3,16 +3,10 @@ import { referenceEditCapability, type ReferenceDataset } from '@mbc360/shared/c
 
 // The role x capability permission grid, loaded from the backend
 // (`GET /api/rbac/permissions-grid`) into the store. A capability id is
-// `${resource}|${action}` — the same format the API returns — e.g.
-// `gate:SG07|decide`, `phase:3|approve`, `market-track|approve`.
+// `${resource}|${action}` — the same format the API returns — e.g. `project|archive`.
 //
-// This replaces the old keyword-match token logic (`canDecideGate` etc. in
-// @mbc360/shared/config/roles) as the runtime source for the frontend "View
-// as" demo simulation (2026-07-23, user-requested): editing a role's
-// capabilities in the Users & Roles Role Editor now changes what that role
-// can do here, live, once the grid is reloaded. The shared token functions
-// remain only as the SEED DEFAULT that `seedRbac()` uses to populate the DB
-// grid initially.
+// Since SW-37 (2026-10-15) the grid holds only project-level actions and the screens outside a project; gate decisions,
+// phase approvals and market approvals follow the project's assignment instead (@mbc360/shared/utils/projectAuthority).
 export interface PermissionDef {
   id: string;
   resource: string;
@@ -43,18 +37,6 @@ function has(grants: Record<string, string[]>, roleKey: string, capabilityId: st
 // server and cannot be granted from the Roles page.
 export function canArchiveProject(grants: Record<string, string[]>, roleKeys: string[]): boolean {
   return roleKeys.some((key) => has(grants, key, 'project|archive'));
-}
-
-export function canDecideGate(grants: Record<string, string[]>, roleKey: string, gateId: string): boolean {
-  return has(grants, roleKey, `gate:${gateId}|decide`);
-}
-
-export function canApprovePhase(grants: Record<string, string[]>, roleKey: string, phase: number): boolean {
-  return has(grants, roleKey, `phase:${phase}|approve`);
-}
-
-export function canEditMarketTrack(grants: Record<string, string[]>, roleKey: string): boolean {
-  return has(grants, roleKey, 'market-track|approve');
 }
 
 // Round 4 question 32(c) (2026-08-24): recording Proceed with Conditions serves as

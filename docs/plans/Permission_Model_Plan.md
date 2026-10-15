@@ -85,7 +85,7 @@ Lý do: quyết định chuyên môn (Regulatory/Safety chấp nhận finding) �
 | **2** (đã xây 15/10/2026; các biểu mẫu trang phase chưa áp) | Cờ `sensitive` trên cột cấu hình; khóa mọi sổ theo phân công (server 403 + giao diện mờ); ba sổ ngoại lệ | `verify:freeze`, ca mới cho quyền theo sổ, thử API |
 | **3** (đã xây 15/10/2026; `verify:e2e` chưa chạy lại) | Khối người đại diện chức năng ở bảy gate quan trọng; khóa khối ba chữ ký (giao diện và server); ứng viên theo role | ca mới trong `verify:e2e`, thử API |
 | **4** (đã xây 15/10/2026; `verify:e2e` chạy lại cùng giai đoạn 5; phạm vi khóa là cột "đã chốt", xem §10 và SW-36) | Đóng sổ theo gate (A): bản chụp theo cột, mục readiness, migration chuyển chữ ký đóng cũ | `verify:readiness`, `verify:scaffold`, `generate:column-reads`, `verify:e2e` |
-| **5** | Gỡ `gate:decide`, `phase:approve`, `market-track|approve` khỏi seed và Role Editor; migration xóa quyền đã cấp; chạy `verify:e2e` đầy đủ | `verify:e2e` (DB riêng, khoảng 8 phút), `check`, `lint` |
+| **5** (đã xây 15/10/2026, SW-37) | Gỡ `gate:decide`, `phase:approve`, `market-track|approve` khỏi seed và Role Editor; migration xóa quyền đã cấp; chạy `verify:e2e` đầy đủ | `verify:e2e` (DB riêng, khoảng 8 phút), `check`, `lint` |
 
 Mỗi giai đoạn kết thúc bằng một commit riêng, chạy đủ bộ kiểm chứng của CLAUDE.md (build gốc, `verify:readiness`, `verify:scaffold`, `lint`, script gần nhất và một kiểm tra trực tiếp hành vi mới).
 

@@ -1542,6 +1542,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q64 | Ma trận an toàn thành phần có cột mã nguyên liệu (`rmCode`) để nối với BOM không | Rà soát luật SME (Round 4 câu 23(b)) | **lộ ra 09/10/2026** |
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
+| R5-Q69 | Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role | Chủ dự án bỏ quyền theo role 15/10/2026 | **lộ ra 15/10/2026** |
 | R5-Q68 | Dòng watch-list thuộc phạm vi kiểm của gate nào: theo cột Linked gate, từ gate được gắn trở đi | Chủ dự án chỉ ra 14/10/2026 | **lộ ra 14/10/2026** |
 | R5-Q67 | Thẩm quyền Safety/Regulatory chấp nhận finding watch-list nằm ở người đánh giá hay người ký gate | Chủ dự án chuyển thẩm quyền 14/10/2026 | **lộ ra 14/10/2026** |
 | R5-Q66 | Change Control mở trước hay sau khi thay đổi xảy ra, và bản ghi được duyệt có là điều kiện để tạo phiên bản công thức không | Chủ dự án hỏi về Change Control 12/10/2026 | **lộ ra 12/10/2026** |
@@ -2298,6 +2299,16 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.
 
 **Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ**, chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+
+#### R5-Q69 · Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role 🔴
+
+**Lộ ra 15/10/2026, khi bỏ ba quyền `gate:decide`, `phase:approve`, `market-track|approve` khỏi Role Editor (SW-37).** A4 của SME nêu ví dụ *"only Regulatory can approve regulatory decisions"*; trước đây `market-track|approve` được cấp cho Regulatory Reviewer. Khi quyền trong dự án theo phân công, cần nói ai trong dự án được đổi duyệt PIF / regulatory / claims / launch của một market.
+
+**Hiện chạy theo (cách đọc của ta, chủ dự án chưa chốt riêng điểm này):** người được gán vai Regulatory và Project Manager của dự án, Lead và Admin.
+
+**Câu hỏi (một dòng xác nhận):** duyệt trạng thái PIF, regulatory, claims và launch của một market có thuộc về người Regulatory (và Project Manager) của dự án không, hay một người khác?
+
+**Nếu trả lời khác:** `canChangeMarketTracks` trong `packages/shared/src/utils/projectAuthority.ts` [ASSUMPTION: R5-Q69].
 
 #### R5-Q68 · Dòng watch-list thuộc phạm vi kiểm của gate nào — theo cột Linked gate, từ gate được gắn trở đi 🔴
 

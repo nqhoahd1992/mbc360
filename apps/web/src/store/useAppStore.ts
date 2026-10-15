@@ -527,9 +527,8 @@ export const useAppStore = create<AppState>()(
         setNextActionsBulk: (id, gateIds, updated) =>
           tryWriteSection(id, (v) => projectsApi.setNextActions(id, gateIds, updated, v)),
 
-        // C5 (launch approval blocked until PIF is Approved) and the
-        // `market-track|approve` permission are now enforced by the API — the
-        // client no longer re-implements either.
+        // C5 (launch approval blocked until PIF is Approved) and who may change market approvals (SW-37)
+        // are enforced by the API — the client no longer re-implements either.
         setMarketTracksBulk: (id, tracks) =>
           writeSection(id, (v) => projectsApi.setMarketTracks(id, tracks, v)),
 

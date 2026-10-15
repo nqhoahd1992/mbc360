@@ -8,10 +8,8 @@ import type { SessionUser } from '../auth/session-user';
 // mapping from @mbc360/shared/config/roles — when follow-up F6 delivers the
 // real matrix, only the DATA changes; every caller of this service stays as-is.
 //
-// Resource / action vocabulary (mirrors apps/web "View as" restrictions):
-//   gate:SG01..SG12 x decide   — record the gate decision (rule B1/A4)
-//   phase:1..4      x approve  — sign the phase "Approved by" row (rule B3)
-//   market-track    x approve  — market PIF/regulatory/launch approvals (A1/C5)
+// Resource / action vocabulary: project-level actions and screens outside a project only (SW-37). Gate decisions, phase
+// approvals and market approvals follow the project's assignment (@mbc360/shared/utils/projectAuthority), not this grid.
 // Contributing evidence needs no permission row — any authenticated active
 // user may contribute (A4: "anyone may contribute evidence").
 @Injectable()
@@ -35,18 +33,6 @@ export class PermissionsService {
       select: { roleId: true },
     });
     return match !== null;
-  }
-
-  canDecideGate(user: SessionUser, gateId: string): Promise<boolean> {
-    return this.hasPermission(user, `gate:${gateId}`, 'decide');
-  }
-
-  canApprovePhase(user: SessionUser, phase: number): Promise<boolean> {
-    return this.hasPermission(user, `phase:${phase}`, 'approve');
-  }
-
-  canApproveMarketTrack(user: SessionUser): Promise<boolean> {
-    return this.hasPermission(user, 'market-track', 'approve');
   }
 
   // Round 4 question 32(c) (2026-08-24): recording Proceed with Conditions serves

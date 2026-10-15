@@ -21,7 +21,7 @@ import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { currentGateIndex, gateIndex, gateReadinessChecklist, isAwaitingDecision, isGatePassed, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
-import { canDecideGate, EMPTY_GRANTS } from '../utils/permissions';
+import { canDecideGate, gateDecisionReason } from '@mbc360/shared/utils/projectAuthority';
 import './GateFlowTable.css';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
@@ -63,7 +63,6 @@ export default function GateFlowTable({
   const changes = useAppStore((s) => s.changes);
   // The role(s) on-screen checks use: your own, or the one being previewed.
   const permissionView = usePermissionView();
-  const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const { user } = useSession();
   const location = useLocation();
   const projectId = project.identity.id;
@@ -195,8 +194,8 @@ export default function GateFlowTable({
         hardBlockers: readinessChecklist.filter((item) => item.hardBlock && !item.satisfied && !item.pending && !item.advisory),
         liveBlockers: readinessChecklist.filter((item) => !item.satisfied && !item.pending && !item.advisory),
         openChanges: openChangesForGate(r.meta.number),
-        // Only a role granted `gate:SGnn|decide` may record the decision.
-        canDecide: permissionView.roleKeys.some((k) => canDecideGate(grants, k, r.meta.id)),
+        // SW-37: the gate's nominated Approved-by signer, the project Lead and administrators record the decision.
+        canDecide: canDecideGate(project, r.meta.id, { displayName: user?.displayName ?? '', isAdmin: permissionView.isAdmin }),
         // C5 soft check (per-market hard blocks live in Market Tracking; the
         // project-level effect of a partially-ready market set is follow-up F4).
         marketsNotReady:
@@ -319,7 +318,7 @@ export default function GateFlowTable({
               {part !== 'signoff' && <>
               {!r.canDecide && !r.locked && (
                 <div style={{ fontSize: 12, color: TEXT.secondary }}>
-                  Decision restricted to {r.meta.primaryOwner}
+                  {gateDecisionReason(r.meta.id)}
                 </div>
               )}
               {/* Also shown while a Critical/High grade is still recorded after the

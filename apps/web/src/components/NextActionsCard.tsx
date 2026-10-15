@@ -13,7 +13,7 @@ import {
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
 import { usePermissionView } from '../auth/previewMode';
-import { EMPTY_GRANTS, canDecideGate } from '../utils/permissions';
+import { canDecideGate } from '@mbc360/shared/utils/projectAuthority';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
@@ -50,7 +50,6 @@ export default function NextActionsCard({
   const setActionsBulk = useAppStore((s) => s.setNextActionsBulk);
   const session = useSession();
   const permissionView = usePermissionView();
-  const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const rows = actions.filter((a) => gateIds.includes(a.gateId));
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
   const openCount = draft.filter((a) => !TERMINAL_STATUSES.includes(a.status)).length;
@@ -115,9 +114,9 @@ export default function NextActionsCard({
     const allowed =
       (!!me && me === raisedBy) ||
       (!!gateOwner && me === gateOwner) ||
-      permissionView.roleKeys.some((k) => canDecideGate(grants, k, a.gateId));
+      canDecideGate(project, a.gateId, { displayName: session.user?.displayName ?? '', isAdmin: permissionView.isAdmin });
     if (!allowed) {
-      return `Only the action's raiser, the ${a.gateId} gate owner or an authorised reviewer (someone who may decide ${a.gateId}) can close or cancel it (F8).`;
+      return `Only the action's raiser, the ${a.gateId} gate owner or an authorised reviewer (the ${a.gateId} approver, the project Lead or an administrator) can close or cancel it (F8).`;
     }
     return null;
   };

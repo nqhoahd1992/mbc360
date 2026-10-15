@@ -6,10 +6,8 @@ import type { PhaseSignedContent, PhaseSignOffEvent, SignOff } from '@mbc360/sha
 import { isSignedOff } from '@mbc360/shared/types';
 import type { PhaseClosure } from '@mbc360/shared/types';
 import type { PhaseCompletionChecklist } from '@mbc360/shared/utils/gateProgress';
-import { PHASES } from '@mbc360/shared/config/gates';
 import { gateSignOffNeedsComment } from '@mbc360/shared/config/gateSignOff';
 import { useAppStore } from '../store/useAppStore';
-import { canApprovePhase, EMPTY_GRANTS } from '../utils/permissions';
 import { useSession } from '../auth/useSession';
 import { usePermissionView } from '../auth/previewMode';
 import { usePickerUsers } from '../hooks/useUserOptions';
@@ -95,9 +93,8 @@ export default function SignOffBlock({
   const setSignOffAssignees = useAppStore((s) => s.setSignOffAssignees);
   const signSignOff = useAppStore((s) => s.signSignOff);
   const withdrawSignOff = useAppStore((s) => s.withdrawSignOff);
-  const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const { user: me } = useSession();
-  const { isAdmin, roleKeys } = usePermissionView();
+  const { isAdmin } = usePermissionView();
   const users = usePickerUsers();
 
   // Only the evidence summary is a free-text field with a draft; a decision and
@@ -158,8 +155,6 @@ export default function SignOffBlock({
   // ProjectIdentity.projectLead stores (the Create form's user picker writes the
   // picked user's displayName) — the server checks the same thing.
   const isLead = !!me && (isAdmin || me.displayName.trim() === projectLead.trim());
-  const canApprove = roleKeys.some((k) => canApprovePhase(grants, k, phase));
-  const phaseDept = PHASES.find((p) => p.phase === phase)?.department;
 
   const userOptions = users.map((u) => ({
     value: u.id,
@@ -188,11 +183,8 @@ export default function SignOffBlock({
 
   // Why the Sign button is unavailable — shown as a tooltip instead of an
   // unexplained disabled button.
-  const blockedReason = (row: SignOff): string | null => {
+  const blockedReason = (): string | null => {
     if (locked) return `Phase ${phase} closure conditions are not met yet`;
-    if (row.role === 'Approved by' && !canApprove) {
-      return `Approving Phase ${phase} needs the phase:${phase}|approve capability (${phaseDept})`;
-    }
     if (!hasSignature) return 'Save a signature in My Account first — every sign-off attaches it';
     if (!totpEnrolled) return 'Set up an authenticator app in My Account first';
     return null;
@@ -310,7 +302,7 @@ export default function SignOffBlock({
         {closure.signOffs.map((r, i) => {
           const signed = isSignedOff(r);
           const mine = !!me && r.assignedToUserId === me.id;
-          const why = signed ? null : blockedReason(r);
+          const why = signed ? null : blockedReason();
           // A fixed order, as on a gate: only the step whose turn it is can be signed.
           const isTurn = !signed && closure.signOffs.slice(0, i).every((p) => isSignedOff(p));
           const laterStanding = closure.signOffs.slice(i + 1).some((p) => isSignedOff(p));

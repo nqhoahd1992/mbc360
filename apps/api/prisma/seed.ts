@@ -18,13 +18,9 @@ import {
   PB_CAUTION_GROUPS,
   PROHIBITED_GROUPS,
 } from '@mbc360/shared/utils/ingredientWatch';
-import { GATES, PHASES } from '@mbc360/shared/config/gates';
 import {
   ADMIN_ROLE,
   SSO_ROLES,
-  canApprovePhase,
-  canDecideGate,
-  canEditMarketTrack,
 } from '@mbc360/shared/config/roles';
 import { REVIEW_ROLES } from '@mbc360/shared/config/reviewers';
 import { REFERENCE_DATASETS } from '@mbc360/shared/config/referenceData';
@@ -116,21 +112,8 @@ async function seedRbac(): Promise<void> {
   }
 
   const permissionDefs: { resource: string; action: string; description: string }[] = [
-    ...GATES.map((g) => ({
-      resource: `gate:${g.id}`,
-      action: 'decide',
-      description: `Record the ${g.id} gate decision (primary owner: ${g.primaryOwner})`,
-    })),
-    ...PHASES.map((p) => ({
-      resource: `phase:${p.phase}`,
-      action: 'approve',
-      description: `Sign the Phase ${p.phase} "Approved by" row (department: ${p.department})`,
-    })),
-    {
-      resource: 'market-track',
-      action: 'approve',
-      description: 'Approve market PIF / regulatory / claims / launch statuses (A1/C5)',
-    },
+    // Gate decisions, phase approvals and market approvals are not capabilities any more (SW-37): inside a project authority
+    // comes from the project's assignment, so the grid keeps only project-level actions and screens outside a project.
     {
       // 2026-07-26, user-requested: "only Project Owner may archive a project".
       // A real capability (not a hard-coded role check) because archiving is
@@ -257,13 +240,6 @@ async function seedRbac(): Promise<void> {
   for (const role of roles) {
     if (role.key === ADMIN_ROLE) continue; // admin short-circuits in PermissionsService
     const grantedIds: string[] = [];
-    for (const gate of GATES) {
-      if (canDecideGate(role.key, gate.id)) grantedIds.push(permissionId(`gate:${gate.id}`, 'decide'));
-    }
-    for (const phase of PHASES) {
-      if (canApprovePhase(role.key, phase.phase)) grantedIds.push(permissionId(`phase:${phase.phase}`, 'approve'));
-    }
-    if (canEditMarketTrack(role.key)) grantedIds.push(permissionId('market-track', 'approve'));
     // Project Owner only, per the user's rule. Not derived from the keyword-match
     // token functions: this one authority WAS stated explicitly, so it is not a
     // guess awaiting F6 like the gate/phase grants around it.

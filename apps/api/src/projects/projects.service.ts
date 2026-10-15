@@ -94,6 +94,7 @@ import { changeTriggerAvailability } from '@mbc360/shared/utils/changeAccess';
 import { READINESS_ACK_OUTCOMES } from '@mbc360/shared/types';
 import { phaseSignContent } from '@mbc360/shared/utils/phaseSignContent';
 import { registerClosureContent, registerRowSignContent } from '@mbc360/shared/utils/registerClosureContent';
+import { canDecideGate as canDecideGateInProject, canChangeMarketTracks as canChangeMarketTracksInProject, gateDecisionReason, MARKET_TRACKS_REASON } from '@mbc360/shared/utils/projectAuthority';
 import { closureKey, registerClosureGateIds, registerLockViolations, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import { registerContentHashOf, registerRowContentHashOf, rowHashFromCells } from './content-hash';
 import { registerRowCells } from '@mbc360/shared/utils/registerClosureContent';
@@ -463,20 +464,13 @@ export class ProjectsService {
     });
   }
 
-  // A4 / F6: only a role granted `gate:<id>|decide` may record that gate's
-  // decision (admin is unrestricted). Contributing evidence needs no permission.
-  //
-  // This is checked HERE, not only in the browser: the Phase Gate Flow table
-  // disables the decision dropdown for a role without the grant, but until this
-  // was added (2026-07-26) a plain `curl` could still write one — verified by
-  // signing in as Read-only Viewer, which holds zero grants, and successfully
-  // recording a decision. Exactly the failure mode BACKEND_PLAN §3 principle 7
-  // exists to prevent ("never left as 'the UI already disables it'").
-  private async assertCanDecide(user: SessionUser, gateId: string): Promise<void> {
-    if (!(await this.permissions.canDecideGate(user, gateId))) {
-      throw new ForbiddenException(
-        `Your role may not record the decision for gate ${gateId} (needs gate:${gateId}|decide)`,
-      );
+  // SW-37: the gate decision (and Backtrack) belongs to the person nominated as "Approved by" for that gate, the project
+  // Lead and administrators — assignment, not a role grid. Checked HERE, not only in the browser (BACKEND_PLAN §3 principle 7).
+  // Contributing evidence needs no permission. Needs the project, so it runs inside the transaction once it is loaded.
+  private assertCanDecide(user: SessionUser, project: ProjectData, gateId: string): void {
+    const actor = { displayName: user.displayName, isAdmin: this.permissions.isAdmin(user) };
+    if (!canDecideGateInProject(project, gateId, actor)) {
+      throw new ForbiddenException(gateDecisionReason(gateId));
     }
   }
 
@@ -1362,14 +1356,8 @@ export class ProjectsService {
       // The three phase signatures are an order, like a gate's (project owner, 2026-10-14): Prepared by, then
       // Reviewed by, then Approved by. A review of nothing, or an approval before the review, is not a sign-off.
       this.assertSequence(await tx.signOff.findMany({ where: { phaseClosureId: closureId } }), role as GateSignOffRole);
-      // The "Approved by" row is a phase APPROVAL on top of being a signature,
-      // so being assigned is necessary but not sufficient: the role must also
-      // hold `phase:N|approve` (project owner's decision, 2026-08-20).
-      if (role === 'Approved by' && !(await this.permissions.canApprovePhase(user, phase))) {
-        throw new ForbiddenException(
-          `Your role may not approve Phase ${phase} (needs phase:${phase}|approve)`,
-        );
-      }
+      // SW-37: the "Approved by" row needs nothing beyond being the person the Lead nominated for it (it used to also need
+      // `phase:N|approve`; the nomination is the authority now).
       // B3: the closure conditions are enforced HERE, not only by the UI lock
       // (BACKEND_PLAN §3 principle 7). Before this, a direct API call could
       // sign a phase whose gates had not passed at all.
@@ -2067,7 +2055,7 @@ export class ProjectsService {
       // decision, and it goes through the SAME B1/F9/F1 guards a direct decision
       // would — otherwise signing would be a way around them.
       if (role === 'Approved by') {
-        await this.assertCanDecide(user, gateId);
+        // The nominated approver signing IS the decision (q29(5)); being nominated is the authority, so no further check.
         const gate = project.gates.find((g) => g.gateId === gateId);
         if (!gate) throw new NotFoundException(`Gate ${gateId} not found`);
         // Evaluated against the project AS IT WILL BE once this signature exists.
@@ -2758,7 +2746,8 @@ export class ProjectsService {
         }
         if (
           newRevisionApprovals(committedClaims, rows).length > 0 &&
-          !(await this.holdsAnyCapability(user, [...REVISION_APPROVAL_CAPABILITIES]))
+          !(await this.holdsAnyCapability(user, [...REVISION_APPROVAL_CAPABILITIES])) &&
+          !canDecideGateInProject(project, 'SG10', { displayName: user.displayName, isAdmin: this.permissions.isAdmin(user) })
         ) {
           throw new ForbiddenException(
             'Approving a claim revision needs Regulatory authority or the right to decide Gate 10',
@@ -4228,7 +4217,7 @@ export class ProjectsService {
     return result;
   }
 
-  // A1/C5: market approvals need `market-track|approve`, and launch approval is
+  // A1/C5: market approvals belong to the project's Regulatory / Project Manager people, the Lead and admins (SW-37), and launch approval is
   // hard-blocked until that market's PIF status is Approved — re-enforced here,
   // not trusted from the draft (ported from the store's setMarketTracksBulk).
   async setMarketTracks(
@@ -4237,10 +4226,10 @@ export class ProjectsService {
     tracks: ProjectData['marketTracks'],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
-    if (!(await this.permissions.canApproveMarketTrack(user))) {
-      throw new ForbiddenException('Your role may not change market approvals (needs market-track|approve)');
-    }
-    return this.mutate(user, id, expectedVersion, 'market_tracks.updated', async (tx, row) => {
+    return this.mutate(user, id, expectedVersion, 'market_tracks.updated', async (tx, row, project) => {
+      if (!canChangeMarketTracksInProject(project, { displayName: user.displayName, isAdmin: this.permissions.isAdmin(user) })) {
+        throw new ForbiddenException(MARKET_TRACKS_REASON);
+      }
       let blocked = 0;
       // F4: a track is one market under one formula version.
       const versionIdOf = new Map(row.formulaVersions.map((v) => [v.version, v.id]));
@@ -5229,15 +5218,14 @@ export class ProjectsService {
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
     const actorId = user.id;
-    // Only a decision change needs the grant — owner/due date/evidence/notes are
-    // ordinary contribution, open to any authenticated user (rule A4).
-    if ('decision' in patch) await this.assertCanDecide(user, gateId);
     const projectId = await this.prisma.$transaction(async (tx) => {
       const row = await this.loadVersionLocked(tx, id, expectedVersion);
       const project = toProjectData(row, [], await this.loadReference(tx));
       const signedLanes = this.standingGateSignatures(project);
       const existing = project.gates.find((g) => g.gateId === gateId);
       if (!existing) throw new NotFoundException(`Gate ${gateId} not found on project ${id}`);
+      // Only a decision change needs authority — owner/due date/evidence/notes are ordinary contribution (rule A4).
+      if ('decision' in patch) this.assertCanDecide(user, project, gateId);
       // B4: only the single gate currently open for work may be edited directly.
       if (!isGateUnlocked(project, gateId)) {
         throw new ForbiddenException(
@@ -5301,15 +5289,14 @@ export class ProjectsService {
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
     const actorId = user.id;
-    // Checked BEFORE the transaction and for every row that carries a decision,
-    // so a bulk save cannot smuggle one gate's decision past the grant check by
-    // burying it among rows the user is allowed to edit.
-    for (const update of gates) {
-      if ('decision' in update) await this.assertCanDecide(user, update.gateId);
-    }
     await this.prisma.$transaction(async (tx) => {
       const row = await this.loadVersionLocked(tx, id, expectedVersion);
       const project = toProjectData(row, [], await this.loadReference(tx));
+      // For every row that carries a decision, before anything is written, so a bulk save cannot bury one gate's decision
+      // among rows the user may edit.
+      for (const update of gates) {
+        if ('decision' in update) this.assertCanDecide(user, project, update.gateId);
+      }
       const signedLanes = this.standingGateSignatures(project);
       const openChanges = await this.openChangeGateNumbers(tx, id);
       let wrote = false;
@@ -5380,11 +5367,6 @@ export class ProjectsService {
     idempotencyKey: string,
   ): Promise<ProjectEnvelope> {
     const actorId = user.id;
-    // Backtrack is selected from the same "Gate decision" dropdown in the UI, so
-    // it carries the same authority requirement as recording a decision on the
-    // gate being backtracked FROM — and it is strictly more destructive (it
-    // reopens a whole range and voids sign-offs).
-    await this.assertCanDecide(user, body.fromGateId);
     const scope = 'project.backtrack';
     const replayed = await this.idempotency.replay(scope, idempotencyKey);
     if (replayed) return replayed as ProjectEnvelope;
@@ -5399,6 +5381,9 @@ export class ProjectsService {
     await this.prisma.$transaction(async (tx) => {
       const row = await this.loadVersionLocked(tx, id, expectedVersion);
       const project = toProjectData(row, [], await this.loadReference(tx));
+      // Backtrack is picked from the same decision dropdown, so it needs the same authority on the gate being backtracked
+      // FROM — and it is strictly more destructive (it reopens a whole range and voids sign-offs).
+      this.assertCanDecide(user, project, body.fromGateId);
       const inRange = (gid: string) => {
         const idx = gateIndex(gid);
         return idx >= toIdx && idx <= fromIdx;
