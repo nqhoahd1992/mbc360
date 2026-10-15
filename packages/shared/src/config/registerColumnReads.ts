@@ -23,8 +23,8 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     targetProductProfile: ['target'],
   },
   SG04: {
-    pbCautionLimits: ['evidenceLink', 'gate4Disposition', 'linkedNextActionId', 'productStatus', 'reviewDate', 'reviewRationale', 'reviewer', 'reviewerAssessment'],
-    prohibitedIngredients: ['evidenceLink', 'gate4Disposition', 'linkedNextActionId', 'productStatus', 'reviewDate', 'reviewRationale', 'reviewer', 'reviewerAssessment'],
+    pbCautionLimits: ['linkedGate'],
+    prohibitedIngredients: ['evidenceLink', 'gate4Disposition', 'linkedGate', 'linkedNextActionId', 'productStatus', 'reviewDate', 'reviewRationale', 'reviewer', 'reviewerAssessment'],
     supplierRmEvidence: ['allergenStatement', 'approvedForUse', 'evidenceStatus', 'impurities', 'inciName'],
   },
   SG05: {
@@ -42,8 +42,8 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     formulationSafetyFinalSignOff: ['notes', 'safetyQuestion', 'status'],
     formulationSafetyMatrix: ['allergenIfra', 'coverageReference', 'coverageRoute', 'exposureRationale', 'impurityProof', 'inciName', 'rmCode', 'safetyDecision'],
     generalRestrictedCaution: ['assessmentOutcome'],
-    pbCautionLimits: ['gate4Disposition', 'productStatus'],
-    prohibitedIngredients: ['gate4Disposition', 'productStatus'],
+    pbCautionLimits: ['gate4Disposition', 'linkedGate', 'productStatus'],
+    prohibitedIngredients: ['gate4Disposition', 'linkedGate', 'productStatus'],
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG08: {
@@ -58,7 +58,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     pifChecklistAsean: ['status'],
     publishedInfoApproval: ['noProductClaim', 'noProductClaimConfirmedBy', 'workflowState'],
     regulatoryChecklistStatus: ['checklistLink', 'dossierType', 'market', 'naRationale', 'naReviewer', 'owner', 'regulatoryApproval', 'status'],
-    skuClaimsPifRegister: ['claimId', 'evidenceLink', 'market', 'pifLink'],
+    skuClaimsPifRegister: ['claimId', 'evidenceLink', 'market', 'pifLink', 'status'],
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG11: {
@@ -69,7 +69,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG12: {
-    claimEvidenceTraceability: ['claimCategory', 'claimRisk'],
+    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimRisk', 'claimSubjects', 'reviewedWording'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };
@@ -89,7 +89,7 @@ export const TRIGGER_READS_BY_GATE: Record<string, Record<string, string[]>> = {
     claimEvidenceTraceability: ['claimCategory', 'evidenceBasisRequired'],
   },
   SG12: {
-    claimEvidenceTraceability: ['claimCategory', 'claimRisk'],
+    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimRisk', 'claimSubjects', 'reviewedWording'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };

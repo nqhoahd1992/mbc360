@@ -64,8 +64,9 @@ export function canEditMarketTrack(grants: Record<string, string[]>, roleKey: st
 // EITHER authority is enough, not both. The answer names them as alternatives —
 // "the required Safety **or** Regulatory authority" — because which one a finding
 // needs depends on how it was escalated, and the app cannot always tell: a row at
-// "REVIEW - possible formula match" was flagged by the automated screen, not by a
-// named function [ASSUMPTION: R5-Q14].
+// "REVIEW - possible formula match" is a status a person chose after the BOM screen showed a match, not an escalation to a
+// named function. Settled by SW-32: the row's status, else its Owner column, names the authority
+// (`watchlistRequiredAuthority`); this helper only says whether a role holds ANY watch-list authority.
 export function canAcceptWatchlistFinding(grants: Record<string, string[]>, roleKey: string): boolean {
   return (
     has(grants, roleKey, 'watchlist-finding|accept-safety') ||

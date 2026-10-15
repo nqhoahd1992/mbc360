@@ -55,11 +55,13 @@ export class PermissionsService {
   //
   // Either grant satisfies it. The answer names them as alternatives, and which
   // one a given finding needs depends on how it was escalated — which for a row
-  // flagged by the automated screen ("REVIEW - possible formula match") nobody
-  // has decided [ASSUMPTION: R5-Q14].
-  async canAcceptWatchlistFinding(user: SessionUser): Promise<boolean> {
-    if (await this.hasPermission(user, 'watchlist-finding', 'accept-safety')) return true;
-    return this.hasPermission(user, 'watchlist-finding', 'accept-regulatory');
+  // marked "REVIEW - possible formula match" (a status a person chose, naming no function) nobody
+  // has decided — settled by SW-32 (`watchlistRequiredAuthority`): the status or the row's Owner names it.
+  async canAcceptWatchlistFinding(user: SessionUser, anyOf: ('safety' | 'regulatory')[] = ['safety', 'regulatory']): Promise<boolean> {
+    for (const authority of anyOf) {
+      if (await this.hasPermission(user, 'watchlist-finding', `accept-${authority}`)) return true;
+    }
+    return false;
   }
 
   // Round 4 question 34(d): "Only a person authorised to approve the relevant

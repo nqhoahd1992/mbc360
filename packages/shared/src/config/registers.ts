@@ -41,6 +41,8 @@ export interface RegisterColumn {
   // An identifier: no two rows of the register may hold the same value (blank is not a value). Refused on save in the
   // table and again by the API; compared without regard to case or surrounding spaces.
   unique?: true;
+  // A workbook gate reference ("04_Ingredient_Screening") shown as "Gate 04 · <name>" and linking to that gate's page.
+  gateLink?: true;
   // `and` adds a second condition that must hold too (e.g. Closed AND High/Critical severity).
   requiredWhen?: { column: string; values: readonly string[]; and?: { column: string; values: readonly string[] } };
   // Read from the linked claim (Claim -> Evidence Traceability) instead of being
@@ -294,6 +296,8 @@ export function isRegisterRowBlank(config: RegisterConfig, row: RegisterRow): bo
   });
 }
 
+// The six values the V18 workbook's data validation offers on the watch-list sheets' status cells.
+export const WATCHLIST_ROW_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Needs Review', 'Complete', 'Not Applicable', 'Blocked'] as const;
 const WORK_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Backtracked'] as const;
 
 // Final Safety Sign-off (Gate 7). Round 3 E1: "The pregnancy/breastfeeding
@@ -784,7 +788,7 @@ const prohibitedIngredients: RegisterConfig = {
   columns: [
     { key: 'ingredientGroup', label: 'Ingredient / group', type: 'text', width: 170, editable: false },
     { key: 'functionRole', label: 'Function', type: 'text', width: 150, editable: false },
-    { key: 'statusLevel', label: 'Status / level', type: 'text', width: 200, editable: false },
+    { key: 'statusLevel', label: 'Level', type: 'text', width: 200, editable: false },
     { key: 'whyItMatters', label: 'Why it matters for maternal skincare', type: 'text', width: 220, editable: false },
     { key: 'applicableProducts', label: 'Applicable products', type: 'text', width: 160, editable: false },
     // The sheet's own "Reference / source" column (F) — dropped in the first transcription and put back 2026-10-13.
@@ -823,6 +827,7 @@ const prohibitedIngredients: RegisterConfig = {
     // move. Every field here is one D3 names; only the Resolution status VALUES
     // and the flagged-status scope are ours (see WATCHLIST_* in this file).
     { key: 'reviewerAssessment', label: 'Reviewer assessment', type: 'select', width: 190, options: WATCHLIST_ASSESSMENT_OPTIONS, gate: '04' },
+    // The person who will review this finding, picked from the users who hold the authority the finding needs (SW-32).
     { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140, gate: '04' },
     { key: 'reviewDate', label: 'Review date', type: 'date', width: 120, gate: '04' },
     { key: 'reviewRationale', label: 'Rationale', type: 'textarea', width: 220, gate: '04' },
@@ -832,9 +837,15 @@ const prohibitedIngredients: RegisterConfig = {
     { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 220, gate: '04' },
     { key: 'resolutionStatus', label: 'Resolution status', type: 'select', width: 120, options: WATCHLIST_RESOLUTION_OPTIONS },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140, gate: '04' },
-    { key: 'owner', label: 'Owner', type: 'user', width: 110 },
-    { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 130, editable: false },
-    { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
+    // The workbook's Owner is the DEPARTMENT that maintains this row, a note that splits responsibility — never a person (project owner,
+    // 2026-10-14). It is read-only here, and SW-32 reads it to decide which authority a finding needs.
+    { key: 'owner', label: 'Owner (department)', type: 'text', width: 110, editable: false },
+    { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 130, editable: false, gateLink: true },
+    // The sheet's work-status dropdown (workbook data validation on the sheet's combined "Status / level" column, which holds
+    // descriptive text): kept as a column of its own so the description stays intact (project owner, 2026-10-14).
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: [...WATCHLIST_ROW_STATUS_OPTIONS] },
+    // The workbook's Notes cells are preset reference text, not somewhere to write (project owner, 2026-10-14): read-only.
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 200, editable: false },
   ],
   fixedRows: [
     { ingredientGroup: 'Parabens', functionRole: 'Preservatives', statusLevel: 'Restricted; example levels include 0.4% individually / 0.14% combined', whyItMatters: 'Endocrine and reproductive-health concerns for longer-chain parabens', applicableProducts: 'All cosmetics', referenceSource: 'Safety validation table / current market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Confirm current market limits before release.' },
@@ -863,7 +874,7 @@ const pbCautionLimits: RegisterConfig = {
   columns: [
     { key: 'ingredientGroup', label: 'Ingredient / group', type: 'text', width: 190, editable: false },
     { key: 'functionRole', label: 'Function', type: 'text', width: 160, editable: false },
-    { key: 'statusLimitGuidance', label: 'Status / default limit guidance', type: 'text', width: 220, editable: false },
+    { key: 'statusLimitGuidance', label: 'Default limit guidance', type: 'text', width: 220, editable: false },
     { key: 'whyCautionRequired', label: 'Why caution is required', type: 'text', width: 220, editable: false },
     { key: 'applicableProducts', label: 'Applicable products', type: 'text', width: 160, editable: false },
     // The sheet's own "Reference / source" column (F) — dropped in the first transcription and put back 2026-10-13.
@@ -897,15 +908,22 @@ const pbCautionLimits: RegisterConfig = {
     // parallel ones: `watchlistReview.ts` reads rows by key, so identical keys mean
     // one implementation serves both registers instead of two that can drift.
     { key: 'reviewerAssessment', label: 'Reviewer assessment', type: 'select', width: 190, options: WATCHLIST_ASSESSMENT_OPTIONS, gate: '04' },
+    // The person who will review this finding, picked from the users who hold the authority the finding needs (SW-32).
     { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140, gate: '04' },
     { key: 'reviewDate', label: 'Review date', type: 'date', width: 120, gate: '04' },
     { key: 'reviewRationale', label: 'Rationale', type: 'textarea', width: 220, gate: '04' },
     { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 220, gate: '04' },
     { key: 'resolutionStatus', label: 'Resolution status', type: 'select', width: 120, options: WATCHLIST_RESOLUTION_OPTIONS },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140, gate: '04' },
-    { key: 'owner', label: 'Owner', type: 'user', width: 130 },
-    { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 150, editable: false },
-    { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
+    // The workbook's Owner is the DEPARTMENT that maintains this row, a note that splits responsibility — never a person (project owner,
+    // 2026-10-14). It is read-only here, and SW-32 reads it to decide which authority a finding needs.
+    { key: 'owner', label: 'Owner (department)', type: 'text', width: 130, editable: false },
+    { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 150, editable: false, gateLink: true },
+    // The sheet's work-status dropdown (workbook data validation on the sheet's combined "Status / level" column, which holds
+    // descriptive text): kept as a column of its own so the description stays intact (project owner, 2026-10-14).
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: [...WATCHLIST_ROW_STATUS_OPTIONS] },
+    // The workbook's Notes cells are preset reference text, not somewhere to write (project owner, 2026-10-14): read-only.
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 200, editable: false },
   ],
   fixedRows: [
     { ingredientGroup: 'Oxybenzone (Benzophenone-3)', functionRole: 'Chemical UV filter', statusLimitGuidance: 'Caution; mineral alternatives often preferred for pregnancy positioning', whyCautionRequired: 'Systemic absorption, breast milk detection and endocrine activity concerns', applicableProducts: 'Sunscreens, SPF moisturizers', referenceSource: 'Caution table / current market reference', productStatus: 'Not assessed', owner: 'Regulatory / Safety', linkedGate: '07_Maternal_Baby_Safety', notes: 'Record exact % and market limits.' },
@@ -922,6 +940,20 @@ const pbCautionLimits: RegisterConfig = {
     { ingredientGroup: 'Glycerin for vulvovaginal use', functionRole: 'Humectant / solvent', statusLimitGuidance: 'Caution for intimate products', whyCautionRequired: 'Vaginal epithelial permeability/osmotic concerns', applicableProducts: 'Feminine washes/intimate products', referenceSource: 'Caution table / tox rationale', productStatus: 'Not assessed', owner: 'Safety / R&I', linkedGate: '07_Maternal_Baby_Safety', notes: 'Only relevant to intimate-use products.' },
   ],
 };
+
+// The two watch-list sheets present their fields in the workbook's own order (project owner, 2026-10-14): the twelve columns of the sheet
+// first, then what the app adds after them (classification, the review trail, resolution and work status).
+const WATCHLIST_FIELD_ORDER = ['ingredientGroup', 'functionRole', 'statusLevel', 'statusLimitGuidance', 'whyItMatters', 'whyCautionRequired', 'applicableProducts', 'referenceSource', 'formulaMatchCount', 'formulaExposure', 'productStatus', 'evidenceLink', 'owner', 'linkedGate', 'notes'];
+for (const watchlist of [prohibitedIngredients, pbCautionLimits]) {
+  const rank = (key: string) => {
+    const at = WATCHLIST_FIELD_ORDER.indexOf(key);
+    return at === -1 ? WATCHLIST_FIELD_ORDER.length : at;
+  };
+  watchlist.columns = watchlist.columns
+    .map((column, index) => ({ column, index }))
+    .sort((a, b) => rank(a.column.key) - rank(b.column.key) || a.index - b.index)
+    .map(({ column }) => column);
+}
 
 // Round 4 question 5 (2026-08-24), option (b), built 2026-08-29. Gate 7 requires a
 // **general** restricted-and-caution ingredient assessment for EVERY product; the

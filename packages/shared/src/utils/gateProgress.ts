@@ -48,7 +48,14 @@ import {
   rmRowsNotInFormula,
   unresolvedRmRows,
 } from './rmEvidence';
-import { WATCHLIST_REGISTER, watchlistConditionalRows, watchlistHardBlockers } from './watchlistReview';
+import {
+  WATCHLIST_REGISTER,
+  WATCHLIST_REGISTERS,
+  watchlistConditionalRows,
+  watchlistHardBlockers,
+  watchlistRowInScope,
+  watchlistRowsInScope,
+} from './watchlistReview';
 import { conditionalSafetyFindings, hardBlockingSafetyFindings } from './safetyFindings';
 import { activeMarketTracks, currentMarketTracks, onMarketTracks, overdueReviews } from './postLaunch';
 import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
@@ -946,7 +953,7 @@ const UNTOUCHED_WATCHLIST_STATUS: Record<'prohibited' | 'pbCaution', { register:
   prohibited: { register: 'prohibitedIngredients', status: 'No formula match recorded' },
   pbCaution: { register: 'pbCautionLimits', status: 'Not assessed' },
 };
-export function bomMatchesNotTakenUp(project: ProjectData, list: 'prohibited' | 'pbCaution'): string[] {
+export function bomMatchesNotTakenUp(project: ProjectData, list: 'prohibited' | 'pbCaution', gateId?: string): string[] {
   const { register, status } = UNTOUCHED_WATCHLIST_STATUS[list];
   const rows = project.registers[register] ?? [];
   const groups = new Set(
@@ -954,6 +961,7 @@ export function bomMatchesNotTakenUp(project: ProjectData, list: 'prohibited' | 
   );
   return [...groups].filter((group) => {
     const row = rows.find((r) => String(r.ingredientGroup ?? '').trim() === group);
+    if (row && !watchlistRowInScope(row, gateId)) return false;
     return !row || String(row.productStatus ?? '').trim() === status;
   });
 }
@@ -1020,7 +1028,9 @@ export function evaluateReadinessCheck(
     case 'manual':
       return { evaluable: false, satisfied: false };
     case 'registerNoBadRows': {
-      const rows = project.registers[check.register] ?? [];
+      // A watch-list row counts only from the gate it is linked to (SW-33).
+      const all = project.registers[check.register] ?? [];
+      const rows = (WATCHLIST_REGISTERS as readonly string[]).includes(check.register) ? watchlistRowsInScope(all, gateId) : all;
       const bad = rows.some((r) => check.badValues.includes(String(r[check.column])));
       return { evaluable: true, satisfied: !bad };
     }
@@ -1072,7 +1082,8 @@ export function evaluateReadinessCheck(
     // has no seeded value, so no row starts out satisfying it (sweep S3's hazard
     // read the other way round).
     case 'watchlistDispositioned': {
-      const rows = project.registers[check.register] ?? [];
+      const all = project.registers[check.register] ?? [];
+      const rows = watchlistRowsInScope(all, gateId);
       return {
         evaluable: true,
         // Membership, not merely non-empty. A rule that accepts any non-blank
@@ -1080,7 +1091,9 @@ export function evaluateReadinessCheck(
         // — which is the failure sweep S1 exists to catch in config, and it
         // applies just as much to data arriving through the API.
         satisfied:
-          rows.length > 0 &&
+          // The register itself is fixed and never empty; it is only the rows in scope AT THIS GATE that may be none (every
+          // caution row is linked to Gate 7, so at Gate 4 there is nothing to disposition there yet).
+          all.length > 0 &&
           rows.every((r) =>
             (GATE4_DISPOSITION_OPTIONS as readonly string[]).includes(String(r.gate4Disposition ?? '').trim()),
           ),
@@ -1165,7 +1178,7 @@ export function evaluateReadinessCheck(
     case 'noClaimsDeclared':
       return { evaluable: true, satisfied: noClaimsDeclared(project) };
     case 'bomMatchesTakenUp':
-      return { evaluable: true, satisfied: bomMatchesNotTakenUp(project, check.list).length === 0 };
+      return { evaluable: true, satisfied: bomMatchesNotTakenUp(project, check.list, gateId).length === 0 };
     case 'everyMarket': {
       // Non-vacuous: a project with no active market has nothing approved.
       const tracks = activeMarketTracks(project);
@@ -1211,9 +1224,9 @@ export function evaluateReadinessCheck(
     case 'noOpenMediumSafetyFinding':
       return { evaluable: true, satisfied: conditionalSafetyFindings(project).length === 0 };
     case 'watchlistReviewed':
-      return { evaluable: true, satisfied: watchlistHardBlockers(project).length === 0 };
+      return { evaluable: true, satisfied: watchlistHardBlockers(project, gateId).length === 0 };
     case 'watchlistNoneConditional':
-      return { evaluable: true, satisfied: watchlistConditionalRows(project).length === 0 };
+      return { evaluable: true, satisfied: watchlistConditionalRows(project, gateId).length === 0 };
     case 'rmEvidenceHasUsable':
       return { evaluable: true, satisfied: hasUsableRmRow(project.registers[RM_EVIDENCE_REGISTER] ?? []) };
     case 'gateCheckDone': {

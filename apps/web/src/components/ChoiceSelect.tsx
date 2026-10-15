@@ -9,6 +9,8 @@ export const CHOICE_BUTTONS_MAX = 5;
 export interface ChoiceOption {
   value: string;
   label?: React.ReactNode;
+  // This one choice cannot be picked (the others can); a value already chosen stays shown.
+  disabled?: boolean;
 }
 
 export default function ChoiceSelect({
@@ -42,7 +44,7 @@ export default function ChoiceSelect({
         disabled={disabled}
         status={status}
         value={value || undefined}
-        options={opts.map((o) => ({ value: o.value, label: o.label ?? o.value }))}
+        options={opts.map((o) => ({ value: o.value, label: o.label ?? o.value, disabled: o.disabled }))}
         onChange={(v?: string) => onChange(v)}
       />
     );
@@ -59,6 +61,7 @@ export default function ChoiceSelect({
         <Radio.Button
           key={o.value}
           value={o.value}
+          disabled={o.disabled && o.value !== value}
           // Radio's own onChange never fires for the value already chosen, so clearing is done on the click.
           onClick={() => {
             if (disabled) return;

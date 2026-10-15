@@ -21,7 +21,7 @@ import SectionOverview from '../components/SectionOverview';
 import { VULNERABLE_REGISTER } from '@mbc360/shared/utils/vulnerableUsers';
 import WatchlistRegister from '../components/WatchlistRegister';
 import RegisterPageHeader, { RegisterProgressCard } from '../components/RegisterPageHeader';
-import { WATCHLIST_REGISTER } from '@mbc360/shared/utils/watchlistReview';
+import { WATCHLIST_REGISTERS } from '@mbc360/shared/utils/watchlistReview';
 
 // Content transcribed verbatim from the source workbook's front-matter sheets
 // "Introduction" and "Guide To Using This Document" (V18). Shown as the
@@ -152,7 +152,7 @@ export default function RegisterHubPage() {
     // Redesigned 2026-10-02 (wireframe option A): its own page layout — header,
     // progress, decision table + detail drawer, closing at the bottom. The pilot
     // for moving the other registers to the same concept.
-    if (registerKey === WATCHLIST_REGISTER) {
+    if ((WATCHLIST_REGISTERS as readonly string[]).includes(registerKey)) {
       return (
         <WatchlistRegister
           project={project}

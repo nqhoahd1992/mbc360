@@ -86,6 +86,7 @@
 .wl-sections { display: grid; gap: 28px; }
 .wl-sec-title { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; font-weight: 600; }
 .wl-sec-note { margin: -6px 0 12px; color: var(--c-text-2); font-size: 13px; }
+.wl-sec-warn { color: var(--c-warn); }
 .wl-grid { display: grid; gap: 16px; }
 @media (min-width: 640px) { .wl-grid { grid-template-columns: 1fr 1fr; } .wl-span-2 { grid-column: span 2; } }
 .wl-field-label { display: block; margin-bottom: 6px; color: var(--c-text-2); font-size: 13px; }

@@ -180,6 +180,22 @@ SME nhắc "Reject/Stop" như lối ra của gap Critical nhưng dropdown Gate d
 - **Hiển thị:** thẻ trên Project Overview (nút Stop và khung xác nhận cho Lead/admin, banner sau khi dừng), nhãn Stopped trên danh sách dự án, không tính vào "active" ở Dashboard. Dự án Stopped vẫn hiện trong danh sách mặc định. Gợi ý Stop ở các chỗ vướng (ví dụ thông báo gap Critical) làm sau.
 - **Dữ liệu cũ:** migration `20261014090000_project_stop` chỉ thêm cột; mọi dự án hiện có là chưa Stop.
 
+### SW-32. Thẩm quyền "Safety hoặc Regulatory" để mang một finding watch-list bị flag: do trạng thái hoặc cột Owner của dòng quyết định — *Đã xây* (2026-10-14, chủ dự án; R5-Q14 đóng, phần chuyển thẩm quyền sang người đánh giá hỏi SME ở R5-Q67)
+Round 4 Q32(c): Proceed with Conditions có thể là chấp nhận finding nếu *"the gate approver has the required Safety or Regulatory authority"*. SME không nói "required" là bên nào. Chủ dự án quyết:
+- **Trạng thái flag nêu tên chức năng thì chức năng đó quyết định:** *Needs Safety Review* → Safety; *Needs Regulatory Review* → Regulatory.
+- ***REVIEW - possible formula match*** (do **người** chọn sau khi màn hình đối chiếu công thức báo khớp; không nêu chức năng nào) thì cột **Owner** của chính dòng đó quyết định: Owner chỉ nêu Safety → Safety; chỉ nêu Regulatory → Regulatory.
+- **Owner nêu cả hai, hoặc không nêu bên nào** (ví dụ Quality) → một trong hai là đủ.
+- **Thẩm quyền nằm ở người ĐÁNH GIÁ, không ở người ký gate (14–15/10/2026, kế hoạch `docs/plans/Permission_Model_Plan.md`):** một gate chứa nhiều finding thuộc nhiều chức năng, mà người ký gate chỉ bảo đảm một chức năng, nên chuyên môn đặt ở finding. (1) **Reviewer** của dòng là **ô chọn người**, chỉ liệt kê người có role đúng chức năng của finding (qua quyền `watchlist-finding|accept-safety/regulatory`, nay chỉ là danh sách ứng viên); server từ chối Reviewer không đủ tư cách (`newlyNamedReviewerRows`). (2) Ghi **Reviewer assessment = Non-critical** hoặc **Further information required** (hai kết luận duy nhất cho phép mang finding theo điều kiện, D3) là việc chấp nhận, và **chỉ người ở Reviewer** (hoặc admin) ghi được (`newlyCarriedVerdictRows`); các kết luận khác ai trong sổ cũng ghi được. Kiểm ở `setRegisterRows`. Người ký Approved **không** cần thẩm quyền watch-list, gate ký như thường vì readiness đã kiểm finding. Lệch lời SME ("the gate approver has the required Safety or Regulatory authority") nên ghi `[ASSUMPTION: R5-Q67]` và hỏi SME xác nhận.
+- **Giao diện tách hai phần (ngăn chi tiết dòng watch-list):** **1 · Recording the finding** (trạng thái, phân loại, owner, bằng chứng, ai sàng lọc công thức ghi) và **2 · Handling the finding** (đánh giá, người đánh giá, ngày, lý do, Next Action, trạng thái xử lý — do người đủ thẩm quyền ghi).
+- Hàm duy nhất: `watchlistRequiredAuthority` và `newlyCarriedVerdictRows` trong `utils/watchlistReview.ts`. Kiểm thử: `npm run verify:watchlist-authority`.
+- Admin vẫn có mọi quyền như mọi nơi khác. Dữ liệu cũ: không có gì để chuyển.
+
+### SW-33. Dòng watch-list được kiểm ở gate nào: theo cột Linked gate, từ gate được gắn trở đi — *Đã xây* (2026-10-14, chủ dự án; hỏi SME ở R5-Q68)
+Workbook gắn mỗi dòng của hai danh sách với một gate trong cột **Linked gate**. Readiness chỉ xét dòng từ gate được gắn trở đi: gắn Gate 4 → kiểm ở Gate 4 và các gate sau; gắn Gate 7 → chỉ từ Gate 7. "Từ gate đó trở đi" chứ không phải "đúng gate đó", để một finding chưa giải quyết ở gate sớm vẫn chặn gate sau.
+- Áp cho các mục đọc hai danh sách: `watchlistReviewed`, `watchlistNoneConditional`, `watchlistDispositioned`, `bomMatchesTakenUp` và `registerNoBadRows` trên hai sổ đó. Hàm: `watchlistRowInScope` (`utils/watchlistReview.ts`). Dòng không đọc được Linked gate thì kiểm ở mọi gate.
+- Hệ quả: Gate 4 chỉ cần Classification cho 10 dòng danh sách cấm (không gồm Retinol, Bisphenol S) và chưa kiểm danh sách thai kỳ; Gate 7 xét cả 24 dòng. Danh sách thai kỳ ở Gate 4 vì vậy không còn dòng nào trong phạm vi (không phải trống: sổ vẫn có đủ 12 dòng).
+- Kiểm thử: `npm run verify:watchlist-authority` (các ca phạm vi).
+
 ## 3. Quyền và truy cập
 
 ### SW-10. Không có role thì không vào được app — *Đã xây* (2026-10-02)

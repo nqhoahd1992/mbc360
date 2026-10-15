@@ -47,9 +47,80 @@ export function isFlaggedWatchlistRow(row: RegisterRow): boolean {
 // values in WATCHLIST_FLAGGED_STATUSES count as flagged on either. That is
 // deliberate: `Prohibited - remove` and `Exceeds limit - reformulate` are direct
 // hard blocks handled by their own readiness items, not findings awaiting a verdict.
-export function flaggedWatchlistRows(project: ProjectData): RegisterRow[] {
-  return WATCHLIST_REGISTERS.flatMap((key) => (project.registers[key] ?? []).filter(isFlaggedWatchlistRow));
+export function flaggedWatchlistRows(project: ProjectData, gateId?: string): RegisterRow[] {
+  return WATCHLIST_REGISTERS.flatMap((key) =>
+    watchlistRowsInScope(project.registers[key] ?? [], gateId).filter(isFlaggedWatchlistRow),
+  );
 }
+
+// Which gate each watch-list row belongs to is the workbook's own "Linked gate" column ("04_Ingredient_Screening",
+// "06_Packaging_Artwork", "07_Maternal_Baby_Safety"). A row is in scope from the gate it is linked to onwards (project owner,
+// 2026-10-14): an issue found at an earlier gate must still be closed by a later one, so the scope is "this gate or later",
+// not "exactly this gate". A row whose Linked gate cannot be read is in scope everywhere. With no gate given every row is in
+// scope. This narrows the answer's "every row" at Gate 4 [ASSUMPTION: R5-Q68].
+export function watchlistLinkedGate(row: RegisterRow): number | undefined {
+  const m = /^(\d{1,2})[_\s-]/.exec(text(row.linkedGate));
+  return m ? Number(m[1]) : undefined;
+}
+export function watchlistRowInScope(row: RegisterRow, gateId?: string): boolean {
+  if (!gateId) return true;
+  const gate = Number(/(\d+)/.exec(gateId)?.[1]);
+  const linked = watchlistLinkedGate(row);
+  return linked === undefined || !Number.isFinite(gate) || gate >= linked;
+}
+export function watchlistRowsInScope(rows: RegisterRow[], gateId?: string): RegisterRow[] {
+  return gateId ? rows.filter((r) => watchlistRowInScope(r, gateId)) : rows;
+}
+
+// Which authority a flagged row needs from the person who ASSESSES it as one that may be carried under Proceed with
+// Conditions (SW-32, project owner, 2026-10-14). Round 4 question 32(c) says "the gate approver has the required Safety or
+// Regulatory authority"; the project owner moved that authority from the approver to the qualified reviewer who records the
+// assessment, so the gate is signed as usual — the readiness list already checks the finding. [ASSUMPTION: R5-Q67]
+// Which authority is required is decided as follows:
+//   - a status that NAMES a function decides it: Needs Safety Review -> Safety, Needs Regulatory Review -> Regulatory;
+//   - otherwise (a "possible formula match" — a status a PERSON chose after the Formula BOM screen showed a match, and
+//     which names no function) the row's own Owner column decides: it names Safety and/or
+//     Regulatory;
+//   - a row whose Owner names both, or neither, is satisfied by either authority.
+// The returned list is what ANY ONE of will satisfy.
+export type WatchlistAuthority = 'safety' | 'regulatory';
+export function watchlistRequiredAuthority(row: RegisterRow): WatchlistAuthority[] {
+  const status = text(row.productStatus);
+  if (status === 'Needs Safety Review') return ['safety'];
+  if (status === 'Needs Regulatory Review') return ['regulatory'];
+  const owner = text(row.owner).toLowerCase();
+  const safety = owner.includes('safety');
+  const regulatory = owner.includes('regulatory');
+  if (safety && !regulatory) return ['safety'];
+  if (regulatory && !safety) return ['regulatory'];
+  return ['safety', 'regulatory'];
+}
+
+// The rows whose assessment was just set (or changed) to a verdict that lets a finding be carried under Proceed with
+// Conditions — the act that needs the authority above. Rows are matched by their group name, which is unique on both
+// fixed watch-lists. The same test runs on the server at save and in the drawer, so they cannot disagree.
+export function newlyCarriedVerdictRows(committed: RegisterRow[], next: RegisterRow[]): RegisterRow[] {
+  const carried = (r: RegisterRow | undefined) => {
+    const v = text(r?.reviewerAssessment);
+    return v === WATCHLIST_ASSESSMENT_NON_CRITICAL || v === WATCHLIST_ASSESSMENT_MORE_INFO;
+  };
+  return next.filter((row) => {
+    if (!carried(row)) return false;
+    const old = committed.find((c) => text(c.ingredientGroup) === text(row.ingredientGroup));
+    return text(old?.reviewerAssessment) !== text(row.reviewerAssessment);
+  });
+}
+
+// The flagged rows whose Reviewer was just set or changed: the person named must hold the authority the finding needs.
+export function newlyNamedReviewerRows(committed: RegisterRow[], next: RegisterRow[]): RegisterRow[] {
+  return next.filter((row) => {
+    if (text(row.reviewer) === '' || !isFlaggedWatchlistRow(row)) return false;
+    const old = committed.find((c) => text(c.ingredientGroup) === text(row.ingredientGroup));
+    return text(old?.reviewer) !== text(row.reviewer);
+  });
+}
+
+export const WATCHLIST_AUTHORITY_LABEL: Record<WatchlistAuthority, string> = { safety: 'Safety', regulatory: 'Regulatory' };
 
 export function watchlistLabel(row: RegisterRow): string {
   return text(row.ingredientGroup) || '(unnamed row)';
@@ -135,8 +206,8 @@ export function watchlistReviewGaps(project: ProjectData, row: RegisterRow): str
 // sentences all begin "blocks Proceed until…". CONFIRMED by Round 4 question
 // 32(d), 2026-08-24: "An unassessed flagged row must block both Proceed and
 // Proceed with Conditions."
-export function watchlistHardBlockers(project: ProjectData): RegisterRow[] {
-  return flaggedWatchlistRows(project).filter(
+export function watchlistHardBlockers(project: ProjectData, gateId?: string): RegisterRow[] {
+  return flaggedWatchlistRows(project, gateId).filter(
     (row) =>
       text(row.reviewerAssessment) === WATCHLIST_ASSESSMENT_CRITICAL ||
       !hasReviewTrail(row) ||
@@ -148,8 +219,8 @@ export function watchlistHardBlockers(project: ProjectData): RegisterRow[] {
 // Conditions — D3's Non-critical and Further information required, once each is
 // properly recorded. `Not a true match` is deliberately absent: D3 lets it be
 // closed, so a documented one blocks nothing.
-export function watchlistConditionalRows(project: ProjectData): RegisterRow[] {
-  return flaggedWatchlistRows(project).filter((row) => {
+export function watchlistConditionalRows(project: ProjectData, gateId?: string): RegisterRow[] {
+  return flaggedWatchlistRows(project, gateId).filter((row) => {
     const verdict = text(row.reviewerAssessment);
     if (verdict !== WATCHLIST_ASSESSMENT_NON_CRITICAL && verdict !== WATCHLIST_ASSESSMENT_MORE_INFO) return false;
     // An under-documented row is already in `watchlistHardBlockers`; listing it

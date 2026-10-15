@@ -14,11 +14,19 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { NavGroup, RegisterConfig } from '@mbc360/shared/config/registers';
-import { GATE4_DISPOSITION_OPTIONS } from '@mbc360/shared/config/registers';
+import {
+  GATE4_DISPOSITION_OPTIONS,
+  WATCHLIST_ASSESSMENT_MORE_INFO,
+  WATCHLIST_ASSESSMENT_NON_CRITICAL,
+} from '@mbc360/shared/config/registers';
 import type { ProjectData, RegisterRow } from '@mbc360/shared/types';
 import { bomWatchMatches, type WatchHit } from '@mbc360/shared/utils/ingredientWatch';
 import {
   isFlaggedWatchlistRow,
+  WATCHLIST_REGISTER,
+  watchlistLinkedGate,
+  WATCHLIST_AUTHORITY_LABEL,
+  watchlistRequiredAuthority,
   watchlistHardBlockers,
   watchlistReviewGaps,
 } from '@mbc360/shared/utils/watchlistReview';
@@ -27,7 +35,12 @@ import { useRegisterFreeze } from '../hooks/useRegisterFreeze';
 import DrawerSaveFooter from './DrawerSaveFooter';
 import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import SaveBar from './SaveBar';
-import UserSelect from './UserSelect';
+import { usePickerUsers } from '../hooks/useUserOptions';
+import { useSession } from '../auth/useSession';
+import GateLink from './GateLink';
+import { useAppStore } from '../store/useAppStore';
+import { usePermissionView } from '../auth/previewMode';
+import { EMPTY_GRANTS, hasCapability } from '../utils/permissions';
 import NextActionSelect from './NextActionSelect';
 import RegisterClosurePanel from './RegisterClosurePanel';
 import RegisterPageHeader from './RegisterPageHeader';
@@ -50,6 +63,13 @@ import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 // bulk `onSave` the other register tables use.
 
 const PROHIBITED_REMOVE = 'Prohibited - remove'; // the value `sg04-no-remove` blocks on
+const EXCEEDS_LIMIT = 'Exceeds limit - reformulate'; // the caution list's direct block
+const isBlockingStatus = (value: unknown) => value === PROHIBITED_REMOVE || value === EXCEEDS_LIMIT;
+// "Gate 07" for a row linked to the 07_… gate; the register's own gate when the row names none.
+const blocksGateLabel = (row: RegisterRow) => {
+  const n = watchlistLinkedGate(row);
+  return n === undefined ? 'the gate' : `Gate ${String(n).padStart(2, '0')}`;
+};
 
 type Filter = 'all' | 'action' | 'flagged' | 'done';
 type RowState = 'blocks' | 'gaps' | 'critical' | 'open' | 'undispositioned' | 'done';
@@ -103,18 +123,18 @@ export default function WatchlistRegister({
     const byGroup = new Map<string, { line: number; inciName: string; hit: WatchHit }[]>();
     for (const match of bomWatchMatches(project)) {
       for (const hit of match.hits) {
-        if (hit.kind !== 'prohibited') continue;
+        if (hit.kind !== (config.key === WATCHLIST_REGISTER ? 'prohibited' : 'pbCaution')) continue;
         byGroup.set(hit.group, [...(byGroup.get(hit.group) ?? []), { line: match.line, inciName: match.inciName, hit }]);
       }
     }
     return byGroup;
-  }, [project]);
+  }, [project, config.key]);
 
   const dispositioned = (row: RegisterRow) =>
     (GATE4_DISPOSITION_OPTIONS as readonly string[]).includes(text(row.gate4Disposition));
 
   const rowState = (row: RegisterRow): RowState => {
-    if (text(row.productStatus) === PROHIBITED_REMOVE) return 'blocks';
+    if (isBlockingStatus(text(row.productStatus))) return 'blocks';
     if (isFlaggedWatchlistRow(row)) {
       if (watchlistReviewGaps(draftProject, row).length > 0) return 'gaps';
       if (hardBlocked.has(row)) return 'critical';
@@ -157,7 +177,7 @@ export default function WatchlistRegister({
   const stateCell = (row: RegisterRow, state: RowState) => {
     switch (state) {
       case 'blocks':
-        return <span className="wl-state wl-state-bad"><CloseCircleOutlined />Blocks Gate 04</span>;
+        return <span className="wl-state wl-state-bad"><CloseCircleOutlined />Blocks {blocksGateLabel(row)}</span>;
       case 'gaps': {
         const gaps = watchlistReviewGaps(draftProject, row);
         return (
@@ -256,7 +276,7 @@ export default function WatchlistRegister({
 
       <div className="c-card wl-summary">
         <div className="wl-progress">
-          <div className="wl-label">Gate 04 disposition</div>
+          <div className="wl-label">Classification</div>
           <div className="wl-big">
             <b>{counts.dispositioned}</b>
             <span>of {counts.all} groups</span>
@@ -267,7 +287,7 @@ export default function WatchlistRegister({
         </div>
         <dl className="wl-counts">
           <div>
-            <dt className="wl-label">Blocking Gate 04</dt>
+            <dt className="wl-label">Blocking a gate</dt>
             <dd className={counts.blocking ? 'wl-bad-text' : undefined}>{counts.blocking}</dd>
           </div>
           <div>
@@ -429,7 +449,7 @@ export default function WatchlistRegister({
 
 function ProductStatusTag({ value }: { value: string }) {
   const tone =
-    value === PROHIBITED_REMOVE
+    isBlockingStatus(value)
       ? 'c-tag-bad'
       : isFlaggedWatchlistRow({ productStatus: value } as RegisterRow)
         ? 'c-tag-warn'
@@ -459,16 +479,53 @@ function RowDetail({
 }) {
   const off = (columnKey: string) => readOnly || isFrozen(columnKey);
   const flagged = isFlaggedWatchlistRow(row);
+  // The two lists name a few columns differently (the sheets' own headers); the label comes from whichever the register has.
+  const label = (...keys: string[]) => keys.map((k) => config.columns.find((c) => c.key === k)?.label).find(Boolean) ?? '';
+  const hasExposureText = config.columns.some((c) => c.key === 'formulaExposure');
   const hasTrailData = ['reviewerAssessment', 'reviewer', 'reviewDate', 'reviewRationale', 'linkedNextActionId'].some(
     (k) => text(row[k]) !== '',
   );
   // D3's trail applies to flagged results. It stays visible on any row that
   // already carries trail data, so un-flagging a row never hides what was recorded.
-  const showTrail = flagged || hasTrailData || text(row.productStatus) === PROHIBITED_REMOVE;
+  const showTrail = flagged || hasTrailData || isBlockingStatus(text(row.productStatus));
   const req = flagged ? 'wl-field-label wl-req' : 'wl-field-label';
+  // SW-32: assessing a finding as one that may be carried under Proceed with Conditions IS the acceptance, so it needs the
+  // authority this finding names (its status, else its Owner). The server refuses it otherwise; here the two verdicts are
+  // simply not offered to someone who lacks it. [ASSUMPTION: R5-Q67]
+  const { isAdmin } = usePermissionView();
+  const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
+  const needs = watchlistRequiredAuthority(row);
+  const needsLabel = needs.map((a) => WATCHLIST_AUTHORITY_LABEL[a]).join(' or ');
+  // Who may be this finding's Reviewer: users holding the authority it needs. Who may record the acceptance: that Reviewer.
+  const holdsAuthority = (keys: string[] | undefined) => needs.some((a) => hasCapability(grants, keys ?? [], `watchlist-finding|accept-${a}`));
+  const pickerUsers = usePickerUsers();
+  const me = useSession().user?.displayName;
+  const reviewerName = text(row.reviewer);
+  const reviewerOptions = pickerUsers
+    .filter((u) => holdsAuthority(u.roleKeys) || u.displayName === reviewerName)
+    .map((u) => ({ value: u.displayName, label: u.displayName }));
+  const reviewerFit = reviewerName !== '' && pickerUsers.some((u) => u.displayName === reviewerName && holdsAuthority(u.roleKeys));
+  const canCarry = isAdmin || (!!me && me === reviewerName);
+  const carriedVerdicts = [WATCHLIST_ASSESSMENT_NON_CRITICAL, WATCHLIST_ASSESSMENT_MORE_INFO];
 
   return (
     <div className="wl-sections">
+      <section>
+        <div className="wl-sec-title">Reference</div>
+        <dl className="wl-dl">
+          <dt>Function</dt>
+          <dd>{text(row.functionRole)}</dd>
+          <dt>{label('statusLevel', 'statusLimitGuidance')}</dt>
+          <dd>{text(row.statusLevel) || text(row.statusLimitGuidance)}</dd>
+          <dt>{label('whyItMatters', 'whyCautionRequired')}</dt>
+          <dd>{text(row.whyItMatters) || text(row.whyCautionRequired)}</dd>
+          <dt>Applicable products</dt>
+          <dd>{text(row.applicableProducts)}</dd>
+          <dt>Reference / source</dt>
+          <dd>{text(row.referenceSource) || '—'}</dd>
+        </dl>
+      </section>
+
       <section>
         <div className="wl-sec-title">Formula BOM screen</div>
         {hits.length ? (
@@ -491,8 +548,37 @@ function RowDetail({
       </section>
 
       <section>
-        <div className="wl-sec-title">Screening &amp; disposition</div>
+        <div className="wl-sec-title">1 · Recording the finding</div>
+        <p className="wl-sec-note">What the screening found and how it is classified. Whoever screens the formula records this.</p>
         <div className="wl-grid">
+          <label className="wl-span-2">
+            <span className="wl-field-label">Status</span>
+            <Select
+              style={{ width: '100%' }}
+              value={text(row.status) || undefined}
+              options={columnOptions(config, 'status')}
+              disabled={off('status')}
+              onChange={(v: string) => onPatch({ status: v })}
+            />
+          </label>
+          <label className="wl-span-2">
+            <span className="wl-field-label">{label('formulaMatchCount', 'formulaExposure')}</span>
+            {hasExposureText ? (
+              <Input
+                value={text(row.formulaExposure)}
+                disabled={off('formulaExposure')}
+                onChange={(e) => onPatch({ formulaExposure: e.target.value })}
+              />
+            ) : (
+              <InputNumber
+                style={{ width: '100%' }}
+                min={0}
+                value={typeof row.formulaMatchCount === 'number' ? row.formulaMatchCount : undefined}
+                disabled={off('formulaMatchCount')}
+                onChange={(v) => onPatch({ formulaMatchCount: v ?? undefined })}
+              />
+            )}
+          </label>
           <label className="wl-span-2">
             <span className="wl-field-label">Product status</span>
             <Select
@@ -501,32 +587,6 @@ function RowDetail({
               options={columnOptions(config, 'productStatus')}
               disabled={off('productStatus')}
               onChange={(v: string) => onPatch({ productStatus: v })}
-            />
-          </label>
-          <label>
-            <span className="wl-field-label wl-req">Classification</span>
-            <Select
-              style={{ width: '100%' }}
-              value={text(row.gate4Disposition) || undefined}
-              placeholder="Not dispositioned"
-              allowClear
-              options={columnOptions(config, 'gate4Disposition')}
-              disabled={off('gate4Disposition')}
-              onChange={(v?: string) => onPatch({ gate4Disposition: v ?? '' })}
-            />
-          </label>
-          <label>
-            <span className="wl-field-label">Owner</span>
-            <UserSelect value={text(row.owner) || undefined} disabled={off('owner')} placeholder="Select a user" onChange={(v) => onPatch({ owner: v ?? '' })} />
-          </label>
-          <label>
-            <span className="wl-field-label">Formula match count</span>
-            <InputNumber
-              style={{ width: '100%' }}
-              min={0}
-              value={typeof row.formulaMatchCount === 'number' ? row.formulaMatchCount : undefined}
-              disabled={off('formulaMatchCount')}
-              onChange={(v) => onPatch({ formulaMatchCount: v ?? undefined })}
             />
           </label>
           <label className="wl-span-2">
@@ -538,34 +598,56 @@ function RowDetail({
               onChange={(e) => onPatch({ evidenceLink: e.target.value })}
             />
           </label>
+          <label className="wl-span-2">
+            <span className="wl-field-label wl-req">Classification</span>
+            <Select
+              style={{ width: '100%' }}
+              value={text(row.gate4Disposition) || undefined}
+              placeholder="Not dispositioned"
+              allowClear
+              options={columnOptions(config, 'gate4Disposition')}
+              disabled={off('gate4Disposition')}
+              onChange={(v?: string) => onPatch({ gate4Disposition: v ?? '' })}
+            />
+          </label>
         </div>
       </section>
 
       <section>
         <div className="wl-sec-title">
-          Review trail
+          2 · Handling the finding
           {flagged && (gaps.length ? <span className="c-tag c-tag-warn">{gaps.length} missing</span> : <span className="c-tag c-tag-ok">Complete</span>)}
         </div>
         {showTrail ? (
           <>
             {flagged && (
               <p className="wl-sec-note">
-                Required for a flagged result before Gate 04 can move. A note alone is not sufficient — link a controlled Next Action.
+                A qualified reviewer assesses the finding and records what is done about it. Required for a flagged result before its gate
+                can move. A note alone is not sufficient — link a controlled Next Action.
+              </p>
+            )}
+            {flagged && (
+              <p className={`wl-sec-note${canCarry ? '' : ' wl-sec-warn'}`}>
+                {canCarry
+                  ? `Assessing this finding as Non-critical or Further information required lets it be carried under Proceed with Conditions, so it is the acceptance. You are its Reviewer, so you can record it.`
+                  : reviewerName === ''
+                    ? `Assessing this finding as Non-critical or Further information required lets it be carried under Proceed with Conditions, so it is the acceptance. Pick its Reviewer below (a user with ${needsLabel} authority); only the Reviewer records those two assessments.`
+                    : `Assessing this finding as Non-critical or Further information required lets it be carried under Proceed with Conditions, so it is the acceptance. Only its Reviewer, ${reviewerName}, records those two assessments.`}
               </p>
             )}
             <div className="wl-grid">
-              <label>
+              <label className="wl-span-2">
                 <span className={req}>Reviewer assessment</span>
                 <ChoiceSelect
                   value={text(row.reviewerAssessment) || undefined}
                   placeholder="Select…"
                   allowClear
-                  options={columnOptions(config, 'reviewerAssessment')}
+                  options={columnOptions(config, 'reviewerAssessment').map((o) => ({ ...o, disabled: !canCarry && carriedVerdicts.includes(o.value) }))}
                   disabled={off('reviewerAssessment')}
                   onChange={(v) => onPatch({ reviewerAssessment: v ?? '' })}
                 />
               </label>
-              <label>
+              <label className="wl-span-2">
                 <span className="wl-field-label">Resolution status</span>
                 <ChoiceSelect
                   value={text(row.resolutionStatus) || undefined}
@@ -576,11 +658,22 @@ function RowDetail({
                   onChange={(v) => onPatch({ resolutionStatus: v ?? '' })}
                 />
               </label>
-              <label>
+              <label className="wl-span-2">
                 <span className={req}>Reviewer</span>
-                <UserSelect value={text(row.reviewer) || undefined} disabled={off('reviewer')} placeholder="Select a user" onChange={(v) => onPatch({ reviewer: v ?? '' })} />
+                <Select
+                  style={{ width: '100%' }}
+                  showSearch
+                  allowClear
+                  optionFilterProp="label"
+                  value={reviewerName || undefined}
+                  placeholder={`Select a user with ${needsLabel} authority`}
+                  options={reviewerOptions}
+                  status={reviewerName !== '' && pickerUsers.length > 0 && !reviewerFit ? 'warning' : undefined}
+                  disabled={off('reviewer')}
+                  onChange={(v?: string) => onPatch({ reviewer: v ?? '' })}
+                />
               </label>
-              <label>
+              <label className="wl-span-2">
                 <span className={req}>Review date</span>
                 <DatePicker
                   style={{ width: '100%' }}
@@ -607,36 +700,20 @@ function RowDetail({
           </>
         ) : (
           <p className="wl-muted" style={{ margin: 0 }}>
-            Only needed when the product status is flagged (possible match, Needs Safety / Regulatory Review) or Prohibited.
+            Only needed when the product status is flagged (possible match, Needs Safety / Regulatory Review), Prohibited or over its limit.
           </p>
         )}
       </section>
 
       <section>
-        <label>
-          <span className="wl-field-label">Notes</span>
-          <Input.TextArea
-            autoSize={{ minRows: 2 }}
-            value={text(row.notes)}
-            disabled={off('notes')}
-            onChange={(e) => onPatch({ notes: e.target.value })}
-          />
-        </label>
-      </section>
-
-      <section>
-        <div className="wl-sec-title">Reference</div>
+        <div className="wl-sec-title">Row details</div>
         <dl className="wl-dl">
-          <dt>Function</dt>
-          <dd>{text(row.functionRole)}</dd>
-          <dt>Status / level</dt>
-          <dd>{text(row.statusLevel)}</dd>
-          <dt>Why it matters</dt>
-          <dd>{text(row.whyItMatters)}</dd>
-          <dt>Applicable products</dt>
-          <dd>{text(row.applicableProducts)}</dd>
+          <dt>Owner (department)</dt>
+          <dd>{text(row.owner) || '—'}</dd>
           <dt>Linked gate</dt>
-          <dd className="wl-mono">{text(row.linkedGate)}</dd>
+          <dd><GateLink value={text(row.linkedGate)} /></dd>
+          <dt>Notes</dt>
+          <dd>{text(row.notes) || '—'}</dd>
         </dl>
       </section>
     </div>

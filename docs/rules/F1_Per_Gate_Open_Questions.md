@@ -1398,7 +1398,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | R5-Q2 | **11** | D1 có áp cho khối chữ ký phase không |
 | R5-Q4 | **12** | Chữ ký vẽ tay + yếu tố thứ hai — có cần, và bắt buộc tới mức nào |
 | ✅ R5-Q13 | — | (đã quyết là SW-31, không gửi SME) Thiếu quyết định `Reject / Stop` — câu 3 và 29 đều nêu, dropdown workbook không có |
-| R5-Q14 | **14** | "Safety **hoặc** Regulatory authority" — một trong hai là đủ, hay cần cả hai |
+| ✅ R5-Q14 | — | (đã quyết là SW-32, không gửi SME) "Safety **hoặc** Regulatory authority" — một trong hai là đủ, hay cần cả hai |
 | R5-Q15 | **15** | Trang dữ liệu tham chiếu cấp công ty: ai *thấy*, ai *sửa* |
 | R5-Q16 | **16** | Gap High — "controlled action" nghĩa là Next Action có kiểm soát?, và due date ghi đâu |
 | ✅ R5-Q17 | — | Trigger Change Control giới hạn theo gate đã pass — đã quyết là quy tắc phần mềm SW-30 (13/10/2026), không gửi SME |
@@ -1542,6 +1542,8 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q64 | Ma trận an toàn thành phần có cột mã nguyên liệu (`rmCode`) để nối với BOM không | Rà soát luật SME (Round 4 câu 23(b)) | **lộ ra 09/10/2026** |
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
+| R5-Q68 | Dòng watch-list thuộc phạm vi kiểm của gate nào: theo cột Linked gate, từ gate được gắn trở đi | Chủ dự án chỉ ra 14/10/2026 | **lộ ra 14/10/2026** |
+| R5-Q67 | Thẩm quyền Safety/Regulatory chấp nhận finding watch-list nằm ở người đánh giá hay người ký gate | Chủ dự án chuyển thẩm quyền 14/10/2026 | **lộ ra 14/10/2026** |
 | R5-Q66 | Change Control mở trước hay sau khi thay đổi xảy ra, và bản ghi được duyệt có là điều kiện để tạo phiên bản công thức không | Chủ dự án hỏi về Change Control 12/10/2026 | **lộ ra 12/10/2026** |
 
 Sáu câu cuối đáng chú ý: chúng chỉ lộ ra **khi viết code hoặc khi bấm thử**, không phải khi đọc đáp án — Q11 khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào · Q12 khi một ca kiểm hành vi cho kết quả chặn mà không có quy tắc nào nói nên chặn · Q15 khi trang admin vừa xây xong thì lộ ra người bảo trì dữ liệu lại không thấy link · Q16 khi chủ dự án đặt Gap `High` và câu hướng dẫn trên màn hình bảo làm sai điều luật cho phép. Đó là lý do quyết định "gửi sau khi xong 36 câu" đúng: bốn nhóm còn lại gần như chắc chắn sẽ thêm nữa.
@@ -1702,7 +1704,7 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 
 **(Cũ) Nếu trả lời khác:** `GATE_DECISIONS` trong `packages/shared/src/config/gates.ts` và `GateDecision` trong `types/index.ts`; các mảng `allowed` trong `packages/shared/src/utils/gapCriticality.ts`.
 
-#### R5-Q14 · "Safety **hoặc** Regulatory authority" — bên nào cho finding nào 🔴
+#### ✅ R5-Q14 · ĐÃ QUYẾT 14/10/2026 — trạng thái hoặc cột Owner của dòng quyết định (quy tắc SW-32, không hỏi SME). "Safety **hoặc** Regulatory authority" — bên nào cho finding nào
 
 **Đã build 24/08/2026** cùng nhóm 2. Câu 32(c) nói việc ghi Proceed with Conditions có thể là authorised acceptance của một watch-list finding bị flag, *"không cần một bước acknowledgement trùng lặp riêng"* — nhưng một trong bốn điều kiện là **"the gate approver has the required Safety or Regulatory authority"**.
 
@@ -2296,6 +2298,26 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.
 
 **Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ**, chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+
+#### R5-Q68 · Dòng watch-list thuộc phạm vi kiểm của gate nào — theo cột Linked gate, từ gate được gắn trở đi 🔴
+
+**Lộ ra 14/10/2026, khi chủ dự án nói "không phải toàn bộ các hàng đều liên kết tới gate 4, 6 hay 7 khi check readiness tại đó, nó dựa vào cột Linked gate".** Workbook gắn mỗi dòng của hai danh sách với một gate (`04_Ingredient_Screening`, `06_Packaging_Artwork`, `07_Maternal_Baby_Safety`): danh sách cấm có 10 dòng gắn Gate 4, Retinol gắn Gate 7, Bisphenol S gắn Gate 6; cả 12 dòng thai kỳ gắn Gate 7. Round 4 Q6 nói Gate 4 phân loại *"every row"* và Q32(e) áp cùng vết xem xét cho danh sách thai kỳ, nên đọc theo Linked gate là thu hẹp lời SME ở Gate 4.
+
+**Hiện chạy theo (chủ dự án quyết):** một dòng thuộc phạm vi kiểm **từ gate được gắn trở đi** (gắn 04 thì kiểm ở Gate 4 và mọi gate sau; gắn 07 thì chỉ từ Gate 7). Không phải "đúng gate đó", vì như vậy một finding Gate 4 chưa giải quyết sẽ không chặn Gate 7. Hệ quả: ở Gate 4 chỉ 10 dòng danh sách cấm cần Classification, và danh sách thai kỳ chưa bị kiểm; ở Gate 7 cả 24 dòng. Dòng không đọc được Linked gate thì kiểm ở mọi gate.
+
+**Câu hỏi (một dòng xác nhận):** các dòng watch-list có chỉ cần kiểm từ gate được gắn ở cột Linked gate trở đi, thay vì mọi dòng ở Gate 4 không?
+
+**Nếu trả lời khác:** `watchlistRowInScope` trong `packages/shared/src/utils/watchlistReview.ts` và các chỗ gọi nó trong `evaluateReadinessCheck` (`gateProgress.ts`) [ASSUMPTION: R5-Q68].
+
+#### R5-Q67 · Thẩm quyền Safety/Regulatory để chấp nhận một finding watch-list: ở người đánh giá, hay ở người duyệt gate 🔴
+
+**Lộ ra 14/10/2026, khi chủ dự án hỏi "nếu Lead được nominate thì sao có quyền chuyên viên" rồi "sao lại bắt Regulatory hay Safety ký phase và chịu trách nhiệm toàn bộ nội dung".** Round 4 Q32(c) viết điều kiện thứ tư là *"the gate approver has the required Safety or Regulatory authority"*, và *"a separate duplicate acknowledgement is not required"*. Đọc đúng chữ thì người ký Approved của cả gate phải có thẩm quyền chuyên môn về một finding duy nhất — buộc một chuyên viên chịu trách nhiệm toàn bộ nội dung gate (công thức, bao bì, claim…), và Lead không có cách chọn đúng người.
+
+**Hiện chạy theo (chủ dự án quyết, cập nhật 15/10/2026):** thẩm quyền nằm ở **người đánh giá**: Reviewer là ô chọn người chỉ gồm người có role đúng chức năng của finding (trạng thái flag, hoặc cột Owner — SW-32), và chỉ người ở Reviewer (hoặc admin) ghi được Non-critical / Further information required. Người ký Approved ký như thường; readiness đã kiểm finding.
+
+**Câu hỏi (một dòng xác nhận):** thẩm quyền Safety/Regulatory cần để chấp nhận một finding watch-list có nằm ở người đánh giá đã ghi kết luận (thay vì người duyệt gate) không?
+
+**Nếu trả lời khác:** `newlyCarriedVerdictRows` + khối kiểm trong `setRegisterRows` (`apps/api/src/projects/projects.service.ts`) và khối kiểm trong `assertCanCarryConditions`; `RowDetail` trong `WatchlistRegister.tsx` [ASSUMPTION: R5-Q67].
 
 #### R5-Q66 · Change Control mở trước khi thay đổi xảy ra, hay có thể mở sau để ghi nhận ngược 🔴
 

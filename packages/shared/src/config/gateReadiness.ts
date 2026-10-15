@@ -1430,9 +1430,9 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         // IS the acceptance — "a separate duplicate acknowledgement is not
         // required" — and its authority condition is now enforced server-side by
         // `assertCanCarryConditions`, via the two new `watchlist-finding`
-        // capabilities. Which of the two is "required" for a machine-flagged row is
-        // the one part still open [ASSUMPTION: R5-Q14].
-        'The review team confirmed that is enough, provided the person deciding the gate holds Safety or Regulatory authority — which the app now checks. Either authority satisfies it; which one a machine-flagged row requires is not yet settled.',
+        // capabilities. Which of the two is "required" for a row is decided by SW-32
+        // (`watchlistRequiredAuthority`): its status, else its Owner column.
+        'The review team said Proceed with Conditions is enough, provided the gate approver holds Safety or Regulatory authority; the project owner moved that authority to the reviewer who records the assessment (SW-32), which the app checks when the assessment is saved [ASSUMPTION: R5-Q67]. The authority needed is the one the row\'s status names or, for a machine-flagged row, the one its Owner column names (either, where it names both).',
       check: { kind: 'watchlistNoneConditional' },
     },
     {

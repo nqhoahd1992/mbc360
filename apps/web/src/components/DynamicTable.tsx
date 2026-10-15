@@ -4,6 +4,7 @@ import { Alert, Button, Checkbox, DatePicker, Drawer, Grid, Input, InputNumber, 
 import { DeleteOutlined, DownOutlined, LockOutlined, PlusOutlined, RightOutlined, UpOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useParams } from 'react-router-dom';
+import GateLink from './GateLink';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
 import { duplicateValueProblems, isColumnRequiredFor, isRegisterRowBlank, missingRequiredProblems } from '@mbc360/shared/config/registers';
 import RequiredMark from './RequiredMark';
@@ -302,6 +303,9 @@ export default function DynamicTable({
       draft,
     });
     if (custom !== undefined) return custom;
+
+    // A gate reference is read-only by nature: shown as the gate it names, linking to it.
+    if (column.gateLink) return <GateLink value={text(row[column.key])} />;
 
     const editable = column.editable !== false && !readOnly && !frozenGate;
     const value = row[column.key];

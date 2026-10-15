@@ -53,8 +53,11 @@ import { RM_EVIDENCE_REGISTER, rmEvidenceContradictions } from '@mbc360/shared/u
 import {
   WATCHLIST_REGISTERS,
   brokenNextActionLinks,
-  watchlistConditionalRows,
   watchlistLabel,
+  watchlistRequiredAuthority,
+  newlyCarriedVerdictRows,
+  newlyNamedReviewerRows,
+  WATCHLIST_AUTHORITY_LABEL,
 } from '@mbc360/shared/utils/watchlistReview';
 import {
   VULNERABLE_REGISTER,
@@ -491,20 +494,8 @@ export class ProjectsService {
   ): Promise<void> {
     if (decision !== 'Proceed with Conditions') return;
 
-    // C11 (SME rule audit, 2026-10-04): each authority is needed only at the gate
-    // whose readiness actually lets that thing ride on Proceed with Conditions —
-    // read from the config, not hard-coded. It used to be demanded at EVERY gate,
-    // so a Gate 7 approver needed watch-list authority because of a Gate 4 finding.
-    if (
-      gateCarries(gateId, 'watchlistNoneConditional') &&
-      watchlistConditionalRows(project).length > 0 &&
-      !(await this.permissions.canAcceptWatchlistFinding(user))
-    ) {
-      throw new ForbiddenException(
-        `Gate ${gateId}: carrying a flagged watch-list finding under Proceed with Conditions needs Safety or Regulatory authority ` +
-          `(watchlist-finding|accept-safety or |accept-regulatory)`,
-      );
-    }
+    // The watch-list authority is NOT checked here any more (SW-32, 2026-10-14): it sits with the qualified reviewer who records
+    // the assessment (see setRegisterRows), and the readiness list already checks the finding, so the gate is signed as usual.
     if (
       gateCarries(gateId, 'changeControlNoAdminImpact') &&
       gate11ConditionalChanges(project, project.changes).length > 0 &&
@@ -2576,6 +2567,37 @@ export class ProjectsService {
           const old = (recordId && committedRows.find((c) => String(c.recordId ?? '').trim() === recordId)) || committedRows[i];
           for (const c of attestColumns) assertSelfAttested(c.label, old?.[c.key], r[c.key], user.displayName);
         });
+      }
+      // SW-32: the Reviewer of a finding is a person picked from those who hold the authority the finding needs (its status, else
+      // its Owner), and recording an assessment that lets a finding ride on Proceed with Conditions — the acceptance — is done by
+      // that Reviewer (an administrator may too).
+      if ((WATCHLIST_REGISTERS as readonly string[]).includes(registerKey)) {
+        const committedRows = project.registers[registerKey] ?? [];
+        const unfit: string[] = [];
+        for (const row of newlyNamedReviewerRows(committedRows, rows)) {
+          const needs = watchlistRequiredAuthority(row);
+          const reviewer = await tx.user.findFirst({
+            where: { displayName: String(row.reviewer).trim(), active: true },
+            include: { department: true, roles: { include: { role: true } } },
+          });
+          if (!reviewer || !(await this.permissions.canAcceptWatchlistFinding(reviewer, needs))) {
+            unfit.push(`${watchlistLabel(row)}: ${String(row.reviewer)} (needs ${needs.map((a) => WATCHLIST_AUTHORITY_LABEL[a]).join(' or ')})`);
+          }
+        }
+        if (unfit.length > 0) {
+          throw new BadRequestException(`The Reviewer must hold the authority the finding needs — ${unfit.join('; ')}`);
+        }
+        const notTheirs: string[] = [];
+        for (const row of newlyCarriedVerdictRows(committedRows, rows)) {
+          if (!this.permissions.isAdmin(user) && String(row.reviewer ?? '').trim() !== user.displayName) {
+            notTheirs.push(watchlistLabel(row));
+          }
+        }
+        if (notTheirs.length > 0) {
+          throw new ForbiddenException(
+            `Only the Reviewer of a finding may assess it as one that can be carried under Proceed with Conditions — ${notTheirs.join('; ')}`,
+          );
+        }
       }
       if (registerKey === 'publishedInfoApproval') {
         const contradictory = contradictoryClaimRows(rows);
