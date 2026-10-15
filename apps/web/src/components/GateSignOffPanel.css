@@ -79,3 +79,8 @@
 .gso-lane { display: inline-flex; align-items: center; gap: 6px; }
 .gso-lane-n { color: var(--c-text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
 .gso-lane-done { color: var(--c-ok); }
+
+/* Critical gates: the independent-function representative block above the three signature steps. */
+.gso-rep-body { display: grid; gap: 8px; min-width: 0; flex: 1; }
+.gso-rep-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gso-rep-form .ant-select { min-width: 240px; max-width: 100%; }

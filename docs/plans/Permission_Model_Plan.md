@@ -83,7 +83,7 @@ Lý do: quyết định chuyên môn (Regulatory/Safety chấp nhận finding) �
 |---|---|---|
 | **1** (đã xây 15/10/2026) | Watch-list: Reviewer là ô chọn người, ứng viên theo role đúng chức năng của finding; chỉ người được chọn ghi Non-critical / Further information required; giữ `accept-*` làm danh sách ứng viên; cập nhật SW-32, câu 9 | `check`, `verify:readiness`, `verify:watchlist-authority`, thử API |
 | **2** (đã xây 15/10/2026; các biểu mẫu trang phase chưa áp) | Cờ `sensitive` trên cột cấu hình; khóa mọi sổ theo phân công (server 403 + giao diện mờ); ba sổ ngoại lệ | `verify:freeze`, ca mới cho quyền theo sổ, thử API |
-| **3** | Khối người đại diện chức năng ở bảy gate quan trọng; khóa khối ba chữ ký (giao diện và server); ứng viên theo role | ca mới trong `verify:e2e`, thử API |
+| **3** (đã xây 15/10/2026; `verify:e2e` chưa chạy lại) | Khối người đại diện chức năng ở bảy gate quan trọng; khóa khối ba chữ ký (giao diện và server); ứng viên theo role | ca mới trong `verify:e2e`, thử API |
 | **4** | Đóng sổ theo gate (A): bản chụp theo cột, mục readiness, migration chuyển chữ ký đóng cũ | `verify:readiness`, `verify:scaffold`, `generate:column-reads`, `verify:e2e` |
 | **5** | Gỡ `gate:decide`, `phase:approve`, `market-track|approve` khỏi seed và Role Editor; migration xóa quyền đã cấp; chạy `verify:e2e` đầy đủ | `verify:e2e` (DB riêng, khoảng 8 phút), `check`, `lint` |
 

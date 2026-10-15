@@ -70,6 +70,46 @@ export const DECISIONS_REQUIRING_COMMENT: readonly string[] = [
   'Override or exception',
 ];
 
+// The independent functions a representative can stand for, with the capability that qualifies a person to be one.
+export const INDEPENDENT_FUNCTIONS: Record<string, { label: string; capability: string }> = {
+  technical: { label: 'Technical', capability: 'gate-signoff|represent-technical' },
+  regulatory: { label: 'Regulatory', capability: 'gate-signoff|represent-regulatory' },
+  safety: { label: 'Safety / Scientific Review', capability: 'gate-signoff|represent-safety' },
+  quality: { label: 'Quality', capability: 'gate-signoff|represent-quality' },
+};
+
+// The functions a gate accepts a representative of (Gate 3: Technical and/or Regulatory), as keys of INDEPENDENT_FUNCTIONS.
+export function independentFunctionsForGate(gateId: string): string[] {
+  const anyOf = INDEPENDENT_FUNCTION_BY_GATE[gateId]?.anyOf ?? [];
+  return Object.entries(INDEPENDENT_FUNCTIONS)
+    .filter(([, f]) => anyOf.includes(f.capability))
+    .map(([key]) => key);
+}
+
+// The slot (Reviewed by or Approved by) the named representative fills on a gate's lane, if one has been named.
+export function gateRepresentative(
+  project: ProjectData,
+  gateId: string,
+  market?: string,
+): GateSignOff | undefined {
+  return project.gateSignOffs.find(
+    (s) =>
+      s.gateId === gateId &&
+      (s.market ?? undefined) === market &&
+      !!s.representsFunction &&
+      !!s.assignedToUserId &&
+      (!market || s.formulaVersion === project.formulaVersion),
+  );
+}
+
+// Why nobody may sign this lane yet, or null: a critical gate needs its independent-function representative named first
+// (project owner, 2026-10-15). One reading for the screen and the API.
+export function representativeMissingReason(project: ProjectData, gateId: string, market?: string): string | null {
+  if (!CRITICAL_GATES.includes(gateId) || gateRepresentative(project, gateId, market)) return null;
+  const fn = INDEPENDENT_FUNCTION_BY_GATE[gateId]?.label ?? 'the independent function';
+  return `${gateId} is a critical gate: the project Lead must name the person who represents ${fn} (and which signature they give) before anyone signs`;
+}
+
 export function gateSignOffNeedsComment(decision: string): boolean {
   return DECISIONS_REQUIRING_COMMENT.includes(decision.trim());
 }

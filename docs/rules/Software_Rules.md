@@ -205,6 +205,15 @@ Trong một dự án, thẩm quyền đến từ **phân công**, không từ Ro
 - Hàm duy nhất `registerAccessViolations` (`utils/registerAccess.ts`), server gọi ở `setRegisterRows`, giao diện qua `useRegisterAccess`. Kiểm thử: `npm run verify:register-access` (22 ca).
 - **Chưa áp** cho các biểu mẫu của trang phase (checklist, requirement, Key Gate Check): chúng không phải sổ; xem kế hoạch giai đoạn sau.
 
+### SW-35. Gate quan trọng: Lead chỉ định người đại diện chức năng độc lập trước khi ai ký — *Đã xây* (2026-10-15, chủ dự án; kế hoạch giai đoạn 3)
+Round 4 Q29(3)–(4) (nguyên văn): ở bảy gate quan trọng (3, 4, 7, 8, 9, 10, 11), *"at least one reviewer or approver must also represent the relevant independent function"*. Cách làm:
+- **Lead (hoặc Admin) chỉ định người đại diện** và **bước họ ký** (Reviewed by hoặc Approved by), ở khối "Independent function" trên thẻ Gate sign-off (`GateRepresentativeBlock`); chức năng: Gate 3 Technical hoặc Regulatory (ít nhất một, đúng "and/or"), Gate 4 và 10 Regulatory, Gate 7 và 8 Safety / Scientific Review, Gate 9 và 11 Quality. Gate per-market (10, 11) có một người đại diện cho từng market.
+- **Ứng viên** chỉ là người có quyền `gate-signoff|represent-*` tương ứng (một người nhiều role vẫn hiện nếu một role đủ); **không** được là người Prepared by.
+- **Người đó chiếm bước đã chọn** (khóa trên giao diện); bước còn lại Lead chọn tự do như mọi gate. Chưa chỉ định người đại diện thì **không ai chỉ định được Reviewed/Approved và không ai ký được** (server từ chối 400, giao diện khóa kèm lý do). Đổi người đại diện khi họ đã ký thì phải rút chữ ký (có lý do) trước.
+- Lưu trong cột `gate_sign_offs.representsFunction` của hàng bước đó (migration `20261015120000_gate_representative`); hàm: `gateRepresentative`, `representativeMissingReason`, `independentFunctionsForGate` trong `config/gateSignOff.ts`; server: `setGateRepresentative` (PUT `…/gates/:gateId/sign-off-representative`).
+- Kiểm tra cũ "người review hoặc duyệt giữ quyền chức năng" ở bước ký Approved vẫn chạy như lớp phòng thủ. Gate không quan trọng (1, 2, 5, 6, 12) không có khối này.
+- Gate đã ký dở trước thay đổi này: chữ ký đã có giữ nguyên; các chữ ký mới chờ Lead chỉ định người đại diện.
+
 ## 3. Quyền và truy cập
 
 ### SW-10. Không có role thì không vào được app — *Đã xây* (2026-10-02)

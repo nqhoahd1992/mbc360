@@ -294,6 +294,15 @@ export const setGateSignOffAssignees = (
   v: number,
 ) => put(id, `gates/${gateId}/sign-off-assignees`, { market, assignments }, v);
 
+// Critical gates: the Lead names who represents the independent function and which signature they give (userId null clears it).
+export const setGateRepresentative = (
+  id: string,
+  gateId: string,
+  market: string | undefined,
+  input: { userId: string | null; slot?: GateSignOffRole; function?: string },
+  v: number,
+) => put(id, `gates/${gateId}/sign-off-representative`, { market, ...input }, v);
+
 // What the signer reads before signing, and the hash their signature is bound to.
 export const previewGateSignOff = (
   id: string,

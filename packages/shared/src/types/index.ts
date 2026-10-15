@@ -682,6 +682,8 @@ export interface GateSignOff {
   comment?: string;
   signatureImage?: string;
   signatureVerifiedAt?: string;
+  // Critical gates: the independent function this slot's person represents (safety | regulatory | quality | technical).
+  representsFunction?: string;
   // Question 29(1): the gate-scoped evidence snapshot this signature attests to.
   // Held in full rather than hashed, because the answer requires the system to
   // "identify what changed" — a hash can only say that something did.

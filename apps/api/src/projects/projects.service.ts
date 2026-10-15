@@ -72,6 +72,10 @@ import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateR
 import {
   GATE_PASSING_DECISIONS,
   INDEPENDENT_FUNCTION_BY_GATE,
+  INDEPENDENT_FUNCTIONS,
+  CRITICAL_GATES,
+  independentFunctionsForGate,
+  representativeMissingReason,
   findGateSignOff,
   gateFlowMissing,
   gateSignOffMarkets,
@@ -1791,6 +1795,27 @@ export class ProjectsService {
       }
       const existing = await this.loadGateSignOffs(tx, id, gateId, market);
 
+      // Critical gates (project owner, 2026-10-15): the Lead names the independent-function representative FIRST, and that person
+      // takes the Reviewed by or Approved by slot. Until then neither slot can be nominated; once named, that slot is theirs and is
+      // changed only through the representative route.
+      if (CRITICAL_GATES.includes(gateId)) {
+        const rep = existing.find((r: { representsFunction: string | null; assignedToUserId: string | null }) => r.representsFunction && r.assignedToUserId);
+        for (const role of ['Reviewed by', 'Approved by'] as const) {
+          if (!(role in assignees)) continue;
+          if (!rep) {
+            throw new BadRequestException(
+              `${gateId} is a critical gate: name the person who represents the independent function first, then nominate "${role}"`,
+            );
+          }
+          if (rep.role === role) {
+            throw new BadRequestException(`"${role}" is held by the function representative — change it in the representative block`);
+          }
+        }
+        if (rep && assignees['Prepared by'] && assignees['Prepared by'] === rep.assignedToUserId) {
+          throw new BadRequestException('The function representative cannot also be "Prepared by"');
+        }
+      }
+
       // Question 29(4)'s one stated pair, applied to the MERGED state: whoever
       // would end up on "Reviewed by" must not be whoever is on "Prepared by",
       // counting a signature as well as a nomination. Refusing it now spares the
@@ -1841,6 +1866,87 @@ export class ProjectsService {
         }
       }
       return { gateId, market: market ?? null, roles: Object.keys(assignees) };
+    });
+  }
+
+  // Critical gates: the Lead names the person who represents the gate's independent function and the slot they fill (Reviewed by or
+  // Approved by). Round 4 question 29(4): "at least one reviewer or approver must also represent the relevant independent function".
+  // The candidate must hold the matching represent-* capability, must not be the preparer, and the slot stays theirs until the Lead
+  // changes it (a signature already given must be withdrawn first). Passing userId null clears the nomination.
+  async setGateRepresentative(
+    user: SessionUser,
+    id: string,
+    gateId: string,
+    market: string | undefined,
+    input: { userId: string | null; slot?: GateSignOffRole; function?: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'gate_sign_off.representative', async (tx, _row, project) => {
+      this.assertGateLane(project, gateId, market);
+      if (project.identity.projectLead !== user.displayName && !this.permissions.isAdmin(user)) {
+        throw new ForbiddenException(`Only the project's Lead (${project.identity.projectLead}) may name the function representative`);
+      }
+      if (!CRITICAL_GATES.includes(gateId)) {
+        throw new BadRequestException(`${gateId} has no independent-function representative (only the critical gates do)`);
+      }
+      const rows = await this.loadGateSignOffs(tx, id, gateId, market);
+      type Row = (typeof rows)[number];
+      const current = rows.find((r: Row) => r.representsFunction && r.assignedToUserId);
+      const free = async (row: Row) => {
+        if (row.signedAt) {
+          throw new BadRequestException(`"${row.role}" is already signed — withdraw the signature before changing the representative`);
+        }
+        await tx.gateSignOff.update({ where: { id: row.id }, data: { assignedToUserId: null, representsFunction: null } });
+      };
+      if (!input.userId) {
+        if (current) await free(current);
+        return { gateId, market: market ?? null, cleared: true };
+      }
+      const slot = input.slot;
+      if (slot !== 'Reviewed by' && slot !== 'Approved by') {
+        throw new BadRequestException('Say which signature the representative gives: "Reviewed by" or "Approved by"');
+      }
+      const allowed = independentFunctionsForGate(gateId);
+      const candidate = await tx.user.findUnique({
+        where: { id: input.userId },
+        include: { department: true, roles: { include: { role: true } } },
+      });
+      if (!candidate?.active) throw new BadRequestException('The representative is not an active user');
+      const held: string[] = [];
+      for (const fn of allowed) {
+        if (await this.holdsAnyCapability(candidate, [INDEPENDENT_FUNCTIONS[fn].capability])) held.push(fn);
+      }
+      const fn = input.function ?? held[0];
+      if (!fn || !allowed.includes(fn) || !held.includes(fn)) {
+        const labels = allowed.map((f) => INDEPENDENT_FUNCTIONS[f].label).join(' or ');
+        throw new BadRequestException(`${candidate.displayName} does not represent ${labels} — pick someone who holds that function`);
+      }
+      const preparer = rows.find((r: Row) => r.role === 'Prepared by');
+      if ((preparer?.signedByUserId ?? preparer?.assignedToUserId) === candidate.id) {
+        throw new BadRequestException(`${candidate.displayName} is "Prepared by" on this gate and cannot also represent the independent function`);
+      }
+      // The previous representative's slot (if it is the other one) is freed; the target slot must be unsigned.
+      if (current && current.role !== slot) await free(current);
+      const target = rows.find((r: Row) => r.role === slot);
+      if (target?.signedAt) {
+        throw new BadRequestException(`"${slot}" is already signed — withdraw the signature before changing the representative`);
+      }
+      if (target) {
+        await tx.gateSignOff.update({ where: { id: target.id }, data: { assignedToUserId: candidate.id, representsFunction: fn } });
+      } else {
+        await tx.gateSignOff.create({
+          data: {
+            projectId: id,
+            gateId,
+            market: market ?? null,
+            formulaVersionId: market ? await this.currentVersionId(tx, id) : null,
+            role: slot,
+            assignedToUserId: candidate.id,
+            representsFunction: fn,
+          },
+        });
+      }
+      return { gateId, market: market ?? null, slot, function: fn, representative: candidate.displayName };
     });
   }
 
@@ -1907,6 +2013,9 @@ export class ProjectsService {
         );
       }
       const rows = await this.loadGateSignOffs(tx, id, gateId, market);
+      // Critical gates: nobody signs until the independent-function representative is named (project owner, 2026-10-15).
+      const missingRep = representativeMissingReason(project, gateId, market);
+      if (missingRep) throw new BadRequestException(missingRep);
       const existing = rows.find((r) => r.role === role);
       if (!existing) throw new NotFoundException(`"${role}" has no nominated signer on ${gateId} yet`);
       if (existing.signedAt) {

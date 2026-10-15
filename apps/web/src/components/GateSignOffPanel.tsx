@@ -18,9 +18,13 @@ import {
   findGateSignOff,
   gateFlowMissing,
   gateSignOffMarkets,
+  gateRepresentative,
   gateSignOffNeedsComment,
   previousGateSignOffRole,
+  representativeMissingReason,
+  INDEPENDENT_FUNCTIONS,
 } from '@mbc360/shared/config/gateSignOff';
+import GateRepresentativeBlock from './GateRepresentativeBlock';
 import {
   currentGateIndex,
   gateIndex,
@@ -145,6 +149,9 @@ export default function GateSignOffPanel({
   // disabled button. Mirrors the server's guards — it does not replace them.
   const blockedReason = (market: string | undefined, role: GateSignOffRole): string | null => {
     if (!canSign) return notOpenReason;
+    // Critical gates: nobody signs until the independent-function representative is named.
+    const repMissing = representativeMissingReason(project, gateId, market);
+    if (repMissing) return repMissing;
     // Nobody signs while the gate is still blocked: the readiness list has to be clear first.
     if (stageIncomplete || flowMissing.length > 0 || openBlockers > 0) {
       return "Signing opens once the Phase Gate Flow is saved as complete and nothing else is blocking this gate — see the readiness list.";
@@ -361,6 +368,9 @@ export default function GateSignOffPanel({
               )}
             </div>
             {notices}
+            {critical && independent && (
+              <GateRepresentativeBlock project={project} gateId={gateId} market={market} canEdit={(isLead || session.isAdmin) && !archived && canSign} />
+            )}
             {/* A WARNING, not a block: the rule is about a SET ("at least one
                 reviewer or approver"), so until both are nominated the Lead may
                 still satisfy it with the other one. Refusing a half-finished
@@ -430,6 +440,15 @@ export default function GateSignOffPanel({
                           <strong>{r.name}</strong>
                           {r.roleAtSigning && <span className="gso-muted"> · {r.roleAtSigning}</span>}
                         </>
+                      ) : critical && (r.role === 'Reviewed by' || r.role === 'Approved by') && r.representsFunction ? (
+                        <>
+                          <strong>{r.assignedToName}</strong>
+                          <span className="c-tag" style={{ marginLeft: 6 }}>
+                            Represents {INDEPENDENT_FUNCTIONS[r.representsFunction]?.label ?? r.representsFunction}
+                          </span>
+                        </>
+                      ) : critical && (r.role === 'Reviewed by' || r.role === 'Approved by') && representativeMissingReason(project, gateId, market) ? (
+                        <span className="gso-muted">Name the function representative first</span>
                       ) : isLead && !archived ? (
                         <Select
                           allowClear
@@ -440,7 +459,9 @@ export default function GateSignOffPanel({
                           options={users.map((u) => ({
                             value: u.id,
                             label: u.roleName ? `${u.displayName} — ${u.roleName}` : u.displayName,
-                            disabled: !!conflictUserId && u.id === conflictUserId,
+                            disabled:
+                              (!!conflictUserId && u.id === conflictUserId) ||
+                              (r.role === 'Prepared by' && u.id === gateRepresentative(project, gateId, market)?.assignedToUserId),
                             title:
                               !!conflictUserId && u.id === conflictUserId
                                 ? `Already on "${conflictWith}" — the reviewer must be a different person`

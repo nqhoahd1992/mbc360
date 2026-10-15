@@ -140,12 +140,29 @@ export async function run(base: string, db: Client): Promise<number> {
   }
   const stale = async (gate: string, role: Role, market?: string): Promise<string[]> =>
     gp.gateSignOffStaleChanges((await project()).project, gate, market, role);
-  const nominate = async (gate: string, market?: string) =>
-    api('admin', 'PUT', `/projects/${PROJECT}/gates/${gate}/sign-off-assignees`, {
+  // Critical gates (SW-35): the Lead names the independent-function representative first — here the "Approved by" account, which
+  // holds every function — and that slot is theirs; the other two are nominated as on any gate.
+  const CRITICAL_E2E = ['SG03', 'SG04', 'SG07', 'SG08', 'SG09', 'SG10', 'SG11'];
+  const nominate = async (gate: string, market?: string) => {
+    const critical = CRITICAL_E2E.includes(gate);
+    if (critical) {
+      const named = await api('admin', 'PUT', `/projects/${PROJECT}/gates/${gate}/sign-off-representative`, {
+        market,
+        userId: sessions[signerKey(gate, 'Approved by', market)].id,
+        slot: 'Approved by',
+        expectedVersion: await version(),
+      });
+      if (named.status >= 300) return named;
+    }
+    return api('admin', 'PUT', `/projects/${PROJECT}/gates/${gate}/sign-off-assignees`, {
       market,
-      assignments: ROLES.map((role) => ({ role, userId: sessions[signerKey(gate, role, market)].id })),
+      assignments: ROLES.filter((role) => !(critical && role === 'Approved by')).map((role) => ({
+        role,
+        userId: sessions[signerKey(gate, role, market)].id,
+      })),
       expectedVersion: await version(),
     });
+  };
   // SW-26: a passing signature needs the Phase Gate Flow card filled in (owner, due date, evidence link) as well as Complete.
   const complete = async (gate: string) =>
     api('admin', 'PUT', `/projects/${PROJECT}/gates/${gate}`, {
@@ -671,7 +688,22 @@ export async function run(base: string, db: Client): Promise<number> {
 
   // ============================================================ SG03: register columns
   console.log('\n--- SG03 (claim ledger: Gate 3 columns versus later-gate columns)');
+  // The independent-function representative (project owner, 2026-10-15): named by the Lead before anyone signs.
+  const sg3Url = `/projects/${PROJECT}/gates/SG03/sign-off-representative`;
+  const sg3Assign = `/projects/${PROJECT}/gates/SG03/sign-off-assignees`;
+  r = await api('admin', 'PUT', sg3Assign, { assignments: [{ role: 'Reviewed by', userId: sessions[signerKey('SG03', 'Reviewed by')].id }], expectedVersion: await version() });
+  t('Reviewed by cannot be nominated on a critical gate before the representative is named (400)', r.status === 400 && /represents/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+  r = await api('tuan', 'PUT', sg3Url, { userId: sessions[signerKey('SG03', 'Approved by')].id, slot: 'Approved by', expectedVersion: await version() });
+  t('only the Lead or an administrator names the representative (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', sg3Url, { userId: sessions[signerKey('SG03', 'Reviewed by')].id, slot: 'Reviewed by', expectedVersion: await version() });
+  t('a person who does not represent the gate function is refused (400)', r.status === 400 && /does not represent/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', sg3Url, { userId: sessions[signerKey('SG03', 'Approved by')].id, expectedVersion: await version() });
+  t('the signature slot must be said (400)', r.status === 400 && /Reviewed by/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
   await nominate('SG03');
+  r = await api('admin', 'PUT', sg3Assign, { assignments: [{ role: 'Approved by', userId: sessions[signerKey('SG03', 'Reviewed by')].id }], expectedVersion: await version() });
+  t('the representative\'s slot cannot be nominated over (400)', r.status === 400 && /representative/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
+  const repRows = (await project()).project.gateSignOffs.filter((x: any) => x.gateId === 'SG03' && x.representsFunction);
+  t('the representative is stored on the Approved by slot with its function', repRows.length === 1 && repRows[0].role === 'Approved by', short(repRows));
   r = await putClaims(() => [{ claimId: 'C-1', approvedWording: 'Hydrates skin', claimCategory: 'Cosmetic' }]);
   t('a claim row is saved while SG03 is the open gate', r.status < 300, short(r.json));
   const rows0 = (await project()).project.registers.claimEvidenceTraceability;

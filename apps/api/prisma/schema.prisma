@@ -590,6 +590,9 @@ model GateSignOff {
   comment          String?
   signatureImage   String?
   signatureVerifiedAt DateTime?
+  // Critical gates only: which independent function (safety, regulatory, quality, technical) the person on this slot represents — the
+  // Lead names the representative and the slot (Reviewed by or Approved by) before anyone signs (Round 4 question 29(4)).
+  representsFunction String?
   // Question 29(1): the gate-scoped evidence snapshot this signature attests to,
   // held in FULL rather than hashed — the answer requires the system to "identify
   // what changed", and a hash can only say that something did. "A project-wide

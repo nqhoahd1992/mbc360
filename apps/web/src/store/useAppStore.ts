@@ -178,6 +178,13 @@ interface AppState {
     market: string | undefined,
     assignments: { role: GateSignOffRole; userId?: string | null }[],
   ) => void;
+  // Critical gates: name who represents the independent function and which signature they give.
+  setGateRepresentative: (
+    id: string,
+    gateId: string,
+    market: string | undefined,
+    input: { userId: string | null; slot?: GateSignOffRole; function?: string },
+  ) => void;
   // Resolves to null when signed, or to the server's account of what changed when the evidence was
   // edited between the preview and the submit (so the caller can show it instead of a toast).
   signGateSignOff: (
@@ -598,6 +605,8 @@ export const useAppStore = create<AppState>()(
           writeSection(id, (v) => projectsApi.setPostLaunchReviews(id, reviews, v)),
         setSupersessionDecision: (id, decision) =>
           writeSection(id, (v) => projectsApi.setSupersessionDecision(id, decision, v)),
+        setGateRepresentative: (id, gateId, market, input) =>
+          writeSection(id, (v) => projectsApi.setGateRepresentative(id, gateId, market, input, v)),
         setGateSignOffAssignees: (id, gateId, market, assignments) =>
           writeSection(id, (v) => projectsApi.setGateSignOffAssignees(id, gateId, market, assignments, v)),
         signGateSignOff: async (id, gateId, market, role, input) => {

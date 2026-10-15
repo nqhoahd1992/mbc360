@@ -703,6 +703,7 @@ export function toProjectData(
       comment: opt(g.comment),
       signatureImage: opt(g.signatureImage),
       ...(g.signatureVerifiedAt ? { signatureVerifiedAt: g.signatureVerifiedAt.toISOString() } : {}),
+      ...(g.representsFunction ? { representsFunction: g.representsFunction } : {}),
       ...(g.snapshot ? { snapshot: g.snapshot as unknown as GateEvidenceSnapshot } : {}),
     })),
     studyApprovals: p.studyApprovals.map((s) => ({

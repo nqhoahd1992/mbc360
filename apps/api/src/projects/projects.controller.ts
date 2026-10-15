@@ -621,6 +621,24 @@ export class ProjectsController {
   // phase block above, for the same reason: signing is an ACT, not a field write.
   // Both the role and the MARKET travel in the body — "Prepared by" contains a
   // space, and a market name can contain anything.
+  // Critical gates: the Lead names who represents the independent function and which signature they give.
+  @Put(':id/gates/:gateId/sign-off-representative')
+  setGateRepresentative(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('gateId') gateId: string,
+    @Body() body: { market?: string; userId?: string | null; slot?: GateSignOffRole; function?: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.setGateRepresentative(
+      user,
+      id,
+      gateId,
+      body.market?.trim() || undefined,
+      { userId: body.userId ?? null, slot: body.slot, function: body.function },
+      body.expectedVersion,
+    );
+  }
+
   @Put(':id/gates/:gateId/sign-off-assignees')
   setGateSignOffAssignees(
     @CurrentUser() user: SessionUser,
