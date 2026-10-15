@@ -20,6 +20,11 @@ import { PrismaService } from '../prisma/prisma.service';
 // account — otherwise the change would silently come back at the next deploy.
 // To retire one, remove it from PINNED_ADMINS first.
 
+// PINNED_FINAL_APPROVERS (2026-10-15, project owner): the company's final commercial authority ("NP", the director). Each address is
+// made sure to exist, be active and hold the Final Approver role on every API start, exactly like PINNED_ADMINS but WITHOUT admin
+// rights — the role carries the final-approval capabilities (for example signing the Formulation Change Register), nothing more.
+export const FINAL_APPROVER_ROLE = 'sso-final-approver';
+
 export function pinnedAdminEmails(raw = process.env.PINNED_ADMINS): string[] {
   if (!raw) return [];
   return [
@@ -30,6 +35,10 @@ export function pinnedAdminEmails(raw = process.env.PINNED_ADMINS): string[] {
         .filter((s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s)),
     ),
   ];
+}
+
+export function pinnedFinalApproverEmails(): string[] {
+  return pinnedAdminEmails(process.env.PINNED_FINAL_APPROVERS);
 }
 
 export function isPinnedAdmin(email: string): boolean {
@@ -45,7 +54,47 @@ export class PinnedAdminsService implements OnApplicationBootstrap {
     private readonly audit: AuditService,
   ) {}
 
+  private async applyFinalApprovers(): Promise<void> {
+    const emails = pinnedFinalApproverEmails();
+    if (emails.length === 0) return;
+    try {
+      const role = await this.prisma.role.upsert({
+        where: { key: FINAL_APPROVER_ROLE },
+        update: {},
+        create: { key: FINAL_APPROVER_ROLE, name: 'Final Approver' },
+      });
+      for (const email of emails) {
+        await this.prisma.$transaction(async (tx) => {
+          const existing = await tx.user.findFirst({
+            where: { email: { equals: email, mode: 'insensitive' } },
+            include: { roles: true },
+          });
+          const changes: string[] = [];
+          const user = existing ?? (await tx.user.create({ data: { email, displayName: email.split('@')[0] }, include: { roles: true } }));
+          if (!existing) changes.push('created');
+          if (!user.active) {
+            await tx.user.update({ where: { id: user.id }, data: { active: true } });
+            changes.push('reactivated');
+          }
+          if (!user.roles.some((r) => r.roleId === role.id)) {
+            await tx.userRole.create({ data: { userId: user.id, roleId: role.id } });
+            changes.push('granted Final Approver');
+          }
+          if (changes.length === 0) return;
+          await this.audit.record(
+            { entityType: 'user', entityId: user.id, action: 'user.pinned_final_approver_applied', after: { email: user.email, changes, source: 'PINNED_FINAL_APPROVERS' } },
+            tx,
+          );
+          this.logger.log(`PINNED_FINAL_APPROVERS: ${user.email} — ${changes.join(', ')}`);
+        });
+      }
+    } catch (err) {
+      this.logger.error(`PINNED_FINAL_APPROVERS could not be applied: ${(err as Error).message}`);
+    }
+  }
+
   async onApplicationBootstrap(): Promise<void> {
+    await this.applyFinalApprovers();
     const raw = process.env.PINNED_ADMINS ?? '';
     const emails = pinnedAdminEmails(raw);
     const rejected = raw.split(/[,;\s]+/).filter((s) => s.trim() && !emails.includes(s.trim().toLowerCase()));

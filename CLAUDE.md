@@ -56,6 +56,7 @@ npm run verify:actions              # SW-19: Next Actions before and after their
 npm run verify:ack                  # SW-29 / Round 4 q16: acknowledgement of auto-generated N/A reasons on critical readiness items (rule engine only; the endpoint is covered by verify:e2e)
 npm run verify:e2e                  # after `npm run build`: real sign-off of all 12 gates over HTTP (SG10-SG12 per market) on a throwaway database + API (port 3199), then the SW-4/SW-5/SW-20 freeze rules through the real API; local Postgres only, ~8 min
 npm run db:seed-gate-project -- --gate 3 [--ready]   # DEV TOOL (--ready: last gate fully ready with Prepared+Reviewed signed, Approved left): a "SEED-" project with every gate up to the chosen one (1-3 so far) fully ready, signed and PASSED, everyone = the first PINNED_ADMINS user; needs the API running; writes the 3 gate signatures and register closures straight to the DB (the one bypass), refuses a non-localhost DB
+# PINNED_FINAL_APPROVERS (apps/api/.env, 2026-10-15): comma-separated emails given the Final Approver role (NP, the company director — NOT admin) on every API start, like PINNED_ADMINS
 npm run db:wipe-projects            # delete EVERY project (+ its data, audit trail, linked change records); keeps users/roles/reference data. --dry-run · --yes · --allow-remote
 ```
 
