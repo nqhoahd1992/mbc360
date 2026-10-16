@@ -1543,6 +1543,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
 | R5-Q69 | Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role | Chủ dự án bỏ quyền theo role 15/10/2026 | **lộ ra 15/10/2026** |
+| R5-Q70 | Hai ô người trong khối Product / Project Identification của Product Development Report lấy từ đâu | Chủ dự án nói một số thông tin có dữ liệu khi tạo dự án, 16/10/2026 | **lộ ra 16/10/2026** |
 | R5-Q68 | Dòng watch-list thuộc phạm vi kiểm của gate nào: theo cột Linked gate, từ gate được gắn trở đi | Chủ dự án chỉ ra 14/10/2026 | **lộ ra 14/10/2026** |
 | R5-Q67 | Thẩm quyền Safety/Regulatory chấp nhận finding watch-list nằm ở người đánh giá hay người ký gate | Chủ dự án chuyển thẩm quyền 14/10/2026 | **lộ ra 14/10/2026** |
 | R5-Q66 | Change Control mở trước hay sau khi thay đổi xảy ra, và bản ghi được duyệt có là điều kiện để tạo phiên bản công thức không | Chủ dự án hỏi về Change Control 12/10/2026 | **lộ ra 12/10/2026** |
@@ -2303,6 +2304,16 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.
 
 **Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ**, chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+
+#### R5-Q70 · "NPD lead (formulator)" và "Project owner" của Product Development Report là ai trong dự án 🔴
+
+**Lộ ra 16/10/2026, khi chủ dự án đối chiếu khối Product / Project Identification với Excel và nói một số thông tin sẽ có sẵn từ lúc tạo dự án.** Workbook có 10 ô; app chỉ có 3. Bốn ô lấy thẳng từ dữ liệu tạo dự án và không còn nhập tay: Product / SKU, Project ID, Formula version (current), Target markets. Hai ô là người và workbook chỉ ghi vai ("NPD lead (formulator)", "Project owner"), không nói là ai; Product Family cũng có thể là nhóm sản phẩm hoặc một danh mục riêng.
+
+**Hiện chạy theo (cách đọc của ta):** NPD lead = người được gán vùng review Technical Services (nhóm công thức) của dự án; Project owner = người được gán vùng Project Manager; Product Family = Product group đã nhập khi tạo dự án. Report date và Overall status vẫn nhập tay.
+
+**Câu hỏi (một dòng xác nhận):** NPD lead và Project owner của báo cáo có đúng là người được gán vùng Technical Services và Project Manager của dự án không, và Product Family có là Product group không?
+
+**Nếu trả lời khác:** `fromProject` trong `apps/web/src/pages/ProductDevelopmentReport.tsx` [ASSUMPTION: R5-Q70].
 
 #### R5-Q69 · Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role 🔴
 

@@ -311,6 +311,8 @@ const SHEET_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Needs Review', 'Com
 // Status lists the workbook gives its own sheets (v2 workbook data validation). Where a sheet carries both the generic list above and
 // one written for it, the one written for it is used (it names states the generic one has no word for).
 const LABEL_STATUS_OPTIONS = ['Not Started', 'In Progress', 'On Hold', 'Complete'] as const;
+// The Overall status dropdown of the Product_Dev_Report sheet (v2 workbook data validation, I7:L7).
+export const PRODUCT_DEV_OVERALL_STATUS_OPTIONS = ['Not Started', 'In development', 'Under evaluation', 'Approved', 'On hold', 'Cancelled'] as const;
 const PUBLICATION_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Awaiting Guideline', 'Awaiting Evidence', 'Under Review', 'Approved', 'Approved with Limits', 'Rejected', 'Superseded', 'Closed'] as const;
 const ASEAN_MAP_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Complete', 'Missing', 'N/A', 'Needs Regulatory Review'] as const;
 
@@ -2279,16 +2281,25 @@ export const productDevelopmentProfile: RegisterConfig = {
   key: 'productDevelopmentProfile',
   title: 'Product / Project Identification',
   sheetName: 'Product_Development_Report',
-  description: 'NPD-specific identification fields (most other identity fields already live on Project Identification).',
+  description: 'Identification of the product and the development effort.',
   mode: 'fixed',
   gate: '04/05/08',
   columns: [
     { key: 'field', label: 'Field', type: 'text', width: 200, editable: false },
     { key: 'value', label: 'Value', type: 'text', width: 260 },
   ],
+  // The ten fields of the workbook's Product / Project Identification block, in its order. Which of them the page fills from
+  // the project and which it asks for is the page's business (ProductDevelopmentReport.tsx); the rows themselves are all here.
   fixedRows: [
+    { field: 'Product / SKU' },
+    { field: 'Project ID' },
     { field: 'NPD lead (formulator)' },
+    { field: 'Project owner' },
     { field: 'Competitor benchmarks', value: 'e.g. Massata, Kangaroo Mommy' },
+    { field: 'Product Family' },
+    { field: 'Formula version (current)' },
+    { field: 'Target markets' },
+    { field: 'Report date' },
     { field: 'Overall status' },
   ],
 };
