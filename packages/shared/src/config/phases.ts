@@ -1,3 +1,4 @@
+import { COMPARTMENT_STATUSES, STAGE_STATUSES } from './gates';
 import { PROJECT_NATURE_OPTIONS, REQUEST_ORIGIN_OPTIONS } from './opportunity';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
@@ -30,6 +31,12 @@ export interface RequirementSectionConfig {
   // row set to it must carry a rationale. Opt-in per section — see the comment
   // on `projectRequirements` for why this is not switched on everywhere.
   allowNotApplicable?: boolean;
+  // The Status dropdown this section offers, when the workbook gives its table its own list (v2 workbook data validation).
+  // Omitted = the generic work statuses (plus N/A where `allowNotApplicable`). The sections the review team designed
+  // (Round 4: project requirements and the infant pathway) keep their own rules and leave this unset.
+  statusOptions?: readonly string[];
+  // Shows the compartment tables' own Y/N/NA column.
+  showYnna?: boolean;
   // Which columns this section shows. Omitted = the Phases 2-4 default. Added
   // 2026-08-09 so Phase 1's B6 table can drop the three columns that have no
   // meaning at the opportunity stage and add `priority`, without forking
@@ -892,3 +899,18 @@ export const PHASE_CONFIGS: Record<number, PhaseConfig> = {
   3: PHASE_3,
   4: PHASE_4,
 };
+
+// Status lists of the phase sheets' requirement tables, taken from the v2 workbook's data validation (project owner,
+// 2026-10-16: data fields 1:1 with the workbook, the review team's own tables excepted). Applied here, in one place, so the
+// section definitions above stay as transcribed.
+const STAGE_LIST_SECTIONS = ['formulationDesign', 'efficacyProcess', 'skincareForTwo', 'humanStudy', 'stabilityRelease', 'dossierEvidence', 'changeControlClosure'];
+const COMPARTMENT_SECTIONS = ['pregnancySafety', 'breastfeedingSafety', 'infantSafety', 'swimmerSafety'];
+for (const phase of Object.values(PHASE_CONFIGS)) {
+  for (const section of phase.requirementSections) {
+    if (STAGE_LIST_SECTIONS.includes(section.key)) section.statusOptions = STAGE_STATUSES;
+    if (COMPARTMENT_SECTIONS.includes(section.key)) {
+      section.statusOptions = COMPARTMENT_STATUSES;
+      section.showYnna = true;
+    }
+  }
+}

@@ -62,6 +62,7 @@ import { conditionalSafetyFindings, hardBlockingSafetyFindings } from './safetyF
 import { activeMarketTracks, currentMarketTracks, onMarketTracks, overdueReviews } from './postLaunch';
 import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
 import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
+import { isDoneStatus } from './doneStatus';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
 import {
   ASEAN_CHECKLIST_REGISTER,
@@ -226,7 +227,7 @@ export function skincareForTwoIncompleteSections(project: ProjectData): string[]
   return SKINCARE_FOR_TWO_SECTIONS.filter((section) => {
     if (section.trigger && !section.trigger.some((t) => triggers.includes(t))) return false;
     const rows = project.requirements[section.key] ?? [];
-    return rows.some((r) => r.status !== 'Completed');
+    return rows.some((r) => !isDoneStatus(r.status));
   }).map((s) => s.title);
 }
 
@@ -1003,7 +1004,7 @@ export function finalSafetySignOffGaps(project: ProjectData): string[] {
   return (project.registers[FINAL_SAFETY_REGISTER] ?? [])
     .filter((r) => {
       const status = String(r.status ?? '').trim();
-      if (status === 'Completed') return false;
+      if (isDoneStatus(status)) return false;
       return !(
         status === FINAL_SAFETY_NA &&
         r.safetyQuestion === FINAL_SAFETY_PREGNANCY_ROW &&
@@ -1151,7 +1152,7 @@ export function evaluateReadinessCheck(
     }
     case 'requirementSectionComplete': {
       const rows = project.requirements[check.section] ?? [];
-      return { evaluable: true, satisfied: rows.every((r) => r.status === 'Completed') };
+      return { evaluable: true, satisfied: rows.every((r) => isDoneStatus(r.status)) };
     }
     // Round 4 question 1: Completed, or 'N/A' with a rationale. The rationale is
     // not optional — without it "N/A" is a way to clear a row by clicking, which
@@ -1166,7 +1167,7 @@ export function evaluateReadinessCheck(
           rows.length > 0 &&
           rows.every(
             (r) =>
-              r.status === 'Completed' ||
+              isDoneStatus(r.status) ||
               (r.status === REQUIREMENT_NOT_APPLICABLE && (r.naRationale ?? '').trim() !== ''),
           ),
       };
@@ -1336,7 +1337,7 @@ export function evaluateReadinessCheck(
       // Deliberately NOT widened to accept 'N/A' when question 21 introduced it:
       // the one row this kind reads today is "Must-have product requirements",
       // and the answer says that row "is always mandatory".
-      return { evaluable: true, satisfied: row?.status === 'Completed' };
+      return { evaluable: true, satisfied: isDoneStatus(row?.status) };
     }
     // Round 4 question 21's four hard conditions, in the answer's own order.
     // Vacuous only on a section with no rows, which cannot happen here: the rows
@@ -1358,7 +1359,7 @@ export function evaluateReadinessCheck(
           // [ASSUMPTION: R5-Q23].
           if ((r.priority ?? '').trim() === '') return false;
           // "Every Must requirement must be complete."
-          return r.priority !== 'Must' || r.status === 'Completed';
+          return r.priority !== 'Must' || isDoneStatus(r.status);
         }),
       };
     }
@@ -1372,7 +1373,7 @@ export function evaluateReadinessCheck(
         satisfied: rows.every(
           (r) =>
             r.priority === 'Must' || // already covered, strictly, above
-            r.status === 'Completed' ||
+            isDoneStatus(r.status) ||
             r.status === REQUIREMENT_NOT_APPLICABLE,
         ),
       };

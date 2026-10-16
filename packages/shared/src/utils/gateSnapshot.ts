@@ -102,7 +102,7 @@ function digestRequirements(project: ProjectData, gateNumber: string): Record<st
     const mine = rows.filter((r) => r.gate === gateNumber);
     if (mine.length === 0) continue;
     out[section] = mine
-      .map((r) => `${r.requirement}=${r.status}/${r.priority ?? ''}/${r.naRationale ?? ''}/${r.evidenceLink ?? ''}`)
+      .map((r) => `${r.requirement}=${r.status}/${r.priority ?? ''}/${r.naRationale ?? ''}/${r.ynna ?? ''}/${r.evidenceLink ?? ''}`)
       .join('|');
   }
   return out;

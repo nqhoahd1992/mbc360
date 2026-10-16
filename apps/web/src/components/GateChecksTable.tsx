@@ -11,7 +11,8 @@ import RequiredMark from './RequiredMark';
 import SaveBar from './SaveBar';
 import RecordList, { RecordField } from './RecordList';
 
-const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v }));
+// Stored as 'NA'; shown as the workbook's own "N/A".
+const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v === 'NA' ? 'N/A' : v }));
 
 // Key Gate Checks. Since 2026-10-02 laid out as a RecordList (compact rows +
 // detail drawer) instead of a 9-column table: Done and Y/N/NA stay on the row,

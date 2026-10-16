@@ -5,7 +5,9 @@ export type WorkStatus = 'Not Started' | 'In Progress' | 'Completed' | 'On Hold'
 // `WorkStatus` itself: that type is shared with Evidence / Change / CAPA rows,
 // and widening it there would silently offer a disposition nobody asked for on
 // three other tables.
-export type RequirementStatus = WorkStatus | 'N/A';
+// Since 2026-10-16 a plain string: the phase tables take the workbook's own lists (Stage status, compartment status), so
+// the set depends on the section (`statusOptions` in phases.ts) rather than on one union.
+export type RequirementStatus = string;
 
 // Gate "Stage status" — matches the real MBc360 workbook dropdown exactly
 // (Not Started, In Progress, Complete, Gap, Hold, N/A).
@@ -390,6 +392,8 @@ export interface RequirementItem {
   // free-text field of its own rather than a convention inside `notes`, which
   // was already doing double duty once before (see `requirementText`).
   naRationale?: string;
+  // The compartment tables' own Y/N/NA column (Phase 3, v2 workbook); absent on every other section.
+  ynna?: string;
   evidenceLink?: string;
   notes?: string;
 }

@@ -83,7 +83,7 @@ export function phaseSignContent(project: ProjectData, phase: number): PhaseSign
   for (const section of config.requirementSections) {
     sections.push({
       title: section.title,
-      columns: cols(['gate', 'Gate'], ['requirement', 'Requirement'], ['requirementText', 'Detail'], ['priority', 'Priority'], ['minimumRequirement', 'Minimum requirement'], ['rationale', 'Rationale'], ['owner', 'Owner'], ['status', 'Status'], ['naRationale', 'Why not applicable'], ['evidenceLink', 'Evidence / link'], ['notes', 'Notes']),
+      columns: cols(['gate', 'Gate'], ['requirement', 'Requirement'], ['requirementText', 'Detail'], ['priority', 'Priority'], ['minimumRequirement', 'Minimum requirement'], ['rationale', 'Rationale'], ['owner', 'Owner'], ['status', 'Status'], ['naRationale', 'Why not applicable'], ['ynna', 'Y/N/NA'], ['evidenceLink', 'Evidence / link'], ['notes', 'Notes']),
       rows: (project.requirements[section.key] ?? []).map((r) => ({
         gate: s(r.gate),
         requirement: s(r.requirement),
@@ -94,6 +94,7 @@ export function phaseSignContent(project: ProjectData, phase: number): PhaseSign
         owner: s(r.owner),
         status: s(r.status),
         naRationale: s(r.naRationale),
+        ynna: s(r.ynna),
         evidenceLink: s(r.evidenceLink),
         notes: s(r.notes),
       })),

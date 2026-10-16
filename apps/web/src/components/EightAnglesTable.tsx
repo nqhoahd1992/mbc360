@@ -8,7 +8,8 @@ import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import RecordList, { RecordField } from './RecordList';
 
-const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v }));
+// Stored as 'NA'; shown as the workbook's own "N/A".
+const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v === 'NA' ? 'N/A' : v }));
 
 // 8 Angles coverage for a phase. Since 2026-10-02 a RecordList: Covered and
 // Y/N/NA on the row, date, evidence, initials and comments in the drawer.

@@ -10,6 +10,7 @@
 // the ASEAN checklist for everyone would wrongly block a product not sold in
 // ASEAN. That reasoning was right and the conclusion was wrong: the answer is to
 // enforce it per market, not to enforce nothing — which is the sentence above.
+import { isDoneStatus } from './doneStatus';
 import type { ProjectData } from '../types';
 import { ASEAN_MARKETS, CHECKLIST_NOT_APPLICABLE, OTHER_MARKET_OPTION } from '../config/registers';
 
@@ -94,5 +95,5 @@ export function marketsWithoutChecklist(project: ProjectData): string[] {
 export function aseanChecklistIncomplete(project: ProjectData): boolean {
   const rows = project.registers[ASEAN_CHECKLIST_REGISTER] ?? [];
   // 'Complete' is the workbook's own word on this sheet's Status list (it was 'Completed' on the generic list).
-  return rows.some((r) => text(r.status) !== 'Complete');
+  return rows.some((r) => !isDoneStatus(r.status));
 }

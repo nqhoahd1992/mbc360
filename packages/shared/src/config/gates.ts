@@ -240,6 +240,12 @@ export const WORK_STATUSES = [
 // Gate "Stage status" — matches the real MBc360 workbook dropdown exactly
 export const STAGE_STATUSES = ['Not Started', 'In Progress', 'Complete', 'Gap', 'Hold', 'N/A'] as const;
 
+// The Status dropdown the workbook gives the phase sheets' requirement tables is the Stage status list above; the four
+// compartment tables on Phase 3 have a shorter one (v2 workbook data validation).
+export const COMPARTMENT_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Complete'] as const;
+// The Y/N/NA column the compartment tables carry.
+export const COMPARTMENT_YNNA = ['Y', 'N', 'NA'] as const;
+
 // Gate "Gate decision" — matches the real MBc360 workbook dropdown exactly
 export const GATE_DECISIONS = [
   'Proceed',

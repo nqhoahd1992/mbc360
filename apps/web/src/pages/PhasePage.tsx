@@ -627,6 +627,8 @@ export default function PhasePage() {
                 isRowLocked={(item) => isGateRefLocked(project, item.gate) || rowSigned(item.gate) || (item.gate === 'ALL' && isPhaseDataLocked(project, 4))}
                 columns={section.columns}
                 allowNotApplicable={section.allowNotApplicable}
+                statusOptions={section.statusOptions}
+                showYnna={section.showYnna}
               />
             </div>
           ))}
@@ -722,6 +724,8 @@ export default function PhasePage() {
                   isRowLocked={(item) => isGateRefLocked(project, item.gate) || rowSigned(item.gate) || (item.gate === 'ALL' && isPhaseDataLocked(project, 4))}
                   columns={section.columns}
                   allowNotApplicable={section.allowNotApplicable}
+                  statusOptions={section.statusOptions}
+                  showYnna={section.showYnna}
                 />
               </div>
             ))}

@@ -377,6 +377,7 @@ export function toProjectData(
       owner: item.owner,
       status: item.status as RequirementItem['status'],
       ...(item.naRationale ? { naRationale: item.naRationale } : {}),
+      ...(item.ynna ? { ynna: item.ynna } : {}),
       evidenceLink: opt(item.evidenceLink),
       notes: opt(item.notes),
     });

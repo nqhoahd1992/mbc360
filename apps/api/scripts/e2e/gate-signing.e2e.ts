@@ -1412,7 +1412,7 @@ export async function run(base: string, db: Client): Promise<number> {
   await closePhaseBySigning(4);
   pj = await project();
   t('Phase 4 is complete', gp.phaseCompletionChecklist(pj.project, 4).signOffsComplete, short(gp.phaseCompletionChecklist(pj.project, 4)));
-  await putClosure('Completed');
+  await putClosure('Complete');
   t('under a standing Phase 4 signature the closure rows are read-only (the edit is skipped)', (await closureRows())[0].status === 'In Progress', short((await closureRows())[0]));
 
   console.log('\n--- a new market is added after every gate has passed (allowed after Gate 1 by design, F4)');

@@ -43,6 +43,7 @@
 //       file or artwork reference · published version · person responsible ·
 //       withdrawal or supersession date). For printed packaging the equivalent
 //       event is Release to Print, which is a channel value there.
+import { isDoneStatus } from './doneStatus';
 import type { RegisterRow } from '../types';
 import {
   CLAIM_STATUSES_BLOCKING_ARTWORK,
@@ -260,7 +261,7 @@ export function claimUseBlocker(
   const market = text(use.market);
   if (market === '') return undefined;
   const rows = skuClaimRows.filter((r) => text(r.claimId) === id && text(r.market) === market);
-  const approved = rows.filter((r) => text(r.status) === 'Complete');
+  const approved = rows.filter((r) => isDoneStatus(r.status));
   if (approved.length === 0) return `claim ${id} is not approved for ${market} on the SKU claim register`;
   const channel = text(use.channel).toLowerCase();
   if (channel === '') return undefined;

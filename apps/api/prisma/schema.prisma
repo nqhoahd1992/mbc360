@@ -865,6 +865,8 @@ model RequirementItem {
   // Why the row is not applicable. Required when status is 'N/A'; enforced by
   // the `requirementsDispositioned` readiness check, not by the column.
   naRationale        String?
+  // The compartment tables' own Y/N/NA column (Phase 3); null on every other section.
+  ynna               String?
   evidenceLink       String?
   notes              String?
 

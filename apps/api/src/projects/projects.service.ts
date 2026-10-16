@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import {
+  COMPARTMENT_YNNA,
   COSTING_FEASIBILITY_STATUSES,
   GATES,
   GATE_DECISIONS,
@@ -1059,11 +1060,15 @@ export class ProjectsService {
       const sectionConfig = Object.values(PHASE_CONFIGS)
         .flatMap((p) => p.requirementSections)
         .find((r) => r.key === section);
-      const allowedStatuses: readonly string[] = sectionConfig?.allowNotApplicable
-        ? [...WORK_STATUSES, REQUIREMENT_NOT_APPLICABLE]
-        : WORK_STATUSES;
+      // A section the workbook gives its own Status list (phases.ts `statusOptions`) takes exactly that list.
+      const allowedStatuses: readonly string[] =
+        sectionConfig?.statusOptions ??
+        (sectionConfig?.allowNotApplicable ? [...WORK_STATUSES, REQUIREMENT_NOT_APPLICABLE] : WORK_STATUSES);
       for (const item of items) {
         assertOneOf(`Requirement "${item.requirement}" status`, item.status, allowedStatuses);
+        if (sectionConfig?.showYnna && (item.ynna ?? '') !== '') {
+          assertOneOf(`Requirement "${item.requirement}" Y/N/NA`, item.ynna, COMPARTMENT_YNNA);
+        }
         assertOneOf(`Requirement "${item.requirement}" priority`, item.priority, REQUIREMENT_PRIORITIES);
       }
       let skipped = 0;
@@ -1085,7 +1090,8 @@ export class ProjectsService {
             // Round 4 question 21. Cleared whenever the row is not N/A, so a
             // rationale can never outlive the disposition that required it and
             // read as evidence for a row that is now Completed.
-            naRationale: item.status === 'N/A' ? (item.naRationale ?? null) : null,
+            naRationale: item.status === 'N/A' && sectionConfig?.allowNotApplicable ? (item.naRationale ?? null) : null,
+            ynna: sectionConfig?.showYnna ? (item.ynna || null) : undefined,
             // Editable on any section declaring its own columns (Phase 1's B6
             // table); on Phases 2-4 it is config-set and rendered read-only, so
             // what arrives is the value already stored. It was missing from this

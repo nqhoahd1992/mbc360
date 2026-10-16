@@ -2,7 +2,8 @@ import { Input, Select } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import type { RequirementItem, RequirementStatus } from '@mbc360/shared/types';
 import type { RequirementColumnKey } from '@mbc360/shared/config/phases';
-import { REQUIREMENT_NOT_APPLICABLE, REQUIREMENT_PRIORITIES, WORK_STATUSES } from '@mbc360/shared/config/gates';
+import { COMPARTMENT_YNNA, REQUIREMENT_NOT_APPLICABLE, REQUIREMENT_PRIORITIES, WORK_STATUSES } from '@mbc360/shared/config/gates';
+import { isDoneStatus } from '@mbc360/shared/utils/doneStatus';
 import { isMandatoryRequirementRow } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -24,6 +25,8 @@ export default function RequirementTable({
   isRowLocked,
   columns: visibleColumns,
   allowNotApplicable,
+  statusOptions: sectionStatusOptions,
+  showYnna,
 }: {
   projectId: string;
   sectionKey: string;
@@ -42,6 +45,10 @@ export default function RequirementTable({
   // Round 4 question 21: this section offers 'N/A' as a disposition, and a row
   // set to it must give a rationale. Off everywhere except Phase 1's B6 table.
   allowNotApplicable?: boolean;
+  // The Status list the workbook gives this table (RequirementSectionConfig.statusOptions); omitted = the generic one.
+  statusOptions?: readonly string[];
+  // The compartment tables' own Y/N/NA column.
+  showYnna?: boolean;
 }) {
   // 'category' is an alternative heading for the same data as 'requirement',
   // opt-in only (Phase 1's B6 rows are categories).
@@ -55,10 +62,12 @@ export default function RequirementTable({
 
   // 'N/A' is offered only where the section declares it — the Phases 2-4
   // sections are read by checks that accept nothing but 'Completed'.
-  const statusOptions = [
-    ...WORK_STATUSES.map((s) => ({ value: s, label: s })),
-    ...(allowNotApplicable ? [{ value: REQUIREMENT_NOT_APPLICABLE, label: `${REQUIREMENT_NOT_APPLICABLE} — rationale required` }] : []),
-  ];
+  const statusOptions = sectionStatusOptions
+    ? sectionStatusOptions.map((s) => ({ value: s, label: s }))
+    : [
+        ...WORK_STATUSES.map((s) => ({ value: s, label: s })),
+        ...(allowNotApplicable ? [{ value: REQUIREMENT_NOT_APPLICABLE, label: `${REQUIREMENT_NOT_APPLICABLE} — rationale required` }] : []),
+      ];
 
   const patch = (index: number, p: Partial<RequirementItem>) => update((prev) => patchArray(prev, index, p));
   const save = async () => {
@@ -70,7 +79,8 @@ export default function RequirementTable({
   // reason cannot sit beside a Completed row (the API clears it too).
   const setStatus = (i: number, v: RequirementStatus) =>
     patch(i, v === REQUIREMENT_NOT_APPLICABLE ? { status: v } : { status: v, naRationale: '' });
-  const naMissing = (r: RequirementItem) => r.status === REQUIREMENT_NOT_APPLICABLE && (r.naRationale ?? '').trim() === '';
+  const naMissing = (r: RequirementItem) =>
+    !!allowNotApplicable && r.status === REQUIREMENT_NOT_APPLICABLE && (r.naRationale ?? '').trim() === '';
 
   const priorityControl = (r: RequirementItem, i: number) => (
     <Select
@@ -95,7 +105,17 @@ export default function RequirementTable({
       onChange={(v: RequirementStatus) => setStatus(i, v)}
     />
   );
-  const done = draft.filter((r) => r.status === 'Completed' || r.status === REQUIREMENT_NOT_APPLICABLE).length;
+  const done = draft.filter((r) => isDoneStatus(r.status) || (!!allowNotApplicable && r.status === REQUIREMENT_NOT_APPLICABLE)).length;
+  const ynnaControl = (r: RequirementItem, i: number) => (
+    <Select
+      style={{ width: '100%' }}
+      allowClear
+      value={r.ynna || undefined}
+      disabled={isRowLocked?.(r)}
+      options={COMPARTMENT_YNNA.map((o) => ({ value: o, label: o }))}
+      onChange={(v?: string) => patch(i, { ynna: v ?? '' })}
+    />
+  );
 
   return (
     <RecordList
@@ -132,7 +152,7 @@ export default function RequirementTable({
       rowTitle={(r) => (
         <>
           {r.requirement}
-          {isMandatoryRequirementRow(sectionKey, r.requirement) && <RequiredMark met={r.status === 'Completed'} />}
+          {isMandatoryRequirementRow(sectionKey, r.requirement) && <RequiredMark met={isDoneStatus(r.status)} />}
         </>
       )}
       rowSubtitle={(r) => (shows('detail') ? r.requirementText : r.minimumRequirement) || undefined}
@@ -140,6 +160,7 @@ export default function RequirementTable({
       inline={[
         ...(shows('priority') ? [{ label: 'Priority', width: 168, render: priorityControl }] : []),
         ...(shows('status') ? [{ label: 'Status', width: 184, render: statusControl }] : []),
+        ...(showYnna ? [{ label: 'Y/N/NA', width: 96, render: ynnaControl }] : []),
       ]}
       drawer={(r, i) => {
         const locked = isRowLocked?.(r);
@@ -166,6 +187,7 @@ export default function RequirementTable({
                 )}
                 {shows('priority') && <RecordField label="Priority">{priorityControl(r, i)}</RecordField>}
                 {shows('status') && <RecordField label="Status">{statusControl(r, i)}</RecordField>}
+                {showYnna && <RecordField label="Y/N/NA">{ynnaControl(r, i)}</RecordField>}
                 {ownerEditable && shows('owner') && (
                   <RecordField label="Owner">
                     <Input disabled={locked} value={r.owner} onChange={(e) => patch(i, { owner: e.target.value })} />

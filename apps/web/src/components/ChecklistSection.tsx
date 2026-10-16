@@ -13,7 +13,8 @@ import '../styles/concept.css';
 import './ChecklistSection.css';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 
-const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v }));
+// Stored as 'NA'; shown as the workbook's own "N/A".
+const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v === 'NA' ? 'N/A' : v }));
 
 // One workbook option list (Target Users, Product Type, …), redesigned
 // 2026-10-02 (Phase page wireframe option A): a grid of tick tiles instead of a

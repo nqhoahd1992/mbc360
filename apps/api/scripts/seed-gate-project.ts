@@ -126,10 +126,15 @@ async function fixRequirements(ctx: Ctx, section: string): Promise<boolean> {
   const items: RequirementItem[] = project.requirements[section] ?? [];
   if (items.length === 0) return false;
   let changed = false;
+  // A table the workbook gives its own Status list says "Complete"; the generic list says "Completed".
+  const sectionConfig = Object.values(PHASE_CONFIGS)
+    .flatMap((p) => p.requirementSections)
+    .find((s) => s.key === section);
+  const doneWord = sectionConfig?.statusOptions?.includes('Complete') ? 'Complete' : 'Completed';
   const next = items.map((r) => {
     const want: RequirementItem = {
       ...r,
-      status: 'Completed',
+      status: doneWord,
       owner: r.owner || ctx.adminName,
       ...(r.priority === undefined || r.priority === '' ? { priority: 'Must' } : {}),
       minimumRequirement: r.minimumRequirement || `${SEED} requirement`,
