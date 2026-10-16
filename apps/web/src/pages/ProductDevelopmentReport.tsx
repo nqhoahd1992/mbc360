@@ -6,6 +6,8 @@ import { productDevelopmentFeedback, productDevelopmentIterations, productDevelo
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import DynamicTable from '../components/DynamicTable';
+import RegisterClosurePanel from '../components/RegisterClosurePanel';
+import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
 // One page for the workbook's Product_Dev_Report sheet, which carries three tables: identification, the iteration log and
@@ -36,6 +38,35 @@ export default function ProductDevelopmentReport() {
     'Target markets': project.identity.markets.join(', '),
   };
 
+  const renderIdentityCell: React.ComponentProps<typeof DynamicTable>['renderCell'] = (column, row, _index, api) => {
+    if (column.key !== 'value') return undefined;
+    const field = String(row.field ?? '');
+    if (field in fromProject) return fromProject[field] || <span className="rt-muted">—</span>;
+    const value = typeof row.value === 'string' ? row.value : undefined;
+    if (api.readOnly) return value || <span className="rt-muted">—</span>;
+    if (field === 'Report date') {
+      return (
+        <DatePicker
+          style={{ width: '100%' }}
+          value={value ? dayjs(value) : null}
+          onChange={(d) => api.patch('value', d ? d.format('YYYY-MM-DD') : undefined)}
+        />
+      );
+    }
+    if (field === 'Overall status') {
+      return (
+        <Select
+          allowClear
+          style={{ width: '100%' }}
+          value={value}
+          options={PRODUCT_DEV_OVERALL_STATUS_OPTIONS.map((o) => ({ value: o, label: o }))}
+          onChange={(v) => api.patch('value', v)}
+        />
+      );
+    }
+    return undefined;
+  };
+
   return (
     <div className="concept">
       <CompositePageHeader
@@ -44,53 +75,28 @@ export default function ProductDevelopmentReport() {
         description={<>Identification, the development iteration log and the team feedback and competitor notes behind each formula version.</>}
         reviewOwnerText={reviewOwnerText}
       />
-      <DynamicTable
-        config={productDevelopmentProfile}
-        inline
-        rows={project.registers[productDevelopmentProfile.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, productDevelopmentProfile.key, rows)}
-        readOnly={locked}
-        renderCell={(column, row, _index, api) => {
-          if (column.key !== 'value') return undefined;
-          const field = String(row.field ?? '');
-          if (field in fromProject) return fromProject[field] || <span className="rt-muted">—</span>;
-          const value = typeof row.value === 'string' ? row.value : undefined;
-          if (api.readOnly) return value || <span className="rt-muted">—</span>;
-          if (field === 'Report date') {
-            return (
-              <DatePicker
-                style={{ width: '100%' }}
-                value={value ? dayjs(value) : null}
-                onChange={(d) => api.patch('value', d ? d.format('YYYY-MM-DD') : undefined)}
-              />
-            );
-          }
-          if (field === 'Overall status') {
-            return (
-              <Select
-                allowClear
-                style={{ width: '100%' }}
-                value={value}
-                options={PRODUCT_DEV_OVERALL_STATUS_OPTIONS.map((o) => ({ value: o, label: o }))}
-                onChange={(v) => api.patch('value', v)}
-              />
-            );
-          }
-          return undefined;
-        }}
-      />
-      <DynamicTable
-        config={productDevelopmentIterations}
-        rows={project.registers[productDevelopmentIterations.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, productDevelopmentIterations.key, rows)}
-        readOnly={locked}
-      />
-      <DynamicTable
-        config={productDevelopmentFeedback}
-        rows={project.registers[productDevelopmentFeedback.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, productDevelopmentFeedback.key, rows)}
-        readOnly={locked}
-      />
+      {[productDevelopmentProfile, productDevelopmentIterations, productDevelopmentFeedback].map((config) => (
+        <div key={config.key}>
+          <DynamicTable
+            config={config}
+            inline={config.key === productDevelopmentProfile.key}
+            rows={project.registers[config.key] ?? []}
+            onSave={(rows) => setRegisterRowsBulk(id, config.key, rows)}
+            readOnly={locked}
+            renderCell={config.key === productDevelopmentProfile.key ? renderIdentityCell : undefined}
+          />
+          {/* Each table is its own register, so each is closed on its own (SW-36). */}
+          {registerClosureGateIds(config).length > 0 && registerReviewSpec(config) && (
+            <RegisterClosurePanel
+              projectId={id}
+              registerKey={config.key}
+              spec={registerReviewSpec(config)!}
+              reviewers={project.identity.reviewers}
+              closures={project.registerClosures}
+            />
+          )}
+        </div>
+      ))}
     </div>
   );
 }
