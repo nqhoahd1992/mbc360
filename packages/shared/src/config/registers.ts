@@ -770,6 +770,8 @@ const supplierRmEvidence: RegisterConfig = {
   columns: [
     { key: 'rmCode', label: 'RM code', type: 'text', width: 90, gate: '04' },
     { key: 'inciName', label: 'Ingredient / INCI', type: 'text', width: 180, gate: '04' },
+    // The workbook's own column for the link to the Raw Material Evaluation (v2 workbook, Supplier_RM sheet).
+    { key: 'rmEvaluationLink', label: 'Raw Material Evaluation Link', type: 'text', width: 160, gate: '04' },
     { key: 'approvedForUse', label: 'Approved for use?', type: 'checkbox', width: 90, gate: '07' },
     // D4. Starts at "Incomplete — evidence review required" for every new row, so
     // an unreviewed material says so from the moment it exists. Cleared by ticking
@@ -1581,6 +1583,7 @@ const aseanPifMap: RegisterConfig = {
     { key: 'owner', label: 'Owner', type: 'text', width: 140, editable: false },
     { key: 'locationLink', label: 'Location / link', type: 'text', width: 140 },
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 150, editable: false },
+    { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: ASEAN_MAP_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
@@ -1939,6 +1942,25 @@ const medicalSummary: RegisterConfig = {
     { summaryItem: 'Fragrance/allergen position', evidenceSource: 'Fragrance_Safety', owner: 'Regulatory' },
     { summaryItem: 'Micro/stability/release position', evidenceSource: 'Micro_PET_Evidence; Stability_Release', owner: 'Quality' },
     { summaryItem: 'Adverse event / post-market pathway', evidenceSource: 'PostMarket_CAPA', owner: 'Quality / PV-PMS' },
+  ],
+};
+
+// The second table of the workbook's Medical_Summary sheet ("READY-TO-ANSWER PACK", 8 blank rows there).
+const medicalReadyAnswerPack: RegisterConfig = {
+  key: 'medicalReadyAnswerPack',
+  title: 'Ready-to-Answer Pack',
+  sheetName: 'Medical_Summary',
+  description: 'Audience questions with approved answers. Use approved wording and links, not draft data.',
+  mode: 'register',
+  gate: '10',
+  columns: [
+    { key: 'audienceQuestion', label: 'Audience question', type: 'text', width: 200 },
+    { key: 'approvedAnswer', label: 'Approved answer', type: 'textarea', width: 240 },
+    { key: 'sourceEvidence', label: 'Source evidence', type: 'text', width: 180 },
+    { key: 'approvedWordingLink', label: 'Approved wording link', type: 'text', width: 150 },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
+    { key: 'owner', label: 'Owner', type: 'user', width: 120 },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
 };
 
@@ -3466,6 +3488,7 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   publicationRules,
   publishedInfoApproval,
   medicalSummary,
+  medicalReadyAnswerPack,
   hcpEfficacyAnswer,
   hcpTestReportPack,
   batchFormulaTrace,
@@ -3854,6 +3877,7 @@ const DEPARTMENTS: RawDept[] = [
       'efficacyStudyPlan',
       'potencyProcessControl',
       'medicalSummary',
+      'medicalReadyAnswerPack',
     ],
   },
   {
