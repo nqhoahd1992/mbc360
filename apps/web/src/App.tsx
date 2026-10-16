@@ -30,6 +30,7 @@ import CommandPalette from './components/CommandPalette';
 import UnsavedChangesGuard from './components/UnsavedChangesGuard';
 import PageSkeleton from './components/PageSkeleton';
 import FormulationSafety from './pages/FormulationSafety';
+import ProductDevelopmentReport from './pages/ProductDevelopmentReport';
 import NeedsScientificBasis from './pages/NeedsScientificBasis';
 import CompetitorLandscape from './pages/CompetitorLandscape';
 import TargetProductTech from './pages/TargetProductTech';
@@ -347,6 +348,7 @@ function Shell() {
             <Route path="/projects/:projectId/bom" element={<BomCosting />} />
             <Route path="/projects/:projectId/bom/:section" element={<BomCosting />} />
             <Route path="/projects/:projectId/formulation-safety" element={<FormulationSafety />} />
+            <Route path="/projects/:projectId/product-development-report" element={<ProductDevelopmentReport />} />
             <Route path="/projects/:projectId/needs-scientific-basis" element={<NeedsScientificBasis />} />
             <Route path="/projects/:projectId/competitor-landscape" element={<CompetitorLandscape />} />
             <Route path="/projects/:projectId/target-product-tech" element={<TargetProductTech />} />

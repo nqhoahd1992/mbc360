@@ -2275,7 +2275,7 @@ const campaignsSocialMedia: RegisterConfig = {
   ],
 };
 
-const productDevelopmentProfile: RegisterConfig = {
+export const productDevelopmentProfile: RegisterConfig = {
   key: 'productDevelopmentProfile',
   title: 'Product / Project Identification',
   sheetName: 'Product_Development_Report',
@@ -2293,7 +2293,7 @@ const productDevelopmentProfile: RegisterConfig = {
   ],
 };
 
-const productDevelopmentIterations: RegisterConfig = {
+export const productDevelopmentIterations: RegisterConfig = {
   key: 'productDevelopmentIterations',
   title: 'Development Iteration Log',
   sheetName: 'Product_Development_Report',
@@ -2316,7 +2316,7 @@ const productDevelopmentIterations: RegisterConfig = {
   ],
 };
 
-const productDevelopmentFeedback: RegisterConfig = {
+export const productDevelopmentFeedback: RegisterConfig = {
   key: 'productDevelopmentFeedback',
   title: 'Team Feedback & Competitor Benchmark Notes',
   sheetName: 'Product_Development_Report',
@@ -3820,9 +3820,7 @@ const DEPARTMENTS: RawDept[] = [
       'batchFormulaTrace',
       'formulationChangeRegister',
       'formulaChangeControl',
-      'productDevelopmentProfile',
-      'productDevelopmentIterations',
-      'productDevelopmentFeedback',
+      { title: 'Product Development Report', sheetName: 'Product_Development_Report', workbookTab: 'Tuan-Product_Dev_Report', page: 'product-development-report', gate: '04/05/08', reviewOwner: REVIEW_SPECS.formulationProductDevReport, contains: ['productDevelopmentProfile', 'productDevelopmentIterations', 'productDevelopmentFeedback'] },
     ],
   },
   {
