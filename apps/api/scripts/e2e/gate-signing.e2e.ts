@@ -473,7 +473,7 @@ export async function run(base: string, db: Client): Promise<number> {
           );
         const fresh = (await regRows())[index];
         t('right after signing the row is not stale and the derived approved tick is on (the tick is not part of what was signed)',
-          !fresh['npSignOff__stale'] && fresh['approvedByNp'] === true, short(fresh));
+          !fresh['npSignOff__stale'] && fresh['approvedByNp'] === 'Approved', short(fresh));
         t('the signature stored the hash of what was shown', (await dbRow())['npSignOff__hash'] === pv3.hash, short(await dbRow()));
 
         const cur2 = await regRows();
@@ -483,13 +483,13 @@ export async function run(base: string, db: Client): Promise<number> {
           r.status === 403 && String(r.json?.message).includes('locked'), `${r.status} ${short(r.json)}`);
         const kept = await dbRow();
         t('...the stored row, its hash and its approved tick are untouched',
-          kept[textColumn] === pv3.row?.[textColumn] && kept['npSignOff__hash'] === pv3.hash && kept['approvedByNp'] === true, short(kept));
+          kept[textColumn] === pv3.row?.[textColumn] && kept['npSignOff__hash'] === pv3.hash && kept['approvedByNp'] === 'Approved', short(kept));
         t('a different row of the same register can still be edited (only the signed row is locked)', (await regRows()).length >= 1);
 
         await outOfBandEdit('e2e text changed out of band, after it was signed');
         const afterEdit = (await regRows())[index];
         t('a change that got past the lock (out of band) makes the signature stale and turns the approved tick off',
-          afterEdit['npSignOff__stale'] === true && afterEdit['approvedByNp'] === false, short(afterEdit));
+          afterEdit['npSignOff__stale'] === true && afterEdit['approvedByNp'] === 'Pending Final Approver decision', short(afterEdit));
         // Edited through the API while stale: a stale signature locks nothing, and the committed copy the
         // server reads already carries the computed flag, which is exactly how it could be written back.
         const cur2b = await regRows();
@@ -505,7 +505,7 @@ export async function run(base: string, db: Client): Promise<number> {
         t('a stale signature is replaced by signing again, without withdrawing first', r.status < 300, `${r.status} ${short(r.json)}`);
         const resigned = (await regRows())[index];
         t('...after which it counts again, the tick is back on, and the new hash is stored',
-          !resigned['npSignOff__stale'] && resigned['approvedByNp'] === true && (await dbRow())['npSignOff__hash'] === pv4.hash, short(resigned));
+          !resigned['npSignOff__stale'] && resigned['approvedByNp'] === 'Approved' && (await dbRow())['npSignOff__hash'] === pv4.hash, short(resigned));
 
         // A signature recorded before hashes existed has nothing to compare with: unknown is never stale.
         await db.query(
@@ -514,7 +514,7 @@ export async function run(base: string, db: Client): Promise<number> {
         );
         await outOfBandEdit('e2e text changed out of band once more, after a signature with no stored hash');
         const legacy = (await regRows())[index];
-        t('a signature recorded without a hash is never marked stale', !legacy['npSignOff__stale'] && legacy['approvedByNp'] === true, short(legacy));
+        t('a signature recorded without a hash is never marked stale', !legacy['npSignOff__stale'] && legacy['approvedByNp'] === 'Approved', short(legacy));
       }
 
       // Clean up: withdraw, then remove the row so later steps see the register as it was.
@@ -1064,7 +1064,7 @@ export async function run(base: string, db: Client): Promise<number> {
   });
   t('artworkVersion (Gate 6 data) is frozen after SG06 passed (403)', r.status === 403 && String(r.json.message).includes('SG06'), `${r.status} ${short(r.json)}`);
   r = await putArt((rows) => {
-    rows[0].approval = 'Pending Gate 10';
+    rows[0].approval = 'Needs Review';
     return rows;
   });
   t('approval (Gate 10 data) of the same row is still editable', r.status < 300, `${r.status} ${short(r.json)}`);

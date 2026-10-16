@@ -93,5 +93,6 @@ export function marketsWithoutChecklist(project: ProjectData): string[] {
 // in the same words it uses everywhere else.
 export function aseanChecklistIncomplete(project: ProjectData): boolean {
   const rows = project.registers[ASEAN_CHECKLIST_REGISTER] ?? [];
-  return rows.some((r) => text(r.status) !== 'Completed');
+  // 'Complete' is the workbook's own word on this sheet's Status list (it was 'Completed' on the generic list).
+  return rows.some((r) => text(r.status) !== 'Complete');
 }

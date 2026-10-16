@@ -291,11 +291,10 @@ async function seedRbac(): Promise<void> {
       grantedIds.push(permissionId('claim-exemption', 'confirm'));
     }
 
-    // "NP" is the company's final commercial authority. Which of the 17 SSO roles
-    // that IS has never been stated, so Final Approver is a reading of the words
-    // "commercial authority", not a confirmed mapping — part of [ASSUMPTION:
-    // R5-Q18]. Like every grant here it is an editable starting point: the Role
-    // Editor moves it without a code change.
+    // "NP" is the company's final commercial authority, and at this company the person
+    // who holds the Final Approver role (project owner, 2026-10-16). The software needs a
+    // concrete role, so the grant goes to Final Approver; anyone else given that role may
+    // sign too. Like every grant here the Role Editor can move it without a code change.
     if (role.key === 'sso-final-approver') {
       grantedIds.push(permissionId('formulation-change', 'approve-commercial'));
     }

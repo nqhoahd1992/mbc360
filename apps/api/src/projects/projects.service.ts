@@ -27,6 +27,9 @@ import {
 } from '@mbc360/shared/config/changeTriggers';
 import { ownerName, registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import {
+  NP_APPROVAL_APPROVED,
+  NP_APPROVAL_OPTIONS,
+  NP_APPROVAL_PENDING,
   REGISTER_CONFIGS,
   applyClaimInheritance,
   createEmptyRegisterRow,
@@ -2809,6 +2812,9 @@ export class ProjectsService {
         signatureColumns(config).length > 0
           ? this.carryRegisterSignatures(config, project.registers[registerKey] ?? [], rows)
           : rows;
+      if (registerKey === 'formulationChangeRegister') {
+        await this.assertNpDecisionAllowed(user, project.registers[registerKey] ?? [], rowsAfterSignatureGuard);
+      }
       const rowsToWrite =
         registerKey === 'claimEvidenceTraceability'
           ? snapshotReviewedWording(project, rowsAfterSignatureGuard)
@@ -2880,6 +2886,22 @@ export class ProjectsService {
     return { col, resource, action };
   }
 
+  // The Final Approver's decision on a formulation change (Rejected, Pending, On hold) is theirs to record: a row whose
+  // decision changes, or a new row that starts on anything but Pending, needs the commercial-approval capability.
+  // 'Approved' never goes through here — only the signature sets it.
+  private async assertNpDecisionAllowed(user: SessionUser, committed: RegisterRow[], rows: RegisterRow[]): Promise<void> {
+    const changed = rows.some((row, index) => {
+      const was = committed[index]?.approvedByNp ?? NP_APPROVAL_PENDING;
+      const now = row.approvedByNp ?? NP_APPROVAL_PENDING;
+      return now !== was && now !== NP_APPROVAL_APPROVED && was !== NP_APPROVAL_APPROVED;
+    });
+    if (changed && !(await this.holdsAnyCapability(user, ['formulation-change|approve-commercial']))) {
+      throw new ForbiddenException(
+        `Only the Final Approver records Rejected, On hold or Pending on a formulation change (needs formulation-change|approve-commercial). Allowed values: ${NP_APPROVAL_OPTIONS.join(', ')}`,
+      );
+    }
+  }
+
   // Carry every signature field over from the committed rows, by index, and
   // refuse a save that would drop a signed row. Withdrawing is how a signature
   // goes away; a table save must never be able to do it as a side effect.
@@ -2931,12 +2953,26 @@ export class ProjectsService {
     // signature does, so the signature decides it — for as long as it still counts. A signature whose
     // row has since changed is stale (the hash it was signed with no longer matches), and a signature
     // recorded before hashes existed has none to compare, which reads as "still counts".
+    //
+    // The column is the workbook's four-value decision list. 'Approved' is the signature's alone: it is set here when a
+    // signature stands and can never be typed. The other three (Rejected, Pending, On hold) are the Final Approver's own
+    // decision and are kept as sent — whether the sender may send them is checked by `assertNpDecisionAllowed`.
     if (cols.some((c) => c.key === 'npSignOff')) {
       const keys = signatureFieldKeys('npSignOff');
       out.forEach((row, index) => {
         const stored = row[keys.hash];
         const current = typeof stored === 'string' && stored !== '' ? rowHashFromCells(config.key, index, 'npSignOff', row) : undefined;
-        row.approvedByNp = !!row[keys.userId] && (current === undefined || current === stored);
+        const standing = !!row[keys.userId] && (current === undefined || current === stored);
+        if (standing) {
+          row.approvedByNp = NP_APPROVAL_APPROVED;
+        } else if (row.approvedByNp === NP_APPROVAL_APPROVED || !NP_APPROVAL_OPTIONS.includes(row.approvedByNp as never)) {
+          // Nothing proves an approval, so it cannot read as one; blank and unknown values read as pending.
+          row.approvedByNp = NP_APPROVAL_PENDING;
+        }
+        // The date follows the signature, never what the client sent.
+        const prev = committed[index];
+        if (standing && prev?.npApprovalDate && prev.approvedByNp === NP_APPROVAL_APPROVED) row.npApprovalDate = prev.npApprovalDate;
+        else if (!standing) delete row.npApprovalDate;
       });
     }
     return out;
@@ -3110,7 +3146,10 @@ export class ProjectsService {
       // What the signer was shown. A later edit makes the signature stale by no longer matching it.
       data[keys.hash] = expectedHash;
       delete data[keys.stale];
-      if (column === 'npSignOff') data.approvedByNp = true;
+      if (column === 'npSignOff') {
+        data.approvedByNp = NP_APPROVAL_APPROVED;
+        data.npApprovalDate = now.toISOString().slice(0, 10);
+      }
       await tx.registerRow.update({
         where: { id: target.id },
         data: { data: data as Prisma.InputJsonValue, updatedById: user.id },
@@ -3148,7 +3187,10 @@ export class ProjectsService {
         throw new ForbiddenException(`Only ${String(data[keys.name] ?? 'the signer')} may withdraw this signature`);
       }
       for (const key of Object.values(keys)) delete data[key];
-      if (column === 'npSignOff') data.approvedByNp = false;
+      if (column === 'npSignOff') {
+        data.approvedByNp = NP_APPROVAL_PENDING;
+        delete data.npApprovalDate;
+      }
       await tx.registerRow.update({
         where: { id: target.id },
         data: { data: data as Prisma.InputJsonValue, updatedById: user.id },
@@ -4904,7 +4946,8 @@ export class ProjectsService {
               changeTitle: `Formula version ${project.formulaVersion} -> ${version} (${input.changeType})`,
               explanation: input.reason ?? '',
               vnRegistrationRequired:
-                input.changeType === 'Major' && project.identity.markets.includes('Vietnam'),
+                input.changeType === 'Major' && project.identity.markets.includes('Vietnam') ? 'Yes' : 'No',
+              approvedByNp: NP_APPROVAL_PENDING,
               overallStatus: 'In Progress',
             } as Prisma.InputJsonValue,
           },

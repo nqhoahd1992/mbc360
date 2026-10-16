@@ -260,7 +260,7 @@ export function claimUseBlocker(
   const market = text(use.market);
   if (market === '') return undefined;
   const rows = skuClaimRows.filter((r) => text(r.claimId) === id && text(r.market) === market);
-  const approved = rows.filter((r) => text(r.status) === 'Completed');
+  const approved = rows.filter((r) => text(r.status) === 'Complete');
   if (approved.length === 0) return `claim ${id} is not approved for ${market} on the SKU claim register`;
   const channel = text(use.channel).toLowerCase();
   if (channel === '') return undefined;

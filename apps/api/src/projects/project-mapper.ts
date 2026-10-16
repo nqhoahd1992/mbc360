@@ -14,7 +14,13 @@
 // needs checklists/gateChecks/registers/bom/nextActions to evaluate readiness,
 // and a response missing them would make pages for later phases render empty.
 import { GATES } from '@mbc360/shared/config/gates';
-import { REGISTER_CONFIGS, signatureColumns, signatureFieldKeys } from '@mbc360/shared/config/registers';
+import {
+  NP_APPROVAL_APPROVED,
+  NP_APPROVAL_PENDING,
+  REGISTER_CONFIGS,
+  signatureColumns,
+  signatureFieldKeys,
+} from '@mbc360/shared/config/registers';
 import { registerContentHashOf, registerRowContentHashOf } from './content-hash';
 import { closureKey } from '@mbc360/shared/utils/registerClosures';
 import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
@@ -762,7 +768,7 @@ function annotateStaleSignatures(p: ProjectWithAll, project: ProjectData): void 
         const stale = typeof stored === 'string' && stored !== '' && !!current && stored !== current;
         if (stale) row[keys.stale] = true;
         // The derived "approved?" tick follows the signature only while the signature still counts.
-        if (column.key === 'npSignOff') row.approvedByNp = !stale;
+        if (column.key === 'npSignOff') row.approvedByNp = stale ? NP_APPROVAL_PENDING : NP_APPROVAL_APPROVED;
       }
     });
   }

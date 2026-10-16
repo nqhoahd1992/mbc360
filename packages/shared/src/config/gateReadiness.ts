@@ -249,7 +249,9 @@ export type ReadinessCheck =
   // row is skipped has nothing left to fail on — so it needs a Mandatory
   // `registerHasRows` alongside it, exactly like registerColumnFilled. Sweep S2
   // enforces that; without `when` the check stays non-vacuous and needs no pair.
-  | { kind: 'registerRowsComplete'; register: string; columns: string[]; when?: { column: string; notIn: string[] } }
+  // `blankValues`: dropdown answers that mean "nothing decided yet" (the workbook's decision lists start with 'Not Started'),
+  // so choosing one is not an answer.
+  | { kind: 'registerRowsComplete'; register: string; columns: string[]; when?: { column: string; notIn: string[] }; blankValues?: string[] }
   // The Vulnerable-User Assessment agrees with the Gate 02 target users: every
   // selected target user that implies a vulnerable group (see
   // TARGET_USER_TO_VULNERABLE_GROUP) has a row naming that group. Bespoke rather
@@ -2123,7 +2125,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Safety conclusion and identified limitations',
       tier: 'Mandatory',
       // registerRowsComplete (see sg07-exposure note above).
-      check: { kind: 'registerRowsComplete', register: 'formulationSafetyMatrix', columns: ['safetyDecision'] },
+      check: { kind: 'registerRowsComplete', register: 'formulationSafetyMatrix', columns: ['safetyDecision'], blankValues: ['Not Started'] },
     },
     {
       id: 'sg07-reviewer',
@@ -2943,7 +2945,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // on this register is sg09-stability at an EARLIER gate, so this item's
       // own satisfied flag was vacuously true if viewed before Gate 09 is
       // actually passed (found 2026-07-28 — same class as the Gate 06 fix).
-      check: { kind: 'registerRowsComplete', register: 'stabilityRelease', columns: ['releaseDecision'] },
+      check: { kind: 'registerRowsComplete', register: 'stabilityRelease', columns: ['releaseDecision'], blankValues: ['Not Started'] },
     },
     {
       // Not an F1-named item — same generalizable rule as sg01-constraints:

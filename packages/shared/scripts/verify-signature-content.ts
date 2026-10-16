@@ -64,9 +64,9 @@ const clone = (p: ProjectData): ProjectData => JSON.parse(JSON.stringify(p));
 
 // --- a row's signed content leaves out the signature itself and what is derived from it ----------------
 {
-  const row = { changeId: 'FC-1', changeTitle: 'Reformulated', npSignOff: 'Somebody', npSignOff__userId: 'u1', npSignOff__hash: 'abc', approvedByNp: true };
+  const row = { changeId: 'FC-1', changeTitle: 'Reformulated', npSignOff: 'Somebody', npSignOff__userId: 'u1', npSignOff__hash: 'abc', approvedByNp: 'Approved' };
   const withTick = registerRowCells('formulationChangeRegister', row, 'npSignOff');
-  const withoutTick = registerRowCells('formulationChangeRegister', { ...row, approvedByNp: false }, 'npSignOff');
+  const withoutTick = registerRowCells('formulationChangeRegister', { ...row, approvedByNp: 'Pending Final Approver decision' }, 'npSignOff');
   t('the row content exists for a register that has a signature column', !!withTick);
   t('the column being signed is not part of its own content', !withTick?.columns.some((c) => c.key === 'npSignOff'));
   t('the derived "approved" tick is not part of the content', !withTick?.columns.some((c) => c.key === 'approvedByNp'));

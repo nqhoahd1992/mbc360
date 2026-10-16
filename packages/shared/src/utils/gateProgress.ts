@@ -703,7 +703,7 @@ export function uncoveredFormulaLines(project: ProjectData): { label: string; re
     // Question 23(b): "every ingredient in the final formula must have a safety
     // disposition" — named per line here (SME rule audit D, 2026-10-04), so the
     // blocker says which ingredient lacks one instead of only that some row does.
-    if (String(row.safetyDecision ?? '').trim() === '') {
+    if (['', 'Not Started'].includes(String(row.safetyDecision ?? '').trim())) {
       out.push({ label, reason: 'no safety decision recorded' });
       continue;
     }
@@ -1283,7 +1283,13 @@ export function evaluateReadinessCheck(
       const scoped = check.when
         ? rows.filter((r) => !check.when!.notIn.includes(String(r[check.when!.column] ?? '').trim()))
         : rows;
-      const satisfied = scoped.every((r) => check.columns.every((c) => String(r[c] ?? '').trim() !== ''));
+      const blank = check.blankValues ?? [];
+      const satisfied = scoped.every((r) =>
+        check.columns.every((c) => {
+          const v = String(r[c] ?? '').trim();
+          return v !== '' && !blank.includes(v);
+        }),
+      );
       return { evaluable: true, satisfied };
     }
     case 'claimsRegulatoryReviewed': {

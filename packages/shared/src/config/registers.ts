@@ -294,6 +294,8 @@ export function isRegisterRowBlank(config: RegisterConfig, row: RegisterRow): bo
     // A signature is not typed, so it can never make a row non-blank — and a
     // row cannot be signed before it exists in the first place.
     if (col.type === 'checkbox' || col.type === 'signature' || col.key === 'status') return true;
+    // A value the row was created with is not something a person typed.
+    if (col.defaultValue !== undefined && row[col.key] === col.defaultValue) return true;
     const v = row[col.key];
     return v == null || String(v).trim() === '';
   });
@@ -302,6 +304,24 @@ export function isRegisterRowBlank(config: RegisterConfig, row: RegisterRow): bo
 // The six values the V18 workbook's data validation offers on the watch-list sheets' status cells.
 export const WATCHLIST_ROW_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Needs Review', 'Complete', 'Not Applicable', 'Blocked'] as const;
 const WORK_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Backtracked'] as const;
+// The Status list the workbook's own data validation offers on most register sheets (v2 workbook). Registers whose rules read
+// their status as 'Completed' keep WORK_STATUS_OPTIONS until those rules accept this wording too.
+const SHEET_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Needs Review', 'Complete', 'Not Applicable', 'Blocked'] as const;
+
+// Status lists the workbook gives its own sheets (v2 workbook data validation). Where a sheet carries both the generic list above and
+// one written for it, the one written for it is used (it names states the generic one has no word for).
+const LABEL_STATUS_OPTIONS = ['Not Started', 'In Progress', 'On Hold', 'Complete'] as const;
+const PUBLICATION_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Awaiting Guideline', 'Awaiting Evidence', 'Under Review', 'Approved', 'Approved with Limits', 'Rejected', 'Superseded', 'Closed'] as const;
+const ASEAN_MAP_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Complete', 'Missing', 'N/A', 'Needs Regulatory Review'] as const;
+
+// Formulation Change Register, "Approved by NP? (commercial)": the workbook's four values, with the person written as the
+// role (NP = whoever holds Final Approver, project owner 2026-10-16). 'Approved' is only ever set by the signature below it.
+// The decision list the workbook offers on its Conclusion / Decision / Approval columns (v2 workbook data validation).
+const DECISION_OPTIONS = ['Not Started', 'Approved', 'Conditional', 'Rejected', 'Needs Review', 'Not Applicable'] as const;
+
+export const NP_APPROVAL_APPROVED = 'Approved';
+export const NP_APPROVAL_PENDING = 'Pending Final Approver decision';
+export const NP_APPROVAL_OPTIONS = [NP_APPROVAL_APPROVED, 'Rejected', NP_APPROVAL_PENDING, 'On hold'] as const;
 
 // Final Safety Sign-off (Gate 7). Round 3 E1: "The pregnancy/breastfeeding
 // assessment at Gate 7 should not be unconditional for every project. It is
@@ -1048,9 +1068,9 @@ const ingredientSubstitution: RegisterConfig = {
     { key: 'efficacyImpact', label: 'Efficacy / claim impact', type: 'text', width: 160 },
     { key: 'costImpact', label: 'Cost impact', type: 'text', width: 120 },
     { key: 'evidenceLinks', label: 'Evidence links', type: 'text', width: 140 },
-    { key: 'decision', label: 'Decision', type: 'text', width: 130 },
+    { key: 'decision', label: 'Decision', type: 'select', options: DECISION_OPTIONS, width: 130 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
 };
@@ -1074,10 +1094,10 @@ const eyeSafetyEvidence: RegisterConfig = {
     { key: 'endpointScore', label: 'Endpoint / score', type: 'text', width: 130 },
     { key: 'safeZoneLimit', label: 'Safe-zone limit', type: 'text', width: 130 },
     { key: 'result', label: 'Result', type: 'text', width: 130 },
-    { key: 'conclusion', label: 'Conclusion', type: 'text', width: 150 },
+    { key: 'conclusion', label: 'Conclusion', type: 'select', options: DECISION_OPTIONS, width: 150 },
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130 },
     { key: 'rawDataLink', label: 'Raw data link', type: 'text', width: 130 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
@@ -1096,7 +1116,7 @@ const fragranceSafety: RegisterConfig = {
     { key: 'minimumRequirement', label: 'Minimum requirement', type: 'text', width: 260, editable: false },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 150 },
     { key: 'owner', label: 'Owner', type: 'text', width: 140, editable: false },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
   fixedRows: [
@@ -1144,10 +1164,10 @@ const microPetEvidence: RegisterConfig = {
     { key: 'methodLab', label: 'Method / lab', type: 'text', width: 130 },
     { key: 'acceptanceCriteria', label: 'Acceptance criteria', type: 'text', width: 160 },
     { key: 'resultScore', label: 'Result / score', type: 'text', width: 120 },
-    { key: 'conclusion', label: 'Conclusion', type: 'text', width: 150 },
+    { key: 'conclusion', label: 'Conclusion', type: 'select', options: DECISION_OPTIONS, width: 150 },
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130 },
     { key: 'rawDataLink', label: 'Raw data link', type: 'text', width: 130 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
@@ -1172,8 +1192,8 @@ const stabilityRelease: RegisterConfig = {
     { key: 'acceptanceCriteria', label: 'Acceptance criteria', type: 'text', width: 150, gate: '09' },
     { key: 'result', label: 'Result', type: 'text', width: 120, gate: '09' },
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130, gate: '09' },
-    { key: 'releaseDecision', label: 'Release decision', type: 'text', width: 140, gate: '11' },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'releaseDecision', label: 'Release decision', type: 'select', options: DECISION_OPTIONS, width: 140, gate: '11' },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
@@ -1196,7 +1216,7 @@ const potencyProcessControl: RegisterConfig = {
     { key: 'supplierGmpEvidence', label: 'Supplier/GMP evidence', type: 'text', width: 160 },
     { key: 'batchEvidenceLink', label: 'Batch evidence link', type: 'text', width: 140 },
     { key: 'impactOnClaim', label: 'Impact on claim', type: 'text', width: 140 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
 };
@@ -1228,7 +1248,7 @@ const mechanismClaimsMap: RegisterConfig = {
     { key: 'evidenceLevel', label: 'Evidence level', type: 'text', width: 140 },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 130 },
     { key: 'approvedWording', label: 'Approved wording / limitation', type: 'textarea', width: 200 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
 };
@@ -1272,7 +1292,7 @@ const efficacyAssurance: RegisterConfig = {
     { key: 'primaryEvidenceSource', label: 'Primary evidence source', type: 'text', width: 200, editable: false },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
     { key: 'owner', label: 'Owner', type: 'text', width: 140, editable: false },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
   fixedRows: [
@@ -1299,11 +1319,11 @@ const functionalEfficacy: RegisterConfig = {
     { key: 'comparator', label: 'Comparator / control', type: 'text', width: 140 },
     { key: 'acceptanceCriteria', label: 'Acceptance criteria', type: 'text', width: 150 },
     { key: 'result', label: 'Result', type: 'text', width: 120 },
-    { key: 'conclusion', label: 'Conclusion', type: 'text', width: 140 },
+    { key: 'conclusion', label: 'Conclusion', type: 'select', options: DECISION_OPTIONS, width: 140 },
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130 },
     { key: 'rawDataLink', label: 'Raw data link', type: 'text', width: 130 },
     { key: 'approvedWording', label: 'Approved wording', type: 'textarea', width: 180 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
@@ -1335,7 +1355,7 @@ const clinicalHumanEvidence: RegisterConfig = {
     { key: 'acceptanceBenchmark', label: 'Acceptance / benchmark', type: 'text', width: 160 },
     { key: 'safetyFindings', label: 'Safety findings', type: 'text', width: 150 },
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
@@ -1353,7 +1373,7 @@ const studyProtocolSetup: RegisterConfig = {
     { key: 'plannedValue', label: 'Planned value / requirement', type: 'textarea', width: 240 },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
     { key: 'owner', label: 'Owner', type: 'text', width: 140, editable: false },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
   fixedRows: [
@@ -1412,7 +1432,7 @@ const efficacyStudyPlan: RegisterConfig = {
     { key: 'timeline', label: 'Timeline', type: 'text', width: 120 },
     { key: 'protocolLink', label: 'Protocol link', type: 'text', width: 130 },
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
 };
@@ -1433,13 +1453,13 @@ const testReportIndex: RegisterConfig = {
     { key: 'endpoint', label: 'Endpoint', type: 'text', width: 120 },
     { key: 'acceptanceCriteria', label: 'Acceptance criteria', type: 'text', width: 150 },
     { key: 'resultScore', label: 'Result / score', type: 'text', width: 120 },
-    { key: 'conclusion', label: 'Conclusion', type: 'text', width: 140 },
+    { key: 'conclusion', label: 'Conclusion', type: 'select', options: DECISION_OPTIONS, width: 140 },
     { key: 'reportLink', label: 'Report link', type: 'text', width: 130 },
     { key: 'rawDataLink', label: 'Raw data link', type: 'text', width: 130 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 100 },
-    { key: 'pifAttached', label: 'PIF attached?', type: 'select', width: 90, options: YNNA },
+    { key: 'pifAttached', label: 'PIF attached?', type: 'select', width: 90, options: ['Y', 'N', 'N/A', 'Conditional'] },
   ],
 };
 
@@ -1474,9 +1494,9 @@ const packagingSpecsArtwork: RegisterConfig = {
     { key: 'packCodeBarcode', label: 'Pack code / barcode', type: 'text', width: 140 },
     { key: 'market', label: 'Market', type: 'market', width: 110, gate: '10' },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 130 },
-    { key: 'approval', label: 'Approval', type: 'text', width: 120, gate: '10' },
+    { key: 'approval', label: 'Approval', type: 'select', options: DECISION_OPTIONS, width: 120, gate: '10' },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
 };
@@ -1494,15 +1514,20 @@ const artworkChangeControl: RegisterConfig = {
     { key: 'immediateAction', label: 'Immediate action', type: 'text', width: 220, editable: false },
     { key: 'personInCharge', label: 'Person in charge', type: 'text', width: 140, editable: false },
     { key: 'requiredSignOffs', label: 'Required sign-offs', type: 'text', width: 180, editable: false },
+    { key: 'evidenceToSave', label: 'Evidence to save', type: 'text', width: 200, editable: false },
+    { key: 'communicationRequired', label: 'Communication required', type: 'text', width: 200, editable: false },
+    { key: 'templateForm', label: 'Template / form', type: 'text', width: 170, editable: false },
+    { key: 'closureCriteria', label: 'Closure criteria', type: 'text', width: 200, editable: false },
     { key: 'gateSheetLink', label: 'Gate / sheet link', type: 'text', width: 110, editable: false },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
   fixedRows: [
-    { trigger: 'Artwork error discovered', examples: 'Wrong wording, typo, ingredient list, warning, barcode or country text', immediateAction: 'Raise Change_Control_Comm; freeze current file; create redline', personInCharge: 'Artwork / Packaging owner', requiredSignOffs: 'Regulatory + Quality + Marketing/Sales where label-facing', gateSheetLink: '06/10/11' },
-    { trigger: 'Formula change affects label', examples: 'INCI order, ingredient addition/removal, active level, allergen/fragrance', immediateAction: 'Link Formula_Change_Control and hold label release until formula locked', personInCharge: 'R&I + Artwork owner', requiredSignOffs: 'R&I + Regulatory + QA', gateSheetLink: '05/06/10' },
-    { trigger: 'Regulatory or market update', examples: 'New country label requirement, warning, language or symbol', immediateAction: 'Identify affected SKUs/materials and route to review', personInCharge: 'Regulatory owner', requiredSignOffs: 'Regulatory + QA + market owner', gateSheetLink: '10/11' },
-    { trigger: 'Marketing/claim copy change', examples: 'New or revised claim/HCP/website/leaflet wording', immediateAction: 'Map claim to evidence; no live use until approved', personInCharge: 'Marketing/Claims owner', requiredSignOffs: 'Regulatory + Scientific Review', gateSheetLink: '03/10' },
+    { trigger: 'Artwork error discovered', examples: 'Wrong wording, typo, ingredient list, warning, barcode or country text', immediateAction: 'Raise Change_Control_Comm; freeze current file; create redline', personInCharge: 'Artwork / Packaging owner', requiredSignOffs: 'Regulatory + Quality + Marketing/Sales where label-facing', evidenceToSave: 'Old proof, redline, corrected proof, approval trail', communicationRequired: 'Notify impacted functions and distributor if affected', templateForm: 'Artwork Change Sign-off Form', closureCriteria: 'Final PDF released and obsolete file archived', gateSheetLink: '06/10/11' },
+    { trigger: 'Formula change affects label', examples: 'INCI order, ingredient addition/removal, active level, allergen/fragrance', immediateAction: 'Link Formula_Change_Control and hold label release until formula locked', personInCharge: 'R&I + Artwork owner', requiredSignOffs: 'R&I + Regulatory + QA', evidenceToSave: 'Formula comparison, label impact assessment', communicationRequired: 'Sales/Marketing approved explanation', templateForm: 'Formula Change Comparison', closureCriteria: 'Label/PIF/claim materials updated', gateSheetLink: '05/06/10' },
+    { trigger: 'Regulatory or market update', examples: 'New country label requirement, warning, language or symbol', immediateAction: 'Identify affected SKUs/materials and route to review', personInCharge: 'Regulatory owner', requiredSignOffs: 'Regulatory + QA + market owner', evidenceToSave: 'Regulatory note, translation, final proof', communicationRequired: 'Notify market/distributor/sales', templateForm: 'Regulatory Artwork Change Form', closureCriteria: 'Market-specific artwork and dossier updated', gateSheetLink: '10/11' },
+    { trigger: 'Marketing/claim copy change', examples: 'New or revised claim/HCP/website/leaflet wording', immediateAction: 'Map claim to evidence; no live use until approved', personInCharge: 'Marketing/Claims owner', requiredSignOffs: 'Regulatory + Scientific Review', evidenceToSave: 'Claim substantiation and approved copy', communicationRequired: 'Notify Sales/Marketing and training owner', templateForm: 'Claims Change Control Form', closureCriteria: 'All collateral uses approved wording', gateSheetLink: '03/10' },
+    { trigger: 'Released label / market image mismatch', examples: 'Live product image or shipped label does not match current released label (e.g. website/marketplace out-of-date)', immediateAction: 'Log in Released_Label_Ctrl (Block A); freeze wrong image; raise Change_Control_Comm', personInCharge: 'Packaging + Digital / Platforms', requiredSignOffs: 'Regulatory + Quality + Marketing/Sales', evidenceToSave: 'Current vs new artwork files, platform screenshots, corrected proof, approval trail', communicationRequired: 'Notify Sales/Marketing, distributor and affected markets', templateForm: 'Released Label Control', closureCriteria: 'All platforms and shipments carry the current released label; obsolete image archived', gateSheetLink: '06/10/11 -> Released_Label_Ctrl' },
   ],
 };
 
@@ -1522,16 +1547,20 @@ const formulaChangeControl: RegisterConfig = {
     { key: 'technicalSignOff', label: 'Technical sign-off', type: 'text', width: 150, editable: false },
     { key: 'regQaSignOff', label: 'Reg/QA sign-off', type: 'text', width: 160, editable: false },
     { key: 'salesMarketingRequired', label: 'Sales/Marketing output required', type: 'text', width: 170, editable: false },
+    { key: 'templateForm', label: 'Template/form', type: 'text', width: 170, editable: false },
+    { key: 'evidenceRequired', label: 'Evidence required', type: 'text', width: 200, editable: false },
+    { key: 'closureCriteria', label: 'Closure criteria', type: 'text', width: 200, editable: false },
+    { key: 'changeControlCommId', label: 'Change_Control_Comm ID', type: 'text', width: 150 },
     { key: 'oldVersion', label: 'Old version', type: 'text', width: 100 },
     { key: 'newVersion', label: 'New version', type: 'text', width: 100 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
   ],
   fixedRows: [
-    { trigger: 'Ingredient added or removed', examples: 'New active, preservative, fragrance or problematic ingredient removed', impactAreas: 'Safety, efficacy, claims, label INCI, PIF, stability, cost', mandatoryActions: 'Update Formula_BOM; screen safety lists; assess claim and label impact', personInCharge: 'R&I / Formulation', technicalSignOff: 'R&I', regQaSignOff: 'Regulatory + Quality', salesMarketingRequired: 'Yes' },
-    { trigger: 'Ingredient percentage or active level changed', examples: 'Active increase/decrease, preservative or humectant balance', impactAreas: 'Efficacy, irritation, preservation, stability, cost', mandatoryActions: 'Re-check claim map, potency controls and evidence need', personInCharge: 'R&I', technicalSignOff: 'R&I / Scientific Review', regQaSignOff: 'Quality + Regulatory where impacted', salesMarketingRequired: 'Yes if claim/label/customer-facing' },
-    { trigger: 'pH range or process changed', examples: 'Heat/cool order, addition temperature, homogenisation, hold time', impactAreas: 'Potency, microbiology, stability, repeatability', mandatoryActions: 'Update process instructions and critical control points', personInCharge: 'R&I + Manufacturing', technicalSignOff: 'R&I + Manufacturing', regQaSignOff: 'Quality', salesMarketingRequired: 'If customer-facing' },
-    { trigger: 'Supplier/raw material/manufacturer change', examples: 'New supplier, grade, site or manufacturer', impactAreas: 'Contaminants, allergens, potency, claims, cost, supply', mandatoryActions: 'Re-qualify material and compare specs', personInCharge: 'Procurement + R&I', technicalSignOff: 'R&I', regQaSignOff: 'Quality + Regulatory', salesMarketingRequired: 'If story/claim/cost/supply impacted' },
-    { trigger: 'Fragrance/allergen/sensory change', examples: 'Perfume changed/removed, essential oil level', impactAreas: 'Allergen declaration, PBW caution, consumer perception', mandatoryActions: 'Update allergen and caution checks; update artwork', personInCharge: 'R&I + Regulatory', technicalSignOff: 'R&I', regQaSignOff: 'Regulatory + Quality', salesMarketingRequired: 'Yes' },
+    { trigger: 'Ingredient added or removed', examples: 'New active, preservative, fragrance or problematic ingredient removed', impactAreas: 'Safety, efficacy, claims, label INCI, PIF, stability, cost', mandatoryActions: 'Update Formula_BOM; screen safety lists; assess claim and label impact', personInCharge: 'R&I / Formulation', technicalSignOff: 'R&I', regQaSignOff: 'Regulatory + Quality', salesMarketingRequired: 'Yes', templateForm: 'Formula Change Comparison', evidenceRequired: 'Old/new formula, rationale, safety evidence', closureCriteria: 'Updated version controlled' },
+    { trigger: 'Ingredient percentage or active level changed', examples: 'Active increase/decrease, preservative or humectant balance', impactAreas: 'Efficacy, irritation, preservation, stability, cost', mandatoryActions: 'Re-check claim map, potency controls and evidence need', personInCharge: 'R&I', technicalSignOff: 'R&I / Scientific Review', regQaSignOff: 'Quality + Regulatory where impacted', salesMarketingRequired: 'Yes if claim/label/customer-facing', templateForm: 'Formula Change Comparison', evidenceRequired: 'Batch trial, pH, stability/micro plan', closureCriteria: 'Evidence updated before release' },
+    { trigger: 'pH range or process changed', examples: 'Heat/cool order, addition temperature, homogenisation, hold time', impactAreas: 'Potency, microbiology, stability, repeatability', mandatoryActions: 'Update process instructions and critical control points', personInCharge: 'R&I + Manufacturing', technicalSignOff: 'R&I + Manufacturing', regQaSignOff: 'Quality', salesMarketingRequired: 'If customer-facing', templateForm: 'Process Change Control', evidenceRequired: 'Process redline, batch record, trial result', closureCriteria: 'Manufacturing instructions updated' },
+    { trigger: 'Supplier/raw material/manufacturer change', examples: 'New supplier, grade, site or manufacturer', impactAreas: 'Contaminants, allergens, potency, claims, cost, availability', mandatoryActions: 'Re-qualify material and compare specs', personInCharge: 'Procurement + R&I', technicalSignOff: 'R&I', regQaSignOff: 'Quality + Regulatory', salesMarketingRequired: 'If story/claim/cost/supply impacted', templateForm: 'Supplier/RM Change Form', evidenceRequired: 'SDS, CoA, TDS, allergen, spec comparison', closureCriteria: 'Supplier approved and evidence filed' },
+    { trigger: 'Fragrance/allergen/sensory change', examples: 'Perfume changed/removed, essential oil level, odour/colour/texture', impactAreas: 'Allergen declaration, PBW caution, consumer perception, complaints', mandatoryActions: 'Update allergen and caution checks; update artwork if needed', personInCharge: 'R&I + Regulatory', technicalSignOff: 'R&I', regQaSignOff: 'Regulatory + Quality', salesMarketingRequired: 'Yes', templateForm: 'Sensory/Fragrance Change Form', evidenceRequired: 'IFRA/allergen data, label impact', closureCriteria: 'Sales/Marketing notified' },
   ],
 };
 
@@ -1552,7 +1581,7 @@ const aseanPifMap: RegisterConfig = {
     { key: 'owner', label: 'Owner', type: 'text', width: 140, editable: false },
     { key: 'locationLink', label: 'Location / link', type: 'text', width: 140 },
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 150, editable: false },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: ASEAN_MAP_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
   fixedRows: [
@@ -1669,7 +1698,7 @@ const pifChecklistAsean: RegisterConfig = {
     { key: 'gate', label: 'Gate', type: 'text', width: 80, editable: false },
     { key: 'reviewer', label: 'Reviewer', type: 'user', width: 130 },
     { key: 'closureDate', label: 'Closure date', type: 'date', width: 130 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
   fixedRows: [
@@ -1702,7 +1731,7 @@ const pifEvidenceExport: RegisterConfig = {
     { key: 'sourceEvidenceLink', label: 'Source evidence link', type: 'text', width: 150 },
     { key: 'pifFolderLink', label: 'PIF folder link', type: 'text', width: 140 },
     { key: 'versionDate', label: 'Version / date', type: 'text', width: 110 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
@@ -1742,7 +1771,7 @@ const skuClaimsPifRegister: RegisterConfig = {
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 130 },
     { key: 'approvedLimitation', label: 'Approved limitation', type: 'text', width: 160 },
     { key: 'pifLink', label: 'PIF link', type: 'text', width: 120 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
@@ -1761,7 +1790,7 @@ const pifEvidenceClosure: RegisterConfig = {
     { key: 'personInCharge', label: 'Person in charge', type: 'text', width: 160, editable: false },
     { key: 'supportingTemplate', label: 'Supporting template / sheet', type: 'text', width: 180, editable: false },
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 90, editable: false },
-    { key: 'blocksExternalUse', label: 'Blocks external use until closed?', type: 'select', width: 90, options: YNNA, editable: false },
+    { key: 'blocksExternalUse', label: 'Blocks external use until closed?', type: 'select', width: 90, options: ['Y', 'N', 'N/A', 'Conditional'], editable: false },
     { key: 'closureEvidence', label: 'Closure evidence', type: 'text', width: 150 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
@@ -1873,13 +1902,13 @@ const publishedInfoApproval: RegisterConfig = {
     { key: 'technicalReview', label: '3. Technical review', type: 'select', width: 110, options: YNNA },
     { key: 'regulatoryReview', label: '4. Regulatory review (where applicable)', type: 'select', width: 130, options: YNNA },
     { key: 'finalApproval', label: '5. Final approval before publication', type: 'select', width: 120, options: YNNA },
-    { key: 'allowed', label: 'Allowed?', type: 'select', width: 90, options: YNNA },
+    { key: 'allowed', label: 'Allowed?', type: 'select', width: 90, options: ['Yes', 'No', 'Conditional', 'N/A'] },
     // F11: the required reviewer roles per record.
     { key: 'contentOwner', label: 'Content owner / author', type: 'user', width: 150 },
     { key: 'technicalReviewer', label: 'Technical reviewer', type: 'user', width: 140 },
     { key: 'regulatoryReviewer', label: 'Regulatory reviewer', type: 'user', width: 140 },
     { key: 'finalApprover', label: 'Final authorised approver', type: 'text', width: 150 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: PUBLICATION_STATUS_OPTIONS },
     { key: 'dateApproved', label: 'Date approved', type: 'date', width: 120 },
     { key: 'expiryReviewDate', label: 'Expiry / review date', type: 'date', width: 120 },
     { key: 'finalPublishedLink', label: 'Final published link', type: 'text', width: 150 },
@@ -1900,7 +1929,7 @@ const medicalSummary: RegisterConfig = {
     { key: 'evidenceSource', label: 'Evidence source', type: 'text', width: 190, editable: false },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
     { key: 'owner', label: 'Owner', type: 'text', width: 140, editable: false },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
   fixedRows: [
@@ -1927,7 +1956,7 @@ const hcpEfficacyAnswer: RegisterConfig = {
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 130 },
     { key: 'approvedWordingLink', label: 'Approved wording link', type: 'text', width: 150 },
     { key: 'doNotSay', label: 'Do-not-say / limitation', type: 'textarea', width: 180 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 150 },
   ],
@@ -1947,7 +1976,7 @@ const hcpTestReportPack: RegisterConfig = {
     { key: 'interpretation', label: 'Plain-English interpretation', type: 'textarea', width: 220 },
     { key: 'approvedLimitation', label: 'Approved limitation', type: 'text', width: 160 },
     { key: 'pifLink', label: 'PIF / PMF link', type: 'text', width: 130 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 150 },
   ],
@@ -1975,7 +2004,7 @@ const batchFormulaTrace: RegisterConfig = {
     { key: 'coaReleaseLink', label: 'CoA / release link', type: 'text', width: 140 },
     { key: 'stabilitySampleLink', label: 'Stability sample link', type: 'text', width: 150 },
     { key: 'pifLink', label: 'PIF / PMF link', type: 'text', width: 120 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
@@ -1996,10 +2025,10 @@ const productFamilyRegister: RegisterConfig = {
     { key: 'formulaVersion', label: 'Formula version (Formula_BOM)', type: 'text', width: 170 },
     { key: 'effectiveDate', label: 'Effective date', type: 'date', width: 120 },
     { key: 'supersededDate', label: 'Superseded date', type: 'date', width: 120 },
-    { key: 'currentMarketVersion', label: 'Current market version?', type: 'checkbox', width: 100 },
+    { key: 'currentMarketVersion', label: 'Current market version? (Y/N)', type: 'select', width: 130, options: ['Yes', 'No'] },
     { key: 'changeRegisterId', label: 'Change register ID', type: 'text', width: 130 },
-    { key: 'marketCommNeeded', label: 'Market communication needed?', type: 'checkbox', width: 100 },
-    { key: 'communicatedToMarket', label: 'Communicated to market?', type: 'checkbox', width: 100 },
+    { key: 'marketCommNeeded', label: 'Market communication needed?', type: 'select', width: 150, options: ['Yes', 'No', 'NA', 'To assess'] },
+    { key: 'communicatedToMarket', label: 'Communicated to market? (Y/N)', type: 'select', width: 150, options: ['Yes', 'No', 'NA', 'In progress'] },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 170 },
   ],
@@ -2007,7 +2036,7 @@ const productFamilyRegister: RegisterConfig = {
 
 const formulationChangeRegister: RegisterConfig = {
   key: 'formulationChangeRegister',
-  title: 'Formulation Change Register (NP Controlled)',
+  title: 'Formulation Change Register (Final Approver Controlled)',
   sheetName: 'Formulation_Change_Register',
   description: 'Every formulation change (preservative system, active up/down, any ingredient) — CEO-mandated. Vietnam needs ~6 months to re-register formula changes.',
   mode: 'register',
@@ -2016,40 +2045,49 @@ const formulationChangeRegister: RegisterConfig = {
     { key: 'changeId', label: 'Change ID', type: 'text', width: 100 },
     { key: 'productFamilySku', label: 'Product Family / SKU', type: 'text', width: 150 },
     { key: 'requestedByNpd', label: 'Change requested by NPD team', type: 'user', width: 160 },
-    { key: 'dateRequested', label: 'Date change requested', type: 'date', width: 120 },
-    // Derived from the signature below, never ticked by hand (2026-08-26). A
-    // tick anyone can set is not an approval, and the pair "approved" + "who"
-    // held as two independent cells is how a row comes to claim an approval no
-    // one gave. The server sets it on sign and clears it on withdraw.
-    { key: 'approvedByNp', label: 'Approved by NP? (commercial)', type: 'checkbox', width: 100, editable: false, derivedFromSignature: 'npSignOff' },
+    { key: 'dateRequested', label: 'Date change requested by NPD', type: 'date', width: 120 },
+    // The workbook's decision list. 'Approved' can only come from the signature at the end of the row (the server sets it on
+    // signing and takes it back on withdrawal), so a typed name or a picked value never reads as an approval; the other three
+    // are the Final Approver's own decision (2026-08-26 signature rule, 2026-10-16 restored list).
+    { key: 'approvedByNp', label: 'Approved by Final Approver? (commercial)', type: 'select', width: 190, options: NP_APPROVAL_OPTIONS, defaultValue: NP_APPROVAL_PENDING, derivedFromSignature: 'npSignOff' },
+    // Set from the signature (server-written), not typed.
+    { key: 'npApprovalDate', label: 'Final Approver approval date', type: 'date', width: 130, editable: false, derivedFromSignature: 'npSignOff' },
     { key: 'changeTitle', label: 'Change title', type: 'text', width: 160 },
-    { key: 'explanation', label: 'Explanation - what changed', type: 'textarea', width: 220 },
+    { key: 'explanation', label: 'Explanation - exactly what changed', type: 'textarea', width: 220 },
     { key: 'reasons', label: 'Reasons', type: 'textarea', width: 180 },
+    { key: 'changedBy', label: 'Changed by', type: 'user', width: 140 },
     { key: 'actionNpd', label: 'Action: NPD', type: 'text', width: 140 },
-    { key: 'actionReg', label: 'Action: Reg - new registration/label?', type: 'text', width: 170 },
-    { key: 'vnRegistrationRequired', label: 'New VN registration required? (~6mo)', type: 'checkbox', width: 110 },
-    { key: 'marketCommRequired', label: 'Market communication required?', type: 'checkbox', width: 100 },
-    { key: 'communicatedToMarket', label: 'Communicated to market?', type: 'checkbox', width: 100 },
-    { key: 'closed', label: 'Closed?', type: 'checkbox', width: 80 },
-    { key: 'overallStatus', label: 'Overall status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
-    // Was a free-text name box until 2026-08-26. NP is the company's final
-    // commercial authority, which made this the worst remaining place in the app
-    // to accept a typed name: anyone could enter it, and change it afterwards
-    // with nothing recorded. Now the same act the phase block requires —
-    // authenticated identity, an authenticator code, the signer's saved
-    // signature, role and timestamp captured by the server.
+    {
+      key: 'actionReg',
+      label: 'Action: Reg - new registration/label? (Regulatory Affairs Manager)',
+      type: 'select',
+      width: 220,
+      options: ['New registration + new label required', 'New label only', 'No change', 'To be assessed by Regulatory Affairs Manager'],
+    },
+    { key: 'actionManufacturing', label: 'Action: Manufacturing (inform only)', type: 'text', width: 160 },
+    { key: 'actionMarketingSales', label: 'Action: Marketing & Sales (Final Approver decides)', type: 'text', width: 180 },
+    { key: 'vnRegistrationRequired', label: 'New VN registration required? (~6 months)', type: 'select', width: 150, options: ['Yes', 'No', 'To assess'] },
+    { key: 'marketCommRequired', label: 'Market communication required?', type: 'select', width: 140, options: ['Yes', 'No', 'NA', 'To assess'] },
+    { key: 'communicatedToMarket', label: 'Communicated to market? (Y/N)', type: 'select', width: 140, options: ['Yes', 'No', 'NA', 'In progress'] },
+    { key: 'closed', label: 'Closed? (Y/N)', type: 'select', width: 100, options: ['Yes', 'No'] },
+    { key: 'overallStatus', label: 'Overall status', type: 'text', width: 130 },
+    // Was a free-text name box until 2026-08-26. The Final Approver is the company's final commercial authority, which
+    // made this the worst remaining place in the app to accept a typed name: anyone could enter it, and change it afterwards
+    // with nothing recorded. Now the same act the phase block requires — authenticated identity, an authenticator code,
+    // the signer's saved signature, role and timestamp captured by the server.
     //
-    // Whether NP's approval belongs on THIS register at all, or is an authority
-    // exercised on the one Change Control log, is a separate and still-open
-    // question [ASSUMPTION: R5-Q18] — the signature is right either way, so it
-    // is not waiting on the answer.
+    // Whether the approval belongs on THIS register at all, or is an authority exercised on the one Change Control log, is a
+    // separate and still-open question [ASSUMPTION: R5-Q18] — the signature is right either way, so it is not waiting on
+    // the answer. "NP" is whoever holds the Final Approver role (project owner, 2026-10-16), which is what
+    // `signCapability` below is granted to.
     {
       key: 'npSignOff',
-      label: 'NP sign-off',
+      label: 'Final Approver sign-off',
       type: 'signature',
       width: 190,
       signCapability: 'formulation-change|approve-commercial',
     },
+    { key: 'communicationAcknowledgedBy', label: 'Communication acknowledged by (name / date)', type: 'text', width: 190 },
   ],
 };
 
@@ -2063,16 +2101,19 @@ const changeTemplates: RegisterConfig = {
   columns: [
     { key: 'templateForm', label: 'Template / form', type: 'text', width: 180, editable: false },
     { key: 'useWhen', label: 'Use when', type: 'text', width: 220, editable: false },
+    { key: 'requiredFields', label: 'Required fields', type: 'text', width: 260, editable: false },
     { key: 'approvalRecipients', label: 'Approval / recipients', type: 'text', width: 200, editable: false },
+    { key: 'savedEvidence', label: 'Saved evidence', type: 'text', width: 200, editable: false },
+    { key: 'closureRule', label: 'Closure rule', type: 'text', width: 220, editable: false },
     { key: 'linkedSheets', label: 'Linked sheets', type: 'text', width: 160, editable: false },
-    { key: 'status', label: 'Status (adopted?)', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status (adopted?)', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
   ],
   fixedRows: [
-    { templateForm: 'Change Request Form', useWhen: 'Any artwork, formula, label, claim, supplier, process or market change', approvalRecipients: 'Project owner plus required technical/QA/regulatory approvers', linkedSheets: 'Change_Control_Comm' },
-    { templateForm: 'Artwork Change Sign-off Form', useWhen: 'Artwork/label/carton/proof/pack copy change', approvalRecipients: 'Artwork owner; Regulatory; QA; Marketing/Sales where customer-facing', linkedSheets: 'Artwork_Change_Control' },
-    { templateForm: 'Formula Change Comparison Summary', useWhen: 'Formula, ingredient, supplier, pH, process, active or preservative change', approvalRecipients: 'R&I, Quality, Regulatory, Scientific Review, Manufacturing, Sales/Marketing', linkedSheets: 'Formula_Change_Control' },
-    { templateForm: 'Sales & Marketing Change Notification', useWhen: 'Formula, label, artwork, claims, sensory or benefit change', approvalRecipients: 'Project owner sends; Sales/Marketing acknowledges', linkedSheets: 'Change_Control_Comm; Medical_Summary' },
-    { templateForm: 'Closure Checklist', useWhen: 'Before a change is marked closed', approvalRecipients: 'Change owner; QA/Document Control; Project owner', linkedSheets: 'Change_Control_Comm' },
+    { templateForm: 'Change Request Form', useWhen: 'Any artwork, formula, label, claim, supplier, process or market change', requiredFields: 'Change ID; trigger; product/SKU; old version; new version; reason; risk level; owner; due date; affected areas', approvalRecipients: 'Project owner plus required technical/QA/regulatory approvers', savedEvidence: 'Completed request, log row, attachments', closureRule: 'Actions, approvals, communications and obsolete version control complete', linkedSheets: 'Change_Control_Comm' },
+    { templateForm: 'Artwork Change Sign-off Form', useWhen: 'Artwork/label/carton/proof/pack copy change', requiredFields: 'Old proof; new proof; redline; affected markets/SKUs; label/PIF/claim impact', approvalRecipients: 'Artwork owner; Regulatory; QA; Marketing/Sales where customer-facing', savedEvidence: 'Redline, final PDF, approval trail, printer release email', closureRule: 'Only approved final artwork may be printed/released', linkedSheets: 'Artwork_Change_Control' },
+    { templateForm: 'Formula Change Comparison Summary', useWhen: 'Formula, ingredient, supplier, pH, process, active, preservative or fragrance change', requiredFields: 'Old vs new formula; INCI impact; reason; safety/efficacy/regulatory/label/stability/cost impact', approvalRecipients: 'R&I, Quality, Regulatory, Scientific Review, Manufacturing, Sales/Marketing acknowledgement', savedEvidence: 'Formula comparison, updated Formula_BOM, evidence and sign-offs', closureRule: 'Summary sent to Sales/Marketing when commercial/customer-facing impact exists', linkedSheets: 'Formula_Change_Control' },
+    { templateForm: 'Sales & Marketing Change Notification', useWhen: 'Formula, label, artwork, claims, sensory, benefit story or market wording changes', requiredFields: 'What changed; why; what remains unchanged; affected SKUs/markets; customer talking points; do/don\'t say', approvalRecipients: 'Project owner sends; Sales/Marketing acknowledges; Regulatory approves wording where claim-facing', savedEvidence: 'Email/Teams/deck link and acknowledgement record', closureRule: 'No closure until acknowledgement saved or N/A rationale approved', linkedSheets: 'Change_Control_Comm; Medical_Summary' },
+    { templateForm: 'Closure Checklist', useWhen: 'Before change is marked closed', requiredFields: 'Actions done; sign-offs complete; comms complete; final version linked; obsolete versions archived; linked sheets updated', approvalRecipients: 'Change owner; QA/Document Control; Project owner', savedEvidence: 'Closed log row and closure note', closureRule: 'Closed date/closed by entered in Change_Control_Comm', linkedSheets: 'Change_Control_Comm' },
   ],
 };
 
@@ -2172,7 +2213,7 @@ const gmpLinks: RegisterConfig = {
     { key: 'gmpOwnerSystem', label: 'GMP owner / system', type: 'text', width: 150 },
     { key: 'link', label: 'Link / location', type: 'text', width: 140 },
     { key: 'versionDate', label: 'Version / batch / date', type: 'text', width: 140 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: PUBLICATION_STATUS_OPTIONS },
     { key: 'linkedGateSheet', label: 'Linked MBc360 gate / sheet', type: 'text', width: 150 },
     { key: 'notes', label: 'Notes / action', type: 'textarea', width: 170 },
   ],
@@ -2192,7 +2233,13 @@ const campaignsSocialMedia: RegisterConfig = {
   columns: [
     { key: 'campaignPostId', label: 'Campaign / Post ID', type: 'text', width: 120 },
     { key: 'productFamilySku', label: 'Product Family / SKU', type: 'text', width: 150 },
-    { key: 'channel', label: 'Channel / platform', type: 'text', width: 130 },
+    {
+      key: 'channel',
+      label: 'Channel / platform',
+      type: 'select',
+      width: 150,
+      options: ['Facebook', 'Instagram', 'TikTok', 'YouTube', 'LinkedIn', 'Website', 'Email/EDM', 'Distributor material', 'In-store', 'Other'],
+    },
     { key: 'title', label: 'Campaign / post title', type: 'text', width: 160 },
     { key: 'objective', label: 'Objective / message', type: 'text', width: 170 },
     { key: 'link', label: 'Link (URL / asset)', type: 'text', width: 150 },
@@ -2200,8 +2247,8 @@ const campaignsSocialMedia: RegisterConfig = {
     { key: 'endDate', label: 'End date', type: 'date', width: 110 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'linkedChangeId', label: 'Linked Change ID', type: 'text', width: 130 },
-    { key: 'claimsApproved', label: 'Claims approved? (Reg)', type: 'checkbox', width: 100 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'claimsApproved', label: 'Claims approved? (Reg)', type: 'select', width: 130, options: ['Yes', 'No', 'Pending', 'NA'] },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: ['Planned', 'Live', 'Paused', 'Completed', 'Cancelled'] },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
 };
@@ -2239,11 +2286,11 @@ const productDevelopmentIterations: RegisterConfig = {
     { key: 'reasonTrigger', label: 'Reason / trigger (feedback source)', type: 'text', width: 180 },
     { key: 'feedbackRef', label: 'Feedback ref', type: 'text', width: 140 },
     { key: 'resultObservation', label: 'Result / observation', type: 'textarea', width: 180 },
-    { key: 'decision', label: 'Decision', type: 'text', width: 130 },
+    { key: 'decision', label: 'Decision', type: 'select', width: 190, options: ['Iterate again', 'Adopt this version', 'Reject', 'Hold for testing', 'Escalate to Final Approver'] },
     { key: 'nextAction', label: 'Next action', type: 'text', width: 150 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'linkedChangeId', label: 'Linked Change ID', type: 'text', width: 130 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: ['Open', 'In progress', 'Superseded', 'Adopted', 'On hold', 'Closed'] },
   ],
 };
 
@@ -2262,7 +2309,7 @@ const productDevelopmentFeedback: RegisterConfig = {
     { key: 'ourPosition', label: 'Our position vs competitor', type: 'text', width: 170 },
     { key: 'actionTaken', label: 'Action taken / planned', type: 'text', width: 170 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: ['Open', 'In progress', 'Actioned', 'Closed'] },
   ],
 };
 
@@ -2282,7 +2329,7 @@ export const formulationSafetyProfile: RegisterConfig = {
     { key: 'value', label: 'Value', type: 'text', width: 220 },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 160 },
     { key: 'owner', label: 'Owner', type: 'text', width: 150, editable: false },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
   ],
   fixedRows: [
@@ -2333,7 +2380,7 @@ export const formulationSafetyMatrix: RegisterConfig = {
     // the regulatory conclusion being relied on, which `evidenceLink` cannot hold
     // because it is a URL field and the reference is often a document id.
     { key: 'coverageReference', label: 'Assessment referenced', type: 'text', width: 200 },
-    { key: 'safetyDecision', label: 'Safety decision', type: 'text', width: 140 },
+    { key: 'safetyDecision', label: 'Safety decision', type: 'select', options: DECISION_OPTIONS, width: 140 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 170 },
   ],
 };
@@ -2470,14 +2517,14 @@ const releasedLabelRegister: RegisterConfig = {
     { key: 'currentArtworkFile', label: 'Current artwork file', type: 'text', width: 150 },
     { key: 'newLabelVersion', label: 'New label version', type: 'text', width: 130 },
     { key: 'newArtworkFile', label: 'New artwork file', type: 'text', width: 150 },
-    { key: 'newLabelReleased', label: 'New label released to market?', type: 'select', width: 120, options: YNNA },
+    { key: 'newLabelReleased', label: 'New label released to market?', type: 'select', width: 120, options: ['Y', 'N', 'NA'] },
     { key: 'marketReleaseDate', label: 'Market release date', type: 'date', width: 130 },
     { key: 'marketsAffected', label: 'Markets affected', type: 'markets', width: 190 },
     { key: 'assetExists', label: '3D asset exists?', type: 'select', width: 110, options: YNNA },
     { key: 'assetLink', label: '3D asset link', type: 'text', width: 130 },
     { key: 'artworkChangeRef', label: 'Artwork_Change_Control ref', type: 'text', width: 160 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: LABEL_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes / action', type: 'textarea', width: 200 },
   ],
 };
@@ -2508,7 +2555,7 @@ const labelPlatformRollout: RegisterConfig = {
     { key: 'verifiedBy', label: 'Verified by', type: 'user', width: 130 },
     { key: 'screenshotLink', label: 'Screenshot / evidence link', type: 'text', width: 160 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: LABEL_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
     { key: 'followUpDate', label: 'Follow-up date', type: 'date', width: 120 },
   ],
@@ -2540,7 +2587,7 @@ const labelShipmentVerification: RegisterConfig = {
     { key: 'batchTraceRef', label: 'Batch_Formula_Trace ref', type: 'text', width: 160 },
     { key: 'photoLink', label: 'Photo / evidence link', type: 'text', width: 150 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: LABEL_STATUS_OPTIONS },
     { key: 'holdRelease', label: 'Hold / release', type: 'text', width: 120 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
@@ -3572,7 +3619,8 @@ export function createEmptyRegisterRow(registerKey: string): RegisterRow {
     // import stub — both are equally unreviewed.
     if (col.defaultValue !== undefined) row[col.key] = col.defaultValue;
     else if (col.type === 'checkbox') row[col.key] = false;
-    else if (col.key === 'status') row[col.key] = 'Not Started';
+    // 'Not Started' only where the column offers it (the workbook's Campaigns sheet, for one, has its own list).
+    else if (col.key === 'status' && (col.options as readonly string[] | undefined)?.includes('Not Started')) row[col.key] = 'Not Started';
   }
   return row;
 }

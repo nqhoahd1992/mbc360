@@ -211,100 +211,116 @@ Read literally, the person who signs the whole gate as Approver must hold Safety
 
 So we built it the other way, and we would like you to confirm it. **The authority sits with the qualified reviewer who records the assessment.** Recording an assessment of *Non-critical* or *Further information required* (the two that let a finding be carried under Proceed with Conditions) is the acceptance, and it needs the authority the finding names: Safety for *Needs Safety Review*, Regulatory for *Needs Regulatory Review*, and for a finding raised after the formula screen (*possible formula match*) whichever function the row's Owner column names (either, if it names both or neither). The Owner column is read as the workbook intends it — the department responsible for the row, not a person — and the Reviewer is a person picked from the users who hold that authority, and only that Reviewer (or an administrator) records the two assessments. The gate is then signed as usual — the readiness list already checks every flagged finding.
 
-**Example.** A formula contains an ingredient flagged *Needs Safety Review*. A Safety reviewer assesses it as Non-critical, records the rationale and links a controlled action. The gate's Approver is the project's overall approver and holds no Safety authority. Today the Approver signs *Proceed with Conditions* without difficulty, because the Safety reviewer already accepted the finding. Had a Regulatory specialist tried to record that same assessment, the software would have refused it.
+**Example.** A formula contains an ingredient that the formula screen has flagged on the Prohibited Ingredients watch-list, with the status *Needs Safety Review*. On that row of the watch-list:
 
-**Question:** is it right that this authority sits with the reviewer who records the assessment, rather than with the person approving the gate?
+1. Someone picks the row's **Reviewer**. The list offers only people who hold Safety authority, because the status names Safety. A Regulatory specialist is not offered.
+2. That Safety reviewer records the **Reviewer assessment** as *Non-critical*, writes the rationale and links a controlled action. This is what we mean by "accepting" the finding: it is a recorded conclusion on the row, attributed to that person, not a drawn signature and not an authenticator step.
+3. At the gate, the readiness list checks every flagged finding. This one passes the check because it has a conclusion from a qualified reviewer, a rationale and a controlled action.
+4. The gate's Approver is the project's overall approver and holds no Safety authority. The software lets that Approver sign *Proceed with Conditions*, because step 2 already happened on the row.
+
+**What the software refuses.** Had a Regulatory specialist tried to record the assessment on that same row, it would have been refused, for two reasons: the row's status says the finding belongs to Safety, so a Regulatory specialist cannot be chosen as its Reviewer; and only the person chosen as Reviewer (or an administrator) can record the *Non-critical* or *Further information required* assessment. If the row's Owner column named both functions, or neither, either a Safety or a Regulatory reviewer could have recorded it.
+
+**What a "no" would mean.** If the authority must sit with the gate approver instead, every gate that carries a flagged finding would need an Approver holding Safety or Regulatory authority, and the Lead would have to know that when nominating — even for a finding raised later.
+
+**Question (a):** is it right that this authority sits with the reviewer who records the assessment, rather than with the person approving the gate?
+
+**Question (b):** should every kind of assessment on the gate need an authority of this kind, or only the two that let a finding be carried under Proceed with Conditions?
 
 ## Question 10 — What makes an action "controlled", and where do its owner and due date live?
 
 Your answers use the idea of a controlled action in three places, each leaving something open. One answer on the first settles the others.
 
-**(a) For a High gap.** Your critical-gap answer lets a High gap be carried conditionally where, among other conditions, *"a controlled action and due date are recorded"*. Your F7 answer already says what a controlled action is: *"A controlled Next Action is created. The action has an owner, due date and escalation condition."* But the eight fields you listed for a gap give **Required action** and **Action owner** as ordinary fields and no date, which reads like the self-contained version. So today the date half of the condition is **not enforced** — we have not guessed a ninth field, and the screen asks the user to put the date in the action text meanwhile. Should a High gap point at a tracked Next Action, as F7 describes? And does the same requirement apply to Medium and Low gaps?
+**(a) For a High gap.** First a distinction, because your answers use the phrase for two different records. A **finding** is a flagged row in a register (for example the watch-lists or the safety findings). A **gap** is the Gap assessment recorded on a gate when its status is Gap. For findings, your answer 33(c) is clear: *"A controlled Next Action is required for: Critical findings · High findings · Medium findings requiring corrective activity. Free text may describe the action but must not replace the controlled action record."* For gaps you have not said the same, so the rest of this paragraph is about gaps only, and we ask whether the finding rule should carry over. Your critical-gap answer lets a High gap be carried conditionally where, among other conditions, *"a controlled action and due date are recorded"*. Your F7 answer already says what a controlled action is: *"A controlled Next Action is created. The action has an owner, due date and escalation condition."* But the eight fields you listed for a gap give **Required action** and **Action owner** as ordinary fields and no date, which reads like the self-contained version. So today the date half of the condition is **not enforced** — we have not guessed a ninth field, and the screen asks the user to put the date in the action text meanwhile. Should a High gap point at a tracked Next Action, as F7 describes and as you already require for findings? And does the same requirement apply to Medium and Low gaps?
 
-**(b) The product form left open at Gate 2.** Your question 23(a) lets an early brief pass Gate 2 with the product form still open, "with a controlled action". We require an open Next Action at Gate 5, where the form is to be confirmed, and a new "Confirmed product form" field there. Must that action sit at Gate 5 and be about confirming the form, or is any controlled action enough?
+*Example:* a High gap says "stability data missing". With the F7 reading, the gap links to a Next Action "Run 3-month stability, owner R&I, due 30 Nov, escalate if late"; the owner and date live there. With the self-contained reading, the gap's own *Required action* and *Action owner* fields hold it and there is no date anywhere.
+
+*Quick choice:* **(1)** High gaps (and above) must link a tracked Next Action; Medium and Low stay free text · **(2)** every gap must link one · **(3)** the gap's own fields are enough, and a date is added to the gap · **(4)** other.
+
+**(b) The product form left open at Gate 2.** Your question 23(a) lets an early brief pass Gate 2 with the product form still open, "with a controlled action". On the Gate 2 Product type list we added the option you named, *"Product form under evaluation — to be confirmed by Gate 5"*; a project that ticks it has recorded a product type (so the Product type item is met) but not a final form. We also made Gate 5 wait for a new field, *Confirmed product form*, which must be filled with one of the real product types. So the confirmation already has a place to be recorded and already blocks the gate. What that field does not carry is an owner, a due date or an escalation, which a controlled Next Action does. Do you still want a controlled action between Gate 2 and Gate 5, or is the field enough? If you still want the action, must it sit at Gate 5 and be about confirming the form, or is any controlled action enough?
+
+*Example:* an infant barrier product has not decided between a cream and a balm. On the Gate 2 Product type list the team ticks *"Product form under evaluation — to be confirmed by Gate 5"*, so the gate can pass. At Gate 5 the *Confirmed product form* field is empty and blocks the gate until someone picks "Cream" or "Balm". Between the two gates, nobody owns the decision and it has no date, unless a Next Action says so — for example "Confirm product form, owner R&I, due 30 Nov". If that is what you meant, would an unrelated Next Action such as "Update brand deck" at Gate 4 also satisfy the condition, or only an action like the first?
 
 **(c) A deferred requirement.** See question 16 — it is the same choice for a Should or Could requirement row.
 
-## Question 11 — If a Change Control affects a gate that already passed, should that gate reopen automatically?
+## Question 11 — If a Change Control names a gate that has already passed, should that gate reopen?
 
-Right now, for Gates 1 to 10, opening a Change Control against a gate that has already passed does nothing to that gate. If Gate 5 was decided "Proceed" and the project has since moved on to Gate 10, opening a change that names Gate 5 leaves the "Proceed" exactly as it was — the only trace is a small warning tag on the Gate Flow screen. Closing the change is equally disconnected.
+**A situation.** A cream project passed Gate 5 (formula lock) in March. It is now August and the project is at Gate 10. The supplier of one ingredient announces a change, so someone opens a Change Control: "ingredient change", naming Gate 5. A Change Control can only be opened after the gate it names has passed, because its purpose is to correct something that was already locked there. So this situation is not rare; it is the only one.
 
-**Gate 11 behaves differently, and we only noticed this while checking.** Gate 11 weighs the open change records directly. If a change that is Critical or High risk, launch-impacting, unclassified, or touching formula, artwork, claims, safety, regulatory, packaging or release is opened **after** Gate 11 was signed, Gate 11's "no blocking change" item fails again, and because a gate counts as passed only while none of its items fails, Gate 11 can stop being passed **on its own** — with no one reopening it and no record of why. We confirmed the item fails by test; we have not yet watched a fully signed Gate 11 fall in the application. Gate 12 may behave the same way through its post-market review item, which we have not checked.
+**What the screen shows today.** Gate 5 still says "Proceed", exactly as before, with a small warning marker beside it saying an open change affects it. Nothing else happens, and closing the change later does not touch the gate either. The gate says "formula locked and approved" while the formula is under review for change.
 
-**What we would do without an answer.** Opening a Change Control against a passed gate would reopen exactly that gate — and only that gate — and the only decision allowed on it afterward would be "Proceed with Conditions".
+**Gates 11 and 12 behave differently, and we only noticed this while checking.** Gate 11 (release) has a check "no blocking change is open", and it reads the list of changes every time it is shown. So:
+- Monday: Gate 11 is signed and passed.
+- Wednesday: someone opens a High-risk change about the label.
+- The check fails, and Gate 11 **stops counting as passed on its own** — nobody reopened it, and nothing records why.
 
-**Where this meets your F9 answer.** F9 says *"Completed, Rejected, Cancelled and Superseded are treated as closed, provided the final disposition is recorded."* A change that reopened a gate raises a new point F9 did not have to consider: if the change is then **Rejected or Cancelled**, was the gate ever really affected? We have not decided; the two readings are that the gate must still be explicitly re-confirmed (never an automatic restore to what it said before), or that a rejected change releases it.
+Gate 12 does the same through its change-control check (we tested this on a project whose post-market review had been answered "No": the check passed, and failed as soon as a change was opened). Both were tested at the level of the check, not yet on a fully signed gate in the application.
 
-**What we have not settled.** (i) Whether "reopen automatically" is the right shape at all, or whether correcting an already-passed gate should always stay a deliberate action a person takes, with Change Control limited to warning. Every existing case of a gate reopening is either a person choosing to, or a fixed block that a Major formula change reopens together; this would be the first time gates are picked one at a time. (ii) Whether restricting the next decision to "Proceed with Conditions" is enough, or re-deciding should also require a written explanation or a named person. (iii) What happens when two open changes name the same gate.
+| | Opening a Change Control against a passed gate |
+|---|---|
+| Gates 1 to 10 | the gate does not change; only a warning marker |
+| Gates 11 and 12 | the gate stops counting as passed by itself, with no record of why |
 
-**Question:** should opening a Change Control against an already-passed gate reopen it automatically? If yes, for every kind of change or only some, and what should happen if the change is rejected or cancelled? If no, what should happen instead of today's silent no-op? And for Gates 11 and 12 specifically: is it right that an open change can make a signed gate stop being passed by itself, or should correcting a signed gate always be a deliberate step a person takes?
+This difference is an accident of how the checks were written, not a decision.
+
+**Question A — Gates 1 to 10.** When a Change Control names a gate that has already passed, what should happen to that gate?
+- **(1) Only warn.** Reopening a passed gate stays a deliberate step a person takes (a Backtrack). Nothing happens behind anyone's back, but the change and the gate can disagree.
+- **(2) Reopen exactly that gate.** The gate reflects reality, and the only decision allowed on it afterwards is "Proceed with Conditions". This would be the first time a single gate is reopened on its own; today a gate reopens only when a person chooses to, or when a Major formula change reopens a fixed block of gates together.
+- **(3) Other.**
+
+**Question B — Gates 11 and 12.** Is it right that an open change can make a signed gate stop counting as passed by itself? Or should correcting a signed gate always be a deliberate step a person takes, as in Question A option (1)?
+
+**If you chose (2) for Question A, please also tell us:**
+- *Which changes?* Every change, or only some (for example only high-risk ones)?
+- *If the change is then Rejected or Cancelled.* Your F9 answer says Completed, Rejected, Cancelled and Superseded are closed once the final disposition is recorded. Was the gate ever really affected? Either the gate must still be explicitly re-confirmed (never an automatic restore to what it said before), or a rejected change releases it.
+- *Re-deciding.* Is "Proceed with Conditions" enough, or should it also need a written explanation or a named person?
+- *Two changes on the same gate.* What happens when two open changes name the same gate?
+
+**What is built today.** Nothing automatic happens to a passed gate in Gates 1 to 10. If you choose (2), we would reopen only the named gate and allow only "Proceed with Conditions" afterwards, unless you say otherwise.
 
 ## Question 12 — There are nine places a change gets written down. How many should there be?
 
 This is the question we would most like answered, and the one we have stopped work on until you do.
 
-Counting through the workbook rather than going on impression, there are **nine** surfaces that deal with change, and they are not all the same kind of thing:
+**A situation.** The team raises a new **major** formula version. The software supersedes the previous version, reopens Gates 4 to 9 and cancels the phase approvals covering them, and it writes a line in the *Formulation Change Register* (numbered FC-001). But it does **not** create a record in the *Change Control & Communication Log* (numbered CHG-001). So when Gate 11 asks "is any change open that affects release?", it looks only at the Change Control log, and it does not see the formula change at all.
 
-| | What it is |
+**The nine places.** Counted through the workbook rather than by impression, seven keep a record of a change that happened, and two list the *types* of change and who signs each:
+
+| Records a change that happened | Lists the types of change |
 |---|---|
-| Change Control & Communication Log | records a change that happened |
-| Formulation Change Register (NP Controlled) | records a change that happened |
-| Released Label vs Current Artwork | records a change that happened |
-| Development Iteration Log | records a change that happened |
-| Ingredient Substitution Evidence | records a change that happened |
-| Product Family & Version Register | records a change that happened |
-| Formula version history | records a change that happened |
-| Formula Change Control | lists the five **types** of formula change and who signs each |
-| Artwork Change Control | lists the four **types** of artwork change and who signs each |
+| Change Control & Communication Log | Formula Change Control (five formula change types) |
+| Formulation Change Register (NP Controlled) | Artwork Change Control (four artwork change types) |
+| Released Label vs Current Artwork | |
+| Development Iteration Log | |
+| Ingredient Substitution Evidence | |
+| Product Family & Version Register | |
+| Formula version history | |
 
 (A tenth, Change Templates / Forms, is a list of which form to use — clearly different again.)
 
-**Three things we can measure, rather than feel:**
+**What we can measure, rather than feel.**
+1. **Two of these run in parallel and do not know about each other** (CHG- and FC- above). Because a major formula change takes the FC route only, four things that apply to every other change do not apply to it: it does not hold **Gates 10 or 11** open; **Gate 11 does not weigh its impact**, although your own answer requires Gate 11 to evaluate the impact of each open change; it is closed by a single "Closed?" tick rather than the eight-part final disposition you specified in Round 4; and it carries no impact classification, so nothing can mark it launch-impacting. The heaviest change the system knows about travels the route the change machinery cannot see.
+2. **Two sheets do two jobs at once.** Formula Change Control lists five *types* of change, yet the same five rows also carry Old version, New version and Status, which belong to one particular change. Every ingredient change a product will ever have shares one Old version box, and the second overwrites the first.
+3. **The sheets refer to each other by typed text.** At least four columns point from one change record at another (Change register ID, Linked Change ID on two sheets, Artwork_Change_Control ref), and nothing checks that what is typed exists.
 
-**1. Two of these run in parallel with two different numbering schemes.** The Change Control log numbers its records CHG-001, CHG-002. The Formulation Change Register numbers its own FC-001, FC-002, and the system writes one automatically whenever a formula version is raised. Nothing links the two.
+**Two readings of why there are so many sheets, and we would rather you corrected than accepted either.**
+- **One record, shown several ways.** A spreadsheet has no other way to say "only NP approves this" or "show me only the artwork ones", so a separate sheet *is* the permission and the filter. The software has permissions and filtered views, so one record shown several ways might say the same thing without the duplication.
+- **Several genuinely different records.** The three formula books may describe three stages: the *Development Iteration Log* (formula not yet locked), the *Formulation Change Register* (a change to a controlled formula, with its own questions about the six-month Vietnam re-registration and whether the market has been told, which mean nothing for a formula still being trialled), and the *Change Control & Communication Log* (any change of any kind). If that is how your team sees it, they are not duplicates, merging them would be a serious mistake, and the real question is where the boundary sits.
 
-Raising a **major** formula change is far from ignored — it supersedes the previous version, reopens Gates 4 to 9 and cancels the phase approvals covering them. What it does **not** do is create a change control record, so the change-control side of the system never sees it, and four things that apply to every other change do not apply to this one:
+**A fact that bears on the second reading.** A new formula version can only be created while Gate 5 is the open gate, which is before the formula is locked. So every Formulation Change Register entry the software writes describes a change to a formula that is **not yet locked**. A change after the lock cannot create a version or an FC entry; it needs a Backtrack to Gate 5 first. Today no rule keeps the Development Iteration Log and the Formulation Change Register apart, and in practice the controlled-change book receives only pre-lock entries.
 
-- it does not hold **Gates 10 or 11** open (those are outside the range that gets reopened);
-- **Gate 11 does not weigh its impact**, although your own answer requires Gate 11 to evaluate the impact classification of each open change — and a major formula change is the clearest case of one;
-- closing it is a single "Closed?" tick rather than the eight-part final disposition you specified in Round 4;
-- it carries no impact classification at all, so nothing can mark it launch-impacting.
+**Questions**
 
-So the heaviest change the system knows about is the one travelling the route the change machinery cannot see.
+**(1) One kind of change record, or several?** In how your team actually works, is there **one** kind of change record, or **several genuinely different** kinds? If several, which are different and what makes them different? Of the nine above, which are meant to list the *types* of change, and which to log the changes that actually happen? And when one change affects the formula, the artwork and a claim at once, is that **one** record or several linked records, one per area?
 
-**2. Two sheets are doing two jobs at once.** Formula Change Control lists five *types* of change — one row for "ingredient added or removed", one for "pH or process changed", and so on — with who must sign each. But the same five rows also carry Old version, New version and Status, which belong to a *particular* change. So every ingredient change this product will ever have shares one Old version box. The second one overwrites the first.
+**(2) Where is the boundary?** Is the dividing line between the Development Iteration Log and the Formulation Change Register the moment the formula is **locked at Gate 5** — trials before it, controlled changes after it? If it is something else, what?
 
-**3. The sheets refer to each other by typed text.** At least four columns point from one change record at another — "Change register ID", "Linked Change ID" (on two sheets) and "Artwork_Change_Control ref" — and every one is free text. Nothing checks that what is typed exists.
+**(3) Major formula version.** Should raising a Major formula version always create a Change Control record, so the change-control side of the system sees it?
 
-**Our reading, which we would rather you corrected than accepted.** We think the workbook has several separate sheets because a spreadsheet has no other way to say "only NP approves this" or "show me only the artwork ones" — a separate sheet **is** the permission, and it **is** the filter. The software has permissions and filtered views already, so one record shown several ways might say exactly the same thing with none of the duplication. But that is us guessing at why the workbook was built as it was, and if the sheets are separate because the *business* treats them as genuinely different records, then merging them would be a serious mistake — one much harder to undo once real data is in the merged book than the duplication is to live with now.
+**(4) NP's approval.** The Formulation Change Register has twenty-one columns, as in the workbook, and three are NP's: the commercial approval decision, its date and the NP sign-off. The other eighteen (change ID, product, who requested it and when, the title, what changed and why, who changed it, the NPD, Regulatory, Manufacturing and Marketing & Sales actions, the Vietnam re-registration, whether the market needs telling and has been told, whether it is closed, the overall status, who acknowledged the communication) cover largely the same ground as what the Change Control log already keeps. Is the register a book in its own right, or a view of the Change Control log filtered to formulation changes, with NP's approval as an authority exercised on the shared record?
 
-**A second reading, which points the other way, and which we think may well be the right one.** Looking again at the three formula-related books rather than at the count, they may be describing three genuinely different stages rather than the same thing three times:
+**(5) What is a "valid Change Control record"?** Your question 8 says *"If Yes, a valid Change Control record must be linked."* That used to be free text, so a typo or another project's record number satisfied it. It is now a choice from **this project's own Change Control records** (the CHG- numbers). Does a row of the Formulation Change Register (the FC- numbers) count as one? And does "valid" require anything beyond existing, such as that the record is still open, or covers the right kind of change?
 
-| Book | What it covers | State of the formula |
-|---|---|---|
-| Development Iteration Log | trial and improvement | not yet locked |
-| Formulation Change Register | a change to a **controlled** formula | locked, and often already registered |
-| Change Control & Communication Log | any change of any kind — artwork, claims, markets | any |
-
-The middle one reads that way from its own contents: it warns that Vietnam needs about six months to re-register a formula change, and it asks whether a new registration or label is required and whether the market has been told. None of those questions mean anything about a formula still being trialled. If that is how your team sees it, these are **not** duplicates, merging them would be a serious mistake, and the real question is not whether to merge but **where the boundary between them sits**.
-
-**Questions:**
-
-**(a)** In how your team actually works, is there **one** kind of change record, or **several genuinely different** kinds? If several, which are different, and what makes them different?
-
-**(b)** Of the nine above, which are meant to list the *types* of change, and which are meant to log the changes that actually happen?
-
-**(c)** Should raising a Major formula version always create a change control record?
-
-**(d)** When one change affects the formula, the artwork and a claim all at once, is that **one** record, or several linked records — one per area?
-
-**(e)** Is the dividing line between the Development Iteration Log and the Formulation Change Register the moment the formula is **locked at Gate 5** — trials on one side, controlled changes on the other? If it is something else, what? (Today nothing enforces any line: the software will write a Formulation Change Register entry for a formula that has never been locked, which puts a development trial into the book meant for controlled changes.)
-
-**(f) Is "NP Controlled" a separate book, or an approval only NP may give?** The Formulation Change Register has sixteen columns. Two are NP's: the commercial approval and the NP sign-off. The other fourteen — change ID, product, who requested it, the date, the title, the explanation, the reasons, the NPD and Regulatory actions, whether the market needs telling, whether it has been told, whether it is closed, and the overall status — are the same fourteen the Change Control log already keeps. Is the register a book in its own right, or a view of the Change Control log filtered to formulation changes, with NP's approval as an authority exercised on the shared record? And which role is "NP"? We have provisionally given the approval to the Final Approver role, purely from the words "commercial authority", and it is one click to move.
-
-**(g) Which records count as "a valid Change Control record"?** Your question 8 says *"If Yes, a valid Change Control record must be linked."* That used to be free text, so a typo or another project's record number satisfied it. It is now a choice from **this project's own Change Control records** (the CHG- numbers). Does a row of the Formulation Change Register (the FC- numbers) count as one? And does "valid" require anything beyond existing — that the record is still open, or covers the right kind of change?
-
-**What we are doing meanwhile:** nothing. We could make one of these the master book tomorrow and show the others as filtered views of it, and it would look tidier immediately. We are not doing that, because if two of these records really are different things, we would then have to pull them apart again after they had been merged and filled with real data. Nothing is blocked by waiting; the duplication is visible rather than dangerous, with the single exception in point 1 above, which we will fix as soon as (c) is answered.
+**What we are doing meanwhile:** nothing. We could make one of these the master book tomorrow and show the others as filtered views, and it would look tidier immediately. We are not doing that, because if two of these records really are different things, we would have to pull them apart again after they had been merged and filled with real data. Nothing is blocked by waiting; the duplication is visible rather than dangerous, with the single exception in point 1, which we will fix as soon as question (3) is answered.
 
 ## Question 13 — Does adding a market, or a Major formula version, reopen earlier gates?
 
