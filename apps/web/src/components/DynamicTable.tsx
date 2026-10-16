@@ -127,6 +127,7 @@ export default function DynamicTable({
   //   rowHasError    — highlight a row the save guard is rejecting;
   //   notices        — alerts shown above the rows, computed from the draft.
   renderCell,
+  inline,
   tableColumns,
   identityText,
   subtitleText,
@@ -149,6 +150,9 @@ export default function DynamicTable({
   // sources feed it (a caller's `warnings` and the Claims Library link check).
   warningsTitle?: string;
   renderCell?: (column: RegisterColumn, row: RegisterRow, index: number, api: CellApi) => React.ReactNode | undefined;
+  // For a register of only a few short columns (a label and its value): every column is edited in the table itself, with no
+  // row drawer — opening a panel to type one value is more work than the value.
+  inline?: boolean;
   tableColumns?: string[];
   identityText?: (row: RegisterRow) => string;
   subtitleText?: (row: RegisterRow) => string;
@@ -567,10 +571,35 @@ export default function DynamicTable({
 
       {notices?.(draft)}
       <div ref={wrapRef} className={embedded ? 'c-card rt-body' : 'rt-body'}>
-        <div className="rt-count">
-          {draft.length} {config.mode === 'register' ? (draft.length === 1 ? 'row' : 'rows') : 'items'}
-        </div>
-        {tableMode ? (
+        {!inline && (
+          <div className="rt-count">
+            {draft.length} {config.mode === 'register' ? (draft.length === 1 ? 'row' : 'rows') : 'items'}
+          </div>
+        )}
+        {inline ? (
+          <table className="rt-table rt-inline">
+            <tbody>
+              {draft.map((row, index) => (
+                <tr key={index} className={rowClass(row)}>
+                  {config.columns.map((col, ci) =>
+                    ci === 0 ? (
+                      <th key={col.key} scope="row" className="rt-inline-label">
+                        {identityCell(row, index)}
+                      </th>
+                    ) : (
+                      <td key={col.key}>{renderEditor(col, row, index)}</td>
+                    ),
+                  )}
+                </tr>
+              ))}
+              {draft.length === 0 && (
+                <tr>
+                  <td className="rt-empty">No rows yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        ) : tableMode ? (
           <table className="rt-table">
             <thead>
               <tr>
@@ -672,7 +701,7 @@ export default function DynamicTable({
       )}
 
       <Drawer
-        open={openRow !== undefined}
+        open={!inline && openRow !== undefined}
         onClose={() => setOpenIndex(null)}
         size={screens.md ? 560 : '100%'}
         mask={!screens.xxl}

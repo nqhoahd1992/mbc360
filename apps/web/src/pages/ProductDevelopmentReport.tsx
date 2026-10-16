@@ -46,6 +46,7 @@ export default function ProductDevelopmentReport() {
       />
       <DynamicTable
         config={productDevelopmentProfile}
+        inline
         rows={project.registers[productDevelopmentProfile.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, productDevelopmentProfile.key, rows)}
         readOnly={locked}
