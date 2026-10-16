@@ -793,6 +793,10 @@ export interface RegisterClosePreview {
   previewedAt: string;
   columns: { key: string; label: string }[];
   rows: Record<string, string>[];
+  // The other registers this signature closes with it, when the page is one sheet of several tables; `tableTitle` then names the
+  // anchor's own table, since `title` names the whole.
+  tableTitle?: string;
+  sections?: { registerKey: string; title: string; columns: { key: string; label: string }[]; rows: Record<string, string>[] }[];
 }
 
 // What a signature cell on one register row attests to: that row, as it is now, and the hash the

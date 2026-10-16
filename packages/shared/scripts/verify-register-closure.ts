@@ -4,6 +4,7 @@
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
 import { REGISTER_CONFIGS, type RegisterConfig } from '../src/config/registers';
 import { gateReadinessChecklist } from '../src/utils/gateProgress';
+import { registerClosureContent } from '../src/utils/registerClosureContent';
 import {
   closureColumns,
   closureKey,
@@ -96,6 +97,27 @@ const p4 = make();
 t('not fully closed at the start', !isRegisterFullyClosed(p4, watch));
 for (const gate of watchGates) sign(p4, 'prohibitedIngredients', gate);
 t('fully closed once every gate it belongs to has both signatures', isRegisterFullyClosed(p4, watch));
+
+// --- one signature for a whole page (RegisterConfig.closedWith) ---------------------------------------
+const anchor = cfg('productDevelopmentProfile');
+const members = ['productDevelopmentIterations', 'productDevelopmentFeedback'].map(cfg);
+const groupGate = registerClosureGateIds(anchor)[0];
+t('the anchor of a page is closable', !!groupGate);
+t('a member has no closing block of its own', members.every((m) => registerClosureGateIds(m).length === 0));
+t('no gate requires a member closed separately', allGates.every((g) => !requiredRegisterClosures(g).some((r) => members.some((m) => m.key === r.registerKey))));
+const g1 = make();
+t('a member is not locked before the anchor is signed', members.every((m) => registerLocks(g1, m).columns.size === 0));
+sign(g1, anchor.key, groupGate, false);
+t('one standing signature on the anchor locks the members too', members.every((m) => closureColumns(m, groupGate).length > 0 && registerLocks(g1, m).columns.size > 0));
+t('...and their rows, since they are free-form', members.filter((m) => m.mode === 'register').every((m) => registerLocks(g1, m).rows === groupGate));
+t('the anchor is fully closed only once both signatures stand, and so are its members', !isRegisterFullyClosed(g1, anchor) && !isRegisterFullyClosed(g1, members[0]));
+sign(g1, anchor.key, groupGate);
+t('with both signatures the members read as closed', isRegisterFullyClosed(g1, members[0]));
+const before = JSON.stringify(registerClosureContent(make(), anchor.key, groupGate));
+const withRow = make();
+withRow.registers[members[0].key] = [{ iteration: '1' } as never];
+t('what the signature attests to includes the members', JSON.stringify(registerClosureContent(withRow, anchor.key, groupGate)) !== before);
+t('an ordinary register carries no sections, so its hash is unchanged', registerClosureContent(make(), 'prohibitedIngredients', first)?.sections === undefined);
 
 console.log(bad === 0 ? '\nall passed' : `\n${bad} FAILED`);
 process.exit(bad === 0 ? 0 : 1);

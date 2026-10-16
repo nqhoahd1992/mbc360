@@ -17,7 +17,7 @@ import { TABLE_STICKY } from '../theme/tokens';
 import { GATES } from '@mbc360/shared/config/gates';
 import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
-import { closureColumns, closureKey, registerClosureGateIds } from '@mbc360/shared/utils/registerClosures';
+import { closureColumns, closureKey, closureMembers, registerClosureGateIds } from '@mbc360/shared/utils/registerClosures';
 
 const CLOSURE_ROLES: RegisterClosureRole[] = ['Review owner', 'Co-sign'];
 
@@ -42,9 +42,14 @@ export default function RegisterClosurePanel({
   return (
     <>
       {gates.map((gateId) => {
-        const columns = closureColumns(config, gateId)
-          .map((key) => config.columns.find((c) => c.key === key)?.label ?? key)
-          .join(', ');
+        const members = closureMembers(config.key);
+        // One signature for a whole page: it names the tables, not a column list that would only describe the first of them.
+        const columns =
+          members.length > 0
+            ? `every table of ${config.closureTitle ?? config.title} (${[config, ...members].map((c) => c.title).join('; ')})`
+            : closureColumns(config, gateId)
+                .map((key) => config.columns.find((c) => c.key === key)?.label ?? key)
+                .join(', ');
         return (
           <GateClosureCard
             key={gateId}

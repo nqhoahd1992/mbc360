@@ -1,6 +1,6 @@
 import { getRegisterConfig } from '../config/registers';
 import type { ProjectData } from '../types';
-import { closureColumns } from './registerClosures';
+import { closureColumns, closureMembers } from './registerClosures';
 
 // What a closing signature on a register attests to: the register's rows exactly as they stand, in the
 // column order the register itself declares. This is the ONE definition — the signing preview shows it
@@ -12,6 +12,9 @@ import { closureColumns } from './registerClosures';
 export interface RegisterClosureContent {
   columns: { key: string; label: string }[];
   rows: Record<string, string>[];
+  // Only on an anchor that closes other registers with it (RegisterConfig.closedWith): the members' content, in config order.
+  // Absent otherwise, so the hash of an ordinary register is unchanged.
+  sections?: { registerKey: string; title: string; columns: { key: string; label: string }[]; rows: Record<string, string>[] }[];
 }
 
 // With `gateId` the content is only what a closure at that gate attests to: the register's settled columns at that gate (SW-36).
@@ -28,7 +31,13 @@ export function registerClosureContent(project: ProjectData, registerKey: string
     }
     return cells;
   });
-  return { columns, rows };
+  const members = gateId ? closureMembers(registerKey) : [];
+  if (members.length === 0) return { columns, rows };
+  const sections = members.map((m) => {
+    const part = registerClosureContent(project, m.key, gateId);
+    return { registerKey: m.key, title: m.title, columns: part?.columns ?? [], rows: part?.rows ?? [] };
+  });
+  return { columns, rows, sections };
 }
 
 // What a signature CELL on one register row attests to: that row's cells, in the register's column

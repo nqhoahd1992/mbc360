@@ -3293,11 +3293,12 @@ export class ProjectsService {
     return {
       registerKey,
       gateId,
-      title: config.title,
+      title: config.closureTitle ?? config.title,
       hash: this.registerContentHash(project, registerKey, gateId),
       previewedAt: new Date().toISOString(),
       columns: content.columns,
       rows: content.rows,
+      ...(content.sections ? { sections: content.sections, tableTitle: config.title } : {}),
     };
   }
 

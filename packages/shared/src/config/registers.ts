@@ -183,6 +183,11 @@ export interface RegisterConfig {
   // reads a register is in `gate` or here — verify:readiness sweep S8 fails otherwise, so that
   // "entered or only read?" is always a decision somebody wrote down. Not shown on screen.
   referenceGates?: string;
+  // A sheet made of several registers on ONE page is closed by ONE signature. The register that holds it names the others in
+  // `closedWith` on THEIR side: set on a member, it points at that anchor. A member has no closing block of its own; the anchor's
+  // signature attests to and locks all of them (registerClosures.ts). `closureTitle` is what the anchor's block calls the whole.
+  closedWith?: string;
+  closureTitle?: string;
   columns: RegisterColumn[];
   fixedRows?: RegisterRow[];
   // "REVIEW OWNER" of the source sheet, as a STRUCTURE (which role owns/co-
@@ -2279,6 +2284,7 @@ const campaignsSocialMedia: RegisterConfig = {
 
 export const productDevelopmentProfile: RegisterConfig = {
   key: 'productDevelopmentProfile',
+  closureTitle: 'Product Development Report',
   title: 'Product / Project Identification',
   sheetName: 'Product_Development_Report',
   description: 'Identification of the product and the development effort.',
@@ -2306,6 +2312,7 @@ export const productDevelopmentProfile: RegisterConfig = {
 
 export const productDevelopmentIterations: RegisterConfig = {
   key: 'productDevelopmentIterations',
+  closedWith: 'productDevelopmentProfile',
   title: 'Development Iteration Log',
   sheetName: 'Product_Development_Report',
   description: 'Each improved formula version and the driving feedback, benchmark or decision behind it.',
@@ -2329,6 +2336,7 @@ export const productDevelopmentIterations: RegisterConfig = {
 
 export const productDevelopmentFeedback: RegisterConfig = {
   key: 'productDevelopmentFeedback',
+  closedWith: 'productDevelopmentProfile',
   title: 'Team Feedback & Competitor Benchmark Notes',
   sheetName: 'Product_Development_Report',
   description: 'Feedback and competitor benchmarking notes that feed the development iteration log.',

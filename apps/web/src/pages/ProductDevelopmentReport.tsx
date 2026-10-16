@@ -76,27 +76,27 @@ export default function ProductDevelopmentReport() {
         reviewOwnerText={reviewOwnerText}
       />
       {[productDevelopmentProfile, productDevelopmentIterations, productDevelopmentFeedback].map((config) => (
-        <div key={config.key}>
-          <DynamicTable
-            config={config}
-            inline={config.key === productDevelopmentProfile.key}
-            rows={project.registers[config.key] ?? []}
-            onSave={(rows) => setRegisterRowsBulk(id, config.key, rows)}
-            readOnly={locked}
-            renderCell={config.key === productDevelopmentProfile.key ? renderIdentityCell : undefined}
-          />
-          {/* Each table is its own register, so each is closed on its own (SW-36). */}
-          {registerClosureGateIds(config).length > 0 && registerReviewSpec(config) && (
-            <RegisterClosurePanel
-              projectId={id}
-              registerKey={config.key}
-              spec={registerReviewSpec(config)!}
-              reviewers={project.identity.reviewers}
-              closures={project.registerClosures}
-            />
-          )}
-        </div>
+        <DynamicTable
+          key={config.key}
+          config={config}
+          inline={config.key === productDevelopmentProfile.key}
+          rows={project.registers[config.key] ?? []}
+          onSave={(rows) => setRegisterRowsBulk(id, config.key, rows)}
+          readOnly={locked}
+          renderCell={config.key === productDevelopmentProfile.key ? renderIdentityCell : undefined}
+        />
       ))}
+
+      {/* One signature closes the whole page: the identification block and both tables (RegisterConfig.closedWith). */}
+      {registerClosureGateIds(productDevelopmentProfile).length > 0 && registerReviewSpec(productDevelopmentProfile) && (
+        <RegisterClosurePanel
+          projectId={id}
+          registerKey={productDevelopmentProfile.key}
+          spec={registerReviewSpec(productDevelopmentProfile)!}
+          reviewers={project.identity.reviewers}
+          closures={project.registerClosures}
+        />
+      )}
     </div>
   );
 }

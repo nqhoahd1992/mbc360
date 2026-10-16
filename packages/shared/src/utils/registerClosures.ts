@@ -21,6 +21,11 @@ import { hasStandingClosureSignature, isRegisterClosed } from '../types';
 import { gateOrder, gateRefGateIds } from './gateRefs';
 import { columnsByAccountability } from './registerColumnGates';
 
+// The registers that are closed by this one's signature (see RegisterConfig.closedWith).
+export function closureMembers(anchorKey: string): RegisterConfig[] {
+  return REGISTER_CONFIGS.filter((c) => c.closedWith === anchorKey);
+}
+
 export const closureKey = (registerKey: string, gateId: string): string => `${registerKey}|${gateId}`;
 
 export function closureStateAt(project: ProjectData, registerKey: string, gateId: string): RegisterClosureState | undefined {
@@ -48,6 +53,8 @@ const gatesCache = new Map<string, string[]>();
 
 // The gates at which this register has to be closed, in gate order.
 export function registerClosureGateIds(config: RegisterConfig): string[] {
+  // A member of a group has no closing block of its own: its anchor's signature closes it.
+  if (config.closedWith) return [];
   const cached = gatesCache.get(config.key);
   if (cached) return cached;
   const read = Object.keys(REGISTER_READS_BY_GATE).filter((gate) => config.key in (REGISTER_READS_BY_GATE[gate] ?? {}));
@@ -61,7 +68,8 @@ export function registerClosureGateIds(config: RegisterConfig): string[] {
 }
 
 // Closed at EVERY gate it has to be closed at (a register with no such gate counts as not closed).
-export function isRegisterFullyClosed(project: ProjectData, config: RegisterConfig): boolean {
+export function isRegisterFullyClosed(project: ProjectData, configIn: RegisterConfig): boolean {
+  const config = (configIn.closedWith && REGISTER_CONFIGS.find((c) => c.key === configIn.closedWith)) || configIn;
   const gates = registerClosureGateIds(config);
   return gates.length > 0 && gates.every((gate) => isRegisterClosed(closureStateAt(project, config.key, gate)));
 }
@@ -85,8 +93,11 @@ export interface RegisterLocks {
 export function registerLocks(project: ProjectData, config: RegisterConfig): RegisterLocks {
   const columns = new Map<string, string>();
   let rows: string | undefined;
-  for (const gate of registerClosureGateIds(config)) {
-    if (!hasStandingClosureSignature(closureStateAt(project, config.key, gate))) continue;
+  // A member is locked by its anchor's signature; its own closure never exists.
+  const anchor = config.closedWith ? REGISTER_CONFIGS.find((c) => c.key === config.closedWith) : undefined;
+  const signedOn = anchor ?? config;
+  for (const gate of registerClosureGateIds(signedOn)) {
+    if (!hasStandingClosureSignature(closureStateAt(project, signedOn.key, gate))) continue;
     for (const key of closureColumns(config, gate)) if (!columns.has(key)) columns.set(key, gate);
     if (config.mode === 'register' && rows === undefined) rows = gate;
   }
