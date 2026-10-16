@@ -16,6 +16,7 @@ import { bomWatchMatches } from '@mbc360/shared/utils/ingredientWatch';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
 import { composeReviewOwner, type ReviewOwnerSpec } from '@mbc360/shared/config/reviewers';
 import { COSTING_FEASIBILITY_STATUSES, COSTING_STATUS_NOT_APPLICABLE } from '@mbc360/shared/config/gates';
+import { DECISION_OPTIONS } from '@mbc360/shared/config/registers';
 import UserSelect from '../components/UserSelect';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { NUMERIC_CELL, NUMERIC_COLUMN } from '../utils/numeric';
@@ -976,10 +977,13 @@ export default function BomCosting() {
                       />
                     </RecordField>
                     <RecordField label="Approval">
-                      <Input
-                        value={l.approval}
+                      <Select
+                        style={{ width: '100%' }}
+                        allowClear
+                        value={l.approval || undefined}
                         disabled={packagingLocked}
-                        onChange={(e) => patchPackagingLine(i, { approval: e.target.value })}
+                        options={DECISION_OPTIONS.map((o) => ({ value: o, label: o }))}
+                        onChange={(v?: string) => patchPackagingLine(i, { approval: v ?? '' })}
                       />
                     </RecordField>
                   </div>

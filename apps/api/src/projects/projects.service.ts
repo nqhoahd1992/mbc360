@@ -27,6 +27,7 @@ import {
 } from '@mbc360/shared/config/changeTriggers';
 import { ownerName, registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import {
+  DECISION_OPTIONS,
   NP_APPROVAL_APPROVED,
   NP_APPROVAL_OPTIONS,
   NP_APPROVAL_PENDING,
@@ -3674,6 +3675,11 @@ export class ProjectsService {
     return this.mutate(user, id, expectedVersion, 'packaging_bom.updated', async (tx, _row, project) => {
       if (isGateRefLocked(project, '06')) {
         throw new ForbiddenException('The Packaging BOM belongs to gate 06, which has passed — it is read-only (use Backtrack)');
+      }
+      // The workbook gives "Approval" a list (Not Started … Not Applicable); a dropdown is only a dropdown in the browser.
+      const badApproval = lines.find((l) => (l.approval ?? '') !== '' && !(DECISION_OPTIONS as readonly string[]).includes(l.approval ?? ''));
+      if (badApproval) {
+        throw new BadRequestException(`Packaging line ${badApproval.line}: "Approval" must be one of ${DECISION_OPTIONS.join(', ')}`);
       }
       await tx.packagingBomLine.deleteMany({ where: { projectId: id } });
       if (lines.length > 0) {

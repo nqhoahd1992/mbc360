@@ -317,7 +317,7 @@ const ASEAN_MAP_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Complete', 'Mis
 // Formulation Change Register, "Approved by NP? (commercial)": the workbook's four values, with the person written as the
 // role (NP = whoever holds Final Approver, project owner 2026-10-16). 'Approved' is only ever set by the signature below it.
 // The decision list the workbook offers on its Conclusion / Decision / Approval columns (v2 workbook data validation).
-const DECISION_OPTIONS = ['Not Started', 'Approved', 'Conditional', 'Rejected', 'Needs Review', 'Not Applicable'] as const;
+export const DECISION_OPTIONS = ['Not Started', 'Approved', 'Conditional', 'Rejected', 'Needs Review', 'Not Applicable'] as const;
 
 export const NP_APPROVAL_APPROVED = 'Approved';
 export const NP_APPROVAL_PENDING = 'Pending Final Approver decision';
@@ -2612,7 +2612,7 @@ const templateIndex: RegisterConfig = {
     { key: 'whenToComplete', label: 'When to complete', type: 'text', width: 180, editable: false },
     { key: 'gate', label: 'Gate', type: 'text', width: 90, editable: false },
     { key: 'owner', label: 'Owner', type: 'text', width: 160, editable: false },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 220, editable: false },
   ],
   fixedRows: [
