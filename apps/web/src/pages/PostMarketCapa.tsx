@@ -4,9 +4,10 @@ import ChoiceSelect from '../components/ChoiceSelect';
 import { InboxOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import type { CapaRecord, RiskLevel, WorkStatus } from '@mbc360/shared/types';
+import type { CapaRecord, RiskLevel } from '@mbc360/shared/types';
+import { isDoneStatus } from '@mbc360/shared/utils/doneStatus';
 import { RISK_LEVELS } from '@mbc360/shared/types';
-import { WORK_STATUSES } from '@mbc360/shared/config/gates';
+import { CAPA_STATUSES } from '@mbc360/shared/config/gates';
 import { isGatePassed, positionSentence } from '@mbc360/shared/utils/gateProgress';
 import UserSelect from '../components/UserSelect';
 import Notice from '../components/Notice';
@@ -41,9 +42,13 @@ interface CapaForm {
   severity: RiskLevel;
   owner: string;
   notes?: string;
+  productSku?: string;
+  investigationLink?: string;
+  capaLink?: string;
+  pifPmfImpact?: string;
 }
 
-const isOpen = (r: CapaRecord) => r.status !== 'Completed';
+const isOpen = (r: CapaRecord) => !isDoneStatus(r.status);
 const isHigh = (r: CapaRecord) => r.severity === 'High' || r.severity === 'Critical';
 
 // PM-NNN from the highest number in use, not from the count: a count-based id
@@ -90,7 +95,7 @@ export default function PostMarketCapa() {
   // open with what was typed, instead of showing "added" and throwing the input away.
   const onCreate = async () => {
     const values = await form.validateFields();
-    const record: CapaRecord = { ...values, id: nextRecordId(project.capa), status: 'Not Started' as WorkStatus };
+    const record: CapaRecord = { ...values, id: nextRecordId(project.capa), status: 'Not Started' };
     setCreating(true);
     try {
       if (!(await addCapa(id, record))) return;
@@ -121,7 +126,7 @@ export default function PostMarketCapa() {
   const severityTag = (s: RiskLevel) => (
     <span className={`c-tag${s === 'Critical' || s === 'High' ? ' c-tag-bad' : s === 'Medium' ? ' c-tag-warn' : ''}`}>{s}</span>
   );
-  const statusTag = (s: WorkStatus) => <span className={`c-tag${s === 'Completed' ? ' c-tag-ok' : ''}`}>{s}</span>;
+  const statusTag = (s: string) => <span className={`c-tag${isDoneStatus(s) ? ' c-tag-ok' : ''}`}>{s}</span>;
 
   return (
     <div className="concept au">
@@ -266,13 +271,29 @@ export default function PostMarketCapa() {
                 <span className="au-field-label">Status</span>
                 <Select
                   value={open.status}
-                  options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
-                  onChange={(v: WorkStatus) => patch(openIndex, { status: v })}
+                  options={CAPA_STATUSES.map((s) => ({ value: s, label: s }))}
+                  onChange={(v: string) => patch(openIndex, { status: v })}
                 />
               </label>
               <label className="au-field">
                 <span className="au-field-label">Owner</span>
                 <UserSelect value={open.owner} onChange={(v) => patch(openIndex, { owner: v ?? '' })} />
+              </label>
+              <label className="au-field">
+                <span className="au-field-label">Product / SKU</span>
+                <Input value={open.productSku} onChange={(e) => patch(openIndex, { productSku: e.target.value })} />
+              </label>
+              <label className="au-field">
+                <span className="au-field-label">PIF / PMF impact</span>
+                <Input value={open.pifPmfImpact} onChange={(e) => patch(openIndex, { pifPmfImpact: e.target.value })} />
+              </label>
+              <label className="au-field pm-wide">
+                <span className="au-field-label">Investigation link</span>
+                <Input value={open.investigationLink} onChange={(e) => patch(openIndex, { investigationLink: e.target.value })} />
+              </label>
+              <label className="au-field pm-wide">
+                <span className="au-field-label">CAPA link</span>
+                <Input value={open.capaLink} onChange={(e) => patch(openIndex, { capaLink: e.target.value })} />
               </label>
               <label className="au-field pm-wide">
                 <span className="au-field-label">Notes</span>
@@ -317,6 +338,20 @@ export default function PostMarketCapa() {
             </Form.Item>
             <Form.Item name="owner" label="Owner" rules={[{ required: true, message: 'Pick an owner' }]}>
               <UserSelect onChange={() => {}} />
+            </Form.Item>
+          </div>
+          <div className="pm-form-grid">
+            <Form.Item name="productSku" label="Product / SKU">
+              <Input />
+            </Form.Item>
+            <Form.Item name="pifPmfImpact" label="PIF / PMF impact">
+              <Input />
+            </Form.Item>
+            <Form.Item name="investigationLink" label="Investigation link">
+              <Input />
+            </Form.Item>
+            <Form.Item name="capaLink" label="CAPA link">
+              <Input />
             </Form.Item>
           </div>
           <Form.Item name="notes" label="Notes">

@@ -11,6 +11,7 @@ import type { ChangeRecord, ChangeStatus, RiskLevel } from '@mbc360/shared/types
 import { RISK_LEVELS } from '@mbc360/shared/types';
 import {
   CHANGE_RACI,
+  CHANGE_AFFECTED_AREAS,
   CHANGE_STATUSES,
   CHANGE_TRIGGERS,
   CHANGE_IMPACT_AREAS,
@@ -30,10 +31,6 @@ import './ChangeControl.css';
 
 import FormDrawer from '../components/FormDrawer';
 import TriggerReference, { AffectedGates } from '../components/TriggerReference';
-const AFFECTED_AREAS = [
-  'Artwork', 'Formula', 'Label', 'Claim', 'Supplier', 'Process', 'Packaging', 'Market',
-  'Formula / Supplier', 'Other',
-];
 
 const TRIGGER_CATEGORIES: ChangeTriggerCategory[] = ['Formula', 'Artwork / Label', 'PIF / Evidence'];
 
@@ -470,7 +467,7 @@ export default function ChangeControl() {
               <Input />
             </Form.Item>
             <Form.Item name="affectedArea" label="Affected area" rules={[{ required: true }]}>
-              <Select options={AFFECTED_AREAS.map((a) => ({ value: a, label: a }))} />
+              <Select options={CHANGE_AFFECTED_AREAS.map((a) => ({ value: a, label: a }))} />
             </Form.Item>
             {/* Rule E3(b): Gate 11 "must evaluate the impact classification … of each
                 open Change Control". Required, because an unclassified open change

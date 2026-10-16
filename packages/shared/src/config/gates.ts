@@ -228,7 +228,17 @@ export const COSTING_FEASIBILITY_STATUSES = [
 
 export const COSTING_STATUS_NOT_APPLICABLE = 'N/A — rationale required';
 
-// Generic work-item status (Requirement / Evidence / Change / CAPA rows)
+// The two answers of the Panel Feedback sheet that are dropdowns in the workbook, not yes/no switches (v2 workbook data validation).
+export const FEEDBACK_TOO_OILY_OPTIONS = ['No', 'Borderline', 'Yes'] as const;
+export const FEEDBACK_RECOMMEND_OPTIONS = ['Yes', 'No', 'Maybe'] as const;
+
+// The Status dropdown most of the workbook's sheets share (v2 workbook data validation); the Post-Market / CAPA sheet and the
+// Product Evidence Summary board use exactly it.
+export const SHEET_STATUSES = ['Not Started', 'In Progress', 'Needs Review', 'Complete', 'Not Applicable', 'Blocked'] as const;
+export const CAPA_STATUSES = SHEET_STATUSES;
+export const EVIDENCE_REQUIRED_OPTIONS = ['Y', 'N', 'N/A', 'Conditional'] as const;
+
+// Generic work-item status (Requirement / Evidence / Change rows)
 export const WORK_STATUSES = [
   'Not Started',
   'In Progress',

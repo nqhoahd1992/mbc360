@@ -913,11 +913,16 @@ export interface FormulaProperties {
 
 export interface EvidenceItem {
   area: string;
-  required: 'Y' | 'Conditional';
+  // The workbook's own dropdown (EVIDENCE_REQUIRED_OPTIONS): Y / N / N/A / Conditional.
+  required: string;
   trigger: string;
   primaryTemplate: string;
+  // Reference text the workbook carries beside the template and the PIF/PMF section the evidence feeds.
+  secondaryInputs?: string;
+  pifPmfSection?: string;
   owner: string;
-  status: WorkStatus;
+  // The sheet's own Status list (SHEET_STATUSES in config/gates.ts).
+  status: string;
   gate: string;
   evidenceLink?: string;
   notes?: string;
@@ -929,9 +934,15 @@ export interface CapaRecord {
   eventType: string;
   summary: string;
   severity: RiskLevel;
-  status: WorkStatus;
+  // The sheet's own Status list (CAPA_STATUSES in config/gates.ts), not the generic work status.
+  status: string;
   owner: string;
   notes?: string;
+  // The four columns of the workbook's CAPA sheet that the first transcription dropped.
+  productSku?: string;
+  investigationLink?: string;
+  capaLink?: string;
+  pifPmfImpact?: string;
 }
 
 export interface FeedbackEntry {
@@ -943,10 +954,13 @@ export interface FeedbackEntry {
   texture: number; // 1-5
   fragrance: number; // 1-5
   overall: number; // 1-5
-  tooOilySlippery: boolean; // SAFETY flag
-  wouldRecommend: boolean;
+  // The workbook's dropdowns (FEEDBACK_TOO_OILY_OPTIONS / FEEDBACK_RECOMMEND_OPTIONS), not yes/no switches: a slippery film
+  // can be 'Borderline', and a tester can answer 'Maybe'. 'Yes' on the first is the SAFETY flag.
+  tooOilySlippery: string;
+  wouldRecommend: string;
   bestLiked?: string;
   concerns?: string;
+  followUpAction?: string;
 }
 
 // Dedicated Study / Human Trial approval workflow (confirmed rule C2) —

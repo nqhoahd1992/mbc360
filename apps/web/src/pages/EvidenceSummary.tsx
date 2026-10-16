@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Empty, Input, Select } from 'antd';
 import { Link, useParams } from 'react-router-dom';
-import type { EvidenceItem, WorkStatus } from '@mbc360/shared/types';
-import { WORK_STATUSES } from '@mbc360/shared/config/gates';
+import type { EvidenceItem } from '@mbc360/shared/types';
+import { EVIDENCE_REQUIRED_OPTIONS, SHEET_STATUSES } from '@mbc360/shared/config/gates';
+import { isDoneStatus } from '@mbc360/shared/utils/doneStatus';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { composeReviewOwner, REVIEW_SPECS } from '@mbc360/shared/config/reviewers';
 import { useAppStore } from '../store/useAppStore';
@@ -28,28 +29,31 @@ type Filter = 'all' | 'open' | 'requiredOpen' | 'completed';
 // deliberately left out where it does not: "Change Control Comm" could mean the
 // Change Control page or the Communications register, so it stays text.
 const TEMPLATE_LINKS: Record<string, { label: string; path: string }[]> = {
-  'Phase 1 (Marketing)': [{ label: 'Phase 1 (Marketing)', path: 'phase/1' }],
-  'Formula BOM / Costing Calc': [
+  'PHASE 1; GATE 1-3 (MARKETING)': [{ label: 'Phase 1 (Marketing)', path: 'phase/1' }],
+  'Formula_BOM; Costing_Calc': [
     { label: 'Formula BOM', path: 'bom/formula' },
     { label: 'Costing Calculator', path: 'bom/costing' },
   ],
-  'Supplier RM Evidence': [{ label: 'Supplier RM Evidence', path: 'registers/reg/supplierRmEvidence' }],
-  'Formulation Safety': [{ label: 'Formulation Safety', path: 'formulation-safety' }],
-  'Fragrance Safety': [{ label: 'Fragrance Safety', path: 'registers/reg/fragranceSafety' }],
-  'Prohibited Ingredients': [{ label: 'Prohibited Ingredients', path: 'registers/reg/prohibitedIngredients' }],
-  'PB Caution Limits': [{ label: 'PB Caution Limits', path: 'registers/reg/pbCautionLimits' }],
-  'Packaging Specs Artwork': [{ label: 'Packaging Specs Artwork', path: 'registers/reg/packagingSpecsArtwork' }],
-  'Micro PET Evidence': [{ label: 'Micro PET Evidence', path: 'registers/reg/microPetEvidence' }],
-  'Stability Release': [{ label: 'Stability Release', path: 'registers/reg/stabilityRelease' }],
-  'Mechanism Claims Map': [{ label: 'Mechanism Claims Map', path: 'registers/reg/mechanismClaimsMap' }],
-  'Clinical Human Evidence': [{ label: 'Clinical Human Evidence', path: 'registers/reg/clinicalHumanEvidence' }],
-  'PIF Checklist ASEAN': [{ label: 'PIF Checklist ASEAN', path: 'registers/reg/pifChecklistAsean' }],
-  'GMP Links': [{ label: 'GMP Links', path: 'registers/reg/gmpLinks' }],
-  'PostMarket CAPA': [{ label: 'Post-Market / CAPA', path: 'post-market' }],
+  Supplier_RM_Evidence: [{ label: 'Supplier RM Evidence', path: 'registers/reg/supplierRmEvidence' }],
+  Formulation_Safety: [{ label: 'Formulation Safety', path: 'formulation-safety' }],
+  Fragrance_Safety: [{ label: 'Fragrance Safety', path: 'registers/reg/fragranceSafety' }],
+  Packaging_Specs_Artwork: [{ label: 'Packaging Specs Artwork', path: 'registers/reg/packagingSpecsArtwork' }],
+  Micro_PET_Evidence: [{ label: 'Micro PET Evidence', path: 'registers/reg/microPetEvidence' }],
+  Stability_Release: [{ label: 'Stability Release', path: 'registers/reg/stabilityRelease' }],
+  Eye_Safety_Evidence: [{ label: 'Eye Safety Evidence', path: 'registers/reg/eyeSafetyEvidence' }],
+  Functional_Efficacy: [{ label: 'Functional Efficacy', path: 'registers/reg/functionalEfficacy' }],
+  Clinical_Human_Evidence: [{ label: 'Clinical Human Evidence', path: 'registers/reg/clinicalHumanEvidence' }],
+  PIF_Checklist_ASEAN: [{ label: 'PIF Checklist ASEAN', path: 'registers/reg/pifChecklistAsean' }],
+  Published_Info_Approval: [{ label: 'Published Information Approval', path: 'registers/reg/publishedInfoApproval' }],
+  'GMP_Links; Batch_Formula_Trace': [
+    { label: 'GMP Links', path: 'registers/reg/gmpLinks' },
+    { label: 'Batch Formula Trace', path: 'registers/reg/batchFormulaTrace' },
+  ],
+  PostMarket_CAPA: [{ label: 'Post-Market / CAPA', path: 'post-market' }],
 };
 
 const gateLabel = (gate: string) => (gate.toUpperCase() === 'ALL' ? 'All gates' : `Gate ${gate.replace(/[-/]/g, ' · ')}`);
-const isDone = (e: EvidenceItem) => e.status === 'Completed';
+const isDone = (e: EvidenceItem) => isDoneStatus(e.status);
 
 export default function EvidenceSummary() {
   const { projectId } = useParams();
@@ -91,8 +95,8 @@ export default function EvidenceSummary() {
       style={{ width: '100%' }}
       disabled={isLocked(row.e)}
       value={row.e.status}
-      options={WORK_STATUSES.map((s) => ({ value: s, label: s }))}
-      onChange={(v: WorkStatus) => patch(row.index, { status: v })}
+      options={SHEET_STATUSES.map((s) => ({ value: s, label: s }))}
+      onChange={(v: string) => patch(row.index, { status: v })}
     />
   );
   const template = (name: string) => {
@@ -153,7 +157,7 @@ export default function EvidenceSummary() {
             {r.e.area}
             {r.e.required !== 'Y' && (
               <span className="c-tag" style={{ marginLeft: 8 }}>
-                Conditional
+                {r.e.required === 'Conditional' ? 'Conditional' : r.e.required}
               </span>
             )}
           </>
@@ -177,6 +181,15 @@ export default function EvidenceSummary() {
             <section>
               <div className="rt-grid">
                 <RecordField label="Status">{statusControl(r)}</RecordField>
+                <RecordField label="Required?">
+                  <Select
+                    style={{ width: '100%' }}
+                    disabled={isLocked(r.e)}
+                    value={r.e.required}
+                    options={EVIDENCE_REQUIRED_OPTIONS.map((o) => ({ value: o, label: o }))}
+                    onChange={(v: string) => patch(r.index, { required: v })}
+                  />
+                </RecordField>
                 <RecordField label="Evidence link / folder" wide>
                   <Input
                     disabled={isLocked(r.e)}
@@ -200,9 +213,10 @@ export default function EvidenceSummary() {
               <dl className="rt-dl">
                 {(
                   [
-                    ['Required', r.e.required === 'Y' ? 'Yes' : 'Conditional'],
                     ['Trigger', r.e.trigger],
                     ['Primary template', template(r.e.primaryTemplate)],
+                    ['Secondary inputs', r.e.secondaryInputs || '—'],
+                    ['PIF / PMF section', r.e.pifPmfSection || '—'],
                     ['Owner', r.e.owner],
                     ['Gate', gateLabel(r.e.gate)],
                   ] as const

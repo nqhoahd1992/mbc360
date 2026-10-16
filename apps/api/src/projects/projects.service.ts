@@ -8,6 +8,11 @@ import {
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import {
+  CAPA_STATUSES,
+  EVIDENCE_REQUIRED_OPTIONS,
+  FEEDBACK_RECOMMEND_OPTIONS,
+  FEEDBACK_TOO_OILY_OPTIONS,
+  SHEET_STATUSES,
   COMPARTMENT_YNNA,
   COSTING_FEASIBILITY_STATUSES,
   GATES,
@@ -19,6 +24,7 @@ import {
 } from '@mbc360/shared/config/gates';
 import { projectStopGrounds, stopRefusal } from '@mbc360/shared/utils/projectStop';
 import {
+  CHANGE_AFFECTED_AREAS,
   CHANGE_IMPACT_AREAS,
   FORMULA_CLASSIFICATION_CAPABILITIES,
   MAJOR_CHANGE_CRITERIA,
@@ -3491,8 +3497,11 @@ export class ProjectsService {
         // evidence surface already has. A changed row whose gate has passed is
         // refused; an unchanged one rides along with the rest of the save.
         const gateRef = EVIDENCE_AREAS.find((a) => a.area === item.area)?.gate;
+        assertOneOf(`Evidence area "${item.area}" status`, item.status, SHEET_STATUSES);
+        assertOneOf(`Evidence area "${item.area}" required`, item.required, EVIDENCE_REQUIRED_OPTIONS);
         const changed =
           item.status !== target.status ||
+          item.required !== target.required ||
           (item.evidenceLink ?? null) !== (target.evidenceLink ?? null) ||
           (item.notes ?? null) !== (target.notes ?? null);
         if (changed && isGateRefLocked(project, gateRef)) {
@@ -3504,6 +3513,7 @@ export class ProjectsService {
           where: { id: target.id },
           data: {
             status: item.status,
+            required: item.required,
             evidenceLink: item.evidenceLink ?? null,
             notes: item.notes ?? null,
           },
@@ -4601,6 +4611,7 @@ export class ProjectsService {
     records: ProjectData['capa'],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
+    for (const c of records) assertOneOf(`${c.id}: status`, c.status, CAPA_STATUSES);
     return this.mutate(user, id, expectedVersion, 'capa.updated', async (tx) => {
       // `code` is globally unique, so deletes are scoped to this project and the
       // rows are recreated from the submitted list.
@@ -4617,6 +4628,10 @@ export class ProjectsService {
             status: c.status,
             owner: c.owner,
             notes: c.notes ?? null,
+            productSku: c.productSku ?? null,
+            investigationLink: c.investigationLink ?? null,
+            capaLink: c.capaLink ?? null,
+            pifPmfImpact: c.pifPmfImpact ?? null,
           })),
         });
       }
@@ -4630,6 +4645,10 @@ export class ProjectsService {
     entries: ProjectData['feedback'],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
+    for (const f of entries) {
+      assertOneOf(`${f.id}: too oily / slippery`, f.tooOilySlippery, FEEDBACK_TOO_OILY_OPTIONS);
+      assertOneOf(`${f.id}: would recommend`, f.wouldRecommend, FEEDBACK_RECOMMEND_OPTIONS);
+    }
     return this.mutate(user, id, expectedVersion, 'feedback.updated', async (tx) => {
       await tx.feedbackEntry.deleteMany({ where: { projectId: id } });
       if (entries.length > 0) {
@@ -4645,6 +4664,7 @@ export class ProjectsService {
             overall: f.overall,
             tooOilySlippery: f.tooOilySlippery,
             wouldRecommend: f.wouldRecommend,
+            followUpAction: f.followUpAction ?? null,
             bestLiked: f.bestLiked ?? null,
             concerns: f.concerns ?? null,
           })),
@@ -4988,6 +5008,8 @@ export class ProjectsService {
     // the rule engine, which compares exact values.
     for (const c of records) {
       for (const area of c.impactAreas ?? []) assertOneOf(`${c.changeId}: impact area`, area, CHANGE_IMPACT_AREAS);
+      // The workbook's Affected area list; blank stays legal (a record from before the list existed).
+      if ((c.affectedArea ?? '') !== '') assertOneOf(`${c.changeId}: affected area`, c.affectedArea, CHANGE_AFFECTED_AREAS);
     }
     const badRisk = records.find((c) => !(RISK_LEVELS as readonly string[]).includes(c.riskLevel));
     if (badRisk) {

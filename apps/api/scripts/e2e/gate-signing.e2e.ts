@@ -566,7 +566,7 @@ export async function run(base: string, db: Client): Promise<number> {
     triggerId,
     trigger: triggerId,
     productSku: 'e2e',
-    affectedArea: 'e2e',
+    affectedArea: 'Other',
     riskLevel: 'Low',
     communicationRequired: false,
     status: 'Draft',

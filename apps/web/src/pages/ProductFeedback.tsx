@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, DatePicker, Drawer, Empty, Form, Grid, Input, Rate, Switch, message } from 'antd';
+import { Button, DatePicker, Drawer, Empty, Form, Grid, Input, Rate, message } from 'antd';
+import { FEEDBACK_RECOMMEND_OPTIONS, FEEDBACK_TOO_OILY_OPTIONS } from '@mbc360/shared/config/gates';
 import ChoiceSelect from '../components/ChoiceSelect';
 import { MessageOutlined, PlusOutlined, RightOutlined, WarningOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
@@ -35,10 +36,11 @@ interface FeedbackForm {
   texture: number;
   fragrance: number;
   overall: number;
-  tooOilySlippery: boolean;
-  wouldRecommend: boolean;
+  tooOilySlippery: string;
+  wouldRecommend: string;
   bestLiked?: string;
   concerns?: string;
+  followUpAction?: string;
 }
 
 // FB-NNN from the highest number in use, not from the count: a count-based id
@@ -70,12 +72,12 @@ export default function ProductFeedback() {
 
   const avg = (field: 'texture' | 'fragrance' | 'overall') =>
     n ? (entries.reduce((s, e) => s + e[field], 0) / n).toFixed(1) : '—';
-  const flagged = entries.filter((e) => e.tooOilySlippery).length;
-  const notRecommended = entries.filter((e) => !e.wouldRecommend).length;
+  const flagged = entries.filter((e) => e.tooOilySlippery !== 'No').length;
+  const notRecommended = entries.filter((e) => e.wouldRecommend === 'No').length;
   const recommendRate = n ? Math.round(((n - notRecommended) / n) * 100) : 0;
 
   const visible = entries.filter((e) =>
-    filter === 'all' ? true : filter === 'flagged' ? e.tooOilySlippery : !e.wouldRecommend,
+    filter === 'all' ? true : filter === 'flagged' ? e.tooOilySlippery !== 'No' : e.wouldRecommend === 'No',
   );
   const open = entries.find((e) => e.id === openId);
 
@@ -100,8 +102,10 @@ export default function ProductFeedback() {
 
   const flags = (e: FeedbackEntry) => (
     <>
-      {e.tooOilySlippery && <span className="c-tag c-tag-bad">Slip risk</span>}
-      {!e.wouldRecommend && <span className="c-tag">Would not recommend</span>}
+      {e.tooOilySlippery === 'Yes' && <span className="c-tag c-tag-bad">Slip risk</span>}
+      {e.tooOilySlippery === 'Borderline' && <span className="c-tag c-tag-warn">Slip risk: borderline</span>}
+      {e.wouldRecommend === 'No' && <span className="c-tag">Would not recommend</span>}
+      {e.wouldRecommend === 'Maybe' && <span className="c-tag">Might recommend</span>}
     </>
   );
   const scores = (e: FeedbackEntry) => (
@@ -235,7 +239,7 @@ export default function ProductFeedback() {
                   </div>
                   {scores(e)}
                   <div className="fb-note">
-                    {(e.tooOilySlippery || !e.wouldRecommend) && <span className="fb-flags">{flags(e)}</span>}
+                    {(e.tooOilySlippery !== 'No' || e.wouldRecommend !== 'Yes') && <span className="fb-flags">{flags(e)}</span>}
                     {/* The concern first: it is what the panel exists to surface. */}
                     <span className="fb-comment">{e.concerns || e.bestLiked || '—'}</span>
                   </div>
@@ -274,15 +278,16 @@ export default function ProductFeedback() {
                 ['Texture', `${open.texture} / 5`],
                 ['Fragrance', `${open.fragrance} / 5`],
                 ['Overall', `${open.overall} / 5`],
-                ['Too oily / slippery?', open.tooOilySlippery ? 'Yes — slip risk' : 'No'],
-                ['Would recommend?', open.wouldRecommend ? 'Yes' : 'No'],
+                ['Too oily / slippery?', open.tooOilySlippery === 'Yes' ? 'Yes — slip risk' : open.tooOilySlippery],
+                ['Would recommend?', open.wouldRecommend],
                 ['Best liked', open.bestLiked || '—'],
                 ['Concerns / ideas', open.concerns || '—'],
+                ['Follow-up action', open.followUpAction || '—'],
               ] as const
             ).map(([label, value]) => (
               <div key={label} className="fb-dl-row">
                 <dt>{label}</dt>
-                <dd className={label.startsWith('Too oily') && open.tooOilySlippery ? 'fb-bad' : undefined}>{value}</dd>
+                <dd className={label.startsWith('Too oily') && open.tooOilySlippery === 'Yes' ? 'fb-bad' : undefined}>{value}</dd>
               </div>
             ))}
           </dl>
@@ -301,7 +306,7 @@ export default function ProductFeedback() {
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ texture: 3, fragrance: 3, overall: 3, tooOilySlippery: false, wouldRecommend: true, gender: 'F' }}
+          initialValues={{ texture: 3, fragrance: 3, overall: 3, tooOilySlippery: 'No', wouldRecommend: 'Yes', gender: 'F' }}
         >
           <div className="fb-form-sec">Tester</div>
           <div className="fb-form-grid">
@@ -335,19 +340,16 @@ export default function ProductFeedback() {
           </div>
 
           <div className="fb-form-sec">Safety and recommendation</div>
-          <div className="fb-switch-row">
-            <div>
-              <div>Too oily / slippery?</div>
-              <div className="fb-hint">A safety question — a slippery film is a slip risk, not a matter of taste.</div>
-            </div>
-            <Form.Item name="tooOilySlippery" valuePropName="checked" noStyle>
-              <Switch checkedChildren="Yes" unCheckedChildren="No" />
+          <div className="fb-form-grid">
+            <Form.Item
+              name="tooOilySlippery"
+              label="Too oily / slippery? (SAFETY)"
+              extra="A safety question — a slippery film is a slip risk, not a matter of taste."
+            >
+              <ChoiceSelect options={[...FEEDBACK_TOO_OILY_OPTIONS]} onChange={() => {}} />
             </Form.Item>
-          </div>
-          <div className="fb-switch-row">
-            <div>Would recommend?</div>
-            <Form.Item name="wouldRecommend" valuePropName="checked" noStyle>
-              <Switch checkedChildren="Yes" unCheckedChildren="No" />
+            <Form.Item name="wouldRecommend" label="Would recommend?">
+              <ChoiceSelect options={[...FEEDBACK_RECOMMEND_OPTIONS]} onChange={() => {}} />
             </Form.Item>
           </div>
 
@@ -356,6 +358,9 @@ export default function ProductFeedback() {
             <Input />
           </Form.Item>
           <Form.Item name="concerns" label="Concerns / improvement ideas">
+            <Input.TextArea autoSize={{ minRows: 2 }} />
+          </Form.Item>
+          <Form.Item name="followUpAction" label="Follow-up action">
             <Input.TextArea autoSize={{ minRows: 2 }} />
           </Form.Item>
         </Form>

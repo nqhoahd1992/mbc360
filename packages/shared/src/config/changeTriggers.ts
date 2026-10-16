@@ -2,6 +2,19 @@ import { PHASES, phaseLabel } from './gates';
 import type { ChangeRecord, ChangeStatus } from '../types';
 
 // Change-control lifecycle statuses (confirmed rule F9), in workflow order.
+// The Affected area dropdown of the workbook's Change Control & Communication log (v2 workbook data validation).
+export const CHANGE_AFFECTED_AREAS = [
+  'Artwork / label',
+  'Formula / ingredient',
+  'Formula version / pH / process',
+  'Packaging / component',
+  'Supplier / raw material',
+  'Claims / marketing copy',
+  'Market / language / regulatory',
+  'Manufacturing / GMP / process',
+  'Other',
+] as const;
+
 export const CHANGE_STATUSES: ChangeStatus[] = [
   'Draft',
   'Submitted',

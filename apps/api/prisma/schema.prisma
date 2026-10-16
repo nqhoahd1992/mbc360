@@ -1081,11 +1081,13 @@ model EvidenceItem {
   project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId       String
   area            String
-  required        String // Y | Conditional
+  required        String // Y | N | N/A | Conditional (the workbook's dropdown)
   trigger         String
   primaryTemplate String
+  secondaryInputs String?
+  pifPmfSection   String?
   owner           String
-  status          String  @default("Not Started") // WorkStatus values
+  status          String  @default("Not Started") // SHEET_STATUSES (the workbook's list)
   gate            String
   evidenceLink    String?
   notes           String?
@@ -1166,9 +1168,14 @@ model CapaRecord {
   eventType String
   summary   String
   severity  String // Low | Medium | High | Critical (Round 4 Q3/Q33)
-  status    String @default("Not Started") // WorkStatus values
+  status    String @default("Not Started") // CAPA_STATUSES (the workbook's list for this sheet)
   owner     String
   notes     String?
+  // The workbook's CAPA sheet also carries these four.
+  productSku        String?
+  investigationLink String?
+  capaLink          String?
+  pifPmfImpact      String?
 
   @@map("capa_records")
 }
@@ -1184,10 +1191,11 @@ model FeedbackEntry {
   texture         Int // 1-5
   fragrance       Int // 1-5
   overall         Int // 1-5
-  tooOilySlippery Boolean  @default(false) // SAFETY flag
-  wouldRecommend  Boolean  @default(false)
+  tooOilySlippery String   @default("No") // No | Borderline | Yes (Yes is the SAFETY flag)
+  wouldRecommend  String   @default("Yes") // Yes | No | Maybe
   bestLiked       String?
   concerns        String?
+  followUpAction  String?
 
   @@map("feedback_entries")
 }
