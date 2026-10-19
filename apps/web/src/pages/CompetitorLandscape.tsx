@@ -33,10 +33,18 @@ export default function CompetitorLandscape() {
       <CompositePageHeader
         project={project}
         title="Competitor Landscape"
-        description={<>Controlled record of PURCHASED competitor samples + desktop research + standard-of-care analysis. Every important competitor must be purchased and physically evaluated, not just researched online.</>}
+        description={<>Controlled record of PURCHASED competitor samples + desktop research + standard-of-care analysis. Every important competitor must be purchased and physically evaluated, not just researched online. <strong>Question it answers:</strong> What already exists, how well does it work, where is the real unmet gap?</>}
         note={{
           title: "Mandatory before formula work",
-          text: "Step 2 of the NPD Front-End Roadmap — sign-off gate SG03. Formula work is held until Steps 1–3 are signed off.",
+          text: (
+            <>
+              <strong>Step 2 of 4</strong> — sign-off gate SG03 · Owner: Marketing / R&amp;I. Formula work is held until Steps 1–3 are signed off.
+              <br />
+              <strong>Minimum output:</strong> Selected competitors with purchase evidence (country/retailer/date/lot), full INCI, claims, patents, disclosed testing, price/use, sensory + analytical comparison, and the Max Biocare design decision from each comparison. Also &apos;standard of care&apos; / what users do now.
+              <br />
+              <strong>Note:</strong> Includes purchased-sample &amp; comparative-testing protocol.
+            </>
+          ),
         }}
         reviewOwnerText={reviewOwnerText}
       />

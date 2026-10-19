@@ -97,6 +97,12 @@ const NON_REGISTER_SHEETS: { sheetName: string; title: string; group: string; pa
     page: 'registers/cat/dept-system',
   },
   {
+    sheetName: 'NPD Front-End Roadmap',
+    title: "NPD Front-End Roadmap — the 4 mandatory steps (shown on each step's own page)",
+    group: 'Project Manager',
+    page: 'registers/cat/dept-npd-frontend',
+  },
+  {
     sheetName: 'Stage_Map',
     title: 'Stage Map — the 12 gates, owners and outputs',
     group: 'System Guide & Reference',

@@ -29,10 +29,18 @@ export default function TargetProductTech() {
       <CompositePageHeader
         project={project}
         title="Target Product & Tech Platform"
-        description={<>ONE agreed definition of what success means, plus the backbone technology that will deliver it. The technology must be demonstrably superior in some way to the current market (Competitor Landscape).</>}
+        description={<>ONE agreed definition of what success means, plus the backbone technology that will deliver it. The technology must be demonstrably superior in some way to the current market (Competitor Landscape). <strong>Question it answers:</strong> What platform will address the needs, and how is it better than the market?</>}
         note={{
           title: "Complete before formula lock",
-          text: "Step 3 of the NPD Front-End Roadmap — hard-blocks Formula BOM (Gate 05) until signed off.",
+          text: (
+            <>
+              <strong>Step 3 of 4</strong> — sign-off gate SG03 -&gt; SG05 · Owner: R&amp;I / Project Manager. Formula work is held until Steps 1–3 are signed off.
+              <br />
+              <strong>Minimum output:</strong> One agreed definition of success (min/target/ideal/unacceptable per attribute + measurement method). Technology platform: precise problem, routes considered, why selected, mechanism, critical attributes, evidence maturity, patent landscape, and HOW it is superior to existing products.
+              <br />
+              <strong>Note:</strong> Combines Target Product Profile + Technology Platform.
+            </>
+          ),
         }}
         reviewOwnerText={reviewOwnerText}
       />

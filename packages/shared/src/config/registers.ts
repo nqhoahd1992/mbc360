@@ -3417,84 +3417,9 @@ export const evidenceControlSignOff: RegisterConfig = {
   ],
 };
 
-// The "NPD Front-End Roadmap" sheet itself — pure reference (Sections A/B/C),
-// no gate, never locks. Content transcribed verbatim from the source sheet.
-
-export const npdRoadmapFirstSteps: RegisterConfig = {
-  key: 'npdRoadmapFirstSteps',
-  title: 'NPD Roadmap — Mandatory First Steps',
-  sheetName: 'NPD Front-End Roadmap',
-  description: 'If you were to practise MBc360 — what to do first (mandatory order, hold formula work until Steps 1-3 are signed off).',
-  mode: 'fixed',
-  reviewOwner: REVIEW_SPECS.ri,
-  columns: [
-    { key: 'step', label: '#', type: 'text', width: 50, editable: false },
-    { key: 'doThis', label: 'Do this first', type: 'textarea', width: 240, editable: false },
-    { key: 'minimumOutput', label: 'What it must produce (minimum output)', type: 'textarea', width: 320, editable: false },
-    { key: 'controlledSheet', label: 'Controlled sheet to use', type: 'text', width: 220, editable: false },
-    { key: 'owner', label: 'Owner', type: 'text', width: 140, editable: false },
-    { key: 'signOffGate', label: 'Sign-off gate', type: 'text', width: 110, editable: false },
-  ],
-  fixedRows: [
-    { step: '1', doThis: 'Define the NEEDS (physical + emotional) and the scientific basis', minimumOutput: 'Physical/physiological, emotional/developmental, caregiver & practical needs; needs -> design implications; research questions; references; open questions. Formula work HELD until reviewed.', controlledSheet: 'Needs Document (brief) -> 1. Needs & Scientific Basis', owner: 'Project Manager / R&I', signOffGate: 'SG02' },
-    { step: '2', doThis: 'Map COMPETITORS & current existing solutions', minimumOutput: "Selected competitors with purchase evidence (country/retailer/date/lot), full INCI, claims, patents, disclosed testing, price/use, sensory + analytical comparison, and the Max Biocare design decision from each comparison. Also 'standard of care' / what users do now.", controlledSheet: '2. Competitor & Current-Solution Landscape', owner: 'Marketing / R&I', signOffGate: 'SG03' },
-    { step: '3', doThis: 'Define the TARGET PRODUCT PROFILE + propose the BACKBONE TECHNOLOGY', minimumOutput: 'One agreed definition of success (min/target/ideal/unacceptable per attribute + measurement method). Technology platform: precise problem, routes considered, why selected, mechanism, critical attributes, evidence maturity, patent landscape, and HOW it is superior to existing products.', controlledSheet: '3. Target Product Profile & Tech Platform', owner: 'R&I / Project Manager', signOffGate: 'SG03->SG05' },
-    { step: '4', doThis: 'Plan EVIDENCE / TESTING before formula lock, then FINAL FORMULA + testing to support the claim', minimumOutput: 'Prospective evidence plan (endpoint, comparator, method, minimum acceptable result, failure definition) BEFORE formula lock; detailed protocol AFTER prototype; then final formula + tests that substantiate each claim.', controlledSheet: '4. Evidence Plan & Claim Support (-> efficacy/study sheets, Formula BOM)', owner: 'R&I / Quality', signOffGate: 'SG05 / SG08' },
-  ],
-};
-
-export const npdRoadmapStructure: RegisterConfig = {
-  key: 'npdRoadmapStructure',
-  title: 'NPD Roadmap — Mandatory 4-Part Structure',
-  sheetName: 'NPD Front-End Roadmap',
-  description: 'Same structure for every new product, for all team members.',
-  mode: 'fixed',
-  reviewOwner: REVIEW_SPECS.ri,
-  columns: [
-    { key: 'part', label: 'Part', type: 'text', width: 50, editable: false },
-    { key: 'element', label: 'Mandatory element', type: 'text', width: 220, editable: false },
-    { key: 'question', label: 'Question it answers', type: 'textarea', width: 280, editable: false },
-    { key: 'controlledSheet', label: 'New controlled sheet', type: 'text', width: 220, editable: false },
-    { key: 'status', label: 'Status', type: 'text', width: 80, editable: false },
-    { key: 'notes', label: 'Notes', type: 'textarea', width: 260, editable: false },
-  ],
-  fixedRows: [
-    { part: '1', element: 'NEEDS — physical & emotional', question: 'What needs are we trying to address (body + mind, user + caregiver)?', controlledSheet: '1. Needs & Scientific Basis', status: 'New', notes: "Executive summary stays in the Needs Document (brief); full science here." },
-    { part: '2', element: 'COMPETITORS / existing solutions', question: 'What already exists, how well does it work, where is the real unmet gap?', controlledSheet: '2. Competitor & Current-Solution Landscape', status: 'New', notes: 'Includes purchased-sample & comparative-testing protocol.' },
-    { part: '3', element: 'BACKBONE technology / structure (must be superior)', question: 'What platform will address the needs, and how is it better than the market?', controlledSheet: '3. Target Product Profile & Tech Platform', status: 'New', notes: 'Combines Target Product Profile + Technology Platform.' },
-    { part: '4', element: 'FINAL formula + testing to support the claim', question: 'Does the finished product deliver, and is every claim substantiated?', controlledSheet: '4. Evidence Plan & Claim Support', status: 'New', notes: 'Feeds Formula BOM and efficacy/study sheets.' },
-  ],
-};
-
-export const npdRoadmapGapRegister: RegisterConfig = {
-  key: 'npdRoadmapGapRegister',
-  title: 'NPD Roadmap — Gap Register',
-  sheetName: 'NPD Front-End Roadmap',
-  description: 'Missing front-end / scientific components from the 24-Jul-2026 NPD review. Retain existing operational controls unchanged.',
-  mode: 'fixed',
-  reviewOwner: REVIEW_SPECS.ri,
-  columns: [
-    { key: 'priority', label: 'Priority', type: 'text', width: 90, editable: false },
-    { key: 'missingComponent', label: 'Missing component', type: 'text', width: 220, editable: false },
-    { key: 'currentCoverage', label: 'Current coverage', type: 'textarea', width: 220, editable: false },
-    { key: 'action', label: 'Action', type: 'textarea', width: 280, editable: false },
-    { key: 'sheetOwner', label: 'Sheet / owner', type: 'text', width: 220, editable: false },
-    { key: 'status', label: 'Status', type: 'text', width: 130, editable: false },
-  ],
-  fixedRows: [
-    { priority: 'Highest', missingComponent: 'Human Needs & Scientific Basis Dossier', currentCoverage: 'Partly — the Needs Document (brief) is a good brief', action: 'Add full scientific needs standard (research questions, search method, evidence quality, traceability)', sheetOwner: '1. Needs & Scientific Basis', status: 'Template created' },
-    { priority: 'Highest', missingComponent: 'Market, Competitor & Current-Solution Landscape', currentCoverage: 'Weak — link + Gate 3 note only', action: 'Add controlled competitor methodology + purchased-sample & comparative-testing protocol + standard-of-care analysis', sheetOwner: '2. Competitor & Current-Solution Landscape', status: 'Template created' },
-    { priority: 'Highest', missingComponent: 'Target Product Profile + Evidence Development Plan', currentCoverage: 'Distributed across phases, not one document', action: 'Consolidate one agreed success definition; split prospective plan vs post-prototype protocol', sheetOwner: '3. Target Product Profile & Tech Platform / 4. Evidence Plan', status: 'Template created' },
-    { priority: 'Highest', missingComponent: 'Technology Platform & Evidence Dossier', currentCoverage: "Largely missing ('Backbone Technology' mentioned)", action: 'Add reusable technology-platform structure (routes, mechanism, critical attributes, patent landscape, SKU transfer)', sheetOwner: '3. Target Product Profile & Tech Platform', status: 'Template created' },
-    { priority: 'Highest', missingComponent: 'Ingredient & Raw-Material Evidence Monograph', currentCoverage: 'Strong supplier control; weak science/story', action: 'Add exact-material identity, provenance, patents, trial history, transferability, approved story', sheetOwner: '5. Ingredient Evidence Monograph', status: 'Template created' },
-    { priority: 'Highest', missingComponent: "Evidence hierarchy, transferability & inference rules", currentCoverage: "'Evidence level' field exists but undefined", action: 'Add corporate evidence-grading + transferability + inference-boundary instruction', sheetOwner: '6. Evidence Hierarchy & Search Rules', status: 'Template created' },
-    { priority: 'Highest', missingComponent: 'Corporate literature-search & referencing standard', currentCoverage: 'Largely missing', action: 'Add databases, search strings/dates, inclusion/exclusion, DOI/PMID, patent & trial citation rules', sheetOwner: '6. Evidence Hierarchy & Search Rules', status: 'Template created' },
-    { priority: 'Also req.', missingComponent: 'Portfolio, Range & Routine Architecture', currentCoverage: 'Missing (SKU-level only)', action: 'Add portfolio/routine/technology-relationship structure', sheetOwner: 'Roadmap note — build when range work begins', status: 'Logged' },
-    { priority: 'Also req.', missingComponent: 'Product Technical & Evidence Dossier structure', currentCoverage: 'Evidence indexed, narrative missing', action: 'Define complete written product dossier structure', sheetOwner: '4. Evidence Plan & Claim Support (narrative section)', status: 'Logged' },
-    { priority: 'Also req.', missingComponent: 'Patent / clinical-trial / provenance registers', currentCoverage: 'Missing', action: 'Included as sections in Ingredient Monograph + Tech Platform', sheetOwner: '5. Ingredient Evidence Monograph', status: 'Template created' },
-    { priority: 'Also req.', missingComponent: 'Scientific storytelling & training standard', currentCoverage: 'Partly (approval only)', action: 'Add Need->solution->insight->technology->formula->evidence->claim story architecture', sheetOwner: 'Roadmap note — build with Marketing', status: 'Logged' },
-  ],
-};
+// The "NPD Front-End Roadmap" sheet has no register of its own any more: its four steps (Section A) and the question and note of each
+// part (Section B) are shown on the page of the step they describe, and its Gap Register (Section C) is the review record that
+// docs/reference/NPD_Front_End_Gap_Register.md keeps — none of it is per-project data.
 
 // ---------------------------------------------------------------------------
 // Registry + categories
@@ -3581,9 +3506,6 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   evidenceTransferabilityRules,
   evidenceSearchStandard,
   evidenceControlSignOff,
-  npdRoadmapFirstSteps,
-  npdRoadmapStructure,
-  npdRoadmapGapRegister,
 ];
 
 // Owner-prefixed tab names + "REVIEW OWNER" strings transcribed from the V18
@@ -3847,9 +3769,6 @@ const DEPARTMENTS: RawDept[] = [
     items: [
       'developmentBrief',
       'vulnerableUserAssessment',
-      'npdRoadmapFirstSteps',
-      'npdRoadmapStructure',
-      'npdRoadmapGapRegister',
       { title: 'Needs & Scientific Basis', sheetName: '1. Needs & Scientific Basis', page: 'needs-scientific-basis', gate: '02', contains: ['needsExecutiveBrief', 'needsResearchQuestions', 'needsLiteratureSearchMethod', 'needsAnatomyExposureNotes', 'needsTechnologyTraceability', 'needsSignOff'] },
       'carrierEmollientReview',
       'carrierReviewSummary',

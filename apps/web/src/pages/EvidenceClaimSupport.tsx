@@ -35,10 +35,18 @@ export default function EvidenceClaimSupport() {
       <CompositePageHeader
         project={project}
         title="Evidence Plan & Claim Support"
-        description={<>Plan the proof BEFORE the formula is locked, then trace every claim to it. Defining pass/fail before results prevents outcome-shopping.</>}
+        description={<>Plan the proof BEFORE the formula is locked, then trace every claim to it. Defining pass/fail before results prevents outcome-shopping. <strong>Question it answers:</strong> Does the finished product deliver, and is every claim substantiated?</>}
         note={{
           title: "Prospective plan required before formula lock",
-          text: "The prospective evidence plan hard-blocks Formula BOM (Gate 05); the detailed test protocol hard-blocks Gate 08 once a prototype exists.",
+          text: (
+            <>
+              <strong>Step 4 of 4</strong> — sign-off gate SG05 / SG08 · Owner: R&amp;I / Quality. Formula work is held until Steps 1–3 are signed off.
+              <br />
+              <strong>Minimum output:</strong> Prospective evidence plan (endpoint, comparator, method, minimum acceptable result, failure definition) BEFORE formula lock; detailed protocol AFTER prototype; then final formula + tests that substantiate each claim.
+              <br />
+              <strong>Note:</strong> Feeds Formula BOM and efficacy/study sheets.
+            </>
+          ),
         }}
         reviewOwnerText={reviewOwnerText}
       />

@@ -35,10 +35,18 @@ export default function NeedsScientificBasis() {
       <CompositePageHeader
         project={project}
         title="Needs & Scientific Basis"
-        description={<>What this product must do, based on the physiology and emotional needs of the intended user(s). Formula work is HELD until this dossier is reviewed and signed off (Gate 02).</>}
+        description={<>What this product must do, based on the physiology and emotional needs of the intended user(s). Formula work is HELD until this dossier is reviewed and signed off (Gate 02). <strong>Question it answers:</strong> What needs are we trying to address (body + mind, user + caregiver)?</>}
         note={{
           title: "Mandatory before formula work",
-          text: "Step 1 of the NPD Front-End Roadmap — sign-off gate SG02. Formula work is held until Steps 1–3 are signed off.",
+          text: (
+            <>
+              <strong>Step 1 of 4</strong> — sign-off gate SG02 · Owner: Project Manager / R&amp;I. Formula work is held until Steps 1–3 are signed off.
+              <br />
+              <strong>Minimum output:</strong> Physical/physiological, emotional/developmental, caregiver &amp; practical needs; needs -&gt; design implications; research questions; references; open questions. Formula work HELD until reviewed.
+              <br />
+              <strong>Note:</strong> Executive summary stays in the Needs Document (brief); full science here.
+            </>
+          ),
         }}
         reviewOwnerText={reviewOwnerText}
       />
