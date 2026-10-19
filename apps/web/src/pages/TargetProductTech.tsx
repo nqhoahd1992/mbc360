@@ -4,7 +4,9 @@ import { useAppStore } from '../store/useAppStore';
 import { backbonePlatformTechnology, targetProductProfile, targetProductSignOff } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import DynamicTable from '../components/DynamicTable';
+import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
 // NPD Front-End Roadmap Step 3 (v2 workbook, 2026-07-24) — "Complete before
@@ -55,6 +57,17 @@ export default function TargetProductTech() {
         onSave={(rows) => setRegisterRowsBulk(id, targetProductSignOff.key, rows)}
         readOnly={locked}
       />
+
+      {/* One signature closes the whole page: all three tables (RegisterConfig.closedWith). */}
+      {registerClosureGateIds(targetProductProfile).length > 0 && registerReviewSpec(targetProductProfile) && (
+        <RegisterClosurePanel
+          projectId={id}
+          registerKey={targetProductProfile.key}
+          spec={registerReviewSpec(targetProductProfile)!}
+          reviewers={project.identity.reviewers}
+          closures={project.registerClosures}
+        />
+      )}
     </div>
   );
 }

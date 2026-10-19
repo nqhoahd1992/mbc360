@@ -2756,6 +2756,7 @@ const systemFeedback: RegisterConfig = {
 
 export const needsExecutiveBrief: RegisterConfig = {
   key: 'needsExecutiveBrief',
+  closureTitle: 'Needs & Scientific Basis', // one closing signature for the whole page (closedWith on the members)
   title: 'Needs — Executive Brief',
   sheetName: 'Needs Document', workbookTab: 'Chris Needs Document',
   description: 'Executive brief: what this product must do, based on the physiology and emotional needs of the intended user(s). Dot points only; every need must be referenced. Companion to the full dossier below.',
@@ -2771,6 +2772,7 @@ export const needsExecutiveBrief: RegisterConfig = {
 
 export const needsResearchQuestions: RegisterConfig = {
   key: 'needsResearchQuestions',
+  closedWith: 'needsExecutiveBrief',
   title: 'Framed Scientific Research Questions',
   sheetName: '1. Needs & Scientific Basis',
   description: 'What must be answered before design. Formula work is HELD until this dossier is reviewed and signed off.',
@@ -2790,6 +2792,7 @@ export const needsResearchQuestions: RegisterConfig = {
 
 export const needsLiteratureSearchMethod: RegisterConfig = {
   key: 'needsLiteratureSearchMethod',
+  closedWith: 'needsExecutiveBrief',
   title: 'Literature-Search Method',
   sheetName: '1. Needs & Scientific Basis',
   description: 'Record the search so it is reproducible.',
@@ -2816,6 +2819,7 @@ export const needsLiteratureSearchMethod: RegisterConfig = {
 
 export const needsAnatomyExposureNotes: RegisterConfig = {
   key: 'needsAnatomyExposureNotes',
+  closedWith: 'needsExecutiveBrief',
   title: 'Anatomy, Physiology, Exposure Science & Contradictory Evidence',
   sheetName: '1. Needs & Scientific Basis',
   mode: 'fixed',
@@ -2837,6 +2841,7 @@ export const needsAnatomyExposureNotes: RegisterConfig = {
 
 export const needsTechnologyTraceability: RegisterConfig = {
   key: 'needsTechnologyTraceability',
+  closedWith: 'needsExecutiveBrief',
   title: 'Needs -> Technology Traceability Matrix',
   sheetName: '1. Needs & Scientific Basis',
   description: 'Carries into the Target Product & Tech Platform dossier.',
@@ -2856,6 +2861,7 @@ export const needsTechnologyTraceability: RegisterConfig = {
 
 export const needsSignOff: RegisterConfig = {
   key: 'needsSignOff',
+  closedWith: 'needsExecutiveBrief',
   title: 'Needs & Scientific Basis — Gate Sign-Off',
   sheetName: '1. Needs & Scientific Basis',
   description: 'Formula work may NOT proceed until complete.',
@@ -2921,6 +2927,7 @@ export const carrierReviewSummary: RegisterConfig = {
 
 export const competitorLandscape: RegisterConfig = {
   key: 'competitorLandscape',
+  closureTitle: 'Competitor Landscape', // one closing signature for the whole page: this register and the three below (closedWith)
   title: 'Competitor Product Register — Identity, Claims & IP',
   sheetName: '2. Competitor Landscape',
   description: 'One row per competitor product. Every important competitor must be purchased and physically evaluated, not just researched online. (Merges the source sheet\'s "Purchase & Identity" and "Claims/INCI/IP" tables into one row per competitor.)',
@@ -2949,6 +2956,7 @@ export const competitorLandscape: RegisterConfig = {
 
 export const competitorTestingProtocol: RegisterConfig = {
   key: 'competitorTestingProtocol',
+  closedWith: 'competitorLandscape',
   title: 'Comparative Testing Protocol',
   sheetName: '2. Competitor Landscape',
   description: 'Blinded where possible — sensory, human-factors, analytical.',
@@ -2966,15 +2974,6 @@ export const competitorTestingProtocol: RegisterConfig = {
     { key: 'blinded', label: 'Blinded?', type: 'select', width: 90, options: ['Y', 'N'] },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
-};
-
-export const currentSolutionsStandardOfCare: RegisterConfig = {
-  key: 'currentSolutionsStandardOfCare',
-  title: 'Current Solutions & Standard of Care',
-  sheetName: '2. Competitor Landscape',
-  description: 'What users do now WITHOUT a specialised product.',
-  // Six fixed behaviour rows, as printed in the workbook (sheet "2. Competitor Landscape", section 4).
-  mode: 'fixed',
   fixedRows: [
     { attributeTested: 'Sensory (skin feel/absorption)' },
     { attributeTested: 'Fragrance liking' },
@@ -2983,6 +2982,16 @@ export const currentSolutionsStandardOfCare: RegisterConfig = {
     { attributeTested: 'Performance endpoint' },
     { attributeTested: 'Packaging dose accuracy' },
   ],
+};
+
+export const currentSolutionsStandardOfCare: RegisterConfig = {
+  key: 'currentSolutionsStandardOfCare',
+  closedWith: 'competitorLandscape',
+  title: 'Current Solutions & Standard of Care',
+  sheetName: '2. Competitor Landscape',
+  description: 'What users do now WITHOUT a specialised product.',
+  // Six fixed behaviour rows, as printed in the workbook (sheet "2. Competitor Landscape", section 4).
+  mode: 'fixed',
   gate: '03',
   reviewOwner: REVIEW_SPECS.npdCompetitor,
   columns: [
@@ -2995,15 +3004,6 @@ export const currentSolutionsStandardOfCare: RegisterConfig = {
     { key: 'reference', label: 'Evidence / reference', type: 'text', width: 160 },
     { key: 'designDecision', label: 'Design decision', type: 'textarea', width: 200 },
   ],
-};
-
-export const competitorLandscapeSummary: RegisterConfig = {
-  key: 'competitorLandscapeSummary',
-  title: 'Landscape Decision Summary',
-  sheetName: '2. Competitor Landscape',
-  mode: 'fixed',
-  gate: '03',
-  reviewOwner: REVIEW_SPECS.npdCompetitor,
   fixedRows: [
     { currentBehaviour: 'Water-only / basic wash' },
     { currentBehaviour: 'OTC lotion / cream / oil' },
@@ -3012,6 +3012,16 @@ export const competitorLandscapeSummary: RegisterConfig = {
     { currentBehaviour: 'Professional / clinic advice' },
     { currentBehaviour: 'Do nothing' },
   ],
+};
+
+export const competitorLandscapeSummary: RegisterConfig = {
+  key: 'competitorLandscapeSummary',
+  closedWith: 'competitorLandscape',
+  title: 'Landscape Decision Summary',
+  sheetName: '2. Competitor Landscape',
+  mode: 'fixed',
+  gate: '03',
+  reviewOwner: REVIEW_SPECS.npdCompetitor,
   columns: [
     { key: 'topic', label: 'Topic', type: 'text', width: 260, editable: false },
     { key: 'answer', label: 'Answer', type: 'textarea', width: 400 },
@@ -3027,6 +3037,7 @@ export const competitorLandscapeSummary: RegisterConfig = {
 
 export const targetProductProfile: RegisterConfig = {
   key: 'targetProductProfile',
+  closureTitle: 'Target Product & Tech Platform', // one closing signature for the whole page (closedWith on the members)
   title: 'Target Product Profile (TPP)',
   sheetName: '3. Target Product & Tech',
   description: 'Agree BEFORE development; every row measurable. Complete before formula lock (Gate 5).',
@@ -3056,6 +3067,7 @@ export const targetProductProfile: RegisterConfig = {
 
 export const backbonePlatformTechnology: RegisterConfig = {
   key: 'backbonePlatformTechnology',
+  closedWith: 'targetProductProfile',
   title: 'Backbone / Platform Technology',
   sheetName: '3. Target Product & Tech',
   description: 'The proposed superior solution — must be demonstrably superior to the current market (Competitor Landscape).',
@@ -3081,6 +3093,7 @@ export const backbonePlatformTechnology: RegisterConfig = {
 
 export const targetProductSignOff: RegisterConfig = {
   key: 'targetProductSignOff',
+  closedWith: 'targetProductProfile',
   title: 'Target Product & Tech — Sign-Off',
   sheetName: '3. Target Product & Tech',
   description: 'TPP + platform agreed before formula work begins.',

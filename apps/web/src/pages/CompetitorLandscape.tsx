@@ -9,11 +9,12 @@ import {
 } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import DynamicTable from '../components/DynamicTable';
+import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
-// NPD Front-End Roadmap Step 2 (v2 workbook, 2026-07-24) — sign-off gate SG03,
-// reused as a Mandatory hard-block at SG05 (Formula BOM lock).
+// NPD Front-End Roadmap Step 2 (v2 workbook, 2026-07-24) — sign-off gate SG03.
 export default function CompetitorLandscape() {
   const { projectId } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
@@ -35,7 +36,7 @@ export default function CompetitorLandscape() {
         description={<>Controlled record of PURCHASED competitor samples + desktop research + standard-of-care analysis. Every important competitor must be purchased and physically evaluated, not just researched online.</>}
         note={{
           title: "Mandatory before formula work",
-          text: "Step 2 of the NPD Front-End Roadmap — sign-off gate SG03, and reused as a hard block on Formula BOM (Gate 05).",
+          text: "Step 2 of the NPD Front-End Roadmap — sign-off gate SG03. Formula work is held until Steps 1–3 are signed off.",
         }}
         reviewOwnerText={reviewOwnerText}
       />
@@ -67,6 +68,17 @@ export default function CompetitorLandscape() {
         onSave={(rows) => setRegisterRowsBulk(id, competitorLandscapeSummary.key, rows)}
         readOnly={lockedOthers}
       />
+
+      {/* One signature closes the whole page: all four tables (RegisterConfig.closedWith). */}
+      {registerClosureGateIds(competitorLandscape).length > 0 && registerReviewSpec(competitorLandscape) && (
+        <RegisterClosurePanel
+          projectId={id}
+          registerKey={competitorLandscape.key}
+          spec={registerReviewSpec(competitorLandscape)!}
+          reviewers={project.identity.reviewers}
+          closures={project.registerClosures}
+        />
+      )}
     </div>
   );
 }

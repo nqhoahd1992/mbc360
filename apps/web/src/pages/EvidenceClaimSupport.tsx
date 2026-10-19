@@ -4,7 +4,9 @@ import { useAppStore } from '../store/useAppStore';
 import { claimEvidenceTraceability, evidencePlanProspective, evidenceTestProtocol } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import DynamicTable from '../components/DynamicTable';
+import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
 // NPD Front-End Roadmap Step 4 (v2 workbook, 2026-07-24). The prospective plan
@@ -41,26 +43,33 @@ export default function EvidenceClaimSupport() {
         reviewOwnerText={reviewOwnerText}
       />
 
-      <DynamicTable
-        config={evidencePlanProspective}
-        rows={project.registers[evidencePlanProspective.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, evidencePlanProspective.key, rows)}
-        readOnly={lockedPlan}
-      />
-
-      <DynamicTable
-        config={evidenceTestProtocol}
-        rows={project.registers[evidenceTestProtocol.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, evidenceTestProtocol.key, rows)}
-        readOnly={lockedProtocol}
-      />
-
-      <DynamicTable
-        config={claimEvidenceTraceability}
-        rows={project.registers[claimEvidenceTraceability.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, claimEvidenceTraceability.key, rows)}
-        readOnly={lockedClaims}
-      />
+      {/* Each table is closed at its OWN gate(s), so each has its own closing block directly under it (SW-36). */}
+      {[
+        { config: evidencePlanProspective, readOnly: lockedPlan },
+        { config: evidenceTestProtocol, readOnly: lockedProtocol },
+        { config: claimEvidenceTraceability, readOnly: lockedClaims },
+      ].map(({ config, readOnly }) => {
+        const spec = registerReviewSpec(config);
+        return (
+          <div key={config.key}>
+            <DynamicTable
+              config={config}
+              rows={project.registers[config.key] ?? []}
+              onSave={(rows) => setRegisterRowsBulk(id, config.key, rows)}
+              readOnly={readOnly}
+            />
+            {registerClosureGateIds(config).length > 0 && spec && (
+              <RegisterClosurePanel
+                projectId={id}
+                registerKey={config.key}
+                spec={spec}
+                reviewers={project.identity.reviewers}
+                closures={project.registerClosures}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
