@@ -1186,8 +1186,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // NPD Front-End Roadmap (v2 workbook, 2026-07-24): Step 2 ("Map
     // COMPETITORS & current existing solutions"), sign-off gate SG03. This is
     // a STRICTER companion signal to sg03-benchmark above (a real purchased-
-    // sample register, not just a checkbox) — not a duplicate. Reused at SG05
-    // (Formula BOM hard-blocked pending Steps 1-3).
+    // sample register, not just a checkbox) — not a duplicate.
     {
       id: 'sg03-npd-competitor-content',
       label: 'Competitor & current-solution landscape recorded',
@@ -1716,27 +1715,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'gateCheckDone', gate: '05', check: 'Development decision recorded with evidence or conditions' },
     },
     // NPD Front-End Roadmap (v2 workbook, 2026-07-24, expert-authored, treated
-    // as confirmed): "Formula work HELD until Steps 1-3 are signed off" —
-    // Gate 5 (Formula BOM lock) is hard-blocked until Needs & Scientific
-    // Basis, Competitor Landscape and Target Product & Tech are all complete/
-    // signed off, plus the Step 4 prospective evidence plan (agree BEFORE
-    // formula lock). This is the actual "hold formula work" enforcement the
-    // Roadmap describes; sg02-npd-*/sg03-npd-competitor-content above are the
-    // earlier, per-step checkpoints reusing the same underlying registers.
-    {
-      id: 'sg05-npd-needs-signoff',
-      label: 'Needs & Scientific Basis dossier signed off (name + date, all 3 roles)',
-      tier: 'Mandatory',
-      source: 'npd-roadmap',
-      check: { kind: 'registerRowsComplete', register: 'needsSignOff', columns: ['name', 'date'] },
-    },
-    {
-      id: 'sg05-npd-competitor-content',
-      label: 'Competitor & current-solution landscape recorded',
-      tier: 'Mandatory',
-      source: 'npd-roadmap',
-      check: { kind: 'registerHasRows', register: 'competitorLandscape' },
-    },
+    // as confirmed): "Formula work HELD until Steps 1-3 are signed off"
+    // (cell A4). The Roadmap's own "Sign-off gate" column (F6:F9) gives Step 1
+    // SG02, Step 2 SG03, Step 3 SG03->SG05 and Step 4 SG05 / SG08 — so only
+    // Steps 3 and 4 are signed off AT Gate 5. Steps 1 and 2 are already
+    // enforced at their own earlier gates (sg02-npd-needs-signoff,
+    // sg03-npd-competitor-content), and gates open strictly in order, so
+    // repeating them here would be redundant (2026-10-19, project owner).
     {
       id: 'sg05-npd-target-product-content',
       label: 'Target Product Profile recorded',

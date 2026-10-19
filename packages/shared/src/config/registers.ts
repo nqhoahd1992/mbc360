@@ -2860,7 +2860,7 @@ export const needsSignOff: RegisterConfig = {
   sheetName: '1. Needs & Scientific Basis',
   description: 'Formula work may NOT proceed until complete.',
   mode: 'fixed',
-  gate: '02/05', // read by Mandatory checks at both SG02 and SG05
+  gate: '02', // Roadmap "Sign-off gate" for Step 1 is SG02 only
   reviewOwner: REVIEW_SPECS.ri,
   columns: [
     { key: 'role', label: 'Role', type: 'text', width: 220, editable: false },
@@ -2925,7 +2925,7 @@ export const competitorLandscape: RegisterConfig = {
   sheetName: '2. Competitor Landscape',
   description: 'One row per competitor product. Every important competitor must be purchased and physically evaluated, not just researched online. (Merges the source sheet\'s "Purchase & Identity" and "Claims/INCI/IP" tables into one row per competitor.)',
   mode: 'register',
-  gate: '03/05', // read by Mandatory checks at both SG03 and SG05
+  gate: '03', // Roadmap "Sign-off gate" for Step 2 is SG03 only
   reviewOwner: REVIEW_SPECS.npdCompetitor,
   columns: [
     { key: 'whySelected', label: 'Why selected / market role', type: 'textarea', width: 200 },
@@ -3819,10 +3819,10 @@ const DEPARTMENTS: RawDept[] = [
       'npdRoadmapFirstSteps',
       'npdRoadmapStructure',
       'npdRoadmapGapRegister',
-      { title: 'Needs & Scientific Basis', sheetName: '1. Needs & Scientific Basis', page: 'needs-scientific-basis', gate: '02/05', contains: ['needsExecutiveBrief', 'needsResearchQuestions', 'needsLiteratureSearchMethod', 'needsAnatomyExposureNotes', 'needsTechnologyTraceability', 'needsSignOff'] },
+      { title: 'Needs & Scientific Basis', sheetName: '1. Needs & Scientific Basis', page: 'needs-scientific-basis', gate: '02', contains: ['needsExecutiveBrief', 'needsResearchQuestions', 'needsLiteratureSearchMethod', 'needsAnatomyExposureNotes', 'needsTechnologyTraceability', 'needsSignOff'] },
       'carrierEmollientReview',
       'carrierReviewSummary',
-      { title: 'Competitor Landscape', sheetName: '2. Competitor Landscape', page: 'competitor-landscape', gate: '03/05', contains: ['currentSolutionsStandardOfCare', 'competitorLandscape', 'competitorLandscapeSummary', 'competitorTestingProtocol'] },
+      { title: 'Competitor Landscape', sheetName: '2. Competitor Landscape', page: 'competitor-landscape', gate: '03', contains: ['currentSolutionsStandardOfCare', 'competitorLandscape', 'competitorLandscapeSummary', 'competitorTestingProtocol'] },
       { title: 'Target Product & Tech Platform', sheetName: '3. Target Product & Tech', page: 'target-product-tech', gate: '05', contains: ['targetProductProfile', 'backbonePlatformTechnology', 'targetProductSignOff'] },
       { title: 'Evidence Plan & Claim Support', sheetName: '4. Evidence & Claim Support', page: 'evidence-claim-support', gate: '05/08', contains: ['evidencePlanProspective', 'evidenceTestProtocol', 'claimEvidenceTraceability'] },
       'ingredientMonograph',
