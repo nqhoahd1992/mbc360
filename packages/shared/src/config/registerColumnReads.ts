@@ -28,9 +28,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     supplierRmEvidence: ['allergenStatement', 'approvedForUse', 'evidenceStatus', 'impurities', 'inciName'],
   },
   SG05: {
-    competitorLandscape: [],
     evidencePlanProspective: [],
-    needsSignOff: ['date', 'name'],
     targetProductProfile: ['target'],
     targetProductSignOff: ['date', 'name'],
   },
@@ -69,7 +67,6 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG12: {
-    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimRisk', 'claimSubjects', 'reviewedWording'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };
@@ -89,7 +86,6 @@ export const TRIGGER_READS_BY_GATE: Record<string, Record<string, string[]>> = {
     claimEvidenceTraceability: ['claimCategory', 'evidenceBasisRequired'],
   },
   SG12: {
-    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimRisk', 'claimSubjects', 'reviewedWording'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };

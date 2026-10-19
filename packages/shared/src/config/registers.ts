@@ -2952,11 +2952,12 @@ export const competitorTestingProtocol: RegisterConfig = {
   title: 'Comparative Testing Protocol',
   sheetName: '2. Competitor Landscape',
   description: 'Blinded where possible — sensory, human-factors, analytical.',
-  mode: 'register',
+  // Six fixed attribute rows, as printed in the workbook (sheet "2. Competitor Landscape", section 3).
+  mode: 'fixed',
   gate: '03',
   reviewOwner: REVIEW_SPECS.npdCompetitor,
   columns: [
-    { key: 'attributeTested', label: 'Attribute tested', type: 'text', width: 180 },
+    { key: 'attributeTested', label: 'Attribute tested', type: 'text', width: 180, editable: false },
     { key: 'method', label: 'Method / instrument', type: 'textarea', width: 200 },
     { key: 'ourResult', label: 'Our product result', type: 'text', width: 150 },
     { key: 'competitorResult', label: 'Best competitor result', type: 'text', width: 150 },
@@ -2972,11 +2973,20 @@ export const currentSolutionsStandardOfCare: RegisterConfig = {
   title: 'Current Solutions & Standard of Care',
   sheetName: '2. Competitor Landscape',
   description: 'What users do now WITHOUT a specialised product.',
-  mode: 'register',
+  // Six fixed behaviour rows, as printed in the workbook (sheet "2. Competitor Landscape", section 4).
+  mode: 'fixed',
+  fixedRows: [
+    { attributeTested: 'Sensory (skin feel/absorption)' },
+    { attributeTested: 'Fragrance liking' },
+    { attributeTested: 'Spreadability / rub-in' },
+    { attributeTested: 'Analytical (pH / viscosity)' },
+    { attributeTested: 'Performance endpoint' },
+    { attributeTested: 'Packaging dose accuracy' },
+  ],
   gate: '03',
   reviewOwner: REVIEW_SPECS.npdCompetitor,
   columns: [
-    { key: 'currentBehaviour', label: 'Current behaviour / solution', type: 'text', width: 180 },
+    { key: 'currentBehaviour', label: 'Current behaviour / solution', type: 'text', width: 180, editable: false },
     { key: 'whyUsersDoIt', label: 'Why users do it', type: 'textarea', width: 180 },
     { key: 'whatWorks', label: 'What works adequately', type: 'textarea', width: 180 },
     { key: 'whatFails', label: 'What fails', type: 'textarea', width: 180 },
@@ -2994,6 +3004,14 @@ export const competitorLandscapeSummary: RegisterConfig = {
   mode: 'fixed',
   gate: '03',
   reviewOwner: REVIEW_SPECS.npdCompetitor,
+  fixedRows: [
+    { currentBehaviour: 'Water-only / basic wash' },
+    { currentBehaviour: 'OTC lotion / cream / oil' },
+    { currentBehaviour: 'Home remedy' },
+    { currentBehaviour: 'Chelating / specialist product' },
+    { currentBehaviour: 'Professional / clinic advice' },
+    { currentBehaviour: 'Do nothing' },
+  ],
   columns: [
     { key: 'topic', label: 'Topic', type: 'text', width: 260, editable: false },
     { key: 'answer', label: 'Answer', type: 'textarea', width: 400 },
