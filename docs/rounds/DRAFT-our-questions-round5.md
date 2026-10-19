@@ -27,7 +27,7 @@ Several questions have lettered parts. You can reply by number and letter, for e
 3. **Questions 9–11** — smaller, but several name something your own answers assume exists and the software does not have.
 4. **Question 12** — the largest structural question in this list, and the one we have deliberately stopped work on until you answer it.
 5. **Questions 13–16** — change scope, register approval and "not applicable"; rules we are already running on our own reading.
-6. **Questions 17–35** — further readings of ours, each small; most are one-line confirmations.
+6. **Questions 17–36** — further readings of ours, each small; most are one-line confirmations.
 
 ---
 
@@ -334,7 +334,7 @@ Two cases of the same question — when a change in scope reopens what was alrea
 
 Every register shows a "Review owner · Co-sign" caption, but it used to be only text — anyone could add, edit or delete a row regardless of whose name was shown. The project owner asked for a deliberate **closing** approval: the Review owner and the Co-sign each sign, after which the register becomes read-only, and a gate cannot pass until every register tied to it has been closed. **It is built, on the project owner's instruction, before asking you** — this is a new rule, not something transcribed from the workbook, and we would rather you corrected it now than have it settle in as though it were confirmed because it works.
 
-**(a)** Should this apply to **every** register tied to a gate — today that is 70 of the 82 registers — or only to a smaller set that is genuinely meant to be a controlled record — the way a couple of registers already had their own dedicated approval step before this?
+**(a)** Should this apply to **every** register tied to a gate — today that is 68 of the 76 registers — or only to a smaller set that is genuinely meant to be a controlled record — the way a couple of registers already had their own dedicated approval step before this?
 
 **(b)** Is **two** approvals (Review owner and Co-sign) the right number and the right pair of roles, or should some registers need different or additional approval?
 
@@ -486,7 +486,7 @@ Your A2 answer makes market-specific pack requirements mandatory where the marke
 
 Your Round-4 answer 19(d) lets a product explicitly propose **no claims**, and Gate 3 accepts that. We then found that Gate 10 did not: it required the claims register to have entries, so a claim-free product passed Gate 3 and could never pass Gate 10. **We have extended your record to Gate 10** for those two registers. That made us check every register in the system, because requiring entries in a register that can legitimately be empty only makes someone invent one — and leaving it empty, with nothing to show anyone looked, makes "nobody checked" look like "nothing to find".
 
-Below is every one of the 82 registers, sorted by what the system **assumes today**. Please mark any row that is wrong. Rows marked ★ are the ones we are least sure about.
+Below is every one of the 76 registers, sorted by what the system **assumes today**. Please mark any row that is wrong. Rows marked ★ are the ones we are least sure about.
 
 ### A. Must hold at least one entry by the gate shown (14 registers)
 
@@ -497,7 +497,7 @@ The gate cannot pass while the register is empty.
 | Development Brief | 2 |  |
 | Framed Scientific Research Questions | 2 |  |
 | Vulnerable-User Assessment | 2 | an explicit "No vulnerable-user group identified" entry counts (your Round-3 B5) |
-| Competitor Product Register — Identity, Claims & IP | 3, 5 | ★ no exception today for an administrative-only change |
+| Competitor Product Register — Identity, Claims & IP | 3 | ★ no exception today for an administrative-only change |
 | Supplier & Raw Material Evidence | 4 |  |
 | Prospective Evidence Plan | 5 | ★ a product with no claims may not need an evidence plan |
 | Packaging Specs & Artwork Evidence | 6, 10 |  |
@@ -525,7 +525,7 @@ An empty register is a real answer here — a product with nothing restricted ha
 | General Restricted & Caution Assessment | 7 | a Key Gate Check, "General restricted and caution ingredient assessment completed", must be done (or N/A with a reason). Any row that is added must have an outcome. |
 | Critical Safety Findings | 7 | no row means no finding. The ten Final Safety Sign-off questions are what record that safety was looked at |
 
-### D. Reference sheets with rows already in place (34 sheets)
+### D. Reference sheets with rows already in place (32 sheets)
 
 The rows exist from the start; the team fills in the answer columns. The last column says whether a gate reads those answers.
 
@@ -533,11 +533,9 @@ The rows exist from the start; the team fills in the answer columns. The last co
 |---|---|---|
 | ASEAN PIF Checklist (Closure) | 10 | Gate 10 (ASEAN markets) |
 | Final Safety Sign-off | 7, 10 | Gate 7 |
-| Needs & Scientific Basis — Gate Sign-Off | 2, 5 | Gates 2, 5 |
 | Pregnancy / Breastfeeding Caution Limits | 4, 7 | Gates 4, 7 (pregnancy / breastfeeding products) |
 | Prohibited Ingredient Watch-list | 4, 7 | Gates 4, 7 |
 | Study Protocol Setup | 8 | Gate 8 (human studies) |
-| Target Product & Tech — Sign-Off | 5 | Gate 5 |
 | Target Product Profile (TPP) | 5 | Gates 3, 5 |
 | ASEAN PIF / Dossier Map | 10 | no |
 | Anatomy, Physiology, Exposure Science & Contradictory Evidence | 2 | no |
@@ -545,7 +543,6 @@ The rows exist from the start; the team fills in the answer columns. The last co
 | Backbone / Platform Technology | 5 | no |
 | Carrier Review — Summary | 2 | no |
 | Change Templates / Forms | any | no |
-| Control & Sign-Off | — | no |
 | Efficacy Assurance Control | 5, 8 | no |
 | Evidence Hierarchy | — | no |
 | Evidence Template Index | — | no |
@@ -555,9 +552,6 @@ The rows exist from the start; the team fills in the answer columns. The last co
 | Literature-Search & Referencing Standard | — | no |
 | Literature-Search Method | 2 | no |
 | Medical / Safety Summary | 10 | no |
-| NPD Roadmap — Gap Register | — | no |
-| NPD Roadmap — Mandatory 4-Part Structure | — | no |
-| NPD Roadmap — Mandatory First Steps | — | no |
 | PIF Evidence Closure (Workflow) | 10, 11 | no |
 | Product / Project Identification | 4, 5, 8 | no |
 | Product Safety Profile | 7, 10 | no |
@@ -566,7 +560,7 @@ The rows exist from the start; the team fills in the answer columns. The last co
 | Transferability & Inference Rules | — | no |
 | Twinkle 5 Claims Map | 3, 10 | no |
 
-### E. No gate requires entries; may stay empty (30 registers)
+### E. No gate requires entries; may stay empty (26 registers)
 
 | Register | Gate | Note |
 |---|---|---|
@@ -607,7 +601,7 @@ The rows exist from the start; the team fills in the answer columns. The last co
 
 **(b)** Is each register in group E really optional? Is there any that must hold entries at a particular gate — or whenever some other condition applies, for example an ingredient substitution record whenever an ingredient was substituted?
 
-**(c)** For a product with **no claims**, and for an **administrative-only** change, which group-A registers still need entries? In particular the evidence plan (Gate 5), the detailed test protocol (Gate 8) and the competitor landscape (Gates 3 and 5), marked ★.
+**(c)** For a product with **no claims**, and for an **administrative-only** change, which group-A registers still need entries? In particular the evidence plan (Gate 5), the detailed test protocol (Gate 8) and the competitor landscape (Gate 3), marked ★.
 
 **(d)** Is it right that Gate 10's claims register is waived on the "no claims" record alone?
 
@@ -636,6 +630,24 @@ We built it so that **a row is checked from the gate it is linked to onwards**: 
 **Example.** A formula contains an essential oil, a row of the pregnancy / breastfeeding list linked to Gate 7. At Gate 4 nobody has to classify it. At Gate 7 it must be assessed and closed, or Gate 7 does not pass.
 
 **Question:** is it right that each row is checked only from the gate named in its Linked gate column, rather than every row at Gate 4?
+
+---
+
+## Question 36 — How is the Sheet 6 evidence standard enforced: which gate, which sheets, and what counts as done?
+
+The "Evidence & Search Rules" sheet says the standard is mandatory for Sheets 1–5 and every efficacy or claim sheet, and that **no need or claim may progress to formula or label without (a) an assigned evidence Grade, (b) a passed transferability check or an explicit inference flag, and (c) a complete, dated, linked search record.**
+
+We have taken the rule as confirmed, but today **nothing in the software checks it**. The rulebook is a reference page that the five sheets link to, and each person applies it by hand. Specifically: a claim can carry an evidence Grade (A–E, entered at Gate 8), but a claim with no Grade still passes every gate; there is nowhere to record the six transferability tests or an "inference" flag; and only Sheet 1 (Needs) has a literature-search table, which no gate reads. We have deliberately not built anything until you say how it should work.
+
+**(a)** Which gates are "progress to formula" and "progress to label"? Our reading would be Gate 5 (formula lock) and Gate 10 (release of published information).
+
+**(b)** Which sheets does "every efficacy or claim sheet" include, beyond the five numbered ones (for example the mechanism-claims, functional-efficacy, clinical-evidence and SKU-claims sheets)? Does a **need** on Sheet 1 also need a Grade, or only claims?
+
+**(c) Grade.** Should a claim be unable to pass the gate you name in (a) without a Grade? Should it be required earlier than Gate 8?
+
+**(d) Transferability.** How should the result be recorded: six pass/fail answers (same active, dose, vehicle, exposure, endpoint, combination effect) or one "passes / inference only" flag? When any test fails, should the software refuse Grades A and B and require the "designed to" wording, as the rule says ("maximum Grade C")?
+
+**(e) Search record.** Is one record for the whole project enough (the Sheet 1 table), or does each sheet need its own? Which fields make it "complete": database, search string, date, inclusion/exclusion criteria, number of records, DOI/PMID, https link? Are all five listed databases mandatory, or only the ones actually searched?
 
 ---
 
@@ -674,8 +686,9 @@ We built it so that **a row is checked from the gate it is linked to onwards**: 
 | 30 | At which gate the claim evidence basis and the release decision are filled in | Built at Gate 3 and Gate 11 |
 | 31 | What proves the approved artwork version at Gate 11 | Gate 11 and your Q30(c) read different records |
 | 32 | Where a market's pack requirements are recorded; whether blank means "none" | Built on the market profile; blank currently passes |
-| 33 | Which registers may stay empty on a project and which must always hold entries (all 82 listed with today's assumption) | Gate 10 claims register fixed on our reading; the rest are our assumptions for you to mark |
+| 33 | Which registers may stay empty on a project and which must always hold entries (all 76 listed with today's assumption) | Gate 10 claims register fixed on our reading; the rest are our assumptions for you to mark |
 | 34 | Is a Change Control opened before a change is made or can it record one afterwards; is it a precondition for a new formula version | Nothing enforces an order today; a new formula version can only be created while Gate 05 is the open gate |
 | 35 | Which gate checks which watch-list row: every row at Gate 4, or each from its Linked gate | Built on the project owner's reading, narrows your Gate 4 answer |
+| 36 | How the Sheet 6 evidence standard (Grade, transferability, search record) is enforced: which gate, which sheets, what counts as complete | Not built — nothing checks it today; the rulebook is a reference page |
 
 Questions 2 to 5, 9, 12 and 13 are cases where we made a judgement rather than leave something unrecorded. We would rather have each confirmed or corrected than have them settle silently into the system.

@@ -1543,6 +1543,9 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
 | R5-Q69 | Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role | Chủ dự án bỏ quyền theo role 15/10/2026 | **lộ ra 15/10/2026** |
+| R5-Q73 | Hồ sơ tìm tài liệu của chuẩn bằng chứng: nằm ở trang nào, thế nào là đầy đủ | Chủ dự án hỏi chuẩn Sheet 6 thực thi thế nào, 19/10/2026 | **lộ ra 19/10/2026** |
+| R5-Q72 | Grade và transferability của chuẩn bằng chứng: ghi ở đâu, "suy luận thì tối đa C" có bị chặn không | Cùng lượt, 19/10/2026 | **lộ ra 19/10/2026** |
+| R5-Q71 | Chuẩn bằng chứng của Sheet 6: điểm "đi tiếp sang công thức / nhãn" là gate nào, áp cho sheet nào | Cùng lượt, 19/10/2026 | **lộ ra 19/10/2026** |
 | R5-Q70 | Hai ô người trong khối Product / Project Identification của Product Development Report lấy từ đâu | Chủ dự án nói một số thông tin có dữ liệu khi tạo dự án, 16/10/2026 | **lộ ra 16/10/2026** |
 | R5-Q68 | Dòng watch-list thuộc phạm vi kiểm của gate nào: theo cột Linked gate, từ gate được gắn trở đi | Chủ dự án chỉ ra 14/10/2026 | **lộ ra 14/10/2026** |
 | R5-Q67 | Thẩm quyền Safety/Regulatory chấp nhận finding watch-list nằm ở người đánh giá hay người ký gate | Chủ dự án chuyển thẩm quyền 14/10/2026 | **lộ ra 14/10/2026** |
@@ -2297,13 +2300,43 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Chưa sửa, vì không chắc đây có phải là sổ bắt buộc hay không** (cả ba đều do tài liệu v2 của chuyên gia hoặc F1 đặt là Mandatory):
 - `evidencePlanProspective` ở Gate 5 và `evidenceTestProtocol` ở Gate 8: kế hoạch và quy trình thử bằng chứng. Sản phẩm không claim vẫn cần thử an toàn và ổn định, nhưng có thể không cần kế hoạch bằng chứng cho claim.
-- `competitorLandscape` ở Gate 3 và Gate 5 (`sg03-npd-competitor-content`): không có ngoại lệ cho dự án chỉ hành chính (Administrative-only = Yes), trong khi `sg03-benchmark` lại có ngoại lệ đó.
+- `competitorLandscape` ở Gate 3 (`sg03-npd-competitor-content`; mục lặp lại ở Gate 5 đã bỏ 19/10/2026 vì workbook ghi Step 2 chỉ ở SG03): không có ngoại lệ cho dự án chỉ hành chính (Administrative-only = Yes), trong khi `sg03-benchmark` lại có ngoại lệ đó.
 
 **Câu hỏi:** với một sản phẩm không có claim, và với một thay đổi chỉ hành chính, sổ nào trong ba sổ trên vẫn bắt buộc có hàng?
 
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.
 
-**Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ**, chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+**Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ** (còn **76** từ 19/10/2026, sau khi bỏ bốn sổ tham chiếu của Roadmap và Sheet 6 và hai bảng ký gõ tay của Needs và Target Product — nhóm D còn 32, nhóm E còn 26), chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+
+#### R5-Q73 · Điều kiện (c) của chuẩn bằng chứng — hồ sơ tìm tài liệu "đầy đủ, có ngày, có link": nằm ở trang nào, và thế nào là đầy đủ 🔴
+
+**Lộ ra 19/10/2026, khi chuyển Sheet 6 thành trang tham chiếu và hỏi câu quy tắc của nó đang được thực thi bằng cách nào** (xem R5-Q71). Hiện chỉ trang Needs & Scientific Basis có bảng Literature-Search Method (5 hàng cố định: PubMed, Cochrane, ClinicalTrials.gov, Patent, Supplier / grey literature; các cột chuỗi tìm, ngày tìm, tiêu chí gồm/loại, số bản ghi, ghi chú). Competitor Landscape, Target Product & Tech, Evidence Plan & Claim Support và Ingredient Monograph **không có** bảng tìm tài liệu nào. Không mục readiness nào đọc bảng của Needs, nên điều kiện (c) **chưa bị kiểm tra ở đâu**.
+
+**Hiện chạy theo:** không thực thi; chuẩn chỉ hiện ở trang tham chiếu và người dùng tự giữ.
+
+**Câu hỏi:** (a) hồ sơ tìm tài liệu có cần cho **từng** sheet trong 1–5 và mọi sheet claim, hay một hồ sơ cho cả dự án (bảng của Needs) là đủ? (b) "đầy đủ" nghĩa là những cột nào bắt buộc điền — cơ sở dữ liệu, chuỗi tìm, ngày, tiêu chí gồm/loại, số bản ghi, DOI/PMID, link https? (c) 5 cơ sở dữ liệu cố định có phải đều bắt buộc, hay chỉ những cơ sở đã được dùng?
+
+**Nếu trả lời khác:** thêm (hoặc nối) bảng tìm tài liệu vào các trang chưa có và một mục readiness đọc nó ở `packages/shared/src/config/gateReadiness.ts`; bảng hiện có là `needsLiteratureSearchMethod` trong `packages/shared/src/config/registers.ts` [ASSUMPTION: R5-Q73].
+
+#### R5-Q72 · Điều kiện (a) và (b) của chuẩn bằng chứng — Grade và kiểm tra transferability: ghi ở đâu, và "suy luận thì tối đa Grade C" có do phần mềm chặn không 🔴
+
+**Lộ ra 19/10/2026** (cùng lượt với R5-Q71, Q73). (a) Sổ claim có cột Evidence grade (chọn A–E) ở Gate 08, nhưng **không có mục readiness nào đọc nó**; các bảng claim khác chỉ có cột Evidence level là ô chữ tự do. (b) **Không có trường nào** ghi kết quả 6 phép thử transferability hay cờ "suy luận"; gần nhất là ô chữ tự do "Inference vs proof" ở Ingredient Monograph. Câu quy tắc của workbook còn nói: nếu BẤT KỲ phép thử nào trượt, claim là suy luận, **tối đa Grade C**, và chỉ được dùng cách nói "designed to".
+
+**Hiện chạy theo:** không thực thi. Một claim để trống Grade, không có cờ transferability, vẫn qua gate.
+
+**Câu hỏi:** (a) claim phải có Grade trước khi qua gate nào, và có áp cho "need" ở Sheet 1 không? (b) kết quả transferability ghi thế nào — sáu ô đạt/trượt (Same active, dose, vehicle, exposure, endpoint, combination effect) hay một cờ chung "đạt / suy luận"? (c) khi có phép thử trượt, phần mềm có phải từ chối Grade A và B, và yêu cầu cách nói "designed to" không?
+
+**Nếu trả lời khác:** thêm cột transferability vào sổ claim và mục readiness đọc `evidenceGrade` trong `packages/shared/src/config/registers.ts` (`claimEvidenceTraceability`) và `packages/shared/src/config/gateReadiness.ts`; kiểm tra "suy luận ⇒ tối đa C" thuộc `packages/shared/src/utils/claimEvidence.ts` [ASSUMPTION: R5-Q72].
+
+#### R5-Q71 · Câu quy tắc của Sheet 6 "No need or claim may progress to formula or label without (a) Grade, (b) transferability, (c) search record" — điểm "đi tiếp" là gate nào, áp cho sheet nào 🔴
+
+**Lộ ra 19/10/2026, khi chủ dự án hỏi câu quy tắc đó được thực thi thủ công hay bằng phần mềm** (ô A36 của sheet "6. Evidence & Search Rules"). Câu do chuyên gia soạn nên quy tắc là đã xác nhận; cách thực thi thì chưa. Hiện **hoàn toàn thủ công**: ba bảng của Sheet 6 là trang tham chiếu ẩn khỏi menu (liên kết từ Sheets 1–5), và không có mục readiness nào đọc Grade, transferability hay hồ sơ tìm tài liệu (R5-Q72, Q73).
+
+**Hiện chạy theo:** không thực thi gì; chưa chọn điểm chặn.
+
+**Câu hỏi:** (a) "progress to formula" là Gate 5 (khóa công thức) và "progress to label" là Gate 10 (phát hành thông tin / nhãn), hay gate khác? (b) "Sheets 1–5 and every efficacy/claim sheet" gồm chính xác sheet nào ngoài 5 sheet đã đánh số (ví dụ Mechanism_Claims, Functional Efficacy, Clinical Evidence, SKU_Claims_PIF)? (c) quy tắc áp cho từng dòng claim, hay cho cả sheet?
+
+**Nếu trả lời khác:** mục readiness mới ở `packages/shared/src/config/gateReadiness.ts` tại gate được chọn, và danh sách sổ áp dụng ở `packages/shared/src/config/registers.ts` [ASSUMPTION: R5-Q71].
 
 #### R5-Q70 · "NPD lead (formulator)" và "Project owner" của Product Development Report là ai trong dự án 🔴
 
