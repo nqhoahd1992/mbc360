@@ -470,6 +470,15 @@ export const signRegisterClose = (
     { method: 'POST', body: JSON.stringify({ gateId, role, stepUpToken, expectedHash }) },
   );
 
+// The project's Lead nominates who signs each role of a page that carries the workbook's own sign-off block.
+export const assignRegisterClosureSigner = (
+  id: string,
+  registerKey: string,
+  gateId: string,
+  assignments: { role: string; userId: string | null }[],
+  v: number,
+) => put(id, `registers/${encodeURIComponent(registerKey)}/close/signers`, { gateId, assignments }, v);
+
 export const withdrawRegisterClose = (
   id: string,
   registerKey: string,

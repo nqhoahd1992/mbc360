@@ -234,10 +234,11 @@ export type ReadinessCheck =
   // NPD Front-End Roadmap (v2 workbook, 2026-07-24): every row of a
   // `mode:'fixed'` register has a non-empty value in EVERY listed column —
   // a direct generalization of registerColumnFilled (single column) to
-  // multiple columns, used to express "this fixed-role sign-off register
-  // (e.g. needsSignOff/targetProductSignOff) has name AND date filled for
-  // every role" as ONE clean Mandatory item instead of two awkwardly-split
-  // single-column items.
+  // multiple columns, used to express "every row of this fixed register has
+  // BOTH of these columns filled" as ONE clean Mandatory item instead of
+  // two awkwardly-split single-column items. (It first backed the typed
+  // Name + Date sign-off tables of the Needs and Target Product pages; those
+  // are the page's closing signature now, 2026-10-19.)
   //
   // `when` narrows it to the rows the requirement actually applies to (added
   // 2026-08-11 for B5's vulnerable-user rule, which is conditional PER ROW: a row
@@ -993,13 +994,6 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: { kind: 'registerHasRows', register: 'needsResearchQuestions' },
     },
     {
-      id: 'sg02-npd-needs-signoff',
-      label: 'Needs & Scientific Basis dossier signed off (name + date, all 3 roles)',
-      tier: 'Mandatory',
-      source: 'npd-roadmap',
-      check: { kind: 'registerRowsComplete', register: 'needsSignOff', columns: ['name', 'date'] },
-    },
-    {
       // Added 2026-07-28 (see the note above GATE_READINESS).
       id: 'sg02-signoff',
       label: 'Prepared, reviewed and approved sign-off',
@@ -1719,8 +1713,8 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
     // (cell A4). The Roadmap's own "Sign-off gate" column (F6:F9) gives Step 1
     // SG02, Step 2 SG03, Step 3 SG03->SG05 and Step 4 SG05 / SG08 — so only
     // Steps 3 and 4 are signed off AT Gate 5. Steps 1 and 2 are already
-    // enforced at their own earlier gates (sg02-npd-needs-signoff,
-    // sg03-npd-competitor-content), and gates open strictly in order, so
+    // enforced at their own earlier gates (the Needs page's closing signature
+    // at SG02, sg03-npd-competitor-content), and gates open strictly in order, so
     // repeating them here would be redundant (2026-10-19, project owner).
     {
       id: 'sg05-npd-target-product-content',
@@ -1731,13 +1725,6 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // above — targetProductProfile's fixed rows always exist, so `target`
       // (blank until answered) is the real signal, not registerHasRows.
       check: { kind: 'registerColumnFilled', register: 'targetProductProfile', column: 'target' },
-    },
-    {
-      id: 'sg05-npd-target-product-signoff',
-      label: 'Target Product & Tech Platform signed off (name + date, all 3 roles)',
-      tier: 'Mandatory',
-      source: 'npd-roadmap',
-      check: { kind: 'registerRowsComplete', register: 'targetProductSignOff', columns: ['name', 'date'] },
     },
     {
       id: 'sg05-npd-evidence-plan',

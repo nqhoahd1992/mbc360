@@ -10,7 +10,8 @@
 import { GATE_READINESS } from '../src/config/gateReadiness';
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
 import { gateBlockers, gateSignOffStaleChanges, isGatePassed } from '../src/utils/gateProgress';
-import { closureKey, requiredRegisterClosures } from '../src/utils/registerClosures';
+import { closureKey, registerClosureRoles, requiredRegisterClosures } from '../src/utils/registerClosures';
+import { REGISTER_CONFIGS } from '../src/config/registers';
 import { gateEvidenceSnapshot } from '../src/utils/gateSnapshot';
 import { nextActionFreeze, nextActionFreezeViolation } from '../src/utils/nextActionAccess';
 import type { NextAction, ProjectData } from '../src/types';
@@ -31,7 +32,8 @@ for (const g of ['SG01', 'SG02', 'SG03']) {
 const signed = { signedByUserId: 'u', signedAt: '2026-01-01T00:00:00Z' };
 for (const g of ['SG01', 'SG02', 'SG03']) {
   for (const { registerKey } of requiredRegisterClosures(g)) {
-    base.registerClosures[closureKey(registerKey, g)] = { signOffs: [{ role: 'Review owner', ...signed }, { role: 'Co-sign', ...signed }] } as never;
+    const config = REGISTER_CONFIGS.find((c) => c.key === registerKey)!;
+    base.registerClosures[closureKey(registerKey, g)] = { signOffs: registerClosureRoles(config).map((role) => ({ role, ...signed })) } as never;
   }
 }
 const act = (id: string, status: string, priority: string, extra: Partial<NextAction> = {}): NextAction =>

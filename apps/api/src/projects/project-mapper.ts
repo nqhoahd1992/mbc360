@@ -87,7 +87,7 @@ export const PROJECT_INCLUDE = {
   },
   evidenceItems: { orderBy: { id: 'asc' } },
   registerRows: { orderBy: [{ registerKey: 'asc' }, { rowOrder: 'asc' }] },
-  registerClosures: { include: { signOffs: true }, orderBy: { registerKey: 'asc' } },
+  registerClosures: { include: { signOffs: { include: { assignedTo: { select: { displayName: true } } } } }, orderBy: { registerKey: 'asc' } },
   formulaVersions: { include: { bomLines: { orderBy: { line: 'asc' } } }, orderBy: { createdAt: 'asc' } },
   capaRecords: { orderBy: { id: 'asc' } },
   changeRecords: { orderBy: { createdAt: 'asc' } },
@@ -188,6 +188,8 @@ function toRegisterClosureSignOff(
 ): RegisterClosureSignOff {
   return {
     role: s.role as RegisterClosureSignOff['role'],
+    assignedToUserId: opt(s.assignedToUserId),
+    assignedToName: opt(s.assignedTo?.displayName ?? null),
     name: opt(s.name),
     signedByUserId: opt(s.signedByUserId),
     signedAt: s.signedAt ? s.signedAt.toISOString() : undefined,

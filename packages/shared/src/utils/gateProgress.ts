@@ -22,7 +22,7 @@ import {
   SAFETY_COVERAGE_INDIVIDUAL,
   type RegisterConfig,
 } from '../config/registers';
-import { closureStateAt, requiredRegisterClosures } from './registerClosures';
+import { closureStateAt, registerClosureRoles, requiredRegisterClosures } from './registerClosures';
 import {
   CLAIM_CATEGORIES_NEEDING_REVIEW,
   CLAIM_REVIEWED_WORDING_COLUMN,
@@ -2191,7 +2191,8 @@ function unclosedRegistersBlocking(project: ProjectData, gateId: string): GateRe
     .map(({ registerKey }) => REGISTER_CONFIGS.find((c) => c.key === registerKey))
     .filter((c): c is RegisterConfig => !!c);
   if (relevant.length === 0) return [];
-  const closedOf = (key: string) => isRegisterClosed(closureStateAt(project, key, gateId));
+  const closedOf = (key: string) =>
+    isRegisterClosed(closureStateAt(project, key, gateId), registerClosureRoles(REGISTER_CONFIGS.find((c) => c.key === key)!));
   const unclosed = relevant.filter((config) => !closedOf(config.key));
   // One row per register, in workbook order, each with the page that closes it.
   const list = {
@@ -2202,7 +2203,7 @@ function unclosedRegistersBlocking(project: ProjectData, gateId: string): GateRe
     return [
       {
         id: 'unclosed-registers',
-        label: `${relevant.length} register(s) closed for this gate (Review owner + Co-sign)`,
+        label: `${relevant.length} register(s) closed for this gate (signed by the roles each one names)`,
         satisfied: true,
         hardBlock: true,
         list,
@@ -2212,7 +2213,7 @@ function unclosedRegistersBlocking(project: ProjectData, gateId: string): GateRe
   return [
     {
       id: 'unclosed-registers',
-      label: `${unclosed.length} of ${relevant.length} register(s) must be closed for this gate (Review owner + Co-sign) before it can pass`,
+      label: `${unclosed.length} of ${relevant.length} register(s) must be closed for this gate (signed by the roles each one names) before it can pass`,
       satisfied: false,
       hardBlock: true,
       list,

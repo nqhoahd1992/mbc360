@@ -13,7 +13,6 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
   SG02: {
     developmentBrief: ['briefLink', 'briefOwner', 'briefStatus'],
     needsResearchQuestions: [],
-    needsSignOff: ['date', 'name'],
     vulnerableUserAssessment: ['additionalAssessments', 'responsibleReviewer', 'safetyPathway', 'vulnerableGroup'],
   },
   SG03: {
@@ -30,7 +29,6 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
   SG05: {
     evidencePlanProspective: [],
     targetProductProfile: ['target'],
-    targetProductSignOff: ['date', 'name'],
   },
   SG06: {
     packagingSpecsArtwork: ['artworkVersion', 'compatibilityEvidence', 'specLink', 'supplier'],

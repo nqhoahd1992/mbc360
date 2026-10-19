@@ -538,7 +538,7 @@ export async function run(base: string, db: Client): Promise<number> {
              ON CONFLICT ("projectId", "registerKey", "gateId") DO UPDATE SET "gateId" = EXCLUDED."gateId" RETURNING id`,
           [PROJECT, registerKey, gate],
         );
-        for (const role of ['Review owner', 'Co-sign']) {
+        for (const role of rc.registerClosureRoles(REGISTER_CONFIGS.find((c: any) => c.key === registerKey))) {
           await db.query(
             `INSERT INTO register_closure_sign_offs (id, "closureId", role, name, "signedByUserId", "signedAt")
                VALUES (gen_random_uuid()::text, $1, $2, 'x', $3, now())

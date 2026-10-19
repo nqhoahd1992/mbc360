@@ -285,6 +285,13 @@ interface AppState {
     role: RegisterClosureRole,
     reason: string,
   ) => void;
+  // Lead only: who signs each role of a page that carries the workbook's own sign-off block.
+  assignRegisterClosureSigner: (
+    id: string,
+    registerKey: string,
+    gateId: string,
+    assignments: { role: string; userId: string | null }[],
+  ) => void;
 
   setEvidenceItemsBulk: (id: string, items: EvidenceItem[]) => Promise<boolean>;
   // The add* actions that open from a create drawer resolve to true only once the server has accepted the
@@ -672,6 +679,8 @@ export const useAppStore = create<AppState>()(
           writeSection(id, () => projectsApi.signRegisterClose(id, registerKey, gateId, role, stepUpToken, expectedHash)),
         withdrawRegisterClose: (id, registerKey, gateId, role, reason) =>
           writeSection(id, (v) => projectsApi.withdrawRegisterClose(id, registerKey, gateId, role, reason, v)),
+        assignRegisterClosureSigner: (id, registerKey, gateId, assignments) =>
+          writeSection(id, (v) => projectsApi.assignRegisterClosureSigner(id, registerKey, gateId, assignments, v)),
         setEvidenceItemsBulk: (id, items) =>
           tryWriteSection(id, (v) => projectsApi.setEvidenceItems(id, items, v)),
 

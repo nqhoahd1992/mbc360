@@ -25,6 +25,7 @@ import { GATES } from '../../../packages/shared/src/config/gates';
 import { GATE_READINESS, type ReadinessCheck } from '../../../packages/shared/src/config/gateReadiness';
 import { PHASE_CONFIGS } from '../../../packages/shared/src/config/phases';
 import { REGISTER_CONFIGS, createEmptyRegisterRow } from '../../../packages/shared/src/config/registers';
+import { registerClosureRoles } from '../../../packages/shared/src/utils/registerClosures';
 import { gateReadinessChecklist, isGatePassed } from '../../../packages/shared/src/utils/gateProgress';
 import { registerContentHashOf } from '../src/projects/content-hash';
 import { gateEvidenceSnapshot } from '../../../packages/shared/src/utils/gateSnapshot';
@@ -345,7 +346,7 @@ async function closeRegisters(ctx: Ctx, adminId: string, gate: string): Promise<
       create: { projectId: ctx.id, registerKey: key, gateId: gate },
       update: {},
     });
-    for (const role of ['Review owner', 'Co-sign']) {
+    for (const role of registerClosureRoles(REGISTER_CONFIGS.find((c) => c.key === key)!)) {
       const data = {
         name: ctx.adminName,
         signedByUserId: adminId,

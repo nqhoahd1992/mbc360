@@ -25,7 +25,7 @@ import NextActionSelect from './NextActionSelect';
 import ClaimsLibrarySelect from './ClaimsLibrarySelect';
 import RowRefSelect from './RowRefSelect';
 import RegisterSignatureCell from './RegisterSignatureCell';
-import { spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
+import { columnOwnerGateIds, spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
 import { registerLockReason, registerLocks } from '@mbc360/shared/utils/registerClosures';
 import { useAppStore } from '../store/useAppStore';
 import { useRegisterAccess } from '../hooks/useRegisterAccess';
@@ -128,6 +128,7 @@ export default function DynamicTable({
   //   notices        — alerts shown above the rows, computed from the draft.
   renderCell,
   inline,
+  referenceTable,
   tableColumns,
   identityText,
   subtitleText,
@@ -151,8 +152,12 @@ export default function DynamicTable({
   warningsTitle?: string;
   renderCell?: (column: RegisterColumn, row: RegisterRow, index: number, api: CellApi) => React.ReactNode | undefined;
   // For a register of only a few short columns (a label and its value): every column is edited in the table itself, with no
-  // row drawer — opening a panel to type one value is more work than the value.
+  // row drawer — opening a panel to type one value is more work than the value. Left unset, a register of fewer than four columns
+  // is inline (project owner, 2026-10-19); pass false to keep the drawer.
   inline?: boolean;
+  // A read-only reference table (standing rules, nothing to enter): EVERY column is shown with its full text, wrapped, and there is
+  // no row drawer to open — the table is the whole content.
+  referenceTable?: boolean;
   tableColumns?: string[];
   identityText?: (row: RegisterRow) => string;
   subtitleText?: (row: RegisterRow) => string;
@@ -218,8 +223,15 @@ export default function DynamicTable({
 
   const patch = (index: number, key: string, value: string | number | boolean | undefined) =>
     update((prev) => patchArray(prev, index, { [key]: value } as Partial<RegisterRow>));
+  // Fewer than four columns: the table holds the whole row, so a drawer would only repeat it.
+  const inlineAuto = inline === undefined && config.columns.length < 4;
+  const inlineMode = inline ?? inlineAuto;
+  // ...and when none of its columns can be edited either, it is a reference table: every column shown as text, nothing to open or fill in.
+  const referenceMode = referenceTable ?? (inlineAuto && config.columns.every((c) => c.editable === false));
   const addRow = () => {
     update((prev) => [...prev, createEmptyRegisterRow(config.key)]);
+    // Inline there is no drawer to open on the new row, and nothing to discard if it is left blank (the blank-row save guard covers it).
+    if (inlineMode) return;
     setFreshIndex(draft.length);
     setOpenRaw(draft.length);
   };
@@ -292,9 +304,13 @@ export default function DynamicTable({
       ? config.columns.slice(1).find((c) => c !== subtitle && (c.type === 'text' || c.type === 'textarea'))
       : undefined;
 
+  // The gate that ENTERS the column — never a gate that merely reads it. Shown on EVERY column of a multi-gate register, with the
+  // default applied: a column nobody declared belongs to the register's LAST gate (registerColumnGates.ts), so leaving it unlabelled
+  // made Owner and Status read as belonging to no gate, or to the first one.
   const columnGate = (col: RegisterColumn) =>
-    // The gate that ENTERS the column, as declared — never a gate that merely reads it.
-    spansSeveralGates(config.gate) ? col.gate : undefined;
+    spansSeveralGates(config.gate)
+      ? columnOwnerGateIds(config.key, col.key).map((id) => id.replace(/^SG/, '')).join('/') || undefined
+      : undefined;
 
   // One editor per column type, used by the table cells and the drawer alike.
   const renderEditor = (column: RegisterColumn, row: RegisterRow, index: number) => {
@@ -571,18 +587,58 @@ export default function DynamicTable({
 
       {notices?.(draft)}
       <div ref={wrapRef} className={embedded ? 'c-card rt-body' : 'rt-body'}>
-        {!inline && (
+        {!inlineMode && !referenceMode && (
           <div className="rt-count">
             {draft.length} {config.mode === 'register' ? (draft.length === 1 ? 'row' : 'rows') : 'items'}
           </div>
         )}
-        {inline ? (
+        {referenceMode ? (
+          <table className="rt-table rt-reference">
+            <thead>
+              <tr>
+                {config.columns.map((col) => (
+                  <th key={col.key}>{col.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {draft.map((row, index) => (
+                <tr key={index}>
+                  {config.columns.map((col, ci) => (
+                    <td key={col.key} className={ci === 0 ? 'rt-reference-label' : undefined}>
+                      {text(row[col.key]) || <span className="rt-muted">—</span>}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {draft.length === 0 && (
+                <tr>
+                  <td colSpan={config.columns.length} className="rt-empty">
+                    No items.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        ) : inlineMode ? (
           <table className="rt-table rt-inline">
+            {inlineAuto && (
+              <thead>
+                <tr>
+                  {config.columns.map((col) => (
+                    <th key={col.key}>{col.label}</th>
+                  ))}
+                  {isRegister && <th style={{ width: CHEVRON }} aria-label="Remove" />}
+                </tr>
+              </thead>
+            )}
             <tbody>
               {draft.map((row, index) => (
                 <tr key={index} className={rowClass(row)}>
                   {config.columns.map((col, ci) =>
-                    ci === 0 ? (
+                    // A first column that holds a fixed label reads as the row's heading; one the person fills in (a category
+                    // picked per row) is an input like the rest.
+                    ci === 0 && col.editable === false ? (
                       <th key={col.key} scope="row" className="rt-inline-label">
                         {identityCell(row, index)}
                       </th>
@@ -590,11 +646,29 @@ export default function DynamicTable({
                       <td key={col.key}>{renderEditor(col, row, index)}</td>
                     ),
                   )}
+                  {isRegister && (
+                    <td className="rt-inline-act">
+                      <Tooltip title={removeBlock(row)}>
+                        <span>
+                          <Button
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            aria-label="Remove row"
+                            disabled={!!removeBlock(row) || readOnly}
+                            onClick={() => removeRow(index)}
+                          />
+                        </span>
+                      </Tooltip>
+                    </td>
+                  )}
                 </tr>
               ))}
               {draft.length === 0 && (
                 <tr>
-                  <td className="rt-empty">No rows yet.</td>
+                  <td className="rt-empty" colSpan={config.columns.length + (isRegister ? 1 : 0)}>
+                    No rows yet.{isRegister ? ' Add the first one below.' : ''}
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -603,7 +677,10 @@ export default function DynamicTable({
           <table className="rt-table">
             <thead>
               <tr>
-                <th>{identity.label}</th>
+                <th>
+                  <span className="rt-th">{identity.label}</span>
+                  {columnGate(identity) && <span className="c-tag rt-gate">G{columnGate(identity)}</span>}
+                </th>
                 {shown.map((col) => (
                   <th key={col.key} style={{ width: DECISION_WIDTH }}>
                     <span className="rt-th">{col.label}</span>
@@ -701,7 +778,7 @@ export default function DynamicTable({
       )}
 
       <Drawer
-        open={!inline && openRow !== undefined}
+        open={!inlineMode && openRow !== undefined}
         onClose={() => setOpenIndex(null)}
         size={screens.md ? 560 : '100%'}
         mask={!screens.xxl}

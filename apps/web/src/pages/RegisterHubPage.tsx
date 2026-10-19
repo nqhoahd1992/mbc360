@@ -17,6 +17,7 @@ import VulnerableUserAssessmentTable from '../components/VulnerableUserAssessmen
 import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
 import PublishedInfoApprovalTable from '../components/PublishedInfoApprovalTable';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
+import EvidenceRulesLink from '../components/EvidenceRulesLink';
 import SectionOverview from '../components/SectionOverview';
 import { VULNERABLE_REGISTER } from '@mbc360/shared/utils/vulnerableUsers';
 import WatchlistRegister from '../components/WatchlistRegister';
@@ -176,6 +177,11 @@ export default function RegisterHubPage() {
           readOnly={locked}
           readOnlyReason={lockedReason}
         />
+        {registerKey === 'ingredientMonograph' && (
+          <p className="rph-desc">
+            Evidence must be graded and searched to the corporate standard: <EvidenceRulesLink projectId={id} />
+          </p>
+        )}
         {progress && <RegisterProgressCard completed={progress.completed} total={progress.total} />}
         {registerKey === 'studyProtocolSetup' && (
           <StudyApprovalCard projectId={id} approvals={project.studyApprovals} />

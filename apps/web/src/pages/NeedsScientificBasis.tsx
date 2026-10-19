@@ -6,13 +6,13 @@ import {
   needsExecutiveBrief,
   needsLiteratureSearchMethod,
   needsResearchQuestions,
-  needsSignOff,
   needsTechnologyTraceability,
 } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import DynamicTable from '../components/DynamicTable';
+import EvidenceRulesLink from '../components/EvidenceRulesLink';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
@@ -28,7 +28,6 @@ export default function NeedsScientificBasis() {
     ? composeReviewOwner(needsResearchQuestions.reviewOwner, project.identity.reviewers)
     : undefined;
   const lockedContent = isGateRefLocked(project, '02');
-  const lockedSignOff = isGateRefLocked(project, needsSignOff.gate);
 
   return (
     <div className="concept">
@@ -45,6 +44,8 @@ export default function NeedsScientificBasis() {
               <strong>Minimum output:</strong> Physical/physiological, emotional/developmental, caregiver &amp; practical needs; needs -&gt; design implications; research questions; references; open questions. Formula work HELD until reviewed.
               <br />
               <strong>Note:</strong> Executive summary stays in the Needs Document (brief); full science here.
+              <br />
+              <strong>Evidence must be graded and searched to the corporate standard:</strong> <EvidenceRulesLink projectId={id} />
             </>
           ),
         }}
@@ -86,14 +87,7 @@ export default function NeedsScientificBasis() {
         readOnly={lockedContent}
       />
 
-      <DynamicTable
-        config={needsSignOff}
-        rows={project.registers[needsSignOff.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, needsSignOff.key, rows)}
-        readOnly={lockedSignOff}
-      />
-
-      {/* One signature closes the whole page: all six tables (RegisterConfig.closedWith). */}
+      {/* The workbook's sign-off block (three roles, nominated by the project's Lead) closes the whole page: all five tables (closedWith). */}
       {registerClosureGateIds(needsExecutiveBrief).length > 0 && registerReviewSpec(needsExecutiveBrief) && (
         <RegisterClosurePanel
           projectId={id}

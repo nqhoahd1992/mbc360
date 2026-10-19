@@ -506,6 +506,17 @@ export class ProjectsController {
     return this.projects.signRegisterClose(user, id, registerKey, body.gateId, body.role, body.stepUpToken, body.expectedHash);
   }
 
+  // The project's Lead nominates who signs each role of a page that carries the workbook's own sign-off block.
+  @Put(':id/registers/:registerKey/close/signers')
+  assignRegisterClosureSigner(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('registerKey') registerKey: string,
+    @Body() body: { gateId?: string; assignments: { role: string; userId?: string | null }[]; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.assignRegisterClosureSigner(user, id, registerKey, body.gateId, body.assignments ?? [], body.expectedVersion);
+  }
+
   @Post(':id/registers/:registerKey/close/withdraw')
   withdrawRegisterClose(
     @CurrentUser() user: SessionUser,

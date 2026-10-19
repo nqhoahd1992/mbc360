@@ -84,9 +84,15 @@
 .rt-name-regular { font-weight: 400; }
 
 /* Inline mode: a label and its value, edited in place, no row drawer. */
+.rt-reference { table-layout: auto; }
+.rt-reference th { height: auto; padding: 10px 12px; white-space: normal; vertical-align: bottom; }
+.rt-reference td { vertical-align: top; color: var(--c-text-2); line-height: 1.5; white-space: normal; overflow-wrap: anywhere; }
+.rt-reference .rt-reference-label { color: var(--c-text); font-weight: 500; }
+.rt-reference tbody tr:last-child td { border-bottom: 0; }
 .rt-inline .rt-inline-label {
   width: 34%; height: auto; padding: 12px; border-bottom: 1px solid var(--c-border-2);
   background: var(--c-surface-2); color: var(--c-text-1); font-size: 14px; font-weight: 500; white-space: normal;
 }
 .rt-inline .rt-inline-label .rt-name { overflow: visible; white-space: normal; }
 .rt-inline tbody tr:last-child .rt-inline-label { border-bottom: 0; }
+.rt-inline-act { width: 44px; text-align: center; }

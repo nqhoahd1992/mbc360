@@ -11,6 +11,7 @@ import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import DynamicTable from '../components/DynamicTable';
+import EvidenceRulesLink from '../components/EvidenceRulesLink';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
@@ -43,6 +44,8 @@ export default function CompetitorLandscape() {
               <strong>Minimum output:</strong> Selected competitors with purchase evidence (country/retailer/date/lot), full INCI, claims, patents, disclosed testing, price/use, sensory + analytical comparison, and the Max Biocare design decision from each comparison. Also &apos;standard of care&apos; / what users do now.
               <br />
               <strong>Note:</strong> Includes purchased-sample &amp; comparative-testing protocol.
+              <br />
+              <strong>Evidence must be graded and searched to the corporate standard:</strong> <EvidenceRulesLink projectId={id} />
             </>
           ),
         }}

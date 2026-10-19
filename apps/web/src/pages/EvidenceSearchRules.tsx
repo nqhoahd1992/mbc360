@@ -2,7 +2,6 @@ import { Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import {
-  evidenceControlSignOff,
   evidenceHierarchyGrades,
   evidenceSearchStandard,
   evidenceTransferabilityRules,
@@ -14,8 +13,9 @@ import { CompositePageHeader } from '../components/RegisterPageHeader';
 // NPD Front-End Roadmap "6. Evidence & Search Rules" (v2 workbook,
 // 2026-07-24) — the corporate evidence-grading/transferability/literature-
 // search rulebook, applying to Sheets 1-5 and every efficacy/claim sheet.
-// Sections 1-3 are pure reference (all editable:false); Section 4 is the
-// standard's own sign-off (Prepared by / Approved by), which IS editable.
+// Pure reference (every column editable:false). Reached by link from Sheets 1-5, not from the sidebar menu (NavItem.hidden). The
+// sheet's Section 4 (a Prepared by / Approved by sign-off of the standard itself, which nothing read) is not carried: its rule text
+// is the note below.
 export default function EvidenceSearchRules() {
   const { projectId } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
@@ -44,25 +44,23 @@ export default function EvidenceSearchRules() {
         config={evidenceHierarchyGrades}
         rows={project.registers[evidenceHierarchyGrades.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, evidenceHierarchyGrades.key, rows)}
+        referenceTable
       />
 
       <DynamicTable
         config={evidenceTransferabilityRules}
         rows={project.registers[evidenceTransferabilityRules.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, evidenceTransferabilityRules.key, rows)}
+        referenceTable
       />
 
       <DynamicTable
         config={evidenceSearchStandard}
         rows={project.registers[evidenceSearchStandard.key] ?? []}
         onSave={(rows) => setRegisterRowsBulk(id, evidenceSearchStandard.key, rows)}
+        referenceTable
       />
 
-      <DynamicTable
-        config={evidenceControlSignOff}
-        rows={project.registers[evidenceControlSignOff.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, evidenceControlSignOff.key, rows)}
-      />
     </div>
   );
 }

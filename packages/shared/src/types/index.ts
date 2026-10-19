@@ -468,10 +468,19 @@ export function isSignedOff(signOff: SignOff | undefined): boolean {
 // (owner.role for "Review owner", coSign[0]?.role — or Project Manager if
 // none — for "Co-sign"), the same resolution composeReviewOwner() already
 // uses for the on-screen caption.
-export type RegisterClosureRole = 'Review owner' | 'Co-sign';
+//
+// A register page that carries its OWN sign-off block in the workbook (Needs & Scientific Basis, Target Product & Tech Platform:
+// three named roles) declares those roles in `RegisterConfig.closureRoles`, and then the project's Lead NOMINATES a person for
+// each one, exactly as for a phase sign-off — the block is the workbook's, the signature is a real authenticated one.
+export type RegisterClosureRole = string;
+
+export const DEFAULT_REGISTER_CLOSURE_ROLES: readonly string[] = ['Review owner', 'Co-sign'];
 
 export interface RegisterClosureSignOff {
   role: RegisterClosureRole;
+  // Only for a register that declares its own roles: who the Lead nominated to sign this role.
+  assignedToUserId?: string;
+  assignedToName?: string;
   name?: string;
   signedByUserId?: string;
   signedAt?: string; // ISO timestamp, server clock
@@ -508,11 +517,12 @@ export function hasStandingClosureSignature(state: RegisterClosureState | undefi
 // Closed = BOTH roles signed. A register with no RegisterClosureState at all
 // (not yet scaffolded, or a register with no specific gate — see
 // gateRefHighestGateId) is never closed.
-export function isRegisterClosed(state: RegisterClosureState | undefined): boolean {
+export function isRegisterClosed(
+  state: RegisterClosureState | undefined,
+  roles: readonly string[] = DEFAULT_REGISTER_CLOSURE_ROLES,
+): boolean {
   if (!state) return false;
-  const owner = state.signOffs.find((s) => s.role === 'Review owner');
-  const coSign = state.signOffs.find((s) => s.role === 'Co-sign');
-  return isRegisterClosureSigned(owner) && isRegisterClosureSigned(coSign);
+  return roles.every((role) => isRegisterClosureSigned(state.signOffs.find((s) => s.role === role)));
 }
 
 // A single free-text "next action" field used to live here, but rule B2

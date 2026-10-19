@@ -188,6 +188,10 @@ export interface RegisterConfig {
   // signature attests to and locks all of them (registerClosures.ts). `closureTitle` is what the anchor's block calls the whole.
   closedWith?: string;
   closureTitle?: string;
+  // The workbook's OWN sign-off block for this page (three named roles), made the page's closing signature: the closing block shows
+  // these roles instead of "Review owner" / "Co-sign", the project's Lead nominates a person for each, and only that person signs
+  // (a real authenticated signature, like every other closing). Set on the anchor. Without it the roles are the review owner's.
+  closureRoles?: string[];
   columns: RegisterColumn[];
   fixedRows?: RegisterRow[];
   // "REVIEW OWNER" of the source sheet, as a STRUCTURE (which role owns/co-
@@ -2757,6 +2761,8 @@ const systemFeedback: RegisterConfig = {
 export const needsExecutiveBrief: RegisterConfig = {
   key: 'needsExecutiveBrief',
   closureTitle: 'Needs & Scientific Basis', // one closing signature for the whole page (closedWith on the members)
+  // Section 5 of the workbook sheet ("GATE SIGN-OFF"): the three roles that sign the dossier, nominated by the project's Lead.
+  closureRoles: ['Prepared by (R&I)', 'Reviewed by (Head of Dept)', 'Independent reviewer'],
   title: 'Needs — Executive Brief',
   sheetName: 'Needs Document', workbookTab: 'Chris Needs Document',
   description: 'Executive brief: what this product must do, based on the physiology and emotional needs of the intended user(s). Dot points only; every need must be referenced. Companion to the full dossier below.',
@@ -2856,28 +2862,6 @@ export const needsTechnologyTraceability: RegisterConfig = {
     { key: 'criticalAttribute', label: 'Critical attribute + target', type: 'textarea', width: 200 },
     { key: 'evidenceStatus', label: 'Evidence status', type: 'select', width: 150, options: ['Demonstrated', 'Ingredient-only', 'Gap'] },
     { key: 'reference', label: 'Reference', type: 'text', width: 150 },
-  ],
-};
-
-export const needsSignOff: RegisterConfig = {
-  key: 'needsSignOff',
-  closedWith: 'needsExecutiveBrief',
-  title: 'Needs & Scientific Basis — Gate Sign-Off',
-  sheetName: '1. Needs & Scientific Basis',
-  description: 'Formula work may NOT proceed until complete.',
-  mode: 'fixed',
-  gate: '02', // Roadmap "Sign-off gate" for Step 1 is SG02 only
-  reviewOwner: REVIEW_SPECS.ri,
-  columns: [
-    { key: 'role', label: 'Role', type: 'text', width: 220, editable: false },
-    { key: 'name', label: 'Name', type: 'text', width: 180 },
-    { key: 'department', label: 'Department', type: 'text', width: 160 },
-    { key: 'date', label: 'Date', type: 'date', width: 130 },
-  ],
-  fixedRows: [
-    { role: 'Prepared by (R&I)' },
-    { role: 'Reviewed by (Head of Dept)' },
-    { role: 'Independent reviewer' },
   ],
 };
 
@@ -3038,6 +3022,8 @@ export const competitorLandscapeSummary: RegisterConfig = {
 export const targetProductProfile: RegisterConfig = {
   key: 'targetProductProfile',
   closureTitle: 'Target Product & Tech Platform', // one closing signature for the whole page (closedWith on the members)
+  // Section 3 of the workbook sheet ("SIGN-OFF"): the three roles that sign the profile, nominated by the project's Lead.
+  closureRoles: ['Project Manager', 'Head of Department', 'R&I'],
   title: 'Target Product Profile (TPP)',
   sheetName: '3. Target Product & Tech',
   description: 'Agree BEFORE development; every row measurable. Complete before formula lock (Gate 5).',
@@ -3088,27 +3074,6 @@ export const backbonePlatformTechnology: RegisterConfig = {
     { question: 'Evidence maturity' },
     { question: 'Patent / IP landscape' },
     { question: 'SKU / portfolio transfer' },
-  ],
-};
-
-export const targetProductSignOff: RegisterConfig = {
-  key: 'targetProductSignOff',
-  closedWith: 'targetProductProfile',
-  title: 'Target Product & Tech — Sign-Off',
-  sheetName: '3. Target Product & Tech',
-  description: 'TPP + platform agreed before formula work begins.',
-  mode: 'fixed',
-  gate: '05',
-  reviewOwner: REVIEW_SPECS.ri,
-  columns: [
-    { key: 'role', label: 'Role', type: 'text', width: 200, editable: false },
-    { key: 'name', label: 'Name', type: 'text', width: 180 },
-    { key: 'date', label: 'Date', type: 'date', width: 130 },
-  ],
-  fixedRows: [
-    { role: 'Project Manager' },
-    { role: 'Head of Department' },
-    { role: 'R&I' },
   ],
 };
 
@@ -3399,24 +3364,6 @@ export const evidenceSearchStandard: RegisterConfig = {
   ],
 };
 
-export const evidenceControlSignOff: RegisterConfig = {
-  key: 'evidenceControlSignOff',
-  title: 'Control & Sign-Off',
-  sheetName: '6. Evidence & Search Rules',
-  description: "This standard is mandatory for Sheets 1-5 and every efficacy/claim sheet. No need or claim may progress to formula or label without: (a) an assigned evidence Grade (Sec 1), (b) a passed transferability check or an explicit inference flag (Sec 2), and (c) a complete, dated, linked search record (Sec 3).",
-  mode: 'fixed',
-  reviewOwner: REVIEW_SPECS.ri,
-  columns: [
-    { key: 'role', label: 'Role', type: 'text', width: 260, editable: false },
-    { key: 'name', label: 'Name', type: 'text', width: 180 },
-    { key: 'date', label: 'Date', type: 'date', width: 130 },
-  ],
-  fixedRows: [
-    { role: 'Prepared by (R&I)' },
-    { role: 'Approved by (Head of Dept / Regulatory)' },
-  ],
-};
-
 // The "NPD Front-End Roadmap" sheet has no register of its own any more: its four steps (Section A) and the question and note of each
 // part (Section B) are shown on the page of the step they describe, and its Gap Register (Section C) is the review record that
 // docs/reference/NPD_Front_End_Gap_Register.md keeps — none of it is per-project data.
@@ -3488,7 +3435,6 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   needsLiteratureSearchMethod,
   needsAnatomyExposureNotes,
   needsTechnologyTraceability,
-  needsSignOff,
   carrierEmollientReview,
   carrierReviewSummary,
   competitorLandscape,
@@ -3497,7 +3443,6 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   competitorLandscapeSummary,
   targetProductProfile,
   backbonePlatformTechnology,
-  targetProductSignOff,
   evidencePlanProspective,
   evidenceTestProtocol,
   claimEvidenceTraceability,
@@ -3505,7 +3450,6 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   evidenceHierarchyGrades,
   evidenceTransferabilityRules,
   evidenceSearchStandard,
-  evidenceControlSignOff,
 ];
 
 // Owner-prefixed tab names + "REVIEW OWNER" strings transcribed from the V18
@@ -3649,6 +3593,9 @@ export interface NavItem {
   // Traceability") rather than only by the page's. Keep in step with the
   // registers the page imports.
   contains?: string[];
+  // A reference page that is reachable by link (and search, and the Sheet Map) but is NOT listed in the sidebar menu or the group
+  // overview — standing rules that other pages link to, which only distract when they sit beside the sheets people work in.
+  hidden?: boolean;
   // Only set for a page-based item (no registerKey) whose real owner differs
   // from its containing group's default — a register item's owner already
   // comes from its own RegisterConfig via registerKey (2026-08-27).
@@ -3717,6 +3664,7 @@ type RawDeptItem =
       gate?: string;
       reviewOwner?: ReviewOwnerSpec;
       contains?: string[];
+      hidden?: boolean;
     };
 
 interface RawDept {
@@ -3769,14 +3717,14 @@ const DEPARTMENTS: RawDept[] = [
     items: [
       'developmentBrief',
       'vulnerableUserAssessment',
-      { title: 'Needs & Scientific Basis', sheetName: '1. Needs & Scientific Basis', page: 'needs-scientific-basis', gate: '02', contains: ['needsExecutiveBrief', 'needsResearchQuestions', 'needsLiteratureSearchMethod', 'needsAnatomyExposureNotes', 'needsTechnologyTraceability', 'needsSignOff'] },
+      { title: 'Needs & Scientific Basis', sheetName: '1. Needs & Scientific Basis', page: 'needs-scientific-basis', gate: '02', contains: ['needsExecutiveBrief', 'needsResearchQuestions', 'needsLiteratureSearchMethod', 'needsAnatomyExposureNotes', 'needsTechnologyTraceability'] },
       'carrierEmollientReview',
       'carrierReviewSummary',
       { title: 'Competitor Landscape', sheetName: '2. Competitor Landscape', page: 'competitor-landscape', gate: '03', contains: ['currentSolutionsStandardOfCare', 'competitorLandscape', 'competitorLandscapeSummary', 'competitorTestingProtocol'] },
-      { title: 'Target Product & Tech Platform', sheetName: '3. Target Product & Tech', page: 'target-product-tech', gate: '05', contains: ['targetProductProfile', 'backbonePlatformTechnology', 'targetProductSignOff'] },
+      { title: 'Target Product & Tech Platform', sheetName: '3. Target Product & Tech', page: 'target-product-tech', gate: '05', contains: ['targetProductProfile', 'backbonePlatformTechnology'] },
       { title: 'Evidence Plan & Claim Support', sheetName: '4. Evidence & Claim Support', page: 'evidence-claim-support', gate: '05/08', contains: ['evidencePlanProspective', 'evidenceTestProtocol', 'claimEvidenceTraceability'] },
       'ingredientMonograph',
-      { title: 'Evidence Hierarchy & Search Rules', sheetName: '6. Evidence & Search Rules', page: 'evidence-search-rules', contains: ['evidenceHierarchyGrades', 'evidenceSearchStandard', 'evidenceTransferabilityRules', 'evidenceControlSignOff'] },
+      { title: 'Evidence Hierarchy & Search Rules', sheetName: '6. Evidence & Search Rules', page: 'evidence-search-rules', hidden: true, contains: ['evidenceHierarchyGrades', 'evidenceSearchStandard', 'evidenceTransferabilityRules'] },
     ],
   },
   {
@@ -3965,6 +3913,7 @@ export function getNavGroups(): NavGroup[] {
               gate: it.gate,
               reviewOwner: it.reviewOwner,
               contains: it.contains,
+              hidden: it.hidden,
             },
       )
       .filter((i): i is NavItem => i !== null),

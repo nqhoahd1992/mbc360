@@ -1,11 +1,12 @@
 import { Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { backbonePlatformTechnology, targetProductProfile, targetProductSignOff } from '@mbc360/shared/config/registers';
+import { backbonePlatformTechnology, targetProductProfile } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import DynamicTable from '../components/DynamicTable';
+import EvidenceRulesLink from '../components/EvidenceRulesLink';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
@@ -39,6 +40,8 @@ export default function TargetProductTech() {
               <strong>Minimum output:</strong> One agreed definition of success (min/target/ideal/unacceptable per attribute + measurement method). Technology platform: precise problem, routes considered, why selected, mechanism, critical attributes, evidence maturity, patent landscape, and HOW it is superior to existing products.
               <br />
               <strong>Note:</strong> Combines Target Product Profile + Technology Platform.
+              <br />
+              <strong>Evidence must be graded and searched to the corporate standard:</strong> <EvidenceRulesLink projectId={id} />
             </>
           ),
         }}
@@ -59,14 +62,7 @@ export default function TargetProductTech() {
         readOnly={locked}
       />
 
-      <DynamicTable
-        config={targetProductSignOff}
-        rows={project.registers[targetProductSignOff.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, targetProductSignOff.key, rows)}
-        readOnly={locked}
-      />
-
-      {/* One signature closes the whole page: all three tables (RegisterConfig.closedWith). */}
+      {/* The workbook's sign-off block (three roles, nominated by the project's Lead) closes the whole page: both tables (closedWith). */}
       {registerClosureGateIds(targetProductProfile).length > 0 && registerReviewSpec(targetProductProfile) && (
         <RegisterClosurePanel
           projectId={id}

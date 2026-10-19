@@ -330,7 +330,7 @@ function ProjectPanel() {
               {open && (
                 <div className="sb-grp-body">
                   <Item to={overviewTo} label="Overview" sub current={pathname === overviewTo} />
-                  {group.items.map((item, idx) => {
+                  {group.items.filter((item) => !item.hidden).map((item, idx) => {
                     const to = navItemHref(item, projectId);
                     // Some sheets are deliberately filed outside their own
                     // review owner's group (10 R&I-owned sheets sit under

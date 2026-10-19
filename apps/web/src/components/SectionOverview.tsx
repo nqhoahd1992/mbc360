@@ -55,7 +55,7 @@ export default function SectionOverview({
   const currentIndex = currentGateIndex(project);
   const current = currentIndex < GATES.length ? GATES[currentIndex] : undefined;
 
-  const sheets: SheetRow[] = group.items.map((item) => {
+  const sheets: SheetRow[] = group.items.filter((item) => !item.hidden).map((item) => {
     const config = item.registerKey ? getRegisterConfig(item.registerKey) : undefined;
     const rows = item.registerKey ? (project.registers[item.registerKey] ?? []) : [];
     const gateIds = gateRefGateIds(item.gate);

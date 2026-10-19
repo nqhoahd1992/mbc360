@@ -17,13 +17,24 @@ import { REGISTER_READS_BY_GATE } from '../config/registerColumnReads';
 import { REGISTER_CONFIGS, findNavGroupForRegister, type RegisterConfig } from '../config/registers';
 import type { ReviewOwnerSpec } from '../config/reviewers';
 import type { ProjectData, RegisterClosureState, RegisterRow } from '../types';
-import { hasStandingClosureSignature, isRegisterClosed } from '../types';
+import { DEFAULT_REGISTER_CLOSURE_ROLES, hasStandingClosureSignature, isRegisterClosed } from '../types';
 import { gateOrder, gateRefGateIds } from './gateRefs';
 import { columnsByAccountability } from './registerColumnGates';
 
 // The registers that are closed by this one's signature (see RegisterConfig.closedWith).
 export function closureMembers(anchorKey: string): RegisterConfig[] {
   return REGISTER_CONFIGS.filter((c) => c.closedWith === anchorKey);
+}
+
+// The roles that sign a register's closing: the workbook's own sign-off block where the page declares one (nominated by the
+// project's Lead), else the register's review owner and co-signer.
+export function registerClosureRoles(config: RegisterConfig): readonly string[] {
+  return config.closureRoles && config.closureRoles.length > 0 ? config.closureRoles : DEFAULT_REGISTER_CLOSURE_ROLES;
+}
+
+// True when the signers of this register are nominated by the project's Lead rather than derived from the review owner.
+export function closureSignersAreNominated(config: RegisterConfig): boolean {
+  return !!config.closureRoles && config.closureRoles.length > 0;
 }
 
 export const closureKey = (registerKey: string, gateId: string): string => `${registerKey}|${gateId}`;
@@ -62,7 +73,16 @@ export function registerClosureGateIds(config: RegisterConfig): string[] {
   const gates = [...new Set([...read, ...(last ? [last] : [])])]
     // Nothing settled at a gate means there is nothing for its closure to attest to or lock.
     .filter((gate) => closureColumns(config, gate).length > 0)
-    .sort((a, b) => gateOrder(a) - gateOrder(b));
+    .sort((a, b) => gateOrder(a) - gateOrder(b))
+    // A later gate that settles exactly the columns the previous closure already locked has nothing new to attest to: the same two
+    // people would sign the same columns again (Supplier & RM Evidence read at Gates 7, 10 and 11 showed three identical blocks,
+    // 2026-10-19). Only a gate that adds a settled column keeps its own closure. The earlier signature stands and keeps those
+    // columns locked, and one for a passed gate cannot be withdrawn, so dropping the repeat loses no protection.
+    .filter((gate, index, all) => {
+      if (index === 0) return true;
+      const previous = new Set(closureColumns(config, all[index - 1]));
+      return closureColumns(config, gate).some((key) => !previous.has(key));
+    });
   gatesCache.set(config.key, gates);
   return gates;
 }
@@ -71,7 +91,7 @@ export function registerClosureGateIds(config: RegisterConfig): string[] {
 export function isRegisterFullyClosed(project: ProjectData, configIn: RegisterConfig): boolean {
   const config = (configIn.closedWith && REGISTER_CONFIGS.find((c) => c.key === configIn.closedWith)) || configIn;
   const gates = registerClosureGateIds(config);
-  return gates.length > 0 && gates.every((gate) => isRegisterClosed(closureStateAt(project, config.key, gate)));
+  return gates.length > 0 && gates.every((gate) => isRegisterClosed(closureStateAt(project, config.key, gate), registerClosureRoles(config)));
 }
 
 // Every (register, gate) pair a gate needs closed. A register that cannot be closed at all (no reviewer spec) is left out, since

@@ -6,6 +6,7 @@ import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import DynamicTable from '../components/DynamicTable';
+import EvidenceRulesLink from '../components/EvidenceRulesLink';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
@@ -45,6 +46,8 @@ export default function EvidenceClaimSupport() {
               <strong>Minimum output:</strong> Prospective evidence plan (endpoint, comparator, method, minimum acceptable result, failure definition) BEFORE formula lock; detailed protocol AFTER prototype; then final formula + tests that substantiate each claim.
               <br />
               <strong>Note:</strong> Feeds Formula BOM and efficacy/study sheets.
+              <br />
+              <strong>Evidence must be graded and searched to the corporate standard:</strong> <EvidenceRulesLink projectId={id} />
             </>
           ),
         }}

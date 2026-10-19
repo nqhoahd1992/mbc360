@@ -8,7 +8,8 @@
 import { GATE_READINESS } from '../src/config/gateReadiness';
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
 import { isGatePassed } from '../src/utils/gateProgress';
-import { closureKey, requiredRegisterClosures } from '../src/utils/registerClosures';
+import { closureKey, registerClosureRoles, requiredRegisterClosures } from '../src/utils/registerClosures';
+import { REGISTER_CONFIGS, getRegisterConfig } from '../src/config/registers';
 import { gateActionStates, gateEvidenceSnapshot, snapshotChanges, snapshotLaterChanges } from '../src/utils/gateSnapshot';
 import { columnOwnerGateIds } from '../src/utils/registerColumnGates';
 import { cellFrozenBy, passedGateSet, registerFreezeViolations, rowsFrozenBy } from '../src/utils/registerRowLocks';
@@ -84,7 +85,8 @@ for (const g of ['SG01', 'SG02', 'SG03']) {
 const signedAt = { signedByUserId: 'u', signedAt: '2026-01-01T00:00:00Z' };
 for (const g of ['SG01', 'SG02', 'SG03']) {
   for (const { registerKey } of requiredRegisterClosures(g)) {
-    live.registerClosures[closureKey(registerKey, g)] = { signOffs: [{ role: 'Review owner', ...signedAt }, { role: 'Co-sign', ...signedAt }] } as never;
+    const config = REGISTER_CONFIGS.find((c) => c.key === registerKey)!;
+    live.registerClosures[closureKey(registerKey, g)] = { signOffs: registerClosureRoles(config).map((role) => ({ role, ...signedAt })) } as never;
   }
 }
 // Three signatures per gate, each carrying the snapshot of the moment they were given.

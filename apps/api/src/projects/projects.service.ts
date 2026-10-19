@@ -106,7 +106,14 @@ import { READINESS_ACK_OUTCOMES } from '@mbc360/shared/types';
 import { phaseSignContent } from '@mbc360/shared/utils/phaseSignContent';
 import { registerClosureContent, registerRowSignContent } from '@mbc360/shared/utils/registerClosureContent';
 import { canDecideGate as canDecideGateInProject, canChangeMarketTracks as canChangeMarketTracksInProject, gateDecisionReason, MARKET_TRACKS_REASON } from '@mbc360/shared/utils/projectAuthority';
-import { closureKey, registerClosureGateIds, registerLockViolations, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
+import {
+  closureKey,
+  closureSignersAreNominated,
+  registerClosureGateIds,
+  registerClosureRoles,
+  registerLockViolations,
+  registerReviewSpec,
+} from '@mbc360/shared/utils/registerClosures';
 import { registerContentHashOf, registerRowContentHashOf, rowHashFromCells } from './content-hash';
 import { registerRowCells } from '@mbc360/shared/utils/registerClosureContent';
 import { supersessionGaps, versionMarkets } from '@mbc360/shared/utils/formulaLifecycle';
@@ -1214,12 +1221,10 @@ export class ProjectsService {
   // displayName, same as `reviewers`). Storing a user id there would be more
   // robust and is the obvious later improvement, but it is a schema change to
   // `projects`, not to sign-off. [ASSUMPTION: R5-Q1]
-  private assertIsProjectLead(user: SessionUser, project: ProjectData): void {
+  private assertIsProjectLead(user: SessionUser, project: ProjectData, action = 'assign phase sign-off signers'): void {
     if (this.permissions.isAdmin(user)) return;
     if (project.identity.projectLead.trim() !== user.displayName.trim()) {
-      throw new ForbiddenException(
-        `Only the project's Lead (${project.identity.projectLead}) may assign phase sign-off signers`,
-      );
+      throw new ForbiddenException(`Only the project's Lead (${project.identity.projectLead}) may ${action}`);
     }
   }
 
@@ -3236,7 +3241,7 @@ export class ProjectsService {
     return gateId;
   }
 
-  private registerClosureRoleKey(config: RegisterConfig, role: RegisterClosureSignOff['role']): string {
+  private registerClosureRoleKey(config: RegisterConfig, role: 'Review owner' | 'Co-sign'): string {
     const spec = registerReviewSpec(config);
     if (!spec) {
       throw new BadRequestException(
@@ -3248,17 +3253,105 @@ export class ProjectsService {
     return registerClosureSignerRole(spec, role);
   }
 
+  // Who may sign a role. A register that names its own roles (the workbook's sign-off block) is signed by the person the project's Lead
+  // NOMINATED for that role — never by anyone else, whatever their rights; any other register by the person its review-owner spec
+  // resolves to. The role must be one the register actually asks for.
+  private async assertClosureSigner(
+    db: Prisma.TransactionClient | PrismaService,
+    user: SessionUser,
+    projectId: string,
+    config: RegisterConfig,
+    gateId: string,
+    role: string,
+  ): Promise<void> {
+    if (!registerClosureRoles(config).includes(role)) {
+      throw new BadRequestException(`"${role}" is not a signing role of "${config.key}" (it asks for: ${registerClosureRoles(config).join(', ')})`);
+    }
+    if (closureSignersAreNominated(config)) {
+      const closure = await db.registerClosure.findUnique({
+        where: { projectId_registerKey_gateId: { projectId, registerKey: config.key, gateId } },
+        include: { signOffs: true },
+      });
+      const row = closure?.signOffs.find((r) => r.role === role);
+      if (!row?.assignedToUserId) {
+        throw new ForbiddenException(`"${role}" has not been nominated yet — the project's Lead nominates who signs it`);
+      }
+      if (row.assignedToUserId !== user.id) {
+        throw new ForbiddenException(`"${role}" is nominated to somebody else — only that person may sign`);
+      }
+      return;
+    }
+    const roleKey = this.registerClosureRoleKey(config, role as 'Review owner' | 'Co-sign');
+    const reviewer = await db.projectReviewer.findUnique({ where: { projectId_roleKey: { projectId, roleKey } } });
+    if (!reviewer || reviewer.name.trim() !== user.displayName.trim()) {
+      throw new ForbiddenException(
+        `"${role}" for "${config.key}" is ${reviewer ? `assigned to ${reviewer.name}` : 'not assigned to anyone'} — only that person may sign`,
+      );
+    }
+  }
+
+  // The project's Lead nominates who signs each role of a register page that carries the workbook's own sign-off block. A signed
+  // role keeps its signer (reassigning it would leave a signature next to somebody else's name, B4), and a register that does not
+  // name its own roles has nobody to nominate.
+  async assignRegisterClosureSigner(
+    user: SessionUser,
+    id: string,
+    registerKey: string,
+    gateIdIn: string | undefined,
+    assignments: { role: string; userId?: string | null }[],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    const config = getRegisterConfig(registerKey);
+    if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
+    if (!closureSignersAreNominated(config)) {
+      throw new BadRequestException(`"${registerKey}" is signed by its review owner and co-signer — there is nobody to nominate`);
+    }
+    const gateId = this.assertClosureGate(config, gateIdIn);
+    return this.mutate(user, id, expectedVersion, 'register_close.signer_assigned', async (tx, _row, project) => {
+      this.assertIsProjectLead(user, project, 'nominate who signs a register');
+      const closure = await this.ensureRegisterClosure(tx, id, registerKey, gateId, config);
+      const rows = await tx.registerClosureSignOff.findMany({ where: { closureId: closure.id } });
+      let changed = 0;
+      for (const assignment of assignments) {
+        const existing = rows.find((r) => r.role === assignment.role);
+        if (!existing) {
+          throw new BadRequestException(`"${assignment.role}" is not a signing role of "${registerKey}"`);
+        }
+        const next = assignment.userId ?? null;
+        if (existing.assignedToUserId === next) continue;
+        if (existing.signedAt) {
+          throw new BadRequestException(`"${assignment.role}" is already signed — withdraw the signature before reassigning it`);
+        }
+        if (next) {
+          const target = await tx.user.findUnique({ where: { id: next }, select: { active: true } });
+          if (!target?.active) {
+            throw new BadRequestException(`Cannot nominate "${assignment.role}" to an unknown or deactivated user`);
+          }
+        }
+        await tx.registerClosureSignOff.update({ where: { id: existing.id }, data: { assignedToUserId: next } });
+        changed += 1;
+      }
+      return { registerKey, gateId, changed };
+    });
+  }
+
   // Older projects (created before this feature) never had these rows
   // scaffolded — rather than depend on scaffold timing, find-or-create them
   // here too, the same "additive backfill" pattern seedDemoProject already
   // uses for project_reviewers.
-  private async ensureRegisterClosure(tx: Prisma.TransactionClient, projectId: string, registerKey: string, gateId: string) {
+  private async ensureRegisterClosure(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    registerKey: string,
+    gateId: string,
+    config: RegisterConfig,
+  ) {
     const closure = await tx.registerClosure.upsert({
       where: { projectId_registerKey_gateId: { projectId, registerKey, gateId } },
       update: {},
       create: { projectId, registerKey, gateId },
     });
-    for (const role of ['Review owner', 'Co-sign'] as const) {
+    for (const role of registerClosureRoles(config)) {
       await tx.registerClosureSignOff.upsert({
         where: { closureId_role: { closureId: closure.id, role } },
         update: {},
@@ -3322,15 +3415,7 @@ export class ProjectsService {
     if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
     const gateId = this.assertClosureGate(config, gateIdIn);
     if (!expectedHash) throw new BadRequestException('expectedHash is required — open the signing preview first');
-    const roleKey = this.registerClosureRoleKey(config, role);
-    const reviewer = await this.prisma.projectReviewer.findUnique({
-      where: { projectId_roleKey: { projectId: id, roleKey } },
-    });
-    if (!reviewer || reviewer.name.trim() !== user.displayName.trim()) {
-      throw new ForbiddenException(
-        `"${role}" for "${registerKey}" is ${reviewer ? `assigned to ${reviewer.name}` : 'not assigned to anyone'} — only that person may sign`,
-      );
-    }
+    await this.assertClosureSigner(this.prisma, user, id, config, gateId, role);
     const signature = await this.prisma.userSignature.findUnique({ where: { userId: user.id } });
     if (!signature) {
       throw new BadRequestException('Save a signature in My Account before signing');
@@ -3363,20 +3448,14 @@ export class ProjectsService {
     if (!config) throw new BadRequestException(`Unknown register "${registerKey}"`);
     const gateId = this.assertClosureGate(config, gateIdIn);
     if (!expectedHash) throw new BadRequestException('expectedHash is required — open the signing preview first');
-    const roleKey = this.registerClosureRoleKey(config, role);
     // Guarded by the content hash instead of the project-wide version (as gate signing is), so other
     // people can keep working on the project while the closer reads. The row lock still serialises the write.
     return this.mutate(user, id, null, 'register_close.signed', async (tx, row, project) => {
       // The closer signs what they were SHOWN. Compared here, inside the row-locked transaction, so the
       // content cannot change between this check and the write.
       if (this.registerContentHash(project, registerKey, gateId) !== expectedHash) throw this.registerContentChanged();
-      const reviewer = await tx.projectReviewer.findUnique({
-        where: { projectId_roleKey: { projectId: id, roleKey } },
-      });
-      if (!reviewer || reviewer.name.trim() !== user.displayName.trim()) {
-        throw new ForbiddenException(`"${role}" for "${registerKey}" is assigned to somebody else`);
-      }
-      const closure = await this.ensureRegisterClosure(tx, id, registerKey, gateId);
+      await this.assertClosureSigner(tx, user, id, config, gateId, role);
+      const closure = await this.ensureRegisterClosure(tx, id, registerKey, gateId, config);
       const existing = await tx.registerClosureSignOff.findUnique({
         where: { closureId_role: { closureId: closure.id, role } },
       });

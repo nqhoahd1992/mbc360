@@ -60,6 +60,7 @@ model User {
   gateSignOffsAssigned GateSignOff[] @relation("GateSignOffAssignedTo")
   readinessAcknowledgements ReadinessAcknowledgement[] @relation("ReadinessAckBy")
   registerClosureSignOffs RegisterClosureSignOff[] @relation("RegisterClosureSignedBy")
+  registerClosureAssigned RegisterClosureSignOff[] @relation("RegisterClosureAssignedTo")
   reviewerOf   ProjectReviewer[]
   archivedProjects Project[]     @relation("ProjectArchivedBy")
   stoppedProjects  Project[]     @relation("ProjectStoppedBy")
@@ -649,7 +650,10 @@ model RegisterClosureSignOff {
   id                  String          @id @default(cuid())
   closure             RegisterClosure @relation(fields: [closureId], references: [id], onDelete: Cascade)
   closureId           String
-  role                String // 'Review owner' | 'Co-sign'
+  role                String // 'Review owner' | 'Co-sign', or a role the register's own sign-off block names (closureRoles)
+  // Only for a register that names its own roles: the person the project's Lead nominated to sign this role. Nothing else may sign it.
+  assignedTo          User?           @relation("RegisterClosureAssignedTo", fields: [assignedToUserId], references: [id])
+  assignedToUserId    String?
   name                String?
   signedBy            User?           @relation("RegisterClosureSignedBy", fields: [signedByUserId], references: [id])
   signedByUserId      String?
