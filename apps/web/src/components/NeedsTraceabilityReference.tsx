@@ -30,7 +30,10 @@ export default function NeedsTraceabilityReference({ projectId, rows }: { projec
         <Link to={`/projects/${projectId}/needs-scientific-basis`}>Edit in Needs &amp; Scientific Basis</Link>
       </header>
       {shown.length === 0 ? (
-        <p className="ntr-empty">Nothing recorded in Step 1 yet.</p>
+        <p className="ntr-empty">
+          No rows in the Needs → Technology Traceability Matrix yet. It is the last table on Needs &amp; Scientific Basis, separate
+          from the Executive Brief.
+        </p>
       ) : (
         <div className="ntr-scroll">
           <table className="ntr-table">
