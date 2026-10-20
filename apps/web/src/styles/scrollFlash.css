@@ -1,0 +1,9 @@
+/* Arrival highlight for a ?scrollTo= deep link (useScrollToParam): a ring that pulses outward around the section for about a second. */
+.sf-flash { border-radius: 8px; animation: sf-flash 1s ease-out; }
+@keyframes sf-flash {
+  0% { box-shadow: 0 0 0 2px var(--c-primary), 0 0 0 0 color-mix(in srgb, var(--c-primary) 45%, transparent); }
+  50% { box-shadow: 0 0 0 2px var(--c-primary), 0 0 0 8px color-mix(in srgb, var(--c-primary) 18%, transparent); }
+  100% { box-shadow: 0 0 0 2px transparent, 0 0 0 12px transparent; }
+}
+/* No movement: keep the ring, still for the same second. */
+@media (prefers-reduced-motion: reduce) { .sf-flash { animation: none; box-shadow: 0 0 0 2px var(--c-primary); } }

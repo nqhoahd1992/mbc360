@@ -27,7 +27,7 @@ export default function NeedsTraceabilityReference({ projectId, rows }: { projec
             this page.
           </p>
         </div>
-        <Link to={`/projects/${projectId}/needs-scientific-basis`}>Edit in Needs &amp; Scientific Basis</Link>
+        <Link to={`/projects/${projectId}/needs-scientific-basis?scrollTo=sec-needs-traceability`}>Edit in Needs &amp; Scientific Basis</Link>
       </header>
       {shown.length === 0 ? (
         <p className="ntr-empty">

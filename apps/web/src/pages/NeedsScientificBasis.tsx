@@ -16,12 +16,15 @@ import EvidenceRulesLink from '../components/EvidenceRulesLink';
 import NpdFrontEndSteps from '../components/NpdFrontEndSteps';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
+import { useScrollToParam } from '../hooks/useScrollToParam';
 
 // NPD Front-End Roadmap Step 1 (v2 workbook, 2026-07-24) — sign-off gate SG02.
 export default function NeedsScientificBasis() {
   const { projectId } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const setRegisterRowsBulk = useAppStore((s) => s.setRegisterRowsBulk);
+  // Step 3 links to the traceability matrix with ?scrollTo=sec-needs-traceability.
+  useScrollToParam(!!project);
 
   if (!project) return <Empty description="Project not found" />;
   const id = project.identity.id;
@@ -81,12 +84,14 @@ export default function NeedsScientificBasis() {
         readOnly={lockedContent}
       />
 
-      <DynamicTable
-        config={needsTechnologyTraceability}
-        rows={project.registers[needsTechnologyTraceability.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, needsTechnologyTraceability.key, rows)}
-        readOnly={lockedContent}
-      />
+      <div id="sec-needs-traceability">
+        <DynamicTable
+          config={needsTechnologyTraceability}
+          rows={project.registers[needsTechnologyTraceability.key] ?? []}
+          onSave={(rows) => setRegisterRowsBulk(id, needsTechnologyTraceability.key, rows)}
+          readOnly={lockedContent}
+        />
+      </div>
 
       {/* The workbook's sign-off block (three roles, nominated by the project's Lead) closes the whole page: all five tables (closedWith). */}
       {registerClosureGateIds(needsExecutiveBrief).length > 0 && registerReviewSpec(needsExecutiveBrief) && (
