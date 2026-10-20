@@ -13,6 +13,7 @@ import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import DynamicTable from '../components/DynamicTable';
 import EvidenceRulesLink from '../components/EvidenceRulesLink';
+import NpdFrontEndSteps from '../components/NpdFrontEndSteps';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
@@ -40,7 +41,7 @@ export default function NeedsScientificBasis() {
           text: (
             <>
               <strong>Step 1 of 4</strong> — sign-off gate SG02 · Owner: Project Manager / R&amp;I. Formula work is held until Steps 1–3 are signed off.
-              <br />
+              <NpdFrontEndSteps projectId={id} current={1} />
               <strong>Minimum output:</strong> Physical/physiological, emotional/developmental, caregiver &amp; practical needs; needs -&gt; design implications; research questions; references; open questions. Formula work HELD until reviewed.
               <br />
               <strong>Note:</strong> Executive summary stays in the Needs Document (brief); full science here.

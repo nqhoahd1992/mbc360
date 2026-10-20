@@ -1,0 +1,4 @@
+/* The three rulebook tables inside the popup: the popup is the card, so each table drops its own card frame and padding and the
+   tables read as sections of one reference sheet instead of boxes inside a box. */
+.erc { display: grid; gap: 28px; }
+.erc .rt-standalone { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }

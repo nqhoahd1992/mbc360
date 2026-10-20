@@ -7,6 +7,7 @@ import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import DynamicTable from '../components/DynamicTable';
 import EvidenceRulesLink from '../components/EvidenceRulesLink';
+import NpdFrontEndSteps from '../components/NpdFrontEndSteps';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
@@ -42,7 +43,7 @@ export default function EvidenceClaimSupport() {
           text: (
             <>
               <strong>Step 4 of 4</strong> — sign-off gate SG05 / SG08 · Owner: R&amp;I / Quality. Formula work is held until Steps 1–3 are signed off.
-              <br />
+              <NpdFrontEndSteps projectId={id} current={4} />
               <strong>Minimum output:</strong> Prospective evidence plan (endpoint, comparator, method, minimum acceptable result, failure definition) BEFORE formula lock; detailed protocol AFTER prototype; then final formula + tests that substantiate each claim.
               <br />
               <strong>Note:</strong> Feeds Formula BOM and efficacy/study sheets.

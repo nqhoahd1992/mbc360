@@ -1,13 +1,9 @@
 import { Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import {
-  evidenceHierarchyGrades,
-  evidenceSearchStandard,
-  evidenceTransferabilityRules,
-} from '@mbc360/shared/config/registers';
+import { evidenceHierarchyGrades } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
-import DynamicTable from '../components/DynamicTable';
+import EvidenceRulesContent from '../components/EvidenceRulesContent';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
 // NPD Front-End Roadmap "6. Evidence & Search Rules" (v2 workbook,
@@ -19,10 +15,8 @@ import { CompositePageHeader } from '../components/RegisterPageHeader';
 export default function EvidenceSearchRules() {
   const { projectId } = useParams();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
-  const setRegisterRowsBulk = useAppStore((s) => s.setRegisterRowsBulk);
 
   if (!project) return <Empty description="Project not found" />;
-  const id = project.identity.id;
   const reviewOwnerText = evidenceHierarchyGrades.reviewOwner
     ? composeReviewOwner(evidenceHierarchyGrades.reviewOwner, project.identity.reviewers)
     : undefined;
@@ -40,27 +34,7 @@ export default function EvidenceSearchRules() {
         reviewOwnerText={reviewOwnerText}
       />
 
-      <DynamicTable
-        config={evidenceHierarchyGrades}
-        rows={project.registers[evidenceHierarchyGrades.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, evidenceHierarchyGrades.key, rows)}
-        referenceTable
-      />
-
-      <DynamicTable
-        config={evidenceTransferabilityRules}
-        rows={project.registers[evidenceTransferabilityRules.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, evidenceTransferabilityRules.key, rows)}
-        referenceTable
-      />
-
-      <DynamicTable
-        config={evidenceSearchStandard}
-        rows={project.registers[evidenceSearchStandard.key] ?? []}
-        onSave={(rows) => setRegisterRowsBulk(id, evidenceSearchStandard.key, rows)}
-        referenceTable
-      />
-
+      <EvidenceRulesContent project={project} />
     </div>
   );
 }

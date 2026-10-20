@@ -12,6 +12,7 @@ import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import DynamicTable from '../components/DynamicTable';
 import EvidenceRulesLink from '../components/EvidenceRulesLink';
+import NpdFrontEndSteps from '../components/NpdFrontEndSteps';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
@@ -40,7 +41,7 @@ export default function CompetitorLandscape() {
           text: (
             <>
               <strong>Step 2 of 4</strong> — sign-off gate SG03 · Owner: Marketing / R&amp;I. Formula work is held until Steps 1–3 are signed off.
-              <br />
+              <NpdFrontEndSteps projectId={id} current={2} />
               <strong>Minimum output:</strong> Selected competitors with purchase evidence (country/retailer/date/lot), full INCI, claims, patents, disclosed testing, price/use, sensory + analytical comparison, and the Max Biocare design decision from each comparison. Also &apos;standard of care&apos; / what users do now.
               <br />
               <strong>Note:</strong> Includes purchased-sample &amp; comparative-testing protocol.

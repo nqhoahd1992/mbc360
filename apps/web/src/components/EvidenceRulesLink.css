@@ -1,0 +1,4 @@
+/* A button that reads as an inline link and opens the evidence-rules popup. */
+.erl { padding: 0; border: 0; background: none; color: var(--c-primary); font: inherit; cursor: pointer; }
+.erl:hover { text-decoration: underline; }
+.erl:disabled { color: var(--c-text-3); cursor: default; text-decoration: none; }
