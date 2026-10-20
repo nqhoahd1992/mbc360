@@ -16,6 +16,7 @@ import DynamicTable from '../components/DynamicTable';
 import VulnerableUserAssessmentTable from '../components/VulnerableUserAssessmentTable';
 import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
 import PublishedInfoApprovalTable from '../components/PublishedInfoApprovalTable';
+import IngredientMonographTable from '../components/IngredientMonographTable';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import EvidenceRulesLink from '../components/EvidenceRulesLink';
 import SectionOverview from '../components/SectionOverview';
@@ -220,6 +221,15 @@ export default function RegisterHubPage() {
             readOnly={locked}
             readOnlyReason={lockedReason}
             embedded
+          />
+        ) : registerKey === 'ingredientMonograph' ? (
+          // One monograph per ingredient, drawn as the workbook sheet — see IngredientMonographTable.tsx.
+          <IngredientMonographTable
+            project={project}
+            config={config}
+            rows={project.registers[registerKey] ?? []}
+            onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
+            readOnly={locked}
           />
         ) : registerKey === VULNERABLE_REGISTER ? (
           // B5 keeps the target-user selection and the vulnerable-use

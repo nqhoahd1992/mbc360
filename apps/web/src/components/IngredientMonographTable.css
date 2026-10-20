@@ -1,0 +1,42 @@
+/* Ingredient monograph: the workbook sheet's five Field | Detail | Reference sections. Tokens from styles/concept.css. */
+.imo { display: grid; gap: 16px; min-width: 0; color: var(--c-text); font-size: 14px; }
+.imo-bar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 12px; }
+.imo-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.imo-chip {
+  display: inline-flex; align-items: center; gap: 8px; max-width: 280px; height: 32px; padding: 0 12px;
+  border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface);
+  color: var(--c-text-2); font: inherit; cursor: pointer;
+}
+.imo-chip:hover { border-color: var(--c-primary); color: var(--c-primary); }
+.imo-chip[aria-selected='true'] { border-color: var(--c-primary); background: var(--c-primary-light); color: var(--c-primary); font-weight: 500; }
+.imo-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.imo-chip-count { flex-shrink: 0; color: var(--c-text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.imo-chip[aria-selected='true'] .imo-chip-count { color: inherit; }
+.imo-empty { padding: 24px; color: var(--c-text-3); text-align: center; }
+.imo-title { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--c-text-2); }
+.imo-title span { margin: 0 6px; color: var(--c-text-3); font-weight: 400; }
+.imo-section { overflow: hidden; padding: 0; }
+.imo-section-title {
+  margin: 0; padding: 10px 16px; background: var(--c-primary-light); color: var(--c-text);
+  font-size: 13px; font-weight: 600; letter-spacing: 0.02em;
+}
+.imo-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
+.imo-table thead th {
+  height: 40px; padding: 0 16px; border-bottom: 1px solid var(--c-border-2);
+  background: var(--c-surface-2); color: var(--c-text-2); font-size: 13px; font-weight: 500; text-align: left;
+}
+.imo-table th:first-child { width: 26%; }
+.imo-table th:last-child { width: 24%; }
+.imo-table tbody th {
+  padding: 12px 16px; border-bottom: 1px solid var(--c-border-2); font-size: 14px; font-weight: 500;
+  text-align: left; vertical-align: top;
+}
+.imo-table td { padding: 8px 12px; border-bottom: 1px solid var(--c-border-2); vertical-align: top; }
+.imo-table tbody tr:last-child th,
+.imo-table tbody tr:last-child td { border-bottom: 0; }
+@media (max-width: 640px) {
+  .imo-table, .imo-table tbody, .imo-table tr, .imo-table th, .imo-table td { display: block; width: auto !important; }
+  .imo-table thead { display: none; }
+  .imo-table tbody tr { padding: 8px 0; border-bottom: 1px solid var(--c-border-2); }
+  .imo-table tbody th, .imo-table td { border-bottom: 0; padding: 4px 16px; }
+}
