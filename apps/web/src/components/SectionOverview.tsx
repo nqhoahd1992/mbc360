@@ -159,7 +159,6 @@ export default function SectionOverview({
             <Link key={s.item.registerKey ?? s.item.page ?? s.item.title} to={navItemHref(s.item, id)} className="au-row so-row">
               <div className="so-name">
                 <div className="au-name-text">{s.item.title}</div>
-                {s.item.sheetName && s.item.sheetName !== s.item.title && <div className="au-email">{s.item.sheetName}</div>}
               </div>
               <div className="so-gate">{gateTag(s)}</div>
               <div className="so-prog">{progress(s)}</div>

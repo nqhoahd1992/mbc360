@@ -30,6 +30,10 @@ export interface RegisterColumn {
   type: ColumnType;
   width?: number;
   options?: readonly string[];
+  // Hint shown in an empty text / textarea cell. `placeholderBy` makes it follow another column of the SAME row (e.g. the
+  // example wording of the section a need belongs to); with that column empty, `fallback` shows instead.
+  placeholder?: string;
+  placeholderBy?: { column: string; values: Readonly<Record<string, string>>; fallback?: string };
   editable?: boolean; // default true; false = static reference text from the source sheet
   // A `user` column that records an ACT — "confirmed by", "assessed by" (SME rule
   // audit C6, 2026-10-04). Only the signed-in person may put themselves in it;
@@ -2771,8 +2775,37 @@ export const needsExecutiveBrief: RegisterConfig = {
   reviewOwner: REVIEW_SPECS.ri,
   columns: [
     { key: 'category', label: 'Need category', type: 'select', width: 200, options: ['User / Infant — Physical', 'User / Infant — Emotional', 'Caregiver — Emotional', 'Caregiver — Practical / Functional', 'Needs -> Design Implication', 'Open Question'] },
-    { key: 'needPoint', label: 'Need (dot point)', type: 'textarea', width: 320 },
-    { key: 'reference', label: 'Reference', type: 'text', width: 200 },
+    {
+      key: 'needPoint', label: 'Need (dot point)', type: 'textarea', width: 320,
+      // The example wording each section of the workbook's "Needs Document" sheet carries in its empty rows.
+      placeholderBy: {
+        column: 'category',
+        fallback: 'Pick a need category first, then enter the need as one dot point.',
+        values: {
+          'User / Infant — Physical': 'Physical/physiological need — e.g. protect the skin barrier, reduce dryness/TEWL, be gentle/low-irritant, safe for hand-to-mouth exposure. Or a need that designs OUT a known formulation risk for this user group.',
+          'User / Infant — Emotional': 'Emotional/developmental need — e.g. calming/self-regulation, sleep support, bonding/attachment, comforting sensory cues.',
+          'Caregiver — Emotional': 'Emotional need of the parent/caregiver or secondary user — e.g. confidence it is safe, a calming ritual, bonding & competence, trust in claims, ease of use.',
+          'Caregiver — Practical / Functional': 'Practical/functional need — e.g. predictable sensory experience, stability & shelf life, clear/honest labelling, allergen transparency.',
+          'Needs -> Design Implication': 'Design implication of the needs above — e.g. carrier/backbone direction, active system, stability system, fragrance/allergen approach.',
+          'Open Question': 'Unresolved formulation/safety question to confirm before formula work proceeds — e.g. a carrier/ingredient to confirm or replace. Cross-reference the Carrier / Emollient Review.',
+        },
+      },
+    },
+    {
+      key: 'reference', label: 'Reference', type: 'text', width: 200,
+      placeholderBy: {
+        column: 'category',
+        fallback: 'Reference number or full https link',
+        values: {
+          'User / Infant — Physical': 'Reference number or full https link',
+          'User / Infant — Emotional': 'Reference number or full https link',
+          'Caregiver — Emotional': 'Reference number or full https link',
+          'Caregiver — Practical / Functional': 'Reference number or full https link',
+          'Needs -> Design Implication': 'Reference number or full https link',
+          'Open Question': 'Reference number, if any',
+        },
+      },
+    },
   ],
 };
 
@@ -3063,6 +3096,8 @@ export const backbonePlatformTechnology: RegisterConfig = {
   columns: [
     { key: 'question', label: 'Question / field', type: 'text', width: 240, editable: false },
     { key: 'answer', label: 'Answer (dot points)', type: 'textarea', width: 420 },
+    // The workbook sheet's own third column, "Reference [n] / evidence link", beside every answer of Section 2.
+    { key: 'reference', label: 'Reference [n] / evidence link', type: 'text', width: 220 },
   ],
   fixedRows: [
     { question: 'Precise problem being solved' },
@@ -3261,7 +3296,25 @@ export const claimEvidenceTraceability: RegisterConfig = {
   ],
 };
 
-// Page: "5. Ingredient Monograph" — single flat register, no bespoke page.
+// Page: "5. Ingredient Monograph" — one row per material, drawn as the workbook sheet (IngredientMonographTable.tsx).
+
+const MONOGRAPH_FIELDS: RegisterColumn[] = [
+  { key: 'inciName', label: 'INCI / chemical name', type: 'text', width: 160 },
+  { key: 'tradeNameSupplier', label: 'Trade name & supplier', type: 'text', width: 180 },
+  { key: 'gradeSpecConcentration', label: 'Grade / spec / concentration used', type: 'text', width: 200 },
+  { key: 'formExtractionProcess', label: 'Form / extraction / process', type: 'textarea', width: 200 },
+  { key: 'originStory', label: 'Origin / source story', type: 'textarea', width: 200 },
+  { key: 'whyChosen', label: 'Why chosen for this product', type: 'textarea', width: 200 },
+  { key: 'patentIpStatus', label: 'Patent / IP status', type: 'textarea', width: 200 },
+  { key: 'externalTrialHistory', label: 'External clinical / trial history', type: 'textarea', width: 220 },
+  { key: 'studyConditions', label: 'Study conditions (dose, vehicle, population)', type: 'textarea', width: 220 },
+  { key: 'evidenceTransfers', label: 'Does evidence transfer?', type: 'textarea', width: 200 },
+  { key: 'inferenceVsProof', label: 'Inference vs proof', type: 'textarea', width: 200 },
+  { key: 'gapTestNeeded', label: 'Gap / test needed in OUR formula', type: 'textarea', width: 200 },
+  { key: 'hcpExplanation', label: 'Professional / HCP explanation', type: 'textarea', width: 220 },
+  { key: 'consumerExplanation', label: 'Consumer explanation', type: 'textarea', width: 200 },
+  { key: 'wordingToAvoid', label: 'Wording to AVOID', type: 'textarea', width: 200 },
+];
 
 export const ingredientMonograph: RegisterConfig = {
   key: 'ingredientMonograph',
@@ -3271,23 +3324,11 @@ export const ingredientMonograph: RegisterConfig = {
   mode: 'register',
   gate: '04/05',
   reviewOwner: REVIEW_SPECS.ri,
-  columns: [
-    { key: 'inciName', label: 'INCI / chemical name', type: 'text', width: 160 },
-    { key: 'tradeNameSupplier', label: 'Trade name & supplier', type: 'text', width: 180 },
-    { key: 'gradeSpecConcentration', label: 'Grade / spec / concentration used', type: 'text', width: 200 },
-    { key: 'formExtractionProcess', label: 'Form / extraction / process', type: 'textarea', width: 200 },
-    { key: 'originStory', label: 'Origin / source story', type: 'textarea', width: 200 },
-    { key: 'whyChosen', label: 'Why chosen for this product', type: 'textarea', width: 200 },
-    { key: 'patentIpStatus', label: 'Patent / IP status', type: 'textarea', width: 200 },
-    { key: 'externalTrialHistory', label: 'External clinical / trial history', type: 'textarea', width: 220 },
-    { key: 'studyConditions', label: 'Study conditions (dose, vehicle, population)', type: 'textarea', width: 220 },
-    { key: 'evidenceTransfers', label: 'Does evidence transfer?', type: 'select', width: 130, options: ['Yes', 'No'] },
-    { key: 'inferenceVsProof', label: 'Inference vs proof', type: 'textarea', width: 200 },
-    { key: 'gapTestNeeded', label: 'Gap / test needed in OUR formula', type: 'textarea', width: 200 },
-    { key: 'hcpExplanation', label: 'Professional / HCP explanation', type: 'textarea', width: 220 },
-    { key: 'consumerExplanation', label: 'Consumer explanation', type: 'textarea', width: 200 },
-    { key: 'wordingToAvoid', label: 'Wording to AVOID', type: 'textarea', width: 200 },
-  ],
+  // One row = one monograph. Each field of the workbook sheet has its own "Reference [n] / link" cell, held as <field>Ref.
+  columns: MONOGRAPH_FIELDS.flatMap((field) => [
+    field,
+    { key: `${field.key}Ref`, label: `${field.label} — reference [n] / link`, type: 'text' as const, width: 160 },
+  ]),
 };
 
 // Page: "6. Evidence & Search Rules" — pure corporate rulebook, all
@@ -3451,6 +3492,190 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   evidenceTransferabilityRules,
   evidenceSearchStandard,
 ];
+
+// ---------------------------------------------------------------------------
+// Fill-in hints of the NPD Front-End sheets
+// ---------------------------------------------------------------------------
+// The hint text each empty cell of the v2 workbook's sheets 1-4 carries, shown as the cell's placeholder (square brackets
+// dropped, sheet numbers and person-prefixed tab names written as the sheet's own name). Held in one table, keyed by register and
+// column, so the register definitions above stay the structure alone. A fixed-row register whose hint differs per row names the
+// column that holds the row's label (`by`) and gives the hint for each label.
+
+const REFERENCE_HINT = 'Reference number or full https link';
+
+type PlaceholderHint = string | NonNullable<RegisterColumn['placeholderBy']>;
+
+const rowHints = (by: string, values: Record<string, string>): PlaceholderHint => ({ column: by, values });
+
+const PLACEHOLDER_HINTS: Record<string, Record<string, PlaceholderHint>> = {
+  needsResearchQuestions: {
+    need: 'Need',
+    researchQuestion: 'In <population>, does <exposure/ingredient> vs <comparator> change <endpoint>?',
+    population: 'Population',
+    endpoint: 'Endpoint and instrument',
+    evidenceFound: 'Summary and evidence quality',
+    reference: REFERENCE_HINT,
+  },
+  needsLiteratureSearchMethod: {
+    searchString: 'Search string used',
+    inclusionCriteria: 'Inclusion criteria',
+    exclusionCriteria: 'Exclusion criteria',
+    recordsScreenedIncluded: 'Number screened / number included',
+    notes: 'Notes',
+  },
+  needsAnatomyExposureNotes: {
+    notes: rowHints('topic', {
+      'Relevant anatomy / physiology': 'e.g. skin barrier / TEWL / infant skin thinness / scalp exposure',
+      'Exposure science (dose, frequency, surface area, hand-to-mouth, occlusion)': 'Dose, frequency, surface area, hand-to-mouth, occlusion',
+      'Population-specific analysis (infant vs adult vs pregnant/BF differences)': 'Infant vs adult vs pregnant/breastfeeding differences',
+      'Contradictory or null evidence found': 'Record honestly what did NOT show benefit',
+      'Disease vs cosmetic boundary': 'Where does a cosmetic claim stop and a therapeutic claim begin?',
+      'Evidence gaps & research priorities': 'What is still unknown; what to test first',
+    }),
+  },
+  needsTechnologyTraceability: {
+    needId: 'Need ID',
+    need: 'Need',
+    designImplication: 'Design implication',
+    technologyDirection: 'Technology direction',
+    criticalAttribute: 'Critical attribute and target',
+    reference: REFERENCE_HINT,
+  },
+  competitorLandscape: {
+    whySelected: 'Reason and category role',
+    brandProduct: 'Brand and exact SKU',
+    countryRetailer: 'Country / retailer',
+    batchLotExpiry: 'Batch / lot / expiry',
+    priceCostPerUse: 'Price / cost per use',
+    labelArchivedLink: 'Y/N and link',
+    doseFrequency: 'Dose and frequency',
+    exactClaims: 'Claims and qualifications',
+    fullInci: 'INCI',
+    activesPercent: 'Actives and %',
+    patents: 'Patent numbers',
+    publicationsTrials: 'References / NCT numbers',
+    disclosedTesting: 'What testing',
+    packagingDosingPerformance: 'Packaging performance',
+    strengthsWeaknesses: 'Strengths, weaknesses and uncertainties',
+  },
+  competitorTestingProtocol: {
+    method: 'Method',
+    ourResult: 'Result',
+    competitorResult: 'Result',
+    acceptanceTarget: 'Target',
+    notes: 'Notes',
+  },
+  currentSolutionsStandardOfCare: {
+    whyUsersDoIt: 'Why',
+    whatWorks: 'What works',
+    whatFails: 'What fails',
+    medicalRecommendation: 'Recommendation',
+    gapJustifyingProduct: 'The real unmet gap',
+    reference: 'Full https link',
+    designDecision: 'Max Biocare decision',
+  },
+  competitorLandscapeSummary: {
+    answer: rowHints('topic', {
+      'Our position vs best competitor': 'Where we win, lose or match',
+      'Demonstrated unmet need (not just an internal idea)': 'State the evidence-based gap',
+      'Superiority target the backbone technology must beat': 'The specific bar to clear',
+    }),
+  },
+  targetProductProfile: {
+    minimum: rowHints('attribute', {
+      'Core efficacy endpoint': 'e.g. measurable improvement in target parameter',
+      'Onset / time to benefit': 'e.g. within X days',
+      'Safety / tolerability (incl. infant contact)': 'Zero unacceptable AEs; maternal and baby-contact safe',
+      'Sensory / usability': 'Minimum acceptable sensory',
+      'Stability / shelf life': 'Minimum months at target conditions',
+      'Cost / margin': 'Maximum COGS to hit margin',
+      'Claim(s) to be supported': 'Minimum defensible claim',
+    }),
+    target: rowHints('attribute', {
+      'Core efficacy endpoint': 'Target value and timepoint',
+      'Onset / time to benefit': 'X days',
+      'Safety / tolerability (incl. infant contact)': 'Target tolerability',
+      'Sensory / usability': 'Target sensory profile',
+      'Stability / shelf life': 'Target months',
+      'Cost / margin': 'Target COGS',
+      'Claim(s) to be supported': 'Target claim set',
+    }),
+    ideal: rowHints('attribute', {
+      'Core efficacy endpoint': 'Stretch value',
+      'Onset / time to benefit': 'Faster',
+      'Safety / tolerability (incl. infant contact)': 'Best-in-class',
+      'Sensory / usability': 'Delightful',
+      'Stability / shelf life': 'Stretch',
+      'Cost / margin': 'Lower',
+      'Claim(s) to be supported': 'Ideal claim',
+    }),
+    unacceptable: rowHints('attribute', {
+      'Core efficacy endpoint': 'Below this = fail',
+      'Onset / time to benefit': 'No benefit by X',
+      'Safety / tolerability (incl. infant contact)': 'Any serious AE or prohibited ingredient',
+      'Sensory / usability': 'Sensory that breaks the ritual',
+      'Stability / shelf life': 'Fails the stability spec',
+      'Cost / margin': 'Above the margin ceiling',
+      'Claim(s) to be supported': 'Claim without evidence',
+    }),
+    measurementMethod: rowHints('attribute', {
+      'Core efficacy endpoint': 'Instrument / clinical / in-vitro method and reference',
+      'Onset / time to benefit': 'Study design and endpoint',
+      'Safety / tolerability (incl. infant contact)': 'HRIPT / patch / PB caution check',
+      'Sensory / usability': 'Consumer panel method',
+      'Stability / shelf life': 'ICH stability protocol',
+      'Cost / margin': 'Costing_Calc link',
+      'Claim(s) to be supported': 'Evidence Plan & Claim Support link',
+    }),
+  },
+  backbonePlatformTechnology: {
+    answer: rowHints('question', {
+      'Precise problem being solved': 'State the exact physiological/functional problem, from Needs & Scientific Basis',
+      'Routes / platforms considered': 'List the candidate technologies, carriers and actives evaluated',
+      'Selected platform & why': 'The chosen backbone and the reasoning it won',
+      'Mechanism of action': 'How it works at skin/biological level',
+      'Why SUPERIOR to current market': 'The specific, demonstrable advantage vs competitors in Competitor Landscape: faster, gentler, higher potency, novel delivery',
+      'Critical-to-quality attributes': 'The parameters that MUST be controlled for it to work; feeds Potency_Process_Control',
+      'Evidence maturity': 'Proven / emerging / theoretical; grade using the Evidence Hierarchy & Search Rules',
+      'Patent / IP landscape': 'Own IP, freedom to operate, competitor patents to design around',
+      'SKU / portfolio transfer': 'Which other products this platform can carry into; feeds portfolio architecture',
+    }),
+    reference: REFERENCE_HINT,
+  },
+  evidencePlanProspective: {
+    claim: 'Intended claim',
+    endpoint: 'Objective endpoint',
+    comparator: 'Placebo / competitor / baseline',
+    method: 'In-vitro / clinical / consumer',
+    minAcceptableResult: 'Pass threshold and timepoint',
+    failureDefinition: 'What counts as fail',
+  },
+  evidenceTestProtocol: {
+    testMethod: 'Method reference',
+    sampleSizeRationale: 'Sample size and justification',
+    conditionsTimepoints: 'Conditions',
+    acceptanceLimit: 'Limit',
+    reportLink: 'Test_Report_Index link',
+  },
+  claimEvidenceTraceability: {
+    approvedWording: 'Exact approved wording',
+    mechanism: 'Platform mechanism',
+    supportingEvidence: 'Report link / DOI / PMID',
+    approvedByDate: 'Approver and date',
+  },
+};
+
+for (const config of REGISTER_CONFIGS) {
+  const hints = PLACEHOLDER_HINTS[config.key];
+  if (!hints) continue;
+  for (const column of config.columns) {
+    const hint = hints[column.key];
+    if (hint === undefined) continue;
+    if (typeof hint === 'string') column.placeholder = hint;
+    else column.placeholderBy = hint;
+  }
+}
+
 
 // Owner-prefixed tab names + "REVIEW OWNER" strings transcribed from the V18
 // workbook, keyed by the historical (unprefixed) sheetName. The app does not
@@ -3715,16 +3940,16 @@ const DEPARTMENTS: RawDept[] = [
     description: 'Needs & scientific basis, competitor landscape, target product profile/tech platform, evidence planning and development brief / vulnerable-user screening.',
     reviewOwner: REVIEW_SPECS.npdFrontEnd,
     items: [
-      'developmentBrief',
-      'vulnerableUserAssessment',
       { title: 'Needs & Scientific Basis', sheetName: '1. Needs & Scientific Basis', page: 'needs-scientific-basis', gate: '02', contains: ['needsExecutiveBrief', 'needsResearchQuestions', 'needsLiteratureSearchMethod', 'needsAnatomyExposureNotes', 'needsTechnologyTraceability'] },
-      'carrierEmollientReview',
-      'carrierReviewSummary',
       { title: 'Competitor Landscape', sheetName: '2. Competitor Landscape', page: 'competitor-landscape', gate: '03', contains: ['currentSolutionsStandardOfCare', 'competitorLandscape', 'competitorLandscapeSummary', 'competitorTestingProtocol'] },
       { title: 'Target Product & Tech Platform', sheetName: '3. Target Product & Tech', page: 'target-product-tech', gate: '05', contains: ['targetProductProfile', 'backbonePlatformTechnology'] },
       { title: 'Evidence Plan & Claim Support', sheetName: '4. Evidence & Claim Support', page: 'evidence-claim-support', gate: '05/08', contains: ['evidencePlanProspective', 'evidenceTestProtocol', 'claimEvidenceTraceability'] },
       'ingredientMonograph',
       { title: 'Evidence Hierarchy & Search Rules', sheetName: '6. Evidence & Search Rules', page: 'evidence-search-rules', hidden: true, contains: ['evidenceHierarchyGrades', 'evidenceSearchStandard', 'evidenceTransferabilityRules'] },
+      'developmentBrief',
+      'vulnerableUserAssessment',
+      'carrierEmollientReview',
+      'carrierReviewSummary',
     ],
   },
   {

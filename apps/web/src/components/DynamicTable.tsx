@@ -64,6 +64,15 @@ const DECISION_TYPES: ReadonlySet<RegisterColumn['type']> = new Set([
 const IDENTITY_MIN = 240; // the first column never gets narrower than this
 const DECISION_WIDTH = 184; // one control column
 const CHEVRON = 36;
+// The remove-row column of an inline table: a 32px icon button plus 8px either side.
+const REMOVE_COLUMN = 48;
+
+function placeholderFor(column: RegisterColumn, row: RegisterRow): string | undefined {
+  const by = column.placeholderBy;
+  if (!by) return column.placeholder;
+  const picked = row[by.column];
+  return (typeof picked === 'string' ? by.values[picked] : undefined) ?? by.fallback ?? column.placeholder;
+}
 const TABLE_MIN = 720; // below this the rows render as a list
 
 const text = (value: unknown): string => (value == null ? '' : String(value).trim());
@@ -474,13 +483,20 @@ export default function DynamicTable({
         return (
           <Input.TextArea
             autoSize={{ minRows: 2, maxRows: 8 }}
+            placeholder={placeholderFor(column, row)}
             value={value as string | undefined}
             onChange={(e) => patch(index, column.key, e.target.value)}
           />
         );
       case 'text':
       default:
-        return <Input value={value as string | undefined} onChange={(e) => patch(index, column.key, e.target.value)} />;
+        return (
+          <Input
+            placeholder={placeholderFor(column, row)}
+            value={value as string | undefined}
+            onChange={(e) => patch(index, column.key, e.target.value)}
+          />
+        );
     }
   };
 
@@ -628,7 +644,7 @@ export default function DynamicTable({
                   {config.columns.map((col) => (
                     <th key={col.key}>{col.label}</th>
                   ))}
-                  {isRegister && <th style={{ width: CHEVRON }} aria-label="Remove" />}
+                  {isRegister && <th style={{ width: REMOVE_COLUMN }} aria-label="Remove" />}
                 </tr>
               </thead>
             )}
