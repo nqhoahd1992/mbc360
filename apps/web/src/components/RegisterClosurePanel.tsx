@@ -216,7 +216,7 @@ function GateClosureCard({
       title={
         <button type="button" className="rcp-head" aria-expanded={open} onClick={() => setOpen(!open)}>
           {open ? <DownOutlined /> : <RightOutlined />}
-          <span>{`Register closing — ${gateId} ${gateLabel}`}</span>
+          <span>{`${config?.closureTitle ?? config?.title ?? registerKey} — closing for ${gateId} ${gateLabel}`}</span>
         </button>
       }
       extra={
