@@ -32,6 +32,7 @@ import PageSkeleton from './components/PageSkeleton';
 import FormulationSafety from './pages/FormulationSafety';
 import ProductDevelopmentReport from './pages/ProductDevelopmentReport';
 import NeedsScientificBasis from './pages/NeedsScientificBasis';
+import CarrierEmollientReview from './pages/CarrierEmollientReview';
 import CompetitorLandscape from './pages/CompetitorLandscape';
 import TargetProductTech from './pages/TargetProductTech';
 import EvidenceClaimSupport from './pages/EvidenceClaimSupport';
@@ -350,6 +351,7 @@ function Shell() {
             <Route path="/projects/:projectId/formulation-safety" element={<FormulationSafety />} />
             <Route path="/projects/:projectId/product-development-report" element={<ProductDevelopmentReport />} />
             <Route path="/projects/:projectId/needs-scientific-basis" element={<NeedsScientificBasis />} />
+            <Route path="/projects/:projectId/carrier-emollient-review" element={<CarrierEmollientReview />} />
             <Route path="/projects/:projectId/competitor-landscape" element={<CompetitorLandscape />} />
             <Route path="/projects/:projectId/target-product-tech" element={<TargetProductTech />} />
             <Route path="/projects/:projectId/evidence-claim-support" element={<EvidenceClaimSupport />} />

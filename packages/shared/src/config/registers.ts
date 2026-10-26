@@ -165,6 +165,9 @@ export function isRegisterRowSigned(row: RegisterRow, columnKey: string): boolea
 export interface RegisterConfig {
   key: string;
   title: string;
+  // The columns (by key, after the first) the register's table shows for each row; the whole row opens in the drawer. A free-text column
+  // listed here is a two-line preview. Wherever the register is drawn, the editing page and a read-only copy alike, this applies.
+  listColumns?: string[];
   // The owner-NEUTRAL sheet name, and the only one the app displays. The V18
   // workbook prefixes its tabs with a person (`Tuan-Formula_BOM`) because a
   // spreadsheet has nowhere else to record who looks after a tab; digitised,
@@ -2880,6 +2883,7 @@ export const needsAnatomyExposureNotes: RegisterConfig = {
 
 export const needsTechnologyTraceability: RegisterConfig = {
   key: 'needsTechnologyTraceability',
+  listColumns: ['need', 'technologyDirection', 'evidenceStatus'],
   closedWith: 'needsExecutiveBrief',
   title: 'Needs -> Technology Traceability Matrix',
   sheetName: '1. Needs & Scientific Basis',
@@ -2898,8 +2902,8 @@ export const needsTechnologyTraceability: RegisterConfig = {
   ],
 };
 
-// Page: "Carrier / Emollient Review" (page: carrier-emollient-review — plain
-// nav entries, no bespoke composite page needed for just 2 registers).
+// Page: "Carrier / Emollient System Review" (page: carrier-emollient-review, CarrierEmollientReview.tsx). One workbook sheet with a list of
+// carriers and a fixed block of summary questions: two registers (one table shape each), drawn as one page.
 
 export const carrierEmollientReview: RegisterConfig = {
   key: 'carrierEmollientReview',
@@ -3318,7 +3322,7 @@ const MONOGRAPH_FIELDS: RegisterColumn[] = [
 
 export const ingredientMonograph: RegisterConfig = {
   key: 'ingredientMonograph',
-  title: 'Ingredient / Active Evidence Monograph',
+  title: 'Ingredient Monograph',
   sheetName: '5. Ingredient Monograph',
   description: 'One monograph per key active/functional ingredient. Fixes the exact material used, provenance, patents, external trial history and how far that evidence transfers to OUR product. Complete at Gate 4/5; feeds the Target Product & Tech and Evidence & Claim Support dossiers and Supplier & Raw Material Evidence.',
   mode: 'register',
@@ -3657,6 +3661,21 @@ const PLACEHOLDER_HINTS: Record<string, Record<string, PlaceholderHint>> = {
     acceptanceLimit: 'Limit',
     reportLink: 'Test_Report_Index link',
   },
+  carrierEmollientReview: {
+    ingredientName: 'Ingredient name',
+    role: 'Role in the formula, e.g. primary carrier, light emollient, antioxidant',
+    assessment: "Assessment for the target user's skin: is it appropriate, gentle, suitable?",
+    reference: 'Reference link (full https)',
+  },
+  carrierReviewSummary: {
+    answer: rowHints('topic', {
+      'Overall verdict — is the carrier system correct?': 'Overall verdict on the carrier/emollient system, e.g. sound / needs fixes. Summarise the backbone logic.',
+      '#1 priority fix': 'Record the single most important carrier change for this user group, with the reason and evidence.',
+      '#2 consider': 'Second improvement, e.g. reduce/replace an ingredient, with rationale.',
+      '#3 keep & possibly lift': 'Note any ingredient(s) to retain or increase, with rationale.',
+      'Actives (separate from carriers)': 'Note which actives are retained or excluded and why. Cross-reference the references on Needs & Scientific Basis for evidence.',
+    }),
+  },
   claimEvidenceTraceability: {
     approvedWording: 'Exact approved wording',
     mechanism: 'Platform mechanism',
@@ -3948,8 +3967,7 @@ const DEPARTMENTS: RawDept[] = [
       { title: 'Evidence Hierarchy & Search Rules', sheetName: '6. Evidence & Search Rules', page: 'evidence-search-rules', hidden: true, contains: ['evidenceHierarchyGrades', 'evidenceSearchStandard', 'evidenceTransferabilityRules'] },
       'developmentBrief',
       'vulnerableUserAssessment',
-      'carrierEmollientReview',
-      'carrierReviewSummary',
+      { title: 'Carrier / Emollient System Review', sheetName: 'Ingredient Review', workbookTab: 'Chris Ingredient Review', page: 'carrier-emollient-review', gate: '02', contains: ['carrierEmollientReview', 'carrierReviewSummary'] },
     ],
   },
   {

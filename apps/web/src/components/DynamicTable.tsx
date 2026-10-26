@@ -64,6 +64,8 @@ const DECISION_TYPES: ReadonlySet<RegisterColumn['type']> = new Set([
 const IDENTITY_MIN = 240; // the first column never gets narrower than this
 const DECISION_WIDTH = 184; // one control column
 const CHEVRON = 36;
+const TEXT_PREVIEW_WIDTH = 240; // a free-text column named in tableColumns: a two-line preview, edited in the drawer
+const isTextColumn = (col: RegisterColumn) => col.type === 'text' || col.type === 'textarea';
 // The remove-row column of an inline table: a 32px icon button plus 8px either side.
 const REMOVE_COLUMN = 48;
 
@@ -115,6 +117,7 @@ export default function DynamicTable({
   // True when the page around the table already shows the register's title,
   // gate and lock banner (RegisterHubPage's single-register view).
   embedded,
+  hideDescription,
   // Register-specific extras, so a register with its own consistency rules does
   // not have to fork the whole table:
   //   extraActions — a control beside "Add row" (e.g. a preset quick-add);
@@ -153,6 +156,8 @@ export default function DynamicTable({
   readOnly?: boolean;
   readOnlyReason?: string;
   embedded?: boolean;
+  // Leave out the register's own description under the title (a read-only copy shown on another page, where it would describe the wrong screen).
+  hideDescription?: boolean;
   extraActions?: (draft: RegisterRow[], update: (fn: (prev: RegisterRow[]) => RegisterRow[]) => void) => React.ReactNode;
   saveBlockers?: (draft: RegisterRow[]) => string[];
   warnings?: (draft: RegisterRow[]) => string[];
@@ -298,10 +303,10 @@ export default function DynamicTable({
       : undefined;
   const candidates = useMemo(
     () =>
-      tableColumns
-        ? tableColumns.map((key) => config.columns.find((c) => c.key === key)).filter((c): c is RegisterColumn => !!c)
+      (tableColumns ?? config.listColumns)
+        ? (tableColumns ?? config.listColumns)!.map((key) => config.columns.find((c) => c.key === key)).filter((c): c is RegisterColumn => !!c)
         : config.columns.slice(1).filter((c) => c !== subtitle && DECISION_TYPES.has(c.type)),
-    [config.columns, subtitle, tableColumns],
+    [config.columns, config.listColumns, subtitle, tableColumns],
   );
   const tableMode = width >= TABLE_MIN;
   const fit = Math.max(0, Math.floor((width - IDENTITY_MIN - CHEVRON) / DECISION_WIDTH));
@@ -560,7 +565,7 @@ export default function DynamicTable({
             {config.gate && <span className="c-tag">Gate {config.gate}</span>}
             {readOnly && <span className="c-tag c-tag-ok"><LockOutlined />Read-only</span>}
           </div>
-          {config.description && <p className="rt-head-desc">{config.description}</p>}
+          {config.description && !hideDescription && <p className="rt-head-desc">{config.description}</p>}
           {reviewOwnerText && <p className="rt-head-desc">Review owner: {reviewOwnerText}</p>}
         </div>
       )}
@@ -698,7 +703,7 @@ export default function DynamicTable({
                   {columnGate(identity) && <span className="c-tag rt-gate">G{columnGate(identity)}</span>}
                 </th>
                 {shown.map((col) => (
-                  <th key={col.key} style={{ width: DECISION_WIDTH }}>
+                  <th key={col.key} style={{ width: isTextColumn(col) ? TEXT_PREVIEW_WIDTH : DECISION_WIDTH }}>
                     <span className="rt-th">{col.label}</span>
                     {columnGate(col) && <span className="c-tag rt-gate">G{columnGate(col)}</span>}
                   </th>
@@ -718,7 +723,7 @@ export default function DynamicTable({
                   <td>{identityCell(row, index)}</td>
                   {shown.map((col) => (
                     <td key={col.key} onClick={stop}>
-                      {renderEditor(col, row, index)}
+                      {isTextColumn(col) ? (<div className="rt-preview">{text(row[col.key]) || <span className="rt-muted">—</span>}</div>) : renderEditor(col, row, index)}
                     </td>
                   ))}
                   {preview && (
