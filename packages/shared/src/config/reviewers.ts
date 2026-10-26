@@ -241,3 +241,41 @@ export function ownerName(
   if (!spec) return undefined;
   return reviewers?.[spec.owner.role]?.trim() || `‹${reviewRoleLabel(spec.owner.role)}›`;
 }
+
+// A fixed row's Owner is a FUNCTION ("Project owner", "R&I / Regulatory"), because the workbook has no project to name a person
+// from. On a project the function is somebody: this writes the person beside each function that matches one of the project's
+// review roles — "Project owner — Chris", "R&I — George / Regulatory — Chi Chu" — and leaves a function with no matching role as it
+// is rather than guessing a name for it. Which function stands for which role is our reading, not the workbook's or the SME's:
+// [ASSUMPTION: R5-Q74].
+const OWNER_FUNCTION_ROLES: Record<string, string> = {
+  'project owner': 'project-manager',
+  'r&i': 'ri',
+  regulatory: 'regulatory',
+  quality: 'quality',
+  packaging: 'packaging',
+  marketing: 'sales-marketing',
+  sales: 'sales-marketing',
+  procurement: 'raw-material',
+  formulation: 'formulation',
+  npd: 'formulation',
+};
+
+export function ownerFunctionWithPeople(text: string, reviewers: Record<string, string> | undefined): string {
+  if (!text || !reviewers) return text;
+  // Keep the workbook's own separators ("/", "+", "->") exactly where they were.
+  return text
+    .split(/(\s+\/\s+|\s*\+\s*|\s*->\s*)/)
+    .map((part, i) => {
+      if (i % 2 === 1) return part;
+      const token = part.trim();
+      const role = OWNER_FUNCTION_ROLES[token.toLowerCase().replace(/ owner$/, token.toLowerCase() === 'project owner' ? ' owner' : '')];
+      const name = role ? reviewers[role]?.trim() : '';
+      return name ? `${token} — ${name}` : part;
+    })
+    .join('');
+}
+
+// The register columns that hold such a function: fixed, plain text, named Owner or Person in charge.
+export function isOwnerFunctionColumn(column: { key: string; type: string; editable?: boolean }): boolean {
+  return column.editable === false && column.type === 'text' && (column.key === 'owner' || column.key === 'personInCharge');
+}

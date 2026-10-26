@@ -1543,6 +1543,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
 | R5-Q69 | Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role | Chủ dự án bỏ quyền theo role 15/10/2026 | **lộ ra 15/10/2026** |
+| R5-Q74 | Chức năng ghi ở cột Owner của hàng cố định (Project owner, R&I, Regulatory…) tương ứng người nào trong danh sách review của dự án | Chủ dự án muốn ghi tên người cụ thể cạnh chức năng, 26/10/2026 | **lộ ra 26/10/2026** |
 | R5-Q73 | Hồ sơ tìm tài liệu của chuẩn bằng chứng: nằm ở trang nào, thế nào là đầy đủ | Chủ dự án hỏi chuẩn Sheet 6 thực thi thế nào, 19/10/2026 | **lộ ra 19/10/2026** |
 | R5-Q72 | Grade và transferability của chuẩn bằng chứng: ghi ở đâu, "suy luận thì tối đa C" có bị chặn không | Cùng lượt, 19/10/2026 | **lộ ra 19/10/2026** |
 | R5-Q71 | Chuẩn bằng chứng của Sheet 6: điểm "đi tiếp sang công thức / nhãn" là gate nào, áp cho sheet nào | Cùng lượt, 19/10/2026 | **lộ ra 19/10/2026** |
@@ -2307,6 +2308,16 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.
 
 **Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ** (còn **76** từ 19/10/2026, sau khi bỏ bốn sổ tham chiếu của Roadmap và Sheet 6 và hai bảng ký gõ tay của Needs và Target Product — nhóm D còn 32, nhóm E còn 26), chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+
+#### R5-Q74 · Chức năng ở cột Owner của hàng cố định tương ứng người nào của dự án 🟡
+
+**Lộ ra 26/10/2026, khi chủ dự án muốn cột Owner của các hàng cố định (ví dụ "Project owner") ghi thêm người cụ thể ("Project owner — Chris").** Workbook ghi chức năng, không ghi người, vì một file Excel không có dự án để lấy tên. Trên một dự án, mỗi chức năng khớp với một vai trong danh sách review (13 vai); workbook không nói chức năng nào là vai nào.
+
+**Hiện chạy theo (chỉ để hiển thị, không ảnh hưởng quy tắc hay quyền):** Project owner → Project Manager · R&I → R&I · Regulatory → Regulatory Affairs Manager · Quality → Production Support (Quality) · Packaging → Packaging · Marketing, Sales → Project Lead (Sales & Marketing) · Procurement → Raw Material · Formulation, NPD → Technical Services. Chức năng không khớp (Safety, Clinical, Claims, Finance, Legal, Manufacturing, Artwork…) hiển thị nguyên chữ, không gán người.
+
+**Câu hỏi:** (a) các cặp trên có đúng không — đặc biệt Project owner có phải Project Manager, và Quality có phải Production Support? (b) các chức năng chưa khớp (Safety, Clinical, Claims, Finance…) thuộc vai nào, hay không có người cố định?
+
+**Nếu trả lời khác:** sửa bảng `OWNER_FUNCTION_ROLES` trong `packages/shared/src/config/reviewers.ts` [ASSUMPTION: R5-Q74].
 
 #### R5-Q73 · Điều kiện (c) của chuẩn bằng chứng — hồ sơ tìm tài liệu "đầy đủ, có ngày, có link": nằm ở trang nào, và thế nào là đầy đủ 🔴
 

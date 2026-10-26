@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 import { useParams } from 'react-router-dom';
 import GateLink from './GateLink';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
+import { isOwnerFunctionColumn, ownerFunctionWithPeople } from '@mbc360/shared/config/reviewers';
 import { duplicateValueProblems, isColumnRequiredFor, isRegisterRowBlank, missingRequiredProblems, previewAutoIds } from '@mbc360/shared/config/registers';
 import RequiredMark from './RequiredMark';
 import { claimLibraryLinkMismatch } from '@mbc360/shared/config/referenceData';
@@ -327,6 +328,10 @@ export default function DynamicTable({
       ? columnOwnerGateIds(config.key, col.key).map((id) => id.replace(/^SG/, '')).join('/') || undefined
       : undefined;
 
+  // A fixed Owner / Person-in-charge function gets the project's person beside it ("Project owner — Chris").
+  const shownText = (column: RegisterColumn, value: unknown) =>
+    isOwnerFunctionColumn(column) ? ownerFunctionWithPeople(text(value), project?.identity.reviewers) : text(value);
+
   // One editor per column type, used by the table cells and the drawer alike.
   const renderEditor = (column: RegisterColumn, row: RegisterRow, index: number) => {
     // Before the custom renderer on purpose: a register with its own cell editors
@@ -387,7 +392,7 @@ export default function DynamicTable({
       if (column.type === 'claimsLibraryRef') return <ClaimsLibrarySelect value={value as string | undefined} disabled onChange={() => {}} />;
       const shown = (
         <span className="rt-static" style={column.type === 'number' ? NUMERIC_CELL : undefined}>
-          {text(value) || '—'}
+          {shownText(column, value) || '—'}
         </span>
       );
       return frozenGate ? (
@@ -912,7 +917,7 @@ export default function DynamicTable({
                       <dt>{col.label}</dt>
                       <dd>
                         {renderCell?.(col, openRow, openIndex, { patch: () => {}, patchRow: () => {}, readOnly: true, draft }) ??
-                          (col.type === 'checkbox' ? (openRow[col.key] ? 'Yes' : 'No') : text(openRow[col.key]) || '—')}
+                          (col.type === 'checkbox' ? (openRow[col.key] ? 'Yes' : 'No') : shownText(col, openRow[col.key]) || '—')}
                       </dd>
                     </div>
                   ))}
