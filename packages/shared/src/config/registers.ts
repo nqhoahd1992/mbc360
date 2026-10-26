@@ -3983,6 +3983,8 @@ export interface NavGroup {
 // A workbook sheet name ("Supplier_RM_Evidence") -> the page of this app that replaced it. Where one sheet became several pages, the
 // one that carries the sheet's name is chosen.
 const SHEET_PAGE_OVERRIDES: Record<string, string> = { Published_Info_Approval: 'publishedInfoApproval' };
+// Cell text writes the sheet "Change_Control_Comm"; its nav item's sheet name is the workbook tab's own "Change_Ctrl_Comm".
+const SHEET_NAME_ALIASES: Record<string, string> = { Change_Control_Comm: 'Change_Ctrl_Comm' };
 export interface SheetRef {
   text: string;
   item?: NavItem;
@@ -3997,7 +3999,7 @@ export function resolveSheetRefs(value: string): SheetRef[] {
       // Only a workbook sheet name (words joined by underscores) is looked up; "literature/evidence link" stays as written.
       if (!/^[A-Za-z0-9]+(_[A-Za-z0-9]+)+$/.test(part)) return { text: part };
       const override = SHEET_PAGE_OVERRIDES[part];
-      const item = override ? items.find((i) => i.registerKey === override) : items.find((i) => i.sheetName === part);
+      const item = override ? items.find((i) => i.registerKey === override) : items.find((i) => i.sheetName === (SHEET_NAME_ALIASES[part] ?? part));
       return item ? { text: item.title, item } : { text: part };
     });
 }
