@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 import { useParams } from 'react-router-dom';
 import GateLink from './GateLink';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
-import { duplicateValueProblems, isColumnRequiredFor, isRegisterRowBlank, missingRequiredProblems } from '@mbc360/shared/config/registers';
+import { duplicateValueProblems, isColumnRequiredFor, isRegisterRowBlank, missingRequiredProblems, previewAutoIds } from '@mbc360/shared/config/registers';
 import RequiredMark from './RequiredMark';
 import { claimLibraryLinkMismatch } from '@mbc360/shared/config/referenceData';
 import type { RegisterRow } from '@mbc360/shared/types';
@@ -243,7 +243,8 @@ export default function DynamicTable({
   // ...and when none of its columns can be edited either, it is a reference table: every column shown as text, nothing to open or fill in.
   const referenceMode = referenceTable ?? (inlineAuto && config.columns.every((c) => c.editable === false));
   const addRow = () => {
-    update((prev) => [...prev, createEmptyRegisterRow(config.key)]);
+    // A generated ID (TR-001...) is shown at once, read-only; the server assigns the real one on save.
+    update((prev) => previewAutoIds(config, [...prev, createEmptyRegisterRow(config.key)]));
     // Inline there is no drawer to open on the new row, and nothing to discard if it is left blank (the blank-row save guard covers it).
     if (inlineMode) return;
     setFreshIndex(draft.length);

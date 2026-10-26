@@ -314,6 +314,8 @@ export function isRegisterRowBlank(config: RegisterConfig, row: RegisterRow): bo
     // A signature is not typed, so it can never make a row non-blank — and a
     // row cannot be signed before it exists in the first place.
     if (col.type === 'checkbox' || col.type === 'signature' || col.key === 'status') return true;
+    // A generated ID is not typed either: a row holding only its ID is still an untouched row.
+    if (col.autoId) return true;
     // A value the row was created with is not something a person typed.
     if (col.defaultValue !== undefined && row[col.key] === col.defaultValue) return true;
     const v = row[col.key];
@@ -3539,6 +3541,20 @@ for (const config of REGISTER_CONFIGS) {
   column.autoId = { prefix: auto.prefix, digits: 3 };
   column.editable = false;
   column.unique = true;
+}
+
+// The ID a new row WILL get, shown in the draft before it is saved: the next number after the highest in the rows being edited.
+// Only a preview — the server assigns the real one on save (assignAutoIds), which is the same number unless somebody else saved first.
+export function previewAutoIds(config: RegisterConfig, rows: RegisterRow[]): RegisterRow[] {
+  let out = rows;
+  for (const column of config.columns.filter((c) => c.autoId)) {
+    const { prefix, digits = 3 } = column.autoId!;
+    const key = column.key;
+    const re = new RegExp(`^${prefix}-([0-9]+)$`);
+    let next = Math.max(0, ...out.map((r) => Number(re.exec(String(r[key] ?? '').trim())?.[1] ?? 0))) + 1;
+    out = out.map((r) => (String(r[key] ?? '').trim() === '' ? { ...r, [key]: `${prefix}-${String(next++).padStart(digits, '0')}` } : r));
+  }
+  return out;
 }
 
 // Assign the identifiers of a register save: a row keeps an ID only when the register already held it (once each); every other row
