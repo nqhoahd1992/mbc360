@@ -178,6 +178,10 @@ export interface RegisterConfig {
   // The columns (by key, after the first) the register's table shows for each row; the whole row opens in the drawer. A free-text column
   // listed here is a two-line preview. Wherever the register is drawn, the editing page and a read-only copy alike, this applies.
   listColumns?: string[];
+  // How a row's drawer groups its fields (key lists, in order). A section marked `rail` sits in a narrow column beside the others and
+  // widens the drawer — for the part of a row that is a status to follow (an approval), not a form to fill. A column no section
+  // names is still shown, after the last one, so a field added to `columns` is never hidden.
+  drawerSections?: { title: string; hint?: string; columns: string[]; rail?: true }[];
   // The owner-NEUTRAL sheet name, and the only one the app displays. The V18
   // workbook prefixes its tabs with a person (`Tuan-Formula_BOM`) because a
   // spreadsheet has nowhere else to record who looks after a tab; digitised,
@@ -1871,6 +1875,20 @@ export const publishedInfoApproval: RegisterConfig = {
     'Mandatory approval workflow (confirmed rules C6 / F11) for ANY information intended for public release — websites, social media, brochures, catalogues, presentations, distributor/pharmacy & HCP documents, training, advertisements, AI-generated content, label/artwork text and external technical summaries. No public information may be released until the workflow reaches "Approved for Release". Acceptable terminology comes from the controlled Claims Library (maintained by Technical + Regulatory — content pending, F11/§B). If "Claim ID" is filled in, that claim must be \'Supported\' in Claim -> Evidence Traceability before this row can reach a released state (Gate 3 rule: "a claim may remain under development, but unsupported wording must not be marked as approved" — hard-blocked, 2026-07-27). Rule D2, enforced 2026-08-12: every row stating a product benefit, safety, efficacy, performance or suitability point MUST link a Claim ID — leaving it blank is only allowed for genuinely non-product corporate information, and then only by ticking "No product claim or technical statement", which records who declared it. Proposed channel wording may differ from the claim\'s master wording (there is no character-for-character lock), but a difference must be classified by an authorised reviewer before release, and a material change requires a new or revised claim record rather than a re-worded row.',
   mode: 'register',
   gate: '10/11',
+  drawerSections: [
+    { title: 'What is being published', hint: 'Which item, where it goes and who reads it.', columns: ['productSku', 'market', 'materialType', 'channel', 'publishedItem', 'audience', 'claimCategory'] },
+    {
+      title: 'Claim and wording',
+      hint: 'Link to the claim, then the wording as it will appear.',
+      columns: ['noProductClaim', 'noProductClaimBy', 'noProductClaimConfirmedBy', 'noProductClaimConfirmedAt', 'claimId', 'masterWording', 'exactWording', 'wordingEquivalence', 'equivalenceConfirmedBy', 'equivalenceConfirmedDate'],
+    },
+    { title: 'Evidence and release', hint: 'What proves it, where it went live and when to look again.', columns: ['evidenceTypeRequired', 'evidenceLink', 'finalPublishedLink', 'expiryReviewDate', 'notes'] },
+    {
+      title: 'Approval',
+      rail: true,
+      columns: ['workflowState', 'terminologyChecked', 'evidenceVerified', 'technicalReview', 'regulatoryReview', 'finalApproval', 'allowed', 'contentOwner', 'technicalReviewer', 'regulatoryReviewer', 'finalApprover', 'status', 'dateApproved'],
+    },
+  ],
   columns: [
     { key: 'recordId', label: 'Record ID', type: 'text', width: 90, unique: true },
     // F11: the workflow lifecycle state (drives release — see the violation check).

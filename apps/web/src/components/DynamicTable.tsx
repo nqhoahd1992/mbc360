@@ -554,15 +554,15 @@ export default function DynamicTable({
   // Which fields of the detail drawer take a whole row. Long text always does; a short field pairs with the next short one,
   // and one left without a partner (before a long field, or last) takes the row itself — otherwise it sat alone in half a
   // row with nothing beside it, which made the form read as scattered.
-  const fullWidthFields = (() => {
+  const fullWidthOf = (cols: RegisterColumn[]) => {
     const wide = (c: RegisterColumn) => c.type === 'textarea' || c.type === 'multiSelect' || c.type === 'signature';
     const full = new Set<number>();
     let i = 0;
-    while (i < editable.length) {
-      if (wide(editable[i])) {
+    while (i < cols.length) {
+      if (wide(cols[i])) {
         full.add(i);
         i += 1;
-      } else if (i + 1 < editable.length && !wide(editable[i + 1])) {
+      } else if (i + 1 < cols.length && !wide(cols[i + 1])) {
         i += 2;
       } else {
         full.add(i);
@@ -570,7 +570,58 @@ export default function DynamicTable({
       }
     }
     return full;
+  };
+  const fullWidthFields = fullWidthOf(editable);
+
+  // The register's own grouping of a row's fields (config drawerSections); null draws the one plain "Edit" list.
+  type DrawerSection = { title: string; hint?: string; rail?: true; cols: RegisterColumn[] };
+  const drawerSections: DrawerSection[] | null = (() => {
+    if (!config.drawerSections) return null;
+    const shown = [...editable, ...reference];
+    const named = new Set(config.drawerSections.flatMap((s) => s.columns));
+    const sections: DrawerSection[] = config.drawerSections
+      .map((s) => ({ title: s.title, hint: s.hint, rail: s.rail, cols: s.columns.map((k) => shown.find((c) => c.key === k)).filter((c): c is RegisterColumn => !!c) }))
+      .filter((s) => s.cols.length > 0);
+    const rest = shown.filter((c) => !named.has(c.key));
+    if (rest.length > 0) sections.push({ title: 'Other', cols: rest });
+    return sections;
   })();
+  const hasRail = !!drawerSections?.some((s) => s.rail);
+
+  // A read-only value as the drawer shows it: the register's own renderer, else sheet / gate links, else plain text.
+  const referenceValue = (col: RegisterColumn, row: RegisterRow, index: number) =>
+    renderCell?.(col, row, index, { patch: () => {}, patchRow: () => {}, readOnly: true, draft }) ??
+    (col.gateLink ? <GateLink value={text(row[col.key])} /> : col.sheetRefs ? <SheetRefs value={text(row[col.key])} projectId={projectId} /> : col.type === 'checkbox' ? (row[col.key] ? 'Yes' : 'No') : shownText(col, row[col.key]) || '—');
+
+  const drawerSection = (section: DrawerSection, row: RegisterRow, index: number) => {
+    const inputs = section.cols.filter((c) => editable.includes(c));
+    const full = fullWidthOf(section.cols);
+    return (
+      <section key={section.title}>
+        <div className="rt-sec-title">{section.title}</div>
+        {section.hint && <p className="rt-sec-hint">{section.hint}</p>}
+        <div className={section.rail ? 'rt-grid rt-grid-one' : 'rt-grid'}>
+          {section.cols.map((col, ci) =>
+            inputs.includes(col) ? (
+              <label key={col.key} className={full.has(ci) ? 'rt-span-2' : undefined}>
+                <span className="rt-label">
+                  {col.label}
+                  {isColumnRequiredFor(col, row) && <RequiredMark met={!!row[col.key]} title="Required while the row is in this state" />}
+                  {columnGate(col) && <span className="c-tag rt-gate" title={`This column is settled and locked at Gate ${columnGate(col)}`}>G{columnGate(col)}</span>}
+                </span>
+                {renderEditor(col, row, index)}
+              </label>
+            ) : (
+              <div key={col.key} className={full.has(ci) ? 'rt-span-2' : undefined}>
+                <span className="rt-label">{col.label}</span>
+                <div className="rt-ro">{referenceValue(col, row, index)}</div>
+              </div>
+            ),
+          )}
+        </div>
+      </section>
+    );
+  };
 
   return (
     <div id={`register-${config.key}`} className={embedded ? 'rt' : 'concept-tokens rt c-card rt-standalone'}>
@@ -826,7 +877,7 @@ export default function DynamicTable({
       <Drawer
         open={!inlineMode && openRow !== undefined}
         onClose={() => setOpenIndex(null)}
-        size={screens.md ? 560 : '100%'}
+        size={screens.md ? (hasRail && screens.lg ? 800 : 560) : '100%'}
         mask={!screens.xxl}
         closable={false}
         rootClassName="concept-tokens"
@@ -890,7 +941,26 @@ export default function DynamicTable({
           ) : undefined
         }
       >
-        {openRow && openIndex !== null && (
+        {openRow && openIndex !== null && drawerSections && (
+          <div className={hasRail ? 'rt-split' : undefined}>
+            <div className="rt-sections">
+              {autoIdColumns.length > 0 && (
+                <div className="rt-grid">
+                  {autoIdColumns.map((col) => (
+                    <label key={col.key} className="rt-span-2">
+                      <span className="rt-label">{col.label}</span>
+                      <Input disabled value={text(openRow[col.key])} placeholder="Assigned on save" />
+                      <span className="rt-help">Generated by the system, not typed.</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {drawerSections.filter((s) => !s.rail).map((s) => drawerSection(s, openRow, openIndex))}
+            </div>
+            {hasRail && <aside className="rt-rail">{drawerSections.filter((s) => s.rail).map((s) => drawerSection(s, openRow, openIndex))}</aside>}
+          </div>
+        )}
+        {openRow && openIndex !== null && !drawerSections && (
           <div className="rt-sections">
             {(editable.length > 0 || autoIdColumns.length > 0) && (
               <section>
@@ -924,8 +994,7 @@ export default function DynamicTable({
                     <div key={col.key} className="rt-dl-row">
                       <dt>{col.label}</dt>
                       <dd>
-                        {renderCell?.(col, openRow, openIndex, { patch: () => {}, patchRow: () => {}, readOnly: true, draft }) ??
-                          (col.gateLink ? <GateLink value={text(openRow[col.key])} /> : col.sheetRefs ? <SheetRefs value={text(openRow[col.key])} projectId={projectId} /> : col.type === 'checkbox' ? (openRow[col.key] ? 'Yes' : 'No') : shownText(col, openRow[col.key]) || '—')}
+                        {referenceValue(col, openRow, openIndex)}
                       </dd>
                     </div>
                   ))}

@@ -102,3 +102,14 @@
 .rt-head-note { color: var(--c-text-3); font-size: 12px; font-weight: 400; }
 
 .rt-help { color: var(--c-text-3); font-size: 12px; }
+
+/* Drawer sections (config drawerSections): a hint under each title, and an approval-style "rail" column beside the form. */
+.rt-sec-hint { margin: -6px 0 12px; color: var(--c-text-3); font-size: 12px; }
+.rt-ro { min-height: 32px; padding: 4px 0; text-wrap: pretty; overflow-wrap: anywhere; }
+.rt-split { display: grid; gap: 28px; }
+.rt-rail { display: grid; gap: 28px; align-content: start; }
+.rt-grid-one { grid-template-columns: 1fr; }
+@media (min-width: 992px) {
+  .rt-split { grid-template-columns: minmax(0, 1fr) 250px; }
+  .rt-rail { padding-left: 20px; border-left: 1px solid var(--c-border-2); }
+}
