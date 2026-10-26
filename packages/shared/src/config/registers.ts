@@ -4184,11 +4184,11 @@ const DEPARTMENTS: RawDept[] = [
     reviewOwner: REVIEW_SPECS.regulatoryWithRi,
     items: [
       'prohibitedIngredients',
+      'pbCautionLimits',
       // Round 4 question 5, 2026-08-29. Filed with the two watch-lists it is the
       // general layer above, not with the safety registers, because it is the same
       // kind of record — a restriction screen against reference sources.
       'generalRestrictedCaution',
-      'pbCautionLimits',
       'fragranceSafety',
       'fragranceAllergenLog',
       'aseanPifMap',
