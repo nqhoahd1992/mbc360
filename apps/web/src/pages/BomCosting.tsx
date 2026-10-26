@@ -653,27 +653,25 @@ export default function BomCosting() {
                         />
                       </RecordField>
                     </div>
-                    <dl className="rt-dl bom-dl">
-                      <div className="rt-dl-row">
-                        <dt>Batch kg</dt>
-                        <dd className="bom-num">
-                          {money(costing.batchSizeKg)}{' '}
-                          <span className="rt-muted">· set on the Costing tab (batch size), shared by every line</span>
-                        </dd>
-                      </div>
-                      <div className="rt-dl-row">
-                        <dt>kg needed</dt>
-                        <dd className="bom-num">{money(d.kgNeeded)}</dd>
-                      </div>
-                      <div className="rt-dl-row">
-                        <dt>Cost / batch</dt>
-                        <dd className="bom-num">{money(d.costPerBatch)}</dd>
-                      </div>
-                      <div className="rt-dl-row">
-                        <dt>Cost / unit</dt>
-                        <dd className="bom-num">{money(d.costPerUnit)}</dd>
-                      </div>
-                    </dl>
+                    {/* Calculated from the two inputs above and the Costing tab: drawn as fields so the form reads as one, but disabled. */}
+                    <div className="rt-grid bom-calc">
+                      <RecordField label="Batch kg">
+                        <Input disabled value={money(costing.batchSizeKg)} className="bom-num" />
+                      </RecordField>
+                      <RecordField label="kg needed">
+                        <Input disabled value={money(d.kgNeeded)} className="bom-num" />
+                      </RecordField>
+                      <RecordField label="Cost / batch">
+                        <Input disabled value={money(d.costPerBatch)} className="bom-num" />
+                      </RecordField>
+                      <RecordField label="Cost / unit">
+                        <Input disabled value={money(d.costPerUnit)} className="bom-num" />
+                      </RecordField>
+                    </div>
+                    <p className="bom-calc-note">
+                      Calculated, not entered: Batch kg and units per batch are set on the Costing tab; kg needed, Cost / batch and
+                      Cost / unit follow from % w/w and Cost / kg.
+                    </p>
                   </section>
                   <section>
                     <div className="rt-sec-title">Evidence</div>

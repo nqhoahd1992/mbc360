@@ -1,7 +1,7 @@
 import DrawerSaveFooter from './DrawerSaveFooter';
 import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Button, Drawer, Grid, Popconfirm, Tooltip } from 'antd';
+import { Button, Drawer, Grid, Tooltip } from 'antd';
 import { DeleteOutlined, DownOutlined, PlusOutlined, RightOutlined, UpOutlined } from '@ant-design/icons';
 import '../styles/concept.css';
 import './DynamicTable.css';
@@ -330,7 +330,8 @@ export default function RecordList<T>({
                     </Button>
                   </span>
                 </Tooltip>
-              ) : onRemove && open !== undefined && isRowBlank?.(open, openIndex) ? (
+              ) : onRemove ? (
+                // No "Remove?" step: the removal only changes the section's draft, and Discard (or leaving the page) brings the row back.
                 <Button
                   danger
                   icon={<DeleteOutlined />}
@@ -341,20 +342,6 @@ export default function RecordList<T>({
                 >
                   {removeLabel}
                 </Button>
-              ) : onRemove ? (
-                <Popconfirm
-                    title={`${removeLabel}?`}
-                    okButtonProps={{ danger: true }}
-                    okText={removeLabel}
-                    onConfirm={() => {
-                      onRemove(openIndex);
-                      closeAfterRemove();
-                    }}
-                  >
-                    <Button danger icon={<DeleteOutlined />}>
-                      {removeLabel}
-                    </Button>
-                </Popconfirm>
               ) : null}
             </div>
           ) : undefined

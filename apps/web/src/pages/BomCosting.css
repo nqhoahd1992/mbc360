@@ -62,3 +62,6 @@
 .bom-card-body > .save-bar { margin-top: 0; }
 
 .bom-span-all { grid-column: 1 / -1; }
+
+.bom-calc { margin-top: 16px; }
+.bom-calc-note { margin: 8px 0 0; color: var(--c-text-3); font-size: 12px; }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, ConfigProvider, DatePicker, Input, Popconfirm, Select } from 'antd';
+import { Button, ConfigProvider, DatePicker, Input, Select } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { ChangeControlAssessment, ProjectData } from '@mbc360/shared/types';
@@ -107,7 +107,6 @@ export default function ChangeControlAssessments({ project }: { project: Project
             const answer = (e.answer ?? '').trim();
             const worked = touched.has(e.id) || !e.id.startsWith('new-');
             const findingMissing = !(e.finding ?? '').trim();
-            const hasContent = !!(findingMissing ? '' : e.finding) || !!answer || !!(e.rationale ?? '').trim() || !!e.linkedRecordId;
             const pending = isPendingAnswer(e);
             return (
               <div className="cca-entry" key={e.id}>
@@ -120,22 +119,15 @@ export default function ChangeControlAssessments({ project }: { project: Project
                     <span className={`c-tag c-tag-dot ${pending ? 'c-tag-warn' : answer === 'Yes' ? 'c-tag-bad' : 'c-tag-ok'}`}>
                       {pending ? 'Pending' : answer === 'Yes' ? 'Change control needed' : 'No change control needed'}
                     </span>
-                    <Popconfirm
-                      title="Remove this assessment?"
-                      okText="Remove"
-                      okButtonProps={{ danger: true }}
-                      disabled={!hasContent}
-                      onConfirm={() => update((prev) => prev.filter((x) => x.id !== e.id))}
-                    >
-                      <Button
-                        size="small"
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        aria-label={`Remove assessment ${i + 1}`}
-                        onClick={hasContent ? undefined : () => update((prev) => prev.filter((x) => x.id !== e.id))}
-                      />
-                    </Popconfirm>
+                    {/* Only the draft changes; Discard brings the entry back. */}
+                    <Button
+                      size="small"
+                      type="text"
+                      danger
+                      icon={<DeleteOutlined />}
+                      aria-label={`Remove assessment ${i + 1}`}
+                      onClick={() => update((prev) => prev.filter((x) => x.id !== e.id))}
+                    />
                   </div>
                 </div>
 
