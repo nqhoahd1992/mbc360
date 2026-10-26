@@ -3550,6 +3550,7 @@ const AUTO_ROW_IDS: Record<string, { column: string; prefix: string }> = {
   needsTechnologyTraceability: { column: 'needId', prefix: 'N' },
   claimEvidenceTraceability: { column: 'claimId', prefix: 'CLM' },
   criticalSafetyFindings: { column: 'findingId', prefix: 'SF' },
+  studyParticipantLog: { column: 'participantId', prefix: 'P' },
 };
 
 for (const config of REGISTER_CONFIGS) {
