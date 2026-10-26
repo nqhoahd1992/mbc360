@@ -1,0 +1,16 @@
+/* Formulation Safety: the strip of section chips under the page header. Sticks below the app header (56px) while the tables are scrolled. */
+.fs-strip { position: sticky; top: 56px; z-index: 5; display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0 10px; background: var(--c-page, #f5f5f5); }
+.fs-chip {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 4px 12px;
+  border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface);
+  color: var(--c-text-2); font: inherit; font-size: 13px; cursor: pointer;
+}
+.fs-chip:hover { border-color: var(--c-primary); }
+.fs-chip[aria-current='true'] { border-color: var(--c-primary); background: var(--c-primary-light); color: var(--c-primary); font-weight: 500; }
+.fs-chip-n { color: var(--c-text-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.fs-chip[aria-current='true'] .fs-chip-n { color: inherit; }
+/* A table scrolled to stops below the sticky strip as well as the app header. */
+.fs-page [id^='register-'] { scroll-margin-top: 56px; }
+/* The sidebar sticks below the strip too, not under it. */
+.fs-page .cl-aside { top: 112px; max-height: calc(100vh - 128px); }
+@media (max-width: 1099px) { .fs-page .cl-aside { top: auto; max-height: none; } }

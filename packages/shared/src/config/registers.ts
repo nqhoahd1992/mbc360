@@ -2487,7 +2487,7 @@ export const criticalSafetyFindings: RegisterConfig = {
   title: 'Critical Safety Findings',
   sheetName: 'Formulation_Safety',
   description:
-    'One row per safety finding raised during the safety review (rule E1). Gate 7 cannot pass while any finding marked critical is still open, and closing a High or Critical one requires the safety reviewer\'s conclusion, an evidence link, a completed linked action, the verification, the verifier and the closure date. A project with no findings leaves this empty — the confirmation that the review happened is the Final Safety Sign-off below.',
+    'One row per safety finding raised in the review (rule E1). Gate 7 cannot pass while a High or Critical finding is open; no findings is a valid answer.',
   mode: 'register',
   gate: '07',
   columns: [

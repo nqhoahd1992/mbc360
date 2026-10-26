@@ -119,6 +119,7 @@ export default function DynamicTable({
   // gate and lock banner (RegisterHubPage's single-register view).
   embedded,
   hideDescription,
+  hideGateNote,
   // Register-specific extras, so a register with its own consistency rules does
   // not have to fork the whole table:
   //   extraActions — a control beside "Add row" (e.g. a preset quick-add);
@@ -160,6 +161,8 @@ export default function DynamicTable({
   embedded?: boolean;
   // Leave out the register's own description under the title (a read-only copy shown on another page, where it would describe the wrong screen).
   hideDescription?: boolean;
+  // Leave out the "columns lock at the gate on their tag" line (a page that says it once, for all its tables).
+  hideGateNote?: boolean;
   extraActions?: (draft: RegisterRow[], update: (fn: (prev: RegisterRow[]) => RegisterRow[]) => void) => React.ReactNode;
   saveBlockers?: (draft: RegisterRow[]) => string[];
   warnings?: (draft: RegisterRow[]) => string[];
@@ -578,7 +581,7 @@ export default function DynamicTable({
                 Gate {config.gate}
               </span>
             )}
-            {spansSeveralGates(config.gate) && <span className="rt-head-note">columns lock at the gate on their tag</span>}
+            {spansSeveralGates(config.gate) && !hideGateNote && <span className="rt-head-note">columns lock at the gate on their tag</span>}
             {readOnly && <span className="c-tag c-tag-ok"><LockOutlined />Read-only</span>}
           </div>
           {config.description && !hideDescription && <p className="rt-head-desc">{config.description}</p>}
