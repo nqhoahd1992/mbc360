@@ -12,5 +12,5 @@
 /* A table scrolled to stops below the sticky strip as well as the app header. */
 .fs-page [id^='register-'] { scroll-margin-top: 56px; }
 /* The sidebar sticks below the strip too, not under it. */
-.fs-page .cl-aside { top: 112px; max-height: calc(100vh - 128px); }
-@media (max-width: 1099px) { .fs-page .cl-aside { top: auto; max-height: none; } }
+.fs-page .closing-aside { top: 112px; max-height: calc(100vh - 128px); }
+@media (max-width: 1099px) { .fs-page .closing-aside { top: auto; max-height: none; } }

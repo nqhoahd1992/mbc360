@@ -10,9 +10,9 @@ export default function ClosingLayout({ children }: { children: ReactNode }) {
   const [aside, setAside] = useState<HTMLElement | null>(null);
   return (
     <ClosingAsideContext.Provider value={aside}>
-      <div className="cl">
-        <div className="cl-main">{children}</div>
-        <aside className="cl-aside" ref={setAside} aria-label="Closing signatures" />
+      <div className="closing-layout">
+        <div className="closing-main">{children}</div>
+        <aside className="closing-aside" ref={setAside} aria-label="Closing signatures" />
       </div>
     </ClosingAsideContext.Provider>
   );
