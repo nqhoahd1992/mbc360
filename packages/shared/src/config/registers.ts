@@ -45,6 +45,10 @@ export interface RegisterColumn {
   // An identifier: no two rows of the register may hold the same value (blank is not a value). Refused on save in the
   // table and again by the API; compared without regard to case or surrounding spaces.
   unique?: true;
+  // The row's own identifier, assigned by the SERVER as PREFIX-001, PREFIX-002... when the row is first saved (highest number in the
+  // register + 1). Never typed: a value arriving from a client is kept only if that register already holds it, so an ID cannot be
+  // forged, reused or renumbered. Pair with `editable: false` (shown as a fixed reference) and `unique: true`.
+  autoId?: { prefix: string; digits?: number };
   // Whether changing this column needs the register's assigned people (SW-34). Left unset it follows the column's kind: a status,
   // an assessment, an approval tick, a signature, or a person who recorded an act is important; text, dates, numbers and links are not.
   sensitive?: boolean;
@@ -3507,6 +3511,63 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   evidenceTransferabilityRules,
   evidenceSearchStandard,
 ];
+
+// ---------------------------------------------------------------------------
+// Row identifiers the system assigns
+// ---------------------------------------------------------------------------
+// Each register's own ID column is generated, never typed: PREFIX-001, PREFIX-002... (see RegisterColumn.autoId). One table, so a prefix
+// is changed in one place. CLM follows the workbook's own example (CLM-001); FC was already the Formulation Change Register's prefix;
+// the rest are ours.
+const AUTO_ROW_IDS: Record<string, { column: string; prefix: string }> = {
+  testReportIndex: { column: 'reportId', prefix: 'TR' },
+  clinicalHumanEvidence: { column: 'evidenceId', prefix: 'CE' },
+  publishedInfoApproval: { column: 'recordId', prefix: 'PI' },
+  formulationChangeRegister: { column: 'changeId', prefix: 'FC' },
+  campaignsSocialMedia: { column: 'campaignPostId', prefix: 'CP' },
+  releasedLabelRegister: { column: 'recordId', prefix: 'RL' },
+  labelPlatformRollout: { column: 'rolloutId', prefix: 'RO' },
+  labelShipmentVerification: { column: 'shipmentId', prefix: 'SH' },
+  needsTechnologyTraceability: { column: 'needId', prefix: 'N' },
+  claimEvidenceTraceability: { column: 'claimId', prefix: 'CLM' },
+};
+
+for (const config of REGISTER_CONFIGS) {
+  const auto = AUTO_ROW_IDS[config.key];
+  if (!auto) continue;
+  const column = config.columns.find((c) => c.key === auto.column);
+  if (!column) throw new Error(`AUTO_ROW_IDS: ${config.key} has no column ${auto.column}`);
+  column.autoId = { prefix: auto.prefix, digits: 3 };
+  column.editable = false;
+  column.unique = true;
+}
+
+// Assign the identifiers of a register save: a row keeps an ID only when the register already held it (once each); every other row
+// gets the next number after the highest in use. Pure, so the server applies it and a check can run it.
+export function assignAutoIds(config: RegisterConfig, committed: RegisterRow[], incoming: RegisterRow[]): RegisterRow[] {
+  let rows = incoming;
+  for (const column of config.columns.filter((c) => c.autoId)) {
+    const { prefix, digits = 3 } = column.autoId!;
+    const key = column.key;
+    const number = (v: unknown) => {
+      const m = new RegExp(`^${prefix}-([0-9]+)$`).exec(String(v ?? '').trim());
+      return m ? Number(m[1]) : undefined;
+    };
+    const known = new Set(committed.map((r) => String(r[key] ?? '').trim()).filter((v) => number(v) !== undefined));
+    const used = new Set<string>();
+    rows = rows.map((r) => {
+      const v = String(r[key] ?? '').trim();
+      if (v && known.has(v) && !used.has(v)) {
+        used.add(v);
+        return r;
+      }
+      return { ...r, [key]: '' };
+    });
+    let next = Math.max(0, ...[...known].map((v) => number(v)!)) + 1;
+    rows = rows.map((r) => (String(r[key] ?? '') === '' ? { ...r, [key]: `${prefix}-${String(next++).padStart(digits, '0')}` } : r));
+  }
+  return rows;
+}
+
 
 // ---------------------------------------------------------------------------
 // Fill-in hints of the NPD Front-End sheets

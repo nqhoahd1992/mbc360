@@ -717,9 +717,10 @@ export async function run(base: string, db: Client): Promise<number> {
   t('the representative\'s slot cannot be nominated over (400)', r.status === 400 && /representative/.test(JSON.stringify(r.json)), `${r.status} ${short(r.json)}`);
   const repRows = (await project()).project.gateSignOffs.filter((x: any) => x.gateId === 'SG03' && x.representsFunction);
   t('the representative is stored on the Approved by slot with its function', repRows.length === 1 && repRows[0].role === 'Approved by', short(repRows));
-  r = await putClaims(() => [{ claimId: 'C-1', approvedWording: 'Hydrates skin', claimCategory: 'Cosmetic' }]);
+  r = await putClaims(() => [{ approvedWording: 'Hydrates skin', claimCategory: 'Cosmetic' }]);
   t('a claim row is saved while SG03 is the open gate', r.status < 300, short(r.json));
   const rows0 = (await project()).project.registers.claimEvidenceTraceability;
+  t('the server assigns the claim its ID (CLM-001): row IDs are generated, not typed', rows0[0].claimId === 'CLM-001', short(rows0[0]));
   t('the server no longer stamps rows (SW-4 was replaced by the row rule)', rows0[0].__rowId === undefined && rows0[0].__bornAtGate === undefined, short(rows0[0]));
   // Guard parity (2026-10-10): the signing panel holds back a passing signature until the stage status
   // is Complete, because the status is inside the signed snapshot. The server must refuse it too, or a
@@ -812,9 +813,9 @@ export async function run(base: string, db: Client): Promise<number> {
   t('editing the Gate 8 column of the same row is still accepted', r.status < 300, `${r.status} ${short(r.json)}`);
   pj = await project();
   t("...and SG03 is STILL passed (the later gate's work did not un-pass it)", gp.isGatePassed(pj.project, 'SG03') && (await stale('SG03', 'Approved by')).length === 0);
-  r = await putClaims((rows) => [...rows, { claimId: 'C-2', approvedWording: 'A claim raised after SG03 passed' }]);
+  r = await putClaims((rows) => [...rows, { approvedWording: 'A claim raised after SG03 passed' }]);
   t('adding a claim after SG03 passed is refused (403): part of the register belongs to Gate 3', r.status === 403 && String(r.json.message).includes('Rows cannot be added'), `${r.status} ${short(r.json)}`);
-  r = await putClaims((rows) => rows.filter((x: any) => x.claimId !== 'C-1'));
+  r = await putClaims((rows) => rows.filter((x: any) => x.approvedWording !== 'Hydrates skin'));
   t('removing the claim Gate 3 signed is refused (403)', r.status === 403 && String(r.json.message).includes('Rows cannot be removed'), `${r.status} ${short(r.json)}`);
   pj = await project();
   t('SG03 is still passed and its signatures still current after the refused writes', gp.isGatePassed(pj.project, 'SG03') && (await stale('SG03', 'Approved by')).length === 0);
@@ -1309,7 +1310,7 @@ export async function run(base: string, db: Client): Promise<number> {
 
   const putPublished = async (workflowState: string) => {
     const rows = ((await project()).project.registers.publishedInfoApproval ?? []).map((x: any) => ({ ...x }));
-    if (rows.length === 0) rows.push({ recordId: 'P-1', workflowState });
+    if (rows.length === 0) rows.push({ workflowState });
     else rows[0].workflowState = workflowState;
     return api('admin', 'PUT', `/projects/${PROJECT}/registers/publishedInfoApproval`, { rows, expectedVersion: await version() });
   };

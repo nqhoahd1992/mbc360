@@ -43,6 +43,7 @@ import {
   createEmptyRegisterRow,
   getRegisterConfig,
   invalidSelectValues,
+  assignAutoIds,
   duplicateValueProblems,
   missingRequiredProblems,
   signatureColumns,
@@ -2638,6 +2639,9 @@ export class ProjectsService {
       // a rule input. Blank stays legal: it is how an unanswered cell reads.
       // A column required because of another cell of the row (an Approved brief needs its approval date) is checked here
       // too, not only by the table.
+      // The register's own row IDs (TR-001, ...) are the server's to assign: an ID is kept only if this register already held it,
+      // so a client can neither invent, reuse nor renumber one. Done before the duplicate check below, which then holds by construction.
+      rows = assignAutoIds(config, committedRegisterRows, rows);
       const missingRequired = missingRequiredProblems(config, rows);
       if (missingRequired.length > 0) {
         throw new BadRequestException(missingRequired.slice(0, 5).join('; '));

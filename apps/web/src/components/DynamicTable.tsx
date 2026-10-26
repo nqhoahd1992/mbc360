@@ -514,7 +514,7 @@ export default function DynamicTable({
     return (
       <>
         <div className="rt-name" title={name}>
-          {name || <span className="rt-muted">{isBlank(row) ? 'Empty row' : `Row ${index + 1}`}</span>}
+          {name || <span className="rt-muted">{identity.autoId ? 'New — ID assigned on save' : isBlank(row) ? 'Empty row' : `Row ${index + 1}`}</span>}
           {isBlank(row) && <span className="c-tag c-tag-bad rt-empty-tag">No data</span>}
         </div>
         {rowSubtitle(row) && <div className="rt-sub">{rowSubtitle(row)}</div>}
