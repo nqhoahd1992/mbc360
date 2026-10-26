@@ -30,6 +30,8 @@ export interface RegisterColumn {
   type: ColumnType;
   width?: number;
   options?: readonly string[];
+  // Values the app itself writes into a select column that a person is not offered to pick (still valid to hold).
+  machineValues?: readonly string[];
   // Hint shown in an empty text / textarea cell. `placeholderBy` makes it follow another column of the SAME row (e.g. the
   // example wording of the section a need belongs to); with that column empty, `fallback` shows instead.
   placeholder?: string;
@@ -245,7 +247,7 @@ export function invalidSelectValues(
       // its own, so one bad entry among five is named rather than the whole cell.
       const values = col.type === 'multiSelect' ? value.split(',').map((v) => v.trim()).filter(Boolean) : [value];
       for (const one of values) {
-        if (!col.options.includes(one)) {
+        if (!col.options.includes(one) && !col.machineValues?.includes(one)) {
           bad.push({ row: index, column: col.key, label: col.label, value: one });
         }
       }
@@ -343,8 +345,9 @@ const ASEAN_MAP_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Complete', 'Mis
 // The decision list the workbook offers on its Conclusion / Decision / Approval columns (v2 workbook data validation).
 export const DECISION_OPTIONS = ['Not Started', 'Approved', 'Conditional', 'Rejected', 'Needs Review', 'Not Applicable'] as const;
 
-// The Ingredient-Level Safety Matrix's own list: the workbook's two computed values plus the conclusions a person can record.
-export const SAFETY_MATRIX_DECISION_OPTIONS = ['Not Started', 'No listed match', 'Needs Review', 'Approved', 'Conditional', 'Rejected', 'Not Applicable'] as const;
+// The Ingredient-Level Safety Matrix's own list: what a person can pick. "Needs Review" (the workbook's other computed value) is the
+// app's alone — see `machineValues` on the column — and is cleared with the Clear decision button, not chosen.
+export const SAFETY_MATRIX_DECISION_OPTIONS = ['Not Started', 'No listed match', 'Approved', 'Conditional', 'Rejected', 'Not Applicable'] as const;
 
 export const NP_APPROVAL_APPROVED = 'Approved';
 export const NP_APPROVAL_PENDING = 'Pending Final Approver decision';
@@ -2460,7 +2463,7 @@ export const formulationSafetyMatrix: RegisterConfig = {
     { key: 'coverageReference', label: 'Assessment referenced', type: 'text', width: 200 },
     // The workbook computes this from the two counts ("Needs Review" / "No listed match"). Here the app writes those two when nobody has
     // concluded (utils/safetyMatrixSync.ts) and a person's conclusion stands. "Needs Review" is waiting, not a conclusion. [ASSUMPTION: R5-Q75]
-    { key: 'safetyDecision', label: 'Safety decision', type: 'select', options: SAFETY_MATRIX_DECISION_OPTIONS, width: 160 },
+    { key: 'safetyDecision', label: 'Safety decision', type: 'select', options: SAFETY_MATRIX_DECISION_OPTIONS, machineValues: ['Needs Review'], width: 160 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 170 },
   ],
 };

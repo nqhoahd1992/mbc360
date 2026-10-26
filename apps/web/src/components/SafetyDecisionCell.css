@@ -1,0 +1,3 @@
+.sdc { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sdc > .ant-select { flex: 1 1 auto; }
+.sdc-clear { flex-shrink: 0; }

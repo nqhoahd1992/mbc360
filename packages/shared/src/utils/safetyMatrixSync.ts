@@ -26,13 +26,13 @@ function sameIngredient(line: BomLine, row: RegisterRow): boolean {
 }
 
 // The decision the workbook's formula gives from the two match counts, written only while nobody has concluded. A person's
-// conclusion (Approved, Conditional, Rejected, Not Applicable) stands. "Needs Review" is set by the machine AND by a person: it
-// means nothing is concluded yet (Gate 7 treats it as none), so a person who chose wrongly can go back to it, and once there it
-// stays until somebody concludes — it is never changed behind their back, even when the match has gone.
+// conclusion (Approved, Conditional, Rejected, Not Applicable) stands until they clear it (the Clear decision button empties the cell
+// and this function fills it again). "Needs Review" is the app's alone — a person cannot pick it — so it follows the match: it
+// appears with one and clears itself, to "No listed match", when the match is gone. It is not a conclusion (Gate 7 treats it as none).
 export function screenedSafetyDecision(current: string, matches: number): string {
   const status = current.trim();
   if (matches > 0 && ['', 'Not Started', 'No listed match'].includes(status)) return 'Needs Review';
-  if (matches === 0 && ['', 'Not Started'].includes(status)) return 'No listed match';
+  if (matches === 0 && ['', 'Not Started', 'Needs Review'].includes(status)) return 'No listed match';
   return current;
 }
 

@@ -7,6 +7,7 @@ import { criticalSafetyFindings, formulationSafetyFinalSignOff, formulationSafet
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked, uncoveredFormulaLines } from '@mbc360/shared/utils/gateProgress';
 import DynamicTable from '../components/DynamicTable';
+import SafetyDecisionCell from '../components/SafetyDecisionCell';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
 export default function FormulationSafety() {
@@ -79,6 +80,16 @@ export default function FormulationSafety() {
         config={formulationSafetyMatrix}
         // One row per Formula BOM line, as in the workbook: identity and matches come from the BOM, only the assessment is entered.
         rows={matrixRows}
+        renderCell={(column, row, _index, api) =>
+          column.key === 'safetyDecision' ? (
+            <SafetyDecisionCell
+              options={column.options ?? []}
+              value={String(row.safetyDecision ?? '')}
+              readOnly={api.readOnly}
+              onChange={(v) => api.patch('safetyDecision', v)}
+            />
+          ) : undefined
+        }
         addBlockedReason="Rows follow the Formula BOM — add the ingredient there and its row appears here"
         removeBlockedReason={(row) => (String(row.line ?? '').trim() !== '' ? 'This row follows a Formula BOM line — remove the ingredient from the BOM to remove it' : undefined)}
         onSave={(rows) => setRegisterRowsBulk(id, formulationSafetyMatrix.key, rows)}
