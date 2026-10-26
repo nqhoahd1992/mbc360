@@ -53,6 +53,8 @@ export interface RegisterColumn {
   autoId?: { prefix: string; digits?: number };
   // A text column whose value names workbook sheets ("Formula_BOM; Mechanism_Claims_Map"), separated by ";". Shown as the app's own pages, each a link.
   sheetRefs?: true;
+  // A read-only second text column is normally the drawer's subtitle; this keeps it under Reference instead.
+  inReference?: true;
   // Whether changing this column needs the register's assigned people (SW-34). Left unset it follows the column's kind: a status,
   // an assessment, an approval tick, a signature, or a person who recorded an act is important; text, dates, numbers and links are not.
   sensitive?: boolean;
@@ -1823,7 +1825,7 @@ const pifEvidenceClosure: RegisterConfig = {
   gate: '10/11',
   columns: [
     { key: 'trigger', label: 'Trigger', type: 'text', width: 190, editable: false },
-    { key: 'requiredAction', label: 'Required action', type: 'text', width: 240, editable: false },
+    { key: 'requiredAction', label: 'Required action', type: 'text', width: 240, editable: false, sheetRefs: true, inReference: true },
     { key: 'personInCharge', label: 'Person in charge', type: 'text', width: 160, editable: false },
     { key: 'supportingTemplate', label: 'Supporting template / sheet', type: 'text', width: 180, editable: false, sheetRefs: true },
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 90, editable: false, gateLink: true },

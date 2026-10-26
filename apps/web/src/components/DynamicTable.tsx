@@ -307,7 +307,7 @@ export default function DynamicTable({
   // A read-only second text column (e.g. "Function" on a fixed reference list)
   // reads as the identity's subtitle rather than as a column of its own.
   const subtitle =
-    config.columns[1] && config.columns[1].editable === false && (config.columns[1].type === 'text' || config.columns[1].type === 'textarea')
+    config.columns[1] && config.columns[1].editable === false && !config.columns[1].inReference && (config.columns[1].type === 'text' || config.columns[1].type === 'textarea')
       ? config.columns[1]
       : undefined;
   const candidates = useMemo(
