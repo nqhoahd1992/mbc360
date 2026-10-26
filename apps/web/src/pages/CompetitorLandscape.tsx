@@ -10,6 +10,7 @@ import {
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
+import ClosingLayout from '../components/ClosingLayout';
 import DynamicTable from '../components/DynamicTable';
 import EvidenceRulesLink from '../components/EvidenceRulesLink';
 import NpdFrontEndSteps from '../components/NpdFrontEndSteps';
@@ -53,6 +54,8 @@ export default function CompetitorLandscape() {
         reviewOwnerText={reviewOwnerText}
       />
 
+      <ClosingLayout>
+
       <DynamicTable
         config={competitorLandscape}
         rows={project.registers[competitorLandscape.key] ?? []}
@@ -91,6 +94,7 @@ export default function CompetitorLandscape() {
           closures={project.registerClosures}
         />
       )}
+      </ClosingLayout>
     </div>
   );
 }

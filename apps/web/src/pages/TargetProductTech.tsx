@@ -5,6 +5,7 @@ import { backbonePlatformTechnology, needsTechnologyTraceability, targetProductP
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
+import ClosingLayout from '../components/ClosingLayout';
 import DynamicTable from '../components/DynamicTable';
 import EvidenceRulesLink from '../components/EvidenceRulesLink';
 import NeedsTraceabilityReference from '../components/NeedsTraceabilityReference';
@@ -50,6 +51,8 @@ export default function TargetProductTech() {
         reviewOwnerText={reviewOwnerText}
       />
 
+      <ClosingLayout>
+
       {/* Step 1's matrix carries into this page: shown read-only so the two can be checked against each other. */}
       <NeedsTraceabilityReference projectId={id} rows={project.registers[needsTechnologyTraceability.key] ?? []} />
 
@@ -77,6 +80,7 @@ export default function TargetProductTech() {
           closures={project.registerClosures}
         />
       )}
+      </ClosingLayout>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import type { RegisterConfig } from '@mbc360/shared/config/registers';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
+import ClosingLayout from '../components/ClosingLayout';
 import DynamicTable from '../components/DynamicTable';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
@@ -52,6 +53,8 @@ export default function CarrierEmollientReview() {
         reviewOwnerText={reviewOwnerText}
       />
 
+      <ClosingLayout>
+
       <DynamicTable
         config={carrierEmollientReview}
         rows={project.registers[carrierEmollientReview.key] ?? []}
@@ -68,6 +71,7 @@ export default function CarrierEmollientReview() {
         readOnly={locked}
       />
       {closing(carrierReviewSummary)}
+      </ClosingLayout>
     </div>
   );
 }

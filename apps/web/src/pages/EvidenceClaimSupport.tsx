@@ -5,6 +5,7 @@ import { claimEvidenceTraceability, evidencePlanProspective, evidenceTestProtoco
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
+import ClosingLayout from '../components/ClosingLayout';
 import DynamicTable from '../components/DynamicTable';
 import EvidenceRulesLink from '../components/EvidenceRulesLink';
 import NpdFrontEndSteps from '../components/NpdFrontEndSteps';
@@ -55,6 +56,8 @@ export default function EvidenceClaimSupport() {
         reviewOwnerText={reviewOwnerText}
       />
 
+      <ClosingLayout>
+
       {/* Each table is closed at its OWN gate(s), so each has its own closing block directly under it (SW-36). */}
       {[
         { config: evidencePlanProspective, readOnly: lockedPlan },
@@ -82,6 +85,7 @@ export default function EvidenceClaimSupport() {
           </div>
         );
       })}
+      </ClosingLayout>
     </div>
   );
 }

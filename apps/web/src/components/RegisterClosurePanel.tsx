@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Alert, Button, Card, Input, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
 import { DownOutlined, LockOutlined, RightOutlined, UnlockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -26,6 +27,7 @@ import {
   registerClosureRoles,
 } from '@mbc360/shared/utils/registerClosures';
 import { usePickerUsers } from '../hooks/useUserOptions';
+import { scrollToRegister, useClosingAside } from './closingAside';
 import './RegisterClosurePanel.css';
 
 // A register is closed once PER GATE that needs it (SW-36): one card per gate, each attesting to — and locking — the columns
@@ -43,6 +45,8 @@ export default function RegisterClosurePanel({
   reviewers: Record<string, string> | undefined;
   closures: Record<string, RegisterClosureState>;
 }) {
+  // Inside a <ClosingLayout> the blocks are drawn in its sidebar; anywhere else they stay where they are put.
+  const aside = useClosingAside();
   const config = getRegisterConfig(registerKey);
   if (!config) return null;
   const gates = registerClosureGateIds(config);
@@ -50,7 +54,7 @@ export default function RegisterClosurePanel({
   const isClosedAt = (g: string) => isRegisterClosed(closures[closureKey(registerKey, g)], roles);
   const firstOpen = gates.findIndex((g) => !isClosedAt(g));
   const current = firstOpen === -1 ? gates.length - 1 : firstOpen;
-  return (
+  const blocks = (
     <>
       {gates.map((gateId, index) => {
         const members = closureMembers(config.key);
@@ -79,6 +83,7 @@ export default function RegisterClosurePanel({
       })}
     </>
   );
+  return aside ? createPortal(blocks, aside) : blocks;
 }
 
 // Register closing (2026-08-27, user-requested): editing a register stays
@@ -214,10 +219,15 @@ function GateClosureCard({
     <Card
       size="small"
       title={
-        <button type="button" className="rcp-head" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? <DownOutlined /> : <RightOutlined />}
-          <span>{`${config?.closureTitle ?? config?.title ?? registerKey} — closing for ${gateId} ${gateLabel}`}</span>
-        </button>
+        <div className="rcp-head">
+          <button type="button" className="rcp-fold" aria-expanded={open} aria-label={open ? 'Fold' : 'Unfold'} onClick={() => setOpen(!open)}>
+            {open ? <DownOutlined /> : <RightOutlined />}
+          </button>
+          <button type="button" className="rcp-name" title="Go to this register" onClick={() => scrollToRegister(registerKey)}>
+            <span className="rcp-name-text">{config?.closureTitle ?? config?.title ?? registerKey}</span>
+            <span className="rcp-name-gate">{`closing for ${gateId} ${gateLabel}`}</span>
+          </button>
+        </div>
       }
       extra={
         closed ? (
@@ -291,12 +301,11 @@ function GateClosureCard({
         dataSource={signOffs}
         pagination={false}
         sticky={TABLE_STICKY}
-        scroll={{ x: 720 }}
         columns={[
-          { title: 'Role', width: nominated ? 220 : 110, dataIndex: 'role', fixed: 'left', render: (v) => <b>{v}</b> },
+          { title: 'Role', width: nominated ? 130 : 96, dataIndex: 'role', render: (v) => <b>{v}</b> },
           {
             title: nominated ? 'Nominated by the Lead' : 'Assigned to',
-            width: nominated ? 260 : 180,
+            width: nominated ? 170 : 110,
             render: (_, r: RegisterClosureSignOff) =>
               nominated && isLead && !isRegisterClosureSigned(r) ? (
                 <Select
@@ -317,7 +326,6 @@ function GateClosureCard({
           },
           {
             title: 'Signature',
-            width: 320,
             render: (_, r: RegisterClosureSignOff) => {
               if (isRegisterClosureSigned(r)) {
                 const mine = r.signedByUserId === me?.id;

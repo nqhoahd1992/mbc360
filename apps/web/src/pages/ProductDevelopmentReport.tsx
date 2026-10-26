@@ -5,6 +5,7 @@ import { useAppStore } from '../store/useAppStore';
 import { productDevelopmentFeedback, productDevelopmentIterations, productDevelopmentProfile, PRODUCT_DEV_OVERALL_STATUS_OPTIONS } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import ClosingLayout from '../components/ClosingLayout';
 import DynamicTable from '../components/DynamicTable';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
@@ -75,6 +76,8 @@ export default function ProductDevelopmentReport() {
         description={<>Identification, the development iteration log and the team feedback and competitor notes behind each formula version.</>}
         reviewOwnerText={reviewOwnerText}
       />
+
+      <ClosingLayout>
       {[productDevelopmentProfile, productDevelopmentIterations, productDevelopmentFeedback].map((config) => (
         <DynamicTable
           key={config.key}
@@ -97,6 +100,7 @@ export default function ProductDevelopmentReport() {
           closures={project.registerClosures}
         />
       )}
+      </ClosingLayout>
     </div>
   );
 }

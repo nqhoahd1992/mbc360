@@ -9,6 +9,7 @@ import { isGateRefLocked, uncoveredFormulaLines } from '@mbc360/shared/utils/gat
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import type { RegisterConfig } from '@mbc360/shared/config/registers';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
+import ClosingLayout from '../components/ClosingLayout';
 import DynamicTable from '../components/DynamicTable';
 import SafetyDecisionCell from '../components/SafetyDecisionCell';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
@@ -59,6 +60,8 @@ export default function FormulationSafety() {
         }}
         reviewOwnerText={reviewOwnerText}
       />
+
+      <ClosingLayout>
 
       <DynamicTable
         config={formulationSafetyProfile}
@@ -142,6 +145,7 @@ export default function FormulationSafety() {
         readOnly={locked}
       />
       {closing(formulationSafetyFinalSignOff)}
+      </ClosingLayout>
     </div>
   );
 }

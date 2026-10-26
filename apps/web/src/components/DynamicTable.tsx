@@ -568,7 +568,7 @@ export default function DynamicTable({
   })();
 
   return (
-    <div className={embedded ? 'rt' : 'concept-tokens rt c-card rt-standalone'}>
+    <div id={`register-${config.key}`} className={embedded ? 'rt' : 'concept-tokens rt c-card rt-standalone'}>
       {!embedded && (
         <div className="rt-head">
           <div className="rt-head-title">

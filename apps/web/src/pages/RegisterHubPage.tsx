@@ -1,3 +1,4 @@
+import { Fragment, type ReactNode } from 'react';
 import { Alert, Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
@@ -18,6 +19,7 @@ import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
 import PublishedInfoApprovalTable from '../components/PublishedInfoApprovalTable';
 import IngredientMonographTable from '../components/IngredientMonographTable';
 import RegisterClosurePanel from '../components/RegisterClosurePanel';
+import ClosingLayout from '../components/ClosingLayout';
 import EvidenceRulesLink from '../components/EvidenceRulesLink';
 import SectionOverview from '../components/SectionOverview';
 import { VULNERABLE_REGISTER } from '@mbc360/shared/utils/vulnerableUsers';
@@ -170,6 +172,10 @@ export default function RegisterHubPage() {
     }
 
     const progress = registerProgress(config, project.registers[registerKey] ?? []);
+    // A register with closing blocks gets the sidebar layout; one without keeps the single column.
+    const ClosingWrap = closeable && registerReviewSpec(config) ? ClosingLayout : Fragment;
+    // Tables other than DynamicTable carry no scroll anchor of their own.
+    const anchored = (node: ReactNode) => <div id={`register-${registerKey}`}>{node}</div>;
 
     // 2026-10-02 concept (approved on the Prohibited Ingredient Watch-list): one
     // header line instead of the Project Identification + Review owner cards,
@@ -184,6 +190,7 @@ export default function RegisterHubPage() {
           readOnly={locked}
           readOnlyReason={lockedReason}
         />
+        <ClosingWrap>
         {registerKey === 'ingredientMonograph' && (
           <p className="rph-desc">
             Evidence must be graded and searched to the corporate standard: <EvidenceRulesLink projectId={id} />
@@ -206,18 +213,21 @@ export default function RegisterHubPage() {
         {registerKey === 'supplierRmEvidence' ? (
           // F14-style Cosmetri raw-material picker for rmCode/grade/supplier —
           // see the tradeoffs noted in docs/rules/F1_Per_Gate_Open_Questions.md.
-          <SupplierRmEvidenceTable
-            config={config}
-            rows={project.registers[registerKey] ?? []}
-            bom={project.bom}
-            onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
-            readOnly={locked}
-            readOnlyReason={lockedReason}
-            embedded
-          />
+          anchored(
+            <SupplierRmEvidenceTable
+              config={config}
+              rows={project.registers[registerKey] ?? []}
+              bom={project.bom}
+              onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
+              readOnly={locked}
+              readOnlyReason={lockedReason}
+              embedded
+            />,
+          )
         ) : registerKey === 'publishedInfoApproval' ? (
           // Claim ID picker (Supported claims only) + auto-filled/locked
           // wording — see PublishedInfoApprovalTable.tsx.
+          anchored(
           <PublishedInfoApprovalTable
             config={config}
             rows={project.registers[registerKey] ?? []}
@@ -227,7 +237,8 @@ export default function RegisterHubPage() {
             readOnly={locked}
             readOnlyReason={lockedReason}
             embedded
-          />
+          />,
+          )
         ) : registerKey === 'ingredientMonograph' ? (
           // One monograph per ingredient, drawn as the workbook sheet — see IngredientMonographTable.tsx.
           <IngredientMonographTable
@@ -243,13 +254,15 @@ export default function RegisterHubPage() {
           // Its own component since 2026-10-05 (approved wireframe, option B):
           // the yes/no question comes first, so "none" and a named group can no
           // longer both be drafted — see VulnerableUserAssessmentTable.tsx.
+          anchored(
           <VulnerableUserAssessmentTable
             project={project}
             rows={project.registers[registerKey] ?? []}
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
             readOnly={locked}
             readOnlyReason={lockedReason}
-          />
+          />,
+          )
         ) : (
           <DynamicTable
             config={config}
@@ -270,6 +283,7 @@ export default function RegisterHubPage() {
             closures={project.registerClosures}
           />
         )}
+        </ClosingWrap>
       </div>
     );
   }

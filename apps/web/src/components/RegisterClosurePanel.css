@@ -1,2 +1,7 @@
-.rcp-head { display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: 600; cursor: pointer; text-align: left; }
-.rcp-head:hover { color: var(--c-primary); }
+.rcp-head { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+.rcp-fold { flex-shrink: 0; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--c-text-3); cursor: pointer; }
+.rcp-fold:hover { background: var(--c-surface-2); color: var(--c-text); }
+.rcp-name { display: block; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.rcp-name:hover .rcp-name-text { color: var(--c-primary); text-decoration: underline; }
+.rcp-name-text { display: block; font-weight: 600; line-height: 22px; white-space: normal; }
+.rcp-name-gate { display: block; color: var(--c-text-3); font-size: 12px; font-weight: 400; line-height: 18px; white-space: normal; }
