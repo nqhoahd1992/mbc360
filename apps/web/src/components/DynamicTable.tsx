@@ -562,7 +562,12 @@ export default function DynamicTable({
         <div className="rt-head">
           <div className="rt-head-title">
             <span>{config.title}</span>
-            {config.gate && <span className="c-tag">Gate {config.gate}</span>}
+            {config.gate && (
+              <span className="c-tag" title={spansSeveralGates(config.gate) ? `Used at Gates ${config.gate.split(/[/-]/).join(", ")}. Each column is settled at the gate shown on it; the table locks once all of them have passed.` : undefined}>
+                Gate {config.gate}
+              </span>
+            )}
+            {spansSeveralGates(config.gate) && <span className="rt-head-note">columns lock at the gate on their tag</span>}
             {readOnly && <span className="c-tag c-tag-ok"><LockOutlined />Read-only</span>}
           </div>
           {config.description && !hideDescription && <p className="rt-head-desc">{config.description}</p>}
@@ -701,14 +706,14 @@ export default function DynamicTable({
                 <th>
                   <span className="rt-th-box">
                     <span className="rt-th" title={identity.label}>{identity.label}</span>
-                    {columnGate(identity) && <span className="c-tag rt-gate">G{columnGate(identity)}</span>}
+                    {columnGate(identity) && <span className="c-tag rt-gate" title={`This column is settled and locked at Gate ${columnGate(identity)}`}>G{columnGate(identity)}</span>}
                   </span>
                 </th>
                 {shown.map((col) => (
                   <th key={col.key} style={{ width: isTextColumn(col) ? TEXT_PREVIEW_WIDTH : DECISION_WIDTH }}>
                     <span className="rt-th-box">
                       <span className="rt-th" title={col.label}>{col.label}</span>
-                      {columnGate(col) && <span className="c-tag rt-gate">G{columnGate(col)}</span>}
+                      {columnGate(col) && <span className="c-tag rt-gate" title={`This column is settled and locked at Gate ${columnGate(col)}`}>G{columnGate(col)}</span>}
                     </span>
                   </th>
                 ))}
@@ -880,7 +885,7 @@ export default function DynamicTable({
                       <span className="rt-label">
                         {col.label}
                         {isColumnRequiredFor(col, openRow) && <RequiredMark met={!!openRow[col.key]} title="Required while the row is in this state" />}
-                        {columnGate(col) && <span className="c-tag rt-gate">G{columnGate(col)}</span>}
+                        {columnGate(col) && <span className="c-tag rt-gate" title={`This column is settled and locked at Gate ${columnGate(col)}`}>G{columnGate(col)}</span>}
                       </span>
                       {renderEditor(col, openRow, openIndex)}
                     </label>

@@ -98,3 +98,5 @@
 .rt-inline .rt-inline-label .rt-name { overflow: visible; white-space: normal; }
 .rt-inline tbody tr:last-child .rt-inline-label { border-bottom: 0; }
 .rt-inline .rt-inline-act { width: 48px; padding: 12px 8px; text-align: center; }
+
+.rt-head-note { color: var(--c-text-3); font-size: 12px; font-weight: 400; }
