@@ -1845,7 +1845,7 @@ const pifEvidenceClosure: RegisterConfig = {
   ],
 };
 
-const publicationRules: RegisterConfig = {
+export const publicationRules: RegisterConfig = {
   key: 'publicationRules',
   title: 'Publication Rules',
   sheetName: 'Published_Info_Approval',
@@ -1863,9 +1863,9 @@ const publicationRules: RegisterConfig = {
   ],
 };
 
-const publishedInfoApproval: RegisterConfig = {
+export const publishedInfoApproval: RegisterConfig = {
   key: 'publishedInfoApproval',
-  title: 'Published Information Approval',
+  title: 'Publication Approval Register',
   sheetName: 'Published_Info_Approval',
   description:
     'Mandatory approval workflow (confirmed rules C6 / F11) for ANY information intended for public release — websites, social media, brochures, catalogues, presentations, distributor/pharmacy & HCP documents, training, advertisements, AI-generated content, label/artwork text and external technical summaries. No public information may be released until the workflow reaches "Approved for Release". Acceptable terminology comes from the controlled Claims Library (maintained by Technical + Regulatory — content pending, F11/§B). If "Claim ID" is filled in, that claim must be \'Supported\' in Claim -> Evidence Traceability before this row can reach a released state (Gate 3 rule: "a claim may remain under development, but unsupported wording must not be marked as approved" — hard-blocked, 2026-07-27). Rule D2, enforced 2026-08-12: every row stating a product benefit, safety, efficacy, performance or suitability point MUST link a Claim ID — leaving it blank is only allowed for genuinely non-product corporate information, and then only by ticking "No product claim or technical statement", which records who declared it. Proposed channel wording may differ from the claim\'s master wording (there is no character-for-character lock), but a difference must be classified by an authorised reviewer before release, and a material change requires a new or revised claim record rather than a re-worded row.',
@@ -3984,7 +3984,7 @@ export interface NavGroup {
 
 // A workbook sheet name ("Supplier_RM_Evidence") -> the page of this app that replaced it. Where one sheet became several pages, the
 // one that carries the sheet's name is chosen.
-const SHEET_PAGE_OVERRIDES: Record<string, string> = { Published_Info_Approval: 'publishedInfoApproval' };
+const SHEET_PAGE_OVERRIDES: Record<string, string> = {};
 // Cell text writes the sheet "Change_Control_Comm"; its nav item's sheet name is the workbook tab's own "Change_Ctrl_Comm".
 const SHEET_NAME_ALIASES: Record<string, string> = { Change_Control_Comm: 'Change_Ctrl_Comm' };
 export interface SheetRef {
@@ -4205,8 +4205,7 @@ const DEPARTMENTS: RawDept[] = [
       'regulatoryChecklistStatus',
       'skuClaimsPifRegister',
       'pifEvidenceClosure',
-      'publicationRules',
-      'publishedInfoApproval',
+      { title: 'Published Information Approval', sheetName: 'Published_Info_Approval', workbookTab: 'ChiChu-Published_Info_Ap', page: 'published-information', gate: '10/11', contains: ['publicationRules', 'publishedInfoApproval'] },
       // Round 4 question 30(d), 2026-08-29 — the act of publishing, as distinct
       // from the approval that authorises it. Filed beside the approval register
       // it follows on from.

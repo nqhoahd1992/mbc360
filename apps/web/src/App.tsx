@@ -36,6 +36,7 @@ import CarrierEmollientReview from './pages/CarrierEmollientReview';
 import StudyProtocol from './pages/StudyProtocol';
 import MedicalSummary from './pages/MedicalSummary';
 import FragranceSafety from './pages/FragranceSafety';
+import PublishedInformation from './pages/PublishedInformation';
 import CompetitorLandscape from './pages/CompetitorLandscape';
 import TargetProductTech from './pages/TargetProductTech';
 import EvidenceClaimSupport from './pages/EvidenceClaimSupport';
@@ -358,6 +359,7 @@ function Shell() {
             <Route path="/projects/:projectId/study-protocol" element={<StudyProtocol />} />
             <Route path="/projects/:projectId/medical-summary" element={<MedicalSummary />} />
             <Route path="/projects/:projectId/fragrance-safety" element={<FragranceSafety />} />
+            <Route path="/projects/:projectId/published-information" element={<PublishedInformation />} />
             <Route path="/projects/:projectId/competitor-landscape" element={<CompetitorLandscape />} />
             <Route path="/projects/:projectId/target-product-tech" element={<TargetProductTech />} />
             <Route path="/projects/:projectId/evidence-claim-support" element={<EvidenceClaimSupport />} />
