@@ -16,7 +16,9 @@
   height: 40px; padding: 0 12px; border-bottom: 1px solid var(--c-border-2);
   background: var(--c-surface-2); color: var(--c-text-2); font-size: 13px; font-weight: 500; text-align: left; white-space: nowrap;
 }
-.rt-th { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.rt-th-box { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.rt-th { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.rt-th-box .rt-gate { flex-shrink: 0; }
 .rt-table td { padding: 12px; border-bottom: 1px solid var(--c-border-2); vertical-align: middle; }
 .rt-table tbody tr:last-child td { border-bottom: 0; }
 .rt-row { cursor: pointer; }

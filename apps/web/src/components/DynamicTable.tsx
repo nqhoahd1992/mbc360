@@ -699,13 +699,17 @@ export default function DynamicTable({
             <thead>
               <tr>
                 <th>
-                  <span className="rt-th">{identity.label}</span>
-                  {columnGate(identity) && <span className="c-tag rt-gate">G{columnGate(identity)}</span>}
+                  <span className="rt-th-box">
+                    <span className="rt-th" title={identity.label}>{identity.label}</span>
+                    {columnGate(identity) && <span className="c-tag rt-gate">G{columnGate(identity)}</span>}
+                  </span>
                 </th>
                 {shown.map((col) => (
                   <th key={col.key} style={{ width: isTextColumn(col) ? TEXT_PREVIEW_WIDTH : DECISION_WIDTH }}>
-                    <span className="rt-th">{col.label}</span>
-                    {columnGate(col) && <span className="c-tag rt-gate">G{columnGate(col)}</span>}
+                    <span className="rt-th-box">
+                      <span className="rt-th" title={col.label}>{col.label}</span>
+                      {columnGate(col) && <span className="c-tag rt-gate">G{columnGate(col)}</span>}
+                    </span>
                   </th>
                 ))}
                 {preview && <th>{preview.label}</th>}
