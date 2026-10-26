@@ -1,11 +1,13 @@
 import { Fragment, type ReactNode } from 'react';
 import { Alert, Empty } from 'antd';
-import { useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import {
   findNavGroupForRegister,
   getNavGroup,
+  getNavGroups,
   getRegisterConfig,
+  navItemHref,
   RELEASED_INFO_STATES,
   type RegisterConfig,
 } from '@mbc360/shared/config/registers';
@@ -105,6 +107,10 @@ export default function RegisterHubPage() {
   if (registerKey) {
     const config = getRegisterConfig(registerKey);
     if (!config) return <Empty description="Register not found" />;
+    // A register drawn as one of several tables on a page of the workbook's sheet (Study Protocol & Participants, Needs & Scientific Basis...) is
+    // opened on that page, scrolled to its table, so every older link to the single register lands where the whole sheet is.
+    const host = getNavGroups().flatMap((g) => g.items).find((i) => !!i.page && i.contains?.includes(registerKey));
+    if (host) return <Navigate replace to={`${navItemHref(host, id)}?scrollTo=register-${registerKey}`} />;
     // Breadcrumb parent = this register's department group.
     const parent = findNavGroupForRegister(registerKey);
 

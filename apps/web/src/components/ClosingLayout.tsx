@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { ClosingAsideContext } from './closingAside';
+import { useScrollToParam } from '../hooks/useScrollToParam';
 import './ClosingLayout.css';
 
 // Page layout of every register page that carries closing signatures: the register(s) in the main column and ALL the closing blocks in a
@@ -8,6 +9,8 @@ import './ClosingLayout.css';
 
 export default function ClosingLayout({ children }: { children: ReactNode }) {
   const [aside, setAside] = useState<HTMLElement | null>(null);
+  // `?scrollTo=register-<key>` (a link to one register of the page) scrolls to that table once the page has rendered.
+  useScrollToParam(true);
   return (
     <ClosingAsideContext.Provider value={aside}>
       <div className="closing-layout">
