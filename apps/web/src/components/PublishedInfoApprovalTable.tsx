@@ -51,6 +51,7 @@ export default function PublishedInfoApprovalTable({
   readOnly,
   readOnlyReason,
   embedded,
+  hideGateNote,
 }: {
   config: RegisterConfig;
   rows: RegisterRow[];
@@ -64,6 +65,7 @@ export default function PublishedInfoApprovalTable({
   readOnly?: boolean;
   readOnlyReason?: string;
   embedded?: boolean;
+  hideGateNote?: boolean;
 }) {
   const claimById = useMemo(
     () => new Map(claimEvidenceRows.filter((c) => typeof c.claimId === 'string' && c.claimId).map((c) => [String(c.claimId), c])),
@@ -279,6 +281,7 @@ export default function PublishedInfoApprovalTable({
       readOnly={readOnly}
       readOnlyReason={readOnlyReason}
       embedded={embedded}
+      hideGateNote={hideGateNote}
       renderCell={renderCell}
       tableColumns={['workflowState', 'claimId', 'market', 'status']}
       subtitleText={(row) =>

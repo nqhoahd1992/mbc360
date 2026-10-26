@@ -58,17 +58,15 @@ export default function PublishedInformation() {
           readOnly={isGateRefLocked(project, publicationRules.gate)}
           hideGateNote
         />
-        <div id={`register-${publishedInfoApproval.key}`}>
-          <PublishedInfoApprovalTable
-            config={publishedInfoApproval}
-            rows={approvalRows}
-            claimEvidenceRows={project.registers['claimEvidenceTraceability'] ?? []}
-            skuClaimRows={project.registers['skuClaimsPifRegister'] ?? []}
-            onSave={(rows) => setRegisterRowsBulk(id, publishedInfoApproval.key, rows)}
-            readOnly={locked}
-            embedded
-          />
-        </div>
+        <PublishedInfoApprovalTable
+          config={publishedInfoApproval}
+          rows={approvalRows}
+          claimEvidenceRows={project.registers['claimEvidenceTraceability'] ?? []}
+          skuClaimRows={project.registers['skuClaimsPifRegister'] ?? []}
+          onSave={(rows) => setRegisterRowsBulk(id, publishedInfoApproval.key, rows)}
+          readOnly={locked}
+          hideGateNote
+        />
         {registerClosureGateIds(publishedInfoApproval).length > 0 && spec && (
           <RegisterClosurePanel
             projectId={id}
