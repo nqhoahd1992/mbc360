@@ -22,6 +22,8 @@ import EvidenceRulesLink from '../components/EvidenceRulesLink';
 import SectionOverview from '../components/SectionOverview';
 import { VULNERABLE_REGISTER } from '@mbc360/shared/utils/vulnerableUsers';
 import WatchlistRegister from '../components/WatchlistRegister';
+import RegisterSummaryCard from '../components/RegisterSummaryCard';
+import { deriveRegisterRows, registerSummary } from '@mbc360/shared/utils/registerDerived';
 import RegisterPageHeader, { RegisterProgressCard } from '../components/RegisterPageHeader';
 import { WATCHLIST_REGISTERS } from '@mbc360/shared/utils/watchlistReview';
 
@@ -148,12 +150,16 @@ export default function RegisterHubPage() {
     // Redesigned 2026-10-02 (wireframe option A): its own page layout — header,
     // progress, decision table + detail drawer, closing at the bottom. The pilot
     // for moving the other registers to the same concept.
+    // Columns the workbook computes are shown as the rules compute them (and the server sets them on save).
+    const shownRows = deriveRegisterRows(registerKey, project.registers[registerKey] ?? [], project);
+    const summary = registerSummary(registerKey, shownRows);
+
     if ((WATCHLIST_REGISTERS as readonly string[]).includes(registerKey)) {
       return (
         <WatchlistRegister
           project={project}
           config={config}
-          rows={project.registers[registerKey] ?? []}
+          rows={shownRows}
           parent={parent}
           onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
           readOnly={locked}
@@ -247,13 +253,14 @@ export default function RegisterHubPage() {
         ) : (
           <DynamicTable
             config={config}
-            rows={project.registers[registerKey] ?? []}
+            rows={shownRows}
             onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
             readOnly={locked}
             readOnlyReason={lockedReason}
             embedded
           />
         )}
+        {summary && <RegisterSummaryCard summary={summary} />}
         {closeable && registerReviewSpec(config) && (
           <RegisterClosurePanel
             projectId={id}

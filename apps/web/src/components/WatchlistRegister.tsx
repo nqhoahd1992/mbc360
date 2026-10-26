@@ -578,7 +578,8 @@ function RowDetail({
                 style={{ width: '100%' }}
                 min={0}
                 value={typeof row.formulaMatchCount === 'number' ? row.formulaMatchCount : undefined}
-                disabled={off('formulaMatchCount')}
+                // Counted from the Formula BOM, not entered (utils/registerDerived.ts).
+                disabled
                 onChange={(v) => onPatch({ formulaMatchCount: v ?? undefined })}
               />
             )}

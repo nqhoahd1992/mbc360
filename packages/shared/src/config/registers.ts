@@ -865,7 +865,8 @@ const prohibitedIngredients: RegisterConfig = {
         'Needs Regulatory Review',
       ],
     },
-    { key: 'formulaMatchCount', label: 'Formula match count', type: 'number', width: 90 },
+    // The workbook's COUNTIF: how many Formula BOM lines match this row. Computed, not entered.
+    { key: 'formulaMatchCount', label: 'Formula match count', type: 'number', width: 90, editable: false },
     // Round 4 question 6 (2026-08-29). Sits beside `productStatus`, not inside it:
     // that column holds the SCREENING result (does the formula match this row),
     // this one holds the reviewer's DISPOSITION of that result. Blank is the
@@ -2116,7 +2117,8 @@ const formulationChangeRegister: RegisterConfig = {
     { key: 'marketCommRequired', label: 'Market communication required?', type: 'select', width: 140, options: ['Yes', 'No', 'NA', 'To assess'] },
     { key: 'communicatedToMarket', label: 'Communicated to market? (Y/N)', type: 'select', width: 140, options: ['Yes', 'No', 'NA', 'In progress'] },
     { key: 'closed', label: 'Closed? (Y/N)', type: 'select', width: 100, options: ['Yes', 'No'] },
-    { key: 'overallStatus', label: 'Overall status', type: 'text', width: 130 },
+    // Computed from the row (utils/registerDerived.ts), as the workbook's formula does.
+    { key: 'overallStatus', label: 'Overall status', type: 'text', width: 190, editable: false },
     // Was a free-text name box until 2026-08-26. The Final Approver is the company's final commercial authority, which
     // made this the worst remaining place in the app to accept a typed name: anyone could enter it, and change it afterwards
     // with nothing recorded. Now the same act the phase block requires — authenticated identity, an authenticator code,

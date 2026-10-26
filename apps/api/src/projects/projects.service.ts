@@ -80,6 +80,7 @@ import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '@mbc360/shared/con
 import { ASSESSMENT_FIELDS as ASSESSMENT_FIELDS_BY_KEY, ASSESSMENT_HOMES } from '@mbc360/shared/config/assessments';
 import { EVIDENCE_AREAS } from '@mbc360/shared/config/evidence';
 import { SAFETY_MATRIX_KEY, syncSafetyMatrix } from '@mbc360/shared/utils/safetyMatrixSync';
+import { deriveRegisterRows } from '@mbc360/shared/utils/registerDerived';
 import { GATE_READINESS, type ReadinessCheck } from '@mbc360/shared/config/gateReadiness';
 import {
   GATE_PASSING_DECISIONS,
@@ -2646,6 +2647,8 @@ export class ProjectsService {
       // The Ingredient-Level Safety Matrix follows the Formula BOM: its identity and watch-list-match columns are derived here, so a request
       // can neither add an ingredient the BOM lacks nor set a match by hand.
       if (registerKey === SAFETY_MATRIX_KEY) rows = syncSafetyMatrix(project.bom, rows, committedRegisterRows);
+      // Columns the workbook computes (a change's overall status, a watch-list row's formula match count) are the server's to set.
+      rows = deriveRegisterRows(registerKey, rows, project);
       const missingRequired = missingRequiredProblems(config, rows);
       if (missingRequired.length > 0) {
         throw new BadRequestException(missingRequired.slice(0, 5).join('; '));

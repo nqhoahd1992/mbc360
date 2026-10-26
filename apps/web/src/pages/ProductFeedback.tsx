@@ -175,6 +175,12 @@ export default function ProductFeedback() {
                 ['Fragrance', avg('fragrance'), '/5'],
                 ['Overall', avg('overall'), '/5'],
                 ['Would recommend', String(recommendRate), '%'],
+                // The rest of the workbook's "Panel result summary", counted the same way (COUNTIF on each answer).
+                ['Male testers (M)', String(entries.filter((e) => e.gender === 'M').length), ''],
+                ['Female testers (F)', String(entries.filter((e) => e.gender === 'F').length), ''],
+                ['Too oily — Yes (safety)', String(entries.filter((e) => e.tooOilySlippery === 'Yes').length), ''],
+                ['Too oily — Borderline', String(entries.filter((e) => e.tooOilySlippery === 'Borderline').length), ''],
+                ['Would recommend (Yes)', String(entries.filter((e) => e.wouldRecommend === 'Yes').length), ''],
               ] as const
             ).map(([label, value, suffix]) => (
               <div key={label} className="fb-stat">

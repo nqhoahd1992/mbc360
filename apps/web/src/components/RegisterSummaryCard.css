@@ -1,0 +1,11 @@
+.rsc { padding: 16px 20px; }
+.rsc-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 8px; }
+.rsc-title { margin: 0; font-size: 16px; font-weight: 600; line-height: 24px; }
+.rsc-note { color: var(--c-text-3); font-size: 13px; }
+.rsc-empty { margin: 0; color: var(--c-text-3); font-size: 13px; }
+.rsc-scroll { overflow-x: auto; border: 1px solid var(--c-border-2); border-radius: 8px; }
+.rsc-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.rsc-table th { padding: 0 12px; height: 40px; border-bottom: 1px solid var(--c-border-2); background: var(--c-surface-2); color: var(--c-text-2); font-size: 13px; font-weight: 500; text-align: left; white-space: nowrap; }
+.rsc-table td { padding: 10px 12px; border-bottom: 1px solid var(--c-border-2); font-variant-numeric: tabular-nums; }
+.rsc-table tbody tr:last-child td { border-bottom: 0; }
+.rsc-first { color: var(--c-text); font-weight: 500; }
