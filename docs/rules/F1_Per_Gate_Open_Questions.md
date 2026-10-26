@@ -2321,7 +2321,7 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** sửa `screenedProductStatus` trong `packages/shared/src/utils/registerDerived.ts` [ASSUMPTION: R5-Q76].
 
-#### R5-Q75 · Safety decision của Ingredient-Level Safety Matrix: ứng dụng tự đặt "Needs Review" / "No listed match", "Needs Review" không phải kết luận 🔴
+#### R5-Q75 · Safety decision của Ingredient-Level Safety Matrix: ứng dụng tự đặt "Needs Review" / "No listed match" (cả hai chỉ do máy đặt), "Needs Review" không phải kết luận 🔴
 
 **Lộ ra 26/10/2026, khi chuyển các cột của ma trận thành công thức theo workbook.** Trong workbook, Safety decision là công thức: nguyên liệu khớp danh sách cấm hoặc PB caution thì "Needs Review", không khớp thì "No listed match". Round 4 câu 23(b) lại nói mọi nguyên liệu trong công thức cuối phải có một **safety disposition**, và Gate 7 đọc cột này.
 
