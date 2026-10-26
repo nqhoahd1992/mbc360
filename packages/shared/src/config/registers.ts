@@ -1140,7 +1140,7 @@ const eyeSafetyEvidence: RegisterConfig = {
   ],
 };
 
-const fragranceSafety: RegisterConfig = {
+export const fragranceSafety: RegisterConfig = {
   key: 'fragranceSafety',
   title: 'Fragrance Safety & Allergen Evidence',
   sheetName: 'Fragrance_Safety',
@@ -1166,7 +1166,7 @@ const fragranceSafety: RegisterConfig = {
   ],
 };
 
-const fragranceAllergenLog: RegisterConfig = {
+export const fragranceAllergenLog: RegisterConfig = {
   key: 'fragranceAllergenLog',
   title: 'Fragrance / Allergen Log',
   sheetName: 'Fragrance_Safety',
@@ -4189,8 +4189,7 @@ const DEPARTMENTS: RawDept[] = [
       // general layer above, not with the safety registers, because it is the same
       // kind of record — a restriction screen against reference sources.
       'generalRestrictedCaution',
-      'fragranceSafety',
-      'fragranceAllergenLog',
+      { title: 'Fragrance Safety & Allergen Evidence', sheetName: 'Fragrance_Safety', workbookTab: 'ChiChu-Fragrance_Safety', page: 'fragrance-safety', gate: '07', contains: ['fragranceSafety', 'fragranceAllergenLog'] },
       'aseanPifMap',
       'pifChecklistAsean',
       // regulatoryChecklistStatus (2026-08-27, user-requested): one of only 3
