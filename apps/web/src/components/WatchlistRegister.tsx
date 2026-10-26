@@ -202,15 +202,6 @@ export default function WatchlistRegister({
     }
   };
 
-  const bomCell = (row: RegisterRow) => {
-    const hits = bomHits.get(text(row.ingredientGroup)) ?? [];
-    return hits.length ? (
-      <span className="c-tag c-tag-warn"><ExperimentOutlined />{hits.length} BOM line{hits.length > 1 ? 's' : ''}</span>
-    ) : (
-      <span className="wl-muted">No match</span>
-    );
-  };
-
   // The workbook names a FUNCTION ("Regulatory"); on this project that function is somebody ("Regulatory — Chi Chu").
   const ownerLabel = (row: RegisterRow) => ownerFunctionWithPeople(text(row.owner), project.identity.reviewers);
   const owner = (row: RegisterRow) => {
@@ -234,18 +225,6 @@ export default function WatchlistRegister({
       disabled={readOnly || freeze.isFrozen('productStatus') || access.cellBlocked('productStatus', row)}
       popupMatchSelectWidth={false}
       onChange={(v: string) => patch(index, { productStatus: v })}
-    />
-  );
-  const dispositionSelect = (row: RegisterRow, index: number) => (
-    <Select
-      style={{ width: '100%' }}
-      value={text(row.gate4Disposition) || undefined}
-      placeholder="Not dispositioned"
-      allowClear
-      options={columnOptions(config, 'gate4Disposition')}
-      disabled={readOnly || freeze.isFrozen('gate4Disposition') || access.cellBlocked('gate4Disposition', row)}
-      popupMatchSelectWidth={false}
-      onChange={(v?: string) => patch(index, { gate4Disposition: v ?? '' })}
     />
   );
   const stop = (e: React.MouseEvent) => e.stopPropagation();
@@ -321,9 +300,7 @@ export default function WatchlistRegister({
           <thead>
             <tr>
               <th>Ingredient / group</th>
-              <th style={{ width: 128 }}>Formula BOM</th>
               <th style={{ width: 200 }}>Product status</th>
-              <th style={{ width: 200 }}>Classification</th>
               <th style={{ width: 160 }}>Review</th>
               <th className="wl-col-owner" style={{ width: 190 }}>Owner</th>
               <th style={{ width: 36 }} aria-label="Open" />
@@ -341,9 +318,7 @@ export default function WatchlistRegister({
                   <div className="wl-name" title={text(row.ingredientGroup)}>{text(row.ingredientGroup)}</div>
                   <div className="wl-fn">{text(row.functionRole)}</div>
                 </td>
-                <td>{bomCell(row)}</td>
                 <td onClick={stop}>{productStatusSelect(row, index)}</td>
-                <td onClick={stop}>{dispositionSelect(row, index)}</td>
                 <td>{stateCell(row, state)}</td>
                 <td className="wl-col-owner">{owner(row)}</td>
                 <td className="wl-chev"><RightOutlined /></td>
@@ -351,7 +326,7 @@ export default function WatchlistRegister({
             ))}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={7} className="wl-empty">Nothing in this filter.</td>
+                <td colSpan={5} className="wl-empty">Nothing in this filter.</td>
               </tr>
             )}
           </tbody>
@@ -367,12 +342,10 @@ export default function WatchlistRegister({
                 <RightOutlined className="wl-chev" style={{ marginTop: 4 }} />
               </div>
               <div className="wl-list-meta">
-                {bomCell(row)}
                 {stateCell(row, state)}
               </div>
               <div className="wl-list-controls" onClick={stop}>
                 {productStatusSelect(row, index)}
-                {dispositionSelect(row, index)}
               </div>
             </li>
           ))}
