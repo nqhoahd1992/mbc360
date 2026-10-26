@@ -1,4 +1,5 @@
 import { InfoCircleOutlined, LockOutlined } from '@ant-design/icons';
+import { registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import ReviewOwnerLine from './ReviewOwnerLine';
 import { Link } from 'react-router-dom';
 import type { NavGroup, RegisterConfig } from '@mbc360/shared/config/registers';
@@ -26,7 +27,9 @@ export default function RegisterPageHeader({
   readOnly: boolean;
   readOnlyReason?: string;
 }) {
-  const reviewOwnerText = config.reviewOwner ? composeReviewOwner(config.reviewOwner, project.identity.reviewers) : '';
+  // The register's own review spec, or its group's when it declares none (Development Brief, Vulnerable-User Assessment...).
+  const spec = registerReviewSpec(config);
+  const reviewOwnerText = spec ? composeReviewOwner(spec, project.identity.reviewers) : '';
   return (
     <>
       <div className="rph">
