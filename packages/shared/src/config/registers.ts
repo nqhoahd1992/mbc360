@@ -1876,7 +1876,6 @@ export const publishedInfoApproval: RegisterConfig = {
     // F11: the workflow lifecycle state (drives release — see the violation check).
     { key: 'workflowState', label: 'Workflow state', type: 'select', width: 180, options: PUBLISHED_INFO_STATES },
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
-    { key: 'formulaVersion', label: 'Formula version', type: 'text', width: 110 },
     { key: 'materialType', label: 'Material type', type: 'text', width: 130 },
     { key: 'channel', label: 'Channel', type: 'text', width: 130 },
     { key: 'market', label: 'Market', type: 'market', width: 100 },
