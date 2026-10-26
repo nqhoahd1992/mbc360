@@ -593,6 +593,12 @@ function RowDetail({
               disabled={off('productStatus')}
               onChange={(v: string) => onPatch({ productStatus: v })}
             />
+            {typeof row.formulaMatchCount === 'number' && row.formulaMatchCount > 0 && text(row.productStatus) === 'REVIEW - possible formula match' && (
+              <span className="wl-help">
+                The Formula BOM has {row.formulaMatchCount} {row.formulaMatchCount === 1 ? 'line' : 'lines'} matching this row, so the status is set to review. To clear it, record your conclusion here
+                (for example &quot;Not present - evidence linked&quot; or &quot;Present within restriction&quot;) — or fix the ingredient on the Formula BOM.
+              </span>
+            )}
           </label>
           <label className="wl-span-2">
             <span className="wl-field-label">Evidence link</span>

@@ -1543,6 +1543,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
 | R5-Q69 | Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role | Chủ dự án bỏ quyền theo role 15/10/2026 | **lộ ra 15/10/2026** |
+| R5-Q76 | Product status của Prohibited Ingredients tự đặt "REVIEW - possible formula match" khi BOM có khớp; người đã chọn kết luận thì giữ | Chủ dự án muốn ứng dụng tự đánh giá như công thức workbook, 26/10/2026 | **lộ ra 26/10/2026** |
 | R5-Q75 | Cột Safety decision của ma trận nguyên liệu: workbook tính tự động từ số khớp danh sách, app giữ quyết định là việc của người | Chủ dự án đưa công thức của workbook, 26/10/2026 | **lộ ra 26/10/2026** |
 | R5-Q74 | Chức năng ghi ở cột Owner của hàng cố định (Project owner, R&I, Regulatory…) tương ứng người nào trong danh sách review của dự án | Chủ dự án muốn ghi tên người cụ thể cạnh chức năng, 26/10/2026 | **lộ ra 26/10/2026** |
 | R5-Q73 | Hồ sơ tìm tài liệu của chuẩn bằng chứng: nằm ở trang nào, thế nào là đầy đủ | Chủ dự án hỏi chuẩn Sheet 6 thực thi thế nào, 19/10/2026 | **lộ ra 19/10/2026** |
@@ -2309,6 +2310,16 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.
 
 **Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ** (còn **76** từ 19/10/2026, sau khi bỏ bốn sổ tham chiếu của Roadmap và Sheet 6 và hai bảng ký gõ tay của Needs và Target Product — nhóm D còn 32, nhóm E còn 26), chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+
+#### R5-Q76 · Product status của Prohibited Ingredients: ứng dụng tự đặt REVIEW khi Formula BOM có khớp 🔴
+
+**Lộ ra 26/10/2026, khi chuyển công thức của workbook vào ứng dụng.** Công thức H của sheet Prohibited_Ingredients tự điền "REVIEW - possible formula match" khi có khớp và "No formula match recorded" khi không. Trước đây ứng dụng để người chọn trạng thái này; chủ dự án quyết định ứng dụng tự đánh giá, vì để người chọn thì họ có thể để "No formula match recorded" trong khi BOM có nguyên liệu khớp. "REVIEW - possible formula match" nằm trong các trạng thái bị gắn cờ (Round 4 câu 32(a)), nên Gate 4 và các quy tắc của dòng bị gắn cờ (Next Action, người rà soát, thẩm định) áp dụng ngay.
+
+**Hiện chạy theo:** chỉ hai trạng thái do máy ghi mới tự đổi. Có khớp và dòng chưa có kết luận của người (trống hoặc "No formula match recorded") → REVIEW; hết khớp mà đang REVIEW → "No formula match recorded". Kết luận người đã chọn ("Not present - evidence linked", "Present within restriction", "Prohibited - remove", các trạng thái Needs … Review) được giữ nguyên, và đó là cách xoá một khớp giả. Số khớp tính bằng bộ so khớp CAS rồi từ khoá của ứng dụng (bảng mẫu theo follow-up F3), không phải tìm chữ như công thức Excel. Danh sách PB Caution **không** tự đặt trạng thái: nó không có trạng thái "có thể khớp", và Gate 4 cố ý chỉ chặn các trạng thái chuyển Safety/Regulatory.
+
+**Câu hỏi:** (a) một khớp do máy tìm ra có nên tự chặn Gate 4 cho tới khi người ghi kết luận không? (b) kết luận nào của người đủ để xoá một khớp (hiện: mọi trạng thái người chọn ngoài hai trạng thái máy ghi)? (c) danh sách PB Caution có cần một trạng thái "có thể khớp" tương tự không?
+
+**Nếu trả lời khác:** sửa `screenedProductStatus` trong `packages/shared/src/utils/registerDerived.ts` [ASSUMPTION: R5-Q76].
 
 #### R5-Q75 · Safety decision của Ingredient-Level Safety Matrix: tự tính như workbook, hay do người quyết 🔴
 

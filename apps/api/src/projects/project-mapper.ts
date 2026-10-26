@@ -24,6 +24,7 @@ import {
 } from '@mbc360/shared/config/registers';
 import { registerContentHashOf, registerRowContentHashOf } from './content-hash';
 import { closureKey } from '@mbc360/shared/utils/registerClosures';
+import { deriveRegisterRows } from '@mbc360/shared/utils/registerDerived';
 import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
 import type {
   BacktrackEvent,
@@ -351,7 +352,18 @@ export function toChangeRecords(p: ProjectWithAll) {
 // a call site that forgot to supply it would evaluate those rules against nothing.
 // Making it required means the compiler catches that, rather than the gate quietly
 // behaving differently on the server than in the browser (BACKEND_PLAN principle 7).
-export function toProjectData(
+// Everything the rules and the screens read goes through here, so the columns the workbook computes (a watch-list row's formula
+// match count and its machine-written status) are applied once, in one place, and cannot be stale against the Formula BOM.
+export function toProjectData(...args: Parameters<typeof toProjectDataRaw>): ProjectData {
+  const project = toProjectDataRaw(...args);
+  const watchlist = 'prohibitedIngredients';
+  if (project.registers[watchlist]) {
+    project.registers[watchlist] = deriveRegisterRows(watchlist, project.registers[watchlist], project);
+  }
+  return project;
+}
+
+function toProjectDataRaw(
   p: ProjectWithAll,
   gateChangeLog: GateChangeLogEntry[],
   reference: ProjectReferenceData,

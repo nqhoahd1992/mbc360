@@ -43,10 +43,27 @@ export function formulaMatchCount(project: ProjectData, ingredientGroup: string)
   ).length;
 }
 
+// The workbook's H: a match reads "REVIEW - possible formula match", no match "No formula match recorded". The app lets a PERSON'S
+// conclusion stand: only the two machine-written states move. A row with a match and no conclusion of its own (blank, or still
+// "No formula match recorded") is set to REVIEW, so a match can never sit beside a clean status; a row set to REVIEW whose match has
+// gone is set back. "Not present - evidence linked", "Present within restriction", "Prohibited - remove" and the escalations are
+// decisions somebody took, and are kept — which is also how a false match is cleared. [ASSUMPTION: R5-Q76]
+export const WATCHLIST_NO_MATCH = 'No formula match recorded';
+export const WATCHLIST_MATCH_REVIEW = 'REVIEW - possible formula match';
+export function screenedProductStatus(current: string, matches: number): string {
+  const status = current.trim();
+  if (matches > 0 && (status === '' || status === WATCHLIST_NO_MATCH)) return WATCHLIST_MATCH_REVIEW;
+  if (matches === 0 && status === WATCHLIST_MATCH_REVIEW) return WATCHLIST_NO_MATCH;
+  return current;
+}
+
 export function deriveRegisterRows(registerKey: string, rows: RegisterRow[], project: ProjectData): RegisterRow[] {
   if (registerKey === 'formulationChangeRegister') return rows.map((r) => ({ ...r, overallStatus: formulaChangeStatus(r) }));
   if (registerKey === 'prohibitedIngredients') {
-    return rows.map((r) => ({ ...r, formulaMatchCount: formulaMatchCount(project, text(r.ingredientGroup)) }));
+    return rows.map((r) => {
+      const matches = formulaMatchCount(project, text(r.ingredientGroup));
+      return { ...r, formulaMatchCount: matches, productStatus: screenedProductStatus(text(r.productStatus), matches) };
+    });
   }
   return rows;
 }
