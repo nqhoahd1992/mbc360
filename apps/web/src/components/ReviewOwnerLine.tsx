@@ -26,7 +26,12 @@ function Person({ value }: { value: string }) {
 }
 
 export default function ReviewOwnerLine({ text }: { text: string }) {
-  const { owner, coReview, coSign } = parse(text);
+  const parsed = parse(text);
+  const { owner } = parsed;
+  // The responsible person also co-reviewing or co-signing is one fact: fold it into the owner's label instead of repeating the name.
+  const also = [parsed.coReview.includes(owner) && 'Co-review', parsed.coSign.includes(owner) && 'Co-sign'].filter(Boolean) as string[];
+  const coReview = parsed.coReview.filter((p) => p !== owner);
+  const coSign = parsed.coSign.filter((p) => p !== owner);
   const group = (label: string, list: string[]) =>
     list.length > 0 && (
       <span className="rol-group">
@@ -41,7 +46,7 @@ export default function ReviewOwnerLine({ text }: { text: string }) {
   return (
     <div className="rol">
       <span className="rol-group">
-        <span className="rol-label">Responsible</span>
+        <span className="rol-label">{['Responsible', ...also].join(' · ')}</span>
         <span className="rol-owner">
           <Person value={owner} />
         </span>
