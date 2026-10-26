@@ -14,6 +14,7 @@
 // needs checklists/gateChecks/registers/bom/nextActions to evaluate readiness,
 // and a response missing them would make pages for later phases render empty.
 import { GATES } from '@mbc360/shared/config/gates';
+import { EVIDENCE_AREAS } from '@mbc360/shared/config/evidence';
 import {
   NP_APPROVAL_APPROVED,
   NP_APPROVAL_PENDING,
@@ -100,6 +101,12 @@ export type ProjectWithAll = Prisma.ProjectGetPayload<{ include: typeof PROJECT_
 // (`?`) properties, and the difference is visible in JSON (`"owner": null` vs
 // absent). Normalising to undefined keeps the API response byte-identical in
 // shape to what the store used to hold locally.
+// Position of an evidence area in the workbook's Product Evidence Summary; an area it does not list goes last.
+function evidenceAreaOrder(area: string): number {
+  const i = EVIDENCE_AREAS.findIndex((a) => a.area === area);
+  return i === -1 ? Number.MAX_SAFE_INTEGER : i;
+}
+
 function opt(value: string | null): string | undefined {
   return value ?? undefined;
 }
@@ -569,7 +576,10 @@ export function toProjectData(
       ...(p.costing?.assumptions ? { assumptions: p.costing.assumptions } : {}),
       ...(p.costing?.evidenceLink ? { evidenceLink: p.costing.evidenceLink } : {}),
     },
-    evidence: p.evidenceItems.map((e) => ({
+    // The workbook's row order (EVIDENCE_AREAS), not the database's: the rows are created together, so their ids carry no order.
+    evidence: [...p.evidenceItems]
+      .sort((x, y) => evidenceAreaOrder(x.area) - evidenceAreaOrder(y.area))
+      .map((e) => ({
       area: e.area,
       required: e.required as 'Y' | 'Conditional',
       trigger: e.trigger,

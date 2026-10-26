@@ -180,7 +180,6 @@ export default function EvidenceSummary() {
           <>
             <section>
               <div className="rt-grid">
-                <RecordField label="Status">{statusControl(r)}</RecordField>
                 <RecordField label="Required?">
                   <Select
                     style={{ width: '100%' }}
@@ -198,6 +197,7 @@ export default function EvidenceSummary() {
                     onChange={(ev) => patch(r.index, { evidenceLink: ev.target.value })}
                   />
                 </RecordField>
+                <RecordField label="Status">{statusControl(r)}</RecordField>
                 <RecordField label="Notes" wide>
                   <Input.TextArea
                     autoSize={{ minRows: 2 }}
@@ -216,9 +216,9 @@ export default function EvidenceSummary() {
                     ['Trigger', r.e.trigger],
                     ['Primary template', template(r.e.primaryTemplate)],
                     ['Secondary inputs', r.e.secondaryInputs || '—'],
-                    ['PIF / PMF section', r.e.pifPmfSection || '—'],
                     ['Owner', r.e.owner],
                     ['Gate', gateLabel(r.e.gate)],
+                    ['PIF / PMF section', r.e.pifPmfSection || '—'],
                   ] as const
                 ).map(([label, value]) => (
                   <div key={label} className="rt-dl-row">
