@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import ReviewOwnerLine from '../components/ReviewOwnerLine';
 import { Button, DatePicker, Empty, Input, InputNumber, Select, Table, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import { CloudDownloadOutlined, ExclamationCircleOutlined, LockOutlined } from '@ant-design/icons';
@@ -430,12 +431,8 @@ export default function BomCosting() {
         </div>
         <p className="bom-meta">
           {id} · {project.identity.productSku}
-          {showFormula && formulaReviewOwner && (
-            <>
-              {' '}· Review owner <b>{formulaReviewOwner}</b>
-            </>
-          )}
         </p>
+        {showFormula && formulaReviewOwner && <ReviewOwnerLine text={formulaReviewOwner} />}
         {showFormula && (
           <div className="bom-head-actions">
             <Tooltip title={formulaVersionOpen ? undefined : 'Available only while Gate 05 is the open gate.'}>

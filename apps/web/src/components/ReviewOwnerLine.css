@@ -1,0 +1,7 @@
+.rol { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; margin: 8px 0 0; font-size: 13px; color: var(--c-text-2); }
+.rol-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.rol-label { color: var(--c-text-3); font-size: 12px; }
+.rol-owner { padding: 2px 10px; border: 1px solid var(--c-primary); border-radius: 8px; background: var(--c-primary-light); color: var(--c-text); }
+.rol-owner b { color: var(--c-primary); font-weight: 600; }
+.rol-person b { color: var(--c-text); font-weight: 500; }
+.rol-role { color: var(--c-text-3); }

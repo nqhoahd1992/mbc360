@@ -1,6 +1,5 @@
 /* Section overview (2026-10-02 redesign, wireframe option A). Header, chip and
    row primitives come from pages/AdminUsers.css; tokens from concept.css. */
-.so-owner { color: var(--c-text); font-weight: 500; }
 .so-counts { margin-top: 8px; }
 .so-muted { color: var(--c-text-3); font-size: 13px; }
 .so-warn { color: var(--c-warn); font-size: 13px; }

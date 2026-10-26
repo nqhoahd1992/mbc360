@@ -1,4 +1,5 @@
 import { InfoCircleOutlined, LockOutlined } from '@ant-design/icons';
+import ReviewOwnerLine from './ReviewOwnerLine';
 import { Link } from 'react-router-dom';
 import type { NavGroup, RegisterConfig } from '@mbc360/shared/config/registers';
 import type { ProjectData } from '@mbc360/shared/types';
@@ -48,12 +49,8 @@ export default function RegisterPageHeader({
         </div>
         <p className="rph-meta">
           {project.identity.id} · {project.identity.productSku}
-          {reviewOwnerText && (
-            <>
-              {' '}· Review owner <b>{reviewOwnerText}</b>
-            </>
-          )}
         </p>
+        {reviewOwnerText && <ReviewOwnerLine text={reviewOwnerText} />}
         {config.description && <p className="rph-desc">{config.description}</p>}
       </div>
       {readOnly && (
@@ -116,12 +113,8 @@ export function CompositePageHeader({
         </div>
         <p className="rph-meta">
           {project.identity.id} · {project.identity.productSku}
-          {reviewOwnerText && (
-            <>
-              {' '}· Review owner <b>{reviewOwnerText}</b>
-            </>
-          )}
         </p>
+        {reviewOwnerText && <ReviewOwnerLine text={reviewOwnerText} />}
         <p className="rph-desc">{description}</p>
       </div>
       {note && (

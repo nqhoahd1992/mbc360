@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ReviewOwnerLine from './ReviewOwnerLine';
 import { Button, Tabs } from 'antd';
 import { CheckCircleOutlined, LockOutlined, RightOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
@@ -177,12 +178,8 @@ export default function SectionOverview({
         <h1 className="au-title">{group.title}</h1>
         <p className="au-meta">
           {id} · {project.identity.productSku}
-          {reviewOwner && (
-            <>
-              {' '}· Review owner <b className="so-owner">{reviewOwner}</b>
-            </>
-          )}
         </p>
+        {reviewOwner && <ReviewOwnerLine text={reviewOwner} />}
         {group.description && <p className="au-desc">{group.description}</p>}
         <p className="au-meta so-counts">
           {sheets.length} {sheets.length === 1 ? 'sheet' : 'sheets'}
