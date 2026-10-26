@@ -207,10 +207,8 @@ export default function WatchlistRegister({
   const owner = (row: RegisterRow) => {
     const name = text(row.owner);
     if (!name) return <span className="wl-muted">—</span>;
-    const initials = name.split(/\s+/).map((p) => p[0]).join('').slice(0, 2).toUpperCase();
     return (
       <span className="wl-owner">
-        <span className="wl-initials" aria-hidden="true">{initials}</span>
         <span>{ownerLabel(row)}</span>
       </span>
     );
