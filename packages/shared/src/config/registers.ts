@@ -2420,13 +2420,16 @@ export const formulationSafetyMatrix: RegisterConfig = {
     // [ASSUMPTION: R5-Q64] Added 2026-10-09: `uncoveredFormulaLines` has always tried
     // rmCode before INCI, but this register had no such column, so only the INCI
     // join ever ran and two materials sharing an INCI name matched the same row.
-    { key: 'rmCode', label: 'RM code', type: 'text', width: 110 },
-    { key: 'inciName', label: 'Ingredient / INCI', type: 'text', width: 160 },
-    { key: 'percentWw', label: '% w/w', type: 'number', width: 80 },
-    { key: 'functionRole', label: 'Function', type: 'text', width: 130 },
-    { key: 'supplier', label: 'Supplier', type: 'text', width: 130 },
-    { key: 'prohibitedMatch', label: 'Prohibited match', type: 'select', width: 130, options: ['No', 'Borderline', 'Yes'] },
-    { key: 'pbCautionMatch', label: 'PB caution match', type: 'select', width: 130, options: ['No', 'Borderline', 'Yes'] },
+    // The matrix follows the Formula BOM (utils/safetyMatrixSync.ts): the identity columns come from the BOM line and the two matches are
+    // computed from the ingredient, as in the workbook's formulas. None of them is entered.
+    { key: 'line', label: 'Line', type: 'text', width: 70, editable: false },
+    { key: 'rmCode', label: 'RM code', type: 'text', width: 110, editable: false },
+    { key: 'inciName', label: 'Ingredient / INCI', type: 'text', width: 160, editable: false },
+    { key: 'percentWw', label: '% w/w', type: 'number', width: 80, editable: false },
+    { key: 'functionRole', label: 'Function', type: 'text', width: 130, editable: false },
+    { key: 'supplier', label: 'Supplier', type: 'text', width: 130, editable: false },
+    { key: 'prohibitedMatch', label: 'Prohibited match', type: 'select', width: 130, options: ['No', 'Borderline', 'Yes'], editable: false },
+    { key: 'pbCautionMatch', label: 'PB caution match', type: 'select', width: 130, options: ['No', 'Borderline', 'Yes'], editable: false },
     { key: 'exposureRationale', label: 'Exposure / MoS rationale', type: 'textarea', width: 180 },
     { key: 'irritationSensitisation', label: 'Irritation / sensitisation', type: 'text', width: 150 },
     { key: 'allergenIfra', label: 'Allergen / IFRA', type: 'text', width: 130 },

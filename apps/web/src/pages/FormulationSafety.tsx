@@ -2,6 +2,7 @@ import { Alert, Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import { findingsReplacedBy } from '@mbc360/shared/utils/safetyFindings';
+import { syncSafetyMatrix } from '@mbc360/shared/utils/safetyMatrixSync';
 import { criticalSafetyFindings, formulationSafetyFinalSignOff, formulationSafetyMatrix, formulationSafetyProfile } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked, uncoveredFormulaLines } from '@mbc360/shared/utils/gateProgress';
@@ -22,6 +23,7 @@ export default function FormulationSafety() {
   // Gate-level edit lock — Formulation Safety is used at Gate 07 and reused at
   // Gate 10, so it stays editable until BOTH have passed.
   const locked = isGateRefLocked(project, formulationSafetyProfile.gate);
+  const matrixRows = syncSafetyMatrix(project.bom, project.registers[formulationSafetyMatrix.key] ?? []);
   // Round 4 question 23(b) — the same function the Gate 7 readiness item calls, so
   // the screen and the blocker can never disagree about which lines are uncovered.
   const uncovered = uncoveredFormulaLines(project);
@@ -75,7 +77,10 @@ export default function FormulationSafety() {
 
       <DynamicTable
         config={formulationSafetyMatrix}
-        rows={project.registers[formulationSafetyMatrix.key] ?? []}
+        // One row per Formula BOM line, as in the workbook: identity and matches come from the BOM, only the assessment is entered.
+        rows={matrixRows}
+        addBlockedReason="Rows follow the Formula BOM — add the ingredient there and its row appears here"
+        removeBlockedReason={(row) => (String(row.line ?? '').trim() !== '' ? 'This row follows a Formula BOM line — remove the ingredient from the BOM to remove it' : undefined)}
         onSave={(rows) => setRegisterRowsBulk(id, formulationSafetyMatrix.key, rows)}
         readOnly={locked}
       />

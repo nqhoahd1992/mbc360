@@ -146,6 +146,7 @@ export default function DynamicTable({
   identityText,
   subtitleText,
   removeBlockedReason,
+  addBlockedReason,
   rowHasError,
   notices,
   warningsTitle,
@@ -177,6 +178,8 @@ export default function DynamicTable({
   identityText?: (row: RegisterRow) => string;
   subtitleText?: (row: RegisterRow) => string;
   removeBlockedReason?: (row: RegisterRow) => string | undefined;
+  // Why rows cannot be added by hand (they follow another record, e.g. the Formula BOM): disables Add row and says so.
+  addBlockedReason?: string;
   rowHasError?: (row: RegisterRow, draft: RegisterRow[]) => boolean;
   notices?: (draft: RegisterRow[]) => React.ReactNode;
 }) {
@@ -790,9 +793,9 @@ export default function DynamicTable({
         )}
         {isRegister && (
           <div className="rt-add">
-            <Tooltip title={rowsFrozen ? rowsFrozenReason(rowsFrozen) : access.canChangeRows ? undefined : access.reason}>
+            <Tooltip title={rowsFrozen ? rowsFrozenReason(rowsFrozen) : access.canChangeRows ? addBlockedReason : access.reason}>
               <span style={{ display: 'block' }}>
-                <Button type="dashed" block icon={<PlusOutlined />} onClick={addRow} disabled={!!rowsFrozen || !access.canChangeRows}>
+                <Button type="dashed" block icon={<PlusOutlined />} onClick={addRow} disabled={!!rowsFrozen || !access.canChangeRows || !!addBlockedReason}>
                   Add row
                 </Button>
               </span>
