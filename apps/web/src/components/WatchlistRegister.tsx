@@ -19,6 +19,7 @@ import {
   WATCHLIST_ASSESSMENT_MORE_INFO,
   WATCHLIST_ASSESSMENT_NON_CRITICAL,
 } from '@mbc360/shared/config/registers';
+import { ownerFunctionWithPeople } from '@mbc360/shared/config/reviewers';
 import type { ProjectData, RegisterRow } from '@mbc360/shared/types';
 import { bomWatchMatches, type WatchHit } from '@mbc360/shared/utils/ingredientWatch';
 import {
@@ -210,6 +211,8 @@ export default function WatchlistRegister({
     );
   };
 
+  // The workbook names a FUNCTION ("Regulatory"); on this project that function is somebody ("Regulatory — Chi Chu").
+  const ownerLabel = (row: RegisterRow) => ownerFunctionWithPeople(text(row.owner), project.identity.reviewers);
   const owner = (row: RegisterRow) => {
     const name = text(row.owner);
     if (!name) return <span className="wl-muted">—</span>;
@@ -217,7 +220,7 @@ export default function WatchlistRegister({
     return (
       <span className="wl-owner">
         <span className="wl-initials" aria-hidden="true">{initials}</span>
-        <span>{name}</span>
+        <span>{ownerLabel(row)}</span>
       </span>
     );
   };
@@ -322,7 +325,7 @@ export default function WatchlistRegister({
               <th style={{ width: 200 }}>Product status</th>
               <th style={{ width: 200 }}>Classification</th>
               <th style={{ width: 160 }}>Review</th>
-              <th className="wl-col-owner" style={{ width: 132 }}>Owner</th>
+              <th className="wl-col-owner" style={{ width: 190 }}>Owner</th>
               <th style={{ width: 36 }} aria-label="Open" />
             </tr>
           </thead>
@@ -444,6 +447,7 @@ export default function WatchlistRegister({
             readOnly={readOnly}
             isFrozen={(key) => freeze.isFrozen(key) || access.cellBlocked(key, openRow)}
             onPatch={(values) => patch(openIndex, values)}
+            reviewers={project.identity.reviewers}
           />
         )}
       </Drawer>
@@ -471,9 +475,12 @@ function RowDetail({
   readOnly,
   isFrozen,
   onPatch,
+  reviewers,
 }: {
   config: RegisterConfig;
   row: RegisterRow;
+  // The project's review owners, to put a person beside the Owner function.
+  reviewers: Record<string, string> | undefined;
   gaps: string[];
   hits: { line: number; inciName: string; hit: WatchHit }[];
   readOnly: boolean;
@@ -720,7 +727,7 @@ function RowDetail({
         <div className="wl-sec-title">Row details</div>
         <dl className="wl-dl">
           <dt>Owner (department)</dt>
-          <dd>{text(row.owner) || '—'}</dd>
+          <dd>{ownerFunctionWithPeople(text(row.owner), reviewers) || '—'}</dd>
           <dt>Linked gate</dt>
           <dd><GateLink value={text(row.linkedGate)} /></dd>
           <dt>Notes</dt>
