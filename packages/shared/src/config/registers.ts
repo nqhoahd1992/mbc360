@@ -1364,7 +1364,7 @@ const clinicalHumanEvidence: RegisterConfig = {
     // rules follow. See `claimEvidenceTraceability`: the ledger is the source of
     // truth (19c) and this is one of the seven registers the answer names.
     { key: 'claimId', label: 'Claim ID', type: 'claimRef', width: 200 },
-    { key: 'evidenceId', label: 'Evidence ID', type: 'text', width: 100 },
+    { key: 'evidenceId', label: 'Evidence ID', type: 'text', width: 100, unique: true },
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
     { key: 'studyProtocol', label: 'Study / protocol', type: 'text', width: 140 },
     { key: 'claimSupported', label: 'Claim supported', type: 'text', width: 150 },
@@ -1465,7 +1465,7 @@ const testReportIndex: RegisterConfig = {
   mode: 'register',
   gate: 'ALL',
   columns: [
-    { key: 'reportId', label: 'Report ID', type: 'text', width: 100 },
+    { key: 'reportId', label: 'Report ID', type: 'text', width: 100, unique: true },
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
     { key: 'evidenceType', label: 'Evidence type', type: 'text', width: 130 },
     { key: 'testStudyName', label: 'Test / study name', type: 'text', width: 150 },
@@ -1854,7 +1854,7 @@ const publishedInfoApproval: RegisterConfig = {
   mode: 'register',
   gate: '10/11',
   columns: [
-    { key: 'recordId', label: 'Record ID', type: 'text', width: 90 },
+    { key: 'recordId', label: 'Record ID', type: 'text', width: 90, unique: true },
     // F11: the workflow lifecycle state (drives release — see the violation check).
     { key: 'workflowState', label: 'Workflow state', type: 'select', width: 180, options: PUBLISHED_INFO_STATES },
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
@@ -2082,7 +2082,7 @@ const formulationChangeRegister: RegisterConfig = {
   mode: 'register',
   gate: '05/07/10',
   columns: [
-    { key: 'changeId', label: 'Change ID', type: 'text', width: 100 },
+    { key: 'changeId', label: 'Change ID', type: 'text', width: 100, unique: true },
     { key: 'productFamilySku', label: 'Product Family / SKU', type: 'text', width: 150 },
     { key: 'requestedByNpd', label: 'Change requested by NPD team', type: 'user', width: 160 },
     { key: 'dateRequested', label: 'Date change requested by NPD', type: 'date', width: 120 },
@@ -2282,7 +2282,7 @@ const campaignsSocialMedia: RegisterConfig = {
   mode: 'register',
   gate: '03/11',
   columns: [
-    { key: 'campaignPostId', label: 'Campaign / Post ID', type: 'text', width: 120 },
+    { key: 'campaignPostId', label: 'Campaign / Post ID', type: 'text', width: 120, unique: true },
     { key: 'productFamilySku', label: 'Product Family / SKU', type: 'text', width: 150 },
     {
       key: 'channel',
@@ -2571,7 +2571,7 @@ const releasedLabelRegister: RegisterConfig = {
   gate: '06/11',
   reviewOwner: RELEASED_LABEL_OWNER,
   columns: [
-    { key: 'recordId', label: 'Record ID', type: 'text', width: 100 },
+    { key: 'recordId', label: 'Record ID', type: 'text', width: 100, unique: true },
     { key: 'productSku', label: 'Product / SKU', type: 'text', width: 150 },
     { key: 'productCode', label: 'Product code', type: 'text', width: 110 },
     { key: 'changeType', label: 'Change type', type: 'text', width: 130 },
@@ -2602,7 +2602,7 @@ const labelPlatformRollout: RegisterConfig = {
   gate: '06/11',
   reviewOwner: RELEASED_LABEL_OWNER,
   columns: [
-    { key: 'rolloutId', label: 'Rollout ID', type: 'text', width: 100 },
+    { key: 'rolloutId', label: 'Rollout ID', type: 'text', width: 100, unique: true },
     // Block A is the Released Label Register; its rows are identified by Record ID.
     { key: 'linkedRecordId', label: 'Linked Record ID (Block A)', type: 'rowRef', refRegister: 'releasedLabelRegister', refColumn: 'recordId', width: 150 },
     { key: 'productSku', label: 'Product / SKU', type: 'text', width: 150 },
@@ -2634,7 +2634,7 @@ const labelShipmentVerification: RegisterConfig = {
   gate: '06/11',
   reviewOwner: RELEASED_LABEL_OWNER,
   columns: [
-    { key: 'shipmentId', label: 'Shipment ID', type: 'text', width: 100 },
+    { key: 'shipmentId', label: 'Shipment ID', type: 'text', width: 100, unique: true },
     // Block A is the Released Label Register; its rows are identified by Record ID.
     { key: 'linkedRecordId', label: 'Linked Record ID (Block A)', type: 'rowRef', refRegister: 'releasedLabelRegister', refColumn: 'recordId', width: 150 },
     { key: 'productSku', label: 'Product / SKU', type: 'text', width: 150 },
@@ -2903,7 +2903,7 @@ export const needsTechnologyTraceability: RegisterConfig = {
   gate: '02',
   reviewOwner: REVIEW_SPECS.ri,
   columns: [
-    { key: 'needId', label: 'Need ID', type: 'text', width: 80 },
+    { key: 'needId', label: 'Need ID', type: 'text', width: 80, unique: true },
     { key: 'need', label: 'Need', type: 'textarea', width: 200 },
     { key: 'designImplication', label: 'Design implication', type: 'textarea', width: 220 },
     { key: 'technologyDirection', label: 'Backbone / technology direction', type: 'textarea', width: 220 },
@@ -3224,7 +3224,7 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // classification. `claimRisk` is included because its own vocabulary carries
     // the "not yet" answer ("Pending classification"), so requiring the column is
     // not requiring a premature judgement.
-    { key: 'claimId', label: 'Claim ID', type: 'text', width: 100, gate: '03' },
+    { key: 'claimId', label: 'Claim ID', type: 'text', width: 100, gate: '03', unique: true },
     { key: 'approvedWording', label: 'Approved claim wording', type: 'textarea', width: 240, gate: '03' },
     { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS, gate: '03' },
     { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS, gate: '03' },
