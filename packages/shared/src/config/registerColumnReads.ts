@@ -54,7 +54,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     pifChecklistAsean: ['status'],
     publishedInfoApproval: ['noProductClaim', 'noProductClaimConfirmedBy', 'workflowState'],
     regulatoryChecklistStatus: ['checklistLink', 'dossierType', 'market', 'naRationale', 'naReviewer', 'owner', 'regulatoryApproval', 'status'],
-    skuClaimsPifRegister: ['claimId', 'evidenceLink', 'market', 'pifLink'],
+    skuClaimsPifRegister: ['claimId', 'evidenceLink', 'market', 'pifLink', 'status'],
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG11: {
@@ -65,6 +65,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG12: {
+    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimRisk', 'claimSubjects', 'reviewedWording'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };
@@ -84,6 +85,7 @@ export const TRIGGER_READS_BY_GATE: Record<string, Record<string, string[]>> = {
     claimEvidenceTraceability: ['claimCategory', 'evidenceBasisRequired'],
   },
   SG12: {
+    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimRisk', 'claimSubjects', 'reviewedWording'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };

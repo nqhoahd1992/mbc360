@@ -1544,7 +1544,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
 | R5-Q69 | Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role | Chủ dự án bỏ quyền theo role 15/10/2026 | **lộ ra 15/10/2026** |
 | R5-Q76 | Product status của Prohibited Ingredients tự đặt "REVIEW - possible formula match" khi BOM có khớp; người đã chọn kết luận thì giữ | Chủ dự án muốn ứng dụng tự đánh giá như công thức workbook, 26/10/2026 | **lộ ra 26/10/2026** |
-| R5-Q75 | Cột Safety decision của ma trận nguyên liệu: workbook tính tự động từ số khớp danh sách, app giữ quyết định là việc của người | Chủ dự án đưa công thức của workbook, 26/10/2026 | **lộ ra 26/10/2026** |
+| R5-Q75 | Cột Safety decision của ma trận nguyên liệu: ứng dụng tự đặt Needs Review / No listed match như công thức workbook, Needs Review không phải kết luận | Chủ dự án đưa công thức của workbook, 26/10/2026 | **lộ ra 26/10/2026** |
 | R5-Q74 | Chức năng ghi ở cột Owner của hàng cố định (Project owner, R&I, Regulatory…) tương ứng người nào trong danh sách review của dự án | Chủ dự án muốn ghi tên người cụ thể cạnh chức năng, 26/10/2026 | **lộ ra 26/10/2026** |
 | R5-Q73 | Hồ sơ tìm tài liệu của chuẩn bằng chứng: nằm ở trang nào, thế nào là đầy đủ | Chủ dự án hỏi chuẩn Sheet 6 thực thi thế nào, 19/10/2026 | **lộ ra 19/10/2026** |
 | R5-Q72 | Grade và transferability của chuẩn bằng chứng: ghi ở đâu, "suy luận thì tối đa C" có bị chặn không | Cùng lượt, 19/10/2026 | **lộ ra 19/10/2026** |
@@ -2321,15 +2321,15 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** sửa `screenedProductStatus` trong `packages/shared/src/utils/registerDerived.ts` [ASSUMPTION: R5-Q76].
 
-#### R5-Q75 · Safety decision của Ingredient-Level Safety Matrix: tự tính như workbook, hay do người quyết 🔴
+#### R5-Q75 · Safety decision của Ingredient-Level Safety Matrix: ứng dụng tự đặt "Needs Review" / "No listed match", "Needs Review" không phải kết luận 🔴
 
-**Lộ ra 26/10/2026, khi chuyển các cột của ma trận thành công thức theo workbook.** Trong workbook, cột Safety decision là công thức: nếu nguyên liệu khớp danh sách cấm hoặc danh sách PB caution thì ra "Needs Review", ngược lại ra "No listed match". Nhưng Round 4 câu 23(b) nói mọi nguyên liệu trong công thức cuối phải có một **safety disposition** — một quyết định — và Gate 7 đọc cột này để biết nguyên liệu đã được quyết chưa.
+**Lộ ra 26/10/2026, khi chuyển các cột của ma trận thành công thức theo workbook.** Trong workbook, Safety decision là công thức: nguyên liệu khớp danh sách cấm hoặc PB caution thì "Needs Review", không khớp thì "No listed match". Round 4 câu 23(b) lại nói mọi nguyên liệu trong công thức cuối phải có một **safety disposition**, và Gate 7 đọc cột này.
 
-**Hiện chạy theo:** kết quả của công thức được ghi ở một cột riêng chỉ đọc, "Screening result"; cột Safety decision vẫn do người chọn (Approved, Conditional, Rejected…). Lý do: nếu Safety decision tự tính thì mọi nguyên liệu không khớp danh sách sẽ tự có "No listed match" mà không ai quyết gì, và Gate 7 qua được cho một sản phẩm chưa ai đánh giá.
+**Hiện chạy theo (chủ dự án quyết định 26/10/2026):** ứng dụng tự đặt hai giá trị của công thức khi người chưa kết luận (trống hoặc "Not Started"): có khớp → "Needs Review", không khớp → "No listed match"; "Needs Review" tự trả về "No listed match" khi hết khớp. Kết luận của người (Approved, Conditional, Rejected, Not Applicable) được giữ nguyên. **"Needs Review" không được coi là kết luận**: Gate 7 chặn nguyên liệu còn "Needs Review" và nêu lý do theo từng nguyên liệu. "No listed match" thì được coi là có giá trị, nhưng Gate 7 vẫn đòi người ghi Coverage route (và Assessment referenced với ba route không phải đánh giá riêng), nên một nguyên liệu không khớp vẫn không qua nếu chưa ai ghi cách bao phủ.
 
-**Câu hỏi:** một nguyên liệu không khớp danh sách nào có cần người ghi quyết định an toàn không, hay kết quả "No listed match" tự động là đủ làm disposition?
+**Câu hỏi:** (a) với nguyên liệu không khớp danh sách nào, "No listed match" tự động có đủ làm safety disposition của câu 23(b), hay người phải ghi một kết luận? (b) một nguyên liệu khớp danh sách cấm (không phải PB caution) có cần xử lý khác "Needs Review" không?
 
-**Nếu trả lời khác:** cho Safety decision tự lấy giá trị từ Screening result ở `packages/shared/src/utils/safetyMatrixSync.ts` và bỏ cột Screening result ở `packages/shared/src/config/registers.ts` [ASSUMPTION: R5-Q75].
+**Nếu trả lời khác:** sửa `screenedSafetyDecision` trong `packages/shared/src/utils/safetyMatrixSync.ts` và tập `blankValues` của mục `sg07-conclusion` trong `packages/shared/src/config/gateReadiness.ts` [ASSUMPTION: R5-Q75].
 
 #### R5-Q74 · Chức năng ở cột Owner của hàng cố định tương ứng người nào của dự án 🟡
 

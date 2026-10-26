@@ -25,6 +25,38 @@ function sameIngredient(line: BomLine, row: RegisterRow): boolean {
   return inciMatches;
 }
 
+// The decision the workbook's formula gives from the two match counts. Only the two machine-written states move: a person's
+// conclusion (Approved, Conditional, Rejected, Not Applicable) stands. "Needs Review" is the machine's "waiting", so it clears
+// itself when the match goes, and it is not a conclusion (Gate 7 treats it as none).
+export function screenedSafetyDecision(current: string, matches: number): string {
+  const status = current.trim();
+  if (matches > 0 && ['', 'Not Started', 'No listed match'].includes(status)) return 'Needs Review';
+  if (matches === 0 && ['', 'Not Started', 'Needs Review'].includes(status)) return 'No listed match';
+  return current;
+}
+
+// What the BOM line and the watch-lists decide for a matrix row; the rest of the row is what a person entered.
+function computedFields(line: BomLine, current: RegisterRow) {
+  const hits = matchIngredientWatchLists(line.inciName ?? '', line.casNo);
+  // The workbook's COUNTIF: how many watch-list entries of each list the ingredient matches.
+  const prohibited = hits.filter((h) => h.kind === 'prohibited').length;
+  const caution = hits.filter((h) => h.kind === 'pbCaution').length;
+  return {
+    prohibitedMatch: prohibited,
+    pbCautionMatch: caution,
+    safetyDecision: screenedSafetyDecision(text(current.safetyDecision), prohibited + caution),
+  };
+}
+
+// The rows already stored, with the computed columns brought up to date against the BOM (no row is added or dropped). Applied
+// wherever the project is built, so the rules read the same values the screen shows.
+export function refreshStoredSafetyMatrix(bom: BomLine[], rows: RegisterRow[]): RegisterRow[] {
+  return rows.map((r) => {
+    const line = bom.find((l) => (text(l.rmCode) !== '' || text(l.inciName) !== '') && sameIngredient(l, r));
+    return line ? { ...r, ...computedFields(line, r) } : r;
+  });
+}
+
 // `committed` (server): an unmatched row is kept only if the register already held it. Omitted (display): every unmatched row is
 // kept, since the rows shown are the stored ones.
 export function syncSafetyMatrix(bom: BomLine[], rows: RegisterRow[], committed?: RegisterRow[]): RegisterRow[] {
@@ -35,21 +67,16 @@ export function syncSafetyMatrix(bom: BomLine[], rows: RegisterRow[], committed?
     if (text(line.rmCode) === '' && text(line.inciName) === '') return;
     const at = rows.findIndex((r, idx) => !used.has(idx) && sameIngredient(line, r));
     if (at >= 0) used.add(at);
-    const hits = matchIngredientWatchLists(line.inciName ?? '', line.casNo);
-    // The workbook's COUNTIF: how many watch-list entries of each list the ingredient matches.
-    const prohibited = hits.filter((h) => h.kind === 'prohibited').length;
-    const caution = hits.filter((h) => h.kind === 'pbCaution').length;
+    const base = at >= 0 ? rows[at] : createEmptyRegisterRow(SAFETY_MATRIX_KEY);
     out.push({
-      ...(at >= 0 ? rows[at] : createEmptyRegisterRow(SAFETY_MATRIX_KEY)),
+      ...base,
       line: String(line.line || i + 1),
       rmCode: text(line.rmCode),
       inciName: text(line.inciName),
       percentWw: line.percentWw ?? 0,
       functionRole: text(line.functionRole),
       supplier: text(line.supplier),
-      prohibitedMatch: prohibited,
-      pbCautionMatch: caution,
-      screeningResult: prohibited + caution > 0 ? 'Needs Review' : 'No listed match',
+      ...computedFields(line, base),
     });
   });
   rows.forEach((r, idx) => {

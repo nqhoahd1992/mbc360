@@ -343,6 +343,9 @@ const ASEAN_MAP_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Complete', 'Mis
 // The decision list the workbook offers on its Conclusion / Decision / Approval columns (v2 workbook data validation).
 export const DECISION_OPTIONS = ['Not Started', 'Approved', 'Conditional', 'Rejected', 'Needs Review', 'Not Applicable'] as const;
 
+// The Ingredient-Level Safety Matrix's own list: the workbook's two computed values plus the conclusions a person can record.
+export const SAFETY_MATRIX_DECISION_OPTIONS = ['Not Started', 'No listed match', 'Needs Review', 'Approved', 'Conditional', 'Rejected', 'Not Applicable'] as const;
+
 export const NP_APPROVAL_APPROVED = 'Approved';
 export const NP_APPROVAL_PENDING = 'Pending Final Approver decision';
 export const NP_APPROVAL_OPTIONS = [NP_APPROVAL_APPROVED, 'Rejected', NP_APPROVAL_PENDING, 'On hold'] as const;
@@ -2433,10 +2436,6 @@ export const formulationSafetyMatrix: RegisterConfig = {
     // The workbook's COUNTIF columns: how many watch-list entries the ingredient matches (a number, 0 = none).
     { key: 'prohibitedMatch', label: 'Prohibited match', type: 'number', width: 130, editable: false },
     { key: 'pbCautionMatch', label: 'PB caution match', type: 'number', width: 130, editable: false },
-    // The workbook computes its "Safety decision" from the two counts ("Needs Review" / "No listed match"). Here that result is a
-    // column of its own and the decision stays a person's entry: a computed "No listed match" would otherwise stand as the
-    // safety disposition Round 4 question 23(b) asks for, passing Gate 7 with nobody having decided anything. [ASSUMPTION: R5-Q75]
-    { key: 'screeningResult', label: 'Screening result', type: 'text', width: 140, editable: false },
     { key: 'exposureRationale', label: 'Exposure / MoS rationale', type: 'textarea', width: 180 },
     { key: 'irritationSensitisation', label: 'Irritation / sensitisation', type: 'text', width: 150 },
     { key: 'allergenIfra', label: 'Allergen / IFRA', type: 'text', width: 130 },
@@ -2459,7 +2458,9 @@ export const formulationSafetyMatrix: RegisterConfig = {
     // the regulatory conclusion being relied on, which `evidenceLink` cannot hold
     // because it is a URL field and the reference is often a document id.
     { key: 'coverageReference', label: 'Assessment referenced', type: 'text', width: 200 },
-    { key: 'safetyDecision', label: 'Safety decision', type: 'select', options: DECISION_OPTIONS, width: 140 },
+    // The workbook computes this from the two counts ("Needs Review" / "No listed match"). Here the app writes those two when nobody has
+    // concluded (utils/safetyMatrixSync.ts) and a person's conclusion stands. "Needs Review" is waiting, not a conclusion. [ASSUMPTION: R5-Q75]
+    { key: 'safetyDecision', label: 'Safety decision', type: 'select', options: SAFETY_MATRIX_DECISION_OPTIONS, width: 160 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 170 },
   ],
 };

@@ -704,7 +704,12 @@ export function uncoveredFormulaLines(project: ProjectData): { label: string; re
     // Question 23(b): "every ingredient in the final formula must have a safety
     // disposition" — named per line here (SME rule audit D, 2026-10-04), so the
     // blocker says which ingredient lacks one instead of only that some row does.
-    if (['', 'Not Started'].includes(String(row.safetyDecision ?? '').trim())) {
+    const decision = String(row.safetyDecision ?? '').trim();
+    if (decision === 'Needs Review') {
+      out.push({ label, reason: 'safety decision is still "Needs Review" — it matches a watch-list and waits for a conclusion' });
+      continue;
+    }
+    if (['', 'Not Started'].includes(decision)) {
       out.push({ label, reason: 'no safety decision recorded' });
       continue;
     }

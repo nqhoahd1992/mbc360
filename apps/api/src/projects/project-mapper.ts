@@ -25,6 +25,7 @@ import {
 import { registerContentHashOf, registerRowContentHashOf } from './content-hash';
 import { closureKey } from '@mbc360/shared/utils/registerClosures';
 import { deriveRegisterRows } from '@mbc360/shared/utils/registerDerived';
+import { SAFETY_MATRIX_KEY, refreshStoredSafetyMatrix } from '@mbc360/shared/utils/safetyMatrixSync';
 import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
 import type {
   BacktrackEvent,
@@ -360,6 +361,8 @@ export function toProjectData(...args: Parameters<typeof toProjectDataRaw>): Pro
   if (project.registers[watchlist]) {
     project.registers[watchlist] = deriveRegisterRows(watchlist, project.registers[watchlist], project);
   }
+  const matrix = SAFETY_MATRIX_KEY;
+  if (project.registers[matrix]) project.registers[matrix] = refreshStoredSafetyMatrix(project.bom, project.registers[matrix]);
   return project;
 }
 

@@ -2097,7 +2097,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Safety conclusion and identified limitations',
       tier: 'Mandatory',
       // registerRowsComplete (see sg07-exposure note above).
-      check: { kind: 'registerRowsComplete', register: 'formulationSafetyMatrix', columns: ['safetyDecision'], blankValues: ['Not Started'] },
+      check: { kind: 'registerRowsComplete', register: 'formulationSafetyMatrix', columns: ['safetyDecision'], blankValues: ['Not Started', 'Needs Review'] },
     },
     {
       id: 'sg07-reviewer',
