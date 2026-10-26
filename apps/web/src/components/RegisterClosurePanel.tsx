@@ -240,25 +240,23 @@ function GateClosureCard({
       }
     >
       <div hidden={!open}>
-      {closed ? (
-        <Alert
-          type="success"
-          showIcon
-          icon={<LockOutlined />}
-          style={{ marginBottom: 12 }}
-          title="Closed for this gate"
-          description={`${roles.length === 2 ? 'Both' : 'All'} ${roles.length} signatures are recorded. This locks the columns settled at ${gateId}: ${columns}. To correct them, withdraw a signature below, or Backtrack past the gate.`}
-        />
-      ) : (
-        <Alert
-          type="info"
-          showIcon
-          icon={<UnlockOutlined />}
-          style={{ marginBottom: 12 }}
-          title="Open"
-          description={`Closing for ${gateId} needs ${roles.length === 2 ? 'both' : `all ${roles.length}`} signatures below and is required before that gate can pass. It attests to, and locks, these columns: ${columns}.`}
-        />
-      )}
+      {/* One line of status; what the signature locks is a fold-out, because the list of columns can run to fifteen names. */}
+      <div className={`rcp-status ${closed ? 'rcp-status-ok' : ''}`}>
+        {closed ? <LockOutlined /> : <UnlockOutlined />}
+        <span>
+          {closed
+            ? `Closed: ${roles.length === 2 ? 'both' : 'all'} ${roles.length} signatures recorded.`
+            : `Open: needs ${roles.length === 2 ? 'both' : `all ${roles.length}`} signatures before ${gateId} can pass.`}
+        </span>
+      </div>
+      <details className="rcp-locks">
+        <summary>What this signature locks</summary>
+        <p>
+          {closed
+            ? `It locks the columns settled at ${gateId}: ${columns}. To correct them, withdraw a signature, or Backtrack past the gate.`
+            : `It attests to, and locks, these columns: ${columns}.`}
+        </p>
+      </details>
       {sameSignerForBothRoles && (
         <Alert
           type="warning"
@@ -302,10 +300,10 @@ function GateClosureCard({
         pagination={false}
         sticky={TABLE_STICKY}
         columns={[
-          { title: 'Role', width: nominated ? 130 : 96, dataIndex: 'role', render: (v) => <b>{v}</b> },
+          { title: 'Role', width: nominated ? 120 : 108, dataIndex: 'role', render: (v) => <b style={{ whiteSpace: 'nowrap' }}>{v}</b> },
           {
             title: nominated ? 'Nominated by the Lead' : 'Assigned to',
-            width: nominated ? 170 : 110,
+            width: nominated ? 150 : 84,
             render: (_, r: RegisterClosureSignOff) =>
               nominated && isLead && !isRegisterClosureSigned(r) ? (
                 <Select

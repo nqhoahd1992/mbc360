@@ -5,3 +5,16 @@
 .rcp-name:hover .rcp-name-text { color: var(--c-primary); text-decoration: underline; }
 .rcp-name-text { display: block; font-weight: 600; line-height: 22px; white-space: normal; }
 .rcp-name-gate { display: block; color: var(--c-text-3); font-size: 12px; font-weight: 400; line-height: 18px; white-space: normal; }
+
+.rcp-status { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 4px; padding: 8px 10px; border: 1px solid var(--c-primary); border-radius: 8px; background: var(--c-primary-light); color: var(--c-text); font-size: 13px; line-height: 20px; }
+.rcp-status > .anticon { margin-top: 3px; color: var(--c-primary); }
+.rcp-status-ok { border-color: var(--c-ok-line); background: var(--c-ok-bg); }
+.rcp-status-ok > .anticon { color: var(--c-ok); }
+.rcp-locks { margin-bottom: 12px; color: var(--c-text-3); font-size: 12px; }
+.rcp-locks summary { cursor: pointer; padding: 2px 0; }
+.rcp-locks summary:hover { color: var(--c-primary); }
+.rcp-locks p { margin: 4px 0 0; color: var(--c-text-2); line-height: 18px; }
+/* The sidebar is narrow: every cell of the signature table is set small, and a link or button never splits mid-label. */
+.cl-aside .ant-table { font-size: 13px; }
+.cl-aside .ant-table-thead > tr > th, .cl-aside .ant-table-tbody > tr > td { padding: 8px 6px; }
+.cl-aside .ant-btn { white-space: nowrap; }
