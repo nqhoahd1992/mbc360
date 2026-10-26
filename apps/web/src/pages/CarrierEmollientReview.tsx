@@ -4,6 +4,9 @@ import { useAppStore } from '../store/useAppStore';
 import { carrierEmollientReview, carrierReviewSummary } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
+import type { RegisterConfig } from '@mbc360/shared/config/registers';
+import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import DynamicTable from '../components/DynamicTable';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 
@@ -20,6 +23,21 @@ export default function CarrierEmollientReview() {
     ? composeReviewOwner(carrierEmollientReview.reviewOwner, project.identity.reviewers)
     : undefined;
   const locked = isGateRefLocked(project, carrierEmollientReview.gate);
+  // Each register is closed once per gate that needs it (SW-36). Merging the two registers into one page dropped the closing blocks
+  // their separate pages used to show, so a gate waiting for a closure had nowhere to sign it.
+  const closing = (config: RegisterConfig) => {
+    const spec = registerReviewSpec(config);
+    if (registerClosureGateIds(config).length === 0 || !spec) return null;
+    return (
+      <RegisterClosurePanel
+        projectId={id}
+        registerKey={config.key}
+        spec={spec}
+        reviewers={project.identity.reviewers}
+        closures={project.registerClosures}
+      />
+    );
+  };
 
   return (
     <div className="concept">
@@ -41,6 +59,7 @@ export default function CarrierEmollientReview() {
         readOnly={locked}
         hideDescription
       />
+      {closing(carrierEmollientReview)}
 
       <DynamicTable
         config={carrierReviewSummary}
@@ -48,6 +67,7 @@ export default function CarrierEmollientReview() {
         onSave={(rows) => setRegisterRowsBulk(id, carrierReviewSummary.key, rows)}
         readOnly={locked}
       />
+      {closing(carrierReviewSummary)}
     </div>
   );
 }

@@ -6,6 +6,9 @@ import { syncSafetyMatrix } from '@mbc360/shared/utils/safetyMatrixSync';
 import { criticalSafetyFindings, formulationSafetyFinalSignOff, formulationSafetyMatrix, formulationSafetyProfile } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { isGateRefLocked, uncoveredFormulaLines } from '@mbc360/shared/utils/gateProgress';
+import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
+import type { RegisterConfig } from '@mbc360/shared/config/registers';
+import RegisterClosurePanel from '../components/RegisterClosurePanel';
 import DynamicTable from '../components/DynamicTable';
 import SafetyDecisionCell from '../components/SafetyDecisionCell';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
@@ -28,6 +31,21 @@ export default function FormulationSafety() {
   // Round 4 question 23(b) — the same function the Gate 7 readiness item calls, so
   // the screen and the blocker can never disagree about which lines are uncovered.
   const uncovered = uncoveredFormulaLines(project);
+  // Each of these registers is closed once per gate that needs it (SW-36). The page used to carry no closing block at all, so a gate
+  // that waited for a closure had nowhere on screen to sign it.
+  const closing = (config: RegisterConfig) => {
+    const spec = registerReviewSpec(config);
+    if (registerClosureGateIds(config).length === 0 || !spec) return null;
+    return (
+      <RegisterClosurePanel
+        projectId={id}
+        registerKey={config.key}
+        spec={spec}
+        reviewers={project.identity.reviewers}
+        closures={project.registerClosures}
+      />
+    );
+  };
 
   return (
     <div className="concept">
@@ -48,6 +66,7 @@ export default function FormulationSafety() {
         onSave={(rows) => setRegisterRowsBulk(id, formulationSafetyProfile.key, rows)}
         readOnly={locked}
       />
+      {closing(formulationSafetyProfile)}
 
       {/* Round 4 question 23(b), 2026-08-29. The Gate 7 blocker says "every formula
           line covered by a safety assessment"; on its own that sends the reader
@@ -95,6 +114,7 @@ export default function FormulationSafety() {
         onSave={(rows) => setRegisterRowsBulk(id, formulationSafetyMatrix.key, rows)}
         readOnly={locked}
       />
+      {closing(formulationSafetyMatrix)}
 
       {/* Rule E1. Sits ABOVE the Final Safety Sign-off deliberately: E1 asks for a
           distinct control rather than reliance on the sign-off, and a finding has to
@@ -113,6 +133,7 @@ export default function FormulationSafety() {
           column.key === 'replaces' ? findingsReplacedBy(api.draft, row).join(', ') || <span className="rt-muted">—</span> : undefined
         }
       />
+      {closing(criticalSafetyFindings)}
 
       <DynamicTable
         config={formulationSafetyFinalSignOff}
@@ -120,6 +141,7 @@ export default function FormulationSafety() {
         onSave={(rows) => setRegisterRowsBulk(id, formulationSafetyFinalSignOff.key, rows)}
         readOnly={locked}
       />
+      {closing(formulationSafetyFinalSignOff)}
     </div>
   );
 }
