@@ -100,3 +100,5 @@
 .rt-inline .rt-inline-act { width: 48px; padding: 12px 8px; text-align: center; }
 
 .rt-head-note { color: var(--c-text-3); font-size: 12px; font-weight: 400; }
+
+.rt-help { color: var(--c-text-3); font-size: 12px; }
