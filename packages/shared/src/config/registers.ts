@@ -2428,8 +2428,13 @@ export const formulationSafetyMatrix: RegisterConfig = {
     { key: 'percentWw', label: '% w/w', type: 'number', width: 80, editable: false },
     { key: 'functionRole', label: 'Function', type: 'text', width: 130, editable: false },
     { key: 'supplier', label: 'Supplier', type: 'text', width: 130, editable: false },
-    { key: 'prohibitedMatch', label: 'Prohibited match', type: 'select', width: 130, options: ['No', 'Borderline', 'Yes'], editable: false },
-    { key: 'pbCautionMatch', label: 'PB caution match', type: 'select', width: 130, options: ['No', 'Borderline', 'Yes'], editable: false },
+    // The workbook's COUNTIF columns: how many watch-list entries the ingredient matches (a number, 0 = none).
+    { key: 'prohibitedMatch', label: 'Prohibited match', type: 'number', width: 130, editable: false },
+    { key: 'pbCautionMatch', label: 'PB caution match', type: 'number', width: 130, editable: false },
+    // The workbook computes its "Safety decision" from the two counts ("Needs Review" / "No listed match"). Here that result is a
+    // column of its own and the decision stays a person's entry: a computed "No listed match" would otherwise stand as the
+    // safety disposition Round 4 question 23(b) asks for, passing Gate 7 with nobody having decided anything. [ASSUMPTION: R5-Q75]
+    { key: 'screeningResult', label: 'Screening result', type: 'text', width: 140, editable: false },
     { key: 'exposureRationale', label: 'Exposure / MoS rationale', type: 'textarea', width: 180 },
     { key: 'irritationSensitisation', label: 'Irritation / sensitisation', type: 'text', width: 150 },
     { key: 'allergenIfra', label: 'Allergen / IFRA', type: 'text', width: 130 },

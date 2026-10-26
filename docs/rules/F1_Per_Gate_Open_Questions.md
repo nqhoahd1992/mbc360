@@ -1543,6 +1543,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
 | R5-Q69 | Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role | Chủ dự án bỏ quyền theo role 15/10/2026 | **lộ ra 15/10/2026** |
+| R5-Q75 | Cột Safety decision của ma trận nguyên liệu: workbook tính tự động từ số khớp danh sách, app giữ quyết định là việc của người | Chủ dự án đưa công thức của workbook, 26/10/2026 | **lộ ra 26/10/2026** |
 | R5-Q74 | Chức năng ghi ở cột Owner của hàng cố định (Project owner, R&I, Regulatory…) tương ứng người nào trong danh sách review của dự án | Chủ dự án muốn ghi tên người cụ thể cạnh chức năng, 26/10/2026 | **lộ ra 26/10/2026** |
 | R5-Q73 | Hồ sơ tìm tài liệu của chuẩn bằng chứng: nằm ở trang nào, thế nào là đầy đủ | Chủ dự án hỏi chuẩn Sheet 6 thực thi thế nào, 19/10/2026 | **lộ ra 19/10/2026** |
 | R5-Q72 | Grade và transferability của chuẩn bằng chứng: ghi ở đâu, "suy luận thì tối đa C" có bị chặn không | Cùng lượt, 19/10/2026 | **lộ ra 19/10/2026** |
@@ -2308,6 +2309,16 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.
 
 **Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ** (còn **76** từ 19/10/2026, sau khi bỏ bốn sổ tham chiếu của Roadmap và Sheet 6 và hai bảng ký gõ tay của Needs và Target Product — nhóm D còn 32, nhóm E còn 26), chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+
+#### R5-Q75 · Safety decision của Ingredient-Level Safety Matrix: tự tính như workbook, hay do người quyết 🔴
+
+**Lộ ra 26/10/2026, khi chuyển các cột của ma trận thành công thức theo workbook.** Trong workbook, cột Safety decision là công thức: nếu nguyên liệu khớp danh sách cấm hoặc danh sách PB caution thì ra "Needs Review", ngược lại ra "No listed match". Nhưng Round 4 câu 23(b) nói mọi nguyên liệu trong công thức cuối phải có một **safety disposition** — một quyết định — và Gate 7 đọc cột này để biết nguyên liệu đã được quyết chưa.
+
+**Hiện chạy theo:** kết quả của công thức được ghi ở một cột riêng chỉ đọc, "Screening result"; cột Safety decision vẫn do người chọn (Approved, Conditional, Rejected…). Lý do: nếu Safety decision tự tính thì mọi nguyên liệu không khớp danh sách sẽ tự có "No listed match" mà không ai quyết gì, và Gate 7 qua được cho một sản phẩm chưa ai đánh giá.
+
+**Câu hỏi:** một nguyên liệu không khớp danh sách nào có cần người ghi quyết định an toàn không, hay kết quả "No listed match" tự động là đủ làm disposition?
+
+**Nếu trả lời khác:** cho Safety decision tự lấy giá trị từ Screening result ở `packages/shared/src/utils/safetyMatrixSync.ts` và bỏ cột Screening result ở `packages/shared/src/config/registers.ts` [ASSUMPTION: R5-Q75].
 
 #### R5-Q74 · Chức năng ở cột Owner của hàng cố định tương ứng người nào của dự án 🟡
 

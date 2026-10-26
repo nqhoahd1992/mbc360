@@ -3,7 +3,8 @@ import { createEmptyRegisterRow, isRegisterRowBlank, getRegisterConfig } from '.
 import { matchIngredientWatchLists } from './ingredientWatch';
 
 // The Ingredient-Level Safety Matrix follows the Formula BOM line by line, as the workbook's formulas do: each matrix row takes its
-// Line, ingredient, % w/w, function and supplier from the BOM, and the two watch-list matches are computed from the ingredient.
+// Line, ingredient, % w/w, function and supplier from the BOM, and the two watch-list match counts (and the screening result they
+// give) are computed from the ingredient.
 // Only the assessment columns are entered by a person. The same function is applied on the server when the matrix is saved, so
 // none of the BOM-derived or computed columns can be set by a request.
 //
@@ -35,6 +36,9 @@ export function syncSafetyMatrix(bom: BomLine[], rows: RegisterRow[], committed?
     const at = rows.findIndex((r, idx) => !used.has(idx) && sameIngredient(line, r));
     if (at >= 0) used.add(at);
     const hits = matchIngredientWatchLists(line.inciName ?? '', line.casNo);
+    // The workbook's COUNTIF: how many watch-list entries of each list the ingredient matches.
+    const prohibited = hits.filter((h) => h.kind === 'prohibited').length;
+    const caution = hits.filter((h) => h.kind === 'pbCaution').length;
     out.push({
       ...(at >= 0 ? rows[at] : createEmptyRegisterRow(SAFETY_MATRIX_KEY)),
       line: String(line.line || i + 1),
@@ -43,8 +47,9 @@ export function syncSafetyMatrix(bom: BomLine[], rows: RegisterRow[], committed?
       percentWw: line.percentWw ?? 0,
       functionRole: text(line.functionRole),
       supplier: text(line.supplier),
-      prohibitedMatch: hits.some((h) => h.kind === 'prohibited') ? 'Yes' : 'No',
-      pbCautionMatch: hits.some((h) => h.kind === 'pbCaution') ? 'Yes' : 'No',
+      prohibitedMatch: prohibited,
+      pbCautionMatch: caution,
+      screeningResult: prohibited + caution > 0 ? 'Needs Review' : 'No listed match',
     });
   });
   rows.forEach((r, idx) => {
