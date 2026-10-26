@@ -1398,11 +1398,11 @@ const clinicalHumanEvidence: RegisterConfig = {
   ],
 };
 
-const studyProtocolSetup: RegisterConfig = {
+export const studyProtocolSetup: RegisterConfig = {
   key: 'studyProtocolSetup',
   title: 'Study Protocol Setup',
   sheetName: 'Study_Protocol',
-  description: 'Approval route: Prepare study proposal, Head/HOD sign-off, then independent reviewer sign-off outside the department.',
+  description: 'What the study is, how it is run and how it is measured. The approval route (study proposal, Head/HOD sign-off, independent reviewer) is on the Gate 08 tab of Phase 3.',
   mode: 'fixed',
   gate: '08',
   columns: [
@@ -1425,7 +1425,7 @@ const studyProtocolSetup: RegisterConfig = {
   ],
 };
 
-const studyParticipantLog: RegisterConfig = {
+export const studyParticipantLog: RegisterConfig = {
   key: 'studyParticipantLog',
   title: 'Participant / Sample Log',
   sheetName: 'Study_Protocol',
@@ -3982,7 +3982,7 @@ export interface NavGroup {
 
 // A workbook sheet name ("Supplier_RM_Evidence") -> the page of this app that replaced it. Where one sheet became several pages, the
 // one that carries the sheet's name is chosen.
-const SHEET_PAGE_OVERRIDES: Record<string, string> = { Study_Protocol: 'studyProtocolSetup', Published_Info_Approval: 'publishedInfoApproval' };
+const SHEET_PAGE_OVERRIDES: Record<string, string> = { Published_Info_Approval: 'publishedInfoApproval' };
 export interface SheetRef {
   text: string;
   item?: NavItem;
@@ -4170,8 +4170,7 @@ const DEPARTMENTS: RawDept[] = [
       'efficacyAssurance',
       'functionalEfficacy',
       'clinicalHumanEvidence',
-      'studyProtocolSetup',
-      'studyParticipantLog',
+      { title: 'Study Protocol & Participant Rationale', sheetName: 'Study_Protocol', workbookTab: 'George-Study_Protocol', page: 'study-protocol', gate: '08', contains: ['studyProtocolSetup', 'studyParticipantLog'] },
       'efficacyStudyPlan',
       'potencyProcessControl',
       'medicalSummary',

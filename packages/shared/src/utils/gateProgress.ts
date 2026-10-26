@@ -1752,7 +1752,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'nextActionAtGate':
       return phaseSectionLink(check.gate, 'sec-next-actions');
     case 'studyApprovalsComplete':
-      return { href: '/registers/reg/studyProtocolSetup' };
+      return phaseSectionLink('SG08', assessmentAnchor('humanStudy'));
     case 'registerSomeRow':
       return { href: `/registers/reg/${check.register}` };
     case 'bomMatchesTakenUp':

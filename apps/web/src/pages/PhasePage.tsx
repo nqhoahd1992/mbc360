@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { App, Button, Empty, Tooltip } from 'antd';
 import { ArrowDownOutlined, ArrowRightOutlined, CheckOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -42,6 +42,7 @@ import PostLaunchReviewCard from '../components/PostLaunchReviewCard';
 import SectionJumpButton from '../components/SectionJumpButton';
 import GateReadinessPanel from '../components/GateReadinessPanel';
 import AssessmentBlock, { isFamilyUseSelected } from '../components/AssessmentBlock';
+import StudyApprovalCard from '../components/StudyApprovalCard';
 import ChangeControlAssessments from '../components/ChangeControlAssessments';
 import { ASSESSMENT_HOMES, assessmentAnchor } from '@mbc360/shared/config/assessments';
 import { useUnsavedCount } from '../hooks/unsavedRegistry';
@@ -733,6 +734,12 @@ export default function PhasePage() {
             {assessments.map((a) => (
               a.key === 'changeControl' ? (
                 <ChangeControlAssessments key={a.key} project={project} />
+              ) : a.key === 'humanStudy' ? (
+                <Fragment key={a.key}>
+                  <AssessmentBlock project={project} which={a.key} />
+                  {/* The study approval workflow (rule C2): the route a human-participant study goes through. Not part of the workbook's sheet. */}
+                  {project.assessments.humanStudyPlanned !== 'No' && <StudyApprovalCard projectId={project.identity.id} approvals={project.studyApprovals} />}
+                </Fragment>
               ) : (
                 <AssessmentBlock key={a.key} project={project} which={a.key} />
               )

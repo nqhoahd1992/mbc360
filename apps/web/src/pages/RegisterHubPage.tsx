@@ -2,7 +2,6 @@ import { Fragment, type ReactNode } from 'react';
 import { Alert, Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import StudyApprovalCard from '../components/StudyApprovalCard';
 import {
   findNavGroupForRegister,
   getNavGroup,
@@ -197,9 +196,6 @@ export default function RegisterHubPage() {
           </p>
         )}
         {progress && <RegisterProgressCard completed={progress.completed} total={progress.total} />}
-        {registerKey === 'studyProtocolSetup' && (
-          <StudyApprovalCard projectId={id} approvals={project.studyApprovals} />
-        )}
         {publishViolations.length > 0 && (
           <Alert
             type="error"
