@@ -925,7 +925,7 @@ export default function DynamicTable({
                       <dt>{col.label}</dt>
                       <dd>
                         {renderCell?.(col, openRow, openIndex, { patch: () => {}, patchRow: () => {}, readOnly: true, draft }) ??
-                          (col.sheetRefs ? <SheetRefs value={text(openRow[col.key])} projectId={projectId} /> : col.type === 'checkbox' ? (openRow[col.key] ? 'Yes' : 'No') : shownText(col, openRow[col.key]) || '—')}
+                          (col.gateLink ? <GateLink value={text(openRow[col.key])} /> : col.sheetRefs ? <SheetRefs value={text(openRow[col.key])} projectId={projectId} /> : col.type === 'checkbox' ? (openRow[col.key] ? 'Yes' : 'No') : shownText(col, openRow[col.key]) || '—')}
                       </dd>
                     </div>
                   ))}

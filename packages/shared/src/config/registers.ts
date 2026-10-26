@@ -1616,7 +1616,7 @@ const aseanPifMap: RegisterConfig = {
     { key: 'requiredDocument', label: 'Required document / record', type: 'text', width: 240, editable: false },
     { key: 'owner', label: 'Owner', type: 'text', width: 140, editable: false },
     { key: 'locationLink', label: 'Location / link', type: 'text', width: 140 },
-    { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 150, editable: false },
+    { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 150, editable: false, gateLink: true },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: ASEAN_MAP_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
@@ -1825,8 +1825,8 @@ const pifEvidenceClosure: RegisterConfig = {
     { key: 'trigger', label: 'Trigger', type: 'text', width: 190, editable: false },
     { key: 'requiredAction', label: 'Required action', type: 'text', width: 240, editable: false },
     { key: 'personInCharge', label: 'Person in charge', type: 'text', width: 160, editable: false },
-    { key: 'supportingTemplate', label: 'Supporting template / sheet', type: 'text', width: 180, editable: false },
-    { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 90, editable: false },
+    { key: 'supportingTemplate', label: 'Supporting template / sheet', type: 'text', width: 180, editable: false, sheetRefs: true },
+    { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 90, editable: false, gateLink: true },
     { key: 'blocksExternalUse', label: 'Blocks external use until closed?', type: 'select', width: 90, options: ['Y', 'N', 'N/A', 'Conditional'], editable: false },
     { key: 'closureEvidence', label: 'Closure evidence', type: 'text', width: 150 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
@@ -4191,6 +4191,7 @@ const DEPARTMENTS: RawDept[] = [
       { title: 'Fragrance Safety & Allergen Evidence', sheetName: 'Fragrance_Safety', workbookTab: 'ChiChu-Fragrance_Safety', page: 'fragrance-safety', gate: '07', contains: ['fragranceSafety', 'fragranceAllergenLog'] },
       'aseanPifMap',
       'pifChecklistAsean',
+      'pifEvidenceExport',
       // regulatoryChecklistStatus (2026-08-27, user-requested): one of only 3
       // registers with no real workbook tab (rule E2/Round 4 question 35) —
       // briefly filed under Project Manager alongside the other 2, then
@@ -4198,7 +4199,6 @@ const DEPARTMENTS: RawDept[] = [
       // 02 front-end screening. No reviewOwner override needed — it's
       // genuinely this group's own.
       'regulatoryChecklistStatus',
-      'pifEvidenceExport',
       'skuClaimsPifRegister',
       'pifEvidenceClosure',
       'publicationRules',
