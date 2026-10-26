@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Input, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
-import { LockOutlined, UnlockOutlined } from '@ant-design/icons';
+import { DownOutlined, LockOutlined, RightOutlined, UnlockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { RegisterClosureRole, RegisterClosureSignOff, RegisterClosureState } from '@mbc360/shared/types';
 import { hasStandingClosureSignature, isRegisterClosureSigned, isRegisterClosureStale, isRegisterClosed } from '@mbc360/shared/types';
@@ -26,6 +26,7 @@ import {
   registerClosureRoles,
 } from '@mbc360/shared/utils/registerClosures';
 import { usePickerUsers } from '../hooks/useUserOptions';
+import './RegisterClosurePanel.css';
 
 // A register is closed once PER GATE that needs it (SW-36): one card per gate, each attesting to — and locking — the columns
 // settled at that gate. Nothing locks until somebody signs; the readiness list makes the gate wait for it.
@@ -45,9 +46,13 @@ export default function RegisterClosurePanel({
   const config = getRegisterConfig(registerKey);
   if (!config) return null;
   const gates = registerClosureGateIds(config);
+  const roles = registerClosureRoles(config);
+  const isClosedAt = (g: string) => isRegisterClosed(closures[closureKey(registerKey, g)], roles);
+  const firstOpen = gates.findIndex((g) => !isClosedAt(g));
+  const current = firstOpen === -1 ? gates.length - 1 : firstOpen;
   return (
     <>
-      {gates.map((gateId) => {
+      {gates.map((gateId, index) => {
         const members = closureMembers(config.key);
         // One signature for a whole page: it names the tables, not a column list that would only describe the first of them.
         const columns =
@@ -67,6 +72,8 @@ export default function RegisterClosurePanel({
             spec={spec}
             reviewers={reviewers}
             closure={closures[closureKey(registerKey, gateId)]}
+            defaultOpen={index === current}
+            waitingOn={firstOpen !== -1 && index > firstOpen ? `Gate ${gates[firstOpen].replace(/^SG/, '')}` : undefined}
           />
         );
       })}
@@ -91,6 +98,8 @@ function GateClosureCard({
   spec,
   reviewers,
   closure,
+  defaultOpen,
+  waitingOn,
 }: {
   projectId: string;
   registerKey: string;
@@ -100,6 +109,8 @@ function GateClosureCard({
   spec: ReviewOwnerSpec;
   reviewers: Record<string, string> | undefined;
   closure: RegisterClosureState | undefined;
+  defaultOpen: boolean;
+  waitingOn?: string;
 }) {
   const signRegisterClose = useAppStore((s) => s.signRegisterClose);
   const withdrawRegisterClose = useAppStore((s) => s.withdrawRegisterClose);
@@ -120,6 +131,7 @@ function GateClosureCard({
     return !!project && isGatePassed(project, gateId);
   });
 
+  const [open, setOpen] = useState(defaultOpen);
   const [withdrawing, setWithdrawing] = useState<RegisterClosureRole | null>(null);
   const [reason, setReason] = useState('');
   // Sign opens the preview first (everything the signature attests to), then the authenticator step.
@@ -171,6 +183,7 @@ function GateClosureCard({
   const sameSignerForBothRoles = !nominated && roleKeyFor('Review owner') === roleKeyFor('Co-sign');
 
   const closed = isRegisterClosed(closure, roles);
+  const signedCount = signOffs.filter((r) => isRegisterClosureSigned(r)).length;
   const standing = hasStandingClosureSignature(closure);
 
   const blockedReason = (row: RegisterClosureSignOff): string | null => {
@@ -198,7 +211,25 @@ function GateClosureCard({
   };
 
   return (
-    <Card size="small" title={`Register closing — ${gateId} ${gateLabel}`}>
+    <Card
+      size="small"
+      title={
+        <button type="button" className="rcp-head" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {open ? <DownOutlined /> : <RightOutlined />}
+          <span>{`Register closing — ${gateId} ${gateLabel}`}</span>
+        </button>
+      }
+      extra={
+        closed ? (
+          <Tag color="green">Closed</Tag>
+        ) : waitingOn ? (
+          <Tag>{`Opens after ${waitingOn}`}</Tag>
+        ) : (
+          <Tag color="blue">{`${signedCount} of ${roles.length} signed`}</Tag>
+        )
+      }
+    >
+      <div hidden={!open}>
       {closed ? (
         <Alert
           type="success"
@@ -358,6 +389,7 @@ function GateClosureCard({
           },
         ]}
       />
+      </div>
       <Modal
         open={withdrawing !== null}
         title={`Withdraw the "${withdrawing}" signature`}
