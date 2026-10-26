@@ -6,7 +6,7 @@ export default function FragranceSafety() {
   return (
     <SheetRegistersPage
       title="Fragrance Safety & Allergen Evidence"
-      description={<>Six-step fragrance workflow from supplier selection through post-market surveillance, and the log of each fragrance with its IFRA category, allergen statement and PB caution review.</>}
+      description={<>Six-step fragrance workflow from supplier selection through post-market surveillance.</>}
       configs={[fragranceSafety, fragranceAllergenLog]}
     />
   );

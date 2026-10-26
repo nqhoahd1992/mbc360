@@ -1142,9 +1142,8 @@ const eyeSafetyEvidence: RegisterConfig = {
 
 export const fragranceSafety: RegisterConfig = {
   key: 'fragranceSafety',
-  title: 'Fragrance Safety & Allergen Evidence',
+  title: 'Fragrance Workflow',
   sheetName: 'Fragrance_Safety',
-  description: 'Six-step fragrance workflow from supplier selection through post-market surveillance.',
   mode: 'fixed',
   gate: '07',
   columns: [
