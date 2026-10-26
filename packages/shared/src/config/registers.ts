@@ -1399,7 +1399,7 @@ const clinicalHumanEvidence: RegisterConfig = {
 
 export const studyProtocolSetup: RegisterConfig = {
   key: 'studyProtocolSetup',
-  title: 'Study Protocol Setup',
+  title: 'Protocol Setup',
   sheetName: 'Study_Protocol',
   description: 'What the study is, how it is run and how it is measured. The approval route (study proposal, Head/HOD sign-off, independent reviewer) is on the Gate 08 tab of Phase 3.',
   mode: 'fixed',
@@ -1955,7 +1955,7 @@ const publishedInfoApproval: RegisterConfig = {
 
 export const medicalSummary: RegisterConfig = {
   key: 'medicalSummary',
-  title: 'Medical / Safety Summary',
+  title: 'Safety / Medical Summary',
   sheetName: 'Medical_Summary',
   description: 'Ready-to-answer HCP/distributor evidence pack. Use approved wording and evidence only.',
   mode: 'fixed',
