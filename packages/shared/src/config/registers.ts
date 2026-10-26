@@ -1954,7 +1954,7 @@ const publishedInfoApproval: RegisterConfig = {
   ],
 };
 
-const medicalSummary: RegisterConfig = {
+export const medicalSummary: RegisterConfig = {
   key: 'medicalSummary',
   title: 'Medical / Safety Summary',
   sheetName: 'Medical_Summary',
@@ -1981,7 +1981,7 @@ const medicalSummary: RegisterConfig = {
 };
 
 // The second table of the workbook's Medical_Summary sheet ("READY-TO-ANSWER PACK", 8 blank rows there).
-const medicalReadyAnswerPack: RegisterConfig = {
+export const medicalReadyAnswerPack: RegisterConfig = {
   key: 'medicalReadyAnswerPack',
   title: 'Ready-to-Answer Pack',
   sheetName: 'Medical_Summary',
@@ -4174,8 +4174,7 @@ const DEPARTMENTS: RawDept[] = [
       { title: 'Study Protocol & Participant Rationale', sheetName: 'Study_Protocol', workbookTab: 'George-Study_Protocol', page: 'study-protocol', gate: '08', contains: ['studyProtocolSetup', 'studyParticipantLog'] },
       'efficacyStudyPlan',
       'potencyProcessControl',
-      'medicalSummary',
-      'medicalReadyAnswerPack',
+      { title: 'Medical / Safety Summary', sheetName: 'Medical_Summary', workbookTab: 'George-Medical_Summary', page: 'medical-summary', gate: '10', contains: ['medicalSummary', 'medicalReadyAnswerPack'] },
     ],
   },
   {
