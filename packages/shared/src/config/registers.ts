@@ -2236,9 +2236,20 @@ const vulnerableUserAssessment: RegisterConfig = {
   ],
 };
 
+// The workbook's "Linked MBc360 gate / sheet" values of GMP_Links, written with the app's own gate and page names.
+export const GMP_LINKED_GATE_SHEETS = [
+  'Gate 10 / Gate 11 / PIF',
+  'Formula BOM / Gate 11',
+  'Gate 11',
+  'Batch Formula Trace',
+  'Microbiology & PET Evidence / Stability, Compatibility & Release Evidence',
+  'Stability, Compatibility & Release Evidence / PIF Evidence Export',
+  'Post-Market / CAPA / Change Control',
+] as const;
+
 const gmpLinks: RegisterConfig = {
   key: 'gmpLinks',
-  title: 'GMP Manufacturing Links',
+  title: 'GMP Links',
   sheetName: 'GMP_Links',
   description: 'Controlled GMP records remain in the GMP manufacturing system — link only, do not recreate them here.',
   mode: 'register',
@@ -2254,7 +2265,7 @@ const gmpLinks: RegisterConfig = {
     { key: 'link', label: 'Link / location', type: 'text', width: 140 },
     { key: 'versionDate', label: 'Version / batch / date', type: 'text', width: 140 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: PUBLICATION_STATUS_OPTIONS },
-    { key: 'linkedGateSheet', label: 'Linked MBc360 gate / sheet', type: 'text', width: 150 },
+    { key: 'linkedGateSheet', label: 'Linked MBc360 gate / sheet', type: 'select', width: 150, options: GMP_LINKED_GATE_SHEETS },
     { key: 'notes', label: 'Notes / action', type: 'textarea', width: 170 },
   ],
 };
@@ -3660,6 +3671,17 @@ const PLACEHOLDER_HINTS: Record<string, Record<string, PlaceholderHint>> = {
     conditionsTimepoints: 'Conditions',
     acceptanceLimit: 'Limit',
     reportLink: 'Test_Report_Index link',
+  },
+  gmpLinks: {
+    notes: rowHints('linkedGateSheet', {
+      'Gate 10 / Gate 11 / PIF': 'Link only; do not recreate in MBc360',
+      'Formula BOM / Gate 11': 'GMP team maintains the master file',
+      'Gate 11': 'Link the current approved schedule or batch plan',
+      'Batch Formula Trace': 'Required for production/release traceability',
+      'Microbiology & PET Evidence / Stability, Compatibility & Release Evidence': 'pH, temperature, hold time, mixing/fill records',
+      'Stability, Compatibility & Release Evidence / PIF Evidence Export': 'Attach or link the controlled report for the PIF',
+      'Post-Market / CAPA / Change Control': 'Closure remains in GMP/QMS',
+    }),
   },
   carrierEmollientReview: {
     ingredientName: 'Ingredient name',
