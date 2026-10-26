@@ -51,6 +51,8 @@ export interface RegisterColumn {
   // register + 1). Never typed: a value arriving from a client is kept only if that register already holds it, so an ID cannot be
   // forged, reused or renumbered. Pair with `editable: false` (shown as a fixed reference) and `unique: true`.
   autoId?: { prefix: string; digits?: number };
+  // A text column whose value names workbook sheets ("Formula_BOM; Mechanism_Claims_Map"), separated by ";". Shown as the app's own pages, each a link.
+  sheetRefs?: true;
   // Whether changing this column needs the register's assigned people (SW-34). Left unset it follows the column's kind: a status,
   // an assessment, an approval tick, a signature, or a person who recorded an act is important; text, dates, numbers and links are not.
   sensitive?: boolean;
@@ -1324,7 +1326,7 @@ const efficacyAssurance: RegisterConfig = {
   columns: [
     { key: 'controlRoute', label: 'Control route', type: 'text', width: 180, editable: false },
     { key: 'minimumRequirement', label: 'Minimum requirement', type: 'text', width: 260, editable: false },
-    { key: 'primaryEvidenceSource', label: 'Primary evidence source', type: 'text', width: 200, editable: false },
+    { key: 'primaryEvidenceSource', label: 'Primary evidence source', type: 'text', width: 260, editable: false, sheetRefs: true },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
     { key: 'owner', label: 'Owner', type: 'text', width: 140, editable: false },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
@@ -3976,6 +3978,28 @@ export interface NavGroup {
   description?: string;
   reviewOwner?: ReviewOwnerSpec; // department head + co-sign (composed per project)
   items: NavItem[];
+}
+
+// A workbook sheet name ("Supplier_RM_Evidence") -> the page of this app that replaced it. Where one sheet became several pages, the
+// one that carries the sheet's name is chosen.
+const SHEET_PAGE_OVERRIDES: Record<string, string> = { Study_Protocol: 'studyProtocolSetup', Published_Info_Approval: 'publishedInfoApproval' };
+export interface SheetRef {
+  text: string;
+  item?: NavItem;
+}
+export function resolveSheetRefs(value: string): SheetRef[] {
+  const items = getNavGroups().flatMap((g) => g.items);
+  return value
+    .split(';')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      // Only a workbook sheet name (words joined by underscores) is looked up; "literature/evidence link" stays as written.
+      if (!/^[A-Za-z0-9]+(_[A-Za-z0-9]+)+$/.test(part)) return { text: part };
+      const override = SHEET_PAGE_OVERRIDES[part];
+      const item = override ? items.find((i) => i.registerKey === override) : items.find((i) => i.sheetName === part);
+      return item ? { text: item.title, item } : { text: part };
+    });
 }
 
 // Resolve a NavItem to a concrete route for the given project.

@@ -4,6 +4,7 @@ import { Alert, Button, Checkbox, DatePicker, Drawer, Grid, Input, InputNumber, 
 import { DeleteOutlined, DownOutlined, LockOutlined, PlusOutlined, RightOutlined, UpOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useParams } from 'react-router-dom';
+import SheetRefs from './SheetRefs';
 import GateLink from './GateLink';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
 import { isOwnerFunctionColumn, ownerFunctionWithPeople } from '@mbc360/shared/config/reviewers';
@@ -393,6 +394,7 @@ export default function DynamicTable({
     }
 
     if (!editable) {
+      if (column.sheetRefs) return <span className="rt-static"><SheetRefs value={text(value)} projectId={projectId} /></span>;
       if (column.type === 'checkbox') return <Checkbox checked={!!value} disabled />;
       // Read-only, a library link shows the entry's wording rather than its id.
       if (column.type === 'claimsLibraryRef') return <ClaimsLibrarySelect value={value as string | undefined} disabled onChange={() => {}} />;
@@ -923,7 +925,7 @@ export default function DynamicTable({
                       <dt>{col.label}</dt>
                       <dd>
                         {renderCell?.(col, openRow, openIndex, { patch: () => {}, patchRow: () => {}, readOnly: true, draft }) ??
-                          (col.type === 'checkbox' ? (openRow[col.key] ? 'Yes' : 'No') : shownText(col, openRow[col.key]) || '—')}
+                          (col.sheetRefs ? <SheetRefs value={text(openRow[col.key])} projectId={projectId} /> : col.type === 'checkbox' ? (openRow[col.key] ? 'Yes' : 'No') : shownText(col, openRow[col.key]) || '—')}
                       </dd>
                     </div>
                   ))}
