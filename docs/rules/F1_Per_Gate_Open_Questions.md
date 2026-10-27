@@ -1543,6 +1543,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
 | R5-Q69 | Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role | Chủ dự án bỏ quyền theo role 15/10/2026 | **lộ ra 15/10/2026** |
+| R5-Q79 | Năm dòng "Correct names for PI" trong Artwork / Label Review Checklist: ghép tên INCI và tên phải in thành một yêu cầu, và gate khoá của bảng | Chủ dự án thấy trang thiếu bảng này, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q78 | Cột Trace ID (BT-001…) do ứng dụng thêm vào Batch Formula Trace để ô Batch Formula Trace ref của Shipment Label & Batch Verification chọn được một dòng | Chủ dự án muốn ô ref là ô chọn, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q77 | Artwork Change Control ref của Released Label vs Current Artwork Register trỏ vào đâu (bản ghi Change Control, hay một trong 5 trigger của sheet), và 8 cột "ref" thay đổi còn lại có đổi theo không | Chủ dự án hỏi ô ref có phải ô chọn không, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q76 | Product status của Prohibited Ingredients tự đặt "REVIEW - possible formula match" khi BOM có khớp; người đã chọn kết luận thì giữ | Chủ dự án muốn ứng dụng tự đánh giá như công thức workbook, 26/10/2026 | **lộ ra 26/10/2026** |
@@ -2312,6 +2313,16 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.
 
 **Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ** (còn **76** từ 19/10/2026, sau khi bỏ bốn sổ tham chiếu của Roadmap và Sheet 6 và hai bảng ký gõ tay của Needs và Target Product — nhóm D còn 32, nhóm E còn 26), chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+
+#### R5-Q79 · Artwork / Label Review Checklist: năm dòng "Correct names for PI" và gate khoá của bảng 🟡
+
+**Lộ ra 27/10/2026, khi chủ dự án thấy trang Packaging Specs & Artwork Evidence thiếu bảng ARTWORK / LABEL REVIEW CHECKLIST của sheet.** Bảng có 8 dòng chuẩn (bảy mục rà soát và dòng "Tags for Proprietary Extracts on Labels") theo đúng cột của sheet, rồi 5 dòng "Correct names for PI" đặt **dưới cùng tiêu đề nhưng dùng cột khác nghĩa**: ô "Requirement" ghi tên INCI (ví dụ "Salvia microphylla water extract") và ô "Evidence link" ghi tên thương mại phải in (ví dụ "Salvotect™ (MBc Research Parks PI)"), không có Owner hay Status.
+
+**Hiện chạy theo:** ghép hai ô thành một yêu cầu, "tên INCI → tên phải in", để ô Evidence link của các dòng đó vẫn để trống cho người dán link thật (đặt tên thương mại vào ô Evidence link sẽ làm bảng trông như đã có bằng chứng). Bảng là sổ cố định, khoá theo cùng gate với bảng Packaging Component Evidence cùng sheet (06/10/11). Chưa có điều kiện readiness nào đọc bảng này.
+
+**Câu hỏi:** (a) năm dòng tên PI là danh sách tên phải in (tham chiếu), hay là năm mục phải được rà soát như bảy mục trên (cần Owner, Status)? (b) bảng rà soát này nên là điều kiện bắt buộc của gate nào (đặc biệt "Final proof release")? (c) tên thương mại ghi ở đây có phải là nguồn chuẩn mà claim và nhãn phải khớp không?
+
+**Nếu trả lời khác:** sửa `artworkLabelReviewChecklist` trong `packages/shared/src/config/registers.ts` [ASSUMPTION: R5-Q79], và thêm điều kiện vào `gateReadiness.ts` nếu bảng trở thành bắt buộc.
 
 #### R5-Q78 · Batch Formula Trace: Trace ID do ứng dụng thêm để Shipment Label & Batch Verification chọn được một dòng 🟡
 

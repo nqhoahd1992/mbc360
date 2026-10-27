@@ -1509,7 +1509,7 @@ const testReportIndex: RegisterConfig = {
 // Category 4: Packaging, Artwork & Change Triggers (Gate 06/09/11)
 // ---------------------------------------------------------------------------
 
-const packagingSpecsArtwork: RegisterConfig = {
+export const packagingSpecsArtwork: RegisterConfig = {
   key: 'packagingSpecsArtwork',
   title: 'Packaging Specs & Artwork Evidence',
   sheetName: 'Packaging_Specs_Artwork',
@@ -1540,6 +1540,40 @@ const packagingSpecsArtwork: RegisterConfig = {
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
+  ],
+};
+
+// The second table of the workbook's Packaging_Specs_Artwork sheet ("ARTWORK / LABEL REVIEW CHECKLIST"): seven review items, the
+// proprietary-extract tag text, and the five proprietary-ingredient names to print. Drawn under the component evidence on one page.
+export const artworkLabelReviewChecklist: RegisterConfig = {
+  key: 'artworkLabelReviewChecklist',
+  title: 'Artwork / Label Review Checklist',
+  sheetName: 'Packaging_Specs_Artwork',
+  description: 'Review each item of the artwork or label before the final proof is released.',
+  mode: 'fixed',
+  gate: '06/10/11',
+  columns: [
+    { key: 'reviewItem', label: 'Review item', type: 'text', width: 190, editable: false },
+    { key: 'requirement', label: 'Requirement', type: 'text', width: 380, editable: false, sheetRefs: true },
+    { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
+    { key: 'owner', label: 'Owner', type: 'text', width: 140, editable: false },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
+  ],
+  fixedRows: [
+    { reviewItem: "Product identity", requirement: "Product name, SKU, net content and market match project record", owner: "Regulatory / Brand" },
+    { reviewItem: "Ingredient list / INCI", requirement: "Formula_BOM version and INCI order reviewed", owner: "Regulatory / R&I" },
+    { reviewItem: "Directions / warnings", requirement: "Use instructions, pregnancy/BF restrictions and safety warnings included", owner: "Regulatory / Safety" },
+    { reviewItem: "Claims and benefit wording", requirement: "All claims match approved wording and evidence level", owner: "Marketing / Regulatory" },
+    { reviewItem: "Barcode / pack codes", requirement: "Barcode, item code, lot/date coding and pack dimensions verified", owner: "Packaging / Supply" },
+    { reviewItem: "Market language / symbols", requirement: "Local language, mandatory marks and distributor/importer details checked", owner: "Regulatory" },
+    { reviewItem: "Final proof release", requirement: "Approved print-ready file released and obsolete versions archived", owner: "Packaging / QA" },
+    { reviewItem: "Tags for Proprietary Extracts on Labels", requirement: "* SALVOTECT™, ** STACREGENIX™, ***MBC BIOFLORAL HONEY (lovingly harvested from our resident bees). Proprietary ingredients exclusive to Max Biocare Research Parks, Gippsland ****UVALIFE ANTIOXIDANT BLEND™ Proprietary ingredient exclusive to Max Biocare Pty Ltd", owner: "Packaging / QA", notes: "Use exactly as is" },
+    { reviewItem: "Correct names for PI", requirement: "Salvia microphylla water extract → Salvotect™ (MBc Research Parks PI)" },
+    { reviewItem: "Correct names for PI", requirement: "Stachys byzantina water extract → Stacregenix™ (MBc Research Parks PI)" },
+    { reviewItem: "Correct names for PI", requirement: "Honey → MBc Biofloral Honey (MBc Research Parks PI; changed from MBc Herbal Honey since 30 June 2026)" },
+    { reviewItem: "Correct names for PI", requirement: "[VITIS VINIFERA (GRAPE) SEED EXTRACT, VITIS VINIFERA (GRAPE) FRUIT EXTRACT, WINE (RED WINE) EXTRACT], → Uvalife® Antioxidant Blend (MBc Proprietary Blend)" },
+    { reviewItem: "Correct names for PI", requirement: "Aqua (mineral water) → Aquadene®Mineral-Rich Water (MBc Research Parks PI)" },
   ],
 };
 
@@ -3500,6 +3534,7 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   efficacyStudyPlan,
   testReportIndex,
   packagingSpecsArtwork,
+  artworkLabelReviewChecklist,
   artworkChangeControl,
   formulaChangeControl,
   aseanPifMap,
@@ -4241,7 +4276,7 @@ const DEPARTMENTS: RawDept[] = [
     items: [
       { title: 'Released Label Control', sheetName: 'Released_Label_Ctrl', workbookTab: 'Lily-Released_Label_Ctrl', page: 'released-label-control', gate: '06/11', contains: ['releasedLabelRegister', 'labelPlatformRollout', 'labelShipmentVerification'] },
       { title: 'Packaging BOM', sheetName: 'Packaging_BOM', workbookTab: 'Lily-Packaging_BOM', page: 'bom/packaging', gate: '06' },
-      'packagingSpecsArtwork',
+      { title: 'Packaging Specs & Artwork Evidence', sheetName: 'Packaging_Specs_Artwork', workbookTab: 'Lily-Packaging_Specs_Art', page: 'packaging-specs-artwork', gate: '06/10/11', contains: ['packagingSpecsArtwork', 'artworkLabelReviewChecklist'] },
       'artworkChangeControl',
     ],
   },
