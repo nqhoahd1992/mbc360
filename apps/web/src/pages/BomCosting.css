@@ -95,7 +95,9 @@
 /* Feasibility: one row for status, assessor and date; assumptions and the evidence link share the next. */
 .cc-feas .bom-form { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px 20px; align-items: start; }
 .cc-feas .bom-form > .bom-field { grid-column: 1 / -1; }
-@media (min-width: 1000px) {
+/* The card's own width decides, not the window's: the sidebar takes a share of a narrow window. */
+.cc-feas { container-type: inline-size; }
+@container (min-width: 640px) {
   .cc-feas .bom-form > .cc-f6 { grid-column: span 6; }
   .cc-feas .bom-form > .cc-f3 { grid-column: span 3; }
   .cc-feas .bom-form > .cc-f8 { grid-column: span 8; }
