@@ -560,7 +560,7 @@ export default function AdminClaimsLibrary() {
                     />
                   </label>
                 ))}
-                <label className="au-field">
+                <label className="au-field mp-wide">
                   <span className="au-field-label">Audience</span>
                   <ChoiceSelect
                     allowClear

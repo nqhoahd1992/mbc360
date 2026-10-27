@@ -16,6 +16,8 @@
 # Usage:
 #   ./deploy.sh                 # pull, build, up (+migrate), health-check
 #   ./deploy.sh --seed          # also run the (idempotent) seeder — first deploy
+#   ./deploy.sh --seed-showcase # also create the showcase project (TEST data: every gate
+#                               # passed, signatures written straight to the DB) — test servers only
 #   ./deploy.sh --no-pull       # deploy the working tree as-is (no git pull)
 #   ./deploy.sh -h | --help
 #
@@ -37,6 +39,7 @@ NODE_IMAGE="node:22-alpine"
 
 DO_PULL=1
 DO_SEED=0
+DO_SHOWCASE=0
 
 log()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m  ✓ %s\033[0m\n' "$*"; }
@@ -47,7 +50,8 @@ for arg in "$@"; do
     --no-pull)    DO_PULL=0 ;;
     --no-migrate) die "--no-migrate was removed: migrations now run as part of 'docker compose up' (see the header of this script)." ;;
     --seed)       DO_SEED=1 ;;
-    -h|--help)    sed -n '2,37p' "$0"; exit 0 ;;
+    --seed-showcase) DO_SHOWCASE=1 ;;
+    -h|--help)    sed -n '2,40p' "$0"; exit 0 ;;
     *)            die "Unknown option: $arg (try --help)" ;;
   esac
 done
@@ -100,7 +104,7 @@ ok "Containers up, migrations applied"
 # ---------------------------------------------------------------------------
 # 3. Optional seed via a one-off container on the compose network
 # ---------------------------------------------------------------------------
-if [ "$DO_SEED" -eq 1 ]; then
+if [ "$DO_SEED" -eq 1 ] || [ "$DO_SHOWCASE" -eq 1 ]; then
   log "Waiting for Postgres to be ready"
   for i in $(seq 1 30); do
     if dc exec -T postgres pg_isready -U mbc360 -d mbc360 >/dev/null 2>&1; then
@@ -124,13 +128,37 @@ if [ "$DO_SEED" -eq 1 ]; then
   [ -n "$NETWORK" ] || die "Could not determine the compose network for postgres."
   ok "Using network: $NETWORK"
 
-  log "Seeding rule config + role matrix (idempotent; SEED_DEMO_USERS=false)"
-  docker run --rm --network "$NETWORK" \
-    -v "$PWD":/repo -w /repo \
-    -e DATABASE_URL="$DB_URL" \
-    -e SEED_DEMO_USERS=false \
-    "$NODE_IMAGE" sh -c "npm ci && npm run build -w @mbc360/shared && npm exec -w @mbc360/api -- prisma generate && npm run db:seed -w @mbc360/api"
-  ok "Seed complete"
+  # Shared by both seeders: source mounted, shared built, Prisma client generated.
+  PREPARE="npm ci && npm run build -w @mbc360/shared && npm exec -w @mbc360/api -- prisma generate"
+
+  if [ "$DO_SEED" -eq 1 ]; then
+    log "Seeding rule config + role matrix (idempotent; SEED_DEMO_USERS=false)"
+    docker run --rm --network "$NETWORK" \
+      -v "$PWD":/repo -w /repo \
+      -e DATABASE_URL="$DB_URL" \
+      -e SEED_DEMO_USERS=false \
+      "$NODE_IMAGE" sh -c "$PREPARE && npm run db:seed -w @mbc360/api"
+    ok "Seed complete"
+  fi
+
+  if [ "$DO_SHOWCASE" -eq 1 ]; then
+    # DEV TOOL: fills a project with fake evidence and writes signatures straight to the
+    # database, so it is for a TEST environment only. It drives the running api over HTTP as
+    # the first PINNED_ADMINS user, signing its session cookie with the api's own secret.
+    log "Seeding the showcase project (test data — all 12 gates passed; takes a few minutes)"
+    SESSION_SECRET_VAL="$(dc exec -T api printenv SESSION_SECRET | tr -d '\r\n')"
+    PINNED_VAL="$(dc exec -T api printenv PINNED_ADMINS | tr -d '\r\n')"
+    [ -n "$SESSION_SECRET_VAL" ] || die "Could not read SESSION_SECRET from the api container."
+    [ -n "$PINNED_VAL" ] || die "PINNED_ADMINS is empty in the api container — the seeder needs an administrator to act as."
+    docker run --rm --network "$NETWORK" \
+      -v "$PWD":/repo -w /repo \
+      -e DATABASE_URL="$DB_URL" \
+      -e API_URL="http://api:3000/api" \
+      -e SESSION_SECRET="$SESSION_SECRET_VAL" \
+      -e PINNED_ADMINS="$PINNED_VAL" \
+      "$NODE_IMAGE" sh -c "$PREPARE && cd apps/api && npx tsx scripts/seed-showcase-project.ts --name 'Showcase' --allow-remote"
+    ok "Showcase project created (look for a project whose id starts with SEED-SHOWCASE-)"
+  fi
 fi
 
 # ---------------------------------------------------------------------------
