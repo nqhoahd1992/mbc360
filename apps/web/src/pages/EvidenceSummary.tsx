@@ -9,6 +9,7 @@ import { composeReviewOwner, REVIEW_SPECS } from '@mbc360/shared/config/reviewer
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from '../components/SaveBar';
+import SheetRefs from '../components/SheetRefs';
 import RecordList, { RecordField } from '../components/RecordList';
 import { CompositePageHeader } from '../components/RegisterPageHeader';
 import '../styles/concept.css';
@@ -101,7 +102,7 @@ export default function EvidenceSummary() {
   );
   const template = (name: string) => {
     const links = TEMPLATE_LINKS[name];
-    if (!links) return name;
+    if (!links) return <SheetRefs value={name} projectId={id} />;
     return links.map((l, i) => (
       <span key={l.path}>
         {i > 0 && ' · '}
@@ -215,7 +216,7 @@ export default function EvidenceSummary() {
                   [
                     ['Trigger', r.e.trigger],
                     ['Primary template', template(r.e.primaryTemplate)],
-                    ['Secondary inputs', r.e.secondaryInputs || '—'],
+                    ['Secondary inputs', r.e.secondaryInputs ? <SheetRefs value={r.e.secondaryInputs} projectId={id} /> : '—'],
                     ['Owner', r.e.owner],
                     ['Gate', gateLabel(r.e.gate)],
                     ['PIF / PMF section', r.e.pifPmfSection || '—'],

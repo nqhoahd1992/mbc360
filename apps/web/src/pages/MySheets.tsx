@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import '../styles/concept.css';
 import { Alert, Card, Empty, Progress, Table, Tag, Tooltip, Typography } from 'antd';
 import { LockFilled, RightOutlined, UnlockOutlined } from '@ant-design/icons';
 import {
@@ -119,7 +120,7 @@ export default function MySheets() {
   const lockedCount = rows.filter((r) => r.locked).length;
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
+    <div className="concept">
       <div>
         <Typography.Title level={4} style={{ margin: 0 }}>
           My Sheets

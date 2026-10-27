@@ -2340,7 +2340,7 @@ export function isPhaseDataLocked(project: ProjectData, phase: number): boolean 
 }
 
 export const PHASE_DATA_LOCKED_REASON =
-  'A phase signature stands — withdraw it first (with a reason) to change this.';
+  'This phase has been signed off, so it is read-only — withdraw its signature first (with a reason) to change it.';
 
 export function isLastGateOfPhase(index: number): boolean {
   const meta = GATES[index];

@@ -1,0 +1,8 @@
+/* One line: the address takes what is left and is cut with an ellipsis, the copy button keeps its size. */
+.lv { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; vertical-align: bottom; }
+.lv-url { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lv-copy {
+  flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0;
+  border: 0; border-radius: 6px; background: transparent; color: var(--c-text-3); cursor: pointer;
+}
+.lv-copy:hover { background: var(--c-surface-2); color: var(--c-primary); }

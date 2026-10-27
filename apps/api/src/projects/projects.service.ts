@@ -2452,7 +2452,7 @@ export class ProjectsService {
       // i.e. before there was anything for an owner to review.
       this.assertPhaseDataOpen(project, phase);
       if (phaseProgress(project, phase).state === 'locked') {
-        throw new BadRequestException(`Phase ${phase} has not opened yet — its pre-work is accepted once it opens (F13)`);
+        throw new BadRequestException(`Phase ${phase} is not open yet (the phase before it is still in progress) — its pre-work can be accepted once it opens (F13)`);
       }
       // Who the "responsible owner" is: the phase's review owner on this project,
       // or the project's Lead [ASSUMPTION: R5-Q43].

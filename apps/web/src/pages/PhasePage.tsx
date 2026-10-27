@@ -48,6 +48,7 @@ import { ASSESSMENT_HOMES, assessmentAnchor } from '@mbc360/shared/config/assess
 import { useUnsavedCount } from '../hooks/unsavedRegistry';
 import '../styles/concept.css';
 import './PhasePage.css';
+import ReviewOwnerLine from '../components/ReviewOwnerLine';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { targetUsersPinnedByAssessment } from '@mbc360/shared/utils/vulnerableUsers';
 
@@ -323,7 +324,7 @@ export default function PhasePage() {
         key="locked"
         title="Gates must be completed in order. You can still review and fill the forms (draft evidence, requirements, notes, risks, proposed actions), but the gate flow, sign-off and formal closure stay read-only. Anything entered now is pre-work: once this phase opens, its review owner or the project's Lead must review and accept this phase's entries before they count towards completion."
       >
-        <span className="c-tag c-tag-warn c-tag-dot">Phase locked — entries are pre-work</span>
+        <span className="c-tag c-tag-warn c-tag-dot">Phase not open yet — entries are pre-work</span>
       </Tooltip>,
     );
   }
@@ -338,6 +339,17 @@ export default function PhasePage() {
       <Button key="prework-accept" type="link" size="small" icon={<CheckOutlined />} disabled={isPhaseDataLocked(project, phase)} onClick={() => acceptPreWork(project.identity.id, phase)}>
         Accept pre-work
       </Button>,
+    );
+  }
+  // Accepted: said once, up here with the other phase states, instead of as a loose line above the sign-off.
+  if (phase > 1 && closure?.preWork?.acceptedBy) {
+    stripItems.push(
+      <Tooltip
+        key="prework-done"
+        title={`Data entered in this phase before it opened was reviewed and accepted by ${closure.preWork.acceptedBy}${closure.preWork.acceptedDate ? ` on ${closure.preWork.acceptedDate}` : ''}.`}
+      >
+        <span className="c-tag c-tag-ok c-tag-dot">Pre-work accepted</span>
+      </Tooltip>,
     );
   }
   // Round 4 question 16: an auto-generated "not applicable" on a critical item has
@@ -460,8 +472,10 @@ export default function PhasePage() {
   };
   // Once this gate has passed (three signatures recorded) the button stops pointing at the sign-off and points at
   // what comes next: the next gate, this phase's close-out, or the next phase.
-  const gatePassed = tab !== CLOSE_TAB && stepState(tab) === 'passed';
-  const nextGateId = config.gateIds[config.gateIds.indexOf(tab) + 1];
+  // The close-out step comes after the last gate whether or not it is signed yet; only from the close-out itself does it point on to the next phase.
+  const onCloseTab = tab === CLOSE_TAB;
+  const gatePassed = onCloseTab ? progress.state === 'completed' : stepState(tab) === 'passed';
+  const nextGateId = onCloseTab ? undefined : config.gateIds[config.gateIds.indexOf(tab) + 1];
   const nextPhaseMeta = PHASES.find((p) => p.phase === phase + 1);
   const lastSignedAt = project.gateSignOffs
     .filter((x) => x.gateId === tab && x.signedAt)
@@ -480,7 +494,7 @@ export default function PhasePage() {
               : undefined,
           go: () => selectTab(nextGateId),
         }
-      : progress.state !== 'completed'
+      : !onCloseTab
         ? { label: 'Next · Close-out', hint: 'Phase sign-off', go: () => selectTab(CLOSE_TAB) }
         : nextPhaseMeta
           ? {
@@ -542,12 +556,8 @@ export default function PhasePage() {
         <p className="ph-meta">
           {meta.name} · {project.identity.id} · {project.identity.productSku} · Responsible departments:{' '}
           {meta.department.split('/').map((d) => d.trim().charAt(0) + d.trim().slice(1).toLowerCase()).join(', ')}
-          {reviewOwnerText && (
-            <>
-              {' '}· Review owner <b>{reviewOwnerText}</b>
-            </>
-          )}
         </p>
+        {reviewOwnerText && <ReviewOwnerLine text={reviewOwnerText} />}
         {PHASE_NOTES[phase] && <p className="ph-note">{PHASE_NOTES[phase]}</p>}
         <PhaseKeyLinksCard links={config.keyLinks} project={project} phase={phase} />
       </div>
@@ -644,12 +654,6 @@ export default function PhasePage() {
           <div id="sec-next-actions">
             <NextActionsCard project={project} projectId={project.identity.id} gateIds={config.gateIds} actions={project.nextActions} />
           </div>
-          {closure?.preWork?.acceptedBy && (
-            <p className="ph-small">
-              Pre-work reviewed and accepted by {closure.preWork.acceptedBy}
-              {closure.preWork.acceptedDate ? ` on ${closure.preWork.acceptedDate}` : ''}.
-            </p>
-          )}
           <div id="sec-sign-off">
             <SignOffBlock
               projectId={project.identity.id}

@@ -22,8 +22,9 @@ import {
   navItemHref,
 } from '@mbc360/shared/config/registers';
 import { ownerName, reviewRoleLabel } from '@mbc360/shared/config/reviewers';
-import { currentGateIndex, phaseProgress } from '@mbc360/shared/utils/gateProgress';
+import { currentGateIndex, isGateRefLocked, phaseProgress } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
+import { sheetClosure } from '../utils/sheetClosure';
 import { globalNavFor } from '../config/globalNav';
 import './AppSidebar.css';
 
@@ -312,6 +313,9 @@ function ProjectPanel() {
           // workbook's tab-name prefix digitised, never a name from config.
           const person = ownerName(group.reviewOwner, reviewers);
           const groupRole = group.reviewOwner?.owner.role;
+          // Closing signatures per sheet, so the menu shows which are signed without opening each group.
+          const closures = group.items.filter((item) => !item.hidden && group.key !== 'dept-system').map((item) => sheetClosure(project, item));
+          const closedCount = closures.filter((c) => c.closed).length;
           const overviewTo = `/projects/${projectId}/registers/cat/${group.key}`;
           return (
             <div key={group.key} className="sb-grp" data-open={open || undefined}>
@@ -326,6 +330,11 @@ function ProjectPanel() {
                   <span className="sb-lbl-text">{group.title}</span>
                   {person && <span className="sb-note">{person}</span>}
                 </span>
+                {closures.length > 0 && closedCount > 0 && (
+                  <span className={`sb-meta${closedCount === closures.length ? ' sb-ok' : ''}`} title={`${closedCount} of ${closures.length} sheets closed by signature`}>
+                    {closedCount === closures.length ? <CheckCircleOutlined /> : `${closedCount}/${closures.length}`}
+                  </span>
+                )}
               </button>
               {open && (
                 <div className="sb-grp-body">
@@ -342,13 +351,28 @@ function ProjectPanel() {
                       ? getRegisterConfig(item.registerKey)?.reviewOwner?.owner.role
                       : item.reviewOwner?.owner.role;
                     const otherOwner = !!itemRole && !!groupRole && itemRole !== groupRole;
+                    const closure = group.key === 'dept-system' ? undefined : sheetClosure(project, item);
+                    const closureMark = closure?.closed ? (
+                      <Tooltip title={closure.signers.length ? `Closed — signed by ${closure.signers.join(', ')}` : 'Closed by signature'}>
+                        <CheckCircleOutlined className="sb-ok" />
+                      </Tooltip>
+                    ) : closure && closure.closedGates > 0 ? (
+                      <Tooltip title={`Closed at ${closure.closedGates} of ${closure.closureGates} gates`}>
+                        <span className="sb-cur">{closure.closedGates}/{closure.closureGates}</span>
+                      </Tooltip>
+                    ) : closure && closure.closureGates === 0 && isGateRefLocked(project, item.gate) ? (
+                      // A page that has no closing signature to give (Formula BOM): its gate has passed, so it is read-only.
+                      <Tooltip title={`Read-only — ${formatGate(item.gate)} has passed`}>
+                        <LockOutlined />
+                      </Tooltip>
+                    ) : undefined;
                     return (
                       <Item
                         key={`${group.key}:${idx}`}
                         to={to}
                         label={item.title}
                         // Reference material (System Guide & Reference) belongs to no gate, so it carries no gate tag.
-                        meta={group.key === 'dept-system' ? undefined : formatGate(item.gate) || undefined}
+                        meta={closureMark ?? (group.key === 'dept-system' ? undefined : formatGate(item.gate) || undefined)}
                         note={otherOwner ? `Owner: ${reviewRoleLabel(itemRole)}` : undefined}
                         sub
                         current={pathname === to}

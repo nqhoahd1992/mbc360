@@ -3045,7 +3045,8 @@ export const competitorLandscape: RegisterConfig = {
   closureTitle: 'Competitor Landscape', // one closing signature for the whole page: this register and the three below (closedWith)
   title: 'Competitor Product Register — Identity, Claims & IP',
   sheetName: '2. Competitor Landscape',
-  description: 'One row per competitor product. Every important competitor must be purchased and physically evaluated, not just researched online. (Merges the source sheet\'s "Purchase & Identity" and "Claims/INCI/IP" tables into one row per competitor.)',
+  // The source sheet keeps "Purchase & Identity" and "Claims/INCI/IP" as two tables; they are merged here into one row per competitor.
+  description: 'One row per competitor product. Every important competitor must be purchased and physically evaluated, not just researched online.',
   mode: 'register',
   gate: '03', // Roadmap "Sign-off gate" for Step 2 is SG03 only
   reviewOwner: REVIEW_SPECS.npdCompetitor,

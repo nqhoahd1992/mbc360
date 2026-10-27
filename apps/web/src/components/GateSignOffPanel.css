@@ -34,6 +34,8 @@
 .gso-signer .ant-select { width: 100%; max-width: 300px; }
 .gso-action { justify-content: flex-end; }
 .gso-action { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* A signed row: when and which record on one line, the withdraw button or its reason under it, both at the right edge. */
+.gso-action-signed { flex-direction: column; align-items: flex-end; gap: 4px; }
 @media (max-width: 759px) {
   .gso-role, .gso-signer, .gso-action { grid-column: 2; }
 }
@@ -60,7 +62,7 @@
 .gso-gate-hold > .anticon { margin-top: 2px; }
 .gso-gate-hold strong { color: inherit; }
 /* Inside the sign-off card: a full-width strip under the title, not a box of its own. */
-.gso-notice { padding: 10px 20px; border-width: 0 0 1px; border-radius: 0; }
+.gso-notice, .gso-gate-warn.gso-notice, .gso-gate-hold.gso-notice { padding: 10px 20px; border-width: 0 0 1px; border-radius: 0; }
 
 /* Critical-gate independent-function warning: said at nomination time, where it
    can still be acted on, instead of only when the approver signs. */

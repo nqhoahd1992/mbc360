@@ -1,10 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { SAFETY_FINDINGS_REGISTER, canChooseSuperseded } from '@mbc360/shared/utils/safetyFindings';
 import { Alert, Button, Checkbox, DatePicker, Drawer, Grid, Input, InputNumber, Select, Tooltip } from 'antd';
 import { DeleteOutlined, DownOutlined, LockOutlined, PlusOutlined, RightOutlined, UpOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useParams } from 'react-router-dom';
 import SheetRefs from './SheetRefs';
+import LinkValue from './LinkValue';
+import { isWebAddress } from '../utils/webAddress';
 import GateLink from './GateLink';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
 import { isOwnerFunctionColumn, ownerFunctionWithPeople } from '@mbc360/shared/config/reviewers';
@@ -158,7 +160,7 @@ export default function DynamicTable({
   onSave: (rows: RegisterRow[]) => void | boolean | Promise<unknown>;
   reviewOwnerText?: string;
   readOnly?: boolean;
-  readOnlyReason?: string;
+  readOnlyReason?: ReactNode;
   embedded?: boolean;
   // Leave out the register's own description under the title (a read-only copy shown on another page, where it would describe the wrong screen).
   hideDescription?: boolean;
@@ -400,7 +402,7 @@ export default function DynamicTable({
       if (column.type === 'claimsLibraryRef') return <ClaimsLibrarySelect value={value as string | undefined} disabled onChange={() => {}} />;
       const shown = (
         <span className="rt-static" style={column.type === 'number' ? NUMERIC_CELL : undefined}>
-          {shownText(column, value) || '—'}
+          {isWebAddress(text(value)) ? <LinkValue value={text(value)} /> : shownText(column, value) || '—'}
         </span>
       );
       return frozenGate ? (
@@ -564,7 +566,8 @@ export default function DynamicTable({
   // and one left without a partner (before a long field, or last) takes the row itself — otherwise it sat alone in half a
   // row with nothing beside it, which made the form read as scattered.
   const fullWidthOf = (cols: RegisterColumn[]) => {
-    const wide = (c: RegisterColumn) => c.type === 'textarea' || c.type === 'multiSelect' || c.type === 'signature';
+    // A link column takes a row to itself: an address is long, and beside another field it is cut to half a row.
+    const wide = (c: RegisterColumn) => c.type === 'textarea' || c.type === 'multiSelect' || c.type === 'signature' || (c.type === 'text' && /link|url/i.test(`${c.key} ${c.label}`));
     const full = new Set<number>();
     let i = 0;
     while (i < cols.length) {
@@ -600,7 +603,7 @@ export default function DynamicTable({
   // A read-only value as the drawer shows it: the register's own renderer, else sheet / gate links, else plain text.
   const referenceValue = (col: RegisterColumn, row: RegisterRow, index: number) =>
     renderCell?.(col, row, index, { patch: () => {}, patchRow: () => {}, readOnly: true, draft }) ??
-    (col.gateLink ? <GateLink value={text(row[col.key])} /> : col.sheetRefs ? <SheetRefs value={text(row[col.key])} projectId={projectId} /> : col.type === 'checkbox' ? (row[col.key] ? 'Yes' : 'No') : shownText(col, row[col.key]) || '—');
+    (col.gateLink ? <GateLink value={text(row[col.key])} /> : col.sheetRefs ? <SheetRefs value={text(row[col.key])} projectId={projectId} /> : col.type === 'checkbox' ? (row[col.key] ? 'Yes' : 'No') : isWebAddress(text(row[col.key])) ? <LinkValue value={text(row[col.key])} /> : shownText(col, row[col.key]) || '—');
 
   const drawerSection = (section: DrawerSection, row: RegisterRow, index: number) => {
     const inputs = section.cols.filter((c) => editable.includes(c));

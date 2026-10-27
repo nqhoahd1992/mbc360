@@ -271,12 +271,11 @@ export default function SignOffBlock({
             </>,
           )}
         {sharedSigner && (
-          <div className="gso-gate-warn gso-notice">
+          <div className="gso-gate-hold gso-notice">
             <ExclamationCircleOutlined />
             <span>
-              <strong>{sharedSigner.name}</strong> has signed more than one role on this phase. Rule D1 requires an independent
-              reviewer or approver for safety-, regulatory-, claims- or release-critical decisions. This is not blocked here — it is
-              recorded so it is visible.
+              <strong>{sharedSigner.name}</strong> signed more than one role on this phase. Rule D1 asks for an independent reviewer or
+              approver on safety-, regulatory-, claims- or release-critical decisions. Not blocked here — shown so it is visible.
             </span>
           </div>
         )}
@@ -337,7 +336,7 @@ export default function SignOffBlock({
                     <span className="gso-muted">{r.assignedToName ?? 'Not nominated yet'}</span>
                   )}
                 </div>
-                <div className="gso-action">
+                <div className={`gso-action${signed ? ' gso-action-signed' : ''}`}>
                   {signed ? (
                     <>
                       <span className="gso-muted">

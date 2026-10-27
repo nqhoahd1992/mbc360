@@ -7,8 +7,8 @@ import { Link } from 'react-router-dom';
 import { GATES } from '@mbc360/shared/config/gates';
 import { getRegisterConfig, navItemHref, type NavGroup, type NavItem } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
-import { isRegisterClosed, isRegisterClosureSigned, type ProjectData } from '@mbc360/shared/types';
-import { closureStateAt, isRegisterFullyClosed, registerClosureGateIds, registerClosureRoles } from '@mbc360/shared/utils/registerClosures';
+import type { ProjectData } from '@mbc360/shared/types';
+import { sheetClosure } from '../utils/sheetClosure';
 import { currentGateIndex, gateRefGateIds, isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import '../styles/concept.css';
 import '../pages/AdminUsers.css';
@@ -65,31 +65,14 @@ export default function SectionOverview({
     const config = item.registerKey ? getRegisterConfig(item.registerKey) : undefined;
     const rows = item.registerKey ? (project.registers[item.registerKey] ?? []) : [];
     const gateIds = gateRefGateIds(item.gate);
-    // A sheet is closed by its own signature, or by its anchor's when it is a member of a group. A PAGE (several registers on one
-    // screen, `contains`) is closed when every anchor it holds is: Needs & Scientific Basis has one signature for five tables.
-    const memberConfigs = config ? [config] : (item.contains ?? []).map((k) => getRegisterConfig(k)).filter((c): c is NonNullable<typeof c> => !!c);
-    const anchors = [...new Map(memberConfigs.map((c) => { const a = (c.closedWith && getRegisterConfig(c.closedWith)) || c; return [a.key, a] as const; })).values()];
-    const closureOf = (a: (typeof anchors)[number]) => {
-      const gates = registerClosureGateIds(a);
-      const roles = registerClosureRoles(a);
-      const at = gates.filter((g) => isRegisterClosed(closureStateAt(project, a.key, g), roles));
-      const who = at.flatMap((g) => (closureStateAt(project, a.key, g)?.signOffs ?? []).filter((so) => isRegisterClosureSigned(so)).map((so) => so.name ?? ''));
-      return { total: gates.length, closed: at.length, who };
-    };
-    const closures = anchors.map(closureOf);
-    const closureGateCount = closures.reduce((n, c) => n + c.total, 0);
-    const closedGateCount = closures.reduce((n, c) => n + c.closed, 0);
-    const signers = [...new Set(closures.flatMap((c) => c.who))].filter(Boolean);
+    const closure = sheetClosure(project, item);
     const statusCol = config?.columns.find((c) => c.key === 'status' && c.type === 'select');
     return {
       item,
       gateNumbers: gateIds.map((g) => GATES.find((x) => x.id === g)?.number ?? g),
       due: !!current && gateIds.includes(current.id),
       locked: isGateRefLocked(project, item.gate),
-      closed: anchors.length > 0 && anchors.every((a) => isRegisterFullyClosed(project, a)),
-      closedGates: closedGateCount,
-      closureGates: closureGateCount,
-      signers,
+      ...closure,
       isPage: !config,
       rows: rows.length,
       completed: statusCol ? rows.filter((r) => r.status === 'Completed' || r.status === 'Complete').length : undefined,

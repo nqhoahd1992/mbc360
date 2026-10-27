@@ -19,10 +19,12 @@ export default function NeedsTraceabilityReference({ projectId, rows }: { projec
       onSave={() => undefined}
       readOnly
       hideDescription
-      readOnlyReason="Shown for checking — this is Step 1's matrix. Edit it on Needs & Scientific Basis."
-      notices={() => (
-        <Link to={`/projects/${projectId}/needs-scientific-basis?scrollTo=sec-needs-traceability`}>Edit in Needs &amp; Scientific Basis</Link>
-      )}
+      readOnlyReason={
+        <>
+          Shown for checking — this is Step 1's matrix.{' '}
+          <Link to={`/projects/${projectId}/needs-scientific-basis?scrollTo=sec-needs-traceability`}>Edit it on Needs &amp; Scientific Basis</Link>.
+        </>
+      }
     />
   );
 }
