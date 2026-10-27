@@ -39,9 +39,6 @@ interface SampleForm {
   panelCoordinator?: string;
 }
 
-const sampleLabel = (s: FeedbackSample, index: number) =>
-  [`Sample ${index + 1}`, s.formulaVersion, s.sampleBatchCode].filter(Boolean).join(' · ');
-
 interface FeedbackForm {
   testerName: string;
   gender: 'M' | 'F';
@@ -93,7 +90,6 @@ export default function ProductFeedback() {
   // The product is the project's own (read-only), so a sample never records one.
   const fallback: FeedbackSample = { id: fallbackId };
   const current = samples.find((s) => s.id === sampleId) ?? samples[0] ?? fallback;
-  const currentIndex = Math.max(0, samples.findIndex((s) => s.id === current.id));
   const allEntries = project.feedback;
   const entries = allEntries.filter((e) => e.sampleId === current.id);
   const n = entries.length;
@@ -232,52 +228,82 @@ export default function ProductFeedback() {
         </Button>
       </header>
 
-      <div className="c-card fb-sample">
-        <div className="fb-sample-head">
-          <div className="fb-sample-title">Sample under evaluation</div>
-          {samples.length > 1 && (
-            <Select
-              value={current.id}
-              onChange={setSampleId}
-              style={{ minWidth: 220 }}
-              options={samples.map((s, i) => ({ value: s.id, label: sampleLabel(s, i) }))}
-            />
-          )}
-          <div className="fb-sample-actions">
-            <Button onClick={() => openSampleEditor(current.id)}>Edit sample</Button>
-            <Button icon={<PlusOutlined />} onClick={() => openSampleEditor('new')}>
-              Add sample
-            </Button>
-          </div>
-        </div>
-        <dl className="fb-sample-dl">
-          {(
-            [
-              ['Product / SKU', project.identity.productSku],
-              ['Sample / batch code', current.sampleBatchCode],
-              ['Product Family', current.productFamily],
-              ['Formula version', current.formulaVersion],
-              ['Development stage', current.developmentStage],
-              ['Date samples issued', current.dateIssued],
-              ['Linked Change ID', current.linkedChangeId],
-              ['Panel coordinator', current.panelCoordinator],
-            ] as const
-          ).map(([label, value]) => (
-            <div key={label} className="fb-sample-row">
-              <dt>{label}</dt>
-              <dd>{value || '—'}</dd>
-            </div>
-          ))}
-        </dl>
-        {samples.length > 1 && <div className="fb-sample-note">{currentIndex + 1} of {samples.length} samples. Figures and the log below are for this sample only.</div>}
-      </div>
-
       {!hasReachedPhase(project, 3) && (
         <Notice tone="warn" title="Phase 3 activity (Gates 07–08)">
           Panel feedback is normally collected on development samples during validation; you can still record it now.{' '}
           {positionSentence(project)}
         </Notice>
       )}
+
+      <div className="fb-split">
+        <aside className="fb-rail" aria-label="Samples under evaluation">
+          {(samples.length > 0 ? samples : [current]).map((smp, i) => {
+            const mine = allEntries.filter((e) => e.sampleId === smp.id);
+            const overallAvg = mine.length ? (mine.reduce((t, e) => t + e.overall, 0) / mine.length).toFixed(1) : '—';
+            const rec = mine.length ? Math.round((mine.filter((e) => e.wouldRecommend !== 'No').length / mine.length) * 100) : null;
+            const slip = mine.filter((e) => e.tooOilySlippery === 'Yes').length;
+            return (
+              <button
+                key={smp.id}
+                type="button"
+                className="fb-scard"
+                aria-pressed={smp.id === current.id}
+                onClick={() => setSampleId(smp.id)}
+              >
+                <span className="fb-scard-t">{[`Sample ${i + 1}`, smp.formulaVersion].filter(Boolean).join(' · ')}</span>
+                <span className="fb-scard-m">{[smp.sampleBatchCode, smp.dateIssued && `issued ${smp.dateIssued}`].filter(Boolean).join(' · ') || 'No batch recorded'}</span>
+                <span className="fb-scard-f">
+                  <span>{mine.length} {mine.length === 1 ? 'tester' : 'testers'}</span>
+                  <span>
+                    Overall <b>{overallAvg}</b>
+                  </span>
+                  {rec !== null && <span>{rec}% rec.</span>}
+                  {slip > 0 && <span className="c-tag c-tag-bad">{slip} slip</span>}
+                </span>
+              </button>
+            );
+          })}
+          <Button icon={<PlusOutlined />} onClick={() => openSampleEditor('new')} block>
+            Add sample
+          </Button>
+        </aside>
+
+        <div className="fb-main">
+          <div className="c-card fb-strip-card">
+            <div className="fb-strip">
+              {(
+                [
+                  ['Product / SKU', project.identity.productSku],
+                  ['Batch', current.sampleBatchCode],
+                  ['Formula', current.formulaVersion],
+                  ['Stage', current.developmentStage],
+                  ['Issued', current.dateIssued],
+                  ['Coordinator', current.panelCoordinator],
+                ] as const
+              ).map(([label, value]) => (
+                <span key={label} className="fb-strip-item">
+                  <span className="fb-strip-k">{label}</span> <b>{value || '—'}</b>
+                </span>
+              ))}
+              <Button className="fb-strip-edit" onClick={() => openSampleEditor(current.id)}>
+                Edit sample
+              </Button>
+            </div>
+            {(current.productFamily || current.linkedChangeId) && (
+              <div className="fb-strip-more">
+                {current.productFamily && (
+                  <span className="fb-strip-item">
+                    <span className="fb-strip-k">Family</span> <b>{current.productFamily}</b>
+                  </span>
+                )}
+                {current.linkedChangeId && (
+                  <span className="fb-strip-item">
+                    <span className="fb-strip-k">Linked change</span> <b>{current.linkedChangeId}</b>
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
 
       {n === 0 ? (
         <div className="c-card au-empty">
@@ -290,30 +316,34 @@ export default function ProductFeedback() {
         </div>
       ) : (
         <>
-          <div className="c-card fb-stats">
-            {(
-              [
-                ['Testers', String(n), ''],
-                ['Texture', avg('texture'), '/5'],
-                ['Fragrance', avg('fragrance'), '/5'],
-                ['Overall', avg('overall'), '/5'],
-                ['Would recommend', String(recommendRate), '%'],
-                // The rest of the workbook's "Panel result summary", counted the same way (COUNTIF on each answer).
-                ['Male testers (M)', String(entries.filter((e) => e.gender === 'M').length), ''],
-                ['Female testers (F)', String(entries.filter((e) => e.gender === 'F').length), ''],
-                ['Too oily — Yes (safety)', String(entries.filter((e) => e.tooOilySlippery === 'Yes').length), ''],
-                ['Too oily — Borderline', String(entries.filter((e) => e.tooOilySlippery === 'Borderline').length), ''],
-                ['Would recommend (Yes)', String(entries.filter((e) => e.wouldRecommend === 'Yes').length), ''],
-              ] as const
-            ).map(([label, value, suffix]) => (
-              <div key={label} className="fb-stat">
-                <div className="fb-stat-label">{label}</div>
-                <div className="fb-stat-value">
-                  {value}
-                  <span>{suffix}</span>
+          <div className="c-card fb-figs">
+            <div className="fb-figs-main">
+              {(
+                [
+                  ['Texture', avg('texture'), '/5'],
+                  ['Fragrance', avg('fragrance'), '/5'],
+                  ['Overall', avg('overall'), '/5'],
+                  ['Would recommend', String(recommendRate), '%'],
+                ] as const
+              ).map(([label, value, suffix]) => (
+                <div key={label} className="fb-stat">
+                  <div className="fb-stat-label">{label}</div>
+                  <div className="fb-stat-value">
+                    {value}
+                    <span>{suffix}</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            {/* The rest of the workbook's "Panel result summary", counted the same way (COUNTIF on each answer). */}
+            <div className="fb-figs-more">
+              <span>Testers {n}</span>
+              <span>Female {entries.filter((e) => e.gender === 'F').length}</span>
+              <span>Male {entries.filter((e) => e.gender === 'M').length}</span>
+              <span>Too oily: Yes {entries.filter((e) => e.tooOilySlippery === 'Yes').length}</span>
+              <span>Borderline {entries.filter((e) => e.tooOilySlippery === 'Borderline').length}</span>
+              <span>Would recommend (Yes) {entries.filter((e) => e.wouldRecommend === 'Yes').length}</span>
+            </div>
           </div>
 
           {flagged > 0 && (
@@ -379,6 +409,8 @@ export default function ProductFeedback() {
           </div>
         </>
       )}
+        </div>
+      </div>
 
       <Drawer
 
