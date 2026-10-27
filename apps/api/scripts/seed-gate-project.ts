@@ -3,6 +3,7 @@
 //
 //   npm run db:seed-gate-project -- --gate 3            # Gates 1, 2 and 3 passed, Gate 4 open
 //   npm run db:seed-gate-project -- --gate SG02 --name "Cream trial"
+//   npm run db:seed-gate-project -- --gate 4 --project SEED-FULL-XYZ   # adopt an existing project (made by db:seed-full-project)
 //   npm run db:seed-gate-project -- --gate 3 --ready    # Gates 1-2 passed; Gate 3 fully ready, Prepared + Reviewed signed,
 //                                                       #   only the Approved by signature (and so the decision) left
 //
@@ -21,10 +22,11 @@ import 'dotenv/config';
 import { sign as signJwt } from 'jsonwebtoken';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
-import { GATES } from '../../../packages/shared/src/config/gates';
+import { GATES, EIGHT_ANGLES } from '../../../packages/shared/src/config/gates';
 import { GATE_READINESS, type ReadinessCheck } from '../../../packages/shared/src/config/gateReadiness';
 import { PHASE_CONFIGS } from '../../../packages/shared/src/config/phases';
 import { REGISTER_CONFIGS, createEmptyRegisterRow } from '../../../packages/shared/src/config/registers';
+import { REVIEW_ROLES } from '../../../packages/shared/src/config/reviewers';
 import { registerClosureRoles } from '../../../packages/shared/src/utils/registerClosures';
 import { gateReadinessChecklist, isGatePassed } from '../../../packages/shared/src/utils/gateProgress';
 import { registerContentHashOf } from '../src/projects/content-hash';
@@ -48,7 +50,7 @@ if (!gateArg) die('Usage: npm run db:seed-gate-project -- --gate <1-12 | SG01-SG
 const targetNumber = Number(gateArg.replace(/^SG/i, ''));
 if (!Number.isInteger(targetNumber) || targetNumber < 1 || targetNumber > 12) die(`"${gateArg}" is not a gate (1-12)`);
 // Only the gates whose evidence the script knows how to fill. Later gates are added as they are worked through.
-const SUPPORTED_UP_TO = 3;
+const SUPPORTED_UP_TO = 4;
 if (targetNumber > SUPPORTED_UP_TO) die(`Only Gates 1-${SUPPORTED_UP_TO} are supported so far (asked for ${targetNumber})`);
 const gateId = (n: number) => `SG${String(n).padStart(2, '0')}`;
 
@@ -150,7 +152,7 @@ async function fixRequirements(ctx: Ctx, section: string): Promise<boolean> {
 }
 
 // A register cell the script is allowed to write, by the column's own type.
-function cellValue(ctx: Ctx, col: { key: string; label: string; type: string; options?: string[] }, prefer?: string[], avoid?: string[]): unknown {
+function cellValue(ctx: Ctx, col: { key: string; label: string; type: string; options?: readonly string[] }, prefer?: string[], avoid?: string[]): unknown {
   switch (col.type) {
     case 'select': {
       const options = col.options ?? [];
@@ -234,6 +236,72 @@ async function fixRegister(
   return true;
 }
 
+const RM_EVIDENCE = 'supplierRmEvidence';
+
+// Gate 4 screens every raw material: each one is reviewed and approved for use (an honest "usable" outcome for seeded data).
+async function fixRmEvidence(ctx: Ctx): Promise<boolean> {
+  const config = REGISTER_CONFIGS.find((c) => c.key === RM_EVIDENCE)!;
+  const rows: RegisterRow[] = (project.registers[RM_EVIDENCE] ?? []).map((r) => ({ ...r }));
+  if (rows.length === 0) rows.push({ ...createEmptyRegisterRow(RM_EVIDENCE), rmCode: 'RM-001', inciName: 'Aqua', grade: 'Purified water', supplier: `${SEED} supplier` });
+  let changed = rows.length !== (project.registers[RM_EVIDENCE] ?? []).length;
+  for (const [i, row] of rows.entries()) {
+    // A row someone added empty still needs to name a material, or the overlay has nothing to classify.
+    if (!String(row.rmCode ?? '').trim()) {
+      row.rmCode = `RM-${String(i + 1).padStart(3, '0')}` as never;
+      row.inciName = (row.inciName || 'Aqua') as never;
+      row.grade = (row.grade || `${SEED} grade`) as never;
+      row.supplier = (row.supplier || `${SEED} supplier`) as never;
+      changed = true;
+    }
+    if (row.approvedForUse !== true) {
+      row.approvedForUse = true;
+      changed = true;
+    }
+    if (row.evidenceStatus) {
+      row.evidenceStatus = '';
+      changed = true;
+    }
+    for (const col of config.columns) {
+      if (col.editable === false || col.type !== 'text' || !/allergen|impurit/i.test(col.key)) continue;
+      if (!row[col.key]) {
+        row[col.key] = `${SEED} ${col.label}` as never;
+        changed = true;
+      }
+    }
+  }
+  if (!changed) return false;
+  take(await api('PUT', `/projects/${ctx.id}/registers/${RM_EVIDENCE}`, { rows, expectedVersion: version }));
+  return true;
+}
+
+// The company-level Raw Material Risk Overlay: a material with an overlay row and no flags is the honest "assessed, carries none".
+async function fixRmOverlay(ctx: Ctx): Promise<boolean> {
+  const known = new Set<string>(((await api('GET', '/reference/rm-risk')) as { rmCode: string }[]).map((r) => r.rmCode));
+  let wrote = false;
+  for (const row of project.registers[RM_EVIDENCE] ?? []) {
+    const code = String(row.rmCode ?? '').trim();
+    if (!code || known.has(code)) continue;
+    await api('PUT', `/reference/rm-risk/${encodeURIComponent(code)}`, {
+      patch: { displayName: String(row.grade || row.inciName || code), flags: [], reviewDate: today, evidenceLink: `https://example.com/seed/rm-risk/${code}`, notes: `${SEED}: assessed, carries none of the listed classifications` },
+      reason: `${SEED}: seeded showcase project`,
+    });
+    known.add(code);
+    wrote = true;
+  }
+  // The readiness engine reads the company overlay from the project envelope, so take a fresh one.
+  if (wrote) await reload(ctx.id);
+  return wrote;
+}
+
+// Every watch-list row gets a Gate 4 disposition ("No issue identified") — the project holds no flagged material.
+async function fixWatchlists(ctx: Ctx): Promise<boolean> {
+  let wrote = false;
+  for (const key of ['prohibitedIngredients', 'pbCautionLimits', 'generalRestrictedCaution']) {
+    wrote = (await fixRegister(ctx, key, { columns: ['gate4Disposition'] })) || wrote;
+  }
+  return wrote;
+}
+
 async function fixIdentity(ctx: Ctx, field: 'initialScope' | 'initialTargetUsers'): Promise<boolean> {
   if ((project.identity[field] ?? '').trim()) return false;
   take(await api('PUT', `/projects/${ctx.id}/identity`, { patch: { [field]: `${SEED} ${field}` }, expectedVersion: version }));
@@ -277,7 +345,16 @@ async function fix(ctx: Ctx, check: ReadinessCheck): Promise<boolean> {
     case 'registerColumnFilled':
       return fixRegister(ctx, check.register, { columns: [check.column] });
     case 'registerRowsComplete':
+      if (check.register === RM_EVIDENCE) return (await fixRmOverlay(ctx)) || fixRegister(ctx, check.register, { columns: check.columns });
       return fixRegister(ctx, check.register, { columns: check.columns });
+    case 'rmEvidenceDispositioned':
+    case 'rmEvidenceNoneConditional':
+    case 'rmEvidenceHasUsable':
+      return fixRmEvidence(ctx);
+    case 'watchlistDispositioned':
+    case 'watchlistReviewed':
+    case 'watchlistNoneConditional':
+      return fixWatchlists(ctx);
     case 'registerNoBadRows':
       return fixRegister(ctx, check.register, { noBad: { column: check.column, bad: check.badValues } });
     case 'registerSomeRow':
@@ -317,6 +394,60 @@ async function acknowledgeGeneratedNa(ctx: Ctx, adminId: string, gate: string): 
       }),
     );
   }
+}
+
+// ------------------------------------------------------ phase completion ----
+// A phase's last gate does not open the next one until the PHASE is complete: every key gate check of its gates done, all eight
+// angles covered, and the three phase sign-offs signed. Checks are filled gate by gate (a passed gate's checks are read-only),
+// angles once, and the signatures — which need an authenticator and three different people — are written straight to the
+// database like the gate signatures.
+const lastGateOfPhase = (n: number) => GATES[n - 1] !== undefined && GATES[n]?.phase !== GATES[n - 1].phase;
+
+async function fillGateChecks(ctx: Ctx, n: number): Promise<void> {
+  const number = String(n).padStart(2, '0');
+  const rows = project.gateChecks.filter((c) => c.gate === number && !((c.done && c.ynna === 'Y') || (c.ynna === 'NA' && c.notes?.trim())));
+  if (rows.length === 0) return;
+  const updates = rows.map((c) => ({ gate: c.gate, check: c.check, patch: { done: true, ynna: 'Y', date: today, initials: 'SD', evidenceRef: c.evidenceRef || `${SEED} evidence`, notes: c.notes || `${SEED}: recorded by the seed script` } }));
+  for (let i = 0; i < updates.length; i += 25) take(await api('PUT', `/projects/${ctx.id}/gate-checks`, { updates: updates.slice(i, i + 25), expectedVersion: version }));
+}
+
+async function fillAngles(ctx: Ctx, phase: number): Promise<void> {
+  const closure = project.phaseClosures[phase];
+  const done = (closure?.angles ?? []).length > 0 && closure!.angles.every((a) => a.covered && a.ynna === 'Y');
+  if (done) return;
+  take(
+    await api('PUT', `/projects/${ctx.id}/phases/${phase}/angles`, {
+      angles: EIGHT_ANGLES.map((angle) => ({ angle, ynna: 'Y', covered: true, date: today, evidenceRef: `${SEED} evidence`, initials: 'SD', comments: `${SEED} covered` })),
+      expectedVersion: version,
+    }),
+  );
+}
+
+async function signPhaseDirectly(ctx: Ctx, adminId: string, phase: number): Promise<void> {
+  const admin = await prisma.user.findUniqueOrThrow({ where: { id: adminId }, include: { roles: { include: { role: true } } } });
+  const roleNames = admin.roles.map((r) => r.role.name).join(', ') || null;
+  const initials = ctx.adminName.trim().split(/s+/).map((w) => w[0]?.toUpperCase() ?? '').join('').slice(0, 4);
+  const closure = await prisma.phaseClosure.upsert({ where: { projectId_phase: { projectId: ctx.id, phase } }, create: { projectId: ctx.id, phase }, update: {} });
+  const now = new Date();
+  for (const role of ['Prepared by', 'Reviewed by', 'Approved by']) {
+    const data = {
+      assignedToUserId: adminId,
+      name: ctx.adminName,
+      initials,
+      date: now,
+      decision: 'Proceed',
+      comments: `${SEED}: signed by the seed script`,
+      signedByUserId: adminId,
+      signedAt: now,
+      roleAtSigning: roleNames,
+      recordVersion: version,
+      signatureVerifiedAt: now,
+    };
+    const existing = await prisma.signOff.findFirst({ where: { phaseClosureId: closure.id, role } });
+    if (existing) await prisma.signOff.update({ where: { id: existing.id }, data });
+    else await prisma.signOff.create({ data: { phaseClosureId: closure.id, role, ...data } });
+  }
+  await prisma.project.update({ where: { id: ctx.id }, data: { version: { increment: 1 } } });
 }
 
 // ----------------------------------------------------- gate completion ----
@@ -417,38 +548,60 @@ async function main() {
     die(`Cannot reach the API at ${API} as ${pinned}: ${(err as Error).message}`);
   }
 
+  const existingProject = flag('project');
   const stamp = Date.now().toString(36).toUpperCase();
-  const id = `${SEED}-G${targetNumber}-${stamp}`;
+  const id = existingProject ?? `${SEED}-G${targetNumber}-${stamp}`;
   const title = flag('name') ?? `Gate ${targetNumber} passed`;
   const reviewers = Object.fromEntries(
-    (await import('../../../packages/shared/src/config/reviewers')).REVIEW_ROLES.map((r) => [r.key, adminName]),
+    REVIEW_ROLES.map((r) => [r.key, adminName]),
   );
   const ctx: Ctx = { id, adminName };
 
-  take(
-    await api(
-      'POST',
-      '/projects',
-      {
-        id,
-        productCode: id,
-        projectLead: adminName,
-        productGroup: `${SEED} group`,
-        brandCustomer: `${SEED} brand`,
-        dateOpened: today,
-        targetLaunchDate: new Date(Date.now() + 200 * 86400000).toISOString().slice(0, 10),
-        productSku: `[${SEED}] ${title}`,
-        ownerDepartment: 'NPD',
-        markets: ['Vietnam'],
-        reviewers,
-      },
-      { 'Idempotency-Key': `seed-${id}` },
-    ),
-  );
+  if (existingProject) {
+    await reload(id);
+    console.log(`Using the existing project ${id}`);
+  } else {
+    take(
+      await api(
+        'POST',
+        '/projects',
+        {
+          id,
+          productCode: id,
+          projectLead: adminName,
+          productGroup: `${SEED} group`,
+          brandCustomer: `${SEED} brand`,
+          dateOpened: today,
+          targetLaunchDate: new Date(Date.now() + 200 * 86400000).toISOString().slice(0, 10),
+          productSku: `[${SEED}] ${title}`,
+          ownerDepartment: 'NPD',
+          markets: ['Vietnam'],
+          reviewers,
+        },
+        { 'Idempotency-Key': `seed-${id}` },
+      ),
+    );
   console.log(`Created ${id} (Lead and all 13 reviewers: ${adminName})`);
+  }
 
   for (let n = 1; n <= targetNumber; n++) {
     const gate = gateId(n);
+    // A gate that already passed (the project was adopted with --project, or a Major version reopened only some) is left alone.
+    if (existingProject && isGatePassed(project, gate)) {
+      console.log(`Gate ${n}: already passed`);
+      continue;
+    }
+    // Complete and decided, but no longer passed: something it attests to changed after it was signed (a Major version does that).
+    // The data is fine; only the signatures and register closures are out of date, so they are given again.
+    const record = project.gates.find((g) => g.gateId === gate);
+    if (existingProject && record?.status === 'Complete' && record.decision === 'Proceed') {
+      await closeRegisters(ctx, admin.id, gate);
+      await reload(id);
+      await signGateDirectly(ctx, admin.id, gate, false);
+      await reload(id);
+      console.log(`Gate ${n}: signatures given again — ${isGatePassed(project, gate) ? 'PASSED' : 'still NOT passed (see the readiness panel)'}`);
+      continue;
+    }
     const items = GATE_READINESS[gate] ?? [];
     // The gate's own three-signature item is satisfied last, by signGateDirectly.
     const signOffIds = new Set(items.filter((c) => c.check.kind === 'gateSignedOff').map((c) => c.id));
@@ -471,12 +624,19 @@ async function main() {
       console.error(`The project ${id} was created and filled as far as possible; it stops here.`);
       process.exit(2);
     }
+    // Every key gate check of this gate (not only the ones its readiness reads) and, at a phase's last gate, the eight angles.
+    await fillGateChecks(ctx, n);
+    if (lastGateOfPhase(n)) await fillAngles(ctx, GATES[n - 1].phase);
     await closeRegisters(ctx, admin.id, gate);
     await completeGateFlow(ctx, gate);
     // --ready applies to the TARGET gate only; every earlier gate is passed in full.
     const readyOnly = has('ready') && n === targetNumber;
     await signGateDirectly(ctx, admin.id, gate, readyOnly);
     await reload(id);
+    if (lastGateOfPhase(n) && !readyOnly) {
+      await signPhaseDirectly(ctx, admin.id, GATES[n - 1].phase);
+      await reload(id);
+    }
     if (readyOnly) {
       const still = gateReadinessChecklist(project, gate).filter((i) => !i.satisfied && !i.advisory);
       const onlyApproval = still.length === 1 && signOffIds.has(still[0].id);

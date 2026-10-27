@@ -14,7 +14,8 @@
     "db:studio": "prisma studio",
     "db:wipe-projects": "tsx scripts/wipe-projects.ts",
     "db:seed-gate-project": "tsx scripts/seed-gate-project.ts",
-    "db:seed-full-project": "tsx scripts/seed-full-project.ts"
+    "db:seed-full-project": "tsx scripts/seed-full-project.ts",
+    "db:seed-showcase-project": "tsx scripts/seed-showcase-project.ts"
   },
   "dependencies": {
     "@mbc360/shared": "*",

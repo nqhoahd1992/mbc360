@@ -24,7 +24,8 @@ import { sign as signJwt } from 'jsonwebtoken';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { GATES, EIGHT_ANGLES } from '../../../packages/shared/src/config/gates';
-import { CHANGE_TRIGGERS } from '../../../packages/shared/src/config/changeTriggers';
+import { CHANGE_TRIGGERS, MAJOR_CHANGE_CRITERIA } from '../../../packages/shared/src/config/changeTriggers';
+import { changeTriggerAvailability } from '../../../packages/shared/src/utils/changeAccess';
 import { PHASE_CONFIGS } from '../../../packages/shared/src/config/phases';
 import { REGISTER_CONFIGS, type RegisterColumn, type RegisterConfig } from '../../../packages/shared/src/config/registers';
 import { REVIEW_ROLES } from '../../../packages/shared/src/config/reviewers';
@@ -42,6 +43,15 @@ function die(message: string): never {
   process.exit(1);
 }
 
+// Stages let the showcase script interleave this seeder with the gate seeder, which locks what it passes:
+//   data      create the project (or use --id) and fill the phase pages, registers, BOMs, costing, evidence, markets, CAPA, feedback
+//   versions  create formula versions F1.1 (Minor) and F2.0 (Major) through the real route (Gate 05 must be the open gate)
+//   finish    gate flow records for the gates not yet passed, and change control records
+//   all       (default) everything in one go, writing the gates and the later versions straight to the database
+const stage = flag('stage') ?? 'all';
+if (!['all', 'data', 'versions', 'finish'].includes(stage)) die('--stage must be all, data, versions or finish');
+const runs = (...names: string[]) => stage === 'all' || names.includes(stage);
+const givenId = flag('id');
 const passed = Number(flag('passed') ?? 0);
 if (!Number.isInteger(passed) || passed < 0 || passed > 12) die('--passed must be 0-12');
 const connectionString = process.env.DATABASE_URL;
@@ -98,13 +108,15 @@ async function step(name: string, fn: () => Promise<unknown>): Promise<void> {
 // ------------------------------------------------------- register values ----
 let adminName = '';
 const DONE = /^(complete|completed|approved|supported|closed|y|yes|released|verified)$/i;
-const AVOID = /^(not started|pending|n\/a|na|not applicable|no|blocked|rejected|withdrawn)/i;
+const AVOID = /^(not started|pending|n\/a|na|not applicable|blocked|rejected|withdrawn)$/i;
+// A state that raises a concern: the seeded project holds no flagged material, claim or finding.
+const FLAGGED = /review|prohibit|restrict|missing|gap|block|reject|fail|not feasible|needs|escalat|critical|unsupported|withdrawn|remove|stop|open|action/i;
 
 function cellValue(config: RegisterConfig, col: RegisterColumn, row: number): unknown {
   switch (col.type) {
     case 'select': {
       const options = (col.options ?? []) as string[];
-      return options.find((o) => DONE.test(o)) ?? options.find((o) => !AVOID.test(o)) ?? options[0] ?? '';
+      return options.find((o) => DONE.test(o)) ?? options.find((o) => !AVOID.test(o) && !FLAGGED.test(o)) ?? options.find((o) => !AVOID.test(o)) ?? options[0] ?? '';
     }
     case 'date':
       return inDays(-10 + row);
@@ -203,6 +215,11 @@ async function main() {
   const stamp = Date.now().toString(36).toUpperCase();
   id = `${SEED}-FULL-${stamp}`;
   const title = flag('name') ?? 'Full demo project';
+  if (givenId) id = givenId;
+  if (!runs('data')) {
+    if (!givenId) die('--id <project id> is required for this stage');
+    await reload();
+  } else {
   console.log(`Creating ${id} ...`);
   take(
     await api(
@@ -225,6 +242,9 @@ async function main() {
     ),
   );
 
+  }
+
+  if (runs('data')) {
   // ---- phase pages: checklists, requirement tables, key gate checks, angles, evidence summaries
   console.log('Phase pages');
   const benign = /pregnan|breast|postpartum|infant|child|baby|teen|elder|sensitiv|eczema|compromis|dry|family|vulnerab|swim/i;
@@ -302,6 +322,20 @@ async function main() {
       patch: { batchSizeKg: 100, fillSizeG: 50, targetUnits: 10000, packagingCostPerUnit: 0.58, labourOverheadPerUnit: 0.35, freightOtherPerUnit: 0.12, targetSellPrice: 7.9, feasibilityStatus: 'Commercially Feasible', assessor: adminName, reviewDate: today, assumptions: `${SEED}: volumes and prices assumed`, evidenceLink: 'https://example.com/seed/costing' },
     }),
   );
+  }
+
+  if (stage === 'versions') {
+    console.log('Formula versions (through the route)');
+    await step('formula version F1.1 (Minor)', async () =>
+      take(await api('POST', `/projects/${id}/formula-versions`, { version: 'F1.1', changeType: 'Minor', reason: `${SEED}: preservative level adjusted`, initiatedBy: adminName, expectedVersion: version }, { 'Idempotency-Key': `seed-${id}-v11` })),
+    );
+    await step('formula version F2.0 (Major: reopens Gates 04-09)', async () => {
+      await reload();
+      take(await api('POST', `/projects/${id}/formula-versions`, { version: 'F2.0', changeType: 'Major', reason: `${SEED}: new emollient system and preservative`, initiatedBy: adminName, majorCriteria: [MAJOR_CHANGE_CRITERIA[0].id, MAJOR_CHANGE_CRITERIA[2].id], classificationConfirmedBy: adminName, expectedVersion: version }, { 'Idempotency-Key': `seed-${id}-v20` }));
+    });
+  }
+
+  if (stage === 'all') {
   await step('formula versions F1.1 (Minor) and F2.0 (Major)', async () => {
     // Straight to the database: the route needs Gate 05 to be the open gate. Each version keeps its own copy of the BOM.
     const first = await prisma.formulaVersion.findFirstOrThrow({ where: { projectId: id }, include: { bomLines: true }, orderBy: { createdAt: 'desc' } });
@@ -333,28 +367,43 @@ async function main() {
     await reload();
   });
 
+  }
+
   // ---- next actions, change control, evidence, markets, CAPA, feedback, study
   console.log('Records');
   await reload();
   let changeBase = 1;
   const capaBase = await nextFrom('CAPA', (await prisma.capaRecord.findMany({ select: { code: true } })).map((c) => c.code));
   const capaId = (n: number) => `CAPA-${String(capaBase + n).padStart(3, '0')}`;
+  if (runs('data')) {
+  // After a staged run the early gates are about to be passed: open next actions would block them, so only later gates get one.
+  const actionGates = stage === 'all' ? GATES : GATES.filter((g) => Number(g.number) >= 5);
   await step('next actions (one per gate, in different states)', () =>
     put('/next-actions', {
-      gateIds: GATES.map((g) => g.id),
-      actions: GATES.map((g, i) => ({ id: `NA-${String(i + 1).padStart(3, '0')}`, gateId: g.id, description: `${SEED}: follow-up for ${g.name}`, owner: adminName, dueDate: inDays(10 + i * 7), status: (['Open', 'In Progress', 'Awaiting Information'] as const)[i % 3], priority: i % 4 === 0 ? 'High' : 'Medium' })),
+      gateIds: actionGates.map((g) => g.id),
+      actions: actionGates.map((g, i) => ({ id: `NA-${String(i + 1).padStart(3, '0')}`, gateId: g.id, description: `${SEED}: follow-up for ${g.name}`, owner: adminName, dueDate: inDays(10 + i * 7), status: (['Open', 'In Progress', 'Awaiting Information'] as const)[i % 3], priority: i % 4 === 0 ? 'High' : 'Medium' })),
     }),
   );
+  }
+
+  if (runs('finish')) {
   await step('change control (3 records)', async () => {
     // Only a trigger that applies to every gate can be opened before any gate has passed (SW-30); three records reuse it.
     const always = CHANGE_TRIGGERS.filter((t) => t.gates.includes('ALL'));
-    const triggers = [0, 1, 2].map((i) => always[i % Math.max(always.length, 1)]);
+    // Every trigger the project has reached (SW-30) once gates have passed; before that only the ones that apply to every gate.
+    const reached = CHANGE_TRIGGERS.filter((t) => changeTriggerAvailability(project, t).allowed);
+    const pool = reached.length >= 3 ? reached.slice(0, 12) : always;
+    const triggers = [0, 1, 2].map((i) => pool[(i * 4) % Math.max(pool.length, 1)]);
     changeBase = await nextFrom('CHG', (await prisma.changeRecord.findMany({ select: { changeId: true } })).map((c) => c.changeId));
-    const statuses = ['Draft', 'Under Review', 'In Implementation'] as const;
+    // Closed, so none of them holds a gate: an open change soft-locks every gate its trigger names, passed ones included.
+    const statuses = ['Completed', 'Rejected', 'Cancelled'] as const;
     await put('/changes', {
-      records: triggers.map((t, i) => ({ changeId: `CHG-${String(changeBase + i).padStart(3, '0')}`, projectId: id, triggerId: t.id, trigger: t.label, productSku: project.identity.productSku, affectedArea: 'Formula / ingredient', oldVersion: 'F1.0', riskLevel: i === 0 ? 'Medium' : 'Low', impactAreas: ['Formula', 'Packaging'], requiredAction: `${SEED} action`, communicationRequired: true, salesMarketingMessage: `${SEED} message`, dueDate: inDays(20 + i), owner: adminName, status: statuses[i], notes: `${SEED} change` })),
+      records: triggers.map((t, i) => ({ changeId: `CHG-${String(changeBase + i).padStart(3, '0')}`, projectId: id, triggerId: t.id, trigger: t.label, productSku: project.identity.productSku, affectedArea: 'Formula / ingredient', oldVersion: 'F1.0', riskLevel: i === 0 ? 'Medium' : 'Low', impactAreas: ['Formula', 'Packaging'], requiredAction: `${SEED} action`, communicationRequired: true, salesMarketingMessage: `${SEED} message`, dueDate: inDays(20 + i), owner: adminName, status: statuses[i], notes: `${SEED} change`, closureEvidence: 'https://example.com/seed/change-closure', closedDate: today, closureOutcome: statuses[i] === 'Completed' ? 'Implemented as planned' : statuses[i] === 'Rejected' ? 'Not needed' : 'Withdrawn before work started', closureImplementation: `${SEED}: implementation recorded`, closureImpactedVersions: 'F1.0', closureVerifier: adminName })),
     });
   });
+  }
+
+  if (runs('data')) {
   await step('evidence summary items', () => put('/evidence', { items: project.evidence.map((e) => ({ ...e, status: 'Complete', evidenceLink: e.evidenceLink || `https://example.com/seed/evidence/${encodeURIComponent(e.area)}`, notes: `${SEED} note` })) }));
   await step('market tracks (one launched, three in progress)', () =>
     put('/market-tracks', {
@@ -385,10 +434,15 @@ async function main() {
     });
   });
 
+  }
+
+  if (runs('finish')) {
   // ---- gate flow records: straight to the database (only the current gate accepts edits through the API)
   console.log('Gate records');
   await step('12 gate records (owner, due date, evidence link, notes)', async () => {
     for (let n = 1; n <= 12; n++) {
+      // After a staged run the gate seeder owns the gates it passed: their records are part of what was signed.
+      if (stage === 'finish' && n <= passed) continue;
       const gate = `SG${String(n).padStart(2, '0')}`;
       await prisma.gateRecord.update({
         where: { projectId_gateId: { projectId: id, gateId: gate } },
@@ -403,7 +457,9 @@ async function main() {
     }
     await prisma.project.update({ where: { id }, data: { version: { increment: 1 } } });
   });
-  if (passed > 0) console.log(`  (Gates 1-${passed} are Complete / Proceed in the data; their readiness and signatures are NOT recorded)`);
+  if (passed > 0 && stage === 'all') console.log(`  (Gates 1-${passed} are Complete / Proceed in the data; their readiness and signatures are NOT recorded)`);
+
+  }
 
   await reload();
   const filled = Object.values(project.registers).reduce((n, rows) => n + rows.length, 0);
