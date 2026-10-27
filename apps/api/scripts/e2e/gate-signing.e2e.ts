@@ -403,7 +403,8 @@ export async function run(base: string, db: Client): Promise<number> {
     const registerKey = 'formulationChangeRegister';
     const column = 'npSignOff';
     const cfg = REGISTER_CONFIGS.find((c: any) => c.key === registerKey);
-    const textColumn = cfg?.columns.find((c: any) => c.type === 'text')?.key as string | undefined;
+    // A column the server generates (the row's FC-001 ID) is never typed, so the test edits the first column a person can type in.
+    const textColumn = cfg?.columns.find((c: any) => c.type === 'text' && !c.autoId && c.editable !== false)?.key as string | undefined;
     t('the register with a signature column exists', !!cfg && !!textColumn);
     if (cfg && textColumn) {
       const signer = 'admin';
