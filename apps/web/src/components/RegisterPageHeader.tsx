@@ -1,3 +1,4 @@
+import SheetRefs from './SheetRefs';
 import { InfoCircleOutlined, LockOutlined } from '@ant-design/icons';
 import { registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import ReviewOwnerLine from './ReviewOwnerLine';
@@ -54,7 +55,11 @@ export default function RegisterPageHeader({
           {project.identity.id} · {project.identity.productSku}
         </p>
         {reviewOwnerText && <ReviewOwnerLine text={reviewOwnerText} />}
-        {config.description && <p className="rph-desc">{config.description}</p>}
+        {config.description && (
+          <p className="rph-desc">
+            <SheetRefs value={config.description} projectId={project.identity.id} />
+          </p>
+        )}
       </div>
       {readOnly && (
         <div className="c-card rph-lock">

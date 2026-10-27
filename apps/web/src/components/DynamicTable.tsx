@@ -637,7 +637,11 @@ export default function DynamicTable({
             {spansSeveralGates(config.gate) && !hideGateNote && <span className="rt-head-note">columns lock at the gate on their tag</span>}
             {readOnly && <span className="c-tag c-tag-ok"><LockOutlined />Read-only</span>}
           </div>
-          {config.description && !hideDescription && <p className="rt-head-desc">{config.description}</p>}
+          {config.description && !hideDescription && (
+            <p className="rt-head-desc">
+              <SheetRefs value={config.description} projectId={projectId} />
+            </p>
+          )}
           {reviewOwnerText && <p className="rt-head-desc">Review owner: {reviewOwnerText}</p>}
         </div>
       )}

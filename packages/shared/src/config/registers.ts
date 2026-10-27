@@ -914,7 +914,7 @@ const prohibitedIngredients: RegisterConfig = {
     // descriptive text): kept as a column of its own so the description stays intact (project owner, 2026-10-14).
     { key: 'status', label: 'Status', type: 'select', width: 130, options: [...WATCHLIST_ROW_STATUS_OPTIONS] },
     // The workbook's Notes cells are preset reference text, not somewhere to write (project owner, 2026-10-14): read-only.
-    { key: 'notes', label: 'Notes', type: 'textarea', width: 200, editable: false },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 200, editable: false, sheetRefs: true },
   ],
   fixedRows: [
     { ingredientGroup: 'Parabens', functionRole: 'Preservatives', statusLevel: 'Restricted; example levels include 0.4% individually / 0.14% combined', whyItMatters: 'Endocrine and reproductive-health concerns for longer-chain parabens', applicableProducts: 'All cosmetics', referenceSource: 'Safety validation table / current market reference', productStatus: 'No formula match recorded', formulaMatchCount: 0, owner: 'Regulatory', linkedGate: '04_Ingredient_Screening', notes: 'Confirm current market limits before release.' },
@@ -1591,14 +1591,14 @@ const artworkChangeControl: RegisterConfig = {
   columns: [
     { key: 'trigger', label: 'Trigger / event', type: 'text', width: 170, editable: false },
     { key: 'examples', label: 'Examples', type: 'text', width: 220, editable: false },
-    { key: 'immediateAction', label: 'Immediate action', type: 'text', width: 220, editable: false },
+    { key: 'immediateAction', label: 'Immediate action', type: 'text', width: 220, editable: false, sheetRefs: true },
     { key: 'personInCharge', label: 'Person in charge', type: 'text', width: 140, editable: false },
     { key: 'requiredSignOffs', label: 'Required sign-offs', type: 'text', width: 180, editable: false },
     { key: 'evidenceToSave', label: 'Evidence to save', type: 'text', width: 200, editable: false },
     { key: 'communicationRequired', label: 'Communication required', type: 'text', width: 200, editable: false },
     { key: 'templateForm', label: 'Template / form', type: 'text', width: 170, editable: false },
     { key: 'closureCriteria', label: 'Closure criteria', type: 'text', width: 200, editable: false },
-    { key: 'gateSheetLink', label: 'Gate / sheet link', type: 'text', width: 110, editable: false },
+    { key: 'gateSheetLink', label: 'Gate / sheet link', type: 'text', width: 110, editable: false, sheetRefs: true },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
@@ -1622,7 +1622,7 @@ const formulaChangeControl: RegisterConfig = {
     { key: 'trigger', label: 'Formula change trigger', type: 'text', width: 190, editable: false },
     { key: 'examples', label: 'Examples', type: 'text', width: 220, editable: false },
     { key: 'impactAreas', label: 'Potential impact areas', type: 'text', width: 200, editable: false },
-    { key: 'mandatoryActions', label: 'Mandatory actions', type: 'text', width: 220, editable: false },
+    { key: 'mandatoryActions', label: 'Mandatory actions', type: 'text', width: 220, editable: false, sheetRefs: true },
     { key: 'personInCharge', label: 'Person in charge', type: 'text', width: 140, editable: false },
     { key: 'technicalSignOff', label: 'Technical sign-off', type: 'text', width: 150, editable: false },
     { key: 'regQaSignOff', label: 'Reg/QA sign-off', type: 'text', width: 160, editable: false },
@@ -2020,7 +2020,7 @@ export const medicalSummary: RegisterConfig = {
   columns: [
     { key: 'summaryItem', label: 'Summary item', type: 'text', width: 190, editable: false },
     { key: 'approvedSummary', label: 'Approved summary', type: 'textarea', width: 240 },
-    { key: 'evidenceSource', label: 'Evidence source', type: 'text', width: 190, editable: false },
+    { key: 'evidenceSource', label: 'Evidence source', type: 'text', width: 190, editable: false, sheetRefs: true },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
     { key: 'owner', label: 'Owner', type: 'text', width: 140, editable: false },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
@@ -2219,9 +2219,9 @@ const changeTemplates: RegisterConfig = {
     { key: 'useWhen', label: 'Use when', type: 'text', width: 220, editable: false },
     { key: 'requiredFields', label: 'Required fields', type: 'text', width: 260, editable: false },
     { key: 'approvalRecipients', label: 'Approval / recipients', type: 'text', width: 200, editable: false },
-    { key: 'savedEvidence', label: 'Saved evidence', type: 'text', width: 200, editable: false },
-    { key: 'closureRule', label: 'Closure rule', type: 'text', width: 220, editable: false },
-    { key: 'linkedSheets', label: 'Linked sheets', type: 'text', width: 160, editable: false },
+    { key: 'savedEvidence', label: 'Saved evidence', type: 'text', width: 200, editable: false, sheetRefs: true },
+    { key: 'closureRule', label: 'Closure rule', type: 'text', width: 220, editable: false, sheetRefs: true },
+    { key: 'linkedSheets', label: 'Linked sheets', type: 'text', width: 160, editable: false, sheetRefs: true },
     { key: 'status', label: 'Status (adopted?)', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
   ],
   fixedRows: [
@@ -2611,8 +2611,8 @@ export const formulationSafetyFinalSignOff: RegisterConfig = {
   gate: '07/10',
   columns: [
     { key: 'safetyQuestion', label: 'Safety question / gate', type: 'text', width: 200, editable: false },
-    { key: 'acceptanceRequirement', label: 'Acceptance requirement', type: 'text', width: 260, editable: false },
-    { key: 'requiredEvidence', label: 'Required evidence', type: 'text', width: 200, editable: false },
+    { key: 'acceptanceRequirement', label: 'Acceptance requirement', type: 'text', width: 260, editable: false, sheetRefs: true },
+    { key: 'requiredEvidence', label: 'Required evidence', type: 'text', width: 200, editable: false, sheetRefs: true },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
     // Not Applicable counts for one row only — the pregnancy / breastfeeding assessment on a
     // product with no maternal target user (Round 3 E1). Recorded on any other
@@ -2753,13 +2753,13 @@ const templateIndex: RegisterConfig = {
   // dept-system nav group, which likewise has no review owner).
   columns: [
     { key: 'concept', label: 'Evidence concept', type: 'text', width: 160, editable: false },
-    { key: 'templateTab', label: 'Template tab', type: 'text', width: 180, editable: false },
+    { key: 'templateTab', label: 'Template tab', type: 'text', width: 180, editable: false, sheetRefs: true },
     { key: 'captured', label: 'Evidence captured', type: 'text', width: 240, editable: false },
     { key: 'whenToComplete', label: 'When to complete', type: 'text', width: 180, editable: false },
     { key: 'gate', label: 'Gate', type: 'text', width: 90, editable: false },
     { key: 'owner', label: 'Owner', type: 'text', width: 160, editable: false },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
-    { key: 'notes', label: 'Notes', type: 'textarea', width: 220, editable: false },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 220, editable: false, sheetRefs: true },
   ],
   fixedRows: [
     { concept: '1. Commercial costing', templateTab: 'Formula_BOM', captured: 'Formula composition, ingredient cost, evidence links', whenToComplete: 'Complete once per formula version', gate: '05', owner: 'R&I / Finance', notes: 'Feeds Costing_Calc and Formulation_Safety' },
@@ -2804,7 +2804,7 @@ const systemRequirements: RegisterConfig = {
   columns: [
     { key: 'metric', label: 'Metric', type: 'text', width: 220, editable: false },
     { key: 'value', label: 'Value', type: 'text', width: 200, editable: false },
-    { key: 'notes', label: 'Notes', type: 'textarea', width: 360, editable: false },
+    { key: 'notes', label: 'Notes', type: 'textarea', width: 360, editable: false, sheetRefs: true },
   ],
   fixedRows: [
     { metric: 'Controlled gates', value: '12', notes: 'Renamed for non-technical navigation; Gate IDs retained in Stage_Map' },
