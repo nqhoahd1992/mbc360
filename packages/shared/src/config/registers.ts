@@ -335,12 +335,9 @@ export function isRegisterRowBlank(config: RegisterConfig, row: RegisterRow): bo
 
 // The six values the V18 workbook's data validation offers on the watch-list sheets' status cells.
 export const WATCHLIST_ROW_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Needs Review', 'Complete', 'Not Applicable', 'Blocked'] as const;
-const WORK_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Backtracked'] as const;
-// The Status list the workbook's own data validation offers on most register sheets (v2 workbook). Registers whose rules read
-// their status as 'Completed' keep WORK_STATUS_OPTIONS until those rules accept this wording too.
-// Supplier & Raw Material Evidence, Fragrance / Allergen Log, Twinkle 5 Claims Map, Participant / Sample Log and PIF Evidence Closure
-// moved to this list because each sheet's own data validation offers it (isDoneStatus reads 'Complete' and 'Completed' alike). Rows
-// saved as On Hold / Backtracked were mapped to Blocked / Needs Review, the nearest states (migration 20261027190000).
+// The Status list the workbook's own data validation offers on most register sheets (v2 workbook). It replaced the app's older generic
+// list (Not Started, In Progress, Completed, On Hold, Backtracked): rows saved as On Hold / Backtracked were mapped to Blocked /
+// Needs Review, the nearest states, and 'Completed' to 'Complete' (isDoneStatus reads both). Migrations 20261027190000 and 20261027210000.
 const SHEET_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Needs Review', 'Complete', 'Not Applicable', 'Blocked'] as const;
 
 // Status lists the workbook gives its own sheets (v2 workbook data validation). Where a sheet carries both the generic list above and
@@ -372,7 +369,8 @@ export const NP_APPROVAL_OPTIONS = [NP_APPROVAL_APPROVED, 'Rejected', NP_APPROVA
 // products should record N/A with rationale where neither pathway applies."
 export const FINAL_SAFETY_REGISTER = 'formulationSafetyFinalSignOff';
 export const FINAL_SAFETY_PREGNANCY_ROW = 'Pregnancy / breastfeeding assessment';
-export const FINAL_SAFETY_NA = 'N/A';
+// The workbook's own word for it on this sheet's Status list.
+export const FINAL_SAFETY_NA = 'Not Applicable';
 
 // Rule D4 (SME Round 3) on the identity-only Supplier & RM Evidence record a
 // Cosmetri formula import creates: "The stub must be clearly labelled Incomplete
@@ -383,7 +381,7 @@ export const FINAL_SAFETY_NA = 'N/A';
 // completed evidence status. Gates 10 and 11 must not rely on unresolved
 // identity-only stubs."
 //
-// Why a column of its own rather than a value added to WORK_STATUS_OPTIONS: that
+// Why a column of its own rather than a value added to the Status list: that
 // list is shared by ~30 registers, so a Supplier-RM-specific value would appear
 // on all of them. And why a DISPOSITION column rather than reusing `status`:
 // before this, a freshly imported stub, a manually added row somebody abandoned
@@ -2615,10 +2613,10 @@ export const formulationSafetyFinalSignOff: RegisterConfig = {
     { key: 'acceptanceRequirement', label: 'Acceptance requirement', type: 'text', width: 260, editable: false },
     { key: 'requiredEvidence', label: 'Required evidence', type: 'text', width: 200, editable: false },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
-    // N/A exists for one row only — the pregnancy / breastfeeding assessment on a
+    // Not Applicable counts for one row only — the pregnancy / breastfeeding assessment on a
     // product with no maternal target user (Round 3 E1). Recorded on any other
     // row it does not satisfy Gate 7 (see `finalSafetySignOffComplete`).
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: [...WORK_STATUS_OPTIONS, FINAL_SAFETY_NA] },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'owner', label: 'Owner', type: 'text', width: 150, editable: false },
     { key: 'decisionDate', label: 'Decision date', type: 'date', width: 130 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 170 },
