@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Button, DatePicker, Drawer, Empty, Form, Grid, Input, Rate, message } from 'antd';
+import { Button, DatePicker, Drawer, Empty, Form, Grid, Input, Rate, Select, message } from 'antd';
 import { FEEDBACK_RECOMMEND_OPTIONS, FEEDBACK_TOO_OILY_OPTIONS } from '@mbc360/shared/config/gates';
-import ChoiceSelect from '../components/ChoiceSelect';
 import { MessageOutlined, PlusOutlined, RightOutlined, WarningOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
@@ -320,7 +319,7 @@ export default function ProductFeedback() {
               <Input />
             </Form.Item>
             <Form.Item name="gender" label="Gender">
-              <ChoiceSelect options={['F', 'M']} onChange={() => {}} />
+              <Select allowClear placeholder="Select…" options={['F', 'M'].map((o) => ({ value: o, label: o }))} />
             </Form.Item>
             <Form.Item name="dept" label="Dept / site" rules={[{ required: true, message: 'Enter the department or site' }]}>
               <Input />
@@ -352,10 +351,10 @@ export default function ProductFeedback() {
               label="Too oily / slippery? (SAFETY)"
               extra="A safety question — a slippery film is a slip risk, not a matter of taste."
             >
-              <ChoiceSelect options={[...FEEDBACK_TOO_OILY_OPTIONS]} onChange={() => {}} />
+              <Select allowClear placeholder="Select…" options={FEEDBACK_TOO_OILY_OPTIONS.map((o) => ({ value: o, label: o }))} />
             </Form.Item>
             <Form.Item name="wouldRecommend" label="Would recommend?">
-              <ChoiceSelect options={[...FEEDBACK_RECOMMEND_OPTIONS]} onChange={() => {}} />
+              <Select allowClear placeholder="Select…" options={FEEDBACK_RECOMMEND_OPTIONS.map((o) => ({ value: o, label: o }))} />
             </Form.Item>
           </div>
 
