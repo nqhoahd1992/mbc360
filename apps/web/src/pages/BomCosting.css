@@ -67,10 +67,13 @@
 .bom-calc-note { margin: 8px 0 0; color: var(--c-text-3); font-size: 12px; }
 
 /* Costing ledger: numbers right-aligned in tabular figures, typed values boxed, calculated values plain. */
-.cc-ledger .bom-card-body { max-width: 760px; }
-.cc-cap { margin: 22px 0 6px; color: var(--c-text-3); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
-.cc-cap:first-of-type { margin-top: 4px; }
-.cc-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 7px 0; border-bottom: 1px dotted var(--c-border); }
+.cc-ledger .bom-card-body { max-width: 1000px; }
+.cc-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 40px; }
+.cc-col { min-width: 0; }
+@media (min-width: 1000px) { .cc-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.cc-cap { margin: 18px 0 4px; color: var(--c-text-3); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.cc-col:first-child .cc-cap:first-child, .cc-col:last-child .cc-cap:first-child { margin-top: 4px; }
+.cc-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 5px 0; border-bottom: 1px dotted var(--c-border); }
 .cc-l small { display: block; color: var(--c-text-3); font-size: 11px; line-height: 16px; }
 .cc-v { font-variant-numeric: tabular-nums; text-align: right; }
 .cc-calc { color: var(--c-text-2); }

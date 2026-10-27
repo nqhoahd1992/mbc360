@@ -1055,13 +1055,20 @@ export default function BomCosting() {
                 </div>
               )}
 
-              <div className="cc-cap">1 · Batch</div>
+              <div className="cc-grid">
+                <div className="cc-col">
+              <div className="cc-cap">Batch</div>
               {ledgerInput('Batch size', 'batchSizeKg', 'kg', 1)}
               {ledgerInput('Fill size', 'fillSizeG', 'g / mL', 1)}
               {ledgerCalc('Units per batch', 'batch size ÷ fill size', Math.floor(unitsPerBatch).toLocaleString())}
               {ledgerInput('Target units', 'targetUnits', 'units', 100)}
 
-              <div className="cc-cap">2 · Cost per unit</div>
+              <div className="cc-cap">Batch totals</div>
+              {ledgerCalc('Batch formula cost', undefined, money(formulaCostPerUnit * unitsPerBatch))}
+              {ledgerCalc('Forecast COGS (target units)', undefined, money(cogs * costing.targetUnits))}
+                </div>
+                <div className="cc-col">
+              <div className="cc-cap">Cost per unit</div>
               {ledgerCalc('Formula', 'from the Formula BOM, per unit', money(formulaCostPerUnit))}
               {ledgerInput('+ Packaging', 'packagingCostPerUnit', undefined, 0.01, draftPackaging.length > 0 ? `Packaging BOM total ${money(packagingCostTotal)}` : undefined)}
               {ledgerInput('+ Labour / overhead', 'labourOverheadPerUnit')}
@@ -1088,7 +1095,7 @@ export default function BomCosting() {
                 </>
               )}
 
-              <div className="cc-cap">3 · Price and margin</div>
+              <div className="cc-cap">Price and margin</div>
               {ledgerInput('Target sell price / unit', 'targetSellPrice')}
               <div className="cc-row">
                 <span className="cc-l">
@@ -1097,9 +1104,8 @@ export default function BomCosting() {
                 <span className={`cc-v cc-margin ${margin >= 50 ? 'bom-ok' : margin > 0 ? 'bom-warn' : 'bom-bad'}`}>{money(margin)}%</span>
               </div>
 
-              <div className="cc-cap">4 · Totals</div>
-              {ledgerCalc('Batch formula cost', undefined, money(formulaCostPerUnit * unitsPerBatch))}
-              {ledgerCalc('Forecast COGS (target units)', undefined, money(cogs * costing.targetUnits))}
+                </div>
+              </div>
             </div>
           </div>
 
