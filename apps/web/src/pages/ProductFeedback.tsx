@@ -98,6 +98,21 @@ export default function ProductFeedback() {
   const entries = allEntries.filter((e) => e.sampleId === current.id);
   const n = entries.length;
 
+  // The formula versions this project has had (current first) and the product families on its Product Family Register: a sample is
+  // one of those, not a name typed afresh. A value saved earlier that is no longer in either list stays selectable.
+  const formulaVersions = [
+    ...new Set([project.formulaVersion, ...project.formulaVersionHistory.flatMap((h) => [h.version, h.previousVersion])].filter(Boolean)),
+  ];
+  const families = [
+    ...new Set(
+      (project.registers['productFamilyRegister'] ?? [])
+        .map((r) => String(r.familyName || r.familyCode || '').trim())
+        .filter(Boolean),
+    ),
+  ];
+  const withCurrent = (options: string[], value?: string) => (value && !options.includes(value) ? [...options, value] : options);
+  const asOptions = (options: string[]) => options.map((o) => ({ value: o, label: o }));
+
   const openSampleEditor = (target: string | 'new') => {
     const base: FeedbackSample | undefined = target === 'new' ? undefined : target === current.id ? current : samples.find((s) => s.id === target);
     sampleForm.setFieldsValue({
@@ -105,7 +120,8 @@ export default function ProductFeedback() {
       developmentStage: base?.developmentStage,
       linkedChangeId: base?.linkedChangeId,
       sampleBatchCode: base?.sampleBatchCode,
-      formulaVersion: base?.formulaVersion,
+      // A new sample starts on the project's current formula version.
+      formulaVersion: base ? base.formulaVersion : project.formulaVersion,
       dateIssued: base?.dateIssued ? dayjs(base.dateIssued) : undefined,
       panelCoordinator: base?.panelCoordinator,
     });
@@ -421,14 +437,14 @@ export default function ProductFeedback() {
             <Form.Item label="Product / SKU" extra="From the project">
               <Input value={project.identity.productSku} disabled />
             </Form.Item>
-            <Form.Item name="productFamily" label="Product Family">
-              <Input />
+            <Form.Item name="productFamily" label="Product Family" extra={families.length === 0 ? 'Add the family on the Product Family Register first' : undefined}>
+              <Select allowClear showSearch placeholder="Select…" options={asOptions(withCurrent(families, sampleForm.getFieldValue('productFamily')))} />
             </Form.Item>
             <Form.Item name="sampleBatchCode" label="Sample / batch code">
               <Input />
             </Form.Item>
             <Form.Item name="formulaVersion" label="Formula version">
-              <Input />
+              <Select allowClear showSearch placeholder="Select…" options={asOptions(withCurrent(formulaVersions, sampleForm.getFieldValue('formulaVersion')))} />
             </Form.Item>
             <Form.Item name="developmentStage" label="Development stage">
               <Input />
