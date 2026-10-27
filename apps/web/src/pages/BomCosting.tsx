@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import ReviewOwnerLine from '../components/ReviewOwnerLine';
-import { Button, DatePicker, Empty, Input, InputNumber, Select, Table, Tooltip } from 'antd';
+import { Button, Collapse, DatePicker, Empty, Input, InputNumber, Select, Table, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import { CloudDownloadOutlined, ExclamationCircleOutlined, LockOutlined } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
@@ -263,18 +263,39 @@ export default function BomCosting() {
     costingDraft.markSaved();
   };
 
-  const numberField = (field: keyof CostingInputs, label: string, step = 0.01) => (
-    <label className="bom-field">
-      <span className="bom-label">{label}</span>
+  // The cost lines that add up to COGS per unit, in the order the ledger shows them.
+  const costParts = [
+    { key: 'formula', label: 'Formula', value: formulaCostPerUnit },
+    { key: 'packaging', label: 'Packaging', value: costing.packagingCostPerUnit },
+    { key: 'labour', label: 'Labour', value: costing.labourOverheadPerUnit },
+    { key: 'freight', label: 'Freight', value: costing.freightOtherPerUnit },
+  ];
+  // A ledger row the person types into, and one the page calculates (plain, no box).
+  const ledgerInput = (label: string, field: keyof CostingInputs, unit?: string, step = 0.01, hint?: string) => (
+    <div className="cc-row">
+      <span className="cc-l">
+        {label}
+        {hint && <small>{hint}</small>}
+      </span>
       <InputNumber
+        className="cc-input"
         min={0}
         step={step}
-        style={{ width: '100%' }}
+        suffix={unit}
         value={costing[field] as number}
         disabled={formulaLocked}
         onChange={(v) => costingDraft.update((prev) => ({ ...prev, [field]: v ?? 0 }))}
       />
-    </label>
+    </div>
+  );
+  const ledgerCalc = (label: string, hint: string | undefined, value: string) => (
+    <div className="cc-row">
+      <span className="cc-l">
+        {label}
+        {hint && <small>{hint}</small>}
+      </span>
+      <span className="cc-v cc-calc">{value}</span>
+    </div>
   );
 
   // A row is flagged when it is one of the reasons Save is blocked, so the
@@ -1017,8 +1038,170 @@ export default function BomCosting() {
 
       {showCosting && (
         <>
+          {/* Costing as one ledger (project owner chose the ledger layout): the page reads as the calculation — batch, then each
+              cost line added up to COGS, then price and margin — with what you type in a box and what is calculated plain. Everything
+              recalculates from the unsaved draft as you type. */}
+          <div className="c-card bom-card cc-ledger">
+            <div className="bom-card-head">
+              <div className="bom-card-title">Costing</div>
+            </div>
+            <div className="bom-card-body">
+              {formulaLocked && (
+                <div className="rt-lock">
+                  <LockOutlined />
+                  <span>
+                    <b>Read-only — Gate 05 passed.</b> {LOCK_REASON}
+                  </span>
+                </div>
+              )}
+
+              <div className="cc-cap">1 · Batch</div>
+              {ledgerInput('Batch size', 'batchSizeKg', 'kg', 1)}
+              {ledgerInput('Fill size', 'fillSizeG', 'g / mL', 1)}
+              {ledgerCalc('Units per batch', 'batch size ÷ fill size', Math.floor(unitsPerBatch).toLocaleString())}
+              {ledgerInput('Target units', 'targetUnits', 'units', 100)}
+
+              <div className="cc-cap">2 · Cost per unit</div>
+              {ledgerCalc('Formula', 'from the Formula BOM, per unit', money(formulaCostPerUnit))}
+              {ledgerInput('+ Packaging', 'packagingCostPerUnit', undefined, 0.01, draftPackaging.length > 0 ? `Packaging BOM total ${money(packagingCostTotal)}` : undefined)}
+              {ledgerInput('+ Labour / overhead', 'labourOverheadPerUnit')}
+              {ledgerInput('+ Freight / other', 'freightOtherPerUnit')}
+              <div className="cc-row cc-total">
+                <span className="cc-l">= COGS / unit</span>
+                <span className="cc-v">{money(cogs)}</span>
+              </div>
+              {cogs > 0 && (
+                <>
+                  <div className="cc-bar" role="img" aria-label="Share of each cost in the COGS per unit">
+                    {costParts.map((part) => (
+                      <span key={part.key} className={`cc-seg cc-seg-${part.key}`} style={{ width: `${(part.value / cogs) * 100}%` }} />
+                    ))}
+                  </div>
+                  <div className="cc-legend">
+                    {costParts.map((part) => (
+                      <span key={part.key}>
+                        <b className={`cc-seg-${part.key}`} />
+                        {part.label} {money(part.value)}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <div className="cc-cap">3 · Price and margin</div>
+              {ledgerInput('Target sell price / unit', 'targetSellPrice')}
+              <div className="cc-row">
+                <span className="cc-l">
+                  <span className={`bom-dot ${margin >= 50 ? 'bom-dot-ok' : margin > 0 ? 'bom-dot-warn' : 'bom-dot-bad'}`} /> Gross margin
+                </span>
+                <span className={`cc-v cc-margin ${margin >= 50 ? 'bom-ok' : margin > 0 ? 'bom-warn' : 'bom-bad'}`}>{money(margin)}%</span>
+              </div>
+
+              <div className="cc-cap">4 · Totals</div>
+              {ledgerCalc('Batch formula cost', undefined, money(formulaCostPerUnit * unitsPerBatch))}
+              {ledgerCalc('Forecast COGS (target units)', undefined, money(cogs * costing.targetUnits))}
+            </div>
+          </div>
+
+          <div className="c-card bom-card">
+            <div className="bom-card-head">
+              <div className="bom-card-title">Commercial feasibility</div>
+            </div>
+            <div className="bom-card-body">
+              {/* Round 4 question 36(b), 2026-08-29. Kept in its own block below the
+                  numbers because it is a JUDGEMENT about them, not another input to
+                  them: every number above is pre-filled at project creation, which
+                  is exactly why the Gate 5 readiness item reading this screen had
+                  no signal to read until now. It shares the inputs' draft and
+                  Save, so it stays in the same card. */}
+              <div className="bom-subsection">
+                <div className="bom-form">
+                  <label className="bom-field bom-span-2">
+                    <span className="bom-label">Costing / commercial feasibility status</span>
+                    <Select
+                      style={{ width: '100%' }}
+                      allowClear
+                      placeholder="Not assessed"
+                      value={costing.feasibilityStatus || undefined}
+                      disabled={formulaLocked}
+                      options={COSTING_FEASIBILITY_STATUSES.map((o) => ({ value: o, label: o }))}
+                      onChange={(v?: string) => costingDraft.update((prev) => ({ ...prev, feasibilityStatus: v ?? '' }))}
+                    />
+                  </label>
+                  <label className="bom-field">
+                    <span className="bom-label">Assessor</span>
+                    <UserSelect
+                      value={costing.assessor}
+                      disabled={formulaLocked}
+                      onChange={(v) => costingDraft.update((prev) => ({ ...prev, assessor: v }))}
+                    />
+                  </label>
+                  <label className="bom-field">
+                    <span className="bom-label">Review date</span>
+                    <DatePicker
+                      style={{ width: '100%' }}
+                      value={costing.reviewDate ? dayjs(costing.reviewDate) : null}
+                      disabled={formulaLocked}
+                      onChange={(d) =>
+                        costingDraft.update((prev) => ({ ...prev, reviewDate: d ? d.format('YYYY-MM-DD') : undefined }))
+                      }
+                    />
+                  </label>
+                  <label className="bom-field bom-span-all">
+                    <span className="bom-label">Assumptions or conditions</span>
+                    <Input.TextArea
+                      autoSize={{ minRows: 2, maxRows: 4 }}
+                      // The one status that names its own obligation, so it is the one
+                      // the readiness check refuses without this field.
+                      status={
+                        costing.feasibilityStatus === COSTING_STATUS_NOT_APPLICABLE && (costing.assumptions ?? '').trim() === ''
+                          ? 'error'
+                          : undefined
+                      }
+                      placeholder={
+                        costing.feasibilityStatus === COSTING_STATUS_NOT_APPLICABLE
+                          ? 'Why costing does not apply to this project'
+                          : 'Assumptions or conditions behind this status'
+                      }
+                      value={costing.assumptions}
+                      disabled={formulaLocked}
+                      onChange={(e) => costingDraft.update((prev) => ({ ...prev, assumptions: e.target.value }))}
+                    />
+                  </label>
+                  <label className="bom-field bom-span-2">
+                    <span className="bom-label">Evidence or costing-version link</span>
+                    <Input
+                      placeholder="link"
+                      value={costing.evidenceLink}
+                      disabled={formulaLocked}
+                      onChange={(e) => costingDraft.update((prev) => ({ ...prev, evidenceLink: e.target.value }))}
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+            {costingDraft.dirty && (
+              <div className="rt-savebar bom-savebar">
+                <SaveBar
+                  dirty={costingDraft.dirty}
+                  onSave={saveCosting}
+                  onDiscard={costingDraft.discard}
+                  disabled={formulaLocked}
+                  disabledReason={LOCK_REASON}
+                />
+              </div>
+            )}
+          </div>
+
           {section === 'costing' && (
-            <>
+            <Collapse
+              className="cc-refs"
+              items={[
+                {
+                  key: 'refs',
+                  label: 'Reference — Formula BOM and Packaging BOM (read-only)',
+                  children: (
+                    <>
               {/* Read-only references: they stay tables, each scrolling inside
                   its own card so nothing widens the page. */}
               <div className="c-card bom-card">
@@ -1110,172 +1293,12 @@ export default function BomCosting() {
                   />
                 </div>
               </div>
-            </>
+                                </>
+                  ),
+                },
+              ]}
+            />
           )}
-
-          {/* Outputs first (the Integrations "status first" layout): they are
-              what the inputs below are entered for, and they recalculate from
-              the unsaved draft as you type. */}
-          <div className="c-card bom-card">
-            <div className="bom-card-head">
-              <div className="bom-card-title">Costing outputs (auto-calculated)</div>
-            </div>
-            <div className="bom-card-body">
-              <div className="bom-stats">
-                <div className="bom-stat">
-                  <div className="bom-stat-label">Units per batch</div>
-                  <div className="bom-stat-value">{Math.floor(unitsPerBatch).toLocaleString()}</div>
-                </div>
-                <div className="bom-stat">
-                  <div className="bom-stat-label">Formula cost / unit</div>
-                  <div className="bom-stat-value">{money(formulaCostPerUnit)}</div>
-                </div>
-                <div className="bom-stat">
-                  <div className="bom-stat-label">COGS / unit</div>
-                  <div className="bom-stat-value">{money(cogs)}</div>
-                </div>
-                <div className="bom-stat">
-                  <div className="bom-stat-label">
-                    <span className={`bom-dot ${margin >= 50 ? 'bom-dot-ok' : margin > 0 ? 'bom-dot-warn' : 'bom-dot-bad'}`} />
-                    Gross margin
-                  </div>
-                  <div className={`bom-stat-value ${margin >= 50 ? 'bom-ok' : margin > 0 ? 'bom-warn' : 'bom-bad'}`}>
-                    {money(margin)}%
-                  </div>
-                </div>
-                <div className="bom-stat">
-                  <div className="bom-stat-label">Batch formula cost</div>
-                  <div className="bom-stat-value">{money(formulaCostPerUnit * unitsPerBatch)}</div>
-                </div>
-                <div className="bom-stat">
-                  <div className="bom-stat-label">Forecast COGS (target units)</div>
-                  <div className="bom-stat-value">{money(cogs * costing.targetUnits)}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="c-card bom-card">
-            <div className="bom-card-head">
-              <div className="bom-card-title">Costing inputs</div>
-            </div>
-            <div className="bom-card-body">
-              {formulaLocked && (
-                <div className="rt-lock">
-                  <LockOutlined />
-                  <span>
-                    <b>Read-only — Gate 05 passed.</b> {LOCK_REASON}
-                  </span>
-                </div>
-              )}
-              <div className="bom-form">
-                {numberField('batchSizeKg', 'Batch size (kg)', 1)}
-                {numberField('fillSizeG', 'Fill size (g or mL)', 1)}
-                {numberField('targetUnits', 'Target units', 100)}
-                <label className="bom-field">
-                  <span className="bom-label">Packaging cost / unit</span>
-                  <InputNumber
-                    min={0}
-                    step={0.01}
-                    style={{ width: '100%' }}
-                    value={costing.packagingCostPerUnit}
-                    disabled={formulaLocked}
-                    onChange={(v) => costingDraft.update((prev) => ({ ...prev, packagingCostPerUnit: v ?? 0 }))}
-                  />
-                  {draftPackaging.length > 0 && (
-                    <span className="bom-hint">Packaging BOM total: {money(packagingCostTotal)}</span>
-                  )}
-                </label>
-                {numberField('labourOverheadPerUnit', 'Labour / overhead / unit')}
-                {numberField('freightOtherPerUnit', 'Freight / other / unit')}
-                {numberField('targetSellPrice', 'Target sell price / unit')}
-              </div>
-
-              {/* Round 4 question 36(b), 2026-08-29. Kept in its own block below the
-                  numbers because it is a JUDGEMENT about them, not another input to
-                  them: every number above is pre-filled at project creation, which
-                  is exactly why the Gate 5 readiness item reading this screen had
-                  no signal to read until now. It shares the inputs' draft and
-                  Save, so it stays in the same card. */}
-              <div className="bom-subsection">
-                <div className="bom-subtitle">Commercial feasibility</div>
-                <div className="bom-form">
-                  <label className="bom-field bom-span-2">
-                    <span className="bom-label">Costing / commercial feasibility status</span>
-                    <Select
-                      style={{ width: '100%' }}
-                      allowClear
-                      placeholder="Not assessed"
-                      value={costing.feasibilityStatus || undefined}
-                      disabled={formulaLocked}
-                      options={COSTING_FEASIBILITY_STATUSES.map((o) => ({ value: o, label: o }))}
-                      onChange={(v?: string) => costingDraft.update((prev) => ({ ...prev, feasibilityStatus: v ?? '' }))}
-                    />
-                  </label>
-                  <label className="bom-field">
-                    <span className="bom-label">Assessor</span>
-                    <UserSelect
-                      value={costing.assessor}
-                      disabled={formulaLocked}
-                      onChange={(v) => costingDraft.update((prev) => ({ ...prev, assessor: v }))}
-                    />
-                  </label>
-                  <label className="bom-field">
-                    <span className="bom-label">Review date</span>
-                    <DatePicker
-                      style={{ width: '100%' }}
-                      value={costing.reviewDate ? dayjs(costing.reviewDate) : null}
-                      disabled={formulaLocked}
-                      onChange={(d) =>
-                        costingDraft.update((prev) => ({ ...prev, reviewDate: d ? d.format('YYYY-MM-DD') : undefined }))
-                      }
-                    />
-                  </label>
-                  <label className="bom-field bom-span-all">
-                    <span className="bom-label">Assumptions or conditions</span>
-                    <Input.TextArea
-                      autoSize={{ minRows: 2, maxRows: 4 }}
-                      // The one status that names its own obligation, so it is the one
-                      // the readiness check refuses without this field.
-                      status={
-                        costing.feasibilityStatus === COSTING_STATUS_NOT_APPLICABLE && (costing.assumptions ?? '').trim() === ''
-                          ? 'error'
-                          : undefined
-                      }
-                      placeholder={
-                        costing.feasibilityStatus === COSTING_STATUS_NOT_APPLICABLE
-                          ? 'Why costing does not apply to this project'
-                          : 'Assumptions or conditions behind this status'
-                      }
-                      value={costing.assumptions}
-                      disabled={formulaLocked}
-                      onChange={(e) => costingDraft.update((prev) => ({ ...prev, assumptions: e.target.value }))}
-                    />
-                  </label>
-                  <label className="bom-field bom-span-2">
-                    <span className="bom-label">Evidence or costing-version link</span>
-                    <Input
-                      placeholder="link"
-                      value={costing.evidenceLink}
-                      disabled={formulaLocked}
-                      onChange={(e) => costingDraft.update((prev) => ({ ...prev, evidenceLink: e.target.value }))}
-                    />
-                  </label>
-                </div>
-              </div>
-            </div>
-            {costingDraft.dirty && (
-              <div className="rt-savebar bom-savebar">
-                <SaveBar
-                  dirty={costingDraft.dirty}
-                  onSave={saveCosting}
-                  onDiscard={costingDraft.discard}
-                  disabled={formulaLocked}
-                  disabledReason={LOCK_REASON}
-                />
-              </div>
-            )}
-          </div>
         </>
       )}
     </div>
