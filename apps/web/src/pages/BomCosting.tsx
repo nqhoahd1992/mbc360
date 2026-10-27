@@ -1188,18 +1188,21 @@ export default function BomCosting() {
                 </div>
               </div>
             </div>
-            {costingDraft.dirty && (
-              <div className="rt-savebar bom-savebar">
-                <SaveBar
-                  dirty={costingDraft.dirty}
-                  onSave={saveCosting}
-                  onDiscard={costingDraft.discard}
-                  disabled={formulaLocked}
-                  disabledReason={LOCK_REASON}
-                />
-              </div>
-            )}
           </div>
+
+          {/* One Save for the whole costing draft (the ledger and the feasibility form share it), pinned to the bottom of the window:
+              inside the feasibility card it was out of sight whenever the numbers above were being edited. */}
+          {costingDraft.dirty && (
+            <div className="rt-savebar bom-savebar bom-savebar-page">
+              <SaveBar
+                dirty={costingDraft.dirty}
+                onSave={saveCosting}
+                onDiscard={costingDraft.discard}
+                disabled={formulaLocked}
+                disabledReason={LOCK_REASON}
+              />
+            </div>
+          )}
 
           {section === 'costing' && (
             <Collapse

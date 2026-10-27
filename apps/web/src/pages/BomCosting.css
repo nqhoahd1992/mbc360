@@ -110,3 +110,5 @@
 .cc-refs .bom-card + .bom-card { margin-top: 24px; }
 .cc-refs .bom-card-head { padding: 0 0 8px; border-bottom: 0; }
 .cc-refs .bom-card-title { font-size: 13px; font-weight: 600; color: var(--c-text-2); }
+
+.bom-savebar-page { padding: 0 20px 8px; border: 1px solid var(--c-border-2); border-radius: 8px; box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06); }
