@@ -2649,7 +2649,7 @@ export const labelPlatformRollout: RegisterConfig = {
   columns: [
     { key: 'rolloutId', label: 'Rollout ID', type: 'text', width: 100, unique: true },
     // Block A is the Released Label Register; its rows are identified by Record ID.
-    { key: 'linkedRecordId', label: 'Linked Record ID (Block A)', type: 'rowRef', refRegister: 'releasedLabelRegister', refColumn: 'recordId', width: 150 },
+    { key: 'linkedRecordId', label: 'Linked Released Label ID', type: 'rowRef', refRegister: 'releasedLabelRegister', refColumn: 'recordId', width: 150 },
     { key: 'productSku', label: 'Product / SKU', type: 'text', width: 150 },
     { key: 'platform', label: 'Platform / channel', type: 'text', width: 140 },
     { key: 'platformUrl', label: 'Platform URL / location', type: 'text', width: 160 },
@@ -2681,7 +2681,7 @@ export const labelShipmentVerification: RegisterConfig = {
   columns: [
     { key: 'shipmentId', label: 'Shipment ID', type: 'text', width: 100, unique: true },
     // Block A is the Released Label Register; its rows are identified by Record ID.
-    { key: 'linkedRecordId', label: 'Linked Record ID (Block A)', type: 'rowRef', refRegister: 'releasedLabelRegister', refColumn: 'recordId', width: 150 },
+    { key: 'linkedRecordId', label: 'Linked Released Label ID', type: 'rowRef', refRegister: 'releasedLabelRegister', refColumn: 'recordId', width: 150 },
     { key: 'productSku', label: 'Product / SKU', type: 'text', width: 150 },
     { key: 'destination', label: 'Destination / customer / market', type: 'text', width: 180 },
     { key: 'shipDate', label: 'Ship date', type: 'date', width: 120 },
