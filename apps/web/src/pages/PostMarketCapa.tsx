@@ -93,7 +93,7 @@ export default function PostMarketCapa() {
   // open with what was typed, instead of showing "added" and throwing the input away.
   const onCreate = async () => {
     const values = await form.validateFields();
-    const record: CapaRecord = { ...values, id: nextRecordId(project.capa), status: 'Not Started' };
+    const record: CapaRecord = { ...values, productSku: project.identity.productSku, id: nextRecordId(project.capa), status: 'Not Started' };
     setCreating(true);
     try {
       if (!(await addCapa(id, record))) return;
@@ -135,8 +135,8 @@ export default function PostMarketCapa() {
             {id} · {project.identity.productSku} · Gate 12
           </p>
           <p className="au-desc">
-            Events after launch — complaints, adverse events, feedback and the actions taken. Internal panel testing before
-            launch is on Product / Sample Feedback.
+            Use after launch to capture complaints, adverse events, post-market surveillance and CAPA links. Internal panel
+            testing before launch is on Product / Sample Feedback.
           </p>
           {draft.length > 0 && (
             <p className="au-meta pm-counts">
@@ -239,7 +239,13 @@ export default function PostMarketCapa() {
       >
         {open && (
           <div className="pm-detail">
+            {/* The sheet's columns, in its order: Product/SKU, Market, Event type, Complaint / AE summary, Severity / risk, Investigation
+                link, CAPA link, PIF / PMF impact, Status, Owner, Notes. The first five describe the event and are not edited here. */}
             <dl className="pm-dl">
+              <div>
+                <dt>Product / SKU</dt>
+                <dd>{open.productSku || project.identity.productSku}</dd>
+              </div>
               <div>
                 <dt>Market</dt>
                 <dd>{open.market}</dd>
@@ -248,36 +254,18 @@ export default function PostMarketCapa() {
                 <dt>Event type</dt>
                 <dd>{open.eventType}</dd>
               </div>
-              <div>
-                <dt>Severity / risk</dt>
-                <dd>{severityTag(open.severity)}</dd>
-              </div>
             </dl>
             <div>
               <div className="pm-label">Complaint / AE summary</div>
               <p className="pm-summary-full">{open.summary}</p>
             </div>
+            <dl className="pm-dl">
+              <div>
+                <dt>Severity / risk</dt>
+                <dd>{severityTag(open.severity)}</dd>
+              </div>
+            </dl>
             <div className="pm-fields">
-              <label className="au-field">
-                <span className="au-field-label">Status</span>
-                <Select
-                  value={open.status}
-                  options={CAPA_STATUSES.map((s) => ({ value: s, label: s }))}
-                  onChange={(v: string) => patch(openIndex, { status: v })}
-                />
-              </label>
-              <label className="au-field">
-                <span className="au-field-label">Owner</span>
-                <UserSelect value={open.owner} onChange={(v) => patch(openIndex, { owner: v ?? '' })} />
-              </label>
-              <label className="au-field">
-                <span className="au-field-label">Product / SKU</span>
-                <Input value={open.productSku} onChange={(e) => patch(openIndex, { productSku: e.target.value })} />
-              </label>
-              <label className="au-field">
-                <span className="au-field-label">PIF / PMF impact</span>
-                <Input value={open.pifPmfImpact} onChange={(e) => patch(openIndex, { pifPmfImpact: e.target.value })} />
-              </label>
               <label className="au-field pm-wide">
                 <span className="au-field-label">Investigation link</span>
                 <Input value={open.investigationLink} onChange={(e) => patch(openIndex, { investigationLink: e.target.value })} />
@@ -285,6 +273,22 @@ export default function PostMarketCapa() {
               <label className="au-field pm-wide">
                 <span className="au-field-label">CAPA link</span>
                 <Input value={open.capaLink} onChange={(e) => patch(openIndex, { capaLink: e.target.value })} />
+              </label>
+              <label className="au-field pm-wide">
+                <span className="au-field-label">PIF / PMF impact</span>
+                <Input value={open.pifPmfImpact} onChange={(e) => patch(openIndex, { pifPmfImpact: e.target.value })} />
+              </label>
+              <label className="au-field">
+                <span className="au-field-label">Status</span>
+                <Select
+                  value={open.status}
+                  options={CAPA_STATUSES.map((st) => ({ value: st, label: st }))}
+                  onChange={(v: string) => patch(openIndex, { status: v })}
+                />
+              </label>
+              <label className="au-field">
+                <span className="au-field-label">Owner</span>
+                <UserSelect value={open.owner} onChange={(v) => patch(openIndex, { owner: v ?? '' })} />
               </label>
               <label className="au-field pm-wide">
                 <span className="au-field-label">Notes</span>
@@ -309,40 +313,41 @@ export default function PostMarketCapa() {
         width={620}
       >
         <Form form={form} layout="vertical" initialValues={{ severity: 'Low' }}>
-          <Form.Item name="summary" label="Complaint / AE summary" rules={[{ required: true, message: 'Describe what happened' }]}>
-            <Input.TextArea autoSize={{ minRows: 2 }} />
-          </Form.Item>
+          {/* Fields in the post-market sheet's column order. The product is the project's own (read-only) and Status starts at Not Started. */}
           <div className="pm-form-grid">
+            <Form.Item label="Product / SKU">
+              <Input value={project.identity.productSku} disabled />
+            </Form.Item>
             <Form.Item name="market" label="Market" rules={[{ required: true, message: 'Pick the market' }]}>
               <Select options={project.identity.markets.map((m) => ({ value: m, label: m }))} />
             </Form.Item>
-            <Form.Item name="eventType" label="Event type" rules={[{ required: true, message: 'Pick the event type' }]}>
+            <Form.Item
+              name="eventType"
+              label="Event type"
+              rules={[{ required: true, message: 'Pick the event type' }]}
+              className="pm-form-wide"
+            >
               <Select options={EVENT_TYPES.map((t) => ({ value: t, label: t }))} showSearch={{ optionFilterProp: 'label' }} />
             </Form.Item>
           </div>
-          {/* The scale is one row of buttons; it takes the whole width rather than half of a pair. */}
-          <Form.Item
-            name="severity"
-            label="Severity / risk"
-            rules={[{ required: true }]}
-          >
+          <Form.Item name="summary" label="Complaint / AE summary" rules={[{ required: true, message: 'Describe what happened' }]}>
+            <Input.TextArea autoSize={{ minRows: 2 }} />
+          </Form.Item>
+          <Form.Item name="severity" label="Severity / risk" rules={[{ required: true }]}>
             <ChoiceSelect options={[...RISK_LEVELS]} onChange={() => {}} />
           </Form.Item>
           <div className="pm-form-grid">
-            <Form.Item name="owner" label="Owner" rules={[{ required: true, message: 'Pick an owner' }]}>
-              <UserSelect onChange={() => {}} />
-            </Form.Item>
-            <Form.Item name="productSku" label="Product / SKU">
-              <Input />
-            </Form.Item>
-            <Form.Item name="pifPmfImpact" label="PIF / PMF impact" className="pm-form-wide">
-              <Input />
-            </Form.Item>
             <Form.Item name="investigationLink" label="Investigation link">
               <Input />
             </Form.Item>
             <Form.Item name="capaLink" label="CAPA link">
               <Input />
+            </Form.Item>
+            <Form.Item name="pifPmfImpact" label="PIF / PMF impact">
+              <Input />
+            </Form.Item>
+            <Form.Item name="owner" label="Owner" rules={[{ required: true, message: 'Pick an owner' }]}>
+              <UserSelect onChange={() => {}} />
             </Form.Item>
           </div>
           <Form.Item name="notes" label="Notes">
