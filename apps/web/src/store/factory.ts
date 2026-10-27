@@ -97,6 +97,7 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
 
   return {
     identity,
+    feedbackSamples: [],
     gates: GATES.map((g) => ({ gateId: g.id, status: 'Not Started' })),
     checklists,
     requirements,

@@ -807,9 +807,9 @@ export class ProjectsController {
   setFeedback(
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
-    @Body() body: { entries: ProjectData['feedback']; expectedVersion: number },
+    @Body() body: { entries: ProjectData['feedback']; samples: ProjectData['feedbackSamples']; expectedVersion: number },
   ): Promise<ProjectEnvelope> {
-    return this.projects.setFeedback(user, id, body.entries ?? [], body.expectedVersion);
+    return this.projects.setFeedback(user, id, body.entries ?? [], body.samples ?? [], body.expectedVersion);
   }
 
   // Round 4 question 8 — the Change Control assessment, one entry per post-market finding; the list is replaced.

@@ -95,6 +95,7 @@ export const PROJECT_INCLUDE = {
   capaRecords: { orderBy: { id: 'asc' } },
   changeRecords: { orderBy: { createdAt: 'asc' } },
   feedbackEntries: { orderBy: { id: 'asc' } },
+  feedbackSamples: { orderBy: { sampleOrder: 'asc' } },
 } satisfies Prisma.ProjectInclude;
 
 export type ProjectWithAll = Prisma.ProjectGetPayload<{ include: typeof PROJECT_INCLUDE }>;
@@ -624,8 +625,20 @@ function toProjectDataRaw(
       ...(c.capaLink ? { capaLink: c.capaLink } : {}),
       ...(c.pifPmfImpact ? { pifPmfImpact: c.pifPmfImpact } : {}),
     })),
+    feedbackSamples: p.feedbackSamples.map((s) => ({
+      id: s.id,
+      ...(s.productSku ? { productSku: s.productSku } : {}),
+      ...(s.productFamily ? { productFamily: s.productFamily } : {}),
+      ...(s.developmentStage ? { developmentStage: s.developmentStage } : {}),
+      ...(s.linkedChangeId ? { linkedChangeId: s.linkedChangeId } : {}),
+      ...(s.sampleBatchCode ? { sampleBatchCode: s.sampleBatchCode } : {}),
+      ...(s.formulaVersion ? { formulaVersion: s.formulaVersion } : {}),
+      ...(s.dateIssued ? { dateIssued: dateOnly(s.dateIssued) ?? '' } : {}),
+      ...(s.panelCoordinator ? { panelCoordinator: s.panelCoordinator } : {}),
+    })),
     feedback: p.feedbackEntries.map((f) => ({
       id: f.id,
+      sampleId: f.sampleId ?? '',
       testerName: f.testerName,
       gender: f.gender as 'M' | 'F',
       dept: f.dept,

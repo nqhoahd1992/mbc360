@@ -11,6 +11,7 @@ import type {
   CostingInputs,
   EvidenceItem,
   FeedbackEntry,
+  FeedbackSample,
   GateCheck,
   GateRecord,
   GraphSettings,
@@ -298,7 +299,9 @@ interface AppState {
   // record, so the drawer can stay open with what was typed when the write is refused (2026-10-11).
   addCapa: (id: string, record: CapaRecord) => Promise<boolean>;
   setCapaBulk: (id: string, records: CapaRecord[]) => Promise<boolean>;
-  addFeedback: (id: string, entry: FeedbackEntry) => Promise<boolean>;
+  // `sample` is the sample the entry belongs to; one not yet on the project is added with it.
+  addFeedback: (id: string, entry: FeedbackEntry, sample: FeedbackSample) => Promise<boolean>;
+  saveFeedbackSample: (id: string, sample: FeedbackSample) => Promise<boolean>;
 
   addChange: (record: ChangeRecord) => Promise<boolean>;
   setChangesBulk: (records: ChangeRecord[]) => Promise<boolean>;
@@ -689,11 +692,17 @@ export const useAppStore = create<AppState>()(
           const project = get().projects.find((p) => p.identity.id === id);
           return tryWriteSection(id, (v) => projectsApi.setCapa(id, [...(project?.capa ?? []), record], v));
         },
-        addFeedback: (id, entry) => {
+        addFeedback: (id, entry, sample) => {
           const project = get().projects.find((p) => p.identity.id === id);
-          return tryWriteSection(id, (v) =>
-            projectsApi.setFeedback(id, [...(project?.feedback ?? []), entry], v),
-          );
+          const samples = project?.feedbackSamples ?? [];
+          const next = samples.some((s) => s.id === sample.id) ? samples : [...samples, sample];
+          return tryWriteSection(id, (v) => projectsApi.setFeedback(id, [...(project?.feedback ?? []), entry], next, v));
+        },
+        saveFeedbackSample: (id, sample) => {
+          const project = get().projects.find((p) => p.identity.id === id);
+          const samples = project?.feedbackSamples ?? [];
+          const next = samples.some((s) => s.id === sample.id) ? samples.map((s) => (s.id === sample.id ? sample : s)) : [...samples, sample];
+          return tryWriteSection(id, (v) => projectsApi.setFeedback(id, project?.feedback ?? [], next, v));
         },
 
         // Change Control is stored per project in the database even though this

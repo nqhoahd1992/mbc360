@@ -4,7 +4,7 @@ import { FEEDBACK_RECOMMEND_OPTIONS, FEEDBACK_TOO_OILY_OPTIONS } from '@mbc360/s
 import { MessageOutlined, PlusOutlined, RightOutlined, WarningOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
-import type { FeedbackEntry } from '@mbc360/shared/types';
+import type { FeedbackEntry, FeedbackSample } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
 import { hasReachedPhase, positionSentence } from '@mbc360/shared/utils/gateProgress';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
@@ -14,6 +14,7 @@ import './AdminUsers.css';
 import './ProductFeedback.css';
 
 import FormDrawer from '../components/FormDrawer';
+import UserSelect from '../components/UserSelect';
 // Panel feedback on development samples (Phase 3, Gates 07-08) — internal
 // pre-launch testing, not post-market consumer feedback.
 //
@@ -26,6 +27,21 @@ import FormDrawer from '../components/FormDrawer';
 // add-only, as before.
 
 type Filter = 'all' | 'flagged' | 'notRecommended';
+
+// The workbook's "SAMPLE UNDER EVALUATION" block, one per sample a project puts to its panel. [ASSUMPTION: R5-Q82]
+interface SampleForm {
+  productSku?: string;
+  productFamily?: string;
+  developmentStage?: string;
+  linkedChangeId?: string;
+  sampleBatchCode?: string;
+  formulaVersion?: string;
+  dateIssued?: Dayjs;
+  panelCoordinator?: string;
+}
+
+const sampleLabel = (s: FeedbackSample, index: number) =>
+  [`Sample ${index + 1}`, s.formulaVersion, s.sampleBatchCode].filter(Boolean).join(' · ');
 
 interface FeedbackForm {
   testerName: string;
@@ -57,7 +73,15 @@ export default function ProductFeedback() {
   const screens = Grid.useBreakpoint();
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const addFeedback = useAppStore((s) => s.addFeedback);
+  const saveFeedbackSample = useAppStore((s) => s.saveFeedbackSample);
   const [adding, setAdding] = useState(false);
+  const [sampleId, setSampleId] = useState<string | null>(null);
+  // null = closed; a sample id = editing it; 'new' = adding another.
+  const [editingSample, setEditingSample] = useState<string | 'new' | null>(null);
+  const [savingSample, setSavingSample] = useState(false);
+  const [sampleForm] = Form.useForm<SampleForm>();
+  // A project that has recorded no sample yet still shows the block: this one is saved the first time it is filled or scored against.
+  const [fallbackId] = useState(() => crypto.randomUUID());
   const [creating, setCreating] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [openId, setOpenId] = useState<string | null>(null);
@@ -66,8 +90,54 @@ export default function ProductFeedback() {
 
   if (!project) return <Empty description="Project not found" />;
   const id = project.identity.id;
-  const entries = project.feedback;
+  const samples = project.feedbackSamples;
+  const fallback: FeedbackSample = { id: fallbackId, productSku: project.identity.productSku };
+  const current = samples.find((s) => s.id === sampleId) ?? samples[0] ?? fallback;
+  const currentIndex = Math.max(0, samples.findIndex((s) => s.id === current.id));
+  const allEntries = project.feedback;
+  const entries = allEntries.filter((e) => e.sampleId === current.id);
   const n = entries.length;
+
+  const openSampleEditor = (target: string | 'new') => {
+    const base: FeedbackSample | undefined =
+      target === 'new' ? { id: '', productSku: project.identity.productSku } : target === current.id ? current : samples.find((s) => s.id === target);
+    sampleForm.setFieldsValue({
+      productSku: base?.productSku,
+      productFamily: base?.productFamily,
+      developmentStage: base?.developmentStage,
+      linkedChangeId: base?.linkedChangeId,
+      sampleBatchCode: base?.sampleBatchCode,
+      formulaVersion: base?.formulaVersion,
+      dateIssued: base?.dateIssued ? dayjs(base.dateIssued) : undefined,
+      panelCoordinator: base?.panelCoordinator,
+    });
+    setEditingSample(target);
+  };
+
+  const onSaveSample = async () => {
+    const v = await sampleForm.validateFields();
+    const trimmed = (t?: string) => (t ?? '').trim() || undefined;
+    const next: FeedbackSample = {
+      id: editingSample === 'new' ? crypto.randomUUID() : (editingSample as string),
+      productSku: trimmed(v.productSku),
+      productFamily: trimmed(v.productFamily),
+      developmentStage: trimmed(v.developmentStage),
+      linkedChangeId: trimmed(v.linkedChangeId),
+      sampleBatchCode: trimmed(v.sampleBatchCode),
+      formulaVersion: trimmed(v.formulaVersion),
+      dateIssued: v.dateIssued ? v.dateIssued.format('YYYY-MM-DD') : undefined,
+      panelCoordinator: trimmed(v.panelCoordinator),
+    };
+    setSavingSample(true);
+    try {
+      if (!(await saveFeedbackSample(id, next))) return;
+    } finally {
+      setSavingSample(false);
+    }
+    setSampleId(next.id);
+    setEditingSample(null);
+    message.success('Sample saved');
+  };
 
   const avg = (field: 'texture' | 'fragrance' | 'overall') =>
     n ? (entries.reduce((s, e) => s + e[field], 0) / n).toFixed(1) : '—';
@@ -87,9 +157,10 @@ export default function ProductFeedback() {
     try {
       const saved = await addFeedback(id, {
         ...values,
-        id: nextFeedbackId(entries),
+        id: nextFeedbackId(allEntries),
+        sampleId: current.id,
         dateTested: values.dateTested ? values.dateTested.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
-      });
+      }, current);
       if (!saved) return;
     } finally {
       setCreating(false);
@@ -147,6 +218,46 @@ export default function ProductFeedback() {
           Add feedback
         </Button>
       </header>
+
+      <div className="c-card fb-sample">
+        <div className="fb-sample-head">
+          <div className="fb-sample-title">Sample under evaluation</div>
+          {samples.length > 1 && (
+            <Select
+              value={current.id}
+              onChange={setSampleId}
+              style={{ minWidth: 220 }}
+              options={samples.map((s, i) => ({ value: s.id, label: sampleLabel(s, i) }))}
+            />
+          )}
+          <div className="fb-sample-actions">
+            <Button onClick={() => openSampleEditor(current.id)}>Edit sample</Button>
+            <Button icon={<PlusOutlined />} onClick={() => openSampleEditor('new')}>
+              Add sample
+            </Button>
+          </div>
+        </div>
+        <dl className="fb-sample-dl">
+          {(
+            [
+              ['Product / SKU', current.productSku],
+              ['Sample / batch code', current.sampleBatchCode],
+              ['Product Family', current.productFamily],
+              ['Formula version', current.formulaVersion],
+              ['Development stage', current.developmentStage],
+              ['Date samples issued', current.dateIssued],
+              ['Linked Change ID', current.linkedChangeId],
+              ['Panel coordinator', current.panelCoordinator],
+            ] as const
+          ).map(([label, value]) => (
+            <div key={label} className="fb-sample-row">
+              <dt>{label}</dt>
+              <dd>{value || '—'}</dd>
+            </div>
+          ))}
+        </dl>
+        {samples.length > 1 && <div className="fb-sample-note">{currentIndex + 1} of {samples.length} samples. Figures and the log below are for this sample only.</div>}
+      </div>
 
       {!hasReachedPhase(project, 3) && (
         <Notice tone="warn" title="Phase 3 activity (Gates 07–08)">
@@ -298,6 +409,45 @@ export default function ProductFeedback() {
           </dl>
         )}
       </Drawer>
+
+      <FormDrawer
+        title={editingSample === 'new' ? 'Add sample under evaluation' : 'Sample under evaluation'}
+        open={editingSample !== null}
+        onOk={() => void onSaveSample()}
+        confirmLoading={savingSample}
+        onCancel={() => setEditingSample(null)}
+        okText="Save"
+        width={560}
+      >
+        <Form form={sampleForm} layout="vertical">
+          <div className="fb-form-grid">
+            <Form.Item name="productSku" label="Product / SKU">
+              <Input />
+            </Form.Item>
+            <Form.Item name="productFamily" label="Product Family">
+              <Input />
+            </Form.Item>
+            <Form.Item name="sampleBatchCode" label="Sample / batch code">
+              <Input />
+            </Form.Item>
+            <Form.Item name="formulaVersion" label="Formula version">
+              <Input />
+            </Form.Item>
+            <Form.Item name="developmentStage" label="Development stage">
+              <Input />
+            </Form.Item>
+            <Form.Item name="dateIssued" label="Date samples issued">
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="linkedChangeId" label="Linked Change ID">
+              <Input />
+            </Form.Item>
+            <Form.Item name="panelCoordinator" label="Panel coordinator">
+              <UserSelect onChange={() => {}} />
+            </Form.Item>
+          </div>
+        </Form>
+      </FormDrawer>
 
       <FormDrawer
         title="Add panel feedback"

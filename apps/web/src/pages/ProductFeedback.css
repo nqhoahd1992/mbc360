@@ -61,3 +61,14 @@
   .fb-form-grid, .fb-form-grid-3 { grid-template-columns: minmax(0, 1fr); }
 }
 .fb-switch-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+
+/* Sample under evaluation: the block above the log. */
+.fb-sample { padding: 16px 20px; }
+.fb-sample-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 12px; }
+.fb-sample-title { font-size: 14px; font-weight: 600; margin-right: auto; }
+.fb-sample-actions { display: flex; gap: 8px; }
+.fb-sample-dl { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px 32px; margin: 0; font-size: 13px; }
+.fb-sample-row { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; }
+.fb-sample-row dt { color: var(--c-text-3); }
+.fb-sample-row dd { margin: 0; overflow-wrap: anywhere; }
+.fb-sample-note { margin-top: 12px; color: var(--c-text-3); font-size: 12px; }

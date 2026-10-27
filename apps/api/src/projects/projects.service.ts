@@ -4734,18 +4734,46 @@ export class ProjectsService {
     user: SessionUser,
     id: string,
     entries: ProjectData['feedback'],
+    samples: ProjectData['feedbackSamples'],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
+    const sampleIds = new Set<string>();
+    for (const s of samples) {
+      if (!/^[0-9a-f-]{36}$/i.test(String(s.id))) throw new BadRequestException('A sample id must be a UUID');
+      if (sampleIds.has(s.id)) throw new BadRequestException('Two samples share one id');
+      sampleIds.add(s.id);
+    }
     for (const f of entries) {
+      if (!sampleIds.has(f.sampleId)) throw new BadRequestException(`${f.id}: the entry names a sample that is not on this project`);
       assertOneOf(`${f.id}: too oily / slippery`, f.tooOilySlippery, FEEDBACK_TOO_OILY_OPTIONS);
       assertOneOf(`${f.id}: would recommend`, f.wouldRecommend, FEEDBACK_RECOMMEND_OPTIONS);
     }
     return this.mutate(user, id, expectedVersion, 'feedback.updated', async (tx) => {
+      // Entries go first: deleting a sample cascades to its entries, and an entry is rewritten from this list in any case.
       await tx.feedbackEntry.deleteMany({ where: { projectId: id } });
+      await tx.feedbackSample.deleteMany({ where: { projectId: id } });
+      if (samples.length > 0) {
+        await tx.feedbackSample.createMany({
+          data: samples.map((s, i) => ({
+            id: s.id,
+            projectId: id,
+            sampleOrder: i,
+            productSku: s.productSku || null,
+            productFamily: s.productFamily || null,
+            developmentStage: s.developmentStage || null,
+            linkedChangeId: s.linkedChangeId || null,
+            sampleBatchCode: s.sampleBatchCode || null,
+            formulaVersion: s.formulaVersion || null,
+            dateIssued: s.dateIssued ? new Date(s.dateIssued) : null,
+            panelCoordinator: s.panelCoordinator || null,
+          })),
+        });
+      }
       if (entries.length > 0) {
         await tx.feedbackEntry.createMany({
           data: entries.map((f) => ({
             projectId: id,
+            sampleId: f.sampleId,
             testerName: f.testerName,
             gender: f.gender,
             dept: f.dept,
@@ -4761,7 +4789,7 @@ export class ProjectsService {
           })),
         });
       }
-      return { entries: entries.length };
+      return { entries: entries.length, samples: samples.length };
     });
   }
 

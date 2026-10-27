@@ -1543,6 +1543,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
 | R5-Q69 | Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role | Chủ dự án bỏ quyền theo role 15/10/2026 | **lộ ra 15/10/2026** |
+| R5-Q82 | Một dự án có thử nhiều mẫu với panel không: mỗi mẫu một khối "Sample under evaluation" và một bảng log riêng, hay một bảng log chung có cột mẫu | Chủ dự án hỏi sheet Product / Sample Feedback có ngụ ý nhiều mẫu không, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q80 | "Incomplete — evidence review required" của Supplier & Raw Material Evidence không còn là giá trị lưu: ô trống và chưa tích Approved for use đã là trạng thái đó, ô trống hiện đúng dòng chữ ấy | Chủ dự án thấy trạng thái này thừa so với ô tick, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q79 | Năm dòng "Correct names for PI" trong Artwork / Label Review Checklist: ghép tên INCI và tên phải in thành một yêu cầu, và gate khoá của bảng | Chủ dự án thấy trang thiếu bảng này, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q78 | Cột Trace ID (BT-001…) do ứng dụng thêm vào Batch Formula Trace để ô Batch Formula Trace ref của Shipment Label & Batch Verification chọn được một dòng | Chủ dự án muốn ô ref là ô chọn, 27/10/2026 | **lộ ra 27/10/2026** |
@@ -2314,6 +2315,16 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.
 
 **Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ** (còn **76** từ 19/10/2026, sau khi bỏ bốn sổ tham chiếu của Roadmap và Sheet 6 và hai bảng ký gõ tay của Needs và Target Product — nhóm D còn 32, nhóm E còn 26), chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+
+#### R5-Q82 · Product / Sample Feedback: một dự án có nhiều mẫu được panel chấm không 🟡
+
+**Lộ ra 27/10/2026, khi chủ dự án thấy app thiếu khối "SAMPLE UNDER EVALUATION" của sheet và hỏi "PANEL FEEDBACK LOG (one row per tester per sample)" có ngụ ý nhiều mẫu không.** Sheet chỉ vẽ một khối mẫu (Product / SKU, Product Family, Development stage, Linked Change ID, Sample / batch code, Formula version, Date samples issued, Panel coordinator) và một bảng log không có cột nào ghi mẫu nào; chữ "per sample" gợi ý mỗi tab Excel là một mẫu và muốn thử mẫu khác thì sao chép tab. App không có thao tác sao chép tab.
+
+**Hiện chạy theo (chủ dự án đồng ý 27/10/2026):** một dự án có thể có nhiều mẫu. Mỗi mẫu có đủ 8 ô của khối trên (nhập tay), mỗi phản hồi của tester thuộc về một mẫu, và số liệu tổng hợp cùng danh sách chỉ tính cho mẫu đang chọn. Dự án chỉ có một mẫu thì dùng như một khối duy nhất; mẫu đầu tiên được lưu khi điền khối hoặc khi thêm phản hồi đầu tiên. Dữ liệu cũ gom vào một mẫu mặc định mang tên sản phẩm của dự án.
+
+**Câu hỏi:** (a) một dự án có thử nhiều mẫu với panel nội bộ không, và nếu có thì thường là nhiều phiên bản công thức nối tiếp nhau hay nhiều biến thể cùng lúc? (b) mỗi mẫu có bảng log riêng, hay một bảng log chung có thêm cột "mẫu"? (c) Linked Change ID của mẫu nên liên kết tới bản ghi Change Control (liên quan R5-Q19) hay chỉ là mã ghi tay?
+
+**Nếu trả lời khác:** sửa `FeedbackSample` trong `packages/shared/src/types/index.ts`, bảng `feedback_samples` và trang `ProductFeedback.tsx` [ASSUMPTION: R5-Q82].
 
 #### R5-Q80 · "Incomplete — evidence review required": hiện bằng ô trống thay vì một giá trị lưu 🟡
 

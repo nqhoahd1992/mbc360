@@ -571,8 +571,8 @@ export const setStudyApprovals = (id: string, approvals: ProjectData['studyAppro
 export const setCapa = (id: string, records: ProjectData['capa'], v: number) =>
   put(id, 'capa', { records }, v);
 
-export const setFeedback = (id: string, entries: ProjectData['feedback'], v: number) =>
-  put(id, 'feedback', { entries }, v);
+export const setFeedback = (id: string, entries: ProjectData['feedback'], samples: ProjectData['feedbackSamples'], v: number) =>
+  put(id, 'feedback', { entries, samples }, v);
 
 export const setChanges = (id: string, records: ChangeRecord[], v: number) =>
   put(id, 'changes', { records }, v);
