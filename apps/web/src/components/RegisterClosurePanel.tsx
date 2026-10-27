@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Alert, Button, Card, Input, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Card, Input, Modal, Select, Tag, Typography } from 'antd';
 import { DownOutlined, LockOutlined, RightOutlined, UnlockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { RegisterClosureRole, RegisterClosureSignOff, RegisterClosureState } from '@mbc360/shared/types';
@@ -14,7 +14,6 @@ import { getMySignature, getMyTotpStatus } from '../api/accountApi';
 import RegisterCloseStepUpModal from './RegisterCloseStepUpModal';
 import RegisterClosePreviewModal from './RegisterClosePreviewModal';
 import { Link } from 'react-router-dom';
-import { TABLE_STICKY } from '../theme/tokens';
 import { GATES } from '@mbc360/shared/config/gates';
 import { getRegisterConfig } from '@mbc360/shared/config/registers';
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
@@ -205,6 +204,12 @@ function GateClosureCard({
     return null;
   };
 
+  // Whether this row is the signed-in person's to sign (the same match blockedReason makes).
+  const isMine = (row: RegisterClosureSignOff) =>
+    !!me &&
+    (nominated ? me.id === row.assignedToUserId : !!nameFor(row.role) && me.displayName.trim() === nameFor(row.role)!.trim());
+  const iAmSigner = signOffs.some((r) => isMine(r));
+
   const sign = (row: RegisterClosureSignOff, stepUpToken: string, expectedHash: string) =>
     signRegisterClose(projectId, registerKey, gateId, row.role, stepUpToken, expectedHash);
 
@@ -241,6 +246,9 @@ function GateClosureCard({
     >
       <div hidden={!open}>
       {/* One line of status; what the signature locks is a fold-out, because the list of columns can run to fifteen names. */}
+      <div className="rcp-progress" role="progressbar" aria-valuemin={0} aria-valuemax={roles.length} aria-valuenow={signedCount}>
+        <i className={closed ? 'rcp-progress-ok' : undefined} style={{ width: `${(signedCount / Math.max(roles.length, 1)) * 100}%` }} />
+      </div>
       <div className={`rcp-status ${closed ? 'rcp-status-ok' : ''}`}>
         {closed ? <LockOutlined /> : <UnlockOutlined />}
         <span>
@@ -249,6 +257,14 @@ function GateClosureCard({
             : `Open: needs ${roles.length === 2 ? 'both' : `all ${roles.length}`} signatures before ${gateId} can pass.`}
         </span>
       </div>
+      {iAmSigner && !closed && (!hasSignature || !totpEnrolled) && (
+        <div className="rcp-setup">
+          <span>
+            {!hasSignature ? 'You have no saved signature.' : 'You have no authenticator app set up.'}{' '}
+            <Link to="/account">{!hasSignature ? 'Add a signature' : 'Set up an authenticator'} in My Account</Link> to sign.
+          </span>
+        </div>
+      )}
       <details className="rcp-locks">
         <summary>What this signature locks</summary>
         <p>
@@ -293,108 +309,74 @@ function GateClosureCard({
           description="Each role is its own signature; one person signing several of them is not independent review."
         />
       )}
-      <Table
-        size="small"
-        rowKey={(r) => r.role}
-        dataSource={signOffs}
-        pagination={false}
-        sticky={TABLE_STICKY}
-        columns={[
-          { title: 'Role', width: nominated ? 120 : 108, dataIndex: 'role', render: (v) => <b style={{ whiteSpace: 'nowrap' }}>{v}</b> },
-          {
-            title: nominated ? 'Nominated by the Lead' : 'Assigned to',
-            width: nominated ? 150 : 84,
-            render: (_, r: RegisterClosureSignOff) =>
-              nominated && isLead && !isRegisterClosureSigned(r) ? (
-                <Select
-                  allowClear
-                  showSearch
-                  optionFilterProp="label"
-                  placeholder="Nominate a signer"
-                  style={{ width: '100%' }}
-                  value={r.assignedToUserId}
-                  options={userOptions}
-                  onChange={(v?: string) => assign(r.role, v)}
-                />
-              ) : (
-                nameFor(r.role) ?? (
-                  <Typography.Text type="secondary">{nominated ? 'Not nominated yet' : 'Unassigned'}</Typography.Text>
-                )
-              ),
-          },
-          {
-            title: 'Signature',
-            render: (_, r: RegisterClosureSignOff) => {
-              if (isRegisterClosureSigned(r)) {
-                const mine = r.signedByUserId === me?.id;
-                return (
-                  <Space orientation="vertical" size={0}>
-                    <span>
-                      <Tag color="green">Signed</Tag>
-                      <span>{r.name}</span>
-                    </span>
-                    {r.signatureImage && (
-                      <img
-                        src={r.signatureImage}
-                        alt={`${r.name}'s signature`}
-                        width={160}
-                        height={50}
-                        style={{
-                          maxWidth: 160,
-                          maxHeight: 50,
-                          width: 'auto',
-                          display: 'block',
-                          margin: '2px 0',
-                          objectFit: 'contain',
-                        }}
-                      />
-                    )}
-                    <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                      {r.roleAtSigning ?? 'role not recorded'} ·{' '}
-                      {r.signedAt ? dayjs(r.signedAt).format('YYYY-MM-DD HH:mm') : '—'} · record v
-                      {r.recordVersion ?? '—'}
-                    </Typography.Text>
-                    {(mine || isAdmin) && !gatePassed && (
-                      <Button
-                        size="small"
-                        type="link"
-                        danger
-                        style={{ paddingLeft: 0 }}
-                        onClick={() => setWithdrawing(r.role)}
-                      >
-                        Withdraw
-                      </Button>
-                    )}
-                  </Space>
-                );
-              }
-              const why = blockedReason(r);
-              return (
-                <Space orientation="vertical" size={4}>
-                  {isRegisterClosureStale(r) && (
-                    <Typography.Text type="warning" style={{ fontSize: 12 }}>
-                      Signed by {r.name} on {r.signedAt ? dayjs(r.signedAt).format('YYYY-MM-DD HH:mm') : '—'}, but the register
-                      changed after that, so it no longer counts. Sign again to confirm what it says now.
-                    </Typography.Text>
-                  )}
-                  <Tooltip title={why ?? ''}>
-                    <span>
-                      <Button size="small" type="primary" disabled={!!why} onClick={() => setReviewing(r.role)}>
-                        Sign as me
-                      </Button>
-                    </span>
-                  </Tooltip>
-                  {(!hasSignature || !totpEnrolled) && (
-                    <Link to="/account" style={{ fontSize: 12 }}>
-                      {!hasSignature ? 'Add a signature' : 'Set up an authenticator'} in My Account
-                    </Link>
-                  )}
-                </Space>
-              );
-            },
-          },
-        ]}
-      />
+      <div className="rcp-signers">
+        {signOffs.map((r) => {
+          const signed = isRegisterClosureSigned(r);
+          const name = nameFor(r.role);
+          const mine = isMine(r);
+          const why = mine ? blockedReason(r) : null;
+          return (
+            <div key={r.role} className="rcp-who">
+              <span className={`rcp-av ${signed ? 'rcp-av-ok' : ''}`} aria-hidden="true">
+                {(signed ? r.name : name)?.trim().charAt(0).toUpperCase() || '?'}
+              </span>
+              <div className="rcp-who-main">
+                {nominated && isLead && !signed ? (
+                  <Select
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    placeholder="Nominate a signer"
+                    style={{ width: '100%' }}
+                    value={r.assignedToUserId}
+                    options={userOptions}
+                    onChange={(v?: string) => assign(r.role, v)}
+                  />
+                ) : (
+                  <div className="rcp-who-name">
+                    {(signed ? r.name : name) ?? <Typography.Text type="secondary">{nominated ? 'Not nominated yet' : 'Unassigned'}</Typography.Text>}
+                    {mine && <span className="rcp-you"> (you)</span>}
+                  </div>
+                )}
+                <div className="rcp-who-role">
+                  {r.role}
+                  {signed && r.signedAt ? ` · ${dayjs(r.signedAt).format('YYYY-MM-DD HH:mm')}` : ''}
+                </div>
+                {signed && r.signatureImage && <img className="rcp-sig" src={r.signatureImage} alt={`${r.name}'s signature`} />}
+                {signed && (
+                  <div className="rcp-who-role">
+                    {r.roleAtSigning ?? 'role not recorded'} · record v{r.recordVersion ?? '—'}
+                  </div>
+                )}
+                {!signed && isRegisterClosureStale(r) && (
+                  <Typography.Text type="warning" style={{ fontSize: 12 }}>
+                    Signed by {r.name} on {r.signedAt ? dayjs(r.signedAt).format('YYYY-MM-DD HH:mm') : '—'}, but the register changed after that, so it no
+                    longer counts. Sign again to confirm what it says now.
+                  </Typography.Text>
+                )}
+                {signed && (r.signedByUserId === me?.id || isAdmin) && !gatePassed && (
+                  <Button size="small" type="link" danger style={{ paddingLeft: 0, height: 22 }} onClick={() => setWithdrawing(r.role)}>
+                    Withdraw
+                  </Button>
+                )}
+              </div>
+              <div className="rcp-who-act">
+                {signed ? (
+                  <Tag color="green" style={{ marginInlineEnd: 0 }}>
+                    Signed
+                  </Tag>
+                ) : mine ? (
+                  <Button size="small" type="primary" disabled={!!why} onClick={() => setReviewing(r.role)}>
+                    Sign as me
+                  </Button>
+                ) : (
+                  <Tag style={{ marginInlineEnd: 0 }}>Waiting</Tag>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
       </div>
       <Modal
         open={withdrawing !== null}
