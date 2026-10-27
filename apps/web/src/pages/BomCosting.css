@@ -71,7 +71,7 @@
 .cc-col { min-width: 0; }
 .cc-cap { margin: 18px 0 4px; color: var(--c-text-3); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
 .cc-col .cc-cap:first-child { margin-top: 0; }
-.cc-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; min-height: 52px; border-bottom: 1px dotted var(--c-border); }
+.cc-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; min-height: 52px; }
 .cc-l small { display: block; color: var(--c-text-3); font-size: 11px; line-height: 16px; }
 .cc-v { font-variant-numeric: tabular-nums; text-align: right; }
 .cc-calc { color: var(--c-text-2); }
