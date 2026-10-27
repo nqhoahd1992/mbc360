@@ -340,7 +340,7 @@ const WORK_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed', 'On Hold
 // their status as 'Completed' keep WORK_STATUS_OPTIONS until those rules accept this wording too.
 // Supplier & Raw Material Evidence, Fragrance / Allergen Log, Twinkle 5 Claims Map, Participant / Sample Log and PIF Evidence Closure
 // moved to this list because each sheet's own data validation offers it (isDoneStatus reads 'Complete' and 'Completed' alike). Rows
-// saved as On Hold / Backtracked were mapped to Blocked / Needs Review, the nearest states [ASSUMPTION: R5-Q81].
+// saved as On Hold / Backtracked were mapped to Blocked / Needs Review, the nearest states (migration 20261027190000).
 const SHEET_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Needs Review', 'Complete', 'Not Applicable', 'Blocked'] as const;
 
 // Status lists the workbook gives its own sheets (v2 workbook data validation). Where a sheet carries both the generic list above and
