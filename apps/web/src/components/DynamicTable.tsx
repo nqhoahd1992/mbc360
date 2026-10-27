@@ -521,6 +521,15 @@ export default function DynamicTable({
 
   const rowName = (row: RegisterRow) => (identityText ? identityText(row) : text(row[identity.key]));
   const rowSubtitle = (row: RegisterRow) => (subtitleText ? subtitleText(row) : subtitle ? text(row[subtitle.key]) : '');
+  // A subtitle that names workbook sheets reads as the pages of the app (links), never as slugs; the row click must not follow them.
+  const subtitleNode = (row: RegisterRow) =>
+    !subtitleText && subtitle?.sheetRefs ? (
+      <span onClick={stop}>
+        <SheetRefs value={rowSubtitle(row)} projectId={projectId} />
+      </span>
+    ) : (
+      rowSubtitle(row)
+    );
   const rowClass = (row: RegisterRow) =>
     `rt-row${isBlank(row) || rowHasError?.(row, draft) ? ' rt-row-blank' : ''}`;
   const identityCell = (row: RegisterRow, index: number) => {
@@ -531,7 +540,7 @@ export default function DynamicTable({
           {name || <span className="rt-muted">{identity.autoId ? 'New — ID assigned on save' : isBlank(row) ? 'Empty row' : `Row ${index + 1}`}</span>}
           {isBlank(row) && <span className="c-tag c-tag-bad rt-empty-tag">No data</span>}
         </div>
-        {rowSubtitle(row) && <div className="rt-sub">{rowSubtitle(row)}</div>}
+        {rowSubtitle(row) && <div className="rt-sub">{subtitleNode(row)}</div>}
       </>
     );
   };
@@ -703,7 +712,7 @@ export default function DynamicTable({
                 <tr key={index}>
                   {config.columns.map((col, ci) => (
                     <td key={col.key} className={ci === 0 ? 'rt-reference-label' : undefined}>
-                      {text(row[col.key]) || <span className="rt-muted">—</span>}
+                      {col.sheetRefs && text(row[col.key]) ? <SheetRefs value={text(row[col.key])} projectId={projectId} /> : text(row[col.key]) || <span className="rt-muted">—</span>}
                     </td>
                   ))}
                 </tr>
@@ -803,12 +812,12 @@ export default function DynamicTable({
                   <td>{identityCell(row, index)}</td>
                   {shown.map((col) => (
                     <td key={col.key} onClick={stop}>
-                      {isTextColumn(col) ? (<div className="rt-preview">{text(row[col.key]) || <span className="rt-muted">—</span>}</div>) : renderEditor(col, row, index)}
+                      {isTextColumn(col) ? (<div className="rt-preview">{col.sheetRefs && text(row[col.key]) ? <SheetRefs value={text(row[col.key])} projectId={projectId} /> : text(row[col.key]) || <span className="rt-muted">—</span>}</div>) : renderEditor(col, row, index)}
                     </td>
                   ))}
                   {preview && (
                     <td>
-                      <div className="rt-preview">{text(row[preview.key]) || <span className="rt-muted">—</span>}</div>
+                      <div className="rt-preview">{preview.sheetRefs && text(row[preview.key]) ? <SheetRefs value={text(row[preview.key])} projectId={projectId} /> : text(row[preview.key]) || <span className="rt-muted">—</span>}</div>
                     </td>
                   )}
                   <td className="rt-chev"><RightOutlined /></td>
@@ -894,7 +903,7 @@ export default function DynamicTable({
                   {config.title} · {openIndex + 1} of {draft.length}
                 </div>
                 <div className="rt-drawer-name">{rowName(openRow) || `Row ${openIndex + 1}`}</div>
-                {rowSubtitle(openRow) && <div className="rt-sub">{rowSubtitle(openRow)}</div>}
+                {rowSubtitle(openRow) && <div className="rt-sub">{subtitleNode(openRow)}</div>}
               </div>
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                 <Button type="text" disabled={false} icon={<UpOutlined />} aria-label="Previous row" onClick={() => step(-1)} />

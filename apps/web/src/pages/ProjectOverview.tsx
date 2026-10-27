@@ -208,7 +208,7 @@ export default function ProjectOverview() {
           value={openChanges.length}
           sub={openChanges.length > 0 ? 'Open in Change Control' : 'Nothing open'}
         />
-        {currentGate && (
+        {currentGate ? (
           <StatTile
             to={`/projects/${identity.id}/phase/${currentGate.phase}?gate=${currentGate.id}`}
             label={`Gate ${currentGate.number} blockers`}
@@ -216,6 +216,9 @@ export default function ProjectOverview() {
             tone={currentBlockers.length > 0 ? 'bad' : undefined}
             sub={currentBlockers.length === 0 ? 'Ready to decide' : currentGate.name}
           />
+        ) : (
+          // Every gate has passed, so there is no current gate to block: the tile stays, saying so, rather than leaving a hole in the row.
+          <StatTile label="Gate blockers" value={0} sub="No gate open — all gates passed" />
         )}
         <div className="c-card po-stat">
           <div className="po-stat-label">Gates passed</div>

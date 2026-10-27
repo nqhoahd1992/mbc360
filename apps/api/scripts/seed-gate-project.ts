@@ -341,6 +341,28 @@ async function fixMarketTracks(ctx: Ctx, field: 'regulatoryStatus' | 'launchAppr
 }
 
 // Gate 12: a review that found nothing records ONE assessment answered No, with its reviewer and reason.
+// The explicit Yes/No answers each gate asks (Overview → Assessments). They are answered at their own gate and are read-only once
+// it has passed, so they are recorded just before it. Family use is left unasked on purpose: the seeded product is not a family-use one.
+async function answerAssessments(ctx: Ctx, gateNumber: number): Promise<void> {
+  const a = project.assessments ?? {};
+  let patch: Record<string, string> | undefined;
+  if (gateNumber === 3 && !a.administrativeOnly) patch = { administrativeOnly: 'No' };
+  else if (gateNumber === 8 && !a.humanStudyPlanned) patch = { humanStudyPlanned: 'Yes' };
+  else if (gateNumber === 9 && !a.scaleUpRiskIdentified) {
+    patch = {
+      scaleUpRiskIdentified: 'Yes',
+      scaleUpRiskDescription: `${SEED}: the new emollient system changes the heating and cooling profile at batch scale`,
+      scaleUpRiskAssessor: ctx.adminName,
+      scaleUpRiskAssessmentDate: today,
+      scaleUpRiskRationale: `${SEED}: a Major formula change; viscosity and phase stability are sensitive to mixing speed and cooling rate`,
+      scaleUpRiskActivity: `${SEED}: one pilot batch at full scale before release`,
+      scaleUpRiskEvidenceLink: 'https://example.com/seed/scale-up',
+    };
+  }
+  if (!patch) return;
+  take(await api('PUT', `/projects/${ctx.id}/assessments`, { patch, expectedVersion: version }));
+}
+
 async function fixChangeAssessments(ctx: Ctx): Promise<boolean> {
   const entries = project.changeControlAssessments ?? [];
   if (entries.length > 0 && entries.every((e) => e.answer === 'Yes' || e.answer === 'No')) return false;
@@ -824,6 +846,7 @@ async function main() {
       }
       continue;
     }
+    await answerAssessments(ctx, n);
     const items = GATE_READINESS[gate] ?? [];
     // The gate's own three-signature item is satisfied last, by signGateDirectly.
     const signOffIds = new Set(items.filter((c) => c.check.kind === 'gateSignedOff').map((c) => c.id));

@@ -149,6 +149,8 @@ function checkSheetName(check: ReadinessCheck, gateId: string): string | undefin
 }
 
 interface SheetBlockRule {
+  gateId: string;
+  itemId: string; // the readiness item, so its live state can be looked up on the project
   gateNumber: string;
   tier: ReadinessTier;
   label: string;
@@ -161,6 +163,8 @@ interface SheetBlockRule {
 interface SheetEntry {
   key: string;
   sheetName: string; // owner-neutral — this is the identity rows are keyed by
+  // What the sheet is called in the app (its page or register title) — the only name shown; the slug above stays an identity.
+  title: string;
   // The literal V18 tab (e.g. `Tuan-Formula_BOM`). Shown ONLY on this page,
   // whose whole job is comparing the app against the Excel file, and shown as
   // provenance rather than as an owner: the person in that prefix is not who
@@ -205,6 +209,7 @@ function buildSheetIndex(): SheetEntry[] {
       entry = {
         key: sheetName,
         sheetName,
+        title: sheetName,
         workbookTab: undefined,
         parts: [],
         groups: [],
@@ -310,6 +315,8 @@ function buildSheetIndex(): SheetEntry[] {
       const entry = bySheet.get(sheetName);
       if (!entry) continue;
       entry.blocks.push({
+        gateId,
+        itemId: req.id,
         gateNumber: gateNumberOf(gateId),
         tier: req.tier,
         label: req.label,
@@ -326,7 +333,14 @@ function buildSheetIndex(): SheetEntry[] {
     if (registerKey) entry.href = `/projects/:id/registers/reg/${registerKey}`;
   }
 
-  return [...bySheet.values()].sort((a, b) => a.sheetName.localeCompare(b.sheetName));
+  // The sheet's name in the app: its nav item's title, else the one thing it holds, else the slug with its underscores read as spaces.
+  const navTitleBySheet = new Map<string, string>();
+  for (const group of getNavGroups()) for (const item of group.items) if (item.sheetName && !navTitleBySheet.has(item.sheetName)) navTitleBySheet.set(item.sheetName, item.title);
+  for (const entry of bySheet.values()) {
+    entry.title = navTitleBySheet.get(entry.sheetName) ?? (entry.parts.length === 1 ? entry.parts[0].title : entry.sheetName.replace(/_/g, ' '));
+  }
+
+  return [...bySheet.values()].sort((a, b) => a.title.localeCompare(b.title));
 }
 
 // Tier as a concept tag tone: the colour sits on the tag, never on the text.
@@ -454,7 +468,7 @@ export default function GateRulesMap() {
       // The V18 tab string stays searchable so anyone who knows the workbook by
       // its prefixed tab names can still find the sheet — searching is not the
       // same as asserting who owns it.
-      const haystack = [entry.sheetName, entry.workbookTab ?? '', ...entry.parts.map((p) => p.title), ...entry.groups]
+      const haystack = [entry.title, entry.sheetName, entry.workbookTab ?? '', ...entry.parts.map((p) => p.title), ...entry.groups]
         .join(' ')
         .toLowerCase();
       if (!haystack.includes(q)) return false;
@@ -527,10 +541,24 @@ export default function GateRulesMap() {
 
   // One tag per blocked gate, red when any of its items there is Mandatory —
   // the old "Blocks a gate?" column; the reasons live in the drawer.
+  // Whether each readiness item is met on THIS project right now. The tag colour follows it: red only while the sheet is what is
+  // holding the gate; once the evidence is in (or the gate has passed) the rule is still listed, but as met.
+  const itemMet = new Map<string, boolean>();
+  for (const g of GATES) for (const i of gateReadinessChecklist(project, g.id)) itemMet.set(`${g.id}:${i.id}`, i.satisfied);
+  const isMet = (b: SheetBlockRule) => itemMet.get(`${b.gateId}:${b.itemId}`) === true;
+
   const blockTags = (entry: SheetEntry) => {
     const gatesBlocked = [...new Set(entry.blocks.map((b) => b.gateNumber))].sort();
     return gatesBlocked.map((n) => {
-      const worst = entry.blocks.find((b) => b.gateNumber === n && b.tier === 'Mandatory');
+      const unmet = entry.blocks.filter((b) => b.gateNumber === n && !isMet(b));
+      if (unmet.length === 0) {
+        return (
+          <span key={n} className="c-tag c-tag-dot c-tag-ok" title="Every rule this sheet carries for this gate is met on this project">
+            Met for G{n}
+          </span>
+        );
+      }
+      const worst = unmet.some((b) => b.tier === 'Mandatory');
       return (
         <span key={n} className={`c-tag c-tag-dot ${worst ? 'c-tag-bad' : 'c-tag-warn'}`}>
           Blocks G{n}
@@ -757,7 +785,7 @@ export default function GateRulesMap() {
                             setOpenKey(entry.key);
                           }}
                         >
-                          {entry.sheetName}
+                          {entry.title}
                         </button>
                         {href && (
                           <a
@@ -765,7 +793,7 @@ export default function GateRulesMap() {
                             href={`#${href}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label={`Open ${entry.sheetName} in a new tab`}
+                            aria-label={`Open ${entry.title} in a new tab`}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <ExportOutlined />
@@ -775,11 +803,6 @@ export default function GateRulesMap() {
                       {/* One muted line: the V18 tab (provenance, not owner) and
                           what the sheet is in the app; the full list is in the drawer. */}
                       <div className="grm-forms">
-                        {entry.workbookTab && entry.workbookTab !== entry.sheetName && (
-                          <>
-                            Excel tab: <span className="grm-mono">{entry.workbookTab}</span> ·{' '}
-                          </>
-                        )}
                         {entry.parts.length} form{entry.parts.length === 1 ? '' : 's'} · {entry.parts.map((p) => p.title).join(' · ')}
                       </div>
                     </div>
@@ -921,7 +944,6 @@ export default function GateRulesMap() {
                             <a className="c-link" href={`#/projects/${id}/registers/reg/${c.key}`} target="_blank" rel="noopener noreferrer">
                               {c.title}
                             </a>
-                            <span className="grm-mono grm-muted">{c.sheetName}</span>
                             <span className="c-tag">{formatGate(c.gate)}</span>
                             {isGateRefLocked(project, c.gate) && (
                               <span className="c-tag c-tag-ok">
@@ -964,12 +986,7 @@ export default function GateRulesMap() {
                 <div className="rt-drawer-count">
                   {openIndex + 1} of {filtered.length}
                 </div>
-                <div className="rt-drawer-name grm-mono">{open.sheetName}</div>
-                {open.workbookTab && open.workbookTab !== open.sheetName && (
-                  <div className="rt-sub">
-                    Excel tab: <span className="grm-mono">{open.workbookTab}</span>
-                  </div>
-                )}
+                <div className="rt-drawer-name">{open.title}</div>
               </div>
               <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                 <Button type="text" disabled={false} icon={<UpOutlined />} aria-label="Previous" onClick={() => step(-1)} />
@@ -1091,8 +1108,9 @@ export default function GateRulesMap() {
                   {open.blocks.map((b, i) => (
                     <li key={i}>
                       <span className="grm-tags">
-                        <span className={`c-tag c-tag-dot ${TIER_TONE[b.tier]}`}>
+                        <span className={`c-tag c-tag-dot ${isMet(b) ? 'c-tag-ok' : TIER_TONE[b.tier]}`}>
                           Gate {b.gateNumber} · {b.tier}
+                          {isMet(b) && ' · met'}
                         </span>
                       </span>
                       <div>

@@ -4046,7 +4046,8 @@ export interface NavGroup {
 // one that carries the sheet's name is chosen.
 const SHEET_PAGE_OVERRIDES: Record<string, string> = {};
 // Cell text writes the sheet "Change_Control_Comm"; its nav item's sheet name is the workbook tab's own "Change_Ctrl_Comm".
-const SHEET_NAME_ALIASES: Record<string, string> = { Change_Control_Comm: 'Change_Ctrl_Comm' };
+// The Template Index writes the feedback sheet as "Product_Feedback_Form"; its page is Product / Sample Feedback.
+const SHEET_NAME_ALIASES: Record<string, string> = { Change_Control_Comm: 'Change_Ctrl_Comm', Product_Feedback_Form: 'Product_Feedback' };
 export interface SheetRef {
   text: string;
   item?: NavItem;

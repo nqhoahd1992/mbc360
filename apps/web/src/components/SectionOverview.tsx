@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import ReviewOwnerLine from './ReviewOwnerLine';
+import SheetRefs from './SheetRefs';
 import { Button, Tabs } from 'antd';
 import { CheckCircleOutlined, LockOutlined, RightOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { GATES } from '@mbc360/shared/config/gates';
 import { getRegisterConfig, navItemHref, type NavGroup, type NavItem } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
-import type { ProjectData } from '@mbc360/shared/types';
-import { isRegisterFullyClosed } from '@mbc360/shared/utils/registerClosures';
+import { isRegisterClosed, isRegisterClosureSigned, type ProjectData } from '@mbc360/shared/types';
+import { closureStateAt, isRegisterFullyClosed, registerClosureGateIds, registerClosureRoles } from '@mbc360/shared/utils/registerClosures';
 import { currentGateIndex, gateRefGateIds, isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
 import '../styles/concept.css';
 import '../pages/AdminUsers.css';
@@ -22,7 +23,7 @@ import './SectionOverview.css';
 // already exists (the gate ladder, the gate-evidence lock, register closures);
 // nothing here adds a rule.
 
-type Filter = 'all' | 'due' | 'open' | 'done';
+type Filter = 'all' | 'due' | 'open' | 'locked' | 'closed';
 
 export interface GuideSection {
   title: string;
@@ -35,6 +36,10 @@ interface SheetRow {
   due: boolean;
   locked: boolean;
   closed: boolean;
+  // Closing signatures: at how many of the gates this sheet has to be closed at the signatures stand, and who signed.
+  closedGates: number;
+  closureGates: number;
+  signers: string[];
   isPage: boolean;
   rows: number;
   completed?: number;
@@ -60,39 +65,57 @@ export default function SectionOverview({
     const config = item.registerKey ? getRegisterConfig(item.registerKey) : undefined;
     const rows = item.registerKey ? (project.registers[item.registerKey] ?? []) : [];
     const gateIds = gateRefGateIds(item.gate);
+    // A sheet is closed by its own signature, or by its anchor's when it is a member of a group. A PAGE (several registers on one
+    // screen, `contains`) is closed when every anchor it holds is: Needs & Scientific Basis has one signature for five tables.
+    const memberConfigs = config ? [config] : (item.contains ?? []).map((k) => getRegisterConfig(k)).filter((c): c is NonNullable<typeof c> => !!c);
+    const anchors = [...new Map(memberConfigs.map((c) => { const a = (c.closedWith && getRegisterConfig(c.closedWith)) || c; return [a.key, a] as const; })).values()];
+    const closureOf = (a: (typeof anchors)[number]) => {
+      const gates = registerClosureGateIds(a);
+      const roles = registerClosureRoles(a);
+      const at = gates.filter((g) => isRegisterClosed(closureStateAt(project, a.key, g), roles));
+      const who = at.flatMap((g) => (closureStateAt(project, a.key, g)?.signOffs ?? []).filter((so) => isRegisterClosureSigned(so)).map((so) => so.name ?? ''));
+      return { total: gates.length, closed: at.length, who };
+    };
+    const closures = anchors.map(closureOf);
+    const closureGateCount = closures.reduce((n, c) => n + c.total, 0);
+    const closedGateCount = closures.reduce((n, c) => n + c.closed, 0);
+    const signers = [...new Set(closures.flatMap((c) => c.who))].filter(Boolean);
     const statusCol = config?.columns.find((c) => c.key === 'status' && c.type === 'select');
     return {
       item,
       gateNumbers: gateIds.map((g) => GATES.find((x) => x.id === g)?.number ?? g),
       due: !!current && gateIds.includes(current.id),
       locked: isGateRefLocked(project, item.gate),
-      closed: !!config && isRegisterFullyClosed(project, config),
+      closed: anchors.length > 0 && anchors.every((a) => isRegisterFullyClosed(project, a)),
+      closedGates: closedGateCount,
+      closureGates: closureGateCount,
+      signers,
       isPage: !config,
       rows: rows.length,
       completed: statusCol ? rows.filter((r) => r.status === 'Completed' || r.status === 'Complete').length : undefined,
     };
   });
 
-  // Due now first, then still-open by their earliest gate, locked last.
-  const order = (s: SheetRow) => (s.due ? 0 : s.locked ? 2 : 1);
-  const firstGate = (s: SheetRow) => (s.gateNumbers.length ? Number(s.gateNumbers[0]) : 99);
-  const sorted = [...sheets].sort((a, b) => order(a) - order(b) || firstGate(a) - firstGate(b));
+  // The sidebar's own order, so the list reads the same as the menu beside it.
+  const sorted = sheets;
 
   const done = (s: SheetRow) => s.locked || s.closed;
   const counts = {
     due: sheets.filter((s) => s.due).length,
     open: sheets.filter((s) => !done(s)).length,
-    locked: sheets.filter((s) => s.locked).length,
+    // Locked = its gate has passed but nobody has signed it closed; closed = the closing signatures stand.
+    locked: sheets.filter((s) => s.locked && !s.closed).length,
     closed: sheets.filter((s) => s.closed).length,
   };
   const visible = sorted.filter((s) =>
-    filter === 'all' ? true : filter === 'due' ? s.due : filter === 'open' ? !done(s) : done(s),
+    filter === 'all' ? true : filter === 'due' ? s.due : filter === 'open' ? !done(s) : filter === 'locked' ? s.locked && !s.closed : s.closed,
   );
   const chips: [Filter, string, number][] = [
     ['all', 'All', sheets.length],
     ...(current ? [['due', `Gate ${current.number} (current)`, counts.due] as [Filter, string, number]] : []),
     ['open', 'Open', counts.open],
-    ['done', 'Locked / closed', counts.locked + counts.closed - sheets.filter((s) => s.locked && s.closed).length],
+    ['locked', 'Locked, not signed', counts.locked],
+    ['closed', 'Closed', counts.closed],
   ];
 
   const gateTag = (s: SheetRow) =>
@@ -122,17 +145,33 @@ export default function SectionOverview({
       </span>
     );
   };
-  const status = (s: SheetRow) =>
-    s.locked ? (
-      <span className="c-tag" title="Its gate has passed — Backtrack to correct it">
+  const status = (s: SheetRow) => {
+    const by = s.signers.length ? `signed by ${s.signers.join(', ')}` : '';
+    if (s.closed) {
+      return (
+        <span className="c-tag c-tag-ok" title={by ? by.charAt(0).toUpperCase() + by.slice(1) : 'Closed by signature'}>
+          <CheckCircleOutlined />
+          Closed{s.closureGates > 1 ? ` ${s.closedGates}/${s.closureGates}` : ''}
+        </span>
+      );
+    }
+    if (s.closedGates > 0) {
+      return (
+        <span className="c-tag c-tag-warn" title={`Closed at ${s.closedGates} of ${s.closureGates} gates${by ? ` — ${by}` : ''}`}>
+          <LockOutlined />
+          Closed {s.closedGates}/{s.closureGates}
+        </span>
+      );
+    }
+    return s.locked ? (
+      <span className="c-tag" title="Its gate has passed but nobody has signed it closed — Backtrack to correct it">
         <LockOutlined />
         Locked
       </span>
-    ) : s.closed ? (
-      <span className="c-tag c-tag-ok">Closed</span>
     ) : (
       <span className="c-tag">Open</span>
     );
+  };
 
   const reviewOwner = group.reviewOwner ? composeReviewOwner(group.reviewOwner, project.identity.reviewers) : undefined;
 
@@ -161,7 +200,7 @@ export default function SectionOverview({
               <div className="so-name">
                 <div className="au-name-text">{s.item.title}</div>
               </div>
-              <div className="so-gate">{gateTag(s)}</div>
+              <div className="so-gate">{group.key === 'dept-system' ? null : gateTag(s)}</div>
               <div className="so-prog">{progress(s)}</div>
               <div className="so-state">{status(s)}</div>
               <RightOutlined className="au-chev so-chev" />
@@ -192,7 +231,7 @@ export default function SectionOverview({
             </>
           )}
           {' · '}
-          {counts.locked} locked · {counts.closed} closed
+          {counts.locked} locked, not signed · {counts.closed} closed
         </p>
       </header>
 
@@ -211,8 +250,8 @@ export default function SectionOverview({
                       <dl className="so-dl">
                         {sec.rows.map((r) => (
                           <div key={r.topic} className="so-dl-row">
-                            <dt>{r.topic}</dt>
-                            <dd>{r.instruction}</dd>
+                            <dt><SheetRefs value={r.topic} projectId={id} /></dt>
+                            <dd><SheetRefs value={r.instruction} projectId={id} /></dd>
                           </div>
                         ))}
                       </dl>

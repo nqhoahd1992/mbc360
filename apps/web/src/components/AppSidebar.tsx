@@ -347,7 +347,8 @@ function ProjectPanel() {
                         key={`${group.key}:${idx}`}
                         to={to}
                         label={item.title}
-                        meta={formatGate(item.gate) || undefined}
+                        // Reference material (System Guide & Reference) belongs to no gate, so it carries no gate tag.
+                        meta={group.key === 'dept-system' ? undefined : formatGate(item.gate) || undefined}
                         note={otherOwner ? `Owner: ${reviewRoleLabel(itemRole)}` : undefined}
                         sub
                         current={pathname === to}

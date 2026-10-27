@@ -153,7 +153,7 @@ export default function MySheets() {
                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                   Your review areas on this project
                 </Typography.Text>
-                <div style={{ marginTop: 2 }}>
+                <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {myRoles.map((role) => (
                     <Tag key={role} color="geekblue">
                       {reviewRoleLabel(role)}
@@ -225,7 +225,7 @@ export default function MySheets() {
                   })),
                   onFilter: (value, r: MySheetRow) => r.involvement.includes(value as ReviewInvolvement),
                   render: (_, r: MySheetRow) => (
-                    <span>
+                    <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6 }}>
                       {r.involvement.map((i) => (
                         <Tooltip key={i} title={INVOLVEMENT_META[i].blurb}>
                           <Tag color={INVOLVEMENT_META[i].color}>{INVOLVEMENT_META[i].label}</Tag>
