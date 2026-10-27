@@ -73,7 +73,7 @@ export default function ProductDevelopmentReport() {
       <CompositePageHeader
         project={project}
         title="Product Development Report"
-        description={<>Identification, the development iteration log and the team feedback and competitor notes behind each formula version.</>}
+        description={<>Records the iterative development of new SKUs: each formula improvement by NPD, the team feedback that drove it, competitor benchmarking and the decision trail - the way Supplement/Pharma capture it. Links to Formulation_Change_Register, Product_Feedback_Form and Product_Family_Register.</>}
         reviewOwnerText={reviewOwnerText}
       />
 

@@ -806,7 +806,7 @@ const supplierRmEvidence: RegisterConfig = {
   key: 'supplierRmEvidence',
   title: 'Supplier & Raw Material Evidence',
   sheetName: 'Supplier_RM_Evidence',
-  description: 'Capture supplier documents once per material and link them into Formulation_Safety and PIF.',
+  description: 'Capture supplier documents once per material and link them into Formula_BOM, Formulation_Safety and PIF evidence.',
   mode: 'register',
   // SME Round 4 question 31: Gate 4 gives every candidate a conclusion, a conditional acceptance is closed before Gate 7 (entered at Gate 7), and Gates 10 and 11 only re-check the materials in the formula. Conclusion columns are Gate 7's, the rest Gate 4's.
   gate: '04/07',
@@ -1100,7 +1100,7 @@ const ingredientSubstitution: RegisterConfig = {
   key: 'ingredientSubstitution',
   title: 'Ingredient Substitution Evidence',
   sheetName: 'Ingredient_Substitution',
-  description: 'Use only when an ingredient is excluded, replaced or materially changed.',
+  description: 'Use only when an ingredient is excluded, replaced or materially changed. This prevents repeated substitution notes across safety, claims and change sheets.',
   mode: 'register',
   gate: '04/07',
   columns: [
@@ -1129,7 +1129,7 @@ const eyeSafetyEvidence: RegisterConfig = {
   key: 'eyeSafetyEvidence',
   title: 'Eye Safety Evidence',
   sheetName: 'Eye_Safety_Evidence',
-  description: 'Use where eye-area use, baby-contact use, low-irritation or eye-safe language is claimed.',
+  description: 'Use where eye-area use, baby-contact use, low-irritation or eye-safe language is relevant.',
   mode: 'register',
   gate: '07/08',
   columns: [
@@ -1153,6 +1153,7 @@ export const fragranceSafety: RegisterConfig = {
   key: 'fragranceSafety',
   title: 'Fragrance Workflow',
   sheetName: 'Fragrance_Safety',
+  description: 'Six-step fragrance workflow from supplier selection through post-market surveillance.',
   mode: 'fixed',
   gate: '07',
   columns: [
@@ -1198,7 +1199,7 @@ const microPetEvidence: RegisterConfig = {
   key: 'microPetEvidence',
   title: 'Microbiology & PET Evidence',
   sheetName: 'Micro_PET_Evidence',
-  description: 'Capture micro limits, PET/challenge testing and preservation rationale.',
+  description: 'Capture micro limits, PET/challenge testing and preservation rationale once. Link reports to Test_Report_Index and PIF export.',
   mode: 'register',
   gate: '08',
   columns: [
@@ -1222,7 +1223,7 @@ const stabilityRelease: RegisterConfig = {
   key: 'stabilityRelease',
   title: 'Stability, Compatibility & Release Evidence',
   sheetName: 'Stability_Release',
-  description: 'Use for accelerated/real-time stability, package compatibility and final release decisions.',
+  description: 'Use for accelerated/real-time stability, package compatibility and final release evidence. Do not duplicate raw reports; link them.',
   mode: 'register',
   // Gate 9 records stability and compatibility results; Gate 11 (Quality release pathway) records the final release decision. [ASSUMPTION: R5-Q62] The SME lists "Quality release pathway" at Gate 11 and a release-readiness conclusion at Gate 9 but does not say where this column is entered.
   gate: '09/11',
@@ -1274,7 +1275,7 @@ const mechanismClaimsMap: RegisterConfig = {
   key: 'mechanismClaimsMap',
   title: 'Mechanism & Claims Evidence Map',
   sheetName: 'Mechanism_Claims_Map',
-  description: 'Map each claim to the underlying problem, mechanism, ingredients, evidence level and approved wording.',
+  description: 'Map each claim to the underlying problem, mechanism, ingredients, evidence level and approved wording before external use.',
   mode: 'register',
   gate: '03/10',
   columns: [
@@ -1302,7 +1303,7 @@ const twinkle5ClaimsMap: RegisterConfig = {
   key: 'twinkle5ClaimsMap',
   title: 'Twinkle 5 Claims Map',
   sheetName: 'Twinkle5_Claims_Map',
-  description: 'Connect skin-quality principles to evidence and claim controls.',
+  description: 'Connect skin-quality principles to evidence and claim controls. Use only where Twinkle 5 language is relevant.',
   mode: 'fixed',
   gate: '03/10',
   columns: [
@@ -1328,7 +1329,7 @@ const efficacyAssurance: RegisterConfig = {
   key: 'efficacyAssurance',
   title: 'Efficacy Assurance Control',
   sheetName: 'Efficacy_Assurance',
-  description: 'Checks whether efficacy is controlled as clearly as safety, before claim approval.',
+  description: 'Use this first to check that efficacy is controlled as clearly as safety. Do not duplicate reports; link to the source sheet.',
   mode: 'fixed',
   gate: '05/08',
   columns: [
@@ -1354,7 +1355,7 @@ const functionalEfficacy: RegisterConfig = {
   key: 'functionalEfficacy',
   title: 'Functional Efficacy Evidence',
   sheetName: 'Functional_Efficacy',
-  description: 'Record controlled functional assay evidence (e.g. chlorine reduction, moisture retention).',
+  description: 'Record controlled functional assay evidence such as chlorine reduction, copper/mineral residue, moisturisation, barrier or other product-specific endpoints.',
   mode: 'register',
   gate: '08/10',
   columns: [
@@ -1457,7 +1458,7 @@ const efficacyStudyPlan: RegisterConfig = {
   key: 'efficacyStudyPlan',
   title: 'Efficacy Study Plan',
   sheetName: 'Efficacy_Study_Plan',
-  description: 'Use when claims need proof beyond ingredient rationale. Link the final protocol/report.',
+  description: 'Use when claims need proof beyond ingredient rationale. Link final protocols and reports rather than duplicating them.',
   mode: 'register',
   gate: '08',
   columns: [
@@ -1486,7 +1487,7 @@ const testReportIndex: RegisterConfig = {
   key: 'testReportIndex',
   title: 'Test Report Index',
   sheetName: 'Test_Report_Index',
-  description: 'Record method, score, acceptance limit, conclusion and final report link for every controlled report.',
+  description: 'Record method, score, acceptance limit, conclusion and final report link once. All other tabs should link back to this index.',
   mode: 'register',
   gate: 'ALL',
   columns: [
@@ -1516,7 +1517,7 @@ export const packagingSpecsArtwork: RegisterConfig = {
   key: 'packagingSpecsArtwork',
   title: 'Packaging Specs & Artwork Evidence',
   sheetName: 'Packaging_Specs_Artwork',
-  description: 'Development evidence for planned package/artwork (not the change log).',
+  description: 'Use for planned package/artwork evidence. Use Artwork_Change_Control only when a released or controlled version changes.',
   mode: 'register',
   // Columns the readiness of Gate 6 (specification) and Gate 10 (artwork approval and claims) demand carry their
   // own gate; Gate 11 is part of the list because the label is still being finished there.
@@ -1584,7 +1585,7 @@ const artworkChangeControl: RegisterConfig = {
   key: 'artworkChangeControl',
   title: 'Artwork Change Control',
   sheetName: 'Artwork_Change_Control',
-  description: 'Use only when artwork, label, carton, pack copy, proof or printer file changes.',
+  description: 'Use only when artwork, label, carton, pack copy, proof or printer file changes. Planned artwork evidence belongs in Packaging_Specs_Artwork.',
   mode: 'fixed',
   gate: '06/10/11',
   columns: [
@@ -1614,7 +1615,7 @@ const formulaChangeControl: RegisterConfig = {
   key: 'formulaChangeControl',
   title: 'Formula Change Control',
   sheetName: 'Formula_Change_Control',
-  description: 'Use for any formula, ingredient, supplier, pH, process, potency or preservation change.',
+  description: 'Use for any formula, ingredient, supplier, pH, process, potency, preservative, fragrance, active-level or manufacturing instruction change.',
   mode: 'fixed',
   gate: '05',
   columns: [
@@ -1651,7 +1652,7 @@ const aseanPifMap: RegisterConfig = {
   key: 'aseanPifMap',
   title: 'ASEAN PIF / Dossier Map',
   sheetName: 'ASEAN_PIF_Map',
-  description: 'High-level dossier overview. PIF_Checklist_ASEAN holds the detailed closure checklist.',
+  description: 'High-level dossier overview. The detailed closure checklist is PIF_Checklist_ASEAN.',
   mode: 'fixed',
   gate: '10',
   columns: [
@@ -1766,7 +1767,7 @@ const pifChecklistAsean: RegisterConfig = {
   key: 'pifChecklistAsean',
   title: 'ASEAN PIF Checklist (Closure)',
   sheetName: 'PIF_Checklist_ASEAN',
-  description: 'Detailed checklist for PIF closure. Points to the source evidence sheet for each section.',
+  description: 'Detailed checklist for PIF closure. It should point to source evidence tabs rather than repeat their content.',
   mode: 'fixed',
   gate: '10',
   columns: [
@@ -1799,7 +1800,7 @@ const pifEvidenceExport: RegisterConfig = {
   key: 'pifEvidenceExport',
   title: 'PIF Evidence Export',
   sheetName: 'PIF_Evidence_Export',
-  description: 'Export pack used when reports, claims or safety/performance evidence are moved into the product PIF / Product Master File.',
+  description: 'Use this as the export pack when reports, claims or safety/performance evidence are moved into the product PIF / Product Master File.',
   mode: 'register',
   gate: '10/11',
   columns: [
@@ -1821,7 +1822,7 @@ const skuClaimsPifRegister: RegisterConfig = {
   key: 'skuClaimsPifRegister',
   title: 'SKU Claims / PIF Register',
   sheetName: 'SKU_Claims_PIF_Register',
-  description: 'Register each SKU-level claim and the PIF evidence that supports it. Blocks external use until closed (see PIF_Evidence_Closure).',
+  description: 'Register each SKU-level claim and the PIF evidence that supports it. No claim is external until evidence and wording are approved.',
   mode: 'register',
   gate: '03/10',
   columns: [
@@ -1861,7 +1862,7 @@ const pifEvidenceClosure: RegisterConfig = {
   key: 'pifEvidenceClosure',
   title: 'PIF Evidence Closure (Workflow)',
   sheetName: 'PIF_Evidence_Closure',
-  description: 'Workflow control for moving MBc360 evidence into the PIF / Product Master File. Every trigger here blocks external use until closed.',
+  description: 'Workflow control sheet for moving MBc360 evidence into the PIF / Product Master File.',
   mode: 'fixed',
   gate: '10/11',
   columns: [
@@ -2013,7 +2014,7 @@ export const medicalSummary: RegisterConfig = {
   key: 'medicalSummary',
   title: 'Safety / Medical Summary',
   sheetName: 'Medical_Summary',
-  description: 'Ready-to-answer HCP/distributor evidence pack. Use approved wording and evidence only.',
+  description: 'Ready-to-answer HCP/distributor evidence pack. Use approved wording and links, not draft data.',
   mode: 'fixed',
   gate: '10',
   columns: [
@@ -2058,7 +2059,7 @@ const hcpEfficacyAnswer: RegisterConfig = {
   key: 'hcpEfficacyAnswer',
   title: 'HCP / Distributor Efficacy Answer',
   sheetName: 'HCP_Efficacy_Answer',
-  description: 'Generate answers only from approved evidence and approved wording.',
+  description: 'Generate answers only from approved evidence and approved wording. Keep raw reports in the evidence source tabs.',
   mode: 'register',
   gate: '10/11',
   columns: [
@@ -2078,7 +2079,7 @@ const hcpTestReportPack: RegisterConfig = {
   key: 'hcpTestReportPack',
   title: 'HCP Test Report Pack',
   sheetName: 'HCP_Test_Report_Pack',
-  description: 'Compile approved test-report links and plain-English interpretations for distributor/HCP use.',
+  description: 'Compile approved test-report links and plain-English interpretations for HCP/distributor use.',
   mode: 'register',
   gate: '10/11',
   columns: [
@@ -2102,7 +2103,7 @@ const batchFormulaTrace: RegisterConfig = {
   key: 'batchFormulaTrace',
   title: 'Batch Formula Trace',
   sheetName: 'Batch_Formula_Trace',
-  description: 'Link production batch records, formula version and release evidence.',
+  description: 'Link production batch records, formula version and release evidence. Keep GMP records in the controlled GMP system.',
   mode: 'register',
   gate: '11',
   columns: [
@@ -2128,7 +2129,7 @@ const productFamilyRegister: RegisterConfig = {
   key: 'productFamilyRegister',
   title: 'Product Family & Version Register',
   sheetName: 'Product_Family_Register',
-  description: 'One family = one consumer-facing product. Every formula change that matters gets a version row.',
+  description: 'One family = one consumer-facing product. Every formula change that manufacturing treats as a NEW product code is recorded here as a NEW VERSION of the SAME family, so Sales, Marketing, distributors and the market can see all versions of a product together.',
   mode: 'register',
   gate: '05/06',
   columns: [
@@ -2152,7 +2153,7 @@ const formulationChangeRegister: RegisterConfig = {
   key: 'formulationChangeRegister',
   title: 'Formulation Change Register (Final Approver Controlled)',
   sheetName: 'Formulation_Change_Register',
-  description: 'Every formulation change (preservative system, active up/down, any ingredient) — CEO-mandated. Vietnam needs ~6 months to re-register formula changes.',
+  description: 'Every formulation change (preservative system, active up/down, any ingredient change) must be recorded here BEFORE implementation. Manufacturing treating a change as a new code does NOT remove the need to control and communicate it. Note: formula changes require ~6 months re-registration for Vietnam (VN) - the Final Approver must be involved for commercial implications.',
   mode: 'register',
   gate: '05/07/10',
   columns: [
@@ -2210,7 +2211,7 @@ const changeTemplates: RegisterConfig = {
   key: 'changeTemplates',
   title: 'Change Templates / Forms',
   sheetName: 'Change_Templates',
-  description: 'Copy the relevant section into a controlled form, email or approval workflow when a change is triggered.',
+  description: 'Copy the relevant section into a controlled form, email, approval workflow or ticket. Each completed form must link back to Change_Control_Comm.',
   mode: 'fixed',
   gate: 'ALL',
   columns: [
@@ -2326,7 +2327,7 @@ const gmpLinks: RegisterConfig = {
   key: 'gmpLinks',
   title: 'GMP Links',
   sheetName: 'GMP_Links',
-  description: 'Controlled GMP records remain in the GMP manufacturing system — link only, do not recreate them here.',
+  description: 'Controlled GMP records remain in the GMP manufacturing system. MBc360 records links, status and traceability only.',
   mode: 'register',
   gate: '11',
   columns: [
@@ -2353,7 +2354,7 @@ const campaignsSocialMedia: RegisterConfig = {
   key: 'campaignsSocialMedia',
   title: 'Social Media & Marketing Campaign Register',
   sheetName: 'Campaigns_Social_Media',
-  description: 'Declare every social media post and marketing campaign here (links are the source of truth).',
+  description: 'Declare every social media post and marketing campaign here (links are enough). Where a campaign references a formula/label/pack change, link the Change ID so external messaging stays aligned with what has actually been approved and communicated to the market.',
   mode: 'register',
   gate: '03/11',
   columns: [
@@ -2647,7 +2648,7 @@ export const releasedLabelRegister: RegisterConfig = {
   title: 'Released Label vs Current Artwork Register',
   sheetName: 'Released_Label_Ctrl',
   workbookTab: 'Lily-Released_Label_Ctrl',
-  description: 'What changed / will change, current vs new label, market-release status and 3D asset status. No silent label changes — use Artwork_Change_Control for the formal record.',
+  description: 'Separate control project for label/artwork changes. Record what has changed or will change (incl. LEMC serum cartoon), current vs new label, market-release status, 3D asset status, platform rollout with stock confirmation, and per-shipment label + batch verification. No silent label changes - use Artwork_Change_Control for the formal change record.',
   mode: 'register',
   gate: '06/11',
   reviewOwner: RELEASED_LABEL_OWNER,
@@ -2865,7 +2866,7 @@ export const needsExecutiveBrief: RegisterConfig = {
   closureRoles: ['Prepared by (R&I)', 'Reviewed by (Head of Dept)', 'Independent reviewer'],
   title: 'Needs — Executive Brief',
   sheetName: 'Needs Document', workbookTab: 'Chris Needs Document',
-  description: 'Executive brief: what this product must do, based on the physiology and emotional needs of the intended user(s). Dot points only; every need must be referenced. Companion to the full dossier below.',
+  description: 'Scope: What this product must do, based on the physiology and emotional needs of the intended user(s) (and, for maternal/infant products, BOTH infant and parent). Dot points only. Every need must be referenced (see Endnotes; provide full https links).',
   mode: 'register',
   gate: '02',
   reviewOwner: REVIEW_SPECS.ri,

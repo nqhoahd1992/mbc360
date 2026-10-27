@@ -97,7 +97,7 @@ export default function FormulationSafety() {
       <CompositePageHeader
         project={project}
         title="Full Formulation Safety Evidence"
-        description={<>The product-level safety control sheet: the main evidence used to close Gate 07 (Maternal &amp; Baby-Contact Safety), reused at Gate 10 (PIF-03 Safety assessment). Columns lock at the gate shown on their tag.</>}
+        description={<>This is the product-level safety control sheet. It pulls ingredient identity from Formula_BOM and records links to every safety proof needed for review, PIF and external answers. It is the main evidence used to close Gate 07 (Maternal &amp; Baby-Contact Safety), reused at Gate 10 (PIF-03 Safety assessment); columns lock at the gate shown on their tag.</>}
         reviewOwnerText={reviewOwnerText}
       />
 

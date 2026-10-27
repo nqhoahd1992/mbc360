@@ -8,7 +8,7 @@ export default function StudyProtocol() {
   return (
     <SheetRegistersPage
       title="Study Protocol & Participant Rationale"
-      description={<>Protocol setup and the participant / sample log, on one page as in the workbook. Whether a human-participant study is planned, and its approval route, are answered on the Gate 08 tab of Phase 3.</>}
+      description={<>Study participants are folded into this sheet to avoid a separate overlapping participant tab. Whether a human-participant study is planned, and its approval route, are answered on the Gate 08 tab of Phase 3.</>}
       configs={[studyProtocolSetup, studyParticipantLog]}
     />
   );

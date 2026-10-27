@@ -6,7 +6,7 @@ export default function PackagingSpecsArtwork() {
   return (
     <SheetRegistersPage
       title="Packaging Specs & Artwork Evidence"
-      description={<>Use for planned package and artwork evidence. Use Artwork Change Control only when a released or controlled version changes.</>}
+      description={<>Use for planned package/artwork evidence. Use Artwork_Change_Control only when a released or controlled version changes.</>}
       configs={[packagingSpecsArtwork, artworkLabelReviewChecklist]}
     />
   );
