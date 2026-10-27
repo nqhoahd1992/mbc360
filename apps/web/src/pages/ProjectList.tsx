@@ -206,7 +206,7 @@ export default function ProjectList() {
     if (list.length === 0) return <span className="pl-muted">0</span>;
     const openCount = list.filter((c) => isChangeOpen(c.status)).length;
     return (
-      <Link className="c-link" to="/change-control" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <Link className="c-link" to={`/projects/${p.identity.id}/change-control`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         <b>{list.length}</b>
         {openCount > 0 && <span className="c-tag c-tag-warn c-tag-dot">{openCount} open</span>}
       </Link>

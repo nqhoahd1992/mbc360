@@ -6,7 +6,6 @@ import {
   FileProtectOutlined,
   FolderOpenOutlined,
   GlobalOutlined,
-  SwapOutlined,
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
@@ -52,17 +51,6 @@ export const REFERENCE_DATA_SUBMENU = 'Company Reference Data';
 export const GLOBAL_NAV: GlobalNavEntry[] = [
   { path: '/', title: 'Dashboard', icon: <AppstoreOutlined />, sidebar: 'rail', railLabel: 'Home' },
   { path: '/projects', title: 'All Projects', icon: <FolderOpenOutlined />, sidebar: 'rail', railLabel: 'Projects' },
-  {
-    // On the rail since the 2026-10-03 sidebar redesign: it is company-wide
-    // (every project's changes on one page), so filing it only as a workbook
-    // sheet inside one project's groups hid it from anyone not in that group.
-    path: '/change-control',
-    title: 'Change Control',
-    icon: <SwapOutlined />,
-    sidebar: 'rail',
-    railLabel: 'Changes',
-    keywords: 'change request major minor formula version',
-  },
   {
     // Lives in the avatar menu, where account settings belong.
     path: '/account',

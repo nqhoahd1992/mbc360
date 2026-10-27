@@ -762,8 +762,7 @@ export const PHASE_4: PhaseConfig = {
   keyLinks: [
     { label: 'PIF Checklist', href: '/registers/reg/pifChecklistAsean' },
     { label: 'Published Info Approval', href: '/registers/reg/publishedInfoApproval' },
-    // Change Control is a cross-project page, so it is not under /projects/:id.
-    { label: 'Change Control', href: '/change-control', absolute: true },
+    { label: 'Change Control', href: '/change-control' },
     { label: 'Post-Market Log', href: '/post-market' },
   ],
   checklistSections: [

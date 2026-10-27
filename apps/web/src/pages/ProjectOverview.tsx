@@ -203,7 +203,7 @@ export default function ProjectOverview() {
           }
         />
         <StatTile
-          to={openChanges.length > 0 ? '/change-control' : undefined}
+          to={openChanges.length > 0 ? `/projects/${project.identity.id}/change-control` : undefined}
           label="Open change controls"
           value={openChanges.length}
           sub={openChanges.length > 0 ? 'Open in Change Control' : 'Nothing open'}

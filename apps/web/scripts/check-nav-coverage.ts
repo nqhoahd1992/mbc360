@@ -41,6 +41,9 @@ const GENERATED = new Set([
   `/projects/${PROJECT}/registers/reg/:registerKey`,
 ]);
 
+// Old addresses kept only to forward to their new home (bookmarks, old links): they are routes on purpose and need no menu entry.
+const REDIRECTS = ['/change-control'];
+
 const normalise = (path: string) => path.replace(/:[A-Za-z]+/g, (m) => m).replace(/\/$/, '') || '/';
 
 const routes = [...readFileSync(ROUTE_SOURCE, 'utf8').matchAll(/<Route\s+path="([^"]+)"/g)].map(
@@ -60,7 +63,7 @@ const navPaths = getNavGroups().flatMap((group) => [
   ...group.items.map((item) => normalise(navItemHref(item, PROJECT))),
 ]);
 
-const reachable = new Set([...GENERATED].map(normalise).concat(globalPaths, navPaths));
+const reachable = new Set([...GENERATED].map(normalise).concat(globalPaths, navPaths, REDIRECTS.map(normalise)));
 
 // A parameterised route is covered when some menu destination matches it
 // segment by segment, with a `:param` matching any one segment: the route

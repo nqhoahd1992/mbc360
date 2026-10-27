@@ -4304,7 +4304,7 @@ const DEPARTMENTS: RawDept[] = [
       'hcpEfficacyAnswer',
       'hcpTestReportPack',
       { title: 'Product / Sample Feedback', sheetName: 'Product_Feedback', workbookTab: 'Nguyen-Product_Feedback', page: 'feedback', gate: '07/08' },
-      { title: 'Change Control & Communication', sheetName: 'Change_Ctrl_Comm', workbookTab: 'Nguyen-Change_Ctrl_Comm', href: '/change-control', gate: 'ALL' },
+      { title: 'Change Control & Communication', sheetName: 'Change_Ctrl_Comm', workbookTab: 'Nguyen-Change_Ctrl_Comm', page: 'change-control', gate: 'ALL' },
       'changeTemplates',
     ],
   },

@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import UserSelect from '../components/UserSelect';
 import ChangeDispositionBlock from '../components/ChangeDispositionBlock';
 import { isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
@@ -61,14 +62,17 @@ interface ChangeForm {
 }
 
 export default function ChangeControl() {
-  const changes = useAppStore((s) => s.changes);
+  // Change Control is a project's own log (project owner, 2026-10-27). The store holds every project's records in one list, so this
+  // page works on its slice and writes the whole list back with the other projects' records untouched.
+  const { projectId } = useParams();
+  const allChanges = useAppStore((s) => s.changes);
+  const changes = useMemo(() => allChanges.filter((c) => c.projectId === projectId), [allChanges, projectId]);
   const projects = useAppStore((s) => s.projects);
   const addChange = useAppStore((s) => s.addChange);
   const setChangesBulk = useAppStore((s) => s.setChangesBulk);
   // The project the sidebar is currently pinned to (2026-08-26, user-requested):
   // opening "Open Change Request" from inside a project's workspace should not
   // make someone re-pick the project they were just looking at.
-  const activeProjectId = useAppStore((s) => s.activeProjectId);
   const { draft, dirty, update, markSaved, discard } = useDraft(changes);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -130,10 +134,10 @@ export default function ChangeControl() {
   // (deleted, or never set) — falls back to leaving the field blank rather
   // than crashing on a `.find()` that returns undefined.
   const openNewChangeModal = () => {
-    const activeProject = projects.find((p) => p.identity.id === activeProjectId);
+    const thisProject = projects.find((p) => p.identity.id === projectId);
     form.setFieldsValue({
-      projectId: activeProject?.identity.id,
-      productSku: activeProject?.identity.productSku,
+      projectId: thisProject?.identity.id,
+      productSku: thisProject?.identity.productSku,
     });
     setOpen(true);
   };
@@ -144,7 +148,7 @@ export default function ChangeControl() {
     // an id as soon as any record is missing from the list (removed, or not
     // loaded), and a change id is the record's reference everywhere else.
     const nextNumber =
-      changes.reduce((max, c) => {
+      allChanges.reduce((max, c) => {
         const n = /^CHG-(\d+)$/.exec(c.changeId ?? '')?.[1];
         return n ? Math.max(max, Number(n)) : max;
       }, 0) + 1;
@@ -171,17 +175,12 @@ export default function ChangeControl() {
   const patchChange = (changeId: string, patch: Partial<ChangeRecord>) =>
     update((prev) => prev.map((c) => (c.changeId === changeId ? { ...c, ...patch } : c)));
   const saveChanges = async () => {
-    const ok = await setChangesBulk(draft);
+    const ok = await setChangesBulk([...allChanges.filter((c) => c.projectId !== projectId), ...draft]);
     if (ok) markSaved();
     return ok;
   };
 
   const openCount = draft.filter((c) => isChangeOpen(c.status)).length;
-  const projectLabel = (id?: string) => {
-    if (!id) return undefined;
-    const p = projects.find((x) => x.identity.id === id);
-    return p ? `${p.identity.id} — ${p.identity.productSku}` : id;
-  };
   // What makes a change hold Gate 11 (rule E3(b), Round 4 question 34(c)): an
   // open change nobody has classified, or a closed one without its final
   // disposition. The old table kept the disposition always expanded so this
@@ -247,8 +246,7 @@ export default function ChangeControl() {
           <div className="cc-actions">{actions}</div>
         </div>
         <p className="cc-meta">
-          Change Control &amp; Communication Log · {draft.length} {draft.length === 1 ? 'change' : 'changes'} across all
-          projects
+          Change Control &amp; Communication Log · {draft.length} {draft.length === 1 ? 'change' : 'changes'} in this project
         </p>
         <p className="cc-desc">
           <b>No silent corrections.</b> Artwork, formula, label, claim, supplier, process and market changes must be
@@ -311,8 +309,7 @@ export default function ChangeControl() {
                   <dl className="rt-dl">
                     {dlRow('Trigger / event', c.trigger)}
                     {dlRow('Affected gates / phases', t ? <AffectedGates gates={t.gates} /> : undefined)}
-                    {dlRow('Project', projectLabel(c.projectId))}
-                    {dlRow('Product / SKU', c.productSku)}
+                                        {dlRow('Product / SKU', c.productSku)}
                     {dlRow('Affected area', c.affectedArea)}
                     {dlRow('Old version', c.oldVersion)}
                     {dlRow('Owner', c.owner)}
@@ -453,18 +450,12 @@ export default function ChangeControl() {
             </Form.Item>
           )}
           <div className="cc-form-grid">
-            <Form.Item name="projectId" label="Project">
-              <Select
-                allowClear
-                options={projects.map((p) => ({ value: p.identity.id, label: `${p.identity.id} — ${p.identity.productSku}` }))}
-                onChange={(v) => {
-                  const p = projects.find((x) => x.identity.id === v);
-                  if (p) form.setFieldValue('productSku', p.identity.productSku);
-                }}
-              />
+            {/* The project and its product are this page's own: shown, never picked. */}
+            <Form.Item name="projectId" hidden>
+              <Input />
             </Form.Item>
             <Form.Item name="productSku" label="Product / SKU" rules={[{ required: true }]}>
-              <Input />
+              <Input disabled />
             </Form.Item>
             <Form.Item name="affectedArea" label="Affected area" rules={[{ required: true }]}>
               <Select options={CHANGE_AFFECTED_AREAS.map((a) => ({ value: a, label: a }))} />

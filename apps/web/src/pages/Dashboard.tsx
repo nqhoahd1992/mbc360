@@ -390,9 +390,6 @@ export default function Dashboard() {
         <div className="c-card">
           <div className="pl-card-head">
             <span className="pl-card-title">Open change controls</span>
-            <Link className="c-link" to="/change-control" style={{ fontSize: 13 }}>
-              View all
-            </Link>
           </div>
           {openChanges.length === 0 ? (
             <div className="db-empty">

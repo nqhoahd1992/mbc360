@@ -1570,9 +1570,7 @@ export function gateReadiness(project: ProjectData, gateId: string): GateReadine
 export interface GateBlockerLink {
   href: string;
   scrollToId?: string;
-  // Every other link is relative to /projects/:id. Change Control is a GLOBAL
-  // page, so its link must not be prefixed — without this the UI would build
-  // /projects/MBC-2026-001/change-control, which does not exist.
+  // Links are relative to /projects/:id unless this is set (kept for a page outside any project; none uses it today).
   absolute?: boolean;
 }
 
@@ -1759,8 +1757,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: `/registers/reg/${check.list === 'prohibited' ? 'prohibitedIngredients' : 'pbCautionLimits'}` };
     case 'changeControlNoHardImpact':
     case 'changeControlNoAdminImpact':
-      // Change Control is a GLOBAL page, not per project — no project prefix.
-      return { href: '/change-control', absolute: true };
+      return { href: '/change-control' };
     case 'claimsRegulatoryReviewed':
       return { href: '/evidence-claim-support' };
     case 'artworkClaimsSupported':

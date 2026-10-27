@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, App as AntApp, ConfigProvider, Drawer, Layout, Button, Grid, Spin } from 'antd';
 import { EyeOutlined, MenuOutlined, SearchOutlined } from '@ant-design/icons';
-import { HashRouter, Route, Routes, matchPath, useLocation, useNavigationType } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes, matchPath, useLocation, useNavigationType } from 'react-router-dom';
 import { useAppStore } from './store/useAppStore';
 import { useSession } from './auth/useSession';
 import { setPreviewWriteLock, usePermissionView } from './auth/previewMode';
@@ -60,6 +60,14 @@ const { Header, Content } = Layout;
 // to the URL) would yank the page to the top. A POP is left alone so Back
 // returns you where you were, and a `?scrollTo=` deep link is left alone
 // because that page is about to scroll to a section itself.
+// The old company-wide /change-control address (a bookmark, an old link): Change Control belongs to a project now, so it opens on the
+// project the sidebar is pinned to, or on the project list when none is.
+function ChangeControlRedirect() {
+  const activeProjectId = useAppStore((s) => s.activeProjectId);
+  const exists = useAppStore((s) => s.projects.some((p) => p.identity.id === activeProjectId));
+  return <Navigate replace to={activeProjectId && exists ? `/projects/${activeProjectId}/change-control` : '/projects'} />;
+}
+
 function ScrollToTopOnNavigate() {
   const { pathname, search } = useLocation();
   const navigationType = useNavigationType();
@@ -375,7 +383,9 @@ function Shell() {
             <Route path="/projects/:projectId/evidence" element={<EvidenceSummary />} />
             <Route path="/projects/:projectId/feedback" element={<ProductFeedback />} />
             <Route path="/projects/:projectId/post-market" element={<PostMarketCapa />} />
-            <Route path="/change-control" element={<ChangeControl />} />
+            <Route path="/projects/:projectId/change-control" element={<ChangeControl />} />
+            {/* The old company-wide address: a project's Change Control is the project's own page now. */}
+            <Route path="/change-control" element={<ChangeControlRedirect />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
             <Route path="/account" element={<MyAccount />} />
             <Route path="/admin/users" element={<AdminUsers />} />
