@@ -466,7 +466,7 @@ export default function BomCosting() {
         )}
       </div>
 
-      <FormulaPropertiesCard project={project} />
+      {showFormula && <FormulaPropertiesCard project={project} />}
 
       {/* C3: automatic watch-list cross-check on every BOM ingredient. */}
       {showFormula && watchMatches.length > 0 && (
