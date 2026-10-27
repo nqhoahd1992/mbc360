@@ -1063,9 +1063,6 @@ export default function BomCosting() {
               {ledgerCalc('Units per batch', 'batch size ÷ fill size', Math.floor(unitsPerBatch).toLocaleString())}
               {ledgerInput('Target units', 'targetUnits', 'units', 100)}
 
-              <div className="cc-cap">Batch totals</div>
-              {ledgerCalc('Batch formula cost', undefined, money(formulaCostPerUnit * unitsPerBatch))}
-              {ledgerCalc('Forecast COGS (target units)', undefined, money(cogs * costing.targetUnits))}
                 </div>
                 <div className="cc-col">
               <div className="cc-cap">Cost per unit</div>
@@ -1095,6 +1092,8 @@ export default function BomCosting() {
                 </>
               )}
 
+                </div>
+                <div className="cc-col">
               <div className="cc-cap">Price and margin</div>
               {ledgerInput('Target sell price / unit', 'targetSellPrice')}
               <div className="cc-row">
@@ -1104,12 +1103,15 @@ export default function BomCosting() {
                 <span className={`cc-v cc-margin ${margin >= 50 ? 'bom-ok' : margin > 0 ? 'bom-warn' : 'bom-bad'}`}>{money(margin)}%</span>
               </div>
 
+              <div className="cc-cap">Batch totals</div>
+              {ledgerCalc('Batch formula cost', undefined, money(formulaCostPerUnit * unitsPerBatch))}
+              {ledgerCalc('Forecast COGS (target units)', undefined, money(cogs * costing.targetUnits))}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="c-card bom-card">
+          <div className="c-card bom-card cc-feas">
             <div className="bom-card-head">
               <div className="bom-card-title">Commercial feasibility</div>
             </div>
