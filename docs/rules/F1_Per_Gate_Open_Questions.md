@@ -1543,6 +1543,8 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
 | R5-Q69 | Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role | Chủ dự án bỏ quyền theo role 15/10/2026 | **lộ ra 15/10/2026** |
+| R5-Q78 | Cột Trace ID (BT-001…) do ứng dụng thêm vào Batch Formula Trace để ô Batch Formula Trace ref của Shipment Label & Batch Verification chọn được một dòng | Chủ dự án muốn ô ref là ô chọn, 27/10/2026 | **lộ ra 27/10/2026** |
+| R5-Q77 | Artwork Change Control ref của Released Label vs Current Artwork Register trỏ vào đâu (bản ghi Change Control, hay một trong 5 trigger của sheet), và 8 cột "ref" thay đổi còn lại có đổi theo không | Chủ dự án hỏi ô ref có phải ô chọn không, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q76 | Product status của Prohibited Ingredients tự đặt "REVIEW - possible formula match" khi BOM có khớp; người đã chọn kết luận thì giữ | Chủ dự án muốn ứng dụng tự đánh giá như công thức workbook, 26/10/2026 | **lộ ra 26/10/2026** |
 | R5-Q75 | Cột Safety decision của ma trận nguyên liệu: ứng dụng tự đặt Needs Review / No listed match như công thức workbook, Needs Review không phải kết luận | Chủ dự án đưa công thức của workbook, 26/10/2026 | **lộ ra 26/10/2026** |
 | R5-Q74 | Chức năng ghi ở cột Owner của hàng cố định (Project owner, R&I, Regulatory…) tương ứng người nào trong danh sách review của dự án | Chủ dự án muốn ghi tên người cụ thể cạnh chức năng, 26/10/2026 | **lộ ra 26/10/2026** |
@@ -2310,6 +2312,26 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.
 
 **Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ** (còn **76** từ 19/10/2026, sau khi bỏ bốn sổ tham chiếu của Roadmap và Sheet 6 và hai bảng ký gõ tay của Needs và Target Product — nhóm D còn 32, nhóm E còn 26), chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+
+#### R5-Q78 · Batch Formula Trace: Trace ID do ứng dụng thêm để Shipment Label & Batch Verification chọn được một dòng 🟡
+
+**Lộ ra 27/10/2026, khi chủ dự án hỏi ô "Batch Formula Trace ref" có phải là ô chọn một giá trị của Batch Formula Trace không.** Workbook để cột đó là ô gõ tự do và sheet Batch_Formula_Trace không có cột nào định danh một dòng, nên không có gì để chọn.
+
+**Hiện chạy theo:** thêm cột **Trace ID** (BT-001, BT-002…, ứng dụng sinh, không gõ) vào Batch Formula Trace; ô ref của Shipment Label & Batch Verification là ô chọn trong các Trace ID đó. Cột này không có trong workbook. Giá trị gõ tay cũ không khớp mã nào nên hiện trống cho tới khi chọn lại.
+
+**Câu hỏi:** (a) mỗi dòng Batch Formula Trace có nên được gọi bằng một mã như vậy không, hay "ref" vốn là Batch / lot no. (có thể trùng giữa các SKU)? (b) nếu là Batch / lot, thì một lô dùng cho nhiều SKU thì ref trỏ vào dòng nào?
+
+**Nếu trả lời khác:** sửa cột `traceId` và `batchTraceRef` của `batchFormulaTrace` / `labelShipmentVerification` và mục `batchFormulaTrace` trong `AUTO_ROW_IDS` ở `packages/shared/src/config/registers.ts` [ASSUMPTION: R5-Q78].
+
+#### R5-Q77 · Artwork Change Control ref: trỏ vào bản ghi nào, và 8 cột "ref" thay đổi còn lại 🟡
+
+**Lộ ra 27/10/2026, khi làm ô "Batch Formula Trace ref" thành ô chọn và chủ dự án muốn làm tương tự cho "Artwork Change Control ref" của Released Label vs Current Artwork Register.** Sheet Artwork_Change_Control của workbook không phải sổ ghi từng lần đổi artwork mà là bảng quy tắc cố định gồm 5 trigger (lỗi artwork, đổi công thức ảnh hưởng nhãn, cập nhật quy định, đổi nội dung claim, lệch nhãn đã phát hành so với ảnh thị trường), nên không có dòng nào để một "ref" trỏ vào. Bản ghi thay đổi thật nằm ở trang Change Control & Communication (mã CHG-xxx), mà trang đó không phải register.
+
+**Hiện chạy theo:** ô gõ tự do, chỉ đổi nhãn từ "Artwork_Change_Control ref" thành "Artwork Change Control ref". Tám cột tham chiếu thay đổi khác (`changeControlCommId`, `changeRegisterId`, `linkedChangeId` ×2, `artworkChangeRef`…) cũng là ô gõ tự do; cách các sổ thay đổi liên kết với nhau đang chờ R5-Q19.
+
+**Câu hỏi:** (a) "Artwork Change Control ref" là mã bản ghi Change Control chính thức (CHG-xxx) hay chỉ cho biết lần đổi này thuộc trigger nào trong 5 trigger? (b) nếu là bản ghi, cả tám cột "ref" thay đổi có cùng trỏ về một bản ghi Change Control không? (c) một thay đổi artwork có thể liên quan nhiều bản ghi không?
+
+**Nếu trả lời khác:** đổi kiểu cột `artworkChangeRef` (và các cột cùng nhóm) trong `packages/shared/src/config/registers.ts` [ASSUMPTION: R5-Q77]; liên quan R5-Q19.
 
 #### R5-Q76 · Product status của Prohibited Ingredients: ứng dụng tự đặt REVIEW khi Formula BOM có khớp 🔴
 

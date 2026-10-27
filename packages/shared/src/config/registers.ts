@@ -2069,7 +2069,7 @@ const batchFormulaTrace: RegisterConfig = {
   mode: 'register',
   gate: '11',
   columns: [
-    // The workbook sheet has no row ID; Shipment Label & Batch Verification points at a trace row, so each one needs a name to be picked by.
+    // The workbook sheet has no row ID; Shipment Label & Batch Verification points at a trace row, so each one needs a name to be picked by [ASSUMPTION: R5-Q78].
     { key: 'traceId', label: 'Trace ID', type: 'text', width: 90, unique: true },
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
     { key: 'formulaVersion', label: 'Formula version', type: 'text', width: 110 },
@@ -2629,6 +2629,7 @@ export const releasedLabelRegister: RegisterConfig = {
     { key: 'marketsAffected', label: 'Markets affected', type: 'markets', width: 190 },
     { key: 'assetExists', label: '3D asset exists?', type: 'select', width: 110, options: YNNA },
     { key: 'assetLink', label: '3D asset link', type: 'text', width: 130 },
+    // Left as free text: the Artwork_Change_Control sheet is a 5-trigger rule table, so there is no row to pick [ASSUMPTION: R5-Q77].
     { key: 'artworkChangeRef', label: 'Artwork Change Control ref', type: 'text', width: 160 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: LABEL_STATUS_OPTIONS },
