@@ -1193,7 +1193,7 @@ export default function BomCosting() {
           {/* One Save for the whole costing draft (the ledger and the feasibility form share it), pinned to the bottom of the window:
               inside the feasibility card it was out of sight whenever the numbers above were being edited. */}
           {costingDraft.dirty && (
-            <div className="rt-savebar bom-savebar bom-savebar-page">
+            <div className="page-savebar">
               <SaveBar
                 dirty={costingDraft.dirty}
                 onSave={saveCosting}
