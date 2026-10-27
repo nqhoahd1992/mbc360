@@ -23,6 +23,7 @@ import {
 } from '@mbc360/shared/config/changeTriggers';
 import { changeTriggerAvailability, earliestTriggerGate } from '@mbc360/shared/utils/changeAccess';
 import StatusBadge from '../components/StatusBadge';
+import SheetRefs from '../components/SheetRefs';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from '../components/SaveBar';
 import RecordList, { RecordField } from '../components/RecordList';
@@ -406,7 +407,9 @@ export default function ChangeControl() {
                 <span className={`c-tag${RACI_ROLE_TONE[r.role]}`}>{r.role}</span>
               </div>
               <div className="cc-raci-text">{r.contribution}</div>
-              <div className="cc-raci-ev">{r.linkedEvidence}</div>
+              <div className="cc-raci-ev">
+                <SheetRefs value={r.linkedEvidence} projectId={projectId} />
+              </div>
             </li>
           ))}
         </ul>
