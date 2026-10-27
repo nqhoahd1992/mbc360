@@ -2069,6 +2069,8 @@ const batchFormulaTrace: RegisterConfig = {
   mode: 'register',
   gate: '11',
   columns: [
+    // The workbook sheet has no row ID; Shipment Label & Batch Verification points at a trace row, so each one needs a name to be picked by.
+    { key: 'traceId', label: 'Trace ID', type: 'text', width: 90, unique: true },
     { key: 'productSku', label: 'Product/SKU', type: 'text', width: 140 },
     { key: 'formulaVersion', label: 'Formula version', type: 'text', width: 110 },
     { key: 'batchLot', label: 'Batch / lot', type: 'text', width: 110 },
@@ -2689,7 +2691,7 @@ export const labelShipmentVerification: RegisterConfig = {
     { key: 'artworkMatches', label: 'Artwork matches current released label?', type: 'select', width: 130, options: YNNA },
     { key: 'batchMatches', label: 'Batch details match physical stock?', type: 'select', width: 130, options: YNNA },
     { key: 'verifiedBy', label: 'Verified by', type: 'user', width: 130 },
-    { key: 'batchTraceRef', label: 'Batch_Formula_Trace ref', type: 'text', width: 160 },
+    { key: 'batchTraceRef', label: 'Batch Formula Trace ref', type: 'rowRef', refRegister: 'batchFormulaTrace', refColumn: 'traceId', width: 160 },
     { key: 'photoLink', label: 'Photo / evidence link', type: 'text', width: 150 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: LABEL_STATUS_OPTIONS },
@@ -3569,6 +3571,7 @@ const AUTO_ROW_IDS: Record<string, { column: string; prefix: string }> = {
   claimEvidenceTraceability: { column: 'claimId', prefix: 'CLM' },
   criticalSafetyFindings: { column: 'findingId', prefix: 'SF' },
   studyParticipantLog: { column: 'participantId', prefix: 'P' },
+  batchFormulaTrace: { column: 'traceId', prefix: 'BT' },
 };
 
 for (const config of REGISTER_CONFIGS) {
