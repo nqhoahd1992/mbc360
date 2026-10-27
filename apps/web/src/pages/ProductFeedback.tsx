@@ -6,7 +6,6 @@ import { useParams } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import type { FeedbackEntry, FeedbackSample } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
-import { hasReachedPhase, positionSentence } from '@mbc360/shared/utils/gateProgress';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 import Notice from '../components/Notice';
 import '../styles/concept.css';
@@ -255,13 +254,6 @@ export default function ProductFeedback() {
           Add feedback
         </Button>
       </header>
-
-      {!hasReachedPhase(project, 3) && (
-        <Notice tone="warn" title="Phase 3 activity (Gates 07–08)">
-          Panel feedback is normally collected on development samples during validation; you can still record it now.{' '}
-          {positionSentence(project)}
-        </Notice>
-      )}
 
       <div className="fb-split">
         <aside className="fb-rail" aria-label="Samples under evaluation">
