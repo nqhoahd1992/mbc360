@@ -1214,7 +1214,7 @@ export default function BomCosting() {
                   its own card so nothing widens the page. */}
               <div className="c-card bom-card">
                 <div className="bom-card-head">
-                  <div className="bom-card-title">Formula BOM (read-only reference)</div>
+                  <div className="bom-card-title">Formula BOM</div>
                 </div>
                 <div className="bom-table-wrap">
                   <Table
@@ -1223,7 +1223,7 @@ export default function BomCosting() {
                     dataSource={bom}
                     pagination={false}
                     sticky={TABLE_STICKY}
-                    scroll={{ x: 1200 }}
+                    scroll={{ x: 'max-content' }}
                     locale={{ emptyText: 'No formula lines entered yet' }}
                     columns={[
                       { title: '#', width: 40, fixed: 'left', dataIndex: 'line' },
@@ -1265,7 +1265,7 @@ export default function BomCosting() {
 
               <div className="c-card bom-card">
                 <div className="bom-card-head">
-                  <div className="bom-card-title">Packaging BOM (read-only reference)</div>
+                  <div className="bom-card-title">Packaging BOM</div>
                 </div>
                 <div className="bom-table-wrap">
                   <Table
@@ -1274,7 +1274,7 @@ export default function BomCosting() {
                     dataSource={packagingBom}
                     pagination={false}
                     sticky={TABLE_STICKY}
-                    scroll={{ x: 900 }}
+                    scroll={{ x: 'max-content' }}
                     locale={{ emptyText: 'No packaging components entered yet' }}
                     columns={[
                       { title: '#', width: 40, fixed: 'left', dataIndex: 'line' },
