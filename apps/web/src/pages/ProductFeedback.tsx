@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, DatePicker, Drawer, Empty, Form, Grid, Input, Popconfirm, Rate, Select, message } from 'antd';
+import { Button, DatePicker, Drawer, Empty, Form, Grid, Input, Popconfirm, Rate, Select, Tooltip, message } from 'antd';
 import { FEEDBACK_RECOMMEND_OPTIONS, FEEDBACK_TOO_OILY_OPTIONS } from '@mbc360/shared/config/gates';
 import { MessageOutlined, PlusOutlined, RightOutlined, WarningOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
@@ -200,8 +200,8 @@ export default function ProductFeedback() {
   };
 
   const deleteSample = async () => {
-    // Its entries go with it: they only make sense against the sample they scored.
-    if (await setFeedbackAll(id, allEntries.filter((e) => e.sampleId !== current.id), samples.filter((x) => x.id !== current.id))) {
+    // Only an empty sample can go: its feedback is deleted first (the server refuses otherwise).
+    if (await setFeedbackAll(id, allEntries, samples.filter((x) => x.id !== current.id))) {
       setSampleId(null);
       message.success('Sample deleted');
     }
@@ -308,12 +308,18 @@ export default function ProductFeedback() {
                 {samples.some((x) => x.id === current.id) && (
                   <Popconfirm
                     title="Delete this sample?"
-                    description={`${n === 0 ? 'It has no feedback.' : `Its ${n} feedback ${n === 1 ? 'entry is' : 'entries are'} deleted with it.`}`}
                     okText="Delete"
                     okButtonProps={{ danger: true }}
+                    disabled={n > 0}
                     onConfirm={() => void deleteSample()}
                   >
-                    <Button danger>Delete sample</Button>
+                    <Tooltip title={n > 0 ? `Delete its ${n} feedback ${n === 1 ? 'entry' : 'entries'} first` : undefined}>
+                      <span>
+                        <Button danger disabled={n > 0}>
+                          Delete sample
+                        </Button>
+                      </span>
+                    </Tooltip>
                   </Popconfirm>
                 )}
               </div>

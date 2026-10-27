@@ -4749,7 +4749,18 @@ export class ProjectsService {
       assertOneOf(`${f.id}: would recommend`, f.wouldRecommend, FEEDBACK_RECOMMEND_OPTIONS);
     }
     return this.mutate(user, id, expectedVersion, 'feedback.updated', async (tx) => {
-      // Entries go first: deleting a sample cascades to its entries, and an entry is rewritten from this list in any case.
+      // A sample can only be removed once nothing points at it: its feedback is deleted first, in an earlier save (project owner,
+      // 2026-10-27), so a sample is never dropped together with scores somebody recorded against it.
+      const held = await tx.feedbackEntry.groupBy({ by: ['sampleId'], where: { projectId: id, sampleId: { not: null } }, _count: { _all: true } });
+      const heldBy = new Map(held.map((h) => [h.sampleId as string, h._count._all]));
+      const stored = await tx.feedbackSample.findMany({ where: { projectId: id }, select: { id: true } });
+      for (const old of stored) {
+        const count = heldBy.get(old.id) ?? 0;
+        if (!sampleIds.has(old.id) && count > 0) {
+          throw new BadRequestException(`A sample with feedback cannot be deleted: delete its ${count} feedback ${count === 1 ? 'entry' : 'entries'} first`);
+        }
+      }
+      // Entries go first, then samples; both are rewritten from the lists above.
       await tx.feedbackEntry.deleteMany({ where: { projectId: id } });
       await tx.feedbackSample.deleteMany({ where: { projectId: id } });
       if (samples.length > 0) {
