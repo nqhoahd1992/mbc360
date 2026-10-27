@@ -1,7 +1,7 @@
-// seed-showcase-project.ts — DEV TOOL: one project to SHOW the app with. Data in every part of it, Gates 1-4 genuinely passed
-// (readiness met, closing signatures, gate signatures, Phase 1 signed off), Gate 5 open, and three formula versions made through
-// the real route — F1.0, F1.1 (Minor) and F2.0 (Major, which reopened Gates 4-9 and is recorded as a backtrack, so Gate 4 was
-// passed a second time).
+// seed-showcase-project.ts — DEV TOOL: one project to SHOW the app with. Data in every part of it, all 12 gates genuinely passed
+// (readiness met, closing signatures, gate signatures, every phase signed off), and three formula versions
+// made through the real route — F1.0, F1.1 (Minor) and F2.0 (Major, which reopened Gates 4-9 and is recorded as a backtrack, so those
+// gates were passed a second time).
 //
 //   npm run db:seed-showcase-project
 //   npm run db:seed-showcase-project -- --name "Soothing balm 50g"
@@ -10,7 +10,7 @@
 //   1. db:seed-full-project --stage data       every register, phase page, both BOMs, costing, evidence, markets, CAPA, feedback
 //   2. db:seed-gate-project --gate 4           passes Gates 1-4 and completes Phase 1 (the one bypass: signatures are written to the DB)
 //   3. db:seed-full-project --stage versions   F1.1 and F2.0 through POST /formula-versions (needs Gate 05 to be the open gate)
-//   4. db:seed-gate-project --gate 4           the Major version reopened Gate 04: pass it again
+//   4. db:seed-gate-project --gate 12          the Major version reopened Gates 04-09: pass them again, then Gates 5-12 (per market at 10-12)
 //   5. db:seed-full-project --stage finish     gate flow records for the open and later gates, and change control records
 //
 // Needs the API running (`npm run dev`, or API_URL=...) and apps/api/.env. Refuses a non-localhost database (see the two scripts).
@@ -38,7 +38,7 @@ function run(label: string, script: string, args: string[]): void {
 run('1/5 data in every part of the app', 'seed-full-project.ts', ['--stage', 'data', '--id', id, '--name', name]);
 run('2/5 Gates 1-4 passed, Phase 1 signed off', 'seed-gate-project.ts', ['--gate', '4', '--project', id]);
 run('3/5 formula versions F1.1 and F2.0', 'seed-full-project.ts', ['--stage', 'versions', '--id', id]);
-run('4/5 Gate 4 passed again after the Major version', 'seed-gate-project.ts', ['--gate', '4', '--project', id]);
-run('5/5 gate records and change control', 'seed-full-project.ts', ['--stage', 'finish', '--id', id, '--passed', '4']);
+run('4/5 Gates 4-12 passed (4 again after the Major version)', 'seed-gate-project.ts', ['--gate', '12', '--project', id]);
+run('5/5 gate records and change control', 'seed-full-project.ts', ['--stage', 'finish', '--id', id, '--passed', '12']);
 
 console.log(`\n✔ Showcase project ready. Open it at  /#/projects/${id}`);

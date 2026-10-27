@@ -28,9 +28,10 @@ import { PHASE_CONFIGS } from '../../../packages/shared/src/config/phases';
 import { REGISTER_CONFIGS, createEmptyRegisterRow } from '../../../packages/shared/src/config/registers';
 import { REVIEW_ROLES } from '../../../packages/shared/src/config/reviewers';
 import { registerClosureRoles } from '../../../packages/shared/src/utils/registerClosures';
-import { gateReadinessChecklist, isGatePassed } from '../../../packages/shared/src/utils/gateProgress';
+import { gateReadinessChecklist, isGatePassed, isPhaseComplete, phaseCompletionChecklist, unsignedGateLanes } from '../../../packages/shared/src/utils/gateProgress';
 import { registerContentHashOf } from '../src/projects/content-hash';
 import { gateEvidenceSnapshot } from '../../../packages/shared/src/utils/gateSnapshot';
+import { gateSignOffMarkets } from '../../../packages/shared/src/config/gateSignOff';
 import { GATE_SIGNOFF_ROLES, type ChecklistItem, type ProjectData, type RegisterRow, type RequirementItem } from '../../../packages/shared/src/types';
 
 // ---------------------------------------------------------------- arguments ----
@@ -50,7 +51,7 @@ if (!gateArg) die('Usage: npm run db:seed-gate-project -- --gate <1-12 | SG01-SG
 const targetNumber = Number(gateArg.replace(/^SG/i, ''));
 if (!Number.isInteger(targetNumber) || targetNumber < 1 || targetNumber > 12) die(`"${gateArg}" is not a gate (1-12)`);
 // Only the gates whose evidence the script knows how to fill. Later gates are added as they are worked through.
-const SUPPORTED_UP_TO = 4;
+const SUPPORTED_UP_TO = 12;
 if (targetNumber > SUPPORTED_UP_TO) die(`Only Gates 1-${SUPPORTED_UP_TO} are supported so far (asked for ${targetNumber})`);
 const gateId = (n: number) => `SG${String(n).padStart(2, '0')}`;
 
@@ -231,12 +232,169 @@ async function fixRegister(
       }
     }
   }
+  // A published statement can be released only through a channel its claim is approved for on the SKU claim register.
+  if (key === 'publishedInfoApproval') {
+    const skuClaims = project.registers['skuClaimsPifRegister'] ?? [];
+    for (const row of rows) {
+      const own = skuClaims.find((s) => s.claimId && s.claimId === row.claimId && s.market === row.market && String(s.intendedChannel ?? '').trim());
+      const channel = String(own?.intendedChannel ?? '');
+      if (channel && row.channel !== channel) {
+        row.channel = channel;
+        changed = true;
+      }
+    }
+  }
   if (!changed) return false;
   take(await api('PUT', `/projects/${ctx.id}/registers/${encodeURIComponent(key)}`, { rows, expectedVersion: version }));
   return true;
 }
 
 const RM_EVIDENCE = 'supplierRmEvidence';
+
+// Open next actions block a plain Proceed. The seeder is the one bypass, so it closes them straight in the database
+// (through the API the owner may not verify their own closure, F8).
+async function fixNextActions(ctx: Ctx): Promise<boolean> {
+  const done = await prisma.nextAction.updateMany({
+    where: { projectId: ctx.id, status: { notIn: ['Closed', 'Cancelled'] } },
+    data: { status: 'Closed', dateCompleted: new Date(today), closedBy: ctx.adminName, verifiedBy: ctx.adminName },
+  });
+  if (done.count === 0) return false;
+  await reload(ctx.id);
+  return true;
+}
+
+// A Formula BOM built from the approved raw materials (equal shares, summing to 100 %).
+async function fixBom(ctx: Ctx): Promise<boolean> {
+  if (project.bom.length > 0 && project.bom.every((l) => l.rmCode && l.inciName && l.supplier)) return false;
+  const rms = (project.registers[RM_EVIDENCE] ?? []).filter((r) => r.rmCode);
+  if (rms.length === 0) return false;
+  const share = Math.round((100 / rms.length) * 100) / 100;
+  const lines = rms.map((r, i) => ({
+    line: i + 1,
+    rmCode: String(r.rmCode),
+    inciName: String(r.inciName || r.rmCode),
+    functionRole: 'Functional',
+    supplier: String(r.supplier || `${SEED} supplier`),
+    percentWw: i === rms.length - 1 ? Math.round((100 - share * (rms.length - 1)) * 100) / 100 : share,
+    costPerKg: 5,
+    reconciled: true,
+    rmDisplayName: `${r.grade || r.inciName} | ${r.rmCode}`,
+    evidenceLink: `https://example.com/seed/bom/${r.rmCode}`,
+  }));
+  take(await api('PUT', `/projects/${ctx.id}/bom`, { lines, expectedVersion: version }));
+  return true;
+}
+
+// F14: manual BOM lines are reconciled to the controlled Cosmetri formula before Gate 7. Seeded lines are manual, so they are marked reconciled.
+async function fixBomReconciled(ctx: Ctx): Promise<boolean> {
+  if (project.bom.every((l) => l.fromCosmetri || l.reconciled)) return false;
+  // The BOM is read-only once Gate 05 has passed, so this goes straight to the database (the seeder's one bypass).
+  await prisma.bomLine.updateMany({ where: { formulaVersion: { projectId: ctx.id }, fromCosmetri: false }, data: { reconciled: true } });
+  await reload(ctx.id);
+  return true;
+}
+
+// A fixed checklist whose rows all start at Not Started (Final Safety Sign-off, ASEAN PIF checklist): each row is concluded as Complete.
+async function fixAllComplete(ctx: Ctx, key: string): Promise<boolean> {
+  const rows = (project.registers[key] ?? []).map((r) => ({ ...r }));
+  const open = rows.filter((r) => r.status !== 'Complete');
+  if (open.length === 0) return false;
+  for (const r of open) r.status = 'Complete';
+  take(await api('PUT', `/projects/${ctx.id}/registers/${key}`, { rows, expectedVersion: version }));
+  return true;
+}
+
+// The study approval trail: three roles, the Independent Reviewer in a different department from the Study Author (C2). The
+// route needs real accounts with departments, so the rows are written straight to the database (the seeder's one bypass).
+async function fixStudyApprovals(ctx: Ctx): Promise<boolean> {
+  const departments: Record<string, string> = { 'Study Author': 'NPD', 'Department Reviewer': 'NPD', 'Independent Reviewer': 'Quality' };
+  const rows = await prisma.studyApproval.findMany({ where: { projectId: ctx.id } });
+  let wrote = false;
+  for (const row of rows) {
+    const department = departments[row.role];
+    if (!department || (row.name && row.decision === 'Approve')) continue;
+    await prisma.studyApproval.update({ where: { id: row.id }, data: { name: ctx.adminName, department, date: new Date(today), decision: 'Approve', comments: `${SEED}: approved by the seed script` } });
+    wrote = true;
+  }
+  if (wrote) await reload(ctx.id);
+  return wrote;
+}
+
+// Every active market is approved for the field the gate reads. Launch approval needs the PIF approved first (C5), so the
+// earlier approvals are given together with it.
+async function fixMarketTracks(ctx: Ctx, field: 'regulatoryStatus' | 'launchApproval'): Promise<boolean> {
+  const tracks = project.marketTracks.map((t) => ({ ...t }));
+  const pending = tracks.filter((t) => !['Approved', 'N/A'].includes(t[field] ?? ''));
+  if (pending.length === 0) return false;
+  for (const t of pending) {
+    t.pifStatus = 'Approved';
+    t.regulatoryStatus = 'Approved';
+    if (field === 'launchApproval') {
+      t.claimsApproval = 'Approved';
+      t.launchApproval = 'Approved';
+      t.pifApprovedDate = t.pifApprovedDate ?? today;
+      t.launchApprovedDate = t.launchApprovedDate ?? today;
+    }
+  }
+  take(await api('PUT', `/projects/${ctx.id}/market-tracks`, { tracks, expectedVersion: version }));
+  return true;
+}
+
+// Gate 12: a review that found nothing records ONE assessment answered No, with its reviewer and reason.
+async function fixChangeAssessments(ctx: Ctx): Promise<boolean> {
+  const entries = project.changeControlAssessments ?? [];
+  if (entries.length > 0 && entries.every((e) => e.answer === 'Yes' || e.answer === 'No')) return false;
+  const next = [{ id: 'CCA-001', finding: `${SEED}: post-launch review`, answer: 'No', reviewer: ctx.adminName, reviewDate: today, rationale: `${SEED}: nothing found that needs a change control` }];
+  take(await api('PUT', `/projects/${ctx.id}/change-control-assessments`, { entries: next, expectedVersion: version }));
+  return true;
+}
+
+// Launch approval is permission to sell; the actual commercial launch date is the day selling started, and the post-launch
+// review schedule is measured from it.
+async function fixLaunchDates(ctx: Ctx): Promise<boolean> {
+  const tracks = project.marketTracks.map((t) => ({ ...t }));
+  const missing = tracks.filter((t) => t.launchApproval === 'Approved' && !t.actualLaunchDate && !t.withdrawnDate);
+  if (missing.length === 0) return false;
+  for (const t of missing) t.actualLaunchDate = today;
+  take(await api('PUT', `/projects/${ctx.id}/market-tracks`, { tracks, expectedVersion: version }));
+  return true;
+}
+
+// Approved artwork names real, Supported claims: the claim the SKU claim register approves for the row's market.
+async function fixArtworkClaims(ctx: Ctx): Promise<boolean> {
+  const key = 'packagingSpecsArtwork';
+  const rows = (project.registers[key] ?? []).map((r) => ({ ...r }));
+  const claims = (project.registers['claimEvidenceTraceability'] ?? []).filter((c) => c.status === 'Supported');
+  const skuClaims = project.registers['skuClaimsPifRegister'] ?? [];
+  let changed = false;
+  for (const row of rows) {
+    if (!String(row.approval ?? '').trim()) continue;
+    const forMarket = skuClaims.find((s) => s.market === row.market && claims.some((c) => c.claimId === s.claimId));
+    const id = String(forMarket?.claimId ?? claims[0]?.claimId ?? '');
+    if (id && row.claimIds !== id) {
+      row.claimIds = id;
+      changed = true;
+    }
+  }
+  if (!changed) return false;
+  take(await api('PUT', `/projects/${ctx.id}/registers/${key}`, { rows, expectedVersion: version }));
+  return true;
+}
+
+async function fixFormulaProperties(ctx: Ctx): Promise<boolean> {
+  take(await api('PUT', `/projects/${ctx.id}/formula-properties`, { patch: { microSusceptibility: 'Susceptible', microRationale: `${SEED} water-based emulsion`, confirmedProductForm: 'Balm' }, expectedVersion: version }));
+  return true;
+}
+
+async function fixCosting(ctx: Ctx): Promise<boolean> {
+  take(
+    await api('PUT', `/projects/${ctx.id}/costing`, {
+      patch: { batchSizeKg: 100, fillSizeG: 50, targetUnits: 10000, packagingCostPerUnit: 0.58, labourOverheadPerUnit: 0.35, freightOtherPerUnit: 0.12, targetSellPrice: 7.9, feasibilityStatus: 'Commercially Feasible', assessor: ctx.adminName, reviewDate: today, assumptions: `${SEED}: volumes and prices assumed`, evidenceLink: 'https://example.com/seed/costing' },
+      expectedVersion: version,
+    }),
+  );
+  return true;
+}
 
 // Gate 4 screens every raw material: each one is reviewed and approved for use (an honest "usable" outcome for seeded data).
 async function fixRmEvidence(ctx: Ctx): Promise<boolean> {
@@ -359,6 +517,29 @@ async function fix(ctx: Ctx, check: ReadinessCheck): Promise<boolean> {
       return fixRegister(ctx, check.register, { noBad: { column: check.column, bad: check.badValues } });
     case 'registerSomeRow':
       return fixRegister(ctx, check.register, { some: { column: check.column, values: check.values } });
+    case 'nextActionsClosed':
+      return fixNextActions(ctx);
+    case 'bomHasLines':
+    case 'bomIdentityComplete':
+      return fixBom(ctx);
+    case 'formulaPropertyFilled':
+      return fixFormulaProperties(ctx);
+    case 'costingStatusRecorded':
+      return fixCosting(ctx);
+    case 'bomReconciled':
+      return fixBomReconciled(ctx);
+    case 'studyApprovalsComplete':
+      return fixStudyApprovals(ctx);
+    case 'artworkClaimsSupported':
+      return fixArtworkClaims(ctx);
+    case 'everyMarket':
+      return fixMarketTracks(ctx, check.field);
+    case 'aseanChecklistComplete':
+      return fixAllComplete(ctx, 'pifChecklistAsean');
+    case 'safetyMatrixCoversFormula':
+      return fixRegister(ctx, 'formulationSafetyMatrix', { columns: ['coverageRoute', 'safetyDecision'] });
+    case 'finalSafetySignOffComplete':
+      return fixAllComplete(ctx, 'formulationSafetyFinalSignOff');
     default:
       return false; // identityMarketsRecorded is met at creation; gateSignedOff is handled last; the rest is reported
   }
@@ -426,9 +607,11 @@ async function fillAngles(ctx: Ctx, phase: number): Promise<void> {
 async function signPhaseDirectly(ctx: Ctx, adminId: string, phase: number): Promise<void> {
   const admin = await prisma.user.findUniqueOrThrow({ where: { id: adminId }, include: { roles: { include: { role: true } } } });
   const roleNames = admin.roles.map((r) => r.role.name).join(', ') || null;
-  const initials = ctx.adminName.trim().split(/s+/).map((w) => w[0]?.toUpperCase() ?? '').join('').slice(0, 4);
-  const closure = await prisma.phaseClosure.upsert({ where: { projectId_phase: { projectId: ctx.id, phase } }, create: { projectId: ctx.id, phase }, update: {} });
+  const initials = ctx.adminName.trim().split(/\s+/).map((w) => w[0]?.toUpperCase() ?? '').join('').slice(0, 4);
   const now = new Date();
+  // From Phase 2 on, whatever was done before the phase opened must be accepted by its owner before the phase can close (F13).
+  const accepted = phase > 1 ? { preWorkAcceptedBy: ctx.adminName, preWorkAcceptedDate: now } : {};
+  const closure = await prisma.phaseClosure.upsert({ where: { projectId_phase: { projectId: ctx.id, phase } }, create: { projectId: ctx.id, phase, ...accepted }, update: accepted });
   for (const role of ['Prepared by', 'Reviewed by', 'Approved by']) {
     const data = {
       assignedToUserId: adminId,
@@ -504,12 +687,18 @@ async function signGateDirectly(ctx: Ctx, adminId: string, gate: string, leaveAp
   const roleNames = admin.roles.map((r) => r.role.name).join(', ') || null;
   const initials = ctx.adminName.trim().split(/\s+/).map((w) => w[0]?.toUpperCase() ?? '').join('').slice(0, 4);
   // The signed snapshot is taken from the project exactly as the server will read it, so the signatures are not stale.
-  const snapshot = gateEvidenceSnapshot(project, gate, undefined);
   const now = new Date();
+  // Gates 10-12 are signed once per active market (a lane); every other gate has the one market-less lane.
+  for (const lane of gateSignOffMarkets(project, gate)) {
+  const market = lane ?? null;
+  // A per-market lane belongs to the CURRENT formula version (F4): the older versions' signatures attest to a different formula.
+  const current = market ? await prisma.formulaVersion.findFirst({ where: { projectId: ctx.id, version: project.formulaVersion } }) : null;
+  const laneVersion = current ? { formulaVersionId: current.id } : {};
+  const snapshot = gateEvidenceSnapshot(project, gate, lane);
   for (const role of GATE_SIGNOFF_ROLES) {
-    const existing = await prisma.gateSignOff.findFirst({ where: { projectId: ctx.id, gateId: gate, market: null, role } });
+    const existing = await prisma.gateSignOff.findFirst({ where: { projectId: ctx.id, gateId: gate, market, role } });
     if (leaveApproval && role === 'Approved by') {
-      if (!existing) await prisma.gateSignOff.create({ data: { projectId: ctx.id, gateId: gate, role, assignedToUserId: adminId } });
+      if (!existing) await prisma.gateSignOff.create({ data: { projectId: ctx.id, gateId: gate, market, role, assignedToUserId: adminId, ...laneVersion } });
       else await prisma.gateSignOff.update({ where: { id: existing.id }, data: { assignedToUserId: adminId } });
       continue;
     }
@@ -524,14 +713,31 @@ async function signGateDirectly(ctx: Ctx, adminId: string, gate: string, leaveAp
       comment: `${SEED}: signed by the seed script`,
       signatureVerifiedAt: now,
       snapshot: snapshot as never,
+      ...laneVersion,
     };
     if (existing) await prisma.gateSignOff.update({ where: { id: existing.id }, data });
-    else await prisma.gateSignOff.create({ data: { projectId: ctx.id, gateId: gate, role, ...data } });
+    else await prisma.gateSignOff.create({ data: { projectId: ctx.id, gateId: gate, market, role, ...data } });
+  }
   }
   if (!leaveApproval) {
     await prisma.gateRecord.update({ where: { projectId_gateId: { projectId: ctx.id, gateId: gate }, }, data: { decision: 'Proceed' } });
   }
   await prisma.project.update({ where: { id: ctx.id }, data: { version: { increment: 1 } } });
+}
+
+// Evidence filled for a later gate can change what an earlier, already signed gate attests to: its signature goes stale and the
+// next gate stops being the open one. Those signatures are given again before moving on.
+async function resignStaleGates(ctx: Ctx, adminId: string, before: number): Promise<void> {
+  for (let m = 1; m < before; m++) {
+    const earlier = gateId(m);
+    const rec = project.gates.find((g) => g.gateId === earlier);
+    if (isGatePassed(project, earlier) || rec?.status !== 'Complete' || rec.decision !== 'Proceed') continue;
+    await closeRegisters(ctx, adminId, earlier);
+    await reload(ctx.id);
+    await signGateDirectly(ctx, adminId, earlier, false);
+    await reload(ctx.id);
+    console.log(`Gate ${m}: signatures given again — ${isGatePassed(project, earlier) ? 'PASSED' : 'still NOT passed'}`);
+  }
 }
 
 // ---------------------------------------------------------------- main ----
@@ -586,9 +792,18 @@ async function main() {
 
   for (let n = 1; n <= targetNumber; n++) {
     const gate = gateId(n);
+    await resignStaleGates(ctx, admin.id, n);
     // A gate that already passed (the project was adopted with --project, or a Major version reopened only some) is left alone.
     if (existingProject && isGatePassed(project, gate)) {
-      console.log(`Gate ${n}: already passed`);
+      // A phase's last gate does not open the next one until the phase itself is complete (key gate checks, angles, three signatures).
+      const phase = GATES[n - 1].phase;
+      if (lastGateOfPhase(n) && !isPhaseComplete(project, phase)) {
+        await fillGateChecks(ctx, n);
+        await fillAngles(ctx, phase);
+        await signPhaseDirectly(ctx, admin.id, phase);
+        await reload(id);
+        console.log(`Gate ${n}: already passed — Phase ${phase} ${isPhaseComplete(project, phase) ? 'completed' : `still NOT complete: ${JSON.stringify(phaseCompletionChecklist(project, phase))}`}`);
+      } else console.log(`Gate ${n}: already passed`);
       continue;
     }
     // Complete and decided, but no longer passed: something it attests to changed after it was signed (a Major version does that).
@@ -599,7 +814,14 @@ async function main() {
       await reload(id);
       await signGateDirectly(ctx, admin.id, gate, false);
       await reload(id);
-      console.log(`Gate ${n}: signatures given again — ${isGatePassed(project, gate) ? 'PASSED' : 'still NOT passed (see the readiness panel)'}`);
+      const passedAgain = isGatePassed(project, gate);
+      console.log(`Gate ${n}: signatures given again — ${passedAgain ? 'PASSED' : 'still NOT passed (see the readiness panel)'}`);
+      if (!passedAgain) {
+        for (const item of gateReadinessChecklist(project, gate).filter((i) => !i.satisfied && !i.advisory)) console.error(`   - ${item.id}: ${item.label}`);
+        console.error('   lanes: ' + JSON.stringify(unsignedGateLanes(project, gate)));
+        console.error('   loaded: ' + JSON.stringify(project.gateSignOffs.filter((g) => g.gateId === gate).map((g) => [g.market, g.role, !!g.signedAt])));
+        process.exit(2);
+      }
       continue;
     }
     const items = GATE_READINESS[gate] ?? [];
@@ -612,7 +834,11 @@ async function main() {
       let wrote = false;
       for (const item of fixable) {
         const config = items.find((c) => c.id === item.id);
-        if (config) wrote = (await fix(ctx, config.check)) || wrote;
+        // These two read a trigger that is "not yet assessed" until the data below exists, so they are fixed by item.
+        if (item.id === 'sg12-change-links') wrote = (await fixChangeAssessments(ctx)) || wrote;
+        else if (item.id === 'sg12-pms-baseline') wrote = (await fixLaunchDates(ctx)) || wrote;
+        else if (config) wrote = (await fix(ctx, config.check)) || wrote;
+        else if (/next-actions?$/.test(item.id)) wrote = (await fixNextActions(ctx)) || wrote;
       }
       if (!wrote) break;
     }
@@ -627,6 +853,7 @@ async function main() {
     // Every key gate check of this gate (not only the ones its readiness reads) and, at a phase's last gate, the eight angles.
     await fillGateChecks(ctx, n);
     if (lastGateOfPhase(n)) await fillAngles(ctx, GATES[n - 1].phase);
+    await resignStaleGates(ctx, admin.id, n);
     await closeRegisters(ctx, admin.id, gate);
     await completeGateFlow(ctx, gate);
     // --ready applies to the TARGET gate only; every earlier gate is passed in full.
@@ -636,6 +863,7 @@ async function main() {
     if (lastGateOfPhase(n) && !readyOnly) {
       await signPhaseDirectly(ctx, admin.id, GATES[n - 1].phase);
       await reload(id);
+      if (!isPhaseComplete(project, GATES[n - 1].phase)) console.error(`   Phase ${GATES[n - 1].phase} is NOT complete: ${JSON.stringify(phaseCompletionChecklist(project, GATES[n - 1].phase))}`);
     }
     if (readyOnly) {
       const still = gateReadinessChecklist(project, gate).filter((i) => !i.satisfied && !i.advisory);
