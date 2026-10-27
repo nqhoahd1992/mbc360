@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Button, Input } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
+import { useParams } from 'react-router-dom';
+import SheetRefs from './SheetRefs';
 import {
   CHANGE_TRIGGERS,
   phaseShortLabel,
@@ -35,6 +37,7 @@ export function AffectedGates({ gates }: { gates: string[] }) {
 // and Required sign-offs out of view, and never showed Required action at all
 // although opening a change copies it into the request.
 export default function TriggerReference({ categories }: { categories: ChangeTriggerCategory[] }) {
+  const { projectId } = useParams();
   const [category, setCategory] = useState<ChangeTriggerCategory | null>(null);
   const [query, setQuery] = useState('');
 
@@ -97,7 +100,11 @@ export default function TriggerReference({ categories }: { categories: ChangeTri
                 <h3 className="tr-title">{t.label}</h3>
                 {!category && <span className="c-tag tr-cat">{t.category}</span>}
               </header>
-              {t.examples && <p className="tr-examples">{t.examples}</p>}
+              {t.examples && (
+                <p className="tr-examples">
+                  <SheetRefs value={t.examples} projectId={projectId} />
+                </p>
+              )}
               <dl className="tr-dl">
                 <dt>Affected</dt>
                 <dd>
@@ -108,7 +115,7 @@ export default function TriggerReference({ categories }: { categories: ChangeTri
                 <dt>Required sign-offs</dt>
                 <dd>{t.signOffs ?? '—'}</dd>
                 <dt>Required action</dt>
-                <dd>{t.action ?? '—'}</dd>
+                <dd>{t.action ? <SheetRefs value={t.action} projectId={projectId} /> : '—'}</dd>
               </dl>
             </article>
           ))}

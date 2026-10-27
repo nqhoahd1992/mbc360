@@ -1,3 +1,4 @@
+import { Fragment, isValidElement } from 'react';
 import SheetRefs from './SheetRefs';
 import { InfoCircleOutlined, LockOutlined } from '@ant-design/icons';
 import { registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
@@ -100,6 +101,18 @@ export function RegisterProgressCard({ completed, total }: { completed: number; 
 // Replaces the blue Alert + Project Identification card those pages stacked
 // above their first table; the shared review owner moves here from every
 // table's own caption.
+// A one-string description ("…link back to Change_Control_Comm.") shows its sheet names as the app's own pages; a description built from
+// several parts is shown as written.
+function linkSheetNames(description: React.ReactNode, projectId: string): React.ReactNode {
+  const text =
+    typeof description === 'string'
+      ? description
+      : isValidElement(description) && description.type === Fragment && typeof (description.props as { children?: unknown }).children === 'string'
+        ? ((description.props as { children: string }).children)
+        : undefined;
+  return text === undefined ? description : <SheetRefs value={text} projectId={projectId} />;
+}
+
 export function CompositePageHeader({
   project,
   title,
@@ -123,7 +136,7 @@ export function CompositePageHeader({
           {project.identity.id} · {project.identity.productSku}
         </p>
         {reviewOwnerText && <ReviewOwnerLine text={reviewOwnerText} />}
-        <p className="rph-desc">{description}</p>
+        <p className="rph-desc">{linkSheetNames(description, project.identity.id)}</p>
       </div>
       {note && (
         <div className="c-card rph-note">
