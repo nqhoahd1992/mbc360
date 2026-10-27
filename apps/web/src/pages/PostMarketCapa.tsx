@@ -325,7 +325,6 @@ export default function PostMarketCapa() {
             name="severity"
             label="Severity / risk"
             rules={[{ required: true }]}
-            extra="Critical is the highest level, above High."
           >
             <ChoiceSelect options={[...RISK_LEVELS]} onChange={() => {}} />
           </Form.Item>
