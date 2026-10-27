@@ -319,23 +319,24 @@ export default function PostMarketCapa() {
             <Form.Item name="eventType" label="Event type" rules={[{ required: true, message: 'Pick the event type' }]}>
               <Select options={EVENT_TYPES.map((t) => ({ value: t, label: t }))} showSearch={{ optionFilterProp: 'label' }} />
             </Form.Item>
-            <Form.Item
-              name="severity"
-              label="Severity / risk"
-              rules={[{ required: true }]}
-              extra="Critical sits above High — the shared scale from Round 4, question 3."
-            >
-              <ChoiceSelect options={[...RISK_LEVELS]} onChange={() => {}} />
-            </Form.Item>
+          </div>
+          {/* The scale is one row of buttons; it takes the whole width rather than half of a pair. */}
+          <Form.Item
+            name="severity"
+            label="Severity / risk"
+            rules={[{ required: true }]}
+            extra="Critical sits above High — the shared scale from Round 4, question 3."
+          >
+            <ChoiceSelect options={[...RISK_LEVELS]} onChange={() => {}} />
+          </Form.Item>
+          <div className="pm-form-grid">
             <Form.Item name="owner" label="Owner" rules={[{ required: true, message: 'Pick an owner' }]}>
               <UserSelect onChange={() => {}} />
             </Form.Item>
-          </div>
-          <div className="pm-form-grid">
             <Form.Item name="productSku" label="Product / SKU">
               <Input />
             </Form.Item>
-            <Form.Item name="pifPmfImpact" label="PIF / PMF impact">
+            <Form.Item name="pifPmfImpact" label="PIF / PMF impact" className="pm-form-wide">
               <Input />
             </Form.Item>
             <Form.Item name="investigationLink" label="Investigation link">

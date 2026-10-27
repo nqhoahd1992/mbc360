@@ -42,3 +42,5 @@
   .pm-dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .pm-fields, .pm-form-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+.pm-form-grid .pm-form-wide { grid-column: 1 / -1; }
