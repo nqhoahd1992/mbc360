@@ -748,6 +748,8 @@ export const CLAIM_STATUSES_BLOCKING_ARTWORK: readonly string[] = CLAIM_STATUSES
 
 const CLAIM_RISK_OPTIONS = ['Low', 'Medium', 'High', 'Prohibited / not acceptable', 'Pending classification'] as const;
 const YNNA = ['Y', 'N', 'N/A'] as const;
+// The Released_Label_Ctrl sheet's own Y / N list, which writes "NA" where the other sheets write "N/A".
+const YNNA_LABEL = ['Y', 'N', 'NA'] as const;
 
 // Published Information Approval workflow states (confirmed rule F11), in
 // lifecycle order. Terminal-published states: "Approved for Release" / "Released".
@@ -2661,10 +2663,10 @@ export const releasedLabelRegister: RegisterConfig = {
     { key: 'currentArtworkFile', label: 'Current artwork file', type: 'text', width: 150 },
     { key: 'newLabelVersion', label: 'New label version', type: 'text', width: 130 },
     { key: 'newArtworkFile', label: 'New artwork file', type: 'text', width: 150 },
-    { key: 'newLabelReleased', label: 'New label released to market?', type: 'select', width: 120, options: ['Y', 'N', 'NA'] },
+    { key: 'newLabelReleased', label: 'New label released to market?', type: 'select', width: 120, options: YNNA_LABEL },
     { key: 'marketReleaseDate', label: 'Market release date', type: 'date', width: 130 },
     { key: 'marketsAffected', label: 'Markets affected', type: 'markets', width: 190 },
-    { key: 'assetExists', label: '3D asset exists?', type: 'select', width: 110, options: YNNA },
+    { key: 'assetExists', label: '3D asset exists?', type: 'select', width: 110, options: YNNA_LABEL },
     { key: 'assetLink', label: '3D asset link', type: 'text', width: 130 },
     // Left as free text: the Artwork_Change_Control sheet is a 5-trigger rule table, so there is no row to pick [ASSUMPTION: R5-Q77].
     { key: 'artworkChangeRef', label: 'Artwork Change Control ref', type: 'text', width: 160 },
@@ -2692,10 +2694,10 @@ export const labelPlatformRollout: RegisterConfig = {
     { key: 'platformUrl', label: 'Platform URL / location', type: 'text', width: 160 },
     { key: 'currentImage', label: 'Current image on platform', type: 'text', width: 160 },
     { key: 'correctArtwork', label: 'Correct new artwork file', type: 'text', width: 160 },
-    { key: 'stockAvailable', label: 'New-label stock available?', type: 'select', width: 120, options: YNNA },
+    { key: 'stockAvailable', label: 'New-label stock available?', type: 'select', width: 120, options: YNNA_LABEL },
     { key: 'stockConfirmedBy', label: 'Stock confirmed by', type: 'user', width: 140 },
-    { key: 'oldImageRemoved', label: 'Old image removed?', type: 'select', width: 110, options: YNNA },
-    { key: 'imageUpdated', label: 'Image updated on platform?', type: 'select', width: 120, options: YNNA },
+    { key: 'oldImageRemoved', label: 'Old image removed?', type: 'select', width: 110, options: YNNA_LABEL },
+    { key: 'imageUpdated', label: 'Image updated on platform?', type: 'select', width: 120, options: YNNA_LABEL },
     { key: 'dateUpdated', label: 'Date updated', type: 'date', width: 120 },
     { key: 'verifiedBy', label: 'Verified by', type: 'user', width: 130 },
     { key: 'screenshotLink', label: 'Screenshot / evidence link', type: 'text', width: 160 },
@@ -2726,8 +2728,8 @@ export const labelShipmentVerification: RegisterConfig = {
     { key: 'batchRecordLink', label: 'Batch record link', type: 'text', width: 140 },
     { key: 'labelVersionShipped', label: 'Label artwork version shipped', type: 'text', width: 160 },
     { key: 'labelFileLink', label: 'Label artwork file / proof link', type: 'text', width: 170 },
-    { key: 'artworkMatches', label: 'Artwork matches current released label?', type: 'select', width: 130, options: YNNA },
-    { key: 'batchMatches', label: 'Batch details match physical stock?', type: 'select', width: 130, options: YNNA },
+    { key: 'artworkMatches', label: 'Artwork matches current released label?', type: 'select', width: 130, options: YNNA_LABEL },
+    { key: 'batchMatches', label: 'Batch details match physical stock?', type: 'select', width: 130, options: YNNA_LABEL },
     { key: 'verifiedBy', label: 'Verified by', type: 'user', width: 130 },
     { key: 'batchTraceRef', label: 'Batch Formula Trace ref', type: 'rowRef', refRegister: 'batchFormulaTrace', refColumn: 'traceId', width: 160 },
     { key: 'photoLink', label: 'Photo / evidence link', type: 'text', width: 150 },
