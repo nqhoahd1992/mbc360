@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Checkbox, Input, Select, Tooltip } from 'antd';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
-import { RM_EVIDENCE_INCOMPLETE } from '@mbc360/shared/config/registers';
 import type { BomLine, RegisterRow } from '@mbc360/shared/types';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
 import { cosmetriListRawMaterials, type CosmetriRawMaterialSummary } from '../integrations/cosmetri';
@@ -149,15 +148,10 @@ export default function SupplierRmEvidenceTable({
               disabled={blocked}
               onChange={(e) => {
                 if (blocked && !e.target.checked) return; // defence in depth
-                // D4: all three evidence statuses describe an UNapproved row, so
-                // approving clears it and un-approving puts the row back to
-                // "Incomplete — evidence review required" — both halves of one
-                // deliberate action (`rmEvidenceContradictions` rejects the
+                // D4: both evidence statuses describe an UNapproved row, so approving clears it, and un-approving leaves the row
+                // with no conclusion, which reads "Incomplete — evidence review required" (`rmEvidenceContradictions` rejects the
                 // contradictory state at the API anyway).
-                api.patchRow({
-                  approvedForUse: e.target.checked,
-                  evidenceStatus: e.target.checked ? '' : RM_EVIDENCE_INCOMPLETE,
-                });
+                api.patchRow({ approvedForUse: e.target.checked, evidenceStatus: '' });
               }}
             />
           </Tooltip>

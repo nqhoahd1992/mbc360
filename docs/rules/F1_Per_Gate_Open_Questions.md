@@ -1543,6 +1543,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
 | R5-Q69 | Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role | Chủ dự án bỏ quyền theo role 15/10/2026 | **lộ ra 15/10/2026** |
+| R5-Q80 | "Incomplete — evidence review required" của Supplier & Raw Material Evidence không còn là giá trị lưu: ô trống và chưa tích Approved for use đã là trạng thái đó, ô trống hiện đúng dòng chữ ấy | Chủ dự án thấy trạng thái này thừa so với ô tick, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q79 | Năm dòng "Correct names for PI" trong Artwork / Label Review Checklist: ghép tên INCI và tên phải in thành một yêu cầu, và gate khoá của bảng | Chủ dự án thấy trang thiếu bảng này, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q78 | Cột Trace ID (BT-001…) do ứng dụng thêm vào Batch Formula Trace để ô Batch Formula Trace ref của Shipment Label & Batch Verification chọn được một dòng | Chủ dự án muốn ô ref là ô chọn, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q77 | Artwork Change Control ref của Released Label vs Current Artwork Register trỏ vào đâu (bản ghi Change Control, hay một trong 5 trigger của sheet), và 8 cột "ref" thay đổi còn lại có đổi theo không | Chủ dự án hỏi ô ref có phải ô chọn không, 27/10/2026 | **lộ ra 27/10/2026** |
@@ -2313,6 +2314,16 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.
 
 **Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ** (còn **76** từ 19/10/2026, sau khi bỏ bốn sổ tham chiếu của Roadmap và Sheet 6 và hai bảng ký gõ tay của Needs và Target Product — nhóm D còn 32, nhóm E còn 26), chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+
+#### R5-Q80 · "Incomplete — evidence review required": hiện bằng ô trống thay vì một giá trị lưu 🟡
+
+**Lộ ra 27/10/2026, khi chủ dự án hỏi vì sao cột Evidence review status của Supplier & Raw Material Evidence cần một giá trị nghĩa giống hệt ô trống cộng ô Approved for use chưa tích.** Đáp án D4 (Vòng 3) đòi dòng stub từ Cosmetri phải được "ghi rõ" là chưa đủ bằng chứng, không mặc định Approved for Use, hiện trong readiness và chặn Gate 4. Bản trước đáp ứng bằng cách lưu chuỗi "Incomplete — evidence review required" làm giá trị mặc định của mọi dòng mới.
+
+**Hiện chạy theo:** cột để trống mặc định và chỉ còn hai giá trị thật (**Conditionally accepted — controlled action open**, **Considered — not used in this formula**, đều đã xác nhận ở Vòng 4 câu 31). Ô trống hiện chữ "Incomplete — evidence review required" làm chữ gợi ý. Mọi điều kiện của D4 vẫn giữ: không mặc định Approved, hiện trong readiness, chặn Gate 4 (luật vốn đã coi trống như chưa kết luận). Các dòng đã lưu chuỗi cũ được chuyển thành trống.
+
+**Câu hỏi:** chữ "Incomplete — evidence review required" chỉ hiện như nhãn gợi ý của ô trống (không phải một lựa chọn người dùng thấy trong danh sách) có thỏa yêu cầu "ghi rõ" của D4 không?
+
+**Nếu trả lời khác:** khôi phục giá trị vào `RM_EVIDENCE_STATUS_OPTIONS` và `defaultValue` của cột `evidenceStatus` trong `packages/shared/src/config/registers.ts` [ASSUMPTION: R5-Q80].
 
 #### R5-Q79 · Artwork / Label Review Checklist: năm dòng "Correct names for PI" và gate khoá của bảng 🟡
 

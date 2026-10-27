@@ -468,7 +468,7 @@ export default function DynamicTable({
             allowClear
             style={{ width: '100%' }}
             popupMatchSelectWidth={false}
-            placeholder="Select…"
+            placeholder={placeholderFor(column, row) ?? 'Select…'}
             value={(value as string | undefined) || undefined}
             options={(column.options ?? []).map((o) => ({
               value: o,

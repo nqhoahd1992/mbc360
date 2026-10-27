@@ -390,7 +390,9 @@ export const FINAL_SAFETY_NA = 'N/A';
 // `approvedForUse` stays exactly as it was — it is the approval act, read by the
 // Formula BOM picker and its delete/un-approve guards. This column describes where
 // an UNAPPROVED row stands, which is what D4 needs and the checkbox cannot say.
-export const RM_EVIDENCE_INCOMPLETE = 'Incomplete — evidence review required'; // D4's own words
+// D4's own words. Not a stored value: a row with no conclusion and no approval tick IS this, so the column shows it as its empty-state
+// text rather than holding it [ASSUMPTION: R5-Q80].
+export const RM_EVIDENCE_INCOMPLETE = 'Incomplete — evidence review required';
 // D4's second route through Gate 4. The wording ("controlled conditional
 // decision") is theirs; that we implement it as this value plus a Proceed with
 // Conditions decision — rather than a bespoke per-row approval field — reuses the
@@ -611,7 +613,6 @@ export const GATE4_DISPOSITION_OPTIONS = [
 export const GATE4_DISPOSITION_PROHIBITED = 'Prohibited — remove';
 
 export const RM_EVIDENCE_STATUS_OPTIONS = [
-  RM_EVIDENCE_INCOMPLETE,
   RM_EVIDENCE_CONDITIONAL,
   RM_EVIDENCE_NOT_USED,
 ] as const;
@@ -813,10 +814,9 @@ const supplierRmEvidence: RegisterConfig = {
     // The workbook's own column for the link to the Raw Material Evaluation (v2 workbook, Supplier_RM sheet).
     { key: 'rmEvaluationLink', label: 'Raw Material Evaluation Link', type: 'text', width: 160, gate: '04' },
     { key: 'approvedForUse', label: 'Approved for use?', type: 'checkbox', width: 90, gate: '07' },
-    // D4. Starts at "Incomplete — evidence review required" for every new row, so
-    // an unreviewed material says so from the moment it exists. Cleared by ticking
-    // Approved for use (the reviewed-and-usable outcome), or set to one of the
-    // other two dispositions.
+    // D4. Empty for every new row, and an empty cell reads "Incomplete — evidence review required" (its placeholder), so an
+    // unreviewed material says so from the moment it exists without a stored value that means the same as blank. Ticking
+    // Approved for use is the reviewed-and-usable outcome; the two values here are the other dispositions.
     {
       key: 'evidenceStatus',
       gate: '07',
@@ -824,7 +824,7 @@ const supplierRmEvidence: RegisterConfig = {
       type: 'select',
       width: 220,
       options: RM_EVIDENCE_STATUS_OPTIONS,
-      defaultValue: RM_EVIDENCE_INCOMPLETE,
+      placeholder: RM_EVIDENCE_INCOMPLETE,
     },
     { key: 'supplier', label: 'Supplier', type: 'text', width: 140, gate: '04' },
     { key: 'grade', label: 'Grade / trade name', type: 'text', width: 140, gate: '04' },
