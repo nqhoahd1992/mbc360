@@ -2603,9 +2603,9 @@ export const formulationSafetyFinalSignOff: RegisterConfig = {
 
 const RELEASED_LABEL_OWNER = REVIEW_SPECS.releasedLabel;
 
-const releasedLabelRegister: RegisterConfig = {
+export const releasedLabelRegister: RegisterConfig = {
   key: 'releasedLabelRegister',
-  title: 'Released Label vs Current Artwork',
+  title: 'Released Label vs Current Artwork Register',
   sheetName: 'Released_Label_Ctrl',
   workbookTab: 'Lily-Released_Label_Ctrl',
   description: 'What changed / will change, current vs new label, market-release status and 3D asset status. No silent label changes — use Artwork_Change_Control for the formal record.',
@@ -2634,9 +2634,9 @@ const releasedLabelRegister: RegisterConfig = {
   ],
 };
 
-const labelPlatformRollout: RegisterConfig = {
+export const labelPlatformRollout: RegisterConfig = {
   key: 'labelPlatformRollout',
-  title: 'Platform Rollout & Stock Confirmation',
+  title: 'Platform / Channel Rollout & Stock Confirmation',
   sheetName: 'Released_Label_Ctrl',
   workbookTab: 'Lily-Released_Label_Ctrl',
   description: 'Update every platform only when correct new-label stock is available (Digital / Platforms).',
@@ -2666,7 +2666,7 @@ const labelPlatformRollout: RegisterConfig = {
   ],
 };
 
-const labelShipmentVerification: RegisterConfig = {
+export const labelShipmentVerification: RegisterConfig = {
   key: 'labelShipmentVerification',
   title: 'Shipment Label & Batch Verification',
   sheetName: 'Released_Label_Ctrl',
@@ -4235,9 +4235,7 @@ const DEPARTMENTS: RawDept[] = [
     description: 'Released-label control, packaging BOM, packaging specs/artwork evidence and artwork change control.',
     reviewOwner: REVIEW_SPECS.packaging,
     items: [
-      'releasedLabelRegister',
-      'labelPlatformRollout',
-      'labelShipmentVerification',
+      { title: 'Released Label Control', sheetName: 'Released_Label_Ctrl', workbookTab: 'Lily-Released_Label_Ctrl', page: 'released-label-control', gate: '06/11', contains: ['releasedLabelRegister', 'labelPlatformRollout', 'labelShipmentVerification'] },
       { title: 'Packaging BOM', sheetName: 'Packaging_BOM', workbookTab: 'Lily-Packaging_BOM', page: 'bom/packaging', gate: '06' },
       'packagingSpecsArtwork',
       'artworkChangeControl',
