@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, DatePicker, Drawer, Empty, Form, Grid, Input, Rate, Select, message } from 'antd';
+import { Button, DatePicker, Drawer, Empty, Form, Grid, Input, Popconfirm, Rate, Select, message } from 'antd';
 import { FEEDBACK_RECOMMEND_OPTIONS, FEEDBACK_TOO_OILY_OPTIONS } from '@mbc360/shared/config/gates';
 import { MessageOutlined, PlusOutlined, RightOutlined, WarningOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
@@ -23,8 +23,8 @@ import UserSelect from '../components/UserSelect';
 // five uneven Statistic cards became one row of figures; the slip-risk flag —
 // a SAFETY finding, which used to be a red tag in the eighth column of a
 // 1100px table — is its own notice with a filter; and each entry is one row
-// (scores, flags, the first comment) opening a read-only drawer. Entries stay
-// add-only, as before.
+// (scores, flags, the first comment) opening a drawer. Entries and samples can be corrected
+// or deleted from it (project owner, 2026-10-27); every save is an audited write of the whole panel record.
 
 type Filter = 'all' | 'flagged' | 'notRecommended';
 
@@ -70,6 +70,9 @@ export default function ProductFeedback() {
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const addFeedback = useAppStore((s) => s.addFeedback);
   const saveFeedbackSample = useAppStore((s) => s.saveFeedbackSample);
+  const setFeedbackAll = useAppStore((s) => s.setFeedbackAll);
+  // The entry being corrected (null = adding a new one).
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [sampleId, setSampleId] = useState<string | null>(null);
   // null = closed; a sample id = editing it; 'new' = adding another.
@@ -159,24 +162,49 @@ export default function ProductFeedback() {
   );
   const open = entries.find((e) => e.id === openId);
 
+  const startEditEntry = (e: FeedbackEntry) => {
+    form.setFieldsValue({ ...e, dateTested: e.dateTested ? dayjs(e.dateTested) : undefined });
+    setEditingEntryId(e.id);
+    setOpenId(null);
+    setAdding(true);
+  };
+
   const onCreate = async () => {
     const values = await form.validateFields();
+    const dateTested = values.dateTested ? values.dateTested.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');
     // Closes only once the server has the entry; a refused write keeps the drawer open with the input.
     setCreating(true);
     try {
-      const saved = await addFeedback(id, {
-        ...values,
-        id: nextFeedbackId(allEntries),
-        sampleId: current.id,
-        dateTested: values.dateTested ? values.dateTested.format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
-      }, current);
+      const saved = editingEntryId
+        ? await setFeedbackAll(
+            id,
+            allEntries.map((e) => (e.id === editingEntryId ? { ...e, ...values, dateTested } : e)),
+            samples,
+          )
+        : await addFeedback(id, { ...values, id: nextFeedbackId(allEntries), sampleId: current.id, dateTested }, current);
       if (!saved) return;
     } finally {
       setCreating(false);
     }
-    message.success('Feedback recorded');
+    message.success(editingEntryId ? 'Feedback updated' : 'Feedback recorded');
     setAdding(false);
+    setEditingEntryId(null);
     form.resetFields();
+  };
+
+  const deleteEntry = async (entryId: string) => {
+    if (await setFeedbackAll(id, allEntries.filter((e) => e.id !== entryId), samples)) {
+      setOpenId(null);
+      message.success('Feedback deleted');
+    }
+  };
+
+  const deleteSample = async () => {
+    // Its entries go with it: they only make sense against the sample they scored.
+    if (await setFeedbackAll(id, allEntries.filter((e) => e.sampleId !== current.id), samples.filter((x) => x.id !== current.id))) {
+      setSampleId(null);
+      message.success('Sample deleted');
+    }
   };
 
   const flags = (e: FeedbackEntry) => (
@@ -275,7 +303,20 @@ export default function ProductFeedback() {
                 {['Sample ' + (Math.max(0, samples.findIndex((x) => x.id === current.id)) + 1), current.formulaVersion].filter(Boolean).join(' · ')}
                 <span className="fb-strip-sub">Sample under evaluation</span>
               </div>
-              <Button onClick={() => openSampleEditor(current.id)}>Edit sample</Button>
+              <div className="fb-strip-actions">
+                <Button onClick={() => openSampleEditor(current.id)}>Edit sample</Button>
+                {samples.some((x) => x.id === current.id) && (
+                  <Popconfirm
+                    title="Delete this sample?"
+                    description={`${n === 0 ? 'It has no feedback.' : `Its ${n} feedback ${n === 1 ? 'entry is' : 'entries are'} deleted with it.`}`}
+                    okText="Delete"
+                    okButtonProps={{ danger: true }}
+                    onConfirm={() => void deleteSample()}
+                  >
+                    <Button danger>Delete sample</Button>
+                  </Popconfirm>
+                )}
+              </div>
             </div>
             <dl className="fb-strip-grid">
               {(
@@ -416,11 +457,22 @@ export default function ProductFeedback() {
         title={
           open && (
             <span className="fb-drawer-title">
-              {open.id} {flags(open)}
+              {open.testerName} {flags(open)}
             </span>
           )
         }
-        footer={<span className="fb-hint">Feedback is a record — it cannot be edited after it is saved.</span>}
+        footer={
+          open && (
+            <div className="fb-drawer-foot">
+              <Popconfirm title="Delete this feedback?" okText="Delete" okButtonProps={{ danger: true }} onConfirm={() => void deleteEntry(open.id)}>
+                <Button danger>Delete</Button>
+              </Popconfirm>
+              <Button type="primary" onClick={() => startEditEntry(open)}>
+                Edit
+              </Button>
+            </div>
+          )
+        }
       >
         {open && (
           <dl className="fb-dl">
@@ -488,11 +540,15 @@ export default function ProductFeedback() {
       </FormDrawer>
 
       <FormDrawer
-        title="Add panel feedback"
+        title={editingEntryId ? 'Edit panel feedback' : 'Add panel feedback'}
         open={adding}
         onOk={() => void onCreate()}
         confirmLoading={creating}
-        onCancel={() => setAdding(false)}
+        onCancel={() => {
+          setAdding(false);
+          setEditingEntryId(null);
+          form.resetFields();
+        }}
         okText="Save"
         width={620}
       >

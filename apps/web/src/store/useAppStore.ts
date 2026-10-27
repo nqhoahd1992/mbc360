@@ -302,6 +302,8 @@ interface AppState {
   // `sample` is the sample the entry belongs to; one not yet on the project is added with it.
   addFeedback: (id: string, entry: FeedbackEntry, sample: FeedbackSample) => Promise<boolean>;
   saveFeedbackSample: (id: string, sample: FeedbackSample) => Promise<boolean>;
+  // Replaces the project's whole panel record (samples and every entry) — the one writer behind editing and deleting.
+  setFeedbackAll: (id: string, entries: FeedbackEntry[], samples: FeedbackSample[]) => Promise<boolean>;
 
   addChange: (record: ChangeRecord) => Promise<boolean>;
   setChangesBulk: (records: ChangeRecord[]) => Promise<boolean>;
@@ -698,6 +700,7 @@ export const useAppStore = create<AppState>()(
           const next = samples.some((s) => s.id === sample.id) ? samples : [...samples, sample];
           return tryWriteSection(id, (v) => projectsApi.setFeedback(id, [...(project?.feedback ?? []), entry], next, v));
         },
+        setFeedbackAll: (id, entries, samples) => tryWriteSection(id, (v) => projectsApi.setFeedback(id, entries, samples, v)),
         saveFeedbackSample: (id, sample) => {
           const project = get().projects.find((p) => p.identity.id === id);
           const samples = project?.feedbackSamples ?? [];
