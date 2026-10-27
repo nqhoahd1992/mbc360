@@ -30,7 +30,6 @@ type Filter = 'all' | 'flagged' | 'notRecommended';
 
 // The workbook's "SAMPLE UNDER EVALUATION" block, one per sample a project puts to its panel. [ASSUMPTION: R5-Q82]
 interface SampleForm {
-  productSku?: string;
   productFamily?: string;
   developmentStage?: string;
   linkedChangeId?: string;
@@ -91,7 +90,8 @@ export default function ProductFeedback() {
   if (!project) return <Empty description="Project not found" />;
   const id = project.identity.id;
   const samples = project.feedbackSamples;
-  const fallback: FeedbackSample = { id: fallbackId, productSku: project.identity.productSku };
+  // The product is the project's own (read-only), so a sample never records one.
+  const fallback: FeedbackSample = { id: fallbackId };
   const current = samples.find((s) => s.id === sampleId) ?? samples[0] ?? fallback;
   const currentIndex = Math.max(0, samples.findIndex((s) => s.id === current.id));
   const allEntries = project.feedback;
@@ -99,10 +99,8 @@ export default function ProductFeedback() {
   const n = entries.length;
 
   const openSampleEditor = (target: string | 'new') => {
-    const base: FeedbackSample | undefined =
-      target === 'new' ? { id: '', productSku: project.identity.productSku } : target === current.id ? current : samples.find((s) => s.id === target);
+    const base: FeedbackSample | undefined = target === 'new' ? undefined : target === current.id ? current : samples.find((s) => s.id === target);
     sampleForm.setFieldsValue({
-      productSku: base?.productSku,
       productFamily: base?.productFamily,
       developmentStage: base?.developmentStage,
       linkedChangeId: base?.linkedChangeId,
@@ -119,7 +117,6 @@ export default function ProductFeedback() {
     const trimmed = (t?: string) => (t ?? '').trim() || undefined;
     const next: FeedbackSample = {
       id: editingSample === 'new' ? crypto.randomUUID() : (editingSample as string),
-      productSku: trimmed(v.productSku),
       productFamily: trimmed(v.productFamily),
       developmentStage: trimmed(v.developmentStage),
       linkedChangeId: trimmed(v.linkedChangeId),
@@ -240,7 +237,7 @@ export default function ProductFeedback() {
         <dl className="fb-sample-dl">
           {(
             [
-              ['Product / SKU', current.productSku],
+              ['Product / SKU', project.identity.productSku],
               ['Sample / batch code', current.sampleBatchCode],
               ['Product Family', current.productFamily],
               ['Formula version', current.formulaVersion],
@@ -421,8 +418,8 @@ export default function ProductFeedback() {
       >
         <Form form={sampleForm} layout="vertical">
           <div className="fb-form-grid">
-            <Form.Item name="productSku" label="Product / SKU">
-              <Input />
+            <Form.Item label="Product / SKU" extra="From the project">
+              <Input value={project.identity.productSku} disabled />
             </Form.Item>
             <Form.Item name="productFamily" label="Product Family">
               <Input />
