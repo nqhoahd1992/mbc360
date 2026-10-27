@@ -12,7 +12,7 @@ import FormulaVersionModal from '../components/FormulaVersionModal';
 import { formulaVersionState } from '@mbc360/shared/utils/formulaLifecycle';
 import FormulaSupersessionCard from '../components/FormulaSupersessionCard';
 import FormulaVersionCompareModal, { type FormulaVersionOption } from '../components/FormulaVersionCompareModal';
-import { currentGateIndex, gateIndex, hasReachedPhase, isGateRefLocked, isGateSignedStanding, positionSentence } from '@mbc360/shared/utils/gateProgress';
+import { currentGateIndex, gateIndex, isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
 import { bomWatchMatches } from '@mbc360/shared/utils/ingredientWatch';
 import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
 import { composeReviewOwner, type ReviewOwnerSpec } from '@mbc360/shared/config/reviewers';
@@ -465,15 +465,6 @@ export default function BomCosting() {
           </div>
         )}
       </div>
-
-      {/* Soft guidance (was PhaseDependencyAlert): the module stays fully
-          usable before Phase 2, the data is just provisional. */}
-      {!hasReachedPhase(project, 2) && (
-        <Notice tone="warn" title="Phase 2 activity (Gate 05-06)">
-          Formula BOM &amp; Costing is normally completed once the formula and packaging route is confirmed in Phase 2.{' '}
-          {positionSentence(project)} You can enter data now — it stays provisional until then.
-        </Notice>
-      )}
 
       <FormulaPropertiesCard project={project} />
 

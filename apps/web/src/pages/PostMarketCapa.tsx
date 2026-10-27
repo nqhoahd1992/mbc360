@@ -8,9 +8,7 @@ import type { CapaRecord, RiskLevel } from '@mbc360/shared/types';
 import { isDoneStatus } from '@mbc360/shared/utils/doneStatus';
 import { RISK_LEVELS } from '@mbc360/shared/types';
 import { CAPA_STATUSES } from '@mbc360/shared/config/gates';
-import { isGatePassed, positionSentence } from '@mbc360/shared/utils/gateProgress';
 import UserSelect from '../components/UserSelect';
-import Notice from '../components/Notice';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 import DrawerSaveFooter from '../components/DrawerSaveFooter';
@@ -156,13 +154,6 @@ export default function PostMarketCapa() {
           New record
         </Button>
       </header>
-
-      {!isGatePassed(project, 'SG11') && (
-        <Notice tone="warn" title="Post-launch activity (Gate 12)">
-          Records normally start once Gate 11 (launch sign-off) has passed. {positionSentence(project)} You can pre-fill
-          records now.
-        </Notice>
-      )}
 
       {draft.length === 0 ? (
         <div className="c-card au-empty">
