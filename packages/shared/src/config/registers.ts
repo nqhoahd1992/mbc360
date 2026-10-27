@@ -835,7 +835,7 @@ const supplierRmEvidence: RegisterConfig = {
     { key: 'impurities', label: 'Impurities / heavy metals', type: 'text', width: 150, gate: '04' },
     { key: 'microInfo', label: 'Micro / preservative info', type: 'text', width: 150, gate: '04' },
     { key: 'originProof', label: 'Origin / vegan / natural proof', type: 'text', width: 160, gate: '04' },
-    { key: 'regulatoryStatus', label: 'Regulatory status', type: 'text', width: 150, gate: '04' },
+    { key: 'regulatoryStatus', label: 'Regulatory status', type: 'select', width: 150, options: SHEET_STATUS_OPTIONS, gate: '04' },
     { key: 'owner', label: 'Owner', type: 'user', width: 130 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
