@@ -91,3 +91,14 @@
 
 /* The feasibility form carries no rule or gap of its own under the card title. */
 .cc-feas .bom-subsection { margin-top: 0; padding-top: 0; border-top: 0; }
+
+/* Feasibility: one row for status, assessor and date; assumptions and the evidence link share the next. */
+.cc-feas .bom-form { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px 20px; align-items: start; }
+.cc-feas .bom-form > .bom-field { grid-column: 1 / -1; }
+@media (min-width: 1000px) {
+  .cc-feas .bom-form > .cc-f6 { grid-column: span 6; }
+  .cc-feas .bom-form > .cc-f3 { grid-column: span 3; }
+  .cc-feas .bom-form > .cc-f8 { grid-column: span 8; }
+  .cc-feas .bom-form > .cc-f4 { grid-column: span 4; }
+}
+.cc-feas .bom-label { font-size: 12px; color: var(--c-text-3); }

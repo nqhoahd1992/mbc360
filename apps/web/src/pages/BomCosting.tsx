@@ -1124,8 +1124,8 @@ export default function BomCosting() {
                   Save, so it stays in the same card. */}
               <div className="bom-subsection">
                 <div className="bom-form">
-                  <label className="bom-field bom-span-2">
-                    <span className="bom-label">Costing / commercial feasibility status</span>
+                  <label className="bom-field cc-f6">
+                    <span className="bom-label">Status</span>
                     <Select
                       style={{ width: '100%' }}
                       allowClear
@@ -1136,7 +1136,7 @@ export default function BomCosting() {
                       onChange={(v?: string) => costingDraft.update((prev) => ({ ...prev, feasibilityStatus: v ?? '' }))}
                     />
                   </label>
-                  <label className="bom-field">
+                  <label className="bom-field cc-f3">
                     <span className="bom-label">Assessor</span>
                     <UserSelect
                       value={costing.assessor}
@@ -1144,7 +1144,7 @@ export default function BomCosting() {
                       onChange={(v) => costingDraft.update((prev) => ({ ...prev, assessor: v }))}
                     />
                   </label>
-                  <label className="bom-field">
+                  <label className="bom-field cc-f3">
                     <span className="bom-label">Review date</span>
                     <DatePicker
                       style={{ width: '100%' }}
@@ -1155,7 +1155,7 @@ export default function BomCosting() {
                       }
                     />
                   </label>
-                  <label className="bom-field bom-span-all">
+                  <label className="bom-field cc-f8">
                     <span className="bom-label">Assumptions or conditions</span>
                     <Input.TextArea
                       autoSize={{ minRows: 2, maxRows: 4 }}
@@ -1176,8 +1176,8 @@ export default function BomCosting() {
                       onChange={(e) => costingDraft.update((prev) => ({ ...prev, assumptions: e.target.value }))}
                     />
                   </label>
-                  <label className="bom-field bom-span-2">
-                    <span className="bom-label">Evidence or costing-version link</span>
+                  <label className="bom-field cc-f4">
+                    <span className="bom-label">Evidence / costing-version link</span>
                     <Input
                       placeholder="link"
                       value={costing.evidenceLink}
