@@ -270,39 +270,32 @@ export default function ProductFeedback() {
 
         <div className="fb-main">
           <div className="c-card fb-strip-card">
-            <div className="fb-strip">
+            <div className="fb-strip-head">
+              <div className="fb-strip-title">
+                {['Sample ' + (Math.max(0, samples.findIndex((x) => x.id === current.id)) + 1), current.formulaVersion].filter(Boolean).join(' · ')}
+                <span className="fb-strip-sub">Sample under evaluation</span>
+              </div>
+              <Button onClick={() => openSampleEditor(current.id)}>Edit sample</Button>
+            </div>
+            <dl className="fb-strip-grid">
               {(
                 [
-                  ['Product / SKU', project.identity.productSku],
-                  ['Batch', current.sampleBatchCode],
-                  ['Formula', current.formulaVersion],
-                  ['Stage', current.developmentStage],
-                  ['Issued', current.dateIssued],
-                  ['Coordinator', current.panelCoordinator],
+                  ['Product / SKU', project.identity.productSku, true],
+                  ['Product family', current.productFamily],
+                  ['Sample / batch code', current.sampleBatchCode],
+                  ['Formula version', current.formulaVersion],
+                  ['Development stage', current.developmentStage],
+                  ['Date samples issued', current.dateIssued],
+                  ['Linked change', current.linkedChangeId],
+                  ['Panel coordinator', current.panelCoordinator],
                 ] as const
-              ).map(([label, value]) => (
-                <span key={label} className="fb-strip-item">
-                  <span className="fb-strip-k">{label}</span> <b>{value || '—'}</b>
-                </span>
+              ).map(([label, value, wide]) => (
+                <div key={label} className={wide ? 'fb-strip-cell fb-strip-wide' : 'fb-strip-cell'}>
+                  <dt>{label}</dt>
+                  <dd className={value ? undefined : 'fb-strip-empty'}>{value || '—'}</dd>
+                </div>
               ))}
-              <Button className="fb-strip-edit" onClick={() => openSampleEditor(current.id)}>
-                Edit sample
-              </Button>
-            </div>
-            {(current.productFamily || current.linkedChangeId) && (
-              <div className="fb-strip-more">
-                {current.productFamily && (
-                  <span className="fb-strip-item">
-                    <span className="fb-strip-k">Family</span> <b>{current.productFamily}</b>
-                  </span>
-                )}
-                {current.linkedChangeId && (
-                  <span className="fb-strip-item">
-                    <span className="fb-strip-k">Linked change</span> <b>{current.linkedChangeId}</b>
-                  </span>
-                )}
-              </div>
-            )}
+            </dl>
           </div>
 
       {n === 0 ? (
