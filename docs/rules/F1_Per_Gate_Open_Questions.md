@@ -1543,6 +1543,7 @@ Kênh xác thực là **quyết định của chủ dự án (21/08)**: chuyển
 | R5-Q61 | Action Critical đã đóng hoặc huỷ có còn buộc gate dùng Proceed with Conditions không | Rà soát luật SME (B2 / F8) | **chủ dự án quyết 09/10/2026** |
 | R5-Q65 | Sản phẩm không có claim hoặc chỉ hành chính: những sổ nào sau Gate 3 vẫn phải có hàng | Rà soát sổ có thể trống hợp lệ | **lộ ra 10/10/2026** |
 | R5-Q69 | Ai được đổi duyệt market (PIF, regulatory, claims, launch) khi không còn cấp theo role | Chủ dự án bỏ quyền theo role 15/10/2026 | **lộ ra 15/10/2026** |
+| R5-Q81 | Năm sổ dùng danh sách Status của chính sheet (6 trạng thái): hai trạng thái cũ On Hold và Backtracked không có từ tương ứng, tạm đổi thành Blocked và Needs Review | Chủ dự án chỉ ra sheet dùng danh sách này, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q80 | "Incomplete — evidence review required" của Supplier & Raw Material Evidence không còn là giá trị lưu: ô trống và chưa tích Approved for use đã là trạng thái đó, ô trống hiện đúng dòng chữ ấy | Chủ dự án thấy trạng thái này thừa so với ô tick, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q79 | Năm dòng "Correct names for PI" trong Artwork / Label Review Checklist: ghép tên INCI và tên phải in thành một yêu cầu, và gate khoá của bảng | Chủ dự án thấy trang thiếu bảng này, 27/10/2026 | **lộ ra 27/10/2026** |
 | R5-Q78 | Cột Trace ID (BT-001…) do ứng dụng thêm vào Batch Formula Trace để ô Batch Formula Trace ref của Shipment Label & Batch Verification chọn được một dòng | Chủ dự án muốn ô ref là ô chọn, 27/10/2026 | **lộ ra 27/10/2026** |
@@ -2314,6 +2315,16 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-claims-register`, `sg10-claim-evidence` (đã sửa), `sg05-npd-evidence-plan`, `sg08-npd-evidence-protocol`, `sg03-npd-competitor-content`.
 
 **Cập nhật 10/10/2026 — danh sách đầy đủ.** Câu hỏi gửi SME (Câu 33 của bản nháp vòng 5) nay liệt kê **cả 82 sổ** (còn **76** từ 19/10/2026, sau khi bỏ bốn sổ tham chiếu của Roadmap và Sheet 6 và hai bảng ký gõ tay của Needs và Target Product — nhóm D còn 32, nhóm E còn 26), chia theo giả định hiện tại: **A** 14 sổ bắt buộc có hàng · **B** 2 sổ được trống nếu dự án ghi "không claim" · **C** 2 sổ được trống nhưng phải có xác nhận đã xem · **D** 34 sổ tham chiếu có sẵn hàng · **E** 30 sổ không gate nào đòi hàng. Nhóm A phải khớp đúng 13 sổ ghim trong `verify:empty-registers` (cộng `regulatoryChecklistStatus`, đòi một hàng cho mỗi thị trường qua `marketChecklistRecorded`), nên thêm một điều kiện bắt buộc-có-hàng cho sổ mới sẽ làm test fail cho tới khi có người trả lời "sổ này có thể trống không". Nếu SME đổi nhóm của sổ nào, sửa điều kiện tương ứng trong `gateReadiness.ts` và danh sách ghim trong `packages/shared/scripts/verify-empty-registers.ts`.
+
+#### R5-Q81 · Status của năm sổ theo danh sách của sheet: On Hold và Backtracked chuyển thành gì 🟡
+
+**Lộ ra 27/10/2026, khi chủ dự án chỉ ra danh sách Status trong app khác danh sách ràng buộc của sheet.** Sheet Supplier_RM, Fragrance_Safety (nhật ký), Twinkle5_Claims, Study_Protocol (Participant / Sample Log) và PIF_Evid_Closure đều giới hạn Status ở sáu trạng thái: Not Started, In Progress, Needs Review, Complete, Not Applicable, Blocked. App dùng danh sách chung Not Started, In Progress, Completed, On Hold, Backtracked.
+
+**Hiện chạy theo:** năm sổ dùng danh sách của sheet. Dữ liệu cũ: Completed thành Complete; **On Hold thành Blocked** và **Backtracked thành Needs Review**, vì hai từ đó không có trong sheet, và từ cũ được ghi vào Notes của dòng. Luật đọc trạng thái hoàn thành dùng `isDoneStatus` nên chấp nhận cả hai cách viết.
+
+**Câu hỏi:** một dòng đang "On Hold" hoặc "Backtracked" trong năm sổ này nên là trạng thái nào của sáu trạng thái trên?
+
+**Nếu trả lời khác:** sửa phép đổi trong migration `20261027190000_register_status_sheet_list` (dữ liệu đã chạy) và ghi chú ở `SHEET_STATUS_OPTIONS` trong `packages/shared/src/config/registers.ts` [ASSUMPTION: R5-Q81].
 
 #### R5-Q80 · "Incomplete — evidence review required": hiện bằng ô trống thay vì một giá trị lưu 🟡
 

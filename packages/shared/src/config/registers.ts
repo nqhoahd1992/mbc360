@@ -338,6 +338,9 @@ export const WATCHLIST_ROW_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Need
 const WORK_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Completed', 'On Hold', 'Backtracked'] as const;
 // The Status list the workbook's own data validation offers on most register sheets (v2 workbook). Registers whose rules read
 // their status as 'Completed' keep WORK_STATUS_OPTIONS until those rules accept this wording too.
+// Supplier & Raw Material Evidence, Fragrance / Allergen Log, Twinkle 5 Claims Map, Participant / Sample Log and PIF Evidence Closure
+// moved to this list because each sheet's own data validation offers it (isDoneStatus reads 'Complete' and 'Completed' alike). Rows
+// saved as On Hold / Backtracked were mapped to Blocked / Needs Review, the nearest states [ASSUMPTION: R5-Q81].
 const SHEET_STATUS_OPTIONS = ['Not Started', 'In Progress', 'Needs Review', 'Complete', 'Not Applicable', 'Blocked'] as const;
 
 // Status lists the workbook gives its own sheets (v2 workbook data validation). Where a sheet carries both the generic list above and
@@ -837,7 +840,7 @@ const supplierRmEvidence: RegisterConfig = {
     { key: 'originProof', label: 'Origin / vegan / natural proof', type: 'text', width: 160, gate: '04' },
     { key: 'regulatoryStatus', label: 'Regulatory status', type: 'select', width: 150, options: SHEET_STATUS_OPTIONS, gate: '04' },
     { key: 'owner', label: 'Owner', type: 'user', width: 130 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 200 },
   ],
 };
@@ -1186,7 +1189,7 @@ export const fragranceAllergenLog: RegisterConfig = {
     { key: 'ifraLink', label: 'IFRA link', type: 'text', width: 120 },
     { key: 'allergenStatementLink', label: 'Allergen statement link', type: 'text', width: 160 },
     { key: 'pbCautionReview', label: 'PB caution review', type: 'text', width: 150 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 170 },
   ],
 };
@@ -1309,7 +1312,7 @@ const twinkle5ClaimsMap: RegisterConfig = {
     { key: 'evidenceType', label: 'Evidence type', type: 'text', width: 140 },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
     { key: 'limitations', label: 'Limitations / do-not-say', type: 'textarea', width: 200 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
   fixedRows: [
@@ -1444,7 +1447,7 @@ export const studyParticipantLog: RegisterConfig = {
     { key: 'inclusionStatus', label: 'Inclusion status', type: 'text', width: 130 },
     { key: 'baselineDetails', label: 'Baseline details', type: 'text', width: 150 },
     { key: 'visitTimepoint', label: 'Visit / timepoint', type: 'text', width: 130 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'aeIssue', label: 'AE / issue', type: 'text', width: 140 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
@@ -1869,7 +1872,7 @@ const pifEvidenceClosure: RegisterConfig = {
     { key: 'linkedGate', label: 'Linked gate', type: 'text', width: 90, editable: false, gateLink: true },
     { key: 'blocksExternalUse', label: 'Blocks external use until closed?', type: 'select', width: 90, options: ['Y', 'N', 'N/A', 'Conditional'], editable: false },
     { key: 'closureEvidence', label: 'Closure evidence', type: 'text', width: 150 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: WORK_STATUS_OPTIONS },
+    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
   ],
   fixedRows: [
