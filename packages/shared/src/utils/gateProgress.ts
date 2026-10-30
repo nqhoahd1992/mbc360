@@ -1339,10 +1339,14 @@ export function evaluateReadinessCheck(
     }
     case 'requirementDone': {
       const row = (project.requirements[check.section] ?? []).find((r) => r.requirement === check.requirement);
-      // Deliberately NOT widened to accept 'N/A' when question 21 introduced it:
-      // the one row this kind reads today is "Must-have product requirements",
-      // and the answer says that row "is always mandatory".
-      return { evaluable: true, satisfied: isDoneStatus(row?.status) };
+      // "Must-have product requirements" is `strict`: question 21 says that row "is
+      // always mandatory", so N/A never satisfies it. On every other row of a
+      // section that offers N/A, N/A with a rationale is a disposition
+      // [ASSUMPTION: R5-Q22].
+      return {
+        evaluable: true,
+        satisfied: requirementRowSettled(check.section, row, check.strict === true),
+      };
     }
     // Round 4 question 21's four hard conditions, in the answer's own order.
     // Vacuous only on a section with no rows, which cannot happen here: the rows
@@ -1482,6 +1486,39 @@ const MANDATORY_REQUIREMENT_KEYS = new Set(
 
 export function isMandatoryRequirementRow(section: string, requirement: string): boolean {
   return MANDATORY_REQUIREMENT_KEYS.has(`${section}|${requirement}`);
+}
+
+// Rows whose Mandatory item refuses N/A even on a section that offers it.
+const STRICT_REQUIREMENT_KEYS = new Set(
+  MANDATORY_CHECKS.filter(
+    (c): c is { kind: 'requirementDone'; section: string; requirement: string; strict?: boolean } =>
+      c.kind === 'requirementDone' && c.strict === true,
+  ).map((c) => `${c.section}|${c.requirement}`),
+);
+
+function requirementSectionOffersNotApplicable(section: string): boolean {
+  for (const phase of Object.values(PHASE_CONFIGS)) {
+    const found = phase.requirementSections.find((s) => s.key === section);
+    if (found) return !!found.allowNotApplicable;
+  }
+  return false;
+}
+
+// Is this requirement row settled for the check reading it: Complete, or — where the section offers N/A and the check is not
+// strict — N/A with a rationale. The one predicate both the rule and the red-asterisk hint on the row read.
+export function requirementRowSettled(
+  section: string,
+  row: { requirement?: string; status?: unknown; naRationale?: string } | undefined,
+  strict = row?.requirement !== undefined && STRICT_REQUIREMENT_KEYS.has(`${section}|${row.requirement}`),
+): boolean {
+  if (!row) return false;
+  if (isDoneStatus(row.status)) return true;
+  return (
+    !strict &&
+    requirementSectionOffersNotApplicable(section) &&
+    row.status === REQUIREMENT_NOT_APPLICABLE &&
+    (row.naRationale ?? '').trim() !== ''
+  );
 }
 
 export type ReadinessResult = 'Not Ready' | 'Ready with Conditions' | 'Ready for Decision' | 'Passed';
@@ -1836,7 +1873,7 @@ function describeReadinessCheck(check: ReadinessCheck): string | undefined {
     case 'checklistPrimarySelected':
       return `Mark exactly one option as Primary in "${checklistSectionTitle(check.section)}"`;
     case 'requirementDone':
-      return `Complete "${check.requirement}"`;
+      return check.strict ? `Complete "${check.requirement}"` : `Complete "${check.requirement}", or mark it N/A with a rationale`;
     case 'requirementsDispositioned':
       return `Complete or mark N/A every row in "${requirementSectionTitle(check.section)}"`;
     case 'registerHasRows':

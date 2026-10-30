@@ -230,7 +230,10 @@ export type ReadinessCheck =
   // has status === 'Completed'. Unlike ChecklistItem/GateCheck, RequirementItem
   // has no Y/N/NA — WorkStatus has no "not applicable, justified" escape — so
   // only use this for rows that are universally applicable at that gate.
-  | { kind: 'requirementDone'; section: string; requirement: string }
+  // `strict`: N/A with a rationale does NOT count, even on a section that offers it (Round 4 question 21: the Must-have row is
+  // "always mandatory"). Without it a row counts as done when Complete, or N/A with a rationale on a section declaring
+  // `allowNotApplicable`. [ASSUMPTION: R5-Q22]
+  | { kind: 'requirementDone'; section: string; requirement: string; strict?: boolean }
   // NPD Front-End Roadmap (v2 workbook, 2026-07-24): every row of a
   // `mode:'fixed'` register has a non-empty value in EVERY listed column —
   // a direct generalization of registerColumnFilled (single column) to
@@ -894,6 +897,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
             kind: 'requirementDone',
             section: 'projectRequirements',
             requirement: 'Must-have product requirements',
+            strict: true,
           },
           { kind: 'requirementsDispositioned', section: 'projectRequirements' },
         ],
@@ -949,7 +953,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // Round 4 question 23(a) (SME rule audit D, 2026-10-04): an open product
       // form "allows an early brief … to pass Gate 2 with a controlled action".
       // The action is read as a Next Action on Gate 5, where the form is to be
-      // confirmed [ASSUMPTION: R5-Q46].
+      // confirmed (SW-49).
       id: 'sg02-product-form-action',
       label: 'Product form left open — a controlled action tracks its confirmation at Gate 5',
       tier: 'Conditional',
@@ -1934,7 +1938,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // automatic matches are screening flags that "do not replace qualified
       // review", so the app does not write the verdict; it requires that a person
       // has moved the matched row off its untouched status. What counts as taking
-      // a flag up is our reading [ASSUMPTION: R5-Q34].
+      // a flag up is settled as SW-47.
       id: 'sg07-bom-matches-prohibited',
       label: 'Every automatic Formula BOM match is taken up on the Prohibited Ingredient Watch-list',
       tier: 'Mandatory',

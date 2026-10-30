@@ -4258,7 +4258,7 @@ export class ProjectsService {
     // verifier; deleting it would make the block vanish with no trail. And nothing
     // tied to a passed gate is deleted (B4: no silent corrections).
     for (const old of project.nextActions.filter((a) => gateIds.includes(a.gateId) && !incomingIds.has(a.id))) {
-      // Raiser-only deletion [ASSUMPTION: R5-Q58].
+      // Raiser-only deletion (SW-40).
       if (!mayRemoveNextAction(old, actor)) {
         throw new ForbiddenException(
           `Action "${old.description}" can only be removed by the person who raised it (${old.raisedBy ?? 'unrecorded'})`,
@@ -4336,12 +4336,17 @@ export class ProjectsService {
         // F8: the raiser, the relevant gate owner or an authorised reviewer verifies
         // and closes — for every priority (F8 does not tier this by priority).
         // "Authorised reviewer" is read as someone who may decide this gate, the only
-        // per-gate authorisation the app has [ASSUMPTION: R5-Q39].
+        // per-gate authorisation the app has [ASSUMPTION: R5-Q39]. Since SW-37 that is
+        // the gate's nominated Approved-by signer, the project Lead or an administrator
+        // (the same function the screen reads), not a Role Editor grant.
         const gateOwner = project.gates.find((g) => g.gateId === a.gateId)?.owner;
         const allowed =
           user.displayName === raisedBy ||
           (!!gateOwner && user.displayName === gateOwner) ||
-          (await this.permissions.hasPermission(user, `gate:${a.gateId}`, 'decide'));
+          canDecideGateInProject(project, a.gateId, {
+            displayName: user.displayName,
+            isAdmin: this.permissions.isAdmin(user),
+          });
         if (!allowed) {
           throw new ForbiddenException(
             `"${a.description}": only its raiser, the ${a.gateId} gate owner or an authorised reviewer (someone who may decide ${a.gateId}) can close or cancel it (F8)`,

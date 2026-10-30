@@ -246,6 +246,107 @@ export async function run(base: string, db: Client): Promise<number> {
   await Promise.all(accounts.map((key) => enroll(key)));
   t(`${accounts.length} accounts enrolled an authenticator with real codes`, true);
 
+  // ============================================================ closing a next action: the same authority as the screen (SW-37)
+  console.log('\n--- closing a next action: the gate\'s nominated Approved-by signer may, as the screen says (no Role Editor grant)');
+  {
+    // Who may close an action they did not raise and do not own: the raiser, the gate owner, or "an authorised reviewer" — read as
+    // whoever may decide that gate. Since SW-37 that is the gate's nominated Approved-by signer, the Lead or an administrator, not a
+    // `gate:SGxx|decide` grant (migration 20261015180000 removed those). The server used to ask that removed grant, so it refused
+    // exactly the people the screen offered the button to.
+    const GATE = 'SG02';
+    const nameOfUser = async (key: string): Promise<string> =>
+      (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions[key].id])).rows[0]?.displayName;
+    const [raiser, approver, adminName] = [await nameOfUser('tuan'), await nameOfUser('sekar'), await nameOfUser('admin')];
+    const lead = (await project()).project.identity.projectLead as string;
+    t('the Lead is neither the raiser nor the would-be approver (so only the nomination can grant the authority)', lead !== raiser && lead !== approver, `lead=${lead}`);
+    const gateOwner = (await project()).project.gates.find((g: any) => g.gateId === GATE)?.owner ?? '';
+    t(`${GATE} has no gate owner among our accounts`, ![raiser, approver].includes(gateOwner), `owner=${gateOwner}`);
+
+    const actions = async () => ((await project()).project.nextActions as any[]).filter((a) => a.gateId === GATE);
+    const put = async (key: string, list: any[]) =>
+      api(key, 'PUT', `/projects/${PROJECT}/next-actions`, { gateIds: [GATE], actions: list, expectedVersion: await version() });
+    const ID = 'NA-E2E-CLOSE';
+    const mine = () => ({ id: ID, gateId: GATE, description: 'e2e: authority to close', owner: adminName, dueDate: '2030-01-01', status: 'Open', priority: 'Medium' });
+
+    // Raised by someone else, owned by a third person: the approver has no claim on it except the gate authority.
+    let r: any = await put('tuan', [...(await actions()), mine()]);
+    t('a contributor raises a next action on the gate', r.status < 300, `${r.status} ${short(r.json)}`);
+    const closeAs = async (key: string) =>
+      put(key, (await actions()).map((a) => (a.id === ID ? { ...a, status: 'Closed' } : a)));
+
+    r = await closeAs('sekar');
+    t('a person with no authority over the gate cannot close it (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+    t('...and the action is still open', (await actions()).find((a) => a.id === ID)?.status === 'Open');
+
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/gates/${GATE}/sign-off-assignees`, {
+      assignments: [{ role: 'Approved by', userId: sessions.sekar.id }],
+      expectedVersion: await version(),
+    });
+    t(`the Lead (admin) nominates that person as ${GATE}'s Approved-by signer`, r.status < 300, `${r.status} ${short(r.json)}`);
+
+    r = await closeAs('sekar');
+    t('the nominated Approved-by signer can now close it, with no role grant involved', r.status < 300, `${r.status} ${short(r.json)}`);
+    const closed = (await actions()).find((a) => a.id === ID);
+    t('...and is recorded as who verified the closure', closed?.status === 'Closed' && closed?.verifiedBy === approver, short(closed));
+
+    // Put the gate back as found.
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/gates/${GATE}/sign-off-assignees`, {
+      assignments: [{ role: 'Approved by', userId: null }],
+      expectedVersion: await version(),
+    });
+    t('the nomination is cleared again', r.status < 300, `${r.status} ${short(r.json)}`);
+  }
+
+  // ============================================================ N/A with a rationale on the Phase 2-4 requirement tables
+  console.log('\n--- requirement tables: N/A with a rationale counts as dealt with on Phase 2-4, except where a row is always mandatory');
+  {
+    // The status list of these tables always included N/A, but no rule accepted it, so picking it left a Mandatory gate item
+    // unsatisfiable (Gate 5's compatibility item). It now counts when it carries a rationale (project owner, 2026-10-30).
+    const SECTION = 'formulationDesign';
+    const ROW = 'Compatibility / use-with constraints';
+    const rowOf = async (section: string, requirement: string) =>
+      ((await project()).project.requirements[section] as any[]).find((r) => r.requirement === requirement);
+    const setRow = async (section: string, requirement: string, patch: Record<string, unknown>) => {
+      const items = ((await project()).project.requirements[section] as any[]).map((r) =>
+        r.requirement === requirement ? { ...r, ...patch } : { ...r },
+      );
+      return api('admin', 'PUT', `/projects/${PROJECT}/requirements/${section}`, { items, expectedVersion: await version() });
+    };
+    const settled = async (section: string, requirement: string) => gp.requirementRowSettled(section, await rowOf(section, requirement));
+
+    const original = (await rowOf(SECTION, ROW)).status as string;
+    let r: any = await setRow(SECTION, ROW, { status: 'N/A', naRationale: '' });
+    t('N/A with no rationale is stored', r.status < 300 && (await rowOf(SECTION, ROW)).status === 'N/A', `${r.status} ${short(r.json)}`);
+    t('...but does not count as dealt with', !(await settled(SECTION, ROW)));
+
+    r = await setRow(SECTION, ROW, { status: 'N/A', naRationale: 'Nothing to use this product with' });
+    const stored = await rowOf(SECTION, ROW);
+    t('N/A with a rationale is stored and the rationale survives the round trip', r.status < 300 && stored.naRationale === 'Nothing to use this product with', `${r.status} ${short(stored)}`);
+    t('...and counts as dealt with', await settled(SECTION, ROW));
+
+    r = await setRow(SECTION, ROW, { status: 'Gap', naRationale: 'left over from N/A' });
+    t('moving the row to Gap clears the rationale on the server (a reason cannot outlive its disposition)', r.status < 300 && !(await rowOf(SECTION, ROW)).naRationale, short(await rowOf(SECTION, ROW)));
+    t('...and a Gap row does not count as dealt with', !(await settled(SECTION, ROW)));
+
+    r = await setRow(SECTION, ROW, { status: 'Complete' });
+    t('Complete counts as dealt with, as before', r.status < 300 && (await settled(SECTION, ROW)));
+
+    // Put the row back as found.
+    await setRow(SECTION, ROW, { status: original, naRationale: '' });
+
+    // The row the answer calls "always mandatory" never accepts N/A, rationale or not.
+    const MUST = 'Must-have product requirements';
+    r = await setRow('projectRequirements', MUST, { status: 'N/A', naRationale: 'trying to skip it' });
+    t('Must-have product requirements: N/A is stored on that table…', r.status < 300, `${r.status} ${short(r.json)}`);
+    t('...but never counts as dealt with, whatever its rationale', !(await settled('projectRequirements', MUST)));
+    await setRow('projectRequirements', MUST, { status: 'Not Started', naRationale: '' });
+
+    // The four compartment tables use the workbook's shorter list, which has no N/A.
+    const first = ((await project()).project.requirements.pregnancySafety as any[])[0];
+    r = await setRow('pregnancySafety', first.requirement, { status: 'N/A', naRationale: 'x' });
+    t('a compartment table still refuses N/A (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  }
+
   // ============================================================ register closing: review before signing
   console.log('\n--- register closing: the closer reads the register first, and the signature is bound to what they read');
   {

@@ -4,7 +4,7 @@ import type { RequirementItem, RequirementStatus } from '@mbc360/shared/types';
 import type { RequirementColumnKey } from '@mbc360/shared/config/phases';
 import { COMPARTMENT_YNNA, REQUIREMENT_NOT_APPLICABLE, REQUIREMENT_PRIORITIES, WORK_STATUSES } from '@mbc360/shared/config/gates';
 import { isDoneStatus } from '@mbc360/shared/utils/doneStatus';
-import { isMandatoryRequirementRow } from '@mbc360/shared/utils/gateProgress';
+import { isMandatoryRequirementRow, requirementRowSettled } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import RequiredMark from './RequiredMark';
@@ -152,7 +152,7 @@ export default function RequirementTable({
       rowTitle={(r) => (
         <>
           {r.requirement}
-          {isMandatoryRequirementRow(sectionKey, r.requirement) && <RequiredMark met={isDoneStatus(r.status)} />}
+          {isMandatoryRequirementRow(sectionKey, r.requirement) && <RequiredMark met={requirementRowSettled(sectionKey, r)} />}
         </>
       )}
       rowSubtitle={(r) => (shows('detail') ? r.requirementText : r.minimumRequirement) || undefined}

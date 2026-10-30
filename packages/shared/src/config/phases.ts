@@ -332,12 +332,10 @@ export const PHASE_1: PhaseConfig = {
       //     mark an empty requirement as Completed." That is `allowNotApplicable`
       //     below, plus the `naRationale` column beside it.
       columns: ['category', 'detail', 'priority', 'owner', 'notes', 'status', 'naRationale'],
-      // Scoped to this section on purpose. Question 21 is about the Phase 1
-      // requirements table; the Phases 2-4 sections are fixed engineering rows
-      // whose `requirementDone` / `requirementSectionComplete` checks all read
-      // status === 'Completed', so quietly admitting a fourth disposition there
-      // would change rules nobody asked about. Whether Phases 2-4 want the same
-      // escape is a question we have not put to them [ASSUMPTION: R5-Q22].
+      // Question 21 is about this table. The Phase 2-4 requirement tables were given the same escape afterwards (project owner,
+      // 2026-10-30 — see the loop at the foot of this file, and `requirementRowSettled` in gateProgress.ts); the one row that
+      // never accepts it is "Must-have product requirements" ("always mandatory"), kept by `strict` in gateReadiness.ts
+      // [ASSUMPTION: R5-Q22].
       allowNotApplicable: true,
       rows: [
       { gate: '02', requirement: 'Must-have product requirements', minimum: '', rationale: '', owner: '' },
@@ -374,8 +372,8 @@ export const PHASE_1: PhaseConfig = {
     // "where relevant", "where hand-to-mouth exposure is foreseeable", "where
     // appropriate" — and a row that cannot be closed for a product it does not
     // apply to is the `sg07-caution-closed` mistake repeated. N/A needs a written
-    // rationale, and whether Phase 2-4 requirement rows should have that escape at
-    // all is [ASSUMPTION: R5-Q22].
+    // rationale; the other Phase 2-4 requirement tables have the same escape
+    // [ASSUMPTION: R5-Q22].
     // ---------------------------------------------------------------------
     {
       key: 'infantUseContext',
@@ -906,7 +904,12 @@ const STAGE_LIST_SECTIONS = ['formulationDesign', 'efficacyProcess', 'skincareFo
 const COMPARTMENT_SECTIONS = ['pregnancySafety', 'breastfeedingSafety', 'infantSafety', 'swimmerSafety'];
 for (const phase of Object.values(PHASE_CONFIGS)) {
   for (const section of phase.requirementSections) {
-    if (STAGE_LIST_SECTIONS.includes(section.key)) section.statusOptions = STAGE_STATUSES;
+    if (STAGE_LIST_SECTIONS.includes(section.key)) {
+      section.statusOptions = STAGE_STATUSES;
+      // N/A on these tables carries a rationale and counts as dispositioned in the readiness checks that read them (project
+      // owner, 2026-10-30: a row that does not apply must not force "Complete"). [ASSUMPTION: R5-Q22]
+      section.allowNotApplicable = true;
+    }
     if (COMPARTMENT_SECTIONS.includes(section.key)) {
       section.statusOptions = COMPARTMENT_STATUSES;
       section.showYnna = true;
