@@ -39,7 +39,7 @@ Nên quy tắc từ nay:
 
 - **Build trên giả định có tài liệu, gắn `[ASSUMPTION: R5-Qn]` tại chỗ quyết định** — đúng cơ chế mà repo đã có sẵn và sweep TAG đã canh. Tag không còn nghĩa "đang chờ để làm" mà là "đã làm, theo cách đọc này, sẽ sửa nếu trả lời khác".
 - **Mỗi câu R5 phải có dòng "Nếu trả lời khác thì sửa ở đâu"** nêu đúng file/hàm. Với Vòng 4 dòng đó là thứ đã biến việc đóng 33 câu thành việc máy móc thay vì khảo cổ; giờ nó còn quan trọng hơn, vì code sẽ chạy trên giả định lâu hơn.
-- **Nơi soạn dần — hai bản, đúng quy ước `rounds/README.md`:** bản làm việc ở mục `## Round 5` trong `docs/rules/F1_Per_Gate_Open_Questions.md` (ID cố định, tên file/hàm), và **bản gửi đi ở `docs/rounds/DRAFT-our-questions-round5.md`** (ngôn ngữ nghiệp vụ, đánh số). Đổi tên bản gửi theo ngày gửi vào đúng ngày gửi.
+- **Nơi soạn dần — hai bản, đúng quy ước `rounds/README.md`:** bản làm việc ở mục `## Round 5` trong `docs/rules/F1_Per_Gate_Open_Questions.md` (ID cố định, tên file/hàm), và **bản gửi đi ở `docs/rounds/2026-10-30-our-questions-round5.md`** (ngôn ngữ nghiệp vụ, đánh số). Đổi tên bản gửi theo ngày gửi vào đúng ngày gửi.
 
   *Sửa 24/08 sau khi chủ dự án hỏi lại:* dòng này trước đó ghi "chưa tạo file trong `docs/rounds/`", lấy lý do thư mục đó là bằng chứng. Sai — quy tắc "không sửa" chỉ áp *sau khi* gửi, và chính README nêu bài học ngược lại sau khi bộ câu hỏi Vòng 3 bị thiếu khỏi repo. Vòng 4 cũng làm đúng cách này: bản gửi sống trong `rounds/` suốt ba ngày soạn rồi mới đổi tên.
 

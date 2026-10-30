@@ -393,7 +393,7 @@ Ba đáp án quyết định **thứ tự** của mọi thứ còn lại, làm s
 
 **Tiến độ 25/08: 10/36 xong** (3, 7, 8, 9, 11, 17, 20, 32, 33, 34). Đã ship: nhóm 1 (tri-state) · nhóm 2 (thang nghiêm trọng + vòng đời disposition) · nhóm 4a–4c (nền reference data + Market profiles + RM Risk Overlay). Còn: 4d Claims Library → nhóm 3 chữ ký per-gate (lớn nhất) → nhóm 5 claim → 6 sàng lọc → 7 infant → 8 per-market, cộng 7 mục độc lập.
 
-**Round 5 gửi SAU khi đi hết 36 câu** (quyết định của chủ dự án), soạn dần ở `docs/rounds/DRAFT-our-questions-round5.md` — 16 câu tính tới 25/08. Câu mới phát sinh trong lúc xây thì vào cùng vòng đó, không tạo vòng thứ mười sáu.
+**Round 5 gửi SAU khi đi hết 36 câu** (quyết định của chủ dự án), soạn dần ở `docs/rounds/2026-10-30-our-questions-round5.md` — 16 câu tính tới 25/08. Câu mới phát sinh trong lúc xây thì vào cùng vòng đó, không tạo vòng thứ mười sáu.
 
 ### Vòng 3 (07/08/2026) — `docs/rounds/2026-08-07-sme-reply-round3.txt`
 

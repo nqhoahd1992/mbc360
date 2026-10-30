@@ -28,7 +28,7 @@ YYYY-MM-DD-<ai gửi>-<nội dung>.<ext>
 | `2026-08-07-sme-reply-round3.txt` | 07/08 | Đáp án Parts A–E: quy tắc gán tier, **12 điều kiện trigger**, 7 trường còn thiếu, và **bác 4 thứ đã xây** | ✅ đóng |
 | `2026-08-12-our-questions-round4.md` | 12/08 | **36 câu**: 1 lỗ hổng an toàn đang mở · 3 câu tồn từ 21/07 · 4 giả định đã ship · 12 câu ánh xạ trigger sang dữ liệu · 4 câu về quyết định thiết kế Gate 1–2 (gồm 1 tiền đề ta từng nêu sai với SME) · **2 câu hỏi TRƯỚC khi build** (Claims Library ở cấp nào · 5 điểm D1 để hở) · 6 câu về phần D2, D3, D4, E1, E2, E3(b) vừa xây | ✅ được trả lời trọn ở vòng 24/08 |
 | `2026-08-24-sme-reply-round4.md` | 24/08 | Đáp án **cả 36 câu**. Xác nhận phần lớn những gì đã xây, nhưng **bác khoảng 20 chỗ**, và mở ra 6 mảng xây mới: chữ ký per-gate theo thị trường · luồng Infant & Baby Safety trải 6 gate · **3 tập dữ liệu tham chiếu cấp công ty** (Claims Library · Raw Material Risk Overlay · Regulatory market profile) · mô hình revision của claim · vòng đời per-market · 5 trường đánh giá tường minh | ✅ đóng |
-| `DRAFT-our-questions-round5.md` | *chưa gửi* | **12 câu** (đang lớn dần): 3 câu chặn phần việc lớn nhất còn lại · 3 câu đã xây trên cách đọc của ta · 3 câu đã thiết kế chưa xây · 3 câu về chữ ký phase còn tồn từ 20/08 | ✍️ **đang soạn** — gửi sau khi đi hết 36 câu Vòng 4 |
+| `2026-10-30-our-questions-round5.md` (kèm bản dịch `2026-10-30-our-questions-round5.vi.md`, chỉ để rà soát nội bộ) | 30/10 | **42 câu**, đánh số liền mạch 1–42: câu chặn việc lớn nhất (11) · các câu đã xây trên cách đọc của ta · các câu chưa xây · bảng 78 sổ (31). Đã gỡ các câu chủ dự án tự quyết (SW-38..51) | ✅ sẵn sàng gửi (gửi bằng email kèm PDF) |
 
 ## Còn nợ
 
@@ -41,7 +41,7 @@ YYYY-MM-DD-<ai gửi>-<nội dung>.<ext>
 **Đang chờ trả lời:** *không có.* Vòng 4 đã được trả lời trọn ngày 24/08.
 
 **Đang soạn:**
-- **Round 5** — [`DRAFT-our-questions-round5.md`](DRAFT-our-questions-round5.md), **12 câu và còn tăng**. Chưa gửi, theo quyết định của chủ dự án ngày 24/08: gửi **sau khi** đi hết 36 câu Vòng 4, vì tới lúc đó danh sách mới đứng yên.
+- **Round 5** — [`2026-10-30-our-questions-round5.md`](2026-10-30-our-questions-round5.md), **42 câu đánh số**. Sẵn sàng gửi 30/10, theo quyết định của chủ dự án ngày 24/08: gửi **sau khi** đi hết 36 câu Vòng 4, vì tới lúc đó danh sách mới đứng yên.
 
   **Cùng lý do đã khiến Vòng 4 hoãn ba ngày, nay đã có bằng chứng lần hai:** hai trong mười hai câu chỉ lộ ra **khi viết code**, không phải khi đọc đáp án — một câu khi thấy app không có bản ghi "post-market finding" nào để gắn câu trả lời vào, một câu khi một ca kiểm hành vi cho kết quả chặn mà không quy tắc nào nói nên chặn. Bốn nhóm còn lại gần như chắc chắn còn thêm.
 

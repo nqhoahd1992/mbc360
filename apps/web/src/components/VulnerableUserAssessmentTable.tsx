@@ -149,7 +149,7 @@ export default function VulnerableUserAssessmentTable({
   // than be refused. The narrowing is deliberately UI-only — the rule engine and
   // the API still accept such a row and still only warn, so nothing already
   // recorded becomes unsavable and no confirmed rule is rewritten here.
-  // [ASSUMPTION: R5-Q54]
+  // SW-46 (decided, not built yet): a group the reviewer identifies on their own is recorded here with a warning and a rationale, not refused until Gate 02 is changed.
   const missingRows = implied.filter((g) => !draft.some((r) => groupOf(r) === g));
 
   return (

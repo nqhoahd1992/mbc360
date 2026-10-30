@@ -30,7 +30,7 @@ const setCheck = (p: ProjectData, gate: string, check: string, patch: Record<str
 // A Mandatory, unconditional `registerHasRows` / `registerRowsComplete` / `registerSomeRow` forces a
 // register to have rows on every project. For a register that can legitimately be empty that only makes
 // someone invent a row. This pins the exact set the review team is being asked to confirm
-// (docs/rounds/DRAFT-our-questions-round5.md, question 33, group A). Adding a register to it fails here
+// (docs/rounds/2026-10-30-our-questions-round5.md, question 31, group A). Adding a register to it fails here
 // until somebody has asked whether it can be empty — and, if so, given it an explicit record instead.
 {
   const ROW_KINDS = new Set(['registerHasRows', 'registerRowsComplete', 'registerSomeRow']);

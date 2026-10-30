@@ -34,7 +34,7 @@ export function mayEditNextActionRecord(action: Pick<NextAction, 'raisedBy'>, ac
 // who raised the action may delete it — not the Lead, not an administrator. An
 // action with no recorded raiser (saved before attribution existed) therefore
 // cannot be deleted by anyone; it can still be Cancelled through its Status.
-// F8 says who CLOSES an action, not who deletes one [ASSUMPTION: R5-Q58].
+// F8 says who CLOSES an action, not who deletes one (SW-40).
 export function mayRemoveNextAction(action: Pick<NextAction, 'raisedBy'>, actor: Pick<NextActionActor, 'displayName'>): boolean {
   const me = (actor.displayName ?? '').trim();
   return me !== '' && (action.raisedBy ?? '').trim() === me;

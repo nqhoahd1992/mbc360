@@ -557,7 +557,7 @@ These were **decided internally, not asked of the subject-matter team.** They ar
 | Item | Why it is open | Source |
 |---|---|---|
 | **Cosmetri's ASEAN / Vietnam compliance coverage** | External dependency — only Cosmetri can confirm it. Interim handling is in section 4. | `[R2-F12 ⏳]` |
-| **Round 5 questions** | Drafted while building Round 4 and not yet sent. Until they are answered, the affected design choices remain our reading, not confirmed rules. | `docs/rounds/DRAFT-our-questions-round5.md` |
+| **Round 5 questions** | Drafted while building Round 4 and not yet sent. Until they are answered, the affected design choices remain our reading, not confirmed rules. | `docs/rounds/2026-10-30-our-questions-round5.md` |
 
 **Content still to be supplied — these are inputs to gather, not decisions to make:**
 

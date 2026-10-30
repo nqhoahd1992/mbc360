@@ -1377,36 +1377,71 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 >
 > Vì code sẽ chạy trên các giả định này lâu hơn Vòng 4, dòng **"Nếu trả lời khác thì sửa ở đâu"** của mỗi câu nay là phần bắt buộc, không phải phần trang trí. Ở Vòng 4 chính nó đã biến việc đóng 33 câu thành việc máy móc thay vì khảo cổ.
 >
-> **Bản gửi đi:** [`../rounds/DRAFT-our-questions-round5.md`](../rounds/DRAFT-our-questions-round5.md) — soạn song song, đánh số 1–12 theo ngôn ngữ nghiệp vụ, không có tên file hay định danh code. Đổi tên thành `YYYY-MM-DD-our-questions-round5.md` **đúng ngày gửi**, và sau đó không sửa nữa.
+> **Bản gửi đi:** [`../rounds/2026-10-30-our-questions-round5.md`](../rounds/2026-10-30-our-questions-round5.md) — soạn song song, đánh số liền mạch 1–42 (đánh lại ngày 30/10 để gửi; đã gỡ các câu thành quy tắc phần mềm SW-38..51) theo ngôn ngữ nghiệp vụ, không có tên file hay định danh code. Đổi tên thành `YYYY-MM-DD-our-questions-round5.md` **đúng ngày gửi**, và sau đó không sửa nữa.
 >
 > *Sửa 24/08 sau khi chủ dự án hỏi lại:* trước đó tôi đã kết luận là **chưa** tạo file trong `docs/rounds/`, lấy lý do "thư mục đó là bằng chứng". Đọc lại `rounds/README.md` thì lý do đó lẫn hai việc — *không sửa sau khi gửi* ≠ *không được soạn trong đó* — và chính README nêu bài học ngược lại: *"lưu bản gửi đi ngay khi gửi, đừng đợi bản trả lời về"*, sau khi bộ câu hỏi Vòng 3 bị thiếu khỏi repo. Vòng 4 cũng đã làm đúng cách này: bản gửi tồn tại trong `rounds/` suốt ba ngày soạn (09/08 → 12/08) rồi mới đổi tên theo ngày gửi.
 
 **Cột Gửi số** là cầu nối giữa hai bản — khi SME trả lời "3 — option (b)" thì biết ngay nó đóng câu nội bộ nào.
 
-| ID | Gửi số | Chủ đề |
+| ID nội bộ | Gửi số (bản nháp) | Chủ đề |
 |---|---|---|
-| R5-Q5 | **1** | "Chưa đánh giá" ghi ở đâu, cho 7 trigger đọc từ bảng |
-| R5-Q6 | **2** | "Responsible reviewer" của một item readiness là ai |
-| R5-Q7 | **3** | Phạm vi ảnh chụp bằng chứng theo gate |
-| R5-Q11 | **4** | Câu trả lời câu 8 — một lần cho dự án hay từng phát hiện |
-| R5-Q12 | **5** | Safety finding `Superseded` có cần bằng chứng đóng như `Closed` |
-| R5-Q10 | **6** | Sáu giá trị disposition Gate 4 thay thế hay bổ sung |
-| R5-Q8 | **7** | Ai ký quyết định supersession theo thị trường |
-| R5-Q9 | **8** | Ai phán định thay đổi Claims Library là "critical" |
-| — | **9** | 18 vùng ảnh hưởng của trigger scale-up đọc từ đâu (vế còn lại của câu 12 Vòng 4) |
-| R5-Q1 | **10** | Ai chỉ định người ký phase, ai được gỡ chữ ký |
-| R5-Q2 | **11** | D1 có áp cho khối chữ ký phase không |
-| R5-Q4 | **12** | Chữ ký vẽ tay + yếu tố thứ hai — có cần, và bắt buộc tới mức nào |
-| ✅ R5-Q13 | — | (đã quyết là SW-31, không gửi SME) Thiếu quyết định `Reject / Stop` — câu 3 và 29 đều nêu, dropdown workbook không có |
-| ✅ R5-Q14 | — | (đã quyết là SW-32, không gửi SME) "Safety **hoặc** Regulatory authority" — một trong hai là đủ, hay cần cả hai |
-| R5-Q15 | **15** | Trang dữ liệu tham chiếu cấp công ty: ai *thấy*, ai *sửa* |
-| R5-Q16 | **16** | Gap High — "controlled action" nghĩa là Next Action có kiểm soát?, và due date ghi đâu |
-| ✅ R5-Q17 | — | Trigger Change Control giới hạn theo gate đã pass — đã quyết là quy tắc phần mềm SW-30 (13/10/2026), không gửi SME |
-| R5-Q18 | **18** | "NP Controlled" là một cuốn sổ riêng, hay là thẩm quyền phê duyệt trên sổ chung |
-| R5-Q19 | **19** | Chín cuốn sổ change control chồng lấn nhau — cuốn nào là sổ sự kiện, cuốn nào là sách luật |
-| R5-Q20 | **20** | Change Control chạm gate đã pass — có tự mở lại gate đó không, và Reject/Cancel có cần quyết định lại |
-| R5-Q21 | **21** | Đóng sổ 2 chữ ký (Review owner + Co-sign) thay khóa tự động theo gate — đã build, cần SME xác nhận |
-| R5-Q3 | *chưa gửi* | Ba cái tên trong dòng "Approval route" của Guide — quá nhỏ để chiếm một số, gộp khi soạn bản cuối |
+| R5-Q6 | **1** | "Responsible reviewer" của một item readiness là ai; item nào là critical; acknowledgement hết hiệu lực khi hoàn cảnh đổi (1(a)(b)(c)) |
+| R5-Q11 | **2** | Câu trả lời "có cần Change Control không" — một mục cho mỗi phát hiện |
+| R5-Q12 | **3** | Safety finding `Superseded` có cần bằng chứng đóng như `Closed` không |
+| ✅ R5-Q10 | — (SW-47) | Sáu giá trị disposition Gate 4 thay thế hay bổ sung cho Product status — đã quyết: bổ sung, hai cột |
+| ✅ R5-Q34 · R5-Q76 | **4(a)** (R5-Q34 đã quyết SW-47; R5-Q76 còn mở cho danh sách Caution) | Hệ thống tự đặt "REVIEW - possible formula match" (Q34 hỏi, Q76 là bản đã build trên sổ Prohibited) |
+| R5-Q63 | **4(b)** | Product status của hai watch-list nhập tới Gate 7 hay chỉ Gate 4 |
+| R5-Q8 | **5(a)** | Ai xác nhận mười dữ kiện supersession theo thị trường |
+| R5-Q53 | **5(b)–(e)** | Khi nào phiên bản cũ chuyển trạng thái; Minor; chưa từng launch; lịch review khi hai phiên bản cùng bán |
+| R5-Q9 | **6** | Ai phán định một thay đổi Claims Library là "critical" |
+| R5-Q48 | **7(b)(c)** | "Công thức mới" trong trigger scale-up (vế 18 vùng ảnh hưởng, 7(a), là vế còn lại của câu 12 Vòng 4, chưa có ID R5) |
+| R5-Q67 | **8** | Thẩm quyền Safety/Regulatory chấp nhận finding watch-list: ở người đánh giá hay người duyệt gate |
+| R5-Q16 | **9(a)** | Gap High: "controlled action" và due date ghi ở đâu |
+| ✅ R5-Q46 | — (SW-49) | Controlled action khi để ngỏ dạng sản phẩm ở Gate 2 — đã quyết: trường Confirmed product form là đủ |
+| R5-Q20 | **10** | Change Control chạm gate đã pass: có tự mở lại gate đó không (gồm Gate 11–12 tự mất passed) |
+| R5-Q19 | **11 (1)(2)** (11(3) cũ đã quyết SW-43) | Chín nơi ghi thay đổi: một loại sổ hay nhiều; ranh giới; Major version có tạo Change Control không |
+| R5-Q18 | **11 (3)** | Sổ do Final Approver kiểm soát (trước là "NP Controlled") là sổ riêng hay thẩm quyền trên sổ chung |
+| R5-Q27 | **11 (4)** | "Một bản ghi Change Control hợp lệ" của câu 8 — sổ nào được tính |
+| R5-Q49 | **12(a)** | Thêm thị trường sau Gate 1 có mở lại gate trước không |
+| R5-Q52 | **12(b)** | Phiên bản Major có mở lại Gate 10–12 không |
+| R5-Q21 | **13** | Đóng sổ hai chữ ký theo từng gate — đã build theo chủ dự án |
+| R5-Q22 | **14** | "N/A kèm lý do" ở Phase 2–4 (đã build 30/10) |
+| R5-Q23 | **15** (và 9(b)) | Hoãn Should/Could: ai sở hữu, hạn khi nào, có bắt buộc priority không |
+| R5-Q24 | **16** | Sổ General Restricted & Caution: hình dạng, có thuộc Gate 4 không |
+| R5-Q25 | **17(a)** | Danh sách Channel của bản ghi Publication / Deployment |
+| R5-Q38 | **17(b)** | "Được duyệt cho thị trường / kênh" đọc ở đâu |
+| R5-Q35 · R5-Q36 · R5-Q37 | **18(a) · (b) · (c)** | Claim "Not Approved" ở Gate 3 · Technical review · ai ghi nhận duyệt revision |
+| R5-Q28 | **19(a)** | Thị trường đã rút còn cần làn ký Gate 12 không |
+| R5-Q44 | **19(b)** | Gate 10–11 theo thị trường: dự án chỉ qua khi mọi thị trường sẵn sàng |
+| R5-Q31 | **20** | Gate 10: trạng thái checklist và approval nào tính là xong |
+| R5-Q32 | **21** | Dự án phụ thuộc thương mại: costing nào cho Proceed thường |
+| R5-Q30 · R5-Q45 | **22(a) · (b)** | Gate 12: bằng chứng đóng product-performance feedback · tín hiệu kéo review sớm |
+| R5-Q56 · R5-Q39 · R5-Q42 · R5-Q2 | **23(a) · (b) · (c) · (d)** | Một người giữ hai vai: ba chữ ký gate · đóng action · xác nhận Major/Minor · chữ ký phase (một phần của Q2) |
+| R5-Q60 · R5-Q61 | **24(a) · (b)** | Action Critical mở chặn cả Proceed with Conditions · action Critical đã đóng/huỷ |
+| R5-Q40 | **25** | Thị trường đã bán có mở lại PIF mà giữ launch approval không |
+| R5-Q41 | **26** | Bản ghi deviation khi phát hành chưa được duyệt |
+| R5-Q43 | **27** | Ai chấp nhận pre-work của một phase |
+| ✅ R5-Q54 | — (SW-46) | Nhóm dễ tổn thương mà Target Users Gate 02 không suy ra — đã quyết: ghi kèm cảnh báo và lý do |
+| R5-Q47 · R5-Q62 | **28(a) · (b)** | Evidence basis required nhập ở gate nào · Release decision ở Gate 9 hay 11 |
+| R5-Q50 | **29** | "Approved artwork version" ở Gate 11 đọc gì |
+| R5-Q51 | **30** | Yêu cầu bao bì theo thị trường ghi ở đâu, chứng minh bằng gì |
+| R5-Q65 | **31** | Sổ nào được để trống / phải có dòng (bảng 78 sổ) |
+| R5-Q66 | **32(a)(b)** (phần (a)(c) cũ đã quyết SW-44) | Change Control mở trước hay sau khi thay đổi xảy ra |
+| R5-Q68 | **33** | Dòng watch-list thuộc phạm vi gate nào theo Linked gate |
+| R5-Q71 · R5-Q72 · R5-Q73 | **34(a) · (b)(c)(d) · (e)** | Chuẩn bằng chứng Sheet 6: gate "đi tiếp" · Grade và transferability · hồ sơ tìm tài liệu |
+| ✅ R5-Q33 | — (SW-39) | Đóng gap Critical/High đã giải quyết — đã quyết: trạng thái Resolved |
+| R5-Q55 | **35** | Stage status phải Complete trước chữ ký Proceed |
+| R5-Q59 (R5-Q57 và ✅ R5-Q58 đã quyết SW-41, SW-40) | **36** | Next Action sau khi gate qua: thêm mới (SW-41) · thực hiện điều kiện không ký lại · ai được xoá |
+| R5-Q74 | **37** | Chức năng ở cột Owner ứng với người nào của dự án |
+| R5-Q77 | **38** | Cột "ref" thay đổi trỏ vào đâu |
+| R5-Q78 | **39** | Trace ID của Batch Formula Trace |
+| R5-Q79 | **40** | Artwork / Label Review Checklist: năm dòng tên PI và gate bắt buộc |
+| R5-Q80 | **41** | "Incomplete — evidence review required" hiện bằng ô trống |
+| R5-Q82 | **42** | Nhiều mẫu panel trong một dự án |
+| ✅ R5-Q13 · ✅ R5-Q14 · ✅ R5-Q17 | — | Đã quyết là quy tắc phần mềm (SW-31, SW-32, SW-30), không gửi SME |
+| R5-Q1 · R5-Q3 · R5-Q4 | **chưa có trong bản nháp** | Chữ ký phase (ai chỉ định và gỡ) · ba tên ở Guide · chữ ký vẽ tay + authenticator |
+| R5-Q5 · R5-Q7 · R5-Q15 · R5-Q26 · R5-Q29 | **chưa có trong bản nháp** | "Chưa đánh giá" ghi ở đâu · phạm vi ảnh chụp bằng chứng theo gate · ai thấy/sửa trang dữ liệu tham chiếu · hai ô Claims Library nói ngược nhau (cảnh báo hay chặn) · mục Conditional đã kích hoạt có đánh N/A được không |
+| R5-Q64 · R5-Q69 · R5-Q70 · R5-Q75 | **chưa có trong bản nháp** | Cột mã nguyên liệu của ma trận an toàn · ai đổi duyệt market · hai ô người của Product Development Report · Safety decision tự đặt của ma trận |
 
 ### Round 5, phần 1 — raised while implementing D1 ở cấp phase (2026-08-20)
 
@@ -1650,7 +1685,9 @@ Ba cách đọc, ba lượng công việc rất khác nhau:
 
 **Nếu trả lời khác:** phần cascade của Claims Library, nhóm 4d.
 
-#### R5-Q10 · Sáu giá trị disposition của Gate 4 quan hệ thế nào với ba status "flagged" 🔴
+#### ✅ R5-Q10 · ĐÃ QUYẾT 30/10/2026 — SW-47, không hỏi SME · Sáu giá trị disposition của Gate 4 quan hệ thế nào với ba status "flagged"
+
+**Đã quyết 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** giữ hai cột riêng: Product status ghi điều sàng lọc thấy, Classification ghi điều reviewer quyết. Chi tiết và việc còn phải xây: SW-47 trong `Software_Rules.md`. Bản gốc của câu hỏi giữ nguyên bên dưới làm bằng chứng.
 
 **Hai đáp án Vòng 4 chồng lên cùng một cột.** Câu 6 nói mỗi dòng ở Gate 4 phải được phân loại vào 1 trong **sáu** giá trị: No issue identified · Needs Safety Review · Needs Regulatory Review · Prohibited — remove · Considered — not selected · Further information required. Câu 32(a) nói "flagged" gồm **ba** status: REVIEW — possible formula match · Needs Safety Review · Needs Regulatory Review.
 
@@ -1668,6 +1705,8 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Nếu trả lời khác:** `WATCHLIST_FLAGGED_STATUSES` và cột `productStatus` của `prohibitedIngredients` trong `packages/shared/src/config/registers.ts`; `flaggedWatchlistRows()` trong `utils/watchlistReview.ts`; `sg04-no-remove` / `sg04-pb-screen` trong `gateReadiness.ts`.
 
 #### R5-Q11 · Câu trả lời "có cần Change Control không" ghi một lần cho dự án hay từng phát hiện 🔴
+
+**Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-51: một lần rà soát không thấy gì ghi bằng một mục trả lời "No" kèm lý do (câu 2(c) của bản nháp đã gỡ). Còn hỏi SME: định nghĩa "phát hiện" và các trường của mục. Câu hỏi còn lại như bên dưới.
 
 **Đã build 24/08/2026** cùng nhóm 1. Câu 8 yêu cầu một bước đánh giá tường minh — *"Change Control required? → Yes / No / Pending assessment"* kèm reviewer · ngày · lý do · Change Control ID liên kết (khi Yes) · evidence link — và **"Pending assessment must block closure of the post-market finding"**.
 
@@ -1805,6 +1844,8 @@ Sheet `Formulation_Change_Register` mang tiêu đề **(NP Controlled)** và (t�
 
 #### R5-Q19 · Chín cuốn sổ change control chồng lấn nhau: cuốn nào ghi *sự kiện*, cuốn nào là *sách luật* 🔴
 
+**Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-43: một Major formula version luôn để lại một bản ghi Change Control (câu 11(3) đã gỡ). Còn hỏi SME: số sổ, ranh giới, thế nào là bản ghi hợp lệ. Câu hỏi còn lại như bên dưới.
+
 **Cập nhật 16/10/2026:** từ quyết định 12/10 (xem R5-Q66(d)), `createFormulaVersion` chỉ chạy khi Gate 05 là gate đang mở, tức **trước khi** công thức khóa. Hệ quả: mọi dòng `FC-xxx` do phần mềm tự ghi đều là thay đổi ở công thức chưa khóa; thay đổi sau khóa phải Backtrack về Gate 05 mới tạo được phiên bản. Câu hỏi (e) vì vậy không còn là "trường hợp lạ" mà là hiện trạng; đã đưa vào câu 12 của draft Round 5 (câu hỏi 2).
 
 **Chủ dự án nêu 26/08/2026, và yêu cầu hỏi SME TRƯỚC khi làm logic sổ mẹ/sổ con:** *"Ứng dụng có nhiều sổ change control, các sổ này còn có cảm giác bao trùm nhau và có cảm nhận rằng excel làm thế này là do không có hệ thống phân quyền chuyên biệt."*
@@ -1851,6 +1892,8 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Không làm gì tới khi có trả lời**, theo quyết định của chủ dự án: gộp nhầm hai loại bản ghi thật sự khác nhau còn tệ hơn để chúng rời rạc, vì lúc đó phải tách lại một cuốn sổ đã có dữ liệu thật. Ngoại lệ duy nhất đã làm trước là chữ ký NP ([[R5-Q18]]) — nó đúng bất kể sổ nằm ở đâu.
 
 #### R5-Q20 · Change Control chạm gate đã pass — có tự mở lại gate đó không, và Reject/Cancel có cần quyết định lại 🔴
+
+**Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-42: một gate đã passed không tự rời passed mà không có bản ghi (Question B đã gỡ). Còn hỏi SME: Change Control chạm gate đã passed có mở lại gate không. Câu hỏi còn lại như bên dưới.
 
 **Phát hiện khi giải thích cơ chế Change Control cho chủ dự án (27/08/2026).** Hiện tại mở 1 Change Control ảnh hưởng 1 gate ĐÃ PASS (ví dụ Gate 5, dự án đang ở Gate 10) không có tác dụng gì lên gate đó — quyết định "Proceed" cũ vẫn nguyên, gate vẫn hiện passed, chỉ có 1 tag cảnh báo trên dòng Gate Flow (dễ bỏ lỡ vì không ai quay lại phase đó nữa để xem). Đóng change (ghi disposition) cũng hoàn toàn tách rời — `setChanges` không kiểm tra gì về trạng thái gate cả.
 
@@ -1900,11 +1943,15 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 #### R5-Q22 · "N/A kèm lý do" chỉ dành cho bảng requirement của Phase 1, hay cả Phase 2-4 🔴
 
+**Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-50: N/A kèm lý do ở bảng Phase 2–4 được tính là đã xử lý, đã xây. Còn hỏi SME: dòng nào không bao giờ nhận N/A. Câu hỏi còn lại như bên dưới.
+
 **Lộ ra khi build câu 21 (29/08/2026).** Câu 21 nằm dưới tiêu đề *"Phase 1 requirements table"* và câu trả lời cũng nói về bảng đó. Nhưng lý do đằng sau nó không có gì riêng của Phase 1: *"The system must not require users to mark an empty requirement as Completed."* Bảng requirement của Phase 2, 3 và 4 có tổng cộng hàng chục dòng cố định lấy từ workbook, và một dự án hoàn toàn có thể có dòng không áp dụng cho mình — đúng vấn đề đó.
 
 **Cập nhật 16/10/2026 (chủ dự án: SME chỉ nói về Phase 1 thì các phase khác theo Excel):** Excel v2 đã cho các bảng requirement của Phase 2–4 một danh sách Status riêng có sẵn **N/A, Gap, Hold** (bảng Stage status; bốn Compartment Phase 3 dùng danh sách ngắn hơn không có N/A). Đã build theo đúng danh sách đó (`statusOptions` trong `phases.ts`), N/A **không** cần lý do ở các bảng này. Còn mở: readiness (`requirementSectionComplete`, `requirementDone`) vẫn chỉ tính **Complete** là xong, nên một dòng chọn N/A, Gap hoặc Hold sẽ chặn gate; có nên tính N/A là đã xử lý ở các bảng này hay không là câu hỏi cho SME [ASSUMPTION: R5-Q22].
 
-**Đã build:** `N/A` chỉ bật ở section khai `allowNotApplicable` — `projectRequirements` (Phase 1), và từ 29/08 thêm **sáu section của luồng Infant & Baby Safety** (nhóm 7, câu 1) ở Phase 1/2/3/4. Sáu section đó là ca dùng rõ ràng nhất: nhiều dòng mang đúng chữ "where relevant" / "where appropriate" của SME, và mục Gate 8-9 được viết như một *thực đơn* ("Trigger by use context and risk") chứ không phải danh sách nghĩa vụ — bắt cả 7 test family cho mọi sản phẩm trẻ em là tự đặt ra luật SME cố ý không viết. Chúng dùng check riêng `requirementSectionDispositioned`; `requirementSectionComplete` (đỡ Compartment 3 ở Gate 7) **không đổi**, vì mọi dòng INF-01..08 là nghĩa vụ không kèm điều kiện. Lý do chọn hẹp: 2 loại check đang đọc các bảng Phase 2-4 (`requirementDone`, `requirementSectionComplete`) đều chỉ chấp nhận `Completed`. Nếu lặng lẽ cho chọn `N/A` ở đó, người dùng sẽ chọn được một giá trị mà luật đọc dòng đó **không bao giờ** thoả — gate kẹt vĩnh viễn, không có gì trên màn hình nói tại sao. Mở rộng phải đi kèm việc sửa hai check đó, tức là đổi luật của những câu khác.
+**Cập nhật 30/10/2026 (chủ dự án: "cho N/A kèm lý do được tính là đã xử lý") — đã build, chờ SME xác nhận.** Bảy bảng Phase 2–4 dùng danh sách Stage status (`formulationDesign`, `efficacyProcess`, `skincareForTwo`, `humanStudy`, `stabilityRelease`, `dossierEvidence`, `changeControlClosure`) giờ khai `allowNotApplicable`: có ô **N/A rationale**, và `requirementDone` tính một dòng là xong khi **Complete**, hoặc **N/A có lý do** (`requirementRowSettled`, `gateProgress.ts`, dùng chung cho luật và dấu `*` trên dòng). Ngoại lệ duy nhất là "Must-have product requirements" của Phase 1, khai `strict: true` vì câu 21 nói dòng đó "always mandatory". Bốn Compartment Phase 3 vẫn không có N/A trong Status (danh sách của workbook không có), và `requirementSectionComplete` (Compartment 3, Gate 7) không đổi. Việc này sửa lỗi N/A bấm được nhưng không bao giờ thoả luật (ví dụ N/A ở "Compatibility / use-with constraints" làm Gate 5 kẹt vĩnh viễn). Cái SME còn phải xác nhận: hàng nào được N/A, và có hàng Phase 2–4 nào "luôn bắt buộc" như Must-have không.
+
+**Đã build (trước 30/10):** `N/A` chỉ bật ở section khai `allowNotApplicable` — `projectRequirements` (Phase 1), và từ 29/08 thêm **sáu section của luồng Infant & Baby Safety** (nhóm 7, câu 1) ở Phase 1/2/3/4. Sáu section đó là ca dùng rõ ràng nhất: nhiều dòng mang đúng chữ "where relevant" / "where appropriate" của SME, và mục Gate 8-9 được viết như một *thực đơn* ("Trigger by use context and risk") chứ không phải danh sách nghĩa vụ — bắt cả 7 test family cho mọi sản phẩm trẻ em là tự đặt ra luật SME cố ý không viết. Chúng dùng check riêng `requirementSectionDispositioned`; `requirementSectionComplete` (đỡ Compartment 3 ở Gate 7) **không đổi**, vì mọi dòng INF-01..08 là nghĩa vụ không kèm điều kiện. Lý do chọn hẹp: 2 loại check đang đọc các bảng Phase 2-4 (`requirementDone`, `requirementSectionComplete`) đều chỉ chấp nhận `Completed`. Nếu lặng lẽ cho chọn `N/A` ở đó, người dùng sẽ chọn được một giá trị mà luật đọc dòng đó **không bao giờ** thoả — gate kẹt vĩnh viễn, không có gì trên màn hình nói tại sao. Mở rộng phải đi kèm việc sửa hai check đó, tức là đổi luật của những câu khác.
 
 **Câu hỏi:** một dòng requirement ở Phase 2-4 (ví dụ "Compatibility / use-with constraints" ở Phase 2, hay một dòng của `stabilityRelease` ở Phase 3) không áp dụng cho dự án này thì ghi thế nào — cũng `N/A kèm lý do` như Phase 1, hay phải làm và ghi "không áp dụng" trong phần ghi chú?
 
@@ -2012,7 +2059,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg05-costing-must` (`feasibleOnly`).
 
-#### R5-Q33 · Đóng một gap Critical/High như thế nào 🔴
+#### ✅ R5-Q33 · ĐÃ QUYẾT 30/10/2026 — SW-39, không hỏi SME · Đóng một gap Critical/High như thế nào
+
+**Đã quyết 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** gap Critical/High đã giải quyết được giữ lại và ghi Resolved (người, thời điểm, cách giải quyết), không xoá đánh giá. Chi tiết và việc còn phải xây: SW-39 trong `Software_Rules.md`. Bản gốc của câu hỏi giữ nguyên bên dưới làm bằng chứng.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục B14).** Trước đây đổi status từ Gap sang Complete cùng lúc với Proceed là bỏ qua hết đánh giá gap. Giờ một mức Critical/High đã ghi vẫn có hiệu lực cho tới khi người dùng **xoá đánh giá gap** (việc xoá được ghi vào lịch sử gate).
 
@@ -2020,7 +2069,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/utils/gapCriticality.ts` — nhánh `gate.status !== 'Gap'`.
 
-#### R5-Q34 · Thế nào là đã "tiếp nhận" một cờ đối chiếu tự động (C3) 🔴
+#### ✅ R5-Q34 · ĐÃ QUYẾT 30/10/2026 — SW-47, không hỏi SME · Thế nào là đã "tiếp nhận" một cờ đối chiếu tự động (C3)
+
+**Đã quyết 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** hệ thống tự đặt "REVIEW - possible formula match" khi Formula BOM khớp (đã xây trên danh sách Prohibited); phần áp dụng cho danh sách Caution còn mở ở R5-Q76. Chi tiết và việc còn phải xây: SW-47 trong `Software_Rules.md`. Bản gốc của câu hỏi giữ nguyên bên dưới làm bằng chứng.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục B15).** C3: hệ thống tự đối chiếu BOM và gắn cờ. Mục mới ở Gate 7: mọi nhóm bị khớp phải có dòng watch-list đã rời trạng thái mặc định ("No formula match recorded" / "Not assessed"). Hệ thống không tự ghi kết luận.
 
@@ -2080,6 +2131,8 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 #### R5-Q41 · Bản ghi deviation khi phát hành chưa được duyệt 🔴
 
+**Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-48: mỗi phát hành chưa được duyệt có bản ghi deviation riêng. Còn hỏi SME: bản ghi chứa gì, có chặn Gate 11/12 không, có cảnh báo khi hết hiệu lực không. Câu hỏi còn lại như bên dưới.
+
 **Lộ ra khi rà soát luật SME (04/10/2026, mục B23).** F11: *"Releasing without approval generates a deviation/violation record."* App chặn ngay từ đầu: một dòng Published Info không chuyển được sang trạng thái phát hành khi chưa đủ điều kiện, nên trong app không thể có lần phát hành chưa duyệt. Còn thiếu hai trường hợp: nội dung được đăng **ngoài app** mà chưa từng qua quy trình, và nội dung đã phát hành đúng quy trình nhưng **về sau không còn hợp lệ** (claim đổi revision, mục Claims Library bị rút, quá hạn rà soát).
 
 **Đã chọn (chủ dự án, 04/10/2026):** chưa dựng sổ deviation; trong lúc chờ, sự cố như vậy ghi vào sổ CAPA.
@@ -2120,7 +2173,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — `EARLY_REVIEW_ISSUE_TYPES`, `EARLY_REVIEW_SOURCES`, `PERFORMANCE_ISSUE_TYPES`.
 
-#### R5-Q46 · "Controlled action" khi để ngỏ dạng sản phẩm ở Gate 2 🔴
+#### ✅ R5-Q46 · ĐÃ QUYẾT 30/10/2026 — SW-49, không hỏi SME · "Controlled action" khi để ngỏ dạng sản phẩm ở Gate 2
+
+**Đã quyết 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** dạng sản phẩm để ngỏ ở Gate 2 ghi bằng trường Confirmed product form, không cần Next Action. Chi tiết và việc còn phải xây: SW-49 trong `Software_Rules.md`. Bản gốc của câu hỏi giữ nguyên bên dưới làm bằng chứng.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục Q23(a)).** Q23(a): để ngỏ dạng sản phẩm thì qua Gate 2 "with a controlled action". Đang đòi: có một Next Action (không bị huỷ) ở Gate 5, nơi dạng sản phẩm được chốt. Việc chốt được ghi ở trường mới 'Confirmed product form' trên trang BOM, vì danh sách Gate 2 đã khoá.
 
@@ -2162,6 +2217,8 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 #### R5-Q51 · Yêu cầu bao bì theo thị trường ghi ở đâu và chứng minh bằng gì 🔴
 
+**Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-45: ô Pack requirements trống không được hiểu là "không có yêu cầu" (câu 31(b) đã gỡ). Còn hỏi SME: ghi ở đâu và cái gì đóng mục. Câu hỏi còn lại như bên dưới.
+
 **Lộ ra khi rà soát luật SME (04/10/2026, mục A2 (Gate 6)).** A2: mục bắt buộc khi thị trường có yêu cầu riêng về ngôn ngữ, cảnh báo, khai báo thành phần, v.v. Đã thêm trường 'Pack requirements' vào hồ sơ thị trường (Regulatory duy trì); có nội dung là kích hoạt. Bằng chứng là dòng Gate 6 'Artwork/label needs and pack compatibility triggers identified'.
 
 **Câu hỏi:** Yêu cầu bao bì theo thị trường nên do Regulatory ghi trên hồ sơ thị trường như vậy không? Bằng chứng đóng mục nên là gì?
@@ -2184,7 +2241,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — `createFormulaVersion`, `setMarketTracks`; `packages/shared/src/utils/postLaunch.ts` — `reviewTracksByMarket`.
 
-#### R5-Q54 · Có được ghi nhóm dễ tổn thương mà Target Users ở Cổng 02 không suy ra không 🔴
+#### ✅ R5-Q54 · ĐÃ QUYẾT 30/10/2026 — SW-46, không hỏi SME · Có được ghi nhóm dễ tổn thương mà Target Users ở Cổng 02 không suy ra không
+
+**Đã quyết 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** nhóm dễ tổn thương reviewer tự nhận ra được ghi kèm cảnh báo và lý do, không bắt sửa Target Users trước (đảo một phần đã xây). Chi tiết và việc còn phải xây: SW-46 trong `Software_Rules.md`. Bản gốc của câu hỏi giữ nguyên bên dưới làm bằng chứng.
 
 **Lộ ra khi dựng lại màn Vulnerable-User Assessment (05/10/2026, chủ dự án yêu cầu).** Câu 25(d) đã chốt hai chiều kiểm có độ chặt khác nhau: mâu thuẫn chính xác thì từ chối thẳng, còn nhóm được đổi tên hoặc rộng hơn mà không có Target User tương ứng thì *"cảnh báo kèm lý do tốt hơn là từ chối thẳng, vì người rà soát Safety/Regulatory có thể tự nhận diện bối cảnh một cách độc lập"*. Rule engine và API vẫn đúng như vậy — **chỉ màn hình bị thu hẹp**: bộ chọn nhóm giờ chỉ liệt kê nhóm mà Cổng 02 suy ra. Muốn ghi một nhóm ngoài danh sách đó thì phải sửa Target Users ở Cổng 02 trước. Dòng đã ghi từ trước vẫn hiện, vẫn cảnh báo, vẫn xoá được.
 
@@ -2220,6 +2279,8 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 #### R5-Q57 · Gate đã passed có được tạo Next Action mới không 🔴
 
+**Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-41: vấn đề phát hiện sau khi gate passed vẫn phải ghi được, ở gate kế tiếp (câu 38(a) đã gỡ). Còn hỏi SME: không còn; điều kiện đã chấp nhận xem R5-Q59. Câu hỏi còn lại như bên dưới.
+
 **Lộ ra khi chủ dự án xem màn Phase (05/10/2026).** `R1-B2` nói *"open actions may exist only if the gate decision is Proceed with Conditions"*, `R2-F8` cho Critical chặn đóng gate. Cả hai nói về action **tồn tại** lúc gate qua, **không** nói về việc tạo mới **sau** khi gate đã qua.
 
 **Đã chặn, cho cả hai quyết định.** Lý do mang tính cơ chế chứ không phải khẩu vị: danh sách action đang mở của gate nằm trong `GateEvidenceSnapshot` (câu 29(1)), nên thêm một action sau khi gate qua làm **cả ba chữ ký thành Stale** — mà gate đã qua thì **không ký lại được** (`isGateUnlocked`), nên lane kẹt vĩnh viễn. Backtrack là lối ra.
@@ -2230,7 +2291,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `apps/api/src/projects/projects.service.ts` — vòng kiểm "Creation" trong `guardNextActions`; `apps/web/src/components/NextActionsCard.tsx` — `addBlocked`.
 
-#### R5-Q58 · Ai được xoá một Next Action 🔴
+#### ✅ R5-Q58 · ĐÃ QUYẾT 30/10/2026 — SW-40, không hỏi SME · Ai được xoá một Next Action
+
+**Đã quyết 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** chỉ người nêu được xoá một Next Action và việc xoá để lại dấu vết. Chi tiết và việc còn phải xây: SW-40 trong `Software_Rules.md`. Bản gốc của câu hỏi giữ nguyên bên dưới làm bằng chứng.
 
 **Lộ ra khi chủ dự án hỏi lại (07/10/2026).** F8 chỉ nói ai **đóng** action (người nêu, chủ gate hoặc người rà soát được uỷ quyền); không nói gì về **xoá**. Chủ dự án chốt: **chỉ người đã nêu action (Raised by) mới được xoá**, kể cả Project Lead và quản trị viên cũng không. Đó là quyết định dựng, chưa phải luật SME xác nhận.
 
@@ -2368,6 +2431,8 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 #### R5-Q76 · Product status của Prohibited Ingredients: ứng dụng tự đặt REVIEW khi Formula BOM có khớp 🔴
 
+**Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-47: hệ thống tự đặt REVIEW trên danh sách Prohibited được chốt. Còn hỏi SME: danh sách Pregnancy / Breastfeeding Caution có áp dụng không. Câu hỏi còn lại như bên dưới.
+
 **Lộ ra 26/10/2026, khi chuyển công thức của workbook vào ứng dụng.** Công thức H của sheet Prohibited_Ingredients tự điền "REVIEW - possible formula match" khi có khớp và "No formula match recorded" khi không. Trước đây ứng dụng để người chọn trạng thái này; chủ dự án quyết định ứng dụng tự đánh giá, vì để người chọn thì họ có thể để "No formula match recorded" trong khi BOM có nguyên liệu khớp. "REVIEW - possible formula match" nằm trong các trạng thái bị gắn cờ (Round 4 câu 32(a)), nên Gate 4 và các quy tắc của dòng bị gắn cờ (Next Action, người rà soát, thẩm định) áp dụng ngay.
 
 **Hiện chạy theo:** chỉ hai trạng thái do máy ghi mới tự đổi. Có khớp và dòng chưa có kết luận của người (trống hoặc "No formula match recorded") → REVIEW; hết khớp mà đang REVIEW → "No formula match recorded". Kết luận người đã chọn ("Not present - evidence linked", "Present within restriction", "Prohibited - remove", các trạng thái Needs … Review) được giữ nguyên, và đó là cách xoá một khớp giả. Số khớp tính bằng bộ so khớp CAS rồi từ khoá của ứng dụng (bảng mẫu theo follow-up F3), không phải tìm chữ như công thức Excel. Danh sách PB Caution **không** tự đặt trạng thái: nó không có trạng thái "có thể khớp", và Gate 4 cố ý chỉ chặn các trạng thái chuyển Safety/Regulatory.
@@ -2467,6 +2532,8 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 **Nếu trả lời khác:** `newlyCarriedVerdictRows` + khối kiểm trong `setRegisterRows` (`apps/api/src/projects/projects.service.ts`) và khối kiểm trong `assertCanCarryConditions`; `RowDetail` trong `WatchlistRegister.tsx` [ASSUMPTION: R5-Q67].
 
 #### R5-Q66 · Change Control mở trước khi thay đổi xảy ra, hay có thể mở sau để ghi nhận ngược 🔴
+
+**Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-44: một thay đổi đã xảy ra vẫn ghi được sau đó, như bản ghi bổ sung không giữ gate (câu 33(a)(c) đã gỡ). Còn hỏi SME: Change Control đã duyệt có là điều kiện tiên quyết của version mới không, và cách sửa công thức sau Gate 05. Câu hỏi còn lại như bên dưới.
 
 **Lộ ra 12/10/2026, khi chủ dự án hỏi "Change Request SME làm ra khác gì Backtrack" và ta đọc code để trả lời.** Trang Change Control nói *"Open one … before the change is made, not after"* — câu chữ do chúng ta viết, không phải của SME. Trong code hai luồng không nối với nhau: mở một `CHG-xxx` không tạo và không dẫn tới phiên bản công thức; tạo phiên bản (nút *New formula version*) không cần `CHG-xxx` nào, chỉ tự ghi một dòng `FC-xxx` (xem R5-Q18/R5-Q19). Không có ràng buộc thứ tự: bản ghi có thể mở trước, sau, hoặc không bao giờ. Vòng đời trạng thái (Draft → … → Approved – Implementation Pending → In Implementation → Completed) gợi ý duyệt trước khi thực hiện, nhưng đó cũng chỉ là cách đọc của ta.
 

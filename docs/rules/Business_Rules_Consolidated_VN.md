@@ -557,7 +557,7 @@ Những điều dưới đây **được quyết định nội bộ, không hỏ
 | Hạng mục | Vì sao còn mở | Nguồn |
 |---|---|---|
 | **Mức bao phủ tuân thủ ASEAN / Việt Nam của Cosmetri** | Phụ thuộc bên ngoài — chỉ Cosmetri xác nhận được. Cách xử lý tạm thời ở mục 4. | `[R2-F12 ⏳]` |
-| **Các câu hỏi Vòng 5** | Được soạn trong lúc xây dựng Vòng 4 và chưa gửi. Chừng nào chưa có trả lời, các lựa chọn thiết kế bị ảnh hưởng vẫn chỉ là cách hiểu của chúng tôi, chưa phải quy tắc đã xác nhận. | `docs/rounds/DRAFT-our-questions-round5.md` |
+| **Các câu hỏi Vòng 5** | Được soạn trong lúc xây dựng Vòng 4 và chưa gửi. Chừng nào chưa có trả lời, các lựa chọn thiết kế bị ảnh hưởng vẫn chỉ là cách hiểu của chúng tôi, chưa phải quy tắc đã xác nhận. | `docs/rounds/2026-10-30-our-questions-round5.md` |
 
 **Nội dung còn phải cung cấp — đây là dữ liệu cần thu thập, không phải quyết định cần đưa ra:**
 

@@ -92,7 +92,7 @@ export default function NextActionsCard({
     const committed = committedById.get(a.id);
     return nextActionFreeze(committed, !!committed && isGatePassed(project, committed.gateId));
   };
-  // Removal is raiser-only [ASSUMPTION: R5-Q58]; a row not yet saved has no
+  // Removal is raiser-only (SW-40); a row not yet saved has no
   // committed copy and is yours.
   const removeLocked = (a: NextAction): boolean => {
     const committed = committedById.get(a.id);

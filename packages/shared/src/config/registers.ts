@@ -541,7 +541,7 @@ export const WATCHLIST_RESOLUTION_OPTIONS = RESOLUTION_LIFECYCLE;
 // be asked to hold both a machine screening result and a human disposition. Built
 // 2026-08-29 as the TWO-COLUMN option: `productStatus` keeps the screening result
 // and a separate `gate4Disposition` holds the human verdict. Which of the two
-// shapes the team meant is [ASSUMPTION: R5-Q10] — the two-column build is the one
+// shapes the team meant is (SW-47) — the two-column build is the one
 // that can be undone without losing a recorded answer, since collapsing two
 // columns into one is a data migration while splitting one into two is guesswork.
 export const WATCHLIST_FLAGGED_STATUSES: readonly string[] = [
@@ -890,7 +890,7 @@ const prohibitedIngredients: RegisterConfig = {
     // that column holds the SCREENING result (does the formula match this row),
     // this one holds the reviewer's DISPOSITION of that result. Blank is the
     // unassessed state Gate 4 must not pass with, so it deliberately has no
-    // `defaultValue` [ASSUMPTION: R5-Q10].
+    // `defaultValue` (SW-47).
     { key: 'gate4Disposition', label: 'Classification', type: 'select', width: 190, options: [...GATE4_DISPOSITION_OPTIONS], gate: '04' },
     // Rule D3 — the reviewer trail a flagged result must carry before Gate 4 can
     // move. Every field here is one D3 names; only the Resolution status VALUES

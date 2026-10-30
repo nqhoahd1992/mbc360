@@ -1,6 +1,6 @@
 # Change Control auto-reopens the passed gates it affects — implementation plan
 
-> **Status: NOT STARTED.** Per the project owner's decision (2026-08-27), this plan is parked here until the SME team answers [`R5-Q20`](../rules/F1_Per_Gate_Open_Questions.md) (drafted in [`../rounds/DRAFT-our-questions-round5.md`](../rounds/DRAFT-our-questions-round5.md) as Question 20). Do not implement from this plan until that question is answered, or unless the project owner explicitly says to proceed on the current assumption anyway.
+> **Status: NOT STARTED.** Per the project owner's decision (2026-08-27), this plan is parked here until the SME team answers [`R5-Q20`](../rules/F1_Per_Gate_Open_Questions.md) (drafted in [`../rounds/2026-10-30-our-questions-round5.md`](../rounds/2026-10-30-our-questions-round5.md) as Question 20). Do not implement from this plan until that question is answered, or unless the project owner explicitly says to proceed on the current assumption anyway.
 
 ## Context
 
@@ -59,7 +59,7 @@ Mirrors the existing migration convention (see `20260826120000_register_row_sign
 
 ## Documentation
 
-- `docs/rules/F1_Per_Gate_Open_Questions.md` / `docs/rounds/DRAFT-our-questions-round5.md` — `R5-Q20` / Question 20 already recorded (2026-08-27).
+- `docs/rules/F1_Per_Gate_Open_Questions.md` / `docs/rounds/2026-10-30-our-questions-round5.md` — `R5-Q20` / Question 10 already recorded (2026-08-27).
 - Tag the code: `[ASSUMPTION: R5-Q20]` at the `reopenGates` call site in `setChanges` and at `changeReopenBlocksDecision`'s definition, once built.
 - Update `CLAUDE.md` with a dated note describing the feature, following its existing changelog-style convention.
 

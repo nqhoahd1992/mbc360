@@ -282,6 +282,51 @@ Giá trị lưu dạng chuỗi `YYYY-MM-DD`.
 
 ---
 
+## 6. Ghi nhận, không biến mất âm thầm
+
+### SW-38. Điều quan trọng đã xảy ra với dự án thì được ghi nhận, không bị xoá hay biến mất âm thầm — *Đang áp dụng* (2026-10-30, chủ dự án)
+*"Những thứ được đánh giá là quan trọng trong việc phát triển sản phẩm mà đã xảy ra với dự án này, phải được ghi nhận chứ không được âm thầm biến mất."* Đây là nguyên tắc B4 ("không sửa lặng lẽ") mở rộng ra mọi chỗ, và là phép thử dùng để tách câu hỏi SME khỏi quyết định của chủ dự án: câu hỏi chỉ xoay quanh **có nên ghi nhận** một việc đã xảy ra thì là của chủ dự án và nằm ở mục này; câu hỏi về cái gì **được chấp nhận**, **ai có thẩm quyền** hay **cần bằng chứng gì** vẫn là của SME. SW-39 đến SW-51 là những ca đã áp dụng nguyên tắc này.
+
+### SW-39. Gap Critical hoặc High đã giải quyết được giữ lại và ghi Resolved, không xoá đánh giá — *Đã chốt, chưa xây* (2026-10-30; câu hỏi nội bộ R5-Q33 đóng)
+Đánh giá mức nghiêm trọng của một gap (mức độ, nhóm ảnh hưởng, người đánh giá, ngày, lý do, bằng chứng, hành động, người phụ trách) là một sự kiện của dự án nên **giữ nguyên** sau khi gap được giải quyết. Việc giải quyết được ghi thêm: **cách đã giải quyết** (bắt buộc), **người giải quyết** và **thời điểm** (hai trường này do server ghi từ session, client không gửi được, như chữ ký). Đánh giá Critical hoặc High **không còn chặn** quyết định khi gap đã Resolved; nếu gate quay lại status Gap thì Resolved bị bỏ và đánh giá chặn lại. Resolve chỉ được khi status không còn là Gap, và cả việc resolve lẫn mở lại đều ghi vào lịch sử gate. Ai được bấm Resolve: bất kỳ người dùng đã đăng nhập, được ghi tên (chủ dự án chưa đặt giới hạn).
+Hiện chạy khác: giải quyết gap bằng cách **xoá** đánh giá (`gapBlocksDecision`, nhánh `gate.status !== 'Gap'`, `packages/shared/src/utils/gapCriticality.ts`). Cần: migration thêm ba cột vào `gate_records`, `GateRecord` và `GATE_RECORD_FIELDS`, một route resolve, nút trên `GapAssessmentBlock`.
+
+### SW-40. Next Action: chỉ người nêu được xoá, và việc xoá để lại dấu vết — *Đã xây một nửa* (2026-10-30; R5-Q58 đóng)
+Chỉ người đã nêu action (Raised by) được xoá nó, kể cả Lead và admin cũng không (đã xây, 2026-10-07: `mayRemoveNextAction`, `utils/nextActionAccess.ts`). Action Critical đang mở không xoá được (phải Cancel); action của gate đã passed không xoá được (B4). **Phần chưa xây:** action bị xoá phải còn dấu vết trong lịch sử (nội dung, ai xoá, khi nào). Cần kiểm xem audit `next_actions.updated` hiện ghi nội dung action bị xoá chưa; nếu chưa thì ghi thêm.
+
+### SW-41. Vấn đề phát hiện sau khi gate đã passed vẫn phải ghi được — *Đã chốt, chưa xây* (2026-10-30; R5-Q57 một phần)
+Không thể thêm Next Action vào gate đã passed (đã xây, 2026-10-05, vì chữ ký sẽ hết hiệu lực mà gate đã passed không ký lại được). Nhưng vấn đề đó **không được bị từ chối rồi mất**: nó được ghi thành action ở **gate kế tiếp** và đánh dấu "phát hiện ở gate đã qua", hoặc người dùng Backtrack. Cần: lựa chọn ghi sang gate kế tiếp trong `NextActionsCard`, trường liên kết tới gate gốc, và thông báo từ chối của server chỉ đường cho việc này (`guardNextActions`, vòng "Creation").
+
+### SW-42. Gate đã passed không tự rời trạng thái passed mà không để lại bản ghi — *Đã chốt, chưa xây* (2026-10-30; R5-Q20 một phần)
+Gate 11 và Gate 12 hiện tự mất trạng thái passed khi một Change Control được mở (check đọc danh sách thay đổi mỗi lần hiển thị), không ai mở lại và không có gì ghi lý do. Từ nay một gate chỉ rời passed bằng một hành động có ghi (Backtrack, hoặc một sự kiện ghi vào lịch sử gate kèm lý do); **không** được đổi vì một check đọc dữ liệu thay đổi. Cách thực thi chưa chọn: ghi một sự kiện khi trạng thái passed bị mất, hoặc tách check khỏi trạng thái passed. Việc Change Control chạm gate đã passed có **mở lại** gate hay không vẫn hỏi SME.
+
+### SW-43. Major formula version luôn để lại một bản ghi Change Control — *Đã chốt, chưa xây* (2026-10-30; R5-Q19 một phần)
+Một Major version là sự kiện lớn của dự án nên không được vô hình với phía change control (hiện chỉ ghi `FC-xxx`, không tạo `CHG-xxx`, nên Gate 11 không thấy). `createFormulaVersion` (`projects.service.ts`) phải tạo hoặc liên kết một bản ghi Change Control, để Gate 10 và 11 và việc đánh giá tác động thấy nó. Sổ nào là sổ chính, ranh giới giữa các sổ và thế nào là "bản ghi hợp lệ" vẫn hỏi SME.
+
+### SW-44. Một thay đổi đã xảy ra vẫn ghi được sau đó, như bản ghi bổ sung — *Đã chốt, chưa xây phần đánh dấu* (2026-10-30; R5-Q66 một phần)
+Một Change Control có thể được mở **sau khi** thay đổi đã xảy ra (ví dụ nhà cung cấp thay nguyên liệu gấp). Bản ghi đó được đánh dấu là **bản ghi bổ sung** và **không giữ gate**, vì thay đổi đã xảy ra rồi. Hiện không có thứ tự nào bị áp đặt (mở trước, sau hay không bao giờ đều được); phần chưa có là đánh dấu "bổ sung" và không cho nó soft-lock gate. Việc có bắt buộc Change Control được duyệt **trước** khi tạo version công thức mới hay không vẫn hỏi SME.
+
+### SW-45. Ô "Pack requirements" của market profile để trống không được hiểu là "không có yêu cầu" — *Đã chốt, chưa xây* (2026-10-30; R5-Q51 một phần)
+Trên một thị trường dự án bán vào, ô trống làm mục "yêu cầu bao bì theo thị trường" tự qua. Từ nay nó **chặn** cho tới khi Regulatory ghi các yêu cầu, hoặc N/A kèm lý do (đúng điều A2 yêu cầu và nguyên tắc câu 7 Round 4: một đánh giá còn thiếu không bao giờ đọc là "không áp dụng"). Cần: trigger `marketPackRequirements` trả "chưa đánh giá" cho ô trống thay vì "không áp dụng".
+
+### SW-46. Nhóm dễ tổn thương mà reviewer tự nhận ra được ghi kèm cảnh báo và lý do, không bắt sửa Target Users trước — *Đã chốt, chưa xây; đảo một phần đã xây* (2026-10-30; R5-Q54 đóng)
+Câu 25(d) Round 4: nhóm không khớp target user nào được ghi với *"a warning plus rationale"* vì *"the Safety/Regulatory reviewer may identify that context independently"*. Màn hình Gate 02 đã dựng lại chỉ cho chọn nhóm mà target user ngụ ý (`VulnerableUserAssessmentTable.tsx`), nên reviewer phải sửa Target Users trước, tức đường ghi nhận dài hơn và có thể bị bỏ. Chủ dự án quyết: đánh giá độc lập của reviewer là điều quan trọng, **phải ghi được ngay** kèm cảnh báo và lý do, như engine và API vẫn làm. Cần: cho chọn nhóm ngoài danh sách suy ra, bật cảnh báo và bắt lý do trên màn hình. Việc này đảo một chỉ đạo trước đó của chủ dự án nên cần chủ dự án xác nhận lại khi xây.
+
+### SW-47. Watch-list: hai cột riêng cho kết quả sàng lọc và kết luận, và hệ thống ghi cờ khớp trên danh sách Prohibited — *Đã xây* (2026-10-26 và 2026-10-30; R5-Q10, R5-Q34 đóng)
+Cột **Product status** ghi điều sàng lọc thấy, cột **Classification** ghi điều reviewer quyết; cột này không ghi đè cột kia (R5-Q10, chọn hai cột). Trên danh sách Prohibited, hệ thống tự đặt Product status "REVIEW - possible formula match" khi Formula BOM khớp và trả về "No formula match recorded" khi hết khớp; trạng thái do người chọn được giữ nguyên (`screenedProductStatus`, `utils/registerDerived.ts`, `[ASSUMPTION: R5-Q76]`). Hệ thống không bao giờ ghi kết luận. Việc áp dụng cờ tự động cho danh sách Pregnancy / Breastfeeding Caution vẫn hỏi SME (R5-Q76).
+
+### SW-48. Phát hành khi chưa được duyệt để lại một bản ghi deviation riêng — *Đã chốt, chưa xây* (2026-10-30; R5-Q41 một phần)
+F11: *"releasing without approval generates a deviation/violation record"*. Hai ca hệ thống không ngăn được (xuất bản ngoài hệ thống; tài liệu từng đúng sau đó hết hiệu lực) hiện chỉ ghi vào CAPA. Mỗi sự cố như vậy từ nay có **bản ghi deviation riêng**, không chỉ một dòng CAPA. Bản ghi chứa gì, có chặn Gate 11 hoặc 12 không, và có cảnh báo khi tài liệu hết hiệu lực không vẫn hỏi SME.
+
+### SW-49. Dạng sản phẩm để ngỏ ở Gate 2 ghi bằng trường Confirmed product form, không cần Next Action — *Đã xây* (2026-10-15, chủ dự án; R5-Q46 đóng)
+Câu 23(a) Round 4 cho qua Gate 2 khi dạng sản phẩm còn mở, *"with a controlled action"*. Tuỳ chọn *"Product form under evaluation — to be confirmed by Gate 5"* ở Gate 2 kèm trường **Confirmed product form** (card Formula Properties, Formula BOM) mà Gate 5 chờ (`sg05-product-form`, `gateReadiness.ts`). Chủ dự án: trường đó đã là bản ghi rõ ràng và chặn Gate 5, nên **không cần thêm Next Action**.
+
+### SW-50. Bảng yêu cầu Phase 2–4: N/A kèm lý do được tính là đã xử lý — *Đã xây* (2026-10-30; R5-Q22 một phần)
+Bảy bảng dùng danh sách Stage status của workbook có ô N/A rationale, và check `requirementDone` chấp nhận Complete hoặc N/A kèm lý do (`requirementRowSettled`, `utils/gateProgress.ts`; `allowNotApplicable` trong `phases.ts`). Ngoại lệ là dòng Phase 1 "Must-have product requirements" (`strict`). Một dòng không áp dụng được ghi nhận kèm lý do thay vì buộc chọn Complete. Dòng nào khác cũng không bao giờ nhận N/A vẫn hỏi SME (R5-Q22). Kiểm: `verify:e2e` (10 ca).
+
+### SW-51. Một lần rà soát không thấy gì được ghi bằng một mục trả lời "No", không phải bằng danh sách rỗng — *Đã xây* (2026-10-13)
+Đánh giá Change Control của Gate 12: một lần rà soát không thấy thay đổi nào cần Change Control ghi **một mục trả lời No kèm lý do**. Danh sách rỗng vẫn chặn (trừ khi đã có Change Control đang mở). `changeControlAssessmentProblems`, `utils/changeControlAssessments.ts`; `npm run verify:change-control-assessments`. Phần định nghĩa "phát hiện" và các trường của mục vẫn hỏi SME.
+
 ## Cách thêm một luật vào đây
 
 1. Ghi luật bằng một câu, kèm ngày quyết định và **Trạng thái**.

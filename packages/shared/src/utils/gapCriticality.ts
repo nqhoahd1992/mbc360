@@ -85,7 +85,7 @@ export function gapBlocksDecision(gate: GateRecord, decision: GateDecision): Gap
   // the assessment entirely — the gate-decision-step informality question 3
   // forbids. Closing such a gap is now an act on the gap record itself: clear the
   // grade (logged in the gate's change history) once it is resolved. That this is
-  // how a gap gets closed is our reading [ASSUMPTION: R5-Q33]. Medium and Low keep
+  // how a gap gets closed is decided as SW-39: it becomes a Resolved state that keeps the assessment, not a clearing (not built yet). Medium and Low keep
   // their old status-bound treatment below.
   if (gate.status !== 'Gap') {
     if (criticality !== 'Critical' && criticality !== 'High') return null;
