@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { LockOutlined } from '@ant-design/icons';
 import { ConfigProvider, DatePicker, Input, Select } from 'antd';
 import dayjs from 'dayjs';
 import type { ProjectData } from '@mbc360/shared/types';
@@ -82,6 +83,65 @@ function FieldBox({
   );
 }
 
+interface ReadRow {
+  label: string;
+  value?: string;
+  wide?: boolean;
+  kind?: 'answer' | 'link' | 'tags';
+}
+
+// The locked answer, read as a record rather than a form switched off: disabled inputs grey the very
+// content a reader came for.
+function AssessmentRecord({ rows }: { rows: ReadRow[] }) {
+  const answer = rows.find((r) => r.kind === 'answer');
+  const facts = rows.filter((r) => r.kind !== 'answer');
+  const none = <span className="as-none">—</span>;
+  const render = (r: ReadRow) => {
+    const v = (r.value ?? '').trim();
+    if (!v) return none;
+    if (r.kind === 'tags') {
+      return (
+        <span className="as-tags">
+          {v.split(',').map((t) => (
+            <span key={t.trim()} className="c-tag">
+              {t.trim()}
+            </span>
+          ))}
+        </span>
+      );
+    }
+    if (r.kind === 'link' && /^https?:\/\//i.test(v)) {
+      return (
+        <a href={v} target="_blank" rel="noreferrer">
+          {v}
+        </a>
+      );
+    }
+    return v;
+  };
+  const answered = !!(answer?.value ?? '').trim() && !/pending/i.test(answer?.value ?? '');
+  return (
+    <div className="as-record">
+      {answer && (
+        <div className="as-answer">
+          <span className="as-label">{answer.label}</span>
+          <span className={`as-answer-tag${answered ? '' : ' as-answer-pending'}`}>{answer.value?.trim() || 'Not yet assessed'}</span>
+        </div>
+      )}
+      {facts.length > 0 && (
+        <dl className="as-facts">
+          {facts.map((r) => (
+            <div key={r.label} className={`as-fact${r.wide ? ' as-fact-wide' : ''}`}>
+              <dt>{r.label}</dt>
+              <dd>{render(r)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
 export function isFamilyUseSelected(project: ProjectData): boolean {
   return (project.checklists['targetUsers'] ?? []).some((i) => i.selected && i.label === 'Family use');
 }
@@ -134,6 +194,50 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
       onChange={(d) => set(field, d ? d.format('YYYY-MM-DD') : '')}
     />
   );
+
+  // A reference list, not part of the answer: it sits after the form, and after the record once locked.
+  const areasDetails =
+    which === 'scaleUp' ? (
+      <details className="as-areas">
+        <summary>Changes that should prompt a scale-up or pilot review ({SCALE_UP_REVIEW_AREAS.length})</summary>
+        <ul>
+          {SCALE_UP_REVIEW_AREAS.map((a) => (
+            <li key={a}>{a}</li>
+          ))}
+        </ul>
+      </details>
+    ) : null;
+  const protocolNotice =
+    which === 'humanStudy' && protocolStarted ? (
+      <Notice tone="info" title="A Study Protocol has been started, so this already counts as Yes whatever is selected here." />
+    ) : null;
+  const readRows: ReadRow[] = (() => {
+    switch (which) {
+      case 'humanStudy':
+        return [{ label: 'Answer', kind: 'answer', value: draft.humanStudyPlanned }];
+      case 'administrativeOnly':
+        return [
+          { label: 'Answer', kind: 'answer', value: draft.administrativeOnly },
+          { label: 'Confirmed by (authorised reviewer)', value: draft.administrativeOnlyConfirmedBy },
+        ];
+      case 'familyUse':
+        return [
+          { label: 'Age groups included', kind: 'tags', wide: true, value: draft.familyUseAgeGroups },
+          { label: 'Confirmed by', value: draft.familyUseConfirmedBy },
+          { label: 'Confirmed on', value: draft.familyUseConfirmedDate },
+        ];
+      case 'scaleUp':
+        return [
+          { label: 'Answer', kind: 'answer', value: draft.scaleUpRiskIdentified },
+          { label: 'Assessor', value: draft.scaleUpRiskAssessor },
+          { label: 'Assessment date', value: draft.scaleUpRiskAssessmentDate },
+          { label: 'Evidence link', kind: 'link', value: draft.scaleUpRiskEvidenceLink },
+          { label: 'Risk description', wide: true, value: draft.scaleUpRiskDescription },
+          { label: 'Rationale', wide: true, value: draft.scaleUpRiskRationale },
+          { label: 'Required pilot or scale-up activity', wide: true, value: draft.scaleUpRiskActivity },
+        ];
+    }
+  })();
 
   let body: ReactNode;
   switch (which) {
@@ -200,16 +304,6 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
           <FieldBox label="Answer" wide>
             {answerSelect('scaleUpRiskIdentified', SCALE_UP_RISK_OPTIONS)}
           </FieldBox>
-          <div className="as-wide">
-            <details className="as-areas">
-              <summary>Changes that should prompt a scale-up or pilot review ({SCALE_UP_REVIEW_AREAS.length})</summary>
-              <ul>
-                {SCALE_UP_REVIEW_AREAS.map((a) => (
-                  <li key={a}>{a}</li>
-                ))}
-              </ul>
-            </details>
-          </div>
           {/* Who and when, then where the evidence is: three short fields share one row. */}
           <FieldBox label="Assessor">
             <SelfAttestField
@@ -229,7 +323,7 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
           <FieldBox label="Risk description" wide>
             <Input.TextArea
               style={{ width: '100%' }}
-              autoSize={{ minRows: 3, maxRows: 6 }}
+              autoSize={{ minRows: 2, maxRows: 6 }}
               value={draft.scaleUpRiskDescription}
               onChange={(e) => set('scaleUpRiskDescription', e.target.value)}
             />
@@ -237,7 +331,7 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
           <FieldBox label="Rationale" wide>
             <Input.TextArea
               style={{ width: '100%' }}
-              autoSize={{ minRows: 3, maxRows: 6 }}
+              autoSize={{ minRows: 2, maxRows: 6 }}
               value={draft.scaleUpRiskRationale}
               onChange={(e) => set('scaleUpRiskRationale', e.target.value)}
             />
@@ -245,6 +339,7 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
           <FieldBox label="Required pilot or scale-up activity" wide>
             <Input value={draft.scaleUpRiskActivity} onChange={(e) => set('scaleUpRiskActivity', e.target.value)} />
           </FieldBox>
+          <div className="as-wide">{areasDetails}</div>
         </div>
       );
       break;
@@ -253,16 +348,33 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
   return (
     <section className="c-card as-card" id={assessmentAnchor(which)}>
       <div className="as-head">
-        <div className="as-kicker">Assessment</div>
-        <h2 className="as-title">{home.title}</h2>
-        <p className="as-desc">{HINTS[which]}</p>
+        <div className="as-head-text">
+          <div className="as-kicker">Assessment</div>
+          <h2 className="as-title">{home.title}</h2>
+          <p className="as-desc">{HINTS[which]}</p>
+        </div>
+        {/* C9: answered at this gate; once it has passed the answer is read-only
+            (the API refuses changes too) — correcting it goes through Backtrack. */}
+        {locked && (
+          <span className="c-tag as-lock" title="Withdraw the signature, or Backtrack, to change this answer">
+            <LockOutlined /> Locked · {home.gateId}
+          </span>
+        )}
       </div>
-      {/* C9: answered at this gate; once it has passed the answer is read-only
-          (the API refuses changes too) — correcting it goes through Backtrack. */}
-      {locked && <Notice tone="info" title={`${home.gateId} has passed or is signed — this answer is read-only (withdraw the signature, or Backtrack, to change it)`} />}
-      <ConfigProvider componentDisabled={locked}>
-        <div className="as-block">{body}</div>
-      </ConfigProvider>
+      {locked ? (
+        <div className="as-block">
+          <p className="as-lock-note">
+            {home.gateId} has passed or is signed. To change this answer, withdraw the signature or Backtrack.
+          </p>
+          <AssessmentRecord rows={readRows} />
+          {protocolNotice}
+          {areasDetails}
+        </div>
+      ) : (
+        <ConfigProvider componentDisabled={false}>
+          <div className="as-block">{body}</div>
+        </ConfigProvider>
+      )}
       {(dirty || blockingReason) && (
         <div className="as-foot">
           {blockingReason && dirty && <Notice tone="warn" title={blockingReason} />}

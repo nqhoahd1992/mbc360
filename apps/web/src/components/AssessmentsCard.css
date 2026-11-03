@@ -64,3 +64,28 @@
 }
 .as-areas li { padding: 2px 0; break-inside: avoid; }
 @media (max-width: 640px) { .as-areas ul { columns: 1; } }
+
+/* Header: the title block, and on a locked answer the state tag at its far end. */
+.as-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }
+.as-head-text { min-width: 0; }
+.as-lock { flex-shrink: 0; }
+.as-lock-note { margin: 0; color: var(--c-text-3); font-size: 13px; }
+
+/* A locked answer read as a record: the answer first and large, the facts as label / value pairs. */
+.as-record { display: grid; gap: 16px; }
+.as-answer { display: grid; justify-items: start; gap: 6px; }
+.as-answer .as-label { margin: 0; }
+.as-answer-tag {
+  display: inline-flex; align-items: center; min-height: 32px; padding: 0 14px; border: 1px solid var(--c-border);
+  border-radius: 6px; background: var(--c-surface-2); color: var(--c-text); font-size: 16px; font-weight: 600;
+}
+.as-answer-pending { border-color: var(--c-warn-line); background: var(--c-warn-bg); color: var(--c-warn); }
+.as-facts { display: grid; gap: 12px 16px; grid-template-columns: minmax(0, 1fr); margin: 0; }
+@media (min-width: 640px) { .as-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .as-fact-wide { grid-column: span 2; } }
+@media (min-width: 992px) { .as-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); } .as-fact-wide { grid-column: span 3; } }
+.as-fact { min-width: 0; }
+.as-fact dt { margin-bottom: 2px; color: var(--c-text-2); font-size: 13px; }
+.as-fact dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.as-fact dd a { white-space: normal; }
+.as-none { color: var(--c-text-3); }
+.as-tags { display: flex; flex-wrap: wrap; gap: 6px; }
