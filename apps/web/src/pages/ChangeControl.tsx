@@ -2,9 +2,9 @@ import { useMemo, useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import UserSelect from '../components/UserSelect';
 import ChangeDispositionBlock from '../components/ChangeDispositionBlock';
+import Notice from '../components/Notice';
 import { isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
-import { AutoComplete, Button, DatePicker, Form, Input, Select, Switch, message, Tooltip } from 'antd';
-import ChoiceSelect from '../components/ChoiceSelect';
+import { AutoComplete, Button, DatePicker, Form, Input, Modal, Select, Switch, message, Tooltip } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
@@ -70,6 +70,7 @@ export default function ChangeControl() {
   const changes = useMemo(() => allChanges.filter((c) => c.projectId === projectId), [allChanges, projectId]);
   const projects = useAppStore((s) => s.projects);
   const addChange = useAppStore((s) => s.addChange);
+  const reopenChange = useAppStore((s) => s.reopenChange);
   const setChangesBulk = useAppStore((s) => s.setChangesBulk);
   // The project the sidebar is currently pinned to (2026-08-26, user-requested):
   // opening "Open Change Request" from inside a project's workspace should not
@@ -78,6 +79,10 @@ export default function ChangeControl() {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [refOpen, setRefOpen] = useState(false);
+  // SW-55: the closed change being reopened, and the reason typed so far.
+  const [reopening, setReopening] = useState<ChangeRecord | null>(null);
+  const [reopenReason, setReopenReason] = useState('');
+  const [reopenBusy, setReopenBusy] = useState(false);
   const [form] = Form.useForm<ChangeForm>();
   const selectedTriggerId = Form.useWatch('triggerId', form);
   const selectedTrigger = getChangeTrigger(selectedTriggerId);
@@ -181,6 +186,40 @@ export default function ChangeControl() {
     return ok;
   };
 
+  // SW-55: a change that is closed WITH its final disposition recorded is frozen — judged on what is saved, not on
+  // the draft, so closing it and filling the disposition in one edit does not lock the form mid-way.
+  const isFrozen = (c: ChangeRecord) => {
+    const saved = changes.find((x) => x.changeId === c.changeId);
+    return !!saved && !isChangeOpen(saved.status) && isChangeDispositionRecorded(saved);
+  };
+  // A draft cannot be saved as closed until the disposition is complete, unless the record was already closed
+  // and incomplete before this rule (it must stay editable to be completed).
+  const closeBlocker = draft
+    .map((c) => {
+      if (isChangeOpen(c.status) || isChangeDispositionRecorded(c)) return undefined;
+      const saved = changes.find((x) => x.changeId === c.changeId);
+      if (saved && !isChangeOpen(saved.status)) return undefined;
+      return `${c.changeId} cannot be closed as ${c.status} until the final disposition is recorded (missing: ${missingDispositionFields(c).join(', ')})`;
+    })
+    .find((m) => m !== undefined);
+  const confirmReopen = async () => {
+    if (!reopening || !projectId) return;
+    if (!reopenReason.trim()) return;
+    setReopenBusy(true);
+    try {
+      if (await reopenChange(projectId, reopening.changeId, reopenReason.trim())) {
+        message.success(`${reopening.changeId} reopened`);
+        setReopening(null);
+        setReopenReason('');
+      }
+    } finally {
+      setReopenBusy(false);
+    }
+  };
+  const listProjectMarkets = projects.find((p) => p.identity.id === projectId)?.identity.markets ?? [];
+  // The project's markets, plus any already on the record (a market the project has since dropped stays visible).
+  const marketOptionsFor = (c: ChangeRecord) =>
+    [...new Set([...listProjectMarkets, ...(c.markets ?? [])])].map((m) => ({ value: m, label: m }));
   const openCount = draft.filter((c) => isChangeOpen(c.status)).length;
   // What makes a change hold Gate 11 (rule E3(b), Round 4 question 34(c)): an
   // open change nobody has classified, or a closed one without its final
@@ -198,6 +237,7 @@ export default function ChangeControl() {
     <Select
       style={{ width: '100%' }}
       value={c.status}
+      disabled={isFrozen(c)}
       aria-label="Status"
       options={CHANGE_STATUSES.map((s) => ({ value: s, label: s }))}
       onChange={(v: ChangeStatus) =>
@@ -294,6 +334,16 @@ export default function ChangeControl() {
           rowFlag={(c) => gate11Issue(c) !== undefined}
           inline={[
             { label: 'Risk', width: 96, render: (c) => <StatusBadge value={c.riskLevel} /> },
+            {
+              label: 'Markets',
+              width: 160,
+              render: (c) =>
+                (c.markets ?? []).length > 0 ? (
+                  <span title={c.markets!.join(', ')}>{c.markets!.join(', ')}</span>
+                ) : (
+                  <span className="rt-muted">All markets</span>
+                ),
+            },
             { label: 'Status', width: 248, render: (c) => statusSelect(c) },
           ]}
           drawerTitle={(c) => (
@@ -303,8 +353,22 @@ export default function ChangeControl() {
           )}
           drawer={(c) => {
             const t = getChangeTrigger(c.triggerId);
+            const frozen = isFrozen(c);
             return (
               <>
+                {frozen && (
+                  <Notice
+                    tone="info"
+                    title={`Closed (${c.status}) — this record is frozen`}
+                    action={
+                      <Button size="small" onClick={() => setReopening(c)}>
+                        Reopen
+                      </Button>
+                    }
+                  >
+                    A closed change cannot be edited. Reopening needs a reason and is recorded.
+                  </Notice>
+                )}
                 <div>
                   <div className="rt-sec-title">Change</div>
                   <dl className="rt-dl">
@@ -327,10 +391,12 @@ export default function ChangeControl() {
                         grow as its impact becomes known, and High/Critical is what
                         makes an open change hard-block Gate 11. */}
                     <RecordField label="Risk level">
-                      <ChoiceSelect
+                      <Select
+                        style={{ width: '100%' }}
+                        disabled={frozen}
                         value={c.riskLevel}
-                        options={[...RISK_LEVELS]}
-                        onChange={(v) => v && patchChange(c.changeId, { riskLevel: v as RiskLevel })}
+                        options={RISK_LEVELS.map((r) => ({ value: r, label: r }))}
+                        onChange={(v: RiskLevel) => patchChange(c.changeId, { riskLevel: v })}
                       />
                     </RecordField>
                     {/* Editable here, not only on the create form: rule E3(b) makes
@@ -339,12 +405,25 @@ export default function ChangeControl() {
                         an editor those would block the gate with nowhere to fix
                         them — an unsatisfiable blocker, the exact failure the
                         readiness sweeps exist to catch. */}
+                    <RecordField label="Markets" wide>
+                      <Select
+                        mode="multiple"
+                        allowClear
+                        style={{ width: '100%' }}
+                        placeholder="All markets"
+                        disabled={frozen}
+                        value={c.markets ?? []}
+                        options={marketOptionsFor(c)}
+                        onChange={(v: string[]) => patchChange(c.changeId, { markets: v })}
+                      />
+                    </RecordField>
                     <RecordField label="Impact (Gate 11)" wide>
                       <Select
                         mode="multiple"
                         allowClear
                         style={{ width: '100%' }}
                         placeholder="Not classified — blocks Gate 11"
+                        disabled={frozen}
                         status={(c.impactAreas ?? []).length === 0 ? 'warning' : undefined}
                         value={c.impactAreas ?? []}
                         options={CHANGE_IMPACT_AREAS.map((a) => ({ value: a, label: a }))}
@@ -369,7 +448,7 @@ export default function ChangeControl() {
                 {/* Round 4 question 34(c): the seven parts of a final disposition. */}
                 <div>
                   <div className="rt-sec-title">Final disposition</div>
-                  <ChangeDispositionBlock change={c} onChange={(p) => patchChange(c.changeId, p)} />
+                  <ChangeDispositionBlock change={c} readOnly={frozen} onChange={(p) => patchChange(c.changeId, p)} />
                 </div>
               </>
             );
@@ -377,12 +456,36 @@ export default function ChangeControl() {
           footer={
             dirty && (
               <div className="rt-savebar">
-                <SaveBar dirty={dirty} onSave={saveChanges} onDiscard={discard} />
+                <SaveBar dirty={dirty} onSave={saveChanges} onDiscard={discard} disabled={!!closeBlocker} disabledReason={closeBlocker} />
               </div>
             )
           }
         />
       )}
+
+      <Modal
+        open={!!reopening}
+        title={`Reopen ${reopening?.changeId ?? ''}`}
+        okText="Reopen"
+        okButtonProps={{ disabled: !reopenReason.trim() }}
+        confirmLoading={reopenBusy}
+        onOk={confirmReopen}
+        onCancel={() => {
+          setReopening(null);
+          setReopenReason('');
+        }}
+      >
+        <p style={{ marginTop: 0 }}>
+          The change goes back to <b>Under Review</b>. Everything already recorded stays, and the reason is kept with the
+          reopening. If that would make a gate that has passed stop counting as passed, it is refused — Backtrack first.
+        </p>
+        <Input.TextArea
+          rows={3}
+          placeholder="Why is this change being reopened?"
+          value={reopenReason}
+          onChange={(e) => setReopenReason(e.target.value)}
+        />
+      </Modal>
 
       <FormDrawer
         title="Change trigger reference — affected gates & phases"
@@ -463,6 +566,18 @@ export default function ChangeControl() {
             <Form.Item name="affectedArea" label="Affected area" rules={[{ required: true }]}>
               <Select options={CHANGE_AFFECTED_AREAS.map((a) => ({ value: a, label: a }))} />
             </Form.Item>
+            <Form.Item
+              name="markets"
+              label="Markets"
+              extra="Which of this project's markets the change concerns. Leave empty if it is not market-specific — it then applies to every market."
+            >
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder="All markets"
+                options={(triggerProject?.identity.markets ?? []).map((m) => ({ value: m, label: m }))}
+              />
+            </Form.Item>
             {/* Rule E3(b): Gate 11 "must evaluate the impact classification … of each
                 open Change Control". Required, because an unclassified open change
                 blocks Gate 11 — there is nothing for the gate to evaluate. */}
@@ -481,7 +596,7 @@ export default function ChangeControl() {
             <Form.Item name="riskLevel" label="Risk level" rules={[{ required: true }]}>
               {/* The shared four-level scale (Round 4 question 34(a): Critical is a
                   separate level above High). */}
-              <ChoiceSelect options={[...RISK_LEVELS]} onChange={() => {}} />
+              <Select options={RISK_LEVELS.map((r) => ({ value: r, label: r }))} />
             </Form.Item>
             <Form.Item name="oldVersion" label="Old version">
               <AutoComplete

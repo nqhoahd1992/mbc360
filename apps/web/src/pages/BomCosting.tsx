@@ -11,6 +11,7 @@ import CosmetriImportModal from '../components/CosmetriImportModal';
 import FormulaVersionModal from '../components/FormulaVersionModal';
 import { formulaVersionState } from '@mbc360/shared/utils/formulaLifecycle';
 import FormulaSupersessionCard from '../components/FormulaSupersessionCard';
+import OpenChangesNotice from '../components/OpenChangesNotice';
 import FormulaVersionCompareModal, { type FormulaVersionOption } from '../components/FormulaVersionCompareModal';
 import { currentGateIndex, gateIndex, isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
 import { bomWatchMatches } from '@mbc360/shared/utils/ingredientWatch';
@@ -486,6 +487,15 @@ export default function BomCosting() {
           </div>
         )}
       </div>
+
+      {showFormula && (
+        <OpenChangesNotice
+          projectId={project.identity.id}
+          gateNumbers={['05']}
+          scope={`the formula (${project.formulaVersion})`}
+          note="A change cannot edit a locked formula by itself: once Gate 05 has passed, Backtrack to Gate 05 first."
+        />
+      )}
 
       {showFormula && <FormulaPropertiesCard project={project} />}
 

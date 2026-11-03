@@ -117,7 +117,7 @@ export async function run(base: string, db: Client): Promise<number> {
   const previewOf = async (key: string, gate: string, market?: string) =>
     (await api(key, 'GET', `/projects/${PROJECT}/gates/${gate}/sign-offs/preview${market ? `?market=${encodeURIComponent(market)}` : ''}`)).json;
   // `between` runs after the preview and before the submit — where somebody else's edit lands.
-  async function sign(gate: string, role: Role, market?: string, between?: () => Promise<void>) {
+  async function sign(gate: string, role: Role, market?: string, between?: () => Promise<void>, decision = 'Proceed') {
     const key = signerKey(gate, role, market);
     const preview = await previewOf(key, gate, market);
     const su = await api(key, 'POST', `/projects/${PROJECT}/gates/${gate}/sign-offs/step-up`, {
@@ -131,7 +131,7 @@ export async function run(base: string, db: Client): Promise<number> {
     const r = await api(key, 'POST', `/projects/${PROJECT}/gates/${gate}/sign-offs/sign`, {
       role,
       market,
-      decision: 'Proceed',
+      decision,
       comment: 'checked',
       stepUpToken: su.json.stepUpToken,
       expectedHash: preview.hash,
@@ -687,6 +687,51 @@ export async function run(base: string, db: Client): Promise<number> {
   cr = await putChanges([]);
   t('...and a Draft can be discarded again (leaves the run as it found it)', cr.status < 300, `${cr.status} ${short(cr.json)}`);
 
+  // ---- SW-55: duplicate ids, closing needs the final disposition, a closed change is frozen, Reopen needs a reason
+  console.log('\n--- Change Control: id uniqueness, closing, freezing and reopening (SW-55)');
+  cr = await putChanges([newChange('CHG-E2E-D', 'pif-any-change'), newChange('CHG-E2E-D', 'pif-any-change')]);
+  t('the same change id twice in one save is refused with a message (400, not a 500)', cr.status === 400 && /appears twice/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  const closable = { ...newChange('CHG-E2E-C1', 'pif-any-change'), impactAreas: ['Administrative only'] };
+  cr = await putChanges([{ ...closable, status: 'Completed', closedDate: '2030-01-02' }]);
+  t('closing as Completed without the final disposition is refused, naming what is missing (400)', cr.status === 400 && /final disposition/.test(String(cr.json?.message)) && /closureOutcome/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  const closed = {
+    ...closable,
+    status: 'Completed',
+    closedDate: '2030-01-02',
+    closureOutcome: 'replaced',
+    closureImplementation: 'supplier swapped',
+    closureEvidence: 'https://example.com/e2e-closure',
+    closureImpactedVersions: 'F1.0',
+    closureVerifier: 'e2e verifier',
+  };
+  cr = await putChanges([closed]);
+  t('with the disposition recorded the same change can be closed (200)', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+  cr = await putChanges([{ ...closed, riskLevel: 'High' }]);
+  t('a closed change is frozen: editing a field is refused (400)', cr.status === 400 && /frozen/.test(String(cr.json?.message)) && /riskLevel/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putChanges([{ ...closed, status: 'In Implementation' }]);
+  t('...and so is moving it back to an open status by a plain save (400) — a gate cannot be un-passed that way', cr.status === 400 && /frozen/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putChanges([]);
+  t('...and it cannot be deleted (only a Draft can) (400)', cr.status === 400 && /only a Draft/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  const reopen = async (reason: unknown) =>
+    api('admin', 'POST', `/projects/${PROJECT}/changes/CHG-E2E-C1/reopen`, { reason, expectedVersion: await version() });
+  cr = await reopen('   ');
+  t('reopening without a reason is refused (400)', cr.status === 400 && /reason is required/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await reopen('the supplier reversed the change');
+  const reopened = (cr.json?.project?.changes ?? []).find((c: any) => c.changeId === 'CHG-E2E-C1');
+  t('reopening with a reason puts it back to Under Review and keeps what was recorded', cr.status < 300 && reopened?.status === 'Under Review' && reopened?.closureOutcome === 'replaced', `${cr.status} ${short(cr.json)}`);
+  const reopenAudit = (
+    await db.query(`SELECT after FROM audit_events WHERE "projectId" = $1 AND action = 'change.reopened' ORDER BY "occurredAt" DESC, id DESC LIMIT 1`, [PROJECT])
+  ).rows[0]?.after;
+  t('...and the audit row carries the reason and the status it left', reopenAudit?.reason === 'the supplier reversed the change' && reopenAudit?.from === 'Completed', short(reopenAudit));
+  cr = await reopen('again');
+  t('a change that is not closed cannot be reopened (400)', cr.status === 400 && /not closed/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putChanges([{ ...reopened, riskLevel: 'Medium' }]);
+  t('once reopened it can be edited again (200)', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+  cr = await putChanges([{ ...closed, riskLevel: 'Medium' }]);
+  t('...and closed again, with its disposition still there (200)', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+  // A change id belongs to ONE project; this run has a single project, so the cross-project half is covered by the
+  // same message in the unit above.
+
   // ---- the Change Control assessment, listed per post-market finding (Round 4 question 8, R5-Q11)
   console.log('\n--- Change Control assessment: one entry per post-market finding');
   const me = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
@@ -794,12 +839,44 @@ export async function run(base: string, db: Client): Promise<number> {
   await nominate('SG02');
   await closeRegistersOf(['SG02']);
   await complete('SG02');
-  for (const role of ROLES) {
+  // F9 (SME, 2026-07-21): an open change control "prevents plain Proceed"; the approver may only sign Proceed with
+  // Conditions, which records that they accept it. An ALL-gates trigger affects every gate, so SG02 is named.
+  console.log('\n--- F9: an open change control that names the gate forbids a plain Proceed at the approver');
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/changes`, {
+    records: [...(await project()).project.changes, newChange('CHG-E2E-F9', 'pif-any-change')],
+    expectedVersion: await version(),
+  });
+  t('an open change that names SG02 is recorded', r.status < 300, `${r.status} ${short(r.json)}`);
+  for (const role of ['Prepared by', 'Reviewed by'] as const) {
     r = await sign('SG02', role);
     if (r.status >= 300) console.log('   SG02', role, r.stage, r.status, short(r.json));
   }
+  r = await sign('SG02', 'Approved by');
+  t('the approver signing a plain Proceed is refused while it is open (400, F9)', r.status === 400 && /open change control/.test(String(r.json?.message)), `${r.status} ${r.stage} ${short(r.json)}`);
   pj = await project();
-  t('SG02 passed', gp.isGatePassed(pj.project, 'SG02'));
+  t('...and the gate did not pass', !gp.isGatePassed(pj.project, 'SG02'));
+  r = await sign('SG02', 'Approved by', undefined, undefined, 'Proceed with Conditions');
+  t('Proceed with Conditions is accepted, which is the approver accepting the open change', r.status < 300, `${r.status} ${r.stage} ${short(r.json)}`);
+  const accepted = (
+    await db.query(`SELECT after FROM audit_events WHERE "projectId" = $1 AND action = 'gate_sign_off.signed' ORDER BY "occurredAt" DESC, id DESC LIMIT 1`, [PROJECT])
+  ).rows[0]?.after;
+  t('...and the signature records which open change was accepted', JSON.stringify(accepted ?? {}).includes('CHG-E2E-F9'), short(accepted));
+  // Close it (with its disposition) so it does not hold the gates that follow.
+  {
+    const current = (await project()).project.changes as any[];
+    const f9 = current.find((c) => c.changeId === 'CHG-E2E-F9');
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/changes`, {
+      records: current.map((c) =>
+        c.changeId === 'CHG-E2E-F9'
+          ? { ...f9, impactAreas: ['Administrative only'], status: 'Completed', closedDate: '2030-01-03', closureOutcome: 'none needed', closureImplementation: 'e2e', closureEvidence: 'https://example.com/e2e-f9', closureImpactedVersions: 'none', closureVerifier: 'e2e verifier' }
+          : c,
+      ),
+      expectedVersion: await version(),
+    });
+    t('the test change is closed again so it holds nothing', r.status < 300, `${r.status} ${short(r.json)}`);
+  }
+  pj = await project();
+  t('SG02 passed (with conditions)', gp.isGatePassed(pj.project, 'SG02'));
 
   // ============================================================ SG03: register columns
   console.log('\n--- SG03 (claim ledger: Gate 3 columns versus later-gate columns)');
@@ -969,7 +1046,8 @@ export async function run(base: string, db: Client): Promise<number> {
       typeof pv.hash === 'string' && pv.hash.length === 64 && titles.includes('Phase gate flow') && titles.includes('8 Angles coverage') && titles.includes('Next Actions') && titles.includes('Key Gate Checks'),
       short(titles));
     const flow = (pv.sections ?? []).find((x: any) => x.title === 'Phase gate flow');
-    t('the gate flow lists the three gates of Phase 1, all passed', flow?.rows?.length === 3 && flow.rows.every((x: any) => x.decision === 'Proceed'), short(flow?.rows));
+    // SG02 was passed with conditions by the F9 case above, so a passing decision is either.
+    t('the gate flow lists the three gates of Phase 1, all passed', flow?.rows?.length === 3 && flow.rows.every((x: any) => x.decision === 'Proceed' || x.decision === 'Proceed with Conditions'), short(flow?.rows));
     const pv2 = await phasePreviewOf(key, 1);
     t('two previews of an unchanged phase give the same hash', pv.hash === pv2.hash);
     t('a preview of an unknown phase is refused (400)', (await api(key, 'GET', `/projects/${PROJECT}/phases/9/sign-offs/preview`)).status === 400);

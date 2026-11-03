@@ -12,4 +12,5 @@ const { GATE_READINESS } = require(path.join(root, 'packages/shared/dist/config/
 for (const gate of ['SG01', 'SG02', 'SG03', 'SG04', 'SG05', 'SG06', 'SG07', 'SG08', 'SG09', 'SG10', 'SG11', 'SG12']) {
   GATE_READINESS[gate] = GATE_READINESS[gate].filter((item) => item.check.kind === 'gateSignedOff' || item.id === 'sg07-maternal-caution');
 }
-require(path.join(root, 'apps/api/dist/main.js'));
+// E2E_API_DIST lets a run use a copy of the build, so it never needs to overwrite the dist a running dev API watches.
+require(path.join(root, 'apps/api', process.env.E2E_API_DIST || 'dist', 'main.js'));

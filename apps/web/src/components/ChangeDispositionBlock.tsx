@@ -37,9 +37,12 @@ const LABELS: Record<string, string> = {
 export default function ChangeDispositionBlock({
   change,
   onChange,
+  readOnly,
 }: {
   change: ChangeRecord;
   onChange: (patch: Partial<ChangeRecord>) => void;
+  // A closed change is frozen (SW-55): the inputs are shown, not editable.
+  readOnly?: boolean;
 }) {
   if (isChangeOpen(change.status)) {
     return (
@@ -65,32 +68,36 @@ export default function ChangeDispositionBlock({
 
       <div className="rt-grid">
         <RecordField label={LABELS.closureOutcome} wide>
-          <Input value={change.closureOutcome} onChange={(e) => onChange({ closureOutcome: e.target.value })} />
+          <Input disabled={readOnly} value={change.closureOutcome} onChange={(e) => onChange({ closureOutcome: e.target.value })} />
         </RecordField>
         <RecordField label={LABELS.closureImplementation} wide>
           <Input.TextArea
+            disabled={readOnly}
             autoSize={{ minRows: 1, maxRows: 3 }}
             value={change.closureImplementation}
             onChange={(e) => onChange({ closureImplementation: e.target.value })}
           />
         </RecordField>
         <RecordField label={LABELS.closureEvidence} wide>
-          <Input value={change.closureEvidence} onChange={(e) => onChange({ closureEvidence: e.target.value })} />
+          <Input disabled={readOnly} value={change.closureEvidence} onChange={(e) => onChange({ closureEvidence: e.target.value })} />
         </RecordField>
         <RecordField label={LABELS.closureImpactedVersions} wide>
           <Input
+            disabled={readOnly}
             value={change.closureImpactedVersions}
             onChange={(e) => onChange({ closureImpactedVersions: e.target.value })}
           />
         </RecordField>
         <RecordField label={LABELS.closureVerifier}>
           <UserSelect
+            disabled={readOnly}
             value={change.closureVerifier}
             onChange={(v?: string) => onChange({ closureVerifier: v ?? '' })}
           />
         </RecordField>
         <RecordField label={LABELS.closedDate}>
           <DatePicker
+            disabled={readOnly}
             style={{ width: '100%' }}
             value={change.closedDate ? dayjs(change.closedDate) : null}
             onChange={(d) => onChange({ closedDate: d ? d.format('YYYY-MM-DD') : undefined })}
@@ -101,6 +108,7 @@ export default function ChangeDispositionBlock({
             inventing a transition requirement. */}
         <RecordField label="Remaining action or transition requirement (if any)" wide>
           <Input
+            disabled={readOnly}
             value={change.closureRemainingAction}
             onChange={(e) => onChange({ closureRemainingAction: e.target.value })}
           />

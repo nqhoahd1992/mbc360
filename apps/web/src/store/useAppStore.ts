@@ -307,6 +307,7 @@ interface AppState {
 
   addChange: (record: ChangeRecord) => Promise<boolean>;
   setChangesBulk: (records: ChangeRecord[]) => Promise<boolean>;
+  reopenChange: (projectId: string, changeId: string, reason: string) => Promise<boolean>;
 
 }
 
@@ -725,6 +726,8 @@ export const useAppStore = create<AppState>()(
         },
         // Writes only the record's own project (the old version rewrote every project's list on each add, so a
         // conflict on an unrelated project could refuse it) and reports whether the server took it.
+        reopenChange: (pid, changeId, reason) =>
+          tryWriteSection(pid, (v) => projectsApi.reopenChange(pid, changeId, reason, v)),
         addChange: (record) => {
           const pid = record.projectId;
           if (!pid || !get().projects.some((p) => p.identity.id === pid)) return Promise.resolve(false);

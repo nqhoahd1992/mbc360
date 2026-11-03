@@ -577,6 +577,12 @@ export const setFeedback = (id: string, entries: ProjectData['feedback'], sample
 export const setChanges = (id: string, records: ChangeRecord[], v: number) =>
   put(id, 'changes', { records }, v);
 
+export const reopenChange = (id: string, changeId: string, reason: string, v: number) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/changes/${encodeURIComponent(changeId)}/reopen`, {
+    method: 'POST',
+    body: JSON.stringify({ reason, expectedVersion: v }),
+  });
+
 export function createFormulaVersion(
   id: string,
   input: {

@@ -37,7 +37,8 @@ const url = new URL(baseUrl);
 if (!['localhost', '127.0.0.1', '::1'].includes(url.hostname)) {
   die(`DATABASE_URL points at "${url.hostname}", not localhost. This script creates and drops a database; it only runs against a local Postgres.`);
 }
-for (const file of ['apps/api/dist/main.js', 'packages/shared/dist/config/gateReadiness.js']) {
+const apiDist = process.env.E2E_API_DIST || 'dist';
+for (const file of [`apps/api/${apiDist}/main.js`, 'packages/shared/dist/config/gateReadiness.js']) {
   if (!existsSync(join(ROOT, file))) die(`${file} is missing — run \`npm run build\` first.`);
 }
 

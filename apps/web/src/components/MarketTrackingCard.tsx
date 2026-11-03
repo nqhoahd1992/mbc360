@@ -5,6 +5,7 @@ import type { MarketApprovalStatus, MarketTrack } from '@mbc360/shared/types';
 import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { roleLabel } from '../utils/roles';
+import OpenChangesNotice from './OpenChangesNotice';
 import { canChangeMarketTracks, MARKET_TRACKS_REASON } from '@mbc360/shared/utils/projectAuthority';
 import { useSession } from '../auth/useSession';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -102,6 +103,12 @@ export default function MarketTrackingCard({
         </span>
       }
     >
+      <OpenChangesNotice
+        projectId={projectId}
+        gateNumbers={['10', '11', '12']}
+        scope="the market tracks"
+        note="A change that names no market applies to every market."
+      />
       {!canEdit && (
         <Alert
           type="info"

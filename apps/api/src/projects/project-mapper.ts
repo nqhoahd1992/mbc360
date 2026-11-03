@@ -329,6 +329,7 @@ export function toChangeRecords(p: ProjectWithAll) {
     oldVersion: opt(c.oldVersion),
     riskLevel: c.riskLevel,
     impactAreas: c.impactAreas,
+    markets: c.markets,
     requiredAction: opt(c.requiredAction),
     evidenceLink: opt(c.evidenceLink),
     requiredSignOffs: opt(c.requiredSignOffs),

@@ -1263,6 +1263,8 @@ export interface ChangeRecord {
   // classification, so this holds it — values are E3(b)'s own list of impacted
   // subjects (see CHANGE_IMPACT_AREAS). Several may apply at once.
   impactAreas?: string[];
+  // The project's markets this change concerns (F9). Empty or absent = not market-specific, i.e. every market (SW-54).
+  markets?: string[];
   requiredAction?: string;
   evidenceLink?: string;
   requiredSignOffs?: string;

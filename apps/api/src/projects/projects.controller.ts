@@ -832,6 +832,16 @@ export class ProjectsController {
     return this.projects.setChanges(user, id, body.records ?? [], body.expectedVersion);
   }
 
+  @Post(':id/changes/:changeId/reopen')
+  reopenChange(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('changeId') changeId: string,
+    @Body() body: { reason?: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.reopenChange(user, id, changeId, body.reason, body.expectedVersion);
+  }
+
   @Post(':id/formula-versions')
   createFormulaVersion(
     @CurrentUser() user: SessionUser,

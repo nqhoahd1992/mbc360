@@ -25,6 +25,7 @@ import {
 import { projectStopGrounds, stopRefusal } from '@mbc360/shared/utils/projectStop';
 import {
   CHANGE_AFFECTED_AREAS,
+  CHANGE_CLOSED_STATUSES,
   CHANGE_IMPACT_AREAS,
   FORMULA_CLASSIFICATION_CAPABILITIES,
   MAJOR_CHANGE_CRITERIA,
@@ -58,7 +59,7 @@ import {
   nextActionRecordChanged,
 } from '@mbc360/shared/utils/nextActionAccess';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
-import { gate11ConditionalChanges } from '@mbc360/shared/utils/changeImpact';
+import { gate11ConditionalChanges, isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
 import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
 import { RM_EVIDENCE_REGISTER, rmEvidenceContradictions } from '@mbc360/shared/utils/rmEvidence';
 import { registerAccessReason, registerAccessViolations } from '@mbc360/shared/utils/registerAccess';
@@ -4974,8 +4975,8 @@ export class ProjectsService {
         let clearedGateSignOffs: Prisma.JsonObject[] = [];
         if (input.changeType === 'Major') {
           // F4: the new version gets new Gate 10-12 tracks, so its project-level
-          // Gate 10-12 records reopen too — A2 named Gates 4-9 before F4 existed
-          // [ASSUMPTION: R5-Q52]. The old version's per-market lanes are kept: they
+          // Gate 10-12 records reopen too — A2 named Gates 4-9 before F4 existed, and the
+          // project rows are the roll-up of the new version's tracks (SW-53). The old version's per-market lanes are kept: they
           // belong to that version (see clearGateSignOffs).
           const toIdx = gateIndex('SG04');
           const fromIdx = gateIndex('SG12');
@@ -5168,6 +5169,54 @@ export class ProjectsService {
           `${notDraft.map((c) => c.changeId).join(', ')} cannot be deleted — only a Draft can. Close it with Rejected, Cancelled or Superseded instead, so its history stays`,
         );
       }
+      // A change id is the record's reference everywhere and is unique across ALL projects: refuse a repeat with a
+      // message instead of letting the database answer 500 (SW-55).
+      const seenIds = new Set<string>();
+      for (const c of records) {
+        if (seenIds.has(c.changeId)) throw new BadRequestException(`${c.changeId}: this change id appears twice in the list`);
+        seenIds.add(c.changeId);
+      }
+      const usedElsewhere = await tx.changeRecord.findMany({
+        where: { changeId: { in: [...seenIds] }, OR: [{ projectId: null }, { projectId: { not: id } }] },
+        select: { changeId: true },
+      });
+      if (usedElsewhere.length > 0) {
+        throw new BadRequestException(`${usedElsewhere.map((c) => c.changeId).join(', ')}: this change id is already used by another project`);
+      }
+
+      // SW-55. A change may only be CLOSED once its final disposition is recorded (Round 4 question 34(c)), so a
+      // saved change is never "closed but incomplete"; and once closed it is frozen — only Reopen (with a reason)
+      // changes it. A record that was already closed and incomplete before this rule stays editable, so it can
+      // still be completed.
+      const isClosed = (status: string) => (CHANGE_CLOSED_STATUSES as string[]).includes(status);
+      const norm = (v: unknown) => (Array.isArray(v) && v.length === 0 ? null : (v ?? null));
+      for (const c of records) {
+        const old = before.get(c.changeId);
+        if (old && isClosed(old.status) && isChangeDispositionRecorded(old)) {
+          const changedFields = (Object.keys({ ...old, ...c }) as (keyof ChangeRecord)[]).filter(
+            (k) => k !== 'projectId' && JSON.stringify(norm(old[k])) !== JSON.stringify(norm(c[k])),
+          );
+          if (changedFields.length > 0) {
+            throw new BadRequestException(
+              `${c.changeId} is closed (${old.status}) and its record is frozen — reopen it first (changed: ${changedFields.join(', ')})`,
+            );
+          }
+        } else if (isClosed(c.status) && !isChangeDispositionRecorded(c) && !(old && isClosed(old.status))) {
+          throw new BadRequestException(
+            `${c.changeId} cannot be closed as ${c.status} until its final disposition is recorded — missing: ${missingDispositionFields(c).join(', ')}`,
+          );
+        }
+      }
+
+      // SW-54: a change names only markets the project sells into; one already on the stored record stays
+      // valid even if the project has since dropped it, so an old record can still be saved.
+      for (const c of records) {
+        const kept = new Set(before.get(c.changeId)?.markets ?? []);
+        const unknown = (c.markets ?? []).filter((m) => !project.identity.markets.includes(m) && !kept.has(m));
+        if (unknown.length > 0) {
+          throw new BadRequestException(`${c.changeId}: "${unknown.join(', ')}" is not one of this project's markets`);
+        }
+      }
       const edited: { changeId: string; fields: string[] }[] = [];
       const added: string[] = [];
       for (const c of records) {
@@ -5202,6 +5251,7 @@ export class ProjectsService {
             riskLevel: c.riskLevel,
             // E3(b): Gate 11 evaluates this, so it must round-trip.
             impactAreas: c.impactAreas ?? [],
+            markets: c.markets ?? [],
             requiredAction: c.requiredAction ?? null,
             evidenceLink: c.evidenceLink ?? null,
             requiredSignOffs: c.requiredSignOffs ?? null,
@@ -5228,6 +5278,46 @@ export class ProjectsService {
         removed: removed.map((c) => c.changeId),
         edited,
       } as unknown as Prisma.InputJsonValue;
+    });
+  }
+
+  // SW-55. A closed change is frozen; this is the one way back. It needs a reason, is audited with it, keeps every
+  // field already recorded, and is refused when it would make a gate that has passed stop counting as passed —
+  // that takes a Backtrack, as for any other record (B4).
+  async reopenChange(
+    user: SessionUser,
+    id: string,
+    changeId: string,
+    reason: string | undefined,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    const why = (reason ?? '').trim();
+    if (!why) throw new BadRequestException('A reason is required to reopen a closed change');
+    return this.mutate(user, id, expectedVersion, 'change.reopened', async (tx, _row, project) => {
+      const c = project.changes.find((x) => x.changeId === changeId);
+      if (!c) throw new BadRequestException(`${changeId} is not a change of this project`);
+      if (!(CHANGE_CLOSED_STATUSES as string[]).includes(c.status)) {
+        throw new BadRequestException(`${changeId} is not closed (${c.status})`);
+      }
+      const allowed =
+        this.permissions.isAdmin(user) || project.identity.projectLead === user.displayName || c.owner === user.displayName;
+      if (!allowed) {
+        throw new ForbiddenException(`Only the project Lead, the change's owner or an administrator may reopen ${changeId}`);
+      }
+      const after: ProjectData = {
+        ...project,
+        changes: project.changes.map((x) => (x.changeId === changeId ? { ...x, status: 'Under Review' } : x)),
+      };
+      const flipped = project.gates
+        .filter((g) => isGatePassed(project, g.gateId) && !isGatePassed(after, g.gateId))
+        .map((g) => g.gateId);
+      if (flipped.length > 0) {
+        throw new BadRequestException(
+          `Reopening ${changeId} would un-pass ${flipped.join(', ')}, which has already passed — reopen it with Backtrack first (B4)`,
+        );
+      }
+      await tx.changeRecord.update({ where: { changeId }, data: { status: 'Under Review' } });
+      return { changeId, from: c.status, to: 'Under Review', reason: why } as unknown as Prisma.InputJsonValue;
     });
   }
 

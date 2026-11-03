@@ -393,7 +393,7 @@ export default function GateFlowTable({
                 {r.openChanges.length > 0 && (
                   <Tooltip
                     title={`Soft lock — open change control record${r.openChanges.length > 1 ? 's' : ''} affecting this gate: ${r.openChanges
-                      .map((c) => c.changeId)
+                      .map((c) => `${c.changeId} (owner: ${c.owner?.trim() || 'not named'})`)
                       .join(', ')}. Assess and close the change before relying on this gate.`}
                   >
                     <WarningFilled style={{ color: '#faad14', marginLeft: 6 }} />
