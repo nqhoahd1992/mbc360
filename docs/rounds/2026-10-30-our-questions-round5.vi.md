@@ -23,6 +23,8 @@ Nhiều câu hỏi có các phần đánh chữ cái. Quý vị có thể trả 
 
 ## Câu hỏi 1 — Những mục readiness nào là "critical", và ai là "responsible reviewer" của chúng?
 
+*Vị trí trong ứng dụng:* Danh sách **Gate N readiness** (khung "requirement(s) still blocking") trên tab từng gate của trang **Phase**, nơi hiện lý do N/A do hệ thống tự viết và nút xác nhận; người xác nhận là "Reviewed by" trong **Sign-off** (tab close-out) của phase đó.
+
 Quý vị đã trả lời rằng khi hệ thống có thể suy ra từ dữ liệu được kiểm soát rằng một điều kiện không áp dụng, nó được phép tự tạo ra lý do N/A — và người dùng không nên phải gõ lại một lý do mà hệ thống đã tạo ra. Nửa đó đã được xây dựng và đang hoạt động.
 
 Nửa còn lại cần hai điều mà câu trả lời của quý vị không nêu. Với các mục liên quan đến an toàn, quy định, claim hoặc phát hành (release), quý vị nói rằng lý do được tạo ra "must still be acknowledged by the responsible reviewer before gate closure". Vì vậy chúng tôi cần biết **(i) những mục nào được coi là critical**, và **(ii) ai là responsible reviewer của một mục**. Câu trả lời sign-off của quý vị định nghĩa các vai trò một cách chính xác cho một *gate* — prepared, reviewed, approved, với một chức năng độc lập được nêu tên cho bảy gate critical — nhưng một gate đơn lẻ có từ bảy đến hơn hai mươi mục, và không có gì gắn một mục với một người.
@@ -31,61 +33,66 @@ Nửa còn lại cần hai điều mà câu trả lời của quý vị không n
 
 **Những gì đang chạy, theo cách hiểu của chúng tôi.** Một N/A được tạo ra chỉ có thể xảy ra ở 31 mục trong bảng dưới đây (chúng là những mục duy nhất áp dụng "chỉ khi" một điều gì đó đúng; các mục Mandatory không bao giờ có N/A như vậy, và các mục Supporting không cần xác nhận, như quý vị đã nói).
 
-- **Mục nào là critical:** một mục là critical khi nó nằm trên một trong bảy gate critical của quý vị (3, 4, 7, 8, 9, 10, 11). Đó là một cách hiểu máy móc — chúng tôi không đánh giá từng mục. Theo đó 18 trong 31 mục là critical.
+- **Mục nào là critical:** một mục là critical khi nó nằm trên một trong bảy gate critical của quý vị (3, 4, 7, 8, 9, 10, 11). Bảy gate đó là những gate quý vị liệt kê là gate critical trong câu trả lời sign-off (Vòng 4, câu 29(3)), nơi chúng quyết định mức độc lập của người ký. Dùng cùng danh sách đó để quyết định mục nào là critical là cách hiểu của chúng tôi, không phải điều quý vị đã nói, và đó là một cách hiểu máy móc — chúng tôi không đánh giá từng mục. Theo đó 18 trong 31 mục là critical.
   *Ví dụ:* mục maternal của Gate 7 ở trên là critical, vì Gate 7 là gate critical. "Product form confirmed (left open at Gate 2)" của Gate 5 thì không (Gate 5 không có trong danh sách của quý vị), nên khi dạng sản phẩm đã được xác nhận ở Gate 2, mục này tự động qua và không ai phải xác nhận gì.
-- **Ai xác nhận:** người mà project Lead đã chỉ định là **"Reviewed by"** trên sign-off của *phase* chứa mục đó. Cho đến khi có người được chỉ định thì không ai xác nhận được, nên gate vẫn bị chặn và trang phase nhắc Lead chỉ định.
-  *Ví dụ:* sign-off của Phase 3 liệt kê Quality reviewer là "Reviewed by". Người đó xác nhận lý do maternal của Gate 7; không ai khác có thể — không phải project Lead cũng không phải quản trị viên. Nếu sau đó Lead thay họ bằng một reviewer khác, người đầu tiên không còn thay đổi được và người mới thì được: họ có thể xác nhận, hoặc ghi lại rằng họ **không** xác nhận (kèm lý do), điều này đưa Gate 7 trở lại trạng thái giữ (hold). Mỗi mục có một bản ghi, được sửa tại chỗ; những gì nó ghi trước đó được giữ trong lịch sử thay đổi.
+- **Ai xác nhận:** người mà project Lead đã chỉ định là **"Reviewed by"** trên sign-off của *phase* chứa mục đó.
+  *Ví dụ:* sign-off của Phase 3 liệt kê Quality reviewer là "Reviewed by". Người đó đọc lý do maternal của Gate 7 và hoặc xác nhận nó, hoặc ghi lại rằng họ **không** xác nhận (kèm lý do), điều này giữ Gate 7 ở trạng thái giữ (hold).
 - **Nếu tình huống thay đổi sau một lần xác nhận, lần xác nhận cũ không còn được tính.**
-  *Ví dụ:* Reviewer đã xác nhận lý do ở trên. Hai tuần sau Marketing tích "Pregnancy" trong các target user của Gate 2. Lý do mà reviewer đã đọc không còn đúng: đánh giá thai kỳ giờ thật sự áp dụng, và lần xác nhận "not triggered" đó không thể thay thế cho nó — mục này khi đó được đánh giá dựa trên bằng chứng thực tế như mọi mục khác. Một trường hợp nhẹ hơn: cách diễn đạt lý do của hệ thống thay đổi trong khi mục vẫn là "not applicable"; lần xác nhận trước chỉ bao hàm các từ cũ, nên reviewer phải xác nhận các từ mới.
+  *Ví dụ:* Reviewer đã xác nhận lý do ở trên khi Gate 7 đang mở. Sau đó dự án bị đưa ngược về Gate 2 và Marketing tích "Pregnancy" trong các target user. Lý do mà reviewer đã đọc không còn đúng: đánh giá thai kỳ giờ thật sự áp dụng, và lần xác nhận "not triggered" đó không thể thay thế cho nó — mục này khi đó được đánh giá dựa trên bằng chứng thực tế như mọi mục khác. Một trường hợp nhẹ hơn: cách diễn đạt lý do của hệ thống thay đổi trong khi mục vẫn là "not applicable"; lần xác nhận trước chỉ bao hàm các từ cũ, nên reviewer phải xác nhận các từ mới.
 
-| # | Gate | Item | Is generated as "not applicable" when… | On a critical gate? (our reading) | Second look? |
-|---|---|---|---|---|---|
-| 1 | 2 | Product form left open — a controlled action tracks its confirmation at Gate 5 | the product form was confirmed at Gate 2 | No | |
-| 2 | 2 | Infant & Baby Safety — intended infant-use context recorded | no infant use (Infant 0+ not a target user; family-use age groups exclude infants) | No | Reads as safety |
-| 3 | 3 | Competitor or benchmark review where applicable | no development or change type is recorded, the request was not customer- or distributor-led and no benchmark product is named — or the change is confirmed administrative-only by a named reviewer | **Yes** | Reads as commercial, not critical |
-| 4 | 3 | Regulatory review of high-risk or borderline claims | no claim meets any condition for Regulatory review | **Yes** | |
-| 5 | 4 | Pregnancy/breastfeeding caution screen | no pregnancy, breastfeeding or postpartum target user | **Yes** | |
-| 6 | 4 | Allergen, impurity and contaminant review where relevant | no raw material in the formula carries a risk flag | **Yes** | |
-| 7 | 4 | Infant & Baby Safety — ingredient and raw-material suitability | no infant use | **Yes** | |
-| 8 | 5 | Product form confirmed (left open at Gate 2) | the form was confirmed at Gate 2 | No | |
-| 9 | 5 | Preservative strategy where applicable | the formula is not microbiologically susceptible (e.g. anhydrous) | No | Reads as safety |
-| 10 | 5 | Infant & Baby Safety — formula-level assessment | no infant use | No | Reads as safety |
-| 11 | 5 | Costing shows the project commercially feasible — this project is commercially dependent | target cost is not marked Must | No | |
-| 12 | 6 | Infant & Baby Safety — packaging and instructions | no infant use | No | Reads as safety |
-| 13 | 6 | Market-specific pack requirements | no selected market has special pack requirements | No | Reads as regulatory / release |
-| 14 | 7 | Every automatic Formula BOM match is taken up on the Pregnancy/Breastfeeding Caution list | no pregnancy, breastfeeding or postpartum target user | **Yes** | |
-| 15 | 7 | Maternal (pregnancy / breastfeeding) caution assessment closed | same | **Yes** | |
-| 16 | 7 | Maternal and infant-contact assessment (when Skincare for Two is triggered) | same | **Yes** | |
-| 17 | 7 | Infant / baby-contact safety compartment completed (INF-01 to INF-08) | no infant use | **Yes** | |
-| 18 | 8 | Infant & Baby Safety — testing triggered by use context and risk | no infant use | **Yes** | |
-| 19 | 8 | Human-study approval workflow completed before participant recruitment | no human study planned | **Yes** | |
-| 20 | 9 | Preservative efficacy status where applicable | the formula is not microbiologically susceptible | **Yes** | |
-| 21 | 9 | Scale-up or pilot status where applicable | no scale-up risk identified (and no Major formula change) | **Yes** | |
-| 22 | 9 | Infant & Baby Safety — stability, microbiology and in-use testing | no infant use | **Yes** | |
-| 23 | 10 | ASEAN PIF checklist complete | no ASEAN market selected | **Yes** | |
-| 24 | 10 | ASEAN PIF mapped | no ASEAN market selected | **Yes** | |
-| 25 | 10 | Infant & Baby Safety — PIF content and infant claim evidence | no infant use | **Yes** | |
-| 26 | 10 | Product-performance evidence attached where relevant | no claim needs performance evidence | **Yes** | |
-| 27 | 12 | Scheduled market feedback review | the product has launched in no market, or no post-launch review milestone has come due in a launched market and no safety or adverse-event issue has been recorded | No | |
-| 28 | 12 | Baseline post-market surveillance review | the product has not launched in any market | No | Reads as regulatory |
-| 29 | 12 | Enhanced PV/PMS review where applicable | none of the enhanced-surveillance conditions we can read applies — no safety signal, complaint or surveillance trend on Post-Market Sources and no vulnerable-user population assessed (we can read 10 of your 14 conditions) | No | Reads as safety / regulatory |
-| 30 | 12 | Product-performance feedback | no performance, packaging, formula or quality issue is recorded, no product-optimisation proposal exists and no review is due | No | |
-| 31 | 12 | Change-control links | no Change Control record is open | No | |
+| # | Gate | Item | Is generated as "not applicable" when… | Critical? (our reading) | Second look? | Critical? (quý vị điền: Yes / No) |
+|---|---|---|---|---|---|---|
+| 1 | 2 | Product form left open — a controlled action tracks its confirmation at Gate 5 | the product form was confirmed at Gate 2 | No | |  |
+| 2 | 2 | Infant & Baby Safety — intended infant-use context recorded | no infant use (Infant 0+ not a target user; family-use age groups exclude infants) | No | Reads as safety |  |
+| 3 | 3 | Competitor or benchmark review where applicable | no development or change type is recorded, the request was not customer- or distributor-led and no benchmark product is named — or the change is confirmed administrative-only by a named reviewer | **Yes** | Reads as commercial, not critical |  |
+| 4 | 3 | Regulatory review of high-risk or borderline claims | no claim meets any condition for Regulatory review | **Yes** | |  |
+| 5 | 4 | Pregnancy/breastfeeding caution screen | no pregnancy, breastfeeding or postpartum target user | **Yes** | |  |
+| 6 | 4 | Allergen, impurity and contaminant review where relevant | no raw material in the formula carries a risk flag | **Yes** | |  |
+| 7 | 4 | Infant & Baby Safety — ingredient and raw-material suitability | no infant use | **Yes** | |  |
+| 8 | 5 | Product form confirmed (left open at Gate 2) | the form was confirmed at Gate 2 | No | |  |
+| 9 | 5 | Preservative strategy where applicable | the formula is not microbiologically susceptible (e.g. anhydrous) | No | Reads as safety |  |
+| 10 | 5 | Infant & Baby Safety — formula-level assessment | no infant use | No | Reads as safety |  |
+| 11 | 5 | Costing shows the project commercially feasible — this project is commercially dependent | target cost is not marked Must | No | |  |
+| 12 | 6 | Infant & Baby Safety — packaging and instructions | no infant use | No | Reads as safety |  |
+| 13 | 6 | Market-specific pack requirements | no selected market has special pack requirements | No | Reads as regulatory / release |  |
+| 14 | 7 | Every automatic Formula BOM match is taken up on the Pregnancy/Breastfeeding Caution list | no pregnancy, breastfeeding or postpartum target user | **Yes** | |  |
+| 15 | 7 | Maternal (pregnancy / breastfeeding) caution assessment closed | same | **Yes** | |  |
+| 16 | 7 | Maternal and infant-contact assessment (when Skincare for Two is triggered) | same | **Yes** | |  |
+| 17 | 7 | Infant / baby-contact safety compartment completed (INF-01 to INF-08) | no infant use | **Yes** | |  |
+| 18 | 8 | Infant & Baby Safety — testing triggered by use context and risk | no infant use | **Yes** | |  |
+| 19 | 8 | Human-study approval workflow completed before participant recruitment | no human study planned | **Yes** | |  |
+| 20 | 9 | Preservative efficacy status where applicable | the formula is not microbiologically susceptible | **Yes** | |  |
+| 21 | 9 | Scale-up or pilot status where applicable | no scale-up risk identified (and no Major formula change) | **Yes** | |  |
+| 22 | 9 | Infant & Baby Safety — stability, microbiology and in-use testing | no infant use | **Yes** | |  |
+| 23 | 10 | ASEAN PIF checklist complete | no ASEAN market selected | **Yes** | |  |
+| 24 | 10 | ASEAN PIF mapped | no ASEAN market selected | **Yes** | |  |
+| 25 | 10 | Infant & Baby Safety — PIF content and infant claim evidence | no infant use | **Yes** | |  |
+| 26 | 10 | Product-performance evidence attached where relevant | no claim needs performance evidence | **Yes** | |  |
+| 27 | 12 | Scheduled market feedback review | the product has launched in no market, or no post-launch review milestone has come due in a launched market and no safety or adverse-event issue has been recorded | No | |  |
+| 28 | 12 | Baseline post-market surveillance review | the product has not launched in any market | No | Reads as regulatory |  |
+| 29 | 12 | Enhanced PV/PMS review where applicable | none of the enhanced-surveillance conditions we can read applies — no safety signal, complaint or surveillance trend on Post-Market Sources and no vulnerable-user population assessed (we can read 10 of your 14 conditions) | No | Reads as safety / regulatory |  |
+| 30 | 12 | Product-performance feedback | no performance, packaging, formula or quality issue is recorded, no product-optimisation proposal exists and no review is due | No | |  |
+| 31 | 12 | Change-control links | no Change Control record is open | No | |  |
 
 Gate 11 không có mục nào thuộc loại này.
 
 **Câu hỏi:**
 
-**(a) Những mục nào là critical?** Xin hãy đánh dấu mỗi dòng của bảng là critical hoặc không critical, và với các mục critical hãy cho biết nó thuộc khu vực nào trong bốn khu vực của quý vị (an toàn, quy định, claim, phát hành). Nếu cách hiểu của chúng tôi đúng, chỉ cần "đồng ý". Cột "Second look" cho thấy những chỗ quy tắc dựa trên gate của chúng tôi và cách diễn đạt của mục dường như mâu thuẫn nhau — đó là những chỗ chúng tôi ít chắc chắn nhất.
+**(a) Những mục nào là critical?** Câu trả lời thay đổi điều gì: với một mục **critical**, ở mọi dự án mà điều kiện của nó không áp dụng, reviewer phải xác nhận lý do được tạo ra, và gate không đóng được cho đến khi họ xác nhận. Với một mục **không critical** thì không ai phải làm gì — nó tự qua và lý do được hiển thị. Nếu điều kiện có áp dụng, mục được đánh giá theo bằng chứng thực tế trong cả hai trường hợp. Xin hãy điền cột trống ở bên phải bảng, **Critical?** (Yes / No), cho mỗi dòng. Cột "Critical? (our reading)" là của chúng tôi và chỉ để so sánh. Nếu cách hiểu của chúng tôi đúng cho mọi dòng, chỉ cần ghi "agreed" và có thể để trống cột này. Cột "Second look" cho thấy những chỗ quy tắc dựa trên gate của chúng tôi và cách diễn đạt của mục dường như mâu thuẫn nhau — đó là những chỗ chúng tôi ít chắc chắn nhất.
 *Ví dụ:* dòng 3, "Competitor or benchmark review" (không được kích hoạt vì dự án không phải mới cũng không phải tái định vị), nằm ở Gate 3, một gate critical, nhưng là nghiên cứu thị trường chứ không phải claim. Một reviewer có thật sự phải xác nhận nó không? Và dòng 29, "Enhanced PV/PMS review" (không được kích hoạt vì không có điều kiện giám sát tăng cường nào áp dụng), nằm ở Gate 12, không có trong danh sách của quý vị — nhưng nó đọc lên như an toàn / quy định. Nó có nên là critical không?
 
-**(b) "Reviewed by" của phase có phải là người đúng không?** Các lựa chọn khác là reviewer của từng *gate*, chủ sở hữu của khu vực rà soát mà bằng chứng của mục thuộc về, hoặc một người được chỉ định theo từng mục.
+**(b) "Reviewed by" của phase có phải là người đúng không?** Các lựa chọn khác là reviewer của từng *gate*, chủ sở hữu của khu vực rà soát mà bằng chứng của mục thuộc về, hoặc một người được chỉ định theo từng mục. Nếu quý vị muốn việc xác nhận đến từ một chức năng độc lập cụ thể (ví dụ Safety cho một mục an toàn), xin cho biết, và khi đó chúng tôi sẽ hỏi tiếp mỗi mục critical thuộc khu vực nào trong bốn khu vực của quý vị (safety, regulatory, claims, release) — ngoài trường hợp đó chúng tôi không cần phân loại này.
 *Ví dụ:* ở Phase 3, "Reviewed by" thường là Quality reviewer. Mục maternal của Gate 7 là một mục an toàn, và câu trả lời sign-off của quý vị yêu cầu chức năng Safety / Scientific Review rà soát chính quyết định an toàn. Việc xác nhận lý do đó có nên đến từ Safety thay vì từ người rà soát phase không?
 
 **(c) Một lần xác nhận có ngừng được tính nếu tình huống thay đổi không?**
-*Ví dụ:* reviewer đã xác nhận "no pregnancy or breastfeeding user", và Marketing sau đó thêm một người dùng thai kỳ. Quý vị có đồng ý rằng lần xác nhận trước phải ngừng được tính — để đánh giá thai kỳ khi đó thực sự được yêu cầu — thay vì tồn tại như một sự phê duyệt cho điều không còn đúng nữa không?
+*Ví dụ:* reviewer đã xác nhận "no pregnancy or breastfeeding user" khi Gate 7 đang mở, rồi dự án bị đưa ngược về Gate 2 và Marketing thêm một người dùng thai kỳ. Quý vị có đồng ý rằng lần xác nhận trước phải ngừng được tính — để đánh giá thai kỳ khi đó thực sự được yêu cầu — thay vì tồn tại như một sự phê duyệt cho điều không còn đúng nữa không?
+
+**(d) Khi một danh sách dùng chung của công ty thay đổi sau khi một gate đã qua, gate đó nên được đánh giá theo danh sách như lúc đó hay theo danh sách hiện tại?** Raw Material Risk Overlay, các market profile (hạn chế claim) và Claims Library là những danh sách dùng chung của công ty và thay đổi theo thời gian. Đề xuất của chúng tôi: một gate đã qua vẫn được đánh giá theo danh sách như lúc gate qua, để một thay đổi danh sách về sau không lặng lẽ làm đổi một quyết định đã đưa ra; một gate chưa qua được đánh giá theo danh sách hiện tại; và nếu dự án bị đưa ngược lại thì danh sách được lấy lại. Khi một danh sách thay đổi theo cách chạm đến nguyên liệu, thị trường hoặc claim của một dự án, dự án hiện một thông báo ("danh sách đã thay đổi kể từ Gate N", kèm phần khác biệt), nhưng không có gì bị chặn tự động.
+*Ví dụ:* ở Gate 4 reviewer đã xác nhận "no raw material in the formula carries a risk flag". Về sau Regulatory gắn cờ dị ứng cho lavender oil, và lavender oil có trong công thức. Theo đề xuất của chúng tôi, Gate 4 giữ nguyên như cũ và dự án hiện một thông báo. Quý vị có đồng ý không — hay một cờ mới trên một nguyên liệu của sản phẩm đã qua Gate 4 phải đưa nó quay lại rà soát (và ai quyết định điều đó)? Nếu quý vị muốn một quy tắc khác cho một số danh sách, ví dụ hạn chế claim ở một thị trường, xin cho biết danh sách nào.
 
 ## Câu hỏi 2 — Đánh giá Change Control đối với các phát hiện hậu mãi (post-market): một bản ghi cho mỗi phát hiện, và cái gì được tính là một "phát hiện (finding)"?
+
+*Vị trí trong ứng dụng:* Trang **Phase 4**, tab **Gate 12**, khối "Change Control required for the post-market finding?" (danh sách các mục); trang liên quan **Change Control & Communication**.
 
 Quý vị đã yêu cầu một bước tường minh — "Change Control required? Yes / No / Pending assessment" — kèm reviewer, ngày, lý do, bản ghi Change Control được liên kết khi câu trả lời là Yes, và một liên kết bằng chứng, và quý vị nói rằng Pending phải chặn việc đóng "the post-market finding". Đã xây dựng.
 
@@ -113,6 +120,8 @@ Quý vị đã yêu cầu một bước tường minh — "Change Control requir
 
 ## Câu hỏi 3 — Một phát hiện an toàn đã bị thay thế (superseded) có cần cùng bằng chứng đóng như một phát hiện đã đóng không?
 
+*Vị trí trong ứng dụng:* Trang **Formulation Safety**, bảng **Critical Safety Findings** (Status "Superseded", cột Finding ID / Superseded by).
+
 Quý vị đã đưa ra danh sách trạng thái phát hiện an toàn gồm sáu giá trị, thêm **Superseded** vào vòng đời năm bước. Riêng biệt, quý vị đã chỉ rõ việc đóng một phát hiện High hoặc Critical đòi hỏi những gì: kết luận của safety reviewer, một liên kết bằng chứng, hành động liên kết đã hoàn thành, việc xác minh, người xác minh và ngày đóng. Cả sáu hiện đều được ghi lại và kiểm tra.
 
 Superseded không giống với đã đóng. Một phát hiện bị superseded khi một đánh giá sau đó về cùng mối nguy thay thế nó — nên bằng chứng của nó có thể nói là nằm ở phần thay thế chứ không ở chính nó.
@@ -133,9 +142,11 @@ Superseded không giống với đã đóng. Một phát hiện bị superseded 
 
 ## Câu hỏi 4 — Hai cột watch-list ở Gate 4: mỗi cột chứa gì, ai điền, và cập nhật đến gate nào?
 
+*Vị trí trong ứng dụng:* Các register **Prohibited Ingredient Watch-list** và **Pregnancy / Breastfeeding Caution Limits** (cột Product status và cột phân loại Gate 4); cũng hiện trong danh sách readiness của Gate 4.
+
 Ba câu hỏi trước đây của chúng tôi hóa ra đều nói về cùng hai cột trên các watch-list prohibited-ingredient và caution: **product status** và **classification**.
 
-**Hiện trạng.** Quý vị nói mọi hàng ở Gate 4 phải được phân loại thành một trong sáu giá trị: *No issue identified · Needs Safety Review · Needs Regulatory Review · Prohibited — remove · Considered — not selected · Further information required.* Quý vị cũng nói "flagged" bao gồm ba trạng thái: *REVIEW — possible formula match · Needs Safety Review · Needs Regulatory Review.* "REVIEW — possible formula match" nằm trong danh sách flagged nhưng không nằm trong sáu giá trị, và ba trong sáu giá trị không nằm trong danh sách flagged. Vì vậy chúng tôi giữ **hai cột**: product status (danh sách cũ, gồm "possible formula match") và classification (sáu giá trị của quý vị). **Trên danh sách Prohibited Ingredients, hệ thống hiện tự đặt product status:** khi công thức khớp với một hàng, hệ thống ghi "REVIEW - possible formula match", và khi hết khớp thì đưa hàng về "No formula match recorded"; bất kỳ trạng thái nào do người dùng đã chọn đều được giữ nguyên. Trên danh sách Pregnancy / Breastfeeding Caution, status vẫn chỉ do người nhập. **Classification luôn do người nhập**; hệ thống không bao giờ tự ghi kết luận. Ở Gate 7, một hàng khớp mà vẫn ở trạng thái ban đầu ("No formula match recorded" / "Not assessed") sẽ chặn gate. (Cột trạng thái công việc của chính sheet, "Status", là cột thứ ba và tách biệt với cả hai.)
+**Hiện trạng.** Quý vị nói mọi hàng của hai watch-list phải được phân loại ở Gate 4 (Gate 4 bao gồm những hàng nào được hỏi ở câu hỏi 33), mỗi hàng thành một trong sáu giá trị: *No issue identified · Needs Safety Review · Needs Regulatory Review · Prohibited — remove · Considered — not selected · Further information required.* Quý vị cũng nói "flagged" bao gồm ba trạng thái: *REVIEW — possible formula match · Needs Safety Review · Needs Regulatory Review.* "REVIEW — possible formula match" nằm trong danh sách flagged nhưng không nằm trong sáu giá trị, và ba trong sáu giá trị không nằm trong danh sách flagged. Vì vậy chúng tôi giữ **hai cột**: product status (danh sách cũ, gồm "possible formula match") và classification (sáu giá trị của quý vị). **Trên danh sách Prohibited Ingredients, hệ thống hiện tự đặt product status:** khi công thức khớp với một hàng, hệ thống ghi "REVIEW - possible formula match", và khi hết khớp thì đưa hàng về "No formula match recorded"; bất kỳ trạng thái nào do người dùng đã chọn đều được giữ nguyên. Trên danh sách Pregnancy / Breastfeeding Caution, status vẫn chỉ do người nhập. **Classification luôn do người nhập**; hệ thống không bao giờ tự ghi kết luận. Ở Gate 7, một hàng khớp mà vẫn ở trạng thái ban đầu ("No formula match recorded" / "Not assessed") sẽ chặn gate. (Cột trạng thái công việc của chính sheet, "Status", là cột thứ ba và tách biệt với cả hai.)
 
 *(Hai cột riêng biệt — kết quả sàng lọc tìm thấy, và kết luận của reviewer — cùng việc hệ thống tự gắn cờ một trường hợp khớp công thức trên danh sách Prohibited, là các quy tắc riêng của chúng tôi, để không có gì sàng lọc tìm thấy bị ghi đè hay mất đi; chúng không cần câu trả lời.)*
 
@@ -144,6 +155,8 @@ Ba câu hỏi trước đây của chúng tôi hóa ra đều nói về cùng ha
 **(b)** Product status được cập nhật đến gate nào? Câu trả lời của quý vị nói Gate 4 sàng lọc và đưa ra kết luận cho mọi hàng, còn Gate 7 phải đóng chính thức mọi vấn đề restricted hoặc caution áp dụng cho công thức cuối cùng. Câu trả lời không nói product status được chốt ở đâu. Chúng tôi hiểu là **Gate 7**: các cột của reviewer (assessment, reviewer, date, rationale, linked action, evidence, classification) thuộc về Gate 4, còn product status tiếp tục theo công thức cho đến Gate 7. Nếu chốt ở Gate 4, bất kỳ thay đổi công thức thông thường nào sau đó cũng sẽ buộc dự án quay lại Gate 4. Gate 7 có đúng không?
 
 ## Câu hỏi 5 — Supersession của phiên bản công thức: ai xác nhận mười dữ kiện, và khi nào phiên bản cũ đổi trạng thái?
+
+*Vị trí trong ứng dụng:* Trang **Formula BOM**, thẻ **Formula supersession (per market)** và bảng **Formula version history** (cột State); trang **Project Overview** cũng có banner nhắc.
 
 **Đã xây dựng.** Một phiên bản công thức cũ chỉ đạt *Superseded* khi một người đã xác nhận đủ mười dữ kiện quý vị liệt kê, cho **từng thị trường nơi phiên bản đó được bán**; không có gì tự suy ra.
 
@@ -160,6 +173,8 @@ Ba câu hỏi trước đây của chúng tôi hóa ra đều nói về cùng ha
 **(e) Các đợt rà soát sau ra mắt.** Khi hai phiên bản cùng được bán trên một thị trường, chúng tôi giữ các đợt rà soát sau ra mắt **theo từng thị trường**, tính từ lần ra mắt sớm nhất còn đang bán ở đó. Các đợt rà soát có cần được giữ theo từng phiên bản không?
 
 ## Câu hỏi 6 — Ai quyết định một thay đổi đối với mục Claims Library là "critical"?
+
+*Vị trí trong ứng dụng:* Trang cấp công ty **Claims Library** (menu "Company Reference Data"): thao tác Withdraw và danh sách **Affected claims**.
 
 **Thư viện đã được xây dựng, điều này làm câu hỏi sắc nét hơn thay vì trả lời nó.** Một mục cần cả phê duyệt Technical và Regulatory thì mới được tính là approved wording. Việc withdraw một mục hiện yêu cầu có lý do, ngày hiệu lực và kế hoạch chuyển tiếp, đồng thời liệt kê mọi claim dự án, SKU, thị trường và bản ghi đã công bố phụ thuộc vào nó, trên tất cả các dự án. Các claim bị ảnh hưởng sau đó không còn được tính là được bao phủ bởi approved wording, nên quay lại bước Regulatory review.
 
@@ -179,21 +194,32 @@ Câu đó có thể kéo một sản phẩm đang bán xuống, nên chúng tôi
 
 ## Câu hỏi 7 — Trigger scale-up ở Gate 9: mười tám lĩnh vực dùng để làm gì, và thế nào là "new formula"?
 
+*Vị trí trong ứng dụng:* Trang **Phase 3**, tab **Gate 9**, khối "Scale-up risk identified?" kèm danh sách mười tám khu vực bên dưới; điều kiện "new formula" đọc checklist **Development / Change Type** (Gate 1) của trang **Phase 1**.
+
 Câu trả lời Round 3 của quý vị làm cho trạng thái scale-up hoặc pilot trở thành bắt buộc đối với "new formulas, major reformulations …", và câu trả lời Round 4 liệt kê mười tám lĩnh vực kích hoạt một đợt rà soát scale-up hoặc pilot — manufacturing site, equipment type or scale, batch size, order of addition, mixing speed, homogenisation, heating profile, hold time, filling method, water source và những mục còn lại. Quý vị cũng thêm một câu hỏi, "Scale-up risk identified? Yes / No / Pending assessment", trong đó Pending chặn Gate 9.
 
 **Những gì đã xây dựng.** Ở Gate 9, mục scale-up áp dụng khi **bất kỳ** điều nào sau đây đúng: tồn tại một thay đổi công thức Major; *Development / Change Type* của dự án ở Gate 1 có **New development** được tick (primary hoặc secondary); hoặc reviewer trả lời Yes. Một câu trả lời để trống hoặc Pending sẽ chặn gate. Mười tám lĩnh vực được hiển thị bên cạnh câu hỏi của reviewer như một lời nhắc về những gì nên kích hoạt đợt rà soát.
 
-**(a) Mười tám lĩnh vực dùng để làm gì?** Chúng mô tả các *thay đổi*, và một thay đổi thường xảy ra sau khi quy trình đã được chốt. Vì vậy chúng tôi **không** biến chúng thành trigger tự động ở Gate 9: một khi Gate 9 đã passed, đọc chúng ở đó sẽ không quyết định được gì, vì gate đã đóng. Việc phải làm gì khi một thay đổi như vậy đến sau Gate 9 là câu hỏi liệu một Change Control có mở lại một gate đã passed hay không (câu hỏi 10). Trước khi Gate 9 passed, chúng tôi coi danh sách này là hướng dẫn cho người trả lời "Scale-up risk identified?".
+**(a) Mười tám lĩnh vực dùng để làm gì — lời nhắc, hay dữ liệu có người ghi lại?** Chúng mô tả các *thay đổi*: đổi nhà máy, cỡ mẻ từ 50 kg lên 500 kg, đổi tốc độ khuấy. Hiện nay chúng chỉ hiện thành một danh sách bên cạnh câu hỏi của reviewer, như một lời nhắc. Chúng không phải trigger tự động, vì hai lý do.
 
-*Ví dụ:* trong Gate 6, nhà máy được đổi và batch size tăng từ 50 kg lên 500 kg. Đến Gate 9 không ai còn nhớ. Reviewer thấy mười tám lĩnh vực bên cạnh câu hỏi và trả lời **Yes**. Một dự án khác đổi nhà máy **sau khi** Gate 9 đã passed: việc đó là để Change Control mở lại Gate 9, không phải để Gate 9 tự phát hiện.
+*Trước khi Gate 9 qua.* Phần mềm không có trường nào ghi lại một thay đổi như vậy theo dạng có cấu trúc (thứ liên quan duy nhất là cột "Manufacturing site" nhập chữ tự do trong một sổ).
+*Ví dụ:* khi Gate 6 đang mở, nhóm sản xuất chuyển mẻ sang nhà máy khác và tăng cỡ mẻ từ 50 kg lên 500 kg. Không có gì trong phần mềm ghi "đã đổi nhà máy". Ở Gate 9, người trả lời "Scale-up risk identified?" đọc danh sách bên cạnh câu hỏi, nhớ hoặc tra lại điều đã thay đổi, và trả lời **Yes**. Họ không sửa Gate 6 — gate đó khi ấy đã đóng — mà trả lời câu hỏi của chính Gate 9.
 
-Đó có phải là cách dùng danh sách đúng không — hướng dẫn trước Gate 9, và Change Control sau đó? Hay quý vị muốn một danh sách các lĩnh vực mà ai đó tick trên bản ghi thay đổi và tự động bật mục Gate 9?
+*Sau khi Gate 9 đã qua.* Gate đã đóng, nên đọc danh sách ở đó không quyết định được gì. Một thay đổi đến lúc ấy thuộc về Change Control: việc nó có mở lại một gate đã qua hay không là câu hỏi 10.
+
+Quý vị muốn gì? **(i)** Danh sách vẫn là lời nhắc cho người trả lời câu hỏi. **(ii)** Nó trở thành thứ được ghi lại khi một thay đổi xảy ra — ví dụ các lĩnh vực được tích trên một bản ghi Change Control — và Gate 9 tự bật mục scale-up khi có một lĩnh vực được tích. **(iii)** Chính phần đánh giá trở thành một danh sách với **một bản ghi cho mỗi lĩnh vực bị ảnh hưởng**, thay cho một câu Yes / No cho cả dự án. Nếu chọn (ii) hoặc (iii), nên ghi ở đâu?
+
+*(iii) sẽ trông thế nào.* Mỗi bản ghi nêu lĩnh vực (một trong mười tám), điều gì đã đổi (ví dụ cỡ mẻ 50 kg → 500 kg), câu trả lời rủi ro (Yes / No / Pending), lý do, hoạt động pilot hoặc scale-up cần làm, link bằng chứng, ai đánh giá và khi nào. "Scale-up risk identified?" của dự án khi đó được suy ra từ các bản ghi: là Yes khi có bản ghi nào là Yes, và Gate 9 vẫn bị chặn khi còn bản ghi Pending. Một lần đánh giá không thấy gì được ghi bằng một bản ghi trả lời No kèm lý do, không phải bằng danh sách rỗng. Chúng tôi đã chọn cấu trúc này cho câu 2 (một bản ghi cho mỗi phát hiện hậu mãi) vì một câu trả lời đơn không nói được nó nói về thay đổi nào; ở đây lý do cũng vậy, vì một nhà máy mới và một tốc độ khuấy khác mang rủi ro, công việc pilot và bằng chứng khác nhau. Câu hỏi của quý vị ở dạng một câu đơn, nên chúng tôi chưa xây — một bản ghi cho mỗi lĩnh vực có đúng ý quý vị không?
+
+Nếu quý vị chọn (iii), có hai điểm nhỏ về chính mười tám lĩnh vực. Thứ nhất, chúng không cùng một loại: một số về quy trình và quy mô (nhà máy, thiết bị, cỡ mẻ, khuấy, gia nhiệt, thời gian giữ), một số về chính công thức (formula composition, nồng độ hoạt chất hoặc chất bảo quản), và mục cuối — "any change identified by Manufacturing, Quality or R&I as potentially affecting product performance" — là một mục mở. Lĩnh vực của mỗi bản ghi nên được chọn từ một danh sách phẳng, hay từ các nhóm? Thứ hai, khi ai đó chọn mục mở cuối cùng, họ có nên mô tả thay đổi đó bằng chữ tự do không?
 
 **(b) "New formula".** Chúng tôi hiểu một công thức mới là một dự án có *Development / Change Type* được tick **New development** ở bất kỳ vai trò nào; một reformulation lớn đã được bắt bằng phiên bản công thức Major. Điều này có khớp với ý quý vị không? Một Reformulation không phải Major có nên được tính không, và một tick secondary có nên được tính không?
 
 **(c) Câu trả lời "No" cho một new development.** Vì một new development luôn bật mục này, câu trả lời **No** của reviewer bị bỏ qua đối với nó: một công thức mới không bao giờ có thể được tuyên bố là không có rủi ro scale-up. Đó có phải là điều quý vị muốn không?
 
 ## Câu hỏi 8 — Thẩm quyền Safety hoặc Regulatory để chấp nhận một finding trên watch-list nằm ở đâu: ở reviewer, hay ở người phê duyệt gate?
+
+*Vị trí trong ứng dụng:* Các register **Prohibited Ingredient Watch-list** và **Pregnancy / Breastfeeding Caution Limits**: cột Reviewer assessment, Reviewer, Owner; cùng phần ký gate của Approver.
 
 Câu trả lời của quý vị về dấu vết reviewer của watch-list (câu 32(c)) nói một finding trên watch-list bị gắn cờ có thể được mang theo dưới *Proceed with Conditions* khi, cùng với các điều kiện khác, *"the gate approver has the required Safety or Regulatory authority"*, và *"a separate duplicate acknowledgement is not required"*.
 
@@ -218,9 +244,11 @@ Vì vậy chúng tôi đã xây dựng theo hướng ngược lại, và muốn 
 
 ## Câu hỏi 9 — Điều gì làm một action trở thành "controlled", và owner cùng due date của nó nằm ở đâu?
 
-Các câu trả lời của quý vị dùng khái niệm controlled action ở một số chỗ, mỗi chỗ để ngỏ một điều. Một câu trả lời về chỗ đầu tiên sẽ giải quyết các chỗ còn lại.
+*Vị trí trong ứng dụng:* Khối **Gap assessment** trên tab gate (khi Stage status là Gap) và bảng **Next Actions** trên tab đó.
 
-**(a) Với một High gap.** Trước hết là một sự phân biệt, vì các câu trả lời của quý vị dùng cùng cụm từ cho hai bản ghi khác nhau. Một **finding** là một hàng bị gắn cờ trong một sổ (register) (ví dụ các watch-list hoặc các safety finding). Một **gap** là Gap assessment được ghi trên một gate khi status của nó là Gap. Với finding, câu trả lời 33(c) của quý vị rất rõ: *"A controlled Next Action is required for: Critical findings · High findings · Medium findings requiring corrective activity. Free text may describe the action but must not replace the controlled action record."* Với gap quý vị chưa nói tương tự, nên phần còn lại của đoạn này chỉ nói về gap, và chúng tôi hỏi liệu quy tắc của finding có nên áp dụng sang không. Câu trả lời về critical-gap của quý vị cho phép một High gap được mang theo có điều kiện khi, cùng các điều kiện khác, *"a controlled action and due date are recorded"*. Câu trả lời F7 của quý vị đã nói controlled action là gì: *"A controlled Next Action is created. The action has an owner, due date and escalation condition."* Nhưng tám trường quý vị liệt kê cho một gap lại đưa **Required action** và **Action owner** như các trường thông thường và không có ngày, nghe như phiên bản tự chứa. Vì vậy hiện nay nửa điều kiện về ngày **không được thực thi** — chúng tôi không đoán thêm trường thứ chín, và trong khi chờ, màn hình yêu cầu người dùng ghi ngày vào nội dung action. Một High gap có nên trỏ tới một Next Action được theo dõi, như F7 mô tả và như quý vị đã yêu cầu cho finding không? Và yêu cầu này có áp dụng cho Medium và Low gap không?
+Các câu trả lời của quý vị dùng khái niệm controlled action ở một số chỗ, mỗi chỗ để ngỏ một điều. Cùng một câu hỏi cho một yêu cầu Should hoặc Could bị hoãn nằm ở câu hỏi 15; chỉ cần trả lời một lần.
+
+**Với một High gap.** Trước hết là một sự phân biệt, vì các câu trả lời của quý vị dùng cùng cụm từ cho hai bản ghi khác nhau. Một **finding** là một hàng bị gắn cờ trong một sổ (register) (ví dụ các watch-list hoặc các safety finding). Một **gap** là Gap assessment được ghi trên một gate khi status của nó là Gap. Với finding, câu trả lời 33(c) của quý vị rất rõ: *"A controlled Next Action is required for: Critical findings · High findings · Medium findings requiring corrective activity. Free text may describe the action but must not replace the controlled action record."* Với gap quý vị chưa nói tương tự, nên phần còn lại của đoạn này chỉ nói về gap, và chúng tôi hỏi liệu quy tắc của finding có nên áp dụng sang không. Câu trả lời về critical-gap của quý vị cho phép một High gap được mang theo có điều kiện khi, cùng các điều kiện khác, *"a controlled action and due date are recorded"*. Câu trả lời F7 của quý vị đã nói controlled action là gì: *"A controlled Next Action is created. The action has an owner, due date and escalation condition."* Nhưng tám trường quý vị liệt kê cho một gap lại đưa **Required action** và **Action owner** như các trường thông thường và không có ngày, nghe như phiên bản tự chứa. Vì vậy hiện nay nửa điều kiện về ngày **không được thực thi** — chúng tôi không đoán thêm trường thứ chín, và trong khi chờ, màn hình yêu cầu người dùng ghi ngày vào nội dung action. Một High gap có nên trỏ tới một Next Action được theo dõi, như F7 mô tả và như quý vị đã yêu cầu cho finding không? Và yêu cầu này có áp dụng cho Medium và Low gap không?
 
 *Ví dụ:* một High gap ghi "stability data missing". Theo cách đọc F7, gap liên kết tới một Next Action "Run 3-month stability, owner R&I, due 30 Nov, escalate if late"; owner và ngày nằm ở đó. Theo cách đọc tự chứa, các trường *Required action* và *Action owner* của chính gap giữ thông tin này và không có ngày ở đâu cả.
 
@@ -228,17 +256,17 @@ Các câu trả lời của quý vị dùng khái niệm controlled action ở m
 
 *(Dạng sản phẩm bị để ngỏ ở Gate 2 không cần controlled action: nó được ghi trong trường *Confirmed product form*, là một bản ghi tường minh chặn Gate 5 cho đến khi được điền, nên không còn gì phải nhớ — quyết định riêng của chúng tôi, không cần câu trả lời.)*
 
-**(b) Một yêu cầu bị hoãn.** Xem câu hỏi 15 — đó là cùng một lựa chọn cho một hàng yêu cầu Should hoặc Could.
-
 ## Câu hỏi 10 — Nếu một Change Control nêu tên một gate đã passed, gate đó có nên được mở lại không?
 
-**Một tình huống.** Một dự án kem đã passed Gate 5 (khóa công thức) vào tháng Ba. Bây giờ là tháng Tám và dự án đang ở Gate 10. Nhà cung cấp của một thành phần thông báo một thay đổi, nên ai đó mở một Change Control: "ingredient change", nêu tên Gate 5. Một Change Control chỉ có thể được mở sau khi gate sớm nhất mà nó nêu tên đã passed, vì mục đích của nó là sửa một thứ đã bị khóa ở đó (ngoại lệ duy nhất là loại "any change", nêu tên mọi gate và luôn có thể được mở). Vì vậy tình huống này không hiếm; đó là tình huống thường gặp.
+*Vị trí trong ứng dụng:* Trang **Change Control & Communication** (Change Control Log, "Change trigger reference — affected gates & phases") so với bảng **Phase Gate Flow** và dấu cảnh báo gate trên các trang phase.
 
-**Màn hình hiện hiển thị gì.** Gate 5 vẫn ghi "Proceed", đúng như trước, với một dấu cảnh báo nhỏ bên cạnh nói rằng một thay đổi đang mở ảnh hưởng đến nó. Không có gì khác xảy ra, và việc đóng thay đổi sau đó cũng không chạm vào gate. Gate nói "formula locked and approved" trong khi công thức đang được xem xét để thay đổi.
+**Một trường hợp cụ thể.** Một dự án kem. Change Control **CHG-014**: trigger *Ingredient added or removed*, affected area *Formula / ingredient*, risk *High*, được mở vào tháng Tám. Một Change Control không có trường gate nhập tay: các gate nó ảnh hưởng lấy từ trigger của nó, và với trigger này là **Gate 05 và Gate 08**. Gate 5 (khóa công thức) đã passed vào tháng Ba và Gate 8 (testing) vào tháng Năm; dự án hiện ở Gate 10. Một Change Control chỉ có thể được mở sau khi gate sớm nhất mà nó nêu tên đã passed (ở đây là Gate 5), vì mục đích của nó là sửa một thứ đã bị khóa ở đó (ngoại lệ duy nhất là trigger "any change", nêu tên mọi gate và luôn có thể được mở). Vì vậy đây là tình huống thường gặp, không hiếm.
+
+**Màn hình hiện hiển thị gì.** Gate 5 và Gate 8 đều vẫn ghi "Proceed", đúng như trước, mỗi gate có một dấu cảnh báo nhỏ nói rằng một thay đổi đang mở ảnh hưởng đến nó. Không có gì khác xảy ra, và việc đóng CHG-014 sau đó cũng không chạm vào gate nào. Gate 5 nói "formula locked and approved" trong khi công thức đang được xem xét để thay đổi.
 
 **Gate 11 và 12 hoạt động khác, và chúng tôi chỉ nhận ra điều này khi kiểm tra.** Gate 11 (release) có một check "no blocking change is open", và nó đọc danh sách các thay đổi mỗi lần được hiển thị. Vì vậy:
 - Thứ Hai: Gate 11 được ký và passed.
-- Thứ Tư: ai đó mở một thay đổi High-risk về nhãn.
+- Thứ Tư: ai đó mở **CHG-021**, một thay đổi High-risk về nhãn, có trigger nêu tên Gate 11.
 - Check thất bại, và Gate 11 **tự ngừng được tính là passed** — không ai mở lại nó, và không có gì ghi lại lý do.
 
 Gate 12 làm điều tương tự thông qua check change-control của nó (chúng tôi đã thử trên một dự án có post-market review được trả lời "No": check qua, và thất bại ngay khi một thay đổi được mở). Cả hai đều được thử ở mức của check, chưa thử trên một gate đã ký đầy đủ trong ứng dụng.
@@ -250,12 +278,13 @@ Gate 12 làm điều tương tự thông qua check change-control của nó (ch�
 
 Sự khác biệt này là hệ quả ngẫu nhiên của cách các check được viết, không phải một quyết định. Quy tắc riêng của chúng tôi là một gate đã passed không bao giờ được âm thầm ngừng được tính là passed: bất kể điều gì xảy ra với Gate 11 và 12, nó sẽ để lại một lý do được ghi trong lịch sử của gate, nên chỉ Câu hỏi A dưới đây cần câu trả lời của quý vị.
 
-**Câu hỏi — Gate 1 đến 10.** Khi một Change Control nêu tên một gate đã passed, điều gì nên xảy ra với gate đó?
+**Câu hỏi — Gate 1 đến 10.** Khi một Change Control nêu tên các gate đã passed (CHG-014 nêu tên Gate 05 và 08), điều gì nên xảy ra với các gate đó?
 - **(1) Chỉ cảnh báo.** Việc mở lại một gate đã passed vẫn là một bước có chủ ý do một người thực hiện (một Backtrack). Không có gì xảy ra sau lưng ai, nhưng thay đổi và gate có thể không khớp nhau.
-- **(2) Mở lại đúng gate đó.** Gate phản ánh thực tế, và quyết định duy nhất được phép trên nó sau đó là "Proceed with Conditions". Đây sẽ là lần đầu tiên một gate đơn lẻ được mở lại riêng; hiện nay một gate chỉ mở lại khi một người chọn làm vậy, hoặc khi một thay đổi công thức Major mở lại cùng lúc một khối gate cố định.
+- **(2) Mở lại các gate mà thay đổi nêu tên.** Mỗi gate như vậy phản ánh thực tế, và quyết định duy nhất được phép trên nó sau đó là "Proceed with Conditions". Đây sẽ là lần đầu tiên một gate đơn lẻ được mở lại riêng; hiện nay một gate chỉ mở lại khi một người chọn làm vậy, hoặc khi một thay đổi công thức Major mở lại cùng lúc một khối gate cố định.
 - **(3) Khác.**
 
 **Nếu quý vị chọn (2), xin cho chúng tôi biết thêm:**
+- *Những gate nào trong số được nêu tên?* CHG-014 nêu tên Gate 05 và Gate 08. Cả hai nên mở lại, hay chỉ gate sớm nhất (Gate 05), và Gate 08 mở theo sau khi Gate 05 được quyết định lại?
 - *Những thay đổi nào?* Mọi thay đổi, hay chỉ một số (ví dụ chỉ các thay đổi rủi ro cao)?
 - *Nếu thay đổi sau đó bị Rejected hoặc Cancelled.* Câu trả lời F9 của quý vị nói Completed, Rejected, Cancelled và Superseded là đã đóng khi final disposition được ghi. Gate có thực sự bị ảnh hưởng không? Hoặc gate vẫn phải được xác nhận lại một cách tường minh (không bao giờ tự động khôi phục về những gì nó ghi trước đó), hoặc một thay đổi bị rejected sẽ giải phóng nó.
 - *Quyết định lại.* "Proceed with Conditions" có đủ không, hay còn cần một giải thích bằng văn bản hoặc một người được nêu tên?
@@ -264,6 +293,8 @@ Sự khác biệt này là hệ quả ngẫu nhiên của cách các check đư�
 **Hiện đã xây dựng gì.** Không có gì tự động xảy ra với một gate đã passed ở Gate 1 đến 10. Nếu quý vị chọn (2), chúng tôi sẽ chỉ mở lại gate được nêu tên và chỉ cho phép "Proceed with Conditions" sau đó, trừ khi quý vị nói khác.
 
 ## Câu hỏi 11 — Có chín nơi ghi lại một thay đổi. Nên có bao nhiêu?
+
+*Vị trí trong ứng dụng:* Trang **Change Control & Communication** và các register **Formulation Change Register**, **Formula Change Control**, **Artwork Change Control**, **Released Label vs Current Artwork Register**, **Development Iteration Log**, **Ingredient Substitution Evidence**, **Product Family & Version Register**; lịch sử version ở **Formula BOM**.
 
 Đây là câu hỏi chúng tôi muốn được trả lời nhất, và là câu hỏi chúng tôi đã dừng công việc cho đến khi quý vị trả lời.
 
@@ -306,15 +337,22 @@ Sự khác biệt này là hệ quả ngẫu nhiên của cách các check đư�
 
 **Trong lúc này chúng tôi đang làm gì:** không gì cả. Chúng tôi có thể biến một trong số này thành sổ chủ vào ngày mai và hiển thị những cái khác như các view đã lọc, và trông sẽ gọn hơn ngay lập tức. Chúng tôi không làm vậy, vì nếu hai trong số các bản ghi này thực sự là hai thứ khác nhau, chúng tôi sẽ phải tách chúng ra lần nữa sau khi chúng đã được gộp và chứa dữ liệu thật. Không gì bị chặn khi chờ đợi; sự trùng lặp là nhìn thấy được chứ không nguy hiểm, ngoại trừ trường hợp duy nhất ở điểm 1, mà chúng tôi sẽ sửa mà không chờ đợi: việc tạo một phiên bản công thức Major sẽ luôn để lại một bản ghi Change Control, để phía change-control của hệ thống thấy nó (quy tắc riêng của chúng tôi, không cần câu trả lời).
 
-## Câu hỏi 12 — Việc thêm một thị trường, hoặc một phiên bản công thức Major, có mở lại các gate trước đó không?
+## Câu hỏi 12 — Việc thêm một thị trường sau Gate 1 có mở lại các gate trước không?
 
-Hai trường hợp của cùng một câu hỏi — khi một thay đổi về phạm vi mở lại những gì đã được quyết định. (Câu hỏi 10 hỏi điều tương tự về Change Control.)
+*Vị trí trong ứng dụng:* Danh sách thị trường được nhập ở form **Create New Project** (trường "Countries / Markets", trên trang **All Projects**) và ở checklist **Target Countries / Markets** của trang **Phase 1**; mỗi thị trường sau đó có track riêng trong **Market Regulatory & Launch Tracking (Gates 10-12)**.
 
-**(a) Thêm một thị trường sau Gate 1.** Câu trả lời F4 của quý vị nói rằng thị trường mới *"may also trigger review of earlier gates where the new market has different ingredient, claim, packaging or safety requirements."* Hiện nay một thị trường có thể được thêm sau Gate 1 mà không cần Backtrack, và không có gì được mở lại. Việc gỡ một thị trường đã có lịch sử bị từ chối; thay vào đó thị trường được đánh dấu Withdrawn. Ai quyết định rằng thị trường mới "có yêu cầu khác" — ví dụ Regulatory, vào lúc thị trường được thêm — và mỗi loại khác biệt sẽ mở lại những gate nào?
+Khi một thay đổi về phạm vi mở lại những gì đã được quyết định. (Câu hỏi 10 hỏi điều tương tự về Change Control.)
 
-**(b) Một phiên bản công thức Major.** Câu trả lời A2 của quý vị mở lại Gate 4–9 khi có thay đổi Major; câu trả lời F4 của quý vị cho phiên bản mới một track Gate 10–12 riêng ở mỗi thị trường. Chúng tôi mở lại Gate 4–12 cho phiên bản mới, và giữ nguyên các track Gate 10–12 cùng chữ ký của phiên bản cũ như cũ. Các bản ghi Gate 10–12 ở cấp dự án có nên được mở lại cho phiên bản mới, hay chỉ các track theo từng thị trường bắt đầu lại?
+**Thêm một thị trường sau Gate 1.** Các thị trường được khai báo ở Gate 1, và những gì một gate đã quyết định thường chỉ đọc sau khi gate đó đã passed — muốn đổi thì dự án phải bị đưa ngược lại (một Backtrack). Quý vị đã xử lý thị trường mới khác đi: *"may also trigger review of earlier gates where the new market has different ingredient, claim, packaging or safety requirements."* Vì vậy hiện nay một thị trường có thể được thêm sau Gate 1 **mà không cần Backtrack, và không có gì được mở lại**: thị trường mới chỉ có track Gate 10–12 riêng. Việc gỡ một thị trường đã có lịch sử bị từ chối; thay vào đó thị trường được đánh dấu Withdrawn.
+
+*Ví dụ:* một dự án đang ở Gate 9 với Việt Nam và Singapore. Ai đó thêm Úc. Hiện nay dự án tiếp tục đúng như trước, và Úc bắt đầu ở các track thị trường. Không ai đã xem quy định của Úc về chất bảo quản, claim hay bao bì có khác hai thị trường kia không.
+
+Quý vị muốn cách nào? **(1) Giữ nguyên** — thêm tự do, không mở lại gì. **(2) Thêm một thị trường nghĩa là Backtrack về Gate 1**, như mọi thay đổi khác đối với những gì Gate 1 đã quyết định; mọi gate từ Gate 1 trở đi khi đó được mở lại cho tất cả thị trường, dù thị trường mới giống các thị trường cũ đến đâu. **(3) Chỉ mở lại những gì khác:** thị trường được thêm mà không Backtrack, nhưng các gate mà thị trường mới có yêu cầu khác sẽ được mở lại. Nếu (3): ai quyết định rằng thị trường mới "có yêu cầu khác" — ví dụ Regulatory, vào lúc thị trường được thêm — và mỗi loại khác biệt (thành phần, claim, bao bì, an toàn) mở lại những gate nào?
+
 
 ## Câu hỏi 13 — Phê duyệt "đóng" trên mọi sổ bằng chứng có đúng hình thức không?
+
+*Vị trí trong ứng dụng:* Khung ký đóng register hiện trên mọi trang register bằng chứng ("closing for Gate N", chữ ký Review owner và Co-sign).
 
 Mỗi sổ (register) hiển thị một dòng chú thích "Review owner · Co-sign", nhưng trước đây nó chỉ là chữ — bất kỳ ai cũng có thể thêm, sửa hoặc xóa một dòng bất kể tên nào được hiển thị. Chủ dự án đã yêu cầu một phê duyệt **đóng** có chủ đích: Review owner và Co-sign mỗi bên ký **cho một gate**, sau đó các cột được chốt tại gate đó (và, với sổ dạng tự do, các dòng của nó) trở thành chỉ đọc, trong khi các cột mà gate sau vẫn điền thì còn mở, và một gate không thể pass cho đến khi mọi sổ gắn với nó đã được đóng cho gate đó. Một vài sổ dùng khối sign-off ba vai trò của chính workbook thay thế, với mỗi vai trò do Lead của dự án chỉ định. **Điều này đã được xây dựng, theo chỉ thị của chủ dự án, trước khi hỏi quý vị** — đây là một quy tắc mới, không phải thứ được chép từ workbook, và chúng tôi muốn quý vị chỉnh lại ngay bây giờ hơn là để nó trở thành thói quen như thể đã được xác nhận chỉ vì nó chạy được.
 
@@ -325,6 +363,8 @@ Mỗi sổ (register) hiển thị một dòng chú thích "Review owner · Co-s
 **(c)** Với một số sổ, Review owner và Co-sign được xác định là **cùng một người**, vì chưa từng có Co-sign riêng nào được nêu cho lĩnh vực đó — nên "hai phê duyệt" thực chất là một người phê duyệt hai lần. Chúng tôi hiển thị cảnh báo thay vì chặn. Những lĩnh vực như vậy có nên có một Co-sign riêng biệt không? (Câu hỏi 23 hỏi câu rộng hơn về khi nào một người được giữ hai vai trò.)
 
 ## Câu hỏi 14 — Một dòng yêu cầu ở Phase 2, 3 hoặc 4 có thể được đánh dấu "not applicable" không?
+
+*Vị trí trong ứng dụng:* Trang **Phase 2, 3 và 4**: các bảng requirement (cột Status có "N/A — rationale required").
 
 Câu trả lời của quý vị cho câu hỏi 21 của Round-4 đã cho bảng yêu cầu Phase 1 một cách thứ ba để đóng một dòng: **N/A kèm lý do**, vì "the system must not require users to mark an empty requirement as Completed". Điều đó đã được xây dựng.
 
@@ -338,6 +378,8 @@ Tình huống tương tự tồn tại ở các bảng yêu cầu Phase 2, 3 và
 
 ## Câu hỏi 15 — Hoãn một yêu cầu Should hoặc Could: ai sở hữu, hạn là khi nào, và mỗi dòng có cần một mức ưu tiên không?
 
+*Vị trí trong ứng dụng:* Trang **Phase 1**, bảng Gate 2 **Project Requirements & Exclusions** (cột Priority, Owner, Status) và **Next Actions**.
+
 Câu trả lời Round-4 của quý vị cho câu hỏi 21 nói rằng một yêu cầu **Should** hoặc **Could** "may be deferred only through *Proceed with Conditions*, with an owner and due date". Nửa đầu đã được xây dựng: Gate 2 sẽ không chấp nhận Proceed thường khi một dòng như vậy chưa hoàn tất, và *Proceed with Conditions* gỡ chặn nó.
 
 **(a)** Nửa sau chưa có chỗ để ghi. Một dòng yêu cầu có cột **Owner** nhưng không có hạn chót, và các Next Action — vốn có owner, hạn chót và điều kiện leo thang, thứ mà F7 gọi là controlled action — không có liên kết tới một dòng yêu cầu. Một yêu cầu bị hoãn nên đơn giản có thêm trường hạn chót trên chính dòng của nó, hay việc hoãn nên **tạo một Next Action được kiểm soát** trỏ ngược về dòng đó? Nếu là cách thứ hai, chúng tôi cũng sẽ chặn *Proceed with Conditions* ở Gate 2 khi một dòng bị hoãn chưa có action như vậy. (Câu hỏi 9(a) là cùng một lựa chọn cho một High gap; một câu trả lời nên giải quyết cả hai.)
@@ -345,6 +387,8 @@ Câu trả lời Round-4 của quý vị cho câu hỏi 21 nói rằng một yê
 **(b)** **Mỗi dòng yêu cầu áp dụng có phải mang mức ưu tiên Must / Should / Could không?** Chúng tôi đã xây dựng theo cách đó — một dòng vừa không phải N/A vừa chưa được xếp ưu tiên được tính là chưa hoàn tất ở Gate 2. Lập luận của chúng tôi: câu trả lời của quý vị nói mọi dòng áp dụng phải được hoàn tất hoặc hoãn chính thức, và chỉ dòng Should hoặc Could mới có thể bị hoãn, nên một dòng chưa ai xếp hạng thì không thể làm được cả hai. Nhưng câu trả lời của quý vị nói mức ưu tiên nhận những giá trị nào, chứ không nói mọi dòng phải có một mức, nên đây là cách hiểu của chúng tôi chứ không phải của quý vị.
 
 ## Câu hỏi 16 — Màn sàng lọc restricted-and-caution chung: hình thức này có đúng không?
+
+*Vị trí trong ứng dụng:* Register **General Restricted & Caution Assessment**, và **Key Gate Check** Gate 7 "General restricted and caution ingredient assessment completed" trên trang **Phase 3**.
 
 Câu trả lời của quý vị cho câu hỏi 5 của Round-4 chọn phương án (b): Gate 7 cần một đánh giá ingredient restricted-and-caution **chung** cho mọi sản phẩm, với màn sàng lọc maternal là một lớp điều kiện bổ sung và màn sàng lọc infant là lớp thứ ba. Cả ba lớp hiện đã tồn tại.
 
@@ -360,11 +404,15 @@ Quá trình xây dựng cho thấy hai trong ba lớp vốn đã có sẵn — m
 
 ## Câu hỏi 17 — Với claim, các kênh công bố là gì, và khi nào một claim được phê duyệt cho một thị trường và kênh?
 
+*Vị trí trong ứng dụng:* Các register **Publication / Deployment Record** (kênh) và **SKU Claims / PIF Register** (kênh và thị trường dự kiến). Cả hai nằm cùng nhóm menu với trang **Published Information Approval**, nhưng là các trang riêng, tách khỏi nó.
+
 **(a) Bản ghi Publication / Deployment.** Câu trả lời của quý vị cho câu hỏi 30(d) tách bạch hai sự kiện — *"Approved for Release means AUTHORISED for use"*, và việc công bố thực tế là một bản ghi riêng — và liệt kê cả bảy thứ nó phải ghi: ngày công bố thực tế · **kênh (channel)** · thị trường · URL, tệp hoặc tham chiếu artwork · phiên bản được công bố · người chịu trách nhiệm · ngày rút lại hoặc thay thế. Sáu trong bảy có hình thức hiển nhiên. **Channel thì chưa có danh sách giá trị.** Chúng tôi đã dựng một danh sách từ các kênh mà Publication Approval Register vốn đã phân biệt (cột channel của nó là văn bản tự do), cộng với kênh mà câu trả lời của quý vị nêu thẳng (*"for printed packaging the equivalent event may be Release to Print"*): Release to Print (packaging / label) · Website · Social media · Sales or distributor material · HCP or professional material · Retailer listing · Advertising · Other — specify in notes. Công ty có danh sách kênh chuẩn không? Nếu có, trong đó có những gì — và "Release to Print" là một kênh, hay là một loại sự kiện khác đứng cạnh chúng?
 
 **(b) Được phê duyệt cho một thị trường và kênh.** Câu trả lời 19(b) của quý vị đặt kênh và thị trường dự kiến vào bản ghi sử dụng claim theo SKU / thị trường / kênh. Câu hỏi 30(c) của quý vị chặn một claim gắn với artwork mà chưa được phê duyệt cho thị trường hoặc kênh. Chúng tôi hiểu một claim là đã được phê duyệt khi dòng của nó trên bản ghi đó có status **Complete** (giá trị Status của chính sheet) và kênh dự kiến của nó bao gồm kênh được dùng. Complete có phải giá trị đúng không, hay cần một giá trị khác?
 
 ## Câu hỏi 18 — Rà soát claim ở Gate 3: "Not Approved", Technical review, và ai phê duyệt một revision
+
+*Vị trí trong ứng dụng:* Trang **Evidence Plan & Claim Support**, bảng **Claim -> Evidence Traceability** (các cột như "Technical review outcome", "Technical reviewer", "Technical review date"); danh sách readiness của Gate 3.
 
 **(a) Kết quả rà soát "Not Approved".** Câu hỏi 27 của quý vị chấp nhận bốn kết quả nhưng không nói kết quả nào cho phép claim đi tiếp. Hiện chỉ Approved và Approved with Conditions làm được; Not Approved và Further Information Required chặn Gate 3 cho đến khi claim được viết lại (cần một lần rà soát mới) hoặc bị gỡ. Một claim được rà soát là "Not Approved" có được phép ở lại trong danh sách claim của dự án khi Gate 3 pass không — ví dụ như một claim vẫn đang phát triển?
 
@@ -374,11 +422,15 @@ Quá trình xây dựng cho thấy hai trong ba lớp vốn đã có sẵn — m
 
 ## Câu hỏi 19 — Gate 10–12 theo từng thị trường: thị trường bị withdrawn, và mọi thị trường có phải sẵn sàng cùng lúc không?
 
+*Vị trí trong ứng dụng:* Trang **Phase 4**, tab Gate 10-12: khung **Gate sign-off** theo từng thị trường và thẻ **Market Regulatory & Launch Tracking**; tổng hợp ở **Project Overview** "Market readiness".
+
 **(a) Sau khi một thị trường bị withdrawn, có còn nợ một sign-off Gate 12 ở đó không?** Câu trả lời của quý vị cho câu hỏi 18 có các sign-off Prepared, Reviewed và Approved được ghi theo từng thị trường cho Gate 10 và 11, và các rà soát hậu mãi Gate 12 cũng chạy theo từng thị trường. Chúng tôi cũng cho Gate 12 một chỗ ký theo từng thị trường. Cho đến nay một thị trường bị withdrawn vẫn giữ chỗ của nó ở mọi gate, nên việc rút khỏi một quốc gia khiến Gate 10 đến 12 bị chặn mãi mãi vì một chữ ký không ai sẽ ký. Một thị trường bị withdrawn nay **không** còn chỗ ký ở Gate 10, 11 hoặc 12. Với Gate 10–11 và với supersession thì điều này có vẻ chắc chắn — sẽ không còn gì được ra mắt hoặc chuyển tiếp ở đó. Với **Gate 12** thì đó là cách hiểu của chúng tôi: sản phẩm đã bán ở quốc gia đó có thể vẫn cần theo dõi hậu mãi sau khi withdrawal. Sau khi rút khỏi một thị trường, sign-off Gate 12 của thị trường đó (i) không còn bắt buộc, (ii) vẫn bắt buộc trong một khoảng thời gian nhất định, hay (iii) vẫn bắt buộc như bất kỳ thị trường nào mà sản phẩm đang bán?
 
 **(b) Pass ở cấp dự án.** E3(a) và câu hỏi 18 của quý vị cho mỗi thị trường tiến triển độc lập, và dự án có thể hiển thị "Some markets complete". Dự án vẫn chỉ có **một** bản ghi cho mỗi Gate 10 và 11, nên nó chỉ pass khi mọi thị trường đang hoạt động đã có regulatory approval, sign-off Gate 10 và launch approval — một thị trường đã sẵn sàng phải chờ các thị trường khác. Cách tổng hợp đó đã đủ chưa, hay quý vị muốn gate decision của từng thị trường được ghi riêng, để gate của một thị trường đã sẵn sàng được pass trong khi thị trường khác còn pending? (Cách thứ hai là một thay đổi lớn hơn.)
 
 ## Câu hỏi 20 — Gate 10 — những giá trị checklist và approval nào được tính là done cho một thị trường?
+
+*Vị trí trong ứng dụng:* Trang **Phase 4**, Gate 10: thẻ **Market Regulatory & Launch Tracking** (Regulatory status) và register **Regulatory Checklist Status (per market)**.
 
 Câu hỏi 35(a) của quý vị đưa ra hai danh sách giá trị nhưng không nói giá trị nào là pass. Chúng tôi chấp nhận status checklist là Complete và regulatory approval là Approved hoặc Approved with Conditions (mỗi loại, hoặc N/A kèm lý do và reviewer). Mọi giá trị khác — Not Approved, Blocked, Pending, v.v. — chặn Gate 10.
 
@@ -388,17 +440,23 @@ Một điều chúng tôi phát hiện khi kiểm tra: Gate 10 đọc regulatory
 
 ## Câu hỏi 21 — Một dự án phụ thuộc thương mại — kết quả costing nào cho phép Proceed thường?
 
+*Vị trí trong ứng dụng:* Trang **Formula BOM & Costing**, thẻ **Commercial feasibility** (trạng thái costing); quyết định Gate 5 nằm ở trang **Phase 2**.
+
 Câu hỏi 36(b) của quý vị nói rằng khi yêu cầu thương mại là Must, thất bại dẫn tới Hold hoặc Proceed with Conditions. Chúng tôi chỉ cho phép Proceed thường với "Commercially Feasible" (hoặc N/A kèm lý do). "Feasible with Conditions", "In Progress" và "Not Feasible" đều đòi hỏi Hold hoặc Proceed with Conditions.
 
 **Câu hỏi:** "Feasible with Conditions" và "In Progress" có được tính là thất bại theo nghĩa của câu hỏi 36(b) không?
 
 ## Câu hỏi 22 — Gate 12 — điều gì cho thấy phản hồi về hiệu năng sản phẩm đã được xử lý, và tín hiệu nào đưa một lần rà soát lên sớm hơn?
 
+*Vị trí trong ứng dụng:* Trang **Phase 4**, tab Gate 12: thẻ **Post-launch review schedule** và Key Gate Check "Complaints/issues triaged and CAPA/improvement actions assigned"; trang **Post-Market / Complaint & CAPA**.
+
 **(a) Điều gì đóng mục này.** Câu hỏi 15 của quý vị đưa ra năm trigger nhưng không nói bằng chứng nào đóng mục. Hiện nó được thỏa khi Gate 12 check "Complaints/issues triaged and CAPA/improvement actions assigned" hoàn tất. Khi đã nhận được phản hồi về hiệu năng, chỉ cần nó đã được triage và đã giao action là đủ, hay cần một lần rà soát hiệu năng riêng?
 
 **(b) Tín hiệu nào đưa một lần rà soát sau ra mắt lên sớm hơn.** Câu hỏi 13 của quý vị đưa một lần rà soát lên sớm hơn khi có "a significant adverse event, complaint trend, regulatory request or quality signal". Chúng tôi hiểu những điều này là: (i) một vấn đề safety/adverse-event hoặc chất lượng được ghi nhận, hoặc phản hồi có nguồn là cơ quan quản lý. Hiện chưa có gì trong hệ thống ghi nhận một xu hướng khiếu nại — (ii) xu hướng nên được ghi ở đâu? Câu hỏi 10 của quý vị chỉ tính một câu hỏi về claim "concerning actual performance", nhưng chưa có gì ghi lại câu hỏi về claim nói về điều gì, nên mọi câu hỏi về claim đều được tính — (iii) quý vị có cần phân biệt các câu hỏi về claim liên quan đến hiệu năng với những câu khác không?
 
 ## Câu hỏi 23 — Khi nào một người được giữ hai vai trò trên cùng một bản ghi?
+
+*Vị trí trong ứng dụng:* (a) Khung **Gate N sign-off** trên tab gate; (b) bảng **Next Actions**; (c) hộp thoại tạo formula version mới ở **Formula BOM**; (d) **Sign-off** của phase (tab close-out).
 
 Bốn lựa chọn của chúng tôi thực chất là cùng một câu hỏi ở những chỗ khác nhau — liệu người đã làm một bước có được làm bước tiếp theo không. Các câu trả lời của quý vị nêu rõ một cặp.
 
@@ -412,11 +470,15 @@ Bốn lựa chọn của chúng tôi thực chất là cùng một câu hỏi �
 
 ## Câu hỏi 24 — Một action Critical và gate decision: nó chặn gì, và trong bao lâu?
 
+*Vị trí trong ứng dụng:* Bảng **Next Actions** và quyết định trong **Phase Gate Flow** trên mỗi tab gate; danh sách "What's blocking Gate N".
+
 **(a) Một action Critical đang mở có chặn cả "Proceed with Conditions" không, hay chỉ chặn Proceed thường?** Câu trả lời F8 của quý vị nói "Critical actions must prevent normal gate closure." Chúng tôi hiểu "normal" là "mọi quyết định": khi một action Critical đang mở, gate không thể pass chút nào, kể cả với Proceed with Conditions. Cách hiểu còn lại — một action Critical chỉ chặn Proceed thường, và Proceed with Conditions là lối đi — cũng có thể. Một gate có được pass với Proceed with Conditions khi một action Critical vẫn đang mở không? Nếu có, điều đó có cần thêm gì không (một người phê duyệt có tên, một lý do được ghi lại)?
 
 **(b) Khi một action Critical đã được đóng hoặc hủy.** Câu trả lời B2 của quý vị nói mọi action thường phải được hoàn tất trước khi gate đóng, và câu trả lời F8 nói action Critical ngăn việc đóng thông thường. Cả hai đều nói về các action còn **đang mở**. Không câu nào nói rằng một gate từng có action Critical phải dùng Proceed with Conditions ngay cả sau khi action đó đã được đóng hoặc hủy. Vì vậy chúng tôi không thêm hạn chế đó: một khi action Critical là Closed hoặc Cancelled thì nó không chặn gì, và một gate không còn action nào đang mở sẽ pass với Proceed thường. Sau đó gate có được pass với Proceed thường không, hay vẫn phải dùng Proceed with Conditions vì nó từng mang một vấn đề Critical? Một action Critical bị hủy vì được nêu nhầm có được tính là đã từng có vấn đề Critical không?
 
 ## Câu hỏi 25 — Một thị trường có launch approval còn hiệu lực — PIF của nó có được mở lại không?
+
+*Vị trí trong ứng dụng:* Trang **Phase 4**: thẻ **Market Regulatory & Launch Tracking** (cột PIF status và Launch approval).
 
 Quy tắc C5 làm cho launch approval phụ thuộc vào một PIF đã được duyệt. Hệ thống hiện từ chối chuyển một PIF khỏi Approved trong khi launch approval của thị trường đó vẫn là Approved; launch approval không được vẫn là Approved trong cùng lần lưu.
 
@@ -424,11 +486,15 @@ Quy tắc C5 làm cho launch approval phụ thuộc vào một PIF đã được
 
 ## Câu hỏi 26 — Một bản ghi deviation khi có thứ được phát hành mà không được phê duyệt
 
+*Vị trí trong ứng dụng:* Hiện chưa có màn hình cho deviation. Gần nhất hiện nay là **Published Information Approval** (phê duyệt phát hành) và **Post-Market / Complaint & CAPA** (nơi ghi sự cố).
+
 Câu trả lời F11 của quý vị nói "releasing without approval generates a deviation/violation record". Bên trong hệ thống, tài liệu không thể được **lưu** là approved hoặc released cho đến khi mọi bước hoàn tất. Còn hai trường hợp hệ thống không thể ngăn, vì việc công bố tự nó diễn ra bên ngoài hệ thống: tài liệu được công bố mà chưa bao giờ vào workflow, và tài liệu được phát hành đúng nhưng sau đó không còn hiệu lực (claim của nó bị sửa, mục Claims Library của nó bị withdrawn, hoặc ngày rà soát của nó trôi qua). Hiện những sự cố như vậy được ghi thành một CAPA. Quy tắc riêng của chúng tôi là mỗi sự cố như vậy có một bản ghi deviation riêng, để nó không bao giờ bị mất bên trong một danh sách CAPA; điều còn lại dành cho quý vị là bản ghi đó nên chứa gì và làm gì.
 
 **Câu hỏi:** (a) Việc chặn phát hành bên trong hệ thống có đáp ứng yêu cầu cho những gì xảy ra trong đó không? (b) Bản ghi deviation nên chứa gì? (c) Một deviation đang mở có nên chặn Gate 11 hoặc Gate 12 không? (d) Hệ thống có nên cảnh báo khi tài liệu đã phát hành không còn hiệu lực không?
 
 ## Câu hỏi 27 — Ai chấp nhận pre-work của một phase?
+
+*Vị trí trong ứng dụng:* Banner "Pre-work not reviewed" / "Accept pre-work" ở đầu trang **Phase 2, 3 và 4**.
 
 Câu trả lời F13 của quý vị nói các mục nhập sớm *"should be visibly marked Pre-work / Entered Before Gate Opened and retain the entry date and user"*, và rằng khi phase mở ra thì *"the responsible owner must review and formally accept or update the pre-work"*. **Chúng tôi đã xây dựng phần chấp nhận nhưng chưa có phần đánh dấu**: việc chấp nhận áp dụng cho toàn bộ phase, và các mục nhập riêng lẻ chưa được đánh dấu. Đó là việc chúng tôi còn nợ quý vị, không phải một câu hỏi; chúng tôi nêu ra để quý vị không nghĩ rằng nó bị bỏ sót.
 
@@ -438,6 +504,8 @@ Câu trả lời F13 của quý vị nói các mục nhập sớm *"should be vi
 
 ## Câu hỏi 28 — Mỗi cột sau được điền ở gate nào?
 
+*Vị trí trong ứng dụng:* (a) Trang **Evidence Plan & Claim Support**, **Claim -> Evidence Traceability** ("Evidence basis required"); (b) register **Stability, Compatibility & Release Evidence** ("Release decision").
+
 Hai cột mà các câu trả lời của quý vị nói cái gì được ghi nhưng không nói ở gate nào. Câu trả lời quyết định khi nào cột ngừng được chỉnh sửa. (Cột "product status" của watch-list là cùng loại câu hỏi và nằm trong câu hỏi 4(b).)
 
 **(a) "Evidence basis required" của một claim.** Câu trả lời 36(a) của quý vị thêm trường này vào mọi claim nhưng không nói khi nào nó phải được điền. Chúng tôi dùng nó để miễn trừ một số claim Cosmetic (một claim được khai báo là bằng chứng cấp ingredient, hoặc là không có performance claim, có thể dựa vào bằng chứng ingredient), và chúng tôi yêu cầu nó ở Gate 3, cạnh yêu cầu bằng chứng sơ bộ. Gate 3 có đúng không, hay nên muộn hơn — Gate 8 hoặc Gate 10?
@@ -446,11 +514,15 @@ Hai cột mà các câu trả lời của quý vị nói cái gì được ghi n
 
 ## Câu hỏi 29 — Điều gì chứng minh phiên bản artwork đã duyệt ở Gate 11?
 
+*Vị trí trong ứng dụng:* Trang **Packaging Specs & Artwork Evidence** (Approval, Claim ID) và **Released Label Control**; Key Gate Check Gate 11 "Final formula/version, packaging and artwork approved".
+
 Câu hỏi 30(c) của quý vị nói việc phê duyệt artwork cuối cùng *"represented in the Packaging/Artwork Approval record, which must link every Claim ID on the artwork"*. Trong phần mềm, bản ghi đó là sổ **Packaging Specs & Artwork Evidence** (các cột Approval và Claim ID của nó), và Gate 10 đọc nó. Ở Gate 11, "Approved artwork version" lại được đọc từ sổ **Released Label Control**: mỗi dòng phải nêu tên phiên bản label mới và tệp artwork mới. Sổ đó cũng mang một câu trả lời "New label released to market?" (Yes / No / NA) và một ngày phát hành ra thị trường, mà chúng tôi không kiểm tra. Gate 11 cũng có một Key Gate Check, "Final formula/version, packaging and artwork approved", bao gồm cả artwork.
 
 **Câu hỏi:** "Approved artwork version" của Gate 11 nên đọc phê duyệt trên sổ Packaging Specs & Artwork Evidence, sổ Released Label Control, hay cả hai — và sổ Released Label Control có đơn giản chỉ là bản ghi phát hành ra thị trường, còn bản thân phê duyệt chỉ nằm ở bản ghi packaging (khi đó Key Gate Check là xác nhận của Gate 11)?
 
 ## Câu hỏi 30 — Yêu cầu bao bì của một thị trường được ghi ở đâu, và điều gì đóng mục này?
+
+*Vị trí trong ứng dụng:* Trang cấp công ty **Market profiles** (trường "Pack requirements") và Key Gate Check Gate 6 "Artwork/label needs and pack compatibility triggers identified" ở trang **Phase 2**.
 
 Câu trả lời A2 của quý vị làm cho các yêu cầu bao bì riêng của thị trường trở thành bắt buộc khi thị trường có yêu cầu cụ thể (ngôn ngữ, cảnh báo, khai báo ingredient, v.v.), và nói rằng khi không có yêu cầu nào áp dụng thì người dùng nên ghi N/A kèm lý do.
 
@@ -459,6 +531,8 @@ Câu trả lời A2 của quý vị làm cho các yêu cầu bao bì riêng củ
 *(Một trường Pack requirements để trống trên một thị trường mà dự án bán vào sẽ không được đọc là "không có yêu cầu riêng của thị trường": mục này chặn cho đến khi Regulatory đã ghi hoặc các yêu cầu hoặc N/A kèm lý do — quy tắc riêng của chúng tôi, nhất quán với câu trả lời câu hỏi 7 của quý vị rằng một đánh giá còn thiếu không bao giờ được đọc là "does not apply".)*
 
 ## Câu hỏi 31 — Những sổ (register) nào được phép để trống trên một dự án, và những sổ nào luôn phải có mục?
+
+*Vị trí trong ứng dụng:* Không có một màn hình riêng — áp dụng cho mọi register bằng chứng (78); danh sách xem ở **Gate Rules & Sheet Map**.
 
 Câu trả lời Vòng 4 19(d) của quý vị cho phép một sản phẩm khai báo rõ ràng là **không có claim**, và Gate 3 chấp nhận điều đó. Sau đó chúng tôi phát hiện Gate 10 thì không: nó yêu cầu sổ claim phải có mục, nên một sản phẩm không có claim qua được Gate 3 nhưng không bao giờ qua được Gate 10. **Chúng tôi đã mở rộng bản ghi của quý vị sang Gate 10** cho hai sổ đó. Điều này khiến chúng tôi rà soát mọi sổ trong hệ thống, vì việc đòi mục trong một sổ có thể hợp lệ để trống chỉ khiến người ta phải bịa ra một mục — còn để trống mà không có gì cho thấy đã có người xem xét thì khiến "không ai kiểm tra" trông giống như "không có gì để tìm".
 
@@ -592,6 +666,8 @@ Các dòng tồn tại ngay từ đầu; đội điền vào các cột câu tr�
 
 ## Câu hỏi 32 — Change Control được mở trước khi thực hiện thay đổi, hay có thể ghi nhận một thay đổi sau khi đã làm?
 
+*Vị trí trong ứng dụng:* Trang **Change Control & Communication** ("Open Change Request") và thao tác tạo version mới ở **Formula BOM** (chỉ khi Gate 05 đang mở).
+
 Hiện nay hệ thống không áp đặt thứ tự nào cho hai việc này. Việc mở một bản ghi Change Control không tạo ra hay dẫn đến một phiên bản công thức mới, và việc tạo một phiên bản công thức không cần bản ghi Change Control. (Câu hỏi 11 hỏi liệu chúng có nên là một sổ hay không; câu này hỏi về **thứ tự**.) Màn hình Change Control bảo mọi người mở bản ghi *"before the change is made, not after"* — cách diễn đạt đó là của chúng tôi, không phải của quý vị — và đường đi trạng thái (Draft → Submitted → Under Review → Approved, implementation pending → In Implementation → Verification Pending → Completed) gợi ý rằng việc phê duyệt diễn ra trước công việc, nhưng đó chỉ là cách hiểu của chúng tôi.
 
 **Hiện đang chạy như thế nào.** Một bản ghi có thể được mở trước, sau, hoặc không bao giờ. Một phiên bản công thức mới có thể được tạo mà không cần bản ghi nào. Ngoài ra, theo chỉ thị của chủ dự án, một phiên bản công thức mới chỉ có thể được tạo khi **Gate 05** là gate đang mở để làm việc.
@@ -603,6 +679,8 @@ Hiện nay hệ thống không áp đặt thứ tự nào cho hai việc này. V
 **(b)** Hiện một phiên bản công thức chỉ có thể được tạo khi Gate 05 đang mở. Một khi Gate 05 đã qua (từ Gate 06 trở đi, kể cả sau khi ra mắt), một thay đổi công thức đã được phê duyệt nên được thực hiện thế nào — bằng cách backtrack về Gate 05 và tạo phiên bản ở đó, hay bằng một đường khác?
 
 ## Câu hỏi 33 — Gate nào kiểm tra dòng nào của watch-list: mọi dòng tại Gate 4, hay mỗi dòng từ gate mà nó được liên kết?
+
+*Vị trí trong ứng dụng:* Các register **Prohibited Ingredient Watch-list** và **Pregnancy / Breastfeeding Caution Limits**, cột "Linked gate".
 
 Câu trả lời của quý vị về Gate 4 (câu hỏi 6 của quý vị) nói rằng Gate 4 phân loại **mọi dòng** của watch-list, và câu trả lời của quý vị về danh sách thai kỳ (câu hỏi 32(e) của quý vị) cho nó cùng một dấu vết reviewer.
 
@@ -618,6 +696,8 @@ Chúng tôi đã xây dựng theo hướng **một dòng được kiểm tra t�
 ---
 
 ## Câu hỏi 34 — Tiêu chuẩn bằng chứng của Sheet 6 được thực thi như thế nào: gate nào, sheet nào, và thế nào là hoàn tất?
+
+*Vị trí trong ứng dụng:* Trang **Evidence Hierarchy & Search Rules** (Sheet 6), cùng các trang **Needs & Scientific Basis**, **Competitor Landscape**, **Target Product & Tech Platform**, **Evidence Plan & Claim Support** và **Ingredient Monograph**.
 
 Sheet "Evidence & Search Rules" nói rằng tiêu chuẩn này là bắt buộc đối với Sheets 1–5 và mọi sheet về hiệu quả hay claim, và **không nhu cầu hay claim nào được tiến sang công thức hoặc nhãn mà không có (a) một Grade bằng chứng được gán, (b) một kiểm tra khả năng chuyển giao (transferability) đã đạt hoặc một cờ suy luận tường minh, và (c) một bản ghi tìm kiếm đầy đủ, có ngày, có liên kết.**
 
@@ -638,6 +718,8 @@ Chúng tôi đã coi quy tắc này là đã được xác nhận, nhưng hiện
 
 ## Câu hỏi 35 — Trạng thái giai đoạn của gate có phải là Complete trước khi sign-off được ghi Proceed không?
 
+*Vị trí trong ứng dụng:* Khung **Gate N sign-off** trên tab gate (chữ ký Proceed) và cột "Stage status" của **Phase Gate Flow**.
+
 Câu trả lời của quý vị về sign-off liệt kê *"gate status and proposed decision"* trong số những điều một chữ ký xác nhận. Như vậy trạng thái giai đoạn là một phần của những gì cả ba người ký đã thấy.
 
 **Hệ quả.** Nếu ba chữ ký được đưa ra khi trạng thái giai đoạn vẫn là *In Progress*, rồi sau đó có người đổi nó sang *Complete*, thì trạng thái mà những người ký đã thấy đã thay đổi, nên **cả ba chữ ký đều hết hiệu lực (stale)** và ba người phải ký lại.
@@ -648,6 +730,8 @@ Câu trả lời của quý vị về sign-off liệt kê *"gate status and prop
 
 ## Câu hỏi 36 — Next Actions sau khi một gate đã đạt: việc thực hiện một điều kiện đã được chấp nhận có thể để các chữ ký vẫn hợp lệ không?
 
+*Vị trí trong ứng dụng:* Bảng **Next Actions** trên tab gate sau khi gate đã pass, và khung **Gate N sign-off**.
+
 Câu trả lời B2 của quý vị nói rằng action còn mở chỉ được tồn tại ở một gate khi quyết định của nó là *Proceed with Conditions*; câu trả lời F8 của quý vị nói rằng action Critical ngăn việc đóng thông thường và nói ai được đóng một action.
 
 Danh sách các action còn mở là một phần của những gì ba người ký đã ký. Nếu nó thay đổi sai cách, **cả ba chữ ký đều hết hiệu lực (stale)**, và một gate đã đạt không thể được ký lại. Lối thoát duy nhất là Backtrack. Hai điểm liên quan là quy tắc riêng của chúng tôi và không cần câu trả lời: một vấn đề được phát hiện sau khi một gate đã đạt luôn **được ghi lại** — nó không thể được thêm thành action trên gate đã đạt, nên nó được ghi vào gate kế tiếp và đánh dấu là được phát hiện ở gate trước — và một action bị gỡ bỏ để lại dấu vết trong lịch sử (nó nói gì, ai gỡ, khi nào).
@@ -656,6 +740,8 @@ Danh sách các action còn mở là một phần của những gì ba người 
 **Câu hỏi:** việc thực hiện một điều kiện đã được chấp nhận sau khi ký mà không cần ba người ký ký lại có đúng không? Nếu không, một gate *Proceed with Conditions* nên đóng các điều kiện của chính nó như thế nào mà không cần Backtrack?
 
 ## Câu hỏi 37 — Mỗi chức năng "Owner" trong các sheet đại diện cho người nào trong một dự án?
+
+*Vị trí trong ứng dụng:* Cột "Owner" của các register dòng cố định và bảng phase; người được chọn ở form **Create New Project** (trang **All Projects**), mỗi khu vực rà soát một reviewer.
 
 Các dòng cố định của workbook ghi một **chức năng** trong cột Owner ("Project owner", "R&I", "Regulatory", "Quality" …), không bao giờ ghi một người, vì bảng tính không có dự án để lấy tên. Trên một dự án, mỗi chức năng tương ứng với một trong 13 vai trò rà soát, và người cho vai trò đó được chọn khi tạo dự án. Workbook không nói chức năng nào là vai trò nào.
 
@@ -666,6 +752,8 @@ Các dòng cố định của workbook ghi một **chức năng** trong cột Ow
 **(b)** Các chức năng không có cặp (Safety, Clinical, Claims, Finance và v.v.) thuộc về vai trò rà soát nào, hay chúng không có người cố định?
 
 ## Câu hỏi 38 — Một cột "change reference" trỏ tới cái gì?
+
+*Vị trí trong ứng dụng:* **Released Label vs Current Artwork Register** ("Artwork Change Control ref") trong **Released Label Control**; register **Artwork Change Control**; trang **Change Control & Communication**.
 
 Câu hỏi này tiếp nối câu hỏi 11. Trong workbook, một số sheet có cột cho **reference** của một thay đổi — ví dụ *Artwork Change Control ref* trên Released Label vs Current Artwork Register. Tuy nhiên sheet *Artwork Change Control* không phải là nhật ký các thay đổi artwork riêng lẻ: nó là một bộ quy tắc cố định gồm năm trigger (lỗi artwork · thay đổi công thức ảnh hưởng đến nhãn · cập nhật quy định · thay đổi câu chữ claim · một nhãn đã phát hành khác với hình ảnh trên thị trường). Vì vậy không có dòng nào để một reference trỏ tới. Bản ghi thật của một thay đổi là trang Change Control & Communication (đánh số CHG-001 và tiếp theo).
 
@@ -681,6 +769,8 @@ Câu hỏi này tiếp nối câu hỏi 11. Trong workbook, một số sheet có
 
 ## Câu hỏi 39 — Batch Formula Trace: cái gì xác định một dòng?
 
+*Vị trí trong ứng dụng:* Register **Batch Formula Trace** và **Shipment Label & Batch Verification** (trong **Released Label Control**).
+
 Trong workbook, *Shipment Label & Batch Verification* có một ô "Batch Formula Trace ref" để gõ vào, và sheet *Batch Formula Trace* không có cột nào xác định một dòng, nên không có gì để trỏ tới.
 
 **Những gì đã xây dựng.** Chúng tôi đã thêm một cột **Trace ID** vào Batch Formula Trace (BT-001, BT-002 … do phần mềm tạo, không bao giờ gõ tay), và reference trên sheet Shipment Label nay là lựa chọn trong các ID đó. Cột này không có trong workbook, và một reference cũ đã gõ mà không khớp ID nào sẽ hiển thị trống cho đến khi được chọn lại.
@@ -692,6 +782,8 @@ Trong workbook, *Shipment Label & Batch Verification* có một ô "Batch Formul
 **(b)** Nếu nó là batch hoặc lot, và một lot phục vụ nhiều SKU, thì reference trỏ tới dòng nào?
 
 ## Câu hỏi 40 — Artwork / Label Review Checklist: năm dòng "Correct names for PI", và gate nào yêu cầu nó
+
+*Vị trí trong ứng dụng:* Trang **Packaging Specs & Artwork Evidence**, bảng **Artwork / Label Review Checklist**.
 
 Trang *Packaging Specs & Artwork Evidence* nay mang **Artwork / Label Review Checklist** của sheet: tám dòng chuẩn (bảy mục rà soát và một mục về tag cho các chiết xuất độc quyền trên nhãn) theo đúng các cột của sheet. Bên dưới, sheet có năm dòng "Correct names for PI" nằm dưới cùng tiêu đề nhưng dùng các cột khác đi: ô Requirement chứa một tên INCI (ví dụ *Salvia microphylla water extract*) và ô Evidence link chứa tên thương mại cần in (ví dụ *Salvotect™ (MBc Research Parks PI)*), không có Owner và không có Status.
 
@@ -705,6 +797,8 @@ Trang *Packaging Specs & Artwork Evidence* nay mang **Artwork / Label Review Che
 
 ## Câu hỏi 41 — "Incomplete — evidence review required": một gợi ý hiển thị, hay một giá trị người dùng có thể chọn?
 
+*Vị trí trong ứng dụng:* Register **Supplier & Raw Material Evidence**, cột "Evidence review status".
+
 Câu trả lời D4 Round 3 của quý vị yêu cầu một bản ghi nguyên liệu thô được tạo tự động từ Cosmetri phải được **hiển thị rõ ràng** là thiếu bằng chứng, không bao giờ mặc định là Approved for Use, hiển thị trong danh sách readiness, và chặn Gate 4.
 
 **Những gì đã xây dựng.** Cột *Evidence review status* bắt đầu **trống**, và một ô trống hiển thị "Incomplete — evidence review required" như một gợi ý màu xám. Chỉ có hai giá trị thực sự chọn được: *Conditionally accepted — controlled action open* và *Considered — not used in this formula* (cả hai đã được xác nhận ở Round 4). Mọi điều kiện khác trong D4 vẫn giữ nguyên: nó không bao giờ mặc định là Approved, nó hiển thị trong danh sách readiness, và nó chặn Gate 4. Trước đây, "Incomplete — evidence review required" là một giá trị được lưu mà mọi dòng mới đều nhận; nó có nghĩa hệt như một ô trống cộng với ô *Approved for use* chưa tích, nên chúng tôi đã loại bỏ nó.
@@ -712,6 +806,8 @@ Câu trả lời D4 Round 3 của quý vị yêu cầu một bản ghi nguyên l
 **Câu hỏi:** việc hiển thị đoạn văn bản đó như gợi ý của một ô trống, thay vì một giá trị được lưu trong danh sách, có thỏa mãn điều quý vị muốn nói bằng "clearly marked" không?
 
 ## Câu hỏi 42 — Một dự án có thử nghiệm nhiều hơn một mẫu với panel nội bộ không?
+
+*Vị trí trong ứng dụng:* Trang **Product / Sample Feedback** (khối sample under evaluation và nhật ký feedback).
 
 Sheet *Product / Sample Feedback* vẽ **một** khối cho mẫu đang được đánh giá (product / SKU, product family, development stage, linked change ID, sample or batch code, formula version, date samples issued, panel coordinator) và một nhật ký phản hồi — một dòng cho mỗi người thử cho mỗi mẫu. Không có gì trong nhật ký nói một dòng nói về mẫu nào. Cụm từ "per sample" gợi ý rằng mỗi tab Excel là một mẫu, và thử nghiệm một mẫu khác nghĩa là sao chép tab, điều mà phần mềm không có tương đương.
 

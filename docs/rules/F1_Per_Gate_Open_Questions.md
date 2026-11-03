@@ -1385,7 +1385,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 
 | ID nội bộ | Gửi số (bản nháp) | Chủ đề |
 |---|---|---|
-| R5-Q6 | **1** | "Responsible reviewer" của một item readiness là ai; item nào là critical; acknowledgement hết hiệu lực khi hoàn cảnh đổi (1(a)(b)(c)) |
+| R5-Q6 | **1** | "Responsible reviewer" của một item readiness là ai; item nào là critical; acknowledgement hết hiệu lực khi hoàn cảnh đổi (1(a)(b)(c)); danh sách dùng chung của công ty đổi sau khi gate qua (1(d)) |
 | R5-Q11 | **2** | Câu trả lời "có cần Change Control không" — một mục cho mỗi phát hiện |
 | R5-Q12 | **3** | Safety finding `Superseded` có cần bằng chứng đóng như `Closed` không |
 | ✅ R5-Q10 | — (SW-47) | Sáu giá trị disposition Gate 4 thay thế hay bổ sung cho Product status — đã quyết: bổ sung, hai cột |
@@ -1394,7 +1394,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | R5-Q8 | **5(a)** | Ai xác nhận mười dữ kiện supersession theo thị trường |
 | R5-Q53 | **5(b)–(e)** | Khi nào phiên bản cũ chuyển trạng thái; Minor; chưa từng launch; lịch review khi hai phiên bản cùng bán |
 | R5-Q9 | **6** | Ai phán định một thay đổi Claims Library là "critical" |
-| R5-Q48 | **7(b)(c)** | "Công thức mới" trong trigger scale-up (vế 18 vùng ảnh hưởng, 7(a), là vế còn lại của câu 12 Vòng 4, chưa có ID R5) |
+| R5-Q48 | **7(b)(c)** | "Công thức mới" trong trigger scale-up (vế 18 vùng ảnh hưởng, 7(a), là vế còn lại của câu 12 Vòng 4, chưa có ID R5; 02/11/2026 thêm phương án (iii): đánh giá thành danh sách một bản ghi cho mỗi lĩnh vực, theo cùng nguyên tắc độ chi tiết mịn hơn như câu 2 — chỉ hỏi, chưa xây, nên chưa cần ID hay tag) |
 | R5-Q67 | **8** | Thẩm quyền Safety/Regulatory chấp nhận finding watch-list: ở người đánh giá hay người duyệt gate |
 | R5-Q16 | **9(a)** | Gap High: "controlled action" và due date ghi ở đâu |
 | ✅ R5-Q46 | — (SW-49) | Controlled action khi để ngỏ dạng sản phẩm ở Gate 2 — đã quyết: trường Confirmed product form là đủ |
@@ -1403,7 +1403,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | R5-Q18 | **11 (3)** | Sổ do Final Approver kiểm soát (trước là "NP Controlled") là sổ riêng hay thẩm quyền trên sổ chung |
 | R5-Q27 | **11 (4)** | "Một bản ghi Change Control hợp lệ" của câu 8 — sổ nào được tính |
 | R5-Q49 | **12(a)** | Thêm thị trường sau Gate 1 có mở lại gate trước không |
-| R5-Q52 | **12(b)** | Phiên bản Major có mở lại Gate 10–12 không |
+| ✅ R5-Q52 | — (SW-53) | Phiên bản Major mở lại cả các dòng Gate 10–12 của dự án — đã quyết |
 | R5-Q21 | **13** | Đóng sổ hai chữ ký theo từng gate — đã build theo chủ dự án |
 | R5-Q22 | **14** | "N/A kèm lý do" ở Phase 2–4 (đã build 30/10) |
 | R5-Q23 | **15** (và 9(b)) | Hoãn Should/Could: ai sở hữu, hạn khi nào, có bắt buộc priority không |
@@ -1638,6 +1638,8 @@ Ba cách đọc, ba lượng công việc rất khác nhau:
 - **Responsible reviewer = người Lead nominate ở dòng "Reviewed by" của chữ ký phase** chứa gate (không phải lane Reviewer của gate: lane đó nominate lười theo từng thị trường, còn nominate của phase có từ ngày tạo dự án). Đổi người: người cũ không làm thêm được; **một dòng cho mỗi item, người mới sửa thẳng vào dòng đó** (có thể ghi "Not acknowledged" kèm lý do để bác bỏ cái trước); không xóa gì, audit giữ giá trị trước và sau. Các hành vi này là quyết định phần mềm của chủ dự án, ghi ở `Software_Rules.md` SW-29, không hỏi SME.
 - **Xác nhận hết hiệu lực khi lý do đổi** (sự thật đằng sau N/A đổi): đây là cách đọc của mình, hỏi ở câu 1(c).
 - **Chưa nominate thì không ai xác nhận được** → item chặn gate, và trang phase nhắc Lead nominate.
+
+**Cập nhật 02/11/2026 — câu 1 có thêm phần (d), và ví dụ (c) đổi.** (1) Ví dụ cho 1(c) trước đây là "Marketing tích Pregnancy ở Gate 2 hai tuần sau khi reviewer xác nhận ở Gate 7": sai, vì Gate 2 đã passed thì bằng chứng của nó bị khoá, chỉ mở lại được bằng Backtrack. Ví dụ nay nói rõ Backtrack về Gate 2. (2) Chủ dự án chỉ ra rằng đối chiếu với Raw Material Risk Overlay chỉ đúng tại thời điểm đó, nên gate đã passed cần ảnh chụp dữ liệu tham chiếu; cơ chế là quyết định phần mềm, ghi ở `Software_Rules.md` SW-52. (3) Phần hỏi SME là 1(d): một cờ mới trên nguyên liệu của sản phẩm đã qua gate có buộc rà soát lại không, và ai quyết định. Đề xuất đang hỏi: gate đã passed giữ nguyên theo danh sách lúc đó, chỉ hiện thông báo. Chưa có code nào đọc ảnh chụp, nên chưa có tag `[ASSUMPTION]` mới; khi build SW-52, gắn tag R5-Q6 vào chỗ quyết định xử lý thông báo (`gateReadinessChecklist` / nơi dựng thông báo) và sửa nếu SME trả lời khác.
 
 **Chỗ sửa khi SME trả lời:** phân loại từng item → `CRITICAL_ITEM_OVERRIDES` trong `packages/shared/src/utils/readinessAck.ts` (một dòng `itemId: true|false` mỗi item, `verify:ack` kiểm số lượng mặc định 18/31 và phải sửa theo); ai là reviewer → `responsibleReviewer()` cùng file (đổi sang lane gate, chủ review area hoặc người chỉ định từng item; hai phương án sau cần thêm chỗ lưu); xác nhận hết hiệu lực → `acknowledgementState()`; chức năng độc lập cho item safety (câu 1(b)) → thêm kiểm capability vào `ProjectsService.acknowledgeReadinessItem`. Nơi dùng: `gateReadinessChecklist()` (`gateProgress.ts`), `POST /projects/:id/readiness-acknowledgements`, `GateReadinessPanel.tsx`, `PhasePage.tsx`. Kiểm thử: `npm run verify:ack`, các case SG07 trong `gate-signing.e2e.ts`.
 
@@ -2225,7 +2227,10 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg06-market-pack`; `MarketProfile.packRequirements`.
 
-#### R5-Q52 · Phiên bản Major có mở lại cả Gate 10–12 không 🔴
+#### ✅ R5-Q52 · ĐÃ QUYẾT 02/11/2026 — SW-53, không hỏi SME · Phiên bản Major có mở lại cả Gate 10–12 không
+
+**Đã quyết 02/11/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** các dòng Gate 10–12 của dự án mở lại cùng Gate 4–9 vì chúng là phần tổng hợp của các track theo thị trường; giữ "Proceed" khi phiên bản mới chưa có phê duyệt thị trường nào là nói sai thực tế. Không mất hồ sơ: trạng thái cũ được chụp vào lịch sử Backtrack và track của phiên bản cũ giữ nguyên. Chi tiết: SW-53 trong `Software_Rules.md`. Câu 12(b) đã bỏ khỏi bản gửi SME. Khi kiểm lại (02/11/2026) thấy một phiên bản chỉ tạo được lúc Gate 05 đang mở, nên tình huống "dòng Gate 11 đang Proceed rồi tạo phiên bản Major" không xảy ra trực tiếp: phải Backtrack về Gate 05 trước, và Backtrack đã đưa các dòng đó về chưa bắt đầu. Bản gốc của câu hỏi giữ nguyên bên dưới là lịch sử.
+
 
 **Lộ ra khi xây F4/Q2 (05/10/2026, mục F4).** A2 nói phiên bản Major mở lại Gate 4–9. F4 (sau đó) nói phiên bản mới có track Gate 10–12 mới cho từng thị trường. Giờ phiên bản Major mở lại Gate 4–12 cho phiên bản mới; track và chữ ký Gate 10–12 của phiên bản cũ được giữ nguyên làm lịch sử.
 
