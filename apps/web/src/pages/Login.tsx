@@ -18,7 +18,10 @@ import './Login.css';
 // ABOVE the button, so it is read before acting; the button shows a redirect
 // state so it cannot be pressed twice.
 
-type Reason = 'error' | 'no_role' | 'inactive' | 'tenant';
+// Also from AppHub (server hub/hub.controller.ts): ?hub_error=no_account (email unknown here — nothing is created
+// until the person signs in with Microsoft 365) or ?hub_error=expired; and ?signed_out=1 after AppHub or another
+// app signed this person out.
+type Reason = 'error' | 'no_role' | 'inactive' | 'tenant' | 'no_account' | 'hub_expired' | 'signed_out';
 
 const MESSAGES: Record<Reason, { tone: 'warn' | 'bad'; title: string; body: (email?: string) => React.ReactNode }> = {
   error: {
@@ -56,6 +59,22 @@ const MESSAGES: Record<Reason, { tone: 'warn' | 'bad'; title: string; body: (ema
     title: 'Use your company account',
     body: () => 'That Microsoft account belongs to another organisation. Sign in with your company Microsoft 365 account.',
   },
+  no_account: {
+    tone: 'warn',
+    title: "You don't have an MBc360 account yet",
+    body: () =>
+      'Sign in with Microsoft 365 below to create it — an administrator then assigns your role, and you can open MBc360 from AppHub.',
+  },
+  hub_expired: {
+    tone: 'warn',
+    title: 'That AppHub link has expired',
+    body: () => 'Open MBc360 from AppHub again, or sign in with Microsoft 365 below.',
+  },
+  signed_out: {
+    tone: 'warn',
+    title: 'You were signed out',
+    body: () => 'You signed out from AppHub or another app. Sign in again to continue.',
+  },
 };
 
 function MicrosoftLogo() {
@@ -73,13 +92,20 @@ export default function Login({ denied }: { denied?: AccessDenial | null }) {
   const [redirecting, setRedirecting] = useState(false);
   const params = new URLSearchParams(window.location.search);
   const queryError = params.get('auth_error');
+  const hubError = params.get('hub_error');
   const reason: Reason | undefined = denied
     ? denied.reason
     : queryError === 'no_role' || queryError === 'inactive' || queryError === 'tenant'
       ? queryError
       : queryError
         ? 'error'
-        : undefined;
+        : hubError === 'no_account'
+          ? 'no_account'
+          : hubError
+            ? 'hub_expired'
+            : params.get('signed_out')
+              ? 'signed_out'
+              : undefined;
   const email = denied?.email ?? params.get('as') ?? undefined;
   // Refused for WHO they are, not for a glitch: Microsoft's own session is
   // still alive, so a plain retry would silently sign the same account in

@@ -25,6 +25,13 @@
 #   AUTH_REDIRECT_URI=...     (must exactly match the Entra app registration's
 #                              redirect URI; defaults to
 #                              ${APP_BASE_URL}/api/auth/callback if unset)
+#   HUB_SECRET=...            (optional — sign-in from AppHub; AppHub → Manage apps
+#                              → MBc360 shows it once. Empty = AppHub sign-in off)
+#   HUB_SECRET_NEXT=...       (only during a 2-step secret change in AppHub)
+#   HUB_URL=... / HUB_APP=... (optional — AppHub address + this app's slug there,
+#                              e.g. https://apphub.maxbiocare.com / mbc360. Set →
+#                              Sign out signs the person out of every app,
+#                              AppHub stays signed in)
 #   PINNED_ADMINS=...         (optional, comma-separated emails — each is made
 #                              sure to exist, be active and hold System
 #                              Administrator on EVERY api start, i.e. every
@@ -83,6 +90,10 @@ services:
       APP_BASE_URL: ${APP_BASE_URL}
       AUTH_REDIRECT_URI: ${AUTH_REDIRECT_URI}
       PINNED_ADMINS: ${PINNED_ADMINS:-}
+      HUB_SECRET: ${HUB_SECRET:-}
+      HUB_SECRET_NEXT: ${HUB_SECRET_NEXT:-}
+      HUB_URL: ${HUB_URL:-}
+      HUB_APP: ${HUB_APP:-}
     depends_on:
       postgres:
         condition: service_healthy

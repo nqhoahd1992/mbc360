@@ -24,6 +24,9 @@ export interface AuthConfig {
   sessionSecret: string;
   sessionTtlSeconds: number;
   devMode: boolean;
+  /** AppHub address + this app's slug there: Sign out goes to {hubUrl}/sign-out-apps (every app signs out, AppHub stays). */
+  hubUrl?: string;
+  hubApp?: string;
 }
 
 export function loadAuthConfig(): AuthConfig {
@@ -55,6 +58,19 @@ export function loadAuthConfig(): AuthConfig {
     sessionSecret: sessionSecret ?? 'dev-only-insecure-session-secret',
     sessionTtlSeconds: Number(process.env.SESSION_TTL_SECONDS ?? 8 * 60 * 60),
     devMode,
+    hubUrl: process.env.HUB_URL?.trim().replace(/\/$/, '') || undefined,
+    hubApp: process.env.HUB_APP?.trim() || undefined,
+  };
+}
+
+/** Options of the session cookie — shared by Microsoft sign-in (auth.controller.ts) and AppHub sign-in (hub.controller.ts). */
+export function sessionCookieOptions(maxAgeMs: number) {
+  return {
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: maxAgeMs,
   };
 }
 
