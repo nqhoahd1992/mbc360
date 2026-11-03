@@ -1,0 +1,282 @@
+// =====================================================================
+//  AppHub connector — gắn vào app con để nhận đăng nhập từ AppHub.
+//  Giao thức: docs/01-sso-protocol.md. Cách gắn: connector/README.md.
+//
+//  Copy nguyên file này vào app con: app TypeScript dùng hub-connector.ts, app JavaScript (ESM) dùng hub-connector.js
+//  (sinh từ file .ts bằng `npm run build:js` — đừng sửa tay file .js). Không cần cài thêm thư viện: chỉ dùng node:crypto.
+//  Ba endpoint:
+//    POST {APP}/api/hub/sso      AppHub (server) gọi, có ký → 200 {code, expiresInSeconds} | 403 {error:"NO_ACCESS"}
+//    GET  {APP}/hub-login        trình duyệt mang ?code=…&next=… → tạo phiên của app → chuyển về `next`
+//                                (mã hỏng/hết hạn → trang login ?hub_error=expired; user không còn/bị tắt → ?hub_error=no_account)
+//    POST {APP}/api/hub/revoke   AppHub gọi, có ký, {email, at} → vô hiệu mọi phiên của email cấp trước `at`
+//  Và 2 hàm dựng URL: hubLaunchUrl() (app hết phiên → về hub) và hubLogoutUrl() (Sign out ở app → về hub).
+//
+//  Đừng sửa cách tính chữ ký — phải khớp server/src/apps/hub-signer.ts của AppHub.
+// =====================================================================
+
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+
+export type HubVerifyError = 'MISSING_HEADERS' | 'EXPIRED' | 'INVALID_SIGNATURE' | 'BAD_BODY';
+/** `timestamp`: X-Hub-Timestamp đã kiểm (Unix giây, theo đồng hồ của hub). */
+export type HubVerifyResult = { ok: true; body: Record<string, unknown>; timestamp: number } | { ok: false; error: HubVerifyError };
+
+type HeaderBag = Record<string, string | string[] | undefined>;
+
+const header = (headers: HeaderBag, name: string) => {
+  const value = headers[name];
+  return Array.isArray(value) ? value[0] : value;
+};
+
+/** hex(HMAC-SHA256(secret, `${timestamp}.${rawBody}`)). */
+export function hubSignature(secret: string, timestamp: number | string, rawBody: string | Buffer): string {
+  return createHmac('sha256', secret).update(`${timestamp}.`).update(rawBody).digest('hex');
+}
+
+/**
+ * Kiểm tra request từ AppHub: còn hạn (lệch dưới `maxSkewSeconds`), chữ ký đúng với MỘT trong các secret
+ * (lúc đổi secret app nhận cả khoá cũ lẫn khoá mới), body là JSON object.
+ * `rawBody` phải là đúng các byte đã nhận (chưa parse JSON rồi stringify lại).
+ */
+export function verifyHubRequest(input: { secrets: string | string[]; headers: HeaderBag; rawBody: string | Buffer; maxSkewSeconds?: number; now?: number }): HubVerifyResult {
+  const timestamp = header(input.headers, 'x-hub-timestamp');
+  const signature = header(input.headers, 'x-hub-signature');
+  if (!timestamp || !signature) return { ok: false, error: 'MISSING_HEADERS' };
+
+  // Unix time (giây), chỉ chữ số — không nhận "1e9", " 12", "0x…".
+  if (!/^\d{1,12}$/.test(timestamp)) return { ok: false, error: 'EXPIRED' };
+  const seconds = Number(timestamp);
+  const now = Math.floor((input.now ?? Date.now()) / 1000);
+  if (Math.abs(now - seconds) >= (input.maxSkewSeconds ?? 60)) return { ok: false, error: 'EXPIRED' };
+
+  const received = Buffer.from(signature.trim().toLowerCase());
+  const secrets = Array.isArray(input.secrets) ? input.secrets : [input.secrets];
+  const matches = secrets.some((secret) => {
+    const expected = Buffer.from(hubSignature(secret, seconds, input.rawBody));
+    return expected.length === received.length && timingSafeEqual(expected, received);
+  });
+  if (!matches) return { ok: false, error: 'INVALID_SIGNATURE' };
+
+  try {
+    const body = JSON.parse(input.rawBody.toString());
+    return body && typeof body === 'object' && !Array.isArray(body) ? { ok: true, body, timestamp: seconds } : { ok: false, error: 'BAD_BODY' };
+  } catch {
+    return { ok: false, error: 'BAD_BODY' };
+  }
+}
+
+const asEmail = (value: unknown) => (typeof value === 'string' && value.includes('@') ? value.trim().toLowerCase() : null);
+
+/**
+ * `next` từ AppHub (docs/01 mục 3): chỉ nhận đường dẫn nội bộ bắt đầu bằng "/" — không nhận "//host", "/\host" hay URL đầy đủ.
+ * Sai thì trả null (về trang chính).
+ */
+export function safeNext(next: unknown): string | null {
+  if (typeof next !== 'string' || !next || next.length > 2000) return null;
+  if (!next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return null;
+  return /[\u0000-\u001f]/.test(next) ? null : next;
+}
+
+/** App hết phiên → chuyển trình duyệt tới đây; hub mở lại app và đưa người dùng về đúng `next`. */
+export function hubLaunchUrl(hubUrl: string, appSlug: string, next?: string | null) {
+  const url = new URL(`/launch/${encodeURIComponent(appSlug)}`, hubUrl);
+  const path = safeNext(next);
+  if (path) url.searchParams.set('next', path);
+  return url.toString();
+}
+
+/** Sign out ở app con: xoá phiên của app rồi chuyển trình duyệt tới đây (hub đăng xuất và revoke mọi app). */
+export function hubLogoutUrl(hubUrl: string) {
+  return new URL('/logout', hubUrl).toString();
+}
+
+/** Một mã dùng 1 lần. `hubTime`: X-Hub-Timestamp của request SSO đã cấp mã (Unix giây, đồng hồ của hub). */
+export interface HubCode {
+  email: string;
+  hubTime: number;
+}
+
+/** Nơi giữ mã dùng 1 lần. Mặc định trong bộ nhớ — đủ khi app chạy 1 instance; nhiều instance thì viết bản DB/Redis. */
+export interface HubStore {
+  saveCode(code: string, entry: HubCode, ttlSeconds: number): Promise<void> | void;
+  /** Lấy và xoá luôn (mã chỉ dùng được 1 lần). Hết hạn hoặc không có → null. */
+  takeCode(code: string): Promise<HubCode | null> | HubCode | null;
+  /** Xoá mọi mã chưa dùng của email (khi nhận revoke). */
+  dropCodes(email: string): Promise<void> | void;
+}
+
+export class MemoryHubStore implements HubStore {
+  private readonly codes = new Map<string, HubCode & { expiresAt: number }>();
+
+  saveCode(code: string, entry: HubCode, ttlSeconds: number) {
+    const now = Date.now();
+    for (const [key, saved] of this.codes) if (saved.expiresAt <= now) this.codes.delete(key);
+    this.codes.set(code, { ...entry, expiresAt: now + ttlSeconds * 1000 });
+  }
+
+  takeCode(code: string) {
+    const saved = this.codes.get(code);
+    this.codes.delete(code);
+    return saved && saved.expiresAt > Date.now() ? { email: saved.email, hubTime: saved.hubTime } : null;
+  }
+
+  dropCodes(email: string) {
+    for (const [key, saved] of this.codes) if (saved.email === email) this.codes.delete(key);
+  }
+}
+
+/** Thông tin phiên truyền cho `createSession`. */
+export interface HubSessionInfo {
+  /**
+   * Lúc AppHub gửi request SSO, theo ĐỒNG HỒ CỦA HUB. Lưu vào phiên và so với `at` của revoke (cũng là giờ hub):
+   * phiên có `issuedAt < at` là đã bị thu hồi. Đừng so `at` với giờ của app — hai máy lệch giờ sẽ huỷ nhầm hoặc bỏ sót.
+   */
+  issuedAt: Date;
+}
+
+/** Kiểu tối thiểu của request/response Express (NestJS dùng Express bên dưới), để file không phụ thuộc thư viện. */
+export interface HubHttpRequest {
+  headers: HeaderBag;
+  query: Record<string, unknown>;
+  body?: unknown;
+  /** NestJS: `NestFactory.create(AppModule, { rawBody: true })`. Express: dùng `express.raw()` cho route sso/revoke. */
+  rawBody?: Buffer;
+}
+export interface HubHttpResponse {
+  status(code: number): HubHttpResponse;
+  json(body: unknown): unknown;
+  redirect(url: string): unknown;
+}
+
+export interface HubConnectorOptions<U, Req extends HubHttpRequest = HubHttpRequest, Res extends HubHttpResponse = HubHttpResponse> {
+  /** HUB_SECRET — AppHub hiện một lần. Lúc đổi secret truyền mảng [khoá mới, khoá cũ] để nhận cả hai. */
+  secret: string | string[];
+  /** false → mọi endpoint hub trả 404 ("app chưa bật tích hợp hub"). Mặc định true. */
+  enabled?: boolean;
+  /** Tìm user trong DB của app theo email (email đã viết thường). */
+  findUserByEmail(email: string): Promise<U | null> | U | null;
+  /**
+   * true: email chưa có / bị tắt vẫn nhận mã (200) thay vì 403 NO_ACCESS, và /hub-login đưa trình duyệt về trang login của app
+   * với ?hub_error=no_account — app tự báo "chưa có tài khoản" (vd. để người dùng đăng nhập cách khác). Mặc định false.
+   */
+  noAccessToLoginPage?: boolean;
+  /** User còn được vào không. Mặc định: `user.isActive !== false`. */
+  isActive?(user: U): boolean;
+  /** Tạo phiên của app (cookie HttpOnly, hết hạn khi không hoạt động — docs/01 mục 6). Lưu `info.issuedAt` vào phiên để so với revoke. */
+  createSession(user: U, req: Req, res: Res, info: HubSessionInfo): Promise<void> | void;
+  /** Vô hiệu mọi phiên của email này có `issuedAt` (giờ hub) trước `at`, ở mọi thiết bị. Không truyền → POST /api/hub/revoke trả 404. */
+  revokeSessions?(email: string, at: Date): Promise<void> | void;
+  /** Đi đâu sau khi tạo phiên. Mặc định: `next` (đã kiểm) hoặc "/". */
+  redirectAfterLogin?: (user: U, next: string | null, req: Req, res: Res) => string | Promise<string>;
+  /** Trang login của app khi mã sai / hết hạn (thêm ?hub_error=expired). Mặc định "/login". */
+  loginPageUrl?: string;
+  store?: HubStore;
+  codeTtlSeconds?: number;
+  maxSkewSeconds?: number;
+  /** Ghi log (mặc định console). */
+  log?: (message: string) => void;
+}
+
+type HandlerResult = { status: number; body: Record<string, unknown> };
+
+export function createHubConnector<U, Req extends HubHttpRequest = HubHttpRequest, Res extends HubHttpResponse = HubHttpResponse>(options: HubConnectorOptions<U, Req, Res>) {
+  const secrets = (Array.isArray(options.secret) ? options.secret : [options.secret]).filter(Boolean);
+  const enabled = options.enabled ?? true;
+  if (enabled && !secrets.length) throw new Error('AppHub connector: HUB_SECRET is empty');
+  const store = options.store ?? new MemoryHubStore();
+  const codeTtl = options.codeTtlSeconds ?? 60;
+  const maxSkew = options.maxSkewSeconds ?? 60;
+  const isActive = options.isActive ?? ((user: U) => (user as { isActive?: boolean }).isActive !== false);
+  const log = options.log ?? ((message: string) => console.warn(`[apphub] ${message}`));
+  const loginPage = options.loginPageUrl ?? '/login';
+  const notEnabled: HandlerResult = { status: 404, body: { error: 'NOT_ENABLED' } };
+  // Giao thức yêu cầu tối thiểu 32 ký tự (AppHub tạo 43). Ngắn hơn chỉ cảnh báo để máy dev không bị chặn.
+  if (secrets.some((secret) => secret.length < 32)) log('HUB_SECRET is shorter than 32 characters; use the secret AppHub generated');
+
+  /** Kiểm chữ ký rồi lấy email (và `at` cho revoke) từ body; lỗi thì trả kết quả 401/400. */
+  function readSigned(rawBody: string | Buffer, headers: HeaderBag): { email: string; body: Record<string, unknown>; timestamp: number } | HandlerResult {
+    const verified = verifyHubRequest({ secrets, headers, rawBody, maxSkewSeconds: maxSkew });
+    if (!verified.ok) {
+      log(`rejected request: ${verified.error}`);
+      return { status: verified.error === 'BAD_BODY' ? 400 : 401, body: { error: verified.error } };
+    }
+    const email = asEmail(verified.body.email);
+    return email ? { email, body: verified.body, timestamp: verified.timestamp } : { status: 400, body: { error: 'BAD_BODY' } };
+  }
+
+  /** POST /api/hub/sso, không phụ thuộc framework. */
+  async function handleSso(rawBody: string | Buffer, headers: HeaderBag): Promise<HandlerResult> {
+    if (!enabled) return notEnabled;
+    const signed = readSigned(rawBody, headers);
+    if ('status' in signed) return signed;
+
+    const user = await options.findUserByEmail(signed.email);
+    // Chưa đăng ký hoặc bị tắt: cùng một mã (docs/01 mục 2). noAccessToLoginPage: vẫn cấp mã, /hub-login báo no_account.
+    if ((!user || !isActive(user)) && !options.noAccessToLoginPage) return { status: 403, body: { error: 'NO_ACCESS' } };
+
+    const code = randomBytes(32).toString('base64url');
+    await store.saveCode(code, { email: signed.email, hubTime: signed.timestamp }, codeTtl);
+    return { status: 200, body: { code, expiresInSeconds: codeTtl } };
+  }
+
+  /** POST /api/hub/revoke, không phụ thuộc framework. Idempotent. Thiếu `at` thì lấy lúc nhận lời gọi. */
+  async function handleRevoke(rawBody: string | Buffer, headers: HeaderBag): Promise<HandlerResult> {
+    if (!enabled || !options.revokeSessions) return notEnabled;
+    const signed = readSigned(rawBody, headers);
+    if ('status' in signed) return signed;
+    const raw = signed.body.at;
+    const at = typeof raw === 'number' ? new Date(raw * 1000) : typeof raw === 'string' ? new Date(raw) : new Date();
+    if (Number.isNaN(at.getTime())) return { status: 400, body: { error: 'BAD_BODY' } };
+    // Mã cấp trước lúc đăng xuất mà chưa dùng thì bỏ luôn (phiên tạo từ mã đó cũng có issuedAt < at).
+    await store.dropCodes(signed.email);
+    await options.revokeSessions(signed.email, at);
+    return { status: 200, body: { ok: true } };
+  }
+
+  /** Đổi mã lấy user (mã chỉ dùng 1 lần). Kiểm tra lại user vì có thể vừa bị khoá. */
+  async function redeemCode(code: string): Promise<{ user: U; info: HubSessionInfo } | 'expired' | 'no_account'> {
+    const saved = code ? await store.takeCode(code) : null;
+    if (!saved) return 'expired';
+    const user = await options.findUserByEmail(saved.email);
+    return user && isActive(user) ? { user, info: { issuedAt: new Date(saved.hubTime * 1000) } } : 'no_account';
+  }
+
+  async function consumeCode(code: string): Promise<{ user: U; info: HubSessionInfo } | null> {
+    const redeemed = await redeemCode(code);
+    return typeof redeemed === 'string' ? null : redeemed;
+  }
+
+  const respond = async (req: Req, res: Res, handler: typeof handleSso) => {
+    // Request không có body (Content-Length 0 / thiếu) → body rỗng, để kiểm chữ ký trả 401 thay vì báo thiếu cấu hình.
+    const empty = !Number(header(req.headers, 'content-length') ?? 0) && !header(req.headers, 'transfer-encoding');
+    const raw = req.rawBody ?? (Buffer.isBuffer(req.body) || typeof req.body === 'string' ? req.body : empty ? '' : null);
+    if (raw === null) {
+      log('raw body is missing: NestJS needs { rawBody: true }; Express needs express.raw() on this route (connector/README.md)');
+      return res.status(500).json({ error: 'RAW_BODY_MISSING' });
+    }
+    const result = await handler(raw, req.headers);
+    return res.status(result.status).json(result.body);
+  };
+
+  /** Handler Express / NestJS cho GET /hub-login?code=…&next=… */
+  async function login(req: Req, res: Res) {
+    if (!enabled) return res.status(404).json(notEnabled.body);
+    const code = typeof req.query.code === 'string' ? req.query.code : '';
+    const consumed = await redeemCode(code);
+    if (typeof consumed === 'string') return res.redirect(`${loginPage}${loginPage.includes('?') ? '&' : '?'}hub_error=${consumed}`);
+    const { user } = consumed;
+    await options.createSession(user, req, res, consumed.info);
+    const next = safeNext(req.query.next);
+    return res.redirect(options.redirectAfterLogin ? await options.redirectAfterLogin(user, next, req, res) : (next ?? '/'));
+  }
+
+  return {
+    handleSso,
+    handleRevoke,
+    consumeCode,
+    /** Handler Express / NestJS cho POST /api/hub/sso. */
+    sso: (req: Req, res: Res) => respond(req, res, handleSso),
+    /** Handler Express / NestJS cho POST /api/hub/revoke. */
+    revoke: (req: Req, res: Res) => respond(req, res, handleRevoke),
+    login,
+  };
+}

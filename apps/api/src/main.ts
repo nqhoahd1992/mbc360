@@ -7,7 +7,8 @@ import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody: sign-in from AppHub checks its HMAC signature on the exact request bytes (hub/hub.controller.ts).
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.use(cookieParser());
   // All routes live under /api — the same prefix the Vite dev proxy and the
   // production nginx reverse proxy route to this service.

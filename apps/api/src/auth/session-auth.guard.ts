@@ -35,7 +35,8 @@ export class SessionAuthGuard implements CanActivate {
     const token = (request.cookies as Record<string, string> | undefined)?.[SESSION_COOKIE];
     if (!token) throw new UnauthorizedException('No session');
 
-    let payload: { sub?: string };
+    // iat: when this app issued the session; hiat: AppHub's clock time of an AppHub sign-in.
+    let payload: { sub?: string; iat?: number; hiat?: number };
     try {
       payload = await this.jwt.verifyAsync(token);
     } catch {
@@ -48,6 +49,9 @@ export class SessionAuthGuard implements CanActivate {
       include: { department: true, roles: { include: { role: true } } },
     });
     if (!user) throw new UnauthorizedException('Unknown user');
+    // Signed out from AppHub (POST /api/hub/revoke): every session issued before that moment is dead, on every device.
+    const issuedAt = payload.hiat ?? payload.iat ?? 0;
+    if (user.sessionsValidAfter && issuedAt * 1000 < user.sessionsValidAfter.getTime()) throw new UnauthorizedException('Signed out');
     // Access rule (project owner, 2026-10-02): signing in with Microsoft 365
     // only proves the person belongs to the company tenant; being let IN
     // needs an active account holding at least one role, granted by an

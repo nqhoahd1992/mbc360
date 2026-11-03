@@ -46,6 +46,8 @@ model User {
   department   Department? @relation(fields: [departmentId], references: [id])
   departmentId String?
   active       Boolean     @default(true)
+  // AppHub sign-out (POST /api/hub/revoke): sessions issued before this moment are refused (auth/session-auth.guard.ts).
+  sessionsValidAfter DateTime?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 

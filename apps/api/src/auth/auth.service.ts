@@ -153,7 +153,8 @@ export class AuthService {
     return { session: await this.issueSession(user.id, tokens.id_token) };
   }
 
-  private async loginRefusal(userId: string): Promise<LoginRefusal | undefined> {
+  /** Why this account may not enter (no role / deactivated), or undefined. Also used by AppHub sign-in (hub/hub.controller.ts). */
+  async loginRefusal(userId: string): Promise<LoginRefusal | undefined> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { active: true, _count: { select: { roles: true } } },
@@ -257,6 +258,15 @@ export class AuthService {
   // `logout()` can hand it back to Entra as `id_token_hint` later — it is
   // never used for API calls (the Graph access token is fetched once during
   // callback and discarded, per the existing design).
+  /**
+   * Session for a sign-in from AppHub (hub/hub.controller.ts) — same cookie as a Microsoft sign-in. `hiat` keeps
+   * AppHub's clock time of the sign-in: AppHub's revoke `at` is AppHub time too (session-auth.guard.ts).
+   */
+  async hubSession(userId: string, email: string, hubIssuedAt: Date): Promise<string> {
+    await this.audit.record({ actorId: userId, entityType: 'user', entityId: userId, action: 'auth.login', after: { method: 'apphub', email } });
+    return this.jwt.signAsync({ sub: userId, hiat: Math.floor(hubIssuedAt.getTime() / 1000) }, { expiresIn: this.config.sessionTtlSeconds });
+  }
+
   private issueSession(userId: string, idToken?: string): Promise<string> {
     return this.jwt.signAsync({ sub: userId, idt: idToken }, { expiresIn: this.config.sessionTtlSeconds });
   }
@@ -277,6 +287,11 @@ export class AuthService {
       } catch {
         // Expired/invalid session — nothing to hint, still log out cleanly.
       }
+    }
+    // Connected to AppHub: sign out through it — AppHub revokes this person's session in every app and keeps its own
+    // (and the Microsoft session) open (AppHub docs/01 section 4).
+    if (this.config.hubUrl && this.config.hubApp) {
+      return `${this.config.hubUrl}/sign-out-apps?${new URLSearchParams({ app: this.config.hubApp })}`;
     }
     if (!this.config.oidcEnabled) return this.config.appBaseUrl;
 

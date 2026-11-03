@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { OIDC_TRANSIENT_COOKIE, SESSION_COOKIE } from './auth-config';
+import { OIDC_TRANSIENT_COOKIE, SESSION_COOKIE, sessionCookieOptions } from './auth-config';
 import { CurrentUser } from './current-user.decorator';
 import { AllowWithoutRole, Public } from './public.decorator';
 import type { SessionUser } from './session-user';
@@ -19,13 +19,7 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   private cookieOptions(maxAgeMs: number) {
-    return {
-      httpOnly: true,
-      sameSite: 'lax' as const,
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: maxAgeMs,
-    };
+    return sessionCookieOptions(maxAgeMs);
   }
 
   // Browser navigation target ("Sign in with Microsoft" button href).
