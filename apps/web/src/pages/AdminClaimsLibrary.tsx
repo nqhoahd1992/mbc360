@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { App, Button, DatePicker, Drawer, Grid, Input, Modal, message } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
+import { App, Button, DatePicker, Drawer, Grid, Input, Modal, Select, message } from 'antd';
 import ChoiceSelect from '../components/ChoiceSelect';
 import { BookOutlined, CheckCircleFilled, CheckOutlined, InboxOutlined, PlusOutlined, RightOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -9,11 +9,11 @@ import {
   CLAIMS_LIBRARY_TECHNICAL_APPROVAL,
   CLAIM_LIBRARY_AUDIENCES,
 } from '@mbc360/shared/config/referenceData';
+import { CLAIM_CATEGORY_OPTIONS, CLAIM_RISK_OPTIONS, PUBLICATION_CHANNELS } from '@mbc360/shared/config/registers';
 import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { canEditReferenceData, EMPTY_GRANTS, hasCapability } from '../utils/permissions';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
-import Notice from '../components/Notice';
 import '../styles/concept.css';
 // rt-drawer-hint / rt-sec-title: the drawer text styles every register drawer uses.
 import '../components/DynamicTable.css';
@@ -68,6 +68,7 @@ const usesSummary = (c: LinkedClaim): string =>
 
 interface Revision {
   revision: number;
+  event?: string;
   reason?: string;
   changedBy?: string;
   changedAt: string;
@@ -103,11 +104,51 @@ const scopeOf = (e: ClaimLibraryEntry) =>
       .filter(Boolean),
   );
 
+// A comma-joined list kept in one text column, edited as tags: pick a known value or type a new one.
+function TagSelect({
+  value,
+  options,
+  disabled,
+  placeholder,
+  onChange,
+}: {
+  value?: string;
+  options: string[];
+  disabled?: boolean;
+  placeholder?: string;
+  onChange: (value: string) => void;
+}) {
+  const values = String(value ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+  return (
+    <Select
+      mode="tags"
+      style={{ width: '100%' }}
+      disabled={disabled}
+      placeholder={placeholder}
+      tokenSeparators={[',']}
+      value={values}
+      options={options.map((o) => ({ value: o }))}
+      onChange={(next: string[]) =>
+        onChange(
+          next
+            .map((v) => v.trim())
+            .filter(Boolean)
+            .join(', '),
+        )
+      }
+    />
+  );
+}
+
 export default function AdminClaimsLibrary() {
   const { modal } = App.useApp();
   const screens = Grid.useBreakpoint();
   const entries = useAppStore((s) => s.claimsLibrary);
   const load = useAppStore((s) => s.loadClaimsLibrary);
+  const projects = useAppStore((s) => s.projects);
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState('');
@@ -243,6 +284,24 @@ export default function AdminClaimsLibrary() {
   };
 
   const list = entries ?? [];
+  // Suggestions for the "Applies to" tags: what the projects already carry, plus what library entries already use.
+  const tagOptions = useMemo(() => {
+    const fromProjects: Record<string, string[]> = {
+      brands: projects.map((p) => p.identity.brandCustomer),
+      productFamilies: projects.map((p) => p.identity.productGroup),
+      skus: projects.map((p) => p.identity.productSku),
+      markets: projects.flatMap((p) => p.identity.markets),
+      languages: [],
+      channels: [...PUBLICATION_CHANNELS],
+    };
+    return Object.fromEntries(
+      TAG_FIELDS.map(({ key }) => {
+        const fromEntries = (entries ?? []).flatMap((e) => String(e[key] ?? '').split(','));
+        const all = [...(fromProjects[key as string] ?? []), ...fromEntries].map((v) => v.trim()).filter(Boolean);
+        return [key as string, [...new Set(all)].sort((a, b) => a.localeCompare(b))];
+      }),
+    ) as Record<string, string[]>;
+  }, [projects, entries]);
   const proposed = list.filter((e) => e.status === 'Proposed');
   const counts = {
     approved: list.filter((e) => e.status === 'Approved').length,
@@ -281,36 +340,81 @@ export default function AdminClaimsLibrary() {
     </span>
   );
   const set = (key: keyof ClaimLibraryEntry, value: string | undefined) => setForm((prev) => ({ ...prev, [key]: value }));
-  const approvalBox = (side: 'technical' | 'regulatory') => {
+  const approvalSide = (side: 'technical' | 'regulatory') => {
     const by = side === 'technical' ? open?.technicalApprovedBy : open?.regulatoryApprovedBy;
     const at = side === 'technical' ? open?.technicalApprovedAt : open?.regulatoryApprovedAt;
     const may = side === 'technical' ? canApproveTechnical : canApproveRegulatory;
+    const name = side === 'technical' ? 'Technical' : 'Regulatory';
     return (
-      <div className="cl-approval">
-        <div className="au-field-label">{side === 'technical' ? 'Technical' : 'Regulatory'}</div>
-        {by ? (
-          <>
-            <div className="cl-approved">
+      <div className="cl-side">
+        <div className="cl-side-text">
+          <span className="au-field-label">{name}</span>
+          {by ? (
+            <b className="cl-approved">
               <CheckCircleFilled />
               {by}
-            </div>
-            {at && <div className="au-field-help">{at.slice(0, 10)}</div>}
-          </>
-        ) : (
-          <>
-            <div className="mp-muted">Pending</div>
-            {open?.status !== 'Withdrawn' &&
-              (may ? (
-                // Approving the entry as saved: unsaved wording edits would mean
-                // approving words nobody has saved yet.
-                <Button block disabled={busy || dirty} onClick={() => approve(side)} title={dirty ? 'Save your changes first' : undefined}>
-                  Approve
-                </Button>
-              ) : (
-                <div className="au-field-help">Needs the {side === 'technical' ? 'Technical' : 'Regulatory'} approval capability</div>
-              ))}
-          </>
-        )}
+              {at && <span className="cl-side-date"> · {at.slice(0, 10)}</span>}
+            </b>
+          ) : (
+            <span className="mp-muted">Pending</span>
+          )}
+        </div>
+        {!by &&
+          (may ? (
+            // Approving the entry as saved: unsaved wording edits would mean
+            // approving words nobody has saved yet.
+            <Button type="primary" size="small" disabled={busy || dirty} onClick={() => approve(side)} title={dirty ? 'Save your changes first' : undefined}>
+              Approve
+            </Button>
+          ) : (
+            <span className="au-field-help">Needs the {name} approval capability</span>
+          ))}
+      </div>
+    );
+  };
+
+  // The entry's CURRENT state, told once and shown first. It replaces the separate
+  // Approval block and Withdrawn notice, which both used to be drawn in full at the
+  // same time.
+  const statusPanel = () => {
+    if (isNew) {
+      return (
+        <div className="cl-status cl-status-new">
+          <div className="cl-status-head">New proposal</div>
+          <div className="au-field-help">Needs a Technical and a Regulatory approval before it counts as approved wording.</div>
+        </div>
+      );
+    }
+    if (!open) return null;
+    if (open.status === 'Withdrawn') {
+      return (
+        <div className="cl-status cl-status-withdrawn">
+          <div className="cl-status-head">
+            Withdrawn{open.withdrawalEffectiveDate ? ` · effective ${open.withdrawalEffectiveDate}` : ''}
+          </div>
+          <dl className="cl-facts">
+            <dt>Reason</dt>
+            <dd>{open.withdrawnReason ?? 'No reason recorded.'}</dd>
+            {open.withdrawalTransitionPlan && (
+              <>
+                <dt>Transition</dt>
+                <dd>{open.withdrawalTransitionPlan}</dd>
+              </>
+            )}
+          </dl>
+          <div className="au-field-help">Closed. To use this wording again, propose a new entry.</div>
+        </div>
+      );
+    }
+    const approved = open.status === 'Approved';
+    return (
+      <div className={`cl-status ${approved ? 'cl-status-approved' : 'cl-status-proposed'}`}>
+        <div className="cl-status-head">{approved ? 'Approved Library Wording' : 'Awaiting approval'}</div>
+        <div className="cl-sides">
+          {approvalSide('technical')}
+          {approvalSide('regulatory')}
+        </div>
+        {!approved && <div className="au-field-help">Becomes Approved Library Wording once both have approved.</div>}
       </div>
     );
   };
@@ -453,9 +557,18 @@ export default function AdminClaimsLibrary() {
           isNew ? (
             'Propose a library entry'
           ) : open ? (
-            <span className="mp-drawer-title">
-              Rev {open.revision} {statusTag(open.status)}
-            </span>
+            <div className="cl-dtitle">
+              <div className="cl-dwording">“{open.wording}”</div>
+              <div className="cl-dmeta">
+                {statusTag(open.status)}
+                <span>
+                  Rev {open.revision}
+                  {open.proposedBy && ` · proposed by ${open.proposedBy}`}
+                  {open.proposedFromProjectId && ` from ${open.proposedFromProjectId}`}
+                  {open.proposedFromClaimId && ` · ${open.proposedFromClaimId}`}
+                </span>
+              </div>
+            </div>
           ) : null
         }
         footer={
@@ -471,28 +584,11 @@ export default function AdminClaimsLibrary() {
       >
         {(isNew || open) && (
           <div className="au-detail">
-            {open?.status === 'Withdrawn' && (
-              <Notice tone="info" title="Withdrawn">
-                {open.withdrawnReason ?? 'No reason recorded.'}
-                {open.withdrawalEffectiveDate && ` · effective ${open.withdrawalEffectiveDate}`}
-                {open.withdrawalTransitionPlan && ` · transition: ${open.withdrawalTransitionPlan}`}
-              </Notice>
-            )}
+            {statusPanel()}
 
-            {open && (
-              <section>
-                <div className="rt-sec-title">Approval</div>
-                <div className="cl-approvals">
-                  {approvalBox('technical')}
-                  {approvalBox('regulatory')}
-                </div>
-                {open.status === 'Proposed' && (
-                  <p className="au-field-help cl-gap">Becomes Approved Library Wording once both have approved.</p>
-                )}
-              </section>
-            )}
-
-            <section className="mp-fields">
+            <section>
+              <div className="rt-sec-title">Wording and classification</div>
+              <div className="mp-fields">
               <label className="au-field mp-wide">
                 <span className="au-field-label">Approved wording</span>
                 <Input.TextArea
@@ -511,11 +607,26 @@ export default function AdminClaimsLibrary() {
               </label>
               <label className="au-field">
                 <span className="au-field-label">Claim category</span>
-                <Input disabled={!editable} value={form.claimCategory} onChange={(ev) => set('claimCategory', ev.target.value)} />
+                <ChoiceSelect
+                  allowClear
+                  disabled={!editable}
+                  placeholder="Select a category"
+                  value={form.claimCategory || undefined}
+                  options={[...CLAIM_CATEGORY_OPTIONS]}
+                  onChange={(v) => set('claimCategory', v)}
+                />
               </label>
               <label className="au-field">
                 <span className="au-field-label">Claim risk</span>
-                <Input disabled={!editable} value={form.claimRisk} onChange={(ev) => set('claimRisk', ev.target.value)} />
+                <ChoiceSelect
+                  allowClear
+                  disabled={!editable}
+                  placeholder="Select a risk"
+                  maxButtons={3}
+                  value={form.claimRisk || undefined}
+                  options={[...CLAIM_RISK_OPTIONS]}
+                  onChange={(v) => set('claimRisk', v)}
+                />
               </label>
               <label className="au-field mp-wide">
                 <span className="au-field-label">Evidence requirement</span>
@@ -544,6 +655,7 @@ export default function AdminClaimsLibrary() {
                   onChange={(d) => set('reviewDate', d ? d.format('YYYY-MM-DD') : undefined)}
                 />
               </label>
+              </div>
             </section>
 
             <section>
@@ -552,11 +664,12 @@ export default function AdminClaimsLibrary() {
                 {TAG_FIELDS.map(({ key, label }) => (
                   <label key={key} className="au-field">
                     <span className="au-field-label">{label}</span>
-                    <Input
+                    <TagSelect
                       disabled={!editable}
-                      placeholder="Comma separated"
+                      placeholder="Select or type"
+                      options={tagOptions[key as string] ?? []}
                       value={String(form[key] ?? '')}
-                      onChange={(ev) => set(key, ev.target.value)}
+                      onChange={(v) => set(key, v)}
                     />
                   </label>
                 ))}
@@ -606,14 +719,9 @@ export default function AdminClaimsLibrary() {
                 </section>
 
                 <section>
-                  <div className="rt-sec-title">History</div>
-                  {open.proposedBy && (
-                    <p className="au-field-help cl-origin">
-                      Proposed by {open.proposedBy}
-                      {open.proposedFromProjectId && ` from ${open.proposedFromProjectId}`}
-                      {open.proposedFromClaimId && ` · ${open.proposedFromClaimId}`}
-                    </p>
-                  )}
+                  <div className="rt-sec-title">
+                    History {revisions && <span className="mp-muted">{revisions.length}</span>}
+                  </div>
                   {revisions === undefined ? (
                     <div className="c-skel" style={{ height: 20 }} />
                   ) : (
@@ -622,6 +730,7 @@ export default function AdminClaimsLibrary() {
                         <li key={rev.revision}>
                           <span className="c-tag">rev {rev.revision}</span>
                           <span>
+                            {rev.event && <b>{rev.event} · </b>}
                             {rev.changedBy ?? 'Unknown'} · {rev.changedAt.slice(0, 10)}
                             {rev.reason && <span className="au-field-help"> — {rev.reason}</span>}
                           </span>

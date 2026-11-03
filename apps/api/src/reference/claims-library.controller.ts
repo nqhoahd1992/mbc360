@@ -148,6 +148,11 @@ export class ClaimsLibraryController {
         wordingChanged
           ? `${body.reason ?? 'edited'} (${coveredChanged.join(', ')} changed — both approvals retracted)`
           : body.reason,
+        !existing
+          ? 'Created'
+          : wordingChanged && (existing.technicalApprovedBy || existing.regulatoryApprovedBy)
+            ? 'Edited — approvals retracted'
+            : 'Edited',
       );
     });
     return this.readAll();
@@ -181,7 +186,7 @@ export class ClaimsLibraryController {
           updatedById: user.id,
         },
       });
-      await this.reference.recordRevision(tx, user, 'claims-library', row.id, 1, { wording, status: 'Proposed' }, 'Proposed for Claims Library');
+      await this.reference.recordRevision(tx, user, 'claims-library', row.id, 1, { wording, status: 'Proposed' }, undefined, 'Proposed');
     });
     return this.readAll();
   }
@@ -208,6 +213,12 @@ export class ClaimsLibraryController {
       const existing = await tx.claimLibraryEntry.findUnique({ where: { id } });
       if (!existing) throw new BadRequestException(`Claims Library entry "${id}" not found`);
       if (existing.withdrawnAt) throw new BadRequestException('A withdrawn entry cannot be approved — propose a new one');
+      // One approval per side per wording: approving again would only bump the revision and
+      // write a duplicate history line. A wording edit retracts both, so the side can approve again then.
+      const alreadyBy = side === 'technical' ? existing.technicalApprovedBy : existing.regulatoryApprovedBy;
+      if (alreadyBy) {
+        throw new BadRequestException(`The ${side} approval is already recorded (${alreadyBy}) for this wording`);
+      }
       const now = new Date();
       const stamps = {
         technicalApprovedBy: side === 'technical' ? user.displayName : (existing.technicalApprovedBy ?? undefined),
@@ -229,7 +240,7 @@ export class ClaimsLibraryController {
           updatedById: user.id,
         },
       });
-      await this.reference.recordRevision(tx, user, 'claims-library', id, revision, { status, side }, `${side} approval recorded`);
+      await this.reference.recordRevision(tx, user, 'claims-library', id, revision, { status, side }, undefined, side === 'technical' ? 'Technical approval' : 'Regulatory approval');
     });
     return this.readAll();
   }
@@ -281,6 +292,7 @@ export class ClaimsLibraryController {
         revision,
         { status: 'Withdrawn', reason, effectiveDate, transitionPlan, affectedClaims: impact.length },
         reason,
+        'Withdrawn',
       );
     });
     return { entries: await this.readAll(), impact };

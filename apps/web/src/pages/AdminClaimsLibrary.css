@@ -26,17 +26,36 @@
   .cl-row .mp-chev { display: none; }
 }
 
-.cl-approvals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.cl-approval { display: grid; align-content: start; gap: 4px; padding: 12px; border: 1px solid var(--c-border-2); border-radius: 8px; }
-.cl-approval .ant-btn { margin-top: 4px; }
 .cl-approved { display: flex; align-items: center; gap: 6px; }
 .cl-approved .anticon { color: var(--c-ok-dot); }
-.cl-gap { margin: 8px 0 0; }
 .cl-warn { display: flex; gap: 6px; color: var(--c-warn); font-size: 12px; }
 .cl-warn .anticon { margin-top: 2px; }
 
 .cl-linked { display: grid; gap: 10px; margin: 0; padding: 0; font-size: 13px; list-style: none; }
 .cl-linked li { display: grid; gap: 2px; }
-.cl-origin { margin: 0 0 8px; }
 .cl-modal-text { margin: 0 0 12px; }
 .cl-foot { justify-content: flex-end; gap: 8px; }
+
+/* The entry's current state, first in the drawer: one panel, tinted by state. */
+.cl-status { display: grid; gap: 10px; padding: 12px 16px; border: 1px solid var(--c-border-2); border-radius: 8px; }
+.cl-status-head { font-weight: 600; }
+.cl-status-proposed { border-color: var(--c-warn-line); background: var(--c-warn-bg); }
+.cl-status-proposed .cl-status-head { color: var(--c-warn); }
+.cl-status-approved { border-color: var(--c-ok-line); background: var(--c-ok-bg); }
+.cl-status-approved .cl-status-head { color: var(--c-ok); }
+.cl-status-withdrawn { border-color: var(--c-bad-line); background: var(--c-bad-bg); }
+.cl-status-withdrawn .cl-status-head { color: var(--c-bad); }
+.cl-status-new { background: var(--c-surface-2); }
+.cl-sides { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cl-side { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 6px 10px; border: 1px solid rgb(0 0 0 / 6%); border-radius: 6px; background: rgb(255 255 255 / 70%); }
+.cl-side-text { display: grid; min-width: 0; }
+.cl-side-date { color: var(--c-text-3); font-weight: 400; }
+.cl-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; margin: 0; font-size: 13px; }
+.cl-facts dt { color: var(--c-text-3); }
+.cl-facts dd { margin: 0; }
+@media (max-width: 767px) { .cl-sides { grid-template-columns: minmax(0, 1fr); } }
+
+/* Drawer title: the wording itself, with state and revision beneath. */
+.cl-dtitle { display: grid; gap: 4px; min-width: 0; }
+.cl-dwording { display: -webkit-box; overflow: hidden; font-size: 16px; font-weight: 600; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; text-wrap: pretty; }
+.cl-dmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--c-text-3); font-size: 12px; font-weight: 400; }

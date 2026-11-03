@@ -631,7 +631,7 @@ export const RM_EVIDENCE_STATUS_OPTIONS = [
 // one; claimEvidenceTraceability gets the same two columns because the
 // classification is a property of the CLAIM, not of one SKU/market use of it.
 // See the duplication caveat in docs/rules/F1_Per_Gate_Open_Questions.md R4-Q16.
-const CLAIM_CATEGORY_OPTIONS = [
+export const CLAIM_CATEGORY_OPTIONS = [
   'Cosmetic',
   'Product performance',
   'Sensory',
@@ -744,7 +744,7 @@ export const CLAIM_STATUSES = [
 // the only one that does not.
 export const CLAIM_STATUSES_BLOCKING_ARTWORK: readonly string[] = CLAIM_STATUSES.filter((s) => s !== 'Supported');
 
-const CLAIM_RISK_OPTIONS = ['Low', 'Medium', 'High', 'Prohibited / not acceptable', 'Pending classification'] as const;
+export const CLAIM_RISK_OPTIONS = ['Low', 'Medium', 'High', 'Prohibited / not acceptable', 'Pending classification'] as const;
 const YNNA = ['Y', 'N', 'N/A'] as const;
 // The Released_Label_Ctrl sheet's own Y / N list, which writes "NA" where the other sheets write "N/A".
 const YNNA_LABEL = ['Y', 'N', 'NA'] as const;

@@ -1294,6 +1294,10 @@ model ReferenceRevision {
   revision  Int // 1, 2, 3 … per entry
   snapshot  Json
   reason    String?
+  // What kind of act this revision records (claims-library: Created, Proposed, Edited,
+  // Edited — approvals retracted, Technical approval, Regulatory approval, Withdrawn).
+  // Null for revisions written before it existed and for datasets that do not set it.
+  event     String?
   changedBy User?    @relation(fields: [changedById], references: [id])
   changedById String?
   changedAt DateTime @default(now())

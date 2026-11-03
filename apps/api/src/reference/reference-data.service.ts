@@ -61,9 +61,10 @@ export class ReferenceDataService {
     revision: number,
     snapshot: Prisma.InputJsonValue,
     reason?: string,
+    event?: string,
   ): Promise<void> {
     await tx.referenceRevision.create({
-      data: { dataset, entryId, revision, snapshot, reason, changedById: user.id },
+      data: { dataset, entryId, revision, snapshot, reason, event, changedById: user.id },
     });
     await this.audit.record(
       {
@@ -87,6 +88,7 @@ export class ReferenceDataService {
     });
     return rows.map((r) => ({
       revision: r.revision,
+      event: r.event ?? undefined,
       reason: r.reason ?? undefined,
       changedBy: r.changedBy?.displayName,
       changedAt: r.changedAt.toISOString(),
