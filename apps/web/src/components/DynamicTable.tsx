@@ -10,7 +10,7 @@ import { isWebAddress } from '../utils/webAddress';
 import GateLink from './GateLink';
 import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/registers';
 import { isOwnerFunctionColumn, ownerFunctionWithPeople } from '@mbc360/shared/config/reviewers';
-import { duplicateValueProblems, isColumnRequiredFor, isRegisterRowBlank, missingRequiredProblems, previewAutoIds } from '@mbc360/shared/config/registers';
+import { ASEAN_MARKETS, duplicateValueProblems, isColumnRequiredFor, marketScopeProblems, isRegisterRowBlank, missingRequiredProblems, previewAutoIds } from '@mbc360/shared/config/registers';
 import RequiredMark from './RequiredMark';
 import { claimLibraryLinkMismatch } from '@mbc360/shared/config/referenceData';
 import type { RegisterRow } from '@mbc360/shared/types';
@@ -294,6 +294,7 @@ export default function DynamicTable({
       : []),
     ...requiredProblems,
     ...(readOnly ? [] : duplicateValueProblems(config, draft)),
+    ...(readOnly ? [] : marketScopeProblems(config, draft, rows)),
     ...blockers,
   ];
   // Resolves false when nothing was saved — a rule blocked it, or the server refused — so a drawer that closes on Save
@@ -456,6 +457,12 @@ export default function DynamicTable({
           <MarketSelect
             value={value as string | undefined}
             multiple={column.type === 'markets'}
+            only={column.marketScope === 'nonAsean' ? (m) => !ASEAN_MARKETS.includes(m) : undefined}
+            exclude={
+              column.unique
+                ? draft.filter((_, i) => i !== index).map((r) => text(r[column.key])).filter(Boolean)
+                : undefined
+            }
             onChange={(v) => patch(index, column.key, v)}
           />
         );

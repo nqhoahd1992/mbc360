@@ -28,6 +28,8 @@ export default function MarketSelect({
   onChange,
   disabled,
   multiple,
+  exclude,
+  only,
 }: {
   value?: string;
   onChange: (value: string | undefined) => void;
@@ -35,6 +37,11 @@ export default function MarketSelect({
   // "Markets affected" style columns hold several. Stored as a comma-joined
   // string, which is what those columns already contained as free text.
   multiple?: boolean;
+  // Markets already taken by another row of a column that must be unique: left out of the list, so the person
+  // cannot pick one the table would then refuse to save. The row's own value always stays.
+  exclude?: string[];
+  // A sheet that takes only some of the project's markets (e.g. the non-ASEAN ones): the rest are not offered. The row's own value stays.
+  only?: (market: string) => boolean;
 }) {
   const markets = useProjectMarkets();
 
@@ -61,7 +68,9 @@ export default function MarketSelect({
   // the project, stays visible and selected instead of being silently dropped.
   const unknown = selected.filter((m) => !markets.includes(m));
   const options: { value: string; label: string; unknown: boolean }[] = [
-    ...markets.map((m) => ({ value: m, label: m, unknown: false })),
+    ...markets
+      .filter((m) => selected.includes(m) || ((exclude ?? []).includes(m) ? false : (only ? only(m) : true)))
+      .map((m) => ({ value: m, label: m, unknown: false })),
     ...unknown.map((m) => ({ value: m, label: m, unknown: true })),
   ];
 

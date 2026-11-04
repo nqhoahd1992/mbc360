@@ -47,6 +47,10 @@ export interface RegisterColumn {
   // An identifier: no two rows of the register may hold the same value (blank is not a value). Refused on save in the
   // table and again by the API; compared without regard to case or surrounding spaces.
   unique?: true;
+  // A `market` column that only takes the markets its sheet is about: 'nonAsean' leaves the ASEAN countries out (they are
+  // covered by the ASEAN PIF checklist and need no row). The picker offers only those, and a save naming an ASEAN market is
+  // refused in the table and again by the API; a value the register already holds is left alone so an old row can still be saved.
+  marketScope?: 'nonAsean';
   // The row's own identifier, assigned by the SERVER as PREFIX-001, PREFIX-002... when the row is first saved (highest number in the
   // register + 1). Never typed: a value arriving from a client is kept only if that register already holds it, so an ID cannot be
   // forged, reused or renumbered. Pair with `editable: false` (shown as a fixed reference) and `unique: true`.
@@ -295,6 +299,22 @@ export function missingRequiredProblems(config: RegisterConfig, rows: RegisterRo
       problems.push(`Row ${index + 1}: "${col.label}" is required when ${trigger} is ${String(row[rule.column])}${also}`);
     }
   });
+  return problems;
+}
+
+// Plain sentences for every row of a `marketScope` column that names a market the sheet does not take (also the API's 400).
+// `committedRows` are the rows already saved: a value they hold is not a new mistake.
+export function marketScopeProblems(config: RegisterConfig, rows: RegisterRow[], committedRows: RegisterRow[] = []): string[] {
+  const problems: string[] = [];
+  for (const col of config.columns.filter((c) => c.marketScope === 'nonAsean')) {
+    const kept = new Set(committedRows.map((r) => String(r[col.key] ?? '').trim()));
+    rows.forEach((row, index) => {
+      const v = String(row[col.key] ?? '').trim();
+      if (v !== '' && ASEAN_MARKETS.includes(v) && !kept.has(v)) {
+        problems.push(`Row ${index + 1}: "${col.label}" ${v} is an ASEAN market — it is covered by the ASEAN PIF checklist and needs no row here`);
+      }
+    });
+  }
   return problems;
 }
 
@@ -1553,7 +1573,7 @@ export const artworkLabelReviewChecklist: RegisterConfig = {
   key: 'artworkLabelReviewChecklist',
   title: 'Artwork / Label Review Checklist',
   sheetName: 'Packaging_Specs_Artwork',
-  description: 'Review each item of the artwork or label before the final proof is released.',
+  description: 'Review each item of the artwork or label before the final proof is released. In the last five rows, "PI" means proprietary ingredient: an ingredient sold under its own trade name, which is the name to print instead of its INCI name.',
   mode: 'fixed',
   gate: '06/10/11',
   columns: [
@@ -1744,7 +1764,9 @@ const regulatoryChecklistStatus: RegisterConfig = {
   mode: 'register',
   gate: '10',
   columns: [
-    { key: 'market', label: 'Applicable market', type: 'market', width: 140 },
+    // One row per market (this sheet's own description, and what the Gate 10 rule reads: it takes the first row of a market, so
+    // a second row would be ignored without a word). Whether a market may need several dossier rows is put to the review team.
+    { key: 'market', label: 'Applicable market', type: 'market', width: 140, unique: true, marketScope: 'nonAsean' },
     { key: 'dossierType', label: 'Required dossier type', type: 'text', width: 200 },
     { key: 'owner', label: 'Owner', type: 'user', width: 140 },
     { key: 'checklistLink', label: 'Checklist or evidence link', type: 'text', width: 200 },

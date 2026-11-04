@@ -1749,7 +1749,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'gateSignedOff':
       return phaseSectionLink(gateId, 'sec-gate-flow');
     case 'postLaunchReviewsRecorded':
-      return phaseSectionLink(gateId, 'sec-market-tracking');
+      return phaseSectionLink(gateId, 'sec-post-launch');
     case 'registerHasRows':
     case 'registerColumnFilled':
     case 'registerNoBadRows':
@@ -1804,7 +1804,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'bomHasLines':
     case 'bomIdentityComplete':
     case 'bomReconciled':
-      return { href: '/bom' };
+      return { href: '/bom/formula' };
     case 'skincareForTwo':
       return phaseSectionLink(gateId, 'sec-requirement-skincareForTwo');
     case 'identityFieldFilled':
@@ -1812,8 +1812,9 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       // their own card on 2026-08-11, so the blocker link follows them.
       return phaseSectionLink(gateId, 'sec-opportunity');
     case 'formulaPropertyFilled':
+      return { href: '/bom/formula' };
     case 'costingStatusRecorded':
-      return { href: '/bom' };
+      return { href: '/bom/costing' };
     case 'identityMarketsRecorded':
       // Countries / Markets lives on the Project Identification card, not the
       // Gate 01 opportunity block the sibling identity check points at.

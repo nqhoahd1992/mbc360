@@ -22,7 +22,7 @@ export default function EvidenceSearchRules() {
     : undefined;
 
   return (
-    <div className="concept">
+    <div className="concept esr">
       <CompositePageHeader
         project={project}
         title="Evidence Hierarchy & Search Rules"

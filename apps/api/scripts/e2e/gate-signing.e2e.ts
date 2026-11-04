@@ -732,6 +732,24 @@ export async function run(base: string, db: Client): Promise<number> {
   // A change id belongs to ONE project; this run has a single project, so the cross-project half is covered by the
   // same message in the unit above.
 
+  // ---- the per-market regulatory checklist holds ONE row per market: Gate 10 reads the first row of a market, so a
+  // second one would be ignored without a word
+  console.log('\n--- Regulatory Checklist Status: one row per market');
+  const nonAsean = 'Australia';
+  const dossierRow = (market: string) => ({ market, dossierType: 'e2e dossier' });
+  const putDossier = async (rows: unknown[]) =>
+    api('admin', 'PUT', `/projects/${PROJECT}/registers/regulatoryChecklistStatus`, { rows, expectedVersion: await version() });
+  cr = await putDossier([dossierRow(nonAsean), dossierRow(nonAsean)]);
+  t('two rows for the same market are refused (400), naming the market and the rows', cr.status === 400 && /Applicable market/.test(String(cr.json?.message)) && /rows 1, 2/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putDossier([dossierRow(nonAsean), dossierRow(nonAsean.toUpperCase())]);
+  t('...whatever the capitalisation (400)', cr.status === 400, `${cr.status} ${short(cr.json)}`);
+  cr = await putDossier([dossierRow('Vietnam')]);
+  t('an ASEAN market is refused here — the ASEAN PIF checklist covers it (400)', cr.status === 400 && /ASEAN market/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putDossier([dossierRow(nonAsean)]);
+  t('one row for a market is accepted', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+  cr = await putDossier([]);
+  t('...and removed again so the run is left as it was', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+
   // ---- the Change Control assessment, listed per post-market finding (Round 4 question 8, R5-Q11)
   console.log('\n--- Change Control assessment: one entry per post-market finding');
   const me = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;

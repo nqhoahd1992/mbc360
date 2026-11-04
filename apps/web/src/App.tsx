@@ -68,6 +68,13 @@ function ChangeControlRedirect() {
   return <Navigate replace to={activeProjectId && exists ? `/projects/${activeProjectId}/change-control` : '/projects'} />;
 }
 
+// The bare /bom address (an old bookmark or link): the three BOM / Costing sheets each have their own page and menu item, so it opens
+// the Formula BOM, keeping any ?scrollTo= the link carried.
+function BomIndexRedirect() {
+  const { pathname, search } = useLocation();
+  return <Navigate replace to={{ pathname: `${pathname.replace(/\/$/, '')}/formula`, search }} />;
+}
+
 function ScrollToTopOnNavigate() {
   const { pathname, search } = useLocation();
   const navigationType = useNavigationType();
@@ -360,7 +367,7 @@ function Shell() {
             <Route path="/projects" element={<ProjectList />} />
             <Route path="/projects/:projectId" element={<ProjectOverview />} />
             <Route path="/projects/:projectId/phase/:phaseNo" element={<PhasePage />} />
-            <Route path="/projects/:projectId/bom" element={<BomCosting />} />
+            <Route path="/projects/:projectId/bom" element={<BomIndexRedirect />} />
             <Route path="/projects/:projectId/bom/:section" element={<BomCosting />} />
             <Route path="/projects/:projectId/formulation-safety" element={<FormulationSafety />} />
             <Route path="/projects/:projectId/product-development-report" element={<ProductDevelopmentReport />} />

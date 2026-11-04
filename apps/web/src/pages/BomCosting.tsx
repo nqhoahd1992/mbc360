@@ -105,13 +105,13 @@ export default function BomCosting() {
   const draftPackaging = packagingDraft.draft;
   const costing = costingDraft.draft;
 
-  // Each of the three BOM/Costing sheets belongs to a different department, so the
-  // page can render just one section (via /bom/:section) or all of them (/bom).
-  const showFormula = !section || section === 'formula';
+  // Each of the three BOM/Costing sheets belongs to a different department, so the page renders exactly one
+  // of them (via /bom/:section); the bare /bom route forwards to the Formula BOM.
+  const showFormula = section !== 'packaging' && section !== 'costing';
   // A new formula version can be created only while Gate 05 is the gate open for work (project owner's decision).
   const formulaVersionOpen = currentGateIndex(project) === gateIndex('SG05');
-  const showPackaging = !section || section === 'packaging';
-  const showCosting = !section || section === 'costing';
+  const showPackaging = section === 'packaging';
+  const showCosting = section === 'costing';
 
   const totalPercent = draftBom.reduce((sum, l) => sum + (l.percentWw || 0), 0);
   // F14: manual lines not yet reconciled to a Cosmetri formula.
@@ -427,7 +427,7 @@ export default function BomCosting() {
       />
     );
 
-  const sectionTitle = section === 'formula' ? 'Formula BOM' : section === 'packaging' ? 'Packaging BOM' : section === 'costing' ? 'Costing Calculator' : 'Formula BOM & Costing';
+  const sectionTitle = section === 'formula' ? 'Formula BOM' : section === 'packaging' ? 'Packaging BOM' : section === 'costing' ? 'Costing Calculator' : 'Formula BOM';
   const formulaReviewOwner = composeReviewOwner(FORMULA_BOM_REVIEW_OWNER, project.identity.reviewers);
   const gateTag = (gate: string, locked: boolean) => (
     <span className={`c-tag${locked ? ' c-tag-ok' : ''}`}>

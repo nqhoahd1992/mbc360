@@ -176,7 +176,7 @@ export default function ProjectOverview() {
           tone="warn"
           title={`Formula ${supersessionWaiting.map((w) => w.version).join(', ')} ${supersessionWaiting.length === 1 ? 'is' : 'are'} in transition — a supersession decision is still needed in ${supersessionWaiting.reduce((n, w) => n + w.markets.length, 0)} market(s)`}
           action={
-            <Link to={`/projects/${identity.id}/bom?scrollTo=sec-supersession`} className="po-notice-link">
+            <Link to={`/projects/${identity.id}/bom/formula?scrollTo=sec-supersession`} className="po-notice-link">
               {canConfirmSupersession ? 'Go to Formula BOM' : `Waiting for ${identity.projectLead || 'the project Lead'} — view`}
             </Link>
           }

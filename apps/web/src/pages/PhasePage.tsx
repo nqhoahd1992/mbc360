@@ -762,7 +762,9 @@ export default function PhasePage() {
               </div>
             )}
 
-            {phase === 4 && tab === 'SG11' && (
+            {/* The per-market card holds what both gates read: regulatory, PIF and claims status (Gate 10)
+                and launch approval (Gate 11), so a Gate 10 blocker that points at it must find it on the Gate 10 tab. */}
+            {phase === 4 && (tab === 'SG10' || tab === 'SG11') && (
               <div id="sec-market-tracking">
                 <MarketTrackingCard
                   projectId={project.identity.id}
@@ -775,7 +777,9 @@ export default function PhasePage() {
                 actual commercial launch date. `enhanced` is the same PV/PMS
                 condition Gate 12 evaluates. */}
             {phase === 4 && tab === 'SG12' && (
-              <PostLaunchReviewCard project={project} enhanced={evaluateTrigger(project, 'pvPmsRequired') === 'applies'} />
+              <div id="sec-post-launch">
+                <PostLaunchReviewCard project={project} enhanced={evaluateTrigger(project, 'pvPmsRequired') === 'applies'} />
+              </div>
             )}
 
             <div id="sec-next-actions">

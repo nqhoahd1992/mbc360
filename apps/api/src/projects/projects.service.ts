@@ -46,6 +46,7 @@ import {
   invalidSelectValues,
   assignAutoIds,
   duplicateValueProblems,
+  marketScopeProblems,
   missingRequiredProblems,
   signatureColumns,
   signatureFieldKeys,
@@ -2656,6 +2657,8 @@ export class ProjectsService {
       }
       const duplicates = duplicateValueProblems(config, rows);
       if (duplicates.length > 0) throw new BadRequestException(duplicates.slice(0, 5).join('; '));
+      const outOfScope = marketScopeProblems(config, rows, committedRegisterRows);
+      if (outOfScope.length > 0) throw new BadRequestException(outOfScope.slice(0, 5).join('; '));
       const badSelects = invalidSelectValues(config, rows);
       if (badSelects.length > 0) {
         throw new BadRequestException(

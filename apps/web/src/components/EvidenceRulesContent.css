@@ -2,3 +2,16 @@
    tables read as sections of one reference sheet instead of boxes inside a box. */
 .erc { display: grid; gap: 28px; }
 .erc .rt-standalone { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+
+/* Contrast. The frame is stripped above so the tables read as sections of one sheet, but that also stripped their SURFACE: the cells
+   sat straight on the grey page (#f5f5f5), where the #f0f0f0 row dividers vanish (1.1:1), a #fafafa header band is LIGHTER than the
+   page it sits on, and the secondary text is only 4.9:1. Give the table body its own white surface, a header band that is a clear
+   step darker than it, and primary text for the content. Descriptions move up from text-3 to text-2 (6.4:1 on the page grey). */
+.erc .rt-body { border: 1px solid var(--c-border); background: var(--c-surface); }
+.erc .rt-reference th {
+  background: #f0f0f0; border-bottom: 1px solid var(--c-border); color: var(--c-text); font-weight: 600;
+}
+.erc .rt-reference td { color: var(--c-text); border-bottom: 1px solid #e8e8e8; }
+.erc .rt-reference tbody tr:last-child td { border-bottom: 0; }
+.erc .rt-reference .rt-reference-label { font-weight: 600; }
+.erc .rt-head-desc, .esr .rph-desc { color: var(--c-text-2); }
