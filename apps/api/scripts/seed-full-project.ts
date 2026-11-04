@@ -27,7 +27,7 @@ import { GATES, EIGHT_ANGLES } from '../../../packages/shared/src/config/gates';
 import { CHANGE_TRIGGERS, MAJOR_CHANGE_CRITERIA } from '../../../packages/shared/src/config/changeTriggers';
 import { changeTriggerAvailability } from '../../../packages/shared/src/utils/changeAccess';
 import { PHASE_CONFIGS } from '../../../packages/shared/src/config/phases';
-import { REGISTER_CONFIGS, type RegisterColumn, type RegisterConfig } from '../../../packages/shared/src/config/registers';
+import { ASEAN_MARKETS, REGISTER_CONFIGS, type RegisterColumn, type RegisterConfig } from '../../../packages/shared/src/config/registers';
 import { REVIEW_ROLES } from '../../../packages/shared/src/config/reviewers';
 import type { ProjectData, RegisterRow } from '../../../packages/shared/src/types';
 
@@ -163,10 +163,13 @@ const RM = [
   { rmCode: 'RM-012', inciName: 'Allantoin', grade: 'Allantoin', supplier: 'Bio Actives', pct: 0.2, cost: 14 },
 ];
 
-const ROW_COUNT: Record<string, number> = { supplierRmEvidence: RM.length, vulnerableUserAssessment: 1 };
+// Regulatory Checklist Status takes one row per NON-ASEAN market (the ASEAN checklist is a different register).
+const NON_ASEAN_MARKETS = MARKETS.filter((m) => !ASEAN_MARKETS.includes(m));
+const ROW_COUNT: Record<string, number> = { supplierRmEvidence: RM.length, vulnerableUserAssessment: 1, regulatoryChecklistStatus: NON_ASEAN_MARKETS.length };
 const OVERRIDES: Record<string, (row: number) => Record<string, unknown>> = {
   vulnerableUserAssessment: () => ({ vulnerableGroup: 'No vulnerable-user group identified' }),
   publishedInfoApproval: () => ({ workflowState: 'Draft' }),
+  regulatoryChecklistStatus: (i) => ({ market: NON_ASEAN_MARKETS[i] }),
   supplierRmEvidence: (i) => ({ rmCode: RM[i].rmCode, inciName: RM[i].inciName, grade: RM[i].grade, supplier: RM[i].supplier, approvedForUse: true, evidenceStatus: '' }),
 };
 // Processed first, in this order: later registers pick values out of these.
