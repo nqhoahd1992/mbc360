@@ -150,6 +150,11 @@ export type RmEvidenceScope = 'all' | 'formula';
 // The count is printed by `npm run verify:readiness` every run. No typo sweep is
 // needed: the array is typed, so the compiler already catches a bad name. An empty
 // list means R5-Q5 is fully discharged.
+// `skincareForTwo` and `pvPmsRequired` left this list on 2026-11-06 (Round 5 question 1(d)): each now needs a person's recorded
+// answer (foreseeable maternal contact; the enhanced-surveillance conditions the application cannot read) before it can read
+// "does not apply", so a project with neither ticks nor answer reads as not yet assessed.
+// `newOrRepositionedProject` left this list on 2026-11-06 (Round 5 question 1(d)): with no development / change type recorded it now
+// returns `notAssessed` instead of passing on its own.
 // `infantContact` left this list on 2026-08-29 (question 25(c)): a Family use
 // product whose age groups nobody has confirmed now returns `notAssessed`. The
 // shortfall it still shares with `skincareForTwo` — a project with NO target user
@@ -157,12 +162,9 @@ export type RmEvidenceScope = 'all' | 'formula';
 // general R5-Q5 question about checklist-derived triggers, not something specific
 // to this one, which is why it is no longer listed here.
 export const TRIGGERS_WITHOUT_UNASSESSED_STATE: readonly ReadinessTrigger[] = [
-  'skincareForTwo',
   'aseanMarket',
   'claimNeedsRegulatoryReview',
   'claimNeedsPerformanceEvidence',
-  'newOrRepositionedProject',
-  'pvPmsRequired',
   // A checklist tick: present or absent, and Gate 2 already requires a selection.
   'productFormUnderEvaluation',
   // Reads Regulatory's profiles: a market with nothing recorded is Regulatory
@@ -3091,8 +3093,9 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         'the app checks ten of the fourteen conditions — infant/young child, maternal, intimate use, eye area, ' +
         'sensitive or eczema-prone skin, a medically vulnerable population, a high-risk or therapeutic-adjacent claim, ' +
         'a safety or adverse-event issue recorded on the post-market feedback list, and a market whose Regulatory ' +
-        'profile flags enhanced surveillance. Three have no controlled data source yet: a new or unusual active ' +
-        'ingredient, a recurring quality or performance issue, and a requirement in an approved surveillance plan.',
+        'profile flags enhanced surveillance. Four have no controlled data source yet: a new or unusual active ' +
+        'ingredient, a significant complaint trend (only a safety or adverse-event issue is read), a recurring quality or performance issue, ' +
+        'and a requirement in an approved surveillance plan. A person answers each of the four at Gate 12 [ASSUMPTION: R6-Q5].',
       label: 'Enhanced PV/PMS review where applicable',
       tier: 'Conditional',
       check: { kind: 'gateCheckDone', gate: '12', check: 'Feedback sources monitored and PV/PMS signals classified' },

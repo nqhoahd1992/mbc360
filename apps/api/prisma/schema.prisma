@@ -60,6 +60,7 @@ model User {
   claimLibraryEntries  ClaimLibraryEntry[]
   gateSignOffs         GateSignOff[] @relation("GateSignOffSignedBy")
   gateSignOffsAssigned GateSignOff[] @relation("GateSignOffAssignedTo")
+  referenceSignals     ReferenceSignal[] @relation("ReferenceSignalRaisedBy")
   readinessAcknowledgements ReadinessAcknowledgement[] @relation("ReadinessAckBy")
   registerClosureSignOffs RegisterClosureSignOff[] @relation("RegisterClosureSignedBy")
   registerClosureAssigned RegisterClosureSignOff[] @relation("RegisterClosureAssignedTo")
@@ -179,6 +180,18 @@ model Project {
   // (The Change Control assessment of question 8 used to be six columns here; since 2026-10-13 it is a
   // LIST, one entry per post-market finding — see ChangeControlAssessment.)
   humanStudyPlanned             String?
+  foreseeableMaternalContact    String?
+  foreseeableMaternalRationale  String?
+  foreseeableInfantContact      String?
+  foreseeableInfantRationale    String?
+  pmsNewActive                  String?
+  pmsNewActiveRationale         String?
+  pmsComplaintTrend             String?
+  pmsComplaintTrendRationale    String?
+  pmsRecurringIssue             String?
+  pmsRecurringIssueRationale    String?
+  pmsSurveillancePlan           String?
+  pmsSurveillancePlanRationale  String?
   administrativeOnly            String?
   administrativeOnlyConfirmedBy String?
   scaleUpRiskIdentified         String?
@@ -223,6 +236,8 @@ model Project {
   postLaunchReviews     PostLaunchReview[]
   supersessionDecisions SupersessionDecision[]
   readinessAcknowledgements ReadinessAcknowledgement[]
+  referenceSnapshots GateReferenceSnapshot[]
+  impactAssessments  ImpactAssessment[]
   changeControlAssessments ChangeControlAssessment[]
   reviewers        ProjectReviewer[]
   gates            GateRecord[]
@@ -517,6 +532,7 @@ model ReadinessAcknowledgement {
   itemId               String
   functionKey          String // the function acknowledged AS (REVIEW_ROLES key) — one row per gate, item and function
   rationale            String // the exact generated wording that was acknowledged
+  basis                String   @default("") // the project facts it was acknowledged against (acknowledgementBasis); empty on rows from before it existed
   acknowledgedBy       User?    @relation("ReadinessAckBy", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
   acknowledgedByUserId String?
   acknowledgedByName   String
@@ -1545,4 +1561,61 @@ model CosmetriConnection {
   updatedAt             DateTime  @updatedAt
 
   @@map("cosmetri_connection")
+}
+
+// The company reference data (Raw Material Risk Overlay, market profiles, Claims Library) as it stood when a gate passed (SW-52,
+// Round 5 question 1(d): "Preserve the list version used in the signed snapshot"). A passed gate is judged by this copy, so a list
+// edit made afterwards cannot change what that gate decided; it only raises a notice. One ACTIVE row per (project, gate): a Backtrack
+// that reopens the gate supersedes it and the next pass takes a new one. Superseded rows are kept (SW-38), never deleted.
+model GateReferenceSnapshot {
+  id           String    @id @default(cuid())
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId    String
+  gateId       String
+  capturedAt   DateTime  @default(now())
+  supersededAt DateTime?
+  reference    Json
+
+  @@index([projectId, gateId])
+  @@map("gate_reference_snapshots")
+}
+
+// A change to the company reference data that may touch projects that already rely on it (Round 5 question 1(d)). The person who made
+// the change raises it; they may mark it Critical (a safety issue, a prohibition or a mandatory market restriction), which puts the
+// release of every affected project on hold until its impact assessment is concluded. Never deleted (SW-38).
+model ReferenceSignal {
+  id         String   @id @default(cuid())
+  dataset    String // 'rm-risk' | 'market-profile' | 'claims-library'
+  entryId    String
+  subject    String // the material code, market or claim wording
+  summary    String
+  critical   Boolean  @default(false)
+  reason     String?
+  dueDate    String // the date the impact reviews are due, YYYY-MM-DD
+  raisedBy   User?    @relation("ReferenceSignalRaisedBy", fields: [raisedById], references: [id])
+  raisedById String?
+  raisedAt   DateTime @default(now())
+
+  assessments ImpactAssessment[]
+
+  @@index([dataset, entryId])
+  @@map("reference_signals")
+}
+
+// One project's review of one signal. `conclusions` holds one entry per function that must conclude; the assessment is concluded when
+// every one has (and a Critical one holds the project's release until then — derived, never stored).
+model ImpactAssessment {
+  id           String          @id @default(cuid())
+  signal       ReferenceSignal @relation(fields: [signalId], references: [id], onDelete: Cascade)
+  signalId     String
+  project      Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId    String
+  functionKeys String[]
+  markets      String[]
+  conclusions  Json            @default("[]")
+  concludedAt  DateTime?
+  createdAt    DateTime        @default(now())
+
+  @@index([projectId])
+  @@map("impact_assessments")
 }

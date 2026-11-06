@@ -519,6 +519,17 @@ export const withdrawReadinessAcknowledgement = (id: string, gateId: string, ite
     body: JSON.stringify({ gateId, itemId, functionKey, expectedVersion }),
   });
 
+export const concludeImpactAssessment = (
+  id: string,
+  assessmentId: string,
+  input: { functionKey: string; conclusion: string; rationale: string; linkedChangeId?: string },
+  expectedVersion: number,
+) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/impact-assessments/${encodeURIComponent(assessmentId)}/conclude`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, expectedVersion }),
+  });
+
 export const setChangeControlAssessments = (id: string, entries: ChangeControlAssessment[], v: number) =>
   put(id, 'change-control-assessments', { entries }, v);
 

@@ -23,6 +23,8 @@ import {
   type GateState,
 } from '@mbc360/shared/utils/gateProgress';
 import AssessmentSummary from '../components/AssessmentSummary';
+import ImpactAssessmentCard from '../components/ImpactAssessmentCard';
+import { referenceNotices } from '@mbc360/shared/utils/referenceSnapshot';
 import ProjectTeamCard from '../components/ProjectTeamCard';
 import StopProjectCard from '../components/StopProjectCard';
 import { marketsAwaitingSupersession, transitioningVersions } from '@mbc360/shared/utils/formulaLifecycle';
@@ -167,6 +169,22 @@ export default function ProjectOverview() {
       )}
 
       <StopProjectCard project={project} />
+
+      <ImpactAssessmentCard project={project} />
+
+      {/* SW-52, Round 5 question 1(d): a passed gate keeps the company lists as they stood when it passed, so an edit to the
+          Overlay, a market profile or the Claims Library cannot quietly change what it decided. What changed since, in the parts
+          that touch this project, is said here. A notice only — it reopens nothing, and a notice alone does not resolve a new
+          material risk. [ASSUMPTION: R5-Q6] */}
+      {referenceNotices(project).map((n) => (
+        <Notice
+          key={n.gateId}
+          tone="warn"
+          title={`Company lists have changed since ${n.gateId.replace('SG', 'Gate ')} passed — it is still judged by the lists it passed on`}
+        >
+          {n.changes.map((c) => `${c.dataset}: ${c.subject} (${c.kind})`).join(' · ')}
+        </Notice>
+      ))}
 
       {/* Round 4 question 2: an older formula version in transition is only closed by a person confirming ten facts per
           market. That screen lives on the Formula BOM page, so a Lead who never opens it would never know it is waiting —

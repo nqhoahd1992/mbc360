@@ -4,7 +4,8 @@ import type { ProjectData } from '@mbc360/shared/types';
 import { familyUseAgeGroupList } from '@mbc360/shared/types';
 import { GATES } from '@mbc360/shared/config/gates';
 import { ASSESSMENT_HOMES, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
-import { evaluateTrigger } from '@mbc360/shared/utils/gateProgress';
+import { UNSTRUCTURED_PMS_CONDITIONS } from '@mbc360/shared/types';
+import { evaluateTrigger, personAnswer } from '@mbc360/shared/utils/gateProgress';
 import { isPendingAnswer } from '@mbc360/shared/utils/changeControlAssessments';
 import { isFamilyUseSelected } from './AssessmentBlock';
 import '../styles/concept.css';
@@ -22,6 +23,25 @@ function status(project: ProjectData, key: AssessmentKey): { text: string; tone:
   const home = ASSESSMENT_HOMES.find((h) => h.key === key)!;
   const waiting = evaluateTrigger(project, home.trigger) === 'notAssessed';
   switch (key) {
+    case 'foreseeableContact': {
+      const m = v(a.foreseeableMaternalContact);
+      const i = v(a.foreseeableInfantContact);
+      if (!m && !i) return { text: 'Not yet assessed', tone: 'warn' };
+      // A No without its reason is not an answer yet.
+      const done = (ans: string, why?: string) => personAnswer(ans, why) !== 'open';
+      const show = (x: string, ok: boolean) => (ok ? x : x ? `${x} (reason missing)` : 'not yet assessed');
+      const mOk = done(m, a.foreseeableMaternalRationale);
+      const iOk = done(i, a.foreseeableInfantRationale);
+      return { text: `Maternal: ${show(m, mOk)} · Infant: ${show(i, iOk)}`, tone: mOk && iOk ? 'ok' : 'warn' };
+    }
+    case 'pmsUnstructured': {
+      const states = UNSTRUCTURED_PMS_CONDITIONS.map((c) => personAnswer(a[c.answer], a[c.rationale]));
+      if (states.includes('yes')) return { text: 'Enhanced surveillance applies', tone: 'ok' };
+      const answered = states.filter((s) => s === 'no').length;
+      return answered === states.length
+        ? { text: 'None apply', tone: 'ok' }
+        : { text: `${answered} of ${states.length} answered`, tone: 'warn' };
+    }
     case 'familyUse': {
       if (!isFamilyUseSelected(project)) return { text: 'Not asked — Family use is not a target user', tone: 'muted' };
       const groups = familyUseAgeGroupList(a);

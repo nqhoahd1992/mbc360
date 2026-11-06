@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { LockOutlined } from '@ant-design/icons';
 import { ConfigProvider, DatePicker, Input, Select } from 'antd';
 import dayjs from 'dayjs';
@@ -6,6 +6,9 @@ import type { ProjectData } from '@mbc360/shared/types';
 import {
   ADMINISTRATIVE_ONLY_OPTIONS,
   FAMILY_USE_AGE_GROUPS,
+  FORESEEABLE_CONTACT_OPTIONS,
+  UNSTRUCTURED_PMS_OPTIONS,
+  UNSTRUCTURED_PMS_CONDITIONS,
   HUMAN_STUDY_PLANNED_OPTIONS,
   SCALE_UP_RISK_OPTIONS,
   familyUseAgeGroupList,
@@ -47,6 +50,10 @@ const FIELDS: Record<AssessmentKey, readonly Field[]> = ASSESSMENT_FIELDS;
 // readiness panel.
 // (The Change Control assessment is a LIST with its own component, ChangeControlAssessments.)
 const HINTS: Record<Exclude<AssessmentKey, 'changeControl'>, string> = {
+  foreseeableContact:
+    'Gates 2 to 10. Leaving either blank blocks the maternal and infant items. A project with no maternal or infant user ticked is not "not applicable" until someone answers No here and says why; Yes switches the pathway on.',
+  pmsUnstructured:
+    'Gate 12. These four conditions are the ones the application cannot read. Leaving any blank blocks the enhanced-surveillance item; a No needs its reason, and a Yes puts the product under enhanced surveillance.',
   familyUse:
     'Decides the infant pathway at Gates 2, 4, 5, 6, 7, 8-9 and 10. Family use is not a vulnerable population on its own, but leaving this unanswered blocks the pathway from being decided either way. Including Infant 0+ activates it.',
   administrativeOnly: 'Gate 03. Only a confirmed Yes exempts the project from competitor and benchmark review.',
@@ -168,9 +175,25 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
     (draft.administrativeOnly?.trim() ?? '') === 'Yes' &&
     !draft.administrativeOnlyConfirmedBy?.trim();
 
+  // A No to a foreseeable-contact or surveillance-condition question must say why (the API refuses it too).
+  const personQuestions: { answer: Field; rationale: Field; label: string }[] =
+    which === 'foreseeableContact'
+      ? [
+          { answer: 'foreseeableMaternalContact', rationale: 'foreseeableMaternalRationale', label: 'Is contact with a pregnant, breastfeeding or postpartum user reasonably foreseeable?' },
+          { answer: 'foreseeableInfantContact', rationale: 'foreseeableInfantRationale', label: 'Is contact with an infant reasonably foreseeable, including by a caregiver or sibling?' },
+        ]
+      : which === 'pmsUnstructured'
+        ? UNSTRUCTURED_PMS_CONDITIONS.map((c) => ({ answer: c.answer, rationale: c.rationale, label: c.label }))
+        : [];
+  const needsReason = (q: { answer: Field; rationale: Field }) =>
+    (draft[q.answer]?.trim() ?? '') === 'No' && !draft[q.rationale]?.trim();
+  const missingReason = personQuestions.some(needsReason);
+
   const blockingReason = adminNeedsConfirmer
     ? 'An administrative-only classification must name the authorised reviewer who confirmed it'
-    : undefined;
+    : missingReason
+      ? 'An answer of No needs its reason'
+      : undefined;
 
   // Mirrors the `humanStudyPlanned` limb in evaluateTrigger — a started protocol
   // counts as Yes on its own. Read here only to say so on screen.
@@ -215,6 +238,13 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
     switch (which) {
       case 'humanStudy':
         return [{ label: 'Answer', kind: 'answer', value: draft.humanStudyPlanned }];
+      // One row per question, then its reason: a record can hold several answers, which the single "answer" row cannot.
+      case 'foreseeableContact':
+      case 'pmsUnstructured':
+        return personQuestions.flatMap((q): ReadRow[] => [
+          { label: q.label, value: draft[q.answer] || 'Not yet assessed' },
+          { label: 'Reason', wide: true, value: draft[q.rationale] },
+        ]);
       case 'administrativeOnly':
         return [
           { label: 'Answer', kind: 'answer', value: draft.administrativeOnly },
@@ -241,6 +271,30 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
 
   let body: ReactNode;
   switch (which) {
+    case 'foreseeableContact':
+    case 'pmsUnstructured':
+      body = (
+        <div className="as-grid">
+          {personQuestions.map((q) => (
+            <Fragment key={q.answer}>
+              <FieldBox label={q.label} wide>
+                {answerSelect(q.answer, which === 'foreseeableContact' ? FORESEEABLE_CONTACT_OPTIONS : UNSTRUCTURED_PMS_OPTIONS)}
+              </FieldBox>
+              <FieldBox label="Reason" wide required={needsReason(q)}>
+                <Input.TextArea
+                  style={{ width: '100%' }}
+                  autoSize={{ minRows: 1, maxRows: 4 }}
+                  status={needsReason(q) ? 'error' : undefined}
+                  placeholder={(draft[q.answer]?.trim() ?? '') === 'No' ? 'Why? Required for No' : 'Optional'}
+                  value={draft[q.rationale]}
+                  onChange={(e) => set(q.rationale, e.target.value)}
+                />
+              </FieldBox>
+            </Fragment>
+          ))}
+        </div>
+      );
+      break;
     case 'humanStudy':
       body = (
         <>

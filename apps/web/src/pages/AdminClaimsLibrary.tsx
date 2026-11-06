@@ -22,6 +22,7 @@ import './AdminMarketProfiles.css';
 import './AdminClaimsLibrary.css';
 
 import FormDrawer from '../components/FormDrawer';
+import ListChangeSignal, { emptySignal, signalBody, signalProblem, type ChangeSignal } from '../components/ListChangeSignal';
 // Round 4 question 28 (2026-08-24), built 2026-08-30. The company-level Claims
 // Library — the third reference dataset, and the only one with a workflow.
 //
@@ -160,6 +161,7 @@ export default function AdminClaimsLibrary() {
   const [history, setHistory] = useState<{ id: string; revisions: Revision[] } | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
   const [reason, setReason] = useState('');
+  const [signal, setSignal] = useState<ChangeSignal>(emptySignal);
   // Question 28(5): a withdrawal records its effective date and transition plan.
   const [withdrawDate, setWithdrawDate] = useState<string>('');
   const [transitionPlan, setTransitionPlan] = useState('');
@@ -256,8 +258,9 @@ export default function AdminClaimsLibrary() {
     // A cleared field is sent as '' so the API clears it rather than keeping the
     // old value (it reads an absent key as "leave unchanged").
     const patch = Object.fromEntries(EDITABLE.map((k) => [k, form[k] ?? '']));
-    const ok = await call(`/${isNew ? 'new' : openId}`, { method: 'PUT', body: JSON.stringify({ patch }) });
+    const ok = await call(`/${isNew ? 'new' : openId}`, { method: 'PUT', body: JSON.stringify({ patch, signal: signalBody(signal) }) });
     if (!ok) return;
+    setSignal(emptySignal);
     message.success(isNew ? 'Entry proposed' : 'Entry saved');
     if (isNew) setOpenId(null);
   };
@@ -271,7 +274,7 @@ export default function AdminClaimsLibrary() {
     if (!open) return;
     const result = await call(`/${open.id}/withdraw`, {
       method: 'POST',
-      body: JSON.stringify({ reason, effectiveDate: withdrawDate, transitionPlan }),
+      body: JSON.stringify({ reason, effectiveDate: withdrawDate, transitionPlan, signal: signalBody(signal) }),
     });
     if (result) {
       setImpact(result.impact ?? []);
@@ -280,6 +283,7 @@ export default function AdminClaimsLibrary() {
       setWithdrawDate('');
       setTransitionPlan('');
       setLinked(null);
+      setSignal(emptySignal);
     }
   };
 
@@ -573,12 +577,15 @@ export default function AdminClaimsLibrary() {
         }
         footer={
           editable ? (
+            <>
+            {!isNew && dirty && <ListChangeSignal value={signal} onChange={setSignal} />}
             <div className="rt-drawer-foot cl-foot">
               <Button onClick={close}>Cancel</Button>
-              <Button type="primary" loading={busy} disabled={!dirty || !(form.wording ?? '').trim()} onClick={() => void save()}>
+              <Button type="primary" loading={busy} disabled={!dirty || !(form.wording ?? '').trim() || !!signalProblem(signal)} onClick={() => void save()}>
                 {isNew ? 'Propose' : 'Save'}
               </Button>
             </div>
+            </>
           ) : undefined
         }
       >
@@ -766,7 +773,7 @@ export default function AdminClaimsLibrary() {
         rootClassName="concept-tokens"
         title="Withdraw this entry?"
         okText="Withdraw"
-        okButtonProps={{ danger: true, disabled: !reason.trim() || !withdrawDate || !transitionPlan.trim() }}
+        okButtonProps={{ danger: true, disabled: !reason.trim() || !withdrawDate || !transitionPlan.trim() || !!signalProblem(signal) }}
         confirmLoading={busy}
         onOk={() => void confirmWithdraw()}
         onCancel={() => {
@@ -782,6 +789,9 @@ export default function AdminClaimsLibrary() {
           this entry is listed afterwards so an impact assessment can be run.
         </p>
         <Input.TextArea rows={3} value={reason} placeholder="Why is this entry being withdrawn?" onChange={(e) => setReason(e.target.value)} />
+        <div style={{ marginTop: 12 }}>
+          <ListChangeSignal value={signal} onChange={setSignal} />
+        </div>
         <div className="au-field-help cl-modal-text" style={{ marginTop: 12 }}>Effective date</div>
         <DatePicker
           style={{ width: '100%' }}

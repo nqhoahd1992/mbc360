@@ -4,6 +4,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { SessionUser } from '../auth/session-user';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReferenceDataService } from './reference-data.service';
+import { ProjectsService } from '../projects/projects.service';
 
 // Round 4 question 4 (2026-08-24): "Do not use a permanently hard-coded country
 // list. Regulatory maintains a configurable market profile indicating whether each
@@ -22,6 +23,7 @@ export class MarketProfilesController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reference: ReferenceDataService,
+    private readonly projects: ProjectsService,
   ) {}
 
   @Get()
@@ -62,7 +64,13 @@ export class MarketProfilesController {
   async save(
     @CurrentUser() user: SessionUser,
     @Param('market') market: string,
-    @Body() body: { patch: Partial<MarketProfile>; reason?: string },
+    @Body()
+    body: {
+      patch: Partial<MarketProfile>;
+      reason?: string;
+      // Round 5 question 1(d): raised by the person making the change.
+      signal?: { critical?: boolean; reason?: string; dueDate?: string };
+    },
   ): Promise<MarketProfile[]> {
     await this.reference.assertCanEdit(user, 'market-profile');
     const key = market.trim();
@@ -102,6 +110,22 @@ export class MarketProfilesController {
             data: { market: key, ...data, revision, updatedById: user.id },
           });
       await this.reference.recordRevision(tx, user, 'market-profile', row.id, revision, { market: key, ...data }, body.reason);
+      const CONTENT = [
+        'adverseEventReporting', 'pmsRecordsRequired', 'reviewIntervalMonths', 'enhancedSurveillance',
+        'dossierType', 'claimRestrictions', 'packRequirements',
+      ] as const;
+      const changedFields = existing ? CONTENT.filter((k) => (existing[k] ?? null) !== (data[k] ?? null)) : [...CONTENT];
+      if (changedFields.length > 0) {
+        await this.projects.raiseReferenceSignal(tx, user, {
+          dataset: 'market-profile',
+          entryId: row.id,
+          subject: key,
+          summary: `Requirements for ${key} ${existing ? 'changed' : 'added'}${existing ? ` (${changedFields.join(', ')})` : ''}`,
+          critical: body.signal?.critical === true,
+          reason: body.signal?.reason,
+          dueDate: body.signal?.dueDate,
+        });
+      }
     });
 
     return this.list();

@@ -16,5 +16,7 @@ import { CosmetriModule } from '../cosmetri/cosmetri.module';
   imports: [RbacModule, VerificationModule, CosmetriModule],
   controllers: [ProjectsController],
   providers: [ProjectsService, IdempotencyService],
+  // The company reference-data controllers raise impact assessments on the projects a change touches.
+  exports: [ProjectsService],
 })
 export class ProjectsModule {}

@@ -9,6 +9,7 @@ import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { canEditReferenceData, EMPTY_GRANTS } from '../utils/permissions';
 import DrawerSaveFooter from '../components/DrawerSaveFooter';
+import ListChangeSignal, { emptySignal, signalBody, signalProblem, type ChangeSignal } from '../components/ListChangeSignal';
 import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import { useDraft } from '../hooks/useDraft';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
@@ -74,6 +75,7 @@ export default function AdminMarketProfiles() {
   const loadMarketProfiles = useAppStore((s) => s.loadMarketProfiles);
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const [saving, setSaving] = useState(false);
+  const [signal, setSignal] = useState<ChangeSignal>(emptySignal);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [openMarket, setOpenMarket] = useState<string | null>(null);
@@ -151,12 +153,13 @@ export default function AdminMarketProfiles() {
         const res = await fetch(`/api/reference/market-profiles/${encodeURIComponent(row.market)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ patch: body }),
+          body: JSON.stringify({ patch: body, signal: signalBody(signal) }),
         });
         if (!res.ok) throw new Error((await res.json())?.message ?? 'Could not save');
       }
       await loadMarketProfiles();
       markSaved();
+      setSignal(emptySignal);
       setHistory(null);
       message.success(`${changedMarkets.length} market profile(s) saved`);
     } catch (err) {
@@ -315,6 +318,8 @@ export default function AdminMarketProfiles() {
         )}
       </div>
 
+      {canEdit && dirty && <ListChangeSignal value={signal} onChange={setSignal} />}
+
       {canEdit && dirty && (
         <div className="c-card mp-savebar" role="status">
           <span className="mp-savebar-text">
@@ -328,7 +333,7 @@ export default function AdminMarketProfiles() {
             <Button onClick={discard} disabled={saving}>
               Discard
             </Button>
-            <Button type="primary" loading={saving} onClick={() => void save()}>
+            <Button type="primary" loading={saving} disabled={!!signalProblem(signal)} onClick={() => void save()}>
               Save
             </Button>
           </span>
@@ -350,7 +355,21 @@ export default function AdminMarketProfiles() {
             </span>
           )
         }
-        footer={canEdit ? <DrawerSaveFooter dirty={dirty} onSave={save} saving={saving} onClose={() => setOpenMarket(null)} /> : undefined}
+        footer={
+          canEdit ? (
+            <>
+              {dirty && <ListChangeSignal value={signal} onChange={setSignal} />}
+              <DrawerSaveFooter
+                dirty={dirty}
+                onSave={save}
+                saving={saving}
+                onClose={() => setOpenMarket(null)}
+                disabled={!!signalProblem(signal)}
+                disabledReason={signalProblem(signal) ?? undefined}
+              />
+            </>
+          ) : undefined
+        }
       >
         {open && (
           <div className="au-detail">

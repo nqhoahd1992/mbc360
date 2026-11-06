@@ -196,6 +196,8 @@ export default function GeneratedNaAcks({
                 const slotStates = group.entries.map((e) => e.slots[slotIndex]);
                 const slotDone = slotStates.every((x) => x?.state === 'acknowledged');
                 const slotStale = !slotDone && slotStates.some((x) => x?.state === 'stale');
+                const staleFacts = slotStale && slotStates.some((x) => x?.staleBecause === 'facts');
+                const reworded = slotDone && slotStates.some((x) => x?.reworded);
                 const staleBy = slotStates.find((x) => x?.state === 'stale')?.ack?.acknowledgedByName;
                 const myFunction = me ? slot.holders.find((h) => h.name === me)?.functionKey : undefined;
                 const doneAck = slotStates[0]?.ack;
@@ -212,6 +214,7 @@ export default function GeneratedNaAcks({
                       <span className="gna-status">
                         acknowledged by {doneAck?.acknowledgedByName}
                         {doneAck ? ` · ${dayjs(doneAck.acknowledgedAt).format('YYYY-MM-DD HH:mm')}` : ''}
+                        {reworded && ' · the wording of the reason was corrected since (editorial only, so it still stands)'}
                         {canWithdraw && (
                           <Button
                             type="link"
@@ -242,7 +245,11 @@ export default function GeneratedNaAcks({
                       </Button>
                     ) : (
                       <span className="gna-status">
-                        {slotStale ? `${staleBy}'s earlier acknowledgement no longer matches this reason. ` : ''}
+                        {slotStale
+                          ? staleFacts
+                            ? `${staleBy}'s earlier acknowledgement no longer stands: the target users, markets or major formula version changed since. Reassess it against the new facts. `
+                            : `${staleBy}'s earlier acknowledgement no longer matches this reason. `
+                          : ''}
                         Waiting for {slot.holders.map((h) => h.name).join(' or ')}.
                       </span>
                     )}

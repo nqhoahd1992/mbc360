@@ -1,6 +1,6 @@
 import { assessmentAnchor, assessmentForTrigger } from '../config/assessments';
 import type { GateRecord, NextAction, ProjectData, RegisterRow, RequirementItem } from '../types';
-import { GATE_SIGNOFF_ROLES, NEXT_ACTION_TERMINAL_STATUSES, familyUseAgeGroupList, isRegisterClosed, isSignedOff } from '../types';
+import { GATE_SIGNOFF_ROLES, NEXT_ACTION_TERMINAL_STATUSES, UNSTRUCTURED_PMS_CONDITIONS, familyUseAgeGroupList, isRegisterClosed, isSignedOff } from '../types';
 import type { GateSignOffRole } from '../types';
 import { COSTING_STATUS_NOT_APPLICABLE, GATES, REQUIREMENT_NOT_APPLICABLE } from '../config/gates';
 import { GATE_PASSING_DECISIONS, findGateSignOff, gateSignOffMarkets, isGateSignOffSigned } from '../config/gateSignOff';
@@ -62,6 +62,7 @@ import {
 } from './watchlistReview';
 import { conditionalSafetyFindings, hardBlockingSafetyFindings } from './safetyFindings';
 import { activeMarketTracks, currentMarketTracks, onMarketTracks, overdueReviews } from './postLaunch';
+import { impactHolds } from './impactAssessments';
 import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
 import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
 import { isDoneStatus } from './doneStatus';
@@ -263,10 +264,25 @@ const twoState = (applies: boolean): TriggerState => (applies ? 'applies' : 'doe
 // — the Post-Launch Review card needs to know whether this product is under
 // enhanced surveillance, and re-deriving question 4's ten conditions there would
 // be a second copy of the rule.
+// A person's Yes/No answer and its reason. A No counts only with a reason: "no" is a claim that something does not apply, and an
+// unexplained one is what these questions exist to stop (project owner, 2026-11-06). A Yes needs none — it only switches a pathway on.
+export function personAnswer(answer?: string, rationale?: string): 'yes' | 'no' | 'open' {
+  const a = (answer ?? '').trim();
+  if (a === 'Yes') return 'yes';
+  if (a === 'No' && (rationale ?? '').trim() !== '') return 'no';
+  return 'open';
+}
+
 export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger): TriggerState {
   switch (trigger) {
-    case 'skincareForTwo':
-      return isSkincareForTwoTriggered(project) ? 'applies' : 'doesNotApply';
+    case 'skincareForTwo': {
+      if (isSkincareForTwoTriggered(project)) return 'applies';
+      // No maternal user is ticked. Round 5 question 1(d): an exclusion "must consider intended and reasonably foreseeable contact,
+      // not only marketing ticks" — so it is a person's recorded answer that settles it, never the absence of a tick.
+      const answer = personAnswer(project.assessments.foreseeableMaternalContact, project.assessments.foreseeableMaternalRationale);
+      if (answer === 'yes') return 'applies';
+      return answer === 'no' ? 'doesNotApply' : 'notAssessed';
+    }
 
     // E1's third line, "Infant-only products should trigger the Infant/Baby Safety
     // pathway instead". Deliberately independent of skincareForTwo: a maternal
@@ -350,7 +366,15 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
       if (marketRequiresEnhancedSurveillance(project.identity.markets, project.reference.marketProfiles)) {
         return 'applies';
       }
-      return 'doesNotApply';
+      // None of the conditions the application CAN read applies. Round 5 question 1(d): "Enhanced-surveillance N/A must assess all
+      // applicable triggers, including those not yet structured in the app" — new or unusual active ingredient, recurring quality or
+      // performance issue, a requirement in an approved surveillance plan. A person answers for those; silence is not a pass.
+      // Four questions, one per condition, each with its reason when the answer is No.
+      const unstructured = UNSTRUCTURED_PMS_CONDITIONS.map((c) =>
+        personAnswer(project.assessments[c.answer], project.assessments[c.rationale]),
+      );
+      if (unstructured.includes('yes')) return 'applies';
+      return unstructured.every((u) => u === 'no') ? 'doesNotApply' : 'notAssessed';
     }
 
     // Round 4 question 36(a), 2026-08-29. 'Cosmetic' joined the category list, but
@@ -385,10 +409,19 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     case 'infantContact': {
       const selected = (project.checklists['targetUsers'] ?? []).filter((i) => i.selected).map((i) => i.label);
       if (selected.includes(INFANT_TARGET_USER)) return 'applies';
-      if (!selected.includes(FAMILY_USE_TARGET_USER)) return 'doesNotApply';
-      const groups = familyUseAgeGroupList(project.assessments);
-      if (groups.length === 0) return 'notAssessed';
-      return groups.includes(INFANT_TARGET_USER) ? 'applies' : 'doesNotApply';
+      const foreseeable = personAnswer(project.assessments.foreseeableInfantContact, project.assessments.foreseeableInfantRationale);
+      // Round 5 question 1(d): reasonably foreseeable infant contact counts even where nothing says "infant" on the ticks.
+      if (foreseeable === 'yes') return 'applies';
+      // What the target users and age groups say on their own...
+      let fromTicks: TriggerState;
+      if (!selected.includes(FAMILY_USE_TARGET_USER)) fromTicks = 'doesNotApply';
+      else {
+        const groups = familyUseAgeGroupList(project.assessments);
+        fromTicks = groups.length === 0 ? 'notAssessed' : groups.includes(INFANT_TARGET_USER) ? 'applies' : 'doesNotApply';
+      }
+      if (fromTicks !== 'doesNotApply') return fromTicks;
+      // ...is not enough to exclude: a person records that no infant contact is reasonably foreseeable.
+      return foreseeable === 'no' ? 'doesNotApply' : 'notAssessed';
     }
 
     // A3: mandatory "before ANY study involving human participants". Study
@@ -433,7 +466,12 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     case 'microbiologicallySusceptible': {
       const susceptibility = project.formulaProperties.microSusceptibility?.trim() ?? '';
       if (susceptibility === '') return 'notAssessed';
-      return susceptibility === 'Susceptible' ? 'applies' : 'doesNotApply';
+      if (susceptibility === 'Susceptible') return 'applies';
+      // Round 5 question 1(d): "An anhydrous formula needs a documented microbiological-risk conclusion before a
+      // preservative/PET waiver." The conclusion is the rationale on Formula Properties. The screen already asks for it; the rule
+      // did not, so a direct call could record Anhydrous with nothing behind it and the waiver passed.
+      if (susceptibility === 'Anhydrous' && !(project.formulaProperties.microRationale?.trim() ?? '')) return 'notAssessed';
+      return 'doesNotApply';
     }
 
     // A3: "new product, claim extension, repositioning project,
@@ -492,7 +530,15 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
       // request came from a customer or distributor, or a benchmark is named.
       const limbFires =
         natures.length > 0 || origins.some((o) => CUSTOMER_LED_ORIGINS.includes(o)) || !!benchmark?.notes?.trim();
-      if (!limbFires) return 'doesNotApply';
+      // No development / change type, no customer-led request and no benchmark named: nothing has been RECORDED, which is not the
+      // same as nothing applying. Round 5 question 1(d): "Missing development/change data cannot justify N/A for competitor
+      // review." So it is not-yet-assessed and blocks, where it used to pass on its own — unless the change has been confirmed
+      // administrative-only by a named person, which is a recorded answer.
+      if (!limbFires) {
+        const confirmedAdminOnly =
+          (project.assessments.administrativeOnly?.trim() ?? '') === 'Yes' && (project.assessments.administrativeOnlyConfirmedBy?.trim() ?? '') !== '';
+        return confirmedAdminOnly ? 'doesNotApply' : 'notAssessed';
+      }
       // Question 11's exemption, which is now the only way out: confirmed
       // administrative-only, by a named reviewer. Anything less and the review
       // applies — including "Yes" with nobody's name against it.
@@ -801,7 +847,7 @@ export function isGateSignedStanding(project: ProjectData, gateId: string): bool
 // at Gate 5 — and the Formula BOM is the formula itself. A material in either is
 // one this project uses; taking the union can only make the screen stricter, never
 // let a material through unscreened.
-function projectRmCodes(project: ProjectData): string[] {
+export function projectRmCodes(project: ProjectData): string[] {
   const codes = new Set<string>();
   for (const row of project.registers['supplierRmEvidence'] ?? []) {
     const code = String(row.rmCode ?? '').trim();
@@ -887,20 +933,20 @@ const CUSTOMER_LED_ORIGINS = ['Customer request', 'Distributor request'];
 // panel (2026-07-27) — keyed so a new ReadinessTrigger can't silently ship
 // without updating this message too.
 const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
-  skincareForTwo: 'no Pregnancy/Breastfeeding/Postpartum target user selected',
+  skincareForTwo:
+    'no Pregnancy/Breastfeeding/Postpartum target user selected, and it has been recorded, with a reason, that no maternal contact is reasonably foreseeable',
   humanStudyPlanned: 'no human study is planned — the Study Protocol has no planned values recorded',
-  newOrRepositionedProject:
-    'not a new product, claim change or market extension, not a customer or distributor request, and no benchmark product named',
+  newOrRepositionedProject: 'the change was assessed as administrative only and confirmed by a named person',
   microbiologicallySusceptible:
-    'the formula is recorded as anhydrous, self-preserving, sterile or single-use, with a rationale',
+    'the formula is recorded as anhydrous (with its documented microbiological-risk conclusion), self-preserving, sterile or single-use',
   infantContact:
-    'no Infant 0+ target user selected, and no family-use product whose confirmed age groups include infants',
+    'no Infant 0+ target user selected, no family-use product whose confirmed age groups include infants, and it has been recorded, with a reason, that no infant contact is reasonably foreseeable',
   aseanMarket: 'no ASEAN market selected, so the ASEAN PIF checklist does not apply',
   openChangeControl: 'no change control record is open for this project',
   claimNeedsPerformanceEvidence:
     'no declared claim is categorised as depending on product performance or sensory evidence',
   pvPmsRequired:
-    'no safety signal, complaint or PMS trend recorded on Post-Market Sources, and no vulnerable-user population assessed',
+    'no safety signal, complaint or PMS trend recorded on Post-Market Sources, no vulnerable-user population assessed, and each of the four conditions the application cannot read has been answered No with a reason',
   scaleUpRiskIdentified:
     'this is not a New development, no Major formula change has been recorded and the scale-up risk assessment says no risk was identified',
   claimNeedsRegulatoryReview:
@@ -931,16 +977,19 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
 // They are written now rather than left as TODOs, because a message written when
 // the rule is fresh is better than one written months later by whoever wires it.
 const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
-  skincareForTwo: 'nobody has recorded the target users yet, so pregnancy, breastfeeding and postpartum use are unknown',
+  skincareForTwo:
+    'nobody has recorded, with a reason, whether contact with a pregnant, breastfeeding or postpartum user is reasonably foreseeable, and no such user is ticked (Phase 1 -> Gate 02, Foreseeable maternal and infant contact)',
   humanStudyPlanned: 'nobody has answered whether this project involves a human-participant study (Phase 3 -> Gate 08)',
   newOrRepositionedProject: 'the development / change type has not been recorded, so it is unknown whether this is a new product, a claim change or an administrative-only change',
-  microbiologicallySusceptible: 'the formula has not been classified as susceptible, anhydrous, self-preserving, sterile or single-use',
+  microbiologicallySusceptible:
+    'the formula has not been classified as susceptible, anhydrous, self-preserving, sterile or single-use, or it is recorded as anhydrous without a documented microbiological-risk conclusion (the rationale on Formula Properties)',
   infantContact:
-    'this is a Family use product and nobody has confirmed which age groups it is for, so whether infants are included is unknown (Phase 1 -> Gate 02)',
+    'nobody has recorded, with a reason, whether infant contact is reasonably foreseeable, or (for a Family use product) which age groups it is for, so whether infants are included is unknown (Phase 1 -> Gate 02)',
   aseanMarket: 'no market has been recorded for this project yet',
   openChangeControl: 'a post-market finding has not been assessed for a change control, or none has been recorded at all — a review that found nothing records one assessment answered No (Phase 4 -> Gate 12)',
   claimNeedsPerformanceEvidence: 'no claim has been declared yet, so no claim carries an evidence category',
-  pvPmsRequired: 'nothing has been recorded on Post-Market Sources and no vulnerable-user assessment exists, so it is unknown whether enhanced surveillance applies',
+  pvPmsRequired:
+    'the four enhanced-surveillance conditions the application cannot read (a new or unusual active, a significant complaint trend, a recurring quality or performance issue, a requirement in an approved surveillance plan) have not each been answered, a No needing its reason, so it is unknown whether enhanced surveillance applies (Phase 4 -> Gate 12)',
   claimNeedsRegulatoryReview: 'no claim has been declared yet, so no claim carries a category or risk level',
   scaleUpRiskIdentified: 'nobody has assessed whether this project carries a scale-up or pilot risk (Phase 3 -> Gate 09)',
   rmRiskFlagged:
@@ -2086,7 +2135,7 @@ export function clearRegisterEnteredColumns(
 // block that held it would vanish until the user was un-ticked again. So while such an acknowledgement exists the user cannot be
 // ticked: the acknowledgement is withdrawn first. The same rule covers the infant trigger, which reads the target users in the
 // same way.
-export const TARGET_USER_TRIGGERS: ReadinessTrigger[] = ['skincareForTwo', 'infantContact'];
+export const TARGET_USER_TRIGGERS: ReadinessTrigger[] = ['skincareForTwo', 'infantContact', 'pvPmsRequired'];
 
 export interface VoidedAcknowledgement {
   gateId: string;
@@ -2098,10 +2147,14 @@ export interface VoidedAcknowledgement {
 export function acknowledgementsVoidedByTargetUsers(
   project: ProjectData,
   proposed: { label: string; selected: boolean }[],
+  // The same rule for an answer (foreseeable contact "Yes", surveillance conditions "One or more apply"): changing it must not leave
+  // an acknowledgement standing over something it has made untrue.
+  assessmentPatch: Partial<ProjectData['assessments']> = {},
 ): VoidedAcknowledgement[] {
   const current = project.checklists['targetUsers'] ?? [];
   const next: ProjectData = {
     ...project,
+    assessments: { ...project.assessments, ...assessmentPatch },
     checklists: {
       ...project.checklists,
       targetUsers: current.map((i) => ({ ...i, selected: proposed.find((p) => p.label === i.label)?.selected ?? i.selected })),
@@ -2125,7 +2178,7 @@ export function acknowledgementsVoidedByTargetUsers(
 
 export function voidedAcknowledgementsMessage(voided: VoidedAcknowledgement[]): string {
   const list = voided.map((v) => `${v.label} (Gate ${Number(v.gateId.replace('SG', ''))}, acknowledged by ${v.by})`).join('; ');
-  return `Withdraw the acknowledgement first: ${list}. It says this does not apply to the project, and this target user would make it apply.`;
+  return `Withdraw the acknowledgement first: ${list}. It says this does not apply to the project, and this change would make it apply.`;
 }
 
 // Locked only when the trigger CERTAINLY does not apply. "Not yet assessed" leaves the table editable: the answer that
@@ -2230,11 +2283,23 @@ export function generatedNaEntries(project: ProjectData): GeneratedNaEntry[] {
 // the Phase Gate Flow draft before Save is enabled, and by the store guards
 // before committing it. Defaults to the gate's currently committed decision
 // when omitted.
+// A gate that has been stamped passed (Complete with a Proceed decision) is judged against the company lists as they stood when it
+// passed, so a later edit to the Overlay, a market profile or the Claims Library cannot change what it decided (SW-52, Round 5
+// question 1(d)). Open gates, and gates with no snapshot, read the live lists.
+export function referenceAsOfGate(project: ProjectData, gateId: string): ProjectData {
+  const snapshot = project.gateReference?.[gateId];
+  if (!snapshot) return project;
+  const record = project.gates.find((g) => g.gateId === gateId);
+  const stamped = record?.status === 'Complete' && !!record.decision && PASSING_DECISIONS.includes(record.decision);
+  return stamped ? { ...project, reference: snapshot } : project;
+}
+
 export function gateReadinessChecklist(
-  project: ProjectData,
+  liveProject: ProjectData,
   gateId: string,
   decisionOverride?: GateRecord['decision'],
 ): GateReadinessItem[] {
+  const project = referenceAsOfGate(liveProject, gateId);
   const items: GateReadinessItem[] = [];
 
   // C1: Skincare for Two hard-blocks Gate 07 until the mandatory maternal and
@@ -2255,6 +2320,23 @@ export function gateReadinessChecklist(
       hardBlock: true,
       tier: 'Conditional',
       link: phaseSectionLink(gateId, 'sec-requirement-skincareForTwo'),
+    });
+  }
+
+  // Round 5 question 1(d): a Critical change to the company lists puts release on hold until the impact review is concluded. The
+  // release gates cannot pass while it stands, and Proceed with Conditions does not clear it. [ASSUMPTION: R6-Q6]
+  if (gateId === 'SG10' || gateId === 'SG11' || gateId === 'SG12') {
+    const holds = impactHolds(project);
+    items.push({
+      id: 'impact-hold',
+      label:
+        holds.length > 0
+          ? `Release is on hold pending an impact review of a Critical change: ${holds.map((h) => `${h.subject} (${h.markets.join(', ') || 'all markets'})`).join('; ')}`
+          : 'No release on hold pending an impact review',
+      satisfied: holds.length === 0,
+      hardBlock: true,
+      tier: 'Mandatory',
+      link: { href: '/' },
     });
   }
 

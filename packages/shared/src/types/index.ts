@@ -242,6 +242,37 @@ export interface ClaimLibraryEntry {
   updatedAt?: string;
 }
 
+// Round 5 question 1(d) — an impact assessment raised by a change to the company lists (our reading of the details: [ASSUMPTION: R6-Q6]).
+// A conclusion is either "No impact" or an impact that points at the Change Control record dealing with it.
+export const IMPACT_CONCLUSIONS = ['No impact', 'Impact on this project'] as const;
+export interface ImpactConclusionRecord {
+  functionKey: string;
+  conclusion: (typeof IMPACT_CONCLUSIONS)[number];
+  rationale: string;
+  // Required for an impact: the Change Control record that deals with it.
+  linkedChangeId?: string;
+  concludedBy: string;
+  concludedById?: string;
+  concludedAt: string;
+}
+export interface ImpactAssessmentRecord {
+  id: string;
+  dataset: 'rm-risk' | 'market-profile' | 'claims-library';
+  subject: string;
+  summary: string;
+  // A Critical change puts the release of the markets below on hold until every function has concluded.
+  critical: boolean;
+  reason?: string;
+  dueDate: string;
+  raisedBy: string;
+  raisedById?: string;
+  raisedAt: string;
+  functionKeys: string[];
+  markets: string[];
+  conclusions: ImpactConclusionRecord[];
+  concludedAt?: string;
+}
+
 export interface ProjectReferenceData {
   marketProfiles: MarketProfile[];
   // The overlay. An rmCode the project uses that is ABSENT here has not been
@@ -645,6 +676,25 @@ export interface CostingInputs {
 // single `PUT :id/assessments` route serves all four.
 export const CHANGE_CONTROL_REQUIRED_OPTIONS = ['Yes', 'No', 'Pending assessment'] as const;
 export const HUMAN_STUDY_PLANNED_OPTIONS = ['Yes', 'No', 'Undecided'] as const;
+// Round 5 question 1(d): "Maternal/infant exclusions must consider intended and reasonably foreseeable contact, not only marketing
+// ticks." The answer to "is contact with this group reasonably foreseeable?", given by a person; blank and Pending are both "not yet
+// assessed". A tick on the target users is not the answer. The values and where they are asked are our reading [ASSUMPTION: R6-Q5].
+// Only Yes and No (project owner, 2026-11-06): a "Pending" would read as an answer while it is not one, and blank already blocks.
+// A No must carry its reason (`personAnswer` in utils/gateProgress.ts); a Yes need not.
+export const FORESEEABLE_CONTACT_OPTIONS = ['No', 'Yes'] as const;
+// Round 5 question 1(d): "Enhanced-surveillance N/A must assess all applicable triggers, including those not yet structured in the
+// app." The four conditions the application cannot read (new or unusual active ingredient, recurring quality or performance issue, a
+// requirement in an approved surveillance plan, and any other the review team names) are assessed by a person.
+export const UNSTRUCTURED_PMS_OPTIONS = ['No', 'Yes'] as const;
+// The four conditions of Round 4 question 4 that the application has no controlled data source for, asked one by one (project owner,
+// 2026-11-06) so that nobody can answer for all four with one click. [ASSUMPTION: R6-Q5]
+export type UnstructuredPmsField = 'pmsNewActive' | 'pmsComplaintTrend' | 'pmsRecurringIssue' | 'pmsSurveillancePlan';
+export const UNSTRUCTURED_PMS_CONDITIONS: readonly { answer: UnstructuredPmsField; rationale: `${UnstructuredPmsField}Rationale`; label: string }[] = [
+  { answer: 'pmsNewActive', rationale: 'pmsNewActiveRationale', label: 'Is there a new or unusual active ingredient?' },
+  { answer: 'pmsComplaintTrend', rationale: 'pmsComplaintTrendRationale', label: 'Is there a significant complaint trend?' },
+  { answer: 'pmsRecurringIssue', rationale: 'pmsRecurringIssueRationale', label: 'Is there a recurring quality or performance issue?' },
+  { answer: 'pmsSurveillancePlan', rationale: 'pmsSurveillancePlanRationale', label: 'Does an approved surveillance plan require enhanced surveillance?' },
+];
 export const ADMINISTRATIVE_ONLY_OPTIONS = ['Yes', 'No'] as const;
 export const SCALE_UP_RISK_OPTIONS = ['Yes', 'No', 'Pending assessment'] as const;
 
@@ -897,6 +947,21 @@ export interface ProjectAssessments {
   scaleUpRiskRationale?: string;
   scaleUpRiskActivity?: string;
   scaleUpRiskEvidenceLink?: string;
+  // Round 5 question 1(d) — three answers a person gives instead of the engine inferring a "not applicable" from what was ticked or
+  // from the conditions the application can read. Each is blank until somebody answers; blank blocks.
+  // A "No" needs its reason; a "Yes" may have one.
+  foreseeableMaternalContact?: string;
+  foreseeableMaternalRationale?: string;
+  foreseeableInfantContact?: string;
+  foreseeableInfantRationale?: string;
+  pmsNewActive?: string;
+  pmsNewActiveRationale?: string;
+  pmsComplaintTrend?: string;
+  pmsComplaintTrendRationale?: string;
+  pmsRecurringIssue?: string;
+  pmsRecurringIssueRationale?: string;
+  pmsSurveillancePlan?: string;
+  pmsSurveillancePlanRationale?: string;
   // Question 25(c) — which age groups a "Family use" product is actually for.
   // Comma-joined subset of FAMILY_USE_AGE_GROUPS; empty means nobody has
   // confirmed, which is what makes the infant trigger return `notAssessed`
@@ -1418,6 +1483,9 @@ export interface ReadinessAcknowledgement {
   itemId: string;
   functionKey: string; // the function this person acknowledged AS (one row per gate, item and function)
   rationale: string; // the generated explanation that was acknowledged, verbatim
+  // The project facts this was acknowledged against: target users, markets and the major formula version (acknowledgementBasis).
+  // Absent on a row from before it existed, which is judged by its wording as it always was.
+  basis?: string;
   acknowledgedByUserId?: string; // undefined once that account has been deleted
   acknowledgedByName: string; // snapshot — survives a rename or deletion
   acknowledgedAs: string; // the function's label, e.g. "Safety / Scientific Review" — snapshot of the capacity
@@ -1478,4 +1546,9 @@ export interface ProjectData {
   // Company reference data resolved for THIS project — read-only, refreshed on
   // every read, never written by a store action. See ProjectReferenceData above.
   reference: ProjectReferenceData;
+  // The company lists as they stood when a gate PASSED, for each passed gate where they differ from `reference` now (SW-52,
+  // Round 5 question 1(d)). A passed gate is judged by this copy, not by the live lists; absent when nothing differs.
+  gateReference?: Record<string, ProjectReferenceData>;
+  // Impact assessments raised by changes to the company lists (Round 5 question 1(d)).
+  impactAssessments: ImpactAssessmentRecord[];
 }

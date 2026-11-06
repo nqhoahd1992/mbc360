@@ -83,7 +83,12 @@ export default function FormulaPropertiesCard({ project }: { project: ProjectDat
 
           <label className="bom-field bom-span-all">
             <span className="bom-label">
-              Rationale {value === 'Susceptible' ? '(preservative strategy)' : '(why this product does not need preserving)'}
+              Rationale{' '}
+              {value === 'Susceptible'
+                ? '(preservative strategy)'
+                : value === 'Anhydrous'
+                  ? '(the microbiological-risk conclusion: why an anhydrous formula does not need preserving)'
+                  : '(why this product does not need preserving)'}
             </span>
             {locked ? (
               <span className="rt-static">{draft.microRationale || '—'}</span>

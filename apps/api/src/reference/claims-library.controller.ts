@@ -10,6 +10,7 @@ import type { SessionUser } from '../auth/session-user';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionsService } from '../rbac/permissions.service';
 import { ReferenceDataService } from './reference-data.service';
+import { ProjectsService } from '../projects/projects.service';
 
 // Round 4 question 28 (2026-08-24), built 2026-08-30. The company-level Claims
 // Library — the third reference dataset and the only one with a workflow.
@@ -34,6 +35,7 @@ export class ClaimsLibraryController {
     private readonly prisma: PrismaService,
     private readonly reference: ReferenceDataService,
     private readonly permissions: PermissionsService,
+    private readonly projects: ProjectsService,
   ) {}
 
   @Get()
@@ -59,7 +61,13 @@ export class ClaimsLibraryController {
   async save(
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
-    @Body() body: { patch: Partial<ClaimLibraryEntry>; reason?: string },
+    @Body()
+    body: {
+      patch: Partial<ClaimLibraryEntry>;
+      reason?: string;
+      // Round 5 question 1(d): raised by the person making the change.
+      signal?: { critical?: boolean; reason?: string; dueDate?: string };
+    },
   ): Promise<ClaimLibraryEntry[]> {
     await this.reference.assertCanEdit(user, 'claims-library');
     const patch = body.patch ?? {};
@@ -154,6 +162,18 @@ export class ClaimsLibraryController {
             ? 'Edited — approvals retracted'
             : 'Edited',
       );
+      // What an approval covers changed under projects that may rely on the entry.
+      if (existing && wordingChanged) {
+        await this.projects.raiseReferenceSignal(tx, user, {
+          dataset: 'claims-library',
+          entryId: row.id,
+          subject: wording.length > 80 ? `${wording.slice(0, 77)}...` : wording,
+          summary: `Claims Library wording changed (${coveredChanged.join(', ')}); both approvals retracted`,
+          critical: body.signal?.critical === true,
+          reason: body.signal?.reason,
+          dueDate: body.signal?.dueDate,
+        });
+      }
     });
     return this.readAll();
   }
@@ -255,7 +275,14 @@ export class ClaimsLibraryController {
   async withdraw(
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
-    @Body() body: { reason?: string; effectiveDate?: string; transitionPlan?: string },
+    @Body()
+    body: {
+      reason?: string;
+      effectiveDate?: string;
+      transitionPlan?: string;
+      // Round 5 question 1(d): withdrawing wording is not automatically Critical; the person withdrawing says whether it is.
+      signal?: { critical?: boolean; reason?: string; dueDate?: string };
+    },
   ): Promise<{ entries: ClaimLibraryEntry[]; impact: LinkedClaim[] }> {
     await this.reference.assertCanEdit(user, 'claims-library');
     const reason = (body.reason ?? '').trim();
@@ -294,6 +321,15 @@ export class ClaimsLibraryController {
         reason,
         'Withdrawn',
       );
+      await this.projects.raiseReferenceSignal(tx, user, {
+        dataset: 'claims-library',
+        entryId: id,
+        subject: existing.wording.length > 80 ? `${existing.wording.slice(0, 77)}...` : existing.wording,
+        summary: `Claims Library wording withdrawn (effective ${effectiveDate})`,
+        critical: body.signal?.critical === true,
+        reason: body.signal?.reason,
+        dueDate: body.signal?.dueDate,
+      });
     });
     return { entries: await this.readAll(), impact };
   }

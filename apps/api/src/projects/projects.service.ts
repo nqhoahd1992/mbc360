@@ -34,7 +34,7 @@ import {
   openChangesAffectingGate,
 } from '@mbc360/shared/config/changeTriggers';
 import { LEAD_ASSIGNABLE_ROLE_KEYS, REVIEW_ROLES, ownerName, registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
-import { holdsRole } from '@mbc360/shared/utils/readinessAck';
+import { acknowledgementBasis, holdsRole } from '@mbc360/shared/utils/readinessAck';
 import {
   DECISION_OPTIONS,
   NP_APPROVAL_APPROVED,
@@ -157,6 +157,9 @@ import {
   GAP_IMPACT_CATEGORIES,
   GATE_SIGNOFF_ROLES,
   HUMAN_STUDY_PLANNED_OPTIONS,
+  FORESEEABLE_CONTACT_OPTIONS,
+  UNSTRUCTURED_PMS_OPTIONS,
+  UNSTRUCTURED_PMS_CONDITIONS,
   RISK_LEVELS,
   NEXT_ACTION_TERMINAL_STATUSES,
   SCALE_UP_RISK_OPTIONS,
@@ -187,6 +190,8 @@ import { AuditService } from '../audit/audit.service';
 import { PermissionsService } from '../rbac/permissions.service';
 import type { SessionUser } from '../auth/session-user';
 import { IdempotencyService } from './idempotency.service';
+import { IMPACT_DATASET_LABELS, IMPACT_FUNCTIONS, heldMarkets, impactConclusionProblem, type ImpactDataset } from '@mbc360/shared/utils/impactAssessments';
+import { entryTouchesProject, projectHasPassedGate } from '@mbc360/shared/utils/referenceSnapshot';
 import { TotpService } from '../verification/totp.service';
 import { CosmetriDataService, type CosmetriImportRow } from '../cosmetri/cosmetri-data.service';
 import {
@@ -209,6 +214,18 @@ import { createProjectWithScaffold, type NewProjectInput } from './project-scaff
 // the typo guard this list would otherwise need a test for.
 const ASSESSMENT_FIELDS = [
   'humanStudyPlanned',
+  'foreseeableMaternalContact',
+  'foreseeableMaternalRationale',
+  'foreseeableInfantContact',
+  'foreseeableInfantRationale',
+  'pmsNewActive',
+  'pmsNewActiveRationale',
+  'pmsComplaintTrend',
+  'pmsComplaintTrendRationale',
+  'pmsRecurringIssue',
+  'pmsRecurringIssueRationale',
+  'pmsSurveillancePlan',
+  'pmsSurveillancePlanRationale',
   'administrativeOnly',
   'administrativeOnlyConfirmedBy',
   'scaleUpRiskIdentified',
@@ -275,6 +292,12 @@ function assertSelfAttested(label: string, before: unknown, after: unknown, acto
 // The single-answer assessment fields and the list each must come from.
 const ASSESSMENT_ANSWER_LISTS: Partial<Record<keyof ProjectData['assessments'], readonly string[]>> = {
   humanStudyPlanned: HUMAN_STUDY_PLANNED_OPTIONS,
+  foreseeableMaternalContact: FORESEEABLE_CONTACT_OPTIONS,
+  foreseeableInfantContact: FORESEEABLE_CONTACT_OPTIONS,
+  pmsNewActive: UNSTRUCTURED_PMS_OPTIONS,
+  pmsComplaintTrend: UNSTRUCTURED_PMS_OPTIONS,
+  pmsRecurringIssue: UNSTRUCTURED_PMS_OPTIONS,
+  pmsSurveillancePlan: UNSTRUCTURED_PMS_OPTIONS,
   administrativeOnly: ADMINISTRATIVE_ONLY_OPTIONS,
   scaleUpRiskIdentified: SCALE_UP_RISK_OPTIONS,
 };
@@ -2606,6 +2629,7 @@ export class ProjectsService {
       }
       const data = {
         rationale,
+        basis: acknowledgementBasis(project),
         acknowledgedByUserId: user.id,
         acknowledgedByName: user.displayName,
         acknowledgedAs: functionLabel,
@@ -3982,6 +4006,12 @@ export class ProjectsService {
       for (const [field, allowed] of Object.entries(ASSESSMENT_ANSWER_LISTS)) {
         if (field in data) assertOneOf(field, data[field], allowed);
       }
+      // An answer that would make an acknowledged "not applicable" untrue waits for that acknowledgement to be withdrawn
+      // (project owner, 2026-11-06), as a target user does.
+      const answerPatch: Partial<ProjectData['assessments']> = {};
+      for (const [field, value] of Object.entries(data)) (answerPatch as Record<string, string | undefined>)[field] = value ?? undefined;
+      const voided = acknowledgementsVoidedByTargetUsers(project, [], answerPatch);
+      if (voided.length > 0) throw new BadRequestException(voidedAcknowledgementsMessage(voided));
       if ('familyUseAgeGroups' in data) {
         for (const group of (data.familyUseAgeGroups ?? '').split(',')) {
           assertOneOf('Family use age group', group, FAMILY_USE_AGE_GROUPS);
@@ -4016,6 +4046,18 @@ export class ProjectsService {
       }
       const merged = { ...project.assessments, ...patch };
       const value = (k: keyof ProjectData['assessments']) => (merged[k] ?? '').trim();
+
+      // Round 5 question 1(d), 2026-11-06: a "No" to a foreseeable-contact or surveillance-condition question must say why. The engine
+      // reads a No without a reason as "not yet assessed", so storing one would only look like an answer.
+      for (const [answerField, rationaleField, label] of [
+        ['foreseeableMaternalContact', 'foreseeableMaternalRationale', 'Foreseeable maternal contact'],
+        ['foreseeableInfantContact', 'foreseeableInfantRationale', 'Foreseeable infant contact'],
+        ...UNSTRUCTURED_PMS_CONDITIONS.map((c) => [c.answer, c.rationale, c.label] as const),
+      ] as const) {
+        if ((answerField in data || rationaleField in data) && value(answerField) === 'No' && value(rationaleField) === '') {
+          throw new BadRequestException(`${label}: an answer of No needs its reason`);
+        }
+      }
 
       // Question 11: "The classification must be confirmed by an authorised
       // reviewer." An unconfirmed Yes is not an exemption, so it must not be
@@ -4555,6 +4597,17 @@ export class ProjectsService {
         const versionId = versionIdOf.get(next.formulaVersion) ?? currentVersion?.id;
         const prev = row.marketTracks.find((t) => t.market === next.market && t.formulaVersionId === versionId);
         if (!prev) continue;
+        // Round 5 question 1(d): while a Critical change to the company lists is being reviewed, the market it holds cannot take a
+        // new step towards sale — its launch approval, or the record that it is on sale. [ASSUMPTION: R6-Q6]
+        if (heldMarkets(project).includes(next.market)) {
+          const newApproval = next.launchApproval === 'Approved' && prev.launchApproval !== 'Approved';
+          const newLaunch = !!next.actualLaunchDate && !prev.actualLaunchDate;
+          if (newApproval || newLaunch) {
+            throw new BadRequestException(
+              `${next.market}: release is on hold pending an impact review of a Critical change to the company lists, so launch cannot be approved or recorded yet`,
+            );
+          }
+        }
         let launchApproval = next.launchApproval;
         // C5 the other way round (SME rule audit B25, 2026-10-04): moving the PIF
         // off Approved while launch approval stands used to be kept as-is, because
@@ -6024,8 +6077,170 @@ export class ProjectsService {
     return row;
   }
 
+  // Round 5 question 1(d) (our reading of the details: [ASSUMPTION: R6-Q6]). A change to the company lists raises an impact
+  // assessment for every live project that relies on the entry and has already passed a gate, owned by the function that judges that
+  // kind of list. The person who made the change raises it, may mark it Critical (a Critical one holds release, see
+  // utils/impactAssessments.ts) and must give the date the reviews are due. Called inside the list write's own transaction, so the
+  // change, its signal and the assessments commit together.
+  async raiseReferenceSignal(
+    tx: Prisma.TransactionClient,
+    user: SessionUser,
+    input: {
+      dataset: ImpactDataset;
+      entryId: string;
+      subject: string;
+      summary: string;
+      critical: boolean;
+      reason?: string;
+      dueDate?: string;
+    },
+  ): Promise<{ affected: number }> {
+    const reason = (input.reason ?? '').trim();
+    const dueDate = (input.dueDate ?? '').trim();
+    if (input.critical && reason === '') {
+      throw new BadRequestException('A Critical change needs its reason: what the safety issue, prohibition or restriction is');
+    }
+    if (dueDate !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+      throw new BadRequestException('The impact review due date must be a date (YYYY-MM-DD)');
+    }
+    const rows = await tx.project.findMany({ where: { archivedAt: null, stoppedAt: null }, include: PROJECT_INCLUDE });
+    const reference = await this.loadReference(tx);
+    const label = IMPACT_DATASET_LABELS[input.dataset] as Parameters<typeof entryTouchesProject>[1];
+    const affected = rows
+      .map((r) => toProjectData(r, [], reference))
+      .filter((p) => projectHasPassedGate(p) && entryTouchesProject(p, label, this.impactKey(input)));
+    if (affected.length === 0) return { affected: 0 };
+    if (dueDate === '') {
+      throw new BadRequestException(
+        `${affected.length} project(s) rely on this entry and each needs an impact review: give the date it is due`,
+      );
+    }
+    const signal = await tx.referenceSignal.create({
+      data: {
+        dataset: input.dataset,
+        entryId: input.entryId,
+        subject: input.subject,
+        summary: input.summary,
+        critical: input.critical,
+        reason: reason || null,
+        dueDate,
+        raisedById: user.id,
+      },
+    });
+    for (const p of affected) {
+      const created = await tx.impactAssessment.create({
+        data: {
+          signalId: signal.id,
+          projectId: p.identity.id,
+          functionKeys: [...IMPACT_FUNCTIONS[input.dataset]],
+          markets: input.dataset === 'market-profile' ? [input.subject] : p.identity.markets,
+        },
+      });
+      await this.audit.record(
+        {
+          actorId: user.id,
+          projectId: p.identity.id,
+          entityType: 'impact_assessment',
+          entityId: created.id,
+          action: 'impact_assessment.opened',
+          after: { dataset: input.dataset, subject: input.subject, summary: input.summary, critical: input.critical, dueDate },
+        },
+        tx,
+      );
+      await this.bumpVersion(tx, p.identity.id);
+    }
+    return { affected: affected.length };
+  }
+
+  // The key a list entry is known by on a project: the material code, the market name or the Claims Library entry id.
+  private impactKey(input: { dataset: ImpactDataset; entryId: string; subject: string }): string {
+    return input.dataset === 'claims-library' ? input.entryId : input.subject;
+  }
+
+  // A function holder records what the change means for this project. Final for that function (the record is kept, SW-38); the
+  // assessment concludes, and a hold ends, when every function has. The person who raised the signal cannot conclude it, and an
+  // administrator is not the holder of a function.
+  async concludeImpactAssessment(
+    user: SessionUser,
+    id: string,
+    assessmentId: string,
+    input: { functionKey: string; conclusion: string; rationale: string; linkedChangeId?: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'impact_assessment.concluded', async (tx, _row, project) => {
+      const a = project.impactAssessments.find((x) => x.id === assessmentId);
+      if (!a) throw new NotFoundException(`Impact assessment ${assessmentId} not found on this project`);
+      if (a.concludedAt) throw new BadRequestException('This impact assessment is already concluded');
+      if (!a.functionKeys.includes(input.functionKey)) {
+        throw new BadRequestException(`"${input.functionKey}" is not one of the functions that conclude this assessment`);
+      }
+      if (a.conclusions.some((c) => c.functionKey === input.functionKey)) {
+        throw new BadRequestException('This function has already recorded its conclusion');
+      }
+      const functionLabel = REVIEW_ROLES.find((r) => r.key === input.functionKey)?.label ?? input.functionKey;
+      const holder = await tx.projectReviewer.findUnique({ where: { projectId_roleKey: { projectId: id, roleKey: input.functionKey } } });
+      if (!holder) {
+        throw new BadRequestException(
+          `Nobody is assigned as ${functionLabel} on this project yet, so nobody can conclude this — the project's Lead assigns one in Project team`,
+        );
+      }
+      if (!holdsRole(holder, user)) {
+        throw new ForbiddenException(`Only ${holder.name}, who holds ${functionLabel} on this project, may conclude this as ${functionLabel}`);
+      }
+      if (a.raisedById && a.raisedById === user.id) {
+        throw new ForbiddenException('You raised this change, so someone else must conclude its impact');
+      }
+      const problem = impactConclusionProblem(
+        { conclusion: input.conclusion, rationale: input.rationale ?? '', linkedChangeId: input.linkedChangeId },
+        project.changes.map((c) => c.changeId),
+      );
+      if (problem) throw new BadRequestException(problem);
+
+      const record = {
+        functionKey: input.functionKey,
+        conclusion: input.conclusion,
+        rationale: input.rationale.trim(),
+        ...(input.conclusion === 'Impact on this project' ? { linkedChangeId: (input.linkedChangeId ?? '').trim() } : {}),
+        concludedBy: user.displayName,
+        concludedById: user.id,
+        concludedAt: new Date().toISOString(),
+      };
+      const conclusions = [...a.conclusions, record];
+      const complete = a.functionKeys.every((k) => conclusions.some((c) => c.functionKey === k));
+      await tx.impactAssessment.update({
+        where: { id: assessmentId },
+        data: { conclusions: conclusions as unknown as Prisma.InputJsonValue, concludedAt: complete ? new Date() : null },
+      });
+      return { assessmentId, functionKey: input.functionKey, conclusion: input.conclusion, concluded: complete } as Prisma.InputJsonValue;
+    });
+  }
+
   private async bumpVersion(tx: Prisma.TransactionClient, id: string): Promise<void> {
     await tx.project.update({ where: { id }, data: { version: { increment: 1 } } });
+    await this.syncGateReferenceSnapshots(tx, id);
+  }
+
+  // SW-52 / Round 5 question 1(d). Keeps one ACTIVE copy of the company lists for every gate that is stamped passed (Complete with a
+  // Proceed decision), taken at the moment it first reads that way, and retires the copy of a gate that no longer does (a Backtrack
+  // reopened it) — retired, not deleted (SW-38), so the next pass takes a new one. It runs wherever the version is bumped, which is
+  // every project write, so no path that records a decision can forget it. Two small reads decide whether there is anything to do;
+  // the lists are only loaded when there is.
+  private async syncGateReferenceSnapshots(tx: Prisma.TransactionClient, id: string): Promise<void> {
+    const gates = await tx.gateRecord.findMany({ where: { projectId: id }, select: { gateId: true, status: true, decision: true } });
+    const stamped = new Set(
+      gates.filter((g) => g.status === 'Complete' && (g.decision === 'Proceed' || g.decision === 'Proceed with Conditions')).map((g) => g.gateId),
+    );
+    const active = await tx.gateReferenceSnapshot.findMany({ where: { projectId: id, supersededAt: null }, select: { id: true, gateId: true } });
+    const held = new Set(active.map((a) => a.gateId));
+    const retire = active.filter((a) => !stamped.has(a.gateId)).map((a) => a.id);
+    const take = [...stamped].filter((g) => !held.has(g));
+    if (retire.length > 0) {
+      await tx.gateReferenceSnapshot.updateMany({ where: { id: { in: retire } }, data: { supersededAt: new Date() } });
+    }
+    if (take.length > 0) {
+      const reference = (await this.loadReference(tx)) as unknown as Prisma.InputJsonValue;
+      for (const gateId of take) await tx.gateReferenceSnapshot.create({ data: { projectId: id, gateId, reference } });
+    }
   }
 
   private gateWriteData(next: Partial<GateRecord>): Prisma.GateRecordUpdateInput {

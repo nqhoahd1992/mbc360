@@ -7,7 +7,8 @@ import { GATE_READINESS } from '../src/config/gateReadiness';
 import { LEAD_ASSIGNABLE_ROLE_KEYS, REVIEW_ROLES, ownerFunctionWithPeople } from '../src/config/reviewers';
 import { PROJECT_WIDE_AUTHORITY, independentFunctionsByGate, roleMatrix } from '../src/utils/roleMatrix';
 import { CRITICAL_GATES } from '../src/config/gateSignOff';
-import { acknowledgementsVoidedByTargetUsers, voidedAcknowledgementsMessage } from '../src/utils/gateProgress';
+import { acknowledgementsVoidedByTargetUsers, evaluateTrigger, voidedAcknowledgementsMessage } from '../src/utils/gateProgress';
+import { acknowledgementBasis } from '../src/utils/readinessAck';
 import {
   TRIGGER_DEDICATED_SECTIONS,
   acknowledgementHome,
@@ -31,14 +32,34 @@ import {
   acknowledgementSlots,
 } from '../src/utils/readinessAck';
 import type { ProjectData, ReadinessAcknowledgement } from '../src/types';
+import { UNSTRUCTURED_PMS_CONDITIONS } from '../src/types';
 
 let bad = 0;
 const t = (name: string, ok: boolean, extra = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok || !extra ? '' : `   ${extra}`}`);
   if (!ok) bad++;
 };
-const fresh = (): ProjectData =>
-  createEmptyProject({ id: 'T-1', productCode: 'T', projectLead: 'x', markets: ['Vietnam'], reviewers: {} } as never);
+// A project on which the three answers Round 5 question 1(d) asks a person for have been given as "does not apply": no maternal or
+// infant contact is reasonably foreseeable and the conditions the application cannot read do not apply. Without them those triggers
+// read "not yet assessed" (tested below), which is not what most of this file is about.
+const fresh = (): ProjectData => {
+  const p = createEmptyProject({ id: 'T-1', productCode: 'T', projectLead: 'x', markets: ['Vietnam'], reviewers: {} } as never);
+  answerAll(p);
+  return p;
+};
+// The six answers, each No with its reason.
+function answerAll(p: ProjectData): void {
+  p.assessments.foreseeableMaternalContact = 'No';
+  p.assessments.foreseeableMaternalRationale = 'adult product';
+  p.assessments.foreseeableInfantContact = 'No';
+  p.assessments.foreseeableInfantRationale = 'adult product';
+  for (const c of UNSTRUCTURED_PMS_CONDITIONS) {
+    p.assessments[c.answer] = 'No';
+    p.assessments[c.rationale] = 'checked';
+  }
+}
+const bareProject = (): ProjectData =>
+  createEmptyProject({ id: 'T-2', productCode: 'T', projectLead: 'x', markets: ['Vietnam'], reviewers: {} } as never);
 const item = (p: ProjectData, gate: string, id: string) => gateReadinessChecklist(p, gate).find((i) => i.id === id);
 const ack = (p: ProjectData, gateId: string, itemId: string, by: string, byId: string, n: number, functionKey = 'safety-scientific'): ReadinessAcknowledgement => {
   const rationale = item(p, gateId, itemId)!.acknowledgement!.rationale;
@@ -449,6 +470,151 @@ const NON_CRIT = 'sg05-product-form';
   t('...the message names the items and who acknowledged them', /Withdraw the acknowledgement first/.test(voidedAcknowledgementsMessage(voided)) && /Sekar/.test(voidedAcknowledgementsMessage(voided)));
   p.readinessAcknowledgements = [];
   t('withdrawing them frees the target user again', acknowledgementsVoidedByTargetUsers(p, maternal).length === 0);
+}
+
+// --- an acknowledgement stands on the facts it was given against (Round 5 question 1(c)) --------------------------------
+{
+  const mk = (): ProjectData => {
+    const p = fresh();
+    p.identity.reviewers = { 'safety-scientific': 'Sekar' };
+    p.identity.markets = ['Vietnam'];
+    p.formulaVersion = 'F1.0';
+    p.readinessAcknowledgements = [{ ...ack(p, 'SG07', 'sg07-maternal-caution', 'Sekar', 'u-s', 1), basis: acknowledgementBasis(p) }];
+    return p;
+  };
+  const state = (p: ProjectData) => item(p, 'SG07', 'sg07-maternal-caution')?.acknowledgement;
+  t('an acknowledgement given against the current facts stands', state(mk())?.state === 'acknowledged');
+
+  const reworded = mk();
+  reworded.readinessAcknowledgements[0].rationale = 'an earlier wording of the same reason';
+  t('a change to the wording alone keeps it standing (editorial), and says so', state(reworded)?.state === 'acknowledged' && !!state(reworded)?.slots[0].reworded);
+
+  const market = mk();
+  market.identity.markets = ['Vietnam', 'Australia'];
+  t('a market added makes it stale, because the facts changed', state(market)?.state === 'stale' && state(market)?.slots[0].staleBecause === 'facts' && item(market, 'SG07', 'sg07-maternal-caution')?.satisfied === false);
+
+  const minor = mk();
+  minor.formulaVersion = 'F1.1';
+  t('a MINOR formula version does not void it (a passed gate must not be silently reopened)', state(minor)?.state === 'acknowledged');
+
+  const major = mk();
+  major.formulaVersion = 'F2.0';
+  t('a MAJOR formula version does', state(major)?.state === 'stale' && state(major)?.slots[0].staleBecause === 'facts');
+
+  const ages = mk();
+  ages.assessments.familyUseAgeGroups = 'Infant 0+';
+  t('the family-use age groups are part of the facts', state(ages)?.state === 'stale');
+
+  const stamped = mk();
+  const g7 = stamped.gates.find((g) => g.gateId === 'SG07');
+  if (g7) { g7.status = 'Complete'; g7.decision = 'Proceed'; }
+  stamped.identity.markets = ['Vietnam', 'Australia'];
+  t('once the gate is stamped passed, a later market does not void what was acknowledged', state(stamped)?.state === 'acknowledged');
+
+  const legacy = mk();
+  delete legacy.readinessAcknowledgements[0].basis;
+  t('an acknowledgement from before the basis existed is judged by its wording, as it always was', state(legacy)?.state === 'acknowledged');
+  legacy.readinessAcknowledgements[0].rationale = 'something else';
+  t('...and goes stale when that wording differs, for the wording and not the facts', state(legacy)?.state === 'stale' && state(legacy)?.slots[0].staleBecause === 'wording');
+
+  const remarked = mk();
+  const reread = acknowledgementBasis(remarked);
+  t('the basis is the same string for the same facts, whatever the order they were entered in', reread === acknowledgementBasis({ ...remarked, identity: { ...remarked.identity, markets: [...remarked.identity.markets].reverse() } }));
+}
+
+// --- maternal, infant and surveillance exclusions need a person's answer (Round 5 question 1(d)) -----------------------
+{
+  const p = bareProject();
+  t('no maternal user ticked and no answer: NOT assessed (a missing tick is not an exclusion)', evaluateTrigger(p, 'skincareForTwo') === 'notAssessed');
+  p.assessments.foreseeableMaternalContact = 'No';
+  t('a No with no reason is not an answer: still NOT assessed', evaluateTrigger(p, 'skincareForTwo') === 'notAssessed');
+  p.assessments.foreseeableMaternalRationale = '   ';
+  t('...a blank reason is the same', evaluateTrigger(p, 'skincareForTwo') === 'notAssessed');
+  p.assessments.foreseeableMaternalRationale = 'adult product';
+  t('"No foreseeable contact" recorded with a reason: does not apply', evaluateTrigger(p, 'skincareForTwo') === 'doesNotApply');
+  p.assessments.foreseeableMaternalContact = 'Yes';
+  t('"Yes, foreseeable" applies even with nothing ticked', evaluateTrigger(p, 'skincareForTwo') === 'applies');
+  const ticked = bareProject();
+  const pregnancy = (ticked.checklists['targetUsers'] ?? []).find((i) => i.label === 'Pregnancy');
+  if (pregnancy) pregnancy.selected = true;
+  ticked.assessments.foreseeableMaternalContact = 'No';
+  t('a ticked pregnancy user applies whatever the answer says', evaluateTrigger(ticked, 'skincareForTwo') === 'applies');
+
+  const i = bareProject();
+  t('no infant ticked and no answer: infant contact NOT assessed', evaluateTrigger(i, 'infantContact') === 'notAssessed');
+  i.assessments.foreseeableInfantContact = 'No';
+  t('"No foreseeable infant contact" without a reason: NOT assessed', evaluateTrigger(i, 'infantContact') === 'notAssessed');
+  i.assessments.foreseeableInfantRationale = 'adult product';
+  t('"No foreseeable infant contact" recorded with a reason: does not apply', evaluateTrigger(i, 'infantContact') === 'doesNotApply');
+  i.assessments.foreseeableInfantContact = 'Yes';
+  t('"Yes" applies with no infant ticked', evaluateTrigger(i, 'infantContact') === 'applies');
+  const family = bareProject();
+  const fam = (family.checklists['targetUsers'] ?? []).find((x) => x.label === 'Family use');
+  if (fam) fam.selected = true;
+  family.assessments.foreseeableInfantContact = 'No';
+  t('a Family use product with no confirmed age groups is still not assessed, whatever else is answered', evaluateTrigger(family, 'infantContact') === 'notAssessed');
+
+  const pms = bareProject();
+  t('nothing the application can read applies and nobody assessed the rest: enhanced surveillance NOT assessed', evaluateTrigger(pms, 'pvPmsRequired') === 'notAssessed');
+  for (const c of UNSTRUCTURED_PMS_CONDITIONS.slice(0, 3)) {
+    pms.assessments[c.answer] = 'No';
+    pms.assessments[c.rationale] = 'checked';
+  }
+  t('three of the four conditions answered: still NOT assessed (one answer cannot stand for four)', evaluateTrigger(pms, 'pvPmsRequired') === 'notAssessed');
+  const last = UNSTRUCTURED_PMS_CONDITIONS[3];
+  pms.assessments[last.answer] = 'No';
+  t('the fourth answered No with no reason: NOT assessed', evaluateTrigger(pms, 'pvPmsRequired') === 'notAssessed');
+  pms.assessments[last.rationale] = 'checked';
+  t('all four No with reasons: does not apply', evaluateTrigger(pms, 'pvPmsRequired') === 'doesNotApply');
+  pms.assessments[UNSTRUCTURED_PMS_CONDITIONS[1].answer] = 'Yes';
+  t('any one Yes applies, with or without a reason', evaluateTrigger(pms, 'pvPmsRequired') === 'applies');
+  const partial = bareProject();
+  partial.assessments[UNSTRUCTURED_PMS_CONDITIONS[2].answer] = 'Yes';
+  t('a Yes applies even while the others are unanswered', evaluateTrigger(partial, 'pvPmsRequired') === 'applies');
+  const ng = acknowledgementsVoidedByTargetUsers(ackedProject(), [], { foreseeableMaternalContact: 'Yes' });
+  t('while the maternal items are acknowledged, answering "Yes" is held until the acknowledgement is withdrawn', ng.length === 3, JSON.stringify(ng.map((x) => x.itemId)));
+  t('...and answering "No" again is not held', acknowledgementsVoidedByTargetUsers(ackedProject(), [], { foreseeableMaternalContact: 'No' }).length === 0);
+}
+function ackedProject(): ProjectData {
+  const p = fresh();
+  p.identity.reviewers = { 'safety-scientific': 'Sekar' };
+  p.readinessAcknowledgements = [
+    ack(p, 'SG04', 'sg04-pb-screen', 'Sekar', 'u-s', 1),
+    ack(p, 'SG07', 'sg07-bom-matches-pb', 'Sekar', 'u-s', 2),
+    ack(p, 'SG07', 'sg07-maternal-caution', 'Sekar', 'u-s', 3),
+  ];
+  return p;
+}
+
+// --- trigger corrections from Round 5 question 1(d) -------------------------------------------------------------------
+{
+  const p = fresh();
+  t('no development / change type recorded: the competitor-review trigger is NOT assessed (it used to pass on its own)', evaluateTrigger(p, 'newOrRepositionedProject') === 'notAssessed');
+  const nature = (p.checklists['projectNature'] ?? [])[0];
+  if (nature) nature.selected = true;
+  t('a recorded development / change type makes it apply', evaluateTrigger(p, 'newOrRepositionedProject') === 'applies');
+  p.assessments.administrativeOnly = 'Yes';
+  p.assessments.administrativeOnlyConfirmedBy = 'Reggie';
+  t('confirmed administrative-only by a named person is a recorded answer that it does not apply', evaluateTrigger(p, 'newOrRepositionedProject') === 'doesNotApply');
+  const bare = fresh();
+  bare.assessments.administrativeOnly = 'Yes';
+  bare.assessments.administrativeOnlyConfirmedBy = 'Reggie';
+  t('...even with no type recorded', evaluateTrigger(bare, 'newOrRepositionedProject') === 'doesNotApply');
+
+  const m = fresh();
+  t('nothing classified: the preservative trigger is not assessed', evaluateTrigger(m, 'microbiologicallySusceptible') === 'notAssessed');
+  m.formulaProperties.microSusceptibility = 'Anhydrous';
+  t('an anhydrous formula with NO documented conclusion is still not assessed (no waiver)', evaluateTrigger(m, 'microbiologicallySusceptible') === 'notAssessed');
+  m.formulaProperties.microRationale = '  ';
+  t('...a blank conclusion is no conclusion', evaluateTrigger(m, 'microbiologicallySusceptible') === 'notAssessed');
+  m.formulaProperties.microRationale = 'No water phase, aw < 0.3; challenge test not required';
+  t('...with the microbiological-risk conclusion written, the waiver stands', evaluateTrigger(m, 'microbiologicallySusceptible') === 'doesNotApply');
+  const sp = fresh();
+  sp.formulaProperties.microSusceptibility = 'Self-preserving';
+  t('the other waivers are unchanged by this correction', evaluateTrigger(sp, 'microbiologicallySusceptible') === 'doesNotApply');
+  const su = fresh();
+  su.formulaProperties.microSusceptibility = 'Susceptible';
+  t('a susceptible formula applies', evaluateTrigger(su, 'microbiologicallySusceptible') === 'applies');
 }
 
 console.log(bad ? `\n${bad} FAILED` : '\nall passed');

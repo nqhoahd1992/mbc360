@@ -11,6 +11,7 @@
 //   2. who acknowledges an item — 1(a)'s "Acknowledgement function" column and 1(b):
 //      the person holding that function on the project.
 import type { ProjectData, ReadinessAcknowledgement } from '../types';
+import { UNSTRUCTURED_PMS_CONDITIONS } from '../types';
 import { REVIEW_ROLES } from '../config/reviewers';
 import { CRITICAL_GATES } from '../config/gateSignOff';
 
@@ -122,6 +123,31 @@ export function holdsRole(holder: { userId?: string | null; name: string }, user
   return holder.name.trim().toLowerCase() === user.displayName.trim().toLowerCase();
 }
 
+// What an acknowledgement stands on (Round 5 question 1(c): "a material change to target users, formula, markets, evidence or the
+// rationale invalidates the affected acknowledgement. Reassess the item against the new facts. Pure spelling or formatting corrections
+// may retain the acknowledgement with a recorded editorial change"). Our reading of "material" is the list the answer gives that the
+// application can read: the Gate 02 target users (and the family-use age groups), the project's markets, and the MAJOR formula version
+// — a Major version is the confirmed rule for a material formula change (A2, F5), where a Minor one reopens nothing and so must not
+// void the acknowledgement of a gate that has passed. Evidence is not in it: what would count is a question put to the review team.
+// A change to the generated wording alone leaves the acknowledgement standing and is shown as an editorial correction. Facts changed
+// after the item's gate has passed do not void it (see acknowledgementSlots).
+// [ASSUMPTION: R6-Q4]
+export function acknowledgementBasis(project: ProjectData): string {
+  const users = (project.checklists['targetUsers'] ?? []).filter((i) => i.selected).map((i) => i.label).sort();
+  const markets = [...(project.identity.markets ?? [])].sort();
+  return JSON.stringify({
+    users,
+    ageGroups: (project.assessments?.familyUseAgeGroups ?? '').trim(),
+    foreseeable: [
+      (project.assessments?.foreseeableMaternalContact ?? '').trim(),
+      (project.assessments?.foreseeableInfantContact ?? '').trim(),
+      ...UNSTRUCTURED_PMS_CONDITIONS.map((c) => (project.assessments?.[c.answer] ?? '').trim()),
+    ],
+    markets,
+    formulaMajor: (project.formulaVersion ?? '').split('.')[0],
+  });
+}
+
 // One thing that has to be acknowledged, and where it stands.
 export interface AcknowledgementSlot {
   functionKeys: string[]; // any one holder of these may acknowledge
@@ -129,6 +155,10 @@ export interface AcknowledgementSlot {
   holders: { functionKey: string; name: string }[]; // who holds the function(s) on this project; empty = Unassigned
   state: AcknowledgementState;
   ack?: ReadinessAcknowledgement;
+  // Why a stale slot is stale: the facts it stood on changed, or (an acknowledgement from before facts were recorded) its wording did.
+  staleBecause?: 'facts' | 'wording';
+  // Acknowledged, but the system's wording of the reason was corrected since: an editorial change, which keeps it standing.
+  reworded?: boolean;
 }
 
 function functionLabel(key: string): string {
@@ -145,10 +175,28 @@ export function acknowledgementSlots(project: ProjectData, gateId: string, itemI
     const acks = (project.readinessAcknowledgements ?? []).filter(
       (a) => a.gateId === gateId && a.itemId === itemId && functionKeys.includes(a.functionKey),
     );
-    const matching = acks.find((a) => a.rationale === rationale);
+    // An acknowledgement that recorded its basis stands while the facts are unchanged, whatever the wording does; one from before
+    // the basis existed is still judged by its wording.
+    // Once the gate is stamped passed its evidence is locked (B4), and what was acknowledged is part of the record that passed it: a
+    // market added later (allowed after Gate 1, F4) must not quietly un-pass it. Changing the facts of a gate that has passed is a
+    // Backtrack, which clears the stamp and so brings the basis back into play. Read from the stamp alone, not from isGatePassed,
+    // which itself reads these acknowledgements.
+    const gateRecord = project.gates?.find((g) => g.gateId === gateId);
+    const stamped = gateRecord?.status === 'Complete' && (gateRecord.decision === 'Proceed' || gateRecord.decision === 'Proceed with Conditions');
+    const basis = acknowledgementBasis(project);
+    const standing = (a: ReadinessAcknowledgement) => (a.basis && !stamped ? a.basis === basis : a.basis ? true : a.rationale === rationale);
+    const matching = acks.find(standing);
     const ack = matching ?? acks[0];
     const state: AcknowledgementState = !ack ? 'missing' : matching ? 'acknowledged' : 'stale';
-    return { functionKeys, label: functionKeys.map(functionLabel).join(' or '), holders, state, ack };
+    return {
+      functionKeys,
+      label: functionKeys.map(functionLabel).join(' or '),
+      holders,
+      state,
+      ack,
+      ...(state === 'stale' ? { staleBecause: ack?.basis ? ('facts' as const) : ('wording' as const) } : {}),
+      ...(state === 'acknowledged' && matching && matching.rationale !== rationale ? { reworded: true } : {}),
+    };
   });
 }
 

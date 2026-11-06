@@ -18,6 +18,7 @@ import { useCosmetriStatus } from '../integrations/useCosmetriStatus';
 import '../styles/concept.css';
 // rt-drawer-hint / rt-sec-title: the drawer text styles every register drawer uses.
 import '../components/DynamicTable.css';
+import ListChangeSignal, { emptySignal, signalBody, signalProblem, type ChangeSignal } from '../components/ListChangeSignal';
 import './AdminUsers.css';
 import './AdminMarketProfiles.css';
 import './AdminRmRisk.css';
@@ -65,6 +66,7 @@ export default function AdminRmRisk() {
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const connected = useCosmetriStatus().status.connected;
   const [saving, setSaving] = useState(false);
+  const [signal, setSignal] = useState<ChangeSignal>(emptySignal);
   const [catalogue, setCatalogue] = useState<CosmetriRawMaterialSummary[]>([]);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
@@ -161,12 +163,13 @@ export default function AdminRmRisk() {
         const res = await fetch(`/api/reference/rm-risk/${encodeURIComponent(row.rmCode)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ patch: body }),
+          body: JSON.stringify({ patch: body, signal: signalBody(signal) }),
         });
         if (!res.ok) throw new Error((await res.json())?.message ?? 'Could not save');
       }
       await loadRmRisk();
       markSaved();
+      setSignal(emptySignal);
       setHistory(null);
       message.success(`${changedRows.length} raw material(s) classified`);
     } catch (err) {
@@ -347,6 +350,8 @@ export default function AdminRmRisk() {
         )}
       </div>
 
+      {canEdit && dirty && <ListChangeSignal value={signal} onChange={setSignal} />}
+
       {canEdit && dirty && (
         <div className="c-card mp-savebar" role="status">
           <span className="mp-savebar-text">
@@ -360,7 +365,7 @@ export default function AdminRmRisk() {
             <Button onClick={discard} disabled={saving}>
               Discard
             </Button>
-            <Button type="primary" loading={saving} onClick={() => void save()}>
+            <Button type="primary" loading={saving} disabled={!!signalProblem(signal)} onClick={() => void save()}>
               Save
             </Button>
           </span>
@@ -384,14 +389,24 @@ export default function AdminRmRisk() {
         }
         footer={
           canEdit ? (
+            <>
+              {dirty && <ListChangeSignal value={signal} onChange={setSignal} />}
             <div className="rt-drawer-foot">
-              <DrawerSaveFooter dirty={dirty} onSave={save} saving={saving} onClose={() => setOpenCode(null)} />
+              <DrawerSaveFooter
+                dirty={dirty}
+                onSave={save}
+                saving={saving}
+                onClose={() => setOpenCode(null)}
+                disabled={!!signalProblem(signal)}
+                disabledReason={signalProblem(signal) ?? undefined}
+              />
               {open?.isNew && (
                 <Button danger onClick={() => removeNew(open.rmCode)}>
                   Remove
                 </Button>
               )}
             </div>
+            </>
           ) : undefined
         }
       >

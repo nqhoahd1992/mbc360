@@ -230,6 +230,12 @@ interface AppState {
   ) => Promise<void>;
   // Take an acknowledgement back; the item waits for one again.
   withdrawReadinessAcknowledgement: (id: string, gateId: string, itemId: string, functionKey: string) => Promise<void>;
+  // A function holder's conclusion about what a change to the company lists means for this project (Round 5 question 1(d)).
+  concludeImpactAssessment: (
+    id: string,
+    assessmentId: string,
+    input: { functionKey: string; conclusion: string; rationale: string; linkedChangeId?: string },
+  ) => Promise<void>;
   setEvidenceSummary: (id: string, phase: number, value: string) => void;
   // The phase banner's "(provide link here)" shortcuts, keyed by workbook label.
   setPhaseKeyLinks: (id: string, phase: number, links: Record<string, string>) => Promise<boolean>;
@@ -669,6 +675,8 @@ export const useAppStore = create<AppState>()(
 
         withdrawReadinessAcknowledgement: (id, gateId, itemId, functionKey) =>
           writeSection(id, (v) => projectsApi.withdrawReadinessAcknowledgement(id, gateId, itemId, functionKey, v)),
+        concludeImpactAssessment: (id, assessmentId, input) =>
+          writeSection(id, (v) => projectsApi.concludeImpactAssessment(id, assessmentId, input, v)),
 
         setBom: (id, lines) => writeSection(id, (v) => projectsApi.setBom(id, lines, v)),
         importCosmetriBom: (id, formulaId) =>

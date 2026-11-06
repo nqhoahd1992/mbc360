@@ -2,7 +2,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-This round has three questions. They follow from your answers to questions 1 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project.
+This round has six questions. They follow from your answers to questions 1 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it.
 
 Where we say "the software development team" we mean the team building this application — not the owner of any product development project.
 
@@ -127,3 +127,82 @@ Our reading is that it is the company-wide list of roles you gave us in answer F
 | Safety / study reviewer | |
 
 **(d)** For a function with no matching role in the list of 17, should a new company role be added, or may the Lead name anyone?
+
+---
+
+## Question 4 — What counts as a "material change" that voids an acknowledgement?
+
+*Where in the application:* The block that asks a named person to acknowledge a "not applicable" reason the system wrote, on the page that holds the data behind it (for example the Pregnancy / Breastfeeding Caution Limits register). Once acknowledged, the block shows who acknowledged it and when.
+
+In answer 1(c) you said that "a material change to target users, formula, markets, evidence or the rationale invalidates the affected acknowledgement", that the item is then reassessed against the new facts, and that "pure spelling or formatting corrections may retain the acknowledgement with a recorded editorial change". You did not say what counts as material, so we have read it as follows.
+
+**What we have built.** An acknowledgement is recorded against four facts of the project, and it stops counting, with the item waiting again, as soon as any of them changes:
+
+- the **target users** ticked at Gate 02, and the age groups confirmed for a family-use product;
+- the project's **markets**;
+- the **major** formula version.
+
+The item is then waiting for an acknowledgement again and the person is told the facts changed. Once the item's gate has passed its evidence is locked, so a change made afterwards (a market added after launch, for example) does not void it; changing those facts for a gate that has passed is a Backtrack, which reopens the gate. A change to the **wording** of the reason alone leaves the acknowledgement standing and the block says the wording was corrected.
+
+**What we have not built.** *Evidence* is not one of the four facts, because we could not tell which evidence you mean. A **minor** formula version does not void an acknowledgement: it does not reopen any gate, and voiding the acknowledgement of a gate that has already passed would reopen it without anyone deciding to.
+
+**(a)** Is the list of four facts right? Please add or remove any.
+
+**(b)** Which evidence should void an acknowledgement, if any? For example a new or changed safety, stability or claim-evidence record, or a change to the ingredient list's risk classification.
+
+**(c)** Should a **minor** formula version void it, or only a major one? If a minor one should, what should happen to a gate that has already passed?
+
+**(d)** Who decides that a correction is purely editorial: the person who holds the function, or the system?
+
+---
+
+## Question 5 — How should "reasonably foreseeable contact" and the unstructured surveillance conditions be recorded?
+
+*Where in the application:* **Phase 1, Gate 02 tab**, a new block "Foreseeable maternal and infant contact", beside the target users; and **Phase 4, Gate 12 tab**, a new block "Enhanced-surveillance conditions the application cannot read".
+
+In the closing paragraph of answer 1 you said that a maternal or infant exclusion "must consider intended and reasonably foreseeable contact, not only marketing ticks", and that an enhanced-surveillance "not applicable" "must assess all applicable triggers, including those not yet structured in the app". You did not say where those judgements are recorded or what the answer looks like, so we have built the following. Every question is answered **Yes** or **No**, and a **No** must carry its reason; a Yes may.
+
+- **Maternal contact:** "Is contact with a pregnant, breastfeeding or postpartum user reasonably foreseeable?"
+- **Infant contact:** "Is contact with an infant reasonably foreseeable, including by a caregiver or sibling?"
+- **Surveillance, one question per condition** (these are the four of your fourteen conditions for enhanced surveillance that the application has no data to read):
+  - "Is there a new or unusual active ingredient?"
+  - "Is there a significant complaint trend?"
+  - "Is there a recurring quality or performance issue?"
+  - "Does an approved surveillance plan require enhanced surveillance?"
+
+A project with no maternal user ticked, no infant user ticked, and no complete answer (No with its reason) is treated as **not yet assessed**, not as "does not apply": the items that depend on it wait. A **Yes**, or ticking the user, makes the pathway apply; for surveillance a single Yes on any of the four puts the product under enhanced surveillance, and "does not apply" needs all four answered No with a reason. Every existing project starts with all six unanswered.
+
+**(a)** Are these the right questions? Please correct the wording.
+
+**(b)** Who answers each one, and at which gate? We placed the first two at Gate 02 and the four surveillance questions at Gate 12.
+
+**(c)** Should the answer be recorded with the name and date of the person who gave it, as for the family-use ages?
+
+**(d)** Is the complaint trend one of the conditions the application cannot read? We read "a safety or adverse-event issue recorded on the post-market feedback list" as covering safety signals and adverse events only, so a trend of complaints with no safety component is not seen by the application. Please confirm.
+
+**(e)** Are there other conditions the application cannot read that should be asked?
+
+---
+
+## Question 6 — How should a change to a company list reach the projects that already rely on it?
+
+*Where in the application:* the three company lists (Raw Material Risk Overlay, Regulatory market profiles, Claims Library) and, on each project, the **Project Overview**, in a block "Impact of changes to the company lists".
+
+In answer 1(d) you said that a passed gate keeps the list version it used; that a relevant list change "creates a tracked impact assessment, with an owner and due date"; that "a credible Critical safety issue, prohibition or mandatory market restriction puts affected current use/release on hold pending qualified review"; and that Safety/Regulatory and Quality decide scope, urgency and any reopening. You did not say who raises it, who owns the assessment, or what "use/release" means in the application. We have built the following.
+
+- **A passed gate keeps the lists it passed on.** A later edit changes nothing it decided; the project shows a notice of what changed.
+- **The person who changes a list raises the signal.** When saving they say whether the change is Critical (a safety issue, a prohibition or a mandatory market restriction), with the reason, and give the date by which the affected projects must review it.
+- **Every live project that relies on the entry and has passed at least one gate gets an impact assessment**, owned by the function that judges that kind of list: Safety for a material's risk classification; Regulatory for a market's requirements; Technical claims reviewer and Regulatory for claims wording.
+- **A Critical change puts release on hold, and only release.** Gates 10 to 12 cannot pass, and the markets the change covers cannot have launch approved or an actual launch date recorded, until every function on the assessment has concluded. Everything else in the project stays open so the work can be corrected. A market's requirements hold only that market; a material or a claim holds every market of the project.
+- **Each function records one conclusion**: "No impact", or "Impact on this project" naming the Change Control record that deals with it, with a rationale either way. The person who raised the change cannot conclude it, and an administrator account does not stand in for the function.
+- **A change that is not marked Critical** only opens the assessment; nothing is held.
+
+**(a)** Is the person who changes the list the right person to say it is Critical, or should Safety / Regulatory confirm it before release is held?
+
+**(b)** Is "use/release" the right reading? We hold the release gates (10 to 12) and the launch of the markets affected. Should the hold also stop anything else, or should it reach products already on sale (for example by requiring a decision on their current use)?
+
+**(c)** Are the owners right: Safety for a material's classification, Regulatory for a market's requirements, Technical claims reviewer and Regulatory for claims?
+
+**(d)** Should a project that has not yet passed any gate also receive an assessment? We left it out because its checks already read the current list.
+
+**(e)** An impact that needs rework is concluded by naming a Change Control record. Should concluding also reopen the affected gates, or is that for the people with authority to decide, as now?

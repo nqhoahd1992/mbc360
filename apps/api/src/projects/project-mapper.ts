@@ -27,6 +27,7 @@ import { closureKey } from '@mbc360/shared/utils/registerClosures';
 import { deriveRegisterRows } from '@mbc360/shared/utils/registerDerived';
 import { SAFETY_MATRIX_KEY, refreshStoredSafetyMatrix } from '@mbc360/shared/utils/safetyMatrixSync';
 import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
+import { sameReference } from '@mbc360/shared/utils/referenceSnapshot';
 import type {
   BacktrackEvent,
   BomLine,
@@ -42,6 +43,7 @@ import type {
   GateRecord,
   ProjectData,
   ProjectReferenceData,
+  ImpactAssessmentRecord,
   RegisterClosureSignOff,
   RegisterClosureState,
   RegisterRow,
@@ -82,6 +84,9 @@ export const PROJECT_INCLUDE = {
   postLaunchReviews: { orderBy: [{ market: 'asc' }, { dueDate: 'asc' }] },
   supersessionDecisions: { orderBy: [{ version: 'asc' }, { market: 'asc' }] },
   readinessAcknowledgements: { orderBy: [{ acknowledgedAt: 'asc' }, { id: 'asc' }] },
+  // Only the active snapshots: the superseded ones are history, kept in the table and not read by the rules.
+  referenceSnapshots: { where: { supersededAt: null } },
+  impactAssessments: { include: { signal: { include: { raisedBy: { select: { displayName: true } } } } }, orderBy: { createdAt: 'asc' } },
   changeControlAssessments: { orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] },
   gateSignOffs: {
     orderBy: [{ gateId: 'asc' }, { market: 'asc' }, { role: 'asc' }],
@@ -98,6 +103,25 @@ export const PROJECT_INCLUDE = {
 } satisfies Prisma.ProjectInclude;
 
 export type ProjectWithAll = Prisma.ProjectGetPayload<{ include: typeof PROJECT_INCLUDE }>;
+
+function toImpactAssessment(a: ProjectWithAll['impactAssessments'][number]): ImpactAssessmentRecord {
+  return {
+    id: a.id,
+    dataset: a.signal.dataset as ImpactAssessmentRecord['dataset'],
+    subject: a.signal.subject,
+    summary: a.signal.summary,
+    critical: a.signal.critical,
+    ...(a.signal.reason ? { reason: a.signal.reason } : {}),
+    dueDate: a.signal.dueDate,
+    raisedBy: a.signal.raisedBy?.displayName ?? '',
+    ...(a.signal.raisedById ? { raisedById: a.signal.raisedById } : {}),
+    raisedAt: a.signal.raisedAt.toISOString(),
+    functionKeys: a.functionKeys,
+    markets: a.markets,
+    conclusions: (Array.isArray(a.conclusions) ? a.conclusions : []) as unknown as ImpactAssessmentRecord['conclusions'],
+    ...(a.concludedAt ? { concludedAt: a.concludedAt.toISOString() } : {}),
+  };
+}
 
 // Prisma returns `null` for an unset column; the frontend types use optional
 // (`?`) properties, and the difference is visible in JSON (`"owner": null` vs
@@ -376,6 +400,20 @@ export function toChangeRecords(p: ProjectWithAll) {
 // behaving differently on the server than in the browser (BACKEND_PLAN principle 7).
 // Everything the rules and the screens read goes through here, so the columns the workbook computes (a watch-list row's formula
 // match count and its machine-written status) are applied once, in one place, and cannot be stale against the Formula BOM.
+// The snapshots worth sending: those that differ from the lists as they are now. Normally none, so the envelope stays small; each
+// differing one is a full copy, since the rules read it in place of `reference`.
+function gateReferenceDiffering(
+  snapshots: { gateId: string; reference: unknown }[],
+  current: ProjectReferenceData,
+): { gateReference?: Record<string, ProjectReferenceData> } {
+  const out: Record<string, ProjectReferenceData> = {};
+  for (const s of snapshots) {
+    const ref = s.reference as ProjectReferenceData;
+    if (!sameReference(ref, current)) out[s.gateId] = ref;
+  }
+  return Object.keys(out).length > 0 ? { gateReference: out } : {};
+}
+
 export function toProjectData(...args: Parameters<typeof toProjectDataRaw>): ProjectData {
   const project = toProjectDataRaw(...args);
   const watchlist = 'prohibitedIngredients';
@@ -585,6 +623,18 @@ function toProjectDataRaw(
     // blank string that looks like a considered answer.
     assessments: {
       ...(p.humanStudyPlanned ? { humanStudyPlanned: p.humanStudyPlanned } : {}),
+      ...(p.foreseeableMaternalContact ? { foreseeableMaternalContact: p.foreseeableMaternalContact } : {}),
+      ...(p.foreseeableMaternalRationale ? { foreseeableMaternalRationale: p.foreseeableMaternalRationale } : {}),
+      ...(p.foreseeableInfantContact ? { foreseeableInfantContact: p.foreseeableInfantContact } : {}),
+      ...(p.foreseeableInfantRationale ? { foreseeableInfantRationale: p.foreseeableInfantRationale } : {}),
+      ...(p.pmsNewActive ? { pmsNewActive: p.pmsNewActive } : {}),
+      ...(p.pmsNewActiveRationale ? { pmsNewActiveRationale: p.pmsNewActiveRationale } : {}),
+      ...(p.pmsComplaintTrend ? { pmsComplaintTrend: p.pmsComplaintTrend } : {}),
+      ...(p.pmsComplaintTrendRationale ? { pmsComplaintTrendRationale: p.pmsComplaintTrendRationale } : {}),
+      ...(p.pmsRecurringIssue ? { pmsRecurringIssue: p.pmsRecurringIssue } : {}),
+      ...(p.pmsRecurringIssueRationale ? { pmsRecurringIssueRationale: p.pmsRecurringIssueRationale } : {}),
+      ...(p.pmsSurveillancePlan ? { pmsSurveillancePlan: p.pmsSurveillancePlan } : {}),
+      ...(p.pmsSurveillancePlanRationale ? { pmsSurveillancePlanRationale: p.pmsSurveillancePlanRationale } : {}),
       ...(p.administrativeOnly ? { administrativeOnly: p.administrativeOnly } : {}),
       ...(p.administrativeOnlyConfirmedBy ? { administrativeOnlyConfirmedBy: p.administrativeOnlyConfirmedBy } : {}),
       ...(p.scaleUpRiskIdentified ? { scaleUpRiskIdentified: p.scaleUpRiskIdentified } : {}),
@@ -754,6 +804,7 @@ function toProjectDataRaw(
       itemId: a.itemId,
       functionKey: a.functionKey,
       rationale: a.rationale,
+      ...(a.basis ? { basis: a.basis } : {}),
       ...(a.acknowledgedByUserId ? { acknowledgedByUserId: a.acknowledgedByUserId } : {}),
       acknowledgedByName: a.acknowledgedByName,
       acknowledgedAs: a.acknowledgedAs,
@@ -802,6 +853,8 @@ function toProjectDataRaw(
       state: v.status as FormulaVersionRecord['state'],
     })),
     reference,
+    impactAssessments: p.impactAssessments.map(toImpactAssessment),
+    ...gateReferenceDiffering(p.referenceSnapshots, reference),
   };
   annotateStaleSignatures(p, project);
   return project;

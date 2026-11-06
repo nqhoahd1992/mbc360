@@ -2,7 +2,7 @@
 
 **Gửi:** đội chuyên môn (NPD / Quality / Regulatory / Safety)
 
-Vòng này có ba câu. Chúng nảy ra từ đáp án câu 1 và câu 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án.
+Vòng này có sáu câu. Chúng nảy ra từ đáp án câu 1 và câu 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào.
 
 Chỗ nào ghi "nhóm phát triển phần mềm" là nhóm đang xây ứng dụng, không phải chủ của một dự án phát triển sản phẩm.
 
@@ -127,3 +127,82 @@ Cách đọc của chúng tôi: đó là danh sách vai toàn công ty các bạ
 | Safety / study reviewer | |
 
 **(d)** Với chức năng không có vai tương ứng trong 17 vai, nên thêm một vai công ty mới, hay Lead được nêu tên bất kỳ ai?
+
+---
+
+## Câu 4 — Thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận?
+
+*Ở đâu trong ứng dụng:* Khối yêu cầu một người được nêu tên xác nhận lý do "not applicable" do hệ thống tự viết, trên trang chứa dữ liệu của nó (ví dụ sổ Pregnancy / Breastfeeding Caution Limits). Sau khi xác nhận, khối hiện ai xác nhận và lúc nào.
+
+Ở đáp án 1(c), các bạn nói "a material change to target users, formula, markets, evidence or the rationale invalidates the affected acknowledgement", mục đó phải được đánh giá lại theo sự thật mới, và "pure spelling or formatting corrections may retain the acknowledgement with a recorded editorial change". Các bạn chưa nói thế nào là quan trọng, nên chúng tôi đọc như sau.
+
+**Chúng tôi đã xây thế nào.** Mỗi xác nhận được ghi lại theo bốn sự thật của dự án, và hết hiệu lực (mục lại chờ xác nhận) ngay khi một trong bốn điều đó đổi:
+
+- **đối tượng sử dụng** được tick ở Gate 02, và các nhóm tuổi đã xác nhận của sản phẩm family-use;
+- **thị trường** của dự án;
+- **phiên bản công thức lớn (major)**.
+
+Khi đó mục lại chờ xác nhận và người dùng được báo là sự thật đã đổi. Khi gate của mục đã qua thì bằng chứng của nó bị khoá, nên một thay đổi sau đó (ví dụ thêm thị trường sau khi ra mắt) không làm mất hiệu lực; muốn đổi các sự thật đó cho gate đã qua thì phải Backtrack, và Backtrack mở lại gate. Nếu chỉ **câu chữ** của lý do được sửa thì xác nhận vẫn còn và khối ghi rõ là câu chữ đã được chỉnh.
+
+**Chúng tôi chưa xây.** *Bằng chứng* không nằm trong bốn điều trên vì chúng tôi không biết các bạn muốn nói bằng chứng nào. Phiên bản công thức **nhỏ (minor)** không làm mất hiệu lực xác nhận: nó không mở lại gate nào, và làm mất hiệu lực xác nhận của một gate đã qua sẽ mở lại gate đó mà không ai quyết định.
+
+**(a)** Danh sách bốn điều trên có đúng không? Xin thêm hoặc bớt.
+
+**(b)** Bằng chứng nào làm mất hiệu lực một xác nhận, nếu có? Ví dụ hồ sơ an toàn, độ ổn định hoặc bằng chứng claim mới hoặc đã đổi, hoặc phân loại rủi ro của thành phần đổi.
+
+**(c)** Phiên bản công thức **minor** có làm mất hiệu lực không, hay chỉ major? Nếu minor cũng làm mất hiệu lực thì một gate đã qua phải xử lý thế nào?
+
+**(d)** Ai quyết định một chỉnh sửa chỉ là chỉnh câu chữ: người giữ chức năng hay hệ thống?
+
+---
+
+## Câu 5 — "Tiếp xúc có thể lường trước" và các điều kiện giám sát chưa có cấu trúc nên được ghi thế nào?
+
+*Ở đâu trong ứng dụng:* Tab **Gate 02 của Phase 1**, một khối mới "Foreseeable maternal and infant contact", cạnh phần đối tượng sử dụng; và tab **Gate 12 của Phase 4**, một khối mới "Enhanced-surveillance conditions the application cannot read".
+
+Ở đoạn cuối đáp án 1, các bạn nói loại trừ maternal hoặc infant "must consider intended and reasonably foreseeable contact, not only marketing ticks", và "not applicable" của giám sát tăng cường "must assess all applicable triggers, including those not yet structured in the app". Các bạn chưa nói những nhận định đó được ghi ở đâu và câu trả lời trông thế nào, nên chúng tôi đã xây như sau. Mỗi câu trả lời là **Yes** hoặc **No**, và **No** phải kèm lý do; Yes có thể có hoặc không.
+
+- **Tiếp xúc maternal:** "Is contact with a pregnant, breastfeeding or postpartum user reasonably foreseeable?"
+- **Tiếp xúc infant:** "Is contact with an infant reasonably foreseeable, including by a caregiver or sibling?"
+- **Giám sát, mỗi điều kiện một câu** (đây là bốn trong mười bốn điều kiện giám sát tăng cường của các bạn mà ứng dụng không có dữ liệu để đọc):
+  - "Is there a new or unusual active ingredient?"
+  - "Is there a significant complaint trend?"
+  - "Is there a recurring quality or performance issue?"
+  - "Does an approved surveillance plan require enhanced surveillance?"
+
+Dự án không tick đối tượng maternal, không tick infant và chưa có câu trả lời đầy đủ (No kèm lý do) được coi là **chưa đánh giá**, không phải "does not apply": các mục phụ thuộc phải chờ. **Yes**, hoặc tick đối tượng, làm lộ trình áp dụng; với giám sát, chỉ cần một Yes ở bất kỳ câu nào trong bốn là sản phẩm thuộc diện giám sát tăng cường, còn "does not apply" cần cả bốn câu trả lời No kèm lý do. Mọi dự án đang có đều bắt đầu với cả sáu câu chưa trả lời.
+
+**(a)** Đây có phải đúng các câu hỏi không? Xin sửa câu chữ.
+
+**(b)** Ai trả lời từng câu, và ở gate nào? Chúng tôi đặt hai câu đầu ở Gate 02 và bốn câu giám sát ở Gate 12.
+
+**(c)** Câu trả lời có nên ghi kèm tên và ngày của người trả lời, như phần nhóm tuổi family-use không?
+
+**(d)** Xu hướng khiếu nại có đúng là một điều kiện ứng dụng không đọc được không? Chúng tôi hiểu "vấn đề an toàn hoặc biến cố bất lợi ghi trên danh sách phản hồi hậu mãi" chỉ phủ tín hiệu an toàn và biến cố bất lợi, nên xu hướng khiếu nại không có yếu tố an toàn thì ứng dụng không thấy. Xin xác nhận.
+
+**(e)** Còn điều kiện nào khác mà ứng dụng không đọc được và nên hỏi không?
+
+---
+
+## Câu 6 — Một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào?
+
+*Ở đâu trong ứng dụng:* ba danh sách công ty (Raw Material Risk Overlay, hồ sơ thị trường của Regulatory, Claims Library) và, trong mỗi dự án, **Project Overview**, ở khối "Impact of changes to the company lists".
+
+Ở đáp án 1(d), các bạn nói gate đã passed giữ phiên bản danh sách nó đã dùng; một thay đổi liên quan ở danh sách "creates a tracked impact assessment, with an owner and due date"; "a credible Critical safety issue, prohibition or mandatory market restriction puts affected current use/release on hold pending qualified review"; và Safety/Regulatory cùng Quality quyết định phạm vi, mức khẩn và việc có mở lại hay không. Các bạn chưa nói ai phát tín hiệu, ai là owner của đánh giá, và "use/release" nghĩa là gì trong ứng dụng. Chúng tôi đã xây như sau.
+
+- **Gate đã passed giữ danh sách nó đã dùng.** Chỉnh sửa về sau không đổi điều gate đã quyết; dự án hiện thông báo những gì đã thay đổi.
+- **Người sửa danh sách phát tín hiệu.** Khi lưu, họ nói thay đổi có Critical không (vấn đề an toàn, chất cấm hoặc hạn chế thị trường bắt buộc), kèm lý do, và cho hạn mà các dự án bị ảnh hưởng phải rà soát xong.
+- **Mọi dự án đang chạy dựa vào mục đó và đã passed ít nhất một gate nhận một đánh giá tác động**, owner là chức năng đánh giá loại danh sách đó: Safety cho phân loại rủi ro của nguyên liệu; Regulatory cho yêu cầu của thị trường; Technical claims reviewer và Regulatory cho wording claim.
+- **Thay đổi Critical đặt việc phát hành vào trạng thái giữ, và chỉ phát hành.** Gate 10 đến 12 không passed được, và các thị trường mà thay đổi ảnh hưởng không thể được duyệt launch hay ghi ngày launch thực tế, cho đến khi mọi chức năng trong đánh giá đã kết luận. Mọi thứ khác của dự án vẫn mở để sửa. Yêu cầu của một thị trường chỉ giữ thị trường đó; một nguyên liệu hay một claim giữ mọi thị trường của dự án.
+- **Mỗi chức năng ghi một kết luận**: "No impact", hoặc "Impact on this project" kèm Change Control record xử lý nó, và luôn có rationale. Người đã phát tín hiệu không được kết luận, và tài khoản administrator không thay thế được chức năng.
+- **Thay đổi không đánh dấu Critical** chỉ mở đánh giá; không có gì bị giữ.
+
+**(a)** Người sửa danh sách có phải là người phù hợp để nói đó là Critical, hay Safety / Regulatory nên xác nhận trước khi phát hành bị giữ?
+
+**(b)** "Use/release" có đọc đúng không? Chúng tôi giữ các gate phát hành (10 đến 12) và việc launch của các thị trường bị ảnh hưởng. Trạng thái giữ có nên chặn thêm điều gì, hay nên chạm tới sản phẩm đã bán (ví dụ bằng cách yêu cầu quyết định về việc tiếp tục sử dụng)?
+
+**(c)** Owner có đúng không: Safety cho phân loại nguyên liệu, Regulatory cho yêu cầu thị trường, Technical claims reviewer và Regulatory cho claim?
+
+**(d)** Dự án chưa passed gate nào có cũng nhận đánh giá không? Chúng tôi bỏ qua vì các check của nó đã đọc danh sách hiện hành.
+
+**(e)** Một tác động cần làm lại được kết luận bằng cách nêu Change Control record. Kết luận có nên mở lại các gate bị ảnh hưởng, hay việc đó để người có thẩm quyền quyết như hiện nay?

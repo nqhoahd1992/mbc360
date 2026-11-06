@@ -397,6 +397,24 @@ export class ProjectsController {
     return this.projects.withdrawReadinessAcknowledgement(user, id, body.gateId, body.itemId, body.functionKey, body.expectedVersion);
   }
 
+  // Round 5 question 1(d): a function holder records what a change to the company lists means for this project.
+  @Post(':id/impact-assessments/:assessmentId/conclude')
+  concludeImpactAssessment(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('assessmentId') assessmentId: string,
+    @Body() body: { functionKey: string; conclusion: string; rationale: string; linkedChangeId?: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    if (!body?.functionKey || !body?.conclusion) throw new BadRequestException('functionKey and conclusion are required');
+    return this.projects.concludeImpactAssessment(
+      user,
+      id,
+      assessmentId,
+      { functionKey: body.functionKey, conclusion: body.conclusion, rationale: body.rationale ?? '', linkedChangeId: body.linkedChangeId },
+      body.expectedVersion,
+    );
+  }
+
   @Post(':id/phases/:phase/accept-pre-work')
   acceptPreWork(
     @CurrentUser() user: SessionUser,

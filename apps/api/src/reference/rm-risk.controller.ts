@@ -5,6 +5,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { SessionUser } from '../auth/session-user';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReferenceDataService } from './reference-data.service';
+import { ProjectsService } from '../projects/projects.service';
 
 // Round 4 question 17 (2026-08-24): the shared Raw Material Risk Overlay.
 //
@@ -20,6 +21,7 @@ export class RmRiskController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reference: ReferenceDataService,
+    private readonly projects: ProjectsService,
   ) {}
 
   @Get()
@@ -52,7 +54,13 @@ export class RmRiskController {
   async save(
     @CurrentUser() user: SessionUser,
     @Param('rmCode') rmCode: string,
-    @Body() body: { patch: Partial<RawMaterialRisk>; reason?: string },
+    @Body()
+    body: {
+      patch: Partial<RawMaterialRisk>;
+      reason?: string;
+      // Round 5 question 1(d): raised by the person making the change.
+      signal?: { critical?: boolean; reason?: string; dueDate?: string };
+    },
   ): Promise<RawMaterialRisk[]> {
     await this.reference.assertCanEdit(user, 'rm-risk');
     const key = rmCode.trim();
@@ -90,6 +98,22 @@ export class RmRiskController {
             data: { rmCode: key, ...data, revision, updatedById: user.id },
           });
       await this.reference.recordRevision(tx, user, 'rm-risk', row.id, revision, { rmCode: key, ...data }, body.reason);
+      const same =
+        !!existing &&
+        [...existing.flags].sort().join('|') === [...data.flags].sort().join('|') &&
+        (existing.displayName ?? '') === (data.displayName ?? '') &&
+        (existing.notes ?? '') === (data.notes ?? '');
+      if (!same) {
+        await this.projects.raiseReferenceSignal(tx, user, {
+          dataset: 'rm-risk',
+          entryId: row.id,
+          subject: key,
+          summary: `Risk classification of ${data.displayName || key} ${existing ? 'changed' : 'added'}: ${data.flags.length > 0 ? data.flags.join(', ') : 'no risk flag'}`,
+          critical: body.signal?.critical === true,
+          reason: body.signal?.reason,
+          dueDate: body.signal?.dueDate,
+        });
+      }
     });
 
     return this.list();

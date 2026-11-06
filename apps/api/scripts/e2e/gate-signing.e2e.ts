@@ -16,6 +16,7 @@ const { REGISTER_CONFIGS } = require(join(ROOT, 'packages/shared/dist/config/reg
 const gp = require(join(ROOT, 'packages/shared/dist/utils/gateProgress.js'));
 const rc = require(join(ROOT, 'packages/shared/dist/utils/registerClosures.js'));
 const snap = require(join(ROOT, 'packages/shared/dist/utils/gateSnapshot.js'));
+const refSnap = require(join(ROOT, 'packages/shared/dist/utils/referenceSnapshot.js'));
 const { registerClosureSignerRole } = require(join(ROOT, 'packages/shared/dist/config/reviewers.js'));
 /* eslint-enable @typescript-eslint/no-require-imports */
 // The same cut the API process makes (harness.js), so readiness evaluated in this process agrees.
@@ -861,6 +862,10 @@ export async function run(base: string, db: Client): Promise<number> {
   // sections are given, and the checks there count on those being different people.
   const voidHolder = sessions['admin'];
   const voidHolderKey = 'admin';
+  // Maternal and infant exclusions are a person's answer (Round 5 question 1(d)), so the project records that no such contact is
+  // reasonably foreseeable before anything below can read "not applicable".
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/assessments`, { patch: { foreseeableMaternalContact: 'No', foreseeableMaternalRationale: 'e2e: adult product', foreseeableInfantContact: 'No', foreseeableInfantRationale: 'e2e: adult product' }, expectedVersion: await version() });
+  t('no maternal or infant contact is recorded as reasonably foreseeable (Gate 2)', r.status < 300, `${r.status} ${short(r.json)}`);
   r = await api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'safety-study-reviewer', userId: voidHolder.id }], expectedVersion: await version() });
   t('Safety / study reviewer is assigned for this check', r.status < 300, short(r.json));
   r = await api(voidHolderKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId: 'SG08', itemId: 'sg08-infant-testing', functionKey: 'safety-study-reviewer', expectedVersion: await version() });
@@ -1742,6 +1747,67 @@ export async function run(base: string, db: Client): Promise<number> {
   t('the signatures already given in SG10-SG12 stay current (the new market is a new lane, not a change to the old ones)',
     (await Promise.all(['SG10', 'SG11', 'SG12'].flatMap((g) => MARKETS.flatMap((m) => ROLES.map((role) => stale(g, role, m)))))).every((c) => c.length === 0));
   console.log(`   NOTE: SG10-SG12 now have an unsigned lane for the new market (SG10 passed: ${gp.isGatePassed(pj.project, 'SG10')}) — E3(a), one lane per active market`);
+
+  console.log('\n--- the company lists as they stood when each gate passed (SW-52, Round 5 question 1(d))');
+  const activeSnaps = async () =>
+    (await db.query(`SELECT "gateId", count(*)::int AS n FROM gate_reference_snapshots WHERE "projectId" = $1 AND "supersededAt" IS NULL GROUP BY "gateId"`, [PROJECT])).rows as { gateId: string; n: number }[];
+  const snaps = await activeSnaps();
+  pj = await project();
+  const passedGates = ['SG01', 'SG02', 'SG03', 'SG04', 'SG05', 'SG06', 'SG07', 'SG08', 'SG09', 'SG10', 'SG11', 'SG12'].filter((g) => gp.isGatePassed(pj.project, g));
+  t('every passed gate holds exactly one active snapshot', passedGates.length > 0 && passedGates.every((g) => snaps.find((x) => x.gateId === g)?.n === 1), short(snaps));
+  t('no gate holds more than one active snapshot', snaps.every((x) => x.n === 1));
+  t('while the lists are unchanged nothing extra travels with the project', !pj.project.gateReference);
+  await db.query(`INSERT INTO raw_material_risks (id, "rmCode", flags, revision, "updatedAt") VALUES ('e2e-ref-snap', 'RM-1', ARRAY['Fragrance'], 1, now())`);
+  try {
+    pj = await project();
+    t('after a list edit the passed gates carry the lists they passed on', !!pj.project.gateReference && Object.keys(pj.project.gateReference).length > 0, short(Object.keys(pj.project.gateReference ?? {})));
+    t('...and every gate that was passed still is', passedGates.every((g) => gp.isGatePassed(pj.project, g)));
+    t('...and a notice names the change that touches this project', refSnap.referenceNotices(pj.project).some((n: any) => n.changes.some((c: any) => c.subject === 'RM-1')), short(refSnap.referenceNotices(pj.project)));
+  } finally {
+    await db.query(`DELETE FROM raw_material_risks WHERE id = 'e2e-ref-snap'`);
+  }
+
+  console.log('\n--- a Critical change to the company lists holds release until its impact review is concluded (Round 5 question 1(d))');
+  const putOverlay = (signal: unknown) => api('admin', 'PUT', '/reference/rm-risk/RM-1', { patch: { flags: ['Fragrance'] }, signal });
+  r = await putOverlay({ critical: true, reason: '', dueDate: '2099-01-01' });
+  t('a Critical change without its reason is refused (400)', r.status === 400 && /reason/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await putOverlay({ critical: false });
+  t('a change that projects rely on needs the date its impact review is due (400)', r.status === 400 && /due/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await putOverlay({ critical: true, reason: 'e2e: a fragrance allergen was found', dueDate: '2099-01-01' });
+  t('a Critical change with its reason and a due date is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
+  pj = await project();
+  const ia = (pj.project.impactAssessments ?? []) as any[];
+  t('this project, which relies on RM-1, has one assessment, Critical and owned by Safety', ia.length === 1 && ia[0].critical === true && ia[0].functionKeys.join() === 'safety-scientific', short(ia));
+  const holdItem = (g: string) => gp.gateReadinessChecklist(pj.project, g).find((x: any) => x.id === 'impact-hold');
+  t('release gates 10 to 12 are blocked while it stands', ['SG10', 'SG11', 'SG12'].every((g) => holdItem(g)?.satisfied === false));
+  t('...as a hard block that Proceed with Conditions does not clear', ['SG10', 'SG11', 'SG12'].every((g) => holdItem(g)?.hardBlock === true));
+  t('gates before release are not touched by the hold', gp.gateReadinessChecklist(pj.project, 'SG07').every((x: any) => x.id !== 'impact-hold'));
+  const conclude = (key: string, body: Record<string, unknown>) =>
+    api(key, 'POST', `/projects/${PROJECT}/impact-assessments/${ia[0].id}/conclude`, { functionKey: 'safety-scientific', ...body });
+  r = await conclude('admin', { conclusion: 'No impact', rationale: 'e2e', expectedVersion: await version() });
+  t('an administrator is not the holder of the function, so cannot conclude for it (403)', r.status === 403 && /holds Safety/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await assignFunction('safety-scientific', null);
+  t('Safety is left unassigned', r.status < 300, short(r.json));
+  r = await conclude('admin', { conclusion: 'No impact', rationale: 'e2e', expectedVersion: await version() });
+  t('while nobody is assigned as Safety, nobody can conclude (400)', r.status === 400 && /nobody is assigned/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await assignFunction('safety-scientific', sessions['admin'].id);
+  t('the person who raised the change is assigned as Safety (to prove they still cannot conclude it)', r.status < 300, short(r.json));
+  r = await conclude('admin', { conclusion: 'No impact', rationale: 'e2e', expectedVersion: await version() });
+  t('the person who raised the change may not conclude it (403)', r.status === 403 && /raised this change/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  const other = Object.keys(sessions).find((k) => k !== 'admin') as string;
+  r = await assignFunction('safety-scientific', sessions[other].id);
+  t('someone else is assigned as Safety', r.status < 300, short(r.json));
+  r = await conclude(other, { conclusion: 'No impact', rationale: '', expectedVersion: await version() });
+  t('a conclusion without its rationale is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await conclude(other, { conclusion: 'Impact on this project', rationale: 'e2e', expectedVersion: await version() });
+  t('an impact must name the Change Control record that deals with it (400)', r.status === 400 && /change control/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await conclude(other, { conclusion: 'No impact', rationale: 'e2e: the formula does not use that fragrance', expectedVersion: await version() });
+  t('the Safety holder concludes: no impact', r.status < 300, `${r.status} ${short(r.json)}`);
+  pj = await project();
+  t('the assessment is concluded and the hold is gone', !!pj.project.impactAssessments[0].concludedAt && holdItem('SG10')?.satisfied === true);
+  r = await conclude(other, { conclusion: 'No impact', rationale: 'again', expectedVersion: await version() });
+  t('a concluded assessment cannot be concluded again (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  await assignFunction('safety-scientific', null);
 
   console.log(bad === 0 ? '\nall passed' : `\n${bad} FAILED`);
   return bad;
