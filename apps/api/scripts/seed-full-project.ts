@@ -26,6 +26,7 @@ import { PrismaClient } from '../src/generated/prisma/client';
 import { GATES, EIGHT_ANGLES } from '../../../packages/shared/src/config/gates';
 import { CHANGE_TRIGGERS, MAJOR_CHANGE_CRITERIA } from '../../../packages/shared/src/config/changeTriggers';
 import { changeTriggerAvailability } from '../../../packages/shared/src/utils/changeAccess';
+import { requirementSectionLockedAsNotApplicable } from '../../../packages/shared/src/utils/gateProgress';
 import { PHASE_CONFIGS } from '../../../packages/shared/src/config/phases';
 import { ASEAN_MARKETS, REGISTER_CONFIGS, type RegisterColumn, type RegisterConfig } from '../../../packages/shared/src/config/registers';
 import { REVIEW_ROLES } from '../../../packages/shared/src/config/reviewers';
@@ -268,6 +269,8 @@ async function main() {
     for (const section of Object.values(PHASE_CONFIGS).flatMap((p) => p.requirementSections)) {
       const items = project.requirements[section.key] ?? [];
       if (items.length === 0) continue;
+      // A table that exists only for a trigger that does not apply is read-only (SW-56): there is nothing to fill in.
+      if (requirementSectionLockedAsNotApplicable(project, section.key)) continue;
       const doneWord = section.statusOptions?.includes('Complete') ? 'Complete' : 'Completed';
       const next = items.map((r) => ({ ...r, status: doneWord, owner: r.owner || adminName, priority: r.priority || 'Must', minimumRequirement: r.minimumRequirement || `${SEED} requirement`, rationale: r.rationale || `${SEED} rationale` }));
       try {

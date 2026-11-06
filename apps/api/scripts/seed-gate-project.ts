@@ -567,35 +567,39 @@ async function fix(ctx: Ctx, check: ReadinessCheck): Promise<boolean> {
   }
 }
 
-// A critical item whose N/A the engine wrote itself needs the responsible reviewer — the one nominated as "Reviewed
-// by" on the PHASE sign-off — to acknowledge it. Nominating is the Lead's act (the administrator is the Lead), then
-// the same person acknowledges, through the real route.
-const nominatedPhases = new Set<number>();
+// A critical item whose N/A the engine wrote itself needs the person holding each function the review team names for
+// it to acknowledge it. Assigning a function is the Lead's act (the administrator is the Lead), then the same person
+// acknowledges as that function, through the real route.
+const assignedFunctions = new Set<string>();
 async function acknowledgeGeneratedNa(ctx: Ctx, adminId: string, gate: string): Promise<void> {
   const pending = gateReadinessChecklist(project, gate).filter(
     (i) => i.acknowledgement && i.acknowledgement.state !== 'acknowledged' && !i.advisory,
   );
-  if (pending.length === 0) return;
-  const phase = GATES.find((g) => g.id === gate)!.phase;
-  if (!nominatedPhases.has(phase)) {
-    take(
-      await api('PUT', `/projects/${ctx.id}/phases/${phase}/sign-off-assignees`, {
-        assignments: ['Prepared by', 'Reviewed by', 'Approved by'].map((role) => ({ role, userId: adminId })),
-        expectedVersion: version,
-      }),
-    );
-    nominatedPhases.add(phase);
-  }
   for (const item of pending) {
-    take(
-      await api('POST', `/projects/${ctx.id}/readiness-acknowledgements`, {
-        gateId: gate,
-        itemId: item.id,
-        outcome: 'Acknowledged',
-        comment: `${SEED}: acknowledged by the seed script`,
-        expectedVersion: version,
-      }),
-    );
+    for (const slot of item.acknowledgement!.slots.filter((x) => x.state !== 'acknowledged')) {
+      const functionKey = slot.functionKeys[0];
+      if (!assignedFunctions.has(functionKey) && slot.holders.length === 0) {
+        take(
+          await api('PUT', `/projects/${ctx.id}/function-assignees`, {
+            assignments: [{ roleKey: functionKey, userId: adminId }],
+            expectedVersion: version,
+          }),
+        );
+        assignedFunctions.add(functionKey);
+      }
+      // A slot another function already holds is acknowledged by that person, which the dev tool cannot be; the
+      // functions it assigned itself are all the administrator.
+      const holder = slot.holders[0];
+      const key = holder?.functionKey ?? functionKey;
+      take(
+        await api('POST', `/projects/${ctx.id}/readiness-acknowledgements`, {
+          gateId: gate,
+          itemId: item.id,
+          functionKey: key,
+          expectedVersion: version,
+        }),
+      );
+    }
   }
 }
 

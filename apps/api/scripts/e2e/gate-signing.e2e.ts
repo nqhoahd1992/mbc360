@@ -20,7 +20,7 @@ const { registerClosureSignerRole } = require(join(ROOT, 'packages/shared/dist/c
 /* eslint-enable @typescript-eslint/no-require-imports */
 // The same cut the API process makes (harness.js), so readiness evaluated in this process agrees.
 for (const gate of ['SG01', 'SG02', 'SG03', 'SG04', 'SG05', 'SG06', 'SG07', 'SG08', 'SG09', 'SG10', 'SG11', 'SG12']) {
-  GATE_READINESS[gate] = GATE_READINESS[gate].filter((item: { check: { kind: string } }) => item.check.kind === 'gateSignedOff' || item.id === 'sg07-maternal-caution');
+  GATE_READINESS[gate] = GATE_READINESS[gate].filter((item: { check: { kind: string } }) => item.check.kind === 'gateSignedOff' || item.id === 'sg07-maternal-caution' || item.id === 'sg08-infant-testing');
 }
 
 const PROJECT = 'MBC-2026-001';
@@ -55,7 +55,7 @@ export async function run(base: string, db: Client): Promise<number> {
   };
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const sessions: Record<string, Session> = {};
-  const short = (v: unknown) => JSON.stringify(v).slice(0, 220);
+  const short = (v: unknown) => (JSON.stringify(v) ?? 'undefined').slice(0, 220);
 
   async function api(key: string, method: string, path: string, body?: unknown) {
     const res = await fetch(`${base}${path}`, {
@@ -853,6 +853,27 @@ export async function run(base: string, db: Client): Promise<number> {
   t('after SG01 passed, editing initialScope is refused (403)', r.status === 403, `${r.status} ${short(r.json)}`);
 
   // ============================================================ SG02
+  // While an acknowledgement stands, the target user that would make its "not applicable" untrue cannot be ticked (project owner,
+  // 2026-11-06). Gate 2 is still open here, so the checklist is editable and the guard is what answers. The infant item is used
+  // because the harness keeps it; everything is put back so the later sections start from the same state.
+  console.log('\n--- SG02: a target user that would void an acknowledgement waits for its withdrawal');
+  // The administrator's own account is the holder here: asking for a signer key this early would change which accounts the later
+  // sections are given, and the checks there count on those being different people.
+  const voidHolder = sessions['admin'];
+  const voidHolderKey = 'admin';
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'safety-study-reviewer', userId: voidHolder.id }], expectedVersion: await version() });
+  t('Safety / study reviewer is assigned for this check', r.status < 300, short(r.json));
+  r = await api(voidHolderKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId: 'SG08', itemId: 'sg08-infant-testing', functionKey: 'safety-study-reviewer', expectedVersion: await version() });
+  t('the infant-testing "not applicable" is acknowledged early', r.status < 300, `${r.status} ${short(r.json)}`);
+  const targetItems = ((await project()).project.checklists.targetUsers ?? []).map((i: any) => ({ ...i, selected: i.label === 'Infant 0+' ? true : i.selected }));
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/checklists/targetUsers`, { items: targetItems, expectedVersion: await version() });
+  t('while that acknowledgement stands, ticking Infant 0+ is refused and says to withdraw it first (400)', r.status === 400 && /withdraw the acknowledgement first/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  t('...and the target users did not change', !(((await project()).project.checklists.targetUsers ?? []).find((i: any) => i.label === 'Infant 0+')?.selected));
+  r = await api(voidHolderKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements/withdraw`, { gateId: 'SG08', itemId: 'sg08-infant-testing', functionKey: 'safety-study-reviewer', expectedVersion: await version() });
+  t('the acknowledgement is withdrawn', r.status < 300, `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'safety-study-reviewer', userId: null }], expectedVersion: await version() });
+  t('and the function is left Unassigned again for the later checks', r.status < 300, short(r.json));
+
   console.log('\n--- SG02 (only to move the project to SG03)');
   await nominate('SG02');
   await closeRegistersOf(['SG02']);
@@ -1308,18 +1329,20 @@ export async function run(base: string, db: Client): Promise<number> {
   r = await sign('SG07', 'Reviewed by');
   t('Reviewed signs SG07', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
 
-  // ---- Round 4 question 16 [ASSUMPTION: R5-Q6]: a critical item's auto-generated N/A must be acknowledged
-  // by the phase's nominated "Reviewed by" before the gate can close. The kept item is
-  // sg07-maternal-caution: this project has no pregnancy/breastfeeding user, so its N/A is generated.
+  // ---- Round 4 question 16 / Round 5 question 1: a critical item's auto-generated N/A must be acknowledged by the
+  // person holding the FUNCTION the review team names for it (here Safety / Scientific Review) before the gate can close.
+  // The kept item is sg07-maternal-caution: this project has no pregnancy/breastfeeding user, so its N/A is generated.
   console.log('\n--- SG07: acknowledging a generated N/A (question 16)');
   const ACK_ITEM = 'sg07-maternal-caution';
   const ackItem = (p: any) => gp.gateReadinessChecklist(p, 'SG07').find((i: any) => i.id === ACK_ITEM);
-  const postAck = async (key: string, gateId: string, itemId: string) =>
-    api(key, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId, itemId, expectedVersion: await version() });
+  const postAck = async (key: string, gateId: string, itemId: string, functionKey = 'safety-scientific') =>
+    api(key, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId, itemId, functionKey, expectedVersion: await version() });
+  const assignFunction = async (roleKey: string, userId: string | null) =>
+    api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey, userId }], expectedVersion: await version() });
   const ackRows = async () =>
     (
       await db.query(
-        `SELECT "acknowledgedByUserId", "acknowledgedByName", "acknowledgedAs", rationale FROM readiness_acknowledgements
+        `SELECT "acknowledgedByUserId", "acknowledgedByName", "acknowledgedAs", "functionKey", rationale FROM readiness_acknowledgements
           WHERE "projectId" = $1 AND "gateId" = 'SG07' AND "itemId" = $2 ORDER BY "acknowledgedAt", id`,
         [PROJECT, ACK_ITEM],
       )
@@ -1331,84 +1354,109 @@ export async function run(base: string, db: Client): Promise<number> {
   pj = await project();
   t('...and the gate did not pass', !gp.isGatePassed(pj.project, 'SG07'));
 
-  // The seeder nominates Phase 3's signers on the demo project, so clear the Reviewed by lane first.
-  r = await api('admin', 'PUT', `/projects/${PROJECT}/phases/3/sign-off-assignees`, {
-    assignments: [{ role: 'Reviewed by', userId: null }],
-    expectedVersion: await version(),
-  });
-  t('Phase 3 has no Reviewed by nominated', r.status < 300, short(r.json));
+  // Nobody holds Safety / Scientific Review on this project yet: the function reads Unassigned and nobody can acknowledge,
+  // an administrator included. Nobody is substituted for it, and the phase's "Reviewed by" has no standing here.
+  const holderKey = phaseKey(3, 'Reviewed by');
+  const holder = sessions[holderKey];
+  pj = await project();
+  t('the item names the function that has to acknowledge it, and nobody holds it', ackItem(pj.project)?.acknowledgement?.slots?.[0]?.label === 'Safety / Scientific Review' && ackItem(pj.project)?.acknowledgement?.slots?.[0]?.holders?.length === 0, short(ackItem(pj.project)));
   r = await postAck('admin', 'SG07', ACK_ITEM);
-  t('nobody is nominated as Reviewed by on Phase 3: even an admin cannot acknowledge (400)', r.status === 400 && /nominat/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
-  r = await nominatePhase(3);
-  t('the Lead nominates the Phase 3 signers', r.status < 300, short(r.json));
-  const reviewerKey = phaseKey(3, 'Reviewed by');
+  t('Safety / Scientific Review is Unassigned: even an administrator cannot acknowledge (400)', r.status === 400 && /nobody is assigned/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await postAck(holderKey, 'SG07', ACK_ITEM);
+  t('the phase "Reviewed by" is not a substitute for the function (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await assignFunction('safety-scientific', holder.id);
+  t('the Lead assigns Safety / Scientific Review to a person', r.status < 300, short(r.json));
   r = await postAck('admin', 'SG07', ACK_ITEM);
-  t('a person who is not the nominated Reviewed by cannot acknowledge — an admin included (403)', r.status === 403, `${r.status} ${short(r.json)}`);
-  r = await postAck(reviewerKey, 'SG07', 'sg07-signoff');
+  t('an administrator who does not hold the function still cannot acknowledge (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await postAck(holderKey, 'SG07', 'sg07-signoff');
   t('an item that is not waiting for an acknowledgement is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
-  r = await postAck(reviewerKey, 'SG99', ACK_ITEM);
+  r = await postAck(holderKey, 'SG99', ACK_ITEM);
   t('an unknown gate is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
-  r = await postAck(reviewerKey, 'SG07', ACK_ITEM);
-  t('the nominated Reviewed by acknowledges', r.status < 300, `${r.status} ${short(r.json)}`);
+  r = await postAck(holderKey, 'SG07', ACK_ITEM, 'finance');
+  t('a function the item does not name is refused (400)', r.status === 400 && /not one of the functions/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  // The maternal caution register is dedicated to that pathway and this project has no maternal user: read-only, and acknowledging
+  // clears what was entered in it (project owner, 2026-11-06). The workbook's reference rows stay.
+  pj = await project();
+  const cautionRows = (pj.project.registers.pbCautionLimits ?? []).map((x: any) => ({ ...x }));
+  cautionRows[0].formulaExposure = '0.5 %';
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/registers/pbCautionLimits`, { rows: cautionRows, expectedVersion: await version() });
+  t('the maternal caution register does not apply to this project, so even an administrator cannot write it (400)', r.status === 400 && /does not apply/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  await db.query(
+    `UPDATE register_rows SET data = jsonb_set(data::jsonb, '{formulaExposure}', '"0.5 %"') WHERE "projectId" = $1 AND "registerKey" = 'pbCautionLimits' AND "rowOrder" = 0`,
+    [PROJECT],
+  );
+  pj = await project();
+  t('the engine sees one row with entered data in that register', gp.generatedNaEntries(pj.project).find((e: any) => e.itemId === ACK_ITEM)?.dedicatedSection?.rowsWithData === 1, short(gp.generatedNaEntries(pj.project).find((e: any) => e.itemId === ACK_ITEM)));
+  r = await postAck(holderKey, 'SG07', ACK_ITEM);
+  t('acknowledging without confirming the clearing is refused, and says what would be cleared (400)', r.status === 400 && /clears the data/i.test(String(r.json?.message)) && /1 row/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await api(holderKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId: 'SG07', itemId: ACK_ITEM, functionKey: 'safety-scientific', confirmClear: true, expectedVersion: await version() });
+  t('the person holding Safety / Scientific Review acknowledges, with the clearing confirmed', r.status < 300, `${r.status} ${short(r.json)}`);
+  const cautionAfter = (await db.query(`SELECT data FROM register_rows WHERE "projectId" = $1 AND "registerKey" = 'pbCautionLimits' ORDER BY "rowOrder"`, [PROJECT])).rows.map((x: any) => x.data);
+  t('...the entered cell is cleared, and the 12 reference rows are all still there', cautionAfter.length === 12 && !cautionAfter[0].formulaExposure && !!cautionAfter[0].ingredientGroup, short(cautionAfter[0]));
   pj = await project();
   t('...the item is satisfied and says who acknowledged', ackItem(pj.project)?.satisfied === true && ackItem(pj.project)?.acknowledgement?.state === 'acknowledged' && !!ackItem(pj.project)?.acknowledgement?.by, short(ackItem(pj.project)));
   const first = await ackRows();
   t('...recorded from the session with the wording the engine generated, not anything the client sent',
-    first.length === 1 && first[0].acknowledgedByUserId === sessions[reviewerKey].id && first[0].rationale === ackItem(pj.project)?.acknowledgement?.rationale && first[0].acknowledgedAs === 'Reviewed by — Phase 3', short(first));
-  r = await postAck(reviewerKey, 'SG07', ACK_ITEM);
+    first.length === 1 && first[0].acknowledgedByUserId === holder.id && first[0].functionKey === 'safety-scientific' && first[0].rationale === ackItem(pj.project)?.acknowledgement?.rationale && first[0].acknowledgedAs === 'Safety / Scientific Review', short(first));
+  r = await postAck(holderKey, 'SG07', ACK_ITEM);
   t('the same person acknowledging the same wording twice is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
 
-  // Re-nominating moves the right; what was recorded stays, and the new reviewer may confirm again.
+  // Re-assigning the function moves the right; what was recorded stays, and the new holder may confirm again.
   const newReviewer = sessions[signerKey('SG07', 'Reviewed by')];
-  r = await api('admin', 'PUT', `/projects/${PROJECT}/phases/3/sign-off-assignees`, {
-    assignments: [{ role: 'Reviewed by', userId: newReviewer.id }],
-    expectedVersion: await version(),
-  });
-  t('the Lead re-nominates a different Reviewed by for Phase 3', r.status < 300, short(r.json));
-  r = await postAck(reviewerKey, 'SG07', ACK_ITEM);
-  t('the previous reviewer can no longer acknowledge (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await assignFunction('safety-scientific', newReviewer.id);
+  t('the Lead assigns Safety / Scientific Review to a different person', r.status < 300, short(r.json));
+  r = await postAck(holderKey, 'SG07', ACK_ITEM);
+  t('the previous holder can no longer acknowledge (403)', r.status === 403, `${r.status} ${short(r.json)}`);
   pj = await project();
   t('...and the earlier acknowledgement still counts', ackItem(pj.project)?.satisfied === true);
-  r = await postAck(signerKey('SG07', 'Reviewed by'), 'SG07', ACK_ITEM);
-  t('the new reviewer may acknowledge again', r.status < 300, `${r.status} ${short(r.json)}`);
-  const edited = await ackRows();
-  t('...still ONE row: the new reviewer edited it in place', edited.length === 1 && edited[0].acknowledgedByUserId === newReviewer.id, short(edited));
-  pj = await project();
-  t("...and the item now reads the new reviewer's name", ackItem(pj.project)?.acknowledgement?.by === edited[0].acknowledgedByName, short(ackItem(pj.project)));
-
-  // The new reviewer disagrees with the reason: that is a recorded decision, with a reason, and it blocks.
   const newKey = signerKey('SG07', 'Reviewed by');
-  const postNot = async (comment?: string) =>
-    api(newKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId: 'SG07', itemId: ACK_ITEM, outcome: 'Not acknowledged', comment, expectedVersion: await version() });
-  r = await postNot(undefined);
-  t('"Not acknowledged" without a reason is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
-  r = await api(newKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId: 'SG07', itemId: ACK_ITEM, outcome: 'Maybe', expectedVersion: await version() });
-  t('an unknown outcome is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
-  r = await postNot('the next release adds a pregnancy user');
-  t('"Not acknowledged" with a reason is recorded', r.status < 300, `${r.status} ${short(r.json)}`);
-  pj = await project();
-  t('...the item is rejected and blocks again, saying why', ackItem(pj.project)?.acknowledgement?.state === 'rejected' && ackItem(pj.project)?.satisfied === false && /pregnancy user/.test(String(ackItem(pj.project)?.label)), short(ackItem(pj.project)));
-  t('...it is still ONE row (edited in place)', (await ackRows()).length === 1);
-  r = await sign('SG07', 'Approved by');
-  t('the Approved signature is refused while the reviewer has not acknowledged (400)', r.status === 400, `${r.stage} ${r.status} ${short(r.json)}`);
-  r = await postNot('the next release adds a pregnancy user');
-  t('recording the same thing again is refused as no change (400)', r.status === 400, `${r.status} ${short(r.json)}`);
   r = await postAck(newKey, 'SG07', ACK_ITEM);
-  t('the reviewer changes their mind: acknowledged again, in place', r.status < 300, `${r.status} ${short(r.json)}`);
+  t('the new holder may acknowledge again', r.status < 300, `${r.status} ${short(r.json)}`);
+  const edited = await ackRows();
+  t('...still ONE row: the new holder edited it in place', edited.length === 1 && edited[0].acknowledgedByUserId === newReviewer.id, short(edited));
+  pj = await project();
+  t("...and the item now reads the new holder's name", ackItem(pj.project)?.acknowledgement?.by === edited[0].acknowledgedByName, short(ackItem(pj.project)));
+
+  // There is no way to record a refusal: whatever else the body says, the call acknowledges, and the same person
+  // acknowledging the same wording again changes nothing.
+  r = await api(newKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId: 'SG07', itemId: ACK_ITEM, functionKey: 'safety-scientific', outcome: 'Not acknowledged', comment: 'the next release adds a pregnancy user', expectedVersion: await version() });
+  t('a body that asks for "Not acknowledged" does not record a refusal: it is the same acknowledgement again (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  pj = await project();
+  t('...the item is still acknowledged, with nothing about a refusal on it', ackItem(pj.project)?.satisfied === true && ackItem(pj.project)?.acknowledgement?.state === 'acknowledged', short(ackItem(pj.project)));
   const final = await ackRows();
-  t('...still one row, now Acknowledged with no stale reason', final.length === 1, short(final));
+  t('...it is still ONE row (edited in place)', final.length === 1, short(final));
   const trail = (
     await db.query(
-      `SELECT after FROM audit_events WHERE "projectId" = $1 AND action = 'readiness_ack.recorded' ORDER BY "occurredAt", id`,
-      [PROJECT],
+      `SELECT after FROM audit_events WHERE "projectId" = $1 AND action = 'readiness_ack.recorded' AND after->>'itemId' = $2 ORDER BY "occurredAt", id`,
+      [PROJECT, ACK_ITEM],
     )
   ).rows.map((x: any) => x.after);
   t('the audit trail keeps every edit with the values before and after',
-    trail.length === 4 && trail[0].before === null && trail[0].after.by === first[0].acknowledgedByName && trail[1].before?.by === first[0].acknowledgedByName && trail[2].after.outcome === 'Not acknowledged' && trail[2].before?.outcome === 'Acknowledged' && trail[3].before?.outcome === 'Not acknowledged', short(trail));
+    trail.length === 2 && trail[0].before === null && trail[0].after.by === first[0].acknowledgedByName && trail[1].before?.by === first[0].acknowledgedByName && trail[1].after.by === edited[0].acknowledgedByName, short(trail));
   pj = await project();
   const ackLog = (pj.project.readinessAckLog ?? []).filter((e: any) => e.gateId === 'SG07' && e.itemId === ACK_ITEM);
   t('the envelope carries the edit history of the entry, oldest first, read from the audit trail',
-    ackLog.length === 4 && ackLog[0].outcome === 'Acknowledged' && ackLog[0].by === first[0].acknowledgedByName && ackLog[1].by === edited[0].acknowledgedByName && ackLog[2].outcome === 'Not acknowledged' && /pregnancy user/.test(String(ackLog[2].comment)) && ackLog[3].outcome === 'Acknowledged', short(ackLog));
+    ackLog.length === 2 && ackLog[0].by === first[0].acknowledgedByName && ackLog[1].by === edited[0].acknowledgedByName, short(ackLog));
+  // Taking an acknowledgement back (project owner, 2026-11-06): the giver or the holder of the function may, nobody else, and the
+  // item waits for an acknowledgement again.
+  const withdrawAck = async (key: string, fn = 'safety-scientific') =>
+    api(key, 'POST', `/projects/${PROJECT}/readiness-acknowledgements/withdraw`, { gateId: 'SG07', itemId: ACK_ITEM, functionKey: fn, expectedVersion: await version() });
+  r = await withdrawAck('admin');
+  t('an administrator account, who neither gave it nor holds the function, cannot withdraw it (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await withdrawAck(holderKey);
+  t('the earlier holder, who is no longer the holder and did not give the current acknowledgement, cannot withdraw it (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await withdrawAck(newKey, 'quality-microbiology');
+  t('withdrawing an acknowledgement nobody gave is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await withdrawAck(newKey);
+  t('the person who holds the function withdraws it', r.status < 300, `${r.status} ${short(r.json)}`);
+  t('...the row is gone', (await ackRows()).length === 0, short(await ackRows()));
+  pj = await project();
+  t('...and the item waits for an acknowledgement again, blocking the gate', ackItem(pj.project)?.satisfied === false && ackItem(pj.project)?.acknowledgement?.state === 'missing' && gp.hardGateBlockers(pj.project, 'SG07').some((b: any) => b.id === ACK_ITEM), short(ackItem(pj.project)));
+  t('the history lists the withdrawal as that', (pj.project.readinessAckLog ?? []).filter((e: any) => e.itemId === ACK_ITEM).at(-1)?.kind === 'withdrawn', short(pj.project.readinessAckLog));
+  r = await withdrawAck(newKey);
+  t('withdrawing again, with nothing left to withdraw, is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await postAck(newKey, 'SG07', ACK_ITEM);
+  t('the holder acknowledges once more', r.status < 300, `${r.status} ${short(r.json)}`);
   r = await nominatePhase(3);
   t('the Phase 3 nomination goes back to the standard lanes (the later phase close-out uses them)', r.status < 300, short(r.json));
 
@@ -1416,10 +1464,10 @@ export async function run(base: string, db: Client): Promise<number> {
   t('Approved signs SG07 once the reason is acknowledged', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);
   pj = await project();
   t('SG07 passed', gp.isGatePassed(pj.project, 'SG07'));
-  r = await postAck(signerKey('SG07', 'Reviewed by'), 'SG07', ACK_ITEM);
+  r = await postAck(newKey, 'SG07', ACK_ITEM);
   t('once SG07 has passed, acknowledgements are read-only (400)', r.status === 400, `${r.status} ${short(r.json)}`);
-  const audit = (await db.query(`SELECT count(*)::int AS n FROM audit_events WHERE "projectId" = $1 AND action = 'readiness_ack.recorded'`, [PROJECT])).rows[0];
-  t('each edit left an audit row (four in all)', audit.n === 4, short(audit));
+  const audit = (await db.query(`SELECT count(*)::int AS n FROM audit_events WHERE "projectId" = $1 AND action = 'readiness_ack.recorded' AND after->>'itemId' = $2`, [PROJECT, ACK_ITEM])).rows[0];
+  t('each edit left an audit row (three in all: the two edits and the acknowledgement given again after the withdrawal)', audit.n === 3, short(audit));
   r = await putWatch({ productStatus: 'Present within restriction' });
   t('after SG07 passed, the watch-list is read-only (403)', r.status === 403, `${r.status} ${short(r.json)}`);
   pj = await project();
@@ -1428,6 +1476,39 @@ export async function run(base: string, db: Client): Promise<number> {
   for (const g of ['SG01', 'SG02', 'SG03', 'SG04', 'SG05', 'SG06', 'SG07']) {
     t(`${g}: no signature is stale`, (await Promise.all(ROLES.map((role) => stale(g, role)))).every((c) => c.length === 0), short(await Promise.all(ROLES.map((role) => stale(g, role)))));
   }
+
+  // ============================================================ Functions
+  // Who holds each professional function (Safety / Scientific Review, Technical Claims, …) is a named person on the project,
+  // assigned by the project's Lead or an administrator; the thirteen area roles stay write-once at creation.
+  console.log('\n--- Functions: assigning who holds a function on the project');
+  const someone = sessions[phaseKey(3, 'Reviewed by')];
+  const fnRow = async (roleKey: string) =>
+    (await db.query(`SELECT name, "userId" FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = $2`, [PROJECT, roleKey])).rows[0];
+  const putFn = async (key: string, assignments: unknown[]) =>
+    api(key, 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments, expectedVersion: await version() });
+  r = await putFn(phaseKey(3, 'Prepared by'), [{ roleKey: 'technical-claims', userId: someone.id }]);
+  t('a person who is neither the Lead nor an administrator cannot assign a function (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await putFn('admin', [{ roleKey: 'quality', userId: someone.id }]);
+  t('a workbook AREA role cannot be changed after creation: only functions and the Project owner can (400)', r.status === 400 && /not a role the Lead assigns/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await putFn('admin', [{ roleKey: 'no-such-function', userId: someone.id }]);
+  t('an unknown role key is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await putFn('admin', [{ roleKey: 'technical-claims', userId: 'no-such-user' }]);
+  t('a person who is not an active user is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+  t('...and nothing was assigned', (await fnRow('technical-claims')) === undefined);
+  r = await putFn('admin', [{ roleKey: 'technical-claims', userId: someone.id }]);
+  t('an administrator assigns a function', r.status < 300, `${r.status} ${short(r.json)}`);
+  const assignedFn = await fnRow('technical-claims');
+  t('...it names that person and links their account', !!assignedFn && assignedFn.userId === someone.id && !!assignedFn.name, short(assignedFn));
+  pj = await project();
+  t('...and the project envelope carries it with the other reviewers', typeof pj.project.identity.reviewers?.['technical-claims'] === 'string' && pj.project.identity.reviewers['technical-claims'] === assignedFn?.name, short(pj.project.identity.reviewers));
+  r = await putFn('admin', [{ roleKey: 'technical-claims', userId: null }]);
+  t('assigning nobody leaves the function Unassigned', r.status < 300 && (await fnRow('technical-claims')) === undefined, `${r.status} ${short(r.json)}`);
+  const fnAudit = (await db.query(`SELECT count(*)::int AS n FROM audit_events WHERE "projectId" = $1 AND action = 'project.function_assignees_updated'`, [PROJECT])).rows[0];
+  t('each change left an audit row (two for Safety earlier, then assigned and cleared here)', fnAudit.n === 6, short(fnAudit));
+  r = await putFn('admin', [{ roleKey: 'project-owner', userId: someone.id }]);
+  t('the Project owner can be named after the project exists (a project created before the field has none)', r.status < 300, `${r.status} ${short(r.json)}`);
+  pj = await project();
+  t('...and the project carries it with the other roles', pj.project.identity.reviewers?.['project-owner'] === (await fnRow('project-owner'))?.name && !!(await fnRow('project-owner'))?.userId, short(pj.project.identity.reviewers));
 
   // ============================================================ SG08
   console.log('\n--- SG08 (the human-study assessment is Gate 8 data)');
@@ -1441,6 +1522,43 @@ export async function run(base: string, db: Client): Promise<number> {
   await nominate('SG08');
   r = await putAssess({ humanStudyPlanned: 'No' });
   t('the human-study assessment is answered while SG08 is open', r.status < 300, `${r.status} ${short(r.json)}`);
+
+  // ---- SW-56: a table that exists only for a trigger is read-only while the trigger does not apply, and acknowledging the
+  // generated "not applicable" clears what was entered in it. This project has no infant use, so the Infant testing table
+  // (Gates 8-9) is such a table. Data is put there straight into the database — the API refuses to write it, which is the point.
+  console.log('\n--- SG08: the Infant testing table is locked and cleared by the acknowledgement (SW-56)');
+  const INFANT_ITEM = 'sg08-infant-testing';
+  const infantRows = async () =>
+    (await db.query(`SELECT status, notes, "evidenceLink" FROM requirement_items WHERE "projectId" = $1 AND "sectionKey" = 'infantTesting' ORDER BY "itemOrder"`, [PROJECT])).rows;
+  pj = await project();
+  const infantItems = pj.project.requirements.infantTesting ?? [];
+  t('the Infant testing table exists on the project', infantItems.length > 0, String(infantItems.length));
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/requirements/infantTesting`, { items: infantItems, expectedVersion: await version() });
+  t('the table does not apply to this project, so even an administrator cannot write it (400)', r.status === 400 && /does not apply/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  await db.query(
+    `UPDATE requirement_items SET status = 'Completed', notes = 'entered before the project said it had no infant use' WHERE "projectId" = $1 AND "sectionKey" = 'infantTesting' AND "itemOrder" IN (0, 1)`,
+    [PROJECT],
+  );
+  pj = await project();
+  t('the readiness engine counts the two rows that hold data', (gp.generatedNaEntries(pj.project).find((e: any) => e.itemId === INFANT_ITEM)?.dedicatedSection?.rowsWithData) === 2, short(gp.generatedNaEntries(pj.project).find((e: any) => e.itemId === INFANT_ITEM)));
+  r = await api(newKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId: 'SG08', itemId: INFANT_ITEM, functionKey: 'safety-study-reviewer', expectedVersion: await version() });
+  t('"Safety / study reviewer" is Unassigned, so nobody can acknowledge the infant-testing item yet (400)', r.status === 400 && /nobody is assigned/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await assignFunction('safety-study-reviewer', sessions[newKey].id);
+  t('the Lead assigns "Safety / study reviewer"', r.status < 300, short(r.json));
+  r = await api(newKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId: 'SG08', itemId: INFANT_ITEM, functionKey: 'safety-study-reviewer', expectedVersion: await version() });
+  t('acknowledging without confirming the clearing is refused, and says what would be cleared (400)', r.status === 400 && /clears the data/i.test(String(r.json?.message)) && /2 rows/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  t('...and nothing was cleared', (await infantRows()).filter((x: any) => x.status === 'Completed').length === 2);
+  r = await api(newKey, 'POST', `/projects/${PROJECT}/readiness-acknowledgements`, { gateId: 'SG08', itemId: INFANT_ITEM, functionKey: 'safety-study-reviewer', confirmClear: true, expectedVersion: await version() });
+  t('acknowledging with the clearing confirmed is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
+  const afterAck = await infantRows();
+  t('...every row of the table is back to a fresh row (status, notes, evidence link)', afterAck.every((x: any) => x.status === 'Not Started' && x.notes === null && x.evidenceLink === null), short(afterAck));
+  const clearedEvent = (
+    await db.query(`SELECT after FROM audit_events WHERE "projectId" = $1 AND action = 'readiness_ack.recorded' AND after->>'itemId' = $2 ORDER BY "occurredAt" DESC LIMIT 1`, [PROJECT, INFANT_ITEM])
+  ).rows[0]?.after;
+  t('the audit event keeps what was cleared: the section and the value of each row', clearedEvent?.cleared?.section === 'infantTesting' && clearedEvent.cleared.rows.length === 2 && clearedEvent.cleared.rows[0].was.status === 'Completed' && /before the project said/.test(String(clearedEvent.cleared.rows[0].was.notes)), short(clearedEvent));
+  pj = await project();
+  t('the item reads as acknowledged', gp.gateReadinessChecklist(pj.project, 'SG08').find((i: any) => i.id === INFANT_ITEM)?.acknowledgement?.state === 'acknowledged');
+
   await complete('SG08');
   r = await sign('SG08', 'Prepared by');
   t('Prepared signs SG08', r.status < 300, `${r.stage} ${r.status} ${short(r.json)}`);

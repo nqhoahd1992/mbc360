@@ -4,6 +4,7 @@
 .rcp-name { display: block; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .rcp-name:hover .rcp-name-text { color: var(--c-primary); text-decoration: underline; }
 .rcp-name-text { display: block; font-weight: 600; line-height: 22px; white-space: normal; }
+.rcp-gate-tag { display: inline-block; margin-right: 8px; padding: 0 6px; border: 1px solid var(--c-border); border-radius: 6px; background: var(--c-surface-2); color: var(--c-text-2); font-size: 12px; font-weight: 500; line-height: 18px; vertical-align: 1px; }
 .rcp-name-gate { display: block; color: var(--c-text-3); font-size: 12px; font-weight: 400; line-height: 18px; white-space: normal; }
 
 .rcp-status { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 4px; padding: 8px 10px; border: 1px solid var(--c-primary); border-radius: 8px; background: var(--c-primary-light); color: var(--c-text); font-size: 13px; line-height: 20px; }
@@ -19,7 +20,15 @@
 .closing-aside .ant-table-thead > tr > th, .closing-aside .ant-table-tbody > tr > td { padding: 8px 6px; }
 .closing-aside .ant-btn { white-space: nowrap; }
 
-/* A block's header gets room above and below its two-line title, and the tag sits level with the first line. */
+/* The card carries its own header room (it also renders outside the sidebar, where .closing-aside does not apply): space above and
+   below the two-line title, the tag level with its first line, and the body padded only while the card is open. */
+.rcp-card .ant-card-head { padding: 0 14px; }
+.rcp-card .ant-card-head-title { padding: 12px 0; }
+.rcp-card .ant-card-extra { padding: 12px 0; align-self: flex-start; }
+.rcp-card .ant-card-body { padding: 0 14px; }
+.rcp-body { padding: 12px 0 14px; }
+
+/* The same room inside the sidebar, where these cards first appeared. */
 .closing-aside .ant-card-head { padding: 0 14px; }
 .closing-aside .ant-card-head-title { padding: 12px 0; }
 .closing-aside .ant-card-extra { padding: 12px 0; align-self: flex-start; }
@@ -27,13 +36,13 @@
 /* Inside a card the last row has nothing under it to separate from: no rule. */
 .closing-aside .ant-table-tbody > tr:last-child > td { border-bottom: 0; }
 
-/* Closing block: progress bar, one set-up notice, and one block per signer in place of a three-column table. */
-.rcp-progress { height: 6px; margin: 0 0 8px; overflow: hidden; border-radius: 3px; background: var(--c-border-2); }
-.rcp-progress > i { display: block; height: 100%; background: var(--c-primary); transition: width 0.2s; }
-.rcp-progress > i.rcp-progress-ok { background: var(--c-ok-dot); }
-.rcp-setup { margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--c-warn-line); border-radius: 8px; background: var(--c-warn-bg); color: var(--c-text); font-size: 13px; line-height: 20px; }
+/* Closing block: one block per person; each role they hold is a line with its own action. */
 .rcp-signers { display: grid; }
-.rcp-who { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--c-border-2); }
+.rcp-who { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 0; border-top: 1px solid var(--c-border-2); }
+.rcp-line { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 4px 0; }
+.rcp-line + .rcp-line { margin-top: 2px; border-top: 1px solid var(--c-border-2); padding-top: 8px; }
+.rcp-line-main { min-width: 0; }
+.rcp-note { margin: 2px 0 0; color: var(--c-warn); font-size: 12px; line-height: 18px; }
 .rcp-who:first-child { border-top: 0; padding-top: 2px; }
 .rcp-av { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: var(--c-primary-light); color: var(--c-primary); font-size: 12px; font-weight: 600; }
 .rcp-av-ok { background: var(--c-ok-bg); color: var(--c-ok); }
@@ -41,4 +50,4 @@
 .rcp-you { color: var(--c-text-3); font-weight: 400; }
 .rcp-who-role { color: var(--c-text-3); font-size: 12px; line-height: 18px; }
 .rcp-sig { display: block; max-width: 160px; max-height: 50px; width: auto; margin: 4px 0 2px; object-fit: contain; }
-.rcp-who-act { padding-top: 1px; }
+.rcp-who-act { flex-shrink: 0; padding-top: 1px; }

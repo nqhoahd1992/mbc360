@@ -1,6 +1,6 @@
 import './ReviewOwnerLine.css';
 
-// "Tuan (Technical Services) · Co-review: Sankar (Production Support), Lily (Packaging) · Co-sign: Chris (Project Manager)",
+// "Tuan (Formulation) · Co-review: Sankar (Quality), Lily (Packaging / Artwork) · Co-sign: Chris (Project Manager)",
 // as composed by composeReviewOwner, drawn so the person RESPONSIBLE stands out: a filled chip, with the co-reviewers and
 // co-signers as quiet text beside it. Unfilled roles arrive as ‹Role› and are shown the same way.
 function parse(text: string) {

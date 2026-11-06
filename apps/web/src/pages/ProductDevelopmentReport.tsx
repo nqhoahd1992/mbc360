@@ -27,7 +27,7 @@ export default function ProductDevelopmentReport() {
   const locked = isGateRefLocked(project, productDevelopmentProfile.gate);
 
   // These are facts the project already records at creation, so the table shows them rather than asking again — a second
-  // copy typed here would drift from the real one. The two people are the project's assigned review areas: Technical Services
+  // copy typed here would drift from the real one. The two people are the project's assigned review areas: Formulation
   // is the formulation team and Project Manager is the project's owner area. [ASSUMPTION: R5-Q70]
   const fromProject: Record<string, string> = {
     'NPD lead (formulator)': project.identity.reviewers['formulation'] ?? '',

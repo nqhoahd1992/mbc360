@@ -19,13 +19,14 @@ function childrenAt(viewPath: string[]): DepartmentNode[] {
 }
 
 export default function DepartmentPicker({
-  value,
+  value = '',
   onChange,
   placeholder = 'Choose a department…',
   invalid,
 }: {
-  value: string;
-  onChange: (value: string) => void;
+  // Optional so an antd Form.Item can inject them: a Form.Item supplies value and onChange itself.
+  value?: string;
+  onChange?: (value: string) => void;
   placeholder?: string;
   invalid?: boolean;
 }) {
@@ -41,7 +42,7 @@ export default function DepartmentPicker({
 
   const pick = (node: DepartmentNode) => {
     const next = [...viewPath, node.name];
-    onChange(next.join(DEPARTMENT_PATH_SEPARATOR));
+    onChange?.(next.join(DEPARTMENT_PATH_SEPARATOR));
     if (node.children?.length) setViewPath(next);
     else setOpen(false);
   };

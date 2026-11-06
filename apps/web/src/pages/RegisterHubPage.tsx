@@ -12,9 +12,10 @@ import {
   type RegisterConfig,
 } from '@mbc360/shared/config/registers';
 import type { RegisterRow } from '@mbc360/shared/types';
-import { isGateRefLocked } from '@mbc360/shared/utils/gateProgress';
+import { isGateRefLocked, registerLockedAsNotApplicable } from '@mbc360/shared/utils/gateProgress';
 import { registerClosureGateIds, registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
 import DynamicTable from '../components/DynamicTable';
+import GeneratedNaAcks from '../components/GeneratedNaAcks';
 import VulnerableUserAssessmentTable from '../components/VulnerableUserAssessmentTable';
 import SupplierRmEvidenceTable from '../components/SupplierRmEvidenceTable';
 import PublishedInfoApprovalTable from '../components/PublishedInfoApprovalTable';
@@ -153,6 +154,9 @@ export default function RegisterHubPage() {
     // the register as a whole is read-only only once every gate it belongs to has passed.
     const locked = isGateRefLocked(project, config.gate);
     const lockedReason = undefined; // undefined falls back to the gate-passed message
+    // A register dedicated to a trigger that does not apply (the maternal caution list on a project with no maternal user) is
+    // read-only until the acknowledgement above it clears it, or the target users change.
+    const notApplicableLock = registerLockedAsNotApplicable(project, registerKey);
 
     // Redesigned 2026-10-02 (wireframe option A): its own page layout — header,
     // progress, decision table + detail drawer, closing at the bottom. The pilot
@@ -169,8 +173,12 @@ export default function RegisterHubPage() {
           rows={shownRows}
           parent={parent}
           onSave={(nextRows) => setRegisterRowsBulk(id, registerKey, nextRows)}
-          readOnly={locked}
-          readOnlyReason={lockedReason}
+          readOnly={locked || notApplicableLock}
+          readOnlyReason={
+            locked || !notApplicableLock
+              ? lockedReason
+              : 'This register does not apply to this project (no maternal target user), so it is read-only. Acknowledge that above, or change the target users.'
+          }
           closeable={closeable}
         />
       );
@@ -212,6 +220,8 @@ export default function RegisterHubPage() {
               .join(', ')}.`}
           />
         )}
+        {/* Supplier & RM Evidence has its own table, which does not mount the acknowledgement block the generic one does. */}
+        {registerKey === 'supplierRmEvidence' && <GeneratedNaAcks home="register:supplierRmEvidence" />}
         {registerKey === 'supplierRmEvidence' ? (
           // F14-style Cosmetri raw-material picker for rmCode/grade/supplier —
           // see the tradeoffs noted in docs/rules/F1_Per_Gate_Open_Questions.md.

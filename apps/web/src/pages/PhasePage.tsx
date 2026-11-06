@@ -15,15 +15,17 @@ import {
   isGateSignedStanding,
   phaseCompletionChecklist,
   phaseProgress,
+  requirementSectionLockedAsNotApplicable,
   skincareForTwoIncompleteSections,
   skincareForTwoTriggers,
   isPhaseDataLocked,
+  acknowledgementsVoidedByTargetUsers,
+  voidedAcknowledgementsMessage,
   type GateReadinessItem,
 } from '@mbc360/shared/utils/gateProgress';
 import { gateFlowMissing } from '@mbc360/shared/config/gateSignOff';
 import { useAppStore } from '../store/useAppStore';
 import { GATES, PHASES, phaseLabel } from '@mbc360/shared/config/gates';
-import { responsibleReviewer } from '@mbc360/shared/utils/readinessAck';
 import { useSession } from '../auth/useSession';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import ProjectIdentificationCard from '../components/ProjectIdentificationCard';
@@ -39,6 +41,7 @@ import NextActionsCard from '../components/NextActionsCard';
 import { currentMarketTracks, legacyOnMarketTracks } from '@mbc360/shared/utils/postLaunch';
 import MarketTrackingCard from '../components/MarketTrackingCard';
 import PostLaunchReviewCard from '../components/PostLaunchReviewCard';
+import GeneratedNaAcks from '../components/GeneratedNaAcks';
 import SectionJumpButton from '../components/SectionJumpButton';
 import GateReadinessPanel from '../components/GateReadinessPanel';
 import AssessmentBlock, { isFamilyUseSelected } from '../components/AssessmentBlock';
@@ -78,6 +81,12 @@ function flashSection(el: HTMLElement) {
   el.classList.add('ph-flash');
   flashTimers.set(el, window.setTimeout(() => el.classList.remove('ph-flash'), 1200));
 }
+
+// Names the Key Gate Check row an acknowledgement is about (the entry's home is `gatecheck:<gate>|<check name>`).
+const keyGateCheckCaption = (entry: { home?: string }) => {
+  const row = entry.home?.split('|')[1];
+  return row ? `Key Gate Check: ${row}` : undefined;
+};
 
 export default function PhasePage() {
   const { projectId, phaseNo } = useParams();
@@ -352,45 +361,35 @@ export default function PhasePage() {
       </Tooltip>,
     );
   }
-  // Round 4 question 16: an auto-generated "not applicable" on a critical item has
-  // to be acknowledged by the phase's nominated "Reviewed by" before its gate can
-  // close. Nobody can until the Lead nominates one, so say so up here rather than
-  // leaving a blocker whose fix is on another tab [ASSUMPTION: R5-Q6].
+  // Round 4 question 16 / Round 5 question 1: an auto-generated "not applicable" on a critical item has to be
+  // acknowledged by the person holding the function the review team names for it before its gate can close. A function
+  // nobody holds reads Unassigned, so say so up here rather than leaving a blocker whose fix is in Project team.
   const pendingAcks = config.gateIds.flatMap((gid) =>
     isGatePassed(project, gid)
       ? []
       : gateReadinessChecklist(project, gid)
           .filter((i) => i.acknowledgement && i.acknowledgement.state !== 'acknowledged')
-          .map((i) => ({ gid, id: i.id })),
+          .map((i) => ({ gid, id: i.id, slots: i.acknowledgement!.slots.filter((x) => x.state !== 'acknowledged') })),
   );
   if (pendingAcks.length > 0) {
-    const ackReviewer = responsibleReviewer(project, config.gateIds[0]);
     const ackCount = `${pendingAcks.length} generated “not applicable” reason${pendingAcks.length === 1 ? '' : 's'}`;
-    if (!ackReviewer?.userId) {
-      stripItems.push(
-        <Tooltip
-          key="ack-nominate"
-          title="Some items on this phase's critical gates do not apply to this project and the system wrote the reason itself, but such a reason must still be acknowledged by the responsible reviewer before the gate can close. The responsible reviewer is whoever is nominated as “Reviewed by” on this phase's sign-off."
-        >
-          <span className="c-tag c-tag-warn c-tag-dot">{ackCount} need a responsible reviewer — nominate “Reviewed by”</span>
-        </Tooltip>,
-        <Button key="ack-nominate-go" type="link" size="small" disabled={false} onClick={() => selectTab(CLOSE_TAB)}>
-          Go to sign-offs
-        </Button>,
-      );
-    } else {
-      const mine = ackReviewer.userId === sessionUser?.id;
-      stripItems.push(
-        <Tooltip
-          key="ack-wait"
-          title="Each one is acknowledged on its gate's readiness list, by the person nominated as “Reviewed by” on this phase's sign-off."
-        >
-          <span className="c-tag c-tag-warn c-tag-dot">
-            {mine ? `${ackCount} await your acknowledgement` : `${ackCount} await ${ackReviewer.name ?? 'the nominated reviewer'}`}
-          </span>
-        </Tooltip>,
-      );
-    }
+    const unassigned = [...new Set(pendingAcks.flatMap((a) => a.slots.filter((x) => x.holders.length === 0).map((x) => x.label)))];
+    const myName = sessionUser?.displayName?.trim();
+    const mine = pendingAcks.some((a) => a.slots.some((x) => x.holders.some((h) => h.name === myName)));
+    stripItems.push(
+      <Tooltip
+        key="ack-wait"
+        title="Each one is acknowledged, in the block that holds its data, by the person who holds the function the review team names for it on this project."
+      >
+        <span className="c-tag c-tag-warn c-tag-dot">
+          {unassigned.length > 0
+            ? `${ackCount} wait for a function nobody holds yet: ${unassigned.join(', ')}`
+            : mine
+              ? `${ackCount} await your acknowledgement`
+              : `${ackCount} await acknowledgement by the people holding the functions`}
+        </span>
+      </Tooltip>,
+    );
   }
   if (progress.awaitingApproval) {
     stripItems.push(
@@ -618,6 +617,7 @@ export default function PhasePage() {
           {statusStrip}
           {keyChecks.length > 0 && (
             <div id="sec-gate-checks">
+              <GeneratedNaAcks homePrefix="gatecheck:" caption={keyGateCheckCaption} />
               <GateChecksTable
                 projectId={project.identity.id}
                 title="Key Gate Checks — all gates"
@@ -629,13 +629,14 @@ export default function PhasePage() {
           )}
           {requirementSections.map((section) => (
             <div key={section.key} id={`sec-requirement-${section.key}`}>
+              <GeneratedNaAcks home={`requirement:${section.key}`} />
               <RequirementTable
                 projectId={project.identity.id}
                 sectionKey={section.key}
                 title={section.title}
                 items={project.requirements[section.key] ?? []}
                 currentGateNumber={currentGateNum}
-                isRowLocked={(item) => isGateRefLocked(project, item.gate) || rowSigned(item.gate) || (item.gate === 'ALL' && isPhaseDataLocked(project, 4))}
+                isRowLocked={(item) => isGateRefLocked(project, item.gate) || rowSigned(item.gate) || (item.gate === 'ALL' && isPhaseDataLocked(project, 4)) || requirementSectionLockedAsNotApplicable(project, section.key)}
                 columns={section.columns}
                 allowNotApplicable={section.allowNotApplicable}
                 statusOptions={section.statusOptions}
@@ -695,6 +696,14 @@ export default function PhasePage() {
             {checklistSections.map((section) => (
               <div key={section.key} id={`sec-checklist-${section.key}`}>
                 <ChecklistSection
+                  tickBlockedReason={
+                    section.key === 'targetUsers'
+                      ? (label) => {
+                          const voided = acknowledgementsVoidedByTargetUsers(project, [{ label, selected: true }]);
+                          return voided.length > 0 ? voidedAcknowledgementsMessage(voided) : undefined;
+                        }
+                      : undefined
+                  }
                   untickBlockedReason={
                     section.key === 'targetUsers'
                       ? (label) => {
@@ -719,6 +728,7 @@ export default function PhasePage() {
 
             {requirementSections.map((section) => (
               <div key={section.key} id={`sec-requirement-${section.key}`}>
+                <GeneratedNaAcks home={`requirement:${section.key}`} gateId={tab} />
                 <RequirementTable
                   projectId={project.identity.id}
                   sectionKey={section.key}
@@ -726,7 +736,7 @@ export default function PhasePage() {
                   items={project.requirements[section.key] ?? []}
                   currentGateNumber={currentGateNum}
                   viewedGateNumber={GATES.find((g) => g.id === tab)?.number}
-                  isRowLocked={(item) => isGateRefLocked(project, item.gate) || rowSigned(item.gate) || (item.gate === 'ALL' && isPhaseDataLocked(project, 4))}
+                  isRowLocked={(item) => isGateRefLocked(project, item.gate) || rowSigned(item.gate) || (item.gate === 'ALL' && isPhaseDataLocked(project, 4)) || requirementSectionLockedAsNotApplicable(project, section.key)}
                   columns={section.columns}
                   allowNotApplicable={section.allowNotApplicable}
                   statusOptions={section.statusOptions}
@@ -751,6 +761,7 @@ export default function PhasePage() {
 
             {keyChecks.length > 0 && (
               <div id="sec-gate-checks">
+                <GeneratedNaAcks homePrefix="gatecheck:" gateId={tab} caption={keyGateCheckCaption} />
                 <GateChecksTable
                   projectId={project.identity.id}
                   title="Key Gate Checks"
@@ -778,6 +789,7 @@ export default function PhasePage() {
                 condition Gate 12 evaluates. */}
             {phase === 4 && tab === 'SG12' && (
               <div id="sec-post-launch">
+                <GeneratedNaAcks home="postLaunch" gateId={tab} />
                 <PostLaunchReviewCard project={project} enhanced={evaluateTrigger(project, 'pvPmsRequired') === 'applies'} />
               </div>
             )}
@@ -807,7 +819,6 @@ export default function PhasePage() {
               <div className="ph-rail-body">
                 <GateReadinessPanel
                   gateNumber={tabGateNumber ?? ''}
-                  project={project}
                   keepGate={tab}
                   items={readinessItems}
                   projectId={project.identity.id}

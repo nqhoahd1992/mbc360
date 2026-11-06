@@ -19,7 +19,21 @@ export interface ReviewRole {
   // account per name, so those people are selectable in the pickers.
   // Renamed from `defaultName` on 2026-08-20 — the old name claimed exactly the
   // behaviour this comment denies.
-  workbookName: string;
+  // Absent on the FUNCTION roles below: they are not people the workbook names, so there is no account to seed for them.
+  workbookName?: string;
+  // True on a FUNCTION role (added 2026-11-05): who holds a professional function on this project — Safety / Scientific
+  // Review, Technical Claims, Quality, … — as opposed to who owns a workbook area. Never required to create a project: a
+  // project may have nobody in the function, and then it reads "Unassigned" and whatever needs that authority waits
+  // (Round 5 question 37(b): "show Unassigned and block decisions that need that authority; do not silently substitute the
+  // Lead"). The project's Lead assigns or changes them at any time (PUT …/function-assignees); the thirteen area roles
+  // stay write-once at creation.
+  optional?: boolean;
+  // Set on a SUB-ROLE: a specialist who sits INSIDE the function named by this key — "Quality / microbiology reviewer" is a
+  // specialism within Quality, "Safety / study reviewer" within Safety (2026-11-06, project owner's reading of how the review
+  // team writes these names in Round 5 question 1(a): a lower-case word after the slash is a specialism inside the function
+  // before it, a capitalised name is an independent function). Holding the parent does NOT hold the sub-role, and a
+  // sub-role's holder acknowledges only the items that name the sub-role. [ASSUMPTION: R6-Q1]
+  parent?: string;
   // The area this person owns, shown ONLY where the job title alone is
   // ambiguous (2026-10-01). Set it when `label` collides with something else on
   // the same screen; leave it undefined otherwise, so twelve of thirteen rows
@@ -54,31 +68,87 @@ export interface ReviewRole {
 //
 // If DEPARTMENTS is reordered, reorder this list to match.
 export const REVIEW_ROLES: ReviewRole[] = [
+  // The project's accountable owner (Round 5 question 37(a): "Project owner -> Project Manager is acceptable only if that person is
+  // the nominated accountable owner"; project owner's choice, 2026-11-06). The workbook says "Project owner" in about 25 Owner cells
+  // and never says who that is, and the review team separates it from the project Lead (who leads the project) and from the
+  // Project Manager, so it is its own field, named by the Lead when the project is created — it may be the same person as either.
+  // It owns no sheets: it is what the "Project owner" Owner cells stand for. A project that predates the field shows it as
+  // Unassigned until its Lead names one (LEAD_ASSIGNABLE_ROLE_KEYS). No account is seeded for it.
+  { key: 'project-owner', label: 'Project owner' },
   // Project Manager now owns real content (the NPD Front-End Roadmap group),
   // not just cross-cutting co-sign — see REVIEW_SPECS.npdFrontEnd below.
   { key: 'project-manager', label: 'Project Manager', workbookName: 'Chris' }, // dept-npd-frontend
-  { key: 'formulation', label: 'Technical Services', workbookName: 'Tuan' }, // dept-formulation
-  { key: 'quality-gmp', label: 'QA & Regulatory Affairs', workbookName: 'Sekar' }, // dept-quality-gmp
-  { key: 'quality', label: 'Production Support', workbookName: 'Sankar' }, // dept-production-support
+  // The four area names below are the workbook's own words from its REVIEW OWNER headers — Formulation, Quality & GMP, Raw
+  // Material Operations, Supply Chain (project owner, 2026-11-06, after an audit found the job titles that had replaced them
+  // on 2026-08-27 — Technical Services, QA & Regulatory Affairs, Raw Material Coordinator, Logistics & Supply Chain Manager —
+  // appear in neither the workbook nor the review team's own words).
+  { key: 'formulation', label: 'Formulation', workbookName: 'Tuan' }, // dept-formulation
+  { key: 'quality-gmp', label: 'Quality & GMP', workbookName: 'Sekar' }, // dept-quality-gmp
+  // 'quality' and 'packaging' ARE the Quality and Packaging / Artwork functions (2026-11-06, project owner): the company job
+  // titles that used to label them, "Production Support" and "Sales Manager", are the same roles under different names, and the
+  // review team (Round 5 question 37(a)) found those titles misleading. So the one person named here holds the function; there
+  // is no second, optional Quality or Packaging / Artwork field.
+  { key: 'quality', label: 'Quality', workbookName: 'Sankar' }, // dept-production-support
   { key: 'ri', label: 'R&I', workbookName: 'George' }, // dept-quality (the old "Quality" group's real R&I content)
-  { key: 'regulatory', label: 'Regulatory Affairs Manager', workbookName: 'Chi Chu' }, // dept-regulatory
-  { key: 'packaging', label: 'Sales Manager', workbookName: 'Lily' }, // dept-packaging
-  { key: 'raw-material', label: 'Raw Material Coordinator', workbookName: 'Chidkamon' }, // dept-raw-material
-  // `area` is set here and nowhere else: this label collides with the
-  // Project Identification block's own `projectLead` field, so the Create New
-  // Project form showed two required pickers both labelled "Project Lead" with
-  // nothing to tell them apart. They are different people — this one owns the
-  // Sales & Marketing sheets (campaigns, HCP/distributor answer packs, panel
-  // feedback, change control, templates); `projectLead` is whoever leads the
-  // individual project. The collision arrived with the 2026-08-27 relabel to
-  // real job titles, which could not have known about the older field.
-  { key: 'sales-marketing', label: 'Project Lead', area: 'Sales & Marketing', workbookName: 'Nguyen' }, // dept-sales-marketing — Nguyen is also the company's real CEO/project sponsor
-  { key: 'supply-chain', label: 'Logistics & Supply Chain Manager', workbookName: 'Hannah' }, // dept-supply-chain
+  // 'regulatory' IS the Regulatory function (2026-11-06, project owner: "Regulatory Affairs Manager" and "Regulatory" are one role,
+  // as with Quality and Packaging / Artwork above), so the Regulatory acknowledgements and the Owner cells that say Regulatory
+  // both read this one required field. Regulatory Claims below is a separate function the review team lists in question 37(b).
+  { key: 'regulatory', label: 'Regulatory', workbookName: 'Chi Chu' }, // dept-regulatory
+  { key: 'packaging', label: 'Packaging / Artwork', workbookName: 'Lily' }, // dept-packaging
+  { key: 'raw-material', label: 'Raw Material Operations', workbookName: 'Chidkamon' }, // dept-raw-material
+  // Sales & Marketing is its OWN role, separate from the project's Lead (project owner, 2026-11-06). It was labelled "Project Lead"
+  // (the person's job title) from the 2026-08-27 relabel, which collided with the Project Identification block's own
+  // `projectLead` field — the form showed two pickers both called "Project Lead" and had to add an area to tell them apart. They
+  // are different roles: this one owns the Sales & Marketing sheets (campaigns, HCP/distributor answer packs, panel feedback,
+  // change control, templates) and is the "commercial lead" the Marketing and Sales Owner cells stand for; `projectLead` is whoever
+  // leads the individual project. Naming this one for its area ends the collision, so `area` is no longer set anywhere.
+  { key: 'sales-marketing', label: 'Sales & Marketing', workbookName: 'Nguyen' }, // dept-sales-marketing — Nguyen is also the company's real CEO/project sponsor
+  { key: 'supply-chain', label: 'Supply Chain', workbookName: 'Hannah' }, // dept-supply-chain
   // own no sheets — co-review / co-sign only
   { key: 'facility-pm', label: 'Facility / PM Operations', workbookName: 'Kaukab' },
   { key: 'hr-quality', label: 'HR/Quality', workbookName: 'Lani' },
   { key: 'digital-platforms', label: 'Digital / Platforms', workbookName: 'Anki' },
+
+  // ---- FUNCTION roles (2026-11-05). Round 5 questions 1(b) and 37(b): the review team names the FUNCTION that has to
+  // acknowledge a "not applicable" reason (Safety, Regulatory, Quality, Technical claims, …) and says a function is a named
+  // person on the project, never derived from a job title that merely looks similar. Quality and Packaging / Artwork are NOT
+  // repeated here: they are the 'quality' and 'packaging' area roles above (see the note there). Everything below is optional;
+  // nothing seeds an account.
+  { key: 'safety-scientific', label: 'Safety / Scientific Review', optional: true },
+  { key: 'clinical-study', label: 'Clinical / Study Coordinator', optional: true },
+  { key: 'technical-claims', label: 'Technical Claims', optional: true },
+  // "Technical claims reviewer" and "Authorised human-study reviewer" are worded exactly as the review team wrote them in the
+  // acknowledgement table of Round 5 question 1(a) and have no parent function the team names, so each stays its OWN function:
+  // nothing says "Technical claims reviewer" is the "Technical Claims" function above or "Authorised human-study reviewer" the
+  // "Clinical / Study Coordinator" (2026-11-06, project owner: no inference). If the team later says they are, merge them.
+  // [ASSUMPTION: R5-Q6]
+  { key: 'technical-claims-reviewer', label: 'Technical claims reviewer', optional: true },
+  { key: 'human-study-reviewer', label: 'Authorised human-study reviewer', optional: true },
+  // A specialism inside Safety (see `parent`), worded as the team wrote it.
+  { key: 'safety-study-reviewer', label: 'Safety / study reviewer', optional: true, parent: 'safety-scientific' },
+  { key: 'regulatory-claims', label: 'Regulatory Claims', optional: true },
+  // Three specialisms INSIDE Quality (see `parent`), each named exactly as the review team wrote it in Round 5 question 1(a).
+  // "Quality / microbiology reviewer" acknowledges Preservative strategy (Gate 5) and Preservative efficacy status (Gate 9);
+  // "Quality / post-market reviewer" the Gate 12 feedback and surveillance reviews; "Quality / change-control reviewer" the
+  // Gate 12 change-control links. The Quality holder does not stand in for them.
+  { key: 'quality-microbiology', label: 'Quality / microbiology reviewer', optional: true, parent: 'quality' },
+  { key: 'quality-post-market', label: 'Quality / post-market reviewer', optional: true, parent: 'quality' },
+  { key: 'quality-change-control', label: 'Quality / change-control reviewer', optional: true, parent: 'quality' },
+  { key: 'manufacturing', label: 'Manufacturing', optional: true },
+  { key: 'finance', label: 'Finance', optional: true },
+  { key: 'legal-ip', label: 'Legal / IP', optional: true },
+  { key: 'commercial-approver', label: 'Commercial Approver', optional: true },
 ];
+
+// The two halves of REVIEW_ROLES: the thirteen workbook AREA roles every project must name at creation, and the FUNCTION
+// roles a project may leave unassigned.
+export const AREA_ROLES = REVIEW_ROLES.filter((r) => !r.optional);
+export const FUNCTION_ROLES = REVIEW_ROLES.filter((r) => r.optional);
+
+// Roles the project's Lead (or an administrator) may assign or change AFTER the project is created: every function, plus the
+// Project owner, which a project created before the field existed has to be able to get. The other review areas are named once,
+// at creation. One list for the server (which refuses anything else) and the team card (which shows the picker).
+export const LEAD_ASSIGNABLE_ROLE_KEYS: readonly string[] = [...FUNCTION_ROLES.map((r) => r.key), 'project-owner'];
 
 export const REVIEW_ROLE_KEYS = REVIEW_ROLES.map((r) => r.key);
 
@@ -245,34 +315,61 @@ export function ownerName(
 // A fixed row's Owner is a FUNCTION ("Project owner", "R&I / Regulatory"), because the workbook has no project to name a person
 // from. On a project the function is somebody: this writes the person beside each function that matches one of the project's
 // review roles — "Project owner — Chris", "R&I — George / Regulatory — Chi Chu" — and leaves a function with no matching role as it
-// is rather than guessing a name for it. Which function stands for which role is our reading, not the workbook's or the SME's:
-// [ASSUMPTION: R5-Q74].
+// is rather than guessing a name for it. Round 5 question 37 (answered 2026-11-05): a function is never derived from a similar
+// job label. A function nobody holds reads "Unassigned" ("show Unassigned … do not silently substitute the Lead").
+// Quality and Packaging / Artwork are the 'quality' and 'packaging' area roles themselves (project owner, 2026-11-06:
+// "Production Support" is Quality and "Sales Manager" is Packaging / Artwork), so they are always held by a named person.
+// R&I, Procurement (Raw Material Operations) and Marketing/Sales
+// (the nominated commercial lead) keep the area role the team accepted. "Project owner" is its own role named by the Lead
+// (project owner, 2026-11-06), not the Project Manager. [ASSUMPTION: R5-Q74]
+// "Claims" is left unmapped: it could be Technical or Regulatory Claims and nothing says which.
 const OWNER_FUNCTION_ROLES: Record<string, string> = {
-  'project owner': 'project-manager',
+  'project owner': 'project-owner',
   'r&i': 'ri',
   regulatory: 'regulatory',
-  quality: 'quality',
-  packaging: 'packaging',
   marketing: 'sales-marketing',
   sales: 'sales-marketing',
   procurement: 'raw-material',
   formulation: 'formulation',
   npd: 'formulation',
+  // functions (Round 5 question 37(b))
+  safety: 'safety-scientific',
+  clinical: 'clinical-study',
+  quality: 'quality',
+  manufacturing: 'manufacturing',
+  packaging: 'packaging',
+  artwork: 'packaging',
+  finance: 'finance',
+  legal: 'legal-ip',
 };
+
+// The word the Owner cell shows for a role whose workbook words differ from its name on the form (project owner, 2026-11-06:
+// "Formulation" and "NPD" are the one Formulation role).
+const OWNER_FUNCTION_DISPLAY: Record<string, string> = { formulation: 'Formulation' };
 
 export function ownerFunctionWithPeople(text: string, reviewers: Record<string, string> | undefined): string {
   if (!text || !reviewers) return text;
   // Keep the workbook's own separators ("/", "+", "->") exactly where they were.
-  return text
-    .split(/(\s+\/\s+|\s*\+\s*|\s*->\s*)/)
-    .map((part, i) => {
-      if (i % 2 === 1) return part;
-      const token = part.trim();
-      const role = OWNER_FUNCTION_ROLES[token.toLowerCase().replace(/ owner$/, token.toLowerCase() === 'project owner' ? ' owner' : '')];
-      const name = role ? reviewers[role]?.trim() : '';
-      return name ? `${token} — ${name}` : part;
-    })
-    .join('');
+  const pieces = text.split(/(\s+\/\s+|\s*\+\s*|\s*->\s*)/);
+  const entries: { sep: string; text: string }[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < pieces.length; i += 2) {
+    const sep = i === 0 ? '' : pieces[i - 1];
+    const token = pieces[i].trim();
+    const role = OWNER_FUNCTION_ROLES[token.toLowerCase().replace(/ owner$/, token.toLowerCase() === 'project owner' ? ' owner' : '')];
+    // Two workbook words for one role read as that one role ("Formulation / NPD" is the Formulation role, once).
+    const shown = (role && OWNER_FUNCTION_DISPLAY[role]) || token;
+    const name = role ? reviewers[role]?.trim() : '';
+    let rendered: string;
+    if (name) rendered = `${shown} — ${name}`;
+    // A FUNCTION nobody holds on this project says so; an area role is always filled (the Create form requires it).
+    else if (role && LEAD_ASSIGNABLE_ROLE_KEYS.includes(role)) rendered = `${shown} — Unassigned`;
+    else rendered = pieces[i];
+    if (role && seen.has(rendered)) continue;
+    if (role) seen.add(rendered);
+    entries.push({ sep, text: rendered });
+  }
+  return entries.map((e, i) => (i === 0 ? '' : e.sep) + e.text).join('');
 }
 
 // The register columns that hold such a function: fixed, plain text, named Owner or Person in charge.

@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
 import { PHASE_1 } from '@mbc360/shared/config/phases';
-import { REVIEW_ROLES, reviewRoleFieldLabel } from '@mbc360/shared/config/reviewers';
+import { AREA_ROLES, FUNCTION_ROLES, REVIEW_ROLES, reviewRoleFieldLabel } from '@mbc360/shared/config/reviewers';
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import { useSession } from '../auth/useSession';
@@ -17,6 +17,7 @@ import '../components/RegisterPageHeader.css';
 import './ProjectList.css';
 
 import FormDrawer from '../components/FormDrawer';
+import DepartmentPicker from '../components/DepartmentPicker';
 interface NewProjectForm {
   id: string;
   productCode: string;
@@ -481,8 +482,11 @@ export default function ProjectList() {
                 )}
               />
             </Form.Item>
-            <Form.Item name="ownerDepartment" label="Owner / Department" rules={[{ required: true }]}>
-              <Input />
+            {/* "Department" (project owner, 2026-11-06): was the free-text "Owner / Department". It picks from the company's
+                department tree, the same one the Requester department uses, as a drop-down panel. The stored field keeps its
+                name (ownerDepartment); a value typed before this change is still shown as it was. */}
+            <Form.Item name="ownerDepartment" label="Department" rules={[{ required: true }]}>
+              <DepartmentPicker placeholder="Choose a department…" />
             </Form.Item>
             <Form.Item name="brandCustomer" label="Brand / Customer" rules={[{ required: true }]}>
               <Input />
@@ -505,7 +509,7 @@ export default function ProjectList() {
 
           {/* Review owners / co-signers — assigned per project (2026-07-23).
               Each page's "Review owner · Co-sign: …" caption is composed from
-              these people. All 13 are required and there is no default: every
+              these people. All 13 area roles are required and there is no default: every
               field is an empty user picker, so a project never inherits the
               workbook's reference names (REVIEW_ROLES[].workbookName) — those
               only seed the 13 user ACCOUNTS. */}
@@ -514,7 +518,7 @@ export default function ProjectList() {
             <span>the person responsible for each area on this project</span>
           </div>
           <div className="pl-form-grid">
-            {REVIEW_ROLES.map((role) => (
+            {AREA_ROLES.map((role) => (
               <Form.Item
                 key={role.key}
                 name={['reviewers', role.key]}
@@ -524,6 +528,37 @@ export default function ProjectList() {
                 <Select
                   showSearch
                   placeholder="Select a user"
+                  optionFilterProp="label"
+                  popupMatchSelectWidth={false}
+                  notFoundContent={users.length === 0 ? 'No users found' : 'No match'}
+                  options={userOptions}
+                  optionRender={(opt) => (
+                    <span style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                      <span>{opt.data.label}</span>
+                      <Tag style={{ marginInlineEnd: 0 }}>{(opt.data as { roleName?: string }).roleName}</Tag>
+                    </span>
+                  )}
+                />
+              </Form.Item>
+            ))}
+          </div>
+
+          {/* Functions (2026-11-05, Round 5 questions 1(b) and 37(b)). Who holds each professional function on THIS project:
+              the person who acknowledges a "not applicable" reason for it, and whose authority the decisions that need it
+              wait for. None is required — a project may have nobody in a function, and then it reads Unassigned and the
+              Lead assigns one later. A job title is never taken for a function. Quality and Packaging / Artwork are not here: they are
+              the Quality and Packaging / Artwork fields in the required list above. A name like "Quality / microbiology reviewer" is a
+              specialist inside Quality. */}
+          <div className="pl-form-section">
+            Functions
+          </div>
+          <div className="pl-form-grid">
+            {FUNCTION_ROLES.map((role) => (
+              <Form.Item key={role.key} name={['reviewers', role.key]} label={reviewRoleFieldLabel(role)}>
+                <Select
+                  showSearch
+                  allowClear
+                  placeholder="Unassigned"
                   optionFilterProp="label"
                   popupMatchSelectWidth={false}
                   notFoundContent={users.length === 0 ? 'No users found' : 'No match'}

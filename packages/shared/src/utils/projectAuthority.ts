@@ -44,10 +44,13 @@ export function gateDecisionReason(gateId: string): string {
 // People who change a market's PIF, regulatory, claims and launch approvals: the project's Regulatory and Project Manager
 // assignees (the review areas the registers of those approvals belong to), plus the Lead and administrators.
 // [ASSUMPTION: R5-Q69]
+// The two roles, kept as one constant so the authorised role matrix page reads the same list this rule enforces.
+export const MARKET_TRACK_ROLE_KEYS: readonly string[] = ['regulatory', 'project-manager'];
+
 export function canChangeMarketTracks(project: ProjectData, actor: ProjectActor): boolean {
   if (actor.isAdmin || isProjectLead(project, actor)) return true;
   const reviewers = project.identity.reviewers ?? {};
-  return [reviewers['regulatory'], reviewers['project-manager']].some((name) => norm(name) !== '' && norm(name) === norm(actor.displayName));
+  return MARKET_TRACK_ROLE_KEYS.some((key) => norm(reviewers[key]) !== '' && norm(reviewers[key]) === norm(actor.displayName));
 }
 
 export const MARKET_TRACKS_REASON =

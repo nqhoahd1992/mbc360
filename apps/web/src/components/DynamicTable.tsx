@@ -20,6 +20,7 @@ import { createEmptyRegisterRow } from '../store/factory';
 import DrawerSaveFooter from './DrawerSaveFooter';
 import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import SaveBar from './SaveBar';
+import GeneratedNaAcks from './GeneratedNaAcks';
 import UserSelect from './UserSelect';
 import SelfAttestField from './SelfAttestField';
 import MarketSelect from './MarketSelect';
@@ -670,6 +671,7 @@ export default function DynamicTable({
           <span>{readOnlyReason ?? 'This evidence belongs to a gate that has already passed. To correct it, Backtrack to reopen that gate first.'}</span>
         </div>
       )}
+      <GeneratedNaAcks home={`register:${config.key}`} />
       {saveProblems.length > 0 && (
         <Alert
           type="error"

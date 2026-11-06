@@ -33,7 +33,8 @@ import {
   isChangeOpen,
   openChangesAffectingGate,
 } from '@mbc360/shared/config/changeTriggers';
-import { ownerName, registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
+import { LEAD_ASSIGNABLE_ROLE_KEYS, REVIEW_ROLES, ownerName, registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
+import { holdsRole } from '@mbc360/shared/utils/readinessAck';
 import {
   DECISION_OPTIONS,
   NP_APPROVAL_APPROVED,
@@ -104,10 +105,9 @@ import {
   gateEvidenceSnapshot,
   gateSnapshotSignedPart,
 } from '@mbc360/shared/utils/gateSnapshot';
-import { currentAcknowledgement, responsibleReviewer } from '@mbc360/shared/utils/readinessAck';
+
 import { changeControlAssessmentProblems } from '@mbc360/shared/utils/changeControlAssessments';
 import { changeTriggerAvailability } from '@mbc360/shared/utils/changeAccess';
-import { READINESS_ACK_OUTCOMES } from '@mbc360/shared/types';
 import { phaseSignContent } from '@mbc360/shared/utils/phaseSignContent';
 import { registerClosureContent, registerRowSignContent } from '@mbc360/shared/utils/registerClosureContent';
 import { canDecideGate as canDecideGateInProject, canChangeMarketTracks as canChangeMarketTracksInProject, gateDecisionReason, MARKET_TRACKS_REASON } from '@mbc360/shared/utils/projectAuthority';
@@ -138,6 +138,12 @@ import {
   hardGateBlockers,
   isGatePassed,
   gateReadinessChecklist,
+  generatedNaEntries,
+  registerLockedAsNotApplicable,
+  clearRegisterEnteredColumns,
+  acknowledgementsVoidedByTargetUsers,
+  voidedAcknowledgementsMessage,
+  requirementSectionLockedAsNotApplicable,
   isGateRefLocked,
   phaseProgress,
   isGateUnlocked,
@@ -585,7 +591,7 @@ export class ProjectsService {
     });
     // Every edit of a reviewer's acknowledgement of a generated N/A reason (SW-29), oldest first.
     const ackEvents = await this.prisma.auditEvent.findMany({
-      where: { projectId: row.id, action: 'readiness_ack.recorded' },
+      where: { projectId: row.id, action: { in: ['readiness_ack.recorded', 'readiness_ack.withdrawn'] } },
       include: { actor: { select: { displayName: true } } },
       orderBy: { occurredAt: 'asc' },
     });
@@ -1021,6 +1027,12 @@ export class ProjectsService {
           );
         }
       }
+      // A target user that would make an acknowledged "not applicable" untrue cannot be ticked until that acknowledgement is
+      // withdrawn (project owner, 2026-11-06).
+      if (section === 'targetUsers') {
+        const voided = acknowledgementsVoidedByTargetUsers(project, items);
+        if (voided.length > 0) throw new BadRequestException(voidedAcknowledgementsMessage(voided));
+      }
       const existing = row.checklistItems.filter((i) => i.sectionKey === section);
       if (items.length !== existing.length) {
         throw new BadRequestException(
@@ -1068,6 +1080,13 @@ export class ProjectsService {
         .filter((i) => i.sectionKey === section)
         .sort((a, b) => a.itemOrder - b.itemOrder);
       if (existing.length === 0) throw new BadRequestException(`Unknown requirement section "${section}"`);
+      // A table that exists only for a trigger is read-only while that trigger does not apply (SW-56). The data is cleared by
+      // acknowledging the not-applicable reason, never edited around it.
+      if (requirementSectionLockedAsNotApplicable(project, section)) {
+        throw new BadRequestException(
+          `"${section}" does not apply to this project, so it cannot be edited — change what makes it not apply (for the infant tables: the Infant 0+ target user, or the family-use age groups at Gate 02)`,
+        );
+      }
       if (items.length !== existing.length) {
         throw new BadRequestException(
           `Requirement section "${section}" expects ${existing.length} rows, received ${items.length}`,
@@ -2477,8 +2496,9 @@ export class ProjectsService {
   }
 
   // Round 4 question 16: the responsible reviewer assesses an auto-generated
-  // "not applicable" reason on a CRITICAL readiness item before its gate closes —
-  // acknowledging it, or recording that they do not (with a reason).
+  // "not applicable" reason on a CRITICAL readiness item before its gate closes by
+  // acknowledging it. There is no way to record a refusal (removed 2026-11-05): an item
+  // nobody has acknowledged simply stays blocked.
   // Who that is, and which items are critical, is our reading [ASSUMPTION: R5-Q6]
   // and lives in @mbc360/shared/utils/readinessAck.ts — this method only enforces it.
   //
@@ -2487,25 +2507,18 @@ export class ProjectsService {
   // person may change their own. Nothing is deleted — the audit event carries the
   // row as it was and as it is now. The wording that is recorded is the one the
   // engine generates NOW, from the locked project row; the client sends only
-  // (gate, item, outcome, comment), so it cannot assess wording it did not see, and
-  // the actor is always the session user.
+  // (gate, item), so it cannot acknowledge wording it did not see, and the actor is
+  // always the session user.
   async acknowledgeReadinessItem(
     user: SessionUser,
     id: string,
     gateId: string,
     itemId: string,
-    outcome: string,
-    comment: string | undefined,
+    functionKey: string,
+    confirmClear: boolean,
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
-    if (!(READINESS_ACK_OUTCOMES as readonly string[]).includes(outcome)) {
-      throw new BadRequestException(`outcome must be one of: ${READINESS_ACK_OUTCOMES.join(', ')}`);
-    }
-    const note = comment?.trim() || undefined;
-    if (outcome === 'Not acknowledged' && !note) {
-      throw new BadRequestException('A reason is required when you do not acknowledge it');
-    }
-    return this.mutate(user, id, expectedVersion, 'readiness_ack.recorded', async (tx, _row, project) => {
+    return this.mutate(user, id, expectedVersion, 'readiness_ack.recorded', async (tx, row, project) => {
       if (!GATES.some((g) => g.id === gateId)) throw new BadRequestException(`Unknown gate "${gateId}"`);
       if (isGatePassed(project, gateId)) {
         throw new BadRequestException(
@@ -2518,40 +2531,89 @@ export class ProjectsService {
           `"${itemId}" is not waiting for an acknowledgement at ${gateId} — it is not a critical item whose "not applicable" was generated by the system`,
         );
       }
-      const reviewer = responsibleReviewer(project, gateId);
-      if (!reviewer?.userId) {
+      // Who may acknowledge is whoever holds the FUNCTION the review team names for this item, on THIS project (Round 5
+      // question 1). An administrator account, the Lead and the phase's "Reviewed by" have no standing of their own here.
+      const slot = item.acknowledgement.slots.find((x) => x.functionKeys.includes(functionKey));
+      if (!slot) {
+        throw new BadRequestException(`"${functionKey}" is not one of the functions that acknowledge "${itemId}"`);
+      }
+      const functionLabel = REVIEW_ROLES.find((r) => r.key === functionKey)?.label ?? functionKey;
+      const holder = await tx.projectReviewer.findUnique({ where: { projectId_roleKey: { projectId: id, roleKey: functionKey } } });
+      if (!holder) {
         throw new BadRequestException(
-          `Nobody is nominated as "Reviewed by" on Phase ${reviewer?.phase ?? '?'}'s sign-off yet, so nobody can acknowledge this — the project's Lead nominates one`,
+          `Nobody is assigned as ${functionLabel} on this project yet, so nobody can acknowledge this — the project's Lead assigns one in Project team`,
         );
       }
-      if (reviewer.userId !== user.id) {
-        throw new ForbiddenException(
-          `Only ${reviewer.name ?? 'the nominated reviewer'} — nominated as "Reviewed by" on Phase ${reviewer.phase}'s sign-off — may acknowledge this`,
-        );
+      if (!holdsRole(holder, user)) {
+        throw new ForbiddenException(`Only ${holder.name}, who holds ${functionLabel} on this project, may acknowledge this as ${functionLabel}`);
       }
-      const before = currentAcknowledgement(project, gateId, itemId);
+      // Acknowledging "not applicable" on a table that exists only for the trigger clears what was entered in it (SW-56).
+      // It is never silent: the caller must have confirmed (the screen asks first), and the audit event below carries
+      // every cleared value, so nothing is lost from the record.
+      const dedicated = generatedNaEntries(project).find((e) => e.gateId === gateId && e.itemId === itemId)?.dedicatedSection;
+      const cleared: { requirement: string; was: Record<string, string | null> }[] = [];
+      if (dedicated && dedicated.rowsWithData > 0) {
+        if (!confirmClear) {
+          throw new BadRequestException(
+            `Acknowledging this clears the data entered in "${dedicated.title}" (${dedicated.rowsWithData} row${dedicated.rowsWithData === 1 ? '' : 's'} with data). Confirm to continue`,
+          );
+        }
+        if (dedicated.kind === 'register') {
+          // A register page: its entered columns go back to what an untouched row holds; the workbook's reference cells stay.
+          if (isGateRefLocked(project, getRegisterConfig(dedicated.key)?.gate)) {
+            throw new BadRequestException(`"${dedicated.title}" belongs to a gate that has passed, so it cannot be cleared (use Backtrack)`);
+          }
+          const stored = await tx.registerRow.findMany({ where: { projectId: id, registerKey: dedicated.key }, orderBy: { rowOrder: 'asc' } });
+          const { rows: clearedRows, cleared: changes } = clearRegisterEnteredColumns(
+            dedicated.key,
+            stored.map((r) => r.data as RegisterRow),
+          );
+          for (const change of changes) {
+            await tx.registerRow.update({
+              where: { id: stored[change.rowIndex].id },
+              data: { data: clearedRows[change.rowIndex] as Prisma.InputJsonValue, updatedById: user.id },
+            });
+            const label = (stored[change.rowIndex].data as RegisterRow).ingredientGroup;
+            cleared.push({ requirement: typeof label === 'string' && label ? label : `Row ${change.rowIndex + 1}`, was: change.was });
+          }
+        }
+        const rows = dedicated.kind === 'register' ? [] : row.requirementItems.filter((i) => i.sectionKey === dedicated.key);
+        for (const target of rows) {
+          // A row of a gate that has passed is not touched (that gate's evidence is locked).
+          if (isGateRefLocked(project, target.gate)) continue;
+          const had = {
+            status: target.status,
+            priority: target.priority,
+            requirementText: target.requirementText,
+            naRationale: target.naRationale,
+            ynna: target.ynna,
+            evidenceLink: target.evidenceLink,
+            notes: target.notes,
+          };
+          const empty = target.status === 'Not Started' && !target.priority && !target.requirementText && !target.naRationale && !target.ynna && !target.evidenceLink && !target.notes;
+          if (empty) continue;
+          await tx.requirementItem.update({
+            where: { id: target.id },
+            data: { status: 'Not Started', priority: null, requirementText: null, naRationale: null, ynna: null, evidenceLink: null, notes: null },
+          });
+          cleared.push({ requirement: target.requirement, was: had });
+        }
+      }
+      const before = slot.ack?.functionKey === functionKey ? slot.ack : undefined;
       const rationale = item.acknowledgement.rationale;
-      if (
-        before &&
-        before.rationale === rationale &&
-        before.outcome === outcome &&
-        before.acknowledgedByUserId === user.id &&
-        (before.comment ?? undefined) === (outcome === 'Not acknowledged' ? note : undefined)
-      ) {
-        throw new BadRequestException('Nothing to change — this is already what you recorded');
+      if (before && before.rationale === rationale && before.acknowledgedByUserId === user.id) {
+        throw new BadRequestException('Nothing to change — you have already acknowledged this');
       }
       const data = {
         rationale,
-        outcome,
-        comment: outcome === 'Not acknowledged' ? note : null,
         acknowledgedByUserId: user.id,
         acknowledgedByName: user.displayName,
-        acknowledgedAs: `Reviewed by — Phase ${reviewer.phase}`,
+        acknowledgedAs: functionLabel,
         acknowledgedAt: new Date(),
       };
       await tx.readinessAcknowledgement.upsert({
-        where: { projectId_gateId_itemId: { projectId: id, gateId, itemId } },
-        create: { projectId: id, gateId, itemId, ...data },
+        where: { projectId_gateId_itemId_functionKey: { projectId: id, gateId, itemId, functionKey } },
+        create: { projectId: id, gateId, itemId, functionKey, ...data },
         update: data,
       });
       // The audit event is the history of this row (nothing here is ever deleted), so it carries
@@ -2559,16 +2621,51 @@ export class ProjectsService {
       return {
         gateId,
         itemId,
+        functionKey,
         before: before
-          ? {
-              outcome: before.outcome,
-              comment: before.comment ?? null,
-              by: before.acknowledgedByName,
-              at: before.acknowledgedAt,
-              rationale: before.rationale,
-            }
+          ? { by: before.acknowledgedByName, at: before.acknowledgedAt, rationale: before.rationale }
           : null,
-        after: { outcome, comment: data.comment ?? null, by: user.displayName, rationale },
+        after: { by: user.displayName, rationale },
+        ...(cleared.length > 0 ? { cleared: { section: dedicated!.key, rows: cleared } } : {}),
+      };
+    });
+  }
+
+  // An acknowledgement taken back (project owner, 2026-11-06). Whoever gave it, or whoever now holds that function on the project,
+  // may withdraw it, while its gate has not passed; an administrator's account has no standing here, as it has none to acknowledge.
+  // The row goes (the item is waiting for an acknowledgement again) and the audit event keeps who gave it and when. Data cleared when
+  // it was acknowledged is NOT restored: its earlier values are on that acknowledgement's audit event.
+  async withdrawReadinessAcknowledgement(
+    user: SessionUser,
+    id: string,
+    gateId: string,
+    itemId: string,
+    functionKey: string,
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'readiness_ack.withdrawn', async (tx, _row, project) => {
+      if (!GATES.some((g) => g.id === gateId)) throw new BadRequestException(`Unknown gate "${gateId}"`);
+      if (isGatePassed(project, gateId)) {
+        throw new BadRequestException(
+          `${gateId} has already passed — its evidence is read-only. Backtrack to reopen it if an acknowledgement has to be withdrawn`,
+        );
+      }
+      const key = { projectId_gateId_itemId_functionKey: { projectId: id, gateId, itemId, functionKey } };
+      const existing = await tx.readinessAcknowledgement.findUnique({ where: key });
+      if (!existing) throw new BadRequestException('There is no acknowledgement to withdraw');
+      const holder = await tx.projectReviewer.findUnique({ where: { projectId_roleKey: { projectId: id, roleKey: functionKey } } });
+      const mine = existing.acknowledgedByUserId === user.id || (!!holder && holdsRole(holder, user));
+      if (!mine) {
+        throw new ForbiddenException(
+          `Only ${existing.acknowledgedByName}, who gave it, or whoever holds ${REVIEW_ROLES.find((r) => r.key === functionKey)?.label ?? functionKey} on this project may withdraw it`,
+        );
+      }
+      await tx.readinessAcknowledgement.delete({ where: key });
+      return {
+        gateId,
+        itemId,
+        functionKey,
+        withdrawn: { by: existing.acknowledgedByName, at: existing.acknowledgedAt, rationale: existing.rationale },
       };
     });
   }
@@ -2615,6 +2712,13 @@ export class ProjectsService {
       if (isGateRefLocked(project, config.gate)) {
         throw new ForbiddenException(
           `Register "${registerKey}" belongs to gate ${config.gate}, which has passed — it is read-only (use Backtrack)`,
+        );
+      }
+      // A register dedicated to a trigger that does not apply to this project is read-only, whoever asks (project owner,
+      // 2026-11-06): its entered columns are what acknowledging the generated "not applicable" clears.
+      if (registerLockedAsNotApplicable(project, registerKey)) {
+        throw new BadRequestException(
+          `"${config.title}" does not apply to this project (no maternal target user), so it is read-only. Acknowledge that it does not apply, or change the target users, instead`,
         );
       }
       // Register closing (2026-08-27) — a SEPARATE, independent lock reason
@@ -4084,6 +4188,54 @@ export class ProjectsService {
       if (Object.keys(data).length === 0) return { fields: [] };
       await tx.project.update({ where: { id }, data });
       return { fields: Object.keys(data) };
+    });
+  }
+
+  // Who holds each FUNCTION on the project (Safety / Scientific Review, Technical Claims, Quality, …), assigned or changed
+  // after creation by the project's Lead or an administrator (2026-11-05, Round 5 questions 1(b) and 37(b)). Only function
+  // roles: the thirteen area roles are write-once at creation and stay so. A function with nobody in it reads Unassigned
+  // and whatever needs that authority waits; nobody is substituted for it, the Lead included.
+  async setFunctionAssignees(
+    user: SessionUser,
+    id: string,
+    assignments: { roleKey: string; userId: string | null }[],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'project.function_assignees_updated', async (tx, _row, project) => {
+      if (project.identity.projectLead.trim() !== user.displayName.trim() && !this.permissions.isAdmin(user)) {
+        throw new ForbiddenException(`Only the project's Lead (${project.identity.projectLead}) or an administrator may assign functions`);
+      }
+      if (!Array.isArray(assignments) || assignments.length === 0) {
+        throw new BadRequestException('assignments must list at least one function');
+      }
+      const allowed = new Set(LEAD_ASSIGNABLE_ROLE_KEYS);
+      const changes: { roleKey: string; before: string | null; after: string | null }[] = [];
+      for (const a of assignments) {
+        if (!allowed.has(a.roleKey)) {
+          throw new BadRequestException(`"${a.roleKey}" is not a role the Lead assigns after creation — only the functions and the Project owner can be changed once the project exists`);
+        }
+        const key = { projectId_roleKey: { projectId: id, roleKey: a.roleKey } };
+        const before = await tx.projectReviewer.findUnique({ where: key });
+        if (a.userId === null) {
+          if (before) {
+            await tx.projectReviewer.delete({ where: key });
+            changes.push({ roleKey: a.roleKey, before: before.name, after: null });
+          }
+          continue;
+        }
+        const person = await tx.user.findUnique({ where: { id: a.userId } });
+        // Any active user may hold a function: the SME's "company role matrix" (question 37(b)) may mean a limit to people holding
+        // a matching company role, which is not applied yet [ASSUMPTION: R6-Q3].
+        if (!person || !person.active) throw new BadRequestException('That person is not an active user');
+        if (before?.userId === person.id) continue;
+        await tx.projectReviewer.upsert({
+          where: key,
+          create: { projectId: id, roleKey: a.roleKey, name: person.displayName, userId: person.id },
+          update: { name: person.displayName, userId: person.id, assignedAt: new Date() },
+        });
+        changes.push({ roleKey: a.roleKey, before: before?.name ?? null, after: person.displayName });
+      }
+      return { changes };
     });
   }
 

@@ -33,6 +33,7 @@ export default function ChecklistSection({
   // Target Users, where un-ticking Pregnancy would orphan the Vulnerable-User
   // Assessment row that exists because of it. Ticking ON is never restricted.
   untickBlockedReason,
+  tickBlockedReason,
   requiresPrimary,
 }: {
   projectId: string;
@@ -47,6 +48,9 @@ export default function ChecklistSection({
   // Gate-level edit lock: true once this section's gate has passed.
   readOnly?: boolean;
   untickBlockedReason?: (label: string) => string | undefined;
+  // Why a given option cannot be TICKED right now (2026-11-06): a target user that would make an acknowledged "not applicable"
+  // untrue stays unticked until that acknowledgement is withdrawn.
+  tickBlockedReason?: (label: string) => string | undefined;
   // Round 4 question 22(b): one selected development/change type must be the
   // Primary; only `projectNature` sets this.
   requiresPrimary?: boolean;
@@ -75,7 +79,7 @@ export default function ChecklistSection({
   const toggle = (index: number) => {
     const item = draft[index];
     if (readOnly) return;
-    const blocked = item.selected ? untickBlockedReason?.(item.label) : undefined;
+    const blocked = item.selected ? untickBlockedReason?.(item.label) : tickBlockedReason?.(item.label);
     if (blocked) return; // defence in depth — the tile says why; the API refuses too
     patch(index, { selected: !item.selected, status: !item.selected ? 'Y' : 'NA' });
   };
@@ -120,7 +124,7 @@ export default function ChecklistSection({
 
       <div className="cl-grid" role="group" aria-label={title}>
         {visible.map(({ item, index }) => {
-          const blocked = item.selected ? untickBlockedReason?.(item.label) : undefined;
+          const blocked = item.selected ? untickBlockedReason?.(item.label) : tickBlockedReason?.(item.label);
           const tile = (
             <div className={`cl-tile${item.selected ? ' cl-on' : ''}${readOnly ? ' cl-ro' : ''}`} key={item.label}>
               <button

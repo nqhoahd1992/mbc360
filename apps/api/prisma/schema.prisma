@@ -504,26 +504,26 @@ model SupersessionDecision {
 // A responsible reviewer's assessment of an auto-generated "not applicable"
 // reason (Round 4 question 16; who the reviewer is and which items are critical
 // is our reading, R5-Q6). ONE row per item, edited in place by whoever is the
-// nominated reviewer at the time (SW-29): acknowledging, or recording that they do
-// NOT acknowledge it with a reason. Nothing is deleted — every edit is an audit
-// event carrying the values before and after — and the row snapshots the name and
-// capacity because the account may later be renamed or deleted.
+// nominated reviewer at the time (SW-29): a row exists only once somebody has
+// acknowledged it. There is no "not acknowledged" outcome (removed 2026-11-05): an
+// item nobody has acknowledged simply has no row. Nothing is deleted — every edit
+// is an audit event carrying the values before and after — and the row snapshots
+// the name and capacity because the account may later be renamed or deleted.
 model ReadinessAcknowledgement {
   id                   String   @id @default(cuid())
   project              Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId            String
   gateId               String
   itemId               String
-  rationale            String // the exact generated wording that was assessed
-  outcome              String   @default("Acknowledged") // 'Acknowledged' | 'Not acknowledged'
-  comment              String? // required when the outcome is 'Not acknowledged'
+  functionKey          String // the function acknowledged AS (REVIEW_ROLES key) — one row per gate, item and function
+  rationale            String // the exact generated wording that was acknowledged
   acknowledgedBy       User?    @relation("ReadinessAckBy", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
   acknowledgedByUserId String?
   acknowledgedByName   String
   acknowledgedAs       String
   acknowledgedAt       DateTime @default(now())
 
-  @@unique([projectId, gateId, itemId])
+  @@unique([projectId, gateId, itemId, functionKey])
   @@map("readiness_acknowledgements")
 }
 

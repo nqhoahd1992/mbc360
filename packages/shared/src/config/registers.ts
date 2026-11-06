@@ -4200,7 +4200,7 @@ const DEPARTMENTS: RawDept[] = [
   },
   {
     key: 'dept-formulation',
-    title: 'Technical Services',
+    title: 'Formulation',
     description: 'Formula BOM, change control/registers, batch traceability and the product development report.',
     reviewOwner: REVIEW_SPECS.formulation,
     items: [
@@ -4213,7 +4213,7 @@ const DEPARTMENTS: RawDept[] = [
   },
   {
     key: 'dept-quality-gmp',
-    title: 'QA & Regulatory Affairs',
+    title: 'Quality & GMP',
     description: 'GMP manufacturing links and microbiology/PET evidence.',
     reviewOwner: REVIEW_SPECS.qualityGmpPet,
     // Stability_Release moved out to dept-production-support (2026-08-27) —
@@ -4233,7 +4233,7 @@ const DEPARTMENTS: RawDept[] = [
     // with no workbook tab behind it at all, and its own confirmed rule (B5)
     // ties it to Gate 02 target-user screening, not production/release.
     key: 'dept-production-support',
-    title: 'Production Support',
+    title: 'Quality',
     description: 'Stability & release evidence.',
     reviewOwner: REVIEW_SPECS.quality,
     items: ['stabilityRelease'],
@@ -4266,7 +4266,7 @@ const DEPARTMENTS: RawDept[] = [
   },
   {
     key: 'dept-regulatory',
-    title: 'Regulatory Affairs Manager',
+    title: 'Regulatory',
     description: 'Prohibited/caution watch-lists, fragrance, ASEAN PIF closure, claims, publication approval and non-ASEAN regulatory checklist status.',
     reviewOwner: REVIEW_SPECS.regulatoryWithRi,
     items: [
@@ -4298,7 +4298,7 @@ const DEPARTMENTS: RawDept[] = [
   },
   {
     key: 'dept-packaging',
-    title: 'Sales Manager',
+    title: 'Packaging / Artwork',
     description: 'Released-label control, packaging BOM, packaging specs/artwork evidence and artwork change control.',
     reviewOwner: REVIEW_SPECS.packaging,
     items: [
@@ -4310,14 +4310,14 @@ const DEPARTMENTS: RawDept[] = [
   },
   {
     key: 'dept-raw-material',
-    title: 'Raw Material Coordinator',
+    title: 'Raw Material Operations',
     description: 'Supplier/raw-material documents, substitutions and product-family versioning.',
     reviewOwner: REVIEW_SPECS.rawMaterial,
     items: ['supplierRmEvidence', 'ingredientSubstitution', 'productFamilyRegister'],
   },
   {
     key: 'dept-sales-marketing',
-    title: 'Project Lead',
+    title: 'Sales & Marketing',
     description: 'Campaign declarations, HCP/distributor answer packs, panel feedback, change control and templates.',
     reviewOwner: REVIEW_SPECS.salesMarketing,
     // developmentBrief moved to dept-npd-frontend/Project Manager (2026-08-27)
@@ -4334,7 +4334,7 @@ const DEPARTMENTS: RawDept[] = [
   },
   {
     key: 'dept-supply-chain',
-    title: 'Logistics & Supply Chain Manager',
+    title: 'Supply Chain',
     description: 'Costing calculator and post-market / complaint / CAPA evidence.',
     reviewOwner: REVIEW_SPECS.supplyChain,
     items: [
@@ -4352,6 +4352,9 @@ const DEPARTMENTS: RawDept[] = [
       // a gate passes (2026-07-25, user-requested). A dedicated page rather
       // than a register — it renders live rule state, it has no rows of its own.
       { title: 'Gate Rules & Sheet Map', page: 'gate-rules-map', gate: 'ALL' },
+      // Who holds every role on this project and what each is authorised to do — read-only, generated from the same
+      // configuration the rules use (Round 5 question 37(b), 2026-11-06). Like the map above it has no rows of its own.
+      { title: 'Role & Authority Matrix', page: 'role-matrix', gate: 'ALL' },
       'systemRequirements',
       'templateIndex',
       'systemFeedback',

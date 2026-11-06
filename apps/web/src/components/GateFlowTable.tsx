@@ -347,7 +347,6 @@ export default function GateFlowTable({
               {!hideReadiness && r.readinessChecklist.length > 0 && (
                 <GateReadinessPanel
                   gateNumber={r.meta.number}
-                  project={project}
                   items={r.readinessChecklist}
                   projectId={projectId}
                   currentPath={location.pathname}

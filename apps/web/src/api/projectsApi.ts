@@ -504,18 +504,20 @@ export const acceptPreWork = (id: string, phase: number, expectedVersion: number
     { method: 'POST', body: JSON.stringify({ expectedVersion }) },
   );
 
-export const acknowledgeReadinessItem = (
-  id: string,
-  gateId: string,
-  itemId: string,
-  outcome: 'Acknowledged' | 'Not acknowledged',
-  comment: string | undefined,
-  expectedVersion: number,
-) =>
+export const setFunctionAssignees = (id: string, assignments: { roleKey: string; userId: string | null }[], v: number) =>
+  put(id, 'function-assignees', { assignments }, v);
+
+export const acknowledgeReadinessItem = (id: string, gateId: string, itemId: string, functionKey: string, confirmClear: boolean, expectedVersion: number) =>
   request<ProjectEnvelope>(
     `/projects/${encodeURIComponent(id)}/readiness-acknowledgements`,
-    { method: 'POST', body: JSON.stringify({ gateId, itemId, outcome, comment, expectedVersion }) },
+    { method: 'POST', body: JSON.stringify({ gateId, itemId, functionKey, confirmClear, expectedVersion }) },
   );
+
+export const withdrawReadinessAcknowledgement = (id: string, gateId: string, itemId: string, functionKey: string, expectedVersion: number) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/readiness-acknowledgements/withdraw`, {
+    method: 'POST',
+    body: JSON.stringify({ gateId, itemId, functionKey, expectedVersion }),
+  });
 
 export const setChangeControlAssessments = (id: string, entries: ChangeControlAssessment[], v: number) =>
   put(id, 'change-control-assessments', { entries }, v);

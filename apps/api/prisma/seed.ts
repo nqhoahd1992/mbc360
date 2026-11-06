@@ -406,7 +406,7 @@ const REVIEW_OWNER_ROLES: Record<string, string> = {
   packaging: 'sso-packaging-artwork-contributor', // Lily — Sales Manager by title, but reviews packaging/artwork content
   'sales-marketing': 'sso-final-approver', // Nguyen — real CEO / project sponsor, not just Marketing/Sales content
   // --- judgement calls (no close SSO label): revisit when F6 answers ---
-  'raw-material': 'sso-supply-chain-contributor', // Chidkamon — Raw Material Coordinator ~ procurement/supply
+  'raw-material': 'sso-supply-chain-contributor', // Chidkamon — Raw Material Operations ~ procurement/supply
   'supply-chain': 'sso-supply-chain-contributor', // Hannah
   'facility-pm': 'sso-manufacturing-link-contributor', // Kaukab — Facility / PM Operations ~ manufacturing link
   'hr-quality': 'sso-quality-reviewer', // Lani — HR/Quality co-signs Quality areas
@@ -451,6 +451,8 @@ async function seedReviewOwnerUsers(): Promise<NewProjectReviewer[]> {
   }
   const assigned: NewProjectReviewer[] = [];
   for (const role of REVIEW_ROLES) {
+    // A function role (Safety / Scientific Review, …) is not a person the workbook names: no account to create for it.
+    if (!role.workbookName) continue;
     const email = reviewOwnerEmail(role.workbookName);
     const departmentName = REVIEW_OWNER_DEPARTMENTS[role.key] ?? 'Management';
     const user = await prisma.user.upsert({
@@ -522,7 +524,7 @@ const DEMO_PROJECT_LEAD = 'Nguyen';
 // MKTG, PHASE2 NPD, PHASE3 QUAL, PHASE4 REG). Reviewed by = the 'quality' role
 // (Sankar, labelled "Production Support" since 2026-08-27 — the role KEY is
 // unchanged, only the display label), except on Phase 3 where 'quality'
-// already prepares, so 'quality-gmp' (Sekar, "QA & Regulatory Affairs")
+// already prepares, so 'quality-gmp' (Sekar, "Quality & GMP")
 // reviews and the two rows stay two different people.
 const DEMO_SIGNOFF_AREAS: Record<number, { preparedBy: string; reviewedBy: string }> = {
   1: { preparedBy: 'sales-marketing', reviewedBy: 'quality' },

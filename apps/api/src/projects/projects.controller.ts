@@ -363,25 +363,38 @@ export class ProjectsController {
     return this.projects.setPhaseKeyLinks(user, id, Number(phase), body.links ?? {}, body.expectedVersion);
   }
 
-  // Round 4 question 16 — the responsible reviewer assesses an auto-generated N/A
-  // reason on a critical item (acknowledged, or not with a reason), editing the one
-  // row in place. The wording and the actor are server-side.
+  // Who holds each function on the project (Round 5 questions 1(b) and 37(b)); Lead or administrator.
+  @Put(':id/function-assignees')
+  setFunctionAssignees(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { assignments: { roleKey: string; userId: string | null }[]; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.setFunctionAssignees(user, id, body.assignments, body.expectedVersion);
+  }
+
+  // Round 4 question 16 / Round 5 question 1 — the person holding a function acknowledges an auto-generated N/A
+  // reason on a critical item, as that function. The wording and the actor are server-side; the client sends only
+  // which item and which function.
   @Post(':id/readiness-acknowledgements')
   acknowledgeReadinessItem(
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
-    @Body() body: { gateId: string; itemId: string; outcome?: string; comment?: string; expectedVersion: number },
+    @Body() body: { gateId: string; itemId: string; functionKey: string; confirmClear?: boolean; expectedVersion: number },
   ): Promise<ProjectEnvelope> {
-    if (!body?.gateId || !body?.itemId) throw new BadRequestException('gateId and itemId are required');
-    return this.projects.acknowledgeReadinessItem(
-      user,
-      id,
-      body.gateId,
-      body.itemId,
-      body.outcome ?? 'Acknowledged',
-      body.comment,
-      body.expectedVersion,
-    );
+    if (!body?.gateId || !body?.itemId || !body?.functionKey) throw new BadRequestException('gateId, itemId and functionKey are required');
+    return this.projects.acknowledgeReadinessItem(user, id, body.gateId, body.itemId, body.functionKey, body.confirmClear === true, body.expectedVersion);
+  }
+
+  // Take an acknowledgement back; the audit trail keeps who gave it.
+  @Post(':id/readiness-acknowledgements/withdraw')
+  withdrawReadinessAcknowledgement(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { gateId: string; itemId: string; functionKey: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    if (!body?.gateId || !body?.itemId || !body?.functionKey) throw new BadRequestException('gateId, itemId and functionKey are required');
+    return this.projects.withdrawReadinessAcknowledgement(user, id, body.gateId, body.itemId, body.functionKey, body.expectedVersion);
   }
 
   @Post(':id/phases/:phase/accept-pre-work')

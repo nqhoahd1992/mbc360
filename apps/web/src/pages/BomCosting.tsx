@@ -7,6 +7,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import type { BomLine, CostingInputs, PackagingBomLine, RegisterRow } from '@mbc360/shared/types';
 import FormulaPropertiesCard from '../components/FormulaPropertiesCard';
+import GeneratedNaAcks from '../components/GeneratedNaAcks';
 import CosmetriImportModal from '../components/CosmetriImportModal';
 import FormulaVersionModal from '../components/FormulaVersionModal';
 import { formulaVersionState } from '@mbc360/shared/utils/formulaLifecycle';
@@ -497,7 +498,12 @@ export default function BomCosting() {
         />
       )}
 
-      {showFormula && <FormulaPropertiesCard project={project} />}
+      {showFormula && (
+        <>
+          <GeneratedNaAcks home="formulaProperties" />
+          <FormulaPropertiesCard project={project} />
+        </>
+      )}
 
       {/* C3: automatic watch-list cross-check on every BOM ingredient. */}
       {showFormula && watchMatches.length > 0 && (

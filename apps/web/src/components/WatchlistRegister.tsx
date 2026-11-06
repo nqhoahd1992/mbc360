@@ -20,6 +20,7 @@ import {
   WATCHLIST_ASSESSMENT_NON_CRITICAL,
 } from '@mbc360/shared/config/registers';
 import { ownerFunctionWithPeople } from '@mbc360/shared/config/reviewers';
+import GeneratedNaAcks from './GeneratedNaAcks';
 import type { ProjectData, RegisterRow } from '@mbc360/shared/types';
 import { bomWatchMatches, type WatchHit } from '@mbc360/shared/utils/ingredientWatch';
 import {
@@ -208,8 +209,13 @@ export default function WatchlistRegister({
     const name = text(row.owner);
     if (!name) return <span className="wl-muted">—</span>;
     return (
+      // One line per function ("Safety — Sekar", "Regulatory — Chi Chu"): a long joint cell wraps instead of being cut with "…".
       <span className="wl-owner">
-        <span>{ownerLabel(row)}</span>
+        {ownerLabel(row).split(' / ').map((part, i) => (
+          <span key={i} className="wl-owner-line" title={part}>
+            {part}
+          </span>
+        ))}
       </span>
     );
   };
@@ -257,6 +263,11 @@ export default function WatchlistRegister({
         readOnly={readOnly}
         readOnlyReason={readOnlyReason}
       />
+
+      {/* A "not applicable" the system wrote for an item whose data is this register (Round 5 question 1) is acknowledged here,
+          like every other block that holds the data behind such an item. Missing from this page until 2026-11-06: only the
+          generic register table mounted it, and this register has its own page. */}
+      <GeneratedNaAcks home={`register:${config.key}`} />
 
       <div className="c-card wl-summary">
         <div className="wl-progress">

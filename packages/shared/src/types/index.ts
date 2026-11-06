@@ -1400,17 +1400,14 @@ export type RegisterRow = Record<string, string | number | boolean | undefined>;
 // behind the "not applicable" changed, it is an assessment of words nobody is
 // reading any more. Who may edit it is decided in utils/readinessAck.ts
 // [ASSUMPTION: R5-Q6].
-export const READINESS_ACK_OUTCOMES = ['Acknowledged', 'Not acknowledged'] as const;
-export type ReadinessAckOutcome = (typeof READINESS_ACK_OUTCOMES)[number];
-
 // One edit of a readiness acknowledgement, read from the append-only audit trail (the row itself is edited in
 // place, so this is the only place what it said before stays readable — B4, no silent corrections). Oldest first.
 export interface ReadinessAckEvent {
   id: string;
   gateId: string;
   itemId: string;
-  outcome: ReadinessAckOutcome;
-  comment?: string;
+  functionKey?: string; // which function acknowledged (absent on events recorded before 2026-11-06)
+  kind?: 'withdrawn'; // absent = an acknowledgement; 'withdrawn' = the acknowledgement was taken back
   by: string;
   date: string; // ISO
 }
@@ -1419,12 +1416,11 @@ export interface ReadinessAcknowledgement {
   id: string;
   gateId: string;
   itemId: string;
-  rationale: string; // the generated explanation that was assessed, verbatim
-  outcome: ReadinessAckOutcome;
-  comment?: string; // required when the outcome is 'Not acknowledged'
+  functionKey: string; // the function this person acknowledged AS (one row per gate, item and function)
+  rationale: string; // the generated explanation that was acknowledged, verbatim
   acknowledgedByUserId?: string; // undefined once that account has been deleted
   acknowledgedByName: string; // snapshot — survives a rename or deletion
-  acknowledgedAs: string; // e.g. "Reviewed by — Phase 3", snapshot of the capacity
+  acknowledgedAs: string; // the function's label, e.g. "Safety / Scientific Review" — snapshot of the capacity
   acknowledgedAt: string; // ISO timestamp, server clock, of the LAST edit
 }
 

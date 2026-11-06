@@ -62,7 +62,7 @@ export default function ProjectIdentificationCard({
         <Descriptions.Item label="Product / SKU">{identity.productSku}</Descriptions.Item>
         <Descriptions.Item label="Date Opened">{identity.dateOpened}</Descriptions.Item>
         <Descriptions.Item label="Target Launch">{identity.targetLaunchDate}</Descriptions.Item>
-        <Descriptions.Item label="Owner / Department">{identity.ownerDepartment}</Descriptions.Item>
+        <Descriptions.Item label="Department">{identity.ownerDepartment}</Descriptions.Item>
       </Descriptions>
       <div className="pic-markets">
         <div className="pic-markets-label" id="pic-markets-label">

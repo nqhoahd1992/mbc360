@@ -44,6 +44,7 @@ import TargetProductTech from './pages/TargetProductTech';
 import EvidenceClaimSupport from './pages/EvidenceClaimSupport';
 import EvidenceSearchRules from './pages/EvidenceSearchRules';
 import GateRulesMap from './pages/GateRulesMap';
+import RoleMatrix from './pages/RoleMatrix';
 import MySheets from './pages/MySheets';
 import IntegrationsPage from './pages/IntegrationsPage';
 import MyAccount from './pages/MyAccount';
@@ -384,6 +385,7 @@ function Shell() {
             <Route path="/projects/:projectId/evidence-claim-support" element={<EvidenceClaimSupport />} />
             <Route path="/projects/:projectId/evidence-search-rules" element={<EvidenceSearchRules />} />
             <Route path="/projects/:projectId/gate-rules-map" element={<GateRulesMap />} />
+            <Route path="/projects/:projectId/role-matrix" element={<RoleMatrix />} />
             <Route path="/projects/:projectId/my-sheets" element={<MySheets />} />
             <Route path="/projects/:projectId/registers/cat/:categoryKey" element={<RegisterHubPage />} />
             <Route path="/projects/:projectId/registers/reg/:registerKey" element={<RegisterHubPage />} />

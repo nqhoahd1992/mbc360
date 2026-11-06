@@ -216,13 +216,20 @@ interface AppState {
   // Round 4 question 16: the nominated "Reviewed by" assesses an auto-generated N/A
   // reason on a critical readiness item (acknowledged, or not with a reason),
   // editing the one row in place. The wording and the actor are the server's.
+  // Who holds each function (Safety / Scientific Review, …) — set by the project's Lead or an administrator.
+  setFunctionAssignees: (id: string, assignments: { roleKey: string; userId: string | null }[]) => Promise<void>;
   acknowledgeReadinessItem: (
     id: string,
     gateId: string,
     itemId: string,
-    outcome: 'Acknowledged' | 'Not acknowledged',
-    comment?: string,
+    // The function being acknowledged AS — the person must hold it on this project.
+    functionKey: string,
+    // True once the person has confirmed that acknowledging also clears the data entered in a table that exists only for
+    // the trigger (SW-56); the server refuses to clear without it.
+    confirmClear?: boolean,
   ) => Promise<void>;
+  // Take an acknowledgement back; the item waits for one again.
+  withdrawReadinessAcknowledgement: (id: string, gateId: string, itemId: string, functionKey: string) => Promise<void>;
   setEvidenceSummary: (id: string, phase: number, value: string) => void;
   // The phase banner's "(provide link here)" shortcuts, keyed by workbook label.
   setPhaseKeyLinks: (id: string, phase: number, links: Record<string, string>) => Promise<boolean>;
@@ -655,8 +662,13 @@ export const useAppStore = create<AppState>()(
 
         setChangeControlAssessments: (id, entries) =>
           writeSection(id, (v) => projectsApi.setChangeControlAssessments(id, entries, v)),
-        acknowledgeReadinessItem: (id, gateId, itemId, outcome, comment) =>
-          writeSection(id, (v) => projectsApi.acknowledgeReadinessItem(id, gateId, itemId, outcome, comment, v)),
+        setFunctionAssignees: (id, assignments) =>
+          writeSection(id, (v) => projectsApi.setFunctionAssignees(id, assignments, v)),
+        acknowledgeReadinessItem: (id, gateId, itemId, functionKey, confirmClear = false) =>
+          writeSection(id, (v) => projectsApi.acknowledgeReadinessItem(id, gateId, itemId, functionKey, confirmClear, v)),
+
+        withdrawReadinessAcknowledgement: (id, gateId, itemId, functionKey) =>
+          writeSection(id, (v) => projectsApi.withdrawReadinessAcknowledgement(id, gateId, itemId, functionKey, v)),
 
         setBom: (id, lines) => writeSection(id, (v) => projectsApi.setBom(id, lines, v)),
         importCosmetriBom: (id, formulaId) =>

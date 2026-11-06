@@ -48,7 +48,6 @@ import type {
   RequirementItem,
   SignOff,
   ReadinessAckEvent,
-  ReadinessAcknowledgement,
   SupersessionDecision,
   ProjectStopGround,
 } from '@mbc360/shared/types';
@@ -300,15 +299,35 @@ export function toReadinessAckLog(
 ): ReadinessAckEvent[] {
   const out: ReadinessAckEvent[] = [];
   for (const e of events) {
-    const a = (e.after ?? {}) as { gateId?: string; itemId?: string; after?: { outcome?: string; comment?: string | null; by?: string } };
+    const a = (e.after ?? {}) as {
+      gateId?: string;
+      itemId?: string;
+      functionKey?: string;
+      withdrawn?: { by?: string };
+      after?: { outcome?: string; by?: string };
+    };
+    // An acknowledgement taken back (readiness_ack.withdrawn) is listed in the history as that, in order.
+    if (a.gateId && a.itemId && a.withdrawn) {
+      out.push({
+        id: e.id,
+        gateId: a.gateId,
+        itemId: a.itemId,
+        ...(a.functionKey ? { functionKey: a.functionKey } : {}),
+        kind: 'withdrawn',
+        by: e.actor?.displayName ?? 'Unknown',
+        date: dateTime(e.occurredAt),
+      });
+      continue;
+    }
     const now = a.after;
-    if (!a.gateId || !a.itemId || !now?.outcome) continue;
+    // Events recorded before 2026-11-05 carry an outcome; a "Not acknowledged" one is a refusal, which the application no
+    // longer has. It stays in the audit trail itself and is simply not listed as an acknowledgement.
+    if (!a.gateId || !a.itemId || !now || now.outcome === 'Not acknowledged') continue;
     out.push({
       id: e.id,
       gateId: a.gateId,
       itemId: a.itemId,
-      outcome: now.outcome as ReadinessAckEvent['outcome'],
-      ...(now.comment ? { comment: now.comment } : {}),
+      ...(a.functionKey ? { functionKey: a.functionKey } : {}),
       by: e.actor?.displayName ?? now.by ?? 'Unknown',
       date: dateTime(e.occurredAt),
     });
@@ -733,9 +752,8 @@ function toProjectDataRaw(
       id: a.id,
       gateId: a.gateId,
       itemId: a.itemId,
+      functionKey: a.functionKey,
       rationale: a.rationale,
-      outcome: a.outcome as ReadinessAcknowledgement['outcome'],
-      ...(a.comment ? { comment: a.comment } : {}),
       ...(a.acknowledgedByUserId ? { acknowledgedByUserId: a.acknowledgedByUserId } : {}),
       acknowledgedByName: a.acknowledgedByName,
       acknowledgedAs: a.acknowledgedAs,
