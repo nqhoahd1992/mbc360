@@ -917,6 +917,60 @@ Each of these adds a field whose "not yet assessed" value blocks — the mechani
 
 **The build order this implies** is set out in `docs/plans/Round4_Implementation_Roadmap.md`: the tri-state trigger engine and the shared vocabularies first, because every later group sits on them. That roadmap's tracking table is the single record of which of the 36 is finished — this document records the answers, not the build. As of 2026-08-30, thirty-four are done — everything except 12's eighteen affected areas (waiting on the change-record restructure, R5-Q19) and 16's reviewer acknowledgement (waiting on R5-Q6).
 
+## Appendix 4 (2026-11-05) — Round 5: answers
+
+**Source:** `docs/rounds/2026-11-05-sme-reply-round5.pdf`. **What was asked:** the 42 questions in `docs/rounds/2026-10-30-our-questions-round5.md`. Each answer is recorded here as the team gave it, one section per question, as the questions are worked through; the verdict says what that answer means for what is already built.
+
+### Question 1 — Critical "not applicable" items and the responsible reviewer
+
+**Verdict:** (a) ✅ built — the team's classification replaces our reading; (b), (c), (d) and the trigger corrections ⚠️ **differ from what is built** and are still to be built.
+
+**(a)** Use the following item-level classification. "Critical" here means an N/A rationale needs acknowledgement; it does not assign a Critical risk rating to the project.
+
+| Row | Gate | Item | Critical? | Acknowledgement function |
+|---|---|---|---|---|
+| 1 | 2 | Product form left open / tracked confirmation | No | Project owner |
+| 2 | 2 | Infant-use context | Yes | Safety |
+| 3 | 3 | Competitor / benchmark review | No | R&I / Marketing |
+| 4 | 3 | High-risk / borderline claims review | Yes | Regulatory |
+| 5 | 4 | Pregnancy / breastfeeding caution screen | Yes | Safety |
+| 6 | 4 | Allergen, impurity and contaminant review | Yes | Safety; Regulatory if limits apply |
+| 7 | 4 | Infant ingredient / raw-material suitability | Yes | Safety |
+| 8 | 5 | Product form confirmed earlier | No | R&I |
+| 9 | 5 | Preservative strategy | Yes | Quality / microbiology reviewer |
+| 10 | 5 | Infant formula-level assessment | Yes | Safety |
+| 11 | 5 | Commercial feasibility when target cost is Must | No | Commercial approver |
+| 12 | 6 | Infant packaging and instructions | Yes | Safety; Quality for pack controls |
+| 13 | 6 | Market-specific pack requirements | Yes | Regulatory |
+| 14 | 7 | Formula matches taken up on maternal caution list | Yes | Safety |
+| 15 | 7 | Maternal caution assessment closed | Yes | Safety |
+| 16 | 7 | Maternal and infant-contact assessment | Yes | Safety |
+| 17 | 7 | Infant compartment INF-01 to INF-08 | Yes | Safety |
+| 18 | 8 | Infant testing triggered by use and risk | Yes | Safety / study reviewer |
+| 19 | 8 | Human-study approval before recruitment | Yes | Authorised human-study reviewer |
+| 20 | 9 | Preservative efficacy status | Yes | Quality / microbiology reviewer |
+| 21 | 9 | Scale-up / pilot status | Yes | Quality with Manufacturing / R&I |
+| 22 | 9 | Infant stability, microbiology and in-use testing | Yes | Quality with Safety |
+| 23 | 10 | ASEAN PIF checklist | Yes | Regulatory |
+| 24 | 10 | ASEAN PIF mapping | Yes | Regulatory |
+| 25 | 10 | Infant PIF content and claim evidence | Yes | Safety and Regulatory |
+| 26 | 10 | Product-performance evidence | Yes | Technical claims reviewer |
+| 27 | 12 | Scheduled market feedback review | Yes | Quality / post-market reviewer |
+| 28 | 12 | Baseline post-market surveillance | Yes | Quality / post-market reviewer |
+| 29 | 12 | Enhanced PV/PMS review | Yes | Safety with Regulatory |
+| 30 | 12 | Product-performance feedback | Yes | Quality; Technical for claim impact |
+| 31 | 12 | Change-control links | Yes | Quality / change-control reviewer |
+
+**(b)** Use an item's assigned qualified reviewer. The phase "Reviewed by" may acknowledge only where that person also holds the required subject authority. Safety items require Safety/Scientific Review; Regulatory items require Regulatory; claims require Technical and any necessary Regulatory review; release/quality items require Quality. Where both functions are needed, both conclusions must be recorded. Do not infer authority from an administrator account or an unassigned Owner cell.
+
+**(c)** Yes. A material change to target users, formula, markets, evidence or the rationale invalidates the affected acknowledgement. Reassess the item against the new facts. Pure spelling or formatting corrections may retain the acknowledgement with a recorded editorial change.
+
+**(d)** Preserve the list version used in the signed snapshot. Open and reopened assessments use the current controlled list. A relevant list change creates a tracked impact assessment, with an owner and due date. A credible Critical safety issue, prohibition or mandatory market restriction puts affected current use/release on hold pending qualified review. Other changes trigger notice and assessment; Safety/Regulatory and Quality decide scope, urgency and any reopening. A notice alone cannot resolve a new material risk.
+
+**Trigger corrections:** Missing development/change data cannot justify N/A for competitor review. An anhydrous formula needs a documented microbiological-risk conclusion before a preservative/PET waiver. No watch-list match does not prove that allergen or impurity review is unnecessary. Enhanced-surveillance N/A must assess all applicable triggers, including those not yet structured in the app. Maternal/infant exclusions must consider intended and reasonably foreseeable contact, not only marketing ticks.
+
+**What changed in the application on 2026-11-05:** the classification in (a) is now the rule (27 of the 31 items need an acknowledgement; five Gate 12 items and five earlier ones that the gate-based reading missed now do, and the Gate 3 competitor review no longer does). Not yet built: who may acknowledge (b), what invalidates an acknowledgement and the editorial exception (c), the list-version and impact-assessment handling (d), and the five trigger corrections.
+
 ---
 ## Remaining implementation inputs (2026-07-21)
 

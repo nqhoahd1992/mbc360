@@ -917,6 +917,60 @@ Mỗi câu dưới đây thêm một trường mà giá trị "chưa đánh giá
 
 **Thứ tự build mà điều này hàm ý** được trình bày trong `docs/plans/Round4_Implementation_Roadmap.md`: engine trigger ba trạng thái và các bộ từ vựng dùng chung phải xong trước, vì mọi nhóm sau đều ngồi trên chúng. Bảng theo dõi trong lộ trình đó là nơi duy nhất ghi câu nào đã xong — tài liệu này ghi *đáp án*, không ghi tiến độ build. Tính đến 30/08/2026 đã xong ba mươi bốn câu — chỉ còn 18 vùng ảnh hưởng của câu 12 (chờ tái cấu trúc bản ghi change, R5-Q19) và phần reviewer xác nhận của câu 16 (chờ R5-Q6).
 
+## Phụ lục 4 (05/11/2026) — Vòng 5: đáp án
+
+**Nguồn:** `docs/rounds/2026-11-05-sme-reply-round5.pdf`. **Đã hỏi gì:** 42 câu trong `docs/rounds/2026-10-30-our-questions-round5.md`. Mỗi đáp án được ghi ở đây đúng như đội ngũ đã trả lời, một mục cho mỗi câu, khi từng câu được xử lý; phần kết luận nói đáp án đó có ý nghĩa gì với những gì đã xây dựng.
+
+### Câu 1 — Các mục "not applicable" critical và người xác nhận có trách nhiệm
+
+**Kết luận:** (a) ✅ đã xây dựng — bảng phân loại của đội ngũ thay thế cách hiểu của chúng tôi; (b), (c), (d) và các điều chỉnh trigger ⚠️ **khác với những gì đã xây dựng** và còn phải xây dựng.
+
+**(a)** Dùng bảng phân loại theo từng mục sau. "Critical" ở đây nghĩa là lý do N/A cần được xác nhận; nó không gán mức rủi ro Critical cho dự án.
+
+| Hàng | Gate | Mục | Critical? | Chức năng xác nhận |
+|---|---|---|---|---|
+| 1 | 2 | Product form left open / tracked confirmation | No | Project owner |
+| 2 | 2 | Infant-use context | Yes | Safety |
+| 3 | 3 | Competitor / benchmark review | No | R&I / Marketing |
+| 4 | 3 | High-risk / borderline claims review | Yes | Regulatory |
+| 5 | 4 | Pregnancy / breastfeeding caution screen | Yes | Safety |
+| 6 | 4 | Allergen, impurity and contaminant review | Yes | Safety; Regulatory if limits apply |
+| 7 | 4 | Infant ingredient / raw-material suitability | Yes | Safety |
+| 8 | 5 | Product form confirmed earlier | No | R&I |
+| 9 | 5 | Preservative strategy | Yes | Quality / microbiology reviewer |
+| 10 | 5 | Infant formula-level assessment | Yes | Safety |
+| 11 | 5 | Commercial feasibility when target cost is Must | No | Commercial approver |
+| 12 | 6 | Infant packaging and instructions | Yes | Safety; Quality for pack controls |
+| 13 | 6 | Market-specific pack requirements | Yes | Regulatory |
+| 14 | 7 | Formula matches taken up on maternal caution list | Yes | Safety |
+| 15 | 7 | Maternal caution assessment closed | Yes | Safety |
+| 16 | 7 | Maternal and infant-contact assessment | Yes | Safety |
+| 17 | 7 | Infant compartment INF-01 to INF-08 | Yes | Safety |
+| 18 | 8 | Infant testing triggered by use and risk | Yes | Safety / study reviewer |
+| 19 | 8 | Human-study approval before recruitment | Yes | Authorised human-study reviewer |
+| 20 | 9 | Preservative efficacy status | Yes | Quality / microbiology reviewer |
+| 21 | 9 | Scale-up / pilot status | Yes | Quality with Manufacturing / R&I |
+| 22 | 9 | Infant stability, microbiology and in-use testing | Yes | Quality with Safety |
+| 23 | 10 | ASEAN PIF checklist | Yes | Regulatory |
+| 24 | 10 | ASEAN PIF mapping | Yes | Regulatory |
+| 25 | 10 | Infant PIF content and claim evidence | Yes | Safety and Regulatory |
+| 26 | 10 | Product-performance evidence | Yes | Technical claims reviewer |
+| 27 | 12 | Scheduled market feedback review | Yes | Quality / post-market reviewer |
+| 28 | 12 | Baseline post-market surveillance | Yes | Quality / post-market reviewer |
+| 29 | 12 | Enhanced PV/PMS review | Yes | Safety with Regulatory |
+| 30 | 12 | Product-performance feedback | Yes | Quality; Technical for claim impact |
+| 31 | 12 | Change-control links | Yes | Quality / change-control reviewer |
+
+**(b)** Dùng người xác nhận có đủ thẩm quyền được chỉ định cho mục đó. "Reviewed by" của phase chỉ được xác nhận khi người đó cũng có thẩm quyền chuyên môn cần thiết. Mục Safety cần Safety/Scientific Review; mục Regulatory cần Regulatory; claim cần Technical và mọi rà soát Regulatory cần thiết; mục release/chất lượng cần Quality. Khi cần cả hai chức năng, phải ghi cả hai kết luận. Không suy ra thẩm quyền từ tài khoản quản trị hay một ô Owner chưa gán.
+
+**(c)** Có. Một thay đổi vật liệu về người dùng mục tiêu, công thức, thị trường, bằng chứng hoặc lý do làm mất hiệu lực xác nhận bị ảnh hưởng. Đánh giá lại mục đó theo các sự thật mới. Sửa chính tả hoặc định dạng thuần túy có thể giữ lại xác nhận, kèm một ghi nhận chỉnh sửa biên tập.
+
+**(d)** Giữ phiên bản danh sách đã dùng trong bản chụp đã ký. Các đánh giá đang mở và mở lại dùng danh sách có kiểm soát hiện hành. Một thay đổi liên quan của danh sách tạo ra một đánh giá tác động có theo dõi, có người phụ trách và hạn. Một vấn đề an toàn Critical đáng tin, một chất bị cấm hoặc một hạn chế thị trường bắt buộc đặt việc sử dụng/phát hành hiện tại bị ảnh hưởng vào trạng thái giữ lại chờ rà soát đủ thẩm quyền. Các thay đổi khác kích hoạt thông báo và đánh giá; Safety/Regulatory và Quality quyết định phạm vi, mức khẩn cấp và việc mở lại. Một thông báo đơn thuần không thể giải quyết một rủi ro vật liệu mới.
+
+**Điều chỉnh trigger:** Thiếu dữ liệu development/change không thể biện minh cho N/A của rà soát đối thủ. Công thức khan nước cần một kết luận rủi ro vi sinh có ghi chép trước khi miễn preservative/PET. Không có khớp watch-list không chứng minh rằng việc rà dị ứng hay tạp chất là không cần thiết. N/A của giám sát tăng cường phải đánh giá mọi trigger áp dụng, kể cả những trigger ứng dụng chưa có cấu trúc. Loại trừ nhóm mẹ/bé phải xét tiếp xúc dự kiến và có thể lường trước một cách hợp lý, không chỉ các ô tick marketing.
+
+**Đã đổi gì trong ứng dụng ngày 05/11/2026:** bảng phân loại ở (a) nay là quy tắc (27 trên 31 mục cần xác nhận; năm mục Gate 12 và năm mục ở các gate trước mà cách hiểu theo gate bỏ sót nay cần xác nhận, còn mục rà soát đối thủ ở Gate 3 thì không). Chưa xây dựng: ai được xác nhận (b), điều gì làm mất hiệu lực xác nhận và ngoại lệ chỉnh sửa biên tập (c), xử lý phiên bản danh sách và đánh giá tác động (d), và năm điều chỉnh trigger.
+
 ---
 ## Đầu vào còn cần cho triển khai (21/07/2026)
 
