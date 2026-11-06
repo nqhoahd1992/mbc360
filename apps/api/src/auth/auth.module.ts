@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { SessionAuthGuard } from './session-auth.guard';
 import { PinnedAdminsService } from './pinned-admins';
 import { HubController } from '../hub/hub.controller';
+import { HubAppsController } from '../hub/hub-apps.controller';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { HubController } from '../hub/hub.controller';
       secret: loadAuthConfig().sessionSecret,
     }),
   ],
-  controllers: [AuthController, HubController],
+  controllers: [AuthController, HubController, HubAppsController],
   providers: [
     AuthService,
     // Applies PINNED_ADMINS on every start (= every deploy).

@@ -288,10 +288,11 @@ export class AuthService {
         // Expired/invalid session — nothing to hint, still log out cleanly.
       }
     }
-    // Connected to AppHub: sign out through it — AppHub revokes this person's session in every app and keeps its own
-    // (and the Microsoft session) open (AppHub docs/01 section 4).
+    // Connected to AppHub: sign out through it — AppHub revokes this person's session in every app, ends its own
+    // session and (with AppHub's ENTRA_SIGN_OUT on) the Microsoft one; signing in there again comes back to MBc360
+    // (AppHub docs/07-apps-menu.md section 2c, docs/01 section 4).
     if (this.config.hubUrl && this.config.hubApp) {
-      return `${this.config.hubUrl}/sign-out-apps?${new URLSearchParams({ app: this.config.hubApp })}`;
+      return `${this.config.hubUrl}/logout?${new URLSearchParams({ app: this.config.hubApp })}`;
     }
     if (!this.config.oidcEnabled) return this.config.appBaseUrl;
 

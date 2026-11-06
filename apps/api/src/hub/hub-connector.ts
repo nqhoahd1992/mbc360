@@ -3,18 +3,23 @@
 //  Giao thức: docs/01-sso-protocol.md. Cách gắn: connector/README.md.
 //
 //  Copy nguyên file này vào app con: app TypeScript dùng hub-connector.ts, app JavaScript (ESM) dùng hub-connector.js
-//  (sinh từ file .ts bằng `npm run build:js` — đừng sửa tay file .js). Không cần cài thêm thư viện: chỉ dùng node:crypto.
+//  (sinh từ file .ts bằng `npm run build:js` — đừng sửa tay file .js). Không cần cài thêm thư viện: chỉ dùng module có sẵn của Node (node:crypto, node:http(s), node:dns, node:net).
 //  Ba endpoint:
 //    POST {APP}/api/hub/sso      AppHub (server) gọi, có ký → 200 {code, expiresInSeconds} | 403 {error:"NO_ACCESS"}
 //    GET  {APP}/hub-login        trình duyệt mang ?code=…&next=… → tạo phiên của app → chuyển về `next`
 //                                (mã hỏng/hết hạn → trang login ?hub_error=expired; user không còn/bị tắt → ?hub_error=no_account)
 //    POST {APP}/api/hub/revoke   AppHub gọi, có ký, {email, at} → vô hiệu mọi phiên của email cấp trước `at`
 //  Và 2 hàm dựng URL: hubLaunchUrl() (app hết phiên → về hub) và hubLogoutUrl() (Sign out ở app → về hub).
+//  Menu "Apps" (tuỳ chọn): listHubApps() — server app hỏi hub danh sách app của người đang đăng nhập (docs/07).
 //
 //  Đừng sửa cách tính chữ ký — phải khớp server/src/apps/hub-signer.ts của AppHub.
 // =====================================================================
 
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { lookup as dnsLookup, type LookupAddress } from 'node:dns';
+import { request as httpRequest } from 'node:http';
+import { request as httpsRequest } from 'node:https';
+import { isIP, type LookupFunction } from 'node:net';
 
 export type HubVerifyError = 'MISSING_HEADERS' | 'EXPIRED' | 'INVALID_SIGNATURE' | 'BAD_BODY';
 /** `timestamp`: X-Hub-Timestamp đã kiểm (Unix giây, theo đồng hồ của hub). */
@@ -87,6 +92,157 @@ export function hubLaunchUrl(hubUrl: string, appSlug: string, next?: string | nu
 /** Sign out ở app con: xoá phiên của app rồi chuyển trình duyệt tới đây (hub đăng xuất và revoke mọi app). */
 export function hubLogoutUrl(hubUrl: string) {
   return new URL('/logout', hubUrl).toString();
+}
+
+// ---------------------------------------------------------------------
+//  Menu "Apps" (docs/01 mục 7, 7b): SERVER app con hỏi hub danh sách app của một người, ký bằng secret của app này.
+//  Trình duyệt không hỏi thẳng hub được khi app con khác domain gốc với hub (cookie hub không đi theo), nên route của
+//  app con (vd. GET /api/hub-apps) gọi listHubApps() rồi trả JSON cho script menu (data-apps, docs/07).
+// ---------------------------------------------------------------------
+
+/** Một app trong danh sách hub trả, đã lọc: slug sai dạng bị bỏ (không dựng link từ nó), chữ bị cắt độ dài. */
+export interface HubAppEntry {
+  slug: string;
+  name: string;
+  description: string | null;
+  tone: string | null;
+  icon: string | null;
+  category: string | null;
+  lastResult: string | null;
+  lastOpenedAt: string | null;
+}
+
+/** 403: người này không có tài khoản hub đang bật. 502: mọi lỗi khác — `reason` để ghi log, đừng trả ra trình duyệt. */
+export type HubAppsResult = { ok: true; apps: HubAppEntry[] } | { ok: false; status: 403 | 502; reason: string };
+
+const SLUG = /^[a-z0-9-]{2,40}$/;
+const text = (value: unknown, max: number) => (typeof value === 'string' && value.trim() ? value.trim().slice(0, max) : null);
+
+/** Body hub trả → danh sách đã lọc; không phải `{apps: [...]}` → null. */
+export function readHubApps(body: unknown): HubAppEntry[] | null {
+  const list = (body as { apps?: unknown } | null)?.apps;
+  if (!Array.isArray(list)) return null;
+  return list.slice(0, 200).flatMap((item) => {
+    const app = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>;
+    const slug = text(app.slug, 40);
+    const name = text(app.name, 80);
+    if (!slug || !SLUG.test(slug) || !name) return [];
+    const opened = text(app.lastOpenedAt, 40);
+    return [
+      {
+        slug,
+        name,
+        description: text(app.description, 160),
+        tone: text(app.tone, 20),
+        icon: text(app.icon, 40),
+        category: text(app.category, 60),
+        lastResult: text(app.lastResult, 20),
+        lastOpenedAt: opened && !Number.isNaN(Date.parse(opened)) ? opened : null,
+      },
+    ];
+  });
+}
+
+/** "203.0.113.10=10.0.0.10, …" (cùng định dạng HUB_LAN_REWRITE của hub) → Map IP public → IP LAN. Sai định dạng → bỏ qua cặp đó. */
+function parseLanRewrite(raw: string | null | undefined) {
+  const map = new Map<string, string>();
+  for (const pair of (raw ?? '').split(',').map((part) => part.trim()).filter(Boolean)) {
+    const [from, to, extra] = pair.split('=').map((part) => part.trim());
+    if (isIP(from) && isIP(to) && extra === undefined) map.set(from, to);
+  }
+  return map;
+}
+
+/** dns.lookup, nhưng IP public có trong `rewrite` được thay bằng IP LAN (vẫn https, chứng chỉ vẫn kiểm theo domain). */
+function rewritingLookup(rewrite: Map<string, string>): LookupFunction {
+  return (hostname, options, callback) =>
+    dnsLookup(hostname, { ...options, all: true }, (error, addresses: LookupAddress[]) => {
+      if (error) return callback(error, []);
+      const mapped = addresses.map((entry) => {
+        const lan = rewrite.get(entry.address);
+        return lan ? { address: lan, family: isIP(lan) } : entry;
+      });
+      if (options.all) return callback(null, mapped);
+      callback(null, mapped[0].address, mapped[0].family);
+    });
+}
+
+/** POST JSON bằng node:http(s) (không cần thư viện), có hạn giờ, giới hạn 1 MB câu trả lời. */
+function postJson(url: string, headers: Record<string, string>, body: string, timeoutMs: number, lanRewrite?: string | null) {
+  const target = new URL(url);
+  const rewrite = parseLanRewrite(lanRewrite);
+  return new Promise<{ status: number; json: unknown }>((resolve, reject) => {
+    const send = target.protocol === 'https:' ? httpsRequest : httpRequest;
+    const req = send(
+      target,
+      {
+        method: 'POST',
+        headers: { ...headers, 'Content-Length': String(Buffer.byteLength(body)) },
+        timeout: timeoutMs,
+        ...(rewrite.size ? { lookup: rewritingLookup(rewrite) } : {}),
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        let size = 0;
+        res.on('data', (chunk: Buffer) => {
+          size += chunk.length;
+          if (size > 1_000_000) req.destroy(new Error('RESPONSE_TOO_LARGE'));
+          else chunks.push(chunk);
+        });
+        res.on('end', () => {
+          let json: unknown = null;
+          try {
+            json = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+          } catch {
+            /* không phải JSON */
+          }
+          resolve({ status: res.statusCode ?? 0, json });
+        });
+        res.on('error', reject);
+      },
+    );
+    req.on('timeout', () => req.destroy(new Error('TIMEOUT')));
+    req.on('error', reject);
+    req.end(body);
+  });
+}
+
+/**
+ * Hỏi hub: `email` được mở những app nào (POST {HUB}/api/hub/apps, docs/01 mục 7).
+ * `email` PHẢI lấy từ phiên đăng nhập trên server của app — không bao giờ nhận từ trình duyệt.
+ * `apiUrl`: mặc định `{hubUrl}/api` (dev: hub API ở cổng khác trang). `lanRewrite`: như HUB_LAN_REWRITE của hub, khi app con
+ * ở chung LAN với hub mà router không cho gọi ngược vào IP public (gọi domain hub bị treo).
+ */
+export async function listHubApps(input: {
+  hubUrl: string;
+  app: string;
+  secret: string;
+  email: string;
+  apiUrl?: string | null;
+  lanRewrite?: string | null;
+  timeoutMs?: number;
+}): Promise<HubAppsResult> {
+  const email = asEmail(input.email);
+  if (!email) return { ok: false, status: 403, reason: 'NO_EMAIL' };
+  const body = JSON.stringify({ app: input.app, email });
+  const timestamp = Math.floor(Date.now() / 1000);
+  const base = (input.apiUrl?.trim() || new URL('/api', input.hubUrl).toString()).replace(/\/+$/, '');
+  let res: { status: number; json: unknown };
+  try {
+    res = await postJson(
+      `${base}/hub/apps`,
+      { 'Content-Type': 'application/json', 'X-Hub-Timestamp': String(timestamp), 'X-Hub-Signature': hubSignature(input.secret, timestamp, body) },
+      body,
+      input.timeoutMs ?? 5000,
+      input.lanRewrite,
+    );
+  } catch (error) {
+    return { ok: false, status: 502, reason: `UNREACHABLE: ${(error as Error).message}` };
+  }
+  if (res.status === 403) return { ok: false, status: 403, reason: 'NO_ACCESS' };
+  if (res.status !== 200) return { ok: false, status: 502, reason: `HTTP_${res.status} ${String((res.json as { error?: unknown } | null)?.error ?? '')}`.trim() };
+  const apps = readHubApps(res.json);
+  return apps ? { ok: true, apps } : { ok: false, status: 502, reason: 'BAD_RESPONSE' };
 }
 
 /** Một mã dùng 1 lần. `hubTime`: X-Hub-Timestamp của request SSO đã cấp mã (Unix giây, đồng hồ của hub). */

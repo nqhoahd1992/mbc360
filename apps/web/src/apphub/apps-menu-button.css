@@ -1,0 +1,38 @@
+/* AppHub "Apps" menu button (AppsMenuButton.tsx). A light-brand tile, so it reads as a button on the dark sidebar rail
+   and on the white header alike; the coloured dots stay as AppHub draws them. ::part(button) is the hook AppHub's
+   script opens for the app to restyle its button — never edit the script itself (it is a verbatim copy). */
+apphub-switcher.apps-menu-button {
+  --apphub-accent: var(--c-primary, #0958d9); /* button colour while the menu is open = MBc360 primary */
+}
+apphub-switcher.apps-menu-button::part(button) {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border-color: transparent;
+  background: var(--c-primary-light, #e6f4ff);
+  box-shadow: none;
+  transition: background-color 0.15s, box-shadow 0.15s;
+}
+apphub-switcher.apps-menu-button::part(button):hover {
+  background: #bae0ff; /* antd blue-2: one step darker than --c-primary-light */
+  box-shadow: 0 0 0 1px rgb(9 88 217 / 0.18);
+}
+apphub-switcher.apps-menu-button::part(button):focus-visible {
+  outline: 2px solid var(--c-primary, #0958d9);
+  outline-offset: 2px;
+}
+
+/* Thin line between the button and what follows it (as MISA separates its app grid from the app name). */
+.apps-menu-divider-below {
+  width: 32px;
+  height: 1px;
+  flex-shrink: 0;
+  margin: 4px 0 8px;
+  background: rgb(255 255 255 / 0.16); /* on the dark rail */
+}
+.apps-menu-divider-after {
+  width: 1px;
+  height: 24px;
+  flex-shrink: 0;
+  background: var(--c-border-2, #f0f0f0);
+}

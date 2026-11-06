@@ -24,7 +24,7 @@ export interface AuthConfig {
   sessionSecret: string;
   sessionTtlSeconds: number;
   devMode: boolean;
-  /** AppHub address + this app's slug there: Sign out goes to {hubUrl}/sign-out-apps (every app signs out, AppHub stays). */
+  /** AppHub address + this app's slug there: Sign out goes to {hubUrl}/logout?app= (every app, AppHub and Microsoft sign out). */
   hubUrl?: string;
   hubApp?: string;
 }

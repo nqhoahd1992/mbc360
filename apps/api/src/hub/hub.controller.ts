@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Req, Res } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { SESSION_COOKIE, loadAuthConfig, sessionCookieOptions } from '../auth/auth-config';
 import { AuthService } from '../auth/auth.service';
@@ -11,11 +11,14 @@ import { createHubConnector } from './hub-connector';
 //   GET  /api/hub/login  browser brings ?code=…&next=… → the same session cookie as a Microsoft sign-in
 //   POST /api/hub/revoke AppHub server → signed {email, at} on sign-out / user turned off in AppHub → every session of
 //                        that email issued before `at` is refused (users.sessionsValidAfter, auth/session-auth.guard.ts)
+//   GET  /api/hub/menu   browser → {hub, app} for the AppHub "Apps" menu button (apps/web/src/apphub/AppsMenuButton.tsx);
+//                        the menu's app list comes from GET /api/hub-apps (hub-apps.controller.ts). AppHub docs/07-apps-menu.md
 // MBc360's own access rule still decides who enters (2026-10-02: active account holding a role):
 //  - email unknown here → no account is created; the sign-in screen says so (?hub_error=no_account) and
 //    "Sign in with Microsoft 365" creates the account for an administrator to give a role, as before;
 //  - known but no role / deactivated → the usual ?auth_error=no_role|inactive notice, no session.
-// Sign out goes to {HUB_URL}/sign-out-apps?app={HUB_APP} (auth.service.ts logout): every app signs out, AppHub stays.
+// Sign out goes to {HUB_URL}/logout?app={HUB_APP} (auth.service.ts logout): AppHub signs the person out of every app,
+// of AppHub itself and of Microsoft (when AppHub has ENTRA_SIGN_OUT on); signing in there again comes back here.
 @Public()
 @Controller('hub')
 export class HubController {
@@ -69,5 +72,15 @@ export class HubController {
   @Post('revoke')
   revoke(@Req() req: Request, @Res() res: Response) {
     return this.hub.revoke(req, res);
+  }
+
+  // Public and holds no secret: where AppHub is and this app's slug there. 404 while AppHub is not set up (no HUB_URL,
+  // HUB_APP or HUB_SECRET) — the web app then shows no Apps button.
+  @Get('menu')
+  menu() {
+    const hub = process.env.HUB_URL?.trim().replace(/\/$/, '');
+    const app = process.env.HUB_APP?.trim();
+    if (!hub || !app || !(process.env.HUB_SECRET_NEXT || process.env.HUB_SECRET)) throw new NotFoundException({ error: 'NOT_FOUND' });
+    return { hub, app };
   }
 }

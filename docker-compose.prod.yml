@@ -30,8 +30,14 @@
 #   HUB_SECRET_NEXT=...       (only during a 2-step secret change in AppHub)
 #   HUB_URL=... / HUB_APP=... (optional — AppHub address + this app's slug there,
 #                              e.g. https://apphub.maxbiocare.com / mbc360. Set →
-#                              Sign out signs the person out of every app,
-#                              AppHub stays signed in)
+#                              Sign out goes to {HUB_URL}/logout: every app,
+#                              AppHub and Microsoft sign out. With HUB_SECRET
+#                              also shows the AppHub "Apps" menu button)
+#   HUB_API_URL=...           (optional — AppHub API when not {HUB_URL}/api)
+#   HUB_LAN_REWRITE=...       (optional — <public IP>=<LAN IP of HTTPS nginx>,
+#                              only if this server is in the company LAN and
+#                              the Apps menu logs UNREACHABLE: TIMEOUT; same
+#                              value as AppHub's HUB_LAN_REWRITE)
 #   PINNED_ADMINS=...         (optional, comma-separated emails — each is made
 #                              sure to exist, be active and hold System
 #                              Administrator on EVERY api start, i.e. every
@@ -94,6 +100,8 @@ services:
       HUB_SECRET_NEXT: ${HUB_SECRET_NEXT:-}
       HUB_URL: ${HUB_URL:-}
       HUB_APP: ${HUB_APP:-}
+      HUB_API_URL: ${HUB_API_URL:-}
+      HUB_LAN_REWRITE: ${HUB_LAN_REWRITE:-}
     depends_on:
       postgres:
         condition: service_healthy

@@ -132,6 +132,10 @@ Certbot tự viết lại block thành dạng đầy đủ 443 + redirect 80→4
    ```
    Kỳ vọng: audit event `auth.login`. **Admin mặc định:** đặt `PINNED_ADMINS=email1@maxbiocare.com,email2@…` trong `.env` — mỗi lần api khởi động (tức mỗi lần deploy) các email này được tạo nếu chưa có, bật Active và gán role System Administrator (log api: `PINNED_ADMINS: … — granted admin`; audit `user.pinned_admin_applied`). Người đó đăng nhập M365 lần đầu là tài khoản được nối theo email và vào thẳng với quyền admin → sidebar hiện **Admin → Users** để gán role cho người khác. Trang Users không cho gỡ admin / tắt Active / xoá một tài khoản pinned — muốn bỏ thì xoá khỏi `PINNED_ADMINS` trước.
 3. Vào **Integrations**, admin dán cặp token Cosmetri (connect) — sau đó cron tự refresh mỗi 10 phút, không cần đụng lại.
+4. **AppHub** (khi `.env` có `HUB_SECRET`, `HUB_URL=https://apphub.maxbiocare.com`, `HUB_APP=mbc360` — slug phải đúng như AppHub → Manage apps, sai slug thì menu lỗi `HTTP_404`):
+   - `curl -s https://<domain>/api/hub/menu` → `{"hub":"https://apphub.maxbiocare.com","app":"mbc360"}` (404 = thiếu một trong ba biến).
+   - Mở MBc360 từ AppHub: nút "Apps" (lưới 9 chấm) ở đầu thanh rail bên trái, trên chữ "M" (màn hẹp: trên header, cạnh nút mở menu). Bấm → menu AppHub có danh sách app, không có chính MBc360. Menu báo "Couldn't load your apps" → log api có dòng `hub-apps: …` nói lý do (bảng mục 10).
+   - **Sign out** → chuyển tới `{HUB_URL}/logout?app=mbc360`: AppHub đăng xuất mọi app, chính AppHub và Microsoft; đăng nhập lại ở AppHub là về thẳng MBc360.
 
 ## 9. Deploy bản mới
 
@@ -161,6 +165,9 @@ Không còn bước migrate riêng: service `migrate` chạy trong chính lệnh
 | Log api lặp lại `The table ... does not exist` (P2021) hoặc `The column ... does not exist` (P2022) | DB chưa migrate — code mới chạy trên schema cũ | Không còn xảy ra khi dựng stack bằng `up -d --build` (service `migrate` chặn api). Nếu đang gặp: chạy `docker compose -f docker-compose.prod.yml up -d --build` rồi kiểm tra `logs migrate`. Migration lỗi dở dang (`P3009`) phải xử lý tay bằng `prisma migrate resolve` |
 | Seed lỗi `Cannot find module '../src/generated/prisma/client'` | Prisma client chưa generate (thư mục gitignored, không có trong bản clone) | Lệnh Seed ở mục 5 đã gồm `prisma generate`; đừng bỏ bước đó |
 | Đăng nhập M365 xong báo "không có quyền truy cập" dù email nằm trong `PINNED_ADMINS` | Biến chưa tới container api, hoặc email viết sai | `docker compose -f docker-compose.prod.yml exec api printenv PINNED_ADMINS`; sửa `.env` rồi `up -d api` — log khởi động phải có dòng `PINNED_ADMINS: <email> — …` |
+| Menu "Apps" báo "Couldn't load your apps", log api `hub-apps: AppHub did not answer — UNREACHABLE: TIMEOUT` | Server MBc360 nằm trong LAN công ty, gọi domain AppHub bị treo (router không quay vào IP public) | Thêm `HUB_LAN_REWRITE=<IP public>=<IP LAN nginx HTTPS>` vào `.env` (giống giá trị của AppHub), `up -d api` |
+| Log api `hub-apps: … HTTP_401 INVALID_SIGNATURE` / `HTTP_404` | Secret lệch / app không phải SSO, đang tắt hoặc `HUB_APP` sai slug | AppHub → Manage apps → Test; sửa `HUB_SECRET` / `HUB_APP` |
+| Bấm nút "Apps", ~8 giây sau mở tab AppHub thay vì menu | AppHub không cho trang nhúng: Base URL của MBc360 trong Manage apps khác `https://<domain>` | Sửa Base URL trong AppHub |
 
 ## Phụ lục: hai file trong `deploy/` dùng làm gì
 

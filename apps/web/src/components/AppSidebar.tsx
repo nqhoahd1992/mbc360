@@ -26,6 +26,7 @@ import { currentGateIndex, isGateRefLocked, phaseProgress } from '@mbc360/shared
 import { useAppStore } from '../store/useAppStore';
 import { sheetClosure } from '../utils/sheetClosure';
 import { globalNavFor } from '../config/globalNav';
+import AppsMenuButton from '../apphub/AppsMenuButton';
 import './AppSidebar.css';
 
 // The main sidebar (2026-10-03 redesign, wireframe option B): a dark icon RAIL
@@ -98,6 +99,9 @@ export default function AppSidebar({ isAdmin, narrow }: AppSidebarProps) {
   return (
     <div className="sb concept-tokens">
       <nav className="sb-rail" aria-label="Main">
+        {/* AppHub "Apps" menu: top left, before the logo, as in MISA. Narrow screens (sidebar in a drawer) have it in
+            the header instead (App.tsx). */}
+        {!narrow && <AppsMenuButton divider="below" />}
         <Link to="/" className="sb-mark" aria-label="MBc360 — Dashboard" onClick={() => setOverride(null)}>
           M
         </Link>

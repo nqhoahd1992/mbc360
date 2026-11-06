@@ -53,6 +53,8 @@ export function useSession() {
   // browser to Microsoft's RP-Initiated Logout so the SSO session ends too —
   // otherwise signing back in would silently re-authenticate with no
   // credential prompt. Entra redirects back to the app's base URL after.
+  // Connected to AppHub, the server answers {HUB_URL}/logout?app= instead:
+  // AppHub signs the person out of every app, of itself and of Microsoft.
   const logout = useCallback(async () => {
     setUser(null);
     const res = await fetch('/api/auth/logout', { method: 'POST' });

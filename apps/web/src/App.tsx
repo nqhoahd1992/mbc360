@@ -8,6 +8,7 @@ import { setPreviewWriteLock, usePermissionView } from './auth/previewMode';
 import { roleLabel } from './utils/roles';
 import AuthStatus from './components/AuthStatus';
 import AppSidebar from './components/AppSidebar';
+import AppsMenuButton from './apphub/AppsMenuButton';
 import HeaderBreadcrumb from './components/HeaderBreadcrumb';
 import ViewAsChip from './components/ViewAsChip';
 import './App.css';
@@ -291,6 +292,8 @@ function Shell() {
               style={{ flexShrink: 0 }}
             />
           )}
+          {/* AppHub "Apps" menu — in the sidebar rail on wide screens (AppSidebar), here while the sidebar is a drawer. */}
+          {!wideScreen && <AppsMenuButton divider="after" />}
           <HeaderBreadcrumb fallback="MBc360" />
           <div className="app-header-tools">
             {compactHeader ? (
