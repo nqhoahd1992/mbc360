@@ -158,29 +158,30 @@ Khi đó mục lại chờ xác nhận và người dùng được báo là sự
 
 ## Câu 5 — "Tiếp xúc có thể lường trước" và các điều kiện giám sát chưa có cấu trúc nên được ghi thế nào?
 
-*Ở đâu trong ứng dụng:* Tab **Gate 02 của Phase 1**, một khối mới "Foreseeable maternal and infant contact", cạnh phần đối tượng sử dụng; và tab **Gate 12 của Phase 4**, một khối mới "Enhanced-surveillance conditions the application cannot read".
+*Ở đâu trong ứng dụng:* Tab **Gate 02 của Phase 1**, nằm trong card Target Users, một ô "Foreseeable maternal and infant contact" chỉ hiện khi chưa tick đối tượng pregnant, breastfeeding, postpartum hay infant nào; và tab **Gate 12 của Phase 4**, một khối mới "Enhanced-surveillance conditions the application cannot read".
 
-Ở đoạn cuối đáp án 1, các bạn nói loại trừ maternal hoặc infant "must consider intended and reasonably foreseeable contact, not only marketing ticks", và "not applicable" của giám sát tăng cường "must assess all applicable triggers, including those not yet structured in the app". Các bạn chưa nói những nhận định đó được ghi ở đâu và câu trả lời trông thế nào, nên chúng tôi đã xây như sau. Mỗi câu trả lời là **Yes** hoặc **No**, và **No** phải kèm lý do; Yes có thể có hoặc không.
+Ở đoạn cuối đáp án 1, các bạn nói loại trừ maternal hoặc infant "must consider intended and reasonably foreseeable contact, not only marketing ticks", và "not applicable" của giám sát tăng cường "must assess all applicable triggers, including those not yet structured in the app". Các bạn chưa nói những nhận định đó được ghi ở đâu và câu trả lời trông thế nào, nên chúng tôi đã xây như sau. Bốn câu giám sát được trả lời **Yes** hoặc **No**; **No** phải kèm lý do và người xác nhận ("Record as me"), sửa một trong hai thì xác nhận bị rút lại; Yes không cần cả hai. Ô tiếp xúc có thể lường trước không có Yes hay No, chỉ có lý do.
 
-- **Tiếp xúc maternal:** "Is contact with a pregnant, breastfeeding or postpartum user reasonably foreseeable?"
-- **Tiếp xúc infant:** "Is contact with an infant reasonably foreseeable, including by a caregiver or sibling?"
+- **Tiếp xúc có thể lường trước (một lý do viết ra, vì các bạn chỉ viết một câu):** "Why is contact with a pregnant, breastfeeding or postpartum user, or with an infant, not reasonably foreseeable?" Ô này chỉ hiện khi chưa tick đối tượng nào trong số đó, và nút Save bị khóa cho đến khi viết lý do **và có một người ghi tên mình là người xác nhận** ("Record as me", giống cách xác nhận một thay đổi là hành chính ở đáp án 11). Một lý do chưa ai xác nhận thì không tắt gì cả. Sửa lý do thì xác nhận bị rút lại, người xác nhận phải xác nhận lại nội dung mới. Không có Yes: nếu có tiếp xúc thì tick đối tượng, và việc tick bật pathway. Một lý do viết ra tắt cả pathway maternal lẫn infant (một lý do không nói được là pathway nào nên chúng tôi đọc là cả hai). Tick một đối tượng trong số đó thì ô ẩn đi nhưng chữ vẫn được giữ, và các dấu tick tự quyết định: chỉ tick pregnant, breastfeeding hoặc postpartum thì pathway infant không được đánh giá từ ô này, và chỉ tick infant thì pathway maternal cũng vậy.
 - **Giám sát, mỗi điều kiện một câu** (đây là bốn trong mười bốn điều kiện giám sát tăng cường của các bạn mà ứng dụng không có dữ liệu để đọc):
   - "Is there a new or unusual active ingredient?"
   - "Is there a significant complaint trend?"
   - "Is there a recurring quality or performance issue?"
   - "Does an approved surveillance plan require enhanced surveillance?"
 
-Dự án không tick đối tượng maternal, không tick infant và chưa có câu trả lời đầy đủ (No kèm lý do) được coi là **chưa đánh giá**, không phải "does not apply": các mục phụ thuộc phải chờ. **Yes**, hoặc tick đối tượng, làm lộ trình áp dụng; với giám sát, chỉ cần một Yes ở bất kỳ câu nào trong bốn là sản phẩm thuộc diện giám sát tăng cường, còn "does not apply" cần cả bốn câu trả lời No kèm lý do. Mọi dự án đang có đều bắt đầu với cả sáu câu chưa trả lời.
+Dự án không tick đối tượng maternal hay infant nào và chưa viết lý do được coi là **chưa đánh giá**, không phải "does not apply": các mục phụ thuộc phải chờ. Tick đối tượng làm lộ trình áp dụng; với giám sát, chỉ cần một Yes ở bất kỳ câu nào trong bốn là sản phẩm thuộc diện giám sát tăng cường, còn "does not apply" cần cả bốn câu trả lời No kèm lý do. Mọi dự án đang có đều bắt đầu với cả năm câu chưa trả lời, trừ khi hai câu maternal và infant cũ cùng là No kèm lý do: khi đó lý do được giữ lại.
 
 **(a)** Đây có phải đúng các câu hỏi không? Xin sửa câu chữ.
 
 **(b)** Ai trả lời từng câu, và ở gate nào? Chúng tôi đặt hai câu đầu ở Gate 02 và bốn câu giám sát ở Gate 12.
 
-**(c)** Câu trả lời có nên ghi kèm tên và ngày của người trả lời, như phần nhóm tuổi family-use không?
+**(c)** Chúng tôi nay ghi người xác nhận lý do tiếp xúc có thể lường trước, như ở "Administrative-only change" (đáp án 11), nơi các bạn yêu cầu một reviewer có thẩm quyền xác nhận. Bốn câu giám sát còn lại có nên cũng ghi người xác nhận và ngày, như phần nhóm tuổi family-use không? Và ai được coi là người có thẩm quyền cho từng câu? Hiện nay bất kỳ ai đã đăng nhập đều có thể ghi tên mình, và ứng dụng không biết người đó có thẩm quyền hay không.
 
 **(d)** Xu hướng khiếu nại có đúng là một điều kiện ứng dụng không đọc được không? Chúng tôi hiểu "vấn đề an toàn hoặc biến cố bất lợi ghi trên danh sách phản hồi hậu mãi" chỉ phủ tín hiệu an toàn và biến cố bất lợi, nên xu hướng khiếu nại không có yếu tố an toàn thì ứng dụng không thấy. Xin xác nhận.
 
 **(e)** Còn điều kiện nào khác mà ứng dụng không đọc được và nên hỏi không?
+
+**(f)** Ở Gate 03 có một dòng Key Gate Check ghi "Concept direction and benchmark/competitor review recorded". Khi một thay đổi được xác nhận là administrative-only (đáp án 11) thì không cần rà soát competitor/benchmark, nên chúng tôi đặt cả dòng này thành không bắt buộc và chỉ đọc cho dự án đó. Phần concept direction của dòng có được miễn cùng không, hay vẫn bắt buộc và phải ghi riêng?
 
 ---
 

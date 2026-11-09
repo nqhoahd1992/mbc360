@@ -150,6 +150,7 @@ import {
   phaseCompletionChecklist,
   PHASE_DATA_LOCKED_REASON,
   isPhaseDataLocked,
+  gateCheckExemption,
 } from '@mbc360/shared/utils/gateProgress';
 import {
   ADMINISTRATIVE_ONLY_OPTIONS,
@@ -157,7 +158,6 @@ import {
   GAP_IMPACT_CATEGORIES,
   GATE_SIGNOFF_ROLES,
   HUMAN_STUDY_PLANNED_OPTIONS,
-  FORESEEABLE_CONTACT_OPTIONS,
   UNSTRUCTURED_PMS_OPTIONS,
   UNSTRUCTURED_PMS_CONDITIONS,
   RISK_LEVELS,
@@ -214,19 +214,22 @@ import { createProjectWithScaffold, type NewProjectInput } from './project-scaff
 // the typo guard this list would otherwise need a test for.
 const ASSESSMENT_FIELDS = [
   'humanStudyPlanned',
-  'foreseeableMaternalContact',
-  'foreseeableMaternalRationale',
-  'foreseeableInfantContact',
-  'foreseeableInfantRationale',
+  'foreseeableContactRationale',
+  'foreseeableContactConfirmedBy',
   'pmsNewActive',
   'pmsNewActiveRationale',
+  'pmsNewActiveConfirmedBy',
   'pmsComplaintTrend',
   'pmsComplaintTrendRationale',
+  'pmsComplaintTrendConfirmedBy',
   'pmsRecurringIssue',
   'pmsRecurringIssueRationale',
+  'pmsRecurringIssueConfirmedBy',
   'pmsSurveillancePlan',
   'pmsSurveillancePlanRationale',
+  'pmsSurveillancePlanConfirmedBy',
   'administrativeOnly',
+  'administrativeOnlyRationale',
   'administrativeOnlyConfirmedBy',
   'scaleUpRiskIdentified',
   'scaleUpRiskDescription',
@@ -292,8 +295,6 @@ function assertSelfAttested(label: string, before: unknown, after: unknown, acto
 // The single-answer assessment fields and the list each must come from.
 const ASSESSMENT_ANSWER_LISTS: Partial<Record<keyof ProjectData['assessments'], readonly string[]>> = {
   humanStudyPlanned: HUMAN_STUDY_PLANNED_OPTIONS,
-  foreseeableMaternalContact: FORESEEABLE_CONTACT_OPTIONS,
-  foreseeableInfantContact: FORESEEABLE_CONTACT_OPTIONS,
   pmsNewActive: UNSTRUCTURED_PMS_OPTIONS,
   pmsComplaintTrend: UNSTRUCTURED_PMS_OPTIONS,
   pmsRecurringIssue: UNSTRUCTURED_PMS_OPTIONS,
@@ -1180,7 +1181,9 @@ export class ProjectsService {
       let skipped = 0;
       for (const update of updates) {
         const target = row.gateChecks.find((c) => c.gate === update.gate && c.check === update.check);
-        if (!target || isGateRefLocked(project, target.gate)) {
+        // Also skipped: a row the project's own answers make not applicable (an administrative-only change confirmed, for the
+        // competitor/benchmark row), so it cannot be filled in as though that review had been done. [ASSUMPTION: R6-Q5]
+        if (!target || isGateRefLocked(project, target.gate) || gateCheckExemption(project, target.gate, target.check)) {
           skipped++;
           continue; // locked gate -> skip the row, same as the store did
         }
@@ -4039,8 +4042,10 @@ export class ProjectsService {
       }
       for (const [field, label] of [
         ['administrativeOnlyConfirmedBy', 'Administrative-only "confirmed by"'],
+        ['foreseeableContactConfirmedBy', 'Foreseeable contact "confirmed by"'],
         ['scaleUpRiskAssessor', 'Scale-up risk assessor'],
         ['familyUseConfirmedBy', 'Family use "confirmed by"'],
+        ...UNSTRUCTURED_PMS_CONDITIONS.map((c) => [c.confirmer, `${c.label} "confirmed by"`] as const),
       ] as const) {
         if (field in data) assertSelfAttested(label, project.assessments[field], data[field], user.displayName);
       }
@@ -4050,22 +4055,60 @@ export class ProjectsService {
       // Round 5 question 1(d), 2026-11-06: a "No" to a foreseeable-contact or surveillance-condition question must say why. The engine
       // reads a No without a reason as "not yet assessed", so storing one would only look like an answer.
       for (const [answerField, rationaleField, label] of [
-        ['foreseeableMaternalContact', 'foreseeableMaternalRationale', 'Foreseeable maternal contact'],
-        ['foreseeableInfantContact', 'foreseeableInfantRationale', 'Foreseeable infant contact'],
         ...UNSTRUCTURED_PMS_CONDITIONS.map((c) => [c.answer, c.rationale, c.label] as const),
       ] as const) {
         if ((answerField in data || rationaleField in data) && value(answerField) === 'No' && value(rationaleField) === '') {
           throw new BadRequestException(`${label}: an answer of No needs its reason`);
         }
       }
+      // ...and the person who confirmed it, as Administrative-only does [ASSUMPTION: R6-Q5].
+      for (const c of UNSTRUCTURED_PMS_CONDITIONS) {
+        if ((c.answer in data || c.rationale in data || c.confirmer in data) && value(c.answer) === 'No' && value(c.confirmer) === '') {
+          throw new BadRequestException(`${c.label}: an answer of No must name the person who confirmed it`);
+        }
+      }
+
+      // A confirmation stands for the words it confirmed (project owner, 2026-11-09 — the same principle as a claim revision and a gate
+      // signature). When the answer or reason changes, a carried-over confirmation by someone else is refused: the person confirming
+      // the new wording must be the signed-in person, so they record themselves again. A confirmation can only ever be set to yourself
+      // (assertSelfAttested above), which is what makes "stale" detectable without a separate column.
+      const changed = (k: keyof ProjectData['assessments']) => k in data && (data[k] ?? null) !== ((project.assessments[k] ?? '').trim() || null);
+      type AssessmentKeys = keyof ProjectData['assessments'];
+      const confirmations: [readonly AssessmentKeys[], AssessmentKeys, string][] = [
+        [['administrativeOnly', 'administrativeOnlyRationale'], 'administrativeOnlyConfirmedBy', 'Administrative-only'],
+        [['foreseeableContactRationale'], 'foreseeableContactConfirmedBy', 'Foreseeable contact'],
+        ...UNSTRUCTURED_PMS_CONDITIONS.map((c): [readonly AssessmentKeys[], AssessmentKeys, string] => [
+          [c.answer, c.rationale],
+          c.confirmer,
+          c.label,
+        ]),
+      ];
+      for (const [contentFields, confirmer, label] of confirmations) {
+        const carried = value(confirmer);
+        if (contentFields.some(changed) && carried !== '' && carried !== user.displayName) {
+          throw new BadRequestException(
+            `${label}: the answer or reason changed, which withdraws ${carried}'s confirmation — confirm it again yourself`,
+          );
+        }
+      }
 
       // Question 11: "The classification must be confirmed by an authorised
       // reviewer." An unconfirmed Yes is not an exemption, so it must not be
-      // storable as one — the competitor-review trigger reads both fields.
+      // storable as one — the competitor-review trigger reads all three fields. The reason is what the reviewer is confirming: that
+      // "no claim, formula, market positioning, product performance, packaging function or customer-facing meaning changes".
       if (value('administrativeOnly') === 'Yes' && value('administrativeOnlyConfirmedBy') === '') {
         throw new BadRequestException(
           'An administrative-only classification must name the authorised reviewer who confirmed it (Round 4, question 11)',
         );
+      }
+      if (value('administrativeOnly') === 'Yes' && value('administrativeOnlyRationale') === '') {
+        throw new BadRequestException(
+          'An administrative-only classification must give the reason the reviewer is confirming — that no claim, formula, market positioning, product performance, packaging function or customer-facing meaning changes (Round 4, question 11)',
+        );
+      }
+      // Foreseeable contact [ASSUMPTION: R6-Q5]: a reason nobody has confirmed decides nothing, so it is not storable as an answer.
+      if (value('foreseeableContactRationale') !== '' && value('foreseeableContactConfirmedBy') === '') {
+        throw new BadRequestException('A foreseeable-contact reason must name the person who confirmed it');
       }
 
       await tx.project.update({ where: { id }, data });

@@ -180,19 +180,22 @@ model Project {
   // (The Change Control assessment of question 8 used to be six columns here; since 2026-10-13 it is a
   // LIST, one entry per post-market finding — see ChangeControlAssessment.)
   humanStudyPlanned             String?
-  foreseeableMaternalContact    String?
-  foreseeableMaternalRationale  String?
-  foreseeableInfantContact      String?
-  foreseeableInfantRationale    String?
+  foreseeableContactRationale   String?
+  foreseeableContactConfirmedBy String?
   pmsNewActive                  String?
   pmsNewActiveRationale         String?
+  pmsNewActiveConfirmedBy       String?
   pmsComplaintTrend             String?
   pmsComplaintTrendRationale    String?
+  pmsComplaintTrendConfirmedBy  String?
   pmsRecurringIssue             String?
   pmsRecurringIssueRationale    String?
+  pmsRecurringIssueConfirmedBy  String?
   pmsSurveillancePlan           String?
   pmsSurveillancePlanRationale  String?
+  pmsSurveillancePlanConfirmedBy String?
   administrativeOnly            String?
+  administrativeOnlyRationale   String?
   administrativeOnlyConfirmedBy String?
   scaleUpRiskIdentified         String?
   scaleUpRiskDescription        String?

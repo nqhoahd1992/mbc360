@@ -7,7 +7,7 @@ import { GATE_READINESS } from '../src/config/gateReadiness';
 import { LEAD_ASSIGNABLE_ROLE_KEYS, REVIEW_ROLES, ownerFunctionWithPeople } from '../src/config/reviewers';
 import { PROJECT_WIDE_AUTHORITY, independentFunctionsByGate, roleMatrix } from '../src/utils/roleMatrix';
 import { CRITICAL_GATES } from '../src/config/gateSignOff';
-import { acknowledgementsVoidedByTargetUsers, evaluateTrigger, voidedAcknowledgementsMessage } from '../src/utils/gateProgress';
+import { acknowledgementsVoidedByTargetUsers, evaluateTrigger, gateCheckExemption, foreseeableContactAskedFor, foreseeableContactExcluded, voidedAcknowledgementsMessage } from '../src/utils/gateProgress';
 import { acknowledgementBasis } from '../src/utils/readinessAck';
 import {
   TRIGGER_DEDICATED_SECTIONS,
@@ -49,13 +49,12 @@ const fresh = (): ProjectData => {
 };
 // The six answers, each No with its reason.
 function answerAll(p: ProjectData): void {
-  p.assessments.foreseeableMaternalContact = 'No';
-  p.assessments.foreseeableMaternalRationale = 'adult product';
-  p.assessments.foreseeableInfantContact = 'No';
-  p.assessments.foreseeableInfantRationale = 'adult product';
+  p.assessments.foreseeableContactRationale = 'adult product';
+  p.assessments.foreseeableContactConfirmedBy = 'Reggie';
   for (const c of UNSTRUCTURED_PMS_CONDITIONS) {
     p.assessments[c.answer] = 'No';
     p.assessments[c.rationale] = 'checked';
+    p.assessments[c.confirmer] = 'Reggie';
   }
 }
 const bareProject = (): ProjectData =>
@@ -522,36 +521,48 @@ const NON_CRIT = 'sg05-product-form';
   t('the basis is the same string for the same facts, whatever the order they were entered in', reread === acknowledgementBasis({ ...remarked, identity: { ...remarked.identity, markets: [...remarked.identity.markets].reverse() } }));
 }
 
-// --- maternal, infant and surveillance exclusions need a person's answer (Round 5 question 1(d)) -----------------------
+// --- maternal and infant contact is ONE written reason; surveillance exclusions need a person's answer (Round 5 question 1(d)) ----
 {
   const p = bareProject();
-  t('no maternal user ticked and no answer: NOT assessed (a missing tick is not an exclusion)', evaluateTrigger(p, 'skincareForTwo') === 'notAssessed');
-  p.assessments.foreseeableMaternalContact = 'No';
-  t('a No with no reason is not an answer: still NOT assessed', evaluateTrigger(p, 'skincareForTwo') === 'notAssessed');
-  p.assessments.foreseeableMaternalRationale = '   ';
-  t('...a blank reason is the same', evaluateTrigger(p, 'skincareForTwo') === 'notAssessed');
-  p.assessments.foreseeableMaternalRationale = 'adult product';
-  t('"No foreseeable contact" recorded with a reason: does not apply', evaluateTrigger(p, 'skincareForTwo') === 'doesNotApply');
-  p.assessments.foreseeableMaternalContact = 'Yes';
-  t('"Yes, foreseeable" applies even with nothing ticked', evaluateTrigger(p, 'skincareForTwo') === 'applies');
+  t('no maternal or infant user ticked and no reason: NOT assessed (a missing tick is not an exclusion)', evaluateTrigger(p, 'skincareForTwo') === 'notAssessed' && evaluateTrigger(p, 'infantContact') === 'notAssessed');
+  p.assessments.foreseeableContactRationale = '   ';
+  t('a blank reason is no reason', evaluateTrigger(p, 'skincareForTwo') === 'notAssessed' && foreseeableContactExcluded(p) === false);
+  p.assessments.foreseeableContactRationale = 'adult product';
+  t(
+    'a written reason nobody has confirmed is a claim, not an exclusion: still NOT assessed',
+    evaluateTrigger(p, 'skincareForTwo') === 'notAssessed' && evaluateTrigger(p, 'infantContact') === 'notAssessed' && foreseeableContactExcluded(p) === false,
+  );
+  p.assessments.foreseeableContactConfirmedBy = 'Reggie';
+  t('a written reason, confirmed: neither pathway applies', evaluateTrigger(p, 'skincareForTwo') === 'doesNotApply' && evaluateTrigger(p, 'infantContact') === 'doesNotApply');
+  p.assessments.foreseeableContactConfirmedBy = '   ';
+  t('a blank confirmer is no confirmer', foreseeableContactExcluded(p) === false);
+
   const ticked = bareProject();
   const pregnancy = (ticked.checklists['targetUsers'] ?? []).find((i) => i.label === 'Pregnancy');
   if (pregnancy) pregnancy.selected = true;
-  ticked.assessments.foreseeableMaternalContact = 'No';
-  t('a ticked pregnancy user applies whatever the answer says', evaluateTrigger(ticked, 'skincareForTwo') === 'applies');
+  ticked.assessments.foreseeableContactRationale = 'kept but hidden';
+  t('a ticked pregnancy user applies whatever the reason says', evaluateTrigger(ticked, 'skincareForTwo') === 'applies');
+  t('...and the question is no longer asked', foreseeableContactAskedFor(ticked) === false);
+  t('...so a hidden reason is not consulted for the infant pathway either: it does not apply from the ticks', evaluateTrigger(ticked, 'infantContact') === 'doesNotApply');
+  ticked.assessments.foreseeableContactRationale = '';
+  t('...and a hidden blank does not block it either', evaluateTrigger(ticked, 'infantContact') === 'doesNotApply');
 
   const i = bareProject();
-  t('no infant ticked and no answer: infant contact NOT assessed', evaluateTrigger(i, 'infantContact') === 'notAssessed');
-  i.assessments.foreseeableInfantContact = 'No';
-  t('"No foreseeable infant contact" without a reason: NOT assessed', evaluateTrigger(i, 'infantContact') === 'notAssessed');
-  i.assessments.foreseeableInfantRationale = 'adult product';
-  t('"No foreseeable infant contact" recorded with a reason: does not apply', evaluateTrigger(i, 'infantContact') === 'doesNotApply');
-  i.assessments.foreseeableInfantContact = 'Yes';
-  t('"Yes" applies with no infant ticked', evaluateTrigger(i, 'infantContact') === 'applies');
+  const infant = (i.checklists['targetUsers'] ?? []).find((x) => x.label === 'Infant 0+');
+  if (infant) infant.selected = true;
+  t('an infant user ticked applies the infant pathway and asks no question', evaluateTrigger(i, 'infantContact') === 'applies' && foreseeableContactAskedFor(i) === false);
+  t('...and with only an infant ticked there is no maternal contact to assess: does not apply, not "not assessed"', evaluateTrigger(i, 'skincareForTwo') === 'doesNotApply');
+
+  const unticked = bareProject();
+  const adult = (unticked.checklists['targetUsers'] ?? []).find((x) => x.label !== 'Pregnancy' && x.label !== 'Infant 0+');
+  if (adult) adult.selected = true;
+  t('an unrelated user ticked still asks the question', foreseeableContactAskedFor(unticked) === true);
+
   const family = bareProject();
   const fam = (family.checklists['targetUsers'] ?? []).find((x) => x.label === 'Family use');
   if (fam) fam.selected = true;
-  family.assessments.foreseeableInfantContact = 'No';
+  family.assessments.foreseeableContactRationale = 'adult product';
+  family.assessments.foreseeableContactConfirmedBy = 'Reggie';
   t('a Family use product with no confirmed age groups is still not assessed, whatever else is answered', evaluateTrigger(family, 'infantContact') === 'notAssessed');
 
   const pms = bareProject();
@@ -559,21 +570,24 @@ const NON_CRIT = 'sg05-product-form';
   for (const c of UNSTRUCTURED_PMS_CONDITIONS.slice(0, 3)) {
     pms.assessments[c.answer] = 'No';
     pms.assessments[c.rationale] = 'checked';
+    pms.assessments[c.confirmer] = 'Reggie';
   }
   t('three of the four conditions answered: still NOT assessed (one answer cannot stand for four)', evaluateTrigger(pms, 'pvPmsRequired') === 'notAssessed');
   const last = UNSTRUCTURED_PMS_CONDITIONS[3];
   pms.assessments[last.answer] = 'No';
   t('the fourth answered No with no reason: NOT assessed', evaluateTrigger(pms, 'pvPmsRequired') === 'notAssessed');
   pms.assessments[last.rationale] = 'checked';
-  t('all four No with reasons: does not apply', evaluateTrigger(pms, 'pvPmsRequired') === 'doesNotApply');
+  t('the fourth answered No with a reason but nobody confirming it: NOT assessed', evaluateTrigger(pms, 'pvPmsRequired') === 'notAssessed');
+  pms.assessments[last.confirmer] = 'Reggie';
+  t('all four No with reasons and confirmed: does not apply', evaluateTrigger(pms, 'pvPmsRequired') === 'doesNotApply');
   pms.assessments[UNSTRUCTURED_PMS_CONDITIONS[1].answer] = 'Yes';
   t('any one Yes applies, with or without a reason', evaluateTrigger(pms, 'pvPmsRequired') === 'applies');
   const partial = bareProject();
   partial.assessments[UNSTRUCTURED_PMS_CONDITIONS[2].answer] = 'Yes';
   t('a Yes applies even while the others are unanswered', evaluateTrigger(partial, 'pvPmsRequired') === 'applies');
-  const ng = acknowledgementsVoidedByTargetUsers(ackedProject(), [], { foreseeableMaternalContact: 'Yes' });
-  t('while the maternal items are acknowledged, answering "Yes" is held until the acknowledgement is withdrawn', ng.length === 3, JSON.stringify(ng.map((x) => x.itemId)));
-  t('...and answering "No" again is not held', acknowledgementsVoidedByTargetUsers(ackedProject(), [], { foreseeableMaternalContact: 'No' }).length === 0);
+  const ng = acknowledgementsVoidedByTargetUsers(ackedProject(), [], { foreseeableContactRationale: '' });
+  t('while the maternal items are acknowledged, deleting the reason is held until the acknowledgement is withdrawn', ng.length === 3, JSON.stringify(ng.map((x) => x.itemId)));
+  t('...and rewording the reason is not held', acknowledgementsVoidedByTargetUsers(ackedProject(), [], { foreseeableContactRationale: 'reworded' }).length === 0);
 }
 function ackedProject(): ProjectData {
   const p = fresh();
@@ -595,9 +609,27 @@ function ackedProject(): ProjectData {
   t('a recorded development / change type makes it apply', evaluateTrigger(p, 'newOrRepositionedProject') === 'applies');
   p.assessments.administrativeOnly = 'Yes';
   p.assessments.administrativeOnlyConfirmedBy = 'Reggie';
-  t('confirmed administrative-only by a named person is a recorded answer that it does not apply', evaluateTrigger(p, 'newOrRepositionedProject') === 'doesNotApply');
+  t('Yes and a confirmer but no reason is not an exemption (Round 4 question 11: nothing in the second list of that answer changes)', evaluateTrigger(p, 'newOrRepositionedProject') === 'applies');
+  p.assessments.administrativeOnlyRationale = 'Spelling correction; no claim or meaning changes';
+  t('confirmed administrative-only by a named person, with the reason, is a recorded answer that it does not apply', evaluateTrigger(p, 'newOrRepositionedProject') === 'doesNotApply');
+  p.assessments.administrativeOnlyConfirmedBy = '';
+  t('...and without the confirmer it applies again', evaluateTrigger(p, 'newOrRepositionedProject') === 'applies');
+  // The Gate 03 row that carries the benchmark review is not required while the exemption stands, and nothing else changes.
+  const row = (q: ProjectData) => q.gateChecks.find((c) => c.gate === '03' && c.check === 'Concept direction and benchmark/competitor review recorded');
+  const q = fresh();
+  t('before any exemption the benchmark row is required: Product concept is not met', item(q, 'SG03', 'sg03-concept')?.satisfied === false && gateCheckExemption(q, '03', row(q)!.check) === undefined);
+  q.assessments.administrativeOnly = 'Yes';
+  q.assessments.administrativeOnlyRationale = 'Spelling correction; no claim or meaning changes';
+  t('Yes with a reason but no confirmer: the row is still required', item(q, 'SG03', 'sg03-concept')?.satisfied === false && gateCheckExemption(q, '03', row(q)!.check) === undefined);
+  q.assessments.administrativeOnlyConfirmedBy = 'Reggie';
+  t('confirmed: the row is exempt, with the reason to show', !!gateCheckExemption(q, '03', row(q)!.check) && /Reggie/.test(gateCheckExemption(q, '03', row(q)!.check) ?? ''));
+  t('...and Product concept and the benchmark item are both met without the row being touched', item(q, 'SG03', 'sg03-concept')?.satisfied === true && item(q, 'SG03', 'sg03-benchmark')?.satisfied === true && row(q)!.done === false);
+  t('...but only that row is exempt', gateCheckExemption(q, '03', 'Claim/benefit areas selected and evidence route identified') === undefined);
+  q.assessments.administrativeOnlyConfirmedBy = '';
+  t('withdrawing the confirmation brings the row back', item(q, 'SG03', 'sg03-concept')?.satisfied === false && gateCheckExemption(q, '03', row(q)!.check) === undefined);
   const bare = fresh();
   bare.assessments.administrativeOnly = 'Yes';
+  bare.assessments.administrativeOnlyRationale = 'Spelling correction; no claim or meaning changes';
   bare.assessments.administrativeOnlyConfirmedBy = 'Reggie';
   t('...even with no type recorded', evaluateTrigger(bare, 'newOrRepositionedProject') === 'doesNotApply');
 

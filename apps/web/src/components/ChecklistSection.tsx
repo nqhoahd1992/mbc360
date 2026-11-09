@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { Alert, Drawer, Grid, Input, Radio, Select, Tooltip } from 'antd';
 import { CheckOutlined, LinkOutlined, LockOutlined } from '@ant-design/icons';
 import type { ChecklistItem, YNNA } from '@mbc360/shared/types';
-import { isMandatoryChecklistSection } from '@mbc360/shared/utils/gateProgress';
+import { assessmentAnchor } from '@mbc360/shared/config/assessments';
+import { foreseeableContactAsked, isMandatoryChecklistSection } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import RequiredMark from './RequiredMark';
 import DrawerSaveFooter from './DrawerSaveFooter';
 import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import SaveBar from './SaveBar';
+import SelfAttestField from './SelfAttestField';
 import '../styles/concept.css';
 import './ChecklistSection.css';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
@@ -35,6 +37,7 @@ export default function ChecklistSection({
   untickBlockedReason,
   tickBlockedReason,
   requiresPrimary,
+  foreseeableContact,
 }: {
   projectId: string;
   sectionKey: string;
@@ -54,9 +57,34 @@ export default function ChecklistSection({
   // Round 4 question 22(b): one selected development/change type must be the
   // Primary; only `projectNature` sets this.
   requiresPrimary?: boolean;
+  // Target Users only (Round 5 question 1(d), project owner 2026-11-09): the ONE foreseeable-contact question lives in this card and
+  // is shown while no maternal or infant user is ticked in the draft. Its answer is saved with the section, by the same Save.
+  foreseeableContact?: { rationale: string; confirmedBy: string };
 }) {
   const setSection = useAppStore((s) => s.setChecklistSection);
-  const { draft, dirty, update, markSaved, discard } = useDraft(items);
+  const setAssessments = useAppStore((s) => s.setAssessments);
+  const { draft, dirty: itemsDirty, update, markSaved: markItemsSaved, discard: discardItems } = useDraft(items);
+  const contact = useDraft({ rationale: foreseeableContact?.rationale ?? '', confirmedBy: foreseeableContact?.confirmedBy ?? '' });
+  const dirty = itemsDirty || contact.dirty;
+  const markSaved = () => {
+    markItemsSaved();
+    contact.markSaved();
+  };
+  const discard = () => {
+    discardItems();
+    contact.discard();
+  };
+  // Shown, and required, only while the draft has no pregnant, breastfeeding, postpartum or infant user ticked. Un-ticking brings it
+  // back; ticking one hides it while the answer is kept (and ignored by the rules).
+  const contactAsked = !!foreseeableContact && foreseeableContactAsked(draft.filter((i) => i.selected).map((i) => i.label));
+  // The reason and the person standing behind it (same shape as Administrative-only [ASSUMPTION: R6-Q5]); both before it can be saved.
+  const contactNeedsReason = contactAsked && !readOnly && contact.draft.rationale.trim() === '';
+  const contactNeedsConfirmer = contactAsked && !readOnly && !contactNeedsReason && contact.draft.confirmedBy.trim() === '';
+  const contactBlocking = contactNeedsReason
+    ? 'Explain why no maternal or infant contact is foreseeable before saving'
+    : contactNeedsConfirmer
+      ? 'Record yourself as the person confirming this reason before saving'
+      : undefined;
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   useExclusiveDrawer(openIndex !== null, () => setOpenIndex(null));
   useCloseDrawerOnPageSave(dirty, openIndex !== null, () => setOpenIndex(null));
@@ -71,7 +99,18 @@ export default function ChecklistSection({
   const setPrimary = (index: number) => update((prev) => prev.map((item, i) => ({ ...item, isPrimary: i === index })));
   const primaryMissing = requiresPrimary && draft.some((i) => i.selected) && !draft.some((i) => i.selected && i.isPrimary);
   const save = async () => {
-    const ok = await setSection(projectId, sectionKey, draft);
+    if (contactBlocking) return false;
+    let ok = true;
+    if (itemsDirty) ok = await setSection(projectId, sectionKey, draft);
+    // The answer goes only while the question is asked and only if it changed; a hidden answer is left as it is.
+    if (ok && contactAsked && contact.dirty) {
+      ok = await setAssessments(projectId, {
+        foreseeableContactRationale: contact.draft.rationale.trim(),
+        foreseeableContactConfirmedBy: contact.draft.confirmedBy.trim(),
+      });
+    }
+    // An answer typed while hidden behind a ticked user is not sent, so it must not stay behind as an unsaved draft.
+    if (ok && !contactAsked) contact.discard();
     if (ok) markSaved();
     return ok;
   };
@@ -166,9 +205,49 @@ export default function ChecklistSection({
         })}
       </div>
 
+      {contactAsked && (
+        <div className={`cl-contact${contactBlocking ? ' cl-contact-open' : ''}`} id={assessmentAnchor('foreseeableContact')}>
+          <div className="cl-contact-head">
+            <span className="cl-contact-title">Foreseeable maternal and infant contact</span>
+            {!readOnly && contactBlocking && (
+              <span className="c-tag cl-contact-need">{contactNeedsReason ? 'Reason required' : 'Confirmation required'}</span>
+            )}
+          </div>
+          <label className="cl-contact-reason">
+            <span className="cl-field-label">
+              No pregnant, breastfeeding, postpartum or infant user is ticked. Why is contact with such a user, or with an infant, not reasonably
+              foreseeable?
+              {!readOnly && <span className="cl-req"> *</span>}
+            </span>
+            <Input.TextArea
+              autoSize={{ minRows: 2, maxRows: 5 }}
+              disabled={readOnly}
+              placeholder="e.g. An adult-only product; no pregnant, breastfeeding or infant use or contact is expected"
+              value={contact.draft.rationale}
+              // Editing the reason withdraws the confirmation: the confirmer vouched for those words, not the next ones.
+              onChange={(e) => contact.update((prev) => ({ ...prev, rationale: e.target.value, confirmedBy: '' }))}
+            />
+          </label>
+          <div className="cl-contact-confirm">
+            <span className="cl-field-label">
+              Confirmed by
+              {!readOnly && contactAsked && contact.draft.rationale.trim() !== '' && <span className="cl-req"> *</span>}
+            </span>
+            <SelfAttestField
+              disabled={readOnly || contact.draft.rationale.trim() === ''}
+              status={contactNeedsConfirmer ? 'error' : undefined}
+              value={contact.draft.confirmedBy}
+              onChange={(v) => contact.update((prev) => ({ ...prev, confirmedBy: v }))}
+            />
+          </div>
+          <p className="cl-hint">If such contact is foreseeable, tick the user above instead: that switches the pathway on.</p>
+        </div>
+      )}
+
       {!readOnly && dirty && (
         <div className="cl-save">
-          <SaveBar dirty={dirty} onSave={save} onDiscard={discard} />
+          {contactBlocking && <span className="cl-save-why">{contactBlocking}</span>}
+          <SaveBar dirty={dirty} onSave={save} onDiscard={discard} disabled={!!contactBlocking} disabledReason={contactBlocking} />
         </div>
       )}
 

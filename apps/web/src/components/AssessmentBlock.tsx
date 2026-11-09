@@ -1,19 +1,18 @@
 import { Fragment, type ReactNode } from 'react';
-import { LockOutlined } from '@ant-design/icons';
+import { ExclamationCircleOutlined, LockOutlined } from '@ant-design/icons';
 import { ConfigProvider, DatePicker, Input, Select } from 'antd';
 import dayjs from 'dayjs';
 import type { ProjectData } from '@mbc360/shared/types';
 import {
   ADMINISTRATIVE_ONLY_OPTIONS,
   FAMILY_USE_AGE_GROUPS,
-  FORESEEABLE_CONTACT_OPTIONS,
   UNSTRUCTURED_PMS_OPTIONS,
   UNSTRUCTURED_PMS_CONDITIONS,
   HUMAN_STUDY_PLANNED_OPTIONS,
   SCALE_UP_RISK_OPTIONS,
   familyUseAgeGroupList,
 } from '@mbc360/shared/types';
-import { isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
+import { BENCHMARK_GATE_CHECK, isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
 import { ASSESSMENT_FIELDS, ASSESSMENT_HOMES, SCALE_UP_REVIEW_AREAS, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
@@ -49,9 +48,9 @@ const FIELDS: Record<AssessmentKey, readonly Field[]> = ASSESSMENT_FIELDS;
 // What leaving it blank costs — shown with the question rather than only in the
 // readiness panel.
 // (The Change Control assessment is a LIST with its own component, ChangeControlAssessments.)
-const HINTS: Record<Exclude<AssessmentKey, 'changeControl'>, string> = {
-  foreseeableContact:
-    'Gates 2 to 10. Leaving either blank blocks the maternal and infant items. A project with no maternal or infant user ticked is not "not applicable" until someone answers No here and says why; Yes switches the pathway on.',
+// (The foreseeable-contact question is not a block of its own: it sits inside the Target Users card, see ChecklistSection.)
+type BlockKey = Exclude<AssessmentKey, 'changeControl' | 'foreseeableContact'>;
+const HINTS: Record<BlockKey, string> = {
   pmsUnstructured:
     'Gate 12. These four conditions are the ones the application cannot read. Leaving any blank blocks the enhanced-surveillance item; a No needs its reason, and a Yes puts the product under enhanced surveillance.',
   familyUse:
@@ -153,7 +152,7 @@ export function isFamilyUseSelected(project: ProjectData): boolean {
   return (project.checklists['targetUsers'] ?? []).some((i) => i.selected && i.label === 'Family use');
 }
 
-export default function AssessmentBlock({ project, which }: { project: ProjectData; which: Exclude<AssessmentKey, 'changeControl'> }) {
+export default function AssessmentBlock({ project, which }: { project: ProjectData; which: BlockKey }) {
   const setAssessments = useAppStore((s) => s.setAssessments);
   const keys = FIELDS[which];
   const { draft, dirty, update, markSaved, discard } = useDraft(pick(project.assessments, keys));
@@ -170,30 +169,32 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
 
   // Question 11: "The classification must be confirmed by an authorised
   // reviewer." An unconfirmed Yes is not an exemption.
-  const adminNeedsConfirmer =
-    which === 'administrativeOnly' &&
-    (draft.administrativeOnly?.trim() ?? '') === 'Yes' &&
-    !draft.administrativeOnlyConfirmedBy?.trim();
+  const adminYes = which === 'administrativeOnly' && (draft.administrativeOnly?.trim() ?? '') === 'Yes';
+  const adminNeedsReason = adminYes && !draft.administrativeOnlyRationale?.trim();
+  const adminNeedsConfirmer = adminYes && !draft.administrativeOnlyConfirmedBy?.trim();
 
   // A No to a foreseeable-contact or surveillance-condition question must say why (the API refuses it too).
-  const personQuestions: { answer: Field; rationale: Field; label: string }[] =
-    which === 'foreseeableContact'
-      ? [
-          { answer: 'foreseeableMaternalContact', rationale: 'foreseeableMaternalRationale', label: 'Is contact with a pregnant, breastfeeding or postpartum user reasonably foreseeable?' },
-          { answer: 'foreseeableInfantContact', rationale: 'foreseeableInfantRationale', label: 'Is contact with an infant reasonably foreseeable, including by a caregiver or sibling?' },
-        ]
-      : which === 'pmsUnstructured'
-        ? UNSTRUCTURED_PMS_CONDITIONS.map((c) => ({ answer: c.answer, rationale: c.rationale, label: c.label }))
-        : [];
-  const needsReason = (q: { answer: Field; rationale: Field }) =>
-    (draft[q.answer]?.trim() ?? '') === 'No' && !draft[q.rationale]?.trim();
+  const personQuestions: { answer: Field; rationale: Field; confirmer: Field; label: string }[] =
+    which === 'pmsUnstructured'
+      ? UNSTRUCTURED_PMS_CONDITIONS.map((c) => ({ answer: c.answer, rationale: c.rationale, confirmer: c.confirmer, label: c.label }))
+      : [];
+  const isNo = (q: { answer: Field }) => (draft[q.answer]?.trim() ?? '') === 'No';
+  const needsReason = (q: { answer: Field; rationale: Field }) => isNo(q) && !draft[q.rationale]?.trim();
+  // A No is a claim that something does not apply, so someone stands behind it (same as Administrative-only).
+  const needsConfirmer = (q: { answer: Field; rationale: Field; confirmer: Field }) =>
+    isNo(q) && !!draft[q.rationale]?.trim() && !draft[q.confirmer]?.trim();
   const missingReason = personQuestions.some(needsReason);
+  const missingConfirmer = personQuestions.some(needsConfirmer);
 
-  const blockingReason = adminNeedsConfirmer
-    ? 'An administrative-only classification must name the authorised reviewer who confirmed it'
-    : missingReason
-      ? 'An answer of No needs its reason'
-      : undefined;
+  const blockingReason = adminNeedsReason
+    ? 'An administrative-only Yes needs the reason the reviewer is confirming'
+    : adminNeedsConfirmer
+      ? 'An administrative-only classification must name the authorised reviewer who confirmed it'
+      : missingReason
+        ? 'An answer of No needs its reason'
+        : missingConfirmer
+          ? 'An answer of No needs the person who confirmed it: record yourself under Confirmed by'
+          : undefined;
 
   // Mirrors the `humanStudyPlanned` limb in evaluateTrigger — a started protocol
   // counts as Yes on its own. Read here only to say so on screen.
@@ -230,6 +231,24 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
         </ul>
       </details>
     ) : null;
+  // The Gate 03 row that carries the benchmark review may already have been done. Confirming administrative-only then says the review
+  // was not needed, which contradicts what is recorded — shown to whoever is about to confirm it, not blocked: they may have a
+  // reason, and the Reason box is where it goes (project owner, 2026-11-09).
+  const benchmarkRow =
+    which === 'administrativeOnly'
+      ? project.gateChecks.find((c) => c.gate === BENCHMARK_GATE_CHECK.gate && c.check === BENCHMARK_GATE_CHECK.check)
+      : undefined;
+  const benchmarkAlreadyDone = !!benchmarkRow?.done && benchmarkRow.ynna === 'Y';
+  const benchmarkDoneNote =
+    benchmarkAlreadyDone && adminYes ? (
+      <p className="as-note as-wide" role="note">
+        <ExclamationCircleOutlined />
+        <span>
+          A benchmark/competitor review is already recorded on the Gate 03 check{benchmarkRow?.date ? ` (done ${benchmarkRow.date})` : ''}.
+          Confirm administrative-only only if that review was not needed.
+        </span>
+      </p>
+    ) : null;
   const protocolNotice =
     which === 'humanStudy' && protocolStarted ? (
       <Notice tone="info" title="A Study Protocol has been started, so this already counts as Yes whatever is selected here." />
@@ -239,15 +258,16 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
       case 'humanStudy':
         return [{ label: 'Answer', kind: 'answer', value: draft.humanStudyPlanned }];
       // One row per question, then its reason: a record can hold several answers, which the single "answer" row cannot.
-      case 'foreseeableContact':
       case 'pmsUnstructured':
         return personQuestions.flatMap((q): ReadRow[] => [
           { label: q.label, value: draft[q.answer] || 'Not yet assessed' },
           { label: 'Reason', wide: true, value: draft[q.rationale] },
+          ...(isNo(q) ? [{ label: 'Confirmed by', value: draft[q.confirmer] }] : []),
         ]);
       case 'administrativeOnly':
         return [
           { label: 'Answer', kind: 'answer', value: draft.administrativeOnly },
+          { label: 'Reason', wide: true, value: draft.administrativeOnlyRationale },
           { label: 'Confirmed by (authorised reviewer)', value: draft.administrativeOnlyConfirmedBy },
         ];
       case 'familyUse':
@@ -271,25 +291,39 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
 
   let body: ReactNode;
   switch (which) {
-    case 'foreseeableContact':
     case 'pmsUnstructured':
       body = (
         <div className="as-grid">
           {personQuestions.map((q) => (
             <Fragment key={q.answer}>
+              {/* Changing the answer or the reason withdraws a confirmation: the person confirmed those words, not the next ones. */}
               <FieldBox label={q.label} wide>
-                {answerSelect(q.answer, which === 'foreseeableContact' ? FORESEEABLE_CONTACT_OPTIONS : UNSTRUCTURED_PMS_OPTIONS)}
+                <ChoiceSelect
+                  allowClear
+                  placeholder="Not yet assessed"
+                  value={draft[q.answer] || undefined}
+                  options={[...UNSTRUCTURED_PMS_OPTIONS]}
+                  onChange={(v) => update((prev) => ({ ...prev, [q.answer]: v ?? '', [q.confirmer]: '' }))}
+                />
               </FieldBox>
               <FieldBox label="Reason" wide required={needsReason(q)}>
                 <Input.TextArea
                   style={{ width: '100%' }}
                   autoSize={{ minRows: 1, maxRows: 4 }}
-                  status={needsReason(q) ? 'error' : undefined}
-                  placeholder={(draft[q.answer]?.trim() ?? '') === 'No' ? 'Why? Required for No' : 'Optional'}
+                  placeholder={isNo(q) ? 'Why? Required for No' : 'Optional'}
                   value={draft[q.rationale]}
-                  onChange={(e) => set(q.rationale, e.target.value)}
+                  onChange={(e) => update((prev) => ({ ...prev, [q.rationale]: e.target.value, [q.confirmer]: '' }))}
                 />
               </FieldBox>
+              {isNo(q) && (
+                <FieldBox label="Confirmed by" wide required={needsConfirmer(q)}>
+                  <SelfAttestField
+                    disabled={!draft[q.rationale]?.trim()}
+                    value={draft[q.confirmer]}
+                    onChange={(v) => set(q.confirmer, v)}
+                  />
+                </FieldBox>
+              )}
             </Fragment>
           ))}
         </div>
@@ -317,14 +351,42 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
     case 'administrativeOnly':
       body = (
         <div className="as-grid">
-          <FieldBox label="Answer">{answerSelect('administrativeOnly', ADMINISTRATIVE_ONLY_OPTIONS)}</FieldBox>
-          <FieldBox label="Confirmed by (authorised reviewer)" required={adminNeedsConfirmer}>
-            <SelfAttestField
-              status={adminNeedsConfirmer ? 'error' : undefined}
-              value={draft.administrativeOnlyConfirmedBy}
-              onChange={(v) => set('administrativeOnlyConfirmedBy', v)}
+          {/* Editing the answer or the reason withdraws a confirmation: the reviewer confirmed those words, not the next ones. */}
+          <FieldBox label="Answer" wide>
+            <ChoiceSelect
+              allowClear
+              placeholder="Not yet assessed"
+              value={draft.administrativeOnly || undefined}
+              options={[...ADMINISTRATIVE_ONLY_OPTIONS]}
+              onChange={(v) => update((prev) => ({ ...prev, administrativeOnly: v ?? '', administrativeOnlyConfirmedBy: '' }))}
             />
           </FieldBox>
+          {benchmarkDoneNote}
+          {adminYes && (
+            <FieldBox label="Reason" wide required={adminNeedsReason}>
+              <p className="as-condition">
+                Confirm that no claim, formula, market positioning, product performance, packaging function or
+                customer-facing meaning changes, and say what the change is.
+              </p>
+              <Input.TextArea
+                style={{ width: '100%' }}
+                autoSize={{ minRows: 2, maxRows: 6 }}
+                placeholder="What is changing, and why nothing in the list above is affected"
+                value={draft.administrativeOnlyRationale}
+                onChange={(e) =>
+                  update((prev) => ({ ...prev, administrativeOnlyRationale: e.target.value, administrativeOnlyConfirmedBy: '' }))
+                }
+              />
+            </FieldBox>
+          )}
+          {adminYes && (
+            <FieldBox label="Confirmed by (authorised reviewer)" required={adminNeedsConfirmer}>
+              <SelfAttestField
+                value={draft.administrativeOnlyConfirmedBy}
+                onChange={(v) => set('administrativeOnlyConfirmedBy', v)}
+              />
+            </FieldBox>
+          )}
         </div>
       );
       break;
@@ -431,8 +493,8 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
       )}
       {(dirty || blockingReason) && (
         <div className="as-foot">
-          {blockingReason && dirty && <Notice tone="warn" title={blockingReason} />}
-          <div className="rt-savebar">
+          <div className="rt-savebar as-save">
+            {blockingReason && dirty && <span className="as-why">{blockingReason}</span>}
             <SaveBar
               dirty={dirty}
               onSave={() => {

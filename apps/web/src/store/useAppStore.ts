@@ -246,7 +246,7 @@ interface AppState {
   importCosmetriBom: (id: string, formulaId: number) => Promise<boolean>;
   setCosting: (id: string, patch: Partial<CostingInputs>) => void;
   setFormulaProperties: (id: string, patch: ProjectData['formulaProperties']) => void;
-  setAssessments: (id: string, patch: ProjectData['assessments']) => void;
+  setAssessments: (id: string, patch: ProjectData['assessments']) => Promise<boolean>;
   // Gate 1 opportunity capture (B1/B2/B3) — only those 8 fields are writable.
   setIdentity: (id: string, patch: Partial<ProjectData['identity']>) => void;
   setMarkets: (id: string, markets: string[]) => void;
@@ -686,7 +686,7 @@ export const useAppStore = create<AppState>()(
           writeSection(id, (v) => projectsApi.setFormulaProperties(id, patch, v)),
 
         setAssessments: (id, patch) =>
-          writeSection(id, (v) => projectsApi.setAssessments(id, patch, v)),
+          tryWriteSection(id, (v) => projectsApi.setAssessments(id, patch, v)),
         setIdentity: (id, patch) => writeSection(id, (v) => projectsApi.setIdentity(id, patch, v)),
         setMarkets: (id, markets) => writeSection(id, (v) => projectsApi.setMarkets(id, markets, v)),
         setPackagingBomBulk: (id, lines) =>

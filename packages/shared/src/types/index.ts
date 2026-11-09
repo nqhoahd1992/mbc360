@@ -679,9 +679,6 @@ export const HUMAN_STUDY_PLANNED_OPTIONS = ['Yes', 'No', 'Undecided'] as const;
 // Round 5 question 1(d): "Maternal/infant exclusions must consider intended and reasonably foreseeable contact, not only marketing
 // ticks." The answer to "is contact with this group reasonably foreseeable?", given by a person; blank and Pending are both "not yet
 // assessed". A tick on the target users is not the answer. The values and where they are asked are our reading [ASSUMPTION: R6-Q5].
-// Only Yes and No (project owner, 2026-11-06): a "Pending" would read as an answer while it is not one, and blank already blocks.
-// A No must carry its reason (`personAnswer` in utils/gateProgress.ts); a Yes need not.
-export const FORESEEABLE_CONTACT_OPTIONS = ['No', 'Yes'] as const;
 // Round 5 question 1(d): "Enhanced-surveillance N/A must assess all applicable triggers, including those not yet structured in the
 // app." The four conditions the application cannot read (new or unusual active ingredient, recurring quality or performance issue, a
 // requirement in an approved surveillance plan, and any other the review team names) are assessed by a person.
@@ -689,11 +686,18 @@ export const UNSTRUCTURED_PMS_OPTIONS = ['No', 'Yes'] as const;
 // The four conditions of Round 4 question 4 that the application has no controlled data source for, asked one by one (project owner,
 // 2026-11-06) so that nobody can answer for all four with one click. [ASSUMPTION: R6-Q5]
 export type UnstructuredPmsField = 'pmsNewActive' | 'pmsComplaintTrend' | 'pmsRecurringIssue' | 'pmsSurveillancePlan';
-export const UNSTRUCTURED_PMS_CONDITIONS: readonly { answer: UnstructuredPmsField; rationale: `${UnstructuredPmsField}Rationale`; label: string }[] = [
-  { answer: 'pmsNewActive', rationale: 'pmsNewActiveRationale', label: 'Is there a new or unusual active ingredient?' },
-  { answer: 'pmsComplaintTrend', rationale: 'pmsComplaintTrendRationale', label: 'Is there a significant complaint trend?' },
-  { answer: 'pmsRecurringIssue', rationale: 'pmsRecurringIssueRationale', label: 'Is there a recurring quality or performance issue?' },
-  { answer: 'pmsSurveillancePlan', rationale: 'pmsSurveillancePlanRationale', label: 'Does an approved surveillance plan require enhanced surveillance?' },
+// Each carries the same three things as Administrative-only and foreseeable contact (project owner, 2026-11-09): the answer, its reason,
+// and the person who confirmed a No. A Yes only switches the surveillance on, so it needs neither. [ASSUMPTION: R6-Q5]
+export const UNSTRUCTURED_PMS_CONDITIONS: readonly {
+  answer: UnstructuredPmsField;
+  rationale: `${UnstructuredPmsField}Rationale`;
+  confirmer: `${UnstructuredPmsField}ConfirmedBy`;
+  label: string;
+}[] = [
+  { answer: 'pmsNewActive', rationale: 'pmsNewActiveRationale', confirmer: 'pmsNewActiveConfirmedBy', label: 'Is there a new or unusual active ingredient?' },
+  { answer: 'pmsComplaintTrend', rationale: 'pmsComplaintTrendRationale', confirmer: 'pmsComplaintTrendConfirmedBy', label: 'Is there a significant complaint trend?' },
+  { answer: 'pmsRecurringIssue', rationale: 'pmsRecurringIssueRationale', confirmer: 'pmsRecurringIssueConfirmedBy', label: 'Is there a recurring quality or performance issue?' },
+  { answer: 'pmsSurveillancePlan', rationale: 'pmsSurveillancePlanRationale', confirmer: 'pmsSurveillancePlanConfirmedBy', label: 'Does an approved surveillance plan require enhanced surveillance?' },
 ];
 export const ADMINISTRATIVE_ONLY_OPTIONS = ['Yes', 'No'] as const;
 export const SCALE_UP_RISK_OPTIONS = ['Yes', 'No', 'Pending assessment'] as const;
@@ -937,7 +941,11 @@ export interface ProjectAssessments {
   // Question 11 — "The classification must be confirmed by an authorised
   // reviewer", so the answer alone is not enough; both fields are needed before
   // the competitor-review exemption applies.
+  // Round 4 question 11 also says the exemption holds only when "no claim, formula, market positioning, product performance, packaging
+  // function or customer-facing meaning changes" — so a Yes carries the written reason the reviewer is confirming that (project owner,
+  // 2026-11-09). All three (Yes, reason, confirmer) are needed; editing the answer or the reason withdraws the confirmation.
   administrativeOnly?: string;
+  administrativeOnlyRationale?: string;
   administrativeOnlyConfirmedBy?: string;
   // Question 12 — the scale-up trigger Gate 9 has never had.
   scaleUpRiskIdentified?: string;
@@ -950,18 +958,26 @@ export interface ProjectAssessments {
   // Round 5 question 1(d) — three answers a person gives instead of the engine inferring a "not applicable" from what was ticked or
   // from the conditions the application can read. Each is blank until somebody answers; blank blocks.
   // A "No" needs its reason; a "Yes" may have one.
-  foreseeableMaternalContact?: string;
-  foreseeableMaternalRationale?: string;
-  foreseeableInfantContact?: string;
-  foreseeableInfantRationale?: string;
+  // ONE record for both (project owner, 2026-11-09 — the SME wrote one sentence): why no contact with a pregnant, breastfeeding or
+  // postpartum user, or with an infant, is reasonably foreseeable. Asked only while no such target user is ticked (see
+  // foreseeableContactAsked). There is no Yes/No: foreseeable contact is recorded by ticking the user. The text is kept when the
+  // question stops being asked, and ignored while it is not.
+  // The reason is the person's claim and the confirmer the person who stands behind it — the same shape as Administrative-only
+  // [ASSUMPTION: R6-Q5]: the SME did not say a confirmer is needed here.
+  foreseeableContactRationale?: string;
+  foreseeableContactConfirmedBy?: string;
   pmsNewActive?: string;
   pmsNewActiveRationale?: string;
+  pmsNewActiveConfirmedBy?: string;
   pmsComplaintTrend?: string;
   pmsComplaintTrendRationale?: string;
+  pmsComplaintTrendConfirmedBy?: string;
   pmsRecurringIssue?: string;
   pmsRecurringIssueRationale?: string;
+  pmsRecurringIssueConfirmedBy?: string;
   pmsSurveillancePlan?: string;
   pmsSurveillancePlanRationale?: string;
+  pmsSurveillancePlanConfirmedBy?: string;
   // Question 25(c) — which age groups a "Family use" product is actually for.
   // Comma-joined subset of FAMILY_USE_AGE_GROUPS; empty means nobody has
   // confirmed, which is what makes the infant trigger return `notAssessed`

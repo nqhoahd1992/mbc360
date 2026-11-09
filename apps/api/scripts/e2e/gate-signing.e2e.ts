@@ -864,7 +864,23 @@ export async function run(base: string, db: Client): Promise<number> {
   const voidHolderKey = 'admin';
   // Maternal and infant exclusions are a person's answer (Round 5 question 1(d)), so the project records that no such contact is
   // reasonably foreseeable before anything below can read "not applicable".
-  r = await api('admin', 'PUT', `/projects/${PROJECT}/assessments`, { patch: { foreseeableMaternalContact: 'No', foreseeableMaternalRationale: 'e2e: adult product', foreseeableInfantContact: 'No', foreseeableInfantRationale: 'e2e: adult product' }, expectedVersion: await version() });
+  const adminDisplayName: string = (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions['admin'].id])).rows[0]?.displayName;
+  // Reason and confirmer are one record (project owner, 2026-11-09): a reason nobody has confirmed is refused, and so is a
+  // confirmation in somebody else's name.
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/assessments`, { patch: { foreseeableContactRationale: 'e2e: adult product' }, expectedVersion: await version() });
+  t('a foreseeable-contact reason with nobody confirming it is refused', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/assessments`, { patch: { foreseeableContactRationale: 'e2e: adult product', foreseeableContactConfirmedBy: 'Somebody Else' }, expectedVersion: await version() });
+  t('...and a confirmation in the name of another person is refused', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/assessments`, { patch: { administrativeOnly: 'Yes', administrativeOnlyConfirmedBy: adminDisplayName }, expectedVersion: await version() });
+  t('an administrative-only Yes with no reason is refused', r.status === 400, `${r.status} ${short(r.json)}`);
+  // The four surveillance conditions are the same shape: a No needs its reason AND the person who confirmed it.
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/assessments`, { patch: { pmsNewActive: 'No', pmsNewActiveRationale: 'e2e: none' }, expectedVersion: await version() });
+  t('a surveillance No with a reason but nobody confirming it is refused', r.status === 400 && /confirmed it/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/assessments`, { patch: { pmsNewActive: 'No', pmsNewActiveRationale: 'e2e: none', pmsNewActiveConfirmedBy: 'Somebody Else' }, expectedVersion: await version() });
+  t('...and a confirmation in the name of another person is refused', r.status === 400, `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/assessments`, { patch: { pmsNewActive: 'No', pmsNewActiveRationale: 'e2e: none', pmsNewActiveConfirmedBy: adminDisplayName }, expectedVersion: await version() });
+  t('a surveillance No with reason and confirmer is stored', r.status < 300 && (await project()).project.assessments.pmsNewActiveConfirmedBy === adminDisplayName, `${r.status} ${short(r.json)}`);
+  r = await api('admin', 'PUT', `/projects/${PROJECT}/assessments`, { patch: { foreseeableContactRationale: 'e2e: adult product', foreseeableContactConfirmedBy: adminDisplayName }, expectedVersion: await version() });
   t('no maternal or infant contact is recorded as reasonably foreseeable (Gate 2)', r.status < 300, `${r.status} ${short(r.json)}`);
   r = await api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'safety-study-reviewer', userId: voidHolder.id }], expectedVersion: await version() });
   t('Safety / study reviewer is assigned for this check', r.status < 300, short(r.json));

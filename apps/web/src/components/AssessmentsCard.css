@@ -15,6 +15,15 @@
 .as-grid > label { display: block; min-width: 0; }
 .as-label { display: block; margin-bottom: 6px; color: var(--c-text-2); font-size: 13px; }
 .as-req { color: var(--c-bad-dot); }
+.as-condition { margin: 0 0 6px; max-width: 860px; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
+/* A short caution tied to the answer above it: quiet, with a warm bar, not a card of its own. */
+.as-note { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 8px 12px; max-width: 860px; border-left: 3px solid var(--c-warn-dot); border-radius: 0 6px 6px 0; background: var(--c-warn-bg); color: var(--c-warn); font-size: 13px; line-height: 20px; text-wrap: pretty; }
+.as-note .anticon { margin-top: 3px; }
+/* One footer row: what is missing on the left, Unsaved / Discard / Save on the right. The hairline belongs to the row, so the
+   SaveBar inside gives up its own divider and spacing. */
+.as-save { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--c-border-2, #f0f0f0); }
+.as-save > .save-bar { margin: 0 0 0 auto; padding: 0; border-top: 0; }
+.as-why { flex: 1 1 220px; min-width: 0; color: var(--c-warn); font-size: 13px; line-height: 20px; text-wrap: pretty; }
 .as-foot { display: grid; gap: 8px; padding: 0 20px 16px; }
 
 .as-kicker { color: var(--c-text-3); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }

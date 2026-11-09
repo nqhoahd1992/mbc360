@@ -38,10 +38,24 @@
 .cl-detail-filled { color: var(--c-link); }
 .cl-detail-missing { color: var(--c-warn); }
 .cl-detail-missing::after { content: ''; position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--c-warn-dot); }
-.cl-save { padding-top: 0; }
+.cl-save { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-top: 0; }
+.cl-save > .save-bar { margin-left: auto; }
 
 .cl-drawer-sub { color: var(--c-text-3); font-size: 12px; font-weight: 400; }
 .cl-form { display: grid; gap: 16px; }
 .cl-form > label, .cl-form > div { display: block; }
 .cl-field-label { display: block; margin-bottom: 6px; color: var(--c-text-2); font-size: 13px; }
 .cl-hint { margin: 0; color: var(--c-text-3); font-size: 12px; }
+
+/* The foreseeable-contact question, inside the Target Users card (Round 5 question 1(d)).
+   Flush with the tile grid; a warm bar says it still needs an answer, and goes neutral once it has one. */
+.cl-contact { display: grid; gap: 10px; padding: 12px 16px; border: 1px solid var(--c-border); border-left: 3px solid var(--c-border); border-radius: 8px; background: var(--c-surface-2); }
+.cl-contact-open { border-left-color: var(--c-warn-dot); }
+.cl-contact-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cl-contact-title { font-size: 14px; font-weight: 600; }
+.cl-contact-need { color: var(--c-warn); background: var(--c-warn-bg); border-color: var(--c-warn-line); }
+.cl-contact-reason { display: grid; gap: 6px; min-width: 0; }
+.cl-contact-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.cl-contact .cl-field-label { margin: 0; }
+.cl-req { color: var(--c-bad); }
+.cl-save-why { margin-right: auto; color: var(--c-warn); font-size: 12px; }

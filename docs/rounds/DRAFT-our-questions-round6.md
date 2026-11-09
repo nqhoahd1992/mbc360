@@ -158,29 +158,30 @@ The item is then waiting for an acknowledgement again and the person is told the
 
 ## Question 5 — How should "reasonably foreseeable contact" and the unstructured surveillance conditions be recorded?
 
-*Where in the application:* **Phase 1, Gate 02 tab**, a new block "Foreseeable maternal and infant contact", beside the target users; and **Phase 4, Gate 12 tab**, a new block "Enhanced-surveillance conditions the application cannot read".
+*Where in the application:* **Phase 1, Gate 02 tab**, inside the Target Users card, a box "Foreseeable maternal and infant contact" that appears only while no pregnant, breastfeeding, postpartum or infant user is ticked; and **Phase 4, Gate 12 tab**, a new block "Enhanced-surveillance conditions the application cannot read".
 
-In the closing paragraph of answer 1 you said that a maternal or infant exclusion "must consider intended and reasonably foreseeable contact, not only marketing ticks", and that an enhanced-surveillance "not applicable" "must assess all applicable triggers, including those not yet structured in the app". You did not say where those judgements are recorded or what the answer looks like, so we have built the following. Every question is answered **Yes** or **No**, and a **No** must carry its reason; a Yes may.
+In the closing paragraph of answer 1 you said that a maternal or infant exclusion "must consider intended and reasonably foreseeable contact, not only marketing ticks", and that an enhanced-surveillance "not applicable" "must assess all applicable triggers, including those not yet structured in the app". You did not say where those judgements are recorded or what the answer looks like, so we have built the following. The four surveillance questions are answered **Yes** or **No**; a **No** must carry its reason and the person who confirmed it ("Record as me"), and editing either withdraws the confirmation; a Yes needs neither. The foreseeable-contact box has no Yes or No, only the reason.
 
-- **Maternal contact:** "Is contact with a pregnant, breastfeeding or postpartum user reasonably foreseeable?"
-- **Infant contact:** "Is contact with an infant reasonably foreseeable, including by a caregiver or sibling?"
+- **Foreseeable contact (one written reason, as you wrote one sentence):** "Why is contact with a pregnant, breastfeeding or postpartum user, or with an infant, not reasonably foreseeable?" It appears only while none of those users is ticked, and Save stays disabled until a reason is written **and a person has recorded themselves as confirming it** ("Record as me", the same way a change is confirmed as administrative-only). A reason nobody has confirmed does not switch anything off. Editing the reason withdraws the confirmation, so the person confirms the new wording. There is no Yes: if such contact is foreseeable, the user is ticked, and that switches the pathway on. A written reason switches both the maternal and the infant pathway off (one reason cannot say which, so we read it as both). Ticking one of those users hides the box and keeps the text, and the ticks then decide on their own: a pregnant, breastfeeding or postpartum user ticked alone means the infant pathway is not assessed from this box, and an infant ticked alone means the same for the maternal pathway.
 - **Surveillance, one question per condition** (these are the four of your fourteen conditions for enhanced surveillance that the application has no data to read):
   - "Is there a new or unusual active ingredient?"
   - "Is there a significant complaint trend?"
   - "Is there a recurring quality or performance issue?"
   - "Does an approved surveillance plan require enhanced surveillance?"
 
-A project with no maternal user ticked, no infant user ticked, and no complete answer (No with its reason) is treated as **not yet assessed**, not as "does not apply": the items that depend on it wait. A **Yes**, or ticking the user, makes the pathway apply; for surveillance a single Yes on any of the four puts the product under enhanced surveillance, and "does not apply" needs all four answered No with a reason. Every existing project starts with all six unanswered.
+A project with no maternal or infant user ticked and no written reason is treated as **not yet assessed**, not as "does not apply": the items that depend on it wait. Ticking the user makes the pathway apply; for surveillance a single Yes on any of the four puts the product under enhanced surveillance, and "does not apply" needs all four answered No with a reason. Every existing project starts with all five unanswered, except where its earlier maternal and infant answers were both No with a reason: that reason carries over.
 
 **(a)** Are these the right questions? Please correct the wording.
 
 **(b)** Who answers each one, and at which gate? We placed the first two at Gate 02 and the four surveillance questions at Gate 12.
 
-**(c)** Should the answer be recorded with the name and date of the person who gave it, as for the family-use ages?
+**(c)** We now record the person who confirms the foreseeable-contact reason, as for "Administrative-only change" (answer 11), where you asked for confirmation by an authorised reviewer. Should the other answers (the four surveillance questions) also carry a confirming person and a date, as for the family-use ages? And who counts as an authorised person for each of them? Today any signed-in person can record themselves, and the application cannot tell whether they are authorised.
 
 **(d)** Is the complaint trend one of the conditions the application cannot read? We read "a safety or adverse-event issue recorded on the post-market feedback list" as covering safety signals and adverse events only, so a trend of complaints with no safety component is not seen by the application. Please confirm.
 
 **(e)** Are there other conditions the application cannot read that should be asked?
+
+**(f)** On Gate 03 one Key Gate Check row reads "Concept direction and benchmark/competitor review recorded". When a change is confirmed as administrative-only (answer 11) the competitor/benchmark review is not required, so we made the whole row not required and read-only for that project. Is the concept-direction half also exempt for an administrative-only change, or should it stay required and be recorded on its own?
 
 ---
 

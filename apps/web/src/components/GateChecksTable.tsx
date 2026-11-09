@@ -23,6 +23,7 @@ export default function GateChecksTable({
   title,
   checks,
   isRowLocked,
+  exemptionOf,
   showGate = true,
 }: {
   projectId: string;
@@ -33,6 +34,8 @@ export default function GateChecksTable({
   currentGateNumber?: string;
   // Gate-level edit lock: a row whose gate has passed is read-only.
   isRowLocked?: (check: GateCheck) => boolean;
+  // Why a row is not required for THIS project (see gateCheckExemption): shown on the row, which is then read-only.
+  exemptionOf?: (check: GateCheck) => string | undefined;
   // Show each row's gate number. Off on a single gate's tab, where it is redundant.
   showGate?: boolean;
 }) {
@@ -41,6 +44,7 @@ export default function GateChecksTable({
   // row's global store index (checks[i].index) never changes locally.
   const { draft, dirty, update, markSaved, discard } = useDraft(checks.map((c) => c.check));
   const doneCount = draft.filter((c) => c.done).length;
+  const lockedRow = (r: GateCheck) => !!isRowLocked?.(r) || !!exemptionOf?.(r);
 
   const patch = (index: number, p: Partial<GateCheck>) => update((prev) => patchArray(prev, index, p));
   const save = async () => {
@@ -77,7 +81,7 @@ export default function GateChecksTable({
       onSave={save}
       // Every row's gate has passed: nothing here can change, so the drawer
       // drops its "changes stay in the draft" hint.
-      readOnly={draft.length > 0 && draft.every((r) => !!isRowLocked?.(r))}
+      readOnly={draft.length > 0 && draft.every((r) => !!lockedRow(r))}
       title={title}
       count={`${doneCount}/${checks.length} done`}
       rows={draft}
@@ -86,9 +90,9 @@ export default function GateChecksTable({
       rowBadge={(r) =>
         // On a single gate's tab the gate number is redundant (the card sits under
         // that gate); keep the badge only for the lock, or when rows span gates.
-        showGate || isRowLocked?.(r) ? (
+        showGate || lockedRow(r) ? (
           <span className="c-tag" style={{ flexShrink: 0 }}>
-            {isRowLocked?.(r) && <LockOutlined />}
+            {lockedRow(r) && <LockOutlined />}
             {showGate && r.gate}
           </span>
         ) : undefined
@@ -96,17 +100,23 @@ export default function GateChecksTable({
       rowTitle={(r) => (
         <>
           <span className="rt-name-regular">{r.check}</span>
-          {isMandatoryGateCheck(r.gate, r.check) && <RequiredMark met={r.done} />}
+          {isMandatoryGateCheck(r.gate, r.check) && !exemptionOf?.(r) && <RequiredMark met={r.done} />}
         </>
       )}
-      rowSubtitle={(r) => (r.done ? [r.date, r.evidenceRef].filter(Boolean).join(' · ') : undefined)}
+      rowSubtitle={(r) => {
+        const recorded = r.done ? [r.date, r.evidenceRef].filter(Boolean).join(' · ') : '';
+        const exempt = exemptionOf?.(r);
+        // An exempt row keeps what was recorded on it before the exemption, so the earlier review is not hidden behind the reason.
+        if (exempt) return r.done ? `${exempt} · Previously recorded: ${recorded || 'marked done'}` : exempt;
+        return recorded || undefined;
+      }}
       openIndex={openIndex}
       onOpenIndexChange={setOpenIndex}
       inline={[
         {
           label: 'Done',
           width: 72,
-          render: (r, i) => <Checkbox checked={r.done} disabled={isRowLocked?.(r)} onChange={(e) => toggleDone(i, e.target.checked)} />,
+          render: (r, i) => <Checkbox checked={r.done} disabled={lockedRow(r)} onChange={(e) => toggleDone(i, e.target.checked)} />,
         },
         {
           label: 'Y/N/NA',
@@ -115,7 +125,7 @@ export default function GateChecksTable({
             <Select
               style={{ width: 90 }}
               value={r.ynna}
-              disabled={isRowLocked?.(r)}
+              disabled={lockedRow(r)}
               options={YNNA_OPTIONS}
               onChange={(v: YNNA) => patch(i, { ynna: v })}
             />
@@ -123,7 +133,7 @@ export default function GateChecksTable({
         },
       ]}
       drawer={(r, i) => {
-        const locked = isRowLocked?.(r);
+        const locked = lockedRow(r);
         return (
           <section>
             <div className="rt-grid">

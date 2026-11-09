@@ -5,7 +5,7 @@ import { familyUseAgeGroupList } from '@mbc360/shared/types';
 import { GATES } from '@mbc360/shared/config/gates';
 import { ASSESSMENT_HOMES, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
 import { UNSTRUCTURED_PMS_CONDITIONS } from '@mbc360/shared/types';
-import { evaluateTrigger, personAnswer } from '@mbc360/shared/utils/gateProgress';
+import { evaluateTrigger, foreseeableContactAskedFor, personAnswer } from '@mbc360/shared/utils/gateProgress';
 import { isPendingAnswer } from '@mbc360/shared/utils/changeControlAssessments';
 import { isFamilyUseSelected } from './AssessmentBlock';
 import '../styles/concept.css';
@@ -24,18 +24,15 @@ function status(project: ProjectData, key: AssessmentKey): { text: string; tone:
   const waiting = evaluateTrigger(project, home.trigger) === 'notAssessed';
   switch (key) {
     case 'foreseeableContact': {
-      const m = v(a.foreseeableMaternalContact);
-      const i = v(a.foreseeableInfantContact);
-      if (!m && !i) return { text: 'Not yet assessed', tone: 'warn' };
-      // A No without its reason is not an answer yet.
-      const done = (ans: string, why?: string) => personAnswer(ans, why) !== 'open';
-      const show = (x: string, ok: boolean) => (ok ? x : x ? `${x} (reason missing)` : 'not yet assessed');
-      const mOk = done(m, a.foreseeableMaternalRationale);
-      const iOk = done(i, a.foreseeableInfantRationale);
-      return { text: `Maternal: ${show(m, mOk)} · Infant: ${show(i, iOk)}`, tone: mOk && iOk ? 'ok' : 'warn' };
+      // Asked only while no maternal or infant user is ticked; otherwise the ticks themselves answer it.
+      if (!foreseeableContactAskedFor(project)) return { text: 'Not asked — a maternal or infant user is ticked', tone: 'ok' };
+      if (!v(a.foreseeableContactRationale)) return { text: 'Reason required', tone: 'warn' };
+      return v(a.foreseeableContactConfirmedBy)
+        ? { text: `No foreseeable contact — confirmed by ${v(a.foreseeableContactConfirmedBy)}`, tone: 'ok' }
+        : { text: 'Reason recorded — not yet confirmed', tone: 'warn' };
     }
     case 'pmsUnstructured': {
-      const states = UNSTRUCTURED_PMS_CONDITIONS.map((c) => personAnswer(a[c.answer], a[c.rationale]));
+      const states = UNSTRUCTURED_PMS_CONDITIONS.map((c) => personAnswer(a[c.answer], a[c.rationale], a[c.confirmer]));
       if (states.includes('yes')) return { text: 'Enhanced surveillance applies', tone: 'ok' };
       const answered = states.filter((s) => s === 'no').length;
       return answered === states.length
@@ -50,6 +47,7 @@ function status(project: ProjectData, key: AssessmentKey): { text: string; tone:
     case 'administrativeOnly': {
       const ans = v(a.administrativeOnly);
       if (!ans) return { text: 'Not recorded', tone: 'muted' };
+      if (ans === 'Yes' && !v(a.administrativeOnlyRationale)) return { text: 'Yes — reason required', tone: 'warn' };
       if (ans === 'Yes' && !v(a.administrativeOnlyConfirmedBy)) return { text: 'Yes — not yet confirmed', tone: 'warn' };
       return { text: ans === 'Yes' ? `Yes — confirmed by ${v(a.administrativeOnlyConfirmedBy)}` : ans, tone: 'ok' };
     }

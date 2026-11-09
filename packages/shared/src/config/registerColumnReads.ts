@@ -35,7 +35,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
   },
   SG07: {
     criticalSafetyFindings: ['closureDate', 'criticalFinding', 'evidenceLink', 'findingId', 'findingStatus', 'linkedNextActionId', 'safetyReviewerConclusion', 'severity', 'supersededBy', 'verification', 'verifier'],
-    formulationSafetyFinalSignOff: ['safetyQuestion', 'status'],
+    formulationSafetyFinalSignOff: ['notes', 'safetyQuestion', 'status'],
     formulationSafetyMatrix: ['allergenIfra', 'coverageReference', 'coverageRoute', 'exposureRationale', 'impurityProof', 'inciName', 'rmCode', 'safetyDecision'],
     generalRestrictedCaution: ['assessmentOutcome'],
     pbCautionLimits: ['gate4Disposition', 'linkedGate', 'productStatus'],

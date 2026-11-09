@@ -21,6 +21,7 @@ import {
   isPhaseDataLocked,
   acknowledgementsVoidedByTargetUsers,
   voidedAcknowledgementsMessage,
+  gateCheckExemption,
   type GateReadinessItem,
 } from '@mbc360/shared/utils/gateProgress';
 import { gateFlowMissing } from '@mbc360/shared/config/gateSignOff';
@@ -265,7 +266,8 @@ export default function PhasePage() {
   // The explicit assessments answered at this gate (config/assessments.ts). The
   // family-use one exists only for a Family use product.
   const assessments = ASSESSMENT_HOMES.filter(
-    (a) => a.gateId === tab && (a.key !== 'familyUse' || isFamilyUseSelected(project)),
+    // The foreseeable-contact question has no card of its own: it sits inside the Target Users card.
+    (a) => a.gateId === tab && a.key !== 'foreseeableContact' && (a.key !== 'familyUse' || isFamilyUseSelected(project)),
   );
 
   // Gates with a signature standing on them: the evidence each owns is read-only (SW-24), the same lock the
@@ -624,6 +626,7 @@ export default function PhasePage() {
                 checks={keyChecks}
                 currentGateNumber={currentGateNum}
                 isRowLocked={(check) => isGateRefLocked(project, check.gate) || rowSigned(check.gate)}
+                exemptionOf={(check) => gateCheckExemption(project, check.gate, check.check)}
               />
             </div>
           )}
@@ -722,6 +725,14 @@ export default function PhasePage() {
                   currentGateNumber={currentGateNum}
                   readOnly={isGateRefLocked(project, section.gate) || sectionSigned(section.gate)}
                   requiresPrimary={section.requiresPrimary}
+                  foreseeableContact={
+                    section.key === 'targetUsers'
+                      ? {
+                          rationale: project.assessments.foreseeableContactRationale ?? '',
+                          confirmedBy: project.assessments.foreseeableContactConfirmedBy ?? '',
+                        }
+                      : undefined
+                  }
                 />
               </div>
             ))}
@@ -746,7 +757,7 @@ export default function PhasePage() {
             ))}
 
             {assessments.map((a) => (
-              a.key === 'changeControl' ? (
+              a.key === 'foreseeableContact' ? null : a.key === 'changeControl' ? (
                 <ChangeControlAssessments key={a.key} project={project} />
               ) : a.key === 'humanStudy' ? (
                 <Fragment key={a.key}>
@@ -769,6 +780,7 @@ export default function PhasePage() {
                   checks={keyChecks}
                   currentGateNumber={currentGateNum}
                   isRowLocked={(check) => isGateRefLocked(project, check.gate) || rowSigned(check.gate)}
+                  exemptionOf={(check) => gateCheckExemption(project, check.gate, check.check)}
                 />
               </div>
             )}

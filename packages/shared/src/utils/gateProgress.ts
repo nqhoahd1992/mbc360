@@ -213,6 +213,54 @@ export function isSkincareForTwoTriggered(project: ProjectData): boolean {
   return skincareForTwoTriggers(project).length > 0;
 }
 
+// The foreseeable-contact question (Round 5 question 1(d)) is asked only while NO maternal or infant target user is ticked: a tick is
+// already a person's answer that such contact is intended. Takes labels so the Target Users card can ask it of its unsaved draft.
+export function foreseeableContactAsked(selectedTargetUsers: readonly string[]): boolean {
+  return !selectedTargetUsers.some((u) => SKINCARE_FOR_TWO_TRIGGERS.includes(u) || u === INFANT_TARGET_USER);
+}
+
+// The written reason that no maternal or infant contact is reasonably foreseeable, and the person who confirmed it (project owner,
+// 2026-11-09, same shape as Administrative-only [ASSUMPTION: R6-Q5]). Blank, or only whitespace, is neither: a reason nobody has
+// confirmed is a claim, not a recorded exclusion, so it does not switch the pathways off.
+export function foreseeableContactExcluded(project: ProjectData): boolean {
+  return (
+    (project.assessments.foreseeableContactRationale ?? '').trim() !== '' &&
+    (project.assessments.foreseeableContactConfirmedBy ?? '').trim() !== ''
+  );
+}
+
+// Round 4 question 11: exempt from competitor/benchmark review only when "confirmed as administrative-only" by an authorised reviewer.
+// Three things must all be recorded: the answer Yes, the reason the reviewer is confirming (that nothing in the SME's second list
+// changes), and the person who confirmed it.
+export function administrativeOnlyConfirmed(project: ProjectData): boolean {
+  const a = project.assessments;
+  return (
+    (a.administrativeOnly ?? '').trim() === 'Yes' &&
+    (a.administrativeOnlyRationale ?? '').trim() !== '' &&
+    (a.administrativeOnlyConfirmedBy ?? '').trim() !== ''
+  );
+}
+
+// A Key Gate Check row that the project's own recorded answers make not applicable (project owner, 2026-11-09). The Gate 03 row
+// "Concept direction and benchmark/competitor review recorded" carries the competitor/benchmark review that Round 4 question 11
+// exempts from a confirmed administrative-only change. Before this the exemption only freed the item that names the review
+// (sg03-benchmark) while "Product concept" still demanded the very same row, so the review had to be ticked as done on a project that
+// is exempt from it, and the Assessment that decides it sits far from the row, so nobody saw the two were linked. While the
+// exemption stands the row is not required and not editable, and every reader of it (readiness items, the phase key-check
+// count, the API) treats it as satisfied. Withdrawing the confirmation brings it back exactly as it was left.
+// Returns the reason to show, or undefined when the row applies normally. Our reading that the concept-direction half of this row
+// is exempt with it is [ASSUMPTION: R6-Q5]: the SME exempted only the competitor/benchmark review.
+export const BENCHMARK_GATE_CHECK = { gate: '03', check: 'Concept direction and benchmark/competitor review recorded' } as const;
+export function gateCheckExemption(project: ProjectData, gate: string, check: string): string | undefined {
+  if (gate !== BENCHMARK_GATE_CHECK.gate || check !== BENCHMARK_GATE_CHECK.check) return undefined;
+  if (!administrativeOnlyConfirmed(project)) return undefined;
+  return `Not required: confirmed administrative-only by ${(project.assessments.administrativeOnlyConfirmedBy ?? '').trim()} (Administrative-only change, above)`;
+}
+
+export function foreseeableContactAskedFor(project: ProjectData): boolean {
+  return foreseeableContactAsked((project.checklists['targetUsers'] ?? []).filter((i) => i.selected).map((i) => i.label));
+}
+
 // Requirement sections (Phase 3 config keys) that must be fully Completed
 // before Gate 07 can pass once Skincare for Two is triggered. Maternal safety
 // AND infant-contact assessment are both mandatory.
@@ -264,12 +312,13 @@ const twoState = (applies: boolean): TriggerState => (applies ? 'applies' : 'doe
 // — the Post-Launch Review card needs to know whether this product is under
 // enhanced surveillance, and re-deriving question 4's ten conditions there would
 // be a second copy of the rule.
-// A person's Yes/No answer and its reason. A No counts only with a reason: "no" is a claim that something does not apply, and an
-// unexplained one is what these questions exist to stop (project owner, 2026-11-06). A Yes needs none — it only switches a pathway on.
-export function personAnswer(answer?: string, rationale?: string): 'yes' | 'no' | 'open' {
+// A person's Yes/No answer, its reason and the person who confirmed it. A No counts only with both: "no" is a claim that something
+// does not apply, and an unexplained or unconfirmed one is what these questions exist to stop (project owner, 2026-11-06, and the
+// confirmer 2026-11-09 so it matches Administrative-only [ASSUMPTION: R6-Q5]). A Yes needs neither — it only switches a pathway on.
+export function personAnswer(answer?: string, rationale?: string, confirmedBy?: string): 'yes' | 'no' | 'open' {
   const a = (answer ?? '').trim();
   if (a === 'Yes') return 'yes';
-  if (a === 'No' && (rationale ?? '').trim() !== '') return 'no';
+  if (a === 'No' && (rationale ?? '').trim() !== '' && (confirmedBy ?? '').trim() !== '') return 'no';
   return 'open';
 }
 
@@ -277,11 +326,12 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
   switch (trigger) {
     case 'skincareForTwo': {
       if (isSkincareForTwoTriggered(project)) return 'applies';
-      // No maternal user is ticked. Round 5 question 1(d): an exclusion "must consider intended and reasonably foreseeable contact,
-      // not only marketing ticks" — so it is a person's recorded answer that settles it, never the absence of a tick.
-      const answer = personAnswer(project.assessments.foreseeableMaternalContact, project.assessments.foreseeableMaternalRationale);
-      if (answer === 'yes') return 'applies';
-      return answer === 'no' ? 'doesNotApply' : 'notAssessed';
+      // Only an infant is ticked: the target users themselves say no maternal contact is intended, and the question is not asked.
+      if (!foreseeableContactAskedFor(project)) return 'doesNotApply';
+      // No maternal or infant user is ticked. Round 5 question 1(d): an exclusion "must consider intended and reasonably foreseeable
+      // contact, not only marketing ticks" — so it is a person's written reason that settles it, never the absence of a tick. There is
+      // no Yes: foreseeable contact is recorded by ticking the user. One reason covers both pathways [ASSUMPTION: R6-Q5].
+      return foreseeableContactExcluded(project) ? 'doesNotApply' : 'notAssessed';
     }
 
     // E1's third line, "Infant-only products should trigger the Infant/Baby Safety
@@ -371,7 +421,7 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
       // performance issue, a requirement in an approved surveillance plan. A person answers for those; silence is not a pass.
       // Four questions, one per condition, each with its reason when the answer is No.
       const unstructured = UNSTRUCTURED_PMS_CONDITIONS.map((c) =>
-        personAnswer(project.assessments[c.answer], project.assessments[c.rationale]),
+        personAnswer(project.assessments[c.answer], project.assessments[c.rationale], project.assessments[c.confirmer]),
       );
       if (unstructured.includes('yes')) return 'applies';
       return unstructured.every((u) => u === 'no') ? 'doesNotApply' : 'notAssessed';
@@ -409,9 +459,8 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     case 'infantContact': {
       const selected = (project.checklists['targetUsers'] ?? []).filter((i) => i.selected).map((i) => i.label);
       if (selected.includes(INFANT_TARGET_USER)) return 'applies';
-      const foreseeable = personAnswer(project.assessments.foreseeableInfantContact, project.assessments.foreseeableInfantRationale);
-      // Round 5 question 1(d): reasonably foreseeable infant contact counts even where nothing says "infant" on the ticks.
-      if (foreseeable === 'yes') return 'applies';
+      // Where a maternal user is ticked the question is not asked, so only the ticks and the family-use age groups speak.
+      const asked = foreseeableContactAsked(selected);
       // What the target users and age groups say on their own...
       let fromTicks: TriggerState;
       if (!selected.includes(FAMILY_USE_TARGET_USER)) fromTicks = 'doesNotApply';
@@ -420,8 +469,9 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
         fromTicks = groups.length === 0 ? 'notAssessed' : groups.includes(INFANT_TARGET_USER) ? 'applies' : 'doesNotApply';
       }
       if (fromTicks !== 'doesNotApply') return fromTicks;
-      // ...is not enough to exclude: a person records that no infant contact is reasonably foreseeable.
-      return foreseeable === 'no' ? 'doesNotApply' : 'notAssessed';
+      if (!asked) return 'doesNotApply';
+      // ...is not enough to exclude: a person writes why no foreseeable contact is reasonably expected.
+      return foreseeableContactExcluded(project) ? 'doesNotApply' : 'notAssessed';
     }
 
     // A3: mandatory "before ANY study involving human participants". Study
@@ -535,17 +585,12 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
       // review." So it is not-yet-assessed and blocks, where it used to pass on its own — unless the change has been confirmed
       // administrative-only by a named person, which is a recorded answer.
       if (!limbFires) {
-        const confirmedAdminOnly =
-          (project.assessments.administrativeOnly?.trim() ?? '') === 'Yes' && (project.assessments.administrativeOnlyConfirmedBy?.trim() ?? '') !== '';
-        return confirmedAdminOnly ? 'doesNotApply' : 'notAssessed';
+        return administrativeOnlyConfirmed(project) ? 'doesNotApply' : 'notAssessed';
       }
       // Question 11's exemption, which is now the only way out: confirmed
       // administrative-only, by a named reviewer. Anything less and the review
       // applies — including "Yes" with nobody's name against it.
-      const adminOnly = project.assessments.administrativeOnly?.trim() ?? '';
-      const confirmedBy = project.assessments.administrativeOnlyConfirmedBy?.trim() ?? '';
-      if (adminOnly === 'Yes' && confirmedBy !== '') return 'doesNotApply';
-      return 'applies';
+      return administrativeOnlyConfirmed(project) ? 'doesNotApply' : 'applies';
     }
 
     // Question 12 (2026-08-24), Gate 9. `sg09-scaleup` had NO trigger at all — it
@@ -1307,7 +1352,8 @@ export function evaluateReadinessCheck(
         (t) => evaluateTrigger(project, t) === 'applies',
       );
       const satisfied =
-        !!row && ((row.done && row.ynna === 'Y') || (naAllowed && row.ynna === 'NA' && !!row.notes?.trim()));
+        !!gateCheckExemption(project, check.gate, check.check) ||
+        (!!row && ((row.done && row.ynna === 'Y') || (naAllowed && row.ynna === 'NA' && !!row.notes?.trim())));
       return { evaluable: true, satisfied };
     }
     case 'checklistHasSelection': {
@@ -2785,7 +2831,7 @@ export function phaseCompletionChecklist(project: ProjectData, phase: number): P
     (c) => numbers.includes(c.gate) || (phase === 4 && c.gate === 'ALL'),
   );
   const keyChecksDone = checks.every(
-    (c) => (c.done && c.ynna === 'Y') || (c.ynna === 'NA' && !!c.notes?.trim()),
+    (c) => (c.done && c.ynna === 'Y') || (c.ynna === 'NA' && !!c.notes?.trim()) || !!gateCheckExemption(project, c.gate, c.check),
   );
 
   const closure = project.phaseClosures[phase];

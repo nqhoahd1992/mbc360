@@ -1012,6 +1012,11 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg03-concept',
       label: 'Product concept',
       tier: 'Mandatory',
+      // The row carries the competitor/benchmark review too, so a project confirmed administrative-only (Round 4 question 11) does not
+      // need it: the row is read-only and counted as satisfied (gateCheckExemption). The concept-direction half is exempt with it on
+      // our reading, not the SME's [ASSUMPTION: R6-Q5].
+      coverageNote:
+        'for a project confirmed administrative-only the whole row, concept direction included, is not required; the SME exempted only the competitor/benchmark review.',
       check: { kind: 'gateCheckDone', gate: '03', check: 'Concept direction and benchmark/competitor review recorded' },
     },
     {

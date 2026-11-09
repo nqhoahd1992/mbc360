@@ -37,7 +37,8 @@ export interface AssessmentHome {
 // In gate order, which is also the order the overview lists them.
 export const ASSESSMENT_HOMES: AssessmentHome[] = [
   // Round 5 question 1(d), 2026-11-06: whether contact with a pregnant, breastfeeding or postpartum user, or with an infant, is
-  // reasonably foreseeable — a judgement, not something the ticks settle. Answered at Gate 02, with the target users it qualifies.
+  // reasonably foreseeable — a judgement, not something the ticks settle. Answered at Gate 02 INSIDE the Target Users card (shown
+  // there only while no maternal or infant user is ticked), so it has no card of its own on the phase page.
   {
     key: 'foreseeableContact',
     title: 'Foreseeable maternal and infant contact',
@@ -104,24 +105,23 @@ export const assessmentForTrigger = (trigger: ReadinessTrigger): AssessmentHome 
 // (SME rule audit C9, 2026-10-04) — changing the family-use age groups after
 // Gate 2 used to switch the whole infant pathway off with no Backtrack.
 export const ASSESSMENT_FIELDS: Record<AssessmentKey, readonly (keyof ProjectData['assessments'])[]> = {
-  foreseeableContact: [
-    'foreseeableMaternalContact',
-    'foreseeableMaternalRationale',
-    'foreseeableInfantContact',
-    'foreseeableInfantRationale',
-  ],
+  foreseeableContact: ['foreseeableContactRationale', 'foreseeableContactConfirmedBy'],
   pmsUnstructured: [
     'pmsNewActive',
     'pmsNewActiveRationale',
+    'pmsNewActiveConfirmedBy',
     'pmsComplaintTrend',
     'pmsComplaintTrendRationale',
+    'pmsComplaintTrendConfirmedBy',
     'pmsRecurringIssue',
     'pmsRecurringIssueRationale',
+    'pmsRecurringIssueConfirmedBy',
     'pmsSurveillancePlan',
     'pmsSurveillancePlanRationale',
+    'pmsSurveillancePlanConfirmedBy',
   ],
   familyUse: ['familyUseAgeGroups', 'familyUseConfirmedBy', 'familyUseConfirmedDate'],
-  administrativeOnly: ['administrativeOnly', 'administrativeOnlyConfirmedBy'],
+  administrativeOnly: ['administrativeOnly', 'administrativeOnlyRationale', 'administrativeOnlyConfirmedBy'],
   humanStudy: ['humanStudyPlanned'],
   scaleUp: [
     'scaleUpRiskIdentified',

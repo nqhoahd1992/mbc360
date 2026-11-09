@@ -139,8 +139,12 @@ export function acknowledgementBasis(project: ProjectData): string {
     users,
     ageGroups: (project.assessments?.familyUseAgeGroups ?? '').trim(),
     foreseeable: [
-      (project.assessments?.foreseeableMaternalContact ?? '').trim(),
-      (project.assessments?.foreseeableInfantContact ?? '').trim(),
+      // Whether the reason exists and is confirmed, not its wording (an editorial correction keeps the acknowledgement), and only while the question is
+      // asked: a reason kept but hidden behind a ticked maternal or infant user decides nothing.
+      users.some((u) => ['Pregnancy', 'Breastfeeding', 'Postpartum', 'Infant 0+'].includes(u))
+        ? false
+        : (project.assessments?.foreseeableContactRationale ?? '').trim() !== '' &&
+          (project.assessments?.foreseeableContactConfirmedBy ?? '').trim() !== '',
       ...UNSTRUCTURED_PMS_CONDITIONS.map((c) => (project.assessments?.[c.answer] ?? '').trim()),
     ],
     markets,

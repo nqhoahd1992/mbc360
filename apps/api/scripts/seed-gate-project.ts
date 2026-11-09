@@ -348,23 +348,25 @@ async function answerAssessments(ctx: Ctx, gateNumber: number): Promise<void> {
   let patch: Record<string, string> | undefined;
   // Round 5 question 1(d): maternal and infant exclusions are a person's answer, and so are the enhanced-surveillance conditions the
   // application cannot read. The seeded product is an ordinary adult one, so the honest answers are "no foreseeable contact" and "none".
-  if (gateNumber === 2 && !(a.foreseeableMaternalContact && a.foreseeableInfantContact)) {
+  if (gateNumber === 2 && !a.foreseeableContactRationale) {
     patch = {
-      foreseeableMaternalContact: 'No',
-      foreseeableMaternalRationale: `${SEED}: an ordinary adult product, not marketed to or used by pregnant, breastfeeding or postpartum users`,
-      foreseeableInfantContact: 'No',
-      foreseeableInfantRationale: `${SEED}: an ordinary adult product, not used on or around infants`,
+      foreseeableContactRationale: `${SEED}: an ordinary adult product, not used by pregnant, breastfeeding or postpartum users or on or around infants`,
+      foreseeableContactConfirmedBy: ctx.adminName,
     };
   } else if (gateNumber === 12 && !a.pmsNewActive) {
     patch = {
       pmsNewActive: 'No',
       pmsNewActiveRationale: `${SEED}: no new or unusual active ingredient`,
+      pmsNewActiveConfirmedBy: ctx.adminName,
       pmsComplaintTrend: 'No',
       pmsComplaintTrendRationale: `${SEED}: no complaint trend recorded`,
+      pmsComplaintTrendConfirmedBy: ctx.adminName,
       pmsRecurringIssue: 'No',
       pmsRecurringIssueRationale: `${SEED}: no recurring quality or performance issue`,
+      pmsRecurringIssueConfirmedBy: ctx.adminName,
       pmsSurveillancePlan: 'No',
       pmsSurveillancePlanRationale: `${SEED}: no approved surveillance plan applies`,
+      pmsSurveillancePlanConfirmedBy: ctx.adminName,
     };
   }
   else if (gateNumber === 3 && !a.administrativeOnly) patch = { administrativeOnly: 'No' };
