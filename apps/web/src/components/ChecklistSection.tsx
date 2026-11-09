@@ -11,6 +11,7 @@ import DrawerSaveFooter from './DrawerSaveFooter';
 import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import SaveBar from './SaveBar';
 import SelfAttestField from './SelfAttestField';
+import AssessmentStateTag from './AssessmentStateTag';
 import '../styles/concept.css';
 import './ChecklistSection.css';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
@@ -63,6 +64,7 @@ export default function ChecklistSection({
 }) {
   const setSection = useAppStore((s) => s.setChecklistSection);
   const setAssessments = useAppStore((s) => s.setAssessments);
+  const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const { draft, dirty: itemsDirty, update, markSaved: markItemsSaved, discard: discardItems } = useDraft(items);
   const contact = useDraft({ rationale: foreseeableContact?.rationale ?? '', confirmedBy: foreseeableContact?.confirmedBy ?? '' });
   const dirty = itemsDirty || contact.dirty;
@@ -208,11 +210,13 @@ export default function ChecklistSection({
       {contactAsked && (
         <div className={`cl-contact${contactBlocking ? ' cl-contact-open' : ''}`} id={assessmentAnchor('foreseeableContact')}>
           <div className="cl-contact-head">
-            <span className="cl-contact-title">Foreseeable maternal and infant contact</span>
-            {!readOnly && contactBlocking && (
-              <span className="c-tag cl-contact-need">{contactNeedsReason ? 'Reason required' : 'Confirmation required'}</span>
-            )}
+            <div className="cl-contact-text">
+              <div className="as-kicker">Assessment · Gate 02</div>
+              <span className="cl-contact-title">Foreseeable maternal and infant contact</span>
+            </div>
+            {project && <AssessmentStateTag project={project} assessmentKey="foreseeableContact" />}
           </div>
+          <div className="cl-contact-fields">
           <label className="cl-contact-reason">
             <span className="cl-field-label">
               No pregnant, breastfeeding, postpartum or infant user is ticked. Why is contact with such a user, or with an infant, not reasonably
@@ -235,10 +239,10 @@ export default function ChecklistSection({
             </span>
             <SelfAttestField
               disabled={readOnly || contact.draft.rationale.trim() === ''}
-              status={contactNeedsConfirmer ? 'error' : undefined}
               value={contact.draft.confirmedBy}
               onChange={(v) => contact.update((prev) => ({ ...prev, confirmedBy: v }))}
             />
+          </div>
           </div>
           <p className="cl-hint">If such contact is foreseeable, tick the user above instead: that switches the pathway on.</p>
         </div>

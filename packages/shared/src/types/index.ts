@@ -675,6 +675,15 @@ export interface CostingInputs {
 // they share a lifecycle (a person answers them, the engine reads them) and a
 // single `PUT :id/assessments` route serves all four.
 export const CHANGE_CONTROL_REQUIRED_OPTIONS = ['Yes', 'No', 'Pending assessment'] as const;
+// Round 5 question 2(b), transcribed in the answer's order: "a finding is an issue requiring a documented review".
+export const POST_MARKET_FINDING_CATEGORIES = [
+  'Individual complaint or adverse event',
+  'Complaint trend',
+  'Quality deviation',
+  'Regulator request',
+  'Substantiated claim challenge',
+  'Performance or packaging concern',
+] as const;
 export const HUMAN_STUDY_PLANNED_OPTIONS = ['Yes', 'No', 'Undecided'] as const;
 // Round 5 question 1(d): "Maternal/infant exclusions must consider intended and reasonably foreseeable contact, not only marketing
 // ticks." The answer to "is contact with this group reasonably foreseeable?", given by a person; blank and Pending are both "not yet
@@ -921,13 +930,22 @@ export interface GateContentChangedBody {
 // is about, which matters once there can be several and Gate 12 runs per market. [ASSUMPTION: R5-Q11]
 export interface ChangeControlAssessment {
   id: string;
+  // Round 5 question 2(c): "a generated Finding ID" — written by the server (FND-001, FND-002 …), never by the client.
+  findingId?: string;
   finding: string;
-  market?: string;
+  category?: string; // one of POST_MARKET_FINDING_CATEGORIES
+  sourceRecord?: string; // link to the complaint / report / request the finding came from
+  dateIdentified?: string; // YYYY-MM-DD
+  affected?: string; // the affected SKU, formula or batch, in words
+  markets?: string; // the affected market(s), comma-joined: one finding may affect several
+  reviewCycle?: string; // 'market|milestone' of the post-launch review it belongs to
+  severity?: string; // the shared Low / Medium / High / Critical scale
+  disposition?: string; // what was done about the finding, in words — the SME gave no values [ASSUMPTION: R6-Q7]
   answer: string; // 'Yes' | 'No' | 'Pending assessment' ('' counts as Pending)
   linkedRecordId?: string; // a change record of this project; required when Yes
-  reviewer?: string; // required when No
-  reviewDate?: string; // YYYY-MM-DD
-  rationale?: string; // required when No
+  reviewer?: string; // required with any answer
+  reviewDate?: string; // YYYY-MM-DD, required with any answer
+  rationale?: string; // required with any answer
   evidenceLink?: string;
 }
 

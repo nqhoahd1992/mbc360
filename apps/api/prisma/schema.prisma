@@ -556,8 +556,16 @@ model ChangeControlAssessment {
   project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId      String
   sortOrder      Int
+  findingId      String? // the generated FND-001 …, written by the server
   finding        String
-  market         String?
+  category       String?
+  sourceRecord   String?
+  dateIdentified String?
+  affected       String?
+  markets        String? // comma-joined: one finding may affect several markets
+  reviewCycle    String? // 'market|milestone' of the post-launch review it belongs to
+  severity       String?
+  disposition    String?
   answer         String // 'Yes' | 'No' | 'Pending assessment' | '' (counts as Pending)
   linkedRecordId String?
   reviewer       String?

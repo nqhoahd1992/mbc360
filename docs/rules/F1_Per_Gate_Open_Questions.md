@@ -1720,7 +1720,9 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 
 **Nếu trả lời khác:** `WATCHLIST_FLAGGED_STATUSES` và cột `productStatus` của `prohibitedIngredients` trong `packages/shared/src/config/registers.ts`; `flaggedWatchlistRows()` trong `utils/watchlistReview.ts`; `sg04-no-remove` / `sg04-pb-screen` trong `gateReadiness.ts`.
 
-#### R5-Q11 · Câu trả lời "có cần Change Control không" ghi một lần cho dự án hay từng phát hiện 🔴
+#### R5-Q11 · Câu trả lời "có cần Change Control không" ghi một lần cho dự án hay từng phát hiện ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 2) và đã xây 10/11/2026.** (a) Đúng, mỗi phát hiện riêng biệt một đánh giá, gắn với chu kỳ review và thị trường; bản ghi CHG đang mở không miễn đánh giá phát hiện mới. (b) Định nghĩa phát hiện: sáu loại. (c) Các trường, và Yes/No/Pending đều phải có reviewer, ngày, lý do. Phần chi tiết còn hỏi: R6-Q7. Phần "thị trường không liên quan được tiếp tục" chưa xây — xem R6-Q7.
 
 **Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-51: một lần rà soát không thấy gì ghi bằng một mục trả lời "No" kèm lý do (câu 2(c) của bản nháp đã gỡ). Còn hỏi SME: định nghĩa "phát hiện" và các trường của mục. Câu hỏi còn lại như bên dưới.
 
@@ -2643,3 +2645,15 @@ Bản gửi đi: [`../rounds/DRAFT-our-questions-round6.md`](../rounds/DRAFT-our
 **Câu hỏi:** (a) người sửa danh sách có đủ để nói là Critical hay Safety/Regulatory xác nhận trước; (b) "use/release" đọc thế có đúng không, có nên chạm tới sản phẩm đã bán; (c) owner có đúng; (d) dự án chưa passed gate nào có nhận đánh giá không; (e) kết luận có nên tự mở lại gate không.
 
 **Nếu trả lời khác:** `IMPACT_FUNCTIONS`, `impactHolds`, `heldMarkets` (`utils/impactAssessments.ts`); mục `impact-hold` trong `gateReadinessChecklist` (`gateProgress.ts`); `raiseReferenceSignal`, `concludeImpactAssessment` và chặn launch trong `setMarketTracks` (`projects.service.ts`); ba controller danh sách (`apps/api/src/reference/`) [ASSUMPTION: R6-Q6].
+
+#### R6-Q7 · Các trường của một "phát hiện hậu mãi" mà SME liệt kê nhưng chưa nói giá trị hay mức bắt buộc (Vòng 5 câu 2(c)) 🟡
+
+**Lộ ra 10/11/2026, khi xây câu 2.** SME đã trả lời rõ (a) một đánh giá cho mỗi phát hiện riêng biệt, gắn với chu kỳ review và (các) thị trường bị ảnh hưởng, một bản ghi CHG đang mở **không** miễn đánh giá một phát hiện mới; (b) định nghĩa phát hiện (sáu loại); (c) các trường: Finding ID tự sinh, source/category, source record link, date identified, affected SKU/formula/batch, market(s), review-cycle ID, severity/priority, disposition; Yes/No/Pending đều phải có reviewer, ngày và lý do, Yes liên kết CHG; Pending chặn việc đóng phát hiện và việc đóng review bị ảnh hưởng. Đã xây: danh sách đổi sang đủ các trường trên (migration `20261110090000`), Finding ID do server sinh (`FND-001`…), bản ghi CHG đang mở không còn thay cho mục đánh giá của phát hiện mới (`openChangeControl`), và một review đã ghi nhận không đóng được khi còn phát hiện Pending gắn với chu kỳ của nó (`setPostLaunchReviews`).
+
+**Những chỗ SME liệt kê tên trường nhưng không nói giá trị hay mức bắt buộc — cách đọc của chúng ta:** (1) **source/category** là sáu loại của (b), bắt buộc, vì đó là thứ làm một vấn đề thành "phát hiện"; (2) **market(s)** bắt buộc, chọn nhiều, vì (a) nói "linked to ... affected market(s)"; (3) **review cycle** chọn trong lịch review của dự án (`thị trường|mốc`, ví dụ `Vietnam|3m`) cộng các review đã ghi, bắt buộc **khi dự án có chu kỳ nào**, chưa thị trường nào launch thì không đòi; (4) **severity/priority** dùng thang chung Low/Medium/High/Critical, tùy chọn; (5) **disposition** là chữ tự do, tùy chọn, vì SME không nói các giá trị; (6) **affected SKU/formula/batch** là một ô chữ; (7) **source record link** và **date identified** tùy chọn; (8) Pending cũng phải có reviewer, ngày, lý do (đúng chữ SME), nên một mục chưa chọn câu trả lời thì chưa đòi gì.
+
+**Đã chốt nhưng chưa xây:** "*Unrelated markets may continue where their own requirements are met*" — Gate 12 hiện đọc danh sách ở cấp dự án, nên một phát hiện Pending ở Vietnam vẫn chặn mục này cho cả Singapore. Mới xây phần đóng review đúng chu kỳ. Cần đọc mục theo từng thị trường (lane) — việc lớn, chưa làm.
+
+**Câu hỏi:** (a) disposition có danh sách giá trị không; (b) hai cách đọc ở (3): chu kỳ review có bắt buộc cho phát hiện ở thị trường chưa launch không; (c) các trường nào bắt buộc, danh sách ở trên đúng chưa; (d) thang severity chung có đúng không; (e) affected SKU/formula/batch có nên là ba ô riêng không.
+
+**Nếu trả lời khác:** `changeControlAssessmentProblems` (`utils/changeControlAssessments.ts`), `POST_MARKET_FINDING_CATEGORIES` và `ChangeControlAssessment` (`types/index.ts`), `reviewCycleOptions` (`utils/postLaunch.ts`), `ChangeControlAssessments.tsx` [ASSUMPTION: R6-Q7].

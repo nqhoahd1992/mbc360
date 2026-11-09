@@ -6,6 +6,7 @@ import {
   onMarketTracks,
   overdueReviews,
   projectLaunchStatus,
+  reviewMilestoneLabel,
   reviewMilestonesFor,
   reviewScheduleTracks,
 } from '@mbc360/shared/utils/postLaunch';
@@ -24,19 +25,8 @@ import { TEXT, TABLE_STICKY } from '../theme/tokens';
 // A milestone with no stored review is rendered from the derived schedule and
 // saved on first edit; that is why the table's data source is the union rather
 // than `project.postLaunchReviews` alone.
-const MILESTONE_LABELS: Record<string, string> = {
-  '1m': 'One month (enhanced surveillance)',
-  '3m': 'Three months (first standard review)',
-  '12m': 'Twelve months (full post-market review)',
-  signal: 'Signal-triggered review',
-};
-
-function milestoneLabel(milestone: string): string {
-  if (MILESTONE_LABELS[milestone]) return MILESTONE_LABELS[milestone];
-  const annual = /^annual-(\d+)$/.exec(milestone);
-  if (annual) return `Annual review ${annual[1]}`;
-  return milestone;
-}
+// The words for a milestone are shared with the Change Control assessment, which names the review cycle a finding belongs to.
+const milestoneLabel = reviewMilestoneLabel;
 
 export default function PostLaunchReviewCard({
   project,

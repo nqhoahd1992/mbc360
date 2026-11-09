@@ -3,16 +3,18 @@ import { Button, ConfigProvider, DatePicker, Input, Select } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { ChangeControlAssessment, ProjectData } from '@mbc360/shared/types';
-import { CHANGE_CONTROL_REQUIRED_OPTIONS } from '@mbc360/shared/types';
-import { isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
+import { CHANGE_CONTROL_REQUIRED_OPTIONS, POST_MARKET_FINDING_CATEGORIES, RISK_LEVELS } from '@mbc360/shared/types';
+import { evaluateTrigger, isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
+import { reviewCycleOptions } from '@mbc360/shared/utils/postLaunch';
 import { assessmentAnchor, ASSESSMENT_HOMES } from '@mbc360/shared/config/assessments';
-import { changeControlAssessmentProblems, isPendingAnswer } from '@mbc360/shared/utils/changeControlAssessments';
+import { assessmentMarkets, changeControlAssessmentProblems, isPendingAnswer } from '@mbc360/shared/utils/changeControlAssessments';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import ChoiceSelect from './ChoiceSelect';
 import SelfAttestField from './SelfAttestField';
 import Notice from './Notice';
+import AssessmentStateTag from './AssessmentStateTag';
 import '../styles/concept.css';
 import './DynamicTable.css';
 import './AssessmentsCard.css';
@@ -43,10 +45,10 @@ const newEntry = (): ChangeControlAssessment => ({
 
 // What the chosen answer asks for, said where the answer is chosen.
 const ANSWER_HINT: Record<string, string> = {
-  '': 'Yes needs the linked record. No needs a reviewer and the reason. Leaving it open blocks Gate 12.',
-  Yes: 'A change control is needed — link the record that was opened for it.',
-  No: 'No change control is needed — record who decided and why.',
-  'Pending assessment': 'Not decided yet. This blocks Gate 12 until it is answered.',
+  '': 'Every answer carries the reviewer, the date and the rationale; Yes also links the record. Leaving it open blocks Gate 12.',
+  Yes: 'A change control is needed — link the record that was opened for it, and record who decided, when and why.',
+  No: 'No change control is needed — record who decided, when and why.',
+  'Pending assessment': 'Not decided yet — record who is assessing it, when and what is awaited. This blocks the review and Gate 12 until answered.',
 };
 
 export default function ChangeControlAssessments({ project }: { project: ProjectData }) {
@@ -64,9 +66,16 @@ export default function ChangeControlAssessments({ project }: { project: Project
   };
   const addEntry = () => update((prev) => [...prev, newEntry()]);
 
+  // The review cycles a finding can be tied to: each milestone the schedule generates for a launched market, plus reviews on record.
+  const cycles = reviewCycleOptions(project, {
+    enhanced: evaluateTrigger(project, 'pvPmsRequired') === 'applies',
+    asOf: dayjs().format('YYYY-MM-DD'),
+    profiles: project.reference.marketProfiles,
+  });
   const problems = changeControlAssessmentProblems(draft, {
     changeIds: project.changes.map((c) => c.changeId),
     markets: project.identity.markets,
+    reviewCycles: cycles.map((c) => c.key),
   });
   // Said once, in the footer. With several entries the entry number stays so the person can find it.
   const blockingReason = problems[0] ? (draft.length > 1 ? problems[0] : problems[0].replace(/^Assessment \d+: /, '')) : undefined;
@@ -74,12 +83,17 @@ export default function ChangeControlAssessments({ project }: { project: Project
   return (
     <section className="c-card as-card" id={assessmentAnchor('changeControl')}>
       <div className="as-head">
-        <div className="as-kicker">Assessment</div>
-        <h2 className="as-title">{home.title}</h2>
-        <p className="as-desc">
-          Gate 12. One entry for each post-market finding. A Pending (or unanswered) entry blocks the gate. If nothing from this
-          review needs a change control, record one entry answered No, with the reviewer and the reason.
-        </p>
+        <div className="as-head-text">
+          <div className="as-kicker">Assessment · Gate {home.gateId.slice(2)}</div>
+          <h2 className="as-title">{home.title}</h2>
+          <p className="as-desc">
+            One entry for each post-market finding. A Pending (or unanswered) entry blocks the gate. If nothing from this review needs a
+            change control, record one entry answered No, with the reviewer, the date and the reason.
+          </p>
+        </div>
+        <div className="as-head-side">
+          <AssessmentStateTag project={project} assessmentKey="changeControl" />
+        </div>
       </div>
       {locked && (
         <Notice
@@ -112,7 +126,7 @@ export default function ChangeControlAssessments({ project }: { project: Project
               <div className="cca-entry" key={e.id}>
                 <div className="cca-entry-head">
                   <div className="cca-entry-title">
-                    <strong>Assessment {i + 1}</strong>
+                    <strong>{e.findingId ?? `Assessment ${i + 1}`}</strong>
                     {!findingMissing && <span className="cca-entry-sub">{e.finding}</span>}
                   </div>
                   <div className="cca-entry-tools">
@@ -132,46 +146,102 @@ export default function ChangeControlAssessments({ project }: { project: Project
                 </div>
 
                 <div className="cca-grid">
-                  <label className="cca-8">
-                    <span className="as-label">
-                      Linked Change Control record{answer === 'Yes' && <span className="as-req"> *</span>}
-                    </span>
-                    <Select
-                      style={{ width: '100%' }}
-                      allowClear
-                      showSearch={{ optionFilterProp: 'label' }}
-                      popupMatchSelectWidth={false}
-                      status={worked && answer === 'Yes' && !e.linkedRecordId ? 'error' : undefined}
-                      placeholder={project.changes.length === 0 ? 'No change record on this project yet' : 'Pick the record opened for it, if any'}
-                      notFoundContent="Open one on the Change Control page first"
-                      value={e.linkedRecordId || undefined}
-                      options={project.changes.map((c) => ({
-                        value: c.changeId,
-                        label: `${c.changeId} — ${c.trigger || c.affectedArea || 'change'} · ${c.status}`,
-                      }))}
-                      onChange={(v?: string) => patch(e.id, v ? { linkedRecordId: v, answer: 'Yes' } : { linkedRecordId: undefined })}
-                    />
-                  </label>
-                  <label className="cca-4">
-                    <span className="as-label">Market (optional)</span>
-                    <Select
-                      style={{ width: '100%' }}
-                      allowClear
-                      placeholder="All / not market-specific"
-                      value={e.market || undefined}
-                      options={project.identity.markets.map((m) => ({ value: m, label: m }))}
-                      onChange={(v?: string) => patch(e.id, { market: v })}
-                    />
-                  </label>
                   <label className="cca-12">
                     <span className="as-label">
                       Finding<span className="as-req"> *</span>
                     </span>
                     <Input
                       status={worked && findingMissing ? 'error' : undefined}
-                      placeholder="What this assessment is about, e.g. rising irritation complaints, Vietnam, 3-month review"
+                      placeholder="What this finding is, e.g. rising irritation complaints, 3-month review"
                       value={e.finding}
                       onChange={(ev) => patch(e.id, { finding: ev.target.value })}
+                    />
+                  </label>
+                  <label className="cca-4">
+                    <span className="as-label">
+                      Source / category<span className="as-req"> *</span>
+                    </span>
+                    <Select
+                      style={{ width: '100%' }}
+                      status={worked && !(e.category ?? '').trim() ? 'error' : undefined}
+                      placeholder="What kind of finding"
+                      value={e.category || undefined}
+                      options={POST_MARKET_FINDING_CATEGORIES.map((c) => ({ value: c, label: c }))}
+                      onChange={(v?: string) => patch(e.id, { category: v })}
+                    />
+                  </label>
+                  <label className="cca-4">
+                    <span className="as-label">Date identified</span>
+                    <DatePicker
+                      style={{ width: '100%' }}
+                      value={e.dateIdentified ? dayjs(e.dateIdentified) : null}
+                      onChange={(d) => patch(e.id, { dateIdentified: d ? d.format('YYYY-MM-DD') : undefined })}
+                    />
+                  </label>
+                  <label className="cca-4">
+                    <span className="as-label">Severity / priority</span>
+                    <Select
+                      style={{ width: '100%' }}
+                      allowClear
+                      placeholder="Not rated"
+                      value={e.severity || undefined}
+                      options={RISK_LEVELS.map((l) => ({ value: l, label: l }))}
+                      onChange={(v?: string) => patch(e.id, { severity: v })}
+                    />
+                  </label>
+                  <label className="cca-4">
+                    <span className="as-label">
+                      Affected market(s)<span className="as-req"> *</span>
+                    </span>
+                    <Select
+                      mode="multiple"
+                      style={{ width: '100%' }}
+                      status={worked && assessmentMarkets(e).length === 0 && project.identity.markets.length > 0 ? 'error' : undefined}
+                      placeholder="One finding may affect several"
+                      value={assessmentMarkets(e)}
+                      options={project.identity.markets.map((m) => ({ value: m, label: m }))}
+                      onChange={(v: string[]) => patch(e.id, { markets: v.join(', ') })}
+                    />
+                  </label>
+                  <label className="cca-4">
+                    <span className="as-label">
+                      Review cycle{cycles.length > 0 && <span className="as-req"> *</span>}
+                    </span>
+                    <Select
+                      style={{ width: '100%' }}
+                      allowClear
+                      showSearch={{ optionFilterProp: 'label' }}
+                      popupMatchSelectWidth={false}
+                      status={worked && cycles.length > 0 && !(e.reviewCycle ?? '').trim() ? 'error' : undefined}
+                      placeholder={cycles.length === 0 ? 'No market has launched yet' : 'The review it belongs to'}
+                      notFoundContent="No review cycle yet"
+                      value={e.reviewCycle || undefined}
+                      options={cycles.map((c) => ({ value: c.key, label: c.label }))}
+                      onChange={(v?: string) => patch(e.id, { reviewCycle: v })}
+                    />
+                  </label>
+                  <label className="cca-4">
+                    <span className="as-label">Affected SKU / formula / batch</span>
+                    <Input
+                      placeholder="e.g. SKU, formula version or batch number"
+                      value={e.affected}
+                      onChange={(ev) => patch(e.id, { affected: ev.target.value })}
+                    />
+                  </label>
+                  <label className="cca-4">
+                    <span className="as-label">Source record link</span>
+                    <Input
+                      placeholder="complaint, report or request"
+                      value={e.sourceRecord}
+                      onChange={(ev) => patch(e.id, { sourceRecord: ev.target.value })}
+                    />
+                  </label>
+                  <label className="cca-4">
+                    <span className="as-label">Disposition</span>
+                    <Input
+                      placeholder="What was done about it"
+                      value={e.disposition}
+                      onChange={(ev) => patch(e.id, { disposition: ev.target.value })}
                     />
                   </label>
 
@@ -187,20 +257,43 @@ export default function ChangeControlAssessments({ project }: { project: Project
                     <span className="cca-hint">{ANSWER_HINT[answer] ?? ANSWER_HINT['']}</span>
                   </div>
 
+                  <label className="cca-12">
+                    <span className="as-label">
+                      Linked Change Control record{answer === 'Yes' && <span className="as-req"> *</span>}
+                    </span>
+                    <Select
+                      style={{ width: '100%' }}
+                      allowClear
+                      showSearch={{ optionFilterProp: 'label' }}
+                      popupMatchSelectWidth={false}
+                      status={worked && answer === 'Yes' && !e.linkedRecordId ? 'error' : undefined}
+                      placeholder={project.changes.length === 0 ? 'No record on Change Control & Communication yet' : 'Choose from Change Control & Communication'}
+                      notFoundContent="No record yet — open one on Change Control & Communication first"
+                      value={e.linkedRecordId || undefined}
+                      options={project.changes.map((c) => ({
+                        value: c.changeId,
+                        label: `${c.changeId} — ${c.trigger || c.affectedArea || 'change'} · ${c.status}`,
+                      }))}
+                      onChange={(v?: string) => patch(e.id, v ? { linkedRecordId: v, answer: 'Yes' } : { linkedRecordId: undefined })}
+                    />
+                  </label>
                   <label className="cca-4">
                     <span className="as-label">
-                      Reviewer{answer === 'No' && <span className="as-req"> *</span>}
+                      Reviewer{answer !== '' && <span className="as-req"> *</span>}
                     </span>
                     <SelfAttestField
-                      status={worked && answer === 'No' && !(e.reviewer ?? '').trim() ? 'error' : undefined}
+                      status={worked && answer !== '' && !(e.reviewer ?? '').trim() ? 'error' : undefined}
                       value={e.reviewer}
                       onChange={(v) => patch(e.id, { reviewer: v })}
                     />
                   </label>
                   <label className="cca-4">
-                    <span className="as-label">Review date</span>
+                    <span className="as-label">
+                      Review date{answer !== '' && <span className="as-req"> *</span>}
+                    </span>
                     <DatePicker
                       style={{ width: '100%' }}
+                      status={worked && answer !== '' && !e.reviewDate ? 'error' : undefined}
                       value={e.reviewDate ? dayjs(e.reviewDate) : null}
                       onChange={(d) => patch(e.id, { reviewDate: d ? d.format('YYYY-MM-DD') : undefined })}
                     />
@@ -211,12 +304,12 @@ export default function ChangeControlAssessments({ project }: { project: Project
                   </label>
                   <label className="cca-12">
                     <span className="as-label">
-                      Rationale{answer === 'No' && <span className="as-req"> *</span>}
+                      Rationale{answer !== '' && <span className="as-req"> *</span>}
                     </span>
                     <Input.TextArea
                       autoSize={{ minRows: 2, maxRows: 5 }}
-                      status={worked && answer === 'No' && !(e.rationale ?? '').trim() ? 'error' : undefined}
-                      placeholder={answer === 'No' ? 'Why no change control is needed' : 'Optional'}
+                      status={worked && answer !== '' && !(e.rationale ?? '').trim() ? 'error' : undefined}
+                      placeholder={answer === 'No' ? 'Why no change control is needed' : answer === 'Pending assessment' ? 'What is awaited' : answer === 'Yes' ? 'Why a change control is needed' : 'Required once answered'}
                       value={e.rationale}
                       onChange={(ev) => patch(e.id, { rationale: ev.target.value })}
                     />

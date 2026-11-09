@@ -214,6 +214,44 @@ export function overdueReviews(
     .filter((m) => m.dueDate <= opts.asOf && !done.has(`${m.market}|${m.milestone}`));
 }
 
+// The words for a milestone, for every screen that names a review cycle.
+const MILESTONE_LABELS: Record<string, string> = {
+  '1m': 'One month (enhanced surveillance)',
+  '3m': 'Three months (first standard review)',
+  '12m': 'Twelve months (full post-market review)',
+  signal: 'Signal-triggered review',
+};
+export function reviewMilestoneLabel(milestone: string): string {
+  if (MILESTONE_LABELS[milestone]) return MILESTONE_LABELS[milestone];
+  const annual = /^annual-(\d+)$/.exec(milestone);
+  if (annual) return `Annual review ${annual[1]}`;
+  return milestone;
+}
+
+// Every review cycle a post-market finding can belong to (Round 5 question 2(a): "linked to the review cycle"): each milestone the
+// schedule generates for the markets that have launched, plus any review already recorded (a signal review exists only once recorded).
+// The key is the same `market|milestone` the rest of this file matches reviews on.
+export function reviewCycleOptions(
+  project: ProjectData,
+  opts: { enhanced: boolean; asOf: string; profiles?: readonly MarketProfile[] },
+): { key: string; label: string }[] {
+  const keys = new Map<string, string>();
+  for (const track of reviewTracksByMarket(project)) {
+    for (const m of reviewMilestonesFor(track, {
+      enhanced: opts.enhanced,
+      asOf: opts.asOf,
+      intervalOverrideMonths: opts.profiles?.find((p) => p.market === track.market)?.reviewIntervalMonths,
+    })) {
+      keys.set(`${m.market}|${m.milestone}`, `${m.market} — ${reviewMilestoneLabel(m.milestone)}`);
+    }
+  }
+  for (const r of project.postLaunchReviews) {
+    const key = `${r.market}|${r.milestone}`;
+    if (!keys.has(key)) keys.set(key, `${r.market} — ${reviewMilestoneLabel(r.milestone)}`);
+  }
+  return [...keys].map(([key, label]) => ({ key, label }));
+}
+
 // Reviews recorded but not finished — used by the UI to show what is in progress
 // without treating it as done.
 export function openReviews(project: ProjectData): PostLaunchReview[] {

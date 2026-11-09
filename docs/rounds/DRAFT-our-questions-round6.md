@@ -207,3 +207,30 @@ In answer 1(d) you said that a passed gate keeps the list version it used; that 
 **(d)** Should a project that has not yet passed any gate also receive an assessment? We left it out because its checks already read the current list.
 
 **(e)** An impact that needs rework is concluded by naming a Change Control record. Should concluding also reopen the affected gates, or is that for the people with authority to decide, as now?
+
+## Question 7 — How should the fields of a post-market finding be filled and which are mandatory?
+
+*Where in the application:* **Phase 4**, **Gate 12** tab, block "Change Control required for the post-market finding?".
+
+In answer 2 you listed what each finding carries: a generated Finding ID, source/category, source record link, date identified, affected SKU/formula/batch and market(s), review-cycle ID, severity/priority and disposition, and you said Yes, No and Pending each carry a reviewer, a date and a rationale. All of it is built. You did not say which fields are mandatory or what values some of them take, so we read it as follows:
+
+- **Source / category:** the six kinds in your answer 2(b); mandatory, since that is what makes an issue a finding.
+- **Affected market(s):** several may be chosen; mandatory.
+- **Review cycle:** chosen from the project's post-launch review schedule (for example "Vietnam, three months") and the reviews already recorded; mandatory once the project has any review cycle. Until a market has launched there is none, and none is asked for.
+- **Severity / priority:** the same Low, Medium, High, Critical scale used elsewhere; optional.
+- **Disposition:** free text, optional, because you did not give the values.
+- **Affected SKU / formula / batch:** one text box.
+- **Source record link** and **date identified:** optional.
+- **Pending** also needs a reviewer, a date and a rationale (what is awaited), as you wrote; an entry with no answer yet asks for nothing.
+
+*One thing is not built yet:* you said unrelated markets may continue where their own requirements are met. Today a Pending finding in one market holds the Change-control item at Gate 12 for every market. A review that a Pending finding belongs to cannot be closed, but the other markets are not yet released.
+
+**(a)** Does disposition have a list of values? If so, which?
+
+**(b)** Should a finding in a market that has not launched yet be tied to a review cycle, and if so to which?
+
+**(c)** Is the split between mandatory and optional fields above right?
+
+**(d)** Is the shared Low / Medium / High / Critical scale right for severity / priority?
+
+**(e)** Should the affected SKU, formula and batch be three separate boxes?

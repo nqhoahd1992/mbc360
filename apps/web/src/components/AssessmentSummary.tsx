@@ -1,82 +1,17 @@
 import { RightOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import type { ProjectData } from '@mbc360/shared/types';
-import { familyUseAgeGroupList } from '@mbc360/shared/types';
 import { GATES } from '@mbc360/shared/config/gates';
-import { ASSESSMENT_HOMES, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
-import { UNSTRUCTURED_PMS_CONDITIONS } from '@mbc360/shared/types';
-import { evaluateTrigger, foreseeableContactAskedFor, personAnswer } from '@mbc360/shared/utils/gateProgress';
-import { isPendingAnswer } from '@mbc360/shared/utils/changeControlAssessments';
-import { isFamilyUseSelected } from './AssessmentBlock';
+import { ASSESSMENT_HOMES, assessmentAnchor } from '@mbc360/shared/config/assessments';
+import { assessmentStatus } from './assessmentStatus';
 import '../styles/concept.css';
 import './AssessmentsCard.css';
-
-type Tone = 'ok' | 'warn' | 'muted';
-
-// The overview's one-line-per-assessment summary (2026-10-03). The answers are
-// recorded on their gates' tabs (AssessmentBlock); this only says where each
-// stands and links there. "Waiting" is the engine's own `notAssessed` state, so
-// what is amber here is exactly what blocks a gate.
-function status(project: ProjectData, key: AssessmentKey): { text: string; tone: Tone } {
-  const a = project.assessments;
-  const v = (s?: string) => s?.trim() ?? '';
-  const home = ASSESSMENT_HOMES.find((h) => h.key === key)!;
-  const waiting = evaluateTrigger(project, home.trigger) === 'notAssessed';
-  switch (key) {
-    case 'foreseeableContact': {
-      // Asked only while no maternal or infant user is ticked; otherwise the ticks themselves answer it.
-      if (!foreseeableContactAskedFor(project)) return { text: 'Not asked — a maternal or infant user is ticked', tone: 'ok' };
-      if (!v(a.foreseeableContactRationale)) return { text: 'Reason required', tone: 'warn' };
-      return v(a.foreseeableContactConfirmedBy)
-        ? { text: `No foreseeable contact — confirmed by ${v(a.foreseeableContactConfirmedBy)}`, tone: 'ok' }
-        : { text: 'Reason recorded — not yet confirmed', tone: 'warn' };
-    }
-    case 'pmsUnstructured': {
-      const states = UNSTRUCTURED_PMS_CONDITIONS.map((c) => personAnswer(a[c.answer], a[c.rationale], a[c.confirmer]));
-      if (states.includes('yes')) return { text: 'Enhanced surveillance applies', tone: 'ok' };
-      const answered = states.filter((s) => s === 'no').length;
-      return answered === states.length
-        ? { text: 'None apply', tone: 'ok' }
-        : { text: `${answered} of ${states.length} answered`, tone: 'warn' };
-    }
-    case 'familyUse': {
-      if (!isFamilyUseSelected(project)) return { text: 'Not asked — Family use is not a target user', tone: 'muted' };
-      const groups = familyUseAgeGroupList(a);
-      return groups.length ? { text: groups.join(', '), tone: 'ok' } : { text: 'Age groups not yet confirmed', tone: 'warn' };
-    }
-    case 'administrativeOnly': {
-      const ans = v(a.administrativeOnly);
-      if (!ans) return { text: 'Not recorded', tone: 'muted' };
-      if (ans === 'Yes' && !v(a.administrativeOnlyRationale)) return { text: 'Yes — reason required', tone: 'warn' };
-      if (ans === 'Yes' && !v(a.administrativeOnlyConfirmedBy)) return { text: 'Yes — not yet confirmed', tone: 'warn' };
-      return { text: ans === 'Yes' ? `Yes — confirmed by ${v(a.administrativeOnlyConfirmedBy)}` : ans, tone: 'ok' };
-    }
-    case 'humanStudy': {
-      const started = (project.registers['studyProtocolSetup'] ?? []).some((r) => String(r.plannedValue ?? '').trim() !== '');
-      if (started) return { text: 'Yes — a Study Protocol has been started', tone: 'ok' };
-      return waiting ? { text: v(a.humanStudyPlanned) || 'Not yet assessed', tone: 'warn' } : { text: v(a.humanStudyPlanned), tone: 'ok' };
-    }
-    case 'scaleUp':
-      return waiting
-        ? { text: v(a.scaleUpRiskIdentified) || 'Not yet assessed', tone: 'warn' }
-        : { text: v(a.scaleUpRiskIdentified) || 'Counts as identified (Major formula change)', tone: 'ok' };
-    case 'changeControl': {
-      const list = project.changeControlAssessments ?? [];
-      if (waiting) {
-        const pending = list.filter((e) => isPendingAnswer(e)).length;
-        return { text: list.length === 0 ? 'Not yet assessed' : `${pending} of ${list.length} assessment(s) still pending`, tone: 'warn' };
-      }
-      const yes = list.filter((e) => (e.answer ?? '').trim() === 'Yes').length;
-      return { text: list.length === 0 ? 'Counts as Yes (a change control is open)' : `${list.length} assessment(s) — ${yes} Yes`, tone: 'ok' };
-    }
-  }
-}
 
 export default function AssessmentSummary({ project }: { project: ProjectData }) {
   const id = project.identity.id;
   const rows = ASSESSMENT_HOMES.map((home) => {
     const gate = GATES.find((g) => g.id === home.gateId)!;
-    return { home, gate, ...status(project, home.key) };
+    return { home, gate, ...assessmentStatus(project, home.key) };
   });
   const waiting = rows.filter((r) => r.tone === 'warn').length;
   return (

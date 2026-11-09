@@ -1,24 +1,33 @@
-/* The acknowledgement of a generated "not applicable" sits in the block it is about: a quiet strip that is amber while
-   somebody still has to acknowledge it and green once somebody has. Tokens come from styles/concept.css (--c-*). */
+/* The acknowledgement of a generated "not applicable" sits in the block it is about. A white card with a bar on its left edge
+   for the state (amber while somebody still has to acknowledge it, green once somebody has) — a full yellow fill on every one
+   made routine acknowledgements read as alarms. The state is also said in words, in the tag at the top right.
+   Tokens come from styles/concept.css (--c-*). */
 .gna { display: grid; gap: 8px; margin: 0 0 8px; }
-.gna-item { padding: 10px 12px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface-2); }
-.gna-wait { border-color: var(--c-warn-line); background: var(--c-warn-bg); }
-.gna-done { border-color: var(--c-ok-line); background: var(--c-ok-bg); }
-.gna-head { display: flex; align-items: flex-start; gap: 8px; }
-.gna-icon { margin-top: 2px; font-size: 14px; }
-.gna-wait .gna-icon { color: var(--c-warn); }
-.gna-done .gna-icon { color: var(--c-ok-dot); }
-.gna-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; font-size: 14px; color: var(--c-text); }
+.gna-item { display: grid; gap: 6px; padding: 12px 16px; border: 1px solid var(--c-border-2); border-left: 3px solid var(--c-warn-dot); border-radius: 8px; background: var(--c-surface); }
+.gna-done { border-left-color: var(--c-ok-dot); }
+.gna-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.gna-title { display: grid; gap: 2px; min-width: 0; font-size: 14px; color: var(--c-text); }
+.gna-kicker { color: var(--c-text-3); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.gna-sub { margin: -2px 0 0; color: var(--c-text-3); font-size: 12px; }
 .gna-extra { color: var(--c-text-2); font-size: 13px; }
-.gna-reason { margin: 4px 0 0 22px; color: var(--c-text-2); font-size: 13px; text-wrap: pretty; }
+.gna-reason { margin: 0; max-width: 860px; color: var(--c-text-2); font-size: 13px; text-wrap: pretty; }
 .gna-lock { color: var(--c-text); }
-.gna-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 8px 0 0 22px; }
-.gna-status { color: var(--c-text-2); font-size: 13px; }
+.gna-status { color: var(--c-text-2); font-size: 13px; text-wrap: pretty; }
+.gna-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.gna-foot:empty { display: none; }
 .gna-toggle { padding: 0; height: auto; font-size: 13px; }
-.gna-history { margin: 6px 0 0 22px; padding-left: 18px; color: var(--c-text-2); font-size: 13px; }
-.gna-slots { list-style: none; margin: 8px 0 0 22px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.gna-slot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 13px; }
-.gna-covers { margin: 0 0 0 22px; }
+.gna-history { margin: 0; padding-left: 18px; color: var(--c-text-2); font-size: 13px; }
+
+/* One line per function that has to acknowledge: the function on the left, its state or its button on the right. */
+.gna-slots { list-style: none; margin: 2px 0 0; padding: 8px 0 0; border-top: 1px solid var(--c-border-2); display: flex; flex-direction: column; gap: 8px; }
+.gna-slot { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px 16px; align-items: center; font-size: 13px; }
+.gna-fn { color: var(--c-text); font-weight: 500; }
+.gna-act { justify-self: start; }
+@media (min-width: 640px) {
+  .gna-slot { grid-template-columns: 220px minmax(0, 1fr); }
+}
+
+.gna-covers { margin: 0; }
 .gna-covers .gna-reason { margin-left: 0; }
 .gna-covers ul { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .gna-covers li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; line-height: 20px; }

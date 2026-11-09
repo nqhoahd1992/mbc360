@@ -207,3 +207,30 @@ Dự án không tick đối tượng maternal hay infant nào và chưa viết l
 **(d)** Dự án chưa passed gate nào có cũng nhận đánh giá không? Chúng tôi bỏ qua vì các check của nó đã đọc danh sách hiện hành.
 
 **(e)** Một tác động cần làm lại được kết luận bằng cách nêu Change Control record. Kết luận có nên mở lại các gate bị ảnh hưởng, hay việc đó để người có thẩm quyền quyết như hiện nay?
+
+## Câu 7 — Các trường của một phát hiện hậu mãi nên điền thế nào và trường nào bắt buộc?
+
+*Ở đâu trong ứng dụng:* tab **Gate 12 của Phase 4**, khối "Change Control required for the post-market finding?".
+
+Ở đáp án 2 các bạn liệt kê mỗi phát hiện mang theo gì: Finding ID tự sinh, source/category, source record link, date identified, affected SKU/formula/batch và market(s), review-cycle ID, severity/priority và disposition; và Yes, No, Pending đều phải có reviewer, ngày và lý do. Tất cả đã được xây. Các bạn chưa nói trường nào bắt buộc hay một số trường nhận giá trị gì, nên chúng tôi đọc như sau:
+
+- **Source / category:** sáu loại ở đáp án 2(b); bắt buộc, vì đó là thứ làm một vấn đề thành phát hiện.
+- **Affected market(s):** chọn được nhiều; bắt buộc.
+- **Review cycle:** chọn từ lịch review hậu mãi của dự án (ví dụ "Vietnam, ba tháng") và các review đã ghi; bắt buộc khi dự án có chu kỳ review nào. Chưa thị trường nào launch thì chưa có chu kỳ và chưa đòi.
+- **Severity / priority:** cùng thang Low, Medium, High, Critical dùng ở nơi khác; tùy chọn.
+- **Disposition:** chữ tự do, tùy chọn, vì các bạn chưa cho các giá trị.
+- **Affected SKU / formula / batch:** một ô chữ.
+- **Source record link** và **date identified:** tùy chọn.
+- **Pending** cũng cần reviewer, ngày và lý do (đang chờ gì), đúng như các bạn viết; một mục chưa chọn câu trả lời thì chưa đòi gì.
+
+*Một điều chưa xây:* các bạn nói các thị trường không liên quan được tiếp tục khi đã đủ yêu cầu của riêng nó. Hiện nay một phát hiện Pending ở một thị trường giữ mục Change-control ở Gate 12 cho mọi thị trường. Review mà phát hiện Pending thuộc về thì không đóng được, nhưng các thị trường khác chưa được thả ra.
+
+**(a)** Disposition có danh sách giá trị không? Nếu có thì là gì?
+
+**(b)** Phát hiện ở một thị trường chưa launch có cần gắn với chu kỳ review không, và nếu có thì với chu kỳ nào?
+
+**(c)** Cách chia trường bắt buộc và tùy chọn ở trên có đúng không?
+
+**(d)** Thang Low / Medium / High / Critical dùng chung có đúng cho severity / priority không?
+
+**(e)** Affected SKU, formula và batch có nên là ba ô riêng không?

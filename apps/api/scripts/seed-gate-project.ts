@@ -28,7 +28,8 @@ import { PHASE_CONFIGS } from '../../../packages/shared/src/config/phases';
 import { REGISTER_CONFIGS, createEmptyRegisterRow } from '../../../packages/shared/src/config/registers';
 import { REVIEW_ROLES } from '../../../packages/shared/src/config/reviewers';
 import { registerClosureRoles } from '../../../packages/shared/src/utils/registerClosures';
-import { gateReadinessChecklist, isGatePassed, isPhaseComplete, phaseCompletionChecklist, unsignedGateLanes } from '../../../packages/shared/src/utils/gateProgress';
+import { evaluateTrigger, gateReadinessChecklist, isGatePassed, isPhaseComplete, phaseCompletionChecklist, unsignedGateLanes } from '../../../packages/shared/src/utils/gateProgress';
+import { reviewCycleOptions } from '../../../packages/shared/src/utils/postLaunch';
 import { registerContentHashOf } from '../src/projects/content-hash';
 import { gateEvidenceSnapshot } from '../../../packages/shared/src/utils/gateSnapshot';
 import { gateSignOffMarkets } from '../../../packages/shared/src/config/gateSignOff';
@@ -389,7 +390,27 @@ async function answerAssessments(ctx: Ctx, gateNumber: number): Promise<void> {
 async function fixChangeAssessments(ctx: Ctx): Promise<boolean> {
   const entries = project.changeControlAssessments ?? [];
   if (entries.length > 0 && entries.every((e) => e.answer === 'Yes' || e.answer === 'No')) return false;
-  const next = [{ id: 'CCA-001', finding: `${SEED}: post-launch review`, answer: 'No', reviewer: ctx.adminName, reviewDate: today, rationale: `${SEED}: nothing found that needs a change control` }];
+  // Round 5 question 2: a finding names its category, the market(s) it affects and the review cycle it belongs to, and a review that
+  // found nothing records that as an answered No. The cycle comes from the project's own schedule, which is generated from its
+  // launch dates.
+  const cycle = reviewCycleOptions(project, {
+    enhanced: evaluateTrigger(project, 'pvPmsRequired') === 'applies',
+    asOf: today,
+    profiles: project.reference.marketProfiles,
+  })[0];
+  const next = [
+    {
+      id: 'CCA-001',
+      finding: `${SEED}: post-launch review found nothing needing a change control`,
+      category: 'Performance or packaging concern',
+      markets: cycle ? cycle.key.split('|')[0] : project.identity.markets.join(', '),
+      ...(cycle ? { reviewCycle: cycle.key } : {}),
+      answer: 'No',
+      reviewer: ctx.adminName,
+      reviewDate: today,
+      rationale: `${SEED}: nothing found that needs a change control`,
+    },
+  ];
   take(await api('PUT', `/projects/${ctx.id}/change-control-assessments`, { entries: next, expectedVersion: version }));
   return true;
 }

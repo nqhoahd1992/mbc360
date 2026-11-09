@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { ExclamationCircleOutlined, LockOutlined } from '@ant-design/icons';
 import { ConfigProvider, DatePicker, Input, Select } from 'antd';
 import dayjs from 'dayjs';
@@ -12,7 +12,9 @@ import {
   SCALE_UP_RISK_OPTIONS,
   familyUseAgeGroupList,
 } from '@mbc360/shared/types';
-import { BENCHMARK_GATE_CHECK, isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
+import { BENCHMARK_GATE_CHECK, isGateRefLocked, isGateSignedStanding, personAnswer } from '@mbc360/shared/utils/gateProgress';
+import { isFamilyUseSelected } from './assessmentStatus';
+import AssessmentStateTag from './AssessmentStateTag';
 import { ASSESSMENT_FIELDS, ASSESSMENT_HOMES, SCALE_UP_REVIEW_AREAS, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
@@ -52,7 +54,7 @@ const FIELDS: Record<AssessmentKey, readonly Field[]> = ASSESSMENT_FIELDS;
 type BlockKey = Exclude<AssessmentKey, 'changeControl' | 'foreseeableContact'>;
 const HINTS: Record<BlockKey, string> = {
   pmsUnstructured:
-    'Gate 12. These four conditions are the ones the application cannot read. Leaving any blank blocks the enhanced-surveillance item; a No needs its reason, and a Yes puts the product under enhanced surveillance.',
+    'Gate 12. Four conditions the application cannot read. A No needs its reason and the person who confirmed it; a Yes puts the product under enhanced surveillance. Any left blank blocks the enhanced-surveillance item.',
   familyUse:
     'Decides the infant pathway at Gates 2, 4, 5, 6, 7, 8-9 and 10. Family use is not a vulnerable population on its own, but leaving this unanswered blocks the pathway from being decided either way. Including Infant 0+ activates it.',
   administrativeOnly: 'Gate 03. Only a confirmed Yes exempts the project from competitor and benchmark review.',
@@ -146,10 +148,6 @@ function AssessmentRecord({ rows }: { rows: ReadRow[] }) {
       )}
     </div>
   );
-}
-
-export function isFamilyUseSelected(project: ProjectData): boolean {
-  return (project.checklists['targetUsers'] ?? []).some((i) => i.selected && i.label === 'Family use');
 }
 
 export default function AssessmentBlock({ project, which }: { project: ProjectData; which: BlockKey }) {
@@ -291,44 +289,66 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
 
   let body: ReactNode;
   switch (which) {
-    case 'pmsUnstructured':
+    case 'pmsUnstructured': {
+      // Said once at the top, so four questions read as one task with a count rather than four unrelated boxes.
+      const answered = personQuestions.filter((q) => personAnswer(draft[q.answer], draft[q.rationale], draft[q.confirmer]) !== 'open').length;
       body = (
-        <div className="as-grid">
-          {personQuestions.map((q) => (
-            <Fragment key={q.answer}>
-              {/* Changing the answer or the reason withdraws a confirmation: the person confirmed those words, not the next ones. */}
-              <FieldBox label={q.label} wide>
-                <ChoiceSelect
-                  allowClear
-                  placeholder="Not yet assessed"
-                  value={draft[q.answer] || undefined}
-                  options={[...UNSTRUCTURED_PMS_OPTIONS]}
-                  onChange={(v) => update((prev) => ({ ...prev, [q.answer]: v ?? '', [q.confirmer]: '' }))}
-                />
-              </FieldBox>
-              <FieldBox label="Reason" wide required={needsReason(q)}>
-                <Input.TextArea
-                  style={{ width: '100%' }}
-                  autoSize={{ minRows: 1, maxRows: 4 }}
-                  placeholder={isNo(q) ? 'Why? Required for No' : 'Optional'}
-                  value={draft[q.rationale]}
-                  onChange={(e) => update((prev) => ({ ...prev, [q.rationale]: e.target.value, [q.confirmer]: '' }))}
-                />
-              </FieldBox>
-              {isNo(q) && (
-                <FieldBox label="Confirmed by" wide required={needsConfirmer(q)}>
-                  <SelfAttestField
-                    disabled={!draft[q.rationale]?.trim()}
-                    value={draft[q.confirmer]}
-                    onChange={(v) => set(q.confirmer, v)}
-                  />
-                </FieldBox>
-              )}
-            </Fragment>
-          ))}
-        </div>
+        <>
+          <p className="as-q-progress">
+            {answered} of {personQuestions.length} answered
+          </p>
+          <ol className="as-q-list">
+            {personQuestions.map((q, i) => {
+              const picked = (draft[q.answer]?.trim() ?? '') !== '';
+              return (
+                <li key={q.answer} className="as-q">
+                  {/* Changing the answer or the reason withdraws a confirmation: the person confirmed those words, not the next ones. */}
+                  <div className="as-q-head">
+                    <span className="as-q-n" aria-hidden>
+                      {i + 1}
+                    </span>
+                    <span className="as-q-text">{q.label}</span>
+                    <div className="as-q-choice">
+                      <ChoiceSelect
+                        allowClear
+                        placeholder="Not yet assessed"
+                        value={draft[q.answer] || undefined}
+                        options={[...UNSTRUCTURED_PMS_OPTIONS]}
+                        onChange={(v) => update((prev) => ({ ...prev, [q.answer]: v ?? '', [q.confirmer]: '' }))}
+                      />
+                    </div>
+                  </div>
+                  {/* The reason and the confirmer only matter once there is an answer: until then they are not asked for. */}
+                  {picked && (
+                    <div className={`as-q-detail${isNo(q) ? ' as-q-detail-2' : ''}`}>
+                      <FieldBox label="Reason" required={needsReason(q)}>
+                        <Input.TextArea
+                          style={{ width: '100%' }}
+                          autoSize={{ minRows: 1, maxRows: 4 }}
+                          placeholder={isNo(q) ? 'Why? Required for No' : 'Optional'}
+                          value={draft[q.rationale]}
+                          onChange={(e) => update((prev) => ({ ...prev, [q.rationale]: e.target.value, [q.confirmer]: '' }))}
+                        />
+                      </FieldBox>
+                      {isNo(q) && (
+                        <FieldBox label="Confirmed by" required={needsConfirmer(q)}>
+                          <SelfAttestField
+                            disabled={!draft[q.rationale]?.trim()}
+                            value={draft[q.confirmer]}
+                            onChange={(v) => set(q.confirmer, v)}
+                          />
+                        </FieldBox>
+                      )}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </>
       );
       break;
+    }
     case 'humanStudy':
       body = (
         <>
@@ -363,7 +383,8 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
           </FieldBox>
           {benchmarkDoneNote}
           {adminYes && (
-            <FieldBox label="Reason" wide required={adminNeedsReason}>
+            <div className="as-wide as-q-detail as-q-detail-2 as-q-detail-flush">
+            <FieldBox label="Reason" required={adminNeedsReason}>
               <p className="as-condition">
                 Confirm that no claim, formula, market positioning, product performance, packaging function or
                 customer-facing meaning changes, and say what the change is.
@@ -378,14 +399,13 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
                 }
               />
             </FieldBox>
-          )}
-          {adminYes && (
             <FieldBox label="Confirmed by (authorised reviewer)" required={adminNeedsConfirmer}>
               <SelfAttestField
                 value={draft.administrativeOnlyConfirmedBy}
                 onChange={(v) => set('administrativeOnlyConfirmedBy', v)}
               />
             </FieldBox>
+            </div>
           )}
         </div>
       );
@@ -465,17 +485,20 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
     <section className="c-card as-card" id={assessmentAnchor(which)}>
       <div className="as-head">
         <div className="as-head-text">
-          <div className="as-kicker">Assessment</div>
+          <div className="as-kicker">Assessment · Gate {home.gateId.slice(2)}</div>
           <h2 className="as-title">{home.title}</h2>
           <p className="as-desc">{HINTS[which]}</p>
         </div>
-        {/* C9: answered at this gate; once it has passed the answer is read-only
-            (the API refuses changes too) — correcting it goes through Backtrack. */}
-        {locked && (
-          <span className="c-tag as-lock" title="Withdraw the signature, or Backtrack, to change this answer">
-            <LockOutlined /> Locked · {home.gateId}
-          </span>
-        )}
+        <div className="as-head-side">
+          <AssessmentStateTag project={project} assessmentKey={which} />
+          {/* C9: answered at this gate; once it has passed the answer is read-only
+              (the API refuses changes too) — correcting it goes through Backtrack. */}
+          {locked && (
+            <span className="c-tag as-lock" title="Withdraw the signature, or Backtrack, to change this answer">
+              <LockOutlined /> Locked
+            </span>
+          )}
+        </div>
       </div>
       {locked ? (
         <div className="as-block">

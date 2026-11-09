@@ -26,6 +26,27 @@
 .as-why { flex: 1 1 220px; min-width: 0; color: var(--c-warn); font-size: 13px; line-height: 20px; text-wrap: pretty; }
 .as-foot { display: grid; gap: 8px; padding: 0 20px 16px; }
 
+/* A list of yes/no questions (the surveillance conditions): numbered, divided by a hairline, the answer beside its question, the
+   detail underneath only once there is an answer. */
+.as-q-progress { margin: 0; color: var(--c-text-3); font-size: 13px; }
+.as-q-list { list-style: none; margin: 0; padding: 0; display: grid; }
+.as-q { display: grid; gap: 10px; padding: 14px 0; border-top: 1px solid var(--c-border-2); }
+.as-q:first-child { padding-top: 4px; border-top: 0; }
+.as-q-head { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px 12px; align-items: center; }
+.as-q-n { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--c-surface-2); color: var(--c-text-3); font-size: 12px; }
+.as-q-text { color: var(--c-text); font-size: 14px; text-wrap: pretty; }
+.as-q-choice { grid-column: 2; }
+.as-q-detail { display: grid; gap: 12px; margin-left: 34px; }
+.as-q-detail > label { display: block; min-width: 0; }
+.as-q-detail-flush { margin-left: 0; }
+@media (min-width: 768px) {
+  .as-q-head { grid-template-columns: 22px minmax(0, 1fr) auto; }
+  .as-q-choice { grid-column: auto; }
+}
+@media (min-width: 992px) {
+  .as-q-detail-2 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+}
+
 .as-kicker { color: var(--c-text-3); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
 
 /* Overview summary */
@@ -78,6 +99,8 @@
 .as-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }
 .as-head-text { min-width: 0; }
 .as-lock { flex-shrink: 0; }
+.as-head-side { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 8px; min-width: 0; }
+.as-state { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .as-lock-note { margin: 0; color: var(--c-text-3); font-size: 13px; }
 
 /* A locked answer read as a record: the answer first and large, the facts as label / value pairs. */

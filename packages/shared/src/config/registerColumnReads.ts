@@ -103,5 +103,5 @@ export const PROJECT_SLICE_READS_BY_GATE: Record<string, string[]> = {
   SG09: ['assessments', 'formulaProperties', 'formulaVersionHistory'],
   SG10: ['assessments', 'bom', 'identity', 'marketTracks'],
   SG11: ['bom', 'changes', 'identity', 'marketTracks'],
-  SG12: ['assessments', 'changes', 'identity', 'marketTracks', 'postLaunchReviews'],
+  SG12: ['assessments', 'identity', 'marketTracks', 'postLaunchReviews'],
 };

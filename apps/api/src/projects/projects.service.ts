@@ -106,7 +106,8 @@ import {
   gateSnapshotSignedPart,
 } from '@mbc360/shared/utils/gateSnapshot';
 
-import { changeControlAssessmentProblems } from '@mbc360/shared/utils/changeControlAssessments';
+import { assessmentMarkets, changeControlAssessmentProblems, isPendingAnswer } from '@mbc360/shared/utils/changeControlAssessments';
+import { reviewCycleOptions } from '@mbc360/shared/utils/postLaunch';
 import { changeTriggerAvailability } from '@mbc360/shared/utils/changeAccess';
 import { phaseSignContent } from '@mbc360/shared/utils/phaseSignContent';
 import { registerClosureContent, registerRowSignContent } from '@mbc360/shared/utils/registerClosureContent';
@@ -145,6 +146,7 @@ import {
   voidedAcknowledgementsMessage,
   requirementSectionLockedAsNotApplicable,
   isGateRefLocked,
+  evaluateTrigger,
   phaseProgress,
   isGateUnlocked,
   phaseCompletionChecklist,
@@ -4137,7 +4139,14 @@ export class ProjectsService {
       const clean = entries.map((e) => ({
         id: typeof e.id === 'string' ? e.id : '',
         finding: (e.finding ?? '').trim(),
-        market: (e.market ?? '').trim() || undefined,
+        category: (e.category ?? '').trim() || undefined,
+        sourceRecord: (e.sourceRecord ?? '').trim() || undefined,
+        dateIdentified: (e.dateIdentified ?? '').trim() || undefined,
+        affected: (e.affected ?? '').trim() || undefined,
+        markets: assessmentMarkets(e).join(', ') || undefined,
+        reviewCycle: (e.reviewCycle ?? '').trim() || undefined,
+        severity: (e.severity ?? '').trim() || undefined,
+        disposition: (e.disposition ?? '').trim() || undefined,
         answer: (e.answer ?? '').trim(),
         linkedRecordId: (e.linkedRecordId ?? '').trim() || undefined,
         reviewer: (e.reviewer ?? '').trim() || undefined,
@@ -4148,6 +4157,11 @@ export class ProjectsService {
       const problems = changeControlAssessmentProblems(clean, {
         changeIds: project.changes.map((c) => c.changeId),
         markets: project.identity.markets,
+        reviewCycles: reviewCycleOptions(project, {
+          enhanced: evaluateTrigger(project, 'pvPmsRequired') === 'applies',
+          asOf: new Date().toISOString().slice(0, 10),
+          profiles: project.reference.marketProfiles,
+        }).map((o) => o.key),
       });
       if (problems.length > 0) throw new BadRequestException(problems.join('; '));
 
@@ -4163,11 +4177,27 @@ export class ProjectsService {
       }
       const added: string[] = [];
       const changed: string[] = [];
+      // The Finding ID is generated here and never taken from the client (Round 5 question 2(c)): the next number after the highest
+      // one this project has used, so removing a finding never frees its ID for another.
+      const usedNumbers = project.changeControlAssessments
+        .map((a) => Number(/^FND-(\d+)$/.exec(a.findingId ?? '')?.[1] ?? 0))
+        .filter((n) => n > 0);
+      let nextNumber = (usedNumbers.length ? Math.max(...usedNumbers) : 0) + 1;
       for (const [index, e] of clean.entries()) {
+        const existing = before.get(e.id);
+        const findingId = existing?.findingId || `FND-${String(nextNumber++).padStart(3, '0')}`;
         const data = {
           sortOrder: index,
+          findingId,
           finding: e.finding,
-          market: e.market ?? null,
+          category: e.category ?? null,
+          sourceRecord: e.sourceRecord ?? null,
+          dateIdentified: e.dateIdentified ?? null,
+          affected: e.affected ?? null,
+          markets: e.markets ?? null,
+          reviewCycle: e.reviewCycle ?? null,
+          severity: e.severity ?? null,
+          disposition: e.disposition ?? null,
           answer: e.answer,
           linkedRecordId: e.linkedRecordId ?? null,
           reviewer: e.reviewer ?? null,
@@ -4178,7 +4208,7 @@ export class ProjectsService {
         if (before.has(e.id)) {
           await tx.changeControlAssessment.update({ where: { id: e.id }, data });
           const old = before.get(e.id)!;
-          if (JSON.stringify({ ...old, id: undefined }) !== JSON.stringify({ ...e, id: undefined })) changed.push(e.finding);
+          if (JSON.stringify({ ...old, id: undefined, findingId: undefined }) !== JSON.stringify({ ...e, id: undefined })) changed.push(e.finding);
         } else {
           await tx.changeControlAssessment.create({ data: { projectId: id, ...data } });
           added.push(e.finding);
@@ -4766,6 +4796,18 @@ export class ProjectsService {
         }
         if (r.completedDate?.trim() && !r.reviewer?.trim()) {
           throw new BadRequestException(`${r.market} ${r.milestone}: a reviewer is required to complete a review`);
+        }
+        // Round 5 question 2(c): a Pending finding blocks "an unrestricted close-out of the affected review". Unrelated reviews (other
+        // markets or milestones) are not held by it.
+        if (r.completedDate?.trim()) {
+          const holding = project.changeControlAssessments.filter(
+            (a) => a.reviewCycle === `${r.market}|${r.milestone}` && isPendingAnswer(a),
+          );
+          if (holding.length > 0) {
+            throw new BadRequestException(
+              `${r.market} ${r.milestone}: cannot be closed while ${holding.map((a) => a.findingId || a.finding).join(', ')} is still pending its Change Control assessment`,
+            );
+          }
         }
         const data = {
           dueDate: new Date(r.dueDate),

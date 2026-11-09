@@ -51,11 +51,14 @@
    Flush with the tile grid; a warm bar says it still needs an answer, and goes neutral once it has one. */
 .cl-contact { display: grid; gap: 10px; padding: 12px 16px; border: 1px solid var(--c-border); border-left: 3px solid var(--c-border); border-radius: 8px; background: var(--c-surface-2); }
 .cl-contact-open { border-left-color: var(--c-warn-dot); }
-.cl-contact-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cl-contact-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 6px 12px; }
+.cl-contact-text { display: grid; gap: 2px; min-width: 0; }
 .cl-contact-title { font-size: 14px; font-weight: 600; }
 .cl-contact-need { color: var(--c-warn); background: var(--c-warn-bg); border-color: var(--c-warn-line); }
 .cl-contact-reason { display: grid; gap: 6px; min-width: 0; }
-.cl-contact-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.cl-contact-fields { display: grid; gap: 12px; }
+.cl-contact-confirm { display: grid; gap: 6px; align-content: start; min-width: 0; }
+@media (min-width: 992px) { .cl-contact-fields { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
 .cl-contact .cl-field-label { margin: 0; }
 .cl-req { color: var(--c-bad); }
 .cl-save-why { margin-right: auto; color: var(--c-warn); font-size: 12px; }

@@ -350,18 +350,18 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     // answered Yes. `Pending assessment` — and no answer at all — is the third
     // state, which blocks rather than passing.
     case 'openChangeControl': {
-      // One assessment per post-market finding (2026-10-13). A finding still Pending — or never
-      // answered — dominates everything else: "must block closure of the post-market finding"
-      // cannot be satisfied by some OTHER finding having a record open. Then an open record, or a
-      // Yes, makes the item apply. An empty list is not "nothing to assess" — a review that found
-      // nothing records one entry answered No — so it blocks too [ASSUMPTION: R5-Q11].
+      // One assessment per post-market finding (Round 5 question 2(a), 2026-11-05). A finding still Pending — or never
+      // answered — dominates everything else: "must block closure of the post-market finding" cannot be satisfied by some OTHER
+      // finding having a record open. An empty list is not "nothing to assess" — a review that found nothing records one entry
+      // answered No — and "an existing open CHG record does not waive assessment of a new finding", so an open record does not
+      // stand in for that entry either. Only then does an open record, or a Yes, make the item apply.
       const entries = project.changeControlAssessments ?? [];
-      if (entries.some((e) => isPendingAnswer(e))) return 'notAssessed';
+      if (entries.length === 0 || entries.some((e) => isPendingAnswer(e))) return 'notAssessed';
       const recordOpen = project.changes.some(
         (c) => (!c.projectId || c.projectId === project.identity.id) && isChangeOpen(c.status),
       );
       if (recordOpen || entries.some((e) => (e.answer ?? '').trim() === 'Yes')) return 'applies';
-      return entries.length === 0 ? 'notAssessed' : 'doesNotApply';
+      return 'doesNotApply';
     }
 
     // A3, Gate 12: three of seven limbs. The Post-Market Sources checklist carries

@@ -757,23 +757,32 @@ export async function run(base: string, db: Client): Promise<number> {
   const putAssessments = async (entries: unknown[]) =>
     api('admin', 'PUT', `/projects/${PROJECT}/change-control-assessments`, { entries, expectedVersion: await version() });
   const mk = (await project()).project.identity.markets[0] as string;
+  const today = new Date().toISOString().slice(0, 10);
   const noEntry = (finding: string, over: Record<string, unknown> = {}) => ({
-    id: '', finding, answer: 'No', reviewer: me, rationale: 'within the expected range', ...over,
+    id: '', finding, category: 'Complaint trend', markets: mk, answer: 'No', reviewer: me, reviewDate: today,
+    rationale: 'within the expected range', ...over,
   });
   cr = await putAssessments([noEntry('Rising complaints', { answer: 'Yes', reviewer: undefined, rationale: undefined })]);
   t('Yes without a linked record is refused (400)', cr.status === 400 && /Yes needs a linked/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
   cr = await putAssessments([noEntry('Rising complaints', { rationale: undefined })]);
-  t('No without a rationale is refused (400)', cr.status === 400 && /No needs both/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  t('No without a rationale is refused (400)', cr.status === 400 && /No needs the reviewer, the review date and the rationale/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putAssessments([noEntry('Rising complaints', { reviewDate: undefined })]);
+  t('...and so is a No without a review date (Round 5 question 2(c))', cr.status === 400, `${cr.status} ${short(cr.json)}`);
+  cr = await putAssessments([noEntry('Rising complaints', { category: undefined })]);
+  t('a finding with no source / category is refused (400)', cr.status === 400 && /category is required/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putAssessments([noEntry('Rising complaints', { markets: undefined })]);
+  t('a finding that names no market is refused (400)', cr.status === 400 && /choose the market/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
   cr = await putAssessments([noEntry('Rising complaints', { answer: 'Yes', linkedRecordId: 'CHG-999', reviewer: undefined, rationale: undefined })]);
   t('a record that is not on this project is refused (400)', cr.status === 400 && /not a change record of this project/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
   cr = await putAssessments([noEntry('Rising complaints', { reviewer: 'Somebody Else' })]);
   t('a reviewer that is not the person saving is refused (400)', cr.status === 400 && /can only be set to yourself/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
   cr = await putAssessments([noEntry('')]);
   t('an entry that does not say which finding it is about is refused (400)', cr.status === 400, `${cr.status} ${short(cr.json)}`);
-  cr = await putAssessments([noEntry('Rising complaints'), noEntry('Eye irritation, Singapore', { answer: 'Pending assessment', reviewer: undefined, rationale: undefined, market: mk })]);
+  cr = await putAssessments([noEntry('Rising complaints', { findingId: 'FND-099' }), noEntry('Eye irritation, Singapore', { answer: 'Pending assessment' })]);
   t('two findings are recorded as two entries', cr.status < 300 && (cr.json?.project?.changeControlAssessments ?? []).length === 2, `${cr.status} ${short(cr.json)}`);
   let list: any[] = cr.json?.project?.changeControlAssessments ?? [];
-  t('...in the order given, each with its own id and its market', list[0]?.finding === 'Rising complaints' && list[1]?.market === mk && !!list[0]?.id && list[0].id !== list[1]?.id, short(list));
+  t('...in the order given, each with its own id and its market', list[0]?.finding === 'Rising complaints' && list[1]?.markets === mk && !!list[0]?.id && list[0].id !== list[1]?.id, short(list));
+  t('...each with a generated Finding ID, whatever the client sent', list[0]?.findingId === 'FND-001' && list[1]?.findingId === 'FND-002', short(list.map((x) => x.findingId)));
   t('...and the Pending one holds Gate 12 on the Change-control item', gp.evaluateTrigger(cr.json.project, 'openChangeControl') === 'notAssessed');
   const keptId = list[0].id;
   cr = await putAssessments([{ ...list[0], finding: 'Rising irritation complaints (renamed)' }]);
@@ -784,6 +793,17 @@ export async function run(base: string, db: Client): Promise<number> {
     await db.query(`SELECT after FROM audit_events WHERE "projectId" = $1 AND action = 'change_control_assessments.updated' ORDER BY "occurredAt" DESC, id DESC LIMIT 1`, [PROJECT])
   ).rows[0]?.after;
   t('the audit event names what was removed, so nothing disappears silently', Array.isArray(ccAudit?.removed) && ccAudit.removed.length === 1 && /Eye irritation/.test(ccAudit.removed[0].finding), short(ccAudit));
+  // A Pending finding holds the close-out of the review it belongs to (answer 2(c)); a review elsewhere is not held by it.
+  const putReviews = async (reviews: unknown[]) =>
+    api('admin', 'PUT', `/projects/${PROJECT}/post-launch-reviews`, { reviews, expectedVersion: await version() });
+  cr = await putReviews([{ id: '', market: mk, milestone: 'signal', dueDate: today }]);
+  t('a review is recorded (a signal review exists only once recorded)', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+  cr = await putAssessments([{ ...list[0], reviewCycle: `${mk}|signal`, answer: 'Pending assessment' }]);
+  t('a finding is linked to that review cycle', cr.status < 300 && cr.json?.project?.changeControlAssessments?.[0]?.reviewCycle === `${mk}|signal`, `${cr.status} ${short(cr.json)}`);
+  cr = await putReviews([{ id: '', market: mk, milestone: 'signal', dueDate: today, completedDate: today, reviewer: me, outcome: 'No action' }]);
+  t('the review cannot be closed while its finding is Pending (400, names the finding)', cr.status === 400 && /FND-001/.test(String(cr.json?.message)) && /still pending/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putAssessments([{ ...list[0], reviewCycle: `${mk}|signal`, answer: 'No' }]);
+  t('...and the finding can then be answered No (the run is left with a plain No)', cr.status < 300, `${cr.status} ${short(cr.json)}`);
   cr = await putAssessments([]);
   t('an empty list is accepted as a save, and then blocks the gate again (not "nothing to assess")', cr.status < 300 && gp.evaluateTrigger(cr.json.project, 'openChangeControl') === 'notAssessed', `${cr.status} ${short(cr.json)}`);
 

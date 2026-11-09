@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { App, Button } from 'antd';
-import { CheckCircleFilled, ClockCircleOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
+import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { generatedNaEntries, isGatePassed, type GeneratedNaEntry } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
@@ -149,18 +149,25 @@ export default function GeneratedNaAcks({
         const history = (project.readinessAckLog ?? []).filter((ev) => group.entries.some((e) => e.gateId === ev.gateId && e.itemId === ev.itemId));
         const section = group.entries.find((e) => e.dedicatedSection)?.dedicatedSection;
         const rowsWithData = Math.max(0, ...group.entries.map((e) => e.dedicatedSection?.rowsWithData ?? 0));
+        // How far along it is, said at the top: an item that needs several functions reads "1 of 2", not a row of identical buttons.
+        const slotsDone = first.slots.filter((_, i) => group.entries.every((e) => e.slots[i]?.state === 'acknowledged')).length;
+        const stateText = done
+          ? 'Acknowledged'
+          : first.slots.length > 1
+            ? `${slotsDone} of ${first.slots.length} acknowledged`
+            : 'Waiting for acknowledgement';
         return (
           <div key={key} className={`gna-item ${done ? 'gna-done' : 'gna-wait'}`}>
             <div className="gna-head">
-              <span className="gna-icon" aria-hidden>
-                {done ? <CheckCircleFilled /> : <ClockCircleOutlined />}
-              </span>
               <div className="gna-title">
-                <span className="c-tag">Gate {gates[0]}</span>
+                {/* The same kicker an assessment wears, with a different word: a quick look says which of the two this is. The gate is
+                    named only where the view spans gates. */}
+                <span className="gna-kicker">Acknowledgement{gateId === undefined ? ` · Gate ${gates[0]}` : ''}</span>
                 <strong>{many ? `One acknowledgement for ${group.entries.length} readiness items` : first.label}</strong>
-                {!many && caption?.(first) && <span className="gna-extra">{caption(first)}</span>}
               </div>
+              <span className={`c-tag c-tag-dot ${done ? 'c-tag-ok' : 'c-tag-warn'}`}>{stateText}</span>
             </div>
+            {!many && caption?.(first) && <p className="gna-sub">{caption(first)}</p>}
             <p className="gna-reason">Not applicable: {group.reason}</p>
             {many && (
               <div className="gna-covers">
@@ -208,8 +215,7 @@ export default function GeneratedNaAcks({
                   (slotStates.some((x) => !!x?.ack && x.ack.acknowledgedByUserId === user?.id) || !!myFunction);
                 return (
                   <li key={slotKey} className="gna-slot">
-                    <strong>{slot.label}</strong>
-                    {' — '}
+                    <strong className="gna-fn">{slot.label}</strong>
                     {slotDone ? (
                       <span className="gna-status">
                         acknowledged by {doneAck?.acknowledgedByName}
@@ -236,12 +242,12 @@ export default function GeneratedNaAcks({
                     ) : myFunction ? (
                       <Button
                         size="small"
-                        type="primary"
+                        className="gna-act"
+                        aria-label={`Acknowledge as ${slot.label}`}
                         loading={acking === `${key}|${myFunction}`}
                         onClick={() => acknowledgeEntry(group, slotIndex, myFunction)}
                       >
-                        Acknowledge as {slot.label}
-                        {many ? ` (${group.entries.length} items)` : ''}
+                        Acknowledge{many ? ` (${group.entries.length} items)` : ''}
                       </Button>
                     ) : (
                       <span className="gna-status">
