@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Empty } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
-import { findingsReplacedBy } from '@mbc360/shared/utils/safetyFindings';
+import { findingRemovalBlockedReason, findingsReplacedBy } from '@mbc360/shared/utils/safetyFindings';
 import { syncSafetyMatrix } from '@mbc360/shared/utils/safetyMatrixSync';
 import { criticalSafetyFindings, formulationSafetyFinalSignOff, formulationSafetyMatrix, formulationSafetyProfile } from '@mbc360/shared/config/registers';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
@@ -182,6 +182,8 @@ export default function FormulationSafety() {
           readOnly={isGateRefLocked(project, criticalSafetyFindings.gate)}
           // What a reviewer scans a list of findings by: how bad, where it stands, who is acting on it.
           tableColumns={['severity', 'findingStatus', 'linkedNextActionId', 'owner']}
+          // A superseded finding and the finding that replaced it are both kept (Round 5 question 3(b)).
+          removeBlockedReason={(row) => findingRemovalBlockedReason(rowsOf(criticalSafetyFindings), row)}
           // "Replaces" is not entered: it lists the findings that name this one as their replacement.
           renderCell={(column, row, _index, api) =>
             column.key === 'replaces' ? findingsReplacedBy(api.draft, row).join(', ') || <span className="rt-muted">—</span> : undefined

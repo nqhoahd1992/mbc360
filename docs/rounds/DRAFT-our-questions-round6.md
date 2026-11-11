@@ -2,7 +2,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-This round has six questions. They follow from your answers to questions 1 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it.
+This round has nine questions. They follow from your answers to questions 1, 2, 3 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked.
 
 Where we say "the software development team" we mean the team building this application — not the owner of any product development project.
 
@@ -269,3 +269,22 @@ We went further than the readiness items, so that a market is not held by anothe
 **(g)** When a market's gate is sent back (Backtrack), should that affect only that market, or the other markets too?
 
 **(h)** When a market is added or withdrawn part-way through, which gate does its own track start at, and what happens to the gates it had already passed?
+
+## Question 9 — A superseded High or Critical safety finding: how should each confirmation be checked?
+
+*Where in the application:* **Formulation Safety** page, table **Critical Safety Findings**, when a finding's Status is "Superseded".
+
+You told us what a superseded High or Critical finding needs: a valid replacement Finding ID, the safety reviewer's reason, the date of supersession, a link to the replacement assessment or evidence, confirmation that each outstanding action is transferred, retained or validly cancelled, and who authorised and who verified it. We have built that. A superseded finding is no longer asked for the closing package, only for this record, and neither it nor its replacement can be removed. Your answer leaves a few details open, so we read them as follows:
+
+- **The reason** goes in the same "Safety reviewer conclusion" box a closed finding uses.
+- **The action confirmation is one choice for the finding**: *Transferred to the replacement*, *Retained on this finding*, *Validly cancelled* (your words), and a fourth of ours, *No outstanding action*, so that a finding with no action to account for can still be confirmed. We check it against the actions: *Transferred* needs the replacement to carry an action of its own; *Retained* needs this finding's action to be still open; *Validly cancelled* needs this finding's action to have the status Cancelled; *No outstanding action* is refused while this finding's action is still open.
+- **Authorised by** and **verified by** are each recorded as the signed-in person. They may be the same person.
+- The record is asked of **High and Critical** findings only; a Medium or Low superseded finding needs only its replacement.
+
+**(a)** Is one choice for the whole finding enough, or must each action be confirmed separately when there are several?
+
+**(b)** Is an action with the status Cancelled enough for "validly cancelled", or must the cancellation also carry a reason or an approver?
+
+**(c)** Must the person who authorises the supersession and the person who verifies it be two different people?
+
+**(d)** Is the fourth choice, "No outstanding action", right?

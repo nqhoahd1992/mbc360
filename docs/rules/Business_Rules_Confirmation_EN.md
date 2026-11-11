@@ -1013,6 +1013,14 @@ The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **
 
 > **Answered (2026-08-07) — see Appendix 2, D2.** The team confirmed the release block but changed three of the four design choices: linking a Claim ID becomes **required** for any product statement (optional only for genuinely non-product corporate information), a still-developing **Pending claim must be selectable** (so the intended claim is documented early — the block belongs at release, not at linking), and the fill-and-lock is replaced by **master approved wording held alongside proposed channel wording**, with reviewer-confirmed equivalence instead of a byte-for-byte lock. The release block itself is also widened: the claim must be Supported **and** approved for the relevant SKU, formula version, market and channel.
 
+### Question 3 — A superseded High or Critical safety finding
+
+**Verdict:** ✅ built (2026-11-11) — it replaces our earlier reading (a superseded finding needs the same six closing facts as a closed one). Three details of how each confirmation is checked are ours and are asked in Round 6, question 9.
+
+**(a)** Link the replacement assessment and carry forward unresolved hazards and actions without duplicating the closure package.
+
+**(b)** Require a valid replacement Finding ID, the Safety reviewer's reason/conclusion, the date of supersession, a link to the replacement assessment/evidence and confirmation that each outstanding action is transferred, retained or validly cancelled. Record who authorised and verified the supersession. Use a supersession date rather than falsely recording hazard closure. Gate readiness follows the replacement and any retained actions; an open replacement High/Critical issue retains its applicable block. Prevent circular chains and preserve both records.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

@@ -12,6 +12,7 @@ import {
 } from '@mbc360/shared/utils/formulaLifecycle';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
+import { listMessage } from '@mbc360/shared/utils/messageList';
 import { TEXT } from '../theme/tokens';
 
 // Round 4 question 2 — the per-market supersession decision (2026-08-30).
@@ -230,7 +231,7 @@ export default function FormulaSupersessionCard({ project }: { project: ProjectD
                               !canConfirm
                                 ? `Only the project's Lead (${project.identity.projectLead}) confirms a supersession decision`
                                 : supersessionGaps(d).length > 0
-                                  ? `Still missing: ${supersessionGaps(d).join('; ')}`
+                                  ? listMessage('Still missing:', supersessionGaps(d))
                                   : undefined
                             }
                           >

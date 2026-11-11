@@ -1387,7 +1387,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 |---|---|---|
 | R5-Q6 | **1** | "Responsible reviewer" của một item readiness là ai; item nào là critical; acknowledgement hết hiệu lực khi hoàn cảnh đổi (1(a)(b)(c)); danh sách dùng chung của công ty đổi sau khi gate qua (1(d)) |
 | R5-Q11 | **2** | Câu trả lời "có cần Change Control không" — một mục cho mỗi phát hiện |
-| R5-Q12 | **3** | Safety finding `Superseded` có cần bằng chứng đóng như `Closed` không |
+| ✅ R5-Q12 | **3** (đã trả lời 05/11, đã xây 11/11/2026) | Safety finding `Superseded` có cần bằng chứng đóng như `Closed` không — không: có bản ghi supersession riêng |
 | ✅ R5-Q10 | — (SW-47) | Sáu giá trị disposition Gate 4 thay thế hay bổ sung cho Product status — đã quyết: bổ sung, hai cột |
 | ✅ R5-Q34 · R5-Q76 | **4(a)** (R5-Q34 đã quyết SW-47; R5-Q76 còn mở cho danh sách Caution) | Hệ thống tự đặt "REVIEW - possible formula match" (Q34 hỏi, Q76 là bản đã build trên sổ Prohibited) |
 | R5-Q63 | **4(b)** | Product status của hai watch-list nhập tới Gate 7 hay chỉ Gate 4 |
@@ -1736,6 +1736,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 
 **Nếu trả lời khác:** `PER_MARKET_ITEM_IDS` (`config/gateReadiness.ts`), `marketView` và `rowsOfMarket` (`utils/gateProgress.ts`), `resolveDecision` (`projects.service.ts`), `PhasePage.tsx` [ASSUMPTION: R6-Q8].
 
+#### R6-Q9 · Finding Superseded: cách kiểm từng xác nhận trong bản ghi supersession (Vòng 5 câu 3(b)) 🟡
+
+**Lộ ra 11/11/2026, khi xây câu 3.** SME liệt kê bản ghi supersession nhưng không nói từng thứ trông thế nào trong dữ liệu. Cách đọc của ta: (1) lý do/kết luận của Safety reviewer dùng chung cột `safetyReviewerConclusion` với finding Closed; (2) **xác nhận action là MỘT lựa chọn cho mỗi finding** (không phải từng action), với ba giá trị là lời SME — *Transferred to the replacement · Retained on this finding · Validly cancelled* — cộng giá trị thứ tư của ta **"No outstanding action"** để finding không có action vẫn xác nhận được; (3) cách kiểm: Transferred = finding thay thế có action được kiểm soát của nó; Retained = action liên kết của finding này còn mở; Validly cancelled = action liên kết của finding này có trạng thái Cancelled; No outstanding = không có action liên kết nào còn mở (`supersessionRecordIncomplete`); (4) người cho phép và người xác minh là hai cột tự xác nhận bằng tài khoản đăng nhập, **không bắt buộc khác người** vì SME không nói; (5) bản ghi chỉ bắt buộc với High/Critical (câu trả lời nói "High or Critical"), Medium/Low chỉ cần con trỏ.
+
+**Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
+
+**Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
 #### R5-Q11 · Câu trả lời "có cần Change Control không" ghi một lần cho dự án hay từng phát hiện ✅
 
 **Đã trả lời 05/11/2026 (Vòng 5 câu 2) và đã xây 10/11/2026.** (a) Đúng, mỗi phát hiện riêng biệt một đánh giá, gắn với chu kỳ review và thị trường; bản ghi CHG đang mở không miễn đánh giá phát hiện mới. (b) Định nghĩa phát hiện: sáu loại. (c) Các trường, và Yes/No/Pending đều phải có reviewer, ngày, lý do. Phần chi tiết còn hỏi: R6-Q7. Phần "thị trường không liên quan được tiếp tục" đã xây 11/11/2026 — xem R6-Q8.
@@ -1756,7 +1764,9 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 
 **Nếu trả lời khác:** `utils/changeControlAssessments.ts` (luật từng mục), nhánh `openChangeControl` trong `evaluateTrigger()` (`utils/gateProgress.ts`), `ChangeControlAssessments.tsx`, `ProjectsService.setChangeControlAssessments`.
 
-#### R5-Q12 · Một safety finding `Superseded` có cần kết luận + bằng chứng như `Closed` không 🔴
+#### R5-Q12 · Một safety finding `Superseded` có cần kết luận + bằng chứng như `Closed` không ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 3) và đã xây 11/11/2026 — phần dưới là lịch sử.** (a) Liên kết đánh giá thay thế, chuyển tiếp các mối nguy và action chưa giải quyết **mà không nhân đôi gói đóng**. (b) Bắt buộc: Finding ID thay thế hợp lệ · lý do/kết luận của Safety reviewer · **ngày supersession** (không ghi "đóng mối nguy" giả) · link tới đánh giá/bằng chứng thay thế · xác nhận từng action còn tồn là **chuyển / giữ lại / huỷ hợp lệ** · ai cho phép và ai xác minh. Gate readiness đi theo finding thay thế và các action giữ lại; finding thay thế đang mở High/Critical vẫn giữ block của nó; chặn chuỗi vòng; **giữ cả hai bản ghi**. **Đã xây:** sáu thứ của câu 33(e) giờ chỉ hỏi finding `Closed`; finding `Superseded` High/Critical có bản ghi riêng — cột `supersessionDate`, `supersessionLink`, `supersessionActions`, `supersessionAuthorisedBy`, `supersessionVerifiedBy` cùng `safetyReviewerConclusion` làm lý do (`config/registers.ts`, `supersessionRecordIncomplete` trong `utils/safetyFindings.ts`). Con trỏ `supersededBy` vẫn bắt buộc cho mọi mức severity; chuỗi vòng chặn Gate 7 (`inSupersessionCycle`); `findingRemovalBlockedReason` + `droppedSupersessionRecords` chặn xoá cả finding bị thay lẫn finding thay thế (nút xoá và API `setRegisterRows`). Phần SME không nói rõ là cách đọc của ta → **R6-Q9**. `npm run verify:safety-closure` có 40+ ca.
 
 **Đã build 24/08/2026** cùng nhóm 2. Câu 33(b) cấp bộ trạng thái mới cho safety finding: Open · Under Review · Action Pending · Verification Pending · Closed · **Superseded**. Câu 33(e) nói riêng về việc *đóng*: *"Closing a High or Critical finding requires: Safety reviewer conclusion · Evidence link · Linked action completed · Verification · Verifier · Closure date."*
 

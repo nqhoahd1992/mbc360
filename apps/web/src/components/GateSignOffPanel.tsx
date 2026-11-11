@@ -39,6 +39,7 @@ import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import { isPerMarketGate } from '@mbc360/shared/config/gateSignOff';
 import { useAppStore } from '../store/useAppStore';
 import { EMPTY_GRANTS, hasCapability } from '../utils/permissions';
+import { reasonsMessage } from '@mbc360/shared/utils/messageList';
 import { useSession } from '../auth/useSession';
 import { usePickerUsers } from '../hooks/useUserOptions';
 import { getMySignature, getMyTotpStatus } from '../api/accountApi';
@@ -241,7 +242,7 @@ export default function GateSignOffPanel({
       (b) => !(otherLanesOpen && b.id === signOffItem),
     );
     if (blockers.length > 0) {
-      return `"${decision}" is not valid yet — ${blockers.map((b) => b.label).join('; ')}`;
+      return reasonsMessage(`"${decision}" is not valid yet. Still to resolve:`, blockers);
     }
     return null;
   };

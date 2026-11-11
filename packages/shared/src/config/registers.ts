@@ -505,6 +505,11 @@ export const RESOLUTION_CLOSED_STATES: readonly string[] = ['Closed', 'Supersede
 export const SAFETY_FINDING_STATUS_OPEN = 'Open';
 export const SAFETY_FINDING_STATUS_OPTIONS = [...RESOLUTION_LIFECYCLE, 'Superseded'] as const;
 
+// Round 5 question 3(b): "confirmation that each outstanding action is transferred, retained or validly cancelled". The first three are the
+// answer's own words; "No outstanding action" is OURS, so that a finding with no action to account for can still be confirmed
+// [ASSUMPTION: R6-Q9].
+export const SUPERSESSION_ACTION_OPTIONS = ['Transferred to the replacement', 'Retained on this finding', 'Validly cancelled', 'No outstanding action'] as const;
+
 // Rule D3 (SME Round 3) on a flagged watch-list result at Gate 4. Transcribed:
 // "Please add the following fields to each flagged watch-list result: Reviewer
 // assessment: Critical / Non-critical / Not a true match / Further information
@@ -2558,7 +2563,20 @@ export const formulationSafetyMatrix: RegisterConfig = {
 // solely".
 // Question 33(e): closing a High or Critical finding needs the six facts, so each is marked required (and refused on
 // save) once the row is Closed or Superseded AND graded High or Critical. Medium and Low are not asked.
+// Round 5 question 3 (2026-11-05) then separated the two: a SUPERSEDED High or Critical finding is not asked for the closure
+// package ("Use a supersession date rather than falsely recording hazard closure") but for a supersession record of its own.
 const CLOSED_HIGH = {
+  column: 'findingStatus',
+  values: ['Closed'],
+  and: { column: 'severity', values: ['High', 'Critical'] },
+} as const;
+const SUPERSEDED_HIGH = {
+  column: 'findingStatus',
+  values: ['Superseded'],
+  and: { column: 'severity', values: ['High', 'Critical'] },
+} as const;
+// The safety reviewer's conclusion is asked of both: the reason or conclusion at closure, the reason for the replacement at supersession.
+const CONCLUDED_HIGH = {
   column: 'findingStatus',
   values: ['Closed', 'Superseded'],
   and: { column: 'severity', values: ['High', 'Critical'] },
@@ -2598,8 +2616,9 @@ export const criticalSafetyFindings: RegisterConfig = {
     { key: 'owner', label: 'Owner', type: 'user', width: 140 },
     { key: 'findingStatus', label: 'Status', type: 'select', width: 110, options: SAFETY_FINDING_STATUS_OPTIONS },
     // A superseded finding is one a LATER assessment replaced, so it has to say which one (project owner, 2026-10-13).
-    // Picked from this register's own Finding IDs rather than typed, so a typo cannot point at nothing.
-    // [ASSUMPTION: R5-Q12]
+    // Picked from this register's own Finding IDs rather than typed, so a typo cannot point at nothing. The team's answer (Round 5
+    // question 3(b)) requires a valid replacement Finding ID and forbids circular chains.
+    // [ASSUMPTION: R5-Q12] (answered 2026-11-05; the tag stays because the sweep wants every defined question referenced)
     {
       key: 'supersededBy',
       label: 'Superseded by',
@@ -2612,7 +2631,7 @@ export const criticalSafetyFindings: RegisterConfig = {
     // The other direction, for reading only: which findings point at THIS one as their replacement. Never stored — it is
     // worked out from the other rows' "Superseded by" (see `findingsReplacedBy`), so it cannot disagree with them.
     { key: 'replaces', label: 'Replaces', type: 'text', width: 130, editable: false },
-    { key: 'safetyReviewerConclusion', label: 'Safety reviewer conclusion', type: 'textarea', width: 220, requiredWhen: CLOSED_HIGH },
+    { key: 'safetyReviewerConclusion', label: 'Safety reviewer conclusion', type: 'textarea', width: 220, requiredWhen: CONCLUDED_HIGH },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 150, requiredWhen: CLOSED_HIGH },
     // The other three things question 33(e) lists for closing a High or Critical finding: "Verification · Verifier
     // · Closure date". They had no columns, so the rule checked only three of the six and said so on the readiness
@@ -2622,6 +2641,15 @@ export const criticalSafetyFindings: RegisterConfig = {
     { key: 'verification', label: 'Verification', type: 'textarea', width: 220, requiredWhen: CLOSED_HIGH },
     { key: 'verifier', label: 'Verifier', type: 'user', width: 150, selfAttest: true, requiredWhen: CLOSED_HIGH },
     { key: 'closureDate', label: 'Closure date', type: 'date', width: 130, requiredWhen: CLOSED_HIGH },
+    // The supersession record of a High or Critical finding (Round 5 question 3(b)): a replacement Finding ID (above), the safety
+    // reviewer's reason (the conclusion column), the date of supersession, the link to the replacement assessment/evidence, the
+    // confirmation about each outstanding action, and who authorised and who verified it. The date is NOT the closure date: the hazard
+    // is not recorded as closed. Required only of High and Critical, so, like the closure facts, the rule engine reads them.
+    { key: 'supersessionDate', label: 'Date of supersession', type: 'date', width: 130, requiredWhen: SUPERSEDED_HIGH },
+    { key: 'supersessionLink', label: 'Link to replacement assessment / evidence', type: 'text', width: 190, requiredWhen: SUPERSEDED_HIGH },
+    { key: 'supersessionActions', label: 'Outstanding actions', type: 'select', width: 190, options: SUPERSESSION_ACTION_OPTIONS, requiredWhen: SUPERSEDED_HIGH },
+    { key: 'supersessionAuthorisedBy', label: 'Supersession authorised by', type: 'user', width: 160, selfAttest: true, requiredWhen: SUPERSEDED_HIGH },
+    { key: 'supersessionVerifiedBy', label: 'Supersession verified by', type: 'user', width: 160, selfAttest: true, requiredWhen: SUPERSEDED_HIGH },
   ],
 };
 

@@ -225,3 +225,11 @@ a.hb-link:hover {
 .app-frozen .ant-drawer :is(.ant-input, .ant-input-affix-wrapper, .ant-picker) {
   background-color: #fafafa;
 }
+
+/* A message written as a list keeps its line breaks wherever it shows: a toast, a tooltip, a notification, a sign-off warning
+   (project owner, 2026-11-11: reasons are never run together on one line). */
+.ant-message-notice-content,
+.ant-notification-notice-description,
+.ant-tooltip-inner,
+.gsp-problem { white-space: pre-line; }
+.gso-missing-list { margin: 4px 0 0; padding-left: 20px; }

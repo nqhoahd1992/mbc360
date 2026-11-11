@@ -2,7 +2,7 @@
 
 **Gửi:** đội chuyên môn (NPD / Quality / Regulatory / Safety)
 
-Vòng này có sáu câu. Chúng nảy ra từ đáp án câu 1 và câu 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào.
+Vòng này có chín câu. Chúng nảy ra từ đáp án câu 1, 2, 3 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded.
 
 Chỗ nào ghi "nhóm phát triển phần mềm" là nhóm đang xây ứng dụng, không phải chủ của một dự án phát triển sản phẩm.
 
@@ -269,3 +269,22 @@ Chúng tôi đã đi xa hơn các mục readiness, để một thị trường k
 **(g)** Khi gate của một thị trường bị đưa lùi lại (Backtrack), chỉ ảnh hưởng thị trường đó hay cả các thị trường khác?
 
 **(h)** Khi thêm hoặc rút một thị trường giữa chừng, lộ trình riêng của nó bắt đầu từ gate nào, và các gate nó đã qua thì xử lý ra sao?
+
+## Câu 9 — Safety finding High hoặc Critical bị Superseded: cách kiểm từng xác nhận
+
+*Ở đâu trong ứng dụng:* trang **Formulation Safety**, bảng **Critical Safety Findings**, khi Status của một finding là "Superseded".
+
+Các bạn đã nói finding High hoặc Critical bị superseded cần gì: Finding ID thay thế hợp lệ, lý do của safety reviewer, ngày supersession, link tới đánh giá hoặc bằng chứng thay thế, xác nhận từng action còn tồn là chuyển, giữ lại hay huỷ hợp lệ, và ai cho phép, ai xác minh. Chúng tôi đã xây đúng như vậy. Finding bị superseded không còn bị hỏi gói đóng, chỉ hỏi bản ghi này, và không thể xoá nó hay finding thay thế. Câu trả lời để ngỏ vài chi tiết, nên chúng tôi đọc như sau:
+
+- **Lý do** ghi vào chính ô "Safety reviewer conclusion" mà finding đã đóng dùng.
+- **Xác nhận action là một lựa chọn cho cả finding**: *Transferred to the replacement*, *Retained on this finding*, *Validly cancelled* (lời các bạn), và giá trị thứ tư của chúng tôi, *No outstanding action*, để finding không có action nào vẫn xác nhận được. Chúng tôi đối chiếu với action: *Transferred* cần finding thay thế có action riêng; *Retained* cần action của finding này còn mở; *Validly cancelled* cần action của finding này ở trạng thái Cancelled; *No outstanding action* bị từ chối khi action của finding này còn mở.
+- **Authorised by** và **verified by** mỗi ô ghi đúng người đang đăng nhập. Có thể là cùng một người.
+- Bản ghi chỉ hỏi finding **High và Critical**; finding Medium hoặc Low bị superseded chỉ cần finding thay thế.
+
+**(a)** Một lựa chọn cho cả finding là đủ, hay phải xác nhận riêng từng action khi có nhiều?
+
+**(b)** Action ở trạng thái Cancelled có đủ để gọi là "validly cancelled" không, hay việc huỷ còn phải có lý do hoặc người duyệt?
+
+**(c)** Người cho phép supersession và người xác minh có phải hai người khác nhau không?
+
+**(d)** Giá trị thứ tư "No outstanding action" có đúng không?

@@ -190,6 +190,7 @@ export default function GateReadinessPanel({
               </Tooltip>
             )}
           </div>
+          {item.detail && !item.satisfied && <div className="grp-detail">{item.detail}</div>}
           {item.parts && !item.satisfied && (
             <>
               <Button

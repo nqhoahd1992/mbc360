@@ -67,6 +67,7 @@ import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
 import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
 import { isDoneStatus } from './doneStatus';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
+import { listMessage } from './messageList';
 import {
   ASEAN_CHECKLIST_REGISTER,
   MARKET_DOSSIER_REGISTER,
@@ -1024,30 +1025,32 @@ const TRIGGER_INACTIVE_EXPLANATIONS: Record<ReadinessTrigger, string> = {
 // the rule is fresh is better than one written months later by whoever wires it.
 const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   skincareForTwo:
-    'nobody has recorded, with a reason, whether contact with a pregnant, breastfeeding or postpartum user is reasonably foreseeable, and no such user is ticked (Phase 1 -> Gate 02, Foreseeable maternal and infant contact)',
-  humanStudyPlanned: 'nobody has answered whether this project involves a human-participant study (Phase 3 -> Gate 08)',
-  newOrRepositionedProject: 'the development / change type has not been recorded, so it is unknown whether this is a new product, a claim change or an administrative-only change',
+    'Nobody has recorded, with a reason, whether contact with a pregnant, breastfeeding or postpartum user is reasonably foreseeable.\nNo such user is ticked as a target user either.\nRecord it at Phase 1 → Gate 02, "Foreseeable maternal and infant contact".',
+  humanStudyPlanned: 'Nobody has answered whether this project involves a human-participant study.\nRecord it at Phase 3 → Gate 08.',
+  newOrRepositionedProject:
+    'The development / change type has not been recorded.\nSo it is unknown whether this is a new product, a claim change or an administrative-only change.',
   microbiologicallySusceptible:
-    'the formula has not been classified as susceptible, anhydrous, self-preserving, sterile or single-use, or it is recorded as anhydrous without a documented microbiological-risk conclusion (the rationale on Formula Properties)',
+    'The formula has not been classified as susceptible, anhydrous, self-preserving, sterile or single-use.\nOr it is recorded as anhydrous without a documented microbiological-risk conclusion (the rationale on Formula Properties).',
   infantContact:
-    'nobody has recorded, with a reason, whether infant contact is reasonably foreseeable, or (for a Family use product) which age groups it is for, so whether infants are included is unknown (Phase 1 -> Gate 02)',
-  aseanMarket: 'no market has been recorded for this project yet',
-  openChangeControl: 'a post-market finding has not been assessed for a change control, or none has been recorded at all — a review that found nothing records one assessment answered No (Phase 4 -> Gate 12)',
-  claimNeedsPerformanceEvidence: 'no claim has been declared yet, so no claim carries an evidence category',
+    'Nobody has recorded, with a reason, whether infant contact is reasonably foreseeable.\nFor a Family use product, nobody has confirmed which age groups it is for.\nSo it is unknown whether infants are included.\nRecord it at Phase 1 → Gate 02.',
+  aseanMarket: 'No market has been recorded for this project yet.',
+  openChangeControl:
+    'A post-market finding has not been assessed for a change control, or none has been recorded at all.\nA review that found nothing records one assessment answered No.\nRecord it at Phase 4 → Gate 12.',
+  claimNeedsPerformanceEvidence: 'No claim has been declared yet, so no claim carries an evidence category.',
   pvPmsRequired:
-    'the four enhanced-surveillance conditions the application cannot read (a new or unusual active, a significant complaint trend, a recurring quality or performance issue, a requirement in an approved surveillance plan) have not each been answered, a No needing its reason, so it is unknown whether enhanced surveillance applies (Phase 4 -> Gate 12)',
-  claimNeedsRegulatoryReview: 'no claim has been declared yet, so no claim carries a category or risk level',
-  scaleUpRiskIdentified: 'nobody has assessed whether this project carries a scale-up or pilot risk (Phase 3 -> Gate 09)',
+    'The four enhanced-surveillance conditions the application cannot read have not each been answered:\n   a new or unusual active;\n   a significant complaint trend;\n   a recurring quality or performance issue;\n   a requirement in an approved surveillance plan.\nA No needs its reason. So it is unknown whether enhanced surveillance applies.\nRecord it at Phase 4 → Gate 12.',
+  claimNeedsRegulatoryReview: 'No claim has been declared yet, so no claim carries a category or risk level.',
+  scaleUpRiskIdentified: 'Nobody has assessed whether this project carries a scale-up or pilot risk.\nRecord it at Phase 3 → Gate 09.',
   rmRiskFlagged:
-    'one or more raw materials in this project have no entry in the Raw Material Risk Overlay (Company Reference Data -> Raw material risk), so their allergen, impurity and contaminant risk is unclassified',
+    'One or more raw materials in this project have no entry in the Raw Material Risk Overlay.\nSo their allergen, impurity and contaminant risk is unclassified.\nRecord it at Company Reference Data → Raw material risk.',
   commercialRequirementIsMust:
-    'the "Target cost or commercial boundary" row of the Phase 1 requirements table has no Must / Should / Could priority yet, so it is unknown whether this project depends on a defined cost or margin',
+    'The "Target cost or commercial boundary" row of the Phase 1 requirements table has no Must / Should / Could priority yet.\nSo it is unknown whether this project depends on a defined cost or margin.',
   productMarketed:
-    'a launch has been approved for at least one market but nobody has recorded the actual commercial launch date, so it is unknown whether the product is on sale (Phase 4 -> Market Regulatory & Launch Tracking)',
-  postLaunchReviewDue: 'nobody has recorded an actual commercial launch date, so no review schedule exists yet',
-  productPerformanceFeedback: 'nobody has recorded the post-market feedback issue types for this product yet',
-  productFormUnderEvaluation: 'nobody has recorded a product type at Gate 2 yet',
-  marketPackRequirements: 'no market has been recorded for this project yet',
+    'A launch has been approved for at least one market, but nobody has recorded the actual commercial launch date.\nSo it is unknown whether the product is on sale.\nRecord it at Phase 4 → Market Regulatory & Launch Tracking.',
+  postLaunchReviewDue: 'Nobody has recorded an actual commercial launch date, so no review schedule exists yet.',
+  productPerformanceFeedback: 'Nobody has recorded the post-market feedback issue types for this product yet.',
+  productFormUnderEvaluation: 'Nobody has recorded a product type at Gate 2 yet.',
+  marketPackRequirements: 'No market has been recorded for this project yet.',
 };
 
 // Rule C3: watch-list groups the current formula matches whose register row is
@@ -1769,6 +1772,8 @@ export interface GateBlockerLink {
 export interface GateBlocker {
   id: string;
   label: string;
+  // Further sentences about the label, one per line. The label says WHAT is blocking in a few words; this says why and where to fix it.
+  detail?: string;
   // True for blockers even "Proceed with Conditions" cannot clear (mirrors
   // the old hardGateBlockers/gateBlockers split, but carried per-item now
   // instead of requiring a separate string-identity comparison downstream).
@@ -2284,8 +2289,11 @@ export function acknowledgementsVoidedByTargetUsers(
 }
 
 export function voidedAcknowledgementsMessage(voided: VoidedAcknowledgement[]): string {
-  const list = voided.map((v) => `${v.label} (Gate ${Number(v.gateId.replace('SG', ''))}, acknowledged by ${v.by})`).join('; ');
-  return `Withdraw the acknowledgement first: ${list}. It says this does not apply to the project, and this change would make it apply.`;
+  return listMessage(
+    'Withdraw the acknowledgement first:',
+    voided.map((v) => `${v.label} (Gate ${Number(v.gateId.replace('SG', ''))}, acknowledged by ${v.by})`),
+    'It says this does not apply to the project, and this change would make it apply.',
+  );
 }
 
 // Locked only when the trigger CERTAINLY does not apply. "Not yet assessed" leaves the table editable: the answer that
@@ -2422,10 +2430,8 @@ export function gateReadinessChecklist(
     const incomplete = skincareForTwoIncompleteSections(project);
     items.push({
       id: 'skincare-for-two',
-      label:
-        incomplete.length > 0
-          ? `Skincare for Two safety screen incomplete: ${incomplete.join('; ')}`
-          : 'Skincare for Two safety screen complete',
+      label: incomplete.length > 0 ? 'Skincare for Two safety screen incomplete' : 'Skincare for Two safety screen complete',
+      ...(incomplete.length > 0 ? { detail: `Still to complete:\n${incomplete.map((i) => `• ${i}`).join('\n')}` } : {}),
       satisfied: incomplete.length === 0,
       hardBlock: true,
       tier: 'Conditional',
@@ -2440,10 +2446,10 @@ export function gateReadinessChecklist(
     const holds = impactHolds(project).filter((h) => !market || h.markets.length === 0 || h.markets.includes(market));
     items.push({
       id: 'impact-hold',
-      label:
-        holds.length > 0
-          ? `Release is on hold pending an impact review of a Critical change: ${holds.map((h) => `${h.subject} (${h.markets.join(', ') || 'all markets'})`).join('; ')}`
-          : 'No release on hold pending an impact review',
+      label: holds.length > 0 ? 'Release is on hold pending an impact review of a Critical change' : 'No release on hold pending an impact review',
+      ...(holds.length > 0
+        ? { detail: `On hold for:\n${holds.map((h) => `• ${h.subject} (${h.markets.join(', ') || 'all markets'})`).join('\n')}` }
+        : {}),
       satisfied: holds.length === 0,
       hardBlock: true,
       tier: 'Mandatory',
@@ -2506,7 +2512,8 @@ export function gateReadinessChecklist(
     if (triggerState === 'notAssessed') {
       items.push({
         id: req.id,
-        label: `${req.label} — ${TRIGGER_UNASSESSED_EXPLANATIONS[req.trigger!]}, so this cannot be treated as not applicable`,
+        label: req.label,
+        detail: `Not yet assessed.\n${TRIGGER_UNASSESSED_EXPLANATIONS[req.trigger!]}\nUntil it is recorded, this cannot be treated as not applicable.`,
         satisfied: false,
         hardBlock: req.tier !== 'Supporting',
         advisory: req.tier === 'Supporting' || undefined,

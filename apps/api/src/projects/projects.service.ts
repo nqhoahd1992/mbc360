@@ -74,6 +74,8 @@ import {
   newlyNamedReviewerRows,
   WATCHLIST_AUTHORITY_LABEL,
 } from '@mbc360/shared/utils/watchlistReview';
+import { SAFETY_FINDINGS_REGISTER, droppedSupersessionRecords } from '@mbc360/shared/utils/safetyFindings';
+import { bulletList, listMessage, reasonsMessage } from '@mbc360/shared/utils/messageList';
 import {
   VULNERABLE_REGISTER,
   targetUsersPinnedByAssessment,
@@ -959,8 +961,11 @@ export class ProjectsService {
       const introduced = gateSignOffStaleChanges(after, lane.gateId, lane.market, lane.role).filter((c) => !lane.before.has(c));
       if (introduced.length > 0) {
         throw new ForbiddenException(
-          `Gate ${lane.gateId}${lane.market ? ` (${lane.market})` : ''} has a "${lane.role}" signature standing, so what it signed is locked: ` +
-            `${introduced.join('; ')}. Withdraw the signature (with a reason) to change it.`,
+          listMessage(
+            `Gate ${lane.gateId}${lane.market ? ` (${lane.market})` : ''} has a "${lane.role}" signature standing, so what it signed is locked:`,
+            introduced,
+            'Withdraw the signature (with a reason) to change it.',
+          ),
         );
       }
     }
@@ -1057,7 +1062,7 @@ export class ProjectsService {
                 (pin) =>
                   `Cannot un-select "${pin.label}": the Vulnerable-User Assessment has a "${pin.group}" row that depends on it — remove that row first`,
               )
-              .join('; '),
+              .join('\n'),
           );
         }
       }
@@ -2774,9 +2779,11 @@ export class ProjectsService {
       const lockViolations = registerLockViolations(project, config, committedRegisterRows, rows);
       if (lockViolations.length > 0) {
         throw new ForbiddenException(
-          `Register "${registerKey}": ${lockViolations.slice(0, 5).join('; ')}${
-            lockViolations.length > 5 ? ` (and ${lockViolations.length - 5} more)` : ''
-          }`,
+          listMessage(
+            `Register "${registerKey}":`,
+            lockViolations.slice(0, 5),
+            lockViolations.length > 5 ? `(and ${lockViolations.length - 5} more)` : undefined,
+          ),
         );
       }
       // A `select` cell may only hold one of its own options (2026-08-29). Until
@@ -2797,18 +2804,19 @@ export class ProjectsService {
       rows = deriveRegisterRows(registerKey, rows, project);
       const missingRequired = missingRequiredProblems(config, rows);
       if (missingRequired.length > 0) {
-        throw new BadRequestException(missingRequired.slice(0, 5).join('; '));
+        throw new BadRequestException(bulletList(missingRequired.slice(0, 5)));
       }
       const duplicates = duplicateValueProblems(config, rows);
-      if (duplicates.length > 0) throw new BadRequestException(duplicates.slice(0, 5).join('; '));
+      if (duplicates.length > 0) throw new BadRequestException(bulletList(duplicates.slice(0, 5)));
       const outOfScope = marketScopeProblems(config, rows, committedRegisterRows);
-      if (outOfScope.length > 0) throw new BadRequestException(outOfScope.slice(0, 5).join('; '));
+      if (outOfScope.length > 0) throw new BadRequestException(bulletList(outOfScope.slice(0, 5)));
       const badSelects = invalidSelectValues(config, rows);
       if (badSelects.length > 0) {
         throw new BadRequestException(
-          `${badSelects.length} cell(s) hold a value that is not an option of their column: ${badSelects
-            .map((b) => `row ${b.row + 1} "${b.label}" -> "${b.value}"`)
-            .join('; ')}`,
+          listMessage(
+            `${badSelects.length} cell(s) hold a value that is not an option of their column:`,
+            badSelects.map((b) => `row ${b.row + 1} "${b.label}" → "${b.value}"`),
+          ),
         );
       }
       // Gate 3 rule (F1 appendix): "A claim may remain under development, but
@@ -2848,7 +2856,7 @@ export class ProjectsService {
           { displayName: user.displayName, isAdmin: this.permissions.isAdmin(user) },
         );
         if (violations.length > 0) {
-          throw new ForbiddenException(`${registerAccessReason(config)} — not allowed here: ${violations.slice(0, 6).join('; ')}`);
+          throw new ForbiddenException(listMessage(`${registerAccessReason(config)} — not allowed here:`, violations.slice(0, 6)));
         }
       }
       // SW-32: the Reviewer of a finding is a person picked from those who hold the authority the finding needs (its status, else
@@ -2868,7 +2876,7 @@ export class ProjectsService {
           }
         }
         if (unfit.length > 0) {
-          throw new BadRequestException(`The Reviewer must hold the authority the finding needs — ${unfit.join('; ')}`);
+          throw new BadRequestException(listMessage('The Reviewer must hold the authority the finding needs:', unfit));
         }
         const notTheirs: string[] = [];
         for (const row of newlyCarriedVerdictRows(committedRows, rows)) {
@@ -2878,7 +2886,7 @@ export class ProjectsService {
         }
         if (notTheirs.length > 0) {
           throw new ForbiddenException(
-            `Only the Reviewer of a finding may assess it as one that can be carried under Proceed with Conditions — ${notTheirs.join('; ')}`,
+            listMessage('Only the Reviewer of a finding may assess it as one that can be carried under Proceed with Conditions:', notTheirs),
           );
         }
       }
@@ -2895,9 +2903,10 @@ export class ProjectsService {
         const bad = publishedInfoViolations(rows, claimRows, project.registers['skuClaimsPifRegister'] ?? []);
         if (bad.length > 0) {
           throw new BadRequestException(
-            `${bad.length} Published Information row(s) cannot sit at a released workflow state: ${bad
-              .map((v) => `${String(v.row.recordId ?? '(no record id)')} — ${v.reason}`)
-              .join('; ')}`,
+            listMessage(
+              `${bad.length} Published Information row(s) cannot sit at a released workflow state:`,
+              bad.map((v) => `${String(v.row.recordId ?? '(no record id)')} — ${v.reason}`),
+            ),
           );
         }
       }
@@ -2936,9 +2945,11 @@ export class ProjectsService {
         const frozen = frozenRevisionEdits(project.registers[registerKey] ?? [], rows);
         if (frozen.length > 0) {
           throw new BadRequestException(
-            `${frozen.length} claim revision(s) are approved and read-only: ${frozen
-              .map((f) => `${f.claimId} (${f.changed.join(', ')})`)
-              .join('; ')}. Record a new revision or a new Claim ID instead — the reviewer decides which.`,
+            listMessage(
+              `${frozen.length} claim revision(s) are approved and read-only:`,
+              frozen.map((f) => `${f.claimId} (${f.changed.join(', ')})`),
+              'Record a new revision or a new Claim ID instead — the reviewer decides which.',
+            ),
           );
         }
       }
@@ -2969,10 +2980,19 @@ export class ProjectsService {
           );
         }
       }
+      // A superseded safety finding and the finding that replaced it are both kept (Round 5 question 3(b)).
+      if (registerKey === SAFETY_FINDINGS_REGISTER) {
+        const dropped = droppedSupersessionRecords(project.registers[registerKey] ?? [], rows);
+        if (dropped.length > 0) {
+          throw new BadRequestException(
+            `Critical Safety Findings: ${dropped.join(', ')} cannot be removed — a superseded finding and its replacement are both kept`,
+          );
+        }
+      }
       if (registerKey === VULNERABLE_REGISTER) {
         const blockers = vulnerableSaveBlockers(project, rows);
         if (blockers.length > 0) {
-          throw new BadRequestException(`Vulnerable-User Assessment: ${blockers.join('; ')}.`);
+          throw new BadRequestException(listMessage('Vulnerable-User Assessment:', blockers));
         }
       }
       // C1's "varies from previously approved wording": snapshot the wording each
@@ -4174,7 +4194,7 @@ export class ProjectsService {
           profiles: project.reference.marketProfiles,
         }).map((o) => o.key),
       });
-      if (problems.length > 0) throw new BadRequestException(problems.join('; '));
+      if (problems.length > 0) throw new BadRequestException(bulletList(problems));
 
       const before = new Map(project.changeControlAssessments.map((a) => [a.id, a]));
       // Who reviewed is an act, so a reviewer that is new or changed must be the person saving (C6).
@@ -4446,7 +4466,7 @@ export class ProjectsService {
                 (m) =>
                   `Cannot remove "${m}": it already has recorded progress, sign-offs or reviews — mark it Withdrawn with a reason on Market Regulatory & Launch Tracking instead`,
               )
-              .join('; '),
+              .join('\n'),
           );
         }
         await tx.marketTrack.deleteMany({ where: { projectId: id, market: { in: removed } } });
@@ -5007,7 +5027,7 @@ export class ProjectsService {
         const gaps = supersessionGaps(draft);
         if (gaps.length > 0) {
           throw new BadRequestException(
-            `The supersession decision is incomplete — ${gaps.join('; ')}. All ten facts are required before it can be confirmed.`,
+            listMessage('The supersession decision is incomplete:', gaps, 'All ten facts are required before it can be confirmed.'),
           );
         }
       }
@@ -5819,7 +5839,7 @@ export class ProjectsService {
     ).filter((b) => !skipItemIds.includes(b.id));
     if (blockers.length > 0) {
       return reject(
-        `Gate ${gateId}: "${requested}" is not valid yet — ${blockers.map((b) => b.label).join('; ')}`,
+        reasonsMessage(`Gate ${gateId}: "${requested}" is not valid yet. Still to resolve:`, blockers),
       );
     }
     void changes;

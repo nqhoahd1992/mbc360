@@ -59,6 +59,7 @@ import './PhasePage.css';
 import ReviewOwnerLine from '../components/ReviewOwnerLine';
 import { composeReviewOwner } from '@mbc360/shared/config/reviewers';
 import { targetUsersPinnedByAssessment } from '@mbc360/shared/utils/vulnerableUsers';
+import { listMessage } from '@mbc360/shared/utils/messageList';
 
 // Transcribed verbatim from cell A20 of each phase's source workbook sheet
 // (PHASE1 G1-3 MKTG has no equivalent cell — its A20 is a table header, not a
@@ -441,7 +442,10 @@ export default function PhasePage() {
         key="s42"
         title={
           outstanding
-            ? `Triggered by: ${s42Triggers.join(', ')}. Gate 07 is hard-blocked until the mandatory maternal and infant-contact safety sections are fully completed. Outstanding: ${s42Incomplete.join('; ')}.`
+            ? listMessage(
+                `Triggered by: ${s42Triggers.join(', ')}.\nGate 07 is hard-blocked until the mandatory maternal and infant-contact safety sections are fully completed.\nOutstanding:`,
+                s42Incomplete,
+              )
             : `Triggered by: ${s42Triggers.join(', ')}. All mandatory maternal and infant-contact safety sections are complete — Gate 07 is no longer blocked by this screen.`
         }
       >

@@ -3,7 +3,7 @@
 // the real rule engine. Run: npm run verify:safety-closure
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
 import { createEmptyRegisterRow, duplicateValueProblems, getRegisterConfig, missingRequiredColumns, missingRequiredProblems } from '../src/config/registers';
-import { canChooseSuperseded, findingsReplacedBy, hardBlockingSafetyFindings } from '../src/utils/safetyFindings';
+import { canChooseSuperseded, droppedSupersessionRecords, findingRemovalBlockedReason, findingsReplacedBy, hardBlockingSafetyFindings } from '../src/utils/safetyFindings';
 import type { ProjectData } from '../src/types';
 
 let bad = 0;
@@ -39,7 +39,7 @@ t('a Critical finding is held to the same six', blocks({ ...full, severity: 'Cri
 t('a Medium finding is NOT asked for them (the answer says High or Critical)', !blocks({ ...closed, severity: 'Medium', verification: '', verifier: '', closureDate: '' }));
 t('a row with a status that is still open blocks whatever it carries', blocks({ ...full, findingStatus: 'Verification Pending' }));
 
-// --- a Superseded finding names the finding that replaced it ---------------------------------------------------
+// --- a Superseded finding names the finding that replaced it, and carries a supersession record --------------------
 {
   const two = (a: Record<string, unknown>, b: Record<string, unknown>): ProjectData => {
     const p = project(a);
@@ -47,15 +47,60 @@ t('a row with a status that is still open blocks whatever it carries', blocks({ 
     return p;
   };
   const replacement = { criticalFinding: 'No', severity: 'Low', findingStatus: 'Closed', findingId: 'F-2' };
-  const old = { ...full, findingStatus: 'Superseded', findingId: 'F-1' };
-  t('a Superseded finding with a replacement that exists passes', hardBlockingSafetyFindings(two({ ...old, supersededBy: 'F-2' }, replacement)).length === 0);
-  t('...without a replacement it blocks, whatever its severity', hardBlockingSafetyFindings(two({ ...old, supersededBy: '' }, replacement)).length > 0 && hardBlockingSafetyFindings(two({ ...old, severity: 'Low', supersededBy: '' }, replacement)).length > 0);
-  t('...naming itself is no replacement', hardBlockingSafetyFindings(two({ ...old, supersededBy: 'F-1' }, replacement)).length > 0);
-  t('...naming a finding that is not in the register blocks', hardBlockingSafetyFindings(two({ ...old, supersededBy: 'F-9' }, replacement)).length > 0);
-  t('Superseded is still held to the six closure facts (our reading, R5-Q12): with a replacement but no closure date it blocks', hardBlockingSafetyFindings(two({ ...old, supersededBy: 'F-2', closureDate: '' }, replacement)).length > 0);
+  // Round 5 question 3(b): replacement ID, reason, date of supersession, link, outstanding-action confirmation, authorised, verified.
+  const record = {
+    supersessionDate: '2026-11-10', supersessionLink: 'http://x/replacement', supersessionActions: 'No outstanding action',
+    supersessionAuthorisedBy: 'Sekar', supersessionVerifiedBy: 'Tuan',
+  };
+  const old = { criticalFinding: 'Yes', severity: 'High', findingStatus: 'Superseded', findingId: 'F-1', safetyReviewerConclusion: 'replaced by the May reassessment', linkedNextActionId: 'NA-1', supersededBy: 'F-2', ...record };
+  const blocksTwo = (a: Record<string, unknown>, b: Record<string, unknown> = replacement) => hardBlockingSafetyFindings(two(a, b)).length > 0;
+  t('a Superseded High finding with its replacement and full supersession record passes', !blocksTwo(old));
+  t('...it is NOT asked for the closure package (no evidence link, verification, verifier or closure date)', !blocksTwo({ ...old, evidenceLink: '', verification: '', verifier: '', closureDate: '' }));
+  t('...without a replacement it blocks, whatever its severity', blocksTwo({ ...old, supersededBy: '' }) && blocksTwo({ ...old, severity: 'Low', supersededBy: '' }));
+  t('...naming itself is no replacement', blocksTwo({ ...old, supersededBy: 'F-1' }));
+  t('...naming a finding that is not in the register blocks', blocksTwo({ ...old, supersededBy: 'F-9' }));
+  for (const [field, label] of [
+    ['safetyReviewerConclusion', 'safety reviewers reason'], ['supersessionDate', 'date of supersession'], ['supersessionLink', 'link to the replacement'],
+    ['supersessionActions', 'outstanding-action confirmation'], ['supersessionAuthorisedBy', 'who authorised it'], ['supersessionVerifiedBy', 'who verified it'],
+  ] as const) {
+    t(`...a High finding without the ${label} blocks`, blocksTwo({ ...old, [field]: '' }));
+  }
+  t('...a Medium superseded finding needs only the pointer (the answer says High or Critical)', !blocksTwo({ ...old, severity: 'Medium', supersessionDate: '', supersessionLink: '', supersessionActions: '', supersessionAuthorisedBy: '', supersessionVerifiedBy: '', safetyReviewerConclusion: '' }));
   t('a Closed finding is not asked for a replacement', hardBlockingSafetyFindings(two({ ...full, findingId: 'F-1' }, replacement)).length === 0);
+
+  // gate readiness follows the replacement: an open High replacement keeps its own block
+  t('an open High replacement keeps its block even though the old finding is complete', blocksTwo(old, { criticalFinding: 'Yes', severity: 'High', findingStatus: 'Open', findingId: 'F-2' }));
+
+  // the confirmation about outstanding actions, as we read it (R6-Q9)
+  const open = (p: ProjectData) => {
+    p.nextActions = [{ id: 'NA-1', gateIds: ['SG07'], description: 'fix', priority: 'High', status: 'Open', owner: 'x', controlled: true } as never];
+    return p;
+  };
+  const blocksOpen = (a: Record<string, unknown>, b: Record<string, unknown> = replacement) => hardBlockingSafetyFindings(open(two(a, b))).length > 0;
+  t('"No outstanding action" is refused while the linked action is still open', blocksOpen({ ...old, supersessionActions: 'No outstanding action' }));
+  t('"Retained on this finding" is accepted while the linked action is open, refused when it is not', !blocksOpen({ ...old, supersessionActions: 'Retained on this finding' }) && blocksTwo({ ...old, supersessionActions: 'Retained on this finding' }));
+  const cancelled = (p: ProjectData) => {
+    p.nextActions = [{ id: 'NA-1', gateIds: ['SG07'], description: 'fix', priority: 'High', status: 'Cancelled', owner: 'x', controlled: true } as never];
+    return p;
+  };
+  t('"Validly cancelled" needs the linked action to be Cancelled', hardBlockingSafetyFindings(cancelled(two({ ...old, supersessionActions: 'Validly cancelled' }, replacement))).length === 0 && blocksTwo({ ...old, supersessionActions: 'Validly cancelled' }));
+  t('"Transferred to the replacement" needs the replacement to carry a controlled action', blocksTwo({ ...old, supersessionActions: 'Transferred to the replacement' }) && !blocksTwo({ ...old, supersessionActions: 'Transferred to the replacement' }, { ...replacement, linkedNextActionId: 'NA-1' }));
+
+  // circular chains
+  const a = { ...old, findingId: 'F-1', supersededBy: 'F-2' };
+  const b = { ...old, findingId: 'F-2', supersededBy: 'F-1' };
+  t('a circular chain of replacements blocks (F-1 replaced by F-2 replaced by F-1)', hardBlockingSafetyFindings(two(a, b)).length === 2);
+
+  // both records are kept
+  const saved = [{ ...createEmptyRegisterRow(config), ...old }, { ...createEmptyRegisterRow(config), ...replacement }];
+  t('the superseded finding cannot be removed', findingRemovalBlockedReason(saved, saved[0]) !== undefined);
+  t('...nor the finding that replaced it', findingRemovalBlockedReason(saved, saved[1]) !== undefined);
+  t('...a finding that is neither can be', findingRemovalBlockedReason([...saved, { ...createEmptyRegisterRow(config), findingId: 'F-3' }], { ...createEmptyRegisterRow(config), findingId: 'F-3' }) === undefined);
+  t('a save that drops either is named by Finding ID', droppedSupersessionRecords(saved, [saved[1]]).join() === 'F-1' && droppedSupersessionRecords(saved, [saved[0]]).join() === 'F-2' && droppedSupersessionRecords(saved, saved).length === 0);
+
   const col = config.columns.find((c) => c.key === 'supersededBy');
   t('the column is a picker over this registers Finding IDs, required only while Superseded', col?.type === 'rowRef' && col.refRegister === 'criticalSafetyFindings' && col.refColumn === 'findingId' && col.requiredWhen?.values.includes('Superseded') === true);
+  t('the three people-columns of the record are self-attested', ['supersessionAuthorisedBy', 'supersessionVerifiedBy'].every((k) => config.columns.find((c) => c.key === k)?.selfAttest === true));
 }
 
 // --- Superseded can only be chosen when there is something to point at -----------------------------------------
@@ -74,7 +119,7 @@ t('a row with a status that is still open blocks whatever it carries', blocks({ 
   t('...a Critical one too', need({ severity: 'Critical', findingStatus: 'Closed' }).length === 6);
   t('...a Medium one is not', need({ severity: 'Medium', findingStatus: 'Closed' }).length === 0);
   t('...an open High one is not', need({ severity: 'High', findingStatus: 'Open' }).length === 0);
-  t('...a Superseded High one is, and also names its replacement', need({ severity: 'High', findingStatus: 'Superseded' }).includes('supersededBy') && need({ severity: 'High', findingStatus: 'Superseded' }).length === 7);
+  t('...a Superseded High one is asked for the supersession record and its replacement, not the closure package', need({ severity: 'High', findingStatus: 'Superseded' }).join() === 'safetyReviewerConclusion,supersededBy,supersessionActions,supersessionAuthorisedBy,supersessionDate,supersessionLink,supersessionVerifiedBy');
   t('the refusal says why in plain words', missingRequiredProblems(config, [{ ...createEmptyRegisterRow(config), severity: 'High', findingStatus: 'Closed' }])[0].includes('Status is Closed and Severity is High'));
 }
 

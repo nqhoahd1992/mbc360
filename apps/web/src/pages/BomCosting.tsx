@@ -557,14 +557,13 @@ export default function BomCosting() {
           {hasDuplicateRawMaterials && (
             <Notice tone="bad" title="Duplicate raw material — cannot save">
               Each Formula BOM line must reference a different raw material — combine the % w/w into a single line
-              instead of repeating it. Affected:{' '}
-              {[...duplicateRawMaterials.entries()]
-                .map(([rmCode, lines]) => {
+              instead of repeating it. Affected:
+              <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
+                {[...duplicateRawMaterials.entries()].map(([rmCode, lines]) => {
                   const label = draftBom.find((l) => l.rmCode === rmCode)?.rmDisplayName || rmCode;
-                  return `${label} (lines ${lines.join(', ')})`;
-                })
-                .join('; ')}
-              .
+                  return <li key={rmCode}>{`${label} (lines ${lines.join(', ')})`}</li>;
+                })}
+              </ul>
             </Notice>
           )}
           {hasUnapprovedManualLines && (

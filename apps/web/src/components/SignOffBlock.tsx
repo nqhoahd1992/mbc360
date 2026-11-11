@@ -251,7 +251,12 @@ export default function SignOffBlock({
           hold(
             <LockOutlined />,
             <>
-              <strong>Sign-off locked</strong> — closure conditions not yet met. Still required: {missing.join('; ')}.
+              <strong>Sign-off locked</strong> — closure conditions not yet met. Still required:
+              <ul className="gso-missing-list">
+                {missing.map((m) => (
+                  <li key={m}>{m}</li>
+                ))}
+              </ul>
             </>,
           )}
         {isLead &&

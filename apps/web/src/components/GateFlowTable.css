@@ -39,3 +39,9 @@
 
 /* This card has no padding of its own (each part carries its 20px), so the Save bar gets the side margin itself. */
 .gfc-card .save-bar { margin: 4px 20px 0; padding: 12px 0 0; }
+
+/* Why a decision cannot be saved: a headline, then the reasons as a list (project owner, 2026-11-11). */
+.gfc-reason + .gfc-reason { margin-top: 8px; }
+.gfc-reason-list { margin: 4px 0 4px; padding-left: 20px; }
+.gfc-reason-list > li + li { margin-top: 6px; }
+.gfc-reason-detail { margin-top: 2px; color: var(--c-text-3); font-size: 13px; white-space: pre-line; }

@@ -12,7 +12,7 @@
 // turns out to be three different questions with three different answers.
 import type { ProjectData, RegisterRow } from '../types';
 import { NEXT_ACTION_TERMINAL_STATUSES, RISK_LEVELS_HARD_BLOCKING } from '../types';
-import { RESOLUTION_CLOSED_STATES, SAFETY_FINDING_YES } from '../config/registers';
+import { RESOLUTION_CLOSED_STATES, SAFETY_FINDING_YES, SUPERSESSION_ACTION_OPTIONS } from '../config/registers';
 import { isControlledAction, linkedNextAction } from './watchlistReview';
 
 export const SAFETY_FINDINGS_REGISTER = 'criticalSafetyFindings';
@@ -41,22 +41,90 @@ const isOpen = (row: RegisterRow): boolean => !RESOLUTION_CLOSED_STATES.includes
 // correction already made for the watch-list trail — an abandoned action tracks
 // nothing.
 //
-// Applied to `Superseded` as well as `Closed`, which is OUR reading: question
-// 33(b) adds Superseded to the lifecycle without saying what closing evidence a
-// superseded finding needs. The conservative direction was chosen — a High finding
-// should not become passable just by being marked superseded, and if it really was
-// replaced, saying so in the conclusion is a sentence, not a burden. But it is a
-// blocking behaviour on a safety gate resting on an unstated rule
-// [ASSUMPTION: R5-Q12].
-// A Superseded finding has to name the finding that replaced it (project owner, 2026-10-13): a different row of this
-// register, picked by its Finding ID. A finding cannot supersede itself, and a pointer at nothing is no pointer.
-// Applies to every severity — "superseded" without a replacement is an unexplained disappearance whatever the grade.
-// [ASSUMPTION: R5-Q12]
+// These six are asked of a CLOSED finding only. A SUPERSEDED High or Critical finding carries a supersession record instead
+// (Round 5 question 3, answered 2026-11-05, see supersessionRecordIncomplete): the answer says to use a supersession date "rather
+// than falsely recording hazard closure".
+//
+// A Superseded finding has to name the finding that replaced it (project owner, 2026-10-13, now the team's answer 3(b)): a different
+// row of this register, picked by its Finding ID. A finding cannot supersede itself, a pointer at nothing is no pointer, and the
+// chain of replacements must not run in a circle. Applies to every severity — "superseded" without a replacement is an unexplained
+// disappearance whatever the grade.
+function replacementOf(project: ProjectData, row: RegisterRow): RegisterRow | undefined {
+  const target = text(row.supersededBy);
+  if (target === '' || target === text(row.findingId)) return undefined;
+  return safetyFindingRows(project).find((other) => other !== row && text(other.findingId) === target);
+}
+
+// Following "superseded by" from this row comes back to it ("prevent circular chains"): A replaced by B replaced by A.
+function inSupersessionCycle(project: ProjectData, row: RegisterRow): boolean {
+  const seen = new Set<RegisterRow>([row]);
+  let next = replacementOf(project, row);
+  while (next && text(next.findingStatus) === 'Superseded') {
+    if (seen.has(next)) return true;
+    seen.add(next);
+    next = replacementOf(project, next);
+  }
+  return false;
+}
+
 function supersededWithoutReplacement(project: ProjectData, row: RegisterRow): boolean {
   if (text(row.findingStatus) !== 'Superseded') return false;
-  const target = text(row.supersededBy);
-  if (target === '' || target === text(row.findingId)) return true;
-  return !safetyFindingRows(project).some((other) => other !== row && text(other.findingId) === target);
+  return replacementOf(project, row) === undefined || inSupersessionCycle(project, row);
+}
+
+// Round 5 question 3(b), for a Superseded High or Critical finding: a valid replacement Finding ID (checked above), the safety
+// reviewer's reason, the date of supersession, the link to the replacement assessment or evidence, confirmation of each outstanding
+// action, and who authorised and who verified it. "Gate readiness follows the replacement and any retained actions; an open
+// replacement High/Critical issue retains its applicable block" — the replacement is its own row and is judged on its own, and a
+// retained action is a controlled action that stays open.
+//
+// How "each outstanding action is transferred, retained or validly cancelled" is checked is OUR reading, because the answer does not
+// say what each looks like in the data [ASSUMPTION: R6-Q9]:
+//   Transferred to the replacement — the replacement carries a controlled action of its own;
+//   Retained on this finding      — this finding's linked action is controlled and still open;
+//   Validly cancelled             — this finding's linked action exists and has the status Cancelled;
+//   No outstanding action         — this finding has no linked action that is still open.
+function supersessionRecordIncomplete(project: ProjectData, row: RegisterRow): boolean {
+  if (text(row.safetyReviewerConclusion) === '' || text(row.supersessionLink) === '' || text(row.supersessionDate) === '') return true;
+  if (text(row.supersessionAuthorisedBy) === '' || text(row.supersessionVerifiedBy) === '') return true;
+  const choice = text(row.supersessionActions);
+  if (!(SUPERSESSION_ACTION_OPTIONS as readonly string[]).includes(choice)) return true;
+  const action = linkedNextAction(project, row);
+  const controlled = isControlledAction(action);
+  const open = controlled && !NEXT_ACTION_TERMINAL_STATUSES.includes(action!.status);
+  switch (choice) {
+    case 'Transferred to the replacement': {
+      const replacement = replacementOf(project, row);
+      return !replacement || !isControlledAction(linkedNextAction(project, replacement));
+    }
+    case 'Retained on this finding':
+      return !open;
+    case 'Validly cancelled':
+      return action?.status !== 'Cancelled';
+    default:
+      return open;
+  }
+}
+
+// Both records are kept (Round 5 question 3(b): "preserve both records"): a finding that was superseded, and the finding that
+// replaced it, are not removed from the register. Read from the rows as SAVED — a row that was never saved can still be removed.
+export function findingRemovalBlockedReason(savedRows: readonly RegisterRow[], row: RegisterRow): string | undefined {
+  const id = text(row.findingId);
+  if (id === '') return undefined;
+  const saved = savedRows.find((r) => text(r.findingId) === id);
+  if (!saved) return undefined;
+  if (text(saved.findingStatus) === 'Superseded') return 'This finding was superseded — both it and its replacement are kept';
+  const replaced = findingsReplacedBy(savedRows, saved);
+  return replaced.length > 0 ? `This finding replaced ${replaced.join(', ')} — both records are kept` : undefined;
+}
+
+// What a save would drop that must be kept: the Finding IDs of saved rows that are superseded or are a replacement and are missing
+// from `incoming`. Used by the API, so the guard does not rest on the disabled button.
+export function droppedSupersessionRecords(saved: readonly RegisterRow[], incoming: readonly RegisterRow[]): string[] {
+  const kept = new Set(incoming.map((r) => text(r.findingId)).filter((id) => id !== ''));
+  return saved
+    .filter((r) => text(r.findingId) !== '' && !kept.has(text(r.findingId)) && findingRemovalBlockedReason(saved, r) !== undefined)
+    .map((r) => text(r.findingId));
 }
 
 // Is "Superseded" a choice for the row at `index`? Only when another row with a Finding ID exists to be its replacement
@@ -144,7 +212,8 @@ export function hardBlockingSafetyFindings(project: ProjectData): RegisterRow[] 
     if (supersededWithoutReplacement(project, row)) return true;
     if (severity === 'Medium') return isOpen(row) && missingControlledAction(project, row);
     if (!RISK_LEVELS_HARD_BLOCKING.includes(severity as never)) return false;
-    return isOpen(row) || closedWithoutClosureRecord(project, row);
+    if (isOpen(row)) return true;
+    return text(row.findingStatus) === 'Superseded' ? supersessionRecordIncomplete(project, row) : closedWithoutClosureRecord(project, row);
   });
 }
 

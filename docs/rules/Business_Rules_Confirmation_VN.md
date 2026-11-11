@@ -1013,6 +1013,14 @@ Các **câu hỏi về quy tắc đã đóng** (chỉ F12 còn chờ Cosmetri). 
 
 > **Đã có đáp án (07/08/2026) — xem Phụ lục 2, mục D2.** Đội chuyên môn xác nhận việc chặn release nhưng thay đổi 3 trong 4 lựa chọn thiết kế: gắn Claim ID trở thành **bắt buộc** với mọi phát ngôn về sản phẩm (chỉ tùy chọn với thông tin doanh nghiệp thuần túy), claim **Pending đang phát triển phải chọn được** (để ghi nhận sớm claim dự định dùng — chỗ chặn nằm ở thời điểm release, không phải lúc gắn liên kết), và fill-and-lock được thay bằng **từ ngữ master đã duyệt giữ song song với từ ngữ đề xuất theo kênh**, tương đương do reviewer xác nhận thay vì khóa cứng từng ký tự. Bản thân điều kiện chặn release cũng mở rộng: claim phải Supported **và** đã duyệt cho đúng SKU, formula version, thị trường và kênh.
 
+### Câu 3 — Safety finding High hoặc Critical bị Superseded
+
+**Kết luận:** ✅ đã xây (11/11/2026) — thay cách đọc trước đây của ta (finding Superseded cần đủ sáu thứ đóng như finding Closed). Ba chi tiết về cách kiểm từng xác nhận là của ta và được hỏi ở Vòng 6, câu 9.
+
+**(a)** Liên kết đánh giá thay thế, chuyển tiếp các mối nguy và action chưa giải quyết mà không nhân đôi gói đóng.
+
+**(b)** Bắt buộc: Finding ID thay thế hợp lệ, lý do/kết luận của Safety reviewer, ngày supersession, link tới đánh giá/bằng chứng thay thế, xác nhận từng action còn tồn là chuyển / giữ lại / huỷ hợp lệ. Ghi ai cho phép và ai xác minh. Dùng ngày supersession thay vì ghi sai là mối nguy đã đóng. Gate readiness đi theo finding thay thế và các action giữ lại; finding thay thế đang mở ở mức High/Critical vẫn giữ block tương ứng. Chặn chuỗi vòng và giữ cả hai bản ghi.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

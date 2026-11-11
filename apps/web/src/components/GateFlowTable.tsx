@@ -37,6 +37,13 @@ import { TEXT, TABLE_STICKY } from '../theme/tokens';
 
 
 import FormDrawer from './FormDrawer';
+// Why a drafted decision cannot be saved: a headline, the reasons as a list (each may carry a detail), and an optional closing sentence.
+interface SaveInvalid {
+  headline: string;
+  items: { label: string; detail?: string }[];
+  tail?: string;
+}
+
 export default function GateFlowTable({
   project,
   gateIds,
@@ -249,12 +256,13 @@ export default function GateFlowTable({
               .join(' or ')} instead`
           : `Record ${gapVerdict.allowed.map((d) => `"${d}"`).join(' or ')} instead`
         : undefined;
-      const saveInvalidReason = gapVerdict
-        ? `Gate ${r.meta.number}: "${r.draftRecord.decision}" isn't valid — ${gapVerdict.reason}. ${gapFix}`
+      // Written as a headline and a list (project owner, 2026-11-11): one line of clauses joined by semicolons could not be read.
+      const saveInvalidReason: SaveInvalid | undefined = gapVerdict
+        ? { headline: `Gate ${r.meta.number}: "${r.draftRecord.decision}" isn't valid`, items: [{ label: gapVerdict.reason }], tail: gapFix }
         : r.draftRecord.decision === 'Proceed' && r.liveBlockers.length > 0
-          ? `Gate ${r.meta.number}: "Proceed" isn't valid yet — ${r.liveBlockers.map((b) => b.label).join('; ')}`
+          ? { headline: `Gate ${r.meta.number}: "Proceed" isn't valid yet. Still to resolve:`, items: r.liveBlockers }
           : r.draftRecord.decision === 'Proceed with Conditions' && r.hardBlockers.length > 0
-            ? `Gate ${r.meta.number}: "Proceed with Conditions" isn't valid yet — ${r.hardBlockers.map((b) => b.label).join('; ')}`
+            ? { headline: `Gate ${r.meta.number}: "Proceed with Conditions" isn't valid yet. Still to resolve:`, items: r.hardBlockers }
             : undefined;
       return { ...r, saveInvalidReason, gapVerdict };
     });
@@ -546,7 +554,18 @@ export default function GateFlowTable({
           description={
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {saveBlockedRows.map((r) => (
-                <li key={r.meta.id}>{r.saveInvalidReason}</li>
+                <li key={r.meta.id} className="gfc-reason">
+                  <div>{r.saveInvalidReason!.headline}</div>
+                  <ul className="gfc-reason-list">
+                    {r.saveInvalidReason!.items.map((b, i) => (
+                      <li key={i}>
+                        {b.label}
+                        {b.detail && <div className="gfc-reason-detail">{b.detail}</div>}
+                      </li>
+                    ))}
+                  </ul>
+                  {r.saveInvalidReason!.tail && <div>{r.saveInvalidReason!.tail}</div>}
+                </li>
               ))}
             </ul>
           }
