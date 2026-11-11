@@ -1021,6 +1021,14 @@ The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **
 
 **(b)** Require a valid replacement Finding ID, the Safety reviewer's reason/conclusion, the date of supersession, a link to the replacement assessment/evidence and confirmation that each outstanding action is transferred, retained or validly cancelled. Record who authorised and verified the supersession. Use a supersession date rather than falsely recording hazard closure. Gate readiness follows the replacement and any retained actions; an open replacement High/Critical issue retains its applicable block. Prevent circular chains and preserve both records.
 
+### Question 4 — Watch-list matching and reviewer disposition
+
+**Verdict:** ✅ built (2026-11-11). (a) differs from what was built — the automatic flag and the reassessment now apply to both lists; (b) matches our reading. Three details of "basis" and "list version" are ours, asked in Round 6, question 10.
+
+**(a)** Yes. Automatically flag potential formula matches on both lists. Retain the matching result separately from the reviewer's disposition, with formula/list version and match basis. A changed formula must mark a prior conclusion for reassessment where its basis changes, even if a person previously selected a status.
+
+**(b)** Gate 4 records the initial screen. Matching and assessment remain current through formulation; Gate 7 closes issues for the final formula. Subsequent relevant changes require a new controlled assessment. Ordinary pre-lock trial refinement can update the screen without reopening every earlier gate; a new material, hazard or restriction that invalidates Gate 4 must reopen its affected review. Gate 7 is the final safety checkpoint, not permission to ignore an earlier unsafe change.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

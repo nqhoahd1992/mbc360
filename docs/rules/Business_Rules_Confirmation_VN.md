@@ -1021,6 +1021,14 @@ Các **câu hỏi về quy tắc đã đóng** (chỉ F12 còn chờ Cosmetri). 
 
 **(b)** Bắt buộc: Finding ID thay thế hợp lệ, lý do/kết luận của Safety reviewer, ngày supersession, link tới đánh giá/bằng chứng thay thế, xác nhận từng action còn tồn là chuyển / giữ lại / huỷ hợp lệ. Ghi ai cho phép và ai xác minh. Dùng ngày supersession thay vì ghi sai là mối nguy đã đóng. Gate readiness đi theo finding thay thế và các action giữ lại; finding thay thế đang mở ở mức High/Critical vẫn giữ block tương ứng. Chặn chuỗi vòng và giữ cả hai bản ghi.
 
+### Câu 4 — Đối chiếu watch-list và disposition của reviewer
+
+**Kết luận:** ✅ đã xây (11/11/2026). (a) khác với cái đã xây — cờ tự động và việc đánh giá lại nay áp cho cả hai danh sách; (b) đúng như ta đọc. Ba chi tiết về "cơ sở khớp" và "phiên bản danh sách" là của ta, hỏi ở Vòng 6 câu 10.
+
+**(a)** Có. Tự động đánh dấu khớp tiềm năng của công thức trên cả hai danh sách. Giữ kết quả đối chiếu tách khỏi disposition của reviewer, kèm phiên bản công thức/danh sách và cơ sở khớp. Công thức đổi làm cơ sở đổi thì kết luận trước đó phải được đánh dấu để đánh giá lại, kể cả khi một người đã chọn trạng thái.
+
+**(b)** Gate 4 ghi lần sàng lọc đầu. Việc đối chiếu và đánh giá còn hiệu lực suốt quá trình pha chế; Gate 7 đóng vấn đề cho công thức cuối. Thay đổi liên quan về sau cần một đánh giá có kiểm soát mới. Tinh chỉnh thử nghiệm thông thường trước khi khóa công thức được cập nhật phần sàng lọc mà không mở lại mọi gate trước; một nguyên liệu, mối nguy hay hạn chế mới làm Gate 4 không còn đúng thì phải mở lại phần đánh giá bị ảnh hưởng. Gate 7 là chốt an toàn cuối, không phải giấy phép bỏ qua một thay đổi không an toàn trước đó.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

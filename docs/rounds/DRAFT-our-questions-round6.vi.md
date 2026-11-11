@@ -2,7 +2,7 @@
 
 **Gửi:** đội chuyên môn (NPD / Quality / Regulatory / Safety)
 
-Vòng này có chín câu. Chúng nảy ra từ đáp án câu 1, 2, 3 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded.
+Vòng này có mười câu. Chúng nảy ra từ đáp án câu 1, 2, 3 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào.
 
 Chỗ nào ghi "nhóm phát triển phần mềm" là nhóm đang xây ứng dụng, không phải chủ của một dự án phát triển sản phẩm.
 
@@ -12,7 +12,7 @@ Có thể trả lời theo chữ cái, ví dụ "(a) — đúng, (b) — dòng 3
 
 ## Câu 1 — Nên đọc thế nào các tên người xác nhận trong cột "Acknowledgement function"?
 
-*Ở đâu trong ứng dụng:* Trên form **New Project** (trang **All Projects**), mục **Functions** liệt kê ai giữ từng chức năng của dự án. Ở tab một gate của trang **Phase**, lý do "not applicable" do hệ thống tự viết cho một item critical được xác nhận bởi người giữ chức năng mà các bạn đã nêu cho item đó, và hiện "Unassigned" khi chưa có ai giữ.
+*Vị trí trong ứng dụng:* Trên form **New Project** (trang **All Projects**), mục **Functions** liệt kê ai giữ từng chức năng của dự án. Ở tab một gate của trang **Phase**, lý do "not applicable" do hệ thống tự viết cho một item critical được xác nhận bởi người giữ chức năng mà các bạn đã nêu cho item đó, và hiện "Unassigned" khi chưa có ai giữ.
 
 Trong bảng ở đáp án 1(a), các bạn nêu ai phải xác nhận từng item critical. Các tên được viết theo nhiều dạng:
 
@@ -60,7 +60,7 @@ Các bạn chưa nói các tên này liên quan với nhau thế nào nên nhóm
 
 ## Câu 2 — Xin kiểm tra trang liệt kê mọi vai và thẩm quyền của từng vai
 
-*Ở đâu trong ứng dụng:* Trong một dự án, mục **System Guide & Reference** ở thanh bên, rồi **Role & Authority Matrix**. Trang chỉ đọc và được sinh từ cùng các thiết lập mà ứng dụng dùng, nên không thể hiện điều ứng dụng không làm. Chúng tôi cũng có thể gửi bản sao của trang.
+*Vị trí trong ứng dụng:* Trong một dự án, mục **System Guide & Reference** ở thanh bên, rồi **Role & Authority Matrix**. Trang chỉ đọc và được sinh từ cùng các thiết lập mà ứng dụng dùng, nên không thể hiện điều ứng dụng không làm. Chúng tôi cũng có thể gửi bản sao của trang.
 
 Ở đáp án 37(b), các bạn yêu cầu ghi lại bảng vai có thẩm quyền và danh sách người được gán. Trang này làm việc đó. Với mỗi vai một dự án có thể nêu tên, trang cho thấy:
 
@@ -90,7 +90,7 @@ Bên dưới, trang liệt kê thẩm quyền không thuộc về một vai mà 
 
 ## Câu 3 — Ai được nêu tên để giữ một chức năng trên dự án?
 
-*Ở đâu trong ứng dụng:* Trên form **New Project** (trang **All Projects**), mục **Functions**; và thẻ **Project team** trên trang tổng quan dự án, nơi Lead của dự án nêu tên hoặc đổi người giữ một chức năng.
+*Vị trí trong ứng dụng:* Trên form **New Project** (trang **All Projects**), mục **Functions**; và thẻ **Project team** trên trang tổng quan dự án, nơi Lead của dự án nêu tên hoặc đổi người giữ một chức năng.
 
 Ở đáp án 37(b), các bạn nói cho phép Lead của dự án "nominate authorised people **from the company role matrix**". Chúng tôi chưa chắc "company role matrix" là gì nên chưa xây giới hạn mà cụm này có thể ngụ ý.
 
@@ -132,7 +132,7 @@ Cách đọc của chúng tôi: đó là danh sách vai toàn công ty các bạ
 
 ## Câu 4 — Thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận?
 
-*Ở đâu trong ứng dụng:* Khối yêu cầu một người được nêu tên xác nhận lý do "not applicable" do hệ thống tự viết, trên trang chứa dữ liệu của nó (ví dụ sổ Pregnancy / Breastfeeding Caution Limits). Sau khi xác nhận, khối hiện ai xác nhận và lúc nào.
+*Vị trí trong ứng dụng:* Khối yêu cầu một người được nêu tên xác nhận lý do "not applicable" do hệ thống tự viết, trên trang chứa dữ liệu của nó (ví dụ sổ Pregnancy / Breastfeeding Caution Limits). Sau khi xác nhận, khối hiện ai xác nhận và lúc nào.
 
 Ở đáp án 1(c), các bạn nói "a material change to target users, formula, markets, evidence or the rationale invalidates the affected acknowledgement", mục đó phải được đánh giá lại theo sự thật mới, và "pure spelling or formatting corrections may retain the acknowledgement with a recorded editorial change". Các bạn chưa nói thế nào là quan trọng, nên chúng tôi đọc như sau.
 
@@ -158,7 +158,7 @@ Khi đó mục lại chờ xác nhận và người dùng được báo là sự
 
 ## Câu 5 — "Tiếp xúc có thể lường trước" và các điều kiện giám sát chưa có cấu trúc nên được ghi thế nào?
 
-*Ở đâu trong ứng dụng:* Tab **Gate 02 của Phase 1**, nằm trong card Target Users, một ô "Foreseeable maternal and infant contact" chỉ hiện khi chưa tick đối tượng pregnant, breastfeeding, postpartum hay infant nào; và tab **Gate 12 của Phase 4**, một khối mới "Enhanced-surveillance conditions the application cannot read".
+*Vị trí trong ứng dụng:* Tab **Gate 02 của Phase 1**, nằm trong card Target Users, một ô "Foreseeable maternal and infant contact" chỉ hiện khi chưa tick đối tượng pregnant, breastfeeding, postpartum hay infant nào; và tab **Gate 12 của Phase 4**, một khối mới "Enhanced-surveillance conditions the application cannot read".
 
 Ở đoạn cuối đáp án 1, các bạn nói loại trừ maternal hoặc infant "must consider intended and reasonably foreseeable contact, not only marketing ticks", và "not applicable" của giám sát tăng cường "must assess all applicable triggers, including those not yet structured in the app". Các bạn chưa nói những nhận định đó được ghi ở đâu và câu trả lời trông thế nào, nên chúng tôi đã xây như sau. Bốn câu giám sát được trả lời **Yes** hoặc **No**; **No** phải kèm lý do và người xác nhận ("Record as me"), sửa một trong hai thì xác nhận bị rút lại; Yes không cần cả hai. Ô tiếp xúc có thể lường trước không có Yes hay No, chỉ có lý do.
 
@@ -187,7 +187,7 @@ Dự án không tick đối tượng maternal hay infant nào và chưa viết l
 
 ## Câu 6 — Một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào?
 
-*Ở đâu trong ứng dụng:* ba danh sách công ty (Raw Material Risk Overlay, hồ sơ thị trường của Regulatory, Claims Library) và, trong mỗi dự án, **Project Overview**, ở khối "Impact of changes to the company lists".
+*Vị trí trong ứng dụng:* ba danh sách công ty (Raw Material Risk Overlay, hồ sơ thị trường của Regulatory, Claims Library) và, trong mỗi dự án, **Project Overview**, ở khối "Impact of changes to the company lists".
 
 Ở đáp án 1(d), các bạn nói gate đã passed giữ phiên bản danh sách nó đã dùng; một thay đổi liên quan ở danh sách "creates a tracked impact assessment, with an owner and due date"; "a credible Critical safety issue, prohibition or mandatory market restriction puts affected current use/release on hold pending qualified review"; và Safety/Regulatory cùng Quality quyết định phạm vi, mức khẩn và việc có mở lại hay không. Các bạn chưa nói ai phát tín hiệu, ai là owner của đánh giá, và "use/release" nghĩa là gì trong ứng dụng. Chúng tôi đã xây như sau.
 
@@ -210,7 +210,7 @@ Dự án không tick đối tượng maternal hay infant nào và chưa viết l
 
 ## Câu 7 — Các trường của một phát hiện hậu mãi nên điền thế nào và trường nào bắt buộc?
 
-*Ở đâu trong ứng dụng:* tab **Gate 12 của Phase 4**, khối "Change Control required for the post-market finding?".
+*Vị trí trong ứng dụng:* tab **Gate 12 của Phase 4**, khối "Change Control required for the post-market finding?".
 
 Ở đáp án 2 các bạn liệt kê mỗi phát hiện mang theo gì: Finding ID tự sinh, source/category, source record link, date identified, affected SKU/formula/batch và market(s), review-cycle ID, severity/priority và disposition; và Yes, No, Pending đều phải có reviewer, ngày và lý do. Tất cả đã được xây. Các bạn chưa nói trường nào bắt buộc hay một số trường nhận giá trị gì, nên chúng tôi đọc như sau:
 
@@ -237,7 +237,7 @@ Dự án không tick đối tượng maternal hay infant nào và chưa viết l
 
 ## Câu 8 — Mục readiness nào là yêu cầu riêng của một thị trường?
 
-*Ở đâu trong ứng dụng:* **Phase 4**, các tab **Gate 10, 11 và 12**, nay bắt đầu bằng một công tắc thị trường.
+*Vị trí trong ứng dụng:* **Phase 4**, các tab **Gate 10, 11 và 12**, nay bắt đầu bằng một công tắc thị trường.
 
 Các bạn nói các thị trường không liên quan được tiếp tục khi đã đủ yêu cầu riêng. Gate 10 đến 12 vốn đã ký theo từng thị trường, nhưng mọi mục readiness đều nhìn cả dự án, nên một phát hiện mở hay một dòng nhãn chưa xong ở Vietnam cũng giữ luôn Singapore. Nay chúng tôi chấm lane của từng thị trường bằng dữ liệu của chính nó. Các bạn chưa liệt kê mục nào thuộc một thị trường, nên chúng tôi đọc theo dữ liệu nào mang thị trường:
 
@@ -272,7 +272,7 @@ Chúng tôi đã đi xa hơn các mục readiness, để một thị trường k
 
 ## Câu 9 — Safety finding High hoặc Critical bị Superseded: cách kiểm từng xác nhận
 
-*Ở đâu trong ứng dụng:* trang **Formulation Safety**, bảng **Critical Safety Findings**, khi Status của một finding là "Superseded".
+*Vị trí trong ứng dụng:* trang **Formulation Safety**, bảng **Critical Safety Findings**, khi Status của một finding là "Superseded".
 
 Các bạn đã nói finding High hoặc Critical bị superseded cần gì: Finding ID thay thế hợp lệ, lý do của safety reviewer, ngày supersession, link tới đánh giá hoặc bằng chứng thay thế, xác nhận từng action còn tồn là chuyển, giữ lại hay huỷ hợp lệ, và ai cho phép, ai xác minh. Chúng tôi đã xây đúng như vậy. Finding bị superseded không còn bị hỏi gói đóng, chỉ hỏi bản ghi này, và không thể xoá nó hay finding thay thế. Câu trả lời để ngỏ vài chi tiết, nên chúng tôi đọc như sau:
 
@@ -288,3 +288,22 @@ Các bạn đã nói finding High hoặc Critical bị superseded cần gì: Fin
 **(c)** Người cho phép supersession và người xác minh có phải hai người khác nhau không?
 
 **(d)** Giá trị thứ tư "No outstanding action" có đúng không?
+
+## Câu 10 — Watch-list: thế nào là thay đổi "cơ sở", và đánh giá lại được xoá thế nào?
+
+*Vị trí trong ứng dụng:* các sổ **Prohibited Ingredient Watch-list** và **Pregnancy / Breastfeeding Caution Limits**, phần khớp hiện trên mỗi dòng, và danh sách readiness của Gate 4 và Gate 7.
+
+Các bạn đã nói cả hai danh sách phải tự đánh dấu khớp với công thức, giữ kết quả đối chiếu tách khỏi classification của reviewer kèm phiên bản công thức, phiên bản danh sách và cơ sở khớp, và đánh dấu kết luận cũ để đánh giá lại khi cơ sở đổi. Chúng tôi đã xây như vậy. Một nguyên liệu khớp nay đặt dòng thành "REVIEW - possible formula match" ở cả hai danh sách; mỗi dòng hiện cái đã khớp, với phiên bản công thức nào và danh sách nào; và kết luận đạt được trên một khớp khác được đánh dấu "Reassessment needed" mà không đổi lựa chọn của reviewer. Câu trả lời để ngỏ vài điều, nên chúng tôi đọc như sau:
+
+- **Cơ sở là tập các nguyên liệu khớp**, mỗi cái theo số CAS hoặc tên mà nó khớp. Phần trăm và thứ tự dòng không thuộc cơ sở, nên một mẻ thử chỉ đổi phần trăm không mở lại gì. Thêm một nguyên liệu khớp mới, hoặc bớt một cái, thì cơ sở đổi.
+- **Phiên bản danh sách** là một nhãn chúng tôi giữ cho các danh sách dựng sẵn và đổi mỗi khi một nhóm, từ khoá hay số CAS đổi. Các danh sách kiểm soát mà các bạn nói chưa được cung cấp.
+- **Đánh giá lại được xoá khi reviewer ghi lại ngày review** (hoặc đổi classification). Không bao giờ tự xoá.
+- **Một dòng đang chờ đánh giá lại giữ Gate 4 và Gate 7.** Vì Gate 4 chỉ pass khi không có gì chặn, một Gate 4 đã pass sẽ mở lại khi xuất hiện nguyên liệu khớp mới. Chúng tôi đọc "must reopen its affected review" như vậy, chứ không phải một Backtrack tự động.
+
+**(a)** Cơ sở là tập các nguyên liệu khớp, bỏ phần trăm và thứ tự, có đúng không?
+
+**(b)** "Phiên bản danh sách" nên là gì khi các danh sách kiểm soát đã có?
+
+**(c)** Ghi lại ngày review có đủ để xoá một đánh giá lại không, hay reviewer phải ghi thêm gì?
+
+**(d)** Một nguyên liệu khớp mới chỉ nên mở lại dòng đó (và giữ gate tới khi đánh giá lại), hay phải đưa cả dự án về Gate 4 một cách rõ ràng?

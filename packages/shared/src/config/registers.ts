@@ -870,6 +870,16 @@ const supplierRmEvidence: RegisterConfig = {
   ],
 };
 
+// Round 5 question 4(a): the matching result is kept apart from the reviewer's classification — what matched, against which formula and list
+// version, and whether the conclusion on file was reached on a different basis. All derived by the server; none is typed. `basisAtReview` is
+// the snapshot the comparison reads (written when the reviewer records the classification or the review date). [ASSUMPTION: R6-Q10]
+const WATCHLIST_MATCH_COLUMNS: RegisterColumn[] = [
+  { key: 'matchBasis', label: 'Match basis', type: 'textarea', width: 220, editable: false },
+  { key: 'matchedAgainst', label: 'Matched against', type: 'text', width: 200, editable: false },
+  { key: 'reassessmentNeeded', label: 'Reassessment needed', type: 'select', width: 110, options: ['Yes'], editable: false },
+  { key: 'basisAtReview', label: 'Match basis at review', type: 'textarea', width: 200, editable: false },
+];
+
 const prohibitedIngredients: RegisterConfig = {
   key: 'prohibitedIngredients',
   title: 'Prohibited Ingredient Watch-list',
@@ -911,6 +921,7 @@ const prohibitedIngredients: RegisterConfig = {
     },
     // The workbook's COUNTIF: how many Formula BOM lines match this row. Computed, not entered.
     { key: 'formulaMatchCount', label: 'Formula match count', type: 'number', width: 90, editable: false },
+    ...WATCHLIST_MATCH_COLUMNS,
     // Round 4 question 6 (2026-08-29). Sits beside `productStatus`, not inside it:
     // that column holds the SCREENING result (does the formula match this row),
     // this one holds the reviewer's DISPOSITION of that result. Blank is the
@@ -983,11 +994,15 @@ const pbCautionLimits: RegisterConfig = {
         'Not assessed',
         'Not present',
         'Within limit - evidence linked',
+        // Set by the system when the Formula BOM matches the row (Round 5 question 4(a): both lists), as on the Prohibited list.
+        'REVIEW - possible formula match',
         'Exceeds limit - reformulate',
         'Needs Safety Review',
         'Needs Regulatory Review',
       ],
     },
+    { key: 'formulaMatchCount', label: 'Formula match count', type: 'number', width: 90, editable: false },
+    ...WATCHLIST_MATCH_COLUMNS,
     { key: 'formulaExposure', label: 'Formula % / exposure', type: 'text', width: 130 },
     // Round 4 question 6 (2026-08-29) — same column, same reason, as on the
     // Prohibited Ingredient Watch-list above. Required at Gate 4 only when the

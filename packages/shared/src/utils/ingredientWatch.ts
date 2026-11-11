@@ -99,6 +99,27 @@ export function matchIngredientWatchLists(inciName: string, casNo?: string): Wat
   return hits;
 }
 
+// The version of the two watch-lists the matcher reads. The lists are still the built-in stand-in (follow-up F3), so this is a
+// label the team bumps whenever a group, keyword or CAS number changes, recorded beside every match so a later reader knows which
+// list a conclusion was reached against [ASSUMPTION: R6-Q10].
+export const WATCH_LIST_VERSION = 'built-in list v1';
+
+// WHY a watch-list group matches the current formula, as one line per matching ingredient, sorted: "CAS 56-81-5 — Glycerin",
+// "name "paraben" — Methylparaben". Percentages and line numbers are left out on purpose: the basis changes when a different
+// material is matched, not when a trial batch moves a percentage (Round 5 question 4(b): "ordinary pre-lock trial refinement can update
+// the screen without reopening every earlier gate"). An empty list means no match.
+export function watchlistMatchLines(project: ProjectData, kind: WatchHit['kind'], group: string): string[] {
+  const lines = new Set<string>();
+  for (const l of project.bom) {
+    for (const h of matchIngredientWatchLists(l.inciName ?? '', l.casNo)) {
+      if (h.kind !== kind || h.group !== group) continue;
+      const by = h.matchedBy === 'cas' ? `CAS ${h.matchedValue}` : `name "${h.matchedValue}"`;
+      lines.add(`${by} — ${(l.inciName ?? '').trim() || (l.casNo ?? '').trim()}`);
+    }
+  }
+  return [...lines].sort();
+}
+
 export interface BomWatchMatch {
   line: number;
   inciName: string;

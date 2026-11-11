@@ -1390,7 +1390,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q12 | **3** (đã trả lời 05/11, đã xây 11/11/2026) | Safety finding `Superseded` có cần bằng chứng đóng như `Closed` không — không: có bản ghi supersession riêng |
 | ✅ R5-Q10 | — (SW-47) | Sáu giá trị disposition Gate 4 thay thế hay bổ sung cho Product status — đã quyết: bổ sung, hai cột |
 | ✅ R5-Q34 · R5-Q76 | **4(a)** (R5-Q34 đã quyết SW-47; R5-Q76 còn mở cho danh sách Caution) | Hệ thống tự đặt "REVIEW - possible formula match" (Q34 hỏi, Q76 là bản đã build trên sổ Prohibited) |
-| R5-Q63 | **4(b)** | Product status của hai watch-list nhập tới Gate 7 hay chỉ Gate 4 |
+| ✅ R5-Q63 | **4(b)** (đã trả lời 05/11, đã xây 11/11/2026) | Product status của hai watch-list nhập tới Gate 7 hay chỉ Gate 4 — tới Gate 7, như ta đọc |
 | R5-Q8 | **5(a)** | Ai xác nhận mười dữ kiện supersession theo thị trường |
 | R5-Q53 | **5(b)–(e)** | Khi nào phiên bản cũ chuyển trạng thái; Minor; chưa từng launch; lịch review khi hai phiên bản cùng bán |
 | R5-Q9 | **6** | Ai phán định một thay đổi Claims Library là "critical" |
@@ -1743,6 +1743,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q10 · Watch-list: cách ta đọc "cơ sở khớp", "phiên bản danh sách" và việc đánh giá lại (Vòng 5 câu 4) 🟡
+
+**Lộ ra 11/11/2026, khi xây câu 4.** SME nói giữ cơ sở khớp và phiên bản công thức/danh sách, và đánh dấu kết luận cũ để đánh giá lại "where its basis changes", nhưng không nói thế nào là cơ sở thay đổi. Cách đọc của ta: (1) **cơ sở khớp là tập các nguyên liệu khớp** — mỗi dòng "CAS … / name "…" — tên nguyên liệu" — **không** gồm % hay thứ tự dòng, nên một lần tinh chỉnh % trước khi khóa công thức không mở lại gì (đúng câu "ordinary pre-lock trial refinement can update the screen without reopening every earlier gate"), còn thêm một nguyên liệu mới khớp hoặc bớt một nguyên liệu khớp thì đổi cơ sở; (2) **phiên bản danh sách**: hai danh sách vẫn là bảng dựng sẵn (F3, chưa có dữ liệu thật) nên ta ghi một nhãn `WATCH_LIST_VERSION` (`utils/ingredientWatch.ts`), đổi tay mỗi khi nhóm, từ khoá hay số CAS đổi; (3) **cờ xoá khi reviewer ghi lại ngày review** (hoặc đổi classification) — không tự xoá, vì đó là hành động đánh giá lại; (4) **dòng lỗi thời chặn Gate 4** (nên một Gate 4 đã pass mở lại tự động, vì `isGatePassed` đọc thẳng readiness) và Gate 7; đó là cách ta đọc "must reopen its affected review", không phải một lệnh Backtrack tự động; (5) kết luận cũ lưu trước khi có tính năng này không có cơ sở ghi kèm nên không bị coi là lỗi thời cho tới khi được lưu lại một lần.
+
+**Câu hỏi:** (a) "cơ sở khớp" tính theo tập nguyên liệu khớp, bỏ qua % và thứ tự, có đúng không; (b) "phiên bản danh sách" nên là gì khi Regulatory/Safety đã có bộ danh sách kiểm soát (F3); (c) đánh giá lại xong là ghi lại ngày review có đủ không; (d) việc "mở lại phần đánh giá bị ảnh hưởng" là mở lại **dòng đó** (và vì thế gate đang chặn tới khi xong) hay phải **Backtrack gate** một cách rõ ràng.
+
+**Nếu trả lời khác:** `watchlistMatchLines`, `WATCH_LIST_VERSION` (`utils/ingredientWatch.ts`); `watchlistConclusionStale`, `snapshotWatchlistBasis` (`utils/registerDerived.ts`); `watchlistDispositioned` (`gateProgress.ts`) và hai điều kiện `reassessmentNeeded` ở `sg07-prohibited-closed`, `sg07-maternal-caution` (`config/gateReadiness.ts`) [ASSUMPTION: R6-Q10].
 
 #### R5-Q11 · Câu trả lời "có cần Change Control không" ghi một lần cho dự án hay từng phát hiện ✅
 
@@ -2390,7 +2398,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/config/registers.ts` — `stabilityRelease`: `gate`, `referenceGates` và `gate` của cột `releaseDecision`.
 
-#### R5-Q63 · Cột "Product status" của hai sổ watch-list được nhập tới Gate 7 hay chỉ ở Gate 4 🔴
+#### R5-Q63 · Cột "Product status" của hai sổ watch-list được nhập tới Gate 7 hay chỉ ở Gate 4 ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 4(b)) — đúng như cách đọc của ta.** Gate 4 ghi lần sàng lọc đầu; việc đối chiếu và đánh giá còn hiệu lực suốt quá trình pha chế; Gate 7 đóng vấn đề cho công thức cuối. Tinh chỉnh thử nghiệm trước khi khóa công thức được cập nhật phần sàng lọc mà không mở lại mọi gate trước; một nguyên liệu, mối nguy hay hạn chế mới làm Gate 4 không còn đúng thì phải mở lại phần đánh giá bị ảnh hưởng. Gate 7 là chốt an toàn cuối, không phải giấy phép bỏ qua một thay đổi không an toàn trước đó. Đã xây 11/11/2026: `productStatus` giữ gate '07'; cơ chế mở lại ở dưới (R5-Q76 và R6-Q10). Phần dưới là lịch sử.
 
 **Lộ ra 09/10/2026, cùng đợt.** Câu 6 của Round 4 nói Gate 4 sàng lọc và đưa ra kết luận cho mọi dòng, còn Gate 7 *"phải chính thức đóng mọi vấn đề restricted hoặc caution liên quan đến công thức cuối"*. Cột `productStatus` là kết quả sàng lọc tự động đối chiếu công thức; câu 6 không nói nó được chốt ở gate nào.
 
@@ -2476,7 +2486,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** đổi kiểu cột `artworkChangeRef` (và các cột cùng nhóm) trong `packages/shared/src/config/registers.ts` [ASSUMPTION: R5-Q77]; liên quan R5-Q19.
 
-#### R5-Q76 · Product status của Prohibited Ingredients: ứng dụng tự đặt REVIEW khi Formula BOM có khớp 🔴
+#### R5-Q76 · Product status của Prohibited Ingredients: ứng dụng tự đặt REVIEW khi Formula BOM có khớp ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 4(a)) và đã xây 11/11/2026.** Có — tự động đánh dấu khớp tiềm năng trên **cả hai** danh sách (câu hỏi (c) ở dưới); giữ kết quả đối chiếu **tách khỏi** disposition của reviewer, kèm phiên bản công thức/danh sách và cơ sở khớp; công thức đổi làm cơ sở đổi thì **kết luận trước đó phải được đánh dấu để đánh giá lại, kể cả khi người đã chọn một trạng thái**. **Đã xây:** `deriveRegisterRows` (`utils/registerDerived.ts`) áp cho cả `prohibitedIngredients` và `pbCautionLimits` (thêm lựa chọn "REVIEW - possible formula match" cho danh sách Caution; `WATCHLIST_KINDS` nêu trạng thái "chưa khớp" của từng danh sách); cột dẫn xuất `matchBasis`, `matchedAgainst`, `reassessmentNeeded`, `basisAtReview` và `formulaMatchCount` cho cả hai; `snapshotWatchlistBasis` ghi cơ sở khớp khi reviewer ghi classification hoặc ngày review (server ghi, client gửi gì cũng bị bỏ); `watchlistConclusionStale` đánh dấu kết luận lỗi thời mà **không ghi đè** lựa chọn của người. Hiệu lực: `watchlistDispositioned` (Gate 4) không còn thoả cho dòng lỗi thời — nên Gate 4 đã pass sẽ **mở lại** khi một nguyên liệu mới khớp; Gate 7 có thêm điều kiện `reassessmentNeeded` cho cả hai danh sách (và REVIEW vào badValues của Caution). Cách ta đọc "cơ sở khớp", "phiên bản danh sách" và cách xoá cờ → **R6-Q10**. `npm run verify:watchlist-reassessment`. Phần dưới là lịch sử.
 
 **Cập nhật 30/10/2026 (chủ dự án, nguyên tắc ghi nhận — SW-38):** phần đã quyết là SW-47: hệ thống tự đặt REVIEW trên danh sách Prohibited được chốt. Còn hỏi SME: danh sách Pregnancy / Breastfeeding Caution có áp dụng không. Câu hỏi còn lại như bên dưới.
 

@@ -102,3 +102,6 @@
 .wl-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
 
 .wl-help { display: block; margin-top: 6px; color: var(--c-text-3); font-size: 12px; }
+
+/* The matching result, one matched ingredient per line. */
+.wl-match-lines { white-space: pre-line; font-size: 13px; color: var(--c-text-2, inherit); }

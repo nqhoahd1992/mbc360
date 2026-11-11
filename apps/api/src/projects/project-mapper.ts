@@ -416,9 +416,11 @@ function gateReferenceDiffering(
 
 export function toProjectData(...args: Parameters<typeof toProjectDataRaw>): ProjectData {
   const project = toProjectDataRaw(...args);
-  const watchlist = 'prohibitedIngredients';
-  if (project.registers[watchlist]) {
-    project.registers[watchlist] = deriveRegisterRows(watchlist, project.registers[watchlist], project);
+  // Both watch-lists follow the Formula BOM (Round 5 question 4(a)).
+  for (const watchlist of ['prohibitedIngredients', 'pbCautionLimits']) {
+    if (project.registers[watchlist]) {
+      project.registers[watchlist] = deriveRegisterRows(watchlist, project.registers[watchlist], project);
+    }
   }
   const matrix = SAFETY_MATRIX_KEY;
   if (project.registers[matrix]) project.registers[matrix] = refreshStoredSafetyMatrix(project.bom, project.registers[matrix]);

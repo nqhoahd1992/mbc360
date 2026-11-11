@@ -2,7 +2,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-This round has nine questions. They follow from your answers to questions 1, 2, 3 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked.
+This round has ten questions. They follow from your answers to questions 1, 2, 3 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared.
 
 Where we say "the software development team" we mean the team building this application — not the owner of any product development project.
 
@@ -288,3 +288,22 @@ You told us what a superseded High or Critical finding needs: a valid replacemen
 **(c)** Must the person who authorises the supersession and the person who verifies it be two different people?
 
 **(d)** Is the fourth choice, "No outstanding action", right?
+
+## Question 10 — Watch-lists: what counts as a change of "basis", and how is a reassessment cleared?
+
+*Where in the application:* Registers **Prohibited Ingredient Watch-list** and **Pregnancy / Breastfeeding Caution Limits**, the match shown on each row, and the Gate 4 and Gate 7 readiness lists.
+
+You told us both lists must flag a formula match by themselves, keep the matching result apart from the reviewer's classification with the formula and list version and the match basis, and mark an earlier conclusion for reassessment where the basis changes. We have built that. A matching ingredient now sets the row to "REVIEW - possible formula match" on both lists; each row shows what matched, against which formula version and which list; and a conclusion reached on a different match is marked "Reassessment needed" without changing what the reviewer chose. Your answer leaves a few things open, so we read them as follows:
+
+- **The basis is the set of matching ingredients**, each by the CAS number or name it matched on. Percentages and the order of the lines are not part of it, so a trial batch that only changes a percentage reopens nothing. Adding a new matching ingredient, or removing one, changes the basis.
+- **The list version** is a label we keep for the built-in lists and change whenever a group, keyword or CAS number changes. The controlled lists you described have not been supplied yet.
+- **A reassessment is cleared when the reviewer records the review date again** (or changes the classification). It is never cleared by itself.
+- **A row marked for reassessment holds Gate 4 and Gate 7.** Because Gate 4 is only passed while nothing blocks it, a Gate 4 that had passed opens again when a new matching material appears. We read "must reopen its affected review" this way, rather than as an automatic Backtrack.
+
+**(a)** Is the basis, as the set of matching ingredients without percentages or order, right?
+
+**(b)** What should the "list version" be once the controlled lists exist?
+
+**(c)** Is recording the review date again enough to clear a reassessment, or must the reviewer record something more?
+
+**(d)** Should a new matching material reopen only that row, and so hold the gate until it is reassessed, or should it send the whole project back to Gate 4 explicitly?

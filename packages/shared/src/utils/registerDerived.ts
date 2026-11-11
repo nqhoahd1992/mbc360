@@ -1,5 +1,5 @@
 import type { ProjectData, RegisterRow } from '../types';
-import { matchIngredientWatchLists } from './ingredientWatch';
+import { WATCH_LIST_VERSION, matchIngredientWatchLists, watchlistMatchLines } from './ingredientWatch';
 
 // Columns and blocks the workbook computes with formulas, computed here the same way. Applied on the server when a register is
 // saved (so a request cannot set a computed cell) and when it is shown (so the screen is never stale).
@@ -37,10 +37,56 @@ export function formulaChangeStatus(row: RegisterRow): string {
 // --- Prohibited Ingredient Watch-list ----------------------------------------------------------------------------------------
 // The workbook's G: how many Formula BOM lines the row's ingredient group matches (by CAS first, then name — the same matcher the
 // BOM screen uses, which is better than the sheet's plain text search of the BOM).
-export function formulaMatchCount(project: ProjectData, ingredientGroup: string): number {
+export function formulaMatchCount(project: ProjectData, ingredientGroup: string, kind: 'prohibited' | 'pbCaution' = 'prohibited'): number {
   return project.bom.filter((l) =>
-    matchIngredientWatchLists(l.inciName ?? '', l.casNo).some((h) => h.kind === 'prohibited' && h.group === ingredientGroup),
+    matchIngredientWatchLists(l.inciName ?? '', l.casNo).some((h) => h.kind === kind && h.group === ingredientGroup),
   ).length;
+}
+
+// The two watch-lists: which matcher list each reads and the status a row ships with while nothing matches.
+export const WATCHLIST_KINDS: Record<string, { kind: 'prohibited' | 'pbCaution'; noMatch: string }> = {
+  prohibitedIngredients: { kind: 'prohibited', noMatch: 'No formula match recorded' },
+  pbCautionLimits: { kind: 'pbCaution', noMatch: 'Not assessed' },
+};
+
+// The columns of the two watch-lists the server writes: a person never types them, so a closing signature does not lock them and a
+// save that carries a stale copy of them is not a change.
+export const WATCHLIST_DERIVED_COLUMNS: ReadonlySet<string> = new Set(['formulaMatchCount', 'matchBasis', 'matchedAgainst', 'reassessmentNeeded', 'basisAtReview']);
+
+// What the match looked like when the reviewer recorded their conclusion, kept so a later change of basis can be seen. 'none' stands for
+// "no match then", because an empty value means "no conclusion recorded yet".
+export const WATCHLIST_BASIS_NONE = 'none';
+export const watchlistBasisKey = (lines: readonly string[]): string => (lines.length === 0 ? WATCHLIST_BASIS_NONE : lines.join('\n'));
+
+// Round 5 question 4(a), "Retain the matching result separately from the reviewer's disposition, with formula/list version and match basis.
+// A changed formula must mark a prior conclusion for reassessment where its basis changes, even if a person previously selected a status."
+// A conclusion is stale when a basis was recorded with it (basisAtReview, written by the server whenever the review date or the classification
+// is recorded) and the basis now differs. The person's own status and classification are never overwritten: the row is only marked.
+// [ASSUMPTION: R6-Q10]
+export function watchlistConclusionStale(project: ProjectData, registerKey: string, row: RegisterRow): boolean {
+  const def = WATCHLIST_KINDS[registerKey];
+  const recorded = text(row.basisAtReview);
+  if (!def || recorded === '') return false;
+  return recorded !== watchlistBasisKey(watchlistMatchLines(project, def.kind, text(row.ingredientGroup)));
+}
+
+// Written by the server when a reviewer's conclusion is recorded: take a snapshot of the match basis when the classification is first given or
+// the review date or the classification changes; otherwise carry the stored one. The client's own value is always discarded. A row with no
+// classification has no conclusion to go stale, so it carries no basis.
+export function snapshotWatchlistBasis(project: ProjectData, registerKey: string, committed: RegisterRow[], rows: RegisterRow[]): RegisterRow[] {
+  const def = WATCHLIST_KINDS[registerKey];
+  if (!def) return rows;
+  const before = new Map(committed.map((r) => [text(r.ingredientGroup), r]));
+  return rows.map((row) => {
+    const group = text(row.ingredientGroup);
+    const prev = before.get(group);
+    if (text(row.gate4Disposition) === '') return { ...row, basisAtReview: '' };
+    const current = watchlistBasisKey(watchlistMatchLines(project, def.kind, group));
+    const recorded = text(prev?.basisAtReview);
+    const changed =
+      recorded === '' || text(prev?.reviewDate) !== text(row.reviewDate) || text(prev?.gate4Disposition) !== text(row.gate4Disposition);
+    return { ...row, basisAtReview: changed ? current : recorded };
+  });
 }
 
 // The workbook's H: a match reads "REVIEW - possible formula match", no match "No formula match recorded". The app lets a PERSON'S
@@ -50,19 +96,30 @@ export function formulaMatchCount(project: ProjectData, ingredientGroup: string)
 // decisions somebody took, and are kept — which is also how a false match is cleared. [ASSUMPTION: R5-Q76]
 export const WATCHLIST_NO_MATCH = 'No formula match recorded';
 export const WATCHLIST_MATCH_REVIEW = 'REVIEW - possible formula match';
-export function screenedProductStatus(current: string, matches: number): string {
+export function screenedProductStatus(current: string, matches: number, noMatch: string = WATCHLIST_NO_MATCH): string {
   const status = current.trim();
-  if (matches > 0 && (status === '' || status === WATCHLIST_NO_MATCH)) return WATCHLIST_MATCH_REVIEW;
-  if (matches === 0 && status === WATCHLIST_MATCH_REVIEW) return WATCHLIST_NO_MATCH;
+  if (matches > 0 && (status === '' || status === noMatch)) return WATCHLIST_MATCH_REVIEW;
+  if (matches === 0 && status === WATCHLIST_MATCH_REVIEW) return noMatch;
   return current;
 }
 
 export function deriveRegisterRows(registerKey: string, rows: RegisterRow[], project: ProjectData): RegisterRow[] {
   if (registerKey === 'formulationChangeRegister') return rows.map((r) => ({ ...r, overallStatus: formulaChangeStatus(r) }));
-  if (registerKey === 'prohibitedIngredients') {
+  const watch = WATCHLIST_KINDS[registerKey];
+  if (watch) {
     return rows.map((r) => {
-      const matches = formulaMatchCount(project, text(r.ingredientGroup));
-      return { ...r, formulaMatchCount: matches, productStatus: screenedProductStatus(text(r.productStatus), matches) };
+      const group = text(r.ingredientGroup);
+      const matches = formulaMatchCount(project, group, watch.kind);
+      const lines = watchlistMatchLines(project, watch.kind, group);
+      return {
+        ...r,
+        formulaMatchCount: matches,
+        productStatus: screenedProductStatus(text(r.productStatus), matches, watch.noMatch),
+        // The matching result, kept apart from the reviewer's classification: what matched, and against which formula and list.
+        matchBasis: lines.length > 0 ? lines.join('\n') : 'No match',
+        matchedAgainst: `Formula ${project.formulaVersion || '—'} · list ${WATCH_LIST_VERSION}`,
+        reassessmentNeeded: watchlistConclusionStale(project, registerKey, r) ? 'Yes' : '',
+      };
     });
   }
   return rows;

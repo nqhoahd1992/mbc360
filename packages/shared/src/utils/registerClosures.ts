@@ -20,6 +20,7 @@ import type { ProjectData, RegisterClosureState, RegisterRow } from '../types';
 import { DEFAULT_REGISTER_CLOSURE_ROLES, hasStandingClosureSignature, isRegisterClosed } from '../types';
 import { gateOrder, gateRefGateIds } from './gateRefs';
 import { columnsByAccountability } from './registerColumnGates';
+import { WATCHLIST_DERIVED_COLUMNS, WATCHLIST_KINDS } from './registerDerived';
 
 // The registers that are closed by this one's signature (see RegisterConfig.closedWith).
 export function closureMembers(anchorKey: string): RegisterConfig[] {
@@ -147,6 +148,8 @@ export function registerLockViolations(
   const shared = Math.min(committed.length, incoming.length);
   for (let index = 0; index < shared; index += 1) {
     for (const column of config.columns) {
+      // The watch-lists' derived columns are the server's to write after every save, not a person's edit.
+      if (WATCHLIST_KINDS[config.key] && WATCHLIST_DERIVED_COLUMNS.has(column.key)) continue;
       const gate = locks.columns.get(column.key);
       if (gate && blank(committed[index][column.key]) !== blank(incoming[index][column.key])) {
         problems.push(`Row ${index + 1} "${column.label}" is locked — ${registerLockReason(gate)}`);

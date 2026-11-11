@@ -23,7 +23,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
   },
   SG04: {
     pbCautionLimits: ['linkedGate'],
-    prohibitedIngredients: ['evidenceLink', 'gate4Disposition', 'linkedGate', 'linkedNextActionId', 'productStatus', 'reviewDate', 'reviewRationale', 'reviewer', 'reviewerAssessment'],
+    prohibitedIngredients: ['basisAtReview', 'evidenceLink', 'gate4Disposition', 'linkedGate', 'linkedNextActionId', 'productStatus', 'reviewDate', 'reviewRationale', 'reviewer', 'reviewerAssessment'],
     supplierRmEvidence: ['allergenStatement', 'approvedForUse', 'evidenceStatus', 'impurities', 'inciName'],
   },
   SG05: {
@@ -38,8 +38,8 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     formulationSafetyFinalSignOff: ['notes', 'safetyQuestion', 'status'],
     formulationSafetyMatrix: ['allergenIfra', 'coverageReference', 'coverageRoute', 'exposureRationale', 'impurityProof', 'inciName', 'rmCode', 'safetyDecision'],
     generalRestrictedCaution: ['assessmentOutcome'],
-    pbCautionLimits: ['gate4Disposition', 'linkedGate', 'productStatus'],
-    prohibitedIngredients: ['gate4Disposition', 'linkedGate', 'productStatus'],
+    pbCautionLimits: ['gate4Disposition', 'linkedGate', 'productStatus', 'reassessmentNeeded'],
+    prohibitedIngredients: ['gate4Disposition', 'linkedGate', 'productStatus', 'reassessmentNeeded'],
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG08: {

@@ -68,6 +68,7 @@ import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence'
 import { isDoneStatus } from './doneStatus';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
 import { listMessage } from './messageList';
+import { watchlistConclusionStale } from './registerDerived';
 import {
   ASEAN_CHECKLIST_REGISTER,
   MARKET_DOSSIER_REGISTER,
@@ -1251,8 +1252,12 @@ export function evaluateReadinessCheck(
           // The register itself is fixed and never empty; it is only the rows in scope AT THIS GATE that may be none (every
           // caution row is linked to Gate 7, so at Gate 4 there is nothing to disposition there yet).
           all.length > 0 &&
-          rows.every((r) =>
-            (GATE4_DISPOSITION_OPTIONS as readonly string[]).includes(String(r.gate4Disposition ?? '').trim()),
+          // A conclusion reached on a different match than today's counts as not given (Round 5 question 4(a): "a changed formula must
+          // mark a prior conclusion for reassessment where its basis changes") — so a passed Gate 4 reopens when a new material matches.
+          rows.every(
+            (r) =>
+              (GATE4_DISPOSITION_OPTIONS as readonly string[]).includes(String(r.gate4Disposition ?? '').trim()) &&
+              !watchlistConclusionStale(project, check.register, r),
           ),
       };
     }

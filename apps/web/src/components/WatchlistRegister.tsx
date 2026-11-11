@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, DatePicker, Drawer, Grid, Input, InputNumber, Select, Tooltip } from 'antd';
+import { Alert, Button, DatePicker, Drawer, Grid, Input, InputNumber, Select, Tooltip } from 'antd';
 import ChoiceSelect from './ChoiceSelect';
 import {
   CheckCircleOutlined,
@@ -589,6 +589,28 @@ function RowDetail({
               </span>
             )}
           </label>
+          {/* The matching result, kept apart from the classification (Round 5 question 4(a)): what matched, against which formula and list. */}
+          {text(row.matchBasis) && (
+            <div className="wl-span-2 wl-match">
+              <span className="wl-field-label">Match basis</span>
+              <div className="wl-match-lines">{text(row.matchBasis)}</div>
+              <span className="wl-help">{text(row.matchedAgainst)}</span>
+            </div>
+          )}
+          {text(row.reassessmentNeeded) === 'Yes' && (
+            <Alert
+              className="wl-span-2"
+              type="warning"
+              showIcon
+              title="The formula changed after this was classified"
+              description={
+                <>
+                  <div>The match this row was classified on is no longer the match today, so the classification has to be reassessed.</div>
+                  <div>Review it, then record the review date again.</div>
+                </>
+              }
+            />
+          )}
           <label className="wl-span-2">
             <span className="wl-field-label">Evidence link</span>
             <Input

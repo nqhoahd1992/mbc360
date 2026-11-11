@@ -2022,6 +2022,8 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
             badValues: ['REVIEW - possible formula match', 'Prohibited - remove', 'Needs Safety Review', 'Needs Regulatory Review'],
           },
           { kind: 'registerNoBadRows', register: 'prohibitedIngredients', column: 'gate4Disposition', badValues: [GATE4_DISPOSITION_PROHIBITED] },
+          // Round 5 question 4: Gate 7 closes the issues for the FINAL formula, so a conclusion reached on a different match is not closed.
+          { kind: 'registerNoBadRows', register: 'prohibitedIngredients', column: 'reassessmentNeeded', badValues: ['Yes'] },
         ],
       },
     },
@@ -2106,6 +2108,8 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
             column: 'productStatus',
             badValues: [
               'Not assessed',
+              // The system now sets this when the Formula BOM matches a caution row (Round 5 question 4(a)).
+              'REVIEW - possible formula match',
               'Exceeds limit - reformulate',
               'Needs Safety Review',
               'Needs Regulatory Review',
@@ -2113,6 +2117,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
           },
           // B16's "Prohibited — remove" disposition, closed at Gate 7 too.
           { kind: 'registerNoBadRows', register: 'pbCautionLimits', column: 'gate4Disposition', badValues: [GATE4_DISPOSITION_PROHIBITED] },
+          { kind: 'registerNoBadRows', register: 'pbCautionLimits', column: 'reassessmentNeeded', badValues: ['Yes'] },
         ],
       },
     },
