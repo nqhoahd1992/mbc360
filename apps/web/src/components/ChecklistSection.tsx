@@ -12,6 +12,7 @@ import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import SaveBar from './SaveBar';
 import SelfAttestField from './SelfAttestField';
 import AssessmentStateTag from './AssessmentStateTag';
+import AcknowledgementNote from './AcknowledgementNote';
 import '../styles/concept.css';
 import './ChecklistSection.css';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
@@ -39,6 +40,7 @@ export default function ChecklistSection({
   tickBlockedReason,
   requiresPrimary,
   foreseeableContact,
+  market,
 }: {
   projectId: string;
   sectionKey: string;
@@ -51,6 +53,9 @@ export default function ChecklistSection({
   currentGateNumber?: string;
   // Gate-level edit lock: true once this section's gate has passed.
   readOnly?: boolean;
+  // The market chosen on the gate tab (Gates 10-12), for a checklist made per market: its options for THAT market. The draft holds every
+  // market's, so switching market never loses an unsaved edit.
+  market?: string;
   untickBlockedReason?: (label: string) => string | undefined;
   // Why a given option cannot be TICKED right now (2026-11-06): a target user that would make an acknowledged "not applicable"
   // untrue stays unticked until that acknowledgement is withdrawn.
@@ -91,8 +96,9 @@ export default function ChecklistSection({
   useExclusiveDrawer(openIndex !== null, () => setOpenIndex(null));
   useCloseDrawerOnPageSave(dirty, openIndex !== null, () => setOpenIndex(null));
   const screens = Grid.useBreakpoint();
-  const selectedCount = draft.filter((i) => i.selected).length;
-  const hasSelection = draft.some((i) => i.status === 'Y');
+  const inView = (i: ChecklistItem) => !market || !i.market || i.market === market;
+  const selectedCount = draft.filter((i) => inView(i) && i.selected).length;
+  const hasSelection = draft.some((i) => inView(i) && i.status === 'Y');
   const mandatory = isMandatoryChecklistSection(sectionKey);
 
   const patch = (index: number, p: Partial<ChecklistItem>) => update((prev) => patchArray(prev, index, p));
@@ -126,7 +132,7 @@ export default function ChecklistSection({
   };
 
   // Every option is always shown, however long the list.
-  const visible = draft.map((item, index) => ({ item, index }));
+  const visible = draft.map((item, index) => ({ item, index })).filter(({ item }) => inView(item));
   const open = openIndex === null ? undefined : draft[openIndex];
 
   return (
@@ -149,7 +155,7 @@ export default function ChecklistSection({
           )}
         </div>
         <span className="cl-count">
-          {selectedCount ? `${selectedCount} selected` : 'None selected'} · {draft.length} options
+          {selectedCount ? `${selectedCount} selected` : 'None selected'} · {visible.length} options
         </span>
       </div>
 
@@ -211,7 +217,7 @@ export default function ChecklistSection({
         <div className={`cl-contact${contactBlocking ? ' cl-contact-open' : ''}`} id={assessmentAnchor('foreseeableContact')}>
           <div className="cl-contact-head">
             <div className="cl-contact-text">
-              <div className="as-kicker">Assessment · Gate 02</div>
+              <div className="as-kicker">Assessment</div>
               <span className="cl-contact-title">Foreseeable maternal and infant contact</span>
             </div>
             {project && <AssessmentStateTag project={project} assessmentKey="foreseeableContact" />}
@@ -245,6 +251,7 @@ export default function ChecklistSection({
           </div>
           </div>
           <p className="cl-hint">If such contact is foreseeable, tick the user above instead: that switches the pathway on.</p>
+          <AcknowledgementNote assessmentKey="foreseeableContact" />
         </div>
       )}
 

@@ -7,7 +7,7 @@ import { GATE_PASSING_DECISIONS, findGateSignOff, gateSignOffMarkets, isGateSign
 import { gateActionStates, gateEvidenceSnapshot, snapshotChanges } from './gateSnapshot';
 import { gateRefGateIds } from './gateRefs';
 import { acknowledgementState, isCriticalForAcknowledgement, type AcknowledgementSlot } from './readinessAck';
-import { isPendingAnswer } from './changeControlAssessments';
+import { assessmentMarkets, isPendingAnswer } from './changeControlAssessments';
 export { gateRefGateIds } from './gateRefs';
 import { isChangeOpen } from '../config/changeTriggers';
 import {
@@ -76,6 +76,7 @@ import {
 } from './marketDossier';
 import {
   GATE_READINESS,
+  PER_MARKET_ITEM_IDS,
   type ReadinessCheck,
   type ReadinessRequirement,
   type ReadinessSource,
@@ -1116,6 +1117,52 @@ export function finalSafetySignOffGaps(project: ProjectData): string[] {
     .map((r) => String(r.safetyQuestion ?? ''));
 }
 
+// ---------------------------------------------------------------------------
+// One market's slice of a project (Round 5 question 2(c): "unrelated markets may continue where their own requirements are met").
+// Everything keyed by market is cut down to that market; a record that names no market belongs to every market (the SW-54 convention),
+// so it can only hold a lane, never release one. Registers are NOT cut here — their rows are cut by the check that reads them
+// (rowsOfMarket), because "does the register have any rows" is a project-wide fact while "are this market's rows complete" is not.
+// A pure view: nothing is stored, so removing the lane rule later costs nothing.
+// ---------------------------------------------------------------------------
+export function marketView(project: ProjectData, market: string): ProjectData {
+  const inMarket = (markets?: readonly string[]) => !markets || markets.length === 0 || markets.includes(market);
+  return {
+    ...project,
+    identity: { ...project.identity, markets: project.identity.markets.filter((m) => m === market) },
+    marketTracks: project.marketTracks.filter((t) => t.market === market),
+    postLaunchReviews: project.postLaunchReviews.filter((r) => r.market === market),
+    supersessionDecisions: project.supersessionDecisions.filter((d) => d.market === market),
+    changeControlAssessments: project.changeControlAssessments.filter((a) => inMarket(assessmentMarkets(a))),
+    changes: project.changes.filter((c) => inMarket(c.markets)),
+    // The requirement rows of the product plus this market's own rows; a next action of this market or of every market.
+    requirements: Object.fromEntries(
+      Object.entries(project.requirements).map(([section, rows]) => [section, rows.filter((r) => !r.market || r.market === market)]),
+    ),
+    nextActions: project.nextActions.filter((a) => !a.market || a.market === market),
+    // The Key Gate Checks and checklists the configuration makes per market: the gate's shared ones plus this market's own.
+    gateChecks: project.gateChecks.filter((c) => !c.market || c.market === market),
+    checklists: Object.fromEntries(
+      Object.entries(project.checklists).map(([section, items]) => [section, items.filter((i) => !i.market || i.market === market)]),
+    ),
+    capa: project.capa.filter((c) => !c.market || c.market === market),
+    gateSignOffs: project.gateSignOffs.filter((s) => !s.market || s.market === market),
+    impactAssessments: (project.impactAssessments ?? []).filter((a) => inMarket(a.markets)),
+  };
+}
+
+// The rows of a register that belong to a market. A register with no market column is not split; a row that names no market belongs to
+// every market, and a row naming several (`markets`, comma-joined) belongs to each of them.
+export function rowsOfMarket<T extends Record<string, unknown>>(register: string, rows: readonly T[], market?: string): T[] {
+  if (!market) return [...rows];
+  const column = REGISTER_CONFIGS.find((c) => c.key === register)?.columns.find((c) => c.type === 'market' || c.type === 'markets');
+  if (!column) return [...rows];
+  return rows.filter((r) => {
+    const value = String(r[column.key] ?? '').trim();
+    if (value === '') return true;
+    return value.split(',').map((m) => m.trim()).includes(market);
+  });
+}
+
 // Evaluate a requirement's check against live project data. `evaluable` is false
 // for `manual` checks (no linked data source yet — shown for confirmation, never
 // hard-blocks); when false, `satisfied` is meaningless (reported as false/pending).
@@ -1127,6 +1174,9 @@ export function evaluateReadinessCheck(
   // because a check that had to work out which gate it belongs to would be a
   // check that could get it wrong.
   gateId: string,
+  // The market whose lane is being judged. Only the checks that read a register with a market column need it (the rest of a market's
+  // slice is already in `project`, see marketView); omitted, every row counts.
+  market?: string,
 ): { evaluable: boolean; satisfied: boolean } {
   switch (check.kind) {
     case 'manual':
@@ -1222,7 +1272,7 @@ export function evaluateReadinessCheck(
         evaluable: true,
         satisfied:
           artworkClaimBlockers(
-            project.registers['packagingSpecsArtwork'] ?? [],
+            rowsOfMarket('packagingSpecsArtwork', project.registers['packagingSpecsArtwork'] ?? [], market),
             project.registers['claimEvidenceTraceability'] ?? [],
             project.registers['skuClaimsPifRegister'] ?? [],
           ).length === 0,
@@ -1334,7 +1384,9 @@ export function evaluateReadinessCheck(
     case 'rmEvidenceHasUsable':
       return { evaluable: true, satisfied: hasUsableRmRow(project.registers[RM_EVIDENCE_REGISTER] ?? []) };
     case 'gateCheckDone': {
-      const row = project.gateChecks.find((c) => c.gate === check.gate && c.check === check.check);
+      // A Key Gate Check can be several rows — one per market, when the configuration makes it a market's own — and is done when EVERY one is,
+      // so the project is ready exactly when all its markets are, and a lane (see marketView) sees only its own.
+      const rows = project.gateChecks.filter((c) => c.gate === check.gate && c.check === check.check);
       // Same rule as the existing phase-level keyChecksDone: done+Y, or
       // NA+justified (a note explaining why it's not applicable) — except where
       // the row declares a trigger that makes N/A untrue. See
@@ -1353,7 +1405,7 @@ export function evaluateReadinessCheck(
       );
       const satisfied =
         !!gateCheckExemption(project, check.gate, check.check) ||
-        (!!row && ((row.done && row.ynna === 'Y') || (naAllowed && row.ynna === 'NA' && !!row.notes?.trim())));
+        (rows.length > 0 && rows.every((row) => (row.done && row.ynna === 'Y') || (naAllowed && row.ynna === 'NA' && !!row.notes?.trim())));
       return { evaluable: true, satisfied };
     }
     case 'checklistHasSelection': {
@@ -1369,15 +1421,19 @@ export function evaluateReadinessCheck(
     case 'bomIdentityComplete':
       return { evaluable: true, satisfied: project.bom.every((l) => !!l.inciName?.trim()) };
     case 'registerColumnFilled': {
-      const rows = project.registers[check.register] ?? [];
+      const rows = rowsOfMarket(check.register, project.registers[check.register] ?? [], market);
       return { evaluable: true, satisfied: rows.every((r) => String(r[check.column] ?? '').trim() !== '') };
     }
     case 'registerRowsComplete': {
-      const rows = project.registers[check.register] ?? [];
+      const allRows = project.registers[check.register] ?? [];
       // Unlike registerColumnFilled, an empty register must NOT vacuously
       // satisfy this — it backs sign-off-style hard blocks (NPD Front-End
       // Roadmap, 2026-07-24) where "no rows yet" must read as incomplete.
-      if (rows.length === 0) return { evaluable: true, satisfied: false };
+      if (allRows.length === 0) return { evaluable: true, satisfied: false };
+      // For one market's lane, only that market's rows have to be complete. A market with no row of its own in a register that does have
+      // rows has nothing of its own to complete: the register-wide "somebody looked" is what the paired registerHasRows still asks.
+      const rows = rowsOfMarket(check.register, allRows, market);
+      if (market && rows.length === 0) return { evaluable: true, satisfied: true };
       // `when` (2026-08-11) narrows the check to the rows it applies to, so a
       // register whose rows are ALL skipped reports satisfied — correct, because
       // the requirement genuinely does not apply, and the paired registerHasRows
@@ -1435,14 +1491,16 @@ export function evaluateReadinessCheck(
       return { evaluable: true, satisfied: expected.every((g) => recorded.has(g)) };
     }
     case 'requirementDone': {
-      const row = (project.requirements[check.section] ?? []).find((r) => r.requirement === check.requirement);
+      // A requirement can be several rows — one per market, when the section makes it a market's own row. It is done when EVERY row of
+      // that name is, so the project is ready exactly when all its markets are, and a lane (see marketView) sees only its own.
+      const named = (project.requirements[check.section] ?? []).filter((r) => r.requirement === check.requirement);
       // "Must-have product requirements" is `strict`: question 21 says that row "is
       // always mandatory", so N/A never satisfies it. On every other row of a
       // section that offers N/A, N/A with a rationale is a disposition
       // [ASSUMPTION: R5-Q22].
       return {
         evaluable: true,
-        satisfied: requirementRowSettled(check.section, row, check.strict === true),
+        satisfied: named.length > 0 && named.every((r) => requirementRowSettled(check.section, r, check.strict === true)),
       };
     }
     // Round 4 question 21's four hard conditions, in the answer's own order.
@@ -1517,11 +1575,11 @@ export function evaluateReadinessCheck(
       return { evaluable: true, satisfied: !!record?.[check.field]?.trim() };
     }
     case 'allOf': {
-      const results = check.checks.map((c) => evaluateReadinessCheck(project, c, gateId));
+      const results = check.checks.map((c) => evaluateReadinessCheck(project, c, gateId, market));
       return { evaluable: results.every((r) => r.evaluable), satisfied: results.every((r) => r.satisfied) };
     }
     case 'anyOf': {
-      const results = check.checks.map((c) => evaluateReadinessCheck(project, c, gateId));
+      const results = check.checks.map((c) => evaluateReadinessCheck(project, c, gateId, market));
       return { evaluable: results.every((r) => r.evaluable), satisfied: results.some((r) => r.satisfied) };
     }
     default:
@@ -1737,6 +1795,9 @@ export interface GateReadinessPart {
 
 export interface GateReadinessItem extends GateBlocker {
   satisfied: boolean;
+  // Only set when the list was built for one market's lane: 'market' = judged on that market's own data, 'project' = judged on the
+  // whole project and so shared by every lane ("All markets" on screen).
+  scope?: 'market' | 'project';
   // The conditions a composite item is made of, in config order. Present only when
   // there are at least two and every one could be described in words — a partial
   // list would suggest the item is smaller than it is.
@@ -2018,7 +2079,7 @@ function leafChecks(check: ReadinessCheck): ReadinessCheck[] {
   return check.kind === 'allOf' ? check.checks.flatMap(leafChecks) : [check];
 }
 
-function readinessParts(project: ProjectData, check: ReadinessCheck, gateId: string): GateReadinessPart[] | undefined {
+function readinessParts(project: ProjectData, check: ReadinessCheck, gateId: string, market?: string): GateReadinessPart[] | undefined {
   if (check.kind !== 'allOf') return undefined;
   const leaves = leafChecks(check);
   if (leaves.length < 2) return undefined;
@@ -2026,7 +2087,7 @@ function readinessParts(project: ProjectData, check: ReadinessCheck, gateId: str
   for (const leaf of leaves) {
     const label = describeReadinessCheck(leaf);
     if (!label) return undefined;
-    const satisfied = evaluateReadinessCheck(project, leaf, gateId).satisfied;
+    const satisfied = evaluateReadinessCheck(project, leaf, gateId, market).satisfied;
     const part: GateReadinessPart = { label, satisfied, link: resolveCheckLink(gateId, leaf) };
     // Only the two "every row ..." kinds can be satisfied by an empty register. (registerRowsComplete
     // deliberately is not: it treats no rows as incomplete.)
@@ -2344,6 +2405,9 @@ export function gateReadinessChecklist(
   liveProject: ProjectData,
   gateId: string,
   decisionOverride?: GateRecord['decision'],
+  // One market's lane (Gates 10-12). The items listed in PER_MARKET_ITEM_IDS are judged on that market's slice; every other item is
+  // judged on the whole project, so it still blocks every lane. Omitted: the whole project, exactly as before.
+  market?: string,
 ): GateReadinessItem[] {
   const project = referenceAsOfGate(liveProject, gateId);
   const items: GateReadinessItem[] = [];
@@ -2372,7 +2436,8 @@ export function gateReadinessChecklist(
   // Round 5 question 1(d): a Critical change to the company lists puts release on hold until the impact review is concluded. The
   // release gates cannot pass while it stands, and Proceed with Conditions does not clear it. [ASSUMPTION: R6-Q6]
   if (gateId === 'SG10' || gateId === 'SG11' || gateId === 'SG12') {
-    const holds = impactHolds(project);
+    // A hold names the markets it covers (none = all of them): in a market's lane only the holds that reach it count.
+    const holds = impactHolds(project).filter((h) => !market || h.markets.length === 0 || h.markets.includes(market));
     items.push({
       id: 'impact-hold',
       label:
@@ -2424,7 +2489,10 @@ export function gateReadinessChecklist(
     // evaluated push with a declared trigger means the trigger IS active.
     const blocks = req.tier === 'Mandatory' || (req.tier === 'Conditional' && !!req.trigger);
     const advisory = !blocks || undefined; // omit (not `false`) when it blocks, to keep satisfied items tidy
-    const triggerState = req.trigger ? evaluateTrigger(project, req.trigger) : undefined;
+    // A market's own requirement is judged on that market's slice; anything else on the whole project (see PER_MARKET_ITEM_IDS).
+    const laneMarket = market && PER_MARKET_ITEM_IDS.has(req.id) ? market : undefined;
+    const laneProject = laneMarket ? marketView(project, laneMarket) : project;
+    const triggerState = req.trigger ? evaluateTrigger(laneProject, req.trigger) : undefined;
 
     // Round 4 question 7, option (b): "not yet assessed" is NOT "does not apply".
     // A Mandatory or Conditional item whose trigger has never been evaluated
@@ -2468,7 +2536,10 @@ export function gateReadinessChecklist(
     // [ASSUMPTION: R5-Q6].
     if (triggerState === 'doesNotApply') {
       const rationale = generatedNaRationale(req);
-      if (isCriticalForAcknowledgement(gateId, req.id)) {
+      // The acknowledgement is of a "not applicable" the system wrote for the PROJECT. A lane where the item does not apply while it still
+      // applies elsewhere has no such record to acknowledge, so asking for one would deadlock the lane; it is simply not that market's.
+      const projectNa = !laneMarket || (req.trigger ? evaluateTrigger(project, req.trigger) === 'doesNotApply' : true);
+      if (projectNa && isCriticalForAcknowledgement(gateId, req.id)) {
         // A critical item's generated reason does not close by itself: the
         // responsible reviewer must acknowledge THIS wording. It is a hard block
         // that Proceed with Conditions does not clear — the answer says "before gate
@@ -2533,7 +2604,7 @@ export function gateReadinessChecklist(
       req.tier === 'Conditional' && req.trigger && triggerState === 'applies'
         ? withNaInvalidWhen(req.check, req.trigger)
         : req.check;
-    const satisfiedNow = evaluateReadinessCheck(project, effectiveCheck, gateId).satisfied;
+    const satisfiedNow = evaluateReadinessCheck(laneProject, effectiveCheck, gateId, laneMarket).satisfied;
     const decisionOnTable =
       decisionOverride !== undefined ? decisionOverride : project.gates.find((g) => g.gateId === gateId)?.decision;
     items.push({
@@ -2544,7 +2615,7 @@ export function gateReadinessChecklist(
       hardBlock: blocks && !req.clearedByConditions,
       advisory,
       link: resolveCheckLink(gateId, req.check),
-      parts: readinessParts(project, effectiveCheck, gateId),
+      parts: readinessParts(laneProject, effectiveCheck, gateId, laneMarket),
       source: req.source,
       tier: req.tier,
       coverageNote: req.coverageNote,
@@ -2568,7 +2639,9 @@ export function gateReadinessChecklist(
   // The SME's B2 says all actions should normally be completed before closure and F8
   // names only open Critical actions as blocking; that a once-Critical gate must still
   // use Proceed with Conditions is not in either, so it is not enforced.
-  const criticalOpen = openNextActions(project, gateId).filter((a) => a.priority === 'Critical');
+  // In a market's lane only the actions of that market and the ones that name no market count.
+  const actionsView = market ? marketView(project, market) : project;
+  const criticalOpen = openNextActions(actionsView, gateId).filter((a) => a.priority === 'Critical');
   items.push({
     id: 'critical-next-actions',
     label:
@@ -2582,7 +2655,7 @@ export function gateReadinessChecklist(
 
   const record = project.gates.find((g) => g.gateId === gateId);
   const decision = decisionOverride !== undefined ? decisionOverride : record?.decision;
-  const otherOpen = openNextActions(project, gateId).filter((a) => a.priority !== 'Critical');
+  const otherOpen = openNextActions(actionsView, gateId).filter((a) => a.priority !== 'Critical');
   items.push({
     id: 'open-next-actions',
     label:
@@ -2615,7 +2688,12 @@ export function gateReadinessChecklist(
       .map((r) => r.id),
   );
   for (const item of items) if (criticalIds.has(item.id)) item.critical = true;
-  return [...items.filter((i) => !signOffIds.has(i.id)), ...items.filter((i) => signOffIds.has(i.id))];
+  const ordered = [...items.filter((i) => !signOffIds.has(i.id)), ...items.filter((i) => signOffIds.has(i.id))];
+  if (market) {
+    const marketItems = new Set(['impact-hold', 'critical-next-actions', 'open-next-actions']);
+    for (const i of ordered) i.scope = PER_MARKET_ITEM_IDS.has(i.id) || marketItems.has(i.id) ? 'market' : 'project';
+  }
+  return ordered;
 }
 
 // Every register whose OWN highest listed gate (gateRefHighestGateId) is at
@@ -2684,8 +2762,8 @@ function unclosedRegistersBlocking(project: ProjectData, gateId: string): GateRe
 // ones that hard-block. Used by the UI to disable "Proceed with Conditions"
 // too, not just plain "Proceed" — see `gateBlockers` below for the softer,
 // PwC-clearable open-next-action case this deliberately excludes.
-export function hardGateBlockers(project: ProjectData, gateId: string): GateBlocker[] {
-  return gateReadinessChecklist(project, gateId)
+export function hardGateBlockers(project: ProjectData, gateId: string, market?: string): GateBlocker[] {
+  return gateReadinessChecklist(project, gateId, undefined, market)
     .filter((item) => item.hardBlock && !item.satisfied && !item.pending && !item.advisory)
     .map(({ satisfied: _satisfied, ...blocker }) => blocker);
 }
@@ -2700,8 +2778,9 @@ export function gateBlockers(
   project: ProjectData,
   gateId: string,
   decisionOverride?: GateRecord['decision'],
+  market?: string,
 ): GateBlocker[] {
-  return gateReadinessChecklist(project, gateId, decisionOverride)
+  return gateReadinessChecklist(project, gateId, decisionOverride, market)
     .filter((item) => !item.satisfied && !item.pending && !item.advisory)
     .map(({ satisfied: _satisfied, ...blocker }) => blocker);
 }

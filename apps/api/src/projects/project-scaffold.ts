@@ -7,6 +7,7 @@ import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import { EVIDENCE_AREAS } from '@mbc360/shared/config/evidence';
 import { REGISTER_CONFIGS } from '@mbc360/shared/config/registers';
 import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
+import { expandChecklistOptions, expandGateChecks, expandRequirementRows } from '@mbc360/shared/utils/marketRequirements';
 import type { RegisterRow } from '@mbc360/shared/types';
 import type { Prisma } from '../generated/prisma/client';
 
@@ -96,14 +97,16 @@ function seedRegisterRowCreates(): Prisma.RegisterRowCreateWithoutProjectInput[]
   return creates;
 }
 
-function checklistItemCreates(): Prisma.ChecklistItemCreateWithoutProjectInput[] {
+function checklistItemCreates(markets: readonly string[]): Prisma.ChecklistItemCreateWithoutProjectInput[] {
   const creates: Prisma.ChecklistItemCreateWithoutProjectInput[] = [];
   for (const config of Object.values(PHASE_CONFIGS)) {
     for (const section of config.checklistSections) {
-      section.options.forEach((label, index) => {
+      // A checklist the configuration makes per market lists its options once for every market (expandChecklistOptions).
+      expandChecklistOptions(section, markets).forEach(({ label, market }, index) => {
         creates.push({
           sectionKey: section.key,
           itemOrder: index,
+          ...(market ? { market } : {}),
           label,
           gate: section.gate,
           ownerFunction: section.ownerFunction,
@@ -114,16 +117,18 @@ function checklistItemCreates(): Prisma.ChecklistItemCreateWithoutProjectInput[]
   return creates;
 }
 
-function requirementItemCreates(): Prisma.RequirementItemCreateWithoutProjectInput[] {
+function requirementItemCreates(markets: readonly string[]): Prisma.RequirementItemCreateWithoutProjectInput[] {
   const creates: Prisma.RequirementItemCreateWithoutProjectInput[] = [];
   for (const config of Object.values(PHASE_CONFIGS)) {
     for (const section of config.requirementSections) {
-      section.rows.forEach((row, index) => {
+      // A row a section makes per market becomes one row for each market it applies to (expandRequirementRows).
+      expandRequirementRows(section.rows, markets).forEach(({ row, market }, index) => {
         creates.push({
           sectionKey: section.key,
           itemOrder: index,
           gate: row.gate,
           requirement: row.requirement,
+          ...(market ? { market } : {}),
           minimumRequirement: row.minimum,
         priority: undefined,
           rationale: row.rationale,
@@ -135,9 +140,14 @@ function requirementItemCreates(): Prisma.RequirementItemCreateWithoutProjectInp
   return creates;
 }
 
-function gateCheckCreates(): Prisma.GateCheckCreateWithoutProjectInput[] {
+function gateCheckCreates(markets: readonly string[]): Prisma.GateCheckCreateWithoutProjectInput[] {
   return Object.values(PHASE_CONFIGS).flatMap((config) =>
-    config.keyGateChecks.map((kc) => ({ gate: kc.gate, check: kc.check })),
+    // A check the configuration makes per market is one row for each market (expandGateChecks).
+    expandGateChecks(config.keyGateChecks, markets).map(({ check: kc, market }) => ({
+      gate: kc.gate,
+      check: kc.check,
+      ...(market ? { market } : {}),
+    })),
   );
 }
 
@@ -171,9 +181,9 @@ export async function createProjectWithScaffold(
       markets: { create: input.markets.map((market) => ({ market })) },
       reviewers: { create: reviewerCreates(input.reviewers) },
       gates: { create: GATES.map((g) => ({ gateId: g.id })) },
-      checklistItems: { create: checklistItemCreates() },
-      requirementItems: { create: requirementItemCreates() },
-      gateChecks: { create: gateCheckCreates() },
+      checklistItems: { create: checklistItemCreates(input.markets) },
+      requirementItems: { create: requirementItemCreates(input.markets) },
+      gateChecks: { create: gateCheckCreates(input.markets) },
       phaseClosures: { create: phaseClosureCreates() },
       costing: {
         create: {

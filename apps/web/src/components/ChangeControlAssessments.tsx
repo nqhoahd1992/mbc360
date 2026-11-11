@@ -15,6 +15,7 @@ import ChoiceSelect from './ChoiceSelect';
 import SelfAttestField from './SelfAttestField';
 import Notice from './Notice';
 import AssessmentStateTag from './AssessmentStateTag';
+import AcknowledgementNote from './AcknowledgementNote';
 import '../styles/concept.css';
 import './DynamicTable.css';
 import './AssessmentsCard.css';
@@ -51,7 +52,7 @@ const ANSWER_HINT: Record<string, string> = {
   'Pending assessment': 'Not decided yet — record who is assessing it, when and what is awaited. This blocks the review and Gate 12 until answered.',
 };
 
-export default function ChangeControlAssessments({ project }: { project: ProjectData }) {
+export default function ChangeControlAssessments({ project, market }: { project: ProjectData; market?: string }) {
   const save = useAppStore((s) => s.setChangeControlAssessments);
   const { draft, dirty, update, markSaved, discard } = useDraft(project.changeControlAssessments ?? []);
   // Entries the person has already worked on in this session. A saved entry is always "worked on"; a brand
@@ -64,7 +65,12 @@ export default function ChangeControlAssessments({ project }: { project: Project
     setTouched((prev) => new Set(prev).add(id));
     update((prev) => prev.map((e) => (e.id === id ? { ...e, ...change } : e)));
   };
-  const addEntry = () => update((prev) => [...prev, newEntry()]);
+  // With a market chosen on the gate tab, only that market's findings are listed; the others stay in the draft untouched. A finding
+  // that names no market, and one just added, are always listed. A new one starts with the chosen market.
+  const listed = (e: ChangeControlAssessment) =>
+    !market || e.id.startsWith('new-') || assessmentMarkets(e).length === 0 || assessmentMarkets(e).includes(market);
+  const visible = draft.filter(listed);
+  const addEntry = () => update((prev) => [...prev, { ...newEntry(), ...(market ? { markets: market } : {}) }]);
 
   // The review cycles a finding can be tied to: each milestone the schedule generates for a launched market, plus reviews on record.
   const cycles = reviewCycleOptions(project, {
@@ -84,7 +90,7 @@ export default function ChangeControlAssessments({ project }: { project: Project
     <section className="c-card as-card" id={assessmentAnchor('changeControl')}>
       <div className="as-head">
         <div className="as-head-text">
-          <div className="as-kicker">Assessment · Gate {home.gateId.slice(2)}</div>
+          <div className="as-kicker">Assessment</div>
           <h2 className="as-title">{home.title}</h2>
           <p className="as-desc">
             One entry for each post-market finding. A Pending (or unanswered) entry blocks the gate. If nothing from this review needs a
@@ -103,7 +109,7 @@ export default function ChangeControlAssessments({ project }: { project: Project
       )}
       <ConfigProvider componentDisabled={locked}>
         <div className="as-block">
-          {draft.length === 0 && (
+          {visible.length === 0 && (
             <Notice
               tone="warn"
               title="No assessment recorded yet"
@@ -117,7 +123,7 @@ export default function ChangeControlAssessments({ project }: { project: Project
               this review was looked at.
             </Notice>
           )}
-          {draft.map((e, i) => {
+          {visible.map((e, i) => {
             const answer = (e.answer ?? '').trim();
             const worked = touched.has(e.id) || !e.id.startsWith('new-');
             const findingMissing = !(e.finding ?? '').trim();
@@ -318,11 +324,12 @@ export default function ChangeControlAssessments({ project }: { project: Project
               </div>
             );
           })}
-          {draft.length > 0 && (
+          {visible.length > 0 && (
             <Button type="dashed" block icon={<PlusOutlined />} onClick={addEntry}>
               Add another assessment
             </Button>
           )}
+          <AcknowledgementNote assessmentKey="changeControl" />
         </div>
       </ConfigProvider>
       {(dirty || blockingReason) && (

@@ -438,6 +438,7 @@ function toProjectDataRaw(
   for (const item of p.checklistItems) {
     (checklists[item.sectionKey] ??= []).push({
       label: item.label,
+      ...(item.market ? { market: item.market } : {}),
       gate: item.gate,
       selected: item.selected,
       ownerFunction: item.ownerFunction,
@@ -453,6 +454,7 @@ function toProjectDataRaw(
     (requirements[item.sectionKey] ??= []).push({
       gate: item.gate,
       requirement: item.requirement,
+      ...(item.market ? { market: item.market } : {}),
       ...(item.priority ? { priority: item.priority } : {}),
       ...(item.requirementText ? { requirementText: item.requirementText } : {}),
       minimumRequirement: item.minimumRequirement,
@@ -585,6 +587,7 @@ function toProjectDataRaw(
       (c): GateCheck => ({
         gate: c.gate,
         check: c.check,
+        ...(c.market ? { market: c.market } : {}),
         done: c.done,
         ynna: c.ynna as GateCheck['ynna'],
         date: dateOnly(c.date),
@@ -738,6 +741,7 @@ function toProjectDataRaw(
       dateCompleted: dateOnly(a.dateCompleted),
       raisedBy: opt(a.raisedBy),
       verifiedBy: opt(a.verifiedBy),
+      ...(a.market ? { market: a.market } : {}),
     })),
     // E3(b): the readiness engine evaluates each open change's impact at Gate 11,
     // so the changes have to travel with the project rather than only in the

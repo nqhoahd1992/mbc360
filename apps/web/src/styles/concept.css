@@ -79,3 +79,11 @@
 .c-skel { border-radius: 4px; background: rgb(0 0 0 / 6%); animation: c-pulse 1.5s ease-in-out infinite; }
 @keyframes c-pulse { 50% { opacity: 0.5; } }
 @media (prefers-reduced-motion: reduce) { .c-skel { animation: none; } }
+/* The one card title of the phase page: 16px / 600 / 24px, 20px side padding, no line between the title and the body, a muted description beneath. Every card on a gate tab wears
+   it — the cards built on the shared blocks already do (rt-head-title, as-title, gso-title, cl-title, gfc-title); an antd Card (size small
+   makes its title 14px) takes it with the .ph-card class. */
+.ph-card.ant-card .ant-card-head { min-height: 0; padding: 0 20px; border-bottom: 0; }
+.ph-card.ant-card .ant-card-head-title { padding: 16px 0 0; font-size: 16px; font-weight: 600; line-height: 24px; }
+.ph-card.ant-card .ant-card-extra { padding: 16px 0 0; }
+.ph-card.ant-card .ant-card-body { padding: 12px 20px 16px; }
+

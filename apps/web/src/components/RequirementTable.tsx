@@ -27,6 +27,7 @@ export default function RequirementTable({
   allowNotApplicable,
   statusOptions: sectionStatusOptions,
   showYnna,
+  market,
 }: {
   projectId: string;
   sectionKey: string;
@@ -49,6 +50,9 @@ export default function RequirementTable({
   statusOptions?: readonly string[];
   // The compartment tables' own Y/N/NA column.
   showYnna?: boolean;
+  // The market chosen on the gate tab (Gates 10-12). The table shows the product's rows and THIS market's own; the draft still holds
+  // every market's, so switching market never loses an unsaved edit.
+  market?: string;
 }) {
   // 'category' is an alternative heading for the same data as 'requirement',
   // opt-in only (Phase 1's B6 rows are categories).
@@ -70,6 +74,9 @@ export default function RequirementTable({
       ];
 
   const patch = (index: number, p: Partial<RequirementItem>) => update((prev) => patchArray(prev, index, p));
+  // The rows shown, and where each one sits in the whole draft (an edit is addressed to its place there).
+  const shown = market ? draft.filter((r) => !r.market || r.market === market) : draft;
+  const at = (r: RequirementItem) => draft.indexOf(r);
   const save = async () => {
     const ok = await setSection(projectId, sectionKey, draft);
     if (ok) markSaved();
@@ -82,7 +89,7 @@ export default function RequirementTable({
   const naMissing = (r: RequirementItem) =>
     !!allowNotApplicable && r.status === REQUIREMENT_NOT_APPLICABLE && (r.naRationale ?? '').trim() === '';
 
-  const priorityControl = (r: RequirementItem, i: number) => (
+  const priorityControl = (r: RequirementItem) => (
     <Select
       style={{ width: '100%' }}
       allowClear
@@ -91,10 +98,10 @@ export default function RequirementTable({
       placeholder="Must / Should / Could"
       value={r.priority || undefined}
       options={REQUIREMENT_PRIORITIES.map((o) => ({ value: o, label: o }))}
-      onChange={(v?: string) => patch(i, { priority: v ?? '' })}
+      onChange={(v?: string) => patch(at(r), { priority: v ?? '' })}
     />
   );
-  const statusControl = (r: RequirementItem, i: number) => (
+  const statusControl = (r: RequirementItem) => (
     <Select
       style={{ width: '100%' }}
       value={r.status}
@@ -102,18 +109,18 @@ export default function RequirementTable({
       status={naMissing(r) ? 'error' : undefined}
       options={statusOptions}
       popupMatchSelectWidth={false}
-      onChange={(v: RequirementStatus) => setStatus(i, v)}
+      onChange={(v: RequirementStatus) => setStatus(at(r), v)}
     />
   );
-  const done = draft.filter((r) => isDoneStatus(r.status) || (!!allowNotApplicable && r.status === REQUIREMENT_NOT_APPLICABLE)).length;
-  const ynnaControl = (r: RequirementItem, i: number) => (
+  const done = shown.filter((r) => isDoneStatus(r.status) || (!!allowNotApplicable && r.status === REQUIREMENT_NOT_APPLICABLE)).length;
+  const ynnaControl = (r: RequirementItem) => (
     <Select
       style={{ width: '100%' }}
       allowClear
       value={r.ynna || undefined}
       disabled={isRowLocked?.(r)}
       options={COMPARTMENT_YNNA.map((o) => ({ value: o, label: o }))}
-      onChange={(v?: string) => patch(i, { ynna: v ?? '' })}
+      onChange={(v?: string) => patch(at(r), { ynna: v ?? '' })}
     />
   );
 
@@ -123,28 +130,37 @@ export default function RequirementTable({
       onSave={save}
       // Every row's gate has passed: nothing here can change, so the drawer
       // drops its "changes stay in the draft" hint.
-      readOnly={draft.length > 0 && draft.every((r) => !!isRowLocked?.(r))}
+      readOnly={shown.length > 0 && shown.every((r) => !!isRowLocked?.(r))}
       title={title}
-      count={`${done}/${draft.length} ${allowNotApplicable ? 'dispositioned' : 'completed'}`}
-      rows={draft}
-      rowKey={(r) => r.requirement}
+      count={`${done}/${shown.length} ${allowNotApplicable ? 'dispositioned' : 'completed'}`}
+      rows={shown}
+      rowKey={(r) => `${r.requirement}|${r.market ?? ''}`}
       rowBadge={
-        shows('gate')
+        shows('gate') || draft.some((r) => r.market)
           ? (r) => {
+              const marketTag = r.market ? (
+                <span className="c-tag" style={{ flexShrink: 0 }} title={`This row is about ${r.market} alone`}>
+                  {r.market}
+                </span>
+              ) : null;
+              if (!shows('gate')) return marketTag;
               // On a gate's own tab every row is that gate's, so the badge says
               // nothing; keep only the lock marker there.
               const sameGate = !!viewedGateNumber && r.gate === viewedGateNumber;
               const locked = !!isRowLocked?.(r);
-              if (sameGate && !locked) return null;
+              if (sameGate && !locked) return marketTag;
               return (
-                <span
-                  className="c-tag"
-                  style={{ flexShrink: 0 }}
-                  title={locked ? `Gate ${r.gate} has passed — this row is locked` : `Required by Gate ${r.gate}`}
-                >
-                  {locked && <LockOutlined />}
-                  {!sameGate && `Gate ${r.gate}`}
-                </span>
+                <>
+                  <span
+                    className="c-tag"
+                    style={{ flexShrink: 0 }}
+                    title={locked ? `Gate ${r.gate} has passed — this row is locked` : `Required by Gate ${r.gate}`}
+                  >
+                    {locked && <LockOutlined />}
+                    {!sameGate && `Gate ${r.gate}`}
+                  </span>
+                  {marketTag}
+                </>
               );
             }
           : undefined
@@ -162,7 +178,7 @@ export default function RequirementTable({
         ...(shows('status') ? [{ label: 'Status', width: 184, render: statusControl }] : []),
         ...(showYnna ? [{ label: 'Y/N/NA', width: 96, render: ynnaControl }] : []),
       ]}
-      drawer={(r, i) => {
+      drawer={(r) => {
         const locked = isRowLocked?.(r);
         const reference = [
           ...(shows('minimum') && r.minimumRequirement ? [['Minimum requirement', r.minimumRequirement]] : []),
@@ -181,16 +197,16 @@ export default function RequirementTable({
                       placeholder="What this category means for this project"
                       value={r.requirementText}
                       disabled={locked}
-                      onChange={(e) => patch(i, { requirementText: e.target.value })}
+                      onChange={(e) => patch(at(r), { requirementText: e.target.value })}
                     />
                   </RecordField>
                 )}
-                {shows('priority') && <RecordField label="Priority">{priorityControl(r, i)}</RecordField>}
-                {shows('status') && <RecordField label="Status">{statusControl(r, i)}</RecordField>}
-                {showYnna && <RecordField label="Y/N/NA">{ynnaControl(r, i)}</RecordField>}
+                {shows('priority') && <RecordField label="Priority">{priorityControl(r)}</RecordField>}
+                {shows('status') && <RecordField label="Status">{statusControl(r)}</RecordField>}
+                {showYnna && <RecordField label="Y/N/NA">{ynnaControl(r)}</RecordField>}
                 {ownerEditable && shows('owner') && (
                   <RecordField label="Owner">
-                    <Input disabled={locked} value={r.owner} onChange={(e) => patch(i, { owner: e.target.value })} />
+                    <Input disabled={locked} value={r.owner} onChange={(e) => patch(at(r), { owner: e.target.value })} />
                   </RecordField>
                 )}
                 {shows('naRationale') && r.status === REQUIREMENT_NOT_APPLICABLE && (
@@ -201,18 +217,18 @@ export default function RequirementTable({
                       placeholder="Why this does not apply to this project"
                       value={r.naRationale}
                       disabled={locked}
-                      onChange={(e) => patch(i, { naRationale: e.target.value })}
+                      onChange={(e) => patch(at(r), { naRationale: e.target.value })}
                     />
                   </RecordField>
                 )}
                 {shows('evidenceLink') && (
                   <RecordField label="Evidence link" wide>
-                    <Input value={r.evidenceLink} placeholder="Link to the supporting record" disabled={locked} onChange={(e) => patch(i, { evidenceLink: e.target.value })} />
+                    <Input value={r.evidenceLink} placeholder="Link to the supporting record" disabled={locked} onChange={(e) => patch(at(r), { evidenceLink: e.target.value })} />
                   </RecordField>
                 )}
                 {shows('notes') && (
                   <RecordField label="Notes / action" wide>
-                    <Input.TextArea autoSize={{ minRows: 2 }} value={r.notes} disabled={locked} onChange={(e) => patch(i, { notes: e.target.value })} />
+                    <Input.TextArea autoSize={{ minRows: 2 }} value={r.notes} disabled={locked} onChange={(e) => patch(at(r), { notes: e.target.value })} />
                   </RecordField>
                 )}
               </div>

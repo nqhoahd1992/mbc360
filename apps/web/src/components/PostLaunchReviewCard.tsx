@@ -15,6 +15,7 @@ import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import UserSelect from './UserSelect';
 import { TEXT, TABLE_STICKY } from '../theme/tokens';
+import '../styles/concept.css';
 
 // Round 4 questions 13 and 14 (2026-08-29). The review SCHEDULE is derived — 1
 // month for enhanced-surveillance products, then 3, 12 and annually, all measured
@@ -31,9 +32,13 @@ const milestoneLabel = reviewMilestoneLabel;
 export default function PostLaunchReviewCard({
   project,
   enhanced,
+  market,
 }: {
   project: ProjectData;
   enhanced: boolean;
+  // The market chosen on the gate tab (Gate 12): the schedule of THAT market. The draft still holds every market's rows, so switching
+  // market never loses an unsaved edit.
+  market?: string;
 }) {
   const setReviews = useAppStore((s) => s.setPostLaunchReviews);
   const today = dayjs().format('YYYY-MM-DD');
@@ -66,15 +71,20 @@ export default function PostLaunchReviewCard({
 
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
   const patch = (index: number, p: Partial<PostLaunchReview>) => update((prev) => patchArray(prev, index, p));
-  const overdue = overdueReviews(project, { enhanced, asOf: today, profiles: project.reference.marketProfiles });
+  const allOverdue = overdueReviews(project, { enhanced, asOf: today, profiles: project.reference.marketProfiles });
+  const overdue = market ? allOverdue.filter((m) => m.market === market) : allOverdue;
+  // The rows shown are the chosen market's; an edit is addressed to the row's place in the whole draft.
+  const shown = market ? draft.filter((r) => r.market === market) : draft;
+  const at = (r: PostLaunchReview) => draft.indexOf(r);
   const status = projectLaunchStatus(project);
 
   return (
     <Card
       size="small"
+      className="ph-card"
       title={
         <span>
-          Post-launch review schedule <Tag color="blue">{status}</Tag>
+          Post-launch review schedule{market ? ` — ${market}` : ''} <Tag color="blue">{status}</Tag>
         </span>
       }
       extra={
@@ -104,12 +114,12 @@ export default function PostLaunchReviewCard({
           <Table
             size="small"
             rowKey={(r) => `${r.market}|${r.milestone}`}
-            dataSource={draft}
+            dataSource={shown}
             pagination={false}
             sticky={TABLE_STICKY}
             scroll={{ x: 1200 }}
             columns={[
-              { title: 'Market', width: 130, fixed: 'left', render: (_, r) => <b>{r.market}</b> },
+              { title: 'Market', width: 130, fixed: 'left', hidden: !!market, render: (_, r) => <b>{r.market}</b> },
               { title: 'Review', width: 260, render: (_, r) => milestoneLabel(r.milestone) },
               {
                 title: 'Due',
@@ -128,47 +138,47 @@ export default function PostLaunchReviewCard({
               {
                 title: 'Completed',
                 width: 150,
-                render: (_, r, i) => (
+                render: (_, r) => (
                   <DatePicker
                     style={{ width: 130 }}
                     value={r.completedDate ? dayjs(r.completedDate) : null}
-                    onChange={(d) => patch(i, { completedDate: d ? d.format('YYYY-MM-DD') : undefined })}
+                    onChange={(d) => patch(at(r), { completedDate: d ? d.format('YYYY-MM-DD') : undefined })}
                   />
                 ),
               },
               {
                 title: 'Reviewer',
                 width: 180,
-                render: (_, r, i) => (
+                render: (_, r) => (
                   <UserSelect
                     value={r.reviewer}
                     // Required to complete — flagged here, refused by the API.
                     style={{ width: '100%' }}
-                    onChange={(v) => patch(i, { reviewer: v })}
+                    onChange={(v) => patch(at(r), { reviewer: v })}
                   />
                 ),
               },
               {
                 title: 'Outcome',
                 width: 260,
-                render: (_, r, i) => (
+                render: (_, r) => (
                   <Input.TextArea
                     autoSize={{ minRows: 1, maxRows: 3 }}
                     status={r.completedDate && !(r.outcome ?? '').trim() ? 'error' : undefined}
                     placeholder={r.completedDate ? 'Required to complete a review' : 'What the review found'}
                     value={r.outcome}
-                    onChange={(e) => patch(i, { outcome: e.target.value })}
+                    onChange={(e) => patch(at(r), { outcome: e.target.value })}
                   />
                 ),
               },
               {
                 title: 'Evidence link',
                 width: 170,
-                render: (_, r, i) => (
+                render: (_, r) => (
                   <Input
                     placeholder="link"
                     value={r.evidenceLink}
-                    onChange={(e) => patch(i, { evidenceLink: e.target.value })}
+                    onChange={(e) => patch(at(r), { evidenceLink: e.target.value })}
                   />
                 ),
               },

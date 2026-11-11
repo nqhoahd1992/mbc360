@@ -58,7 +58,6 @@
 .cl-contact-reason { display: grid; gap: 6px; min-width: 0; }
 .cl-contact-fields { display: grid; gap: 12px; }
 .cl-contact-confirm { display: grid; gap: 6px; align-content: start; min-width: 0; }
-@media (min-width: 992px) { .cl-contact-fields { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
 .cl-contact .cl-field-label { margin: 0; }
 .cl-req { color: var(--c-bad); }
 .cl-save-why { margin-right: auto; color: var(--c-warn); font-size: 12px; }

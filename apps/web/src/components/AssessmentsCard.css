@@ -1,11 +1,11 @@
 /* Assessment blocks on the gate tabs (AssessmentBlock) and the summary on the
    Project Overview (AssessmentSummary). Tokens from styles/concept.css. */
 .as-card { overflow: hidden; }
-.as-head { padding: 16px 20px; border-bottom: 1px solid var(--c-border-2); }
+.as-head { padding: 16px 20px 0; }
 .as-title { margin: 0; font-size: 16px; font-weight: 600; line-height: 24px; }
 .as-desc { margin: 2px 0 0; max-width: 860px; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
 .as-blocks { display: grid; }
-.as-block { display: grid; gap: 12px; padding: 16px 20px; }
+.as-block { display: grid; gap: 12px; padding: 12px 20px 16px; }
 .as-block + .as-block { border-top: 1px solid var(--c-border-2); }
 .as-block-title { font-weight: 500; }
 .as-block-hint { margin-top: 2px; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
@@ -28,6 +28,9 @@
 
 /* A list of yes/no questions (the surveillance conditions): numbered, divided by a hairline, the answer beside its question, the
    detail underneath only once there is an answer. */
+/* "This assessment can open an acknowledgement": quiet, and wearing the same kicker word as the acknowledgement strip it points to. */
+.as-ack { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; padding: 8px 12px; max-width: 860px; border-left: 3px solid var(--c-border); border-radius: 0 6px 6px 0; background: var(--c-surface-2); color: var(--c-text-2); font-size: 13px; line-height: 20px; text-wrap: pretty; }
+.as-ack-kicker { color: var(--c-text-3); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
 .as-q-progress { margin: 0; color: var(--c-text-3); font-size: 13px; }
 .as-q-list { list-style: none; margin: 0; padding: 0; display: grid; }
 .as-q { display: grid; gap: 10px; padding: 14px 0; border-top: 1px solid var(--c-border-2); }
@@ -43,9 +46,7 @@
   .as-q-head { grid-template-columns: 22px minmax(0, 1fr) auto; }
   .as-q-choice { grid-column: auto; }
 }
-@media (min-width: 992px) {
-  .as-q-detail-2 { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
-}
+
 
 .as-kicker { color: var(--c-text-3); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
 

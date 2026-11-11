@@ -6,7 +6,7 @@
 
 .gso-head {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-  padding: 14px 20px; border-bottom: 1px solid var(--c-border-2);
+  padding: 16px 20px 4px;
 }
 .gso-title { font-size: 16px; font-weight: 600; line-height: 24px; }
 .gso-progress { margin-left: auto; color: var(--c-text-3); font-size: 13px; font-variant-numeric: tabular-nums; }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition, type MouseEvent, type ReactNode } from 'react';
 import { Dropdown, Tooltip } from 'antd';
 import {
   AppstoreOutlined,
@@ -27,6 +27,7 @@ import { useAppStore } from '../store/useAppStore';
 import { sheetClosure } from '../utils/sheetClosure';
 import { globalNavFor } from '../config/globalNav';
 import AppsMenuButton from '../apphub/AppsMenuButton';
+import SwitchOverlay from './SwitchOverlay';
 import './AppSidebar.css';
 
 // The main sidebar (2026-10-03 redesign, wireframe option B): a dark icon RAIL
@@ -168,8 +169,17 @@ function Item({
   note?: ReactNode;
   current: boolean;
 }) {
+  // A page switch is drawn as a transition; the overlay shows only if it is still going after a moment.
+  const navigate = useNavigate();
+  const [pending, startTransition] = useTransition();
+  const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || current) return;
+    e.preventDefault();
+    startTransition(() => navigate(to));
+  };
   return (
-    <Link to={to} className={`sb-item${sub ? ' sb-sub' : ''}`} aria-current={current ? 'page' : undefined}>
+    <Link to={to} onClick={onClick} className={`sb-item${sub ? ' sb-sub' : ''}`} aria-current={current ? 'page' : undefined}>
+      {pending && <SwitchOverlay label="Loading…" />}
       {icon && <span className="sb-icon">{icon}</span>}
       <span className="sb-lbl">
         <span className="sb-lbl-text">{label}</span>

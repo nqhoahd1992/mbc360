@@ -596,9 +596,9 @@ export const useAppStore = create<AppState>()(
           const resolved = updates
             .map(({ index, patch }) => {
               const row = project.gateChecks[index];
-              return row ? { gate: row.gate, check: row.check, patch } : null;
+              return row ? { gate: row.gate, check: row.check, ...(row.market ? { market: row.market } : {}), patch } : null;
             })
-            .filter((u): u is { gate: string; check: string; patch: Partial<GateCheck> } => u !== null);
+            .filter((u): u is { gate: string; check: string; market?: string; patch: Partial<GateCheck> } => u !== null);
           return tryWriteSection(id, (v) => projectsApi.setGateChecks(id, resolved, v));
         },
         setAnglesBulk: (id, phase, angles) =>

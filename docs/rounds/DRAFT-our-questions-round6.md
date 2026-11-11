@@ -223,7 +223,7 @@ In answer 2 you listed what each finding carries: a generated Finding ID, source
 - **Source record link** and **date identified:** optional.
 - **Pending** also needs a reviewer, a date and a rationale (what is awaited), as you wrote; an entry with no answer yet asks for nothing.
 
-*One thing is not built yet:* you said unrelated markets may continue where their own requirements are met. Today a Pending finding in one market holds the Change-control item at Gate 12 for every market. A review that a Pending finding belongs to cannot be closed, but the other markets are not yet released.
+*Unrelated markets continue:* a Pending finding in one market no longer holds the other markets (see question 8). A review that a Pending finding belongs to cannot be closed.
 
 **(a)** Does disposition have a list of values? If so, which?
 
@@ -234,3 +234,38 @@ In answer 2 you listed what each finding carries: a generated Finding ID, source
 **(d)** Is the shared Low / Medium / High / Critical scale right for severity / priority?
 
 **(e)** Should the affected SKU, formula and batch be three separate boxes?
+
+## Question 8 — Which readiness items are a market's own requirements?
+
+*Where in the application:* **Phase 4**, the **Gate 10, 11 and 12** tabs, which now start with a market switch.
+
+You said that unrelated markets may continue where their own requirements are met. Gates 10 to 12 were already signed one market at a time, but every readiness item looked at the whole project, so an open finding or an unfinished label row in Vietnam also held Singapore. We now judge each market's lane on its own data. You did not list which items belong to a market, so we read it off which data carries a market:
+
+- **Judged per market:** the regulatory checklist and the ASEAN checklist, claim evidence in the SKU claims register, artwork approval and artwork claims, published-information approval, GMP links, released labels, regulatory approval, launch approval, the Gate 10 sign-off of each market, changes that name a market, and the post-launch review, baseline surveillance and Change-control items.
+- **Judged for the whole project, so they hold every market:** the formula and the raw-material evidence, safety evidence, the dossier and infant PIF content, claim evidence wording and exemptions, production and release pathway, complaints and CAPA, and the four surveillance conditions the application cannot read.
+- A record that names no market is treated as concerning every market, so it can hold a market but never release one.
+
+Two things are stricter than before: a market with no finding recorded for it is held at the Change-control item (a review that found nothing records a No for that market), and a project is ready exactly when all its markets are.
+
+**(a)** Is the list of items judged per market right?
+
+**(b)** May a market that has not launched yet pass Gates 10 and 11 independently of one that has?
+
+**(c)** Is it right that each market's review records its own "no findings requiring Change Control"?
+
+We went further than the readiness items, so that a market is not held by another's:
+
+- **Requirement rows that belong to a market.** In the table "Dossier / HCP Evidence Checks" the row **ASEAN PIF mapped** is now one row for each ASEAN market (none for a market outside ASEAN), and **Country-specific restrictions** is one row for each market. We only split the two rows whose own wording names a market or a country; every other row is still one row for the product.
+- **The country/pathway Key Gate Check, two Infant & Baby Safety rows, and the post-market feedback lists.** The Gate 10 check "Countries/regulatory pathway matched and PIF/evidence file mapped" is now one check for each market. In the Infant & Baby Safety table for Gate 10, **Approved age and use statements** and **Label warnings and directions** are one row for each market. The three Gate 12 lists (feedback source, issue type, resulting action) are listed separately for each market.
+- **Next actions belong to one market or to all.** On Gates 10 to 12 an action can name a market; one that names none holds every market.
+- The Gates 10 to 12 tabs show the rows and actions of the market chosen at the top, and a market's signature covers only that market's rows and actions.
+
+**(d)** Besides the rows, checks and lists named above, which others on Gates 10 to 12 are a market's own (for example the rows "Approved HCP wording" and "PIF/CPSR export-ready", or the other Key Gate Checks)?
+
+**(e)** Is it right that an action on Gates 10 to 12 that names no market holds every market?
+
+**(f)** Should each market move through Gates 10, 11 and 12 on its own? For example, Singapore opens Gate 11 once its own Gate 10 has passed, while Vietnam is still on Gate 10. And may Phase 4 be closed while one market has launched and another has not passed Gate 10?
+
+**(g)** When a market's gate is sent back (Backtrack), should that affect only that market, or the other markets too?
+
+**(h)** When a market is added or withdrawn part-way through, which gate does its own track start at, and what happens to the gates it had already passed?

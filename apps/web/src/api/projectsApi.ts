@@ -200,7 +200,7 @@ export const setRequirementSection = (id: string, section: string, items: Requir
 
 export const setGateChecks = (
   id: string,
-  updates: { gate: string; check: string; patch: Partial<GateCheck> }[],
+  updates: { gate: string; check: string; market?: string; patch: Partial<GateCheck> }[],
   v: number,
 ) => put(id, 'gate-checks', { updates }, v);
 

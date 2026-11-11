@@ -15,6 +15,7 @@ import {
 import { BENCHMARK_GATE_CHECK, isGateRefLocked, isGateSignedStanding, personAnswer } from '@mbc360/shared/utils/gateProgress';
 import { isFamilyUseSelected } from './assessmentStatus';
 import AssessmentStateTag from './AssessmentStateTag';
+import AcknowledgementNote from './AcknowledgementNote';
 import { ASSESSMENT_FIELDS, ASSESSMENT_HOMES, SCALE_UP_REVIEW_AREAS, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
@@ -54,12 +55,12 @@ const FIELDS: Record<AssessmentKey, readonly Field[]> = ASSESSMENT_FIELDS;
 type BlockKey = Exclude<AssessmentKey, 'changeControl' | 'foreseeableContact'>;
 const HINTS: Record<BlockKey, string> = {
   pmsUnstructured:
-    'Gate 12. Four conditions the application cannot read. A No needs its reason and the person who confirmed it; a Yes puts the product under enhanced surveillance. Any left blank blocks the enhanced-surveillance item.',
+    'Four conditions the application cannot read. A No needs its reason and the person who confirmed it; a Yes puts the product under enhanced surveillance. Any left blank blocks the enhanced-surveillance item.',
   familyUse:
     'Decides the infant pathway at Gates 2, 4, 5, 6, 7, 8-9 and 10. Family use is not a vulnerable population on its own, but leaving this unanswered blocks the pathway from being decided either way. Including Infant 0+ activates it.',
-  administrativeOnly: 'Gate 03. Only a confirmed Yes exempts the project from competitor and benchmark review.',
-  humanStudy: 'Gate 08. Undecided blocks the gate.',
-  scaleUp: 'Gate 09. Pending assessment blocks the gate. A Major formula change counts as identified on its own.',
+  administrativeOnly: 'Only a confirmed Yes exempts the project from competitor and benchmark review.',
+  humanStudy: 'Undecided blocks the gate.',
+  scaleUp: 'Pending assessment blocks the gate. A Major formula change counts as identified on its own.',
 };
 
 function pick(source: Assessments, keys: readonly Field[]): Assessments {
@@ -485,7 +486,7 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
     <section className="c-card as-card" id={assessmentAnchor(which)}>
       <div className="as-head">
         <div className="as-head-text">
-          <div className="as-kicker">Assessment · Gate {home.gateId.slice(2)}</div>
+          <div className="as-kicker">Assessment</div>
           <h2 className="as-title">{home.title}</h2>
           <p className="as-desc">{HINTS[which]}</p>
         </div>
@@ -508,10 +509,14 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
           <AssessmentRecord rows={readRows} />
           {protocolNotice}
           {areasDetails}
+          <AcknowledgementNote assessmentKey={which} />
         </div>
       ) : (
         <ConfigProvider componentDisabled={false}>
-          <div className="as-block">{body}</div>
+          <div className="as-block">
+            {body}
+            <AcknowledgementNote assessmentKey={which} />
+          </div>
         </ConfigProvider>
       )}
       {(dirty || blockingReason) && (

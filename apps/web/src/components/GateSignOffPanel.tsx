@@ -59,9 +59,12 @@ import './GateSignOffPanel.css';
 export default function GateSignOffPanel({
   project,
   gateId,
+  laneMarket,
 }: {
   project: ProjectData;
   gateId: string;
+  // The market chosen once for the whole gate tab (MarketSwitch). When given, this panel shows that lane and drops its own switcher.
+  laneMarket?: string;
 }) {
   const projectId = project.identity.id;
   const session = useSession();
@@ -108,7 +111,7 @@ export default function GateSignOffPanel({
   // The Phase Gate Flow card above must be complete (SW-26): owner, due date and evidence link, as SAVED.
   const flowMissing = gateFlowMissing(project, gateId);
   // Everything else that still blocks this gate. The sign-off item is left out: it can only be satisfied BY signing.
-  const openBlockers = gateReadinessChecklist(project, gateId).filter(
+  const openBlockers = gateReadinessChecklist(project, gateId, undefined, laneMarket).filter(
     (i) => !i.satisfied && i.hardBlock && i.id !== `${gateId.toLowerCase()}-signoff`,
   ).length;
   const [drafts, setDrafts] = useState<Record<string, { decision?: string; comment?: string }>>({});
@@ -233,7 +236,8 @@ export default function GateSignOffPanel({
           ),
       );
     const signOffItem = `${gateId.toLowerCase()}-signoff`;
-    const blockers = (decision === 'Proceed' ? gateBlockers(pending, gateId, decision) : hardGateBlockers(pending, gateId)).filter(
+    // The lane being signed: a market's own requirements are judged on that market, the rest on the whole project.
+    const blockers = (decision === 'Proceed' ? gateBlockers(pending, gateId, decision, market) : hardGateBlockers(pending, gateId, market)).filter(
       (b) => !(otherLanesOpen && b.id === signOffItem),
     );
     if (blockers.length > 0) {
@@ -306,9 +310,11 @@ export default function GateSignOffPanel({
     GATE_SIGNOFF_ROLES.filter((role) => findGateSignOff(project, gateId, m, role)?.signedAt).length;
   const shownLane =
     lanes.length > 1
-      ? activeLane !== undefined && lanes.includes(activeLane)
-        ? activeLane
-        : (lanes.find((m) => laneProgress(m) < GATE_SIGNOFF_ROLES.length) ?? lanes[0])
+      ? laneMarket !== undefined && lanes.includes(laneMarket)
+        ? laneMarket
+        : activeLane !== undefined && lanes.includes(activeLane)
+          ? activeLane
+          : (lanes.find((m) => laneProgress(m) < GATE_SIGNOFF_ROLES.length) ?? lanes[0])
       : undefined;
   const visibleLanes = shownLane !== undefined ? [shownLane] : lanes;
 
@@ -327,7 +333,7 @@ export default function GateSignOffPanel({
           <div key={market ?? '_'} className="concept-tokens c-card gso">
             <div className="gso-head">
               <span className="gso-title">Gate sign-off</span>
-              {lanes.length > 1 ? (
+              {lanes.length > 1 && laneMarket === undefined ? (
                 <Segmented
                   size="small"
                   className="gso-lanes"

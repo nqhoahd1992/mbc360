@@ -35,6 +35,14 @@
 import { execSync } from 'node:child_process';
 import { PHASE_CONFIGS } from '../src/config/phases';
 import { REGISTER_CONFIGS } from '../src/config/registers';
+import {
+  checklistItemKey,
+  expandChecklistOptions,
+  expandGateChecks,
+  expandRequirementRows,
+  gateCheckRowKey,
+  requirementRowKey,
+} from '../src/utils/marketRequirements';
 
 const CONTAINER = process.env.MBC_PG_CONTAINER ?? 'mbc360-postgres-dev';
 
@@ -72,6 +80,22 @@ const counts = (table: string, column: string) => {
   return map;
 };
 
+// A requirement section can make some rows per market (RequirementRowConfig.marketScope), so how many rows a project should have depends on
+// its markets, and WHICH rows (which market each is for) is compared by identity like the Key Gate Checks below (2026-11-11).
+const marketsOf = new Map<string, string[]>();
+for (const [projectId, market] of query('select "projectId", "market" from project_markets order by "market"')) {
+  marketsOf.set(projectId, [...(marketsOf.get(projectId) ?? []), market]);
+}
+const requirementKeys = new Map<string, Set<string>>();
+for (const [projectId, sectionKey, requirement, market] of query(
+  `select "projectId", "sectionKey", "requirement", coalesce("market", '') from requirement_items`,
+)) {
+  const key = `${projectId}::${sectionKey}`;
+  const set = requirementKeys.get(key) ?? new Set<string>();
+  set.add(requirementRowKey(requirement, market || undefined));
+  requirementKeys.set(key, set);
+}
+
 const checklistCounts = counts('checklist_items', 'sectionKey');
 const requirementCounts = counts('requirement_items', 'sectionKey');
 const registerCounts = counts('register_rows', 'registerKey');
@@ -83,18 +107,28 @@ const registerCounts = counts('register_rows', 'registerKey');
 // row on screen to tick. Compared by IDENTITY rather than by count, because a
 // renamed check leaves the count equal while breaking the item that reads it.
 const gateCheckKeys = new Map<string, Set<string>>();
-for (const [projectId, gate, check] of query('select "projectId", gate, "check" from gate_checks')) {
+for (const [projectId, gate, check, market] of query(`select "projectId", gate, "check", coalesce("market", '') from gate_checks`)) {
   const set = gateCheckKeys.get(projectId) ?? new Set<string>();
-  set.add(`${gate}|${check}`);
+  set.add(gateCheckRowKey(gate, check, market || undefined));
   gateCheckKeys.set(projectId, set);
 }
-const wantedGateChecks = Object.values(PHASE_CONFIGS).flatMap((phase) =>
-  phase.keyGateChecks.map((kc) => `${kc.gate}|${kc.check}`),
-);
+// What a project should have depends on its markets: a Key Gate Check the configuration makes per market is one row for each.
+const wantedGateChecksFor = (project: string) =>
+  Object.values(PHASE_CONFIGS).flatMap((phase) =>
+    expandGateChecks(phase.keyGateChecks, marketsOf.get(project) ?? []).map(({ check: kc, market }) => gateCheckRowKey(kc.gate, kc.check, market)),
+  );
+const checklistKeys = new Map<string, Set<string>>();
+for (const [projectId, sectionKey, label, market] of query(`select "projectId", "sectionKey", "label", coalesce("market", '') from checklist_items`)) {
+  const key = `${projectId}::${sectionKey}`;
+  const set = checklistKeys.get(key) ?? new Set<string>();
+  set.add(checklistItemKey(label, market || undefined));
+  checklistKeys.set(key, set);
+}
 
 const drifts: Drift[] = [];
 for (const project of projects) {
   const have = gateCheckKeys.get(project) ?? new Set<string>();
+  const wantedGateChecks = wantedGateChecksFor(project);
   const missing = wantedGateChecks.filter((key) => !have.has(key));
   if (missing.length > 0) {
     drifts.push({
@@ -109,14 +143,27 @@ for (const project of projects) {
   for (const phase of Object.values(PHASE_CONFIGS)) {
     for (const section of phase.checklistSections) {
       const db = checklistCounts.get(`${project}::${section.key}`) ?? 0;
-      if (db !== section.options.length) {
-        drifts.push({ project, kind: 'checklist', key: section.key, config: section.options.length, db });
+      const expected = expandChecklistOptions(section, marketsOf.get(project) ?? []);
+      if (db !== expected.length) {
+        drifts.push({ project, kind: 'checklist', key: section.key, config: expected.length, db });
+        continue;
       }
+      const have = checklistKeys.get(`${project}::${section.key}`) ?? new Set<string>();
+      const absent = expected.map((e) => checklistItemKey(e.label, e.market)).filter((k) => !have.has(k));
+      if (absent.length > 0) drifts.push({ project, kind: 'checklist', key: section.key, config: expected.length, db, missing: absent });
     }
     for (const section of phase.requirementSections) {
       const db = requirementCounts.get(`${project}::${section.key}`) ?? 0;
-      if (db !== section.rows.length) {
-        drifts.push({ project, kind: 'requirement', key: section.key, config: section.rows.length, db });
+      const expected = expandRequirementRows(section.rows, marketsOf.get(project) ?? []);
+      if (db !== expected.length) {
+        drifts.push({ project, kind: 'requirement', key: section.key, config: expected.length, db });
+        continue;
+      }
+      // Same count is not the same rows: a market row for the wrong market, or a shared row where a market's own belongs.
+      const have = requirementKeys.get(`${project}::${section.key}`) ?? new Set<string>();
+      const missing = expected.map((e) => requirementRowKey(e.row.requirement, e.market)).filter((k) => !have.has(k));
+      if (missing.length > 0) {
+        drifts.push({ project, kind: 'requirement', key: section.key, config: expected.length, db, missing });
       }
     }
   }

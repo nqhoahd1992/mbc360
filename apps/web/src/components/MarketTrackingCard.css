@@ -1,0 +1,18 @@
+/* The detail form of one market on the market tracking card (shown when a market is chosen on the gate tab). */
+.mt-desc { margin: 0 0 14px; color: var(--c-text-3, #8c8c8c); font-size: 13px; }
+.mt-track + .mt-track { margin-top: 16px; }
+.mt-track-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.mt-track-note { color: var(--c-text-3, #8c8c8c); font-size: 13px; }
+.mt-form { display: grid; gap: 14px 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 640px) { .mt-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 992px) { .mt-form { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.mt-form > label { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.mt-wide { grid-column: 1 / -1; }
+.mt-label { color: var(--c-text-2, #595959); font-size: 13px; }
+/* A hint (a date) sits on the label's line, so every field starts at the same height whether it has one or not. */
+.mt-labelrow { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; min-height: 20px; }
+.mt-sub { color: var(--c-text-3, #8c8c8c); font-size: 12px; }
+.mt-earlier { margin-top: 16px; padding-top: 4px; border-top: 1px solid var(--c-border-2, #f0f0f0); }
+.mt-earlier .ant-collapse-header { padding: 8px 0 !important; align-items: center !important; }
+.mt-earlier .ant-collapse-content-box { padding: 8px 0 0 !important; }
+.mt-earlier-label { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }

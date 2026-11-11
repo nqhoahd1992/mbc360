@@ -75,7 +75,7 @@ function digestRegister(config: { columns: { key: string }[] } | undefined, rows
 // Checklist sections whose own gate is this one, each reduced to which options are
 // ticked and at what status. A section is included by its CONFIG gate, so a
 // section that moves gate cannot silently drop out of a signature's scope.
-function digestChecklists(project: ProjectData, gateNumber: string): Record<string, string> {
+function digestChecklists(project: ProjectData, gateNumber: string, market?: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const config of Object.values(PHASE_CONFIGS)) {
     for (const section of config.checklistSections) {
@@ -86,7 +86,8 @@ function digestChecklists(project: ProjectData, gateNumber: string): Record<stri
       const owners = gateRefGateIds(section.gate);
       if (owners.length === 0 ? section.gate !== gateNumber : owners[owners.length - 1] !== `SG${gateNumber}`) continue;
       out[section.key] = (project.checklists[section.key] ?? [])
-        .map((i) => `${i.label}=${i.selected ? 'Y' : 'N'}/${i.status}/${i.isPrimary ? 'P' : ''}/${i.evidenceLink ?? ''}`)
+        .filter((i) => !market || !i.market || i.market === market)
+        .map((i) => `${i.label}${i.market ? `@${i.market}` : ''}=${i.selected ? 'Y' : 'N'}/${i.status}/${i.isPrimary ? 'P' : ''}/${i.evidenceLink ?? ''}`)
         .join('|');
     }
   }
@@ -96,13 +97,14 @@ function digestChecklists(project: ProjectData, gateNumber: string): Record<stri
 // Requirement ROWS tagged with this gate — not whole sections, because a single
 // section can span several gates (Phase 3's compartments are all gate 07, but
 // `infantTesting` is 08 and 09).
-function digestRequirements(project: ProjectData, gateNumber: string): Record<string, string> {
+function digestRequirements(project: ProjectData, gateNumber: string, market?: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [section, rows] of Object.entries(project.requirements)) {
-    const mine = rows.filter((r) => r.gate === gateNumber);
+    // A lane's signature attests to the product's rows and its own market's, not another market's.
+    const mine = rows.filter((r) => r.gate === gateNumber && (!market || !r.market || r.market === market));
     if (mine.length === 0) continue;
     out[section] = mine
-      .map((r) => `${r.requirement}=${r.status}/${r.priority ?? ''}/${r.naRationale ?? ''}/${r.ynna ?? ''}/${r.evidenceLink ?? ''}`)
+      .map((r) => `${r.requirement}${r.market ? `@${r.market}` : ''}=${r.status}/${r.priority ?? ''}/${r.naRationale ?? ''}/${r.ynna ?? ''}/${r.evidenceLink ?? ''}`)
       .join('|');
   }
   return out;
@@ -134,14 +136,14 @@ const GATE_CHECK_DETAIL_FIELDS = ['date', 'evidenceRef', 'methodRef', 'internalL
 
 // What the gate's own page shows beyond the lists above. Sections are chosen by the same ownership
 // rule as `digestChecklists`, so a section that moves gate cannot silently drop out of a signature.
-function gateFullRecord(project: ProjectData, gateId: string, gateNumber: string): GateFullRecord {
+function gateFullRecord(project: ProjectData, gateId: string, gateNumber: string, market?: string): GateFullRecord {
   const record = project.gates.find((g) => g.gateId === gateId);
   const gate: Record<string, string> = {};
   for (const f of GATE_RECORD_FIELDS) gate[f] = String((record as Record<string, unknown> | undefined)?.[f] ?? '');
 
   const gateChecks: GateFullRecord['gateChecks'] = {};
-  for (const c of project.gateChecks.filter((x) => x.gate === gateNumber)) {
-    gateChecks[c.check] = Object.fromEntries(GATE_CHECK_DETAIL_FIELDS.map((f) => [f, String(c[f] ?? '')]));
+  for (const c of project.gateChecks.filter((x) => x.gate === gateNumber && (!market || !x.market || x.market === market))) {
+    gateChecks[c.market ? `${c.check} (${c.market})` : c.check] = Object.fromEntries(GATE_CHECK_DETAIL_FIELDS.map((f) => [f, String(c[f] ?? '')]));
   }
 
   const checklists: GateFullRecord['checklists'] = {};
@@ -150,18 +152,20 @@ function gateFullRecord(project: ProjectData, gateId: string, gateNumber: string
     for (const section of config.checklistSections) {
       const owners = gateRefGateIds(section.gate);
       if (owners.length === 0 ? section.gate !== gateNumber : owners[owners.length - 1] !== gateId) continue;
-      checklists[section.key] = (project.checklists[section.key] ?? []).map((i) => ({
-        label: i.label,
+      checklists[section.key] = (project.checklists[section.key] ?? [])
+        .filter((i) => !market || !i.market || i.market === market)
+        .map((i) => ({
+        label: i.market ? `${i.label} (${i.market})` : i.label,
         owner: i.ownerFunction ?? '',
         notes: i.notes ?? '',
       }));
     }
   }
   for (const [section, rows] of Object.entries(project.requirements)) {
-    const mine = rows.filter((r) => r.gate === gateNumber);
+    const mine = rows.filter((r) => r.gate === gateNumber && (!market || !r.market || r.market === market));
     if (mine.length === 0) continue;
     requirements[section] = mine.map((r) => ({
-      requirement: r.requirement,
+      requirement: r.market ? `${r.requirement} (${r.market})` : r.requirement,
       requirementText: r.requirementText ?? '',
       minimumRequirement: r.minimumRequirement ?? '',
       rationale: r.rationale ?? '',
@@ -212,20 +216,20 @@ export function gateEvidenceSnapshot(
     gateId,
     ...(market ? { market } : {}),
     status: record?.status ?? 'Not Started',
-    checklists: digestChecklists(project, gateNumber),
-    requirements: digestRequirements(project, gateNumber),
+    checklists: digestChecklists(project, gateNumber, market),
+    requirements: digestRequirements(project, gateNumber, market),
     gateChecks: project.gateChecks
-      .filter((c) => c.gate === gateNumber)
-      .map((c) => ({ check: c.check, done: c.done, ynna: c.ynna, ...(c.notes ? { notes: c.notes } : {}) })),
+      .filter((c) => c.gate === gateNumber && (!market || !c.market || c.market === market))
+      .map((c) => ({ check: c.market ? `${c.check} (${c.market})` : c.check, done: c.done, ynna: c.ynna, ...(c.notes ? { notes: c.notes } : {}) })),
     evidenceLinks: [record?.evidenceLink ?? ''].filter((l) => l !== ''),
     registers,
     registerCells,
     registerLater,
     projectData: slices.settled,
     projectDataLater: slices.later,
-    fullRecord: gateFullRecord(project, gateId, gateNumber),
+    fullRecord: gateFullRecord(project, gateId, gateNumber, market),
     openActions: project.nextActions
-      .filter((a) => a.gateId === gateId && !NEXT_ACTION_TERMINAL_STATUSES.includes(a.status))
+      .filter((a) => a.gateId === gateId && (!market || !a.market || a.market === market) && !NEXT_ACTION_TERMINAL_STATUSES.includes(a.status))
       .map((a) => ({ id: a.id, title: a.description, status: a.status, priority: a.priority })),
     // Only from Gate 05 on: before the formula is locked a version means nothing to the gate, and recording it
     // earlier made a Gate 1-4 signature go stale when somebody created a version on the Formula BOM page.

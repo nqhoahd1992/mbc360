@@ -256,8 +256,13 @@ async function main() {
     for (const section of Object.values(PHASE_CONFIGS).flatMap((p) => p.checklistSections)) {
       const items = project.checklists[section.key] ?? [];
       if (items.length === 0) continue;
-      const pick = Math.max(0, items.findIndex((i) => !benign.test(i.label) && !/^other/i.test(i.label)));
-      const next = items.map((item, i) => (i === pick ? { ...item, selected: true, status: 'Y' as const, notes: `${SEED} note`, ...(section.requiresPrimary ? { isPrimary: true } : {}) } : item));
+      // One option ticked — for a checklist made per market, one for each market.
+      const picks = new Set<number>();
+      for (const market of new Set(items.map((i) => i.market ?? ''))) {
+        const idx = items.map((_, i) => i).filter((i) => (items[i].market ?? '') === market);
+        picks.add(idx.find((i) => !benign.test(items[i].label) && !/^other/i.test(items[i].label)) ?? idx[0]);
+      }
+      const next = items.map((item, i) => (picks.has(i) ? { ...item, selected: true, status: 'Y' as const, notes: `${SEED} note`, ...(section.requiresPrimary ? { isPrimary: true } : {}) } : item));
       try {
         await put(`/checklists/${encodeURIComponent(section.key)}`, { items: next });
       } catch (err) {
@@ -281,7 +286,7 @@ async function main() {
     }
   });
   await step('key gate checks (all done)', async () => {
-    const updates = project.gateChecks.map((c) => ({ gate: c.gate, check: c.check, patch: { done: true, ynna: 'Y', date: today, initials: 'SD', evidenceRef: `${SEED} evidence`, notes: `${SEED} note` } }));
+    const updates = project.gateChecks.map((c) => ({ gate: c.gate, check: c.check, ...(c.market ? { market: c.market } : {}), patch: { done: true, ynna: 'Y', date: today, initials: 'SD', evidenceRef: `${SEED} evidence`, notes: `${SEED} note` } }));
     for (let i = 0; i < updates.length; i += 25) await put('/gate-checks', { updates: updates.slice(i, i + 25) });
   });
   for (const phase of [1, 2, 3, 4]) {

@@ -1,0 +1,31 @@
+/* The one market switch of a gate tab (Gates 10-12). */
+.ms { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 16px; }
+.ms-text { min-width: 0; }
+.ms-kicker { color: var(--c-text-3); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.ms-hint { margin: 2px 0 0; max-width: 560px; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
+.ms-opt { display: inline-flex; align-items: center; gap: 8px; padding: 2px 4px; }
+.ms-n { font-size: 12px; }
+.ms-bad { color: var(--c-warn); }
+.ms-ok { color: var(--c-ok); }
+.ms-select { min-width: 220px; }
+
+/* The page-wide overlay of a market switch. It waits a moment before it appears, so a quick switch shows no flash, and it is animated
+   with CSS only (opacity, transform), which keeps moving while the page is busy drawing. */
+.ms-overlay {
+  position: fixed; inset: 0; z-index: 1500; display: grid; place-items: center;
+  background: rgba(255, 255, 255, 0.6); cursor: progress;
+  opacity: 0; animation: ms-in 0.15s ease 0.2s forwards;
+}
+.ms-overlay-box {
+  display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px;
+  border: 1px solid var(--c-border-2); border-radius: 10px; background: var(--c-surface);
+  color: var(--c-text-2); font-size: 13px;
+}
+.ms-spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--c-border); border-top-color: var(--c-primary);
+  animation: ms-spin 0.8s linear infinite;
+}
+@keyframes ms-in { to { opacity: 1; } }
+@keyframes ms-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ms-spinner { animation-duration: 2.4s; } }

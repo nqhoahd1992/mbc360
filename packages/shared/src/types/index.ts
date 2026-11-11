@@ -380,6 +380,9 @@ export interface GateChangeLogEntry {
 export interface ChecklistItem {
   label: string;
   gate: string;
+  // The market this option belongs to, on a checklist the configuration makes per market (ChecklistSectionConfig.marketScope): the
+  // same options, once for each market. Absent = the checklist is one list for the project.
+  market?: string;
   selected: boolean;
   ownerFunction: string;
   status: YNNA;
@@ -395,6 +398,10 @@ export interface ChecklistItem {
 export interface RequirementItem {
   gate: string;
   requirement: string;
+  // The market this row belongs to, for a row the section declares per market (RequirementRowConfig.marketScope). Absent = the row is
+  // about the product, the same for every market. Set by the system when the row is created; never typed (project owner, 2026-11-11:
+  // "a market's own rows belong to that market, so one market is not held by another's").
+  market?: string;
   // Phase 1 only (2026-08-09, SME Round 3 B6). Optional rather than a separate
   // type: the difference from Phases 2-4 is one column, and this repo's rule is
   // to drive columns from config rather than fork the table. Values reuse the
@@ -432,6 +439,9 @@ export interface RequirementItem {
 export interface GateCheck {
   gate: string;
   check: string;
+  // The market this row belongs to, for a Key Gate Check the configuration makes per market (KeyGateCheckConfig.marketScope). Absent =
+  // one row for the whole gate. Set by the system when the row is created.
+  market?: string;
   done: boolean;
   ynna: YNNA;
   date?: string;
@@ -1217,6 +1227,10 @@ export interface NextAction {
   // owner ≠ verifier authorisation itself is enforced once real roles land (F6).
   raisedBy?: string;
   verifiedBy?: string;
+  // Gates 10-12 are signed per market, so an action belongs to ONE market or to all of them (project owner, 2026-11-11: an open
+  // action in one market must not hold another). Absent = every market, which holds every lane — the same convention as a change
+  // record that names no market (SW-54). Always absent on a gate that is not signed per market.
+  market?: string;
 }
 
 // Immutable audit record of a backtrack (confirmed rule B4 — "no silent

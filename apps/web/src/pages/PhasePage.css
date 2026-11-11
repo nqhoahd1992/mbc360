@@ -33,7 +33,7 @@
 .ph-rail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
 @media (min-width: 1280px) { .ph-rail { position: sticky; top: 80px; } }
 .ph-rail-card { overflow: hidden; }
-.ph-rail-head { padding: 14px 20px; border-bottom: 1px solid var(--c-border-2); }
+.ph-rail-head { padding: 16px 20px 0; }
 .ph-rail-title { font-size: 16px; font-weight: 600; line-height: 24px; }
 .ph-rail-sub { margin-top: 4px; color: var(--c-ok); font-size: 13px; }
 .ph-rail-sub.ph-bad { color: var(--c-bad); }

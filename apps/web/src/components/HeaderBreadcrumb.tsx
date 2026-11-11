@@ -1,6 +1,7 @@
-import { Fragment, type ReactNode } from 'react';
-import { RightOutlined } from '@ant-design/icons';
-import { Link, useLocation } from 'react-router-dom';
+import { Fragment, useTransition, type ReactNode } from 'react';
+import { App, Dropdown } from 'antd';
+import { CheckOutlined, DownOutlined, RightOutlined } from '@ant-design/icons';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { GATES, phaseLabel } from '@mbc360/shared/config/gates';
 import { currentGateIndex, isGatePassed } from '@mbc360/shared/utils/gateProgress';
 import {
@@ -12,6 +13,9 @@ import {
 } from '@mbc360/shared/config/registers';
 import { GLOBAL_NAV } from '../config/globalNav';
 import { useAppStore } from '../store/useAppStore';
+import { useUnsavedCount } from '../hooks/unsavedRegistry';
+import { effectiveMarket, gateMarkets } from '../utils/gateMarket';
+import SwitchOverlay from './SwitchOverlay';
 
 interface Crumb {
   label: string;
@@ -88,15 +92,21 @@ export default function HeaderBreadcrumb({ fallback }: { fallback: ReactNode }) 
   const projectId = pathname.match(/^\/projects\/([^/]+)/)?.[1];
   const phaseNo = Number(pathname.match(/^\/projects\/[^/]+\/phase\/(\d+)/)?.[1]);
   const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
+  const navigate = useNavigate();
+  const unsaved = useUnsavedCount();
+  const { modal } = App.useApp();
+  const [pending, startTransition] = useTransition();
   // The gate being viewed: PhasePage keeps it in `?gate=`; with no param it
   // opens on the project's current gate if that is in this phase (same default
   // as PhasePage), else the phase's first gate. `close` is the close-out tab.
   let chip: string | undefined;
+  let viewedGate: string | undefined; // 'SG10', or 'close'
+  const phaseGates = phaseNo ? GATES.filter((g) => g.phase === phaseNo) : [];
   if (project && phaseNo) {
-    const phaseGates = GATES.filter((g) => g.phase === phaseNo);
     const requested = new URLSearchParams(search).get('gate');
     if (requested === 'close') {
       chip = 'Phase close-out';
+      viewedGate = 'close';
     } else {
       const current = GATES[currentGateIndex(project)];
       const gate =
@@ -104,8 +114,39 @@ export default function HeaderBreadcrumb({ fallback }: { fallback: ReactNode }) 
         (current?.phase === phaseNo ? current : undefined) ??
         (phaseGates.every((g) => isGatePassed(project, g.id)) ? undefined : phaseGates[0]);
       chip = gate ? `Gate ${gate.number} · ${gate.name}` : 'Phase close-out';
+      viewedGate = gate ? gate.id : 'close';
     }
   }
+  // The market, on a per-market gate with more than one market. Read through the same rule the page uses.
+  const lanes = project && viewedGate && viewedGate !== 'close' ? gateMarkets(project, viewedGate) : [];
+  const market = effectiveMarket(lanes, new URLSearchParams(search).get('market'));
+
+  // The address with one parameter changed; the rest (the other chip, a deep link's section) is kept, except a pending scroll target.
+  const hrefWith = (key: string, value: string) => {
+    const p = new URLSearchParams(search);
+    p.set(key, value);
+    p.delete('scrollTo');
+    return `${pathname}?${p.toString()}`;
+  };
+  // A gate tab remounts its blocks, so unsaved drafts on it would be lost: ask first, as the tab strip on the page does.
+  const switchGate = (next: string) => {
+    if (next === viewedGate) return;
+    const go = () => startTransition(() => navigate(hrefWith('gate', next)));
+    if (unsaved === 0) return go();
+    modal.confirm({
+      title: unsaved === 1 ? 'Leave with unsaved changes?' : `Leave with ${unsaved} unsaved sections?`,
+      content: 'Edits you have not saved on this gate will be lost. Cancel, then use Save on the section you were editing.',
+      okText: 'Switch without saving',
+      okButtonProps: { danger: true },
+      cancelText: 'Stay on this gate',
+      onOk: go,
+    });
+  };
+  // A market switch keeps every draft (the page holds all markets), so it needs no question.
+  const switchMarket = (next: string) => {
+    if (next === market) return;
+    startTransition(() => navigate(hrefWith('market', next), { replace: true }));
+  };
   if (crumbs.length === 0) return <span className="hb-cur">{fallback}</span>;
   return (
     <nav className="hb" aria-label="Breadcrumb">
@@ -134,11 +175,55 @@ export default function HeaderBreadcrumb({ fallback }: { fallback: ReactNode }) 
           </Fragment>
         );
       })}
-      {chip && (
-        <span className="hb-gate" title="Gate you are viewing">
-          {chip}
-        </span>
+      {chip && phaseGates.length > 0 ? (
+        <Dropdown
+          trigger={['click']}
+          menu={{
+            selectedKeys: viewedGate ? [viewedGate] : [],
+            onClick: ({ key }) => switchGate(String(key)),
+            items: [
+              ...phaseGates.map((g) => ({
+                key: g.id,
+                label: (
+                  <span className="hb-menu-item">
+                    Gate {g.number} · {g.name}
+                    {project && isGatePassed(project, g.id) && <CheckOutlined className="hb-menu-done" aria-label="passed" />}
+                  </span>
+                ),
+              })),
+              { type: 'divider' as const },
+              { key: 'close', label: 'Phase close-out' },
+            ],
+          }}
+        >
+          <button type="button" className="hb-gate hb-chip" title="Gate you are viewing — click to switch">
+            <span className="hb-chip-text">{chip}</span>
+            <DownOutlined className="hb-chip-caret" aria-hidden />
+          </button>
+        </Dropdown>
+      ) : (
+        chip && (
+          <span className="hb-gate" title="Gate you are viewing">
+            {chip}
+          </span>
+        )
       )}
+      {market && (
+        <Dropdown
+          trigger={['click']}
+          menu={{
+            selectedKeys: [market],
+            onClick: ({ key }) => switchMarket(String(key)),
+            items: lanes.map((m) => ({ key: m, label: m })),
+          }}
+        >
+          <button type="button" className="hb-gate hb-chip hb-market" title="Market you are viewing — click to switch">
+            <span className="hb-chip-text">{market}</span>
+            <DownOutlined className="hb-chip-caret" aria-hidden />
+          </button>
+        </Dropdown>
+      )}
+      {pending && <SwitchOverlay label="Switching…" />}
     </nav>
   );
 }

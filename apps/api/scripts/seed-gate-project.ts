@@ -98,12 +98,13 @@ type Ctx = { id: string; adminName: string };
 const HARMLESS_USER = /pregnan|breast|postpartum|infant|child|baby|teen|elder|sensitiv|eczema|compromis|dry|family|vulnerab|swim/i;
 
 async function fixGateCheck(ctx: Ctx, gate: string, check: string, na?: boolean): Promise<boolean> {
-  const row = project.gateChecks.find((c) => c.gate === gate && c.check === check);
-  if (!row) return false;
+  // A check made per market is several rows: every one of them is filled.
+  const rows = project.gateChecks.filter((c) => c.gate === gate && c.check === check);
+  if (rows.length === 0) return false;
   const patch = na
     ? { done: false, ynna: 'NA', date: today, initials: 'SD', notes: `${SEED}: not applicable to this seeded project` }
     : { done: true, ynna: 'Y', date: today, initials: 'SD', evidenceRef: `${SEED} evidence`, notes: `${SEED}: recorded by the seed script` };
-  take(await api('PUT', `/projects/${ctx.id}/gate-checks`, { updates: [{ gate, check, patch }], expectedVersion: version }));
+  take(await api('PUT', `/projects/${ctx.id}/gate-checks`, { updates: rows.map((r) => ({ gate, check, ...(r.market ? { market: r.market } : {}), patch })), expectedVersion: version }));
   return true;
 }
 
@@ -113,11 +114,16 @@ async function fixChecklist(ctx: Ctx, section: string): Promise<boolean> {
   const config = Object.values(PHASE_CONFIGS)
     .flatMap((p) => p.checklistSections)
     .find((s) => s.key === section);
-  const pick = items.findIndex((i) => !HARMLESS_USER.test(i.label) && !/^other/i.test(i.label));
-  const chosen = pick >= 0 ? pick : 0;
+  // One option is ticked — for a checklist made per market, one for EACH market.
+  const chosenSet = new Set<number>();
+  for (const market of new Set(items.map((i) => i.market ?? ''))) {
+    const idx = items.map((it, i) => i).filter((i) => (items[i].market ?? '') === market);
+    const pick = idx.find((i) => !HARMLESS_USER.test(items[i].label) && !/^other/i.test(items[i].label));
+    chosenSet.add(pick ?? idx[0]);
+  }
   let changed = false;
   const next = items.map((item, i) => {
-    if (i !== chosen) return item;
+    if (!chosenSet.has(i)) return item;
     const want = { ...item, selected: true, status: 'Y' as const, ...(config?.requiresPrimary ? { isPrimary: true } : {}) };
     if (JSON.stringify(want) !== JSON.stringify(item)) changed = true;
     return want;
@@ -548,8 +554,8 @@ async function fix(ctx: Ctx, check: ReadinessCheck): Promise<boolean> {
       return branch ? fix(ctx, branch) : false;
     }
     case 'gateCheckDone': {
-      const row = project.gateChecks.find((c) => c.gate === check.gate && c.check === check.check);
-      if (row && ((row.done && row.ynna === 'Y') || (row.ynna === 'NA' && row.notes?.trim()))) return false;
+      const rows = project.gateChecks.filter((c) => c.gate === check.gate && c.check === check.check);
+      if (rows.length > 0 && rows.every((row) => (row.done && row.ynna === 'Y') || (row.ynna === 'NA' && row.notes?.trim()))) return false;
       return fixGateCheck(ctx, check.gate, check.check);
     }
     case 'noClaimsDeclared':
@@ -658,7 +664,7 @@ async function fillGateChecks(ctx: Ctx, n: number): Promise<void> {
   const number = String(n).padStart(2, '0');
   const rows = project.gateChecks.filter((c) => c.gate === number && !((c.done && c.ynna === 'Y') || (c.ynna === 'NA' && c.notes?.trim())));
   if (rows.length === 0) return;
-  const updates = rows.map((c) => ({ gate: c.gate, check: c.check, patch: { done: true, ynna: 'Y', date: today, initials: 'SD', evidenceRef: c.evidenceRef || `${SEED} evidence`, notes: c.notes || `${SEED}: recorded by the seed script` } }));
+  const updates = rows.map((c) => ({ gate: c.gate, check: c.check, ...(c.market ? { market: c.market } : {}), patch: { done: true, ynna: 'Y', date: today, initials: 'SD', evidenceRef: c.evidenceRef || `${SEED} evidence`, notes: c.notes || `${SEED}: recorded by the seed script` } }));
   for (let i = 0; i < updates.length; i += 25) take(await api('PUT', `/projects/${ctx.id}/gate-checks`, { updates: updates.slice(i, i + 25), expectedVersion: version }));
 }
 

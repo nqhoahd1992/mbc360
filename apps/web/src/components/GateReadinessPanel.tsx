@@ -184,6 +184,11 @@ export default function GateReadinessPanel({
             {label}
             {tierBadge}
             {criticalBadge}
+            {item.scope === 'project' && (
+              <Tooltip title="This item is about the whole project, not one market, so it applies to every market's lane.">
+                <span className="c-tag grp-tier">All markets</span>
+              </Tooltip>
+            )}
           </div>
           {item.parts && !item.satisfied && (
             <>

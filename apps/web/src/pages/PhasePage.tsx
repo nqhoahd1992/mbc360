@@ -1,7 +1,8 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useState, useTransition } from 'react';
 import { App, Button, Empty, Tooltip } from 'antd';
 import { ArrowDownOutlined, ArrowRightOutlined, CheckOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import SwitchOverlay from '../components/SwitchOverlay';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   currentGateIndex,
@@ -49,6 +50,8 @@ import AssessmentBlock from '../components/AssessmentBlock';
 import { isFamilyUseSelected } from '../components/assessmentStatus';
 import StudyApprovalCard from '../components/StudyApprovalCard';
 import ChangeControlAssessments from '../components/ChangeControlAssessments';
+import MarketSwitch from '../components/MarketSwitch';
+import { effectiveMarket, gateMarkets } from '../utils/gateMarket';
 import { ASSESSMENT_HOMES, assessmentAnchor } from '@mbc360/shared/config/assessments';
 import { useUnsavedCount } from '../hooks/unsavedRegistry';
 import '../styles/concept.css';
@@ -173,14 +176,18 @@ export default function PhasePage() {
   const navigate = useNavigate();
   const unsaved = useUnsavedCount();
   const { modal } = App.useApp();
+  // The redraw of a whole gate tab runs as a transition, with a page-wide overlay that appears only if it is still going after a moment.
+  const [switching, startSwitch] = useTransition();
   const goToTab = (next: string) =>
-    setSearchParams(
-      (prev) => {
-        const p = new URLSearchParams(prev);
-        p.set('gate', next);
-        return p;
-      },
-      { replace: false },
+    startSwitch(() =>
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          p.set('gate', next);
+          return p;
+        },
+        { replace: false },
+      ),
     );
   // Each tab remounts its blocks (see the keyed container below), so unsaved
   // drafts on this tab would be lost — ask first, exactly as
@@ -281,7 +288,20 @@ export default function PhasePage() {
     return signedGates.has(ids.length ? ids[ids.length - 1] : (gateOfNumber(ref) ?? ''));
   };
 
-  const readiness = tab === CLOSE_TAB ? [] : gateReadinessChecklist(project, tab);
+  // Gates 10-12 are signed per market, so on those tabs ONE switch chooses the market everything below is about. It is only offered
+  // when there is more than one market to choose between; the choice lives in the address (?market=) and survives a change of gate.
+  const gateLanes = tab !== CLOSE_TAB ? gateMarkets(project, tab) : [];
+  const market = effectiveMarket(gateLanes, searchParams.get('market'));
+  const setMarket = (m: string) =>
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        p.set('market', m);
+        return p;
+      },
+      { replace: true },
+    );
+  const readiness = tab === CLOSE_TAB ? [] : gateReadinessChecklist(project, tab, undefined, market);
   const blockingCount = (id: string) =>
     gateReadinessChecklist(project, id).filter((i) => !i.satisfied && i.hardBlock).length;
   const metCount = (id: string) => gateReadinessChecklist(project, id).filter((i) => i.satisfied).length;
@@ -467,6 +487,15 @@ export default function PhasePage() {
     ...readiness.map((i) => (i.id === signoffId ? { ...i, link: undefined } : i)),
   ];
   const hardBlocking = readinessItems.filter((i) => !i.satisfied && i.hardBlock && i.id !== signoffId).length;
+  // How many items hold each market's lane, for the switch: that lane's own items, the whole project's, and the Phase Gate Flow card.
+  const laneBlocking: Record<string, number> = {};
+  if (market) {
+    for (const m of gateLanes) {
+      laneBlocking[m] =
+        gateReadinessChecklist(project, tab, undefined, m).filter((i) => !i.satisfied && i.hardBlock && !i.pending && !i.advisory && i.id !== signoffId).length +
+        (flowItem.satisfied ? 0 : 1);
+    }
+  }
   const goSignoff = () => {
     const el = document.getElementById('sec-gate-signoff');
     if (!el) return;
@@ -546,6 +575,7 @@ export default function PhasePage() {
 
   return (
     <div className="concept ph">
+      {switching && <SwitchOverlay label="Switching gate…" />}
       <SectionJumpButton sections={jumpSections} />
 
       <div className="ph-header">
@@ -627,6 +657,7 @@ export default function PhasePage() {
                 checks={keyChecks}
                 currentGateNumber={currentGateNum}
                 isRowLocked={(check) => isGateRefLocked(project, check.gate) || rowSigned(check.gate)}
+                market={market}
                 exemptionOf={(check) => gateCheckExemption(project, check.gate, check.check)}
               />
             </div>
@@ -645,6 +676,7 @@ export default function PhasePage() {
                 allowNotApplicable={section.allowNotApplicable}
                 statusOptions={section.statusOptions}
                 showYnna={section.showYnna}
+                market={market}
               />
             </div>
           ))}
@@ -687,6 +719,8 @@ export default function PhasePage() {
 
             {/* Phase Gate Flow comes right after Project Identification, as in the SME's workbook: its Stage
                 status is the gate's current state, so it is read and kept up to date first. */}
+            {market && <MarketSwitch lanes={gateLanes} value={market} blocking={laneBlocking} onChange={setMarket} />}
+
             <div id="sec-gate-flow">
               <GateFlowTable project={project} gateIds={[tab]} layout="card" hideReadiness part="flow" />
             </div>
@@ -726,6 +760,7 @@ export default function PhasePage() {
                   currentGateNumber={currentGateNum}
                   readOnly={isGateRefLocked(project, section.gate) || sectionSigned(section.gate)}
                   requiresPrimary={section.requiresPrimary}
+                  market={market}
                   foreseeableContact={
                     section.key === 'targetUsers'
                       ? {
@@ -753,13 +788,14 @@ export default function PhasePage() {
                   allowNotApplicable={section.allowNotApplicable}
                   statusOptions={section.statusOptions}
                   showYnna={section.showYnna}
+                  market={market}
                 />
               </div>
             ))}
 
             {assessments.map((a) => (
               a.key === 'foreseeableContact' ? null : a.key === 'changeControl' ? (
-                <ChangeControlAssessments key={a.key} project={project} />
+                <ChangeControlAssessments key={a.key} project={project} market={market} />
               ) : a.key === 'humanStudy' ? (
                 <Fragment key={a.key}>
                   <AssessmentBlock project={project} which={a.key} />
@@ -781,6 +817,7 @@ export default function PhasePage() {
                   checks={keyChecks}
                   currentGateNumber={currentGateNum}
                   isRowLocked={(check) => isGateRefLocked(project, check.gate) || rowSigned(check.gate)}
+                market={market}
                   exemptionOf={(check) => gateCheckExemption(project, check.gate, check.check)}
                 />
               </div>
@@ -794,6 +831,7 @@ export default function PhasePage() {
                   projectId={project.identity.id}
                   tracks={[...currentMarketTracks(project), ...legacyOnMarketTracks(project)]}
                   currentVersion={project.formulaVersion}
+                  market={market}
                 />
               </div>
             )}
@@ -803,17 +841,17 @@ export default function PhasePage() {
             {phase === 4 && tab === 'SG12' && (
               <div id="sec-post-launch">
                 <GeneratedNaAcks home="postLaunch" gateId={tab} />
-                <PostLaunchReviewCard project={project} enhanced={evaluateTrigger(project, 'pvPmsRequired') === 'applies'} />
+                <PostLaunchReviewCard project={project} enhanced={evaluateTrigger(project, 'pvPmsRequired') === 'applies'} market={market} />
               </div>
             )}
 
             <div id="sec-next-actions">
-              <NextActionsCard project={project} projectId={project.identity.id} gateIds={[tab]} actions={project.nextActions} />
+              <NextActionsCard project={project} projectId={project.identity.id} gateIds={[tab]} actions={project.nextActions} market={market} />
             </div>
 
             {/* The three signatures come last: they attest to the evidence above. */}
             <div id="sec-gate-signoff">
-              <GateFlowTable project={project} gateIds={[tab]} layout="card" hideReadiness part="signoff" />
+              <GateFlowTable project={project} gateIds={[tab]} layout="card" hideReadiness part="signoff" laneMarket={market} />
             </div>
           </div>
 

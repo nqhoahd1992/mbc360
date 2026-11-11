@@ -108,6 +108,14 @@ import {
 
 import { assessmentMarkets, changeControlAssessmentProblems, isPendingAnswer } from '@mbc360/shared/utils/changeControlAssessments';
 import { reviewCycleOptions } from '@mbc360/shared/utils/postLaunch';
+import {
+  checklistItemKey,
+  expandChecklistOptions,
+  expandGateChecks,
+  expandRequirementRows,
+  gateCheckRowKey,
+  requirementRowKey,
+} from '@mbc360/shared/utils/marketRequirements';
 import { changeTriggerAvailability } from '@mbc360/shared/utils/changeAccess';
 import { phaseSignContent } from '@mbc360/shared/utils/phaseSignContent';
 import { registerClosureContent, registerRowSignContent } from '@mbc360/shared/utils/registerClosureContent';
@@ -1176,13 +1184,15 @@ export class ProjectsService {
   async setGateChecks(
     user: SessionUser,
     id: string,
-    updates: { gate: string; check: string; patch: Partial<GateCheck> }[],
+    updates: { gate: string; check: string; market?: string; patch: Partial<GateCheck> }[],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
     return this.mutate(user, id, expectedVersion, 'gate_checks.updated', async (tx, row, project) => {
       let skipped = 0;
       for (const update of updates) {
-        const target = row.gateChecks.find((c) => c.gate === update.gate && c.check === update.check);
+        const target = row.gateChecks.find(
+          (c) => c.gate === update.gate && c.check === update.check && (c.market ?? '') === (update.market ?? ''),
+        );
         // Also skipped: a row the project's own answers make not applicable (an administrative-only change confirmed, for the
         // competitor/benchmark row), so it cannot be filled in as though that review had been done. [ASSUMPTION: R6-Q5]
         if (!target || isGateRefLocked(project, target.gate) || gateCheckExemption(project, target.gate, target.check)) {
@@ -2198,6 +2208,7 @@ export class ProjectsService {
           await this.openChangeGateNumbers(tx, id),
           true,
           otherLanesOpen ? this.signOffItemIds(gateId) : [],
+          market,
         );
       }
 
@@ -4418,7 +4429,14 @@ export class ProjectsService {
           (m) =>
             project.gateSignOffs.some((g) => g.market === m) ||
             project.postLaunchReviews.some((r) => r.market === m) ||
-            project.supersessionDecisions.some((d) => d.market === m),
+            project.supersessionDecisions.some((d) => d.market === m) ||
+            // The market's own requirement rows, Key Gate Checks, checklist options and next actions are records too.
+            project.nextActions.some((a) => a.market === m) ||
+            project.gateChecks.some((c) => c.market === m && (c.done || !!c.notes || !!c.evidenceRef)) ||
+            Object.values(project.checklists).some((items) => items.some((i) => i.market === m && (i.selected || !!i.notes || !!i.evidenceLink))) ||
+            Object.values(project.requirements).some((rows) =>
+              rows.some((r) => r.market === m && (r.status !== 'Not Started' || !!r.notes || !!r.evidenceLink)),
+            ),
         );
         const blocked = [...new Set([...inUse.map((t) => t.market), ...withRecords])];
         if (blocked.length > 0) {
@@ -4445,8 +4463,108 @@ export class ProjectsService {
           data: added.map((market) => ({ projectId: id, market, formulaVersionId: version?.id })),
         });
       }
+      // The rows a section makes per market follow the project's markets: a new market gets its own, a removed one's go.
+      if (added.length > 0 || removed.length > 0) {
+        await this.syncMarketRequirementRows(tx, id, wanted);
+        await this.syncMarketGateChecks(tx, id, wanted);
+        await this.syncMarketChecklists(tx, id, wanted);
+      }
       return { added, removed };
     });
+  }
+
+  // Rows a requirement section makes per market (RequirementRowConfig.marketScope) for the project's markets as they now stand. Rows that
+  // still apply keep what was recorded on them and take their new place; rows of a removed market go (removal is refused while they hold
+  // records); a new market gets fresh ones. Two passes so the unique (section, order) is never violated midway.
+  private async syncMarketRequirementRows(tx: Prisma.TransactionClient, projectId: string, markets: string[]): Promise<void> {
+    for (const config of Object.values(PHASE_CONFIGS)) {
+      for (const section of config.requirementSections) {
+        if (!section.rows.some((r) => r.marketScope)) continue;
+        const desired = expandRequirementRows(section.rows, markets);
+        const wanted = new Set(desired.map((d) => requirementRowKey(d.row.requirement, d.market)));
+        const existing = await tx.requirementItem.findMany({ where: { projectId, sectionKey: section.key }, orderBy: { itemOrder: 'asc' } });
+        const byKey = new Map(existing.map((e) => [requirementRowKey(e.requirement, e.market ?? undefined), e]));
+        for (const e of existing) {
+          if (!wanted.has(requirementRowKey(e.requirement, e.market ?? undefined))) await tx.requirementItem.delete({ where: { id: e.id } });
+          else await tx.requirementItem.update({ where: { id: e.id }, data: { itemOrder: 100000 + e.itemOrder } });
+        }
+        for (const [index, d] of desired.entries()) {
+          const found = byKey.get(requirementRowKey(d.row.requirement, d.market));
+          if (found) await tx.requirementItem.update({ where: { id: found.id }, data: { itemOrder: index } });
+          else {
+            await tx.requirementItem.create({
+              data: {
+                projectId,
+                sectionKey: section.key,
+                itemOrder: index,
+                gate: d.row.gate,
+                requirement: d.row.requirement,
+                minimumRequirement: d.row.minimum,
+                rationale: d.row.rationale,
+                owner: d.row.owner,
+                market: d.market ?? null,
+              },
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Key Gate Checks the configuration makes per market, for the project's markets as they now stand: a new market gets its own row, a
+  // removed one's goes (removal is refused while it holds a record), the rest are untouched.
+  private async syncMarketGateChecks(tx: Prisma.TransactionClient, projectId: string, markets: string[]): Promise<void> {
+    const scoped = Object.values(PHASE_CONFIGS).flatMap((c) => c.keyGateChecks).filter((kc) => kc.marketScope);
+    if (scoped.length === 0) return;
+    const desired = expandGateChecks(scoped, markets);
+    const wanted = new Set(desired.map((d) => gateCheckRowKey(d.check.gate, d.check.check, d.market)));
+    const existing = await tx.gateCheck.findMany({
+      where: { projectId, OR: scoped.map((kc) => ({ gate: kc.gate, check: kc.check })) },
+    });
+    const have = new Set(existing.map((e) => gateCheckRowKey(e.gate, e.check, e.market ?? undefined)));
+    for (const e of existing) {
+      if (!wanted.has(gateCheckRowKey(e.gate, e.check, e.market ?? undefined))) await tx.gateCheck.delete({ where: { id: e.id } });
+    }
+    for (const d of desired) {
+      if (!have.has(gateCheckRowKey(d.check.gate, d.check.check, d.market))) {
+        await tx.gateCheck.create({ data: { projectId, gate: d.check.gate, check: d.check.check, market: d.market ?? null } });
+      }
+    }
+  }
+
+  // The checklists the configuration makes per market: every option once for each market, a market's own together. Kept options take
+  // their new place; a removed market's go; a new market gets a fresh list. Two passes so (section, order) is never duplicated midway.
+  private async syncMarketChecklists(tx: Prisma.TransactionClient, projectId: string, markets: string[]): Promise<void> {
+    for (const config of Object.values(PHASE_CONFIGS)) {
+      for (const section of config.checklistSections) {
+        if (!section.marketScope) continue;
+        const desired = expandChecklistOptions(section, markets);
+        const wanted = new Set(desired.map((d) => checklistItemKey(d.label, d.market)));
+        const existing = await tx.checklistItem.findMany({ where: { projectId, sectionKey: section.key }, orderBy: { itemOrder: 'asc' } });
+        const byKey = new Map(existing.map((e) => [checklistItemKey(e.label, e.market ?? undefined), e]));
+        for (const e of existing) {
+          if (!wanted.has(checklistItemKey(e.label, e.market ?? undefined))) await tx.checklistItem.delete({ where: { id: e.id } });
+          else await tx.checklistItem.update({ where: { id: e.id }, data: { itemOrder: 100000 + e.itemOrder } });
+        }
+        for (const [index, d] of desired.entries()) {
+          const found = byKey.get(checklistItemKey(d.label, d.market));
+          if (found) await tx.checklistItem.update({ where: { id: found.id }, data: { itemOrder: index } });
+          else {
+            await tx.checklistItem.create({
+              data: {
+                projectId,
+                sectionKey: section.key,
+                itemOrder: index,
+                label: d.label,
+                gate: section.gate,
+                ownerFunction: section.ownerFunction,
+                market: d.market ?? null,
+              },
+            });
+          }
+        }
+      }
+    }
   }
 
   // --- Phase 5: next actions / market tracks / study approvals ---
@@ -4481,9 +4599,21 @@ export class ProjectsService {
       await tx.nextAction.deleteMany({
         where: { projectId: id, gateId: { in: gateIds }, id: { notIn: [...keep] } },
       });
+      // An action may name a market only on a gate signed per market, and only one of the project's; blank = every market.
+      for (const a of actions) {
+        const m = (a.market ?? '').trim();
+        if (m === '') continue;
+        if (!isPerMarketGate(a.gateId)) {
+          throw new BadRequestException(`Action "${a.description}": ${a.gateId} is not signed per market, so an action there cannot name a market`);
+        }
+        if (!project.identity.markets.includes(m)) {
+          throw new BadRequestException(`Action "${a.description}": "${m}" is not one of this project's markets`);
+        }
+      }
       for (const a of actions) {
         const data = {
           gateId: a.gateId,
+          market: (a.market ?? '').trim() || null,
           description: a.description,
           owner: a.owner ?? null,
           dueDate: this.dateOrNull(a.dueDate),
@@ -5637,6 +5767,10 @@ export class ProjectsService {
     // Readiness items to leave out — only ever this gate's own sign-off items,
     // when a per-market approver signs one lane while others are still open (B2).
     skipItemIds: string[] = [],
+    // The market whose lane is being signed (Gates 10-12). The items that are a market's OWN requirements are judged on that market's
+    // slice, so a finding or a label row open in Vietnam no longer holds Singapore's lane (Round 5 question 2(c)); every other item
+    // still judges the whole project. Omitted for the gate's own decision, which is the whole project's.
+    market?: string,
   ): GateRecord['decision'] {
     if (requested !== 'Proceed' && requested !== 'Proceed with Conditions') return requested;
 
@@ -5680,8 +5814,8 @@ export class ProjectsService {
     // clears only the softer open-non-critical-next-action blocker.
     const blockers = (
       requested === 'Proceed'
-        ? gateBlockers(project, gateId, requested)
-        : hardGateBlockers(project, gateId)
+        ? gateBlockers(project, gateId, requested, market)
+        : hardGateBlockers(project, gateId, market)
     ).filter((b) => !skipItemIds.includes(b.id));
     if (blockers.length > 0) {
       return reject(

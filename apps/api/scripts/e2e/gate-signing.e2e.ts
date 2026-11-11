@@ -1782,6 +1782,11 @@ export async function run(base: string, db: Client): Promise<number> {
       (await Promise.all(['SG01', 'SG03', 'SG05', 'SG07', 'SG09'].flatMap((g) => ROLES.map((role) => stale(g, role))))).every((c) => c.length === 0));
   t('the signatures already given in SG10-SG12 stay current (the new market is a new lane, not a change to the old ones)',
     (await Promise.all(['SG10', 'SG11', 'SG12'].flatMap((g) => MARKETS.flatMap((m) => ROLES.map((role) => stale(g, role, m)))))).every((c) => c.length === 0));
+  // The rows a section makes per market follow the project's markets: Singapore (an ASEAN market) gets its own ASEAN PIF row and its own
+  // country-restrictions row, and the rows of the markets already there are untouched.
+  const dossier: any[] = pj.project.requirements?.dossierEvidence ?? [];
+  t('the new market got its own ASEAN PIF row and its own country-restrictions row', dossier.some((x) => x.requirement === 'ASEAN PIF mapped' && x.market === 'Singapore') && dossier.some((x) => x.requirement === 'Country-specific restrictions' && x.market === 'Singapore'), short(dossier.map((x) => x.requirement + (x.market ? '@' + x.market : ''))));
+  t('...and each existing market still has exactly one of each of its rows', MARKETS.every((m) => dossier.filter((x) => x.market === m && x.requirement === 'Country-specific restrictions').length === 1));
   console.log(`   NOTE: SG10-SG12 now have an unsigned lane for the new market (SG10 passed: ${gp.isGatePassed(pj.project, 'SG10')}) — E3(a), one lane per active market`);
 
   console.log('\n--- the company lists as they stood when each gate passed (SW-52, Round 5 question 1(d))');

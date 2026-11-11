@@ -10,6 +10,7 @@ import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
 import { TEXT, TABLE_STICKY } from '../theme/tokens';
+import '../styles/concept.css';
 
 const DECISIONS = ['Approve', 'Approve with conditions', 'Reject'];
 
@@ -54,6 +55,7 @@ export default function StudyApprovalCard({
   return (
     <Card
       size="small"
+      className="ph-card"
       title={
         <span>
           <SafetyCertificateOutlined style={{ marginRight: 8 }} />

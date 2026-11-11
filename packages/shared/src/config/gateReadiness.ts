@@ -497,6 +497,44 @@ export type ReadinessSource =
   // otherwise, so an unconfirmed decision cannot sit in the panel unasked.
   | 'dev-decision';
 
+// Which readiness items are a market's OWN requirements (Round 5 question 2(c): "unrelated markets may continue where their own
+// requirements are met"). Gates 10-12 are signed per market (Round 4 question 18), and until now every item read the whole project, so
+// a Pending finding or an incomplete label row in Vietnam held Singapore too. An item listed here is evaluated for one market's slice
+// of the data when a lane is being judged; every OTHER item stays project-wide and still blocks every lane — a formula, a safety
+// finding or a claim does not belong to one market. Evaluated for the whole project (no market), nothing changes, and a project passes
+// exactly when all its lanes pass.
+//
+// The split is our reading of "their own requirements", read off which data carries a market (a market column on the register, a
+// market on the track, the review, the finding, the change). [ASSUMPTION: R6-Q8]
+export const PER_MARKET_ITEM_IDS: ReadonlySet<string> = new Set([
+  // Gate 10
+  'sg10-checklist',
+  'sg10-checklist-asean',
+  'sg10-pif-mapped',
+  'sg10-infant-pif',
+  'sg10-regulatory-mapped',
+  'sg10-claim-evidence',
+  'sg10-artwork',
+  'sg10-artwork-claims',
+  'sg10-reg-approval',
+  'sg10-signoff',
+  // Gate 11
+  'sg11-gate10',
+  'sg11-gmp',
+  'sg11-artwork',
+  'sg11-published-approved',
+  'sg11-changes-blocking',
+  'sg11-changes-admin',
+  'sg11-launch',
+  'sg11-signoff',
+  // Gate 12
+  'sg12-feedback',
+  'sg12-feedback-review',
+  'sg12-pms-baseline',
+  'sg12-change-links',
+  'sg12-signoff',
+]);
+
 export interface ReadinessRequirement {
   id: string;
   label: string;

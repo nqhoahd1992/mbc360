@@ -3,6 +3,7 @@ import dayjs from 'dayjs';
 import type { NextAction, NextActionPriority, NextActionStatus, ProjectData } from '@mbc360/shared/types';
 import { GATES } from '@mbc360/shared/config/gates';
 import { isGatePassed } from '@mbc360/shared/utils/gateProgress';
+import { isPerMarketGate } from '@mbc360/shared/config/gateSignOff';
 import { NEXT_ACTION_FROZEN_REASON, nextActionFreeze } from '@mbc360/shared/utils/nextActionAccess';
 import {
   NEXT_ACTION_RECORD_LOCK_REASON,
@@ -41,19 +42,30 @@ export default function NextActionsCard({
   projectId,
   gateIds,
   actions,
+  market,
 }: {
   project: ProjectData;
   projectId: string;
   gateIds: string[];
   actions: NextAction[];
+  // The market chosen on the gate tab (Gates 10-12). The card lists the actions of THIS market and the ones that name no market; the draft
+  // still holds every action of the gate, because a save replaces the gate's whole list and must not drop the other markets'.
+  market?: string;
 }) {
   const setActionsBulk = useAppStore((s) => s.setNextActionsBulk);
   const session = useSession();
   const permissionView = usePermissionView();
   const rows = actions.filter((a) => gateIds.includes(a.gateId));
   const { draft, dirty, update, markSaved, discard } = useDraft(rows);
-  const openCount = draft.filter((a) => !TERMINAL_STATUSES.includes(a.status)).length;
-  const openCriticalCount = draft.filter((a) => !TERMINAL_STATUSES.includes(a.status) && a.priority === 'Critical').length;
+  const shown = market ? draft.filter((a) => !a.market || a.market === market) : draft;
+  const at = (a: NextAction) => draft.indexOf(a);
+  const openCount = shown.filter((a) => !TERMINAL_STATUSES.includes(a.status)).length;
+  const openCriticalCount = shown.filter((a) => !TERMINAL_STATUSES.includes(a.status) && a.priority === 'Critical').length;
+  // Only a gate signed per market can give an action a market: "All markets" or one of the project's.
+  const marketOptions = [
+    { value: '', label: 'All markets' },
+    ...project.identity.markets.map((m) => ({ value: m, label: m })),
+  ];
   const gateOptions = gateIds.map((id) => {
     const meta = GATES.find((g) => g.id === id);
     return { value: id, label: `Gate ${meta?.number ?? id}` };
@@ -145,11 +157,23 @@ export default function NextActionsCard({
   const addAction = () => {
     update((prev) => [
       ...prev,
-      { id: `NA-${Date.now()}`, gateId: gateIds[0], description: '', status: 'Open' as const, priority: 'Medium' as const },
+      {
+        id: `NA-${Date.now()}`,
+        gateId: gateIds[0],
+        // A new action starts in the market being worked on.
+        ...(market && isPerMarketGate(gateIds[0]) ? { market } : {}),
+        description: '',
+        status: 'Open' as const,
+        priority: 'Medium' as const,
+      },
     ]);
-    return draft.length;
+    return shown.length;
   };
-  const removeAction = (index: number) => update((prev) => prev.filter((_, i) => i !== index));
+  // `index` is a place in the rows SHOWN; the action is found by its id in the whole draft.
+  const removeAction = (index: number) => {
+    const target = shown[index];
+    if (target) update((prev) => prev.filter((a) => a.id !== target.id));
+  };
   const save = async () => {
     const ok = await setActionsBulk(projectId, gateIds, draft);
     if (ok) markSaved();
@@ -166,13 +190,26 @@ export default function NextActionsCard({
       description="Open actions block a plain Proceed (allowed only under Proceed with Conditions); a Critical action blocks the gate even under Proceed with Conditions."
       count={
         <>
-          {openCount} open / {draft.length} total
+          {openCount} open / {shown.length} total
           {openCriticalCount > 0 && <span className="rl-req"> · {openCriticalCount} Critical</span>}
         </>
       }
-      rows={draft}
+      rows={shown}
       rowKey={(a) => a.id}
-      rowBadge={gateIds.length > 1 ? (a) => <span className="c-tag" style={{ flexShrink: 0 }}>{gateNumber(a.gateId)}</span> : undefined}
+      rowBadge={
+        gateIds.length > 1 || draft.some((a) => a.market)
+          ? (a) => (
+              <>
+                {gateIds.length > 1 && <span className="c-tag" style={{ flexShrink: 0 }}>{gateNumber(a.gateId)}</span>}
+                {a.market && (
+                  <span className="c-tag" style={{ flexShrink: 0 }} title={`This action is about ${a.market} alone`}>
+                    {a.market}
+                  </span>
+                )}
+              </>
+            )
+          : undefined
+      }
       rowTitle={(a) => a.description || <span className="rt-muted">New action — describe what must be done</span>}
       rowSubtitle={(a) => [a.owner, a.dueDate && `due ${a.dueDate}`].filter(Boolean).join(' · ')}
       rowFlag={(a) => a.priority === 'Critical' && !TERMINAL_STATUSES.includes(a.status)}
@@ -180,45 +217,57 @@ export default function NextActionsCard({
         {
           label: 'Priority',
           width: 132,
-          render: (a, i) => (
+          render: (a) => (
             <Select
               style={{ width: '100%' }}
               disabled={recordLocked(a) || freezeOf(a).rewrite}
               value={a.priority}
               options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: <span className={`c-tag ${PRIORITY_TONE[p]}`}>{p}</span> }))}
-              onChange={(v) => patch(i, { priority: v })}
+              onChange={(v) => patch(at(a), { priority: v })}
             />
           ),
         },
         {
           label: 'Status',
           width: 184,
-          render: (a, i) => (
-            <Select style={{ width: '100%' }} disabled={freezeOf(a).all} value={a.status} options={statusOptions(a)} onChange={(v: NextActionStatus) => setStatus(i, v)} />
+          render: (a) => (
+            <Select style={{ width: '100%' }} disabled={freezeOf(a).all} value={a.status} options={statusOptions(a)} onChange={(v: NextActionStatus) => setStatus(at(a), v)} />
           ),
         },
       ]}
       drawerTitle={(a) => a.description || 'New action'}
-      drawer={(a, i) => (
+      drawer={(a) => (
         <section>
           {recordLocked(a) && <p className="rt-note">{NEXT_ACTION_RECORD_LOCK_REASON}</p>}
           {freezeOf(a).rewrite && <p className="rt-note">{NEXT_ACTION_FROZEN_REASON}</p>}
           <div className="rt-grid">
             <RecordField label="Description" wide>
-              <Input.TextArea autoSize={{ minRows: 2 }} disabled={recordLocked(a) || freezeOf(a).rewrite} value={a.description} placeholder="What must be done?" onChange={(e) => patch(i, { description: e.target.value })} />
+              <Input.TextArea autoSize={{ minRows: 2 }} disabled={recordLocked(a) || freezeOf(a).rewrite} value={a.description} placeholder="What must be done?" onChange={(e) => patch(at(a), { description: e.target.value })} />
             </RecordField>
             <RecordField label="Gate">
-              <Select style={{ width: '100%' }} disabled={recordLocked(a) || freezeOf(a).rewrite} value={a.gateId} options={gateOptions} onChange={(v) => patch(i, { gateId: v })} />
+              <Select style={{ width: '100%' }} disabled={recordLocked(a) || freezeOf(a).rewrite} value={a.gateId} options={gateOptions} onChange={(v) => patch(at(a), { gateId: v })} />
             </RecordField>
+            {isPerMarketGate(a.gateId) && (
+              <RecordField label="Market">
+                <Select
+                  style={{ width: '100%' }}
+                  disabled={recordLocked(a) || freezeOf(a).rewrite}
+                  value={a.market ?? ''}
+                  options={marketOptions}
+                  onChange={(v: string) => patch(at(a), { market: v || undefined })}
+                />
+                <p className="rt-note">An action in one market does not hold another; "All markets" holds every market.</p>
+              </RecordField>
+            )}
             <RecordField label="Owner">
-              <UserSelect disabled={recordLocked(a) || freezeOf(a).all} value={a.owner} onChange={(v) => patch(i, { owner: v ?? '' })} />
+              <UserSelect disabled={recordLocked(a) || freezeOf(a).all} value={a.owner} onChange={(v) => patch(at(a), { owner: v ?? '' })} />
             </RecordField>
             <RecordField label="Due date">
               <DatePicker
                 style={{ width: '100%' }}
                 disabled={recordLocked(a) || freezeOf(a).all}
                 value={a.dueDate ? dayjs(a.dueDate) : null}
-                onChange={(d) => patch(i, { dueDate: d ? d.format('YYYY-MM-DD') : undefined })}
+                onChange={(d) => patch(at(a), { dueDate: d ? d.format('YYYY-MM-DD') : undefined })}
               />
             </RecordField>
             <RecordField label="Priority">
@@ -227,11 +276,11 @@ export default function NextActionsCard({
                 disabled={recordLocked(a) || freezeOf(a).rewrite}
                 value={a.priority}
                 options={PRIORITY_OPTIONS.map((p) => ({ value: p, label: p }))}
-                onChange={(v) => patch(i, { priority: v })}
+                onChange={(v) => patch(at(a), { priority: v })}
               />
             </RecordField>
             <RecordField label="Status" wide>
-              <Select style={{ width: '100%' }} disabled={freezeOf(a).all} value={a.status} options={statusOptions(a)} onChange={(v: NextActionStatus) => setStatus(i, v)} />
+              <Select style={{ width: '100%' }} disabled={freezeOf(a).all} value={a.status} options={statusOptions(a)} onChange={(v: NextActionStatus) => setStatus(at(a), v)} />
               {/* Written out rather than left in the disabled options' tooltip:
                   the useful part is what to do instead, and nobody hovers a
                   dropdown entry they cannot click. */}

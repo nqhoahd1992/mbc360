@@ -25,6 +25,7 @@ export default function GateChecksTable({
   isRowLocked,
   exemptionOf,
   showGate = true,
+  market,
 }: {
   projectId: string;
   title: string;
@@ -38,15 +39,21 @@ export default function GateChecksTable({
   exemptionOf?: (check: GateCheck) => string | undefined;
   // Show each row's gate number. Off on a single gate's tab, where it is redundant.
   showGate?: boolean;
+  // The market chosen on the gate tab (Gates 10-12). The table shows the gate's own checks and THIS market's; the draft still holds every
+  // market's, so switching market never loses an unsaved edit.
+  market?: string;
 }) {
   const setChecksBulk = useAppStore((s) => s.setGateChecksBulk);
   // Draft holds the mutable GateCheck values in the order of `checks` — each
   // row's global store index (checks[i].index) never changes locally.
   const { draft, dirty, update, markSaved, discard } = useDraft(checks.map((c) => c.check));
-  const doneCount = draft.filter((c) => c.done).length;
+  const shown = market ? draft.filter((c) => !c.market || c.market === market) : draft;
+  const doneCount = shown.filter((c) => c.done).length;
   const lockedRow = (r: GateCheck) => !!isRowLocked?.(r) || !!exemptionOf?.(r);
 
   const patch = (index: number, p: Partial<GateCheck>) => update((prev) => patchArray(prev, index, p));
+  // The list callbacks give a place among the rows SHOWN; an edit is addressed to that row's place in the whole draft.
+  const patchShown = (i: number, p: Partial<GateCheck>) => patch(draft.indexOf(shown[i]), p);
   const save = async () => {
     const ok = await setChecksBulk(
       projectId,
@@ -62,8 +69,8 @@ export default function GateChecksTable({
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [focusEvidence, setFocusEvidence] = useState(false);
   const toggleDone = (i: number, done: boolean) => {
-    patch(i, { done, ynna: done ? 'Y' : 'NA', date: done ? dayjs().format('YYYY-MM-DD') : undefined });
-    if (done && !(draft[i].evidenceRef ?? '').trim() && openIndex !== i) {
+    patchShown(i, { done, ynna: done ? 'Y' : 'NA', date: done ? dayjs().format('YYYY-MM-DD') : undefined });
+    if (done && !(shown[i].evidenceRef ?? '').trim() && openIndex !== i) {
       setOpenIndex(i);
       setFocusEvidence(true);
     }
@@ -81,20 +88,29 @@ export default function GateChecksTable({
       onSave={save}
       // Every row's gate has passed: nothing here can change, so the drawer
       // drops its "changes stay in the draft" hint.
-      readOnly={draft.length > 0 && draft.every((r) => !!lockedRow(r))}
+      readOnly={shown.length > 0 && shown.every((r) => !!lockedRow(r))}
       title={title}
-      count={`${doneCount}/${checks.length} done`}
-      rows={draft}
-      rowKey={(r) => `${r.gate}-${r.check}`}
+      count={`${doneCount}/${shown.length} done`}
+      rows={shown}
+      rowKey={(r) => `${r.gate}-${r.check}-${r.market ?? ''}`}
       rowId={(r) => gateCheckAnchor(r.gate, r.check)}
       rowBadge={(r) =>
         // On a single gate's tab the gate number is redundant (the card sits under
         // that gate); keep the badge only for the lock, or when rows span gates.
-        showGate || lockedRow(r) ? (
-          <span className="c-tag" style={{ flexShrink: 0 }}>
-            {lockedRow(r) && <LockOutlined />}
-            {showGate && r.gate}
-          </span>
+        showGate || lockedRow(r) || r.market ? (
+          <>
+            {(showGate || lockedRow(r)) && (
+              <span className="c-tag" style={{ flexShrink: 0 }}>
+                {lockedRow(r) && <LockOutlined />}
+                {showGate && r.gate}
+              </span>
+            )}
+            {r.market && (
+              <span className="c-tag" style={{ flexShrink: 0 }} title={`This check is about ${r.market} alone`}>
+                {r.market}
+              </span>
+            )}
+          </>
         ) : undefined
       }
       rowTitle={(r) => (
@@ -127,7 +143,7 @@ export default function GateChecksTable({
               value={r.ynna}
               disabled={lockedRow(r)}
               options={YNNA_OPTIONS}
-              onChange={(v: YNNA) => patch(i, { ynna: v })}
+              onChange={(v: YNNA) => patchShown(i, { ynna: v })}
             />
           ),
         },
@@ -143,7 +159,7 @@ export default function GateChecksTable({
                 </Checkbox>
               </RecordField>
               <RecordField label="Y/N/NA">
-                <Select style={{ width: '100%' }} value={r.ynna} disabled={locked} options={YNNA_OPTIONS} onChange={(v: YNNA) => patch(i, { ynna: v })} />
+                <Select style={{ width: '100%' }} value={r.ynna} disabled={locked} options={YNNA_OPTIONS} onChange={(v: YNNA) => patchShown(i, { ynna: v })} />
               </RecordField>
               <RecordField label="Date">
                 <DatePicker

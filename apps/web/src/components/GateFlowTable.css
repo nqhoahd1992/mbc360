@@ -5,7 +5,7 @@
 .gfc-card { min-width: 0; padding-bottom: 16px; }
 .gfc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 20px 0; }
 .gfc-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.gfc-title { font-weight: 600; }
+.gfc-title { font-size: 16px; font-weight: 600; line-height: 24px; }
 .gfc-purpose { margin-top: 2px; color: var(--c-text-3); font-size: 13px; text-wrap: pretty; }
 .gfc-fields { display: grid; grid-template-columns: 1fr; gap: 16px; padding: 16px 20px; }
 @media (min-width: 640px) { .gfc-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

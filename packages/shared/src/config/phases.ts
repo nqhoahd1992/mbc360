@@ -13,6 +13,10 @@ export interface ChecklistSectionConfig {
   // Only `projectNature` declares it today; see the comment there for why this
   // is opt-in rather than a property every checklist section has.
   requiresPrimary?: boolean;
+  // 'each' = the whole list once for every market of the project (project owner, 2026-11-11), so a market records its own sources, issue
+  // types and actions and is not entangled with another's. Omitted = one list for the project. Only the checklists that are plainly a
+  // market's own (post-market feedback arrives per market) are marked [ASSUMPTION: R6-Q8].
+  marketScope?: 'each';
 }
 
 export interface RequirementRowConfig {
@@ -21,6 +25,10 @@ export interface RequirementRowConfig {
   minimum: string;
   rationale: string;
   owner: string;
+  // A row about ONE market rather than the product. 'each' = one row for every market of the project; 'asean' = one row for every ASEAN
+  // market (none for a project with no ASEAN market). Omitted = one row for the project, shared by every market. Only the rows whose own
+  // wording names a market or a country are marked; which other rows are a market's own is the review team's to say [ASSUMPTION: R6-Q8].
+  marketScope?: 'each' | 'asean';
 }
 
 export interface RequirementSectionConfig {
@@ -66,6 +74,8 @@ export type RequirementColumnKey =
 export interface KeyGateCheckConfig {
   gate: string;
   check: string;
+  // 'each' / 'asean' as for a requirement row (RequirementRowConfig.marketScope). Omitted = one row for the gate.
+  marketScope?: 'each' | 'asean';
 }
 
 // The four shortcuts every phase sheet carries in its banner, cells E3/G3/I3/K3
@@ -806,6 +816,7 @@ export const PHASE_4: PhaseConfig = {
       key: 'postMarketSources',
       title: 'Post-Market Feedback — Source',
       gate: '12',
+      marketScope: 'each',
       ownerFunction: 'Quality / PV-PMS',
       options: [
         'Consumer', 'HCP', 'Distributor', 'Retailer', 'Sales', 'Social media',
@@ -816,6 +827,7 @@ export const PHASE_4: PhaseConfig = {
       key: 'postMarketIssueType',
       title: 'Post-Market Feedback — Issue type',
       gate: '12',
+      marketScope: 'each',
       ownerFunction: 'Quality / PV-PMS',
       options: [
         'Safety or adverse event', 'Product performance', 'Claim or communication question',
@@ -827,6 +839,7 @@ export const PHASE_4: PhaseConfig = {
       key: 'postMarketAction',
       title: 'Post-Market Feedback — Resulting action',
       gate: '12',
+      marketScope: 'each',
       ownerFunction: 'Quality / PV-PMS',
       options: [
         'PMS review', 'CAPA', 'Change Control', 'FAQ update', 'Product optimisation',
@@ -839,14 +852,14 @@ export const PHASE_4: PhaseConfig = {
       key: 'dossierEvidence',
       title: 'Dossier / HCP Evidence Checks',
       rows: [
-        { gate: '10', requirement: 'ASEAN PIF mapped', minimum: 'Complete ASEAN_PIF_Map and PIF_Checklist_ASEAN', rationale: 'Regulatory dossier completeness', owner: 'Regulatory' },
+        { gate: '10', requirement: 'ASEAN PIF mapped', minimum: 'Complete ASEAN_PIF_Map and PIF_Checklist_ASEAN', rationale: 'Regulatory dossier completeness', owner: 'Regulatory', marketScope: 'asean' },
         { gate: '10', requirement: 'Product Safety Summary', minimum: 'Complete Medical_Summary safety sections', rationale: 'Ready-to-answer output', owner: 'Safety' },
         { gate: '10', requirement: 'Ingredient Risk Table', minimum: 'Prohibited + caution ingredient conclusions complete', rationale: 'Answers distributor/HCP risk questions', owner: 'Safety / Regulatory' },
         { gate: '10', requirement: 'Substitution Table', minimum: 'Ingredient_Substitution complete where relevant', rationale: 'Answers ingredient substitution questions', owner: 'R&I / Safety' },
         { gate: '10', requirement: 'Efficacy evidence summary', minimum: 'Human, in-vitro/ex-vivo, clinical/literature and internal evidence summarised', rationale: 'Answers efficacy proof questions', owner: 'R&I / Study owner' },
         { gate: '10', requirement: 'Approved HCP wording', minimum: 'Explain evidence without unsupported pregnancy-safe or therapeutic labels', rationale: 'Controls external wording', owner: 'Regulatory / Marketing' },
         { gate: '10', requirement: 'PIF/CPSR export-ready', minimum: 'Dossier package reviewed and approved', rationale: 'Market/distributor readiness', owner: 'Regulatory' },
-        { gate: '10', requirement: 'Country-specific restrictions', minimum: 'Vietnam/ASEAN/EU/Australia/US wording checked as applicable', rationale: 'Claim and advertising control', owner: 'Regulatory' },
+        { gate: '10', requirement: 'Country-specific restrictions', minimum: 'Vietnam/ASEAN/EU/Australia/US wording checked as applicable', rationale: 'Claim and advertising control', owner: 'Regulatory', marketScope: 'each' },
       ],
     },
     // Infant & Baby Safety pathway (Round 4 question 1) — see the note on
@@ -859,9 +872,9 @@ export const PHASE_4: PhaseConfig = {
         { gate: '10', requirement: 'Infant-use safety conclusion', minimum: 'The Gate 7 conclusion carried into the PIF', rationale: 'The dossier has to state the conclusion, not just hold the working', owner: 'Safety / Regulatory' },
         { gate: '10', requirement: 'Relevant ingredient and formula assessments', minimum: 'Gate 4 and Gate 5 infant assessments included or linked', rationale: 'The conclusion is only readable with its basis', owner: 'Regulatory' },
         { gate: '10', requirement: 'Applicable test reports', minimum: 'Reports from the Gates 8-9 testing included', rationale: 'Evidence, not summary', owner: 'Quality / Regulatory' },
-        { gate: '10', requirement: 'Approved age and use statements', minimum: 'Minimum age and use statements approved and included', rationale: 'The Gate 2 age answer reaching the dossier', owner: 'Regulatory' },
+        { gate: '10', requirement: 'Approved age and use statements', minimum: 'Minimum age and use statements approved and included', rationale: 'The Gate 2 age answer reaching the dossier', owner: 'Regulatory', marketScope: 'each' },
         { gate: '10', requirement: 'Evidence supporting infant-related claims', minimum: 'Each infant claim linked to its evidence', rationale: 'An infant claim carries a higher evidential bar', owner: 'Regulatory / Claims' },
-        { gate: '10', requirement: 'Label warnings and directions', minimum: 'Gate 6 warnings and directions included as released', rationale: 'The dossier must match the pack', owner: 'Regulatory / Packaging' },
+        { gate: '10', requirement: 'Label warnings and directions', minimum: 'Gate 6 warnings and directions included as released', rationale: 'The dossier must match the pack', owner: 'Regulatory / Packaging', marketScope: 'each' },
       ],
     },
     {
@@ -879,7 +892,7 @@ export const PHASE_4: PhaseConfig = {
   ],
   keyGateChecks: [
     { gate: '10', check: 'Evidence hierarchy applied and claims wording checked' },
-    { gate: '10', check: 'Countries/regulatory pathway matched and PIF/evidence file mapped' },
+    { gate: '10', check: 'Countries/regulatory pathway matched and PIF/evidence file mapped', marketScope: 'each' },
     { gate: '10', check: 'Approved wording / limitations recorded' },
     { gate: '11', check: 'Final formula/version, packaging and artwork approved' },
     { gate: '11', check: 'Production records ready and GMP links added' },

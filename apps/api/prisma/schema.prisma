@@ -376,6 +376,8 @@ model NextAction {
   // the raiser and the verifier are recorded separately from `owner`/`closedBy`.
   raisedBy      String?
   verifiedBy    String?
+  // The market this action belongs to on a gate signed per market (Gates 10-12). Null = every market, which holds every lane.
+  market        String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -841,6 +843,8 @@ model GateCheck {
   projectId    String
   gate         String
   check        String
+  // The market this row belongs to, for a Key Gate Check the configuration makes per market. Null = one row for the gate.
+  market       String?
   done         Boolean   @default(false)
   ynna         String    @default("NA")
   date         DateTime? @db.Date
@@ -860,6 +864,8 @@ model ChecklistItem {
   projectId     String
   sectionKey    String // PhaseConfig.checklistSections[].key
   itemOrder     Int
+  // The market this option belongs to, on a checklist the configuration makes per market. Null = one list for the project.
+  market        String?
   label         String
   gate          String
   selected      Boolean @default(false)
@@ -884,6 +890,9 @@ model RequirementItem {
   itemOrder          Int
   gate               String
   requirement        String
+  // The market this row belongs to, for a row its section declares per market (RequirementRowConfig.marketScope). Null = about the
+  // product, the same for every market.
+  market             String?
   priority           String? // Phase 1 only (SME Round 3 B6)
   // Phase 1 only. B6's shape is "category, requirement, priority, owner, notes":
   // the `requirement` column above holds the CATEGORY (one of the team's 16

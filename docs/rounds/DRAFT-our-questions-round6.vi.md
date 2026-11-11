@@ -223,7 +223,7 @@ Dự án không tick đối tượng maternal hay infant nào và chưa viết l
 - **Source record link** và **date identified:** tùy chọn.
 - **Pending** cũng cần reviewer, ngày và lý do (đang chờ gì), đúng như các bạn viết; một mục chưa chọn câu trả lời thì chưa đòi gì.
 
-*Một điều chưa xây:* các bạn nói các thị trường không liên quan được tiếp tục khi đã đủ yêu cầu của riêng nó. Hiện nay một phát hiện Pending ở một thị trường giữ mục Change-control ở Gate 12 cho mọi thị trường. Review mà phát hiện Pending thuộc về thì không đóng được, nhưng các thị trường khác chưa được thả ra.
+*Thị trường không liên quan được tiếp tục:* một phát hiện Pending ở một thị trường không còn giữ các thị trường khác (xem câu 8). Review mà phát hiện Pending thuộc về thì không đóng được.
 
 **(a)** Disposition có danh sách giá trị không? Nếu có thì là gì?
 
@@ -234,3 +234,38 @@ Dự án không tick đối tượng maternal hay infant nào và chưa viết l
 **(d)** Thang Low / Medium / High / Critical dùng chung có đúng cho severity / priority không?
 
 **(e)** Affected SKU, formula và batch có nên là ba ô riêng không?
+
+## Câu 8 — Mục readiness nào là yêu cầu riêng của một thị trường?
+
+*Ở đâu trong ứng dụng:* **Phase 4**, các tab **Gate 10, 11 và 12**, nay bắt đầu bằng một công tắc thị trường.
+
+Các bạn nói các thị trường không liên quan được tiếp tục khi đã đủ yêu cầu riêng. Gate 10 đến 12 vốn đã ký theo từng thị trường, nhưng mọi mục readiness đều nhìn cả dự án, nên một phát hiện mở hay một dòng nhãn chưa xong ở Vietnam cũng giữ luôn Singapore. Nay chúng tôi chấm lane của từng thị trường bằng dữ liệu của chính nó. Các bạn chưa liệt kê mục nào thuộc một thị trường, nên chúng tôi đọc theo dữ liệu nào mang thị trường:
+
+- **Chấm theo từng thị trường:** checklist quy định và checklist ASEAN, bằng chứng claim trong sổ SKU claims, duyệt artwork và claim trên artwork, duyệt thông tin công bố, liên kết GMP, nhãn đã phát hành, phê duyệt quy định, phê duyệt launch, chữ ký Gate 10 của từng thị trường, các thay đổi có ghi thị trường, và các mục review hậu mãi, giám sát nền, Change-control.
+- **Chấm cho cả dự án nên giữ mọi thị trường:** công thức và bằng chứng nguyên liệu, bằng chứng an toàn, hồ sơ và nội dung PIF cho trẻ sơ sinh, câu chữ và miễn trừ của bằng chứng claim, sản xuất và đường phát hành, khiếu nại và CAPA, và bốn điều kiện giám sát mà ứng dụng không đọc được.
+- Một bản ghi không ghi thị trường được hiểu là liên quan mọi thị trường, nên chỉ giữ được một thị trường chứ không thả được.
+
+Hai chỗ chặt hơn trước: một thị trường chưa có phát hiện nào ghi cho nó thì bị giữ ở mục Change-control (một lần review không thấy gì thì ghi một mục No cho thị trường đó), và một dự án sẵn sàng đúng khi mọi thị trường sẵn sàng.
+
+**(a)** Danh sách mục chấm theo từng thị trường có đúng không?
+
+**(b)** Một thị trường chưa launch có được qua Gate 10 và 11 độc lập với thị trường đã launch không?
+
+**(c)** Mỗi review của một thị trường ghi "no findings requiring Change Control" riêng cho nó có đúng không?
+
+Chúng tôi đã đi xa hơn các mục readiness, để một thị trường không bị vướng thị trường khác:
+
+- **Dòng yêu cầu thuộc về một thị trường.** Trong bảng "Dossier / HCP Evidence Checks", dòng **ASEAN PIF mapped** nay là một dòng cho mỗi thị trường ASEAN (không có dòng nào cho thị trường ngoài ASEAN), và **Country-specific restrictions** là một dòng cho mỗi thị trường. Chúng tôi chỉ tách hai dòng mà chính chữ của dòng nêu tên thị trường hoặc quốc gia; mọi dòng khác vẫn là một dòng cho sản phẩm.
+- **Key Gate Check về quốc gia/lộ trình, hai dòng Infant & Baby Safety, và các danh sách feedback sau lưu hành.** Check Gate 10 "Countries/regulatory pathway matched and PIF/evidence file mapped" nay là một check cho mỗi thị trường. Trong bảng Infant & Baby Safety của Gate 10, **Approved age and use statements** và **Label warnings and directions** là một dòng cho mỗi thị trường. Ba danh sách của Gate 12 (nguồn feedback, loại vấn đề, hành động phát sinh) được liệt kê riêng cho từng thị trường.
+- **Next action thuộc một thị trường hoặc tất cả.** Ở Gate 10 đến 12, một action có thể ghi một thị trường; action không ghi thị trường nào thì giữ mọi thị trường.
+- Các tab Gate 10 đến 12 hiện các dòng và action của thị trường chọn ở đầu trang, và chữ ký của một thị trường chỉ chứng nhận các dòng và action của thị trường đó.
+
+**(d)** Ngoài các dòng, check và danh sách đã nêu ở trên, mục nào khác ở Gate 10 đến 12 là của riêng từng thị trường (ví dụ dòng "Approved HCP wording", "PIF/CPSR export-ready", hoặc các Key Gate Check khác)?
+
+**(e)** Một action ở Gate 10 đến 12 không ghi thị trường có đúng là giữ mọi thị trường không?
+
+**(f)** Mỗi thị trường có nên tự đi qua Gate 10, 11, 12 độc lập không? Ví dụ Singapore mở Gate 11 khi Gate 10 của riêng nó đã qua, trong lúc Vietnam còn ở Gate 10. Và Phase 4 có được đóng khi một thị trường đã lưu hành còn thị trường khác chưa qua Gate 10 không?
+
+**(g)** Khi gate của một thị trường bị đưa lùi lại (Backtrack), chỉ ảnh hưởng thị trường đó hay cả các thị trường khác?
+
+**(h)** Khi thêm hoặc rút một thị trường giữa chừng, lộ trình riêng của nó bắt đầu từ gate nào, và các gate nó đã qua thì xử lý ra sao?

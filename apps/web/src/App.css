@@ -56,6 +56,46 @@ a.hb-link:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The gate and market chips are buttons: they open a menu to switch. */
+.hb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.hb-chip:hover {
+  background: #bae0ff;
+}
+.hb-chip-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hb-chip-caret {
+  flex-shrink: 0;
+  font-size: 9px;
+}
+/* The market chip is a second chip beside the gate, in a quieter colour so the two read as gate / market. */
+.hb-market {
+  margin-left: 6px;
+  background: #f5f5f5;
+  color: #1f1f1f;
+}
+.hb-market:hover {
+  background: #e8e8e8;
+}
+.hb-menu-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.hb-menu-done {
+  color: #52c41a;
+  font-size: 12px;
+}
 .hb-cur:only-child {
   flex: 1;
 }

@@ -13,6 +13,7 @@
 import type { ProjectData, ReadinessAcknowledgement } from '../types';
 import { UNSTRUCTURED_PMS_CONDITIONS } from '../types';
 import { REVIEW_ROLES } from '../config/reviewers';
+import { GATE_READINESS, type ReadinessTrigger } from '../config/gateReadiness';
 import { CRITICAL_GATES } from '../config/gateSignOff';
 
 // (1) Critical = the team's own item-by-item classification of the 31 items that can carry
@@ -43,6 +44,35 @@ export const CRITICAL_ITEM_OVERRIDES: Record<string, boolean> = {
 export function isCriticalForAcknowledgement(gateId: string, itemId: string): boolean {
   const override = CRITICAL_ITEM_OVERRIDES[itemId];
   return override ?? CRITICAL_GATES.includes(gateId);
+}
+
+// The acknowledgements an assessment's answer can open (project owner, 2026-11-11: "if an assessment opens a new acknowledgement, say
+// so in that assessment"). An answer that leaves a CRITICAL item not applicable makes the system write that "not applicable", and the
+// holder of the item's function must then acknowledge it. So the list is every critical item whose trigger the assessment decides,
+// read from the same two tables the acknowledgement itself reads — it can never name an item the engine would not ask about.
+export interface OpenedAcknowledgement {
+  gateId: string; // 'SG07'
+  itemId: string;
+  label: string;
+  functions: string[]; // who acknowledges it, one entry per function it needs ("Safety / Scientific Review")
+}
+export function acknowledgementsOpenedBy(triggers: readonly ReadinessTrigger[]): OpenedAcknowledgement[] {
+  const out: OpenedAcknowledgement[] = [];
+  for (const [gateId, items] of Object.entries(GATE_READINESS)) {
+    for (const item of items) {
+      if (!item.trigger || !triggers.includes(item.trigger)) continue;
+      if (!isCriticalForAcknowledgement(gateId, item.id)) continue;
+      const groups = ACKNOWLEDGEMENT_FUNCTIONS[item.id];
+      if (!groups) continue;
+      out.push({
+        gateId,
+        itemId: item.id,
+        label: item.label,
+        functions: groups.map((keys) => keys.map((k) => REVIEW_ROLES.find((r) => r.key === k)?.label ?? k).join(' or ')),
+      });
+    }
+  }
+  return out;
 }
 
 // 'stale' = there is an acknowledgement but of a rationale the engine no longer

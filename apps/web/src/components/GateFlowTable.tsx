@@ -42,6 +42,7 @@ export default function GateFlowTable({
   gateIds,
   layout = 'table',
   hideReadiness,
+  laneMarket,
   part = 'all',
 }: {
   project: ProjectData;
@@ -53,6 +54,8 @@ export default function GateFlowTable({
   // The Phase page shows readiness in its own sticky rail, so the card layout
   // can leave it out rather than print the same list twice.
   hideReadiness?: boolean;
+  // The market chosen for the gate tab (Gates 10-12): the sign-off lane that is shown.
+  laneMarket?: string;
   // Card layout only: the Phase Gate Flow card and the Gate sign-off card sit in different places on the page
   // (the flow right after Project Identification, as in the workbook; the sign-off last), so each is rendered by
   // its own instance. 'all' keeps both together.
@@ -343,7 +346,7 @@ export default function GateFlowTable({
                   the blocker checklist because a signature and the evidence it
                   attests to are one subject — and because `sgNN-signoff` is one
                   of the items in that very list. */}
-              <GateSignOffPanel project={project} gateId={r.meta.id} />
+              <GateSignOffPanel project={project} gateId={r.meta.id} laneMarket={laneMarket} />
               {!hideReadiness && r.readinessChecklist.length > 0 && (
                 <GateReadinessPanel
                   gateNumber={r.meta.number}

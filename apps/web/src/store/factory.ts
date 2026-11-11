@@ -12,6 +12,7 @@ import { EIGHT_ANGLES, GATES } from '@mbc360/shared/config/gates';
 import { PHASE_CONFIGS } from '@mbc360/shared/config/phases';
 import { EVIDENCE_AREAS } from '@mbc360/shared/config/evidence';
 import { REGISTER_CONFIGS, createEmptyRegisterRow } from '@mbc360/shared/config/registers';
+import { expandChecklistOptions, expandGateChecks, expandRequirementRows } from '@mbc360/shared/utils/marketRequirements';
 
 // Re-exported: the definition lives in shared so the API builds the same row.
 export { createEmptyRegisterRow };
@@ -61,8 +62,10 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
 
   for (const config of Object.values(PHASE_CONFIGS)) {
     for (const section of config.checklistSections) {
-      checklists[section.key] = section.options.map((label) => ({
+      // A checklist the configuration makes per market lists its options once for every market (expandChecklistOptions).
+      checklists[section.key] = expandChecklistOptions(section, identity.markets).map(({ label, market }) => ({
         label,
+        ...(market ? { market } : {}),
         gate: section.gate,
         selected: false,
         ownerFunction: section.ownerFunction,
@@ -70,9 +73,11 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
       }));
     }
     for (const section of config.requirementSections) {
-      requirements[section.key] = section.rows.map((row) => ({
+      // A row the section makes per market is made once for each market it applies to (expandRequirementRows).
+      requirements[section.key] = expandRequirementRows(section.rows, identity.markets).map(({ row, market }) => ({
         gate: row.gate,
         requirement: row.requirement,
+        ...(market ? { market } : {}),
         minimumRequirement: row.minimum,
         priority: undefined,
         rationale: row.rationale,
@@ -80,8 +85,9 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
         status: 'Not Started',
       }));
     }
-    for (const kc of config.keyGateChecks) {
-      gateChecks.push({ gate: kc.gate, check: kc.check, done: false, ynna: 'NA' });
+    // A Key Gate Check the configuration makes per market is one row for each market (expandGateChecks).
+    for (const { check: kc, market } of expandGateChecks(config.keyGateChecks, identity.markets)) {
+      gateChecks.push({ gate: kc.gate, check: kc.check, ...(market ? { market } : {}), done: false, ynna: 'NA' });
     }
     phaseClosures[config.phase] = emptyClosure();
   }
