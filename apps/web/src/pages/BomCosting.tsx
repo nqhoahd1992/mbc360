@@ -12,6 +12,7 @@ import CosmetriImportModal from '../components/CosmetriImportModal';
 import FormulaVersionModal from '../components/FormulaVersionModal';
 import { formulaVersionState } from '@mbc360/shared/utils/formulaLifecycle';
 import FormulaSupersessionCard from '../components/FormulaSupersessionCard';
+import HistoryTimeline from '../components/HistoryTimeline';
 import OpenChangesNotice from '../components/OpenChangesNotice';
 import FormulaVersionCompareModal, { type FormulaVersionOption } from '../components/FormulaVersionCompareModal';
 import { currentGateIndex, gateIndex, isGateRefLocked, isGateSignedStanding } from '@mbc360/shared/utils/gateProgress';
@@ -783,53 +784,42 @@ export default function BomCosting() {
             <div className="bom-card-title">Formula version history (audit)</div>
             <Button disabled={false} onClick={() => setCompare({})}>Compare versions</Button>
           </div>
-          <div className="bom-table-wrap">
-            <Table
-              size="small"
-              rowKey={(r) => `${r.version}-${r.date}`}
-              dataSource={[...project.formulaVersionHistory].reverse()}
-              pagination={false}
-              sticky={TABLE_STICKY}
-              scroll={{ x: 900 }}
-              columns={[
-                { title: 'Date', width: 110, fixed: 'left', dataIndex: 'date' },
-                {
-                  title: 'Version',
-                  width: 160,
-                  render: (_, r) => (
-                    <span>
-                      {r.previousVersion} → <b>{r.version}</b>
+          {/* A history, so the shared timeline (project owner's rule): newest first, the version step in bold with its type and state,
+              who and when beneath, then the reason and the way into the comparison. */}
+          <div className="bom-vh">
+            <HistoryTimeline
+              items={[...project.formulaVersionHistory].reverse().map((r) => {
+                const state = formulaVersionState(project, r.version);
+                return {
+                  key: `${r.version}-${r.date}`,
+                  title: (
+                    <span className="bom-vh-title">
+                      {r.previousVersion ? (
+                        <span>
+                          {r.previousVersion} → <b>{r.version}</b>
+                        </span>
+                      ) : (
+                        <span>
+                          <b>{r.version}</b> · first version
+                        </span>
+                      )}
+                      <span className={`c-tag${r.changeType === 'Major' ? ' c-tag-bad' : ''}`}>{r.changeType}</span>
+                      <span className={`c-tag c-tag-dot${state === 'Superseded' ? '' : ' c-tag-warn'}`}>{state}</span>
                     </span>
                   ),
-                },
-                {
-                  title: 'Type',
-                  width: 90,
-                  render: (_, r) => <span className={`c-tag${r.changeType === 'Major' ? ' c-tag-bad' : ''}`}>{r.changeType}</span>,
-                },
-                {
-                  // Round 4 question 2: a version's lifecycle state. Without this the
-                  // outgoing version sat in "Transition in Progress" invisibly.
-                  title: 'State',
-                  width: 180,
-                  render: (_, r) => {
-                    const state = formulaVersionState(project, r.version);
-                    return <span className={`c-tag c-tag-dot${state === 'Superseded' ? '' : ' c-tag-warn'}`}>{state}</span>;
-                  },
-                },
-                { title: 'Initiated by', width: 140, render: (_, r) => r.initiatedBy ?? '—' },
-                { title: 'Reason', render: (_, r) => r.reason ?? '—' },
-                {
-                  title: '',
-                  width: 90,
-                  fixed: 'right',
-                  render: (_, r) => (
-                    <Button type="link" disabled={false} onClick={() => setCompare({ from: r.previousVersion, to: r.version })}>
-                      Compare
-                    </Button>
+                  meta: `${r.initiatedBy ?? '—'} · ${r.date}`,
+                  detail: (
+                    <>
+                      {r.reason}
+                      <div>
+                        <Button type="link" size="small" disabled={false} style={{ paddingInline: 0 }} onClick={() => setCompare({ from: r.previousVersion, to: r.version })}>
+                          Compare
+                        </Button>
+                      </div>
+                    </>
                   ),
-                },
-              ]}
+                };
+              })}
             />
           </div>
         </div>

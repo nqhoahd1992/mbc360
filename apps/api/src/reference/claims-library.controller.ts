@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PermissionsService } from '../rbac/permissions.service';
 import { ReferenceDataService } from './reference-data.service';
 import { ProjectsService } from '../projects/projects.service';
+import { readSignal, type ChangeSignalBody } from './change-signal';
 
 // Round 4 question 28 (2026-08-24), built 2026-08-30. The company-level Claims
 // Library — the third reference dataset and the only one with a workflow.
@@ -66,7 +67,7 @@ export class ClaimsLibraryController {
       patch: Partial<ClaimLibraryEntry>;
       reason?: string;
       // Round 5 question 1(d): raised by the person making the change.
-      signal?: { critical?: boolean; reason?: string; dueDate?: string };
+      signal?: ChangeSignalBody;
     },
   ): Promise<ClaimLibraryEntry[]> {
     await this.reference.assertCanEdit(user, 'claims-library');
@@ -169,9 +170,7 @@ export class ClaimsLibraryController {
           entryId: row.id,
           subject: wording.length > 80 ? `${wording.slice(0, 77)}...` : wording,
           summary: `Claims Library wording changed (${coveredChanged.join(', ')}); both approvals retracted`,
-          critical: body.signal?.critical === true,
-          reason: body.signal?.reason,
-          dueDate: body.signal?.dueDate,
+          ...readSignal(body.signal),
         });
       }
     });
@@ -281,7 +280,7 @@ export class ClaimsLibraryController {
       effectiveDate?: string;
       transitionPlan?: string;
       // Round 5 question 1(d): withdrawing wording is not automatically Critical; the person withdrawing says whether it is.
-      signal?: { critical?: boolean; reason?: string; dueDate?: string };
+      signal?: ChangeSignalBody;
     },
   ): Promise<{ entries: ClaimLibraryEntry[]; impact: LinkedClaim[] }> {
     await this.reference.assertCanEdit(user, 'claims-library');
@@ -326,9 +325,7 @@ export class ClaimsLibraryController {
         entryId: id,
         subject: existing.wording.length > 80 ? `${existing.wording.slice(0, 77)}...` : existing.wording,
         summary: `Claims Library wording withdrawn (effective ${effectiveDate})`,
-        critical: body.signal?.critical === true,
-        reason: body.signal?.reason,
-        dueDate: body.signal?.dueDate,
+        ...readSignal(body.signal),
       });
     });
     return { entries: await this.readAll(), impact };

@@ -9,6 +9,7 @@ import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { canEditReferenceData, EMPTY_GRANTS } from '../utils/permissions';
 import DrawerSaveFooter from '../components/DrawerSaveFooter';
+import HistoryTimeline from '../components/HistoryTimeline';
 import ListChangeSignal, { emptySignal, signalBody, signalProblem, type ChangeSignal } from '../components/ListChangeSignal';
 import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import { useDraft } from '../hooks/useDraft';
@@ -202,7 +203,7 @@ export default function AdminMarketProfiles() {
   ];
 
   const status = (r: Row) =>
-    r.configured ? <span className="c-tag c-tag-ok">rev {r.revision}</span> : <span className="c-tag c-tag-warn">Not set up</span>;
+    r.configured ? <span className="c-tag c-tag-ok">Set up</span> : <span className="c-tag c-tag-warn">Not set up</span>;
   const open = draft.find((r) => r.market === openMarket);
   const revisions = history?.market === openMarket ? history.revisions : undefined;
   const switches: [keyof MarketProfile, string, string][] = [
@@ -465,22 +466,18 @@ export default function AdminMarketProfiles() {
             <section>
               <div className="rt-sec-title">History</div>
               {!open.configured ? (
-                <p className="au-field-help">Not set up yet — saving this market creates revision 1.</p>
+                <p className="au-field-help">Not set up yet — saving this market starts its history.</p>
               ) : revisions === undefined ? (
                 <div className="c-skel" style={{ height: 20 }} />
               ) : (
-                <ol className="mp-history">
-                  {revisions.map((rev) => (
-                    <li key={rev.revision}>
-                      <span className="c-tag">rev {rev.revision}</span>
-                      <span>
-                        {rev.changedBy ?? 'Unknown'} · {rev.changedAt.slice(0, 10)}
-                        {rev.revision === 1 && ' · created'}
-                        {rev.reason && <span className="au-field-help"> — {rev.reason}</span>}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
+                <HistoryTimeline
+                  items={revisions.map((rev) => ({
+                    key: String(rev.revision),
+                    title: rev.revision === 1 ? 'Created' : 'Updated',
+                    meta: `${rev.changedBy ?? 'Unknown'} · ${rev.changedAt.slice(0, 10)}`,
+                    detail: rev.reason,
+                  }))}
+                />
               )}
             </section>
           </div>

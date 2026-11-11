@@ -9,6 +9,7 @@ import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
 import { canEditReferenceData, EMPTY_GRANTS } from '../utils/permissions';
 import DrawerSaveFooter from '../components/DrawerSaveFooter';
+import HistoryTimeline from '../components/HistoryTimeline';
 import { useCloseDrawerOnPageSave } from '../hooks/useCloseDrawerOnPageSave';
 import { useDraft } from '../hooks/useDraft';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
@@ -215,7 +216,7 @@ export default function AdminRmRisk() {
   ];
 
   const status = (r: Row) =>
-    r.isNew ? <span className="c-tag c-tag-warn">Not saved yet</span> : <span className="c-tag c-tag-ok">rev {r.revision}</span>;
+    r.isNew ? <span className="c-tag c-tag-warn">Not saved yet</span> : <span className="c-tag c-tag-ok">Saved</span>;
   const open = draft.find((r) => r.rmCode === openCode);
   const revisions = history?.rmCode === openCode ? history.revisions : undefined;
 
@@ -473,22 +474,18 @@ export default function AdminRmRisk() {
             <section>
               <div className="rt-sec-title">History</div>
               {open.isNew ? (
-                <p className="au-field-help">Not saved yet — saving this material creates revision 1.</p>
+                <p className="au-field-help">Not saved yet — saving this material starts its history.</p>
               ) : revisions === undefined ? (
                 <div className="c-skel" style={{ height: 20 }} />
               ) : (
-                <ol className="mp-history">
-                  {revisions.map((rev) => (
-                    <li key={rev.revision}>
-                      <span className="c-tag">rev {rev.revision}</span>
-                      <span>
-                        {rev.changedBy ?? 'Unknown'} · {rev.changedAt.slice(0, 10)}
-                        {rev.revision === 1 && ' · created'}
-                        {rev.reason && <span className="au-field-help"> — {rev.reason}</span>}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
+                <HistoryTimeline
+                  items={revisions.map((rev) => ({
+                    key: String(rev.revision),
+                    title: rev.revision === 1 ? 'Created' : 'Updated',
+                    meta: `${rev.changedBy ?? 'Unknown'} · ${rev.changedAt.slice(0, 10)}`,
+                    detail: rev.reason,
+                  }))}
+                />
               )}
             </section>
           </div>

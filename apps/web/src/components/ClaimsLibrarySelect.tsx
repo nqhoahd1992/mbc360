@@ -40,8 +40,9 @@ export default function ClaimsLibrarySelect({
       // Approved first: only an Approved entry clears Gate 3's library condition.
       [...entries]
         .sort((a, b) => Number(b.status === 'Approved') - Number(a.status === 'Approved'))
-        .map((e) => ({ value: e.id, label: `${e.wording} — ${e.status}`, entry: e })),
-    [entries],
+        // Withdrawn wording is not used any more: it cannot be newly picked (a link a claim already has stays, below).
+        .map((e) => ({ value: e.id, label: `${e.wording} — ${e.status}`, entry: e, disabled: e.status === 'Withdrawn' && e.id !== String(value ?? '').trim() })),
+    [entries, value],
   );
 
   // A link already recorded stays visible even if its entry is gone, so it can
@@ -75,12 +76,12 @@ export default function ClaimsLibrarySelect({
         return (
           <span style={{ display: 'flex', alignItems: 'flex-start', gap: 8, maxWidth: 520, whiteSpace: 'normal' }}>
             <span style={{ flex: 1 }}>{entry.wording}</span>
-            {/* Proposed and Withdrawn entries can be picked — a claim may reuse
-                wording still going through approval — but they do not clear
-                Gate 3, and the tag says so at the point of choosing. */}
+            {/* A Proposed entry can be picked — a claim may reuse wording still going through approval — but it does not
+                clear Gate 3, and the tag says so at the point of choosing. A Withdrawn entry is no longer used (Round 5
+                question 6(c): "suspend further use of withdrawn wording"): it cannot be newly picked. */}
             <Tag color={STATUS_COLOUR[entry.status]} style={{ marginInlineEnd: 0 }}>
               {entry.status}
-              {entry.status !== 'Approved' ? ' — does not clear Gate 3' : ''}
+              {entry.status === 'Withdrawn' ? ' — no further use' : entry.status !== 'Approved' ? ' — does not clear Gate 3' : ''}
             </Tag>
           </span>
         );

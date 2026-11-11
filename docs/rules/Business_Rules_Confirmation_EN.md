@@ -1043,6 +1043,16 @@ The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **
 
 **(e)** Keep the market surveillance schedule and separate version/batch traceability. A materially changed launched formula needs its own early performance/safety review milestones. Do not restart or erase the older version's obligations; combined market reviews may cover both where the analysis identifies each version.
 
+### Question 6 — Critical changes to the Claims Library
+
+**Verdict:** ✅ built (2026-11-11). (a) matches; (b) differs from what was built (the person changing the list marked it Critical and release was held at once) — a Critical change is now a proposal confirmed by a qualified function, except an urgent safety issue or mandatory restriction; (c) is built in full. Our readings of the details are asked in Round 6, question 12.
+
+**(a)** Use the same Low/Medium/High/Critical terminology with a defined claims-impact assessment. Withdrawing wording is not automatically a Critical event or a product withdrawal.
+
+**(b)** Regulatory records the market/legal impact; Technical records the evidence impact; Safety contributes where a safety issue is involved. Criticality is confirmed by the relevant qualified function(s), with Quality coordinating action. Product stop-sale/withdrawal is an authorised company decision, except that an urgent safety or mandatory restriction must trigger an immediate hold and escalation. A software status must not itself issue an external recall.
+
+**(c)** Automatically identify affected records and create an impact-assessment task. Regulatory and Technical, with Quality, determine whether CHG is required. It is required when a change affects approved/released wording, artwork, PIF or authorised market use. An unused entry or editorial correction can close with a reason and no CHG. Suspend further use of withdrawn wording; assess existing stock and published material under the transition plan.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

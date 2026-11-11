@@ -75,6 +75,24 @@ const cell = (value: unknown): string => (value === undefined || value === null 
 // which D2 explicitly reserves for a person.
 const normaliseWording = (value: unknown): string => text(value).replace(/\s+/g, ' ');
 
+// Round 5 question 6(c): "Suspend further use of withdrawn wording". A claim cannot be NEWLY linked to a Claims Library entry that has been
+// withdrawn; a link it already had stays on record (and the claim goes back to review, since it is no longer covered). Returns the Claim IDs
+// whose link was just changed to a withdrawn entry.
+export function newLinksToWithdrawnWording(
+  committed: readonly Record<string, unknown>[],
+  incoming: readonly Record<string, unknown>[],
+  library: readonly { id: string; status: string }[],
+): string[] {
+  const withdrawn = new Set(library.filter((e) => e.status === 'Withdrawn').map((e) => e.id));
+  const before = new Map(committed.map((r) => [String(r.claimId ?? '').trim(), String(r.libraryEntryId ?? '').trim()]));
+  return incoming
+    .filter((r) => {
+      const entry = String(r.libraryEntryId ?? '').trim();
+      return entry !== '' && withdrawn.has(entry) && before.get(String(r.claimId ?? '').trim()) !== entry;
+    })
+    .map((r) => String(r.claimId ?? '').trim() || '(no Claim ID)');
+}
+
 export function wordingDiffers(master: unknown, proposed: unknown): boolean {
   const m = normaliseWording(master);
   const p = normaliseWording(proposed);

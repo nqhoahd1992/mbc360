@@ -22,6 +22,7 @@ import './AdminMarketProfiles.css';
 import './AdminClaimsLibrary.css';
 
 import FormDrawer from '../components/FormDrawer';
+import HistoryTimeline from '../components/HistoryTimeline';
 import ListChangeSignal, { emptySignal, signalBody, signalProblem, type ChangeSignal } from '../components/ListChangeSignal';
 // Round 4 question 28 (2026-08-24), built 2026-08-30. The company-level Claims
 // Library — the third reference dataset, and the only one with a workflow.
@@ -525,7 +526,6 @@ export default function AdminClaimsLibrary() {
                   <div className={`cl-wording${e.status === 'Withdrawn' ? ' cl-withdrawn' : ''}`}>{e.wording}</div>
                   <div className="au-email cl-sub">
                     {[
-                      `rev ${e.revision}`,
                       e.claimCategory,
                       scope.length ? `${scope.slice(0, 3).join(', ')}${scope.length > 3 ? ` +${scope.length - 3}` : ''}` : '',
                     ]
@@ -565,12 +565,13 @@ export default function AdminClaimsLibrary() {
               <div className="cl-dwording">“{open.wording}”</div>
               <div className="cl-dmeta">
                 {statusTag(open.status)}
-                <span>
-                  Rev {open.revision}
-                  {open.proposedBy && ` · proposed by ${open.proposedBy}`}
-                  {open.proposedFromProjectId && ` from ${open.proposedFromProjectId}`}
-                  {open.proposedFromClaimId && ` · ${open.proposedFromClaimId}`}
-                </span>
+                {open.proposedBy && (
+                  <span>
+                    Proposed by {open.proposedBy}
+                    {open.proposedFromProjectId && ` from ${open.proposedFromProjectId}`}
+                    {open.proposedFromClaimId && ` · ${open.proposedFromClaimId}`}
+                  </span>
+                )}
               </div>
             </div>
           ) : null
@@ -732,18 +733,14 @@ export default function AdminClaimsLibrary() {
                   {revisions === undefined ? (
                     <div className="c-skel" style={{ height: 20 }} />
                   ) : (
-                    <ol className="mp-history">
-                      {revisions.map((rev) => (
-                        <li key={rev.revision}>
-                          <span className="c-tag">rev {rev.revision}</span>
-                          <span>
-                            {rev.event && <b>{rev.event} · </b>}
-                            {rev.changedBy ?? 'Unknown'} · {rev.changedAt.slice(0, 10)}
-                            {rev.reason && <span className="au-field-help"> — {rev.reason}</span>}
-                          </span>
-                        </li>
-                      ))}
-                    </ol>
+                    <HistoryTimeline
+                      items={revisions.map((rev) => ({
+                        key: String(rev.revision),
+                        title: rev.event ?? 'Updated',
+                        meta: `${rev.changedBy ?? 'Unknown'} · ${rev.changedAt.slice(0, 10)}`,
+                        detail: rev.reason,
+                      }))}
+                    />
                   )}
                 </section>
 

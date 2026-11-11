@@ -1,0 +1,16 @@
+/* The shared history timeline (see HistoryTimeline.tsx). A dot on a line, the event, who and when, then the detail. */
+.hx { position: relative; margin: 0; padding: 0 0 0 18px; list-style: none; }
+.hx::before { content: ''; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--c-border, #e5e7eb); }
+.hx-item { position: relative; padding: 0 0 14px 8px; }
+.hx-item:last-child { padding-bottom: 0; }
+.hx-dot { position: absolute; left: -18px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: var(--c-bg, #fff); border: 2px solid var(--c-link, #1677ff); box-sizing: border-box; }
+.hx-item:first-child .hx-dot { background: var(--c-link, #1677ff); }
+.hx-ok .hx-dot { border-color: var(--c-ok, #52c41a); }
+.hx-ok:first-child .hx-dot { background: var(--c-ok, #52c41a); }
+.hx-warn .hx-dot { border-color: var(--c-warn, #d48806); }
+.hx-warn:first-child .hx-dot { background: var(--c-warn, #d48806); }
+.hx-bad .hx-dot { border-color: var(--c-bad, #cf1322); }
+.hx-bad:first-child .hx-dot { background: var(--c-bad, #cf1322); }
+.hx-event { font-weight: 600; font-size: 14px; color: var(--c-text); }
+.hx-meta { font-size: 12px; color: var(--c-text-3); margin-top: 2px; }
+.hx-detail { font-size: 13px; color: var(--c-text-2); margin-top: 4px; white-space: pre-line; }

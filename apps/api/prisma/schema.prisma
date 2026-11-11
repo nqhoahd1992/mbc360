@@ -1622,6 +1622,12 @@ model ReferenceSignal {
   subject    String // the material code, market or claim wording
   summary    String
   critical   Boolean  @default(false)
+  // Round 5 question 6(a): the same Low / Medium / High / Critical words as everywhere else. `critical` above is kept equal to
+  // criticality = 'Critical'. The person who changed the list PROPOSES it; qualified functions confirm it (6(b)), except an urgent safety
+  // issue or mandatory restriction, which holds release at once (`urgent`). `safetyIssue` brings Safety into the assessment.
+  criticality String  @default("Medium")
+  urgent     Boolean  @default(false)
+  safetyIssue Boolean @default(false)
   reason     String?
   dueDate    String // the date the impact reviews are due, YYYY-MM-DD
   raisedBy   User?    @relation("ReferenceSignalRaisedBy", fields: [raisedById], references: [id])
@@ -1645,6 +1651,8 @@ model ImpactAssessment {
   functionKeys String[]
   markets      String[]
   conclusions  Json            @default("[]")
+  // Who on this project confirmed that a proposed Critical change IS critical: { by, functionKey, at } (Round 5 question 6(b)).
+  criticalConfirmed Json?
   concludedAt  DateTime?
   createdAt    DateTime        @default(now())
 

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { App, Button } from 'antd';
 import { DownOutlined, RightOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import HistoryTimeline from './HistoryTimeline';
 import { generatedNaEntries, isGatePassed, type GeneratedNaEntry } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
@@ -285,14 +286,14 @@ export default function GeneratedNaAcks({
               )}
             </div>
             {historyOpen.has(key) && (
-              <ul className="gna-history">
-                {history.map((e) => (
-                  <li key={e.id}>
-                    {dayjs(e.date).format('YYYY-MM-DD HH:mm')} · {e.by} — {e.kind === 'withdrawn' ? 'withdrew the acknowledgement' : 'acknowledged'}
-                    {many ? ` (Gate ${gateNumberOf(e.gateId)})` : ''}
-                  </li>
-                ))}
-              </ul>
+              <HistoryTimeline
+                items={history.map((e) => ({
+                  key: e.id,
+                  title: `${e.kind === 'withdrawn' ? 'Acknowledgement withdrawn' : 'Acknowledged'}${many ? ` · Gate ${gateNumberOf(e.gateId)}` : ''}`,
+                  tone: e.kind === 'withdrawn' ? 'warn' : 'ok',
+                  meta: `${e.by} · ${dayjs(e.date).format('YYYY-MM-DD HH:mm')}`,
+                }))}
+              />
             )}
           </div>
         );

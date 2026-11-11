@@ -539,13 +539,20 @@ export const withdrawReadinessAcknowledgement = (id: string, gateId: string, ite
 export const concludeImpactAssessment = (
   id: string,
   assessmentId: string,
-  input: { functionKey: string; conclusion: string; rationale: string; linkedChangeId?: string },
+  input: { functionKey: string; conclusion: string; rationale: string; linkedChangeId?: string; affects?: string[] },
   expectedVersion: number,
 ) =>
   request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/impact-assessments/${encodeURIComponent(assessmentId)}/conclude`, {
     method: 'POST',
     body: JSON.stringify({ ...input, expectedVersion }),
   });
+
+// Round 5 question 6(b): a qualified function confirms a proposed Critical change is critical on this project.
+export const confirmImpactCriticality = (id: string, assessmentId: string, input: { functionKey: string }, expectedVersion: number) =>
+  request<ProjectEnvelope>(
+    `/projects/${encodeURIComponent(id)}/impact-assessments/${encodeURIComponent(assessmentId)}/confirm-criticality`,
+    { method: 'POST', body: JSON.stringify({ ...input, expectedVersion }) },
+  );
 
 export const setChangeControlAssessments = (id: string, entries: ChangeControlAssessment[], v: number) =>
   put(id, 'change-control-assessments', { entries }, v);

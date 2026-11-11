@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Input, Modal, Select, Spin, Table, Tooltip } from 'antd';
+import { Alert, Button, Input, Modal, Select, Spin, Tooltip } from 'antd';
 import { ArrowLeftOutlined, CheckOutlined, ClockCircleOutlined, ExclamationCircleOutlined, HistoryOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { PhaseSignedContent, PhaseSignOffEvent, SignOff } from '@mbc360/shared/types';
@@ -17,6 +17,7 @@ import { getPhaseSignedContent } from '../api/projectsApi';
 import SaveBar from './SaveBar';
 import SignatureStepUpModal from './SignatureStepUpModal';
 import FormDrawer from './FormDrawer';
+import HistoryTimeline from './HistoryTimeline';
 import PhaseSignPreviewModal, { PhaseContentSections } from './PhaseSignPreviewModal';
 import { Link } from 'react-router-dom';
 import './GateSignOffPanel.css';
@@ -345,7 +346,7 @@ export default function SignOffBlock({
                   {signed ? (
                     <>
                       <span className="gso-muted">
-                        Signed {r.signedAt ? dayjs(r.signedAt).format('YYYY-MM-DD HH:mm') : '—'} · record v{r.recordVersion ?? '—'}
+                        Signed {r.signedAt ? dayjs(r.signedAt).format('YYYY-MM-DD HH:mm') : '—'}
                       </span>
                       {(r.signedByUserId === me?.id || isAdmin) &&
                         (laterStanding ? (
@@ -495,37 +496,22 @@ export default function SignOffBlock({
         ) : historyEvents.length === 0 ? (
           <p className="gso-muted">Nothing has been signed or withdrawn on this phase yet.</p>
         ) : (
-          <Table
-            size="small"
-            pagination={false}
-            rowKey={(e) => e.id}
-            dataSource={historyEvents}
-            columns={[
-              { title: 'Date', width: 140, dataIndex: 'date' },
-              {
-                title: 'Act',
-                width: 170,
-                render: (_, e) => (
-                  <span className={`c-tag ${e.kind === 'signed' ? 'c-tag-ok' : 'c-tag-warn'}`}>
-                    {e.kind === 'signed' ? 'Signed' : 'Withdrawn'} · {e.role}
-                  </span>
-                ),
-              },
-              { title: 'By', width: 140, render: (_, e) => e.by ?? '—' },
-              {
-                title: 'Detail',
-                render: (_, e) => (
-                  <>
-                  <span className="gso-muted">
-                    {[
-                      e.decision ? `Decision: ${e.decision}` : e.kind === 'signed' ? 'Decision not recorded' : undefined,
-                      e.comment ? `Comment: “${e.comment}”` : undefined,
-                      e.kind === 'withdrawn' && e.signedAt ? `Had signed: ${e.signedAt.slice(0, 16).replace('T', ' ')}` : undefined,
-                      e.reason ? `Reason: ${e.reason}` : undefined,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </span>
+          <HistoryTimeline
+            items={historyEvents.map((e) => ({
+              key: e.id,
+              title: `${e.kind === 'signed' ? 'Signed' : 'Withdrawn'} · ${e.role}`,
+              tone: e.kind === 'signed' ? 'ok' : 'warn',
+              meta: `${e.by ?? '—'} · ${e.date}`,
+              detail: (
+                <>
+                  {[
+                    e.decision ? `Decision: ${e.decision}` : e.kind === 'signed' ? 'Decision not recorded' : undefined,
+                    e.comment ? `Comment: “${e.comment}”` : undefined,
+                    e.kind === 'withdrawn' && e.signedAt ? `Had signed: ${e.signedAt.slice(0, 16).replace('T', ' ')}` : undefined,
+                    e.reason ? `Reason: ${e.reason}` : undefined,
+                  ]
+                    .filter(Boolean)
+                    .join('\n')}
                   {e.signedAt && (
                     <div>
                       <Button type="link" size="small" disabled={false} style={{ paddingInline: 0 }} onClick={() => setViewing(e)}>
@@ -533,10 +519,9 @@ export default function SignOffBlock({
                       </Button>
                     </div>
                   )}
-                  </>
-                ),
-              },
-            ]}
+                </>
+              ),
+            }))}
           />
         )}
       </FormDrawer>

@@ -147,6 +147,7 @@ import {
   CLAIM_EXEMPTION_CAPABILITY,
   REVISION_APPROVAL_CAPABILITIES,
   frozenRevisionEdits,
+  newLinksToWithdrawnWording,
   newRevisionApprovals,
   revisionApprovalForgeries,
 } from '@mbc360/shared/utils/claimEvidence';
@@ -212,7 +213,7 @@ import { AuditService } from '../audit/audit.service';
 import { PermissionsService } from '../rbac/permissions.service';
 import type { SessionUser } from '../auth/session-user';
 import { IdempotencyService } from './idempotency.service';
-import { IMPACT_DATASET_LABELS, IMPACT_FUNCTIONS, heldMarkets, impactConclusionProblem, type ImpactDataset } from '@mbc360/shared/utils/impactAssessments';
+import { IMPACT_DATASET_LABELS, heldMarkets, impactConclusionProblem, impactFunctionsFor, type ImpactDataset } from '@mbc360/shared/utils/impactAssessments';
 import { entryTouchesProject, projectHasPassedGate } from '@mbc360/shared/utils/referenceSnapshot';
 import { TotpService } from '../verification/totp.service';
 import { CosmetriDataService, type CosmetriImportRow } from '../cosmetri/cosmetri-data.service';
@@ -2961,6 +2962,13 @@ export class ProjectsService {
               frozen.map((f) => `${f.claimId} (${f.changed.join(', ')})`),
               'Record a new revision or a new Claim ID instead — the reviewer decides which.',
             ),
+          );
+        }
+        // Round 5 question 6(c): further use of withdrawn wording is suspended — no claim can be newly linked to it.
+        const toWithdrawn = newLinksToWithdrawnWording(project.registers[registerKey] ?? [], rows, project.reference.claimsLibrary);
+        if (toWithdrawn.length > 0) {
+          throw new BadRequestException(
+            listMessage('These claims were linked to wording the Claims Library has withdrawn:', toWithdrawn, 'Withdrawn wording is no longer used; pick current wording instead.'),
           );
         }
       }
@@ -6402,14 +6410,20 @@ export class ProjectsService {
       entryId: string;
       subject: string;
       summary: string;
-      critical: boolean;
+      // Round 5 question 6(a): the four-level criticality, PROPOSED by the person who changed the list.
+      criticality: 'Low' | 'Medium' | 'High' | 'Critical';
+      // An urgent safety issue or mandatory restriction: holds release at once and escalates (question 6(b)).
+      urgent: boolean;
+      // A safety issue is involved: Safety contributes to the assessment.
+      safetyIssue: boolean;
       reason?: string;
       dueDate?: string;
     },
   ): Promise<{ affected: number }> {
     const reason = (input.reason ?? '').trim();
     const dueDate = (input.dueDate ?? '').trim();
-    if (input.critical && reason === '') {
+    const critical = input.criticality === 'Critical';
+    if (critical && reason === '') {
       throw new BadRequestException('A Critical change needs its reason: what the safety issue, prohibition or restriction is');
     }
     if (dueDate !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
@@ -6433,7 +6447,10 @@ export class ProjectsService {
         entryId: input.entryId,
         subject: input.subject,
         summary: input.summary,
-        critical: input.critical,
+        critical,
+        criticality: input.criticality,
+        urgent: input.urgent,
+        safetyIssue: input.safetyIssue,
         reason: reason || null,
         dueDate,
         raisedById: user.id,
@@ -6444,7 +6461,7 @@ export class ProjectsService {
         data: {
           signalId: signal.id,
           projectId: p.identity.id,
-          functionKeys: [...IMPACT_FUNCTIONS[input.dataset]],
+          functionKeys: impactFunctionsFor(input.dataset, { safetyIssue: input.safetyIssue, urgent: input.urgent }),
           markets: input.dataset === 'market-profile' ? [input.subject] : p.identity.markets,
         },
       });
@@ -6455,7 +6472,15 @@ export class ProjectsService {
           entityType: 'impact_assessment',
           entityId: created.id,
           action: 'impact_assessment.opened',
-          after: { dataset: input.dataset, subject: input.subject, summary: input.summary, critical: input.critical, dueDate },
+          after: {
+            dataset: input.dataset,
+            subject: input.subject,
+            summary: input.summary,
+            criticality: input.criticality,
+            urgent: input.urgent,
+            safetyIssue: input.safetyIssue,
+            dueDate,
+          },
         },
         tx,
       );
@@ -6476,7 +6501,7 @@ export class ProjectsService {
     user: SessionUser,
     id: string,
     assessmentId: string,
-    input: { functionKey: string; conclusion: string; rationale: string; linkedChangeId?: string },
+    input: { functionKey: string; conclusion: string; rationale: string; linkedChangeId?: string; affects?: string[] },
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
     return this.mutate(user, id, expectedVersion, 'impact_assessment.concluded', async (tx, _row, project) => {
@@ -6503,8 +6528,9 @@ export class ProjectsService {
         throw new ForbiddenException('You raised this change, so someone else must conclude its impact');
       }
       const problem = impactConclusionProblem(
-        { conclusion: input.conclusion, rationale: input.rationale ?? '', linkedChangeId: input.linkedChangeId },
+        { conclusion: input.conclusion, rationale: input.rationale ?? '', linkedChangeId: input.linkedChangeId, affects: input.affects },
         project.changes.map((c) => c.changeId),
+        a.dataset,
       );
       if (problem) throw new BadRequestException(problem);
 
@@ -6512,6 +6538,7 @@ export class ProjectsService {
         functionKey: input.functionKey,
         conclusion: input.conclusion,
         rationale: input.rationale.trim(),
+        ...(a.dataset === 'claims-library' ? { affects: input.affects } : {}),
         ...(input.conclusion === 'Impact on this project' ? { linkedChangeId: (input.linkedChangeId ?? '').trim() } : {}),
         concludedBy: user.displayName,
         concludedById: user.id,
@@ -6524,6 +6551,49 @@ export class ProjectsService {
         data: { conclusions: conclusions as unknown as Prisma.InputJsonValue, concludedAt: complete ? new Date() : null },
       });
       return { assessmentId, functionKey: input.functionKey, conclusion: input.conclusion, concluded: complete } as Prisma.InputJsonValue;
+    });
+  }
+
+  // Round 5 question 6(b): "Criticality is confirmed by the relevant qualified function(s)". The holder of one of the functions named on the
+  // assessment confirms that a proposed Critical change IS critical on this project — and from then on it holds release. Whoever raised the
+  // change cannot confirm their own proposal, and an administrator is not the holder of a function (SW-57). An urgent change needs no
+  // confirmation: it holds at once.
+  async confirmImpactCriticality(
+    user: SessionUser,
+    id: string,
+    assessmentId: string,
+    input: { functionKey: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'impact_assessment.criticality_confirmed', async (tx, _row, project) => {
+      const a = project.impactAssessments.find((x) => x.id === assessmentId);
+      if (!a) throw new NotFoundException(`Impact assessment ${assessmentId} not found on this project`);
+      if (a.concludedAt) throw new BadRequestException('This impact assessment is already concluded');
+      if (!a.critical) throw new BadRequestException('This change was not proposed as Critical, so there is nothing to confirm');
+      if (a.urgent) throw new BadRequestException('This change is urgent: it already holds release and needs no confirmation');
+      if (a.criticalConfirmed) throw new BadRequestException(`Already confirmed by ${a.criticalConfirmed.by}`);
+      if (!a.functionKeys.includes(input.functionKey)) {
+        throw new BadRequestException(`"${input.functionKey}" is not one of the functions on this assessment`);
+      }
+      const functionLabel = REVIEW_ROLES.find((r) => r.key === input.functionKey)?.label ?? input.functionKey;
+      const holder = await tx.projectReviewer.findUnique({ where: { projectId_roleKey: { projectId: id, roleKey: input.functionKey } } });
+      if (!holder) {
+        throw new BadRequestException(
+          `Nobody is assigned as ${functionLabel} on this project yet, so nobody can confirm this — the project's Lead assigns one in Project team`,
+        );
+      }
+      if (!holdsRole(holder, user)) {
+        throw new ForbiddenException(`Only ${holder.name}, who holds ${functionLabel} on this project, may confirm this as ${functionLabel}`);
+      }
+      if (a.raisedById && a.raisedById === user.id) {
+        throw new ForbiddenException('You proposed this as Critical, so someone else must confirm it');
+      }
+      const confirmed = { by: user.displayName, functionKey: input.functionKey, at: new Date().toISOString() };
+      await tx.impactAssessment.update({
+        where: { id: assessmentId },
+        data: { criticalConfirmed: confirmed as unknown as Prisma.InputJsonValue },
+      });
+      return { assessmentId, confirmedBy: user.displayName, functionKey: input.functionKey };
     });
   }
 

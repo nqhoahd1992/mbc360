@@ -2,7 +2,7 @@
 
 **Gửi:** đội chuyên môn (NPD / Quality / Regulatory / Safety)
 
-Vòng này có mười một câu. Chúng nảy ra từ đáp án câu 1, 2, 3 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường.
+Vòng này có mười hai câu. Chúng nảy ra từ đáp án câu 1, 2, 3 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường; câu 12 hỏi nên đọc thế nào "critical" và quy tắc Change Control cho một thay đổi Claims Library.
 
 Chỗ nào ghi "nhóm phát triển phần mềm" là nhóm đang xây ứng dụng, không phải chủ của một dự án phát triển sản phẩm.
 
@@ -330,3 +330,27 @@ Các bạn đã nói một phiên bản công thức cũ được supersede th�
 **(d)** Các mốc review sớm của công thức đổi đáng kể là những mốc nào?
 
 **(e)** Một review có thể bao cả hai phiên bản ở một thị trường không, và ghi thế nào?
+
+## Câu 12 — Thay đổi ở Claims Library: nên đọc thế nào "critical" và quy tắc Change Control?
+
+*Vị trí trong ứng dụng:* trang cấp công ty **Claims Library** (menu "Company Reference Data"): khối "Effect on projects that already use this" khi lưu hoặc thu hồi; và, trên từng dự án, thẻ **Impact of changes to the company lists**.
+
+Các bạn đã nói một thay đổi Claims Library được đánh giá thế nào: cùng bốn mức (Low, Medium, High, Critical); Regulatory ghi tác động thị trường và pháp lý, Technical ghi tác động bằng chứng, Safety khi có vấn đề an toàn; mức nghiêm trọng do các function có chuyên môn xác nhận, Quality điều phối; vấn đề an toàn khẩn cấp hoặc hạn chế bắt buộc thì giữ ngay và chuyển cấp; dừng bán là quyết định của công ty; Change Control bắt buộc khi thay đổi ảnh hưởng wording đã duyệt hoặc đã phát hành, artwork, PIF hoặc việc dùng được phép ở thị trường, và không cần cho entry chưa dùng hay sửa biên tập; và ngừng dùng wording đã thu hồi. Chúng tôi đã xây như vậy. Chỗ nào câu trả lời để ngỏ, chúng tôi đọc như sau:
+
+- **Một đề xuất Critical chưa giữ gì cho tới khi được xác nhận.** Người sửa danh sách đề xuất mức. Một thay đổi Critical đề xuất chỉ giữ phát hành của dự án khi một function có chuyên môn trên dự án đó đã xác nhận, trừ khi nó được đánh dấu là vấn đề an toàn khẩn cấp hoặc hạn chế bắt buộc, khi đó giữ ngay. (Trước câu trả lời của các bạn, đánh dấu Critical là giữ phát hành ngay; các thay đổi đã đánh dấu như vậy được giữ nguyên là khẩn cấp, nên không hold nào bị dỡ.)
+- **Một function có chuyên môn xác nhận là đủ.** Bất kỳ function nào ghi trên đánh giá của dự án (Technical, Regulatory, Quality, và Safety khi tích vấn đề an toàn). Người đề xuất không tự xác nhận.
+- **Chuyển cấp** nghĩa là đánh giá còn được gửi tới Safety, Regulatory và Quality, và hiện là đã chuyển cấp. Ứng dụng không gửi gì ra ngoài.
+- **Liên quan an toàn** là ô người sửa danh sách tích.
+- **Điều gì buộc Change Control:** bất kỳ một trong bốn ảnh hưởng các bạn nêu. Chọn "không gì — entry chưa dùng hoặc sửa biên tập" thì đóng đánh giá là "No impact" kèm lý do.
+- **Technical, Regulatory và Quality mỗi bên ghi kết luận riêng**, và đánh giá xong khi cả ba xong.
+- **Wording đã thu hồi** không còn được chọn mới cho một claim; liên kết claim đã có vẫn giữ và claim quay lại review.
+
+**(a)** Một thay đổi Critical đề xuất có thật sự chưa giữ gì cho tới khi được xác nhận không?
+
+**(b)** Xác nhận của một function có chuyên môn là đủ, hay Regulatory và Technical phải cùng xác nhận?
+
+**(c)** Chuyển cấp nên làm gì ngoài việc hiện trên màn hình — thông báo cho ai, bằng cách nào?
+
+**(d)** Bốn ảnh hưởng đó có phải toàn bộ danh sách buộc Change Control không?
+
+**(e)** Quality ghi một kết luận riêng hay chỉ điều phối?

@@ -356,7 +356,7 @@ function GateClosureCard({
                         {signed && r.signatureImage && <img className="rcp-sig" src={r.signatureImage} alt={`${r.name}'s signature`} />}
                         {signed && (
                           <div className="rcp-who-role">
-                            {r.roleAtSigning ?? 'role not recorded'} · record v{r.recordVersion ?? '—'}
+                            {r.roleAtSigning ?? 'role not recorded'}
                           </div>
                         )}
                         {/* Why the button is off, right beside it. Only for the person who is meant to sign. */}

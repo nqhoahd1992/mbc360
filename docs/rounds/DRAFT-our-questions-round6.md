@@ -2,7 +2,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-This round has eleven questions. They follow from your answers to questions 1, 2, 3 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared; question 11 asks how the details of a version's supersession market by market should be read.
+This round has twelve questions. They follow from your answers to questions 1, 2, 3 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared; question 11 asks how the details of a version's supersession market by market should be read; question 12 asks how "critical" and the Change Control rule for a Claims Library change should be read.
 
 Where we say "the software development team" we mean the team building this application — not the owner of any product development project.
 
@@ -330,3 +330,27 @@ You told us how an older formula version is superseded: each of the ten facts is
 **(d)** Which are the early review milestones of a materially changed formula?
 
 **(e)** May one review cover both versions in a market, and how should it be recorded?
+
+## Question 12 — A change to the Claims Library: how should we read "critical" and the Change Control rule?
+
+*Where in the application:* Company-level page **Claims Library** (menu "Company Reference Data"): the "Effect on projects that already use this" block when saving or withdrawing; and, on each project, the card **Impact of changes to the company lists**.
+
+You told us how a Claims Library change is judged: the same four words (Low, Medium, High, Critical); Regulatory records the market and legal impact, Technical the evidence impact, Safety where a safety issue is involved; criticality is confirmed by the relevant qualified functions with Quality coordinating; an urgent safety issue or mandatory restriction holds at once and escalates; stopping a sale is a company decision; a Change Control is required when the change affects approved or released wording, artwork, the PIF or authorised market use, and not for an unused entry or an editorial correction; and further use of withdrawn wording stops. We have built that. Where your answer leaves a detail open we read it as follows:
+
+- **A Critical proposal holds nothing until it is confirmed.** The person changing the list proposes the level. A proposed Critical change holds release on a project only once a qualified function on that project has confirmed it, unless it is marked an urgent safety issue or mandatory restriction, which holds at once. (Before your answer, marking a change Critical held release immediately; changes already marked that way are kept as urgent, so no hold was lifted.)
+- **One qualified function is enough to confirm.** Any one of the functions named on the project's assessment (Technical, Regulatory, Quality, and Safety where a safety issue is ticked). The person who proposed it cannot confirm it.
+- **Escalation** means the assessment also goes to Safety, Regulatory and Quality, and shows as escalated. The application sends nothing outside itself.
+- **Safety involved** is a box the person changing the list ticks.
+- **What forces a Change Control:** any one of the four effects you listed. Choosing "none — unused entry or editorial correction" closes the assessment as "No impact" with its reason.
+- **Each of Technical, Regulatory and Quality records its own conclusion**, and the assessment is concluded when all have.
+- **Withdrawn wording** can no longer be newly picked for a claim; a link a claim already had stays on record and the claim goes back to review.
+
+**(a)** Should a proposed Critical change really hold nothing until it is confirmed?
+
+**(b)** Is one qualified function's confirmation enough, or must Regulatory and Technical confirm together?
+
+**(c)** What should escalation do beyond showing on screen — whom should it notify, and how?
+
+**(d)** Are those four effects the whole list that forces a Change Control?
+
+**(e)** Does Quality record a conclusion of its own, or only coordinate?

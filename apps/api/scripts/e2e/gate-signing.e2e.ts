@@ -1810,15 +1810,15 @@ export async function run(base: string, db: Client): Promise<number> {
 
   console.log('\n--- a Critical change to the company lists holds release until its impact review is concluded (Round 5 question 1(d))');
   const putOverlay = (signal: unknown) => api('admin', 'PUT', '/reference/rm-risk/RM-1', { patch: { flags: ['Fragrance'] }, signal });
-  r = await putOverlay({ critical: true, reason: '', dueDate: '2099-01-01' });
+  r = await putOverlay({ criticality: 'Critical', urgent: true, reason: '', dueDate: '2099-01-01' });
   t('a Critical change without its reason is refused (400)', r.status === 400 && /reason/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
-  r = await putOverlay({ critical: false });
+  r = await putOverlay({ criticality: 'Low' });
   t('a change that projects rely on needs the date its impact review is due (400)', r.status === 400 && /due/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
-  r = await putOverlay({ critical: true, reason: 'e2e: a fragrance allergen was found', dueDate: '2099-01-01' });
-  t('a Critical change with its reason and a due date is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
+  r = await putOverlay({ criticality: 'Critical', urgent: true, reason: 'e2e: a fragrance allergen was found', dueDate: '2099-01-01' });
+  t('an urgent Critical change with its reason and a due date is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
   pj = await project();
   const ia = (pj.project.impactAssessments ?? []) as any[];
-  t('this project, which relies on RM-1, has one assessment, Critical and owned by Safety', ia.length === 1 && ia[0].critical === true && ia[0].functionKeys.join() === 'safety-scientific', short(ia));
+  t('this project, which relies on RM-1, has one assessment, Critical and urgent, escalated to Safety, Regulatory and Quality', ia.length === 1 && ia[0].critical === true && ia[0].urgent === true && ['safety-scientific', 'regulatory', 'quality'].every((k) => ia[0].functionKeys.includes(k)), short(ia));
   const holdItem = (g: string) => gp.gateReadinessChecklist(pj.project, g).find((x: any) => x.id === 'impact-hold');
   t('release gates 10 to 12 are blocked while it stands', ['SG10', 'SG11', 'SG12'].every((g) => holdItem(g)?.satisfied === false));
   t('...as a hard block that Proceed with Conditions does not clear', ['SG10', 'SG11', 'SG12'].every((g) => holdItem(g)?.hardBlock === true));
@@ -1844,11 +1844,56 @@ export async function run(base: string, db: Client): Promise<number> {
   t('an impact must name the Change Control record that deals with it (400)', r.status === 400 && /change control/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
   r = await conclude(other, { conclusion: 'No impact', rationale: 'e2e: the formula does not use that fragrance', expectedVersion: await version() });
   t('the Safety holder concludes: no impact', r.status < 300, `${r.status} ${short(r.json)}`);
+  // an urgent change escalates to Regulatory and Quality as well; they conclude too
+  const otherName = (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions[other].id])).rows[0].displayName as string;
+  await db.query(`UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = ANY($4)`, [PROJECT, otherName, sessions[other].id, ['regulatory', 'quality']]);
+  pj = await project();
+  t('while Regulatory and Quality have not concluded the escalated assessment is still open and holding', !pj.project.impactAssessments[0].concludedAt && holdItem('SG10')?.satisfied === false);
+  for (const fk of ['regulatory', 'quality']) {
+    r = await conclude(other, { functionKey: fk, conclusion: 'No impact', rationale: 'e2e', expectedVersion: await version() });
+    t(`${fk} concludes`, r.status < 300, `${r.status} ${short(r.json)}`);
+  }
   pj = await project();
   t('the assessment is concluded and the hold is gone', !!pj.project.impactAssessments[0].concludedAt && holdItem('SG10')?.satisfied === true);
   r = await conclude(other, { conclusion: 'No impact', rationale: 'again', expectedVersion: await version() });
   t('a concluded assessment cannot be concluded again (400)', r.status === 400, `${r.status} ${short(r.json)}`);
   await assignFunction('safety-scientific', null);
+
+  console.log('\n--- a proposed Critical change holds release only once a qualified function confirms it (Round 5 question 6)');
+  {
+    const gateHeld = (g: string) => gp.gateReadinessChecklist(pj.project, g).find((x: any) => x.id === 'impact-hold')?.satisfied === false;
+    // a different classification, so it is a change and raises a signal (saving the same values again is not one)
+    r = await api('admin', 'PUT', '/reference/rm-risk/RM-1', {
+      patch: { flags: ['Fragrance', 'Known allergen'] },
+      signal: { criticality: 'Critical', reason: 'e2e: proposed, not urgent', dueDate: '2099-01-01' },
+    });
+    t('a Critical change that is not urgent is accepted as a proposal', r.status < 300, `${r.status} ${short(r.json)}`);
+    pj = await project();
+    const a2 = ((pj.project.impactAssessments ?? []) as any[]).find((x) => !x.concludedAt);
+    t('it is Critical but neither urgent nor confirmed, and asks only Safety', !!a2 && a2.critical === true && !a2.urgent && !a2.criticalConfirmed && a2.functionKeys.join() === 'safety-scientific', short(a2));
+    t('nothing is held while it only waits for confirmation', ['SG10', 'SG11', 'SG12'].every((g) => !gateHeld(g)));
+    const confirmIt = async (key: string) =>
+      api(key, 'POST', `/projects/${PROJECT}/impact-assessments/${a2.id}/confirm-criticality`, { functionKey: 'safety-scientific', expectedVersion: await version() });
+    await assignFunction('safety-scientific', null);
+    r = await confirmIt('admin');
+    t('with nobody assigned as Safety, nobody can confirm (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    await assignFunction('safety-scientific', sessions['admin'].id);
+    r = await confirmIt('admin');
+    t('whoever proposed it cannot confirm their own proposal (403)', r.status === 403 && /proposed/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    await assignFunction('safety-scientific', sessions[other].id);
+    r = await confirmIt(other);
+    t('a qualified function holder confirms it is critical', r.status < 300, `${r.status} ${short(r.json)}`);
+    pj = await project();
+    t('...and from then on it holds release', ['SG10', 'SG11', 'SG12'].every(gateHeld));
+    r = await confirmIt(other);
+    t('a confirmed change cannot be confirmed again (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await api(other, 'POST', `/projects/${PROJECT}/impact-assessments/${a2.id}/conclude`, {
+      functionKey: 'safety-scientific', conclusion: 'No impact', rationale: 'e2e: concluded', expectedVersion: await version(),
+    });
+    pj = await project();
+    t('concluding ends the hold', r.status < 300 && ['SG10', 'SG11', 'SG12'].every((g) => !gateHeld(g)), `${r.status} ${short(r.json)}`);
+    await assignFunction('safety-scientific', null);
+  }
 
   console.log('\n--- a version is superseded market by market, each fact confirmed by its function (Round 5 question 5)');
   {

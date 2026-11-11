@@ -237,8 +237,10 @@ interface AppState {
   concludeImpactAssessment: (
     id: string,
     assessmentId: string,
-    input: { functionKey: string; conclusion: string; rationale: string; linkedChangeId?: string },
+    input: { functionKey: string; conclusion: string; rationale: string; linkedChangeId?: string; affects?: string[] },
   ) => Promise<void>;
+  // A qualified function confirms a proposed Critical change is critical on this project (Round 5 question 6(b)).
+  confirmImpactCriticality: (id: string, assessmentId: string, input: { functionKey: string }) => Promise<void>;
   setEvidenceSummary: (id: string, phase: number, value: string) => void;
   // The phase banner's "(provide link here)" shortcuts, keyed by workbook label.
   setPhaseKeyLinks: (id: string, phase: number, links: Record<string, string>) => Promise<boolean>;
@@ -683,6 +685,8 @@ export const useAppStore = create<AppState>()(
           writeSection(id, (v) => projectsApi.withdrawReadinessAcknowledgement(id, gateId, itemId, functionKey, v)),
         concludeImpactAssessment: (id, assessmentId, input) =>
           writeSection(id, (v) => projectsApi.concludeImpactAssessment(id, assessmentId, input, v)),
+        confirmImpactCriticality: (id, assessmentId, input) =>
+          writeSection(id, (v) => projectsApi.confirmImpactCriticality(id, assessmentId, input, v)),
 
         setBom: (id, lines) => writeSection(id, (v) => projectsApi.setBom(id, lines, v)),
         importCosmetriBom: (id, formulaId) =>

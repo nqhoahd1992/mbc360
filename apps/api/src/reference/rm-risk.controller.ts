@@ -6,6 +6,7 @@ import type { SessionUser } from '../auth/session-user';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReferenceDataService } from './reference-data.service';
 import { ProjectsService } from '../projects/projects.service';
+import { readSignal, type ChangeSignalBody } from './change-signal';
 
 // Round 4 question 17 (2026-08-24): the shared Raw Material Risk Overlay.
 //
@@ -59,7 +60,7 @@ export class RmRiskController {
       patch: Partial<RawMaterialRisk>;
       reason?: string;
       // Round 5 question 1(d): raised by the person making the change.
-      signal?: { critical?: boolean; reason?: string; dueDate?: string };
+      signal?: ChangeSignalBody;
     },
   ): Promise<RawMaterialRisk[]> {
     await this.reference.assertCanEdit(user, 'rm-risk');
@@ -109,9 +110,7 @@ export class RmRiskController {
           entryId: row.id,
           subject: key,
           summary: `Risk classification of ${data.displayName || key} ${existing ? 'changed' : 'added'}: ${data.flags.length > 0 ? data.flags.join(', ') : 'no risk flag'}`,
-          critical: body.signal?.critical === true,
-          reason: body.signal?.reason,
-          dueDate: body.signal?.dueDate,
+          ...readSignal(body.signal),
         });
       }
     });

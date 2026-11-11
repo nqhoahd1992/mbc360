@@ -28,6 +28,7 @@ import SaveBar from './SaveBar';
 import GateReadinessPanel from './GateReadinessPanel';
 import GateSignOffPanel from './GateSignOffPanel';
 import GapAssessmentBlock from './GapAssessmentBlock';
+import HistoryTimeline from './HistoryTimeline';
 import UserSelect from './UserSelect';
 import { ApiError } from '../api/projectsApi';
 import { useSession } from '../auth/useSession';
@@ -749,53 +750,36 @@ export default function GateFlowTable({
             {historyBacktracks.length > 0 && (
               <>
                 <Typography.Text strong>Backtrack events</Typography.Text>
-                <Table
-                  size="small"
-                  style={{ marginTop: 8, marginBottom: 16 }}
-                  rowKey={(e) => e.id}
-                  dataSource={historyBacktracks}
-                  pagination={false}
-                  columns={[
-                    { title: 'Date', width: 110, dataIndex: 'date' },
-                    {
-                      title: 'From → To',
-                      width: 150,
-                      render: (_, e) => {
-                        const from = GATES.find((g) => g.id === e.fromGateId);
-                        const to = GATES.find((g) => g.id === e.toGateId);
-                        return `Gate ${from?.number ?? e.fromGateId} → Gate ${to?.number ?? e.toGateId}`;
-                      },
-                    },
-                    { title: 'Initiated by', width: 140, render: (_, e) => e.initiatedBy ?? '—' },
-                    { title: 'Reason', render: (_, e) => e.reason ?? '—' },
-                  ]}
-                />
+                <div style={{ marginTop: 10, marginBottom: 20 }}>
+                  <HistoryTimeline
+                    items={historyBacktracks.map((e) => {
+                      const from = GATES.find((g) => g.id === e.fromGateId);
+                      const to = GATES.find((g) => g.id === e.toGateId);
+                      return {
+                        key: e.id,
+                        title: `Backtrack · Gate ${from?.number ?? e.fromGateId} → Gate ${to?.number ?? e.toGateId}`,
+                        tone: 'warn' as const,
+                        meta: `${e.initiatedBy ?? '—'} · ${e.date}`,
+                        detail: e.reason,
+                      };
+                    })}
+                  />
+                </div>
               </>
             )}
             {historyFieldChanges.length > 0 && (
               <>
                 <Typography.Text strong>Field edits</Typography.Text>
-                <Table
-                  size="small"
-                  style={{ marginTop: 8 }}
-                  rowKey={(e) => e.id}
-                  dataSource={historyFieldChanges}
-                  pagination={false}
-                  columns={[
-                    { title: 'Date', width: 140, dataIndex: 'date' },
-                    { title: 'Changed by', width: 140, render: (_, e) => e.changedBy ?? '—' },
-                    {
-                      title: 'Changes',
-                      render: (_, e) => (
-                        <span style={{ fontSize: 12, color: '#666' }}>
-                          {e.changes
-                            .map((c) => `${GATE_FIELD_LABELS[c.field]}: ${c.from || '—'} → ${c.to || '—'}`)
-                            .join(' · ')}
-                        </span>
-                      ),
-                    },
-                  ]}
-                />
+                <div style={{ marginTop: 10 }}>
+                  <HistoryTimeline
+                    items={historyFieldChanges.map((e) => ({
+                      key: e.id,
+                      title: 'Edited',
+                      meta: `${e.changedBy ?? '—'} · ${e.date}`,
+                      detail: e.changes.map((c) => `${GATE_FIELD_LABELS[c.field]}: ${c.from || '—'} → ${c.to || '—'}`).join('\n'),
+                    }))}
+                  />
+                </div>
               </>
             )}
           </>

@@ -1043,6 +1043,16 @@ Các **câu hỏi về quy tắc đã đóng** (chỉ F12 còn chờ Cosmetri). 
 
 **(e)** Giữ lịch giám sát thị trường và truy vết phiên bản/lô riêng. Công thức đã launch bị đổi đáng kể cần các mốc review hiệu năng/an toàn sớm riêng. Không khởi động lại hay xoá nghĩa vụ của phiên bản cũ; review chung của thị trường có thể bao cả hai nếu phân tích nêu rõ từng phiên bản.
 
+### Câu 6 — Thay đổi "critical" ở Claims Library
+
+**Kết luận:** ✅ đã xây (11/11/2026). (a) đúng; (b) khác cái đã xây (người sửa danh sách tự đánh dấu Critical và phát hành bị giữ ngay) — một thay đổi Critical nay là đề xuất do function có chuyên môn xác nhận, trừ vấn đề an toàn khẩn cấp hoặc hạn chế bắt buộc; (c) đã xây đủ. Các cách đọc của ta về chi tiết được hỏi ở Vòng 6, câu 12.
+
+**(a)** Dùng cùng thang Low/Medium/High/Critical, kèm một đánh giá tác động claim được định nghĩa. Thu hồi wording không tự động là sự kiện Critical hay thu hồi sản phẩm.
+
+**(b)** Regulatory ghi tác động thị trường/pháp lý; Technical ghi tác động bằng chứng; Safety đóng góp khi có vấn đề an toàn. Mức nghiêm trọng do function có chuyên môn liên quan xác nhận, Quality điều phối hành động. Dừng bán/thu hồi sản phẩm là quyết định có thẩm quyền của công ty, trừ vấn đề an toàn khẩn cấp hoặc hạn chế bắt buộc thì phải giữ lại ngay và chuyển cấp. Một trạng thái phần mềm không được tự phát lệnh thu hồi ra ngoài.
+
+**(c)** Tự động nhận diện bản ghi bị ảnh hưởng và tạo nhiệm vụ đánh giá tác động. Regulatory và Technical, cùng Quality, quyết định có cần CHG không. Bắt buộc khi thay đổi ảnh hưởng wording đã duyệt/đã phát hành, artwork, PIF hoặc việc dùng được phép ở thị trường. Entry chưa dùng hoặc sửa biên tập có thể đóng bằng lý do, không CHG. Ngừng dùng wording đã thu hồi; đánh giá tồn kho và tài liệu đã công bố theo kế hoạch chuyển đổi.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

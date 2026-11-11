@@ -5,6 +5,7 @@ import type { SessionUser } from '../auth/session-user';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReferenceDataService } from './reference-data.service';
 import { ProjectsService } from '../projects/projects.service';
+import { readSignal, type ChangeSignalBody } from './change-signal';
 
 // Round 4 question 4 (2026-08-24): "Do not use a permanently hard-coded country
 // list. Regulatory maintains a configurable market profile indicating whether each
@@ -69,7 +70,7 @@ export class MarketProfilesController {
       patch: Partial<MarketProfile>;
       reason?: string;
       // Round 5 question 1(d): raised by the person making the change.
-      signal?: { critical?: boolean; reason?: string; dueDate?: string };
+      signal?: ChangeSignalBody;
     },
   ): Promise<MarketProfile[]> {
     await this.reference.assertCanEdit(user, 'market-profile');
@@ -121,9 +122,7 @@ export class MarketProfilesController {
           entryId: row.id,
           subject: key,
           summary: `Requirements for ${key} ${existing ? 'changed' : 'added'}${existing ? ` (${changedFields.join(', ')})` : ''}`,
-          critical: body.signal?.critical === true,
-          reason: body.signal?.reason,
-          dueDate: body.signal?.dueDate,
+          ...readSignal(body.signal),
         });
       }
     });

@@ -245,10 +245,17 @@ export interface ClaimLibraryEntry {
 // Round 5 question 1(d) — an impact assessment raised by a change to the company lists (our reading of the details: [ASSUMPTION: R6-Q6]).
 // A conclusion is either "No impact" or an impact that points at the Change Control record dealing with it.
 export const IMPACT_CONCLUSIONS = ['No impact', 'Impact on this project'] as const;
+// Round 5 question 6(c): a Claims Library change needs a Change Control "when a change affects approved/released wording, artwork, PIF or
+// authorised market use"; "an unused entry or editorial correction can close with a reason and no CHG". What a change affects is recorded
+// as one or more of these.
+export const IMPACT_AFFECTS = ['Approved or released wording', 'Artwork', 'PIF', 'Authorised market use'] as const;
+export const IMPACT_AFFECTS_NONE = 'None — unused entry or editorial correction';
 export interface ImpactConclusionRecord {
   functionKey: string;
   conclusion: (typeof IMPACT_CONCLUSIONS)[number];
   rationale: string;
+  // Claims Library only: what the change affects on this project.
+  affects?: string[];
   // Required for an impact: the Change Control record that deals with it.
   linkedChangeId?: string;
   concludedBy: string;
@@ -260,8 +267,15 @@ export interface ImpactAssessmentRecord {
   dataset: 'rm-risk' | 'market-profile' | 'claims-library';
   subject: string;
   summary: string;
-  // A Critical change puts the release of the markets below on hold until every function has concluded.
+  // A Critical change puts the release of the markets below on hold until every function has concluded — once a qualified function has
+  // confirmed it, or at once when it is urgent (an urgent safety issue or a mandatory restriction).
   critical: boolean;
+  // The criticality the person who changed the list proposed (Round 5 question 6(a): the same four words as everywhere).
+  criticality?: 'Low' | 'Medium' | 'High' | 'Critical';
+  urgent?: boolean;
+  safetyIssue?: boolean;
+  // Who on this project confirmed that the proposed Critical change is critical (question 6(b)).
+  criticalConfirmed?: { by: string; functionKey: string; at: string };
   reason?: string;
   dueDate: string;
   raisedBy: string;
