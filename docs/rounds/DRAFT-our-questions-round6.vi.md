@@ -2,7 +2,7 @@
 
 **Gửi:** đội chuyên môn (NPD / Quality / Regulatory / Safety)
 
-Vòng này có mười câu. Chúng nảy ra từ đáp án câu 1, 2, 3 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào.
+Vòng này có mười một câu. Chúng nảy ra từ đáp án câu 1, 2, 3 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường.
 
 Chỗ nào ghi "nhóm phát triển phần mềm" là nhóm đang xây ứng dụng, không phải chủ của một dự án phát triển sản phẩm.
 
@@ -307,3 +307,26 @@ Các bạn đã nói cả hai danh sách phải tự đánh dấu khớp với c
 **(c)** Ghi lại ngày review có đủ để xoá một đánh giá lại không, hay reviewer phải ghi thêm gì?
 
 **(d)** Một nguyên liệu khớp mới chỉ nên mở lại dòng đó (và giữ gate tới khi đánh giá lại), hay phải đưa cả dự án về Gate 4 một cách rõ ràng?
+
+## Câu 11 — Supersession của phiên bản theo từng thị trường: nên đọc thế nào các chi tiết câu trả lời để ngỏ?
+
+*Vị trí trong ứng dụng:* trang **Formula BOM**, card **Formula supersession (per market)**, form **New formula version**, và **Phase 4**, các review sau lưu hành.
+
+Các bạn đã nói một phiên bản công thức cũ được supersede thế nào: mỗi dữ kiện trong mười dữ kiện do function chịu trách nhiệm xác nhận, Quality điều phối từng thị trường, final approver có thẩm quyền xác nhận quá trình chuyển đổi hoàn tất; trạng thái giữ theo từng thị trường (Active, Transition, Superseded) và trạng thái phiên bản suy ra từ đó; thay đổi Minor không tự bắt đầu gì; chỉnh sửa chỉ ở tài liệu không cần chuyển đổi tồn kho; phiên bản chưa từng phát hành được supersede khi có xác nhận không phát hành; lịch review của thị trường tiếp tục chạy và công thức đổi đáng kể có các review sớm riêng. Chúng tôi đã xây tất cả. Chỗ nào câu trả lời để ngỏ, chúng tôi đọc như sau:
+
+- **Ai xác nhận dữ kiện nào.** Bản thay thế: R&I. Ngày hiệu lực chuyển đổi: Quality. Ngày release cuối và "không còn lô": Quality hoặc Manufacturing (ai giữ một trong hai trên dự án). Thông báo cơ quan quản lý, artwork và danh sách thành phần, cập nhật PIF: Regulatory. Xử lý tồn kho: Supply Chain. Truyền thông Sales & Marketing và nhà phân phối: Sales & Marketing.
+- **Final approver có thẩm quyền** là người giữ quyền Final Approver, người đã duyệt thương mại cho thay đổi công thức. Admin vẫn giữ toàn quyền.
+- **Ngày triển khai khác trong kế hoạch chuyển đổi** là "ngày hiệu lực chuyển đổi" do người ghi. Ghi ngày là bắt đầu chuyển đổi thị trường đó ngay; chúng tôi không chờ tới ngày đó.
+- **Trạng thái chung của phiên bản:** Superseded khi mọi thị trường đã Superseded; Active nếu còn thị trường nào Active; còn lại là Transition.
+- **Bản sửa chỉ ở tài liệu** do người tạo phiên bản tích chọn (chỉ với Minor, kèm lý do); phiên bản bị sửa được supersede ngay.
+- **Review sớm của công thức đổi đáng kể:** chỉ phiên bản **Major** launch ở một thị trường sau lần launch đầu tiên, với review ba tháng (và một tháng nếu giám sát tăng cường), tính từ ngày launch của chính phiên bản đó. Lịch của thị trường vẫn chạy từ lần launch đầu bên cạnh.
+
+**(a)** Cách gán dữ kiện cho function này có đúng không — đặc biệt ngày hiệu lực chuyển đổi thuộc ai?
+
+**(b)** "Final approver có thẩm quyền" là ai trong công ty?
+
+**(c)** Một ngày hiệu lực đã ghi có đủ để bắt đầu chuyển đổi, hay phải chờ tới ngày đó?
+
+**(d)** Các mốc review sớm của công thức đổi đáng kể là những mốc nào?
+
+**(e)** Một review có thể bao cả hai phiên bản ở một thị trường không, và ghi thế nào?

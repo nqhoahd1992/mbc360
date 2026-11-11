@@ -132,7 +132,17 @@ import {
 } from '@mbc360/shared/utils/registerClosures';
 import { registerContentHashOf, registerRowContentHashOf, rowHashFromCells } from './content-hash';
 import { registerRowCells } from '@mbc360/shared/utils/registerClosureContent';
-import { supersessionGaps, versionMarkets } from '@mbc360/shared/utils/formulaLifecycle';
+import {
+  SUPERSESSION_COORDINATOR,
+  SUPERSESSION_FACTS,
+  SUPERSESSION_FINAL_CAPABILITY,
+  allFactsConfirmed,
+  functionsLabel,
+  isLegacyConfirmed,
+  supersessionFactFilled,
+  supersessionGaps,
+  versionMarkets,
+} from '@mbc360/shared/utils/formulaLifecycle';
 import {
   CLAIM_EXEMPTION_CAPABILITY,
   REVISION_APPROVAL_CAPABILITIES,
@@ -214,7 +224,6 @@ import {
   toPhaseSignOffLog,
   toReadinessAckLog,
   toProjectData,
-  toSupersessionDecision,
   type ProjectWithAll,
 } from './project-mapper';
 import { createProjectWithScaffold, type NewProjectInput } from './project-scaffold';
@@ -4817,7 +4826,6 @@ export class ProjectsService {
       // F4: a track is one market under one formula version.
       const versionIdOf = new Map(row.formulaVersions.map((v) => [v.version, v.id]));
       const currentVersion = row.formulaVersions.at(-1);
-      const transitioned: string[] = [];
       for (const next of tracks) {
         const versionId = versionIdOf.get(next.formulaVersion) ?? currentVersion?.id;
         const prev = row.marketTracks.find((t) => t.market === next.market && t.formulaVersionId === versionId);
@@ -4875,31 +4883,9 @@ export class ProjectsService {
         if (withdrawn && !next.withdrawnReason?.trim()) {
           throw new BadRequestException(`${next.market}: a reason is required to record a market withdrawal`);
         }
-        // Q2: launch approval of the NEW version in a market where an older
-        // version is on sale moves that older version to Transition in Progress —
-        // "approval of the new version places the old version into Transition in
-        // Progress". Only an Active older version moves; nothing reaches Superseded
-        // here, which only a person's per-market decision does.
-        if (
-          versionId === currentVersion?.id &&
-          launchApproval === 'Approved' &&
-          prev.launchApproval !== 'Approved'
-        ) {
-          const olderOnSale = row.marketTracks.filter(
-            (t) =>
-              t.market === next.market &&
-              t.formulaVersionId !== versionId &&
-              t.actualLaunchDate !== null &&
-              t.withdrawnDate === null,
-          );
-          for (const t of olderOnSale) {
-            const v = row.formulaVersions.find((fv) => fv.id === t.formulaVersionId);
-            if (v && v.status === 'Active' && !transitioned.includes(v.id)) {
-              await tx.formulaVersion.update({ where: { id: v.id }, data: { status: 'Transition in Progress' } });
-              transitioned.push(v.id);
-            }
-          }
-        }
+        // Round 5 question 5(b): launch approval of a Major replacement in a market IS the start of that market's transition for the older
+        // version (Gate 11, not Gate 10). Nothing is written here for it any more: the market's state, and the version's, are derived from the
+        // approval and the supersession decisions (utils/formulaLifecycle.ts), so they cannot disagree with them.
         await tx.marketTrack.update({
           where: { id: prev.id },
           data: {
@@ -4919,7 +4905,6 @@ export class ProjectsService {
       return {
         tracks: tracks.length,
         launchBlockedByPif: blocked,
-        versionsTransitioned: row.formulaVersions.filter((v) => transitioned.includes(v.id)).map((v) => v.version),
       };
     });
   }
@@ -4991,47 +4976,17 @@ export class ProjectsService {
   async setSupersessionDecision(
     user: SessionUser,
     id: string,
-    input: ProjectData['supersessionDecisions'][number] & { confirm?: boolean },
+    input: ProjectData['supersessionDecisions'][number],
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
     return this.mutate(user, id, expectedVersion, 'supersession.updated', async (tx, row, project) => {
-      // F4: a supersession decision is owed where THIS version is on sale.
-      if (!versionMarkets(project, input.version).includes(input.market)) {
-        throw new BadRequestException(`Formula version ${input.version} is not on sale in "${input.market}"`);
-      }
-      const version = row.formulaVersions.find((v) => v.version === input.version);
-      if (!version) throw new NotFoundException(`Formula version "${input.version}" not found`);
-      if (input.version === project.formulaVersion) {
-        throw new BadRequestException('The current formula version cannot be superseded — create a new version first');
-      }
-
-      // C3 (SME rule audit, 2026-10-04). A confirmed decision is the record a
-      // version was superseded on; a later "save draft" used to rewrite its facts
-      // while keeping the confirmer's name on them. It is now closed to edits.
-      const stored = project.supersessionDecisions.find(
-        (d) => d.version === input.version && d.market === input.market,
-      );
+      this.supersessionTarget(row, project, input.version, input.market);
+      // A decision the final approver has confirmed is the record a version was superseded on; it is closed to edits.
+      const stored = project.supersessionDecisions.find((d) => d.version === input.version && d.market === input.market);
       if (stored?.confirmedBy) {
         throw new BadRequestException(
           `The supersession decision for ${input.market} was confirmed by ${stored.confirmedBy} and can no longer be changed`,
         );
-      }
-      // Confirming moves a version towards Superseded, so it needs an authority. The answer says "an authorised
-      // person" and not whose; the project owner's reading (2026-10-13) is the project's Lead, with an
-      // administrator keeping full rights as everywhere else. [ASSUMPTION: R5-Q8]
-      if (input.confirm && !this.permissions.isAdmin(user) && project.identity.projectLead.trim() !== user.displayName.trim()) {
-        throw new ForbiddenException(
-          `Only the project's Lead (${project.identity.projectLead}) may confirm a supersession decision`,
-        );
-      }
-      const draft = { ...input, confirmedBy: input.confirm ? user.displayName : undefined };
-      if (input.confirm) {
-        const gaps = supersessionGaps(draft);
-        if (gaps.length > 0) {
-          throw new BadRequestException(
-            listMessage('The supersession decision is incomplete:', gaps, 'All ten facts are required before it can be confirmed.'),
-          );
-        }
       }
       const data = {
         replacementVersion: input.replacementVersion || null,
@@ -5045,35 +5000,146 @@ export class ProjectsService {
         distributorCommunication: input.distributorCommunication || null,
         noFurtherBatchesConfirmed: !!input.noFurtherBatchesConfirmed,
         notes: input.notes || null,
-        // Confirmation is an act with an author and a time — taken from the
-        // session, never from the request body, for the same reason a signature is.
-        ...(input.confirm ? { confirmedBy: user.displayName, confirmedAt: new Date() } : {}),
+      };
+      // A confirmation vouches for the value it was given on. Changing a fact withdraws ITS confirmation, and — because the market's
+      // ten facts no longer stand as coordinated — Quality's coordination. Confirmations, like signatures, are never accepted from the
+      // client: they are written only by the acts below (Round 5 question 5(a)).
+      const previous = stored?.factConfirmations ?? {};
+      const kept: Record<string, { by: string; at: string }> = {};
+      let withdrawn = false;
+      for (const fact of SUPERSESSION_FACTS) {
+        const was = stored ? supersessionFactFilled(stored, fact) && String(stored[fact.key as keyof typeof stored] ?? '') : '';
+        const now = supersessionFactFilled(input, fact) && String(input[fact.key as keyof typeof input] ?? '');
+        if (previous[fact.key] && was === now) kept[fact.key] = previous[fact.key];
+        else if (previous[fact.key]) withdrawn = true;
+      }
+      const keepCoordination = !withdrawn && !!stored?.coordinatedBy;
+      const write = {
+        ...data,
+        factConfirmations: kept as unknown as Prisma.InputJsonValue,
+        coordinatedBy: keepCoordination ? stored!.coordinatedBy : null,
+        coordinatedAt: keepCoordination && stored!.coordinatedAt ? new Date(stored!.coordinatedAt) : null,
       };
       await tx.supersessionDecision.upsert({
         where: { projectId_version_market: { projectId: id, version: input.version, market: input.market } },
-        create: { projectId: id, version: input.version, market: input.market, ...data },
-        update: data,
+        create: { projectId: id, version: input.version, market: input.market, ...write },
+        update: write,
       });
+      return { version: input.version, market: input.market, confirmedFacts: Object.keys(kept).length, withdrawnConfirmations: withdrawn };
+    });
+  }
 
-      // Re-derive the version's state from the decisions as they now stand.
-      const decisions = await tx.supersessionDecision.findMany({
-        where: { projectId: id, version: input.version },
+  // The version/market a supersession act is about: it must be on sale there and cannot be the current version.
+  private supersessionTarget(row: { formulaVersions: { version: string }[] }, project: ProjectData, version: string, market: string): void {
+    // F4: a supersession decision is owed where THIS version is on sale.
+    if (!versionMarkets(project, version).includes(market)) {
+      throw new BadRequestException(`Formula version ${version} is not on sale in "${market}"`);
+    }
+    if (!row.formulaVersions.some((v) => v.version === version)) throw new NotFoundException(`Formula version "${version}" not found`);
+    if (version === project.formulaVersion) {
+      throw new BadRequestException('The current formula version cannot be superseded — create a new version first');
+    }
+  }
+
+  // Whoever the project's Lead assigned to one of these functions on THIS project holds it; an administrator account has no standing of
+  // its own here (SW-57), exactly as for acknowledgements and impact assessments.
+  private async assertHoldsFunction(tx: Prisma.TransactionClient, projectId: string, user: SessionUser, keys: readonly string[], doing: string): Promise<void> {
+    const holders = await tx.projectReviewer.findMany({ where: { projectId, roleKey: { in: [...keys] } } });
+    if (holders.length === 0) {
+      throw new BadRequestException(
+        `Nobody is assigned as ${functionsLabel(keys)} on this project yet, so nobody can ${doing} — the project's Lead assigns one in Project team`,
+      );
+    }
+    if (!holders.some((h) => holdsRole(h, user))) {
+      throw new ForbiddenException(`Only ${holders.map((h) => h.name).join(' or ')}, who holds ${functionsLabel(keys)} on this project, may ${doing}`);
+    }
+  }
+
+  private storedSupersession(project: ProjectData, version: string, market: string): ProjectData['supersessionDecisions'][number] {
+    const stored = project.supersessionDecisions.find((d) => d.version === version && d.market === market);
+    if (!stored) throw new BadRequestException(`Nothing is recorded for ${version} in ${market} yet — save the facts first`);
+    if (stored.confirmedBy) {
+      throw new BadRequestException(`The supersession decision for ${market} was confirmed by ${stored.confirmedBy} and can no longer be changed`);
+    }
+    return stored;
+  }
+
+  // Round 5 question 5(a): "each fact is confirmed by its accountable function". The holder of one of the functions the fact belongs to
+  // confirms it, as themselves; the value must already be on record.
+  async confirmSupersessionFact(
+    user: SessionUser,
+    id: string,
+    input: { version: string; market: string; factKey: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'supersession.fact_confirmed', async (tx, row, project) => {
+      this.supersessionTarget(row, project, input.version, input.market);
+      const fact = SUPERSESSION_FACTS.find((f) => f.key === input.factKey);
+      if (!fact) throw new BadRequestException(`"${input.factKey}" is not one of the ten supersession facts`);
+      const stored = this.storedSupersession(project, input.version, input.market);
+      if (isLegacyConfirmed(stored)) throw new BadRequestException('This decision was confirmed before facts were confirmed one by one, and stands as it is');
+      if (!supersessionFactFilled(stored, fact)) {
+        throw new BadRequestException(`"${fact.label}" has no value on record yet — save it before it is confirmed`);
+      }
+      if (stored.factConfirmations?.[fact.key]) throw new BadRequestException(`"${fact.label}" is already confirmed`);
+      await this.assertHoldsFunction(tx, id, user, fact.functions, `confirm "${fact.label}"`);
+      const confirmations = { ...(stored.factConfirmations ?? {}), [fact.key]: { by: user.displayName, at: new Date().toISOString() } };
+      await tx.supersessionDecision.update({
+        where: { projectId_version_market: { projectId: id, version: input.version, market: input.market } },
+        data: { factConfirmations: confirmations as unknown as Prisma.InputJsonValue },
       });
-      const complete = decisions.filter((d) => supersessionGaps(toSupersessionDecision(d)).length === 0);
-      // Withdrawn markets owe no decision (SME rule audit A9) — the same list
-      // `marketsAwaitingSupersession` reads, so the UI and this agree.
-      const owed = versionMarkets(project, input.version);
-      const allMarketsDecided = owed.length > 0 && owed.every((m) => complete.some((d) => d.market === m));
-      const state = allMarketsDecided ? 'Superseded' : 'Transition in Progress';
-      await tx.formulaVersion.update({ where: { id: version.id }, data: { status: state } });
+      return { version: input.version, market: input.market, factKey: fact.key, confirmedBy: user.displayName };
+    });
+  }
 
-      return {
-        version: input.version,
-        market: input.market,
-        confirmed: !!input.confirm,
-        versionState: state,
-        marketsRemaining: owed.filter((m) => !complete.some((d) => d.market === m)),
-      };
+  // "Quality coordinates final per-market supersession": once the ten facts stand, the holder of Quality marks the market as coordinated.
+  async coordinateSupersession(
+    user: SessionUser,
+    id: string,
+    input: { version: string; market: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'supersession.coordinated', async (tx, row, project) => {
+      this.supersessionTarget(row, project, input.version, input.market);
+      const stored = this.storedSupersession(project, input.version, input.market);
+      if (isLegacyConfirmed(stored)) throw new BadRequestException('This decision was confirmed before coordination existed, and stands as it is');
+      if (!allFactsConfirmed(stored)) {
+        const gaps = supersessionGaps(stored).filter((g) => !g.startsWith('Coordination') && !g.startsWith('Confirmation of the completed'));
+        throw new BadRequestException(listMessage('Not every fact is confirmed yet:', gaps));
+      }
+      await this.assertHoldsFunction(tx, id, user, [SUPERSESSION_COORDINATOR], `coordinate the supersession in ${input.market}`);
+      await tx.supersessionDecision.update({
+        where: { projectId_version_market: { projectId: id, version: input.version, market: input.market } },
+        data: { coordinatedBy: user.displayName, coordinatedAt: new Date() },
+      });
+      return { version: input.version, market: input.market, coordinatedBy: user.displayName };
+    });
+  }
+
+  // "The authorised final approver confirms the completed transition": the last act. It makes the market Superseded (nothing derives it
+  // before), and from then on the decision is closed.
+  async approveSupersession(
+    user: SessionUser,
+    id: string,
+    input: { version: string; market: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'supersession.approved', async (tx, row, project) => {
+      this.supersessionTarget(row, project, input.version, input.market);
+      const stored = this.storedSupersession(project, input.version, input.market);
+      if (isLegacyConfirmed(stored)) throw new BadRequestException('This decision was already confirmed');
+      if (!stored.coordinatedBy) {
+        throw new BadRequestException(listMessage('The supersession is not complete yet:', supersessionGaps(stored)));
+      }
+      if (!(await this.holdsAnyCapability(user, [SUPERSESSION_FINAL_CAPABILITY]))) {
+        throw new ForbiddenException(`Only the authorised final approver confirms a completed transition (needs ${SUPERSESSION_FINAL_CAPABILITY})`);
+      }
+      const now = new Date();
+      await tx.supersessionDecision.update({
+        where: { projectId_version_market: { projectId: id, version: input.version, market: input.market } },
+        data: { finalApprovedBy: user.displayName, finalApprovedAt: now, confirmedBy: user.displayName, confirmedAt: now },
+      });
+      return { version: input.version, market: input.market, approvedBy: user.displayName };
     });
   }
 
@@ -5271,6 +5337,10 @@ export class ProjectsService {
       initiatedBy?: string;
       majorCriteria?: string[];
       classificationConfirmedBy?: string;
+      // Round 5 question 5(c): the manufactured formula is unchanged — a document revision.
+      documentationOnly?: boolean;
+      // Round 5 question 5(d): a person confirms the version this one replaces was never released.
+      confirmNoRelease?: boolean;
     },
     expectedVersion: number,
     idempotencyKey: string,
@@ -5300,6 +5370,11 @@ export class ProjectsService {
     if (majorCriteria.length > 0 && input.changeType !== 'Major') {
       throw new BadRequestException('A change that touches any impact area is Major (F5)');
     }
+    // A documentation-only correction leaves the manufactured formula as it was, so it is never a Major change, and it must say what was
+    // corrected (the reason is what the document revision records).
+    if (input.documentationOnly && (input.changeType !== 'Minor' || !input.reason?.trim())) {
+      throw new BadRequestException('A documentation-only correction is a Minor change and needs its reason');
+    }
 
     const envelope = await this.mutate(
       user,
@@ -5316,42 +5391,37 @@ export class ProjectsService {
         }
         const previous = row.formulaVersions.at(-1);
 
-        // Move the outgoing version into TRANSITION, not Superseded. Round 4
-        // question 2 (2026-08-29): "an older formula version does not
-        // automatically close when the replacement receives launch approval — it
-        // must be deliberately transitioned via a per-market supersession
-        // decision", and "approval of the new version places the old version into
-        // Transition in Progress (not Superseded)". Superseded is reached only
-        // through `setSupersessionDecision`, once a person has confirmed the ten
-        // facts for every market. Before this the old version closed silently here,
-        // and nothing was ever recorded about stock, artwork, notifications or
-        // customer communication.
+        // The old version KEEPS its BOM lines, which is what makes the version-compare feature work without a snapshot column.
         //
-        // The old version KEEPS its BOM lines, which is what makes the
-        // version-compare feature work without a snapshot column.
-        //
-        // Q2 timing (SME rule audit D, 2026-10-05, project owner's choice): "approval
-        // of the new version places the old version into Transition in Progress" —
-        // approval, not creation. So a MAJOR version leaves the old one Active, still
-        // on sale in its markets, and setMarketTracks moves it to Transition in
-        // Progress when the new version is approved for launch in a market where the
-        // old one is sold. A MINOR version inherits the current tracks (below), so
-        // the old version is transitioning at once wherever it was sold. A version
-        // that was never launched anywhere has nothing to transition and goes
-        // straight to Superseded [ASSUMPTION: R5-Q53].
+        // Round 4 question 2: "an older formula version does not automatically close when the replacement receives launch approval". Round 5
+        // question 5 (answered 2026-11-05) says how it does, market by market: Superseded is reached only through a market's supersession
+        // decision (confirmed fact by fact by the accountable functions, coordinated by Quality, confirmed by the final approver), and a
+        // version's state is DERIVED from its markets' (utils/formulaLifecycle.ts), so nothing is written for it here. [ASSUMPTION: R5-Q53]
+        // (answered; the tag stays because the sweep wants every defined question referenced).
         const previousOnSale = previous
           ? row.marketTracks.some(
               (t) => t.formulaVersionId === previous.id && t.actualLaunchDate !== null && t.withdrawnDate === null,
             )
           : false;
+        // Round 5 question 5: nothing starts a transition here. A MAJOR version leaves the old one Active until the replacement is approved for
+        // release in a market (Gate 11); a MINOR one starts no transition by itself either ("no automatic immediate transition"): it needs its
+        // approved effective date and the actual stock and release facts, recorded in the market's supersession decision. A documentation-only
+        // correction is a document revision and needs no stock transition, so the version it revises is superseded at once. A version that was
+        // NEVER released is superseded straight away too, but only once a person has confirmed there was no release — the replacement and
+        // the reason are this version and its reason, and the trial and study history stays with the old version's record.
         if (previous) {
-          const nextState = !previousOnSale
-            ? 'Superseded'
-            : input.changeType === 'Major'
-              ? previous.status
-              : 'Transition in Progress';
-          if (nextState !== previous.status) {
-            await tx.formulaVersion.update({ where: { id: previous.id }, data: { status: nextState } });
+          if (input.documentationOnly) {
+            await tx.formulaVersion.update({ where: { id: previous.id }, data: { status: 'Superseded' } });
+          } else if (!previousOnSale) {
+            if (!input.confirmNoRelease) {
+              throw new BadRequestException(
+                `Formula ${previous.version} was never released to any market. Confirm that there was no release to supersede it with ${version}.`,
+              );
+            }
+            await tx.formulaVersion.update({
+              where: { id: previous.id },
+              data: { status: 'Superseded', noReleaseConfirmedBy: user.displayName },
+            });
           }
         }
         const created = await tx.formulaVersion.create({
@@ -5365,6 +5435,7 @@ export class ProjectsService {
             initiatedBy: user.displayName,
             majorCriteria,
             classificationConfirmedBy: user.displayName,
+            documentationOnly: !!input.documentationOnly,
             status: 'Active',
           },
         });

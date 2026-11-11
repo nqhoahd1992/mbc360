@@ -4,47 +4,35 @@ import { Alert, App, Button, Card, Checkbox, DatePicker, Input, Space, Table, Ta
 import dayjs from 'dayjs';
 import type { ProjectData, SupersessionDecision } from '@mbc360/shared/types';
 import {
+  SUPERSESSION_COORDINATOR,
+  SUPERSESSION_FACTS,
+  allFactsConfirmed,
   formulaVersionState,
-  marketsAwaitingSupersession,
+  functionLabel,
+  functionsLabel,
+  isLegacyConfirmed,
+  marketVersionState,
+  supersessionFactConfirmation,
+  supersessionFactFilled,
   supersessionGaps,
-  transitioningVersions,
   versionMarkets,
+  versionsOwingSupersession,
 } from '@mbc360/shared/utils/formulaLifecycle';
+import { holdsRole } from '@mbc360/shared/utils/readinessAck';
+import { SUPERSESSION_FINAL_CAPABILITY } from '@mbc360/shared/utils/formulaLifecycle';
+import { EMPTY_GRANTS, hasCapability } from '../utils/permissions';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
 import { listMessage } from '@mbc360/shared/utils/messageList';
+import { usePermissionView } from '../auth/previewMode';
 import { TEXT } from '../theme/tokens';
 
-// Round 4 question 2 — the per-market supersession decision (2026-08-30).
+// Round 4 question 2 — the per-market supersession decision (2026-08-30), reshaped by Round 5 question 5 (2026-11-11).
 //
-// Built after the final round-4 review found the gap: the store action, the
-// endpoint and the rule engine all existed, and no screen called any of them, so
-// `createFormulaVersion` parked the outgoing version in "Transition in Progress"
-// with no way out. That is worse than the behaviour it replaced, which at least
-// reached a terminal state — the same shape as question 24's lesson, where moving
-// a requirement from creation-time to gate-time left it with no write path.
-//
-// Every field here is entered by a person and nothing is derived, because the
-// answer is explicit that the supersession decision "must be recorded by a person,
-// never inferred automatically by the system". The card only reports which of the
-// ten facts are still missing.
-const FIELDS: {
-  key: keyof SupersessionDecision;
-  label: string;
-  kind: 'text' | 'date';
-  hint?: string;
-}[] = [
-  { key: 'replacementVersion', label: 'Replacement formula version', kind: 'text' },
-  { key: 'effectiveTransitionDate', label: 'Effective transition date', kind: 'date' },
-  { key: 'lastReleaseDate', label: 'Last manufacturing / release date (old version)', kind: 'date' },
-  { key: 'stockDisposition', label: 'Stock disposition or sell-through', kind: 'text' },
-  { key: 'regulatoryNotificationStatus', label: 'Regulatory notification / registration status', kind: 'text' },
-  { key: 'artworkTransition', label: 'Artwork and ingredient-list transition', kind: 'text' },
-  { key: 'pifUpdate', label: 'PIF / Product Master File update', kind: 'text' },
-  { key: 'salesMarketingCommunication', label: 'Sales and Marketing communication', kind: 'text' },
-  { key: 'distributorCommunication', label: 'Distributor or customer communication', kind: 'text' },
-];
-
+// Each of the ten facts is recorded, then CONFIRMED by the function accountable for it (the person the project's Lead assigned to that
+// function); Quality then coordinates the market; the authorised final approver confirms the completed transition, which is what makes the
+// market Superseded. Nothing here is derived: the answer is explicit that the supersession decision "must be recorded by a person, never
+// inferred automatically by the system". The card only reports what is still missing, and who can do each step.
 const STATE_COLOR: Record<string, string> = {
   Active: 'green',
   'Transition Approved': 'gold',
@@ -76,19 +64,24 @@ function blankDecision(version: string, market: string): SupersessionDecision {
 
 export default function FormulaSupersessionCard({ project }: { project: ProjectData }) {
   const setDecision = useAppStore((s) => s.setSupersessionDecision);
+  const confirmFact = useAppStore((s) => s.confirmSupersessionFact);
+  const coordinate = useAppStore((s) => s.coordinateSupersession);
+  const approve = useAppStore((s) => s.approveSupersession);
   const { message } = App.useApp();
   const session = useSession();
-  // The project's Lead confirms (an administrator keeps full rights) — the server enforces the same rule. [ASSUMPTION: R5-Q8]
-  const canConfirm = !!session.user && (session.isAdmin || project.identity.projectLead.trim() === session.user.displayName.trim());
-  // Local drafts, keyed by version+market. Not `useDraft`: the endpoint writes ONE
-  // market at a time (confirming is an act that stamps who decided and when), so
-  // there is no bulk save for a SaveBar to drive — the same reason the modal-gated
-  // flows in this app commit on their own explicit button.
+  const view = usePermissionView();
+  const grants = useAppStore((st) => st.permissionGrid?.grants ?? EMPTY_GRANTS);
+  const reviewers = project.identity.reviewers;
+  // The people the project's Lead assigned to each function, by name (the account is matched on the name here; the server checks the real
+  // assignment). An administrator account holds no function of its own (SW-57).
+  const holdsFunction = (keys: readonly string[]): boolean =>
+    !!session.user && keys.some((k) => !!reviewers[k] && holdsRole({ name: reviewers[k] }, session.user!));
+  // The authorised final approver: the Final Approver capability (an administrator keeps full rights). The server checks the same.
+  const isFinalApprover = !!session.user && (view.isAdmin || hasCapability(grants, view.roleKeys, SUPERSESSION_FINAL_CAPABILITY));
   const [drafts, setDrafts] = useState<Record<DraftKey, SupersessionDecision>>({});
-  const [busy, setBusy] = useState<DraftKey | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
-  const versions = useMemo(() => transitioningVersions(project), [project]);
-  // The Project Overview links here with ?scrollTo=sec-supersession.
+  const versions = useMemo(() => versionsOwingSupersession(project), [project]);
   const { search } = useLocation();
   const wanted = new URLSearchParams(search).get('scrollTo') === 'sec-supersession';
   useEffect(() => {
@@ -97,30 +90,25 @@ export default function FormulaSupersessionCard({ project }: { project: ProjectD
   if (versions.length === 0) return null;
 
   const stored = new Map(project.supersessionDecisions.map((d) => [`${d.version}|${d.market}`, d]));
-
-  const decisionFor = (version: string, market: string): SupersessionDecision => {
-    const key = `${version}|${market}`;
-    return drafts[key] ?? stored.get(key) ?? blankDecision(version, market);
-  };
-
+  const decisionFor = (version: string, market: string): SupersessionDecision =>
+    drafts[`${version}|${market}`] ?? stored.get(`${version}|${market}`) ?? blankDecision(version, market);
   const patch = (version: string, market: string, part: Partial<SupersessionDecision>) => {
     const key = `${version}|${market}`;
     setDrafts((d) => ({ ...d, [key]: { ...decisionFor(version, market), ...part } }));
   };
 
-  const submit = async (version: string, market: string, confirm: boolean) => {
-    const key = `${version}|${market}`;
+  const run = async (key: string, doing: () => Promise<void>, done: string, clearDraft?: DraftKey) => {
     setBusy(key);
     try {
-      await setDecision(project.identity.id, { ...decisionFor(version, market), confirm });
-      setDrafts((d) => {
-        const next = { ...d };
-        delete next[key];
-        return next;
-      });
-      message.success(
-        confirm ? `Supersession confirmed for ${market}` : `Draft saved for ${market}`,
-      );
+      await doing();
+      if (clearDraft) {
+        setDrafts((d) => {
+          const next = { ...d };
+          delete next[clearDraft];
+          return next;
+        });
+      }
+      message.success(done);
     } catch (e) {
       message.error((e as Error).message);
     } finally {
@@ -135,158 +123,216 @@ export default function FormulaSupersessionCard({ project }: { project: ProjectD
         showIcon
         style={{ marginBottom: 12 }}
         message="An older formula version does not close automatically when its replacement is approved."
-        description="Approving a replacement puts the outgoing version into Transition in Progress. It becomes Superseded only once a person has recorded all ten facts below for every market the project sells into — the system never infers it."
+        description={
+          <>
+            <div>In each market the version is Active, in Transition once the replacement is approved for release there (Gate 11), and Superseded when the market's decision is complete.</div>
+            <div>Each fact is confirmed by the function accountable for it; Quality coordinates the market; the authorised final approver confirms the completed transition.</div>
+          </>
+        }
       />
-      {versions.map((v) => {
-        const awaiting = marketsAwaitingSupersession(project, v.version);
-        return (
-          <Card
-            key={v.version}
-            type="inner"
-            style={{ marginBottom: 16 }}
-            title={
-              <Space>
-                <span>Version {v.version}</span>
-                <Tag color={STATE_COLOR[formulaVersionState(project, v.version)] ?? 'default'}>
-                  {formulaVersionState(project, v.version)}
-                </Tag>
-              </Space>
-            }
-            extra={
-              <span style={{ color: TEXT.secondary }}>
-                {awaiting.length === 0
-                  ? 'All markets decided'
-                  : `Awaiting: ${awaiting.join(', ')}`}
-              </span>
-            }
-          >
-            <Table
-              size="small"
-              rowKey={(m) => m}
-              pagination={false}
-              // F4: the markets where this version is on sale.
-              dataSource={versionMarkets(project, v.version)}
-              expandable={{
-                expandedRowRender: (market) => {
-                  const d = decisionFor(v.version, market);
-                  const locked = !!stored.get(`${v.version}|${market}`)?.confirmedBy;
-                  const key = `${v.version}|${market}`;
-                  return (
-                    <Space direction="vertical" style={{ width: '100%' }} size="small">
-                      {FIELDS.map((f) =>
-                        f.kind === 'date' ? (
-                          <Space key={f.key} style={{ width: '100%' }}>
-                            <span style={{ display: 'inline-block', width: 320, color: TEXT.secondary }}>
-                              {f.label}
-                            </span>
+      {versions.map((v) => (
+        <Card
+          key={v.version}
+          type="inner"
+          style={{ marginBottom: 16 }}
+          title={
+            <Space>
+              <span>Version {v.version}</span>
+              <Tag color={STATE_COLOR[formulaVersionState(project, v.version)] ?? 'default'}>{formulaVersionState(project, v.version)}</Tag>
+            </Space>
+          }
+        >
+          <Table
+            size="small"
+            rowKey={(m) => m}
+            pagination={false}
+            dataSource={versionMarkets(project, v.version)}
+            expandable={{
+              expandedRowRender: (market) => {
+                const key = `${v.version}|${market}`;
+                const d = decisionFor(v.version, market);
+                const saved = stored.get(key);
+                const closed = !!saved?.confirmedBy;
+                const legacy = !!saved && isLegacyConfirmed(saved);
+                const dirty = !!drafts[key];
+                const gaps = supersessionGaps(saved ?? d);
+                return (
+                  <Space direction="vertical" style={{ width: '100%' }} size="small">
+                    {legacy && (
+                      <Alert type="info" showIcon message={`Confirmed by ${saved!.confirmedBy} before facts were confirmed one by one; it stands as recorded.`} />
+                    )}
+                    {SUPERSESSION_FACTS.map((fact) => {
+                      const confirmation = saved ? supersessionFactConfirmation(saved, fact.key) : undefined;
+                      const mine = holdsFunction(fact.functions);
+                      const label = (
+                        <span style={{ display: 'inline-block', width: 300, color: TEXT.secondary }}>
+                          {fact.label}
+                          <div style={{ fontSize: 12 }}>Confirmed by: {functionsLabel(fact.functions)}</div>
+                        </span>
+                      );
+                      return (
+                        <Space key={fact.key} style={{ width: '100%' }} align="start">
+                          {label}
+                          {fact.kind === 'date' ? (
                             <DatePicker
-                              disabled={locked}
-                              value={d[f.key] ? dayjs(d[f.key] as string) : null}
-                              onChange={(date) =>
-                                patch(v.version, market, {
-                                  [f.key]: date ? date.format('YYYY-MM-DD') : '',
-                                } as Partial<SupersessionDecision>)
-                              }
+                              disabled={closed || legacy}
+                              value={(d[fact.key as keyof SupersessionDecision] as string) ? dayjs(d[fact.key as keyof SupersessionDecision] as string) : null}
+                              onChange={(date) => patch(v.version, market, { [fact.key]: date ? date.format('YYYY-MM-DD') : '' } as Partial<SupersessionDecision>)}
                             />
-                          </Space>
-                        ) : (
-                          <Space key={f.key} style={{ width: '100%' }}>
-                            <span style={{ display: 'inline-block', width: 320, color: TEXT.secondary }}>
-                              {f.label}
-                            </span>
+                          ) : fact.kind === 'flag' ? (
+                            <Checkbox
+                              disabled={closed || legacy}
+                              checked={d.noFurtherBatchesConfirmed}
+                              onChange={(e) => patch(v.version, market, { noFurtherBatchesConfirmed: e.target.checked })}
+                            >
+                              Yes
+                            </Checkbox>
+                          ) : (
                             <Input
-                              disabled={locked}
-                              style={{ width: 420 }}
-                              value={(d[f.key] as string) ?? ''}
-                              onChange={(e) =>
-                                patch(v.version, market, {
-                                  [f.key]: e.target.value,
-                                } as Partial<SupersessionDecision>)
-                              }
+                              disabled={closed || legacy}
+                              style={{ width: 380 }}
+                              value={(d[fact.key as keyof SupersessionDecision] as string) ?? ''}
+                              onChange={(e) => patch(v.version, market, { [fact.key]: e.target.value } as Partial<SupersessionDecision>)}
                             />
-                          </Space>
-                        ),
-                      )}
-                      <Checkbox
-                        disabled={locked}
-                        checked={d.noFurtherBatchesConfirmed}
-                        onChange={(e) => patch(v.version, market, { noFurtherBatchesConfirmed: e.target.checked })}
-                      >
-                        No further batches will be released under the old version
-                      </Checkbox>
-                      <Input.TextArea
-                        disabled={locked}
-                        rows={2}
-                        placeholder="Notes"
-                        value={d.notes ?? ''}
-                        onChange={(e) => patch(v.version, market, { notes: e.target.value })}
-                      />
-                      {!locked && (
-                        <Space>
-                          <Button loading={busy === key} onClick={() => submit(v.version, market, false)}>
-                            Save draft
-                          </Button>
-                          <Tooltip
-                            title={
-                              !canConfirm
-                                ? `Only the project's Lead (${project.identity.projectLead}) confirms a supersession decision`
-                                : supersessionGaps(d).length > 0
-                                  ? listMessage('Still missing:', supersessionGaps(d))
+                          )}
+                          {confirmation ? (
+                            <Tag color="green">
+                              Confirmed by {confirmation.by} · {confirmation.at.slice(0, 10)}
+                            </Tag>
+                          ) : (
+                            !closed &&
+                            !legacy && (
+                              <Tooltip
+                                title={
+                                  dirty
+                                    ? 'Save the facts first'
+                                    : !supersessionFactFilled(saved ?? d, fact)
+                                      ? 'Record the fact first'
+                                      : !mine
+                                        ? `Only ${functionsLabel(fact.functions)} confirms this — the person the project's Lead assigned (Project team)`
+                                        : undefined
+                                }
+                              >
+                                <Button
+                                  size="small"
+                                  disabled={dirty || !saved || !supersessionFactFilled(saved, fact) || !mine}
+                                  loading={busy === `${key}|${fact.key}`}
+                                  onClick={() =>
+                                    void run(`${key}|${fact.key}`, () => confirmFact(project.identity.id, { version: v.version, market, factKey: fact.key }), `Confirmed: ${fact.label}`)
+                                  }
+                                >
+                                  Confirm as {functionsLabel(fact.functions)}
+                                </Button>
+                              </Tooltip>
+                            )
+                          )}
+                        </Space>
+                      );
+                    })}
+                    <Input.TextArea
+                      disabled={closed || legacy}
+                      rows={2}
+                      placeholder="Notes"
+                      value={d.notes ?? ''}
+                      onChange={(e) => patch(v.version, market, { notes: e.target.value })}
+                    />
+                    {!closed && !legacy && (
+                      <Space wrap>
+                        <Button
+                          disabled={!dirty}
+                          loading={busy === `${key}|save`}
+                          onClick={() =>
+                            void run(`${key}|save`, () => setDecision(project.identity.id, d), `Facts saved for ${market}`, key)
+                          }
+                        >
+                          Save facts
+                        </Button>
+                        <Tooltip
+                          title={
+                            saved?.coordinatedBy
+                              ? undefined
+                              : !saved || !allFactsConfirmed(saved)
+                                ? 'Every fact has to be confirmed first'
+                                : !holdsFunction([SUPERSESSION_COORDINATOR])
+                                  ? `Only ${functionLabel(SUPERSESSION_COORDINATOR)} coordinates the supersession`
                                   : undefined
+                          }
+                        >
+                          {saved?.coordinatedBy ? (
+                            <Tag color="green">
+                              Coordinated by {saved.coordinatedBy} ({functionLabel(SUPERSESSION_COORDINATOR)}) · {saved.coordinatedAt?.slice(0, 10)}
+                            </Tag>
+                          ) : (
+                            <Button
+                              disabled={dirty || !saved || !allFactsConfirmed(saved) || !holdsFunction([SUPERSESSION_COORDINATOR])}
+                              loading={busy === `${key}|coordinate`}
+                              onClick={() => void run(`${key}|coordinate`, () => coordinate(project.identity.id, { version: v.version, market }), `Coordinated for ${market}`)}
+                            >
+                              Coordinate as {functionLabel(SUPERSESSION_COORDINATOR)}
+                            </Button>
+                          )}
+                        </Tooltip>
+                        <Tooltip
+                          title={
+                            !saved?.coordinatedBy
+                              ? 'Quality has to coordinate the market first'
+                              : !isFinalApprover
+                                ? 'Only the authorised final approver confirms the completed transition'
+                                : undefined
+                          }
+                        >
+                          <Button
+                            type="primary"
+                            disabled={dirty || !saved?.coordinatedBy || !isFinalApprover}
+                            loading={busy === `${key}|approve`}
+                            onClick={() =>
+                              void run(`${key}|approve`, () => approve(project.identity.id, { version: v.version, market }), `Supersession confirmed for ${market}`)
                             }
                           >
-                            <Button
-                              type="primary"
-                              disabled={!canConfirm}
-                              loading={busy === key}
-                              // Deliberately NOT disabled on an incomplete draft: the
-                              // server names every missing fact in its rejection, which
-                              // is more useful than a dead button, and it is the
-                              // authoritative check either way.
-                              onClick={() => submit(v.version, market, true)}
-                            >
-                              Confirm supersession in {market}
-                            </Button>
-                          </Tooltip>
-                        </Space>
-                      )}
-                    </Space>
-                  );
-                },
-              }}
-              columns={[
-                { title: 'Market', dataIndex: undefined, width: 180, render: (_, m) => m },
-                {
-                  title: 'Status',
-                  width: 200,
-                  render: (_, m) => {
-                    const s = stored.get(`${v.version}|${m}`);
-                    if (s?.confirmedBy) return <Tag color="green">Confirmed</Tag>;
-                    const gaps = supersessionGaps(decisionFor(v.version, m));
-                    return <Tag color="orange">{gaps.length} of 11 still missing</Tag>;
-                  },
-                },
-                {
-                  title: 'Confirmed by',
-                  render: (_, m) => {
-                    const s = stored.get(`${v.version}|${m}`);
-                    return s?.confirmedBy ? (
+                            Confirm completed transition in {market}
+                          </Button>
+                        </Tooltip>
+                      </Space>
+                    )}
+                    {!closed && gaps.length > 0 && (
+                      <div style={{ color: TEXT.secondary, fontSize: 12, whiteSpace: 'pre-line' }}>{listMessage('Still to do:', gaps)}</div>
+                    )}
+                    {closed && saved?.finalApprovedBy && (
+                      <Tag color="green">
+                        Completed transition confirmed by {saved.finalApprovedBy} · {saved.finalApprovedAt?.slice(0, 10)}
+                      </Tag>
+                    )}
+                  </Space>
+                );
+              },
+            }}
+            columns={[
+              { title: 'Market', width: 180, render: (_, m) => m },
+              {
+                title: 'State in this market',
+                width: 200,
+                render: (_, m) => <Tag color={STATE_COLOR[marketVersionState(project, v.version, m)] ?? 'default'}>{marketVersionState(project, v.version, m)}</Tag>,
+              },
+              {
+                title: 'Decision',
+                render: (_, m) => {
+                  const s = stored.get(`${v.version}|${m}`);
+                  if (s?.confirmedBy) {
+                    return (
                       <span>
                         {s.confirmedBy}
-                        <span style={{ color: TEXT.secondary }}>
-                          {s.confirmedAt ? ` · ${s.confirmedAt.slice(0, 10)}` : ''}
-                        </span>
+                        <span style={{ color: TEXT.secondary }}>{s.confirmedAt ? ` · ${s.confirmedAt.slice(0, 10)}` : ''}</span>
                       </span>
-                    ) : (
-                      <span style={{ color: TEXT.secondary }}>—</span>
                     );
-                  },
+                  }
+                  const open = supersessionGaps(decisionFor(v.version, m)).length;
+                  return <Tag color="orange">{open} still to do</Tag>;
                 },
-              ]}
-            />
-          </Card>
-        );
-      })}
+              },
+            ]}
+          />
+        </Card>
+      ))}
     </Card>
   );
 }

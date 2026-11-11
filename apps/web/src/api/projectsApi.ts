@@ -276,12 +276,29 @@ export const setPostLaunchReviews = (id: string, reviews: ProjectData['postLaunc
 
 export const setSupersessionDecision = (
   id: string,
-  decision: ProjectData['supersessionDecisions'][number] & { confirm?: boolean },
+  decision: ProjectData['supersessionDecisions'][number],
   expectedVersion: number,
 ) =>
   request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/supersession`, {
     method: 'POST',
     body: JSON.stringify({ decision, expectedVersion }),
+  });
+
+// Round 5 question 5(a): a function confirms one fact, Quality coordinates the market, the final approver confirms the transition.
+export const confirmSupersessionFact = (id: string, input: { version: string; market: string; factKey: string }, expectedVersion: number) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/supersession/confirm-fact`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, expectedVersion }),
+  });
+export const coordinateSupersession = (id: string, input: { version: string; market: string }, expectedVersion: number) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/supersession/coordinate`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, expectedVersion }),
+  });
+export const approveSupersession = (id: string, input: { version: string; market: string }, expectedVersion: number) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/supersession/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ ...input, expectedVersion }),
   });
 
 // Per-gate sign-off (Round 4 questions 18 and 29). Same four acts as the phase
@@ -605,6 +622,8 @@ export function createFormulaVersion(
     initiatedBy?: string;
     majorCriteria?: string[];
     classificationConfirmedBy?: string;
+    documentationOnly?: boolean;
+    confirmNoRelease?: boolean;
   },
   expectedVersion: number,
   idempotencyKey: string,

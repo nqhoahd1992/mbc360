@@ -653,10 +653,39 @@ export class ProjectsController {
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Body()
-    body: { decision: ProjectData['supersessionDecisions'][number] & { confirm?: boolean }; expectedVersion: number },
+    body: { decision: ProjectData['supersessionDecisions'][number]; expectedVersion: number },
   ): Promise<ProjectEnvelope> {
     if (!body.decision) throw new BadRequestException('decision is required');
     return this.projects.setSupersessionDecision(user, id, body.decision, body.expectedVersion);
+  }
+
+  // Round 5 question 5(a): the three acts that follow the facts — a function confirms a fact, Quality coordinates the market, the
+  // authorised final approver confirms the completed transition. Each is an ACT by the signed-in person, never a field write.
+  @Post(':id/supersession/confirm-fact')
+  confirmSupersessionFact(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { version: string; market: string; factKey: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.confirmSupersessionFact(user, id, body, body.expectedVersion);
+  }
+
+  @Post(':id/supersession/coordinate')
+  coordinateSupersession(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { version: string; market: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.coordinateSupersession(user, id, body, body.expectedVersion);
+  }
+
+  @Post(':id/supersession/approve')
+  approveSupersession(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { version: string; market: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.approveSupersession(user, id, body, body.expectedVersion);
   }
 
   // Per-gate sign-off (Round 4 questions 18 and 29). Same four-route shape as the
@@ -885,6 +914,8 @@ export class ProjectsController {
       initiatedBy?: string;
       majorCriteria?: string[];
       classificationConfirmedBy?: string;
+      documentationOnly?: boolean;
+      confirmNoRelease?: boolean;
       expectedVersion: number;
     },
     @Headers('idempotency-key') key: string | undefined,

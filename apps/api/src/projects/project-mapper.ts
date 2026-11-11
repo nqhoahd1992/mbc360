@@ -25,6 +25,7 @@ import {
 import { registerContentHashOf, registerRowContentHashOf } from './content-hash';
 import { closureKey } from '@mbc360/shared/utils/registerClosures';
 import { deriveRegisterRows } from '@mbc360/shared/utils/registerDerived';
+import { derivedVersionState } from '@mbc360/shared/utils/formulaLifecycle';
 import { SAFETY_MATRIX_KEY, refreshStoredSafetyMatrix } from '@mbc360/shared/utils/safetyMatrixSync';
 import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
 import { sameReference } from '@mbc360/shared/utils/referenceSnapshot';
@@ -169,6 +170,11 @@ export function toSupersessionDecision(
     salesMarketingCommunication: d.salesMarketingCommunication ?? '',
     distributorCommunication: d.distributorCommunication ?? '',
     noFurtherBatchesConfirmed: d.noFurtherBatchesConfirmed,
+    factConfirmations: (d.factConfirmations ?? {}) as Record<string, { by: string; at: string }>,
+    ...(d.coordinatedBy ? { coordinatedBy: d.coordinatedBy } : {}),
+    ...(d.coordinatedAt ? { coordinatedAt: d.coordinatedAt.toISOString() } : {}),
+    ...(d.finalApprovedBy ? { finalApprovedBy: d.finalApprovedBy } : {}),
+    ...(d.finalApprovedAt ? { finalApprovedAt: d.finalApprovedAt.toISOString() } : {}),
     confirmedBy: opt(d.confirmedBy),
     ...(d.confirmedAt ? { confirmedAt: d.confirmedAt.toISOString() } : {}),
     notes: opt(d.notes),
@@ -416,6 +422,9 @@ function gateReferenceDiffering(
 
 export function toProjectData(...args: Parameters<typeof toProjectDataRaw>): ProjectData {
   const project = toProjectDataRaw(...args);
+  // A version's state is derived from its markets' (Round 5 question 5(b)), never stored: the stored value is only what a person recorded
+  // (Withdrawn, Cancelled, or "never released").
+  project.formulaVersionHistory = project.formulaVersionHistory.map((v) => ({ ...v, state: derivedVersionState(project, v) }));
   // Both watch-lists follow the Formula BOM (Round 5 question 4(a)).
   for (const watchlist of ['prohibitedIngredients', 'pbCautionLimits']) {
     if (project.registers[watchlist]) {
@@ -857,6 +866,13 @@ function toProjectDataRaw(
       comments: opt(s.comments),
     })),
     formulaVersion: active?.version ?? 'F1.0',
+    currentFormulaVersionRecord: active
+      ? {
+          previousVersion: (active.previousVersionId ? versionById.get(active.previousVersionId) : undefined) ?? '',
+          changeType: (active.changeType ?? 'Major') as 'Major' | 'Minor',
+          ...(active.documentationOnly ? { documentationOnly: true } : {}),
+        }
+      : undefined,
     formulaVersionHistory: superseded.map((v) => ({
       version: v.version,
       previousVersion: (v.previousVersionId ? versionById.get(v.previousVersionId) : undefined) ?? '',
@@ -868,6 +884,8 @@ function toProjectDataRaw(
       classificationConfirmedBy: opt(v.classificationConfirmedBy),
       previousBomSnapshot: v.bomLines.map(toBomLine),
       state: v.status as FormulaVersionRecord['state'],
+      ...(v.documentationOnly ? { documentationOnly: true } : {}),
+      ...(v.noReleaseConfirmedBy ? { noReleaseConfirmedBy: v.noReleaseConfirmedBy } : {}),
     })),
     reference,
     impactAssessments: p.impactAssessments.map(toImpactAssessment),

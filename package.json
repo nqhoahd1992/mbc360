@@ -29,6 +29,7 @@
     "verify:change-access": "tsx packages/shared/scripts/verify-change-access.ts",
     "verify:safety-closure": "tsx packages/shared/scripts/verify-safety-closure.ts",
     "verify:watchlist-reassessment": "tsx packages/shared/scripts/verify-watchlist-reassessment.ts",
+    "verify:formula-supersession": "tsx packages/shared/scripts/verify-formula-supersession.ts",
     "verify:change-control-assessments": "tsx packages/shared/scripts/verify-change-control-assessments.ts",
     "verify:market-lanes": "tsx packages/shared/scripts/verify-market-lanes.ts",
     "preview": "npm run preview -w @mbc360/web",

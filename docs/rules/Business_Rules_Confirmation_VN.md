@@ -1029,6 +1029,20 @@ Các **câu hỏi về quy tắc đã đóng** (chỉ F12 còn chờ Cosmetri). 
 
 **(b)** Gate 4 ghi lần sàng lọc đầu. Việc đối chiếu và đánh giá còn hiệu lực suốt quá trình pha chế; Gate 7 đóng vấn đề cho công thức cuối. Thay đổi liên quan về sau cần một đánh giá có kiểm soát mới. Tinh chỉnh thử nghiệm thông thường trước khi khóa công thức được cập nhật phần sàng lọc mà không mở lại mọi gate trước; một nguyên liệu, mối nguy hay hạn chế mới làm Gate 4 không còn đúng thì phải mở lại phần đánh giá bị ảnh hưởng. Gate 7 là chốt an toàn cuối, không phải giấy phép bỏ qua một thay đổi không an toàn trước đó.
 
+### Câu 5 — Supersession và chuyển đổi phiên bản công thức
+
+**Kết luận:** ✅ đã xây (11/11/2026). (a) khác cái đã xây (Project Lead xác nhận cả mười dữ kiện); (b) giống về hiệu lực nhưng trạng thái nay giữ theo từng thị trường; (c) khác (Minor trước đây bắt đầu chuyển đổi ngay); (d) khác ở chỗ nay có người xác nhận không có phát hành; (e) khác (lịch nay neo vào lần launch đầu tiên và công thức đổi có review sớm riêng). Các cách đọc của ta về dữ kiện nào thuộc function nào và vài chi tiết khác được hỏi ở Vòng 6, câu 11.
+
+**(a)** Mỗi dữ kiện do function chịu trách nhiệm xác nhận — R&I; về nhận dạng công thức; Quality/Manufacturing cho dữ kiện lô và release cuối; Regulatory cho nghĩa vụ PIF/thông báo/nhãn; Supply Chain cho xử lý tồn kho; Sales/Marketing cho truyền thông thị trường. Quality điều phối supersession cuối cùng từng thị trường; final approver có thẩm quyền xác nhận quá trình chuyển đổi đã hoàn tất. Chỉ định người ký có tên cho các function này.
+
+**(b)** Dùng phê duyệt triển khai/phát hành thị trường của bản thay thế ở Gate 11 làm điểm bắt đầu chuyển đổi thông thường. Chỉ phê duyệt hồ sơ Gate 10 là không đủ. Một ngày triển khai khác đã duyệt có thể đặt trong kế hoạch chuyển đổi CHG. Giữ Active/Transition/Superseded theo từng thị trường và suy trạng thái chung của phiên bản từ các trạng thái đó.
+
+**(c)** Không tự động chuyển đổi ngay cho thay đổi Minor. Dùng ngày hiệu lực đã duyệt và hệ quả thực tế về tồn kho/phát hành. Một chỉnh sửa chỉ ở tài liệu mà công thức sản xuất không đổi là một bản sửa tài liệu và không cần chuyển đổi tồn kho. Phân loại Minor không bao giờ bỏ một kiểm tra an toàn, pháp lý hay phát hành bị ảnh hưởng.
+
+**(d)** Có, một phiên bản phát triển chưa từng phát hành có thể được supersede mà không qua chuyển đổi bán hàng/tồn kho. Ghi bản thay thế và lý do, xác nhận không có phát hành. Giữ lịch sử thử nghiệm và nghiên cứu của nó.
+
+**(e)** Giữ lịch giám sát thị trường và truy vết phiên bản/lô riêng. Công thức đã launch bị đổi đáng kể cần các mốc review hiệu năng/an toàn sớm riêng. Không khởi động lại hay xoá nghĩa vụ của phiên bản cũ; review chung của thị trường có thể bao cả hai nếu phân tích nêu rõ từng phiên bản.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

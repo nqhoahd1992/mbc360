@@ -1850,6 +1850,81 @@ export async function run(base: string, db: Client): Promise<number> {
   t('a concluded assessment cannot be concluded again (400)', r.status === 400, `${r.status} ${short(r.json)}`);
   await assignFunction('safety-scientific', null);
 
+  console.log('\n--- a version is superseded market by market, each fact confirmed by its function (Round 5 question 5)');
+  {
+    const market = MARKETS[0];
+    const oldVersion = 'E2E-OLD';
+    await db.query(`INSERT INTO formula_versions (id, "projectId", version, status, "createdAt") VALUES ('e2e-old-version', $1, $2, 'Active', '2000-01-01')`, [PROJECT, oldVersion]);
+    await db.query(
+      `INSERT INTO market_tracks (id, "projectId", market, "formulaVersionId", "actualLaunchDate", "updatedAt") VALUES ('e2e-old-track', $1, $2, 'e2e-old-version', '2026-02-01', now())`,
+      [PROJECT, market],
+    );
+    const facts = {
+      version: oldVersion, market, replacementVersion: 'F9.9', effectiveTransitionDate: '2026-09-01', lastReleaseDate: '2026-08-01', stockDisposition: 'sell through by Q4',
+      regulatoryNotificationStatus: 'notified', artworkTransition: 'new pack', pifUpdate: 'updated', salesMarketingCommunication: 'sent', distributorCommunication: 'sent',
+      noFurtherBatchesConfirmed: true,
+    };
+    const saveFacts = async (over: Record<string, unknown> = {}) =>
+      api('admin', 'POST', `/projects/${PROJECT}/supersession`, { decision: { id: 'x', ...facts, ...over }, expectedVersion: await version() });
+    const confirmFact = async (key: string, factKey: string) =>
+      api(key, 'POST', `/projects/${PROJECT}/supersession/confirm-fact`, { version: oldVersion, market, factKey, expectedVersion: await version() });
+    const act = async (key: string, what: 'coordinate' | 'approve') =>
+      api(key, 'POST', `/projects/${PROJECT}/supersession/${what}`, { version: oldVersion, market, expectedVersion: await version() });
+    const stored = async () => ((await project()).project.supersessionDecisions as any[]).find((d) => d.version === oldVersion && d.market === market);
+    const who = (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions[other].id])).rows[0].displayName as string;
+
+    r = await saveFacts();
+    t('the ten facts are saved as a draft', r.status < 300 && !!(await stored()), `${r.status} ${short(r.json)}`);
+    t('...nothing is confirmed by saving', Object.keys((await stored()).factConfirmations ?? {}).length === 0);
+    r = await confirmFact('admin', 'stockDisposition');
+    t('an administrator is not the holder of Supply Chain, so cannot confirm stock disposition', r.status === 400 || r.status === 403, `${r.status} ${short(r.json)}`);
+
+    // the Lead assigns the accountable functions to one person
+    await db.query(
+      `UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = ANY($4)`,
+      [PROJECT, who, sessions[other].id, ['ri', 'quality', 'regulatory', 'supply-chain', 'sales-marketing']],
+    );
+    r = await confirmFact(other, 'bogusFact');
+    t('an unknown fact is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    for (const f of ['replacementVersion', 'effectiveTransitionDate', 'lastReleaseDate', 'stockDisposition', 'regulatoryNotificationStatus', 'artworkTransition', 'pifUpdate', 'salesMarketingCommunication', 'distributorCommunication', 'noFurtherBatchesConfirmed']) {
+      r = await confirmFact(other, f);
+      t(`the holder of the accountable function confirms ${f}`, r.status < 300, `${r.status} ${short(r.json)}`);
+    }
+    r = await confirmFact(other, 'pifUpdate');
+    t('a fact already confirmed cannot be confirmed again (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await act('admin', 'coordinate');
+    t('an administrator is not the holder of Quality, so cannot coordinate (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+    r = await act(other, 'approve');
+    t('the final approval cannot be given before Quality has coordinated (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await act(other, 'coordinate');
+    t('the holder of Quality coordinates the market', r.status < 300 && !!(await stored()).coordinatedBy, `${r.status} ${short(r.json)}`);
+
+    // changing a confirmed fact withdraws ITS confirmation and the coordination
+    r = await saveFacts({ stockDisposition: 'written off instead' });
+    const after = await stored();
+    t('changing a confirmed fact withdraws its confirmation', !after.factConfirmations?.stockDisposition && !!after.factConfirmations?.pifUpdate, short(after.factConfirmations));
+    t('...and Quality\'s coordination', !after.coordinatedBy);
+    r = await act(other, 'coordinate');
+    t('coordination needs every fact confirmed again (400)', r.status === 400 && /confirmed/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await confirmFact(other, 'stockDisposition');
+    t('the changed fact is confirmed again', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await act(other, 'coordinate');
+    t('...and coordinated again', r.status < 300, `${r.status} ${short(r.json)}`);
+
+    pj = await project();
+    t('before the final approval the version is not Superseded', pj.project.formulaVersionHistory.find((v: any) => v.version === oldVersion)?.state !== 'Superseded');
+    r = await act('admin', 'approve');
+    t('the authorised final approver confirms the completed transition', r.status < 300, `${r.status} ${short(r.json)}`);
+    pj = await project();
+    t('...which makes the market, and so the version, Superseded', pj.project.formulaVersionHistory.find((v: any) => v.version === oldVersion)?.state === 'Superseded');
+    r = await saveFacts({ notes: 'late edit' });
+    t('a confirmed decision can no longer be changed (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+
+    await db.query(`DELETE FROM supersession_decisions WHERE "projectId" = $1 AND version = $2`, [PROJECT, oldVersion]);
+    await db.query(`DELETE FROM market_tracks WHERE id = 'e2e-old-track'`);
+    await db.query(`DELETE FROM formula_versions WHERE id = 'e2e-old-version'`);
+  }
+
   console.log(bad === 0 ? '\nall passed' : `\n${bad} FAILED`);
   return bad;
 }

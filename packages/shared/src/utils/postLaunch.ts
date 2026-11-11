@@ -67,12 +67,14 @@ export function legacyOnMarketTracks(project: ProjectData): MarketTrack[] {
 }
 
 // One entry per market for the post-launch review schedule, dated from the
-// EARLIEST launch still on the market: the product has been on sale there since
-// then, whichever version it is now. Reviews stay keyed by market, not version
-// [ASSUMPTION: R5-Q53].
+// EARLIEST launch in that market: the product has been on sale there since then,
+// whichever version it is now. The market's schedule is kept (Round 5 question 5(e):
+// "keep the market surveillance schedule ... do not restart or erase the older
+// version's obligations"), so an older version leaving the market does not move
+// the anchor to the replacement's launch.
 function reviewTracksByMarket(project: ProjectData): MarketTrack[] {
   const byMarket = new Map<string, MarketTrack>();
-  for (const t of onMarketTracks(project)) {
+  for (const t of project.marketTracks.filter((x) => isMarketLaunched(x) && !isMarketWithdrawn(x))) {
     const seen = byMarket.get(t.market);
     if (!seen || text(t.actualLaunchDate) < text(seen.actualLaunchDate)) byMarket.set(t.market, t);
   }
@@ -132,6 +134,47 @@ export interface ReviewMilestone {
   market: string;
   milestone: string;
   dueDate: string;
+}
+
+// A materially changed formula is a Major one (A2, F5). The current version's own kind rides on `currentFormulaVersionRecord`.
+function isMajorVersion(project: ProjectData, version: string): boolean {
+  if (version === project.formulaVersion) return (project.currentFormulaVersionRecord?.changeType ?? 'Major') === 'Major';
+  return project.formulaVersionHistory.find((v) => v.version === version)?.changeType === 'Major';
+}
+
+// Round 5 question 5(e): "A materially changed launched formula needs its own early performance/safety review milestones." A Major version
+// launched in a market where the product was already on sale has the standard early reviews of its own, dated from ITS launch there
+// (the first standard review, and the one-month review where enhanced surveillance applies); the market's schedule carries on from the
+// first launch beside them. The milestone is named for the version, `F2.0:3m`. Our reading of which milestones are "early" is
+// [ASSUMPTION: R6-Q11].
+export function versionEarlyMilestones(project: ProjectData, opts: { enhanced: boolean }): ReviewMilestone[] {
+  const anchors = new Map(reviewTracksByMarket(project).map((t) => [t.market, t]));
+  const out: ReviewMilestone[] = [];
+  for (const t of onMarketTracks(project)) {
+    if (anchors.get(t.market) === t || !isMajorVersion(project, t.formulaVersion)) continue;
+    const launch = text(t.actualLaunchDate);
+    if (launch === '') continue;
+    if (opts.enhanced) {
+      out.push({ market: t.market, milestone: `${t.formulaVersion}:1m`, dueDate: addMonths(launch, POST_LAUNCH_REVIEW_SCHEDULE.enhancedFirstReviewMonths) });
+    }
+    out.push({ market: t.market, milestone: `${t.formulaVersion}:3m`, dueDate: addMonths(launch, POST_LAUNCH_REVIEW_SCHEDULE.standardFirstReviewMonths) });
+  }
+  return out;
+}
+
+// Everything the schedule lists: each market's ladder, then the early milestones of a materially changed version launched beside it.
+export function reviewScheduleMilestones(
+  project: ProjectData,
+  opts: { enhanced: boolean; asOf: string; profiles?: readonly MarketProfile[] },
+): ReviewMilestone[] {
+  const ladder = reviewTracksByMarket(project).flatMap((track) =>
+    reviewMilestonesFor(track, {
+      enhanced: opts.enhanced,
+      asOf: opts.asOf,
+      intervalOverrideMonths: opts.profiles?.find((p) => p.market === track.market)?.reviewIntervalMonths,
+    }),
+  );
+  return [...ladder, ...versionEarlyMilestones(project, { enhanced: opts.enhanced })];
 }
 
 // Question 13's schedule for one market: 1 month (enhanced-surveillance products
@@ -203,15 +246,7 @@ export function overdueReviews(
       .filter((r) => text(r.completedDate) !== '')
       .map((r) => `${r.market}|${r.milestone}`),
   );
-  return reviewTracksByMarket(project)
-    .flatMap((track) =>
-      reviewMilestonesFor(track, {
-        enhanced: opts.enhanced,
-        asOf: opts.asOf,
-        intervalOverrideMonths: opts.profiles?.find((p) => p.market === track.market)?.reviewIntervalMonths,
-      }),
-    )
-    .filter((m) => m.dueDate <= opts.asOf && !done.has(`${m.market}|${m.milestone}`));
+  return reviewScheduleMilestones(project, opts).filter((m) => m.dueDate <= opts.asOf && !done.has(`${m.market}|${m.milestone}`));
 }
 
 // The words for a milestone, for every screen that names a review cycle.
@@ -223,6 +258,9 @@ const MILESTONE_LABELS: Record<string, string> = {
 };
 export function reviewMilestoneLabel(milestone: string): string {
   if (MILESTONE_LABELS[milestone]) return MILESTONE_LABELS[milestone];
+  // A materially changed version's own early review: "F2.0:3m".
+  const versioned = /^(.+):(1m|3m)$/.exec(milestone);
+  if (versioned) return `${versioned[1]} — ${MILESTONE_LABELS[versioned[2]]}`;
   const annual = /^annual-(\d+)$/.exec(milestone);
   if (annual) return `Annual review ${annual[1]}`;
   return milestone;
@@ -236,14 +274,8 @@ export function reviewCycleOptions(
   opts: { enhanced: boolean; asOf: string; profiles?: readonly MarketProfile[] },
 ): { key: string; label: string }[] {
   const keys = new Map<string, string>();
-  for (const track of reviewTracksByMarket(project)) {
-    for (const m of reviewMilestonesFor(track, {
-      enhanced: opts.enhanced,
-      asOf: opts.asOf,
-      intervalOverrideMonths: opts.profiles?.find((p) => p.market === track.market)?.reviewIntervalMonths,
-    })) {
-      keys.set(`${m.market}|${m.milestone}`, `${m.market} — ${reviewMilestoneLabel(m.milestone)}`);
-    }
+  for (const m of reviewScheduleMilestones(project, opts)) {
+    keys.set(`${m.market}|${m.milestone}`, `${m.market} — ${reviewMilestoneLabel(m.milestone)}`);
   }
   for (const r of project.postLaunchReviews) {
     const key = `${r.market}|${r.milestone}`;

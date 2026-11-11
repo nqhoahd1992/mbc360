@@ -7,8 +7,7 @@ import {
   overdueReviews,
   projectLaunchStatus,
   reviewMilestoneLabel,
-  reviewMilestonesFor,
-  reviewScheduleTracks,
+  reviewScheduleMilestones,
 } from '@mbc360/shared/utils/postLaunch';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -48,15 +47,7 @@ export default function PostLaunchReviewCard({
     const stored = new Map(project.postLaunchReviews.map((r) => [`${r.market}|${r.milestone}`, r]));
     // One schedule per market, dated from the earliest launch still on sale there
     // (F4: an older version may still be on the shelf beside the new one).
-    const derived: PostLaunchReview[] = reviewScheduleTracks(project)
-      .flatMap((track) =>
-        reviewMilestonesFor(track, {
-          enhanced,
-          asOf: today,
-          intervalOverrideMonths: project.reference.marketProfiles.find((p) => p.market === track.market)
-            ?.reviewIntervalMonths,
-        }),
-      )
+    const derived: PostLaunchReview[] = reviewScheduleMilestones(project, { enhanced, asOf: today, profiles: project.reference.marketProfiles })
       .map((m) => {
         const existing = stored.get(`${m.market}|${m.milestone}`);
         return existing ?? { id: `${m.market}|${m.milestone}`, market: m.market, milestone: m.milestone, dueDate: m.dueDate };

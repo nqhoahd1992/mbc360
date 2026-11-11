@@ -31,6 +31,15 @@ export default function FormulaVersionModal({
   onClose: () => void;
 }) {
   const createFormulaVersion = useAppStore((s) => s.createFormulaVersion);
+  // Whether the current version is on sale anywhere: a version that was never released is superseded only once a person confirms there
+  // was no release (Round 5 question 5(d)).
+  const onSale = useAppStore((s) =>
+    (s.projects.find((p) => p.identity.id === projectId)?.marketTracks ?? []).some(
+      (t) => t.formulaVersion === currentVersion && !!t.actualLaunchDate && !t.withdrawnDate,
+    ),
+  );
+  const [documentationOnly, setDocumentationOnly] = useState(false);
+  const [confirmNoRelease, setConfirmNoRelease] = useState(false);
 
   const [creating, setCreating] = useState(false);
   const [changeType, setChangeType] = useState<'Major' | 'Minor'>('Minor');
@@ -44,6 +53,8 @@ export default function FormulaVersionModal({
       setMajorCriteria([]);
       setVersion(suggestVersion(currentVersion, 'Minor'));
       setReason('');
+      setDocumentationOnly(false);
+      setConfirmNoRelease(false);
     }
   }, [open, currentVersion]);
 
@@ -59,6 +70,7 @@ export default function FormulaVersionModal({
   const onChangeType = (t: 'Major' | 'Minor') => {
     if (criteriaForceMajor && t === 'Minor') return; // locked to Major while criteria apply
     applyChangeType(t);
+    if (t === 'Major') setDocumentationOnly(false);
   };
 
   const onCriteriaChange = (values: string[]) => {
@@ -79,6 +91,8 @@ export default function FormulaVersionModal({
         changeType,
         reason: reason.trim() || undefined,
         majorCriteria: majorCriteria.length > 0 ? majorCriteria : undefined,
+        ...(documentationOnly ? { documentationOnly: true } : {}),
+        ...(!onSale && confirmNoRelease && !documentationOnly ? { confirmNoRelease: true } : {}),
       });
       if (!created) return;
     } finally {
@@ -104,7 +118,8 @@ export default function FormulaVersionModal({
         disabled:
           !version.trim() ||
           version.trim() === currentVersion ||
-          !reason.trim(),
+          !reason.trim() ||
+          (!onSale && !documentationOnly && !confirmNoRelease),
       }}
     >
       <div style={{ display: 'grid', gap: 12 }}>
@@ -141,6 +156,27 @@ export default function FormulaVersionModal({
             {criteriaForceMajor && ' Locked to Major while impact areas are selected.'}
           </Typography.Paragraph>
         </div>
+        {changeType === 'Minor' && (
+          <div>
+            <Checkbox checked={documentationOnly} onChange={(e) => setDocumentationOnly(e.target.checked)}>
+              Documentation-only correction — the manufactured formula is unchanged
+            </Checkbox>
+            <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 4, marginBottom: 0 }}>
+              A correction to documents only is a document revision: the version it revises needs no stock transition. A change that touches the
+              formula itself does not qualify, and a Minor change never removes a safety, regulatory or release check that it affects.
+            </Typography.Paragraph>
+          </div>
+        )}
+        {!onSale && !documentationOnly && (
+          <div>
+            <Checkbox checked={confirmNoRelease} onChange={(e) => setConfirmNoRelease(e.target.checked)}>
+              I confirm formula {currentVersion} was never released to any market
+            </Checkbox>
+            <Typography.Paragraph type="secondary" style={{ fontSize: 12, marginTop: 4, marginBottom: 0 }}>
+              A version that was never released is superseded by this one without a sales or stock transition. Its trial and study history is kept.
+            </Typography.Paragraph>
+          </div>
+        )}
         <LabeledInput label="New version" value={version} onChange={(e) => setVersion(e.target.value)} />
         <div>
           <div style={{ marginBottom: 4, fontWeight: 600 }}>Reason</div>

@@ -2,7 +2,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-This round has ten questions. They follow from your answers to questions 1, 2, 3 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared.
+This round has eleven questions. They follow from your answers to questions 1, 2, 3 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared; question 11 asks how the details of a version's supersession market by market should be read.
 
 Where we say "the software development team" we mean the team building this application — not the owner of any product development project.
 
@@ -307,3 +307,26 @@ You told us both lists must flag a formula match by themselves, keep the matchin
 **(c)** Is recording the review date again enough to clear a reassessment, or must the reviewer record something more?
 
 **(d)** Should a new matching material reopen only that row, and so hold the gate until it is reassessed, or should it send the whole project back to Gate 4 explicitly?
+
+## Question 11 — A version's supersession market by market: how should we read the details your answer leaves open?
+
+*Where in the application:* **Formula BOM** page, card **Formula supersession (per market)**, the **New formula version** form, and **Phase 4**, post-launch reviews.
+
+You told us how an older formula version is superseded: each of the ten facts is confirmed by the function accountable for it, Quality coordinates the market, the authorised final approver confirms the completed transition; the state is kept per market (Active, Transition, Superseded) and the version's state follows from those; a Minor change starts nothing by itself; a documentation-only correction needs no stock transition; a version never released can be superseded once there is confirmation that it was not released; the market's review schedule continues and a materially changed formula has its own early reviews. We have built all of that. Where your answer leaves a detail open we read it as follows:
+
+- **Who confirms which fact.** Replacement version: R&I. Effective transition date: Quality. Last release date and "no further batches": Quality or Manufacturing (whoever holds either on the project). Regulatory notification, artwork and ingredient-list transition, PIF update: Regulatory. Stock disposition: Supply Chain. The Sales & Marketing and the distributor communications: Sales & Marketing.
+- **The authorised final approver** is the person holding the Final Approver authority, the one who already gives the commercial approval of a formulation change. An administrator keeps full rights.
+- **A different implementation date in the transition plan** is the "effective transition date" a person records. Recording it starts that market's transition at once; we do not wait for the date to arrive.
+- **The version's own state:** Superseded when every market is; Active while any market is still Active; otherwise in Transition.
+- **A documentation-only correction** is ticked by the person creating the version (Minor only, with its reason); the version it revises is then superseded at once.
+- **A materially changed formula's early reviews:** only a **Major** version launched in a market after the first launch there, with the three-month review (and the one-month review where enhanced surveillance applies), counted from that version's own launch. The market's schedule keeps running from the first launch beside them.
+
+**(a)** Is this assignment of the facts to functions right — in particular, whose is the effective transition date?
+
+**(b)** Who, in the company, is the "authorised final approver"?
+
+**(c)** Is a recorded effective date enough to start the transition, or must the date have arrived?
+
+**(d)** Which are the early review milestones of a materially changed formula?
+
+**(e)** May one review cover both versions in a market, and how should it be recorded?

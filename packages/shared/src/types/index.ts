@@ -1128,9 +1128,11 @@ export interface StudyApproval {
 // system", which is why nothing derives it.
 //
 // Those ten facts span Regulatory, Quality, Supply Chain, Sales & Marketing and
-// Packaging, so whether the confirmation is one signature or a multi-role block
-// is still not settled: it is recorded as one `confirmedBy` for now
-// [ASSUMPTION: R5-Q8].
+// R&I. Round 5 question 5(a) (answered 2026-11-05): each fact is confirmed by the
+// function accountable for it, Quality coordinates the market's supersession, and
+// the authorised final approver confirms the completed transition. Which fact
+// belongs to which function is our reading, [ASSUMPTION: R6-Q11]; [ASSUMPTION: R5-Q8]
+// is answered (the tag stays because the sweep wants every defined question referenced).
 // Round 4 question 2, transcribed: the lifecycle a formula version actually has.
 // "Approval of the new version places the old version into Transition in Progress
 // (not Superseded)", and it becomes Superseded only after a person records the
@@ -1164,6 +1166,15 @@ export interface SupersessionDecision {
   salesMarketingCommunication: string;
   distributorCommunication: string;
   noFurtherBatchesConfirmed: boolean;
+  // Round 5 question 5(a): who confirmed each of the ten facts (keyed by the fact's key), for the function accountable for it.
+  factConfirmations?: Record<string, { by: string; at: string }>;
+  // Quality coordinates the market's supersession once the ten facts stand ...
+  coordinatedBy?: string;
+  coordinatedAt?: string;
+  // ... and the authorised final approver confirms the completed transition.
+  finalApprovedBy?: string;
+  finalApprovedAt?: string;
+  // The final confirmation. For a decision recorded before question 5 was answered this is the one confirmation it ever had.
   confirmedBy?: string;
   confirmedAt?: string;
   notes?: string;
@@ -1191,6 +1202,11 @@ export interface FormulaVersionRecord {
   // record and 'Active' for the current one, which is what the app meant before
   // the lifecycle existed — not a guess about what a person would have chosen.
   state?: FormulaVersionState;
+  // Round 5 question 5(c): a correction to documents only — the manufactured formula is unchanged. A document revision, so the version it
+  // replaces needs no stock transition.
+  documentationOnly?: boolean;
+  // Round 5 question 5(d): a person confirmed that the version this one replaced was never released.
+  noReleaseConfirmedBy?: string;
 }
 
 // Controlled follow-up action attached to a gate (confirmed rules B2 + F8).
@@ -1579,7 +1595,10 @@ export interface ProjectData {
   // role) is simply unsigned — which is what the readiness check reads.
   gateSignOffs: GateSignOff[];
   formulaVersion: string; // current formula version, e.g. "F1.0" (rule A2)
-  formulaVersionHistory: FormulaVersionRecord[]; // prior versions, audit history (rule A2)
+  formulaVersionHistory: FormulaVersionRecord[];
+  // The current version's own kind. The history holds every version but this one, and the lifecycle needs to know whether the current
+  // version was a Major change, a Minor one or a documentation-only correction (Round 5 question 5).
+  currentFormulaVersionRecord?: Pick<FormulaVersionRecord, 'previousVersion' | 'changeType' | 'documentationOnly'>; // prior versions, audit history (rule A2)
   // Round 4 question 2 — per-market supersession decisions, and question 13's
   // post-launch reviews. Both are append-mostly records of acts, not settings.
   supersessionDecisions: SupersessionDecision[];

@@ -338,11 +338,11 @@ async function main() {
   if (stage === 'versions') {
     console.log('Formula versions (through the route)');
     await step('formula version F1.1 (Minor)', async () =>
-      take(await api('POST', `/projects/${id}/formula-versions`, { version: 'F1.1', changeType: 'Minor', reason: `${SEED}: preservative level adjusted`, initiatedBy: adminName, expectedVersion: version }, { 'Idempotency-Key': `seed-${id}-v11` })),
+      take(await api('POST', `/projects/${id}/formula-versions`, { version: 'F1.1', changeType: 'Minor', confirmNoRelease: true, reason: `${SEED}: preservative level adjusted`, initiatedBy: adminName, expectedVersion: version }, { 'Idempotency-Key': `seed-${id}-v11` })),
     );
     await step('formula version F2.0 (Major: reopens Gates 04-09)', async () => {
       await reload();
-      take(await api('POST', `/projects/${id}/formula-versions`, { version: 'F2.0', changeType: 'Major', reason: `${SEED}: new emollient system and preservative`, initiatedBy: adminName, majorCriteria: [MAJOR_CHANGE_CRITERIA[0].id, MAJOR_CHANGE_CRITERIA[2].id], classificationConfirmedBy: adminName, expectedVersion: version }, { 'Idempotency-Key': `seed-${id}-v20` }));
+      take(await api('POST', `/projects/${id}/formula-versions`, { version: 'F2.0', changeType: 'Major', confirmNoRelease: true, reason: `${SEED}: new emollient system and preservative`, initiatedBy: adminName, majorCriteria: [MAJOR_CHANGE_CRITERIA[0].id, MAJOR_CHANGE_CRITERIA[2].id], classificationConfirmedBy: adminName, expectedVersion: version }, { 'Idempotency-Key': `seed-${id}-v20` }));
     });
   }
 
@@ -354,8 +354,8 @@ async function main() {
       lines.map((l) => ({ line: l.line, rmCode: l.rmCode, inciName: l.inciName, functionRole: l.functionRole, supplier: l.supplier, percentWw: l.rmCode === 'RM-008' ? 0.8 + n * 0.1 : l.rmCode === 'RM-001' ? Math.round((l.percentWw - n * 0.1) * 10) / 10 : l.percentWw, costPerKg: l.costPerKg, evidenceLink: l.evidenceLink, rmDisplayName: l.rmDisplayName, fromCosmetri: false, reconciled: false }));
     let previous = first;
     for (const [n, spec] of [
-      { version: 'F1.1', changeType: 'Minor', reason: `${SEED}: preservative level adjusted` },
-      { version: 'F2.0', changeType: 'Major', reason: `${SEED}: new emollient system and preservative` },
+      { version: 'F1.1', changeType: 'Minor', confirmNoRelease: true, reason: `${SEED}: preservative level adjusted` },
+      { version: 'F2.0', changeType: 'Major', confirmNoRelease: true, reason: `${SEED}: new emollient system and preservative` },
     ].entries()) {
       await prisma.formulaVersion.update({ where: { id: previous.id }, data: { status: 'Superseded' } });
       previous = await prisma.formulaVersion.create({

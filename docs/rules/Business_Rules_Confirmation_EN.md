@@ -1029,6 +1029,20 @@ The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **
 
 **(b)** Gate 4 records the initial screen. Matching and assessment remain current through formulation; Gate 7 closes issues for the final formula. Subsequent relevant changes require a new controlled assessment. Ordinary pre-lock trial refinement can update the screen without reopening every earlier gate; a new material, hazard or restriction that invalidates Gate 4 must reopen its affected review. Gate 7 is the final safety checkpoint, not permission to ignore an earlier unsafe change.
 
+### Question 5 — Formula version supersession and transition
+
+**Verdict:** ✅ built (2026-11-11). (a) differs from what was built (the project's Lead confirmed all ten facts); (b) matches in effect but the state is now kept per market; (c) differs (a Minor change started the transition at once); (d) differs in that a person now confirms there was no release; (e) differs (the schedule is now anchored to the first launch and a changed formula has its own early reviews). Our readings of which fact belongs to which function and of a few details are asked in Round 6, question 11.
+
+**(a)** Each fact is confirmed by its accountable function — R&I; for formula identity, Quality/Manufacturing for batch and last-release facts, Regulatory for PIF/notification/labelling obligations, Supply Chain for stock disposition, and Sales/Marketing for market communications. Quality coordinates final per-market supersession; the authorised final approver confirms the completed transition. Assign named authorised signers to these functions.
+
+**(b)** Use approved market implementation/release of the replacement at Gate 11 as the normal start of transition. Gate 10 dossier approval alone is insufficient. A different approved implementation date may be set in the CHG transition plan. Keep Active/Transition/Superseded per market and derive the overall version status from those market states.
+
+**(c)** No automatic immediate transition for a Minor change. Use its approved effective date and actual stock/release implications. A documentation-only correction that leaves the manufactured formula unchanged is a document revision and does not require a stock transition. Classification as Minor never removes an affected safety, regulatory or release check.
+
+**(d)** Yes, a never-released development version may be superseded without a sales/stock transition. Record the replacement and reason, and confirm there was no release. Retain its trial and study history.
+
+**(e)** Keep the market surveillance schedule and separate version/batch traceability. A materially changed launched formula needs its own early performance/safety review milestones. Do not restart or erase the older version's obligations; combined market reviews may cover both where the analysis identifies each version.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

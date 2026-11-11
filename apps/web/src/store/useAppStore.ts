@@ -139,6 +139,8 @@ interface AppState {
       initiatedBy?: string;
       majorCriteria?: string[];
       classificationConfirmedBy?: string;
+      documentationOnly?: boolean;
+      confirmNoRelease?: boolean;
     },
   ) => Promise<boolean>;
 
@@ -168,10 +170,11 @@ interface AppState {
   ) => Promise<PhaseContentChangedBody | null>;
   withdrawSignOff: (id: string, phase: number, role: SignOff['role'], reason: string) => void;
   setPostLaunchReviews: (id: string, reviews: ProjectData['postLaunchReviews']) => void;
-  setSupersessionDecision: (
-    id: string,
-    decision: ProjectData['supersessionDecisions'][number] & { confirm?: boolean },
-  ) => Promise<void>;
+  setSupersessionDecision: (id: string, decision: ProjectData['supersessionDecisions'][number]) => Promise<void>;
+  // Round 5 question 5(a): the three acts that follow the facts.
+  confirmSupersessionFact: (id: string, input: { version: string; market: string; factKey: string }) => Promise<void>;
+  coordinateSupersession: (id: string, input: { version: string; market: string }) => Promise<void>;
+  approveSupersession: (id: string, input: { version: string; market: string }) => Promise<void>;
   // Per-gate sign-off (Round 4 questions 18/29). `market` is undefined on Gates 1-9.
   setGateSignOffAssignees: (
     id: string,
@@ -632,6 +635,9 @@ export const useAppStore = create<AppState>()(
           writeSection(id, (v) => projectsApi.setPostLaunchReviews(id, reviews, v)),
         setSupersessionDecision: (id, decision) =>
           writeSection(id, (v) => projectsApi.setSupersessionDecision(id, decision, v)),
+        confirmSupersessionFact: (id, input) => writeSection(id, (v) => projectsApi.confirmSupersessionFact(id, input, v)),
+        coordinateSupersession: (id, input) => writeSection(id, (v) => projectsApi.coordinateSupersession(id, input, v)),
+        approveSupersession: (id, input) => writeSection(id, (v) => projectsApi.approveSupersession(id, input, v)),
         setGateRepresentative: (id, gateId, market, input) =>
           writeSection(id, (v) => projectsApi.setGateRepresentative(id, gateId, market, input, v)),
         setGateSignOffAssignees: (id, gateId, market, assignments) =>

@@ -512,6 +512,14 @@ model SupersessionDecision {
   salesMarketingCommunication  String?
   distributorCommunication     String?
   noFurtherBatchesConfirmed    Boolean   @default(false)
+  // Round 5 question 5(a): each fact is confirmed by the function accountable for it — { factKey: { by, at } } — then Quality
+  // coordinates the market's supersession and the authorised final approver confirms the completed transition. confirmedBy /
+  // confirmedAt are now the FINAL approval (and still the single confirmation of a decision recorded before this existed).
+  factConfirmations            Json      @default("{}")
+  coordinatedBy                String?
+  coordinatedAt                DateTime?
+  finalApprovedBy              String?
+  finalApprovedAt              DateTime?
   confirmedBy                  String?
   confirmedAt                  DateTime?
   notes                        String?
@@ -982,6 +990,10 @@ model FormulaVersion {
   // moves the old version to "Transition in Progress", and only a person's
   // per-market SupersessionDecision moves it to Superseded.
   status            String   @default("Active")
+  // Round 5 question 5(c)/(d): a documentation-only correction (the manufactured formula is unchanged) is a document revision and needs no
+  // stock transition; a version that was never released is superseded once a person has confirmed there was no release.
+  documentationOnly Boolean  @default(false)
+  noReleaseConfirmedBy String?
   createdAt         DateTime @default(now())
 
   bomLines     BomLine[]
