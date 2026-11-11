@@ -2,7 +2,7 @@
 
 **Gửi:** đội chuyên môn (NPD / Quality / Regulatory / Safety)
 
-Vòng này có mười bốn câu. Chúng nảy ra từ đáp án câu 1, 2, 3, 4, 5, 6, 7, 8 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường; câu 12 hỏi nên đọc thế nào "critical" và quy tắc Change Control cho một thay đổi Claims Library; câu 13 hỏi nên đọc thế nào các chi tiết của đánh giá scale-up theo từng vùng.
+Vòng này có mười lăm câu. Chúng nảy ra từ đáp án câu 1, 2, 3, 4, 5, 6, 7, 8, 9 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường; câu 12 hỏi nên đọc thế nào "critical" và quy tắc Change Control cho một thay đổi Claims Library; câu 13 hỏi nên đọc thế nào các chi tiết của đánh giá scale-up theo từng vùng.
 
 Chỗ nào ghi "nhóm phát triển phần mềm" là nhóm đang xây ứng dụng, không phải chủ của một dự án phát triển sản phẩm.
 
@@ -398,3 +398,26 @@ Các bạn đã xác nhận người đánh giá chuyên môn đủ thẩm quy�
 **(c)** Có thật sự ai cũng được ghi đánh giá Critical không?
 
 **(d)** Khi status nêu một function nhưng Owner nêu function kia, có cần cả hai không?
+
+## Câu 15 — Gap được mang bởi Next Action có theo dõi: nên đọc thế nào các chi tiết câu trả lời để ngỏ?
+
+*Vị trí trong ứng dụng:* khối **Gap assessment** trên tab gate (khi Stage status là Gap), và bảng **Next Actions** trên cùng tab.
+
+Các bạn đã nói mọi gap còn tồn tại khi gate đi tiếp — High, Medium hay Low — được mang bởi một Next Action có theo dõi gồm owner, due date, tiêu chí hoàn thành và escalation trigger; gap hiển thị owner và ngày của action thay vì bản sao riêng; và ngày trong văn bản tự do là không đủ. Chúng tôi đã xây phần đó. Chỗ câu trả lời để ngỏ, chúng tôi đọc như sau:
+
+- **"Controlled"** nghĩa là action có mô tả, tiêu chí hoàn thành, owner chịu trách nhiệm, due date và escalation trigger, và chưa bị Cancelled. Action phải được tạo trên đúng gate của gap. Bằng chứng và xác minh được ghi lúc đóng action nên không cần có sẵn để liên kết.
+- **Action đã Closed vẫn tính**: gap đã được xử lý.
+- **Áp cho High, Medium và Low** khi mang qua Proceed with Conditions, và cho cả mức High còn được ghi dù status đã rời Gap.
+- **"Function đủ thẩm quyền chấp nhận rủi ro còn lại"** vẫn là assessor ghi trên đánh giá; chúng tôi chưa kiểm họ thuộc function nào.
+- **"Không liên quan tiền đề bắt buộc về an toàn, quy định hay phát hành"** do chính readiness list đảm nhiệm: một quy tắc bắt buộc bị vi phạm đã là blocker riêng.
+- **Gap Low hoặc Medium đã giải quyết trước khi ký** không cần thêm gì: giải pháp và bằng chứng ghi ở Rationale và Evidence link, ứng dụng không ép.
+- **Các ô cũ Required action và Action owner** dạng văn bản của gap chỉ còn hiển thị như lịch sử và không còn được tính.
+- **Finding** (watch-list và safety finding) vẫn theo luật cũ, một action thật được liên kết và không bị Cancelled, chưa bị đòi đủ các trường.
+
+**(a)** Nghĩa của "controlled" như vậy có đúng không — đặc biệt, tiêu chí hoàn thành và escalation trigger có bắt buộc không?
+
+**(b)** Có nên áp cùng định nghĩa cho action mang một finding watch-list hay safety không?
+
+**(c)** Gap Low hoặc Medium đã giải quyết trước khi ký có cần bắt buộc ghi giải pháp và bằng chứng không?
+
+**(d)** Function nào nên chấp nhận rủi ro còn lại của một gap High?

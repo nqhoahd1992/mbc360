@@ -344,6 +344,8 @@ model GateRecord {
   gapEvidenceLink    String?
   gapRequiredAction  String?
   gapActionOwner     String?
+  // Round 5 question 9: the tracked Next Action that carries this gap (a gap displays its owner and date rather than keeping its own).
+  gapLinkedNextActionId String?
 
   updatedAt    DateTime  @updatedAt
 
@@ -370,6 +372,10 @@ model NextAction {
   // the raiser and the verifier are recorded separately from `owner`/`closedBy`.
   raisedBy      String?
   verifiedBy    String?
+  // Round 5 question 9: what a controlled action holds besides owner, due date and priority.
+  completionCriteria String?
+  escalationTrigger  String?
+  evidenceLink       String?
   // The market this action belongs to on a gate signed per market (Gates 10-12). Null = every market, which holds every lane.
   market        String?
   createdAt     DateTime  @default(now())

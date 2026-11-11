@@ -1071,6 +1071,14 @@ Các **câu hỏi về quy tắc đã đóng** (chỉ F12 còn chờ Cosmetri). 
 
 **(b)** Thẩm quyền áp cho mọi đánh giá thực chất làm sạch hoặc đổi một finding an toàn/quy định, gồm "No issue identified", "Considered - not selected" khi nó loại một match, việc đóng và chấp nhận có điều kiện. Nhập nháp có thể uỷ quyền. "Further information required" một mình không phải chấp nhận: người đánh giá đủ thẩm quyền phải kết luận riêng rằng phần chưa chắc là non-critical, có giới hạn và an toàn để mang theo, kèm hành động liên kết. Chất/cách dùng bị cấm hoặc rủi ro an toàn nghiêm trọng chưa giải quyết không thể đi tiếp có điều kiện.
 
+### Câu 9 — Hành động có kiểm soát cho gap
+
+**Kết luận:** ✅ đã xây cho gap (11/11/2026); cùng câu trả lời cho yêu cầu Should/Could bị hoãn được xây ở câu 15. Khác cái đã xây (gap giữ action và owner dạng văn bản, không có ngày). Các chỗ ta đọc được hỏi ở Vòng 6, câu 15.
+
+Dùng Next Action có theo dõi cho mọi gap còn tồn tại khi gate đi tiếp, gồm High, Medium và Low, và cho mọi yêu cầu Should/Could bị hoãn. Gap Critical chặn tiến trình. Gap Low/Medium đã giải quyết trước khi ký cần ghi giải pháp/bằng chứng; không bắt buộc tạo action chỉ để đóng ngay.
+
+Action giữ ID duy nhất, liên kết nguồn gap/finding/yêu cầu, mô tả và tiêu chí hoàn thành, owner chịu trách nhiệm, due date, priority, escalation trigger, status, bằng chứng và thông tin đóng/xác minh. Gap hiển thị owner/ngày từ action liên kết, không lưu bản sao cạnh tranh. Gap High còn cần người đủ thẩm quyền chấp nhận rủi ro còn lại và không được liên quan tiền đề bắt buộc về an toàn/quy định/phát hành. Ngày nằm trong văn bản tự do là không đủ.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

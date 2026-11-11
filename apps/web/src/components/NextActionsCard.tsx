@@ -279,6 +279,33 @@ export default function NextActionsCard({
                 onChange={(v) => patch(at(a), { priority: v })}
               />
             </RecordField>
+            {/* Round 5 question 9: a controlled action also holds how completion is judged, when it escalates and the closure
+                evidence. A gap can only be carried by an action that has the first two. [ASSUMPTION: R6-Q15] */}
+            <RecordField label="Completion criteria" wide>
+              <Input.TextArea
+                autoSize={{ minRows: 2 }}
+                disabled={recordLocked(a) || freezeOf(a).all}
+                value={a.completionCriteria ?? ''}
+                placeholder="How will we know it is done?"
+                onChange={(e) => patch(at(a), { completionCriteria: e.target.value })}
+              />
+            </RecordField>
+            <RecordField label="Escalation trigger" wide>
+              <Input
+                disabled={recordLocked(a) || freezeOf(a).all}
+                value={a.escalationTrigger ?? ''}
+                placeholder="What makes this escalate (for example, overdue by a week)?"
+                onChange={(e) => patch(at(a), { escalationTrigger: e.target.value })}
+              />
+            </RecordField>
+            <RecordField label="Evidence link" wide>
+              <Input
+                disabled={recordLocked(a) || freezeOf(a).all}
+                value={a.evidenceLink ?? ''}
+                placeholder="Link to the closure evidence"
+                onChange={(e) => patch(at(a), { evidenceLink: e.target.value })}
+              />
+            </RecordField>
             <RecordField label="Status" wide>
               <Select style={{ width: '100%' }} disabled={freezeOf(a).all} value={a.status} options={statusOptions(a)} onChange={(v: NextActionStatus) => setStatus(at(a), v)} />
               {/* Written out rather than left in the disabled options' tooltip:

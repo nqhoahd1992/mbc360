@@ -205,6 +205,7 @@ function toGateRecord(g: ProjectWithAll['gates'][number]): GateRecord {
     gapEvidenceLink: opt(g.gapEvidenceLink),
     gapRequiredAction: opt(g.gapRequiredAction),
     gapActionOwner: opt(g.gapActionOwner),
+    gapLinkedNextActionId: opt(g.gapLinkedNextActionId),
   };
 }
 
@@ -750,6 +751,9 @@ function toProjectDataRaw(
       dateCompleted: dateOnly(a.dateCompleted),
       raisedBy: opt(a.raisedBy),
       verifiedBy: opt(a.verifiedBy),
+      completionCriteria: opt(a.completionCriteria),
+      escalationTrigger: opt(a.escalationTrigger),
+      evidenceLink: opt(a.evidenceLink),
       ...(a.market ? { market: a.market } : {}),
     })),
     // E3(b): the readiness engine evaluates each open change's impact at Gate 11,

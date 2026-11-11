@@ -10,7 +10,8 @@
 // This is also the missing half of confirmed rule F7, whose "critical gap → Hold /
 // Backtrack / Reject" branch has been unenforceable since it was confirmed,
 // because nothing recorded whether a gap was critical.
-import type { GateDecision, GateRecord } from '../types';
+import type { GateDecision, GateRecord, NextAction } from '../types';
+import { controlledActionGaps } from './controlledActions';
 
 // Why a decision is refused on a gap, in the words the user needs to act on. `null`
 // means the decision is allowed.
@@ -48,24 +49,27 @@ const text = (value: unknown): string => (typeof value === 'string' ? value.trim
 // exist before it can mean anything; until then the assessor's name standing
 // against the assessment is the nearest record of who accepted the risk.
 //
-// ⚠️ Condition 3 is enforced by HALF. It says "a controlled action **and due date**
-// are recorded", and a gap has nowhere to put a due date: question 3's own field
-// list is the eight fields on `GateRecord`, and none of them is a date for the
-// action. Nor is "controlled" settled — question 33(c), the same round, defines a
-// controlled action as a linked Next Action and says free text "must not replace
-// the controlled action record", while question 3 lists Required action and Action
-// owner as plain fields, which reads like the self-contained version. The two
-// readings need different data (a ninth column, or a Next Action picker like the
-// one on safety findings), so this does not guess — it enforces what exists and
-// says on screen what it does not [ASSUMPTION: R5-Q16].
-const HIGH_GAP_CONTROLS: { field: keyof GateRecord; label: string }[] = [
-  { field: 'gapRequiredAction', label: 'a required action' },
-  { field: 'gapActionOwner', label: 'an action owner' },
-  { field: 'gapAssessor', label: 'the assessor who accepted the risk' },
-];
-
-function missingHighGapControls(gate: GateRecord): string[] {
-  return HIGH_GAP_CONTROLS.filter(({ field }) => text(gate[field]) === '').map(({ label }) => label);
+// Condition 3 — "a controlled action and due date are recorded" — settled by Round 5 question 9: EVERY gap that is carried
+// (High, Medium and Low) points at a tracked Next Action on this gate that is complete (description, completion criteria,
+// accountable owner, due date, escalation trigger) and not cancelled; the gap shows the action's owner and date rather than
+// keeping its own. The assessor named on the assessment stands as the qualified acceptance of the residual risk, as before
+// [ASSUMPTION: R5-Q16] for who accepts, [ASSUMPTION: R6-Q15] for the reading of "controlled".
+function missingGapControls(gate: GateRecord, nextActions: NextAction[]): string[] {
+  const missing: string[] = [];
+  if (text(gate.gapAssessor) === '') missing.push('the assessor who accepted the risk');
+  const id = text(gate.gapLinkedNextActionId);
+  const action = id ? nextActions.find((a) => a.id === id) : undefined;
+  if (!action) {
+    missing.push('a linked tracked Next Action');
+  } else if (action.gateId !== gate.gateId) {
+    missing.push(`a linked Next Action raised on ${gate.gateId} (the linked one belongs to ${action.gateId})`);
+  } else if (action.status === 'Cancelled') {
+    missing.push('a linked Next Action that is not cancelled');
+  } else {
+    const gaps = controlledActionGaps(action);
+    if (gaps.length > 0) missing.push(`the linked Next Action to have ${gaps.join(', ')}`);
+  }
+  return missing;
 }
 
 // Is `decision` allowed on this gate, given its gap assessment? Returns null when
@@ -74,7 +78,7 @@ function missingHighGapControls(gate: GateRecord): string[] {
 // Called from BOTH the API guard and the Gate Flow table, so the two cannot drift:
 // the server is the authority (BACKEND_PLAN §3 principle 7) and the UI uses this
 // only to avoid offering a decision the server would reject.
-export function gapBlocksDecision(gate: GateRecord, decision: GateDecision): GapVerdict | null {
+export function gapBlocksDecision(gate: GateRecord, decision: GateDecision, nextActions: NextAction[]): GapVerdict | null {
   if (decision !== 'Proceed' && decision !== 'Proceed with Conditions') return null;
 
   const criticality = text(gate.gapCriticality);
@@ -94,7 +98,7 @@ export function gapBlocksDecision(gate: GateRecord, decision: GateDecision): Gap
     if (decision === 'Proceed') {
       return { reason: stillRecorded, allowed: ['Proceed with Conditions', 'Hold', 'Backtrack'] };
     }
-    const missing = missingHighGapControls(gate);
+    const missing = missingGapControls(gate, nextActions);
     return missing.length > 0 ? { reason: stillRecorded, allowed: ['Hold', 'Backtrack'], missing } : null;
   }
 
@@ -127,7 +131,7 @@ export function gapBlocksDecision(gate: GateRecord, decision: GateDecision): Gap
         allowed: ['Proceed with Conditions', 'Hold', 'Backtrack'],
       };
     }
-    const missing = missingHighGapControls(gate);
+    const missing = missingGapControls(gate, nextActions);
     if (missing.length > 0) {
       return {
         reason: 'a High gap may be carried under Proceed with Conditions only once its controls are recorded',
@@ -146,15 +150,15 @@ export function gapBlocksDecision(gate: GateRecord, decision: GateDecision): Gap
   // Proceed with Conditions "only when … an authorised reviewer accepts the
   // temporary risk, and a controlled Next Action (owner, due date, escalation) is
   // created". That half was enforced for High alone (SME rule audit D,
-  // 2026-10-04); it now applies at every grade. What counts as the controlled
-  // action is the same open question as for High [ASSUMPTION: R5-Q16].
+  // 2026-10-04); it now applies at every grade, with the same tracked Next
+  // Action as for High (Round 5 question 9) [ASSUMPTION: R6-Q15].
   if (decision === 'Proceed') {
     return {
       reason: `the stage status is Gap (assessed ${criticality})`,
       allowed: ['Proceed with Conditions', 'Hold', 'Backtrack'],
     };
   }
-  const missing = missingHighGapControls(gate);
+  const missing = missingGapControls(gate, nextActions);
   if (missing.length > 0) {
     return {
       reason: 'a gap may be carried under Proceed with Conditions only once its controls are recorded (F7)',

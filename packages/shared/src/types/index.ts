@@ -318,8 +318,12 @@ export interface GateRecord {
   gapAssessmentDate?: string;
   gapRationale?: string;
   gapEvidenceLink?: string;
+  // Before Round 5 question 9 these two held the action as plain text. They are kept so older records still read, but a gap
+  // is now carried by a tracked Next Action (`gapLinkedNextActionId`), whose owner and due date it displays instead of storing
+  // competing copies.
   gapRequiredAction?: string;
   gapActionOwner?: string;
+  gapLinkedNextActionId?: string;
 }
 
 // Audit trail for ordinary Phase Gate Flow edits (status/decision/owner/due
@@ -1283,6 +1287,11 @@ export interface NextAction {
   // owner ≠ verifier authorisation itself is enforced once real roles land (F6).
   raisedBy?: string;
   verifiedBy?: string;
+  // Round 5 question 9: what a controlled action holds besides an owner, due date and priority — how completion is judged, the
+  // escalation trigger, and the closure evidence. [ASSUMPTION: R6-Q15]
+  completionCriteria?: string;
+  escalationTrigger?: string;
+  evidenceLink?: string;
   // Gates 10-12 are signed per market, so an action belongs to ONE market or to all of them (project owner, 2026-11-11: an open
   // action in one market must not hold another). Absent = every market, which holds every lane — the same convention as a change
   // record that names no market (SW-54). Always absent on a gate that is not signed per market.

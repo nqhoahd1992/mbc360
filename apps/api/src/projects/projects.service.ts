@@ -272,6 +272,7 @@ const GAP_ASSESSMENT_FIELDS = [
   'gapEvidenceLink',
   'gapRequiredAction',
   'gapActionOwner',
+  'gapLinkedNextActionId',
 ] as const satisfies readonly (keyof GateRecord)[];
 
 // A value the engine compares exactly must be one of its list's values (SME rule
@@ -4795,6 +4796,9 @@ export class ProjectsService {
           dateCompleted: this.dateOrNull(a.dateCompleted),
           raisedBy: a.raisedBy ?? null,
           verifiedBy: a.verifiedBy ?? null,
+          completionCriteria: a.completionCriteria ?? null,
+          escalationTrigger: a.escalationTrigger ?? null,
+          evidenceLink: a.evidenceLink ?? null,
         };
         if (keep.has(a.id)) {
           await tx.nextAction.update({ where: { id: a.id }, data });
@@ -6022,7 +6026,7 @@ export class ProjectsService {
     // Evaluated against the gate as it will be after this patch (`status` is the
     // requested status, the gap fields come from the merged record), so changing the
     // status and the decision in one save cannot slip past it.
-    const gapVerdict = gapBlocksDecision(nextGate, requested);
+    const gapVerdict = gapBlocksDecision(nextGate, requested, project.nextActions);
     if (gapVerdict) {
       // `missing` means the decision becomes valid once those fields are recorded,
       // so the message must not tell the caller to pick a different decision — the

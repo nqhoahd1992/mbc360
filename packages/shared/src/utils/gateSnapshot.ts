@@ -131,6 +131,7 @@ const GATE_RECORD_FIELDS = [
   'gapEvidenceLink',
   'gapRequiredAction',
   'gapActionOwner',
+  'gapLinkedNextActionId',
 ] as const;
 const GATE_CHECK_DETAIL_FIELDS = ['date', 'evidenceRef', 'methodRef', 'internalLink', 'initials'] as const;
 

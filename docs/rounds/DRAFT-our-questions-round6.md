@@ -2,7 +2,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-This round has fourteen questions. They follow from your answers to questions 1, 2, 3, 4, 5, 6, 7, 8 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared; question 11 asks how the details of a version's supersession market by market should be read; question 12 asks how "critical" and the Change Control rule for a Claims Library change should be read; question 13 asks how the details of the scale-up assessment, area by area, should be read; question 14 asks how the details of who may accept a watch-list finding should be read.
+This round has fifteen questions. They follow from your answers to questions 1, 2, 3, 4, 5, 6, 7, 8, 9 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared; question 11 asks how the details of a version's supersession market by market should be read; question 12 asks how "critical" and the Change Control rule for a Claims Library change should be read; question 13 asks how the details of the scale-up assessment, area by area, should be read; question 14 asks how the details of who may accept a watch-list finding should be read; question 15 asks how the details of a gap carried by a tracked Next Action should be read.
 
 Where we say "the software development team" we mean the team building this application — not the owner of any product development project.
 
@@ -398,3 +398,26 @@ You confirmed that the qualified subject reviewer records the acceptance, that w
 **(c)** May anyone really record a Critical assessment?
 
 **(d)** When the status names one function but the Owner names the other, are both needed?
+
+## Question 15 — A gap carried by a tracked Next Action: how should we read the details your answer leaves open?
+
+*Where in the application:* the **Gap assessment** block on a gate tab (when the Stage status is Gap), and the **Next Actions** table on that tab.
+
+You told us that every gap left unresolved when a gate proceeds — High, Medium or Low — is carried by a tracked Next Action holding an owner, due date, completion criteria and escalation trigger, that the gap displays the action's owner and date rather than its own copies, and that a date in free text is not enough. We have built that. Where your answer leaves a detail open we read it as follows:
+
+- **"Controlled"** means the action has a description, completion criteria, an accountable owner, a due date and an escalation trigger, and has not been cancelled. The action must be one raised on the gap's own gate. Evidence and verification are recorded as the action is closed, so they are not needed to link it.
+- **A Closed action still counts**: the gap has been dealt with.
+- **It applies to High, Medium and Low** when carried under Proceed with Conditions, and to a High grade that is still recorded after the status has left Gap.
+- **"A qualified function accepts the residual risk"** is still the assessor named on the assessment; we do not yet check which function they belong to.
+- **"No mandatory safety, regulatory or release prerequisite"** is handled by the readiness list itself: a breached mandatory rule is already a blocker in its own right.
+- **A Low or Medium gap resolved before signing** needs nothing more: its resolution and evidence go in the Rationale and Evidence link, and the application does not insist on them.
+- **The older plain-text Required action and Action owner** of a gap are shown as history only and no longer count.
+- **Findings** (the watch-lists and the safety findings) still use the older rule, a real linked action that is not cancelled, and are not yet held to the full list of fields.
+
+**(a)** Is that the right meaning of "controlled" — in particular, are completion criteria and an escalation trigger required?
+
+**(b)** Should the same definition apply to the actions that carry a watch-list or safety finding?
+
+**(c)** Does a Low or Medium gap resolved before signing need its resolution and evidence to be mandatory?
+
+**(d)** Which function should accept the residual risk of a High gap?

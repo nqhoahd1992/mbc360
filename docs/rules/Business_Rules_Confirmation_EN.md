@@ -1071,6 +1071,14 @@ The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **
 
 **(b)** Authority applies to every substantive assessment that clears or changes a safety/regulatory finding, including "No issue identified", "Considered - not selected" where it removes a match, closure and conditional acceptance. Draft entry may be delegated. "Further information required" alone is not acceptance: a qualified reviewer must separately conclude that the remaining uncertainty is non-critical, bounded and safe to carry, with a linked action. A prohibited ingredient/use or unresolved critical safety uncertainty cannot proceed conditionally.
 
+### Question 9 — Controlled actions for gaps
+
+**Verdict:** ✅ built for gaps (2026-11-11); the same answer for a deferred Should/Could requirement is built under question 15. It differs from what was built (a gap held a plain-text action and owner and no date). Our readings of the details are asked in Round 6, question 15.
+
+Use tracked Next Actions for every gap left unresolved when a gate proceeds, including High, Medium and Low, and for every deferred Should/Could requirement. Critical gaps block progression. A Low/Medium gap resolved before signing needs its resolution/evidence recorded; it need not create an action solely to close it immediately.
+
+The action holds a unique ID, source gap/finding/requirement link, description and completion criteria, accountable owner, due date, priority, escalation trigger, status, evidence and closure/verification details. The gap displays the linked owner/date rather than storing competing copies. High gaps additionally require qualified acceptance of the residual risk and must not concern a mandatory safety/regulatory/release prerequisite. A due date buried in free text is insufficient.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

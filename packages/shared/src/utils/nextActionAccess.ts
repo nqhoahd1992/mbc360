@@ -86,6 +86,7 @@ export function nextActionFreeze(committed: NextAction | undefined, gatePassed: 
 // they move with it on an open action and are not separately editable.
 const FROZEN_WHEN_TERMINAL = [
   'description', 'gateId', 'owner', 'dueDate', 'priority', 'status', 'dateCompleted', 'verifiedBy',
+  'completionCriteria', 'escalationTrigger', 'evidenceLink',
 ] as const;
 const FROZEN_WHEN_OPEN = ['description', 'gateId', 'priority'] as const;
 

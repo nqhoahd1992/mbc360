@@ -4,11 +4,12 @@ import { useAppStore } from '../store/useAppStore';
 import StopProjectAction from './StopProjectAction';
 import ChoiceSelect from './ChoiceSelect';
 import dayjs from 'dayjs';
-import type { GateRecord, RiskLevel } from '@mbc360/shared/types';
+import type { GateRecord, NextAction, RiskLevel } from '@mbc360/shared/types';
 import { GAP_IMPACT_CATEGORIES, RISK_LEVELS } from '@mbc360/shared/types';
 import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
 import SelfAttestField from './SelfAttestField';
-import UserSelect from './UserSelect';
+import NextActionSelect from './NextActionSelect';
+import { controlledActionGaps } from '@mbc360/shared/utils/controlledActions';
 import '../styles/concept.css';
 import './GapAssessmentBlock.css';
 
@@ -29,6 +30,8 @@ import './GapAssessmentBlock.css';
 // label at all — once filled, "High / Safety / 2026-10-05" no longer said which
 // field was which — at six hard-coded widths, with no container or heading, while
 // every other group on the page is a titled block on a labelled grid.
+const NO_ACTIONS: NextAction[] = [];
+
 export default function GapAssessmentBlock({
   gate,
   locked,
@@ -49,22 +52,22 @@ export default function GapAssessmentBlock({
   // the consequence is visible before someone picks it rather than after Save fails.
   const consequence: Record<RiskLevel, string> = {
     Critical: 'cannot be carried under any Proceed decision — the gate must go to Hold or Backtrack',
-    // The disclosure at the end is deliberate: the rule asks for "a controlled
-    // action AND due date", and a gap has no field for that date (question 3's own
-    // field list does not include one). Saying so here beats enforcing the half we
-    // can and reporting the rule as covered — the second of the two mistakes
-    // CLAUDE.md records this project having already made [ASSUMPTION: R5-Q16].
-    High: 'may be carried under Proceed with Conditions only, and only with a required action, an owner and the assessor recorded — put the action\'s due date in the action text for now, as there is no field for it yet',
-    Medium: 'blocks a plain Proceed; Proceed with Conditions carries it',
-    Low: 'blocks a plain Proceed; Proceed with Conditions carries it',
+    // Round 5 question 9: the action is a tracked Next Action, so owner and date live there. [ASSUMPTION: R6-Q15]
+    High: 'may be carried under Proceed with Conditions only, with the assessor recorded and a tracked Next Action that has an owner, a due date, completion criteria and an escalation trigger',
+    Medium: 'blocks a plain Proceed; Proceed with Conditions carries it once the same tracked Next Action is linked',
+    Low: 'blocks a plain Proceed; Proceed with Conditions carries it once the same tracked Next Action is linked',
   };
 
   // Which fields still stand between this gap and a Proceed with Conditions, read
   // from the SAME function the API guard uses rather than a second list here —
   // the two cannot drift, and a field marked required on screen is exactly one
   // the server would name. Empty for Critical, which no Proceed can carry at all.
-  const missing = graded ? (gapBlocksDecision(gate, 'Proceed with Conditions')?.missing ?? []) : [];
+  const nextActions = project?.nextActions ?? NO_ACTIONS;
+  const missing = graded ? (gapBlocksDecision(gate, 'Proceed with Conditions', nextActions)?.missing ?? []) : [];
   const needs = (label: string) => missing.some((m) => m.includes(label));
+  const linked = nextActions.find((a) => a.id === (gate.gapLinkedNextActionId ?? ''));
+  const linkedGaps = linked ? controlledActionGaps(linked) : [];
+  const hasLegacy = (gate.gapRequiredAction ?? '').trim() !== '' || (gate.gapActionOwner ?? '').trim() !== '';
 
   const state = !graded
     ? { tone: 'gap-state-open', text: 'Not yet assessed — a qualified reviewer must record how critical this gap is. Until then the gate can only go to Hold or Backtrack.' }
@@ -149,29 +152,30 @@ export default function GapAssessmentBlock({
               />
             </label>
 
-            <label className="gap-fld gap-wide">
+            <div className="gap-fld gap-wide">
               <span className="gap-label">
-                Required action{needs('required action') && <span className="gap-req"> · required</span>}
+                Tracked Next Action{needs('Next Action') && <span className="gap-req"> · required</span>}
               </span>
-              <Input
+              <NextActionSelect
                 disabled={locked}
-                placeholder="What has to happen about this gap"
-                value={gate.gapRequiredAction}
-                onChange={(e) => onChange({ gapRequiredAction: e.target.value })}
+                value={gate.gapLinkedNextActionId || undefined}
+                onChange={(v) => onChange({ gapLinkedNextActionId: v ?? '' })}
               />
-            </label>
-
-            <label className="gap-fld">
-              <span className="gap-label">
-                Action owner{needs('action owner') && <span className="gap-req"> · required</span>}
-              </span>
-              <UserSelect
-                disabled={locked}
-                placeholder="Select a person"
-                value={gate.gapActionOwner}
-                onChange={(v?: string) => onChange({ gapActionOwner: v ?? '' })}
-              />
-            </label>
+              {/* The gap shows the action's owner and date instead of keeping its own copies (Round 5 question 9). */}
+              {linked ? (
+                <span className="gap-note">
+                  Owner {linked.owner || '—'} · due {linked.dueDate || '—'} · {linked.status}
+                  {linkedGaps.length > 0 && ` — still needs ${linkedGaps.join(', ')} (edit it in the Next Actions table below)`}
+                </span>
+              ) : (
+                <span className="gap-note">Raise the action in the Next Actions table below, save it, then link it here. A date in free text does not count.</span>
+              )}
+              {hasLegacy && (
+                <span className="gap-note">
+                  Recorded before actions were tracked: {gate.gapRequiredAction || '—'} (owner {gate.gapActionOwner || '—'}). It no longer counts.
+                </span>
+              )}
+            </div>
 
             <label className="gap-fld">
               <span className="gap-label">Evidence link</span>

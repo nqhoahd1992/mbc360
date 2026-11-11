@@ -198,7 +198,7 @@ export default function GateSignOffPanel({
     const gate = project.gates.find((g) => g.gateId === gateId);
     if (!gate) return null;
     const next = { ...gate, decision };
-    const verdict = gapBlocksDecision(next, decision);
+    const verdict = gapBlocksDecision(next, decision, project.nextActions);
     if (verdict) {
       const fix = verdict.missing?.length
         ? `Record ${verdict.missing.join(', ')} on the gap assessment, or choose ${verdict.allowed.map((a) => `"${a}"`).join(' or ')} instead`

@@ -246,7 +246,7 @@ export default function GateFlowTable({
       // is the more specific reason — "the gap is Critical" tells the user what to
       // do, where "stage status is Gap" does not.
       const gapVerdict = r.draftRecord.decision
-        ? gapBlocksDecision(r.draftRecord, r.draftRecord.decision)
+        ? gapBlocksDecision(r.draftRecord, r.draftRecord.decision, project.nextActions)
         : null;
       // Two different remedies, and telling them apart matters: `missing` means the
       // decision becomes valid once those fields are filled in (so pointing the user
