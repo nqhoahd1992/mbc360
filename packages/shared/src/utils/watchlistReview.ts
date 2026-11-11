@@ -72,52 +72,79 @@ export function watchlistRowsInScope(rows: RegisterRow[], gateId?: string): Regi
   return gateId ? rows.filter((r) => watchlistRowInScope(r, gateId)) : rows;
 }
 
-// Which authority a flagged row needs from the person who ASSESSES it as one that may be carried under Proceed with
-// Conditions (SW-32, project owner, 2026-10-14). Round 4 question 32(c) says "the gate approver has the required Safety or
-// Regulatory authority"; the project owner moved that authority from the approver to the qualified reviewer who records the
-// assessment, so the gate is signed as usual — the readiness list already checks the finding. [ASSUMPTION: R5-Q67]
-// Which authority is required is decided as follows:
+// Which authority a flagged row needs from the people who ACCEPT it — every substantive act that clears or changes the finding
+// (Round 5 question 8, answered; SW-32 for the placement with the qualified reviewer rather than the gate approver). The SME's
+// words: "If both Safety and Regulatory are relevant, obtain both; if neither is assigned, route for triage rather than allowing
+// either by default. An administrator cannot supply a scientific acceptance without the required authority."
+// Which functions are relevant is decided as follows:
 //   - a status that NAMES a function decides it: Needs Safety Review -> Safety, Needs Regulatory Review -> Regulatory;
 //   - otherwise (a "possible formula match" — a status a PERSON chose after the Formula BOM screen showed a match, and
-//     which names no function) the row's own Owner column decides: it names Safety and/or
-//     Regulatory;
-//   - a row whose Owner names both, or neither, is satisfied by either authority.
-// The returned list is what ANY ONE of will satisfy.
+//     which names no function) the row's own Owner column decides: it names Safety and/or Regulatory;
+//   - an Owner naming both needs BOTH; one needs that one; NEITHER means the row goes to triage and nobody may accept it.
+// The returned list is what ALL of must be obtained; an empty list is the triage state. [ASSUMPTION: R6-Q14]
 export type WatchlistAuthority = 'safety' | 'regulatory';
 export function watchlistRequiredAuthority(row: RegisterRow): WatchlistAuthority[] {
   const status = text(row.productStatus);
   if (status === 'Needs Safety Review') return ['safety'];
   if (status === 'Needs Regulatory Review') return ['regulatory'];
   const owner = text(row.owner).toLowerCase();
-  const safety = owner.includes('safety');
-  const regulatory = owner.includes('regulatory');
-  if (safety && !regulatory) return ['safety'];
-  if (regulatory && !safety) return ['regulatory'];
-  return ['safety', 'regulatory'];
+  const out: WatchlistAuthority[] = [];
+  if (owner.includes('safety')) out.push('safety');
+  if (owner.includes('regulatory')) out.push('regulatory');
+  return out;
 }
 
-// The rows whose assessment was just set (or changed) to a verdict that lets a finding be carried under Proceed with
-// Conditions — the act that needs the authority above. Rows are matched by their group name, which is unique on both
-// fixed watch-lists. The same test runs on the server at save and in the drawer, so they cannot disagree.
-export function newlyCarriedVerdictRows(committed: RegisterRow[], next: RegisterRow[]): RegisterRow[] {
-  const carried = (r: RegisterRow | undefined) => {
-    const v = text(r?.reviewerAssessment);
-    return v === WATCHLIST_ASSESSMENT_NON_CRITICAL || v === WATCHLIST_ASSESSMENT_MORE_INFO;
-  };
+// No function is assigned: the row has to be routed (its status set to Needs Safety Review or Needs Regulatory Review) before
+// anyone can accept it. Neither function is allowed by default.
+export function watchlistNeedsTriage(row: RegisterRow): boolean {
+  return watchlistRequiredAuthority(row).length === 0;
+}
+
+// Has the row got a formula match (so a clearing conclusion removes a finding rather than recording a non-event)?
+function hasMatch(row: RegisterRow | undefined): boolean {
+  if (!row) return false;
+  return isFlaggedWatchlistRow(row) || text(row.matchBasis) !== '' || (typeof row.formulaMatchCount === 'number' && row.formulaMatchCount > 0);
+}
+
+// The classifications that CLEAR a matched row ("No issue identified"; "Considered — not selected" where it removes a match).
+const CLEARING_DISPOSITIONS = ['No issue identified', 'Considered — not selected'];
+
+// The rows where a person just did something that clears, closes or conditionally accepts a finding — the acts that need the
+// authority above (Round 5 question 8(b)): a Non-critical or Not-a-true-match assessment, the "safe to carry" conclusion, or a
+// clearing classification on a row that has a match. Raising a finding (Critical) and asking for further information are not
+// acceptance, so anyone may record them. Rows are matched by their group name, which is unique on both fixed watch-lists. The
+// same test runs on the server at save and in the drawer, so they cannot disagree.
+export function newlyAcceptingActRows(committed: RegisterRow[], next: RegisterRow[]): RegisterRow[] {
   return next.filter((row) => {
-    if (!carried(row)) return false;
     const old = committed.find((c) => text(c.ingredientGroup) === text(row.ingredientGroup));
-    return text(old?.reviewerAssessment) !== text(row.reviewerAssessment);
+    const verdict = text(row.reviewerAssessment);
+    const verdictAct =
+      (verdict === WATCHLIST_ASSESSMENT_NON_CRITICAL || verdict === WATCHLIST_ASSESSMENT_NOT_A_MATCH) &&
+      text(old?.reviewerAssessment) !== verdict;
+    const conclusionAct = row.carriedConclusion === true && old?.carriedConclusion !== true;
+    const disposition = text(row.gate4Disposition);
+    const dispositionAct =
+      CLEARING_DISPOSITIONS.includes(disposition) && text(old?.gate4Disposition) !== disposition && (hasMatch(row) || hasMatch(old));
+    return verdictAct || conclusionAct || dispositionAct;
   });
 }
 
-// The flagged rows whose Reviewer was just set or changed: the person named must hold the authority the finding needs.
+// The flagged rows whose Reviewer (or second reviewer) was just set or changed: the person named must hold an authority the
+// finding needs, and nobody can be named on a row that has gone to triage.
 export function newlyNamedReviewerRows(committed: RegisterRow[], next: RegisterRow[]): RegisterRow[] {
   return next.filter((row) => {
-    if (text(row.reviewer) === '' || !isFlaggedWatchlistRow(row)) return false;
+    if (!isFlaggedWatchlistRow(row)) return false;
     const old = committed.find((c) => text(c.ingredientGroup) === text(row.ingredientGroup));
-    return text(old?.reviewer) !== text(row.reviewer);
+    return (
+      (text(row.reviewer) !== '' && text(old?.reviewer) !== text(row.reviewer)) ||
+      (text(row.secondReviewer) !== '' && text(old?.secondReviewer) !== text(row.secondReviewer))
+    );
   });
+}
+
+// The people named on a row, for the check that an act is done by one of them.
+export function watchlistNamedReviewers(row: RegisterRow): string[] {
+  return [text(row.reviewer), text(row.secondReviewer)].filter((n) => n !== '');
 }
 
 export const WATCHLIST_AUTHORITY_LABEL: Record<WatchlistAuthority, string> = { safety: 'Safety', regulatory: 'Regulatory' };
@@ -153,7 +180,7 @@ export function isControlledAction(action: NextAction | undefined): boolean {
 // why. D3 lists Reviewer, Review date and Rationale for every flagged result, not
 // only for some verdicts.
 function trailGaps(row: RegisterRow): string[] {
-  return [
+  const gaps = [
     ['Reviewer assessment', row.reviewerAssessment],
     ['Reviewer', row.reviewer],
     ['Review date', row.reviewDate],
@@ -161,6 +188,10 @@ function trailGaps(row: RegisterRow): string[] {
   ]
     .filter(([, value]) => text(value) === '')
     .map(([label]) => label as string);
+  // Round 5 question 8(a): both functions relevant -> both are obtained; neither -> triage, never either by default.
+  if (watchlistRequiredAuthority(row).length > 1 && text(row.secondReviewer) === '') gaps.push('Second reviewer');
+  if (watchlistNeedsTriage(row)) gaps.push('Triage (set the status to Needs Safety Review or Needs Regulatory Review)');
+  return gaps;
 }
 
 function hasReviewTrail(row: RegisterRow): boolean {
@@ -176,7 +207,11 @@ function hasReviewTrail(row: RegisterRow): boolean {
 function verdictGap(project: ProjectData, row: RegisterRow): string | undefined {
   const verdict = text(row.reviewerAssessment);
   if (verdict === WATCHLIST_ASSESSMENT_NON_CRITICAL || verdict === WATCHLIST_ASSESSMENT_MORE_INFO) {
-    return isControlledAction(linkedNextAction(project, row)) ? undefined : 'Linked Next Action';
+    if (!isControlledAction(linkedNextAction(project, row))) return 'Linked Next Action';
+    // Round 5 question 8(b): "Further information required" alone is not acceptance — a qualified reviewer must separately
+    // conclude the remaining uncertainty is non-critical, bounded and safe to carry. [ASSUMPTION: R6-Q14]
+    if (verdict === WATCHLIST_ASSESSMENT_MORE_INFO && row.carriedConclusion !== true) return 'Safe to carry (the reviewer conclusion)';
+    return undefined;
   }
   if (verdict === WATCHLIST_ASSESSMENT_NOT_A_MATCH) return text(row.evidenceLink) !== '' ? undefined : 'Evidence link';
   return undefined;

@@ -1063,6 +1063,14 @@ Các **câu hỏi về quy tắc đã đóng** (chỉ F12 còn chờ Cosmetri). 
 
 **(c)** Công thức mới phải có đánh giá scale-up/pilot. Có thể ghi kết luận No nhưng không thể tắt đánh giá đó. Bỏ pilot riêng cần Quality, Manufacturing và R&I chứng minh tương đương với quy trình đã đạt, kèm xác minh hỗ trợ. Một No trơn không thể miễn bằng chứng sẵn sàng sản xuất.
 
+### Câu 8 — Ai được chấp nhận một finding watch-list
+
+**Kết luận:** ✅ đã xây (11/11/2026). (a) xác nhận chỗ đặt thẩm quyền đã xây trước (SW-32) và thêm ba điều chưa xây: cả hai function khi cả hai liên quan, triage khi không function nào, và không có đường tắt cho admin. (b) mở rộng các hành vi cần thẩm quyền. Các chỗ ta đọc được hỏi ở Vòng 6, câu 14.
+
+**(a)** Đúng, chuyên viên đánh giá đủ thẩm quyền ghi nhận chấp nhận kỹ thuật trên finding; người duyệt gate tổng thể được dựa vào kết luận đã duyệt đó. Điều này làm rõ cách diễn đạt trước. Người duyệt gate vẫn chịu trách nhiệm chấp nhận các điều kiện nêu ra và xác minh các function cần thiết đã rà soát. Nếu cả Safety và Regulatory đều liên quan thì lấy cả hai; nếu không function nào được gán thì chuyển triage, không mặc định cho bên nào. Admin không thể thay thế thẩm quyền khoa học khi không có thẩm quyền yêu cầu.
+
+**(b)** Thẩm quyền áp cho mọi đánh giá thực chất làm sạch hoặc đổi một finding an toàn/quy định, gồm "No issue identified", "Considered - not selected" khi nó loại một match, việc đóng và chấp nhận có điều kiện. Nhập nháp có thể uỷ quyền. "Further information required" một mình không phải chấp nhận: người đánh giá đủ thẩm quyền phải kết luận riêng rằng phần chưa chắc là non-critical, có giới hạn và an toàn để mang theo, kèm hành động liên kết. Chất/cách dùng bị cấm hoặc rủi ro an toàn nghiêm trọng chưa giải quyết không thể đi tiếp có điều kiện.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

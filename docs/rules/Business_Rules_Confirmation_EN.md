@@ -1063,6 +1063,14 @@ The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **
 
 **(c)** A new formula must have a scale-up/pilot assessment. A No conclusion may be recorded, but cannot switch that assessment off. Waiving a separate pilot requires Quality, Manufacturing and R&I to justify equivalence to a qualified process and link supporting verification. A bare No cannot waive manufacture-readiness evidence.
 
+### Question 8 — Who may accept a watch-list finding
+
+**Verdict:** ✅ built (2026-11-11). (a) confirms the placement built earlier (SW-32) and adds three things that were not built: both functions when both are relevant, triage when neither is, and no administrator short-cut. (b) widens the acts that need the authority. Our readings of the details are asked in Round 6, question 14.
+
+**(a)** Yes, the qualified subject reviewer records technical acceptance on the finding; the overall gate approver may rely on that approved conclusion. This clarifies the earlier wording. The gate approver remains responsible for accepting the stated conditions and verifying that the required functions have reviewed them. If both Safety and Regulatory are relevant, obtain both; if neither is assigned, route for triage rather than allowing either by default. An administrator cannot supply a scientific acceptance without the required authority.
+
+**(b)** Authority applies to every substantive assessment that clears or changes a safety/regulatory finding, including "No issue identified", "Considered - not selected" where it removes a match, closure and conditional acceptance. Draft entry may be delegated. "Further information required" alone is not acceptance: a qualified reviewer must separately conclude that the remaining uncertainty is non-critical, bounded and safe to carry, with a linked action. A prohibited ingredient/use or unresolved critical safety uncertainty cannot proceed conditionally.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

@@ -64,7 +64,8 @@ export function canChangeRegisterRows(project: ProjectData, config: RegisterConf
 // May this person change the important cells of THIS row? The Reviewer named on the row counts for that row only.
 export function canChangeRegisterRow(project: ProjectData, config: RegisterConfig, row: RegisterRow | undefined, actor: RegisterActor): boolean {
   if (canChangeRegisterRows(project, config, actor)) return true;
-  return !!row && norm(row.reviewer) !== '' && norm(row.reviewer) === norm(actor.displayName);
+  const me = norm(actor.displayName);
+  return !!row && me !== '' && (norm(row.reviewer) === me || norm(row.secondReviewer) === me);
 }
 
 // Why a person cannot change an important cell, in words for the screen and the API's 403.

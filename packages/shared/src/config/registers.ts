@@ -934,12 +934,18 @@ const prohibitedIngredients: RegisterConfig = {
     { key: 'reviewerAssessment', label: 'Reviewer assessment', type: 'select', width: 190, options: WATCHLIST_ASSESSMENT_OPTIONS, gate: '04' },
     // The person who will review this finding, picked from the users who hold the authority the finding needs (SW-32).
     { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140, gate: '04' },
+    // Round 5 question 8: where a finding needs BOTH Safety and Regulatory, the second function's reviewer records themselves here
+    // (selfAttest: only the signed-in person may name themselves). Blank where one function is enough. [ASSUMPTION: R6-Q14]
+    { key: 'secondReviewer', label: 'Second reviewer', type: 'user', width: 140, selfAttest: true, gate: '04' },
     { key: 'reviewDate', label: 'Review date', type: 'date', width: 120, gate: '04' },
     { key: 'reviewRationale', label: 'Rationale', type: 'textarea', width: 220, gate: '04' },
     // "A genuine controlled Next Action must be used. A note alone is not
     // sufficient." So this is a picker over the project's real Next Actions, and
     // an id that resolves to nothing is rejected — not free text.
     { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 220, gate: '04' },
+    // Round 5 question 8(b): "Further information required" alone is not acceptance; a qualified reviewer must separately conclude the
+    // remaining uncertainty is non-critical, bounded and safe to carry. Ticked by that reviewer. [ASSUMPTION: R6-Q14]
+    { key: 'carriedConclusion', label: 'Safe to carry', type: 'checkbox', width: 130, gate: '04' },
     { key: 'resolutionStatus', label: 'Resolution status', type: 'select', width: 120, options: WATCHLIST_RESOLUTION_OPTIONS },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140, gate: '04' },
     // The workbook's Owner is the DEPARTMENT that maintains this row, a note that splits responsibility — never a person (project owner,
@@ -1019,9 +1025,15 @@ const pbCautionLimits: RegisterConfig = {
     { key: 'reviewerAssessment', label: 'Reviewer assessment', type: 'select', width: 190, options: WATCHLIST_ASSESSMENT_OPTIONS, gate: '04' },
     // The person who will review this finding, picked from the users who hold the authority the finding needs (SW-32).
     { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140, gate: '04' },
+    // Round 5 question 8: where a finding needs BOTH Safety and Regulatory, the second function's reviewer records themselves here
+    // (selfAttest: only the signed-in person may name themselves). Blank where one function is enough. [ASSUMPTION: R6-Q14]
+    { key: 'secondReviewer', label: 'Second reviewer', type: 'user', width: 140, selfAttest: true, gate: '04' },
     { key: 'reviewDate', label: 'Review date', type: 'date', width: 120, gate: '04' },
     { key: 'reviewRationale', label: 'Rationale', type: 'textarea', width: 220, gate: '04' },
     { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 220, gate: '04' },
+    // Round 5 question 8(b): "Further information required" alone is not acceptance; a qualified reviewer must separately conclude the
+    // remaining uncertainty is non-critical, bounded and safe to carry. Ticked by that reviewer. [ASSUMPTION: R6-Q14]
+    { key: 'carriedConclusion', label: 'Safe to carry', type: 'checkbox', width: 130, gate: '04' },
     { key: 'resolutionStatus', label: 'Resolution status', type: 'select', width: 120, options: WATCHLIST_RESOLUTION_OPTIONS },
     { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140, gate: '04' },
     // The workbook's Owner is the DEPARTMENT that maintains this row, a note that splits responsibility — never a person (project owner,

@@ -43,17 +43,25 @@ export function canArchiveProject(grants: Record<string, string[]>, roleKeys: st
 // the authorised acceptance of a flagged watch-list finding only where "the gate
 // approver has the required Safety or Regulatory authority".
 //
-// EITHER authority is enough, not both. The answer names them as alternatives —
-// "the required Safety **or** Regulatory authority" — because which one a finding
-// needs depends on how it was escalated, and the app cannot always tell: a row at
-// "REVIEW - possible formula match" is a status a person chose after the BOM screen showed a match, not an escalation to a
-// named function. Settled by SW-32: the row's status, else its Owner column, names the authority
-// (`watchlistRequiredAuthority`); this helper only says whether a role holds ANY watch-list authority.
+// Which authority a given finding needs is decided by SW-32 (`watchlistRequiredAuthority`): the row's status, else its Owner
+// column — and since Round 5 question 8 BOTH where both are named, nobody where neither is. This helper only says whether a role
+// holds ANY watch-list authority; `holdsWatchlistAuthority` below is the administrator-proof check the drawer uses.
 export function canAcceptWatchlistFinding(grants: Record<string, string[]>, roleKey: string): boolean {
   return (
     has(grants, roleKey, 'watchlist-finding|accept-safety') ||
     has(grants, roleKey, 'watchlist-finding|accept-regulatory')
   );
+}
+
+// Round 5 question 8: who holds a Safety / Regulatory acceptance authority. Unlike every other check here an administrator gets
+// NO short-circuit — "An administrator cannot supply a scientific acceptance without the required authority" — so only an
+// explicit grant on one of the roles counts (the server's `canAcceptWatchlistFinding` does the same).
+export function holdsWatchlistAuthority(
+  grants: Record<string, string[]>,
+  roleKeys: string[] | undefined,
+  authorities: ('safety' | 'regulatory')[],
+): boolean {
+  return (roleKeys ?? []).some((key) => authorities.some((a) => grants[key]?.includes(`watchlist-finding|accept-${a}`) ?? false));
 }
 
 // Round 4 question 34(d): "Only a person authorised to approve the relevant Gate 11

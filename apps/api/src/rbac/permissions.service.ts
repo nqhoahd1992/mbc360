@@ -43,11 +43,22 @@ export class PermissionsService {
   // one a given finding needs depends on how it was escalated — which for a row
   // marked "REVIEW - possible formula match" (a status a person chose, naming no function) nobody
   // has decided — settled by SW-32 (`watchlistRequiredAuthority`): the status or the row's Owner names it.
+  //
+  // Round 5 question 8 (2026-11-11): "An administrator cannot supply a scientific acceptance without the required authority."
+  // So this does NOT short-circuit for an administrator the way `hasPermission` does — only an explicit Safety or Regulatory
+  // grant on one of the person's roles counts (an administrator who also holds such a role does hold it).
   async canAcceptWatchlistFinding(user: SessionUser, anyOf: ('safety' | 'regulatory')[] = ['safety', 'regulatory']): Promise<boolean> {
-    for (const authority of anyOf) {
-      if (await this.hasPermission(user, 'watchlist-finding', `accept-${authority}`)) return true;
-    }
-    return false;
+    if (!user.active) return false;
+    const roleIds = user.roles.map((r) => r.roleId);
+    if (roleIds.length === 0) return false;
+    const match = await this.prisma.rolePermission.findFirst({
+      where: {
+        roleId: { in: roleIds },
+        permission: { resource: 'watchlist-finding', action: { in: anyOf.map((a) => `accept-${a}`) } },
+      },
+      select: { roleId: true },
+    });
+    return match !== null;
   }
 
   // Round 4 question 34(d): "Only a person authorised to approve the relevant

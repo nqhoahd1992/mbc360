@@ -2,7 +2,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-This round has thirteen questions. They follow from your answers to questions 1, 2, 3 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared; question 11 asks how the details of a version's supersession market by market should be read; question 12 asks how "critical" and the Change Control rule for a Claims Library change should be read; question 13 asks how the details of the scale-up assessment, area by area, should be read.
+This round has fourteen questions. They follow from your answers to questions 1, 2, 3, 4, 5, 6, 7, 8 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared; question 11 asks how the details of a version's supersession market by market should be read; question 12 asks how "critical" and the Change Control rule for a Claims Library change should be read; question 13 asks how the details of the scale-up assessment, area by area, should be read; question 14 asks how the details of who may accept a watch-list finding should be read.
 
 Where we say "the software development team" we mean the team building this application — not the owner of any product development project.
 
@@ -377,3 +377,24 @@ You told us to record the assessment as one entry for each affected area, picked
 **(d)** Is the waiver one per entry, or one for the whole assessment?
 
 **(e)** Must Quality, Manufacturing and R&I be three different people?
+
+## Question 14 — Who may accept a watch-list finding: how should we read the details your answer leaves open?
+
+*Where in the application:* Registers **Prohibited Ingredient Watch-list** and **Pregnancy / Breastfeeding Caution Limits**: the finding's detail panel, "Handling the finding" (Reviewer assessment, Reviewer, Second reviewer, Safe to carry, and the Classification).
+
+You confirmed that the qualified subject reviewer records the acceptance, that where both Safety and Regulatory are relevant we obtain both, that where neither is assigned the row is routed for triage, that an administrator cannot supply the acceptance without the authority, and that the authority covers every assessment that clears or changes a finding. We have built that. Where your answer leaves a detail open we read it as follows:
+
+- **Which functions are relevant.** The row's status decides when it names a function (Needs Safety Review, Needs Regulatory Review). Otherwise the row's Owner column decides: it names Safety, Regulatory or both. An Owner naming neither sends the row to triage.
+- **"Obtain both"** means two reviewers on the row: the Reviewer, and a Second reviewer from the other function who names themselves (nobody can be named for them). Together they must cover both functions, and a row without the second reviewer is incomplete at Gate 4.
+- **Triage** means nobody can be chosen as Reviewer and nobody can clear, close or accept the row until its status names a function.
+- **The acts that need the authority** are: assessing as Non-critical, assessing as Not a true match (the closure), ticking "safe to carry", and choosing the classification "No issue identified" or "Considered — not selected" on a row that has a match with the formula. Raising a finding (Critical) and asking for further information are not acceptance, so anyone may record them.
+- **"A separate conclusion" for Further information required** is a tick, "The remaining uncertainty is non-critical, bounded and safe to carry", given by a qualified reviewer, together with the linked action. Without the tick the row blocks even Proceed with Conditions.
+- **Who records an act** is one of the reviewers named on the row, holding the right authority. An administrator can do it only by also holding a role with that authority.
+
+**(a)** Is "obtain both" two reviewers, one for each function, or is one person holding both authorities enough?
+
+**(b)** Is the list of acts right — in particular, does a clearing classification apply only to a row that has a match?
+
+**(c)** May anyone really record a Critical assessment?
+
+**(d)** When the status names one function but the Owner names the other, are both needed?

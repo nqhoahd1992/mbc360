@@ -2,7 +2,7 @@
 
 **Gửi:** đội chuyên môn (NPD / Quality / Regulatory / Safety)
 
-Vòng này có mười ba câu. Chúng nảy ra từ đáp án câu 1, 2, 3 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường; câu 12 hỏi nên đọc thế nào "critical" và quy tắc Change Control cho một thay đổi Claims Library; câu 13 hỏi nên đọc thế nào các chi tiết của đánh giá scale-up theo từng vùng.
+Vòng này có mười bốn câu. Chúng nảy ra từ đáp án câu 1, 2, 3, 4, 5, 6, 7, 8 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường; câu 12 hỏi nên đọc thế nào "critical" và quy tắc Change Control cho một thay đổi Claims Library; câu 13 hỏi nên đọc thế nào các chi tiết của đánh giá scale-up theo từng vùng.
 
 Chỗ nào ghi "nhóm phát triển phần mềm" là nhóm đang xây ứng dụng, không phải chủ của một dự án phát triển sản phẩm.
 
@@ -377,3 +377,24 @@ Các bạn đã nói ghi đánh giá thành một mục cho mỗi vùng ảnh h�
 **(d)** Waiver là một cho mỗi mục, hay một cho cả đánh giá?
 
 **(e)** Quality, Manufacturing và R&I có phải ba người khác nhau không?
+
+## Câu 14 — Ai được chấp nhận một finding watch-list: nên đọc thế nào các chi tiết câu trả lời để ngỏ?
+
+*Vị trí trong ứng dụng:* Các sổ **Prohibited Ingredient Watch-list** và **Pregnancy / Breastfeeding Caution Limits**: khung chi tiết của finding, mục "Handling the finding" (Reviewer assessment, Reviewer, Second reviewer, Safe to carry và Classification).
+
+Các bạn đã xác nhận người đánh giá chuyên môn đủ thẩm quyền ghi nhận chấp nhận, nếu cả Safety và Regulatory đều liên quan thì lấy cả hai, nếu không function nào được gán thì chuyển triage, admin không thể thay thế thẩm quyền khi không có, và thẩm quyền bao trùm mọi đánh giá làm sạch hoặc đổi một finding. Chúng tôi đã xây phần đó. Chỗ câu trả lời để ngỏ, chúng tôi đọc như sau:
+
+- **Function nào liên quan.** Status của hàng quyết định khi nó nêu tên một function (Needs Safety Review, Needs Regulatory Review). Nếu không thì cột Owner của hàng quyết định: nêu Safety, Regulatory hoặc cả hai. Owner không nêu function nào thì hàng chuyển triage.
+- **"Lấy cả hai"** nghĩa là hai reviewer trên hàng: Reviewer, và một Second reviewer từ function còn lại tự ghi tên mình (không ai ghi hộ). Hai người cùng phải phủ đủ cả hai function, và hàng thiếu người thứ hai là chưa đủ ở Gate 4.
+- **Triage** nghĩa là không ai được chọn làm Reviewer và không ai làm sạch, đóng hay chấp nhận được hàng, cho đến khi status của nó nêu một function.
+- **Các hành vi cần thẩm quyền** là: đánh giá Non-critical, đánh giá Not a true match (việc đóng), tick "safe to carry", và chọn phân loại "No issue identified" hoặc "Considered — not selected" trên hàng có match với công thức. Nâng finding lên (Critical) và xin thêm thông tin không phải chấp nhận, nên ai cũng ghi được.
+- **"Kết luận riêng" cho Further information required** là một ô tick "Phần chưa chắc là non-critical, có giới hạn và an toàn để mang theo", do reviewer đủ thẩm quyền ghi, cùng hành động liên kết. Không có ô tick thì hàng chặn cả Proceed with Conditions.
+- **Ai ghi một hành vi** là một trong các reviewer nêu trên hàng và giữ đúng thẩm quyền. Admin chỉ ghi được nếu bản thân cũng giữ role có thẩm quyền đó.
+
+**(a)** "Lấy cả hai" là hai reviewer, mỗi function một người, hay một người giữ cả hai thẩm quyền cũng đủ?
+
+**(b)** Danh sách các hành vi có đúng không — đặc biệt, phân loại làm sạch có chỉ áp cho hàng có match không?
+
+**(c)** Có thật sự ai cũng được ghi đánh giá Critical không?
+
+**(d)** Khi status nêu một function nhưng Owner nêu function kia, có cần cả hai không?

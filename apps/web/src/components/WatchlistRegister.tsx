@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, DatePicker, Drawer, Grid, Input, InputNumber, Select, Tooltip } from 'antd';
+import { Alert, Button, Checkbox, DatePicker, Drawer, Grid, Input, InputNumber, Select, Tooltip } from 'antd';
 import ChoiceSelect from './ChoiceSelect';
 import {
   CheckCircleOutlined,
@@ -16,8 +16,9 @@ import dayjs from 'dayjs';
 import type { NavGroup, RegisterConfig } from '@mbc360/shared/config/registers';
 import {
   GATE4_DISPOSITION_OPTIONS,
-  WATCHLIST_ASSESSMENT_MORE_INFO,
   WATCHLIST_ASSESSMENT_NON_CRITICAL,
+  WATCHLIST_ASSESSMENT_NOT_A_MATCH,
+  WATCHLIST_ASSESSMENT_MORE_INFO,
 } from '@mbc360/shared/config/registers';
 import { ownerFunctionWithPeople } from '@mbc360/shared/config/reviewers';
 import GeneratedNaAcks from './GeneratedNaAcks';
@@ -29,6 +30,7 @@ import {
   watchlistLinkedGate,
   WATCHLIST_AUTHORITY_LABEL,
   watchlistRequiredAuthority,
+  watchlistNamedReviewers,
   watchlistHardBlockers,
   watchlistReviewGaps,
 } from '@mbc360/shared/utils/watchlistReview';
@@ -43,7 +45,7 @@ import { useSession } from '../auth/useSession';
 import GateLink from './GateLink';
 import { useAppStore } from '../store/useAppStore';
 import { usePermissionView } from '../auth/previewMode';
-import { EMPTY_GRANTS, hasCapability } from '../utils/permissions';
+import { EMPTY_GRANTS, holdsWatchlistAuthority } from '../utils/permissions';
 import NextActionSelect from './NextActionSelect';
 import RegisterClosurePanel from './RegisterClosurePanel';
 import { registerReviewSpec } from '@mbc360/shared/utils/registerClosures';
@@ -482,24 +484,34 @@ function RowDetail({
   // already carries trail data, so un-flagging a row never hides what was recorded.
   const showTrail = flagged || hasTrailData || isBlockingStatus(text(row.productStatus));
   const req = flagged ? 'wl-field-label wl-req' : 'wl-field-label';
-  // SW-32: assessing a finding as one that may be carried under Proceed with Conditions IS the acceptance, so it needs the
-  // authority this finding names (its status, else its Owner). The server refuses it otherwise; here the two verdicts are
-  // simply not offered to someone who lacks it. [ASSUMPTION: R5-Q67]
-  const { isAdmin } = usePermissionView();
+  // SW-32 and Round 5 question 8: every act that clears, closes or conditionally accepts a finding needs the authority this finding
+  // names (its status, else its Owner) — BOTH where both functions are relevant, and nobody where neither is (triage). Only a
+  // reviewer named on the row records it, and an administrator gets no short-cut. The server refuses it otherwise; here the
+  // controls are simply not offered. [ASSUMPTION: R6-Q14]
+  const { roleKeys } = usePermissionView();
   const grants = useAppStore((s) => s.permissionGrid?.grants ?? EMPTY_GRANTS);
   const needs = watchlistRequiredAuthority(row);
-  const needsLabel = needs.map((a) => WATCHLIST_AUTHORITY_LABEL[a]).join(' or ');
-  // Who may be this finding's Reviewer: users holding the authority it needs. Who may record the acceptance: that Reviewer.
-  const holdsAuthority = (keys: string[] | undefined) => needs.some((a) => hasCapability(grants, keys ?? [], `watchlist-finding|accept-${a}`));
+  const triage = needs.length === 0;
+  const needsLabel = needs.map((a) => WATCHLIST_AUTHORITY_LABEL[a]).join(' and ');
+  const needsEither = needs.map((a) => WATCHLIST_AUTHORITY_LABEL[a]).join(' or ');
+  const holdsAuthority = (keys: string[] | undefined) => holdsWatchlistAuthority(grants, keys, needs);
   const pickerUsers = usePickerUsers();
   const me = useSession().user?.displayName;
   const reviewerName = text(row.reviewer);
+  const secondName = text(row.secondReviewer);
   const reviewerOptions = pickerUsers
     .filter((u) => holdsAuthority(u.roleKeys) || u.displayName === reviewerName)
     .map((u) => ({ value: u.displayName, label: u.displayName }));
   const reviewerFit = reviewerName !== '' && pickerUsers.some((u) => u.displayName === reviewerName && holdsAuthority(u.roleKeys));
-  const canCarry = isAdmin || (!!me && me === reviewerName);
-  const carriedVerdicts = [WATCHLIST_ASSESSMENT_NON_CRITICAL, WATCHLIST_ASSESSMENT_MORE_INFO];
+  const needsSecond = needs.length > 1;
+  const imQualified = !!me && holdsAuthority(roleKeys);
+  const secondOptions = [...new Set([secondName, imQualified && me !== reviewerName ? me ?? '' : ''])]
+    .filter((n) => n !== '')
+    .map((n) => ({ value: n, label: n }));
+  const canAct = !triage && !!me && watchlistNamedReviewers(row).includes(me) && imQualified;
+  const acceptingVerdicts: string[] = [WATCHLIST_ASSESSMENT_NON_CRITICAL, WATCHLIST_ASSESSMENT_NOT_A_MATCH];
+  const hasMatch = flagged || text(row.matchBasis) !== '' || (typeof row.formulaMatchCount === 'number' && row.formulaMatchCount > 0);
+  const clearingDispositions: string[] = ['No issue identified', 'Considered — not selected'];
 
   return (
     <div className="wl-sections">
@@ -627,7 +639,7 @@ function RowDetail({
               value={text(row.gate4Disposition) || undefined}
               placeholder="Not dispositioned"
               allowClear
-              options={columnOptions(config, 'gate4Disposition')}
+              options={columnOptions(config, 'gate4Disposition').map((o) => ({ ...o, disabled: hasMatch && !canAct && clearingDispositions.includes(o.value) }))}
               disabled={off('gate4Disposition')}
               onChange={(v?: string) => onPatch({ gate4Disposition: v ?? '' })}
             />
@@ -648,13 +660,23 @@ function RowDetail({
                 can move. A note alone is not sufficient — link a controlled Next Action.
               </p>
             )}
-            {flagged && (
-              <p className={`wl-sec-note${canCarry ? '' : ' wl-sec-warn'}`}>
-                {canCarry
-                  ? `Assessing this finding as Non-critical or Further information required lets it be carried under Proceed with Conditions, so it is the acceptance. You are its Reviewer, so you can record it.`
+            {flagged && triage && (
+              <Alert
+                type="warning"
+                showIcon
+                title="No Safety or Regulatory function is assigned to this finding"
+                description="It has to be routed for triage first: set the Product status to Needs Safety Review or Needs Regulatory Review. Until then nobody can clear, close or accept it."
+                style={{ marginBottom: 8 }}
+              />
+            )}
+            {flagged && !triage && (
+              <p className={`wl-sec-note${canAct ? '' : ' wl-sec-warn'}`}>
+                {`Clearing, closing or conditionally accepting this finding needs ${needsLabel} authority${needsSecond ? ' — both functions, so two reviewers' : ''}, and is recorded by a reviewer named below. `}
+                {canAct
+                  ? 'You are one of its reviewers, so you can record it.'
                   : reviewerName === ''
-                    ? `Assessing this finding as Non-critical or Further information required lets it be carried under Proceed with Conditions, so it is the acceptance. Pick its Reviewer below (a user with ${needsLabel} authority); only the Reviewer records those two assessments.`
-                    : `Assessing this finding as Non-critical or Further information required lets it be carried under Proceed with Conditions, so it is the acceptance. Only its Reviewer, ${reviewerName}, records those two assessments.`}
+                    ? `Pick its Reviewer (a user with ${needsEither} authority). An administrator can only do this with that authority too.`
+                    : `Only its reviewers (${watchlistNamedReviewers(row).join(', ')}) record it.`}
               </p>
             )}
             <div className="wl-grid">
@@ -664,7 +686,7 @@ function RowDetail({
                   value={text(row.reviewerAssessment) || undefined}
                   placeholder="Select…"
                   allowClear
-                  options={columnOptions(config, 'reviewerAssessment').map((o) => ({ ...o, disabled: !canCarry && carriedVerdicts.includes(o.value) }))}
+                  options={columnOptions(config, 'reviewerAssessment').map((o) => ({ ...o, disabled: !canAct && acceptingVerdicts.includes(o.value) }))}
                   disabled={off('reviewerAssessment')}
                   onChange={(v) => onPatch({ reviewerAssessment: v ?? '' })}
                 />
@@ -688,13 +710,28 @@ function RowDetail({
                   allowClear
                   optionFilterProp="label"
                   value={reviewerName || undefined}
-                  placeholder={`Select a user with ${needsLabel} authority`}
+                  placeholder={triage ? 'Route for triage first' : `Select a user with ${needsEither} authority`}
                   options={reviewerOptions}
                   status={reviewerName !== '' && pickerUsers.length > 0 && !reviewerFit ? 'warning' : undefined}
-                  disabled={off('reviewer')}
+                  disabled={off('reviewer') || triage}
                   onChange={(v?: string) => onPatch({ reviewer: v ?? '' })}
                 />
               </label>
+              {needsSecond && (
+                <label className="wl-span-2">
+                  <span className={req}>Second reviewer</span>
+                  <Select
+                    style={{ width: '100%' }}
+                    allowClear
+                    value={secondName || undefined}
+                    placeholder="The other function's reviewer names themselves"
+                    options={secondOptions}
+                    disabled={off('secondReviewer')}
+                    onChange={(v?: string) => onPatch({ secondReviewer: v ?? '' })}
+                  />
+                  <span className="wl-help">Both Safety and Regulatory are relevant here, so both are obtained. Only the person themselves can be named.</span>
+                </label>
+              )}
               <label className="wl-span-2">
                 <span className={req}>Review date</span>
                 <DatePicker
@@ -718,6 +755,20 @@ function RowDetail({
                 <span className="wl-field-label">Linked Next Action</span>
                 <NextActionSelect value={text(row.linkedNextActionId) || undefined} disabled={off('linkedNextActionId')} onChange={(v) => onPatch({ linkedNextActionId: v })} />
               </label>
+              {text(row.reviewerAssessment) === WATCHLIST_ASSESSMENT_MORE_INFO && (
+                <div className="wl-span-2">
+                  <Checkbox
+                    checked={row.carriedConclusion === true}
+                    disabled={off('carriedConclusion') || (!canAct && row.carriedConclusion !== true)}
+                    onChange={(e) => onPatch({ carriedConclusion: e.target.checked })}
+                  >
+                    The remaining uncertainty is non-critical, bounded and safe to carry
+                  </Checkbox>
+                  <span className="wl-help">
+                    Further information required is not an acceptance on its own. A qualified reviewer has to conclude this separately, with a linked action, before the finding can ride on Proceed with Conditions.
+                  </span>
+                </div>
+              )}
             </div>
           </>
         ) : (

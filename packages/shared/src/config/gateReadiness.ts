@@ -1478,7 +1478,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         // `assertCanCarryConditions`, via the two new `watchlist-finding`
         // capabilities. Which of the two is "required" for a row is decided by SW-32
         // (`watchlistRequiredAuthority`): its status, else its Owner column.
-        'The review team said Proceed with Conditions is enough, provided the gate approver holds Safety or Regulatory authority; the project owner moved that authority to the reviewer who records the assessment (SW-32), which the app checks when the assessment is saved [ASSUMPTION: R5-Q67]. The authority needed is the one the row\'s status names or, for a machine-flagged row, the one its Owner column names (either, where it names both).',
+        'The review team said Proceed with Conditions is enough, provided the gate approver holds Safety or Regulatory authority; the project owner moved that authority to the reviewer who records the assessment (SW-32), which the app checks when the assessment is saved [ASSUMPTION: R5-Q67]. The review team confirmed it (Round 5 question 8): the authority needed is the one the row\'s status names or, for a machine-flagged row, the one its Owner column names; where both functions are relevant both are obtained (a second reviewer), where neither is the row is routed for triage, and an administrator cannot supply the acceptance without holding the authority. "Further information required" alone is not an acceptance: it also needs the reviewer\'s conclusion that the uncertainty is non-critical, bounded and safe to carry [ASSUMPTION: R6-Q14].',
       check: { kind: 'watchlistNoneConditional' },
     },
     {

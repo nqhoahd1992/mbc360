@@ -1,9 +1,9 @@
-// Verifies which authority a flagged watch-list row needs from whoever carries it under Proceed with Conditions (SW-32):
-// a status that names a function decides it; otherwise the row's own Owner column does; a row whose Owner names both
-// or neither is satisfied by either. Run on the REAL seeded rows of both registers.
+// Verifies which authority a flagged watch-list row needs from the people who accept it (SW-32, Round 5 question 8): a status
+// that names a function decides it; otherwise the row's own Owner column does; an Owner naming both needs BOTH functions, and
+// one naming neither sends the row to triage. Run on the REAL seeded rows of both registers.
 // Run: npm run verify:watchlist-authority
 import { REGISTER_CONFIGS } from '../src/config/registers';
-import { newlyCarriedVerdictRows, newlyNamedReviewerRows, watchlistRowInScope, watchlistRequiredAuthority } from '../src/utils/watchlistReview';
+import { newlyAcceptingActRows, newlyNamedReviewerRows, watchlistNeedsTriage, watchlistRowInScope, watchlistRequiredAuthority } from '../src/utils/watchlistReview';
 
 let bad = 0;
 const t = (name: string, ok: boolean, extra = '') => {
@@ -24,18 +24,27 @@ const M = 'REVIEW - possible formula match';
 t('machine match, Owner Regulatory -> Regulatory only', needs('Parabens', M) === 'regulatory', needs('Parabens', M));
 t('machine match, Owner Safety / R&I -> Safety only', needs('Essential oils', M) === 'safety', needs('Essential oils', M));
 t('machine match, Owner Safety -> Safety only', needs('Arnica montana', M) === 'safety');
-t('machine match, Owner Regulatory / Safety -> either', needs('Retinol Retinyl Palmitate Tretinoin', M) === 'safety+regulatory');
-t('machine match, Owner Safety / Regulatory -> either', needs('BHT', M) === 'safety+regulatory');
-t('machine match, Owner Quality (names neither) -> either', needs('Heavy metals Pb Hg Cd As', M) === 'safety+regulatory');
+t('machine match, Owner Regulatory / Safety -> BOTH', needs('Retinol Retinyl Palmitate Tretinoin', M) === 'safety+regulatory');
+t('machine match, Owner Safety / Regulatory -> BOTH', needs('BHT', M) === 'safety+regulatory');
+t('machine match, Owner Quality (names neither) -> triage, nobody', needs('Heavy metals Pb Hg Cd As', M) === '');
+t('...and that row is flagged as needing triage', watchlistNeedsTriage({ ...row('Heavy metals Pb Hg Cd As'), productStatus: M }));
+t('a row whose status names a function is never triage', !watchlistNeedsTriage({ ...row('Heavy metals Pb Hg Cd As'), productStatus: 'Needs Safety Review' }));
 t('Needs Safety Review beats an Owner of Regulatory', needs('Parabens', 'Needs Safety Review') === 'safety');
 t('Needs Regulatory Review beats an Owner of Safety', needs('Arnica montana', 'Needs Regulatory Review') === 'regulatory');
 
 const A = (group: string, verdict: string) => ({ ...row(group), reviewerAssessment: verdict });
-t('a newly set Non-critical is a carried verdict', newlyCarriedVerdictRows([row('Parabens')], [A('Parabens', 'Non-critical')]).length === 1);
-t('a newly set Further information required is too', newlyCarriedVerdictRows([row('Parabens')], [A('Parabens', 'Further information required')]).length === 1);
-t('Critical and Not a true match are not', newlyCarriedVerdictRows([row('Parabens'), row('BHT')], [A('Parabens', 'Critical'), A('BHT', 'Not a true match')]).length === 0);
-t('an unchanged carried verdict is not a new act', newlyCarriedVerdictRows([A('Parabens', 'Non-critical')], [A('Parabens', 'Non-critical')]).length === 0);
-t('changing Critical to Non-critical is a new act', newlyCarriedVerdictRows([A('Parabens', 'Critical')], [A('Parabens', 'Non-critical')]).length === 1);
+t('a newly set Non-critical is an accepting act', newlyAcceptingActRows([row('Parabens')], [A('Parabens', 'Non-critical')]).length === 1);
+t('a newly set Not a true match (closure) is too', newlyAcceptingActRows([row('Parabens')], [A('Parabens', 'Not a true match')]).length === 1);
+t('Further information required alone is NOT an accepting act', newlyAcceptingActRows([row('Parabens')], [A('Parabens', 'Further information required')]).length === 0);
+t('Critical (raising a finding) is not one either', newlyAcceptingActRows([row('Parabens')], [A('Parabens', 'Critical')]).length === 0);
+t('ticking "safe to carry" is an accepting act', newlyAcceptingActRows([A('Parabens', 'Further information required')], [{ ...A('Parabens', 'Further information required'), carriedConclusion: true }]).length === 1);
+t('an unchanged accepted verdict is not a new act', newlyAcceptingActRows([A('Parabens', 'Non-critical')], [A('Parabens', 'Non-critical')]).length === 0);
+t('changing Critical to Non-critical is a new act', newlyAcceptingActRows([A('Parabens', 'Critical')], [A('Parabens', 'Non-critical')]).length === 1);
+const D = (group: string, d: string, extra: Record<string, unknown> = {}) => ({ ...row(group), gate4Disposition: d, ...extra });
+t('a clearing classification on a matched row is an accepting act', newlyAcceptingActRows([D('Parabens', '', { formulaMatchCount: 1 })], [D('Parabens', 'No issue identified', { formulaMatchCount: 1 })]).length === 1);
+t('Considered — not selected on a matched row is too', newlyAcceptingActRows([D('Parabens', '', { formulaMatchCount: 1 })], [D('Parabens', 'Considered — not selected', { formulaMatchCount: 1 })]).length === 1);
+t('...but on a row with no match it records a non-event', newlyAcceptingActRows([D('Parabens', '')], [D('Parabens', 'No issue identified')]).length === 0);
+t('a non-clearing classification is not an act', newlyAcceptingActRows([D('Parabens', '', { formulaMatchCount: 1 })], [D('Parabens', 'Needs Safety Review', { formulaMatchCount: 1 })]).length === 0);
 
 const inScope = (group: string, gate: string) => watchlistRowInScope(row(group), gate);
 t('a Gate 4 row is in scope at Gate 4 and later', inScope('Parabens', 'SG04') && inScope('Parabens', 'SG07'));
@@ -50,6 +59,7 @@ t('a Reviewer newly named on a flagged row is checked', newlyNamedReviewerRows([
 t('an unchanged Reviewer is not', newlyNamedReviewerRows([flagged('BHT', 'Chi Chu')], [flagged('BHT', 'Chi Chu')]).length === 0);
 t('a Reviewer on a row that is not flagged is not checked', newlyNamedReviewerRows([row('BHT')], [{ ...row('BHT'), reviewer: 'Chi Chu' }]).length === 0);
 t('clearing the Reviewer is not checked', newlyNamedReviewerRows([flagged('BHT', 'Chi Chu')], [flagged('BHT', '')]).length === 0);
+t('a second reviewer newly named is checked too', newlyNamedReviewerRows([flagged('BHT', 'Chi Chu')], [{ ...flagged('BHT', 'Chi Chu'), secondReviewer: 'An Le' }]).length === 1);
 
 if (bad) {
   console.error(`\n${bad} FAILED`);

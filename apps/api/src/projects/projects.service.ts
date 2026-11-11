@@ -70,7 +70,8 @@ import {
   brokenNextActionLinks,
   watchlistLabel,
   watchlistRequiredAuthority,
-  newlyCarriedVerdictRows,
+  newlyAcceptingActRows,
+  watchlistNamedReviewers,
   newlyNamedReviewerRows,
   WATCHLIST_AUTHORITY_LABEL,
 } from '@mbc360/shared/utils/watchlistReview';
@@ -2864,34 +2865,63 @@ export class ProjectsService {
           throw new ForbiddenException(listMessage(`${registerAccessReason(config)} — not allowed here:`, violations.slice(0, 6)));
         }
       }
-      // SW-32: the Reviewer of a finding is a person picked from those who hold the authority the finding needs (its status, else
-      // its Owner), and recording an assessment that lets a finding ride on Proceed with Conditions — the acceptance — is done by
-      // that Reviewer (an administrator may too).
+      // SW-32 and Round 5 question 8: the Reviewer of a finding (and, where both functions are relevant, its second reviewer)
+      // must hold the authority the finding needs; every act that clears, closes or conditionally accepts it is done by one
+      // of them; where BOTH Safety and Regulatory are relevant both must be obtained; where NEITHER is assigned the row goes to
+      // triage and nobody may accept it; and an administrator supplies no scientific acceptance without holding the authority.
       if ((WATCHLIST_REGISTERS as readonly string[]).includes(registerKey)) {
         const committedRows = project.registers[registerKey] ?? [];
+        const sameRow = (a: Record<string, unknown>, b: Record<string, unknown>) => String(a.ingredientGroup ?? '').trim() === String(b.ingredientGroup ?? '').trim();
+        const authoritiesHeldBy = async (name: string, needs: ('safety' | 'regulatory')[]) => {
+          const person = await tx.user.findFirst({
+            where: { displayName: name, active: true },
+            include: { department: true, roles: { include: { role: true } } },
+          });
+          if (!person) return [] as ('safety' | 'regulatory')[];
+          const held: ('safety' | 'regulatory')[] = [];
+          for (const a of needs) if (await this.permissions.canAcceptWatchlistFinding(person, [a])) held.push(a);
+          return held;
+        };
         const unfit: string[] = [];
         for (const row of newlyNamedReviewerRows(committedRows, rows)) {
           const needs = watchlistRequiredAuthority(row);
-          const reviewer = await tx.user.findFirst({
-            where: { displayName: String(row.reviewer).trim(), active: true },
-            include: { department: true, roles: { include: { role: true } } },
-          });
-          if (!reviewer || !(await this.permissions.canAcceptWatchlistFinding(reviewer, needs))) {
-            unfit.push(`${watchlistLabel(row)}: ${String(row.reviewer)} (needs ${needs.map((a) => WATCHLIST_AUTHORITY_LABEL[a]).join(' or ')})`);
+          if (needs.length === 0) {
+            unfit.push(`${watchlistLabel(row)}: no Safety or Regulatory function is assigned — route it for triage first (set its status to Needs Safety Review or Needs Regulatory Review)`);
+            continue;
+          }
+          const old = committedRows.find((c) => sameRow(c, row)) ?? {};
+          const covered = new Set<string>();
+          for (const key of ['reviewer', 'secondReviewer'] as const) {
+            const name = String(row[key] ?? '').trim();
+            if (name === '') continue;
+            const held = await authoritiesHeldBy(name, needs);
+            held.forEach((a) => covered.add(a));
+            if (String(old[key] ?? '').trim() !== name && held.length === 0) {
+              unfit.push(`${watchlistLabel(row)}: ${name} (needs ${needs.map((a) => WATCHLIST_AUTHORITY_LABEL[a]).join(' and ')} authority)`);
+            }
+          }
+          const named = ['reviewer', 'secondReviewer'].filter((k) => String(row[k] ?? '').trim() !== '').length;
+          if (needs.length > 1 && named > 1 && covered.size < needs.length) {
+            unfit.push(`${watchlistLabel(row)}: together the two reviewers must cover ${needs.map((a) => WATCHLIST_AUTHORITY_LABEL[a]).join(' and ')}`);
           }
         }
         if (unfit.length > 0) {
-          throw new BadRequestException(listMessage('The Reviewer must hold the authority the finding needs:', unfit));
+          throw new BadRequestException(listMessage('The reviewers must hold the authority the finding needs:', unfit));
         }
         const notTheirs: string[] = [];
-        for (const row of newlyCarriedVerdictRows(committedRows, rows)) {
-          if (!this.permissions.isAdmin(user) && String(row.reviewer ?? '').trim() !== user.displayName) {
-            notTheirs.push(watchlistLabel(row));
+        for (const row of newlyAcceptingActRows(committedRows, rows)) {
+          const needs = watchlistRequiredAuthority(row);
+          if (needs.length === 0) {
+            notTheirs.push(`${watchlistLabel(row)} — no function is assigned, so it must be routed for triage first`);
+          } else if (!watchlistNamedReviewers(row).includes(user.displayName)) {
+            notTheirs.push(`${watchlistLabel(row)} — only its named reviewer records it`);
+          } else if (!(await this.permissions.canAcceptWatchlistFinding(user, needs))) {
+            notTheirs.push(`${watchlistLabel(row)} — you do not hold ${needs.map((a) => WATCHLIST_AUTHORITY_LABEL[a]).join(' or ')} authority (an administrator needs it too)`);
           }
         }
         if (notTheirs.length > 0) {
           throw new ForbiddenException(
-            listMessage('Only the Reviewer of a finding may assess it as one that can be carried under Proceed with Conditions:', notTheirs),
+            listMessage('Clearing, closing or conditionally accepting a finding needs a qualified reviewer named on that row:', notTheirs),
           );
         }
       }

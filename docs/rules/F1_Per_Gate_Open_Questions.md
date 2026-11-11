@@ -1395,7 +1395,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q53 | **5(b)–(e)** (đã trả lời 05/11, đã xây 11/11/2026) | Khi nào phiên bản cũ chuyển trạng thái; Minor; chưa từng launch; lịch review khi hai phiên bản cùng bán |
 | ✅ R5-Q9 | **6** (đã trả lời 05/11, đã xây 11/11/2026) | Ai phán định một thay đổi Claims Library là "critical" — các function có chuyên môn xác nhận, Quality điều phối |
 | ✅ R5-Q48 · R6-Q13 | **7** (đã trả lời 05/11, đã xây 11/11/2026; R6-Q13 hỏi lại các chỗ ta đọc) | "Công thức mới" trong trigger scale-up (vế 18 vùng ảnh hưởng, 7(a), là vế còn lại của câu 12 Vòng 4, chưa có ID R5; 02/11/2026 thêm phương án (iii): đánh giá thành danh sách một bản ghi cho mỗi lĩnh vực, theo cùng nguyên tắc độ chi tiết mịn hơn như câu 2 — chỉ hỏi, chưa xây, nên chưa cần ID hay tag) |
-| R5-Q67 | **8** | Thẩm quyền Safety/Regulatory chấp nhận finding watch-list: ở người đánh giá hay người duyệt gate |
+| ✅ R5-Q67 · R6-Q14 | **8** (đã trả lời 05/11, đã xây 11/11/2026; R6-Q14 hỏi lại các chỗ ta đọc) | Thẩm quyền Safety/Regulatory chấp nhận finding watch-list: ở người đánh giá hay người duyệt gate |
 | R5-Q16 | **9(a)** | Gap High: "controlled action" và due date ghi ở đâu |
 | ✅ R5-Q46 | — (SW-49) | Controlled action khi để ngỏ dạng sản phẩm ở Gate 2 — đã quyết: trường Confirmed product form là đủ |
 | R5-Q20 | **10** | Change Control chạm gate đã pass: có tự mở lại gate đó không (gồm Gate 11–12 tự mất passed) |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q14 · Thẩm quyền chấp nhận finding watch-list: các chỗ ta đọc câu trả lời (Vòng 5 câu 8) 🟡
+
+**Lộ ra 11/11/2026, khi xây câu 8.** SME xác nhận thẩm quyền nằm ở người đánh giá đủ thẩm quyền và nêu ba điều: cả hai function liên quan thì lấy cả hai; không function nào thì chuyển triage; admin không thay thế được. Câu trả lời không nói "liên quan" xác định thế nào, "lấy cả hai" ghi ra sao, hay "kết luận riêng" cho Further information là gì. Cách đọc của ta: (1) **function liên quan** = status nêu tên function nào thì function đó (ưu tiên), nếu không thì cột Owner của hàng nêu Safety và/hoặc Regulatory; (2) **lấy cả hai** = hàng có **hai reviewer**: Reviewer (người được chọn) và Second reviewer (người của function còn lại tự ghi tên mình — không ai ghi hộ); hai người cùng phải phủ đủ cả hai function; thiếu người thứ hai là thiếu hồ sơ ở Gate 4; (3) **triage** = không ai được chọn làm Reviewer và không ai làm sạch/đóng/chấp nhận được, cho đến khi status của hàng nêu một function; (4) **các hành vi cần thẩm quyền:** đánh giá Non-critical, đánh giá Not a true match (đóng), tick "safe to carry", và chọn phân loại "No issue identified" / "Considered — not selected" trên một hàng **có match với công thức**; các hành vi nâng finding lên (Critical) hay xin thêm thông tin không cần thẩm quyền, vì thắt chặt không phải làm sạch; (5) **"kết luận riêng" cho Further information required** = một ô tick "Safe to carry" do reviewer đủ thẩm quyền ghi, cộng hành động liên kết; không có ô tick thì hàng chặn cả Proceed with Conditions; (6) **ai ghi hành vi:** một trong hai reviewer nêu trên hàng và có đúng thẩm quyền; admin chỉ ghi được nếu bản thân cũng giữ role có thẩm quyền đó; (7) "nhập nháp có thể uỷ quyền" = ai cũng nhập được các ô thông tin, chỉ các hành vi ở (4) bị giới hạn.
+
+**Câu hỏi:** (a) "lấy cả hai" có đúng là hai reviewer, mỗi function một người, hay một người giữ cả hai thẩm quyền cũng đủ; (b) danh sách hành vi ở (4) có đúng không, đặc biệt: phân loại làm sạch chỉ áp cho hàng có match; (c) Critical có thật sự ai cũng được ghi không; (d) khi status nêu một function nhưng Owner nêu function kia, có cần cả hai không.
+
+**Nếu trả lời khác:** `watchlistRequiredAuthority`, `watchlistNeedsTriage`, `newlyAcceptingActRows`, `newlyNamedReviewerRows` (`utils/watchlistReview.ts`); cột `secondReviewer` / `carriedConclusion` (`config/registers.ts`); khối kiểm trong `setRegisterRows` (`projects.service.ts`); `canAcceptWatchlistFinding` (`permissions.service.ts`); `RowDetail` trong `WatchlistRegister.tsx` [ASSUMPTION: R6-Q14].
 
 #### R6-Q13 · Đánh giá scale-up theo vùng: các chỗ ta đọc câu trả lời (Vòng 5 câu 7) 🟡
 
@@ -2622,7 +2630,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `watchlistRowInScope` trong `packages/shared/src/utils/watchlistReview.ts` và các chỗ gọi nó trong `evaluateReadinessCheck` (`gateProgress.ts`) [ASSUMPTION: R5-Q68].
 
-#### R5-Q67 · Thẩm quyền Safety/Regulatory để chấp nhận một finding watch-list: ở người đánh giá, hay ở người duyệt gate 🔴
+#### R5-Q67 · Thẩm quyền Safety/Regulatory để chấp nhận một finding watch-list: ở người đánh giá, hay ở người duyệt gate ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 8) và đã xây 11/11/2026 — phần dưới là lịch sử.** **(a)** Đúng: chuyên viên đánh giá đủ thẩm quyền ghi nhận chấp nhận kỹ thuật trên finding; người duyệt gate được dựa vào kết luận đã duyệt đó, và vẫn chịu trách nhiệm chấp nhận các điều kiện nêu ra và kiểm tra các function cần thiết đã rà soát. Nếu cả Safety và Regulatory đều liên quan thì lấy cả hai; nếu không function nào được gán thì chuyển triage, không mặc định cho bên nào. Admin không thể thay thế thẩm quyền khoa học khi không có thẩm quyền yêu cầu. **(b)** Thẩm quyền áp cho mọi đánh giá thực chất làm sạch hoặc đổi một finding: "No issue identified", "Considered - not selected" khi nó loại một match, đóng finding và chấp nhận có điều kiện; nhập nháp có thể uỷ quyền. "Further information required" một mình không phải chấp nhận: người đánh giá đủ thẩm quyền phải kết luận riêng rằng phần chưa chắc là non-critical, có giới hạn và an toàn để mang theo, kèm hành động liên kết. Chất cấm hay rủi ro an toàn nghiêm trọng chưa giải quyết không thể đi tiếp có điều kiện. **Đã xây:** `watchlistRequiredAuthority` nay trả về **tất cả** function cần (Owner nêu cả hai = cần cả hai, một = một, không = triage, `watchlistNeedsTriage`); cột mới `secondReviewer` (tự ghi bằng chính mình) và `carriedConclusion` ("Safe to carry") trên cả hai danh sách; `newlyAcceptingActRows` thay `newlyCarriedVerdictRows` — Non-critical, Not a true match, tick "safe to carry", và phân loại làm sạch trên hàng có match; `canAcceptWatchlistFinding` **không còn đường tắt cho admin**; Further information required không có kết luận → chặn cả Proceed with Conditions. Chỗ ta đọc không chắc → **R6-Q14**. `npm run verify:watchlist-authority`. Phần dưới là lịch sử.
 
 **Lộ ra 14/10/2026, khi chủ dự án hỏi "nếu Lead được nominate thì sao có quyền chuyên viên" rồi "sao lại bắt Regulatory hay Safety ký phase và chịu trách nhiệm toàn bộ nội dung".** Round 4 Q32(c) viết điều kiện thứ tư là *"the gate approver has the required Safety or Regulatory authority"*, và *"a separate duplicate acknowledgement is not required"*. Đọc đúng chữ thì người ký Approved của cả gate phải có thẩm quyền chuyên môn về một finding duy nhất — buộc một chuyên viên chịu trách nhiệm toàn bộ nội dung gate (công thức, bao bì, claim…), và Lead không có cách chọn đúng người.
 
@@ -2630,7 +2640,7 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Câu hỏi (một dòng xác nhận):** thẩm quyền Safety/Regulatory cần để chấp nhận một finding watch-list có nằm ở người đánh giá đã ghi kết luận (thay vì người duyệt gate) không?
 
-**Nếu trả lời khác:** `newlyCarriedVerdictRows` + khối kiểm trong `setRegisterRows` (`apps/api/src/projects/projects.service.ts`) và khối kiểm trong `assertCanCarryConditions`; `RowDetail` trong `WatchlistRegister.tsx` [ASSUMPTION: R5-Q67].
+**Nếu trả lời khác (lịch sử, nay là `newlyAcceptingActRows`):** `newlyCarriedVerdictRows` + khối kiểm trong `setRegisterRows` (`apps/api/src/projects/projects.service.ts`) và khối kiểm trong `assertCanCarryConditions`; `RowDetail` trong `WatchlistRegister.tsx` [ASSUMPTION: R5-Q67].
 
 #### R5-Q66 · Change Control mở trước khi thay đổi xảy ra, hay có thể mở sau để ghi nhận ngược 🔴
 
