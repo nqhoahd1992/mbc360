@@ -1241,6 +1241,13 @@ model ChangeRecord {
   closureImpactedVersions String?
   closureVerifier        String?
   closureRemainingAction String?
+  // Round 5 question 10: the controlled impact assessment (triage) and the confirmation that a rejected or cancelled change left nothing behind.
+  impactTriage          String?
+  triageReason          String?
+  triageBy              String?
+  triageDate            DateTime? @db.Date
+  confirmedGates        String[]  @default([])
+  restoreConfirmation   String?
   owner                 String
   notes                 String?
   createdAt             DateTime  @default(now())

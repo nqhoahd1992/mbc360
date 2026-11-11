@@ -27,6 +27,7 @@ import { NUMERIC_CELL, NUMERIC_COLUMN } from '../utils/numeric';
 import SaveBar from '../components/SaveBar';
 import Notice from '../components/Notice';
 import RecordList, { RecordField } from '../components/RecordList';
+import DrawerTabs from '../components/DrawerTabs';
 import { TABLE_STICKY } from '../theme/tokens';
 import '../styles/concept.css';
 import './BomCosting.css';
@@ -606,9 +607,13 @@ export default function BomCosting() {
               const match = matchedRawMaterial(l);
               const d = derived(l);
               return (
-                <>
-                  <section>
-                    <div className="rt-sec-title">Raw material</div>
+                <DrawerTabs
+                  tabs={[
+                  {
+                    key: 'raw-material',
+                    label: 'Raw material',
+                    children: (
+                      <>
                     <div className="rt-grid">
                       <RecordField label="Raw material" wide>
                         {rawMaterialControl(l, i)}
@@ -665,9 +670,14 @@ export default function BomCosting() {
                       </RecordField>
                       <RecordField label="Source">{sourceTag(l, i)}</RecordField>
                     </div>
-                  </section>
-                  <section>
-                    <div className="rt-sec-title">Quantity &amp; cost</div>
+                  </>
+                    ),
+                  },
+                  {
+                    key: 'quantity-cost',
+                    label: 'Quantity & cost',
+                    children: (
+                      <>
                     <div className="rt-grid">
                       <RecordField label="% w/w">{percentControl(l, i)}</RecordField>
                       <RecordField label="Cost / kg">
@@ -700,9 +710,14 @@ export default function BomCosting() {
                       Calculated, not entered: Batch kg and units per batch are set on the Costing tab; kg needed, Cost / batch and
                       Cost / unit follow from % w/w and Cost / kg.
                     </p>
-                  </section>
-                  <section>
-                    <div className="rt-sec-title">Evidence</div>
+                  </>
+                    ),
+                  },
+                  {
+                    key: 'evidence',
+                    label: 'Evidence',
+                    children: (
+                      <>
                     <div className="rt-grid">
                       <RecordField label="Evidence link">
                         <Input
@@ -727,8 +742,11 @@ export default function BomCosting() {
                         />
                       </RecordField>
                     </div>
-                  </section>
-                </>
+                  </>
+                    ),
+                  },
+                  ]}
+                />
               );
             }}
             emptyText="No formula lines yet — add a line or import the formula from Cosmetri."
@@ -899,9 +917,13 @@ export default function BomCosting() {
             ]}
             drawerTitle={(l) => `Component ${l.line}${l.component ? ` — ${l.component}` : ''}`}
             drawer={(l, i) => (
-              <>
-                <section>
-                  <div className="rt-sec-title">Component</div>
+              <DrawerTabs
+                tabs={[
+                {
+                  key: 'component',
+                  label: 'Component',
+                  children: (
+                    <>
                   <div className="rt-grid">
                     <RecordField label="Component" wide>
                       <Input
@@ -925,9 +947,14 @@ export default function BomCosting() {
                       />
                     </RecordField>
                   </div>
-                </section>
-                <section>
-                  <div className="rt-sec-title">Quantity &amp; cost</div>
+                </>
+                  ),
+                },
+                {
+                  key: 'quantity-cost',
+                  label: 'Quantity & cost',
+                  children: (
+                    <>
                   <div className="rt-grid">
                     <RecordField label="Units / finished unit">
                       <InputNumber
@@ -977,9 +1004,14 @@ export default function BomCosting() {
                       />
                     </RecordField>
                   </div>
-                </section>
-                <section>
-                  <div className="rt-sec-title">Evidence &amp; approval</div>
+                </>
+                  ),
+                },
+                {
+                  key: 'evidence-approval',
+                  label: 'Evidence & approval',
+                  children: (
+                    <>
                   <div className="rt-grid">
                     <RecordField label="Evidence link">
                       <Input
@@ -999,8 +1031,11 @@ export default function BomCosting() {
                       />
                     </RecordField>
                   </div>
-                </section>
-              </>
+                </>
+                  ),
+                },
+                ]}
+              />
             )}
             emptyText="No packaging components yet."
             addLabel="Add component"

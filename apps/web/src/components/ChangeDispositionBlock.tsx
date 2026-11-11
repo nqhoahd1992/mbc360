@@ -32,6 +32,7 @@ const LABELS: Record<string, string> = {
   closureImpactedVersions: 'Impacted formula / artwork / claim / market versions',
   closureVerifier: 'Responsible verifier',
   closedDate: 'Closure date',
+  restoreConfirmation: 'Confirmation that nothing was implemented and no impact remains',
 };
 
 export default function ChangeDispositionBlock({
@@ -103,6 +104,19 @@ export default function ChangeDispositionBlock({
             onChange={(d) => onChange({ closedDate: d ? d.format('YYYY-MM-DD') : undefined })}
           />
         </RecordField>
+        {/* Round 5 question 10: a Rejected or Cancelled change needs the recorded confirmation that no controlled implementation occurred and no
+            residual impact remains — or, if implementation did occur, that its reversal or correction was verified. */}
+        {(change.status === 'Rejected' || change.status === 'Cancelled') && (
+          <RecordField label={LABELS.restoreConfirmation} wide>
+            <Input.TextArea
+              disabled={readOnly}
+              autoSize={{ minRows: 2, maxRows: 4 }}
+              placeholder="No controlled implementation occurred and no residual impact remains — or the reversal / correction was verified (how)"
+              value={change.restoreConfirmation}
+              onChange={(e) => onChange({ restoreConfirmation: e.target.value })}
+            />
+          </RecordField>
+        )}
         {/* The one part the answer marks "if any", so it is never in the missing
             list — a change that leaves nothing behind should not be blocked into
             inventing a transition requirement. */}

@@ -121,6 +121,14 @@ import {
   requirementRowKey,
 } from '@mbc360/shared/utils/marketRequirements';
 import { changeTriggerAvailability } from '@mbc360/shared/utils/changeAccess';
+import {
+  CHANGE_STATUSES_NEEDING_TRIAGE,
+  CHANGE_TRIAGE_FUNCTION_KEYS,
+  TRIAGE_MATERIAL,
+  isGateRecordedPassed,
+  isTriageRecorded,
+  triageProblems,
+} from '@mbc360/shared/utils/changeTriage';
 import { phaseSignContent } from '@mbc360/shared/utils/phaseSignContent';
 import { registerClosureContent, registerRowSignContent } from '@mbc360/shared/utils/registerClosureContent';
 import { canDecideGate as canDecideGateInProject, canChangeMarketTracks as canChangeMarketTracksInProject, gateDecisionReason, MARKET_TRACKS_REASON } from '@mbc360/shared/utils/projectAuthority';
@@ -274,6 +282,9 @@ const GAP_ASSESSMENT_FIELDS = [
   'gapActionOwner',
   'gapLinkedNextActionId',
 ] as const satisfies readonly (keyof GateRecord)[];
+
+// Round 5 question 10: the triage fields are written by the triage act alone, so a save that omits or alters them is not an edit of them.
+const TRIAGE_SERVER_FIELDS: string[] = ['impactTriage', 'triageReason', 'triageBy', 'triageDate', 'confirmedGates'];
 
 // A value the engine compares exactly must be one of its list's values (SME rule
 // audit B13, 2026-10-04). A dropdown is only a dropdown in the browser: a direct
@@ -5856,7 +5867,7 @@ export class ProjectsService {
         const old = before.get(c.changeId);
         if (old && isClosed(old.status) && isChangeDispositionRecorded(old)) {
           const changedFields = (Object.keys({ ...old, ...c }) as (keyof ChangeRecord)[]).filter(
-            (k) => k !== 'projectId' && JSON.stringify(norm(old[k])) !== JSON.stringify(norm(c[k])),
+            (k) => k !== 'projectId' && !TRIAGE_SERVER_FIELDS.includes(k) && JSON.stringify(norm(old[k])) !== JSON.stringify(norm(c[k])),
           );
           if (changedFields.length > 0) {
             throw new BadRequestException(
@@ -5866,6 +5877,19 @@ export class ProjectsService {
         } else if (isClosed(c.status) && !isChangeDispositionRecorded(c) && !(old && isClosed(old.status))) {
           throw new BadRequestException(
             `${c.changeId} cannot be closed as ${c.status} until its final disposition is recorded — missing: ${missingDispositionFields(c).join(', ')}`,
+          );
+        }
+      }
+
+      // Round 5 question 10: "approval to implement" is one of the two moments the affected decisions are reopened, so a change cannot be
+      // approved or implemented before its impact has been assessed. Checked only on the move INTO such a status, so a record that was
+      // already there before this rule stays editable. [ASSUMPTION: R6-Q16]
+      for (const c of records) {
+        const old = before.get(c.changeId);
+        const triaged = !!old && isTriageRecorded(old);
+        if (CHANGE_STATUSES_NEEDING_TRIAGE.includes(c.status) && old?.status !== c.status && !triaged) {
+          throw new BadRequestException(
+            `${c.changeId}: its impact has not been assessed yet, so it cannot be "${c.status}" — Quality's change-control reviewer records the impact triage first`,
           );
         }
       }
@@ -5895,7 +5919,7 @@ export class ProjectsService {
           continue;
         }
         const fields = (Object.keys({ ...old, ...c }) as (keyof ChangeRecord)[]).filter(
-          (k) => k !== 'projectId' && JSON.stringify(old[k] ?? null) !== JSON.stringify(c[k] ?? null),
+          (k) => k !== 'projectId' && !TRIAGE_SERVER_FIELDS.includes(k) && JSON.stringify(old[k] ?? null) !== JSON.stringify(c[k] ?? null),
         );
         if (fields.length > 0) edited.push({ changeId: c.changeId, fields });
       }
@@ -5929,6 +5953,14 @@ export class ProjectsService {
             closureImpactedVersions: c.closureImpactedVersions ?? null,
             closureVerifier: c.closureVerifier ?? null,
             closureRemainingAction: c.closureRemainingAction ?? null,
+            // Round 5 question 10: the triage is the server's own act (triageChange), so whatever the client sent for these five is
+            // discarded and the stored values are kept.
+            impactTriage: before.get(c.changeId)?.impactTriage ?? null,
+            triageReason: before.get(c.changeId)?.triageReason ?? null,
+            triageBy: before.get(c.changeId)?.triageBy ?? null,
+            triageDate: this.dateOrNull(before.get(c.changeId)?.triageDate),
+            confirmedGates: before.get(c.changeId)?.confirmedGates ?? [],
+            restoreConfirmation: c.restoreConfirmation ?? null,
             owner: c.owner,
             notes: c.notes ?? null,
           })),
@@ -5981,6 +6013,103 @@ export class ProjectsService {
       await tx.changeRecord.update({ where: { changeId }, data: { status: 'Under Review' } });
       return { changeId, from: c.status, to: 'Under Review', reason: why } as unknown as Prisma.InputJsonValue;
     });
+  }
+
+  // Round 5 question 10: the controlled impact assessment of a change. Quality's change-control reviewer records whether the change is
+  // material, and the full scope of gates it invalidates (the trigger only suggests a minimum). A Material outcome reopens every confirmed
+  // gate that stands passed — all of them, not only the earliest — as one recorded event that keeps the earlier decisions, reason, CHG id
+  // and owner of the act; the gates then unlock strictly in order. An administrative correction or no material impact reopens nothing.
+  // The act is written from the session: who and when are never a value the client sends. [ASSUMPTION: R6-Q16]
+  async triageChange(
+    user: SessionUser,
+    id: string,
+    changeId: string,
+    body: { outcome: string; confirmedGates?: string[]; reason?: string },
+    expectedVersion: number,
+    idempotencyKey?: string,
+  ): Promise<ProjectEnvelope> {
+    const scope = 'project.triageChange';
+    if (idempotencyKey) {
+      const replayed = await this.idempotency.replay(scope, idempotencyKey);
+      if (replayed) return replayed as ProjectEnvelope;
+    }
+    const confirmedGates = [...new Set((body.confirmedGates ?? []).map((g) => String(g).trim()).filter(Boolean))];
+    const reason = (body.reason ?? '').trim();
+    const missing = triageProblems({ outcome: body.outcome, confirmedGates, reason });
+    if (missing.length > 0) throw new BadRequestException(listMessage('The triage still needs:', missing));
+
+    await this.prisma.$transaction(async (tx) => {
+      const row = await this.loadVersionLocked(tx, id, expectedVersion);
+      const project = toProjectData(row, [], await this.loadReference(tx));
+      const c = project.changes.find((x) => x.changeId === changeId);
+      if (!c) throw new BadRequestException(`${changeId} is not a change of this project`);
+      if (!isChangeOpen(c.status)) throw new BadRequestException(`${changeId} is closed (${c.status}) — its impact can no longer be triaged`);
+      if (isTriageRecorded(c)) {
+        throw new BadRequestException(`${changeId} was already triaged as "${c.impactTriage}" by ${c.triageBy ?? 'unrecorded'} — a recorded triage is not changed`);
+      }
+      await this.assertHoldsFunction(tx, id, user, CHANGE_TRIAGE_FUNCTION_KEYS, `assess the impact of ${changeId}`);
+
+      await tx.changeRecord.update({
+        where: { changeId },
+        data: {
+          impactTriage: body.outcome,
+          triageReason: reason,
+          triageBy: user.displayName,
+          triageDate: new Date(),
+          confirmedGates: body.outcome === TRIAGE_MATERIAL ? confirmedGates : [],
+        },
+      });
+
+      let reopenedIds: string[] = [];
+      if (body.outcome === TRIAGE_MATERIAL) {
+        const standing = confirmedGates.filter((gid) => isGateRecordedPassed(project.gates.find((g) => g.gateId === gid)));
+        if (standing.length > 0) {
+          const ordered = [...standing].sort((a, b) => gateIndex(a) - gateIndex(b));
+          const reopened = await this.reopenGates(tx, id, row, project, ordered, {
+            fromGateId: ordered[ordered.length - 1],
+            toGateId: ordered[0],
+            reason: `Change ${changeId}: ${reason}`,
+            initiatedBy: user.displayName,
+          });
+          reopenedIds = reopened.affected.map((g) => g.gateId);
+          await this.audit.record(
+            {
+              actorId: user.id,
+              projectId: id,
+              entityType: 'backtrack_event',
+              entityId: reopened.event.id,
+              action: 'project.backtracked',
+              before: {
+                previousGates: reopened.previousGates,
+                previousSignOffs: reopened.previousSignOffs,
+                previousGateSignOffs: reopened.previousGateSignOffs,
+              } as unknown as Prisma.InputJsonValue,
+              after: { changeId, reason, reopenedGateIds: reopenedIds } as unknown as Prisma.InputJsonValue,
+            },
+            tx,
+          );
+        }
+      }
+      await this.bumpVersion(tx, id);
+      await this.audit.record(
+        {
+          actorId: user.id,
+          projectId: id,
+          entityType: 'change_record',
+          entityId: changeId,
+          action: 'change.triaged',
+          after: { changeId, outcome: body.outcome, reason, confirmedGates, reopenedGateIds: reopenedIds } as unknown as Prisma.InputJsonValue,
+        },
+        tx,
+      );
+    });
+    const envelope = await this.envelope(await this.loadOrThrow(this.prisma, id));
+    if (idempotencyKey) {
+      await this.prisma.$transaction((tx) =>
+        this.idempotency.remember(tx, scope, idempotencyKey, 200, envelope as unknown as Prisma.InputJsonValue),
+      );
+    }
+    return envelope;
   }
 
   // ------------------------------------------------------- gate mutations ----
@@ -6327,6 +6456,114 @@ export class ProjectsService {
   // fromGateId, every phase with at least one gate in the range loses ALL three
   // sign-offs, and nothing is deleted — the prior gates and sign-offs are
   // snapshotted into an immutable BacktrackEvent first.
+  // Reopens a SET of gates and records what they held (B4 — no silent corrections): the pre-reopen gate records and the phase sign-offs
+  // are snapshotted into an immutable backtrack event, the gates go back to Not Started, every gate-level and phase-level signature over
+  // them is cleared (the previous values live on the event), and the registers whose closing gate is among them reopen too. A Backtrack
+  // reopens a contiguous range; a change confirmed as materially impacting reopens exactly the scope Quality confirmed (Round 5
+  // question 10), which need not be contiguous. Gates unlock strictly in order afterwards, so the dependency order holds by itself.
+  private async reopenGates(
+    tx: Prisma.TransactionClient,
+    id: string,
+    row: ProjectWithAll,
+    project: ProjectData,
+    gateIds: string[],
+    event: { fromGateId: string; toGateId: string; reason: string; initiatedBy: string },
+  ) {
+    const set = new Set(gateIds);
+    const inRange = (gid: string) => set.has(gid);
+    const indexes = gateIds.map((g) => gateIndex(g)).filter((i) => i >= 0).sort((x, y) => x - y);
+    const toIdx = indexes[0];
+
+    const affected = project.gates.filter((g) => inRange(g.gateId));
+    const previousGates = affected.map((g) => ({ ...g }));
+
+    const affectedPhases = new Set<number>();
+    for (const idx of indexes) affectedPhases.add(GATES[idx].phase);
+
+    const previousSignOffs: Record<number, SignOff[]> = {};
+    for (const phase of affectedPhases) {
+      const closure = row.phaseClosures.find((c) => c.phase === phase);
+      if (!closure) continue;
+      previousSignOffs[phase] = closure.signOffs.map((s) => ({
+        role: s.role as SignOff['role'],
+        assignedToUserId: s.assignedToUserId ?? undefined,
+        name: s.name ?? undefined,
+        initials: s.initials ?? undefined,
+        date: s.date ? s.date.toISOString().slice(0, 10) : undefined,
+        decision: (s.decision ?? undefined) as SignOff['decision'],
+        comments: s.comments ?? undefined,
+        signedByUserId: s.signedByUserId ?? undefined,
+        signedAt: s.signedAt ? s.signedAt.toISOString() : undefined,
+        roleAtSigning: s.roleAtSigning ?? undefined,
+        recordVersion: s.recordVersion ?? undefined,
+      }));
+    }
+
+    const created = await tx.backtrackEvent.create({
+      data: {
+        projectId: id,
+        // C8 (SME rule audit, 2026-10-04): the person who backtracked is the signed-in user — B4's "who" cannot be a value the client chooses.
+        initiatedBy: event.initiatedBy,
+        reason: event.reason,
+        fromGateId: event.fromGateId,
+        toGateId: event.toGateId,
+        reopenedGateIds: affected.map((g) => g.gateId),
+        previousGates: previousGates as unknown as Prisma.InputJsonValue,
+        previousSignOffs: previousSignOffs as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    await tx.gateRecord.updateMany({
+      where: { projectId: id, gateId: { in: affected.map((g) => g.gateId) } },
+      data: { status: 'Not Started', decision: null },
+    });
+    const previousGateSignOffs = await this.clearGateSignOffs(tx, id, affected.map((g) => g.gateId));
+    await this.clearPreWorkAcceptance(tx, id, GATES[toIdx].phase);
+
+    for (const phase of affectedPhases) {
+      const closure = row.phaseClosures.find((c) => c.phase === phase);
+      if (!closure) continue;
+      // Clear the signature fields but keep the rows (one per role) — the previous values live on the immutable event created above.
+      await tx.signOff.updateMany({
+        where: { phaseClosureId: closure.id },
+        data: {
+          name: null,
+          initials: null,
+          date: null,
+          decision: null,
+          comments: null,
+          signedByUserId: null,
+          signedAt: null,
+          roleAtSigning: null,
+          recordVersion: null,
+        },
+      });
+    }
+
+    // Register closing (2026-08-27): a register whose OWN threshold gate (gateRefHighestGateId) falls inside the reopened set must reopen
+    // too — otherwise a reopening could reopen Gate 5 while a register that had to close BEFORE Gate 5 stays closed.
+    const reopenedRegisterKeys = REGISTER_CONFIGS.filter((config) => {
+      const thresholdId = gateRefHighestGateId(config.gate);
+      return thresholdId && inRange(thresholdId);
+    }).map((config) => config.key);
+    if (reopenedRegisterKeys.length > 0) {
+      await tx.registerClosureSignOff.updateMany({
+        where: { closure: { projectId: id, registerKey: { in: reopenedRegisterKeys } } },
+        data: {
+          name: null,
+          signedByUserId: null,
+          signedAt: null,
+          roleAtSigning: null,
+          recordVersion: null,
+          signatureImage: null,
+          signatureVerifiedAt: null,
+          contentHash: null,
+        },
+      });
+    }
+    return { event: created, affected, previousGates, previousSignOffs, previousGateSignOffs };
+  }
+
   async backtrack(
     user: SessionUser,
     id: string,
@@ -6352,109 +6589,15 @@ export class ProjectsService {
       // Backtrack is picked from the same decision dropdown, so it needs the same authority on the gate being backtracked
       // FROM — and it is strictly more destructive (it reopens a whole range and voids sign-offs).
       this.assertCanDecide(user, project, body.fromGateId);
-      const inRange = (gid: string) => {
-        const idx = gateIndex(gid);
-        return idx >= toIdx && idx <= fromIdx;
-      };
-
-      const affected = project.gates.filter((g) => inRange(g.gateId));
-      const previousGates = affected.map((g) => ({ ...g }));
-
-      const affectedPhases = new Set<number>();
-      for (let idx = toIdx; idx <= fromIdx; idx++) affectedPhases.add(GATES[idx].phase);
-
-      const previousSignOffs: Record<number, SignOff[]> = {};
-      for (const phase of affectedPhases) {
-        const closure = row.phaseClosures.find((c) => c.phase === phase);
-        if (!closure) continue;
-        previousSignOffs[phase] = closure.signOffs.map((s) => ({
-          role: s.role as SignOff['role'],
-          assignedToUserId: s.assignedToUserId ?? undefined,
-          name: s.name ?? undefined,
-          initials: s.initials ?? undefined,
-          date: s.date ? s.date.toISOString().slice(0, 10) : undefined,
-          decision: (s.decision ?? undefined) as SignOff['decision'],
-          comments: s.comments ?? undefined,
-          signedByUserId: s.signedByUserId ?? undefined,
-          signedAt: s.signedAt ? s.signedAt.toISOString() : undefined,
-          roleAtSigning: s.roleAtSigning ?? undefined,
-          recordVersion: s.recordVersion ?? undefined,
-        }));
-      }
-
-      const event = await tx.backtrackEvent.create({
-        data: {
-          projectId: id,
-          // C8 (SME rule audit, 2026-10-04): the person who backtracked is the
-          // signed-in user — B4's "who" cannot be a value the client chooses.
-          initiatedBy: user.displayName,
-          reason: body.reason.trim(),
-          fromGateId: body.fromGateId,
-          toGateId: body.toGateId,
-          reopenedGateIds: affected.map((g) => g.gateId),
-          previousGates: previousGates as unknown as Prisma.InputJsonValue,
-          previousSignOffs: previousSignOffs as unknown as Prisma.InputJsonValue,
-        },
-      });
-
-      await tx.gateRecord.updateMany({
-        where: { projectId: id, gateId: { in: affected.map((g) => g.gateId) } },
-        data: { status: 'Not Started', decision: null },
-      });
-      const previousGateSignOffs = await this.clearGateSignOffs(tx, id, affected.map((g) => g.gateId));
-      await this.clearPreWorkAcceptance(tx, id, GATES[toIdx].phase);
-
-      for (const phase of affectedPhases) {
-        const closure = row.phaseClosures.find((c) => c.phase === phase);
-        if (!closure) continue;
-        // Clear the signature fields but keep the rows (one per role) — the
-        // previous values live on the immutable event created above.
-        await tx.signOff.updateMany({
-          where: { phaseClosureId: closure.id },
-          data: {
-            name: null,
-            initials: null,
-            date: null,
-            decision: null,
-            comments: null,
-            signedByUserId: null,
-            signedAt: null,
-            roleAtSigning: null,
-            recordVersion: null,
-          },
-        });
-      }
-
-      // Register closing (2026-08-27): a register whose OWN threshold gate
-      // (gateRefHighestGateId) falls inside the reopened range must reopen
-      // too — otherwise a Backtrack could reopen Gate 5 while a register
-      // that had to close BEFORE Gate 5 stays closed, an inconsistency
-      // nothing else here would ever produce. Same clear-fields pattern as
-      // the phase SignOff clearing above; the previous signatures are not
-      // separately snapshotted — unlike phase sign-offs, there is no
-      // per-register slot in BacktrackEvent's shape to hold them, and the
-      // registerClosureSignOffs the transaction is about to null out are
-      // small enough (2 rows per affected register) that adding one is not
-      // worth doing until a real need for it shows up.
-      const reopenedRegisterKeys = REGISTER_CONFIGS.filter((config) => {
-        const thresholdId = gateRefHighestGateId(config.gate);
-        return thresholdId && inRange(thresholdId);
-      }).map((config) => config.key);
-      if (reopenedRegisterKeys.length > 0) {
-        await tx.registerClosureSignOff.updateMany({
-          where: { closure: { projectId: id, registerKey: { in: reopenedRegisterKeys } } },
-          data: {
-            name: null,
-            signedByUserId: null,
-            signedAt: null,
-            roleAtSigning: null,
-            recordVersion: null,
-            signatureImage: null,
-            signatureVerifiedAt: null,
-            contentHash: null,
-          },
-        });
-      }
+      const reopened = await this.reopenGates(
+        tx,
+        id,
+        row,
+        project,
+        GATES.slice(toIdx, fromIdx + 1).map((g) => g.id),
+        { fromGateId: body.fromGateId, toGateId: body.toGateId, reason: body.reason.trim(), initiatedBy: user.displayName },
+      );
+      const { event, affected, previousGates, previousSignOffs, previousGateSignOffs } = reopened;
 
       await this.bumpVersion(tx, id);
       await this.audit.record(

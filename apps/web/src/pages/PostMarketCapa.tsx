@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import DrawerTabs from '../components/DrawerTabs';
 import { Button, Drawer, Empty, Form, Grid, Input, Select, message } from 'antd';
 import ChoiceSelect from '../components/ChoiceSelect';
 import { InboxOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
@@ -241,6 +242,13 @@ export default function PostMarketCapa() {
           <div className="pm-detail">
             {/* The sheet's columns, in its order: Product/SKU, Market, Event type, Complaint / AE summary, Severity / risk, Investigation
                 link, CAPA link, PIF / PMF impact, Status, Owner, Notes. The first five describe the event and are not edited here. */}
+            <DrawerTabs
+              tabs={[
+                {
+                  key: 'event',
+                  label: 'Event',
+                  children: (
+                    <>
             <dl className="pm-dl">
               <div>
                 <dt>Product / SKU</dt>
@@ -265,6 +273,14 @@ export default function PostMarketCapa() {
                 <dd>{severityTag(open.severity)}</dd>
               </div>
             </dl>
+                    </>
+                  ),
+                },
+                {
+                  key: 'follow-up',
+                  label: 'Follow-up',
+                  children: (
+                    <>
             <div className="pm-fields">
               <label className="au-field pm-wide">
                 <span className="au-field-label">Investigation link</span>
@@ -299,6 +315,11 @@ export default function PostMarketCapa() {
                 />
               </label>
             </div>
+                    </>
+                  ),
+                },
+              ]}
+            />
           </div>
         )}
       </Drawer>

@@ -2,9 +2,11 @@ import { useMemo, useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import UserSelect from '../components/UserSelect';
 import ChangeDispositionBlock from '../components/ChangeDispositionBlock';
+import ChangeTriageBlock, { triageSummary } from '../components/ChangeTriageBlock';
 import Notice from '../components/Notice';
 import { isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
 import { AutoComplete, Button, DatePicker, Form, Input, Modal, Select, Switch, message, Tooltip } from 'antd';
+import DrawerTabs from '../components/DrawerTabs';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
@@ -83,6 +85,8 @@ export default function ChangeControl() {
   const [reopening, setReopening] = useState<ChangeRecord | null>(null);
   const [reopenReason, setReopenReason] = useState('');
   const [reopenBusy, setReopenBusy] = useState(false);
+  // The detail panel's tab, kept across changes so moving to the next record stays on the same tab.
+  const [detailTab, setDetailTab] = useState('details');
   const [form] = Form.useForm<ChangeForm>();
   const selectedTriggerId = Form.useWatch('triggerId', form);
   const selectedTrigger = getChangeTrigger(selectedTriggerId);
@@ -369,8 +373,22 @@ export default function ChangeControl() {
                     A closed change cannot be edited. Reopening needs a reason and is recorded.
                   </Notice>
                 )}
-                <div>
-                  <div className="rt-sec-title">Change</div>
+                <div className="cc-summary">
+                  <span className="c-tag">{c.status}</span>
+                  <span className="c-tag">Risk {c.riskLevel}</span>
+                  <span className={`c-tag ${triageSummary(c).tone}`}>{triageSummary(c).label}</span>
+                  {triageSummary(c).holds && <span className="cc-summary-note">{triageSummary(c).holds}</span>}
+                </div>
+                <DrawerTabs
+                  activeKey={detailTab}
+                  onChange={setDetailTab}
+                  tabs={[
+                    {
+                      key: 'details',
+                      label: 'Details',
+                      children: (
+                        <>
+                          <div className="rt-sec-title">Change</div>
                   <dl className="rt-dl">
                     {dlRow('Trigger / event', c.trigger)}
                     {dlRow('Affected gates / phases', t ? <AffectedGates gates={t.gates} /> : undefined)}
@@ -381,10 +399,31 @@ export default function ChangeControl() {
                     {dlRow('Due', c.dueDate)}
                     {dlRow('Closed', c.closedDate)}
                   </dl>
-                </div>
 
-                <div>
-                  <div className="rt-sec-title">Status &amp; impact</div>
+                          <div className="rt-sec-title">Action &amp; communication</div>
+                  <dl className="rt-dl">
+                    {dlRow('Required action', c.requiredAction)}
+                    {dlRow('Required sign-offs', c.requiredSignOffs)}
+                    {dlRow('Evidence link', c.evidenceLink)}
+                    {dlRow('Comms', c.communicationRequired ? 'Required' : undefined)}
+                    {dlRow('Sales / Marketing message', c.salesMarketingMessage)}
+                    {dlRow('Notes', c.notes)}
+                  </dl>
+
+                        </>
+                      ),
+                    },
+                    {
+                      key: 'impact',
+                      label: 'Assessment',
+                      dot: triageSummary(c).pending,
+                      children: <ChangeTriageBlock change={c} />,
+                    },
+                    {
+                      key: 'scope',
+                      label: 'Status & scope',
+                      children: (
+                        <>
                   <div className="rt-grid">
                     <RecordField label="Status">{statusSelect(c)}</RecordField>
                     {/* Editable after creation (2026-10-04): a change's risk can
@@ -431,25 +470,18 @@ export default function ChangeControl() {
                       />
                     </RecordField>
                   </div>
-                </div>
 
-                <div>
-                  <div className="rt-sec-title">Action &amp; communication</div>
-                  <dl className="rt-dl">
-                    {dlRow('Required action', c.requiredAction)}
-                    {dlRow('Required sign-offs', c.requiredSignOffs)}
-                    {dlRow('Evidence link', c.evidenceLink)}
-                    {dlRow('Comms', c.communicationRequired ? 'Required' : undefined)}
-                    {dlRow('Sales / Marketing message', c.salesMarketingMessage)}
-                    {dlRow('Notes', c.notes)}
-                  </dl>
-                </div>
-
-                {/* Round 4 question 34(c): the seven parts of a final disposition. */}
-                <div>
-                  <div className="rt-sec-title">Final disposition</div>
-                  <ChangeDispositionBlock change={c} readOnly={frozen} onChange={(p) => patchChange(c.changeId, p)} />
-                </div>
+                        </>
+                      ),
+                    },
+                    {
+                      key: 'closure',
+                      label: 'Closure',
+                      // Round 4 question 34(c): the seven parts of a final disposition.
+                      children: <ChangeDispositionBlock change={c} readOnly={frozen} onChange={(p) => patchChange(c.changeId, p)} />,
+                    },
+                  ]}
+                />
               </>
             );
           }}

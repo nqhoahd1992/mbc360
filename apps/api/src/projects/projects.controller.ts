@@ -926,6 +926,16 @@ export class ProjectsController {
     return this.projects.reopenChange(user, id, changeId, body.reason, body.expectedVersion);
   }
 
+  @Post(':id/changes/:changeId/triage')
+  triageChange(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('changeId') changeId: string,
+    @Body() body: { outcome: string; confirmedGates?: string[]; reason?: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.triageChange(user, id, changeId, body, body.expectedVersion);
+  }
+
   @Post(':id/formula-versions')
   createFormulaVersion(
     @CurrentUser() user: SessionUser,

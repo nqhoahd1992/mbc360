@@ -1,3 +1,4 @@
+import DrawerTabs from '../components/DrawerTabs';
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Checkbox, DatePicker, Drawer, Grid, Input, Select, message } from 'antd';
 import { ExperimentOutlined, PlusOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
@@ -420,8 +421,14 @@ export default function AdminRmRisk() {
               <dd>Cosmetri raw material — name and supplier are read from there</dd>
             </dl>
 
+            <DrawerTabs
+              tabs={[
+              {
+                key: 'risk',
+                label: 'Risk classification',
+                children: (
+                  <>
             <section>
-              <div className="rt-sec-title">Risk classifications</div>
               <Checkbox.Group
                 className="rr-flags"
                 disabled={!canEdit}
@@ -471,8 +478,15 @@ export default function AdminRmRisk() {
               </label>
             </section>
 
+                  </>
+                ),
+              },
+              {
+                key: 'history',
+                label: 'History',
+                children: (
+                  <>
             <section>
-              <div className="rt-sec-title">History</div>
               {open.isNew ? (
                 <p className="au-field-help">Not saved yet — saving this material starts its history.</p>
               ) : revisions === undefined ? (
@@ -488,6 +502,11 @@ export default function AdminRmRisk() {
                 />
               )}
             </section>
+                  </>
+                ),
+              },
+              ]}
+            />
           </div>
         )}
       </Drawer>

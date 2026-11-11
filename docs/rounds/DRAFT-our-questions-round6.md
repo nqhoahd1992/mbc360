@@ -2,7 +2,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-This round has fifteen questions. They follow from your answers to questions 1, 2, 3, 4, 5, 6, 7, 8, 9 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared; question 11 asks how the details of a version's supersession market by market should be read; question 12 asks how "critical" and the Change Control rule for a Claims Library change should be read; question 13 asks how the details of the scale-up assessment, area by area, should be read; question 14 asks how the details of who may accept a watch-list finding should be read; question 15 asks how the details of a gap carried by a tracked Next Action should be read.
+This round has sixteen questions. They follow from your answers to questions 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared; question 11 asks how the details of a version's supersession market by market should be read; question 12 asks how "critical" and the Change Control rule for a Claims Library change should be read; question 13 asks how the details of the scale-up assessment, area by area, should be read; question 14 asks how the details of who may accept a watch-list finding should be read; question 15 asks how the details of a gap carried by a tracked Next Action should be read; question 16 asks how the details of a Change Control that names a passed gate should be read, and what is not built yet.
 
 Where we say "the software development team" we mean the team building this application — not the owner of any product development project.
 
@@ -421,3 +421,31 @@ You told us that every gap left unresolved when a gate proceeds — High, Medium
 **(c)** Does a Low or Medium gap resolved before signing need its resolution and evidence to be mandatory?
 
 **(d)** Which function should accept the residual risk of a High gap?
+
+## Question 16 — A Change Control that names a passed gate: how should we read the details your answer leaves open?
+
+*Where in the application:* the **Change Control** page, a change's detail panel, "Impact assessment (triage)"; and the readiness list of every gate that is not yet passed.
+
+You told us a change gets a controlled impact assessment, that Quality confirms the full scope, that a confirmed material impact reopens every affected decision while keeping the earlier signed snapshot in history, that an administrative correction does not reopen anything, and that a Rejected or Cancelled change needs a recorded confirmation before readiness is restored. We have built the core of that. Where your answer leaves a detail open we read it as follows:
+
+- **Who records the assessment** is the person holding the *Quality / change-control reviewer* function on the project (no one stands in for them, and an administrator does not). The technical functions you mention are consulted rather than co-signing.
+- **"Holds current readiness"** means a change that has not been assessed holds every gate that has **not** passed, from the earliest gate it can affect onward. A gate that has already passed keeps its record until the impact is confirmed. Before the assessment the affected gates are the ones the trigger names (a trigger that names every gate means every gate).
+- **A material impact** reopens every gate in the scope Quality confirmed that stands passed, as one recorded event with the CHG id, the reason and the person; the gates then open in their normal order.
+- **"Approval to implement"** is the moment the change moves to *Approved - Implementation Pending* (or later); it cannot do so before the assessment.
+- **No material impact** and **Administrative correction** reopen nothing; the recorded assessment with its reason is the controlled addendum.
+- **A recorded assessment is not changed afterwards.**
+- **A Rejected or Cancelled change** counts as closed only once it records that nothing was implemented and no residual impact remains, or that the reversal was verified.
+- **Several changes** each hold on their own; assessing one does not release the others.
+- **Gates 11 and 12** still stop counting as passed by themselves when a change is opened; we have not yet recorded a reason in the gate's history for that.
+
+**Not built yet:** the linked Gate 12 review for a post-market change, per market and version; choosing the Gates 10–11 scope **market by market** (today the scope is by gate and reopens both lanes); revising a recorded assessment; recording the reason when Gates 11–12 stop counting as passed.
+
+**(a)** Is that the right person to record the assessment, and do the technical functions need to confirm as well?
+
+**(b)** Is it right that an unassessed change holds the gates that have not passed while leaving a passed gate's record alone until the impact is confirmed?
+
+**(c)** Is "approval to implement" the move to *Approved - Implementation Pending*?
+
+**(d)** May a recorded assessment be revised, and by whom?
+
+**(e)** Should the scope for Gates 10–11 be chosen for each market separately?

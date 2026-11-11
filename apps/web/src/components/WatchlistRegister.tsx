@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import DrawerTabs from './DrawerTabs';
 import { Alert, Button, Checkbox, DatePicker, Drawer, Grid, Input, InputNumber, Select, Tooltip } from 'antd';
 import ChoiceSelect from './ChoiceSelect';
 import {
@@ -515,280 +516,311 @@ function RowDetail({
 
   return (
     <div className="wl-sections">
-      <section>
-        <div className="wl-sec-title">Reference</div>
-        <dl className="wl-dl">
-          <dt>Function</dt>
-          <dd>{text(row.functionRole)}</dd>
-          <dt>{label('statusLevel', 'statusLimitGuidance')}</dt>
-          <dd>{text(row.statusLevel) || text(row.statusLimitGuidance)}</dd>
-          <dt>{label('whyItMatters', 'whyCautionRequired')}</dt>
-          <dd>{text(row.whyItMatters) || text(row.whyCautionRequired)}</dd>
-          <dt>Applicable products</dt>
-          <dd>{text(row.applicableProducts)}</dd>
-          <dt>Reference / source</dt>
-          <dd>{text(row.referenceSource) || '—'}</dd>
-        </dl>
-      </section>
-
-      <section>
-        <div className="wl-sec-title">Formula BOM screen</div>
-        {hits.length ? (
-          <ul className="wl-bom">
-            {hits.map(({ line, inciName, hit }) => (
-              <li key={`${line}-${hit.matchedValue}`}>
-                <ExperimentOutlined />
-                <span>
-                  <b>Line {line} · {inciName || '(no INCI name)'}</b>
-                  <span>
-                    Matched by {hit.matchedBy === 'cas' ? `CAS ${hit.matchedValue}` : `name (“${hit.matchedValue}”)`} · automatic, from the Formula BOM
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="wl-muted" style={{ margin: 0 }}>No Formula BOM line matches this group by CAS number or INCI name.</p>
-        )}
-      </section>
-
-      <section>
-        <div className="wl-sec-title">1 · Recording the finding</div>
-        <p className="wl-sec-note">What the screening found and how it is classified. Whoever screens the formula records this.</p>
-        <div className="wl-grid">
-          <label className="wl-span-2">
-            <span className="wl-field-label">Status</span>
-            <Select
-              style={{ width: '100%' }}
-              value={text(row.status) || undefined}
-              options={columnOptions(config, 'status')}
-              disabled={off('status')}
-              onChange={(v: string) => onPatch({ status: v })}
-            />
-          </label>
-          <label className="wl-span-2">
-            <span className="wl-field-label">{label('formulaMatchCount', 'formulaExposure')}</span>
-            {hasExposureText ? (
-              <Input
-                value={text(row.formulaExposure)}
-                disabled={off('formulaExposure')}
-                onChange={(e) => onPatch({ formulaExposure: e.target.value })}
-              />
-            ) : (
-              <InputNumber
-                style={{ width: '100%' }}
-                min={0}
-                value={typeof row.formulaMatchCount === 'number' ? row.formulaMatchCount : undefined}
-                // Counted from the Formula BOM, not entered (utils/registerDerived.ts).
-                disabled
-                onChange={(v) => onPatch({ formulaMatchCount: v ?? undefined })}
-              />
-            )}
-          </label>
-          <label className="wl-span-2">
-            <span className="wl-field-label">Product status</span>
-            <Select
-              style={{ width: '100%' }}
-              value={text(row.productStatus) || undefined}
-              options={columnOptions(config, 'productStatus')}
-              disabled={off('productStatus')}
-              onChange={(v: string) => onPatch({ productStatus: v })}
-            />
-            {typeof row.formulaMatchCount === 'number' && row.formulaMatchCount > 0 && text(row.productStatus) === 'REVIEW - possible formula match' && (
-              <span className="wl-help">
-                The Formula BOM has {row.formulaMatchCount} {row.formulaMatchCount === 1 ? 'line' : 'lines'} matching this row, so the status is set to review. To clear it, record your conclusion here
-                (for example &quot;Not present - evidence linked&quot; or &quot;Present within restriction&quot;) — or fix the ingredient on the Formula BOM.
-              </span>
-            )}
-          </label>
-          {/* The matching result, kept apart from the classification (Round 5 question 4(a)): what matched, against which formula and list. */}
-          {text(row.matchBasis) && (
-            <div className="wl-span-2 wl-match">
-              <span className="wl-field-label">Match basis</span>
-              <div className="wl-match-lines">{text(row.matchBasis)}</div>
-              <span className="wl-help">{text(row.matchedAgainst)}</span>
-            </div>
-          )}
-          {text(row.reassessmentNeeded) === 'Yes' && (
-            <Alert
-              className="wl-span-2"
-              type="warning"
-              showIcon
-              title="The formula changed after this was classified"
-              description={
-                <>
-                  <div>The match this row was classified on is no longer the match today, so the classification has to be reassessed.</div>
-                  <div>Review it, then record the review date again.</div>
-                </>
-              }
-            />
-          )}
-          <label className="wl-span-2">
-            <span className="wl-field-label">Evidence link</span>
-            <Input
-              value={text(row.evidenceLink)}
-              placeholder="Link to CoA, supplier declaration or report"
-              disabled={off('evidenceLink')}
-              onChange={(e) => onPatch({ evidenceLink: e.target.value })}
-            />
-          </label>
-          <label className="wl-span-2">
-            <span className="wl-field-label wl-req">Classification</span>
-            <Select
-              style={{ width: '100%' }}
-              value={text(row.gate4Disposition) || undefined}
-              placeholder="Not dispositioned"
-              allowClear
-              options={columnOptions(config, 'gate4Disposition').map((o) => ({ ...o, disabled: hasMatch && !canAct && clearingDispositions.includes(o.value) }))}
-              disabled={off('gate4Disposition')}
-              onChange={(v?: string) => onPatch({ gate4Disposition: v ?? '' })}
-            />
-          </label>
-        </div>
-      </section>
-
-      <section>
-        <div className="wl-sec-title">
-          2 · Handling the finding
-          {flagged && (gaps.length ? <span className="c-tag c-tag-warn">{gaps.length} missing</span> : <span className="c-tag c-tag-ok">Complete</span>)}
-        </div>
-        {showTrail ? (
-          <>
-            {flagged && (
-              <p className="wl-sec-note">
-                A qualified reviewer assesses the finding and records what is done about it. Required for a flagged result before its gate
-                can move. A note alone is not sufficient — link a controlled Next Action.
-              </p>
-            )}
-            {flagged && triage && (
-              <Alert
-                type="warning"
-                showIcon
-                title="No Safety or Regulatory function is assigned to this finding"
-                description="It has to be routed for triage first: set the Product status to Needs Safety Review or Needs Regulatory Review. Until then nobody can clear, close or accept it."
-                style={{ marginBottom: 8 }}
-              />
-            )}
-            {flagged && !triage && (
-              <p className={`wl-sec-note${canAct ? '' : ' wl-sec-warn'}`}>
-                {`Clearing, closing or conditionally accepting this finding needs ${needsLabel} authority${needsSecond ? ' — both functions, so two reviewers' : ''}, and is recorded by a reviewer named below. `}
-                {canAct
-                  ? 'You are one of its reviewers, so you can record it.'
-                  : reviewerName === ''
-                    ? `Pick its Reviewer (a user with ${needsEither} authority). An administrator can only do this with that authority too.`
-                    : `Only its reviewers (${watchlistNamedReviewers(row).join(', ')}) record it.`}
-              </p>
-            )}
-            <div className="wl-grid">
-              <label className="wl-span-2">
-                <span className={req}>Reviewer assessment</span>
-                <ChoiceSelect
-                  value={text(row.reviewerAssessment) || undefined}
-                  placeholder="Select…"
-                  allowClear
-                  options={columnOptions(config, 'reviewerAssessment').map((o) => ({ ...o, disabled: !canAct && acceptingVerdicts.includes(o.value) }))}
-                  disabled={off('reviewerAssessment')}
-                  onChange={(v) => onPatch({ reviewerAssessment: v ?? '' })}
-                />
-              </label>
-              <label className="wl-span-2">
-                <span className="wl-field-label">Resolution status</span>
-                <ChoiceSelect
-                  value={text(row.resolutionStatus) || undefined}
-                  placeholder="Select…"
-                  allowClear
-                  options={columnOptions(config, 'resolutionStatus')}
-                  disabled={off('resolutionStatus')}
-                  onChange={(v) => onPatch({ resolutionStatus: v ?? '' })}
-                />
-              </label>
-              <label className="wl-span-2">
-                <span className={req}>Reviewer</span>
-                <Select
-                  style={{ width: '100%' }}
-                  showSearch
-                  allowClear
-                  optionFilterProp="label"
-                  value={reviewerName || undefined}
-                  placeholder={triage ? 'Route for triage first' : `Select a user with ${needsEither} authority`}
-                  options={reviewerOptions}
-                  status={reviewerName !== '' && pickerUsers.length > 0 && !reviewerFit ? 'warning' : undefined}
-                  disabled={off('reviewer') || triage}
-                  onChange={(v?: string) => onPatch({ reviewer: v ?? '' })}
-                />
-              </label>
-              {needsSecond && (
-                <label className="wl-span-2">
-                  <span className={req}>Second reviewer</span>
-                  <Select
-                    style={{ width: '100%' }}
-                    allowClear
-                    value={secondName || undefined}
-                    placeholder="The other function's reviewer names themselves"
-                    options={secondOptions}
-                    disabled={off('secondReviewer')}
-                    onChange={(v?: string) => onPatch({ secondReviewer: v ?? '' })}
-                  />
-                  <span className="wl-help">Both Safety and Regulatory are relevant here, so both are obtained. Only the person themselves can be named.</span>
-                </label>
-              )}
-              <label className="wl-span-2">
-                <span className={req}>Review date</span>
-                <DatePicker
-                  style={{ width: '100%' }}
-                  value={text(row.reviewDate) ? dayjs(text(row.reviewDate)) : null}
-                  disabled={off('reviewDate')}
-                  onChange={(d) => onPatch({ reviewDate: d ? d.format('YYYY-MM-DD') : '' })}
-                />
-              </label>
-              <label className="wl-span-2">
-                <span className={req}>Rationale</span>
-                <Input.TextArea
-                  autoSize={{ minRows: 3 }}
-                  value={text(row.reviewRationale)}
-                  placeholder="Why this assessment"
-                  disabled={off('reviewRationale')}
-                  onChange={(e) => onPatch({ reviewRationale: e.target.value })}
-                />
-              </label>
-              <label className="wl-span-2">
-                <span className="wl-field-label">Linked Next Action</span>
-                <NextActionSelect value={text(row.linkedNextActionId) || undefined} disabled={off('linkedNextActionId')} onChange={(v) => onPatch({ linkedNextActionId: v })} />
-              </label>
-              {text(row.reviewerAssessment) === WATCHLIST_ASSESSMENT_MORE_INFO && (
-                <div className="wl-span-2">
-                  <Checkbox
-                    checked={row.carriedConclusion === true}
-                    disabled={off('carriedConclusion') || (!canAct && row.carriedConclusion !== true)}
-                    onChange={(e) => onPatch({ carriedConclusion: e.target.checked })}
-                  >
-                    The remaining uncertainty is non-critical, bounded and safe to carry
-                  </Checkbox>
-                  <span className="wl-help">
-                    Further information required is not an acceptance on its own. A qualified reviewer has to conclude this separately, with a linked action, before the finding can ride on Proceed with Conditions.
-                  </span>
+      <DrawerTabs
+        tabs={[
+          {
+            key: 'finding',
+            label: 'Finding',
+            children: (
+              <>
+              <section>
+                <div className="wl-sec-title">1 · Recording the finding</div>
+                <p className="wl-sec-note">What the screening found and how it is classified. Whoever screens the formula records this.</p>
+                <div className="wl-grid">
+                  <label className="wl-span-2">
+                    <span className="wl-field-label">Status</span>
+                    <Select
+                      style={{ width: '100%' }}
+                      value={text(row.status) || undefined}
+                      options={columnOptions(config, 'status')}
+                      disabled={off('status')}
+                      onChange={(v: string) => onPatch({ status: v })}
+                    />
+                  </label>
+                  <label className="wl-span-2">
+                    <span className="wl-field-label">{label('formulaMatchCount', 'formulaExposure')}</span>
+                    {hasExposureText ? (
+                      <Input
+                        value={text(row.formulaExposure)}
+                        disabled={off('formulaExposure')}
+                        onChange={(e) => onPatch({ formulaExposure: e.target.value })}
+                      />
+                    ) : (
+                      <InputNumber
+                        style={{ width: '100%' }}
+                        min={0}
+                        value={typeof row.formulaMatchCount === 'number' ? row.formulaMatchCount : undefined}
+                        // Counted from the Formula BOM, not entered (utils/registerDerived.ts).
+                        disabled
+                        onChange={(v) => onPatch({ formulaMatchCount: v ?? undefined })}
+                      />
+                    )}
+                  </label>
+                  <label className="wl-span-2">
+                    <span className="wl-field-label">Product status</span>
+                    <Select
+                      style={{ width: '100%' }}
+                      value={text(row.productStatus) || undefined}
+                      options={columnOptions(config, 'productStatus')}
+                      disabled={off('productStatus')}
+                      onChange={(v: string) => onPatch({ productStatus: v })}
+                    />
+                    {typeof row.formulaMatchCount === 'number' && row.formulaMatchCount > 0 && text(row.productStatus) === 'REVIEW - possible formula match' && (
+                      <span className="wl-help">
+                        The Formula BOM has {row.formulaMatchCount} {row.formulaMatchCount === 1 ? 'line' : 'lines'} matching this row, so the status is set to review. To clear it, record your conclusion here
+                        (for example &quot;Not present - evidence linked&quot; or &quot;Present within restriction&quot;) — or fix the ingredient on the Formula BOM.
+                      </span>
+                    )}
+                  </label>
+                  {/* The matching result, kept apart from the classification (Round 5 question 4(a)): what matched, against which formula and list. */}
+                  {text(row.matchBasis) && (
+                    <div className="wl-span-2 wl-match">
+                      <span className="wl-field-label">Match basis</span>
+                      <div className="wl-match-lines">{text(row.matchBasis)}</div>
+                      <span className="wl-help">{text(row.matchedAgainst)}</span>
+                    </div>
+                  )}
+                  {text(row.reassessmentNeeded) === 'Yes' && (
+                    <Alert
+                      className="wl-span-2"
+                      type="warning"
+                      showIcon
+                      title="The formula changed after this was classified"
+                      description={
+                        <>
+                          <div>The match this row was classified on is no longer the match today, so the classification has to be reassessed.</div>
+                          <div>Review it, then record the review date again.</div>
+                        </>
+                      }
+                    />
+                  )}
+                  <label className="wl-span-2">
+                    <span className="wl-field-label">Evidence link</span>
+                    <Input
+                      value={text(row.evidenceLink)}
+                      placeholder="Link to CoA, supplier declaration or report"
+                      disabled={off('evidenceLink')}
+                      onChange={(e) => onPatch({ evidenceLink: e.target.value })}
+                    />
+                  </label>
+                  <label className="wl-span-2">
+                    <span className="wl-field-label wl-req">Classification</span>
+                    <Select
+                      style={{ width: '100%' }}
+                      value={text(row.gate4Disposition) || undefined}
+                      placeholder="Not dispositioned"
+                      allowClear
+                      options={columnOptions(config, 'gate4Disposition').map((o) => ({ ...o, disabled: hasMatch && !canAct && clearingDispositions.includes(o.value) }))}
+                      disabled={off('gate4Disposition')}
+                      onChange={(v?: string) => onPatch({ gate4Disposition: v ?? '' })}
+                    />
+                  </label>
                 </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <p className="wl-muted" style={{ margin: 0 }}>
-            Only needed when the product status is flagged (possible match, Needs Safety / Regulatory Review), Prohibited or over its limit.
-          </p>
-        )}
-      </section>
+              </section>
 
-      <section>
-        <div className="wl-sec-title">Row details</div>
-        <dl className="wl-dl">
-          <dt>Owner (department)</dt>
-          <dd>{ownerFunctionWithPeople(text(row.owner), reviewers) || '—'}</dd>
-          <dt>Linked gate</dt>
-          <dd><GateLink value={text(row.linkedGate)} /></dd>
-          <dt>Notes</dt>
-          <dd>{text(row.notes) || '—'}</dd>
-        </dl>
-      </section>
+              </>
+            ),
+          },
+          {
+            key: 'review',
+            label: 'Review',
+            dot: flagged && gaps.length > 0,
+            children: (
+              <>
+              <section>
+                <div className="wl-sec-title">
+                  2 · Handling the finding
+                  {flagged && (gaps.length ? <span className="c-tag c-tag-warn">{gaps.length} missing</span> : <span className="c-tag c-tag-ok">Complete</span>)}
+                </div>
+                {showTrail ? (
+                  <>
+                    {flagged && (
+                      <p className="wl-sec-note">
+                        A qualified reviewer assesses the finding and records what is done about it. Required for a flagged result before its gate
+                        can move. A note alone is not sufficient — link a controlled Next Action.
+                      </p>
+                    )}
+                    {flagged && triage && (
+                      <Alert
+                        type="warning"
+                        showIcon
+                        title="No Safety or Regulatory function is assigned to this finding"
+                        description="It has to be routed for triage first: set the Product status to Needs Safety Review or Needs Regulatory Review. Until then nobody can clear, close or accept it."
+                        style={{ marginBottom: 8 }}
+                      />
+                    )}
+                    {flagged && !triage && (
+                      <p className={`wl-sec-note${canAct ? '' : ' wl-sec-warn'}`}>
+                        {`Clearing, closing or conditionally accepting this finding needs ${needsLabel} authority${needsSecond ? ' — both functions, so two reviewers' : ''}, and is recorded by a reviewer named below. `}
+                        {canAct
+                          ? 'You are one of its reviewers, so you can record it.'
+                          : reviewerName === ''
+                            ? `Pick its Reviewer (a user with ${needsEither} authority). An administrator can only do this with that authority too.`
+                            : `Only its reviewers (${watchlistNamedReviewers(row).join(', ')}) record it.`}
+                      </p>
+                    )}
+                    <div className="wl-grid">
+                      <label className="wl-span-2">
+                        <span className={req}>Reviewer assessment</span>
+                        <ChoiceSelect
+                          value={text(row.reviewerAssessment) || undefined}
+                          placeholder="Select…"
+                          allowClear
+                          options={columnOptions(config, 'reviewerAssessment').map((o) => ({ ...o, disabled: !canAct && acceptingVerdicts.includes(o.value) }))}
+                          disabled={off('reviewerAssessment')}
+                          onChange={(v) => onPatch({ reviewerAssessment: v ?? '' })}
+                        />
+                      </label>
+                      <label className="wl-span-2">
+                        <span className="wl-field-label">Resolution status</span>
+                        <ChoiceSelect
+                          value={text(row.resolutionStatus) || undefined}
+                          placeholder="Select…"
+                          allowClear
+                          options={columnOptions(config, 'resolutionStatus')}
+                          disabled={off('resolutionStatus')}
+                          onChange={(v) => onPatch({ resolutionStatus: v ?? '' })}
+                        />
+                      </label>
+                      <label className="wl-span-2">
+                        <span className={req}>Reviewer</span>
+                        <Select
+                          style={{ width: '100%' }}
+                          showSearch
+                          allowClear
+                          optionFilterProp="label"
+                          value={reviewerName || undefined}
+                          placeholder={triage ? 'Route for triage first' : `Select a user with ${needsEither} authority`}
+                          options={reviewerOptions}
+                          status={reviewerName !== '' && pickerUsers.length > 0 && !reviewerFit ? 'warning' : undefined}
+                          disabled={off('reviewer') || triage}
+                          onChange={(v?: string) => onPatch({ reviewer: v ?? '' })}
+                        />
+                      </label>
+                      {needsSecond && (
+                        <label className="wl-span-2">
+                          <span className={req}>Second reviewer</span>
+                          <Select
+                            style={{ width: '100%' }}
+                            allowClear
+                            value={secondName || undefined}
+                            placeholder="The other function's reviewer names themselves"
+                            options={secondOptions}
+                            disabled={off('secondReviewer')}
+                            onChange={(v?: string) => onPatch({ secondReviewer: v ?? '' })}
+                          />
+                          <span className="wl-help">Both Safety and Regulatory are relevant here, so both are obtained. Only the person themselves can be named.</span>
+                        </label>
+                      )}
+                      <label className="wl-span-2">
+                        <span className={req}>Review date</span>
+                        <DatePicker
+                          style={{ width: '100%' }}
+                          value={text(row.reviewDate) ? dayjs(text(row.reviewDate)) : null}
+                          disabled={off('reviewDate')}
+                          onChange={(d) => onPatch({ reviewDate: d ? d.format('YYYY-MM-DD') : '' })}
+                        />
+                      </label>
+                      <label className="wl-span-2">
+                        <span className={req}>Rationale</span>
+                        <Input.TextArea
+                          autoSize={{ minRows: 3 }}
+                          value={text(row.reviewRationale)}
+                          placeholder="Why this assessment"
+                          disabled={off('reviewRationale')}
+                          onChange={(e) => onPatch({ reviewRationale: e.target.value })}
+                        />
+                      </label>
+                      <label className="wl-span-2">
+                        <span className="wl-field-label">Linked Next Action</span>
+                        <NextActionSelect value={text(row.linkedNextActionId) || undefined} disabled={off('linkedNextActionId')} onChange={(v) => onPatch({ linkedNextActionId: v })} />
+                      </label>
+                      {text(row.reviewerAssessment) === WATCHLIST_ASSESSMENT_MORE_INFO && (
+                        <div className="wl-span-2">
+                          <Checkbox
+                            checked={row.carriedConclusion === true}
+                            disabled={off('carriedConclusion') || (!canAct && row.carriedConclusion !== true)}
+                            onChange={(e) => onPatch({ carriedConclusion: e.target.checked })}
+                          >
+                            The remaining uncertainty is non-critical, bounded and safe to carry
+                          </Checkbox>
+                          <span className="wl-help">
+                            Further information required is not an acceptance on its own. A qualified reviewer has to conclude this separately, with a linked action, before the finding can ride on Proceed with Conditions.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className="wl-muted" style={{ margin: 0 }}>
+                    Only needed when the product status is flagged (possible match, Needs Safety / Regulatory Review), Prohibited or over its limit.
+                  </p>
+                )}
+              </section>
+
+              </>
+            ),
+          },
+          {
+            key: 'reference',
+            label: 'Reference',
+            children: (
+              <>
+              <section>
+                <div className="wl-sec-title">Reference</div>
+                <dl className="wl-dl">
+                  <dt>Function</dt>
+                  <dd>{text(row.functionRole)}</dd>
+                  <dt>{label('statusLevel', 'statusLimitGuidance')}</dt>
+                  <dd>{text(row.statusLevel) || text(row.statusLimitGuidance)}</dd>
+                  <dt>{label('whyItMatters', 'whyCautionRequired')}</dt>
+                  <dd>{text(row.whyItMatters) || text(row.whyCautionRequired)}</dd>
+                  <dt>Applicable products</dt>
+                  <dd>{text(row.applicableProducts)}</dd>
+                  <dt>Reference / source</dt>
+                  <dd>{text(row.referenceSource) || '—'}</dd>
+                </dl>
+              </section>
+
+
+              <section>
+                <div className="wl-sec-title">Formula BOM screen</div>
+                {hits.length ? (
+                  <ul className="wl-bom">
+                    {hits.map(({ line, inciName, hit }) => (
+                      <li key={`${line}-${hit.matchedValue}`}>
+                        <ExperimentOutlined />
+                        <span>
+                          <b>Line {line} · {inciName || '(no INCI name)'}</b>
+                          <span>
+                            Matched by {hit.matchedBy === 'cas' ? `CAS ${hit.matchedValue}` : `name (“${hit.matchedValue}”)`} · automatic, from the Formula BOM
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="wl-muted" style={{ margin: 0 }}>No Formula BOM line matches this group by CAS number or INCI name.</p>
+                )}
+              </section>
+
+
+              <section>
+                <div className="wl-sec-title">Row details</div>
+                <dl className="wl-dl">
+                  <dt>Owner (department)</dt>
+                  <dd>{ownerFunctionWithPeople(text(row.owner), reviewers) || '—'}</dd>
+                  <dt>Linked gate</dt>
+                  <dd><GateLink value={text(row.linkedGate)} /></dd>
+                  <dt>Notes</dt>
+                  <dd>{text(row.notes) || '—'}</dd>
+                </dl>
+              </section>
+              </>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

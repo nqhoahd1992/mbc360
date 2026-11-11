@@ -400,6 +400,12 @@ export function toChangeRecords(p: ProjectWithAll) {
     closureImpactedVersions: opt(c.closureImpactedVersions),
     closureVerifier: opt(c.closureVerifier),
     closureRemainingAction: opt(c.closureRemainingAction),
+    impactTriage: opt(c.impactTriage),
+    triageReason: opt(c.triageReason),
+    triageBy: opt(c.triageBy),
+    triageDate: dateOnly(c.triageDate),
+    confirmedGates: c.confirmedGates,
+    restoreConfirmation: opt(c.restoreConfirmation),
     owner: c.owner,
     notes: opt(c.notes),
   }));

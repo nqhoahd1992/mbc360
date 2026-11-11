@@ -1079,6 +1079,16 @@ Dùng Next Action có theo dõi cho mọi gap còn tồn tại khi gate đi ti�
 
 Action giữ ID duy nhất, liên kết nguồn gap/finding/yêu cầu, mô tả và tiêu chí hoàn thành, owner chịu trách nhiệm, due date, priority, escalation trigger, status, bằng chứng và thông tin đóng/xác minh. Gap hiển thị owner/ngày từ action liên kết, không lưu bản sao cạnh tranh. Gap High còn cần người đủ thẩm quyền chấp nhận rủi ro còn lại và không được liên quan tiền đề bắt buộc về an toàn/quy định/phát hành. Ngày nằm trong văn bản tự do là không đủ.
 
+### Câu 10 — Change Control nêu một gate đã pass
+
+**Kết luận:** ✅ đã xây phần lõi (11/11/2026). Khác cái đã xây (CHG đang mở chỉ cảnh báo ở Gate 1–10, và làm Gate 11–12 tự mất passed mà không ghi lý do). Các chỗ ta đọc và phần chưa xây được hỏi ở Vòng 6, câu 16.
+
+Chọn (3): đánh giá tác động có kiểm soát và mở lại các quyết định bị vô hiệu. Khi mở CHG: gắn cờ gate/version/market bị ảnh hưởng và bắt buộc triage; tác động release có thể trọng yếu hoặc chưa đánh giá thì giữ readiness hiện tại của phần bị ảnh hưởng cho tới khi đánh giá. Khi xác nhận tác động trọng yếu hoặc được duyệt triển khai thì mở lại các quyết định bị ảnh hưởng, giữ snapshot đã ký trước đó trong lịch sử.
+
+Trigger chỉ gợi ý phạm vi tối thiểu; Quality cùng các chức năng kỹ thuật liên quan xác nhận phạm vi đầy đủ. Mở lại tất cả gate bị ảnh hưởng, không chỉ gate sớm nhất, và giữ thứ tự phụ thuộc. Thay đổi nguyên liệu công thức thường đánh giá lại Gate 4-9 cộng Gate 10-11 của thị trường liên quan; thay đổi đối tượng/claim có thể ảnh hưởng Gate 1-3. Thay đổi hậu mãi mở một review Gate 12 liên kết cho thị trường/version bị ảnh hưởng mà không xoá các review giám sát trước. Chỉnh sửa hành chính có lý do có thể dùng phụ lục có kiểm soát, không mở lại các phê duyệt thực chất.
+
+Quyết định lại bằng các lựa chọn thường: Proceed khi đã giải quyết hết, Proceed with Conditions chỉ cho việc không chặn đã chấp nhận, hoặc Hold/Backtrack. Không ép mọi gate mở lại phải có điều kiện. Ghi lý do, mã CHG, phạm vi, owner và ký duyệt có thẩm quyền. CHG Rejected/Cancelled cần xác nhận đã ghi rằng không có triển khai có kiểm soát và không còn tác động tồn dư trước khi khôi phục readiness; nếu đã triển khai thì đánh giá và xác minh việc hoàn tác/sửa. Nhiều CHG: mỗi kiểm tra bị ảnh hưởng phải được giải quyết hoặc chấp nhận hợp lệ; đóng một cái không giải phóng các cái khác. Gate 11-12 theo cùng nguyên tắc lịch sử đã ghi.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

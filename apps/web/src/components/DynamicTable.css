@@ -114,3 +114,8 @@
   .rt-split { grid-template-columns: minmax(0, 1fr) 250px; }
   .rt-rail { padding-left: 20px; border-left: 1px solid var(--c-border-2); }
 }
+
+/* Change control triage: the confirmed scope, one row per phase. */
+.cc-scope { display: grid; gap: 8px; }
+.cc-scope-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
+.cc-scope-phase { width: 64px; color: var(--c-text-2); font-size: 13px; }

@@ -1079,6 +1079,16 @@ Use tracked Next Actions for every gap left unresolved when a gate proceeds, inc
 
 The action holds a unique ID, source gap/finding/requirement link, description and completion criteria, accountable owner, due date, priority, escalation trigger, status, evidence and closure/verification details. The gap displays the linked owner/date rather than storing competing copies. High gaps additionally require qualified acceptance of the residual risk and must not concern a mandatory safety/regulatory/release prerequisite. A due date buried in free text is insufficient.
 
+### Question 10 — A Change Control that names a gate that has already passed
+
+**Verdict:** ✅ core built (2026-11-11). It differs from what was built (an open change only warned on Gates 1–10, and made Gates 11–12 stop counting as passed with no record of why). Our readings of the details, and what is not built yet, are asked in Round 6, question 16.
+
+Choose (3): controlled impact assessment and reopening of invalidated decisions. On opening a CHG, flag the affected gate/version/market and require triage; a potentially material or unassessed release impact holds affected current readiness pending assessment. On confirmed material impact or approval to implement the change, reopen the affected decision(s). Keep the earlier signed snapshot in history.
+
+The trigger provides a minimum suggested scope; Quality with the relevant technical functions confirms the full scope. Reopen all affected gates, not only the earliest, and enforce their dependency order. Formula ingredient changes normally reassess Gates 4-9 plus affected market Gates 10-11; user/claim changes can also affect Gates 1-3. A post-market change opens a linked Gate 12 review for the affected market/version without erasing earlier surveillance reviews. A justified administrative correction can use a controlled addendum without reopening substantive approvals.
+
+Re-decide using the normal options: Proceed once fully resolved, Proceed with Conditions only for accepted non-blocking work, or Hold/Backtrack. Do not force every reopened gate to remain conditional. Record reason, CHG ID, scope, owner and authorised sign-off. Rejected/Cancelled changes need recorded confirmation that no controlled implementation occurred and no residual impact remains before readiness is restored; if implementation occurred, assess and verify reversal/correction. With multiple changes, each affected check must be resolved or validly accepted; closing one does not release the others. Gates 11-12 follow the same recorded-history principle.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

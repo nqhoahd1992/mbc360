@@ -10,6 +10,7 @@ import { acknowledgementState, isCriticalForAcknowledgement, type Acknowledgemen
 import { assessmentMarkets, isPendingAnswer } from './changeControlAssessments';
 export { gateRefGateIds } from './gateRefs';
 import { isChangeOpen } from '../config/changeTriggers';
+import { changesHoldingGate } from './changeTriage';
 import {
   CLAIM_CATEGORIES_NEEDING_PERFORMANCE_EVIDENCE,
   EVIDENCE_BASIS_COLUMN,
@@ -2480,6 +2481,24 @@ export function gateReadinessChecklist(
       tier: 'Mandatory',
       link: { href: '/' },
     });
+  }
+
+  // Round 5 question 10: a change that awaits impact triage holds the readiness of every gate from its earliest affected one onward that
+  // has not passed. A gate already recorded as passed keeps its record — it is reopened only when the impact is CONFIRMED. Shown only while
+  // a hold exists, so a project with no change in flight sees no extra row. [ASSUMPTION: R6-Q16]
+  {
+    const holding = changesHoldingGate(project, gateId);
+    if (holding.length > 0) {
+      items.push({
+        id: 'change-hold',
+        label: 'A change is awaiting impact triage',
+        detail: `Held by:\n${holding.map((c) => `• ${c.changeId} — ${c.trigger || c.affectedArea || 'change'}`).join('\n')}\nQuality's change-control reviewer records whether it is material, and which gates it invalidates.`,
+        satisfied: false,
+        hardBlock: true,
+        tier: 'Mandatory',
+        link: { href: `/projects/${project.identity.id}/change-control` },
+      });
+    }
   }
 
   // F1 / C7: every item declared for this gate, always shown (2026-07-27:

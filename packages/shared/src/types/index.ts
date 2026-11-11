@@ -1471,6 +1471,18 @@ export interface ChangeRecord {
   // required by `isChangeDispositionRecorded`. A change with nothing left to
   // transition should not be blocked into inventing something.
   closureRemainingAction?: string;
+  // Round 5 question 10 (2026-11-11): the controlled impact assessment of a change. `impactTriage` is blank until Quality's
+  // change-control reviewer assesses it; the four fields after it are WRITTEN BY THE SERVER from the triage act (a client value
+  // is discarded). `confirmedGates` is the full scope Quality confirmed (the trigger only suggests a minimum), and the gates a
+  // Material outcome reopened. [ASSUMPTION: R6-Q16]
+  impactTriage?: string;
+  triageReason?: string;
+  triageBy?: string;
+  triageDate?: string;
+  confirmedGates?: string[];
+  // "Rejected/Cancelled changes need recorded confirmation that no controlled implementation occurred and no residual impact
+  // remains" — or, if implementation did occur, that its reversal or correction was verified.
+  restoreConfirmation?: string;
   owner: string;
   notes?: string;
 }

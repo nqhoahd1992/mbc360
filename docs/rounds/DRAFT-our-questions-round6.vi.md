@@ -2,7 +2,7 @@
 
 **Gửi:** đội chuyên môn (NPD / Quality / Regulatory / Safety)
 
-Vòng này có mười lăm câu. Chúng nảy ra từ đáp án câu 1, 2, 3, 4, 5, 6, 7, 8, 9 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường; câu 12 hỏi nên đọc thế nào "critical" và quy tắc Change Control cho một thay đổi Claims Library; câu 13 hỏi nên đọc thế nào các chi tiết của đánh giá scale-up theo từng vùng.
+Vòng này có mười sáu câu. Chúng nảy ra từ đáp án câu 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường; câu 12 hỏi nên đọc thế nào "critical" và quy tắc Change Control cho một thay đổi Claims Library; câu 13 hỏi nên đọc thế nào các chi tiết của đánh giá scale-up theo từng vùng.
 
 Chỗ nào ghi "nhóm phát triển phần mềm" là nhóm đang xây ứng dụng, không phải chủ của một dự án phát triển sản phẩm.
 
@@ -421,3 +421,31 @@ Các bạn đã nói mọi gap còn tồn tại khi gate đi tiếp — High, Me
 **(c)** Gap Low hoặc Medium đã giải quyết trước khi ký có cần bắt buộc ghi giải pháp và bằng chứng không?
 
 **(d)** Function nào nên chấp nhận rủi ro còn lại của một gap High?
+
+## Câu 16 — Change Control nêu một gate đã pass: nên đọc thế nào các chi tiết câu trả lời để ngỏ?
+
+*Vị trí trong ứng dụng:* trang **Change Control**, khung chi tiết của một thay đổi, mục "Impact assessment (triage)"; và danh sách readiness của mọi gate chưa pass.
+
+Các bạn đã nói một thay đổi được đánh giá tác động có kiểm soát, Quality xác nhận phạm vi đầy đủ, tác động trọng yếu được xác nhận thì mở lại mọi quyết định bị ảnh hưởng và giữ snapshot đã ký trước đó trong lịch sử, chỉnh sửa hành chính không mở lại gì, và thay đổi bị Rejected hoặc Cancelled cần xác nhận đã ghi trước khi khôi phục readiness. Chúng tôi đã xây phần lõi. Chỗ câu trả lời để ngỏ, chúng tôi đọc như sau:
+
+- **Người ghi đánh giá** là người giữ chức năng *Quality / change-control reviewer* của dự án (không ai thay thế được, admin cũng không). Các chức năng kỹ thuật các bạn nhắc được tham vấn chứ không đồng ký.
+- **"Giữ readiness hiện tại"** nghĩa là một thay đổi chưa được đánh giá giữ mọi gate **chưa** pass, từ gate sớm nhất nó có thể ảnh hưởng trở đi. Gate đã pass giữ nguyên hồ sơ cho tới khi tác động được xác nhận. Trước khi đánh giá, gate bị ảnh hưởng là những gate trigger nêu (trigger nêu mọi gate thì là mọi gate).
+- **Tác động trọng yếu** mở lại mọi gate trong phạm vi Quality xác nhận đang ở trạng thái pass, thành một sự kiện ghi lại với mã CHG, lý do và người thực hiện; các gate sau đó mở theo thứ tự thường.
+- **"Duyệt triển khai"** là lúc thay đổi chuyển sang *Approved - Implementation Pending* (hoặc sau đó); không thể làm vậy trước khi đánh giá.
+- **No material impact** và **Administrative correction** không mở lại gì; bản đánh giá đã ghi cùng lý do chính là phụ lục có kiểm soát.
+- **Bản đánh giá đã ghi không sửa lại sau đó.**
+- **Thay đổi Rejected hoặc Cancelled** chỉ tính là đóng khi ghi rằng không có gì được triển khai và không còn tác động tồn dư, hoặc việc hoàn tác đã được xác minh.
+- **Nhiều thay đổi** mỗi cái giữ riêng; đánh giá một cái không giải phóng các cái khác.
+- **Gate 11 và 12** vẫn tự mất pass khi một thay đổi được mở; chúng tôi chưa ghi lý do vào lịch sử gate cho việc đó.
+
+**Chưa xây:** review Gate 12 liên kết cho thay đổi hậu mãi, theo từng thị trường và version; chọn phạm vi Gate 10–11 **theo từng thị trường** (hiện phạm vi theo gate và mở lại cả hai làn); sửa lại bản đánh giá đã ghi; ghi lý do khi Gate 11–12 tự mất pass.
+
+**(a)** Đó có phải người đúng để ghi đánh giá không, và các chức năng kỹ thuật có cần xác nhận thêm không?
+
+**(b)** Có đúng là thay đổi chưa đánh giá giữ các gate chưa pass và để nguyên hồ sơ gate đã pass cho tới khi tác động được xác nhận không?
+
+**(c)** "Duyệt triển khai" có phải là lúc chuyển sang *Approved - Implementation Pending* không?
+
+**(d)** Bản đánh giá đã ghi có được sửa lại không, bởi ai?
+
+**(e)** Phạm vi Gate 10–11 có cần chọn riêng cho từng thị trường không?

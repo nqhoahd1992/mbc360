@@ -24,6 +24,7 @@
     "verify:reference-snapshot": "tsx packages/shared/scripts/verify-reference-snapshot.ts",
     "verify:impact-assessments": "tsx packages/shared/scripts/verify-impact-assessments.ts",
     "verify:register-access": "tsx packages/shared/scripts/verify-register-access.ts",
+    "verify:change-triage": "tsx packages/shared/scripts/verify-change-triage.ts",
     "verify:gap-controls": "tsx packages/shared/scripts/verify-gap-controls.ts",
     "verify:watchlist-authority": "tsx packages/shared/scripts/verify-watchlist-authority.ts",
     "verify:project-stop": "tsx packages/shared/scripts/verify-project-stop.ts",

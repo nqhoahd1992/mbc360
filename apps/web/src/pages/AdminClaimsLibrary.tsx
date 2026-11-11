@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import DrawerTabs from '../components/DrawerTabs';
 import { App, Button, DatePicker, Drawer, Grid, Input, Modal, Select, message } from 'antd';
 import ChoiceSelect from '../components/ChoiceSelect';
 import { BookOutlined, CheckCircleFilled, CheckOutlined, InboxOutlined, PlusOutlined, RightOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
@@ -594,8 +595,13 @@ export default function AdminClaimsLibrary() {
           <div className="au-detail">
             {statusPanel()}
 
-            <section>
-              <div className="rt-sec-title">Wording and classification</div>
+            <DrawerTabs
+              tabs={[
+                {
+                  key: 'wording',
+                  label: 'Wording',
+                  children: (
+                    <>
               <div className="mp-fields">
               <label className="au-field mp-wide">
                 <span className="au-field-label">Approved wording</span>
@@ -664,10 +670,14 @@ export default function AdminClaimsLibrary() {
                 />
               </label>
               </div>
-            </section>
-
-            <section>
-              <div className="rt-sec-title">Applies to</div>
+                    </>
+                  ),
+                },
+                {
+                  key: 'applies',
+                  label: 'Applies to',
+                  children: (
+                    <>
               <div className="mp-fields">
                 {TAG_FIELDS.map(({ key, label }) => (
                   <label key={key} className="au-field">
@@ -697,14 +707,16 @@ export default function AdminClaimsLibrary() {
                   <Input.TextArea autoSize={{ minRows: 2 }} disabled={!editable} value={form.notes} onChange={(ev) => set('notes', ev.target.value)} />
                 </label>
               </div>
-            </section>
-
-            {open && (
-              <>
-                <section>
-                  <div className="rt-sec-title">
-                    Linked claims {claims && <span className="mp-muted">{claims.length}</span>}
-                  </div>
+                    </>
+                  ),
+                },
+                ...(open
+                  ? [
+                      {
+                        key: 'linked',
+                        label: `Linked claims${claims ? ` (${claims.length})` : ''}`,
+                        children: (
+                          <>
                   {claims === undefined ? (
                     <div className="c-skel" style={{ height: 20 }} />
                   ) : claims.length === 0 ? (
@@ -724,12 +736,14 @@ export default function AdminClaimsLibrary() {
                       ))}
                     </ul>
                   )}
-                </section>
-
-                <section>
-                  <div className="rt-sec-title">
-                    History {revisions && <span className="mp-muted">{revisions.length}</span>}
-                  </div>
+                          </>
+                        ),
+                      },
+                      {
+                        key: 'history',
+                        label: `History${revisions ? ` (${revisions.length})` : ''}`,
+                        children: (
+                          <>
                   {revisions === undefined ? (
                     <div className="c-skel" style={{ height: 20 }} />
                   ) : (
@@ -742,7 +756,15 @@ export default function AdminClaimsLibrary() {
                       }))}
                     />
                   )}
-                </section>
+                          </>
+                        ),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+            {open && (
+              <>
 
                 {canEdit && open.status !== 'Withdrawn' && (
                   <section className="au-danger">

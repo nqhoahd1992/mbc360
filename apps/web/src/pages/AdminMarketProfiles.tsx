@@ -1,3 +1,4 @@
+import DrawerTabs from '../components/DrawerTabs';
 import { useEffect, useMemo, useState } from 'react';
 import { Button, DatePicker, Drawer, Grid, Input, InputNumber, Switch, message } from 'antd';
 import { GlobalOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
@@ -374,6 +375,13 @@ export default function AdminMarketProfiles() {
       >
         {open && (
           <div className="au-detail">
+            <DrawerTabs
+              tabs={[
+              {
+                key: 'vigilance',
+                label: 'Vigilance rules',
+                children: (
+                  <>
             <section className="au-detail-fields">
               {switches.map(([key, label, help]) => (
                 <div key={key} className="au-field-inline">
@@ -391,6 +399,14 @@ export default function AdminMarketProfiles() {
               ))}
             </section>
 
+                  </>
+                ),
+              },
+              {
+                key: 'requirements',
+                label: 'Requirements',
+                children: (
+                  <>
             <section className="mp-fields">
               <label className="au-field">
                 <span className="au-field-label">Review interval (months)</span>
@@ -463,8 +479,15 @@ export default function AdminMarketProfiles() {
               </label>
             </section>
 
+                  </>
+                ),
+              },
+              {
+                key: 'history',
+                label: 'History',
+                children: (
+                  <>
             <section>
-              <div className="rt-sec-title">History</div>
               {!open.configured ? (
                 <p className="au-field-help">Not set up yet — saving this market starts its history.</p>
               ) : revisions === undefined ? (
@@ -480,6 +503,11 @@ export default function AdminMarketProfiles() {
                 />
               )}
             </section>
+                  </>
+                ),
+              },
+              ]}
+            />
           </div>
         )}
       </Drawer>

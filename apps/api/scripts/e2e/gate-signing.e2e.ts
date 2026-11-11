@@ -693,6 +693,32 @@ export async function run(base: string, db: Client): Promise<number> {
   cr = await putChanges([newChange('CHG-E2E-D', 'pif-any-change'), newChange('CHG-E2E-D', 'pif-any-change')]);
   t('the same change id twice in one save is refused with a message (400, not a 500)', cr.status === 400 && /appears twice/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
   const closable = { ...newChange('CHG-E2E-C1', 'pif-any-change'), impactAreas: ['Administrative only'] };
+  // Round 5 question 10: a change is triaged by the project's Quality / change-control reviewer before it can be approved or
+  // completed. The test user holds that function only for the duration of the act, so no later check sees it assigned.
+  let triageActs = 0; // each call assigns and clears the function, which the later function-assignee audit count has to allow for
+  const triage = async (changeId: string, outcome = 'No material impact', confirmedGates: string[] = []) => {
+    triageActs++;
+    await api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'quality-change-control', userId: sessions['admin'].id }], expectedVersion: await version() });
+    const res = await api('admin', 'POST', `/projects/${PROJECT}/changes/${changeId}/triage`, { outcome, confirmedGates, reason: 'e2e assessment', expectedVersion: await version() });
+    await api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'quality-change-control', userId: null }], expectedVersion: await version() });
+    return res;
+  };
+  cr = await putChanges([closable]);
+  t('a new change is recorded untriaged', cr.status < 300 && !(cr.json?.project?.changes ?? []).find((c: any) => c.changeId === 'CHG-E2E-C1')?.impactTriage, `${cr.status} ${short(cr.json)}`);
+  cr = await api('admin', 'POST', `/projects/${PROJECT}/changes/CHG-E2E-C1/triage`, { outcome: 'No material impact', confirmedGates: [], reason: 'x', expectedVersion: await version() });
+  t('nobody holds Quality / change-control yet, so nobody can triage it (400)', cr.status === 400 && /Nobody is assigned/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putChanges([{ ...closable, status: 'Approved - Implementation Pending' }]);
+  t('an untriaged change cannot be approved to implement (400)', cr.status === 400 && /impact has not been assessed/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  cr = await putChanges([{ ...closable, impactTriage: 'Material impact', triageBy: 'forged', confirmedGates: ['SG05'] }]);
+  const stillBlank = (cr.json?.project?.changes ?? []).find((c: any) => c.changeId === 'CHG-E2E-C1');
+  t('a triage sent by the client in an ordinary save is discarded', cr.status < 300 && !stillBlank?.impactTriage && !stillBlank?.triageBy, `${cr.status} ${short(stillBlank)}`);
+  cr = await api('admin', 'POST', `/projects/${PROJECT}/changes/CHG-E2E-C1/triage`, { outcome: 'Material impact', confirmedGates: [], reason: 'x', expectedVersion: await version() });
+  t('a Material triage with no confirmed scope is refused (400)', cr.status === 400, `${cr.status} ${short(cr.json)}`);
+  cr = await triage('CHG-E2E-C1');
+  const triaged = (cr.json?.project?.changes ?? []).find((c: any) => c.changeId === 'CHG-E2E-C1');
+  t('the holder records the triage as themselves, with the date', cr.status < 300 && triaged?.impactTriage === 'No material impact' && !!triaged?.triageBy && !!triaged?.triageDate, `${cr.status} ${short(triaged)}`);
+  cr = await triage('CHG-E2E-C1');
+  t('a recorded triage is not changed (400)', cr.status === 400 && /already triaged/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
   cr = await putChanges([{ ...closable, status: 'Completed', closedDate: '2030-01-02' }]);
   t('closing as Completed without the final disposition is refused, naming what is missing (400)', cr.status === 400 && /final disposition/.test(String(cr.json?.message)) && /closureOutcome/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
   const closed = {
@@ -927,6 +953,11 @@ export async function run(base: string, db: Client): Promise<number> {
     expectedVersion: await version(),
   });
   t('an open change that names SG02 is recorded', r.status < 300, `${r.status} ${short(r.json)}`);
+  // Untriaged, it also holds the readiness of every gate that has not passed (Round 5 question 10).
+  r = await api('admin', 'GET', `/projects/${PROJECT}`);
+  t('an untriaged change holds the gate that is not yet passed (a hard block)', gp.hardGateBlockers(r.json.project, 'SG02').some((b: any) => b.id === 'change-hold'), short(gp.hardGateBlockers(r.json.project, 'SG02').map((b: any) => b.id)));
+  r = await triage('CHG-E2E-F9');
+  t('once triaged (no material impact) the hold is lifted but the open change still soft-locks the gate (F9)', r.status < 300 && !gp.hardGateBlockers(r.json.project, 'SG02').some((b: any) => b.id === 'change-hold'), `${r.status}`);
   for (const role of ['Prepared by', 'Reviewed by'] as const) {
     r = await sign('SG02', role);
     if (r.status >= 300) console.log('   SG02', role, r.stage, r.status, short(r.json));
@@ -1545,7 +1576,7 @@ export async function run(base: string, db: Client): Promise<number> {
   r = await putFn('admin', [{ roleKey: 'technical-claims', userId: null }]);
   t('assigning nobody leaves the function Unassigned', r.status < 300 && (await fnRow('technical-claims')) === undefined, `${r.status} ${short(r.json)}`);
   const fnAudit = (await db.query(`SELECT count(*)::int AS n FROM audit_events WHERE "projectId" = $1 AND action = 'project.function_assignees_updated'`, [PROJECT])).rows[0];
-  t('each change left an audit row (two for Safety earlier, then assigned and cleared here)', fnAudit.n === 6, short(fnAudit));
+  t('each change left an audit row (two for Safety earlier, two for each triage act, then assigned and cleared here)', fnAudit.n === 6 + 2 * triageActs, short(fnAudit));
   r = await putFn('admin', [{ roleKey: 'project-owner', userId: someone.id }]);
   t('the Project owner can be named after the project exists (a project created before the field has none)', r.status < 300, `${r.status} ${short(r.json)}`);
   pj = await project();
@@ -1989,6 +2020,25 @@ export async function run(base: string, db: Client): Promise<number> {
     await db.query(`DELETE FROM supersession_decisions WHERE "projectId" = $1 AND version = $2`, [PROJECT, oldVersion]);
     await db.query(`DELETE FROM market_tracks WHERE id = 'e2e-old-track'`);
     await db.query(`DELETE FROM formula_versions WHERE id = 'e2e-old-version'`);
+  }
+
+  // ============================================================ Change Control: a material impact reopens the confirmed gates (Round 5 question 10)
+  console.log('\n--- Change Control: a Material triage reopens the confirmed gates that stand passed, and keeps the earlier record');
+  {
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/changes`, {
+      records: [...(await project()).project.changes, newChange('CHG-E2E-M', 'pif-any-change')],
+      expectedVersion: await version(),
+    });
+    t('a change that will turn out material is recorded', r.status < 300, `${r.status} ${short(r.json)}`);
+    pj = await project();
+    const standing = ['SG12', 'SG11'].filter((g) => gp.isGatePassed(pj.project, g));
+    const before = (await db.query(`SELECT count(*)::int AS n FROM backtrack_events WHERE "projectId" = $1`, [PROJECT])).rows[0].n;
+    r = await triage('CHG-E2E-M', 'Material impact', ['SG11', 'SG12']);
+    t('a Material triage over passed gates is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
+    pj = await project();
+    t('...and every confirmed gate that stood passed is reopened (all of them, not only the earliest)', standing.every((g) => !gp.isGatePassed(pj.project, g)) && standing.every((g) => pj.project.gates.find((x: any) => x.gateId === g)?.status === 'Not Started'), short(standing));
+    const after = (await db.query(`SELECT count(*)::int AS n, max(reason) AS reason FROM backtrack_events WHERE "projectId" = $1`, [PROJECT])).rows[0];
+    t('...recorded as one event that keeps the earlier record and names the change', standing.length === 0 || (after.n === before + 1 && /CHG-E2E-M/.test(String(after.reason))), short(after));
   }
 
   console.log(bad === 0 ? '\nall passed' : `\n${bad} FAILED`);

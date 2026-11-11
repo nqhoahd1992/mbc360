@@ -52,15 +52,21 @@ const DISPOSITION_FIELDS = [
   'closedDate',
 ] as const satisfies readonly (keyof ChangeRecord)[];
 
+// Round 5 question 10: a Rejected or Cancelled change also needs the recorded confirmation that nothing was implemented and no residual impact
+// remains (or that a reversal was verified) before it stops mattering. [ASSUMPTION: R6-Q16]
+const needsRestoreConfirmation = (change: ChangeRecord): boolean => change.status === 'Rejected' || change.status === 'Cancelled';
+
 export function isChangeDispositionRecorded(change: ChangeRecord): boolean {
-  return DISPOSITION_FIELDS.every((field) => String(change[field] ?? '').trim() !== '');
+  return missingDispositionFields(change).length === 0;
 }
 
 // Which of the seven a change is still missing — so the Gate 11 blocker can name
 // them instead of saying "final disposition not recorded" and leaving the user to
 // guess which of seven fields it means.
 export function missingDispositionFields(change: ChangeRecord): string[] {
-  return DISPOSITION_FIELDS.filter((field) => String(change[field] ?? '').trim() === '');
+  const missing: string[] = DISPOSITION_FIELDS.filter((field) => String(change[field] ?? '').trim() === '');
+  if (needsRestoreConfirmation(change) && String(change.restoreConfirmation ?? '').trim() === '') missing.push('restoreConfirmation');
+  return missing;
 }
 
 export function isChangeStillOpen(change: ChangeRecord): boolean {

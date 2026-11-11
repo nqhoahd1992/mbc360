@@ -41,3 +41,7 @@
   .cc-actions .cc-btn-text { display: none; }
   .cc-actions > .ant-btn-primary { flex: 1; }
 }
+
+/* Detail panel (change control): a summary strip above four tabs, so one concern is on screen at a time. */
+.cc-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
+.cc-summary-note { color: var(--c-text-2); font-size: 13px; }
