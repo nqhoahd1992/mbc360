@@ -174,7 +174,7 @@ const withScope: ProjectData = { ...live, identity: { ...live.identity, initialS
 t('Gate 1 owns the identity fields it reads: changing initialScope makes the Gate 1 signature stale', stale('SG01', snapAt('SG01'), withScope).some((c) => c.startsWith('Project identity')));
 t('a change that touches nothing readiness reads (the project lead) changes nothing',
   stale('SG01', snapAt('SG01'), { ...live, identity: { ...live.identity, projectLead: 'someone else' } }).length === 0);
-const withAssessment: ProjectData = { ...live, assessments: { ...live.assessments, scaleUpRisk: 'Yes' } as never };
+const withAssessment: ProjectData = { ...live, scaleUpAssessments: [{ id: 'x', area: 'Batch size', answer: 'Yes' }] };
 t('an assessment owned by a later gate (scale-up, Gate 9) is information at Gate 4', stale('SG04', snapAt('SG04'), withAssessment).length === 0);
 const noData = { ...snapAt('SG05') } as Partial<ReturnType<typeof gateEvidenceSnapshot>>;
 delete noData.projectData;

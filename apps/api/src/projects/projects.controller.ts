@@ -15,6 +15,7 @@ import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
 import type {
   AngleRow,
   ChangeControlAssessment,
+  ScaleUpAssessment,
   ChangeRecord,
   ChecklistItem,
   GateCheck,
@@ -882,6 +883,17 @@ export class ProjectsController {
     @Body() body: { entries: ProjectData['feedback']; samples: ProjectData['feedbackSamples']; expectedVersion: number },
   ): Promise<ProjectEnvelope> {
     return this.projects.setFeedback(user, id, body.entries ?? [], body.samples ?? [], body.expectedVersion);
+  }
+
+  // Round 5 question 7 — the scale-up / pilot assessment, one entry per affected area; the list is replaced.
+  @Put(':id/scale-up-assessments')
+  setScaleUpAssessments(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Body() body: { entries: ScaleUpAssessment[]; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    if (!Array.isArray(body?.entries)) throw new BadRequestException('entries must be a list');
+    return this.projects.setScaleUpAssessments(user, id, body.entries, body.expectedVersion);
   }
 
   // Round 4 question 8 — the Change Control assessment, one entry per post-market finding; the list is replaced.

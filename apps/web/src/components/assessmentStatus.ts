@@ -3,6 +3,7 @@ import { familyUseAgeGroupList, UNSTRUCTURED_PMS_CONDITIONS } from '@mbc360/shar
 import { ASSESSMENT_HOMES, type AssessmentKey } from '@mbc360/shared/config/assessments';
 import { evaluateTrigger, foreseeableContactAskedFor, personAnswer } from '@mbc360/shared/utils/gateProgress';
 import { isPendingAnswer } from '@mbc360/shared/utils/changeControlAssessments';
+import { isScaleUpPending } from '@mbc360/shared/utils/scaleUpAssessments';
 
 // Family use is asked only of a family-use product: an always-visible unanswered field reads as an obligation, and here blank means
 // "not applicable", not "not done". Lives here, with the status that reads it, so the block and the summary share one copy.
@@ -55,10 +56,15 @@ export function assessmentStatus(project: ProjectData, key: AssessmentKey): { te
       if (started) return { text: 'Yes — a Study Protocol has been started', tone: 'ok' };
       return waiting ? { text: v(a.humanStudyPlanned) || 'Not yet assessed', tone: 'warn' } : { text: v(a.humanStudyPlanned), tone: 'ok' };
     }
-    case 'scaleUp':
-      return waiting
-        ? { text: v(a.scaleUpRiskIdentified) || 'Not yet assessed', tone: 'warn' }
-        : { text: v(a.scaleUpRiskIdentified) || 'Counts as identified (Major formula change)', tone: 'ok' };
+    case 'scaleUp': {
+      const list = project.scaleUpAssessments ?? [];
+      if (waiting) {
+        const pending = list.filter((e) => isScaleUpPending(e)).length;
+        return { text: list.length === 0 ? 'Not yet assessed' : `${pending} of ${list.length} assessment(s) still pending`, tone: 'warn' };
+      }
+      const yes = list.filter((e) => (e.answer ?? '').trim() === 'Yes').length;
+      return { text: list.length === 0 ? 'Does not apply' : `${list.length} assessment(s) — ${yes} Yes`, tone: 'ok' };
+    }
     case 'changeControl': {
       const list = project.changeControlAssessments ?? [];
       if (waiting) {

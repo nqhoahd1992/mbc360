@@ -2,7 +2,7 @@
 
 **For:** the subject-matter team (NPD / Quality / Regulatory / Safety)
 
-This round has twelve questions. They follow from your answers to questions 1, 2, 3 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared; question 11 asks how the details of a version's supersession market by market should be read; question 12 asks how "critical" and the Change Control rule for a Claims Library change should be read.
+This round has thirteen questions. They follow from your answers to questions 1, 2, 3 and 37 of Round 5. Question 1 asks how we should read the way the reviewer names are written; question 2 asks you to check a page that lists every role and what it is authorised to do; question 3 asks who may be named to hold a function on a project; question 4 asks what counts as a material change that voids an acknowledgement; question 5 asks how six answers you required should be recorded; question 6 asks how a change to a company list should reach the projects that already rely on it; question 7 asks how the fields of a post-market finding should be filled; question 8 asks which readiness items belong to one market; question 9 asks how the confirmations on a superseded safety finding should be checked; question 10 asks what counts as a change of basis on the watch-lists and how a reassessment is cleared; question 11 asks how the details of a version's supersession market by market should be read; question 12 asks how "critical" and the Change Control rule for a Claims Library change should be read; question 13 asks how the details of the scale-up assessment, area by area, should be read.
 
 Where we say "the software development team" we mean the team building this application — not the owner of any product development project.
 
@@ -354,3 +354,26 @@ You told us how a Claims Library change is judged: the same four words (Low, Med
 **(d)** Are those four effects the whole list that forces a Change Control?
 
 **(e)** Does Quality record a conclusion of its own, or only coordinate?
+
+## Question 13 — The scale-up assessment, area by area: how should we read the details your answer leaves open?
+
+*Where in the application:* **Phase 3**, **Gate 9** tab, the block "Scale-up risk identified?", now a list with one entry for each affected area.
+
+You told us to record the assessment as one entry for each affected area, picked from the existing eighteen, with before and after, the Yes / No / Pending risk, the reason, the pilot or verification required, the evidence, the assessor and the date; an empty list is incomplete; a Pending entry blocks Gate 9; a Yes needs its verification; the open-ended area needs a description; a new formula must be assessed and a No cannot switch that off; a separate pilot may be waived only with Quality, Manufacturing and R&I. We have built that. Where your answer leaves a detail open we read it as follows:
+
+- **The display groups.** *Process, site and scale:* manufacturing site, equipment type or scale, batch size, order of addition, mixing speed or time, homogenisation, heating or cooling profile, maximum temperature, hold time, pre-processing or ingredient hydration, transfer method, filling method, packaging/filling interface. *Formula and materials:* formula composition, active or preservative concentration, water quality or process-water source, process aid. *Other performance risks:* the open-ended area.
+- **Before or after the formula lock** is said by the person assessing the change, not worked out. A change after the lock must link its Change Control record; before the lock it may name the development iteration.
+- **An ordinary reformulation** also switches the assessment on, because you wrote that it still needs a documented risk screen; the least that can be recorded is the reviewed "no affected area" entry.
+- **On a new formula, every entry answered No is a waiver of a separate pilot.** It needs the reason it is equivalent to a qualified process, a link to the supporting verification, and a confirmation from each of Quality, Manufacturing and R&I (each given by the person holding that function on the project, as themselves). The three come one after another, so this holds Gate 9 rather than refusing the save.
+- **The "no affected area" entry** is always answered No, with its reason, assessor and date.
+- **Projects that already answered** have that single answer turned into one entry under the open-ended area.
+
+**(a)** Is the grouping of the eighteen areas right?
+
+**(b)** Should "before or after the formula lock" be worked out from the data (for example, whether Gate 5 had passed when the change was recorded) instead of being said by the assessor?
+
+**(c)** Should an ordinary reformulation need the same waiver on a No as a new formula, or something lighter?
+
+**(d)** Is the waiver one per entry, or one for the whole assessment?
+
+**(e)** Must Quality, Manufacturing and R&I be three different people?

@@ -40,6 +40,8 @@ import { TEXT, TABLE_STICKY } from '../theme/tokens';
 import FormDrawer from './FormDrawer';
 // Why a drafted decision cannot be saved: a headline, the reasons as a list (each may carry a detail), and an optional closing sentence.
 interface SaveInvalid {
+  // Named in the banner only when several gates are blocked at once (the card layout lists every gate).
+  gate: string;
   headline: string;
   items: { label: string; detail?: string }[];
   tail?: string;
@@ -257,13 +259,18 @@ export default function GateFlowTable({
               .join(' or ')} instead`
           : `Record ${gapVerdict.allowed.map((d) => `"${d}"`).join(' or ')} instead`
         : undefined;
-      // Written as a headline and a list (project owner, 2026-11-11): one line of clauses joined by semicolons could not be read.
+      // The banner sits inside the gate and the readiness list beside it already names every item that blocks, so it says only THAT the
+      // decision is not valid and how many items stand in the way — it does not name the gate or repeat the list (project owner, 2026-11-11).
+      // The gap case is different: its reason is not in the readiness list, so it is spelled out.
+      const blockers = r.draftRecord.decision === 'Proceed' ? r.liveBlockers : r.hardBlockers;
+      const blockedLine = (decision: string) =>
+        `"${decision}" isn't valid yet — ${blockers.length} ${blockers.length === 1 ? 'item' : 'items'} in the readiness list still block it.`;
       const saveInvalidReason: SaveInvalid | undefined = gapVerdict
-        ? { headline: `Gate ${r.meta.number}: "${r.draftRecord.decision}" isn't valid`, items: [{ label: gapVerdict.reason }], tail: gapFix }
+        ? { gate: r.meta.number, headline: `"${r.draftRecord.decision}" isn't valid`, items: [{ label: gapVerdict.reason }], tail: gapFix }
         : r.draftRecord.decision === 'Proceed' && r.liveBlockers.length > 0
-          ? { headline: `Gate ${r.meta.number}: "Proceed" isn't valid yet. Still to resolve:`, items: r.liveBlockers }
+          ? { gate: r.meta.number, headline: blockedLine('Proceed'), items: [] }
           : r.draftRecord.decision === 'Proceed with Conditions' && r.hardBlockers.length > 0
-            ? { headline: `Gate ${r.meta.number}: "Proceed with Conditions" isn't valid yet. Still to resolve:`, items: r.hardBlockers }
+            ? { gate: r.meta.number, headline: blockedLine('Proceed with Conditions'), items: [] }
             : undefined;
       return { ...r, saveInvalidReason, gapVerdict };
     });
@@ -556,15 +563,20 @@ export default function GateFlowTable({
             <ul style={{ margin: 0, paddingLeft: 18 }}>
               {saveBlockedRows.map((r) => (
                 <li key={r.meta.id} className="gfc-reason">
-                  <div>{r.saveInvalidReason!.headline}</div>
-                  <ul className="gfc-reason-list">
-                    {r.saveInvalidReason!.items.map((b, i) => (
-                      <li key={i}>
-                        {b.label}
-                        {b.detail && <div className="gfc-reason-detail">{b.detail}</div>}
-                      </li>
-                    ))}
-                  </ul>
+                  <div>
+                    {saveBlockedRows.length > 1 ? `Gate ${r.saveInvalidReason!.gate}: ` : ''}
+                    {r.saveInvalidReason!.headline}
+                  </div>
+                  {r.saveInvalidReason!.items.length > 0 && (
+                    <ul className="gfc-reason-list">
+                      {r.saveInvalidReason!.items.map((b, i) => (
+                        <li key={i}>
+                          {b.label}
+                          {b.detail && <div className="gfc-reason-detail">{b.detail}</div>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   {r.saveInvalidReason!.tail && <div>{r.saveInvalidReason!.tail}</div>}
                 </li>
               ))}

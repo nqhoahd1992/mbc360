@@ -1053,6 +1053,16 @@ Các **câu hỏi về quy tắc đã đóng** (chỉ F12 còn chờ Cosmetri). 
 
 **(c)** Tự động nhận diện bản ghi bị ảnh hưởng và tạo nhiệm vụ đánh giá tác động. Regulatory và Technical, cùng Quality, quyết định có cần CHG không. Bắt buộc khi thay đổi ảnh hưởng wording đã duyệt/đã phát hành, artwork, PIF hoặc việc dùng được phép ở thị trường. Entry chưa dùng hoặc sửa biên tập có thể đóng bằng lý do, không CHG. Ngừng dùng wording đã thu hồi; đánh giá tồn kho và tài liệu đã công bố theo kế hoạch chuyển đổi.
 
+### Câu 7 — Đánh giá scale-up ở Gate 9 và mười tám vùng ảnh hưởng
+
+**Kết luận:** ✅ đã xây (11/11/2026), và hoàn tất câu 12 của Vòng 4. (a) khác cái đã xây (các vùng chỉ là nhắc bên cạnh một câu Yes / No); (b) đã xây, mở rộng sang reformulation thường; (c) khác (trước đây câu No bị bỏ qua với công thức mới và không ghi được làm câu trả lời). Các cách đọc của ta về chi tiết được hỏi ở Vòng 6, câu 13.
+
+**(a)** Chọn (iii), liên kết với (ii). Dùng danh sách có kiểm soát mười tám vùng hiện có. Mỗi vùng ảnh hưởng một mục, ghi chi tiết trước/sau, rủi ro Yes/No/Pending, lý do, pilot/xác minh cần có, bằng chứng, người đánh giá và ngày. Ghi một đánh giá "no affected area / no scale-up activity required" đã rà soát khi phù hợp; danh sách rỗng là chưa đủ. Nhóm các vùng để hiển thị thành quy trình/địa điểm/quy mô, công thức/nguyên liệu và rủi ro hiệu năng khác, giữ nguyên định danh. Vùng mở bắt buộc mô tả. Thay đổi sau khoá công thức liên kết đánh giá với CHG; việc làm trước khoá có thể liên kết với iteration. Chọn vùng kích hoạt đánh giá, không định sẵn kết luận rủi ro Yes. Bất kỳ mục Pending nào chặn Gate 9; bất kỳ Yes nào cần xác minh đã nêu.
+
+**(b)** "New development" ở phạm vi chính hoặc phụ kích hoạt đánh giá bắt buộc. Major reformulation cũng vậy. Reformulation khác vẫn cần sàng lọc rủi ro có tài liệu và pilot/scale-up nếu thay đổi có thể ảnh hưởng sản xuất hoặc hiệu năng. Loại thay đổi là trigger, không phải bằng chứng duy nhất.
+
+**(c)** Công thức mới phải có đánh giá scale-up/pilot. Có thể ghi kết luận No nhưng không thể tắt đánh giá đó. Bỏ pilot riêng cần Quality, Manufacturing và R&I chứng minh tương đương với quy trình đã đạt, kèm xác minh hỗ trợ. Một No trơn không thể miễn bằng chứng sẵn sàng sản xuất.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

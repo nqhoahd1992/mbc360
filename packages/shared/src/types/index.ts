@@ -973,6 +973,38 @@ export interface ChangeControlAssessment {
   evidenceLink?: string;
 }
 
+// One scale-up / pilot assessment of an affected area (Round 4 question 12, as a list since Round 5 question 7(a): "an entry for each
+// affected area, recording before/after details, Yes/No/Pending risk, reason, required pilot/verification, evidence, assessor and date").
+// The area is one of the eighteen of SCALE_UP_REVIEW_AREAS, or the reviewed "no affected area / no scale-up activity required" record;
+// choosing an area TRIGGERS an assessment and never predetermines a Yes verdict. Which fields each answer needs is decided by ONE function,
+// scaleUpAssessmentProblems (utils/scaleUpAssessments.ts), read by the screen and the API.
+export const SCALE_UP_TIMINGS = ['Before formula lock', 'After formula lock'] as const;
+export interface ScaleUpAssessment {
+  id: string;
+  area: string;
+  // What the change is. Required for the open-ended area ("any change identified by Manufacturing, Quality or R&I ...").
+  description?: string;
+  before?: string;
+  after?: string;
+  answer: string; // 'Yes' | 'No' | 'Pending assessment' ('' counts as Pending)
+  rationale?: string; // the reason, required with Yes or No
+  verification?: string; // the pilot or verification the risk needs, required with Yes
+  evidenceLink?: string;
+  assessor?: string; // the signed-in person who assessed it
+  assessedDate?: string;
+  // "Post-lock changes link the assessment to CHG; pre-lock work may link to the iteration" — said by the person: when the change happened.
+  timing?: string; // one of SCALE_UP_TIMINGS
+  linkedChangeId?: string; // a change record of this project; required when the change was after the formula lock
+  linkedIteration?: string; // optional: the development iteration it belongs to
+  // On a NEW formula a No cannot switch the assessment off ("a bare No cannot waive manufacture-readiness evidence"): waiving a separate
+  // pilot needs the justification (equivalence to a qualified process), the supporting verification, and Quality, Manufacturing and R&I.
+  waiverJustification?: string;
+  waiverEvidenceLink?: string;
+  waiverQualityBy?: string;
+  waiverManufacturingBy?: string;
+  waiverRiBy?: string;
+}
+
 export interface ProjectAssessments {
   // Question 8 — "Change Control required?" is NOT held here any more: it is a LIST, one entry per
   // post-market finding (`ProjectData.changeControlAssessments`), since 2026-10-13.
@@ -989,14 +1021,8 @@ export interface ProjectAssessments {
   administrativeOnly?: string;
   administrativeOnlyRationale?: string;
   administrativeOnlyConfirmedBy?: string;
-  // Question 12 — the scale-up trigger Gate 9 has never had.
-  scaleUpRiskIdentified?: string;
-  scaleUpRiskDescription?: string;
-  scaleUpRiskAssessor?: string;
-  scaleUpRiskAssessmentDate?: string;
-  scaleUpRiskRationale?: string;
-  scaleUpRiskActivity?: string;
-  scaleUpRiskEvidenceLink?: string;
+  // Question 12 — the scale-up trigger Gate 9 has never had. NOT held here any more: since Round 5 question 7 (2026-11-11) it is a
+  // LIST, one entry per affected area (`ProjectData.scaleUpAssessments`).
   // Round 5 question 1(d) — three answers a person gives instead of the engine inferring a "not applicable" from what was ticked or
   // from the conditions the application can read. Each is blank until somebody answers; blank blocks.
   // A "No" needs its reason; a "Yes" may have one.
@@ -1621,6 +1647,8 @@ export interface ProjectData {
   readinessAcknowledgements: ReadinessAcknowledgement[];
   // Round 4 question 8, listed per post-market finding (2026-10-13) — see ChangeControlAssessment.
   changeControlAssessments: ChangeControlAssessment[];
+  // Round 5 question 7, one per affected area — see ScaleUpAssessment.
+  scaleUpAssessments: ScaleUpAssessment[];
   // The edit history of those entries, read from the audit trail (never written by a store action).
   readinessAckLog: ReadinessAckEvent[];
   phaseSignOffLog: PhaseSignOffEvent[]; // immutable log of phase sign-off signatures and withdrawals

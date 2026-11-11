@@ -31,3 +31,6 @@
 .gna-covers .gna-reason { margin-left: 0; }
 .gna-covers ul { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
 .gna-covers li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; line-height: 20px; }
+
+/* The sentence that says an acknowledgement is what lets the item through. */
+.gna-need { color: var(--c-text); font-weight: 600; }

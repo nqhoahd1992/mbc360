@@ -633,6 +633,8 @@ function sourcesOf(check: ReadinessCheck): EvidenceSource[] {
       return [registerSource('claimEvidenceTraceability')];
     case 'noClaimsDeclared':
       return [registerSource('claimEvidenceTraceability'), { label: 'Gate 03 claims Key Gate Check', lockRef: '03' }];
+    case 'scaleUpAssessed':
+      return [{ label: 'Scale-up assessments (list)', lockRef: '09' }];
     case 'artworkClaimsSupported':
       return [registerSource('packagingSpecsArtwork'), registerSource('claimEvidenceTraceability')];
     case 'vulnerableGroupsCovered':

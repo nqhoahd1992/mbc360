@@ -1620,7 +1620,28 @@ export async function run(base: string, db: Client): Promise<number> {
   // ============================================================ SG09
   console.log('\n--- SG09 (the scale-up assessment is Gate 9 data; the formula properties are Gate 5 data)');
   await nominate('SG09');
-  r = await putAssess({ scaleUpRiskIdentified: 'No' });
+  // Round 5 question 7: the scale-up assessment is a list, one entry per affected area.
+  const scaleEntry = (over: Record<string, unknown> = {}) => ({
+    id: '', area: 'Batch size', description: 'e2e: scaled up', before: '50 kg', after: '500 kg', answer: 'Yes', rationale: 'e2e: the batch is ten times larger',
+    verification: 'one pilot batch at full scale', assessor: me, assessedDate: '2026-11-01', timing: 'Before formula lock', ...over,
+  });
+  const putScale = async (entries: unknown[]) =>
+    api('admin', 'PUT', `/projects/${PROJECT}/scale-up-assessments`, { entries, expectedVersion: await version() });
+  r = await putScale([{ ...scaleEntry(), answer: 'Pending assessment', rationale: '', verification: '', assessor: '', assessedDate: '' }]);
+  t('an entry still Pending is saved (it is the answer that is missing)', r.status < 300, `${r.status} ${short(r.json)}`);
+  pj = await project();
+  // (This harness runs a cut-down readiness list without the Gate 9 scale-up item, so that a Pending entry BLOCKS Gate 9 is shown by
+  // verify:scale-up-assessments on the real list; here the stored entry is checked.)
+  t('...and the stored entry is still Pending', ((pj.project.scaleUpAssessments ?? []) as any[]).length === 1 && pj.project.scaleUpAssessments[0].answer === 'Pending assessment');
+  r = await putScale([scaleEntry({ verification: '' })]);
+  t('a Yes without the pilot or verification it requires is refused (400)', r.status === 400 && /verification/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await putScale([scaleEntry({ area: 'Any change identified by Manufacturing, Quality or R&I as potentially affecting product performance', description: '' })]);
+  t('the open-ended area needs a description (400)', r.status === 400 && /describe/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await putScale([scaleEntry({ timing: 'After formula lock' })]);
+  t('a change after the formula lock must link its Change Control record (400)', r.status === 400 && /Change Control/i.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+  r = await putScale([scaleEntry({ assessor: 'Somebody Else' })]);
+  t('who assessed an entry can only be the person saving (400/403)', r.status === 400 || r.status === 403, `${r.status} ${short(r.json)}`);
+  r = await putScale([scaleEntry()]);
   t('the scale-up assessment is answered while SG09 is open', r.status < 300, `${r.status} ${short(r.json)}`);
   await complete('SG09');
   r = await sign('SG09', 'Prepared by');
@@ -1633,7 +1654,7 @@ export async function run(base: string, db: Client): Promise<number> {
     )
   ).rows[0];
   t('the SG09 snapshot is accountable for the formula properties (Gate 5 owns them) and for its own scale-up assessment', sg09 && sg09.fp === true && sg09.scale === true, short(sg09));
-  r = await putAssess({ scaleUpRiskIdentified: 'Pending assessment' });
+  r = await putScale([scaleEntry({ rationale: 'e2e: changed after signing' })]);
   t('changing the scale-up assessment (Gate 9 data) while the Prepared signature stands is refused (403)',
     r.status === 403 && String(r.json?.message).includes('Assessment: scale-up'), `${r.status} ${short(r.json)}`);
   t('...and the SG09 signature is still current', (await stale('SG09', 'Prepared by')).length === 0, short(await stale('SG09', 'Prepared by')));
@@ -1646,7 +1667,7 @@ export async function run(base: string, db: Client): Promise<number> {
   }
   pj = await project();
   t('SG09 passed', gp.isGatePassed(pj.project, 'SG09'));
-  r = await putAssess({ scaleUpRiskIdentified: 'Yes' });
+  r = await putScale([scaleEntry({ rationale: 'e2e: changed after the pass' })]);
   t('after SG09 passed, the scale-up assessment is refused (403)', r.status === 403, `${r.status} ${short(r.json)}`);
 
   // ============================================================ SG10-SG12 per market

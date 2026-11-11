@@ -1053,6 +1053,16 @@ The **rule questions are closed** (only F12 awaits Cosmetri). What is left is **
 
 **(c)** Automatically identify affected records and create an impact-assessment task. Regulatory and Technical, with Quality, determine whether CHG is required. It is required when a change affects approved/released wording, artwork, PIF or authorised market use. An unused entry or editorial correction can close with a reason and no CHG. Suspend further use of withdrawn wording; assess existing stock and published material under the transition plan.
 
+### Question 7 — The Gate 9 scale-up assessment and the eighteen affected areas
+
+**Verdict:** ✅ built (2026-11-11), and it finishes Round 4 question 12. (a) differs from what was built (the areas were a reminder beside one Yes / No answer); (b) is built, widened to ordinary reformulations; (c) differs (a No used to be ignored for a new formula, and could not be recorded as the answer). Our readings of the details are asked in Round 6, question 13.
+
+**(a)** Choose (iii), linked to (ii). Use the existing controlled list of eighteen areas. Use an entry for each affected area, recording before/after details, Yes/No/Pending risk, reason, required pilot/verification, evidence, assessor and date. Record a reviewed "no affected area / no scale-up activity required" assessment where appropriate; an empty list is incomplete. Group the areas for display as process/site/scale, formula/materials and other performance risks, while retaining their existing identities. The open-ended area requires a description. Post-lock changes link the assessment to CHG; pre-lock work may link to the iteration. Area selection triggers assessment; it does not predetermine a Yes risk verdict. Any Pending entry blocks Gate 9; any Yes requires the specified verification.
+
+**(b)** "New development" in either primary or secondary scope triggers mandatory assessment. A Major reformulation also triggers it. Other reformulations still require a documented risk screen and pilot/scale-up work if the change can affect manufacture or performance. The change type is a trigger, not the only evidence used.
+
+**(c)** A new formula must have a scale-up/pilot assessment. A No conclusion may be recorded, but cannot switch that assessment off. Waiving a separate pilot requires Quality, Manufacturing and R&I to justify equivalence to a qualified process and link supporting verification. A bare No cannot waive manufacture-readiness evidence.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

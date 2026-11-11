@@ -170,6 +170,14 @@ export default function GeneratedNaAcks({
             </div>
             {!many && caption?.(first) && <p className="gna-sub">{caption(first)}</p>}
             <p className="gna-reason">Not applicable: {group.reason}</p>
+            {/* Said outright: the reason above does not pass the item by itself, an acknowledgement does. */}
+            {!done && (
+              <p className="gna-reason gna-need">
+                {first.slots.length > 1
+                  ? 'This is a critical item. The gate stays blocked until every function below has acknowledged this reason.'
+                  : 'This is a critical item. The gate stays blocked until the function below has acknowledged this reason.'}
+              </p>
+            )}
             {many && (
               <div className="gna-covers">
                 <p className="gna-reason">

@@ -76,6 +76,7 @@ import {
 } from '@mbc360/shared/utils/watchlistReview';
 import { SAFETY_FINDINGS_REGISTER, droppedSupersessionRecords } from '@mbc360/shared/utils/safetyFindings';
 import { bulletList, listMessage, reasonsMessage } from '@mbc360/shared/utils/messageList';
+import { SCALE_UP_WAIVER_ROLES, isNewFormula, scaleUpAssessmentProblems } from '@mbc360/shared/utils/scaleUpAssessments';
 import {
   VULNERABLE_REGISTER,
   targetUsersPinnedByAssessment,
@@ -185,12 +186,12 @@ import {
   UNSTRUCTURED_PMS_CONDITIONS,
   RISK_LEVELS,
   NEXT_ACTION_TERMINAL_STATUSES,
-  SCALE_UP_RISK_OPTIONS,
 } from '@mbc360/shared/types';
 import type { GateSignedContent, GateSignOffRole, PhaseSignedContent, GateSigningPreview, NextActionStatus, PhaseSignPreview, RegisterClosePreview, RegisterRowSignPreview } from '@mbc360/shared/types';
 import type {
   AngleRow,
   ChangeControlAssessment,
+  ScaleUpAssessment,
   ChangeRecord,
   ChecklistItem,
   GateCheck,
@@ -253,13 +254,6 @@ const ASSESSMENT_FIELDS = [
   'administrativeOnly',
   'administrativeOnlyRationale',
   'administrativeOnlyConfirmedBy',
-  'scaleUpRiskIdentified',
-  'scaleUpRiskDescription',
-  'scaleUpRiskAssessor',
-  'scaleUpRiskAssessmentDate',
-  'scaleUpRiskRationale',
-  'scaleUpRiskActivity',
-  'scaleUpRiskEvidenceLink',
   'familyUseAgeGroups',
   'familyUseConfirmedBy',
   'familyUseConfirmedDate',
@@ -322,7 +316,6 @@ const ASSESSMENT_ANSWER_LISTS: Partial<Record<keyof ProjectData['assessments'], 
   pmsRecurringIssue: UNSTRUCTURED_PMS_OPTIONS,
   pmsSurveillancePlan: UNSTRUCTURED_PMS_OPTIONS,
   administrativeOnly: ADMINISTRATIVE_ONLY_OPTIONS,
-  scaleUpRiskIdentified: SCALE_UP_RISK_OPTIONS,
 };
 
 // M3 Phase 1 (2026-07-26). Every guard here is the SAME shared pure function the
@@ -4095,7 +4088,6 @@ export class ProjectsService {
       for (const [field, label] of [
         ['administrativeOnlyConfirmedBy', 'Administrative-only "confirmed by"'],
         ['foreseeableContactConfirmedBy', 'Foreseeable contact "confirmed by"'],
-        ['scaleUpRiskAssessor', 'Scale-up risk assessor'],
         ['familyUseConfirmedBy', 'Family use "confirmed by"'],
         ...UNSTRUCTURED_PMS_CONDITIONS.map((c) => [c.confirmer, `${c.label} "confirmed by"`] as const),
       ] as const) {
@@ -4165,6 +4157,118 @@ export class ProjectsService {
 
       await tx.project.update({ where: { id }, data });
       return { fields: Object.keys(data) };
+    });
+  }
+
+  // Round 5 question 7: the scale-up / pilot assessment of Gate 9, one entry per affected area. The whole list is replaced, like a
+  // register: an entry missing from it is removed, and the audit event names what was added, changed and removed. What is wrong with an
+  // entry is the shared `scaleUpAssessmentProblems`, the one function the screen reads too. Who assessed an entry is an act, so it can
+  // only be the person saving; and the three confirmations that waive a separate pilot on a new formula are each given by the holder of
+  // that function on this project, as themselves — changing the justification or its evidence withdraws them (a confirmation vouches
+  // for what it was given on).
+  async setScaleUpAssessments(
+    user: SessionUser,
+    id: string,
+    entries: ScaleUpAssessment[],
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'scale_up_assessments.updated', async (tx, _row, project) => {
+      // Answered at Gate 9 (C9): once it has passed the answers are evidence it passed on.
+      if (isGateRefLocked(project, '09')) {
+        throw new ForbiddenException('The scale-up assessment is answered at SG09, which has passed — it is read-only (use Backtrack)');
+      }
+      const t = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+      const opt = (v: unknown): string | undefined => t(v) || undefined;
+      const before = new Map(project.scaleUpAssessments.map((a) => [a.id, a]));
+      const clean: ScaleUpAssessment[] = entries.map((e) => {
+        const old = before.get(typeof e.id === 'string' ? e.id : '');
+        const entry: ScaleUpAssessment = {
+          id: typeof e.id === 'string' ? e.id : '',
+          area: t(e.area),
+          description: opt(e.description),
+          before: opt(e.before),
+          after: opt(e.after),
+          answer: t(e.answer),
+          rationale: opt(e.rationale),
+          verification: opt(e.verification),
+          evidenceLink: opt(e.evidenceLink),
+          assessor: opt(e.assessor),
+          assessedDate: opt(e.assessedDate),
+          timing: opt(e.timing),
+          linkedChangeId: opt(e.linkedChangeId),
+          linkedIteration: opt(e.linkedIteration),
+          waiverJustification: opt(e.waiverJustification),
+          waiverEvidenceLink: opt(e.waiverEvidenceLink),
+          waiverQualityBy: opt(e.waiverQualityBy),
+          waiverManufacturingBy: opt(e.waiverManufacturingBy),
+          waiverRiBy: opt(e.waiverRiBy),
+        };
+        // A confirmation stands only for the justification and evidence it was given on.
+        const waiverMoved =
+          !!old && (t(old.waiverJustification) !== t(entry.waiverJustification) || t(old.waiverEvidenceLink) !== t(entry.waiverEvidenceLink));
+        for (const r of SCALE_UP_WAIVER_ROLES) {
+          if (waiverMoved && t(entry[r.field]) === t(old?.[r.field])) entry[r.field] = undefined;
+        }
+        return entry;
+      });
+      const problems = scaleUpAssessmentProblems(clean, { changeIds: project.changes.map((c) => c.changeId), newFormula: isNewFormula(project) });
+      if (problems.length > 0) throw new BadRequestException(bulletList(problems));
+
+      for (const e of clean) {
+        const old = before.get(e.id);
+        assertSelfAttested('Scale-up assessor', old?.assessor, e.assessor, user.displayName);
+        for (const r of SCALE_UP_WAIVER_ROLES) {
+          const next = t(e[r.field]);
+          if (next === '' || next === t(old?.[r.field])) continue;
+          assertSelfAttested(`${r.label} confirmation`, old?.[r.field], next, user.displayName);
+          await this.assertHoldsFunction(tx, id, user, [r.functionKey], `confirm the waiver as ${r.label}`);
+        }
+      }
+
+      const keep = new Set(clean.map((e) => e.id).filter((x) => before.has(x)));
+      const removed = project.scaleUpAssessments.filter((a) => !keep.has(a.id));
+      if (removed.length > 0) {
+        await tx.scaleUpAssessment.deleteMany({ where: { projectId: id, id: { in: removed.map((a) => a.id) } } });
+      }
+      const added: string[] = [];
+      const changed: string[] = [];
+      for (const [index, e] of clean.entries()) {
+        const data = {
+          sortOrder: index,
+          area: e.area,
+          description: e.description ?? null,
+          before: e.before ?? null,
+          after: e.after ?? null,
+          answer: e.answer,
+          rationale: e.rationale ?? null,
+          verification: e.verification ?? null,
+          evidenceLink: e.evidenceLink ?? null,
+          assessor: e.assessor ?? null,
+          assessedDate: e.assessedDate ?? null,
+          timing: e.timing ?? null,
+          linkedChangeId: e.linkedChangeId ?? null,
+          linkedIteration: e.linkedIteration ?? null,
+          waiverJustification: e.waiverJustification ?? null,
+          waiverEvidenceLink: e.waiverEvidenceLink ?? null,
+          waiverQualityBy: e.waiverQualityBy ?? null,
+          waiverManufacturingBy: e.waiverManufacturingBy ?? null,
+          waiverRiBy: e.waiverRiBy ?? null,
+        };
+        const old = before.get(e.id);
+        if (old) {
+          await tx.scaleUpAssessment.update({ where: { id: e.id }, data });
+          if (JSON.stringify({ ...old, id: undefined }) !== JSON.stringify({ ...e, id: undefined })) changed.push(e.area);
+        } else {
+          await tx.scaleUpAssessment.create({ data: { projectId: id, ...data } });
+          added.push(e.area);
+        }
+      }
+      return {
+        added,
+        changed,
+        removed: removed.map((a) => ({ area: a.area, answer: a.answer, assessor: a.assessor ?? null })),
+        count: clean.length,
+      };
     });
   }
 

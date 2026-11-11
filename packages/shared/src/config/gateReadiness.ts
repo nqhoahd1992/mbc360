@@ -376,6 +376,8 @@ export type ReadinessCheck =
   // which Proceed with Conditions may clear "following authorised
   // acknowledgement" (the existing F9 acknowledgement on the gate row).
   | { kind: 'changeControlNoAdminImpact' }
+  // Round 5 question 7: the Gate 9 scale-up assessment LIST is recorded — not empty, no entry Pending, every entry properly recorded.
+  | { kind: 'scaleUpAssessed' }
   // Rule E2: every market with no built-in dossier profile has a complete
   // Regulatory Checklist Status row. Vacuous only when the project sells into
   // nothing but ASEAN, which is correct — those markets are covered by the
@@ -2573,8 +2575,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       coverageNote:
         'triggered by a Major formula change or by the reviewer’s own Yes / Pending answer. ' +
         'The eighteen areas whose change should prompt a scale-up review (manufacturing site, equipment scale, batch size and the rest) are shown beside the reviewer’s question as guidance; they do not trigger it by themselves.',
-      // Shares the Key Gate Check above — its own wording covers "Pilot/scale-up".
-      check: { kind: 'gateCheckDone', gate: '09', check: 'Pilot/scale-up and release criteria assessed' },
+      // The Key Gate Check above ("Pilot/scale-up") AND the assessment list: Round 5 question 7 made the assessment a list with an entry
+      // for each affected area, an empty list incomplete, and a Pending entry a block on Gate 9.
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'gateCheckDone', gate: '09', check: 'Pilot/scale-up and release criteria assessed' },
+          { kind: 'scaleUpAssessed' },
+        ],
+      },
     },
     {
       // Split out of `sg08-infant-testing` 2026-10-09: the five infantTesting rows tagged

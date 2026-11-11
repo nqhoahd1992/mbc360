@@ -378,16 +378,31 @@ async function answerAssessments(ctx: Ctx, gateNumber: number): Promise<void> {
   }
   else if (gateNumber === 3 && !a.administrativeOnly) patch = { administrativeOnly: 'No' };
   else if (gateNumber === 8 && !a.humanStudyPlanned) patch = { humanStudyPlanned: 'Yes' };
-  else if (gateNumber === 9 && !a.scaleUpRiskIdentified) {
-    patch = {
-      scaleUpRiskIdentified: 'Yes',
-      scaleUpRiskDescription: `${SEED}: the new emollient system changes the heating and cooling profile at batch scale`,
-      scaleUpRiskAssessor: ctx.adminName,
-      scaleUpRiskAssessmentDate: today,
-      scaleUpRiskRationale: `${SEED}: a Major formula change; viscosity and phase stability are sensitive to mixing speed and cooling rate`,
-      scaleUpRiskActivity: `${SEED}: one pilot batch at full scale before release`,
-      scaleUpRiskEvidenceLink: 'https://example.com/seed/scale-up',
-    };
+  else if (gateNumber === 9 && (project.scaleUpAssessments ?? []).length === 0) {
+    // Round 5 question 7: the scale-up assessment is a list, one entry per affected area. One entry answered Yes names the pilot it needs
+    // (a No on a new formula would also need the three-function waiver, which a seed has no business inventing).
+    take(
+      await api('PUT', `/projects/${ctx.id}/scale-up-assessments`, {
+        entries: [
+          {
+            id: '',
+            area: 'Heating or cooling profile',
+            description: `${SEED}: the new emollient system changes the heating and cooling profile at batch scale`,
+            before: 'laboratory batch',
+            after: 'full production batch',
+            answer: 'Yes',
+            rationale: `${SEED}: a Major formula change; viscosity and phase stability are sensitive to mixing speed and cooling rate`,
+            verification: `${SEED}: one pilot batch at full scale before release`,
+            evidenceLink: 'https://example.com/seed/scale-up',
+            assessor: ctx.adminName,
+            assessedDate: today,
+            timing: 'Before formula lock',
+          },
+        ],
+        expectedVersion: version,
+      }),
+    );
+    return;
   }
   if (!patch) return;
   take(await api('PUT', `/projects/${ctx.id}/assessments`, { patch, expectedVersion: version }));

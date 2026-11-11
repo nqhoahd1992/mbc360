@@ -77,11 +77,14 @@ for (const home of ASSESSMENT_HOMES) {
   SLICES[`assessments:${home.key}`] = {
     owner: home.gateId,
     digest: (p) =>
-      stable(
-        Object.fromEntries(
-          ASSESSMENT_FIELDS[home.key].map((f) => [f, (p.assessments as unknown as Record<string, unknown>)[f]]),
-        ),
-      ),
+      // The scale-up assessment is a list of its own (Round 5 question 7), so its digest is the list.
+      home.key === 'scaleUp'
+        ? stable(p.scaleUpAssessments ?? [])
+        : stable(
+            Object.fromEntries(
+              ASSESSMENT_FIELDS[home.key].map((f) => [f, (p.assessments as unknown as Record<string, unknown>)[f]]),
+            ),
+          ),
   };
 }
 

@@ -2,7 +2,7 @@
 
 **Gửi:** đội chuyên môn (NPD / Quality / Regulatory / Safety)
 
-Vòng này có mười hai câu. Chúng nảy ra từ đáp án câu 1, 2, 3 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường; câu 12 hỏi nên đọc thế nào "critical" và quy tắc Change Control cho một thay đổi Claims Library.
+Vòng này có mười ba câu. Chúng nảy ra từ đáp án câu 1, 2, 3 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường; câu 12 hỏi nên đọc thế nào "critical" và quy tắc Change Control cho một thay đổi Claims Library; câu 13 hỏi nên đọc thế nào các chi tiết của đánh giá scale-up theo từng vùng.
 
 Chỗ nào ghi "nhóm phát triển phần mềm" là nhóm đang xây ứng dụng, không phải chủ của một dự án phát triển sản phẩm.
 
@@ -354,3 +354,26 @@ Các bạn đã nói một thay đổi Claims Library được đánh giá thế
 **(d)** Bốn ảnh hưởng đó có phải toàn bộ danh sách buộc Change Control không?
 
 **(e)** Quality ghi một kết luận riêng hay chỉ điều phối?
+
+## Câu 13 — Đánh giá scale-up theo từng vùng: nên đọc thế nào các chi tiết câu trả lời để ngỏ?
+
+*Vị trí trong ứng dụng:* **Phase 3**, tab **Gate 9**, khối "Scale-up risk identified?", nay là một danh sách, mỗi vùng ảnh hưởng một mục.
+
+Các bạn đã nói ghi đánh giá thành một mục cho mỗi vùng ảnh hưởng, chọn từ mười tám vùng có sẵn, kèm trước và sau, rủi ro Yes / No / Pending, lý do, pilot hoặc xác minh cần có, bằng chứng, người đánh giá và ngày; danh sách rỗng là chưa đủ; một mục Pending chặn Gate 9; Yes cần xác minh của nó; vùng mở cần mô tả; công thức mới phải được đánh giá và một No không tắt được đánh giá đó; bỏ pilot riêng chỉ khi có Quality, Manufacturing và R&I. Chúng tôi đã xây như vậy. Chỗ nào câu trả lời để ngỏ, chúng tôi đọc như sau:
+
+- **Các nhóm hiển thị.** *Quy trình, địa điểm và quy mô:* manufacturing site, equipment type or scale, batch size, order of addition, mixing speed or time, homogenisation, heating or cooling profile, maximum temperature, hold time, pre-processing or ingredient hydration, transfer method, filling method, packaging/filling interface. *Công thức và nguyên liệu:* formula composition, active or preservative concentration, water quality or process-water source, process aid. *Rủi ro hiệu năng khác:* vùng mở.
+- **Trước hay sau khoá công thức** do người đánh giá thay đổi tự nói, không tính ra. Thay đổi sau khoá phải liên kết bản ghi Change Control của nó; trước khoá có thể nêu iteration phát triển.
+- **Reformulation thường** cũng bật đánh giá, vì các bạn viết rằng nó vẫn cần sàng lọc rủi ro có tài liệu; mức tối thiểu ghi được là mục "no affected area" đã rà soát.
+- **Với công thức mới, mỗi mục trả lời No là một waiver bỏ pilot riêng.** Nó cần lý do tương đương với quy trình đã đạt, link xác minh hỗ trợ, và xác nhận của từng Quality, Manufacturing và R&I (mỗi xác nhận do người giữ function đó trên dự án ghi bằng chính mình). Ba xác nhận đến lần lượt, nên điều này giữ Gate 9 chứ không từ chối việc lưu.
+- **Mục "no affected area"** luôn trả lời No, kèm lý do, người đánh giá và ngày.
+- **Các dự án đã trả lời** có câu trả lời đơn đó được chuyển thành một mục ở vùng mở.
+
+**(a)** Cách nhóm mười tám vùng có đúng không?
+
+**(b)** "Trước hay sau khoá công thức" có nên tính ra từ dữ liệu (ví dụ Gate 5 đã qua hay chưa lúc ghi nhận thay đổi) thay vì để người đánh giá tự nói không?
+
+**(c)** Reformulation thường có cần cùng waiver khi No như công thức mới, hay nhẹ hơn?
+
+**(d)** Waiver là một cho mỗi mục, hay một cho cả đánh giá?
+
+**(e)** Quality, Manufacturing và R&I có phải ba người khác nhau không?

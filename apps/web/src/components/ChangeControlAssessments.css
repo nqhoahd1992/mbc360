@@ -11,6 +11,7 @@
 @media (min-width: 768px) {
   .cca-grid > .cca-8 { grid-column: span 8; }
   .cca-grid > .cca-4 { grid-column: span 4; }
+  .cca-grid > .cca-6 { grid-column: span 6; }
 }
 .cca-grid > label { display: block; }
 .cca-answer { display: grid; gap: 6px; }

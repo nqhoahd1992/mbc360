@@ -69,11 +69,9 @@ export const ASSESSMENT_HOMES: AssessmentHome[] = [
   },
 ];
 
-// Round 4 question 12: the areas whose change should prompt a scale-up or pilot review, transcribed verbatim and in the
-// answer's order. They are GUIDANCE for whoever answers "Scale-up risk identified?" — shown beside that question — and not a
-// list that triggers anything by itself: a change in one of them AFTER Gate 9 has passed is Change Control's business
-// (does it reopen the gate — Round 5 question 11), and reading them at Gate 9 once it is closed would decide nothing.
-// [R4-REWORK: câu 12]
+// Round 4 question 12: the areas whose change prompts a scale-up or pilot review, transcribed verbatim and in the answer's order.
+// Round 5 question 7(a) made them DATA: the controlled list an assessment entry picks its area from ("use the existing controlled
+// list of eighteen areas ... retaining their existing identities"). Picking one triggers an assessment; it does not predetermine a Yes.
 export const SCALE_UP_REVIEW_AREAS: readonly string[] = [
   'Formula composition',
   'Active or preservative concentration',
@@ -93,6 +91,39 @@ export const SCALE_UP_REVIEW_AREAS: readonly string[] = [
   'Process aid',
   'Packaging/filling interface',
   'Any change identified by Manufacturing, Quality or R&I as potentially affecting product performance',
+];
+
+// The open-ended area. Picking it requires a description of the change (question 7(a): "the open-ended area requires a description").
+export const SCALE_UP_OPEN_AREA = SCALE_UP_REVIEW_AREAS[SCALE_UP_REVIEW_AREAS.length - 1];
+// "Record a reviewed 'no affected area / no scale-up activity required' assessment where appropriate; an empty list is incomplete."
+export const SCALE_UP_AREA_NONE = 'No affected area / no scale-up activity required';
+
+// "Group the areas for display as process/site/scale, formula/materials and other performance risks, while retaining their existing
+// identities." Which group each of the eighteen sits in is our reading [ASSUMPTION: R6-Q13].
+export const SCALE_UP_AREA_GROUPS: { label: string; areas: readonly string[] }[] = [
+  {
+    label: 'Process, site and scale',
+    areas: [
+      'Manufacturing site',
+      'Equipment type or equipment scale',
+      'Batch size',
+      'Order of addition',
+      'Mixing speed or time',
+      'Homogenisation',
+      'Heating or cooling profile',
+      'Maximum temperature',
+      'Hold time',
+      'Pre-processing or ingredient hydration',
+      'Transfer method',
+      'Filling method',
+      'Packaging/filling interface',
+    ],
+  },
+  {
+    label: 'Formula and materials',
+    areas: ['Formula composition', 'Active or preservative concentration', 'Water quality or process-water source', 'Process aid'],
+  },
+  { label: 'Other performance risks', areas: [SCALE_UP_OPEN_AREA] },
 ];
 
 export const assessmentAnchor = (key: AssessmentKey): string => `sec-assessment-${key}`;
@@ -123,16 +154,8 @@ export const ASSESSMENT_FIELDS: Record<AssessmentKey, readonly (keyof ProjectDat
   familyUse: ['familyUseAgeGroups', 'familyUseConfirmedBy', 'familyUseConfirmedDate'],
   administrativeOnly: ['administrativeOnly', 'administrativeOnlyRationale', 'administrativeOnlyConfirmedBy'],
   humanStudy: ['humanStudyPlanned'],
-  scaleUp: [
-    'scaleUpRiskIdentified',
-    'scaleUpRiskAssessor',
-    'scaleUpRiskAssessmentDate',
-    'scaleUpRiskDescription',
-    'scaleUpRiskRationale',
-    'scaleUpRiskActivity',
-    'scaleUpRiskEvidenceLink',
-  ],
-  // A list of entries with its own endpoint and lock (ProjectData.changeControlAssessments), so it owns no
-  // column of `ProjectData.assessments`.
+  // Two lists of entries, each with its own endpoint and lock (ProjectData.scaleUpAssessments and ProjectData.changeControlAssessments),
+  // so neither owns a column of `ProjectData.assessments`.
+  scaleUp: [],
   changeControl: [],
 };

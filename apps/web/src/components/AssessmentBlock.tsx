@@ -9,14 +9,13 @@ import {
   UNSTRUCTURED_PMS_OPTIONS,
   UNSTRUCTURED_PMS_CONDITIONS,
   HUMAN_STUDY_PLANNED_OPTIONS,
-  SCALE_UP_RISK_OPTIONS,
   familyUseAgeGroupList,
 } from '@mbc360/shared/types';
 import { BENCHMARK_GATE_CHECK, isGateRefLocked, isGateSignedStanding, personAnswer } from '@mbc360/shared/utils/gateProgress';
 import { isFamilyUseSelected } from './assessmentStatus';
 import AssessmentStateTag from './AssessmentStateTag';
 import AcknowledgementNote from './AcknowledgementNote';
-import { ASSESSMENT_FIELDS, ASSESSMENT_HOMES, SCALE_UP_REVIEW_AREAS, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
+import { ASSESSMENT_FIELDS, ASSESSMENT_HOMES, assessmentAnchor, type AssessmentKey } from '@mbc360/shared/config/assessments';
 import { useAppStore } from '../store/useAppStore';
 import { useDraft } from '../hooks/useDraft';
 import SaveBar from './SaveBar';
@@ -52,7 +51,8 @@ const FIELDS: Record<AssessmentKey, readonly Field[]> = ASSESSMENT_FIELDS;
 // readiness panel.
 // (The Change Control assessment is a LIST with its own component, ChangeControlAssessments.)
 // (The foreseeable-contact question is not a block of its own: it sits inside the Target Users card, see ChecklistSection.)
-type BlockKey = Exclude<AssessmentKey, 'changeControl' | 'foreseeableContact'>;
+// The scale-up assessment and the Change Control assessment are lists with a component of their own.
+type BlockKey = Exclude<AssessmentKey, 'changeControl' | 'foreseeableContact' | 'scaleUp'>;
 const HINTS: Record<BlockKey, string> = {
   pmsUnstructured:
     'Four conditions the application cannot read. A No needs its reason and the person who confirmed it; a Yes puts the product under enhanced surveillance. Any left blank blocks the enhanced-surveillance item.',
@@ -60,7 +60,6 @@ const HINTS: Record<BlockKey, string> = {
     'Decides the infant pathway at Gates 2, 4, 5, 6, 7, 8-9 and 10. Family use is not a vulnerable population on its own, but leaving this unanswered blocks the pathway from being decided either way. Including Infant 0+ activates it.',
   administrativeOnly: 'Only a confirmed Yes exempts the project from competitor and benchmark review.',
   humanStudy: 'Undecided blocks the gate.',
-  scaleUp: 'Pending assessment blocks the gate. A Major formula change counts as identified on its own.',
 };
 
 function pick(source: Assessments, keys: readonly Field[]): Assessments {
@@ -218,18 +217,6 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
     />
   );
 
-  // A reference list, not part of the answer: it sits after the form, and after the record once locked.
-  const areasDetails =
-    which === 'scaleUp' ? (
-      <details className="as-areas">
-        <summary>Changes that should prompt a scale-up or pilot review ({SCALE_UP_REVIEW_AREAS.length})</summary>
-        <ul>
-          {SCALE_UP_REVIEW_AREAS.map((a) => (
-            <li key={a}>{a}</li>
-          ))}
-        </ul>
-      </details>
-    ) : null;
   // The Gate 03 row that carries the benchmark review may already have been done. Confirming administrative-only then says the review
   // was not needed, which contradicts what is recorded — shown to whoever is about to confirm it, not blocked: they may have a
   // reason, and the Reason box is where it goes (project owner, 2026-11-09).
@@ -274,16 +261,6 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
           { label: 'Age groups included', kind: 'tags', wide: true, value: draft.familyUseAgeGroups },
           { label: 'Confirmed by', value: draft.familyUseConfirmedBy },
           { label: 'Confirmed on', value: draft.familyUseConfirmedDate },
-        ];
-      case 'scaleUp':
-        return [
-          { label: 'Answer', kind: 'answer', value: draft.scaleUpRiskIdentified },
-          { label: 'Assessor', value: draft.scaleUpRiskAssessor },
-          { label: 'Assessment date', value: draft.scaleUpRiskAssessmentDate },
-          { label: 'Evidence link', kind: 'link', value: draft.scaleUpRiskEvidenceLink },
-          { label: 'Risk description', wide: true, value: draft.scaleUpRiskDescription },
-          { label: 'Rationale', wide: true, value: draft.scaleUpRiskRationale },
-          { label: 'Required pilot or scale-up activity', wide: true, value: draft.scaleUpRiskActivity },
         ];
     }
   })();
@@ -435,51 +412,6 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
         </div>
       );
       break;
-    case 'scaleUp':
-      body = (
-        <div className="as-grid">
-          <FieldBox label="Answer" wide>
-            {answerSelect('scaleUpRiskIdentified', SCALE_UP_RISK_OPTIONS)}
-          </FieldBox>
-          {/* Who and when, then where the evidence is: three short fields share one row. */}
-          <FieldBox label="Assessor">
-            <SelfAttestField
-              value={draft.scaleUpRiskAssessor}
-              onChange={(v) => set('scaleUpRiskAssessor', v)}
-            />
-          </FieldBox>
-          <FieldBox label="Assessment date">{datePicker('scaleUpRiskAssessmentDate')}</FieldBox>
-          <FieldBox label="Evidence link">
-            <Input
-              placeholder="link / folder"
-              value={draft.scaleUpRiskEvidenceLink}
-              onChange={(e) => set('scaleUpRiskEvidenceLink', e.target.value)}
-            />
-          </FieldBox>
-          {/* The long answers take the full width. */}
-          <FieldBox label="Risk description" wide>
-            <Input.TextArea
-              style={{ width: '100%' }}
-              autoSize={{ minRows: 2, maxRows: 6 }}
-              value={draft.scaleUpRiskDescription}
-              onChange={(e) => set('scaleUpRiskDescription', e.target.value)}
-            />
-          </FieldBox>
-          <FieldBox label="Rationale" wide>
-            <Input.TextArea
-              style={{ width: '100%' }}
-              autoSize={{ minRows: 2, maxRows: 6 }}
-              value={draft.scaleUpRiskRationale}
-              onChange={(e) => set('scaleUpRiskRationale', e.target.value)}
-            />
-          </FieldBox>
-          <FieldBox label="Required pilot or scale-up activity" wide>
-            <Input value={draft.scaleUpRiskActivity} onChange={(e) => set('scaleUpRiskActivity', e.target.value)} />
-          </FieldBox>
-          <div className="as-wide">{areasDetails}</div>
-        </div>
-      );
-      break;
   }
 
   return (
@@ -508,7 +440,6 @@ export default function AssessmentBlock({ project, which }: { project: ProjectDa
           </p>
           <AssessmentRecord rows={readRows} />
           {protocolNotice}
-          {areasDetails}
           <AcknowledgementNote assessmentKey={which} />
         </div>
       ) : (

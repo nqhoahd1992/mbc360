@@ -197,13 +197,6 @@ model Project {
   administrativeOnly            String?
   administrativeOnlyRationale   String?
   administrativeOnlyConfirmedBy String?
-  scaleUpRiskIdentified         String?
-  scaleUpRiskDescription        String?
-  scaleUpRiskAssessor           String?
-  scaleUpRiskAssessmentDate     String?
-  scaleUpRiskRationale          String?
-  scaleUpRiskActivity           String?
-  scaleUpRiskEvidenceLink       String?
   // Round 4 question 25(c), 2026-08-29. Comma-joined FAMILY_USE_AGE_GROUPS. NULL
   // is load-bearing here too: on a Family use product it means nobody has
   // confirmed which age groups are included, which makes the infantContact
@@ -242,6 +235,7 @@ model Project {
   referenceSnapshots GateReferenceSnapshot[]
   impactAssessments  ImpactAssessment[]
   changeControlAssessments ChangeControlAssessment[]
+  scaleUpAssessments       ScaleUpAssessment[]
   reviewers        ProjectReviewer[]
   gates            GateRecord[]
   nextActions      NextAction[]
@@ -587,6 +581,38 @@ model ChangeControlAssessment {
 
   @@index([projectId, sortOrder])
   @@map("change_control_assessments")
+}
+
+// One scale-up / pilot assessment of an affected area (Round 5 question 7). The question was a single Yes / No / Pending for the
+// project; the answer made it a list, one entry per affected area. See ScaleUpAssessment in packages/shared/src/types.
+model ScaleUpAssessment {
+  id                    String   @id @default(cuid())
+  project               Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId             String
+  sortOrder             Int
+  area                  String
+  description           String?
+  before                String?
+  after                 String?
+  answer                String // 'Yes' | 'No' | 'Pending assessment' | '' (counts as Pending)
+  rationale             String?
+  verification          String?
+  evidenceLink          String?
+  assessor              String?
+  assessedDate          String?
+  timing                String?
+  linkedChangeId        String?
+  linkedIteration       String?
+  waiverJustification   String?
+  waiverEvidenceLink    String?
+  waiverQualityBy       String?
+  waiverManufacturingBy String?
+  waiverRiBy            String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([projectId, sortOrder])
+  @@map("scale_up_assessments")
 }
 
 // Per-gate sign-off (Round 4 questions 18 and 29, 2026-08-29). A NEW table rather

@@ -154,8 +154,10 @@ export function traceColumnReads(): { reads: TracedReads; errors: string[] } {
     project.marketTracks = (project.marketTracks ?? []).map((t) => ({ ...t, regulatoryStatus: pick(['Approved', 'Not Started', 'N/A']), launchApproval: pick(['Approved', 'Not Started']) })) as never;
     const traced: ProjectData = new Proxy(project, {
       get(target, prop, receiver) {
-        if (typeof prop === 'string' && (SLICE_KEYS as readonly string[]).includes(prop) && cur.gate) {
-          (sliceTouched.get(cur.gate) ?? sliceTouched.set(cur.gate, new Set()).get(cur.gate)!).add(prop);
+        // The scale-up assessments are a list of their own (Round 5 question 7) but belong to the `assessments` slice: Gate 9 owns them.
+        const sliceName = prop === 'scaleUpAssessments' ? 'assessments' : prop;
+        if (typeof sliceName === 'string' && (SLICE_KEYS as readonly string[]).includes(sliceName) && cur.gate) {
+          (sliceTouched.get(cur.gate) ?? sliceTouched.set(cur.gate, new Set()).get(cur.gate)!).add(sliceName);
         }
         return Reflect.get(target, prop, receiver);
       },

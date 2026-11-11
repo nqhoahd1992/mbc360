@@ -4,6 +4,7 @@
 import type {
   AngleRow,
   ChangeControlAssessment,
+  ScaleUpAssessment,
   ChangeRecord,
   ChecklistItem,
   CostingInputs,
@@ -553,6 +554,9 @@ export const confirmImpactCriticality = (id: string, assessmentId: string, input
     `/projects/${encodeURIComponent(id)}/impact-assessments/${encodeURIComponent(assessmentId)}/confirm-criticality`,
     { method: 'POST', body: JSON.stringify({ ...input, expectedVersion }) },
   );
+
+export const setScaleUpAssessments = (id: string, entries: ScaleUpAssessment[], v: number) =>
+  put(id, 'scale-up-assessments', { entries }, v);
 
 export const setChangeControlAssessments = (id: string, entries: ChangeControlAssessment[], v: number) =>
   put(id, 'change-control-assessments', { entries }, v);

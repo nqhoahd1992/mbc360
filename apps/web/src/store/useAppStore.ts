@@ -6,6 +6,7 @@ import type {
   BomLine,
   CapaRecord,
   ChangeControlAssessment,
+  ScaleUpAssessment,
   ChangeRecord,
   ChecklistItem,
   CostingInputs,
@@ -216,6 +217,8 @@ interface AppState {
   acceptPhasePreWork: (id: string, phase: number) => void;
   // Round 4 question 8, one entry per post-market finding; the list is replaced.
   setChangeControlAssessments: (id: string, entries: ChangeControlAssessment[]) => Promise<void>;
+  // Round 5 question 7: the scale-up / pilot assessment, one entry per affected area.
+  setScaleUpAssessments: (id: string, entries: ScaleUpAssessment[]) => Promise<void>;
   // Round 4 question 16: the nominated "Reviewed by" assesses an auto-generated N/A
   // reason on a critical readiness item (acknowledged, or not with a reason),
   // editing the one row in place. The wording and the actor are the server's.
@@ -676,6 +679,7 @@ export const useAppStore = create<AppState>()(
 
         setChangeControlAssessments: (id, entries) =>
           writeSection(id, (v) => projectsApi.setChangeControlAssessments(id, entries, v)),
+        setScaleUpAssessments: (id, entries) => writeSection(id, (v) => projectsApi.setScaleUpAssessments(id, entries, v)),
         setFunctionAssignees: (id, assignments) =>
           writeSection(id, (v) => projectsApi.setFunctionAssignees(id, assignments, v)),
         acknowledgeReadinessItem: (id, gateId, itemId, functionKey, confirmClear = false) =>

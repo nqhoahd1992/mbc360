@@ -68,7 +68,7 @@ Cột Trạng thái dưới đây vì thế phân biệt **✅ resolved** (xong,
 | 9 | 1 | ✅ resolved | Human-participant study planned? Yes/No/Undecided |
 | 10 | 8 | ✅ resolved | Tách 16 option thành Source / Issue type / Action |
 | 11 | 1 | ✅ resolved | Administrative-only change? Yes/No |
-| 12 | 1 | ⬜ chưa xong | Scale-up risk identified? ✅ + trigger Gate 9 ✅ — **còn 18 vùng ảnh hưởng**, chờ nhóm 2 tái cấu trúc change record |
+| 12 | 1 | ✅ resolved | Scale-up risk identified? — danh sách theo vùng ảnh hưởng (18 vùng, nhóm hiển thị), trigger Gate 9; hoàn tất sau Vòng 5 câu 7 |
 | 13 | 8 | ✅ resolved | Lịch review 1/3/12 tháng từ ngày launch thực tế |
 | 14 | 8 | ✅ resolved | Launch per market + 5 trạng thái roll-up |
 | 15 | 8 | ✅ resolved | Product-performance → Conditional; market feedback tách hai |

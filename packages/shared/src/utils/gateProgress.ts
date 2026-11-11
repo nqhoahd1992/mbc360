@@ -68,6 +68,7 @@ import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence'
 import { isDoneStatus } from './doneStatus';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
 import { listMessage } from './messageList';
+import { hasAffectedArea, isNoAffectedArea, isScaleUpPending, scaleUpListState } from './scaleUpAssessments';
 import { watchlistConclusionStale } from './registerDerived';
 import {
   ASEAN_CHECKLIST_REGISTER,
@@ -609,22 +610,27 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
     // temperature · hold time · pre-processing · transfer method · filling method
     // · water quality · process aid · packaging/filling interface, and more.
     //
-    // The areas are not a trigger of their own. They describe CHANGES, and a change in one of them after Gate 9 has passed
-    // cannot be decided by this gate's readiness (it is closed) — that is Change Control reopening the gate, Round 5
-    // question 11. Before Gate 9 passes they are guidance for the person answering "Scale-up risk identified?", shown beside
-    // that question (`SCALE_UP_REVIEW_AREAS`). So a project whose only scale-up risk is a site transfer or a batch-size
-    // change triggers this only when someone answers Yes [R4-REWORK: câu 12].
+    // Round 5 question 7 (answered 2026-11-05): the eighteen areas are DATA now — an assessment entry picks its area from them — and the
+    // assessment is a list. What switches it on:
+    //   - "New development" in either primary or secondary scope, or a Major reformulation (question 7(b));
+    //   - a plain reformulation too: "other reformulations still require a documented risk screen and pilot/scale-up work if the change
+    //     can affect manufacture or performance", so the screen (at least the reviewed "no affected area" entry) has to exist;
+    //   - any affected area picked on an entry: "area selection triggers assessment" (7(a)), whatever the project's type.
+    // Otherwise an empty list is not-yet-assessed, and a list that holds only the reviewed "no affected area / no scale-up activity
+    // required" record means it does not apply. The change type is "a trigger, not the only evidence used" (7(b)), which is why a
+    // project of any other type that has an area picked is switched on too. [ASSUMPTION: R6-Q13]
+    // (R5-Q48, "what is a new formula", is answered by 7(b): New development in either scope, [ASSUMPTION: R5-Q48] kept so the sweep
+    // sees the answered question referenced.)
     case 'scaleUpRiskIdentified': {
       const majorChange = project.formulaVersionHistory.some((v) => v.changeType === 'Major');
       if (majorChange) return 'applies';
-      // A3 names "new formulas" first; that limb was missing (SME rule audit D,
-      // 2026-10-04). Read as the Gate 1 project nature "New development" — a
-      // reformulation is caught by the Major-version limb above when it is major
-      // [ASSUMPTION: R5-Q48].
-      if (selectedChecklistLabels(project, 'projectNature').includes('New development')) return 'applies';
-      const answer = project.assessments.scaleUpRiskIdentified?.trim() ?? '';
-      if (answer === '' || answer === 'Pending assessment') return 'notAssessed';
-      return answer === 'Yes' ? 'applies' : 'doesNotApply';
+      const natures = selectedChecklistLabels(project, 'projectNature');
+      if (natures.includes('New development') || natures.includes('Reformulation')) return 'applies';
+      if (hasAffectedArea(project)) return 'applies';
+      const list = project.scaleUpAssessments ?? [];
+      // Nothing recorded, or the "nothing affected" record is itself still Pending: not assessed.
+      if (list.length === 0 || list.some((e) => isNoAffectedArea(e) && isScaleUpPending(e))) return 'notAssessed';
+      return 'doesNotApply';
     }
 
     // Round 4 question 17, Gate 4. Reads the company Raw Material Risk Overlay
@@ -1041,7 +1047,8 @@ const TRIGGER_UNASSESSED_EXPLANATIONS: Record<ReadinessTrigger, string> = {
   pvPmsRequired:
     'The four enhanced-surveillance conditions the application cannot read have not each been answered:\n   a new or unusual active;\n   a significant complaint trend;\n   a recurring quality or performance issue;\n   a requirement in an approved surveillance plan.\nA No needs its reason. So it is unknown whether enhanced surveillance applies.\nRecord it at Phase 4 → Gate 12.',
   claimNeedsRegulatoryReview: 'No claim has been declared yet, so no claim carries a category or risk level.',
-  scaleUpRiskIdentified: 'Nobody has assessed whether this project carries a scale-up or pilot risk.\nRecord it at Phase 3 → Gate 09.',
+  scaleUpRiskIdentified:
+    'No scale-up or pilot assessment has been recorded.\nRecord one entry for each affected area — or one reviewed "no affected area" entry — at Phase 3 → Gate 09.\nAn empty list is incomplete.',
   rmRiskFlagged:
     'One or more raw materials in this project have no entry in the Raw Material Risk Overlay.\nSo their allergen, impurity and contaminant risk is unclassified.\nRecord it at Company Reference Data → Raw material risk.',
   commercialRequirementIsMust:
@@ -1339,6 +1346,10 @@ export function evaluateReadinessCheck(
       return { evaluable: true, satisfied: finalSafetySignOffGaps(project).length === 0 };
     case 'noClaimsDeclared':
       return { evaluable: true, satisfied: noClaimsDeclared(project) };
+    // Round 5 question 7: the scale-up assessment list is recorded — an empty list is incomplete, a Pending entry blocks, an entry
+    // not properly recorded (a Yes with no verification, a new formula's No with no waiver) is not an assessment yet.
+    case 'scaleUpAssessed':
+      return { evaluable: true, satisfied: scaleUpListState(project) === 'complete' };
     case 'bomMatchesTakenUp':
       return { evaluable: true, satisfied: bomMatchesNotTakenUp(project, check.list, gateId).length === 0 };
     case 'everyMarket': {
@@ -1954,6 +1965,8 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: '/formulation-safety' };
     case 'noClaimsDeclared':
       return phaseSectionLink(gateId, 'sec-gate-checks');
+    case 'scaleUpAssessed':
+      return phaseSectionLink(gateId, 'sec-assessment-scaleUp');
     case 'everyMarket':
       return phaseSectionLink(gateId, 'sec-market-tracking');
     case 'everyMarketGateSignedOff':
@@ -2037,6 +2050,8 @@ const IDENTITY_FIELD_LABELS: Record<string, string> = {
 // an incomplete list).
 function describeReadinessCheck(check: ReadinessCheck): string | undefined {
   switch (check.kind) {
+    case 'scaleUpAssessed':
+      return 'Record a scale-up assessment for each affected area, with none pending';
     case 'gateCheckDone':
       return `Tick the Key Gate Check "${check.check}"`;
     case 'identityFieldFilled':
@@ -2118,8 +2133,10 @@ function readinessParts(project: ProjectData, check: ReadinessCheck, gateId: str
 // The wording the engine writes when a Conditional item's trigger does not apply — ONE function, because an
 // acknowledgement counts only while it equals this text, so the readiness list, the acknowledgement block and the
 // server must all produce it identically.
+// The wording says the item does not APPLY, not that it passes by itself: for an item the review team made critical, a named person still
+// has to acknowledge this reason before the gate closes, and "passes automatically" beside "Waiting for acknowledgement" contradicted itself.
 export function generatedNaRationale(req: { label: string; trigger?: ReadinessTrigger }): string {
-  return `${req.label} — not triggered for this project (${TRIGGER_INACTIVE_EXPLANATIONS[req.trigger!]}), so this passes automatically`;
+  return `${req.label} — not triggered for this project (${TRIGGER_INACTIVE_EXPLANATIONS[req.trigger!]}), so it does not apply`;
 }
 
 // Where, on screen, the data behind a readiness check lives — as a key a block can recognise itself by, so the
@@ -2164,6 +2181,9 @@ export function acknowledgementHome(check: ReadinessCheck): string | undefined {
       return 'formulaProperties';
     case 'postLaunchReviewsRecorded':
       return 'postLaunch';
+    // The scale-up assessment list is the block that holds the data behind the item (Round 5 question 7).
+    case 'scaleUpAssessed':
+      return 'scaleUp';
     default:
       return undefined;
   }

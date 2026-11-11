@@ -50,6 +50,7 @@ import AssessmentBlock from '../components/AssessmentBlock';
 import { isFamilyUseSelected } from '../components/assessmentStatus';
 import StudyApprovalCard from '../components/StudyApprovalCard';
 import ChangeControlAssessments from '../components/ChangeControlAssessments';
+import ScaleUpAssessments from '../components/ScaleUpAssessments';
 import MarketSwitch from '../components/MarketSwitch';
 import { effectiveMarket, gateMarkets } from '../utils/gateMarket';
 import { ASSESSMENT_HOMES, assessmentAnchor } from '@mbc360/shared/config/assessments';
@@ -800,6 +801,8 @@ export default function PhasePage() {
             {assessments.map((a) => (
               a.key === 'foreseeableContact' ? null : a.key === 'changeControl' ? (
                 <ChangeControlAssessments key={a.key} project={project} market={market} />
+              ) : a.key === 'scaleUp' ? (
+                <ScaleUpAssessments key={a.key} project={project} />
               ) : a.key === 'humanStudy' ? (
                 <Fragment key={a.key}>
                   <AssessmentBlock project={project} which={a.key} />

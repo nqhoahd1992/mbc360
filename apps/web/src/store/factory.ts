@@ -157,6 +157,7 @@ export function createEmptyProject(identity: ProjectIdentity): ProjectData {
     supersessionDecisions: [],
     readinessAcknowledgements: [],
     changeControlAssessments: [],
+    scaleUpAssessments: [],
     readinessAckLog: [],
     phaseSignOffLog: [],
     postLaunchReviews: [],
