@@ -505,8 +505,9 @@ export async function run(base: string, db: Client): Promise<number> {
     const registerKey = 'formulationChangeRegister';
     const column = 'npSignOff';
     const cfg = REGISTER_CONFIGS.find((c: any) => c.key === registerKey);
-    // A column the server generates (the row's FC-001 ID) is never typed, so the test edits the first column a person can type in.
-    const textColumn = cfg?.columns.find((c: any) => c.type === 'text' && !c.autoId && c.editable !== false)?.key as string | undefined;
+    // The Formulation Change Register is a view of the Change Control log (Round 5 question 11): its row is the Final Approver's overlay on a master change,
+    // so the test edits the first column of that overlay a person can type in, not a base column read from the change record.
+    const textColumn = 'actionNpd' as string | undefined;
     t('the register with a signature column exists', !!cfg && !!textColumn);
     if (cfg && textColumn) {
       const signer = 'admin';
@@ -514,9 +515,28 @@ export async function run(base: string, db: Client): Promise<number> {
       const putRows = async (rows: any[]) =>
         api('admin', 'PUT', `/projects/${PROJECT}/registers/${registerKey}`, { rows, expectedVersion: await version() });
       const before = await regRows();
-      const index = before.length;
-      let r: any = await putRows([...before.map((x) => ({ ...x })), { [textColumn]: 'e2e original text' }]);
-      t('a row is added to sign', r.status < 300, `${r.status} ${short(r.json)}`);
+      // A formulation change raised on the Change Control page brings its row into the register; nothing is added to the register by hand.
+      const changesNow = async () => ((await project()).project.changes ?? []) as any[];
+      const fcChange = {
+        changeId: 'CHG-E2E-FC', projectId: PROJECT, triggerId: 'pif-any-change', trigger: 'e2e formulation change', productSku: 'e2e',
+        affectedArea: 'Formula / ingredient', riskLevel: 'Low', communicationRequired: false, status: 'Draft', owner: 'e2e owner',
+      };
+      let r: any = await api('admin', 'PUT', `/projects/${PROJECT}/changes`, { records: [...(await changesNow()), fcChange], expectedVersion: await version() });
+      t('a formulation change is recorded on the Change Control page', r.status < 300, `${r.status} ${short(r.json)}`);
+      const afterRaise = await regRows();
+      const index = afterRaise.findIndex((x: any) => x.masterChangeId === 'CHG-E2E-FC');
+      t('...and its row appears in the register, with the change as its master and its FC number as an alias', index >= 0 && afterRaise.length === before.length + 1 && /^FC-\d+$/.test(String(afterRaise[index].changeId)), short(afterRaise[index]));
+      t('the row\'s base data is read from the change record, not typed on the row', afterRaise[index]?.changeTitle === 'e2e formulation change' && afterRaise[index]?.productFamilySku === 'e2e', short(afterRaise[index]));
+      r = await putRows([...afterRaise, { changeId: 'FC-999', actionNpd: 'typed by hand' }].map((x) => ({ ...x })));
+      t('a row cannot be added to the register by hand (400)', r.status === 400 && /view of the Change Control log/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+      r = await putRows(afterRaise.filter((_: any, i: number) => i !== index).map((x) => ({ ...x })));
+      t('...nor removed from it (400)', r.status === 400 && /view of the Change Control log/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+      {
+        const edited = afterRaise.map((x: any, i: number) => (i === index ? { ...x, changeTitle: 'typed on the register', [textColumn!]: 'e2e original text' } : { ...x }));
+        r = await putRows(edited);
+        const stored = (await db.query(`SELECT data FROM register_rows WHERE "projectId" = $1 AND "registerKey" = $2 AND "rowOrder" = (SELECT "rowOrder" FROM register_rows WHERE "projectId" = $1 AND "registerKey" = $2 AND data->>'masterChangeId' = 'CHG-E2E-FC')`, [PROJECT, registerKey])).rows[0]?.data ?? {};
+        t('an edit of the overlay is stored, and a base column sent with it is never written back', r.status < 300 && stored[textColumn!] === 'e2e original text' && !('changeTitle' in stored), `${r.status} ${short(stored)}`);
+      }
       const base = `/projects/${PROJECT}/registers/${registerKey}/rows/${index}/signature`;
       const isSigned = async () => !!(await regRows())[index]?.['npSignOff__userId'];
 
@@ -623,8 +643,8 @@ export async function run(base: string, db: Client): Promise<number> {
       // Clean up: withdraw, then remove the row so later steps see the register as it was.
       r = await api(signer, 'POST', `${base}/withdraw`, { column, reason: 'e2e cleanup', expectedVersion: await version() });
       t('the signer withdraws it again', r.status < 300 && !(await isSigned()), `${r.status} ${short(r.json)}`);
-      r = await putRows(before.map((x) => ({ ...x })));
-      t('the test row is removed again', r.status < 300 && (await regRows()).length === before.length, `${r.status} ${short(r.json)}`);
+      r = await api('admin', 'PUT', `/projects/${PROJECT}/changes`, { records: (await changesNow()).filter((c: any) => c.changeId !== 'CHG-E2E-FC'), expectedVersion: await version() });
+      t('the test change is discarded (a Draft can be), and its row leaves the register with it', r.status < 300 && (await regRows()).length === before.length, `${r.status} ${short(r.json)}`);
     }
   }
 

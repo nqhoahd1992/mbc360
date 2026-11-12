@@ -25,6 +25,7 @@ import {
 import { registerContentHashOf, registerRowContentHashOf } from './content-hash';
 import { closureKey } from '@mbc360/shared/utils/registerClosures';
 import { deriveRegisterRows } from '@mbc360/shared/utils/registerDerived';
+import { FORMULATION_CHANGE_VIEW, applyChangeView } from '@mbc360/shared/utils/changeViews';
 import { derivedVersionState } from '@mbc360/shared/utils/formulaLifecycle';
 import { SAFETY_MATRIX_KEY, refreshStoredSafetyMatrix } from '@mbc360/shared/utils/safetyMatrixSync';
 import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
@@ -406,6 +407,15 @@ export function toChangeRecords(p: ProjectWithAll) {
     triageDate: dateOnly(c.triageDate),
     confirmedGates: c.confirmedGates,
     restoreConfirmation: opt(c.restoreConfirmation),
+    aliasIds: c.aliasIds,
+    requestedBy: opt(c.requestedBy),
+    newVersion: opt(c.newVersion),
+    dateRequested: dateOnly(c.dateRequested),
+    reasons: opt(c.reasons),
+    explanation: opt(c.explanation),
+    changedBy: opt(c.changedBy),
+    communicatedToMarket: opt(c.communicatedToMarket),
+    communicationAcknowledgedBy: opt(c.communicationAcknowledgedBy),
     owner: c.owner,
     notes: opt(c.notes),
   }));
@@ -438,7 +448,9 @@ export function toProjectData(...args: Parameters<typeof toProjectDataRaw>): Pro
   // (Withdrawn, Cancelled, or "never released").
   project.formulaVersionHistory = project.formulaVersionHistory.map((v) => ({ ...v, state: derivedVersionState(project, v) }));
   // Both watch-lists follow the Formula BOM (Round 5 question 4(a)).
-  for (const watchlist of ['prohibitedIngredients', 'pbCautionLimits']) {
+  // The Formulation Change Register is a view of the Change Control log (Round 5 question 11): its base columns are the master record's, applied here so
+  // every reader of the committed rows — the Final Approver's signature content, the stale and lock checks — sees them, not only the screen.
+  for (const watchlist of ['prohibitedIngredients', 'pbCautionLimits', 'formulationChangeRegister']) {
     if (project.registers[watchlist]) {
       project.registers[watchlist] = deriveRegisterRows(watchlist, project.registers[watchlist], project);
     }
@@ -899,6 +911,7 @@ function toProjectDataRaw(
       ? {
           previousVersion: (active.previousVersionId ? versionById.get(active.previousVersionId) : undefined) ?? '',
           changeType: (active.changeType ?? 'Major') as 'Major' | 'Minor',
+          ...(active.linkedChangeId ? { linkedChangeId: active.linkedChangeId } : {}),
           ...(active.documentationOnly ? { documentationOnly: true } : {}),
         }
       : undefined,
@@ -913,6 +926,7 @@ function toProjectDataRaw(
       classificationConfirmedBy: opt(v.classificationConfirmedBy),
       previousBomSnapshot: v.bomLines.map(toBomLine),
       state: v.status as FormulaVersionRecord['state'],
+      ...(v.linkedChangeId ? { linkedChangeId: v.linkedChangeId } : {}),
       ...(v.documentationOnly ? { documentationOnly: true } : {}),
       ...(v.noReleaseConfirmedBy ? { noReleaseConfirmedBy: v.noReleaseConfirmedBy } : {}),
     })),
@@ -920,9 +934,16 @@ function toProjectDataRaw(
     impactAssessments: p.impactAssessments.map(toImpactAssessment),
     ...gateReferenceDiffering(p.referenceSnapshots, reference),
   };
+  // The Formulation Change Register is a view of the Change Control log (Round 5 question 11): its base columns must be applied before staleness is worked
+  // out, because what the Final Approver's signature covers includes them and both sides have to hash the same content.
+  if (project.registers[FORMULATION_CHANGE_VIEW_KEY]) {
+    project.registers[FORMULATION_CHANGE_VIEW_KEY] = applyChangeView(FORMULATION_CHANGE_VIEW, project.registers[FORMULATION_CHANGE_VIEW_KEY], project);
+  }
   annotateStaleSignatures(p, project);
   return project;
 }
+
+const FORMULATION_CHANGE_VIEW_KEY = 'formulationChangeRegister';
 
 // A signature records the hash of what its signer was shown. If what is there now no longer hashes to
 // that, the signature is STALE: it still says who signed, and it no longer counts. Computed here, on every

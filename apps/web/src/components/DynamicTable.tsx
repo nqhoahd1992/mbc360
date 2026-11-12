@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import ChangeRefSelect from './ChangeRefSelect';
 import { SAFETY_FINDINGS_REGISTER, canChooseSuperseded } from '@mbc360/shared/utils/safetyFindings';
 import { Alert, Button, Checkbox, DatePicker, Drawer, Grid, Input, InputNumber, Select, Tooltip } from 'antd';
 import { DeleteOutlined, DownOutlined, LockOutlined, PlusOutlined, RightOutlined, UpOutlined } from '@ant-design/icons';
@@ -61,6 +62,7 @@ const DECISION_TYPES: ReadonlySet<RegisterColumn['type']> = new Set([
   'market',
   'markets',
   'claimRef',
+  'changeRef',
   'signature',
   'nextActionRef',
   'claimsLibraryRef',
@@ -213,7 +215,12 @@ export default function DynamicTable({
   const rowsFrozenReason = registerLockReason;
   // SW-34: important cells and rows are the register's assigned people's alone.
   const access = useRegisterAccess(project, config);
+  // Round 5 question 11: a register that is a view of the Change Control log gets its rows from there.
+  const viewReason = config.changeView
+    ? 'This register is a view of the Change Control log — raise or remove the change on the Change Control page'
+    : undefined;
   const removeBlock = (row: RegisterRow) =>
+    viewReason ??
     removeBlockedReason?.(row) ??
     (rowsFrozen ? rowsFrozenReason(rowsFrozen) : access.canChangeRows ? undefined : access.reason);
   const [openIndex, setOpenRaw] = useState<number | null>(null);
@@ -419,6 +426,9 @@ export default function DynamicTable({
         return <Checkbox checked={!!value} onChange={(e) => patch(index, column.key, e.target.checked)} />;
       case 'claimRef':
         return <ClaimSelect value={value as string | undefined} onChange={(v) => patch(index, column.key, v)} />;
+      // Round 5 question 11(4): a reference to a change record is picked from the Change Control log, never typed.
+      case 'changeRef':
+        return <ChangeRefSelect value={value as string | undefined} onChange={(v) => patch(index, column.key, v)} />;
       // D3: a flagged watch-list row must link a REAL controlled Next Action.
       case 'nextActionRef':
         return <NextActionSelect value={value as string | undefined} onChange={(v) => patch(index, column.key, v)} />;
@@ -703,6 +713,13 @@ export default function DynamicTable({
         />
       )}
 
+      {config.changeView && (
+        <p className="rt-note">
+          This register is a view of the <a href={`#/projects/${projectId}/change-control`}>Change Control log</a>. Each row is a change recorded there; its
+          title, request, reasons and communication are read from that record and are changed on it. What is entered here is this register&apos;s own: the
+          department actions, the re-registration question and the Final Approver&apos;s decision.
+        </p>
+      )}
       {notices?.(draft)}
       <div ref={wrapRef} className={embedded ? 'c-card rt-body' : 'rt-body'}>
         {!inlineMode && !referenceMode && (
@@ -874,9 +891,9 @@ export default function DynamicTable({
         )}
         {isRegister && (
           <div className="rt-add">
-            <Tooltip title={rowsFrozen ? rowsFrozenReason(rowsFrozen) : access.canChangeRows ? addBlockedReason : access.reason}>
+            <Tooltip title={rowsFrozen ? rowsFrozenReason(rowsFrozen) : access.canChangeRows ? viewReason ?? addBlockedReason : access.reason}>
               <span style={{ display: 'block' }}>
-                <Button type="dashed" block icon={<PlusOutlined />} onClick={addRow} disabled={!!rowsFrozen || !access.canChangeRows || !!addBlockedReason}>
+                <Button type="dashed" block icon={<PlusOutlined />} onClick={addRow} disabled={!!rowsFrozen || !access.canChangeRows || !!addBlockedReason || !!viewReason}>
                   Add row
                 </Button>
               </span>

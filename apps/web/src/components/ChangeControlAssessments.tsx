@@ -1,3 +1,4 @@
+import { validChangeRefs } from '@mbc360/shared/utils/changeLinks';
 import { useState } from 'react';
 import { Button, ConfigProvider, DatePicker, Input, Select } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
@@ -79,7 +80,7 @@ export default function ChangeControlAssessments({ project, market }: { project:
     profiles: project.reference.marketProfiles,
   });
   const problems = changeControlAssessmentProblems(draft, {
-    changeIds: project.changes.map((c) => c.changeId),
+    changeIds: validChangeRefs(project, 'assessment'),
     markets: project.identity.markets,
     reviewCycles: cycles.map((c) => c.key),
   });

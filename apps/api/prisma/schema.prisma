@@ -1024,6 +1024,8 @@ model FormulaVersion {
   status            String   @default("Active")
   // Round 5 question 5(c)/(d): a documentation-only correction (the manufactured formula is unchanged) is a document revision and needs no
   // stock transition; a version that was never released is superseded once a person has confirmed there was no release.
+  // Round 5 question 11: the master change record this version raised (a Major version always raises one).
+  linkedChangeId    String?
   documentationOnly Boolean  @default(false)
   noReleaseConfirmedBy String?
   createdAt         DateTime @default(now())
@@ -1248,6 +1250,17 @@ model ChangeRecord {
   triageDate            DateTime? @db.Date
   confirmedGates        String[]  @default([])
   restoreConfirmation   String?
+  // Round 5 question 11: other numbers the same change is known by (FC- ids), so an old reference still resolves to this master record.
+  aliasIds              String[]  @default([])
+  // Round 5 question 11: the base data every change-control view reads (the Formulation Change Register is a view of this log).
+  requestedBy           String?
+  newVersion            String?
+  dateRequested         DateTime? @db.Date
+  reasons               String?
+  explanation           String?
+  changedBy             String?
+  communicatedToMarket  String?
+  communicationAcknowledgedBy String?
   owner                 String
   notes                 String?
   createdAt             DateTime  @default(now())

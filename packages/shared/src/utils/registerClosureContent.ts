@@ -63,7 +63,7 @@ export function registerRowCells(
   const config = getRegisterConfig(registerKey);
   if (!config) return undefined;
   const columns = config.columns
-    .filter((c) => c.key !== signatureColumn && c.derivedFromSignature !== signatureColumn)
+    .filter((c) => c.key !== signatureColumn && c.derivedFromSignature !== signatureColumn && !c.computed)
     .map((c) => ({ key: c.key, label: c.label }));
   const row: Record<string, string> = {};
   for (const c of columns) row[c.key] = cellText(source[c.key]);

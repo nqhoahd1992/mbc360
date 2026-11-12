@@ -1246,6 +1246,9 @@ export interface FormulaVersionRecord {
   // record and 'Active' for the current one, which is what the app meant before
   // the lifecycle existed — not a guess about what a person would have chosen.
   state?: FormulaVersionState;
+  // Round 5 question 11: the formula version history "is linked to its iteration or master CHG; it is not an independent approval route". The master
+  // change record a Major version raised.
+  linkedChangeId?: string;
   // Round 5 question 5(c): a correction to documents only — the manufactured formula is unchanged. A document revision, so the version it
   // replaces needs no stock transition.
   documentationOnly?: boolean;
@@ -1483,6 +1486,21 @@ export interface ChangeRecord {
   // "Rejected/Cancelled changes need recorded confirmation that no controlled implementation occurred and no residual impact
   // remains" — or, if implementation did occur, that its reversal or correction was verified.
   restoreConfirmation?: string;
+  // Round 5 question 11: the master change record is the CHG; the numbers other books used for the same change (an FC- number of the
+  // Formulation Change Register) are its aliases, so a link to FC-001 resolves to this record. Written by the server only.
+  aliasIds?: string[];
+  // Round 5 question 11: the base data every change-control view reads — who asked for the change and when, what changed and why, who made it,
+  // and the communication to the market. Kept on the master record so a view (the Formulation Change Register) never stores a second copy.
+  requestedBy?: string;
+  // The formula or artwork version the change leads to (the old one is `oldVersion`). Occurrence-specific, so it belongs on the change record,
+  // not on the rulebook sheet that lists the TYPES of change (Round 5 question 11).
+  newVersion?: string;
+  dateRequested?: string;
+  explanation?: string;
+  reasons?: string;
+  changedBy?: string;
+  communicatedToMarket?: string;
+  communicationAcknowledgedBy?: string;
   owner: string;
   notes?: string;
 }

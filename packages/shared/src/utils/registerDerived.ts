@@ -1,4 +1,6 @@
 import type { ProjectData, RegisterRow } from '../types';
+import { RULEBOOK_CATEGORY, applyRulebookChanges } from './changeRulebooks';
+import { FORMULATION_CHANGE_VIEW, applyChangeView } from './changeViews';
 import { WATCH_LIST_VERSION, matchIngredientWatchLists, watchlistMatchLines } from './ingredientWatch';
 
 // Columns and blocks the workbook computes with formulas, computed here the same way. Applied on the server when a register is
@@ -104,7 +106,12 @@ export function screenedProductStatus(current: string, matches: number, noMatch:
 }
 
 export function deriveRegisterRows(registerKey: string, rows: RegisterRow[], project: ProjectData): RegisterRow[] {
-  if (registerKey === 'formulationChangeRegister') return rows.map((r) => ({ ...r, overallStatus: formulaChangeStatus(r) }));
+  // The two rulebook sheets show the changes of each type, read from the Change Control log (Round 5 question 11).
+  if (RULEBOOK_CATEGORY[registerKey]) return applyRulebookChanges(registerKey, rows, project);
+  if (registerKey === 'formulationChangeRegister') {
+    // The base columns come from the master Change Control record (utils/changeViews.ts); the status follows from them and the overlay.
+    return applyChangeView(FORMULATION_CHANGE_VIEW, rows, project).map((r) => ({ ...r, overallStatus: formulaChangeStatus(r) }));
+  }
   const watch = WATCHLIST_KINDS[registerKey];
   if (watch) {
     return rows.map((r) => {

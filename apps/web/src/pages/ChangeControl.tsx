@@ -10,11 +10,14 @@ import DrawerTabs from '../components/DrawerTabs';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
 import { useAppStore } from '../store/useAppStore';
+import { useSession } from '../auth/useSession';
+import { legacyChangeReferences } from '@mbc360/shared/utils/changeLinks';
 import type { ChangeRecord, ChangeStatus, RiskLevel } from '@mbc360/shared/types';
 import { RISK_LEVELS } from '@mbc360/shared/types';
 import {
   CHANGE_RACI,
   CHANGE_AFFECTED_AREAS,
+  CHANGE_COMMUNICATED_OPTIONS,
   CHANGE_STATUSES,
   CHANGE_TRIGGERS,
   CHANGE_IMPACT_AREAS,
@@ -68,6 +71,7 @@ export default function ChangeControl() {
   // Change Control is a project's own log (project owner, 2026-10-27). The store holds every project's records in one list, so this
   // page works on its slice and writes the whole list back with the other projects' records untouched.
   const { projectId } = useParams();
+  const sessionName = useSession().user?.displayName;
   const allChanges = useAppStore((s) => s.changes);
   const changes = useMemo(() => allChanges.filter((c) => c.projectId === projectId), [allChanges, projectId]);
   const projects = useAppStore((s) => s.projects);
@@ -143,6 +147,9 @@ export default function ChangeControl() {
   // instead. `activeProjectId` may point at a project that no longer exists
   // (deleted, or never set) — falls back to leaving the field blank rather
   // than crashing on a `.find()` that returns undefined.
+  const thisProjectForRefs = projects.find((p) => p.identity.id === projectId);
+  const legacyRefs = useMemo(() => (thisProjectForRefs ? legacyChangeReferences(thisProjectForRefs) : []), [thisProjectForRefs]);
+
   const openNewChangeModal = () => {
     const thisProject = projects.find((p) => p.identity.id === projectId);
     form.setFieldsValue({
@@ -167,6 +174,9 @@ export default function ChangeControl() {
       ...values,
       changeId: `CHG-${String(nextNumber).padStart(3, '0')}`,
       trigger: trig?.label ?? '',
+      // The base data every change-control view reads: who asked for it, and when (Round 5 question 11).
+      requestedBy: sessionName,
+      dateRequested: dayjs().format('YYYY-MM-DD'),
       dueDate: values.dueDate ? values.dueDate.format('YYYY-MM-DD') : undefined,
       status: 'Draft',
     };
@@ -299,6 +309,14 @@ export default function ChangeControl() {
         </p>
       </header>
 
+      {/* Round 5 question 11(4): references in the registers that match no change record are flagged, never removed. */}
+      {legacyRefs.length > 0 && (
+        <Notice tone="warn" title={`${legacyRefs.length} register ${legacyRefs.length === 1 ? 'reference matches' : 'references match'} no change record`}>
+          {legacyRefs.slice(0, 6).map((r) => `${r.registerTitle}, row ${r.row + 1}: "${r.value}"`).join(' · ')}
+          {legacyRefs.length > 6 ? ` · and ${legacyRefs.length - 6} more` : ''}. Pick the right change in that register, or raise the change here.
+        </Notice>
+      )}
+
       {draft.length === 0 ? (
         // "before the change is made, not after" is OUR wording, not the review team's — whether a record may
         // also be opened afterwards, to log a change that already happened, is [ASSUMPTION: R5-Q66].
@@ -388,9 +406,11 @@ export default function ChangeControl() {
                       label: 'Details',
                       children: (
                         <>
-                          <div className="rt-sec-title">Change</div>
+                          <section>
+                            <div className="rt-sec-title">Change</div>
                   <dl className="rt-dl">
                     {dlRow('Trigger / event', c.trigger)}
+                    {dlRow('Also known as', (c.aliasIds ?? []).length > 0 ? c.aliasIds!.join(', ') : undefined)}
                     {dlRow('Affected gates / phases', t ? <AffectedGates gates={t.gates} /> : undefined)}
                                         {dlRow('Product / SKU', c.productSku)}
                     {dlRow('Affected area', c.affectedArea)}
@@ -400,7 +420,9 @@ export default function ChangeControl() {
                     {dlRow('Closed', c.closedDate)}
                   </dl>
 
-                          <div className="rt-sec-title">Action &amp; communication</div>
+                          </section>
+                          <section>
+                            <div className="rt-sec-title">Action &amp; communication</div>
                   <dl className="rt-dl">
                     {dlRow('Required action', c.requiredAction)}
                     {dlRow('Required sign-offs', c.requiredSignOffs)}
@@ -409,7 +431,7 @@ export default function ChangeControl() {
                     {dlRow('Sales / Marketing message', c.salesMarketingMessage)}
                     {dlRow('Notes', c.notes)}
                   </dl>
-
+                          </section>
                         </>
                       ),
                     },
@@ -418,6 +440,54 @@ export default function ChangeControl() {
                       label: 'Assessment',
                       dot: triageSummary(c).pending,
                       children: <ChangeTriageBlock change={c} />,
+                    },
+                    {
+                      key: 'request',
+                      label: 'Request',
+                      // The base data the Formulation Change Register (and any other view) reads from this record.
+                      children: (
+                        <div className="rt-grid">
+                          <RecordField label="Requested by">
+                            <UserSelect disabled={frozen} value={c.requestedBy} onChange={(v?: string) => patchChange(c.changeId, { requestedBy: v ?? '' })} />
+                          </RecordField>
+                          <RecordField label="Old version">
+                            <Input disabled={frozen} value={c.oldVersion} onChange={(e) => patchChange(c.changeId, { oldVersion: e.target.value })} />
+                          </RecordField>
+                          <RecordField label="New version">
+                            <Input disabled={frozen} value={c.newVersion} onChange={(e) => patchChange(c.changeId, { newVersion: e.target.value })} />
+                          </RecordField>
+                          <RecordField label="Date requested">
+                            <DatePicker
+                              style={{ width: '100%' }}
+                              disabled={frozen}
+                              value={c.dateRequested ? dayjs(c.dateRequested) : null}
+                              onChange={(d) => patchChange(c.changeId, { dateRequested: d ? d.format('YYYY-MM-DD') : undefined })}
+                            />
+                          </RecordField>
+                          <RecordField label="Explanation — exactly what changed" wide>
+                            <Input.TextArea autoSize={{ minRows: 2, maxRows: 6 }} disabled={frozen} value={c.explanation} onChange={(e) => patchChange(c.changeId, { explanation: e.target.value })} />
+                          </RecordField>
+                          <RecordField label="Reasons" wide>
+                            <Input.TextArea autoSize={{ minRows: 2, maxRows: 6 }} disabled={frozen} value={c.reasons} onChange={(e) => patchChange(c.changeId, { reasons: e.target.value })} />
+                          </RecordField>
+                          <RecordField label="Changed by">
+                            <UserSelect disabled={frozen} value={c.changedBy} onChange={(v?: string) => patchChange(c.changeId, { changedBy: v ?? '' })} />
+                          </RecordField>
+                          <RecordField label="Communicated to market?">
+                            <Select
+                              style={{ width: '100%' }}
+                              allowClear
+                              disabled={frozen}
+                              value={c.communicatedToMarket || undefined}
+                              options={CHANGE_COMMUNICATED_OPTIONS.map((o) => ({ value: o, label: o }))}
+                              onChange={(v?: string) => patchChange(c.changeId, { communicatedToMarket: v ?? '' })}
+                            />
+                          </RecordField>
+                          <RecordField label="Communication acknowledged by" wide>
+                            <UserSelect disabled={frozen} value={c.communicationAcknowledgedBy} onChange={(v?: string) => patchChange(c.changeId, { communicationAcknowledgedBy: v ?? '' })} />
+                          </RecordField>
+                        </div>
+                      ),
                     },
                     {
                       key: 'scope',

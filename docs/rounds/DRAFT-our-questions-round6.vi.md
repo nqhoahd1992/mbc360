@@ -2,7 +2,7 @@
 
 **Gửi:** đội chuyên môn (NPD / Quality / Regulatory / Safety)
 
-Vòng này có mười sáu câu. Chúng nảy ra từ đáp án câu 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường; câu 12 hỏi nên đọc thế nào "critical" và quy tắc Change Control cho một thay đổi Claims Library; câu 13 hỏi nên đọc thế nào các chi tiết của đánh giá scale-up theo từng vùng.
+Vòng này có mười bảy câu. Chúng nảy ra từ đáp án câu 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 và 37 của Vòng 5. Câu 1 hỏi cách đọc những tên người xác nhận trong bảng; câu 2 nhờ các bạn kiểm tra một trang liệt kê mọi vai và thẩm quyền của từng vai; câu 3 hỏi ai được nêu tên để giữ một chức năng trên dự án; câu 4 hỏi thế nào là "thay đổi quan trọng" làm mất hiệu lực một xác nhận; câu 5 hỏi sáu câu trả lời các bạn yêu cầu nên được ghi lại thế nào; câu 6 hỏi một thay đổi ở danh sách công ty nên đến được các dự án đang dựa vào nó như thế nào; câu 7 hỏi các trường của một phát hiện hậu mãi nên điền thế nào; câu 8 hỏi mục readiness nào thuộc riêng một thị trường; câu 9 hỏi cách kiểm các xác nhận của một safety finding bị superseded; câu 10 hỏi thế nào là thay đổi cơ sở trên watch-list và đánh giá lại được xoá thế nào; câu 11 hỏi nên đọc thế nào các chi tiết của supersession một phiên bản theo từng thị trường; câu 12 hỏi nên đọc thế nào "critical" và quy tắc Change Control cho một thay đổi Claims Library; câu 13 hỏi nên đọc thế nào các chi tiết của đánh giá scale-up theo từng vùng.
 
 Chỗ nào ghi "nhóm phát triển phần mềm" là nhóm đang xây ứng dụng, không phải chủ của một dự án phát triển sản phẩm.
 
@@ -449,3 +449,33 @@ Các bạn đã nói một thay đổi được đánh giá tác động có ki�
 **(d)** Bản đánh giá đã ghi có được sửa lại không, bởi ai?
 
 **(e)** Phạm vi Gate 10–11 có cần chọn riêng cho từng thị trường không?
+
+## Câu 17 — Một bản ghi thay đổi chủ: nên đọc thế nào các chi tiết câu trả lời để ngỏ?
+
+*Vị trí trong ứng dụng:* trang **Change Control**, **Formulation Change Register**, và các chỗ đòi một thay đổi được liên kết (đánh giá scale-up, các đánh giá tác động, đánh giá change control hậu mãi).
+
+Các bạn đã nói có một bản ghi thay đổi chủ, là CHG, các sổ khác là view hoặc bản ghi liên kết; mỗi phiên bản công thức Major giữ một CHG; và thế nào là liên kết hợp lệ. Chúng tôi đã xây bản ghi chủ cho phiên bản Major và quy tắc liên kết. Chỗ câu trả lời để ngỏ, chúng tôi đọc như sau:
+
+- **Mỗi phiên bản công thức Major luôn tạo một CHG chủ.** Nó mở ở trạng thái *Under Review*, risk High, tác động lên công thức, và **chưa có đánh giá tác động**. Đó là thay đổi baseline đã phát hành hay chỉ-phát-triển do Quality đánh giá quyết định (chỉ-phát-triển thì chọn no material impact hoặc administrative), nên thay đổi chỉ-phát-triển không mang tác động release. Phiên bản Minor không tạo CHG vì các bạn viết Major.
+- **Dòng FC là bí danh của CHG đó**: liên kết tới FC-001 resolve về CHG, và dòng FC không có bản ghi chủ thì không tính.
+- **Liên kết hợp lệ** resolve về thay đổi của dự án này và thay đổi có owner. *Đánh giá* được liên kết thay đổi đang mở hoặc đã hoàn tất, không phải đã rejected, cancelled hay superseded; *triển khai* cần thay đổi đã duyệt triển khai và đã đánh giá tác động; *đóng* cần thay đổi đã hoàn tất kèm final disposition; thay đổi đã hoàn tất luôn là tham chiếu hợp lệ; thay đổi rejected hay cancelled không bao giờ cấp phép triển khai. "Đúng sản phẩm và phạm vi liên quan" chúng tôi đọc là "thuộc dự án này": không so mã sản phẩm gõ tay hay đánh giá phạm vi.
+- **Hôm nay** quy tắc áp cho các ô liên kết một đánh giá tới một thay đổi.
+- **CHG chủ chặn Gate 11 cho tới khi đóng**, như mọi thay đổi đang mở ảnh hưởng công thức.
+
+**Đã xây đúng như các bạn mô tả:** Formulation Change Register là một view của bản ghi chủ. Mỗi dòng là một thay đổi ghi trong Change Control log; tiêu đề, SKU, ai yêu cầu và khi nào, thay đổi gì và vì sao, ai thực hiện, thông báo thị trường và đã đóng chưa được đọc từ bản ghi đó và nhập ở đó. Dòng của sổ chỉ giữ lớp phủ riêng: hành động của từng bộ phận, câu hỏi đăng ký lại, câu hỏi truyền thông bốn trạng thái, và quyết định cùng chữ ký của Final Approver. Một thay đổi được tạo ở trang Change Control sẽ đưa dòng của nó vào sổ, và không thêm hay xoá dòng ngay trong sổ được. Phiên bản Minor không tạo bản ghi thay đổi nên không còn ghi dòng.
+
+**Đã xây thêm:** hai sổ luật (Formula Change Control và Artwork Change Control) chỉ liệt kê các loại thay đổi và hiện cạnh mỗi loại các thay đổi thuộc loại đó từ Change Control log, kèm phiên bản cũ, mới và trạng thái; các tham chiếu thay đổi gõ tay ở Product Family & Version Register, Development Iteration Log, sổ Released Label và sổ campaign nay là ô chọn trên log, và tham chiếu không khớp thay đổi nào được gắn cờ và giữ nguyên; Ingredient Substitution Evidence liên kết iteration trước khoá và thay đổi sau khoá; lịch sử phiên bản công thức nêu thay đổi mà phiên bản Major đã tạo; và công thức đã từng được duyệt là baseline có kiểm soát, nên sửa Formula BOM cần một thay đổi công thức đang mở kể cả khi dự án quay lại Gate 5. Dòng sổ luật nào có loại không có trigger trong danh mục của chúng tôi ("Released label / market image mismatch") thì hiện dấu gạch thay vì đoán.
+
+**Chưa xây:** đánh giá, nhiệm vụ và phê duyệt theo từng lĩnh vực liên kết với một thay đổi chủ (hiện chỉ có các vùng tác động); luật baseline có kiểm soát tương tự cho giấy phép thị trường và pack/claim đã phát hành; và kiểm tra để phê duyệt thương mại của Final Approver không bao giờ thay được phê duyệt kỹ thuật, an toàn, quy định và chất lượng (hiện không nơi nào đọc nó như phê duyệt thay thế).
+
+**(a)** Phiên bản Minor có cần để lại CHG không?
+
+**(b)** Có đúng là CHG chủ của phiên bản Major mở ở risk High với tác động chưa đánh giá không?
+
+**(c)** Đánh giá có được liên kết thay đổi đã hoàn tất không?
+
+**(d)** "Đúng sản phẩm và phạm vi liên quan" có cần gì hơn việc thuộc dự án không?
+
+**(e)** Cách chia này có đúng không? *Đọc từ bản ghi thay đổi:* tiêu đề, SKU, ai yêu cầu và khi nào, giải thích, lý do, ai thực hiện, thông báo thị trường và ai xác nhận, đã đóng chưa. *Lớp phủ riêng của sổ:* hành động của NPD, Regulatory, Manufacturing và Marketing & Sales, câu hỏi đăng ký lại, câu hỏi truyền thông bốn trạng thái, quyết định và chữ ký của Final Approver.
+
+**(f)** Những thay đổi nào thuộc view công thức? Chúng tôi lấy thay đổi có vùng ảnh hưởng *Formula / ingredient* hoặc *Formula version / pH / process*, hoặc có trigger thuộc nhóm Formula trong danh mục.

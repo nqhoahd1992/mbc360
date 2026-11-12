@@ -613,7 +613,7 @@ export default function BomCosting() {
                     key: 'raw-material',
                     label: 'Raw material',
                     children: (
-                      <>
+                      <section>
                     <div className="rt-grid">
                       <RecordField label="Raw material" wide>
                         {rawMaterialControl(l, i)}
@@ -670,14 +670,14 @@ export default function BomCosting() {
                       </RecordField>
                       <RecordField label="Source">{sourceTag(l, i)}</RecordField>
                     </div>
-                  </>
+                  </section>
                     ),
                   },
                   {
                     key: 'quantity-cost',
                     label: 'Quantity & cost',
                     children: (
-                      <>
+                      <section>
                     <div className="rt-grid">
                       <RecordField label="% w/w">{percentControl(l, i)}</RecordField>
                       <RecordField label="Cost / kg">
@@ -710,14 +710,14 @@ export default function BomCosting() {
                       Calculated, not entered: Batch kg and units per batch are set on the Costing tab; kg needed, Cost / batch and
                       Cost / unit follow from % w/w and Cost / kg.
                     </p>
-                  </>
+                  </section>
                     ),
                   },
                   {
                     key: 'evidence',
                     label: 'Evidence',
                     children: (
-                      <>
+                      <section>
                     <div className="rt-grid">
                       <RecordField label="Evidence link">
                         <Input
@@ -742,7 +742,7 @@ export default function BomCosting() {
                         />
                       </RecordField>
                     </div>
-                  </>
+                  </section>
                     ),
                   },
                   ]}
@@ -829,6 +829,11 @@ export default function BomCosting() {
                   detail: (
                     <>
                       {r.reason}
+                      {r.linkedChangeId && (
+                        <div className="rt-muted">
+                          Change record <a href={`#/projects/${project.identity.id}/change-control`}>{r.linkedChangeId}</a>
+                        </div>
+                      )}
                       <div>
                         <Button type="link" size="small" disabled={false} style={{ paddingInline: 0 }} onClick={() => setCompare({ from: r.previousVersion, to: r.version })}>
                           Compare
@@ -923,7 +928,7 @@ export default function BomCosting() {
                   key: 'component',
                   label: 'Component',
                   children: (
-                    <>
+                    <section>
                   <div className="rt-grid">
                     <RecordField label="Component" wide>
                       <Input
@@ -947,14 +952,14 @@ export default function BomCosting() {
                       />
                     </RecordField>
                   </div>
-                </>
+                </section>
                   ),
                 },
                 {
                   key: 'quantity-cost',
                   label: 'Quantity & cost',
                   children: (
-                    <>
+                    <section>
                   <div className="rt-grid">
                     <RecordField label="Units / finished unit">
                       <InputNumber
@@ -1004,14 +1009,14 @@ export default function BomCosting() {
                       />
                     </RecordField>
                   </div>
-                </>
+                </section>
                   ),
                 },
                 {
                   key: 'evidence-approval',
                   label: 'Evidence & approval',
                   children: (
-                    <>
+                    <section>
                   <div className="rt-grid">
                     <RecordField label="Evidence link">
                       <Input
@@ -1031,7 +1036,7 @@ export default function BomCosting() {
                       />
                     </RecordField>
                   </div>
-                </>
+                </section>
                   ),
                 },
                 ]}

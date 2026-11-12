@@ -30,6 +30,7 @@ const CONTROL_MIN_WIDTH: Partial<Record<RegisterColumn['type'], number>> = {
   market: 110 + PADDING,
   markets: 110 + PADDING,
   claimRef: 140 + PADDING,
+  changeRef: 140 + PADDING,
 };
 
 export const DEFAULT_COLUMN_WIDTH = 140;

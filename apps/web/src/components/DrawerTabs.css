@@ -2,7 +2,5 @@
 .dt-tabs .ant-tabs-nav { margin-bottom: 16px; }
 .dt-tabs .ant-tabs-content-holder { min-width: 0; }
 .dt-dot { display: inline-block; width: 6px; height: 6px; margin-left: 2px; border-radius: 50%; background: var(--c-warn); vertical-align: middle; }
-/* Space between the sections of one tab (a title that is not the first thing in the tab, or a section after a section). */
-.dt-tabs .ant-tabs-tabpane > .rt-sec-title:not(:first-child) { margin-top: 28px; }
-.dt-tabs .ant-tabs-tabpane > section + section,
-.dt-tabs .ant-tabs-tabpane > div + section { margin-top: 28px; }
+/* One tab = one spacing container (the gap itself is set where the tab is built, see DrawerTabs.tsx). */
+.dt-pane { min-width: 0; }

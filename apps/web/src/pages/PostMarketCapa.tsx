@@ -248,7 +248,7 @@ export default function PostMarketCapa() {
                   key: 'event',
                   label: 'Event',
                   children: (
-                    <>
+                    <div className="pm-detail">
             <dl className="pm-dl">
               <div>
                 <dt>Product / SKU</dt>
@@ -273,14 +273,14 @@ export default function PostMarketCapa() {
                 <dd>{severityTag(open.severity)}</dd>
               </div>
             </dl>
-                    </>
+                    </div>
                   ),
                 },
                 {
                   key: 'follow-up',
                   label: 'Follow-up',
                   children: (
-                    <>
+                    <div className="pm-detail">
             <div className="pm-fields">
               <label className="au-field pm-wide">
                 <span className="au-field-label">Investigation link</span>
@@ -315,7 +315,7 @@ export default function PostMarketCapa() {
                 />
               </label>
             </div>
-                    </>
+                    </div>
                   ),
                 },
               ]}

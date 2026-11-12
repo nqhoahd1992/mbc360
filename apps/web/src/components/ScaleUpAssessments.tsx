@@ -1,3 +1,4 @@
+import { validChangeRefs } from '@mbc360/shared/utils/changeLinks';
 import { useState } from 'react';
 import { Button, ConfigProvider, DatePicker, Input, Select } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
@@ -61,7 +62,7 @@ export default function ScaleUpAssessments({ project }: { project: ProjectData }
 
   // What stops a SAVE. The waiver's three confirmations come one at a time from three people, so they are not asked for here — they are
   // what keeps Gate 9 blocked (the readiness list says so).
-  const problems = scaleUpAssessmentProblems(draft, { changeIds: project.changes.map((c) => c.changeId), newFormula });
+  const problems = scaleUpAssessmentProblems(draft, { changeIds: validChangeRefs(project, 'assessment'), newFormula });
   const blockingReason = problems[0] ? (draft.length > 1 ? problems[0] : problems[0].replace(/^Assessment \d+: /, '')) : undefined;
 
   const holds = (functionKey: string) => {

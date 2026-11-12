@@ -15,6 +15,9 @@ export const CHANGE_AFFECTED_AREAS = [
   'Other',
 ] as const;
 
+// The workbook's "Communicated to market?" list (Formulation Change Register), kept on the master change record.
+export const CHANGE_COMMUNICATED_OPTIONS = ['Yes', 'No', 'NA', 'In progress'] as const;
+
 export const CHANGE_STATUSES: ChangeStatus[] = [
   'Draft',
   'Submitted',

@@ -1,3 +1,4 @@
+import { validChangeRefs } from './changeLinks';
 import type { ProjectData, ScaleUpAssessment } from '../types';
 import { SCALE_UP_RISK_OPTIONS, SCALE_UP_TIMINGS } from '../types';
 import { SCALE_UP_AREA_NONE, SCALE_UP_OPEN_AREA, SCALE_UP_REVIEW_AREAS } from '../config/assessments';
@@ -95,7 +96,7 @@ export function scaleUpListState(project: ProjectData): ScaleUpListState {
   if (list.length === 0) return 'empty';
   if (list.some(isScaleUpPending)) return 'pending';
   const problems = scaleUpAssessmentProblems(list, {
-    changeIds: project.changes.map((c) => c.changeId),
+    changeIds: validChangeRefs(project, 'assessment'),
     newFormula: isNewFormula(project),
     requireWaiver: true,
   });

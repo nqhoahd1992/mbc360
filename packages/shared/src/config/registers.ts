@@ -1,4 +1,5 @@
 import { RISK_LEVELS, type RegisterRow } from '../types';
+import { FORMULATION_CHANGE_VIEW, type ChangeViewConfig } from '../utils/changeViews';
 import { CLAIM_REVIEW_OUTCOMES, CLAIM_SUBJECT_FLAGS } from './claimReview';
 import { CLAIM_LIBRARY_LINK_OPTIONS } from './referenceData';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
@@ -22,7 +23,7 @@ import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 // rather than typed — the stored value is the entry id the Gate 3 rule reads.
 // `rowRef` (2026-10-02): the identifying value of a row in ANOTHER register of
 // the same project (`refRegister` + `refColumn`), picked rather than typed.
-export type ColumnType = 'text' | 'textarea' | 'select' | 'multiSelect' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef' | 'nextActionRef' | 'claimsLibraryRef' | 'rowRef' | 'signature';
+export type ColumnType = 'text' | 'textarea' | 'select' | 'multiSelect' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef' | 'changeRef' | 'nextActionRef' | 'claimsLibraryRef' | 'rowRef' | 'signature';
 
 export interface RegisterColumn {
   key: string;
@@ -42,6 +43,9 @@ export interface RegisterColumn {
   // the API refuses any other name, and the table offers "Record as me" instead
   // of a picker of everyone.
   selfAttest?: boolean;
+  // Worked out from the rest of the row on every read and never stored (a status). It is not part of what a signature on the row covers: a status that
+  // changes when the signature is recorded would make the signature stale the moment it was given.
+  computed?: boolean;
   // Required only while another column of the SAME row holds one of these values — e.g. the approval date of a brief that is
   // marked Approved. Shown with a required mark, refused on save in the table and again by the API (guard parity).
   // An identifier: no two rows of the register may hold the same value (blank is not a value). Refused on save in the
@@ -217,6 +221,9 @@ export interface RegisterConfig {
   // these roles instead of "Review owner" / "Co-sign", the project's Lead nominates a person for each, and only that person signs
   // (a real authenticated signature, like every other closing). Set on the anchor. Without it the roles are the review owner's.
   closureRoles?: string[];
+  // Round 5 question 11: this register is a VIEW of the Change Control log — its rows are master change records of one kind with an overlay of
+  // this register's own fields; the `base` columns are read from the master record and never stored here. See utils/changeViews.ts.
+  changeView?: ChangeViewConfig;
   columns: RegisterColumn[];
   fixedRows?: RegisterRow[];
   // "REVIEW OWNER" of the source sheet, as a STRUCTURE (which role owns/co-
@@ -1166,6 +1173,11 @@ const ingredientSubstitution: RegisterConfig = {
     { key: 'efficacyImpact', label: 'Efficacy / claim impact', type: 'text', width: 160 },
     { key: 'costImpact', label: 'Cost impact', type: 'text', width: 120 },
     { key: 'evidenceLinks', label: 'Evidence links', type: 'text', width: 140 },
+    // Round 5 question 11: "Technical evidence for a substitution; link to the iteration before lock or CHG after lock." Before the formula lock
+    // (Gate 05) the substitution belongs to a trial in the Development Iteration Log; after it, a change to an approved formula needs a CHG
+    // (utils/formulaBaseline.ts). The server holds a row saved after the lock to a valid CHG link. [ASSUMPTION: R6-Q17]
+    { key: 'linkedIterationId', label: 'Development iteration (before lock)', type: 'rowRef', refRegister: 'productDevelopmentIterations', refColumn: 'iterationNo', width: 180 },
+    { key: 'linkedChangeId', label: 'Linked Change ID (after lock)', type: 'changeRef', width: 160 },
     { key: 'decision', label: 'Decision', type: 'select', options: DECISION_OPTIONS, width: 130 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
@@ -1651,7 +1663,10 @@ const artworkChangeControl: RegisterConfig = {
     { key: 'templateForm', label: 'Template / form', type: 'text', width: 170, editable: false },
     { key: 'closureCriteria', label: 'Closure criteria', type: 'text', width: 200, editable: false },
     { key: 'gateSheetLink', label: 'Gate / sheet link', type: 'text', width: 110, editable: false, sheetRefs: true },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
+    // Round 5 question 11: this sheet lists the TYPES of change. The occurrence-specific old/new version, status and Change Control number belong to the
+    // change records, so they are read from the Change Control log here and never typed. Whatever was typed in those columns before stays in the data,
+    // untouched (imported text is preserved), but is no longer shown. [ASSUMPTION: R6-Q17]
+    { key: 'openChanges', label: 'Changes of this type (from the Change Control log)', type: 'textarea', width: 280, editable: false, computed: true },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
   fixedRows: [
@@ -1682,10 +1697,10 @@ const formulaChangeControl: RegisterConfig = {
     { key: 'templateForm', label: 'Template/form', type: 'text', width: 170, editable: false },
     { key: 'evidenceRequired', label: 'Evidence required', type: 'text', width: 200, editable: false },
     { key: 'closureCriteria', label: 'Closure criteria', type: 'text', width: 200, editable: false },
-    { key: 'changeControlCommId', label: 'Change Control & Communication ID', type: 'text', width: 150 },
-    { key: 'oldVersion', label: 'Old version', type: 'text', width: 100 },
-    { key: 'newVersion', label: 'New version', type: 'text', width: 100 },
-    { key: 'status', label: 'Status', type: 'select', width: 130, options: SHEET_STATUS_OPTIONS },
+    // Round 5 question 11: this sheet lists the TYPES of change. The occurrence-specific old/new version, status and Change Control number belong to the
+    // change records, so they are read from the Change Control log here and never typed. Whatever was typed in those columns before stays in the data,
+    // untouched (imported text is preserved), but is no longer shown. [ASSUMPTION: R6-Q17]
+    { key: 'openChanges', label: 'Changes of this type (from the Change Control log)', type: 'textarea', width: 280, editable: false, computed: true },
   ],
   fixedRows: [
     { trigger: 'Ingredient added or removed', examples: 'New active, preservative, fragrance or problematic ingredient removed', impactAreas: 'Safety, efficacy, claims, label INCI, PIF, stability, cost', mandatoryActions: 'Update Formula_BOM; screen safety lists; assess claim and label impact', personInCharge: 'R&I / Formulation', technicalSignOff: 'R&I', regQaSignOff: 'Regulatory + Quality', salesMarketingRequired: 'Yes', templateForm: 'Formula Change Comparison', evidenceRequired: 'Old/new formula, rationale, safety evidence', closureCriteria: 'Updated version controlled' },
@@ -2195,7 +2210,7 @@ const productFamilyRegister: RegisterConfig = {
     { key: 'effectiveDate', label: 'Effective date', type: 'date', width: 120 },
     { key: 'supersededDate', label: 'Superseded date', type: 'date', width: 120 },
     { key: 'currentMarketVersion', label: 'Current market version? (Y/N)', type: 'select', width: 130, options: ['Yes', 'No'] },
-    { key: 'changeRegisterId', label: 'Change register ID', type: 'text', width: 130 },
+    { key: 'changeRegisterId', label: 'Change register ID', type: 'changeRef', width: 160 },
     { key: 'marketCommNeeded', label: 'Market communication needed?', type: 'select', width: 150, options: ['Yes', 'No', 'NA', 'To assess'] },
     { key: 'communicatedToMarket', label: 'Communicated to market? (Y/N)', type: 'select', width: 150, options: ['Yes', 'No', 'NA', 'In progress'] },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
@@ -2210,21 +2225,25 @@ const formulationChangeRegister: RegisterConfig = {
   description: 'Every formulation change (preservative system, active up/down, any ingredient change) must be recorded here BEFORE implementation. Manufacturing treating a change as a new code does NOT remove the need to control and communicate it. Note: formula changes require ~6 months re-registration for Vietnam (VN) - the Final Approver must be involved for commercial implications.',
   mode: 'register',
   gate: '05/07/10',
+  changeView: FORMULATION_CHANGE_VIEW,
   columns: [
     { key: 'changeId', label: 'Change ID', type: 'text', width: 100, unique: true },
-    { key: 'productFamilySku', label: 'Product Family / SKU', type: 'text', width: 150 },
-    { key: 'requestedByNpd', label: 'Change requested by NPD team', type: 'user', width: 160 },
-    { key: 'dateRequested', label: 'Date change requested by NPD', type: 'date', width: 120 },
+    // Round 5 question 11: an FC- row is an ALIAS of the master Change Control record; this names it. Written by the server when a Major
+    // formula version raises the change; a row with no master is an isolated FC row, which counts for nothing. [ASSUMPTION: R6-Q17]
+    { key: 'masterChangeId', label: 'Master change (CHG)', type: 'text', width: 130, editable: false },
+    { key: 'productFamilySku', label: 'Product Family / SKU', type: 'text', width: 150, editable: false },
+    { key: 'requestedByNpd', label: 'Change requested by NPD team', type: 'user', width: 160, editable: false },
+    { key: 'dateRequested', label: 'Date change requested by NPD', type: 'date', width: 120, editable: false },
     // The workbook's decision list. 'Approved' can only come from the signature at the end of the row (the server sets it on
     // signing and takes it back on withdrawal), so a typed name or a picked value never reads as an approval; the other three
     // are the Final Approver's own decision (2026-08-26 signature rule, 2026-10-16 restored list).
     { key: 'approvedByNp', label: 'Approved by Final Approver? (commercial)', type: 'select', width: 190, options: NP_APPROVAL_OPTIONS, defaultValue: NP_APPROVAL_PENDING, derivedFromSignature: 'npSignOff' },
     // Set from the signature (server-written), not typed.
     { key: 'npApprovalDate', label: 'Final Approver approval date', type: 'date', width: 130, editable: false, derivedFromSignature: 'npSignOff' },
-    { key: 'changeTitle', label: 'Change title', type: 'text', width: 160 },
-    { key: 'explanation', label: 'Explanation - exactly what changed', type: 'textarea', width: 220 },
-    { key: 'reasons', label: 'Reasons', type: 'textarea', width: 180 },
-    { key: 'changedBy', label: 'Changed by', type: 'user', width: 140 },
+    { key: 'changeTitle', label: 'Change title', type: 'text', width: 160, editable: false },
+    { key: 'explanation', label: 'Explanation - exactly what changed', type: 'textarea', width: 220, editable: false },
+    { key: 'reasons', label: 'Reasons', type: 'textarea', width: 180, editable: false },
+    { key: 'changedBy', label: 'Changed by', type: 'user', width: 140, editable: false },
     { key: 'actionNpd', label: 'Action: NPD', type: 'text', width: 140 },
     {
       key: 'actionReg',
@@ -2237,10 +2256,10 @@ const formulationChangeRegister: RegisterConfig = {
     { key: 'actionMarketingSales', label: 'Action: Marketing & Sales (Final Approver decides)', type: 'text', width: 180 },
     { key: 'vnRegistrationRequired', label: 'New VN registration required? (~6 months)', type: 'select', width: 150, options: ['Yes', 'No', 'To assess'] },
     { key: 'marketCommRequired', label: 'Market communication required?', type: 'select', width: 140, options: ['Yes', 'No', 'NA', 'To assess'] },
-    { key: 'communicatedToMarket', label: 'Communicated to market? (Y/N)', type: 'select', width: 140, options: ['Yes', 'No', 'NA', 'In progress'] },
-    { key: 'closed', label: 'Closed? (Y/N)', type: 'select', width: 100, options: ['Yes', 'No'] },
+    { key: 'communicatedToMarket', label: 'Communicated to market? (Y/N)', type: 'select', width: 140, editable: false, options: ['Yes', 'No', 'NA', 'In progress'] },
+    { key: 'closed', label: 'Closed? (Y/N)', type: 'select', width: 100, options: ['Yes', 'No'], editable: false },
     // Computed from the row (utils/registerDerived.ts), as the workbook's formula does.
-    { key: 'overallStatus', label: 'Overall status', type: 'text', width: 190, editable: false },
+    { key: 'overallStatus', label: 'Overall status', type: 'text', width: 190, editable: false, computed: true },
     // Was a free-text name box until 2026-08-26. The Final Approver is the company's final commercial authority, which
     // made this the worst remaining place in the app to accept a typed name: anyone could enter it, and change it afterwards
     // with nothing recorded. Now the same act the phase block requires — authenticated identity, an authenticator code,
@@ -2257,7 +2276,7 @@ const formulationChangeRegister: RegisterConfig = {
       width: 190,
       signCapability: 'formulation-change|approve-commercial',
     },
-    { key: 'communicationAcknowledgedBy', label: 'Communication acknowledged by (name / date)', type: 'text', width: 190 },
+    { key: 'communicationAcknowledgedBy', label: 'Communication acknowledged by (name / date)', type: 'text', width: 190, editable: false },
   ],
 };
 
@@ -2427,7 +2446,7 @@ const campaignsSocialMedia: RegisterConfig = {
     { key: 'startDate', label: 'Start date', type: 'date', width: 110 },
     { key: 'endDate', label: 'End date', type: 'date', width: 110 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
-    { key: 'linkedChangeId', label: 'Linked Change ID', type: 'text', width: 130 },
+    { key: 'linkedChangeId', label: 'Linked Change ID', type: 'changeRef', width: 160 },
     { key: 'claimsApproved', label: 'Claims approved? (Reg)', type: 'select', width: 130, options: ['Yes', 'No', 'Pending', 'NA'] },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: ['Planned', 'Live', 'Paused', 'Completed', 'Cancelled'] },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 160 },
@@ -2481,7 +2500,7 @@ export const productDevelopmentIterations: RegisterConfig = {
     { key: 'decision', label: 'Decision', type: 'select', width: 190, options: ['Iterate again', 'Adopt this version', 'Reject', 'Hold for testing', 'Escalate to Final Approver'] },
     { key: 'nextAction', label: 'Next action', type: 'text', width: 150 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
-    { key: 'linkedChangeId', label: 'Linked Change ID', type: 'text', width: 130 },
+    { key: 'linkedChangeId', label: 'Linked Change ID', type: 'changeRef', width: 160 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: ['Open', 'In progress', 'Superseded', 'Adopted', 'On hold', 'Closed'] },
   ],
 };
@@ -2745,7 +2764,7 @@ export const releasedLabelRegister: RegisterConfig = {
     { key: 'assetExists', label: '3D asset exists?', type: 'select', width: 110, options: YNNA_LABEL },
     { key: 'assetLink', label: '3D asset link', type: 'text', width: 130 },
     // Left as free text: the Artwork_Change_Control sheet is a 5-trigger rule table, so there is no row to pick [ASSUMPTION: R5-Q77].
-    { key: 'artworkChangeRef', label: 'Artwork Change Control ref', type: 'text', width: 160 },
+    { key: 'artworkChangeRef', label: 'Artwork Change Control ref', type: 'changeRef', width: 160 },
     { key: 'owner', label: 'Owner', type: 'user', width: 120 },
     { key: 'status', label: 'Status', type: 'select', width: 130, options: LABEL_STATUS_OPTIONS },
     { key: 'notes', label: 'Notes / action', type: 'textarea', width: 200 },

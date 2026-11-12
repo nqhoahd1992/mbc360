@@ -304,6 +304,9 @@ async function main() {
   console.log('Registers');
   const ordered = [...FIRST.map((k) => REGISTER_CONFIGS.find((c) => c.key === k)).filter((c): c is RegisterConfig => !!c), ...REGISTER_CONFIGS.filter((c) => !FIRST.includes(c.key))];
   for (const config of ordered) {
+    // Round 5 question 11: a register that is a view of the Change Control log gets its rows from the change records (the change-control step creates them),
+    // so it is not filled by hand.
+    if (config.changeView) continue;
     await step(`register ${config.key}`, async () => {
       await reload();
       await fillRegister(config);
@@ -343,6 +346,29 @@ async function main() {
     await step('formula version F2.0 (Major: reopens Gates 04-09)', async () => {
       await reload();
       take(await api('POST', `/projects/${id}/formula-versions`, { version: 'F2.0', changeType: 'Major', confirmNoRelease: true, reason: `${SEED}: new emollient system and preservative`, initiatedBy: adminName, majorCriteria: [MAJOR_CHANGE_CRITERIA[0].id, MAJOR_CHANGE_CRITERIA[2].id], classificationConfirmedBy: adminName, expectedVersion: version }, { 'Idempotency-Key': `seed-${id}-v20` }));
+    });
+    // Round 5 question 11: a Major version raises the master Change Control record, which stays open (and blocks Gate 11) until its impact is
+    // assessed and it is closed. This is the dev tool's one bypass: write the triage and the closure straight to the database, so the gates that
+    // follow can pass again.
+    await step('close the change record F2.0 raised (impact assessed, completed)', async () => {
+      const gateIds = ['SG04', 'SG05', 'SG06', 'SG07', 'SG08', 'SG09', 'SG10', 'SG11', 'SG12'];
+      await prisma.changeRecord.updateMany({
+        where: { projectId: id, status: 'Under Review', trigger: { contains: 'F2.0' } },
+        data: {
+          impactTriage: 'Material impact',
+          triageReason: `${SEED}: new emollient system and preservative`,
+          triageBy: adminName,
+          triageDate: new Date(),
+          confirmedGates: gateIds,
+          status: 'Completed',
+          closedDate: new Date(),
+          closureOutcome: 'Formula F2.0 adopted',
+          closureImplementation: `${SEED}: new version created and the affected gates reopened`,
+          closureEvidence: 'seed',
+          closureImpactedVersions: 'F2.0',
+          closureVerifier: adminName,
+        },
+      });
     });
   }
 

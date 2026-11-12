@@ -26,6 +26,7 @@ import { projectStopGrounds, stopRefusal } from '@mbc360/shared/utils/projectSto
 import {
   CHANGE_AFFECTED_AREAS,
   CHANGE_CLOSED_STATUSES,
+  CHANGE_COMMUNICATED_OPTIONS,
   CHANGE_IMPACT_AREAS,
   FORMULA_CLASSIFICATION_CAPABILITIES,
   MAJOR_CHANGE_CRITERIA,
@@ -121,6 +122,9 @@ import {
   requirementRowKey,
 } from '@mbc360/shared/utils/marketRequirements';
 import { changeTriggerAvailability } from '@mbc360/shared/utils/changeAccess';
+import { newChangeReferences, resolveChangeRef, validChangeRefs } from '@mbc360/shared/utils/changeLinks';
+import { baseColumnsOf, isFormulationChange } from '@mbc360/shared/utils/changeViews';
+import { formulaChangeRequirement, formulaWasApproved } from '@mbc360/shared/utils/formulaBaseline';
 import {
   CHANGE_STATUSES_NEEDING_TRIAGE,
   CHANGE_TRIAGE_FUNCTION_KEYS,
@@ -284,7 +288,7 @@ const GAP_ASSESSMENT_FIELDS = [
 ] as const satisfies readonly (keyof GateRecord)[];
 
 // Round 5 question 10: the triage fields are written by the triage act alone, so a save that omits or alters them is not an edit of them.
-const TRIAGE_SERVER_FIELDS: string[] = ['impactTriage', 'triageReason', 'triageBy', 'triageDate', 'confirmedGates'];
+const TRIAGE_SERVER_FIELDS: string[] = ['impactTriage', 'triageReason', 'triageBy', 'triageDate', 'confirmedGates', 'aliasIds'];
 
 // A value the engine compares exactly must be one of its list's values (SME rule
 // audit B13, 2026-10-04). A dropdown is only a dropdown in the browser: a direct
@@ -3059,14 +3063,68 @@ export class ProjectsService {
       // otherwise a client could forge one, or quietly erase one, by editing the
       // row it sits on. Same reasoning as `syncPublishedInfoDerived` below: a
       // value that PROVES something has to be derived by the server, never sent.
-      const rowsAfterSignatureGuard =
+      const rowsAfterCarry =
         signatureColumns(config).length > 0
           ? this.carryRegisterSignatures(config, project.registers[registerKey] ?? [], rows)
           : rows;
+      // Round 5 question 11: a register that is a VIEW of the Change Control log has its rows and their base data from the master records. The rows are
+      // added and removed there (a change is raised on the Change Control page), and the base columns are never written back here: a stored copy
+      // would go stale. What this save may change is the overlay — the department actions, the re-registration question, the Final Approver's decision.
+      let rowsAfterSignatureGuard = rowsAfterCarry;
+      if (config.changeView) {
+        const key = config.changeView.aliasColumn;
+        const had = (project.registers[registerKey] ?? []).map((r) => String(r[key] ?? ''));
+        const now = rowsAfterCarry.map((r) => String(r[key] ?? ''));
+        if (had.length !== now.length || had.some((k) => !now.includes(k))) {
+          throw new BadRequestException(
+            `${config.title} is a view of the Change Control log — a change is raised or removed there, not here. Raise the change on the Change Control page and its row appears in this register.`,
+          );
+        }
+        const base = baseColumnsOf(config.changeView);
+        rowsAfterSignatureGuard = rowsAfterCarry.map((r) => {
+          const out = { ...r };
+          for (const column of base) delete out[column];
+          return out;
+        });
+      }
       if (registerKey === 'formulationChangeRegister') {
         await this.assertNpDecisionAllowed(user, project.registers[registerKey] ?? [], rowsAfterSignatureGuard);
       }
-      const rowsToWrite =
+      // Round 5 question 11(4): a change reference that is new or changed must resolve to a change record of this project (an FC- number resolves to its
+      // master). One the register already held is left alone and flagged. A column that is computed from the rest of the row is never stored.
+      {
+        const unresolved = newChangeReferences(config, project.registers[registerKey] ?? [], rowsAfterSignatureGuard).filter(
+          (r) => !resolveChangeRef(project.changes, r.value),
+        );
+        if (unresolved.length > 0) {
+          throw new BadRequestException(
+            listMessage(
+              'These change references match no change record of this project — pick one from the Change Control log:',
+              unresolved.map((r) => `row ${r.row + 1}, ${config.columns.find((c) => c.key === r.column)?.label ?? r.column}: "${r.value}"`),
+            ),
+          );
+        }
+        // Ingredient Substitution Evidence: "link to the iteration before lock or CHG after lock". Once the formula has been approved, a substitution
+        // saved (new or changed) names the change it belongs to. [ASSUMPTION: R6-Q17]
+        if (registerKey === 'ingredientSubstitution' && formulaWasApproved(project)) {
+          const committedRows = project.registers[registerKey] ?? [];
+          const missingLink = rowsAfterSignatureGuard
+            .map((r, i) => ({ r, i }))
+            .filter(({ r, i }) => {
+              const before = committedRows[i];
+              const changed = !before || JSON.stringify({ ...before, openChanges: undefined }) !== JSON.stringify({ ...r, openChanges: undefined });
+              return changed && String(r.linkedChangeId ?? '').trim() === '';
+            })
+            .map(({ i }) => `row ${i + 1}`);
+          if (missingLink.length > 0) {
+            throw new BadRequestException(
+              listMessage('The formula has been approved, so a substitution must link the change it belongs to (Linked Change ID):', missingLink),
+            );
+          }
+        }
+      }
+      const computedKeys = config.columns.filter((c) => c.computed).map((c) => c.key);
+      const rowsToWrite0 =
         registerKey === 'claimEvidenceTraceability'
           ? snapshotReviewedWording(project, rowsAfterSignatureGuard)
           : registerKey === 'publishedInfoApproval'
@@ -3080,6 +3138,8 @@ export class ProjectsService {
                 await this.holdsAnyCapability(user, [CLAIM_EXEMPTION_CAPABILITY]),
               )
             : rowsAfterSignatureGuard;
+      // A column worked out from the rest of the row (a status, the changes of a rulebook type) is never stored.
+      const rowsToWrite = computedKeys.length > 0 ? rowsToWrite0.map((r) => { const out = { ...r }; for (const k of computedKeys) delete out[k]; return out; }) : rowsToWrite0;
       // Blame (2026-08-27): editing itself stays open to anyone (rule A4 is
       // not touched), but every save now leaves a real per-row trail instead
       // of the previous `{ registerKey, rows: rows.length }` summary, which
@@ -3851,6 +3911,9 @@ export class ProjectsService {
       if (isGateRefLocked(project, '05')) {
         throw new ForbiddenException('The Formula BOM belongs to gate 05, which has passed — it is read-only (use Backtrack)');
       }
+      // Round 5 question 11(2): an approved formula is a controlled baseline for the rest of the project, even back at Gate 05.
+      const needsChange = formulaChangeRequirement(project);
+      if (needsChange) throw new BadRequestException(needsChange);
       // The newest version is the current one (F4/Q2: two may be Active at once).
       const active = row.formulaVersions.at(-1);
       if (!active) throw new BadRequestException('Project has no formula version to attach BOM lines to');
@@ -4253,7 +4316,7 @@ export class ProjectsService {
         }
         return entry;
       });
-      const problems = scaleUpAssessmentProblems(clean, { changeIds: project.changes.map((c) => c.changeId), newFormula: isNewFormula(project) });
+      const problems = scaleUpAssessmentProblems(clean, { changeIds: validChangeRefs(project, 'assessment'), newFormula: isNewFormula(project) });
       if (problems.length > 0) throw new BadRequestException(bulletList(problems));
 
       for (const e of clean) {
@@ -4351,7 +4414,7 @@ export class ProjectsService {
         evidenceLink: (e.evidenceLink ?? '').trim() || undefined,
       }));
       const problems = changeControlAssessmentProblems(clean, {
-        changeIds: project.changes.map((c) => c.changeId),
+        changeIds: validChangeRefs(project, 'assessment'),
         markets: project.identity.markets,
         reviewCycles: reviewCycleOptions(project, {
           enhanced: evaluateTrigger(project, 'pvPmsRequired') === 'applies',
@@ -5746,19 +5809,11 @@ export class ProjectsService {
         // consulted: whether the record must come first, and whether its approval is what permits a new
         // version, is [ASSUMPTION: R5-Q66]. The Gate 05 condition at the top is the project owner's.
         //
-        // Formulation Change Register entry (A2).
-        //
-        // This writes an `FC-xxx` row into a SECOND change log, parallel to the
-        // `CHG-xxx` Change Control log and unlinked to it. The Major cascade just
-        // above is real — SG04-SG09 reopen and their phase sign-offs are cancelled
-        // — but no `CHG-` record exists, so the change-control machinery is blind
-        // to it: no soft lock at Gates 10/11 (outside the reopened range), no Gate
-        // 11 impact evaluation (E3(b) requires one per open change), closure by one
-        // `Closed?` tick rather than q34(c) eight-field disposition, and no
-        // `impactAreas` to mark it launch-impacting. Whether these are one book or two is
-        // [ASSUMPTION: R5-Q19]; deliberately not "fixed" before the review team
-        // answers, because merging two records that are genuinely different is
-        // worse than leaving them apart.
+        // Formulation Change Register entry (A2). Until Round 5 question 11 this was a SECOND change log, parallel to the CHG- log and
+        // unlinked to it, so the change-control machinery was blind to a Major change (no hold, no Gate 11 impact evaluation, a single
+        // Closed? tick, no impact classification). The SME's answer makes the CHG the master record and the FC row a view of it with its
+        // specialist fields; the row below is now an ALIAS carrying `masterChangeId`. Moving the specialist fields and NP's signature onto
+        // the shared record itself is not built yet [ASSUMPTION: R5-Q19] [ASSUMPTION: R6-Q17].
         const existing = await tx.registerRow.findMany({
           where: { projectId: id, registerKey: 'formulationChangeRegister' },
           select: { data: true },
@@ -5773,26 +5828,66 @@ export class ProjectsService {
             const n = typeof raw === 'string' ? /^FC-(\d+)$/.exec(raw)?.[1] : undefined;
             return n ? Math.max(max, Number(n)) : max;
           }, 0) + 1;
-        await tx.registerRow.create({
-          data: {
-            projectId: id,
-            registerKey: 'formulationChangeRegister',
-            rowOrder: existingRows,
-            updatedById: user.id,
+        const fcId = `FC-${String(nextFc).padStart(3, '0')}`;
+        // Round 5 question 11: "Retain a CHG for every Major version" — the master controlled-change record. The FC row is its alias, so the
+        // change-control side (the Gate 11 impact evaluation, the holds) sees the heaviest change the system knows about. It opens Under
+        // Review with its impact NOT yet assessed: the cascade above already reopened the gates, but whether this is a controlled change to
+        // a released baseline or a development-only one is Quality's triage, never the version creator's. [ASSUMPTION: R6-Q17]
+        let masterChangeId: string | undefined;
+        if (input.changeType === 'Major') {
+          const used = await tx.changeRecord.findMany({ where: { changeId: { startsWith: 'CHG-' } }, select: { changeId: true } });
+          const nextChg =
+            used.reduce((max, r) => {
+              const n = /^CHG-(\d+)$/.exec(r.changeId)?.[1];
+              return n ? Math.max(max, Number(n)) : max;
+            }, 0) + 1;
+          masterChangeId = `CHG-${String(nextChg).padStart(3, '0')}`;
+          await tx.changeRecord.create({
             data: {
-              changeId: `FC-${String(nextFc).padStart(3, '0')}`,
-              productFamilySku: project.identity.productSku,
-              requestedByNpd: user.displayName,
-              dateRequested: new Date().toISOString().slice(0, 10),
-              changeTitle: `Formula version ${project.formulaVersion} -> ${version} (${input.changeType})`,
-              explanation: input.reason ?? '',
-              vnRegistrationRequired:
-                input.changeType === 'Major' && project.identity.markets.includes('Vietnam') ? 'Yes' : 'No',
-              approvedByNp: NP_APPROVAL_PENDING,
-              overallStatus: 'In Progress',
-            } as Prisma.InputJsonValue,
-          },
-        });
+              projectId: id,
+              changeId: masterChangeId,
+              trigger: `Formula version ${project.formulaVersion} -> ${version} (Major)`,
+              productSku: project.identity.productSku,
+              affectedArea: 'Formula version / pH / process',
+              oldVersion: project.formulaVersion || null,
+              newVersion: version,
+              riskLevel: 'High',
+              impactAreas: ['Formula'],
+              markets: [],
+              requiredAction: input.reason ?? null,
+              requestedBy: user.displayName,
+              dateRequested: new Date(),
+              explanation: input.reason ?? null,
+              communicationRequired: false,
+              status: 'Under Review',
+              owner: user.displayName,
+              aliasIds: [fcId],
+              notes: `Raised by the new formula version ${version}; its Formulation Change Register entry is ${fcId}.`,
+            },
+          });
+          // Round 5 question 11: the version history is linked to the master change it raised; it is not an independent approval route.
+          await tx.formulaVersion.update({ where: { id: created.id }, data: { linkedChangeId: masterChangeId } });
+        }
+        // An overlay row exists only for a change that has a master record (a Major version). A Minor version raises no change record, so it writes
+        // no row here: an isolated row would count for nothing. [ASSUMPTION: R6-Q17]
+        if (masterChangeId) {
+          await tx.registerRow.create({
+            data: {
+              projectId: id,
+              registerKey: 'formulationChangeRegister',
+              rowOrder: existingRows,
+              updatedById: user.id,
+              data: {
+                changeId: fcId,
+                ...(masterChangeId ? { masterChangeId } : {}),
+                vnRegistrationRequired:
+                  input.changeType === 'Major' && project.identity.markets.includes('Vietnam') ? 'Yes' : 'No',
+                approvedByNp: NP_APPROVAL_PENDING,
+                overallStatus: 'In Progress',
+              } as Prisma.InputJsonValue,
+            },
+          });
+        }
 
         return { version, changeType: input.changeType, reopenedGateIds: reopened, clearedGateSignOffs };
       },
@@ -5817,6 +5912,7 @@ export class ProjectsService {
     // the rule engine, which compares exact values.
     for (const c of records) {
       for (const area of c.impactAreas ?? []) assertOneOf(`${c.changeId}: impact area`, area, CHANGE_IMPACT_AREAS);
+      assertOneOf(`${c.changeId}: communicated to market`, c.communicatedToMarket, CHANGE_COMMUNICATED_OPTIONS);
       // The workbook's Affected area list; blank stays legal (a record from before the list existed).
       if ((c.affectedArea ?? '') !== '') assertOneOf(`${c.changeId}: affected area`, c.affectedArea, CHANGE_AFFECTED_AREAS);
     }
@@ -5960,12 +6056,23 @@ export class ProjectsService {
             triageBy: before.get(c.changeId)?.triageBy ?? null,
             triageDate: this.dateOrNull(before.get(c.changeId)?.triageDate),
             confirmedGates: before.get(c.changeId)?.confirmedGates ?? [],
+            aliasIds: before.get(c.changeId)?.aliasIds ?? [],
+            // The base data every change-control view reads (Round 5 question 11).
+            requestedBy: c.requestedBy || null,
+            newVersion: c.newVersion || null,
+            dateRequested: this.dateOrNull(c.dateRequested),
+            reasons: c.reasons || null,
+            explanation: c.explanation || null,
+            changedBy: c.changedBy || null,
+            communicatedToMarket: c.communicatedToMarket || null,
+            communicationAcknowledgedBy: c.communicationAcknowledgedBy || null,
             restoreConfirmation: c.restoreConfirmation ?? null,
             owner: c.owner,
             notes: c.notes ?? null,
           })),
         });
       }
+      await this.syncFormulationOverlay(tx, id, records, user.id);
       return {
         records: records.length,
         added,
@@ -5973,6 +6080,43 @@ export class ProjectsService {
         edited,
       } as unknown as Prisma.InputJsonValue;
     });
+  }
+
+  // Round 5 question 11: the Formulation Change Register is a VIEW of the Change Control log, so every formulation change has exactly one overlay row
+  // (the Final Approver's decision and the department actions) and a row whose master record is gone goes with it. A new overlay row takes the next FC number
+  // as the master record's alias. A row that already carries a signature is never removed. [ASSUMPTION: R6-Q17]
+  private async syncFormulationOverlay(tx: Prisma.TransactionClient, projectId: string, records: ChangeRecord[], actorId: string): Promise<void> {
+    const registerKey = 'formulationChangeRegister';
+    const rows = await tx.registerRow.findMany({ where: { projectId, registerKey }, orderBy: { rowOrder: 'asc' } });
+    const masters = new Set(records.map((c) => c.changeId));
+    const overlayFor = new Set(rows.map((r) => String((r.data as Record<string, unknown> | null)?.masterChangeId ?? '')));
+    let nextFc =
+      rows.reduce((max, r) => {
+        const raw = (r.data as Record<string, unknown> | null)?.changeId;
+        const m = typeof raw === 'string' ? /^FC-(\d+)$/.exec(raw)?.[1] : undefined;
+        return m ? Math.max(max, Number(m)) : max;
+      }, 0) + 1;
+    let order = rows.reduce((max, r) => Math.max(max, r.rowOrder), -1) + 1;
+    for (const c of records) {
+      if (!isFormulationChange(c) || overlayFor.has(c.changeId)) continue;
+      const fcId = `FC-${String(nextFc++).padStart(3, '0')}`;
+      await tx.registerRow.create({
+        data: {
+          projectId,
+          registerKey,
+          rowOrder: order++,
+          updatedById: actorId,
+          data: { changeId: fcId, masterChangeId: c.changeId, approvedByNp: NP_APPROVAL_PENDING } as Prisma.InputJsonValue,
+        },
+      });
+      const stored = await tx.changeRecord.findUnique({ where: { changeId: c.changeId }, select: { aliasIds: true } });
+      await tx.changeRecord.update({ where: { changeId: c.changeId }, data: { aliasIds: [...new Set([...(stored?.aliasIds ?? []), fcId])] } });
+    }
+    for (const r of rows) {
+      const data = (r.data as Record<string, unknown> | null) ?? {};
+      const master = String(data.masterChangeId ?? '');
+      if (master !== '' && !masters.has(master) && !data.npSignOff) await tx.registerRow.delete({ where: { id: r.id } });
+    }
   }
 
   // SW-55. A closed change is frozen; this is the one way back. It needs a reason, is audited with it, keeps every

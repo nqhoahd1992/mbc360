@@ -45,7 +45,13 @@ export default function DrawerTabs({
         ) : (
           t.label
         ),
-        children: t.children,
+        // Each tab is its own spacing container. The drawers this replaced got their gap between sections from a wrapper
+        // (a grid with a gap) that now sits outside the tabs, so the blocks inside a tab would otherwise touch.
+        children: (
+          <div className="dt-pane" style={{ display: 'grid', rowGap: 28 }}>
+            {t.children}
+          </div>
+        ),
       }))}
     />
   );
