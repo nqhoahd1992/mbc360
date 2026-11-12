@@ -187,6 +187,16 @@ export class ProjectsController {
     return this.projects.stopProject(user, id, body?.comment);
   }
 
+  @Post(':id/gates/:gateId/gap/resolve')
+  resolveGap(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('gateId') gateId: string,
+    @Body() body: { expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.resolveGap(user, id, gateId, body.expectedVersion);
+  }
+
   @Put(':id/gates/:gateId')
   updateGate(
     @CurrentUser() user: SessionUser,

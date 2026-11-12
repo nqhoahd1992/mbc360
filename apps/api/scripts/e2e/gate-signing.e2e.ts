@@ -2213,6 +2213,21 @@ export async function run(base: string, db: Client): Promise<number> {
     // npm run verify:change-baseline; the server calls the same functions.
   }
 
+  // ---- SW-39: the Resolve act (the full rule is covered by npm run verify:gap-controls)
+  {
+    const pj39 = await project();
+    const ids: string[] = GATES.map((g: { id: string }) => g.id);
+    const current = ids.find((g) => gp.isGateUnlocked(pj39.project, g)) as string;
+    const other39 = ids.filter((g) => g !== current).pop() as string;
+    r = await api('admin', 'POST', `/projects/${PROJECT}/gates/${current}/gap/resolve`, { expectedVersion: await version() });
+    t('Resolve on a gate with no assessment is refused, naming what is missing (400)', r.status === 400 && /cannot be resolved yet/.test(String(r.json?.message)) && /criticality assessment/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await api('admin', 'POST', `/projects/${PROJECT}/gates/${other39}/gap/resolve`, { expectedVersion: await version() });
+    t('...and on a gate that is not the one open for work (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/gates/${current}`, { gapResolvedBy: 'forged', gapResolvedAt: '2026-01-01T00:00:00Z', expectedVersion: await version() });
+    const after39 = (await project()).project.gates.find((g: any) => g.gateId === current);
+    t('a client-supplied resolution stamp is discarded', !after39?.gapResolvedBy && !after39?.gapResolvedAt, `${r.status} ${short(after39)}`);
+  }
+
   // The Low/Medium resolution rule (question 9) is covered by npm run verify:gap-controls: on this project every gate that could carry the field is
   // either signed, held by an open change or not current, so a gate save cannot reach gapBlocksDecision here.
 

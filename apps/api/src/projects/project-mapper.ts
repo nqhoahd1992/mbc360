@@ -209,6 +209,8 @@ function toGateRecord(g: ProjectWithAll['gates'][number]): GateRecord {
     gapActionOwner: opt(g.gapActionOwner),
     gapLinkedNextActionId: opt(g.gapLinkedNextActionId),
     gapResolution: opt(g.gapResolution),
+    gapResolvedBy: opt(g.gapResolvedBy),
+    gapResolvedAt: g.gapResolvedAt ? g.gapResolvedAt.toISOString() : undefined,
   };
 }
 

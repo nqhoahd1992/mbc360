@@ -327,6 +327,9 @@ export interface GateRecord {
   // Round 5 question 9: "A Low/Medium gap resolved before signing needs its resolution/evidence recorded" — what was done about it. The evidence is
   // `gapEvidenceLink`. A gap that is NOT resolved is carried by a tracked Next Action instead (`gapLinkedNextActionId`).
   gapResolution?: string;
+  // SW-39: who resolved the gap and when (ISO). Written by the server's Resolve act only; a client value is discarded.
+  gapResolvedBy?: string;
+  gapResolvedAt?: string;
 }
 
 // Audit trail for ordinary Phase Gate Flow edits (status/decision/owner/due

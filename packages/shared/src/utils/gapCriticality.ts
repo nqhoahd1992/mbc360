@@ -37,6 +37,26 @@ export interface GapVerdict {
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
+// SW-39. A gap whose assessment is kept and that has been RESOLVED no longer blocks: the assessment stays on the record (it is an event of the
+// project) and the Resolve act adds who resolved it and when. It counts only while the stage status is not Gap - a gate that goes back to Gap
+// drops the resolution (the server clears it and the history says so), and the assessment blocks again.
+export function isGapResolved(gate: GateRecord): boolean {
+  return text(gate.gapResolvedAt) !== '' && gate.status !== 'Gap';
+}
+
+// What still stands between a graded gap and the Resolve button. Empty = Resolve may be clicked. The resolution says HOW it was resolved
+// and the evidence link is its proof; the assessor is the qualified person who graded it; the status must have left Gap.
+export function gapResolveMissing(gate: GateRecord): string[] {
+  const missing: string[] = [];
+  if (text(gate.gapCriticality) === '') missing.push('a criticality assessment');
+  if (text(gate.gapAssessor) === '') missing.push('the assessor');
+  if (text(gate.gapResolution) === '') missing.push('how the gap was resolved');
+  if (text(gate.gapEvidenceLink) === '') missing.push('the evidence link');
+  if (gate.status === 'Gap') missing.push('a Stage status other than Gap');
+  if (isGapResolved(gate)) missing.push('(already resolved)');
+  return missing;
+}
+
 // Question 3's second rule: "A High gap may be carried conditionally only where —
 // no mandatory safety, regulatory or release rule is breached; the relevant
 // authorised function accepts the risk; a controlled action and due date are
@@ -82,6 +102,9 @@ export function gapBlocksDecision(gate: GateRecord, decision: GateDecision, next
   if (decision !== 'Proceed' && decision !== 'Proceed with Conditions') return null;
 
   const criticality = text(gate.gapCriticality);
+
+  // SW-39: a resolved gap's assessment is kept, but it no longer blocks.
+  if (isGapResolved(gate)) return null;
 
   // A Critical or High grade stays in force when the status leaves Gap (SME rule
   // audit B14, 2026-10-04). Keying everything on `status === 'Gap'` let a save

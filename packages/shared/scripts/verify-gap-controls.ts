@@ -2,7 +2,7 @@
 // complete and not cancelled, plus the assessor; Critical is never carried; plain Proceed is never allowed on a gap.
 // Run: npm run verify:gap-controls
 import type { GateRecord, NextAction } from '../src/types';
-import { gapBlocksDecision } from '../src/utils/gapCriticality';
+import { gapBlocksDecision, gapResolveMissing, isGapResolved } from '../src/utils/gapCriticality';
 import { controlledActionGaps, isLiveControlledAction } from '../src/utils/controlledActions';
 
 let bad = 0;
@@ -70,6 +70,18 @@ t('an unresolved one carried by a tracked action needs no resolution (Proceed wi
 t('...but a plain Proceed is still refused while it is carried rather than resolved', verdict(done({ gapLinkedNextActionId: 'NA-1' }), [action()], 'Proceed') !== null);
 t('a gate that never had a gap grade is untouched', verdict(gate({ status: 'Complete', gapCriticality: undefined }), [], 'Proceed') === null);
 t('a High gap still needs its tracked action whatever is written as a resolution', verdict(done({ gapCriticality: 'High', gapResolution: 'x', gapEvidenceLink: 'y' }), [])?.missing?.some((m) => m.includes('tracked Next Action')) === true);
+
+// ---- SW-39: Resolve keeps the assessment; a resolved gap stops blocking
+const ready = (over: Partial<GateRecord> = {}): GateRecord => ({ gateId: 'SG04', status: 'Complete', gapCriticality: 'Critical', gapAssessor: 'Sam', gapResolution: 'Re-tested', gapEvidenceLink: 'http://x', ...over });
+t('Resolve is unavailable on a gate with no assessment', gapResolveMissing({ gateId: 'SG04', status: 'Complete' }).includes('a criticality assessment'));
+t('...and names each missing piece (assessor, how, evidence)', gapResolveMissing(ready({ gapAssessor: '', gapResolution: '', gapEvidenceLink: '' })).length === 3);
+t('...while the status is still Gap', gapResolveMissing(ready({ status: 'Gap' })).includes('a Stage status other than Gap'));
+t('...but available once everything is recorded and the status has left Gap', gapResolveMissing(ready()).length === 0);
+t('...and not twice', gapResolveMissing(ready({ gapResolvedAt: '2026-11-12T00:00:00Z' })).includes('(already resolved)'));
+t('a Critical assessment still blocks every Proceed until it is resolved', verdict(ready(), [], 'Proceed') !== null && verdict(ready(), [], 'Proceed with Conditions') !== null);
+t('...and a resolved Critical no longer blocks, the assessment staying on the record', verdict(ready({ gapResolvedAt: '2026-11-12T00:00:00Z', gapResolvedBy: 'Sam' }), [], 'Proceed') === null && ready({ gapResolvedAt: 'x' }).gapCriticality === 'Critical');
+t('...and a resolved High needs no tracked action', verdict(ready({ gapCriticality: 'High', gapResolvedAt: '2026-11-12T00:00:00Z' }), [], 'Proceed') === null);
+t('a resolution does not count while the gate is back at status Gap', !isGapResolved(ready({ status: 'Gap', gapResolvedAt: '2026-11-12T00:00:00Z' })) && verdict(ready({ status: 'Gap', gapResolvedAt: '2026-11-12T00:00:00Z' }), [], 'Proceed with Conditions') !== null);
 
 if (bad) {
   console.error(`\n${bad} FAILED`);

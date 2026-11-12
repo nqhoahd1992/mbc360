@@ -348,6 +348,9 @@ model GateRecord {
   gapLinkedNextActionId String?
   // Round 5 question 9: what was done about a Low or Medium gap that was resolved before signing.
   gapResolution         String?
+  // SW-39: set by the Resolve act (server-written from the session), dropped again if the gate returns to status Gap.
+  gapResolvedBy         String?
+  gapResolvedAt         DateTime?
 
   updatedAt    DateTime  @updatedAt
 

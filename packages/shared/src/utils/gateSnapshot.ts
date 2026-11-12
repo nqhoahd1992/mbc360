@@ -133,6 +133,8 @@ const GATE_RECORD_FIELDS = [
   'gapActionOwner',
   'gapLinkedNextActionId',
   'gapResolution',
+  'gapResolvedBy',
+  'gapResolvedAt',
 ] as const;
 const GATE_CHECK_DETAIL_FIELDS = ['date', 'evidenceRef', 'methodRef', 'internalLink', 'initials'] as const;
 

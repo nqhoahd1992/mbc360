@@ -329,6 +329,7 @@ interface AppState {
   addChange: (record: ChangeRecord) => Promise<boolean>;
   setChangesBulk: (records: ChangeRecord[]) => Promise<boolean>;
   reopenChange: (projectId: string, changeId: string, reason: string) => Promise<boolean>;
+  resolveGap: (projectId: string, gateId: string) => Promise<boolean>;
   assessChangeArea: (projectId: string, changeId: string, body: { area: string; outcome: string; note: string }) => Promise<boolean>;
   triageChange: (projectId: string, changeId: string, body: { outcome: string; confirmedGates: string[]; confirmedMarkets?: string[]; reason: string }) => Promise<boolean>;
 
@@ -764,6 +765,7 @@ export const useAppStore = create<AppState>()(
         // conflict on an unrelated project could refuse it) and reports whether the server took it.
         reopenChange: (pid, changeId, reason) =>
           tryWriteSection(pid, (v) => projectsApi.reopenChange(pid, changeId, reason, v)),
+        resolveGap: (pid, gateId) => tryWriteSection(pid, (v) => projectsApi.resolveGap(pid, gateId, v)),
         assessChangeArea: (pid, changeId, body) =>
           tryWriteSection(pid, (v) => projectsApi.assessChangeArea(pid, changeId, body, v)),
         triageChange: (pid, changeId, body) =>

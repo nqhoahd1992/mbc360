@@ -630,6 +630,12 @@ export const assessChangeArea = (id: string, changeId: string, body: { area: str
     body: JSON.stringify({ ...body, expectedVersion: v }),
   });
 
+export const resolveGap = (id: string, gateId: string, v: number) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/gates/${encodeURIComponent(gateId)}/gap/resolve`, {
+    method: 'POST',
+    body: JSON.stringify({ expectedVersion: v }),
+  });
+
 export const triageChange = (
   id: string,
   changeId: string,

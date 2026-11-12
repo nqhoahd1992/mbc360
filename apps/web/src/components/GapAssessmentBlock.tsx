@@ -1,4 +1,5 @@
-import { DatePicker, Input, Select } from 'antd';
+import { useState } from 'react';
+import { Button, DatePicker, Input, Select, Tooltip, message } from 'antd';
 import { useParams } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
 import StopProjectAction from './StopProjectAction';
@@ -6,7 +7,7 @@ import ChoiceSelect from './ChoiceSelect';
 import dayjs from 'dayjs';
 import type { GateRecord, NextAction, RiskLevel } from '@mbc360/shared/types';
 import { GAP_IMPACT_CATEGORIES, RISK_LEVELS } from '@mbc360/shared/types';
-import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
+import { gapBlocksDecision, gapResolveMissing, isGapResolved } from '@mbc360/shared/utils/gapCriticality';
 import SelfAttestField from './SelfAttestField';
 import NextActionSelect from './NextActionSelect';
 import { controlledActionGaps } from '@mbc360/shared/utils/controlledActions';
@@ -34,7 +35,7 @@ const NO_ACTIONS: NextAction[] = [];
 
 export default function GapAssessmentBlock({
   gate,
-  locked,
+  locked: lockedByGate,
   onChange,
 }: {
   gate: GateRecord;
@@ -47,6 +48,25 @@ export default function GapAssessmentBlock({
   const savedGrade = project?.gates.find((g) => g.gateId === gate.gateId)?.gapCriticality ?? '';
   const criticality = gate.gapCriticality ?? '';
   const graded = criticality !== '';
+
+  // SW-39: Resolve keeps the assessment and adds who resolved the gap and when. The button reads the SAVED record (what the server checks),
+  // is disabled until every condition holds, and the fields lock once the gap is resolved (a gate back at status Gap drops the resolution).
+  const resolveGap = useAppStore((s) => s.resolveGap);
+  const [resolving, setResolving] = useState(false);
+  const savedGate = project?.gates.find((g) => g.gateId === gate.gateId);
+  const resolved = !!savedGate && isGapResolved(savedGate);
+  const resolveMissing = savedGate ? gapResolveMissing(savedGate) : ['a saved gate record'];
+  const locked = lockedByGate || resolved;
+  const onResolve = async () => {
+    if (!projectId) return;
+    setResolving(true);
+    try {
+      const ok = await resolveGap(projectId, gate.gateId);
+      if (ok) message.success('Gap resolved — the assessment stays on the record');
+    } finally {
+      setResolving(false);
+    }
+  };
 
   // Question 3's own words for what each grade does, shown next to the choice so
   // the consequence is visible before someone picks it rather than after Save fails.
@@ -114,6 +134,7 @@ export default function GapAssessmentBlock({
                 // JSON.stringify, so a cleared grade never reached the server and
                 // came back on reload. The API stores '' as NULL.
                 onChange={(v) => onChange({ gapCriticality: (v ?? '') as RiskLevel })}
+                maxButtons={0}
               />
             </label>
 
@@ -184,7 +205,7 @@ export default function GapAssessmentBlock({
               )}
             </div>
 
-            {(criticality === 'Low' || criticality === 'Medium') && (
+            {graded && (
               <label className="gap-fld gap-wide">
                 <span className="gap-label">
                   Resolution{needs('resolution') && <span className="gap-req"> · required</span>}
@@ -192,7 +213,7 @@ export default function GapAssessmentBlock({
                 <Input.TextArea
                   disabled={locked}
                   autoSize={{ minRows: 2, maxRows: 6 }}
-                  placeholder="If this gap was resolved before signing: what was done. If it is not resolved, link a tracked Next Action above instead."
+                  placeholder="How this gap was resolved (what was done). Needed to press Resolve; a gap that is NOT resolved is carried by a tracked Next Action above instead."
                   value={gate.gapResolution}
                   onChange={(e) => onChange({ gapResolution: e.target.value })}
                 />
@@ -200,7 +221,7 @@ export default function GapAssessmentBlock({
             )}
 
             <label className="gap-fld">
-              <span className="gap-label">Evidence link{(criticality === 'Low' || criticality === 'Medium') && needs('resolution') && <span className="gap-req"> · required with the resolution</span>}</span>
+              <span className="gap-label">Evidence link{graded && !resolved && <span className="gap-req"> · needed to resolve</span>}</span>
               <Input
                 disabled={locked}
                 placeholder="Link to the evidence"
@@ -209,6 +230,30 @@ export default function GapAssessmentBlock({
               />
             </label>
           </div>
+          {graded && (
+            <div className="gap-resolve" style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              {resolved ? (
+                <span className="gap-note">
+                  Resolved by {savedGate?.gapResolvedBy ?? '—'}{savedGate?.gapResolvedAt ? ` · ${savedGate.gapResolvedAt.slice(0, 10)}` : ''} — the assessment stays on the record and no longer blocks this gate. Setting the Stage status back to Gap reopens it.
+                </span>
+              ) : (
+                <>
+                  <Tooltip title={resolveMissing.length > 0 ? `Still needed (saved record): ${resolveMissing.join(', ')}` : 'Record this gap as resolved'}>
+                    <span>
+                      <Button type="primary" disabled={lockedByGate || resolveMissing.length > 0} loading={resolving} onClick={onResolve}>
+                        Resolve
+                      </Button>
+                    </span>
+                  </Tooltip>
+                  <span className="gap-note">
+                    {resolveMissing.length > 0
+                      ? `Resolve unlocks once saved: ${resolveMissing.join(', ')}.`
+                      : 'Everything needed is saved — Resolve records who resolved it and when.'}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
       </div>
     </section>
   );

@@ -61,7 +61,7 @@ import {
   nextActionFreezeViolation,
   nextActionRecordChanged,
 } from '@mbc360/shared/utils/nextActionAccess';
-import { gapBlocksDecision } from '@mbc360/shared/utils/gapCriticality';
+import { gapBlocksDecision, gapResolveMissing } from '@mbc360/shared/utils/gapCriticality';
 import { gate11ConditionalChanges, isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
 import { contradictoryClaimRows, publishedInfoViolations } from '@mbc360/shared/utils/claimEvidence';
 import { RM_EVIDENCE_REGISTER, rmEvidenceContradictions } from '@mbc360/shared/utils/rmEvidence';
@@ -6625,6 +6625,7 @@ export class ProjectsService {
       const signedLanes = this.standingGateSignatures(project);
       const existing = project.gates.find((g) => g.gateId === gateId);
       if (!existing) throw new NotFoundException(`Gate ${gateId} not found on project ${id}`);
+      patch = this.gapServerFields(existing, patch);
       // Only a decision change needs authority — owner/due date/evidence/notes are ordinary contribution (rule A4).
       if ('decision' in patch) this.assertCanDecide(user, project, gateId);
       // B4: only the single gate currently open for work may be edited directly.
@@ -6702,9 +6703,10 @@ export class ProjectsService {
       const openChanges = await this.openChangeGateNumbers(tx, id);
       let wrote = false;
 
-      for (const update of gates) {
-        const existing = project.gates.find((g) => g.gateId === update.gateId);
-        if (!existing || !isGateUnlocked(project, update.gateId)) continue;
+      for (const rawUpdate of gates) {
+        const existing = project.gates.find((g) => g.gateId === rawUpdate.gateId);
+        if (!existing || !isGateUnlocked(project, rawUpdate.gateId)) continue;
+        const update = { ...this.gapServerFields(existing, rawUpdate), gateId: rawUpdate.gateId };
         // Round 4 questions 32(c) / 34(d) — same check as the single-gate path.
         // Deliberately THROWS rather than skipping the row, unlike the `strict:
         // false` treatment `resolveDecision` gets here: a missing grant is an
@@ -6819,7 +6821,7 @@ export class ProjectsService {
 
     await tx.gateRecord.updateMany({
       where: { projectId: id, gateId: { in: affected.map((g) => g.gateId) } },
-      data: { status: 'Not Started', decision: null },
+      data: { status: 'Not Started', decision: null, gapResolvedBy: null, gapResolvedAt: null },
     });
     const previousGateSignOffs = await this.clearGateSignOffs(tx, id, affected.map((g) => g.gateId));
     await this.clearPreWorkAcceptance(tx, id, GATES[toIdx].phase);
@@ -7210,6 +7212,51 @@ export class ProjectsService {
     }
   }
 
+  // SW-39: the resolution stamp is the server's, never the client's; and a gate that goes back to status Gap loses its resolution.
+  private gapServerFields(existing: GateRecord, patch: Partial<GateRecord>): Partial<GateRecord> {
+    const rest: Partial<GateRecord> = { ...patch };
+    delete rest.gapResolvedBy;
+    delete rest.gapResolvedAt;
+    const statusAfter = 'status' in rest ? rest.status : existing.status;
+    if (statusAfter === 'Gap' && (existing.gapResolvedAt || existing.gapResolvedBy)) {
+      return { ...rest, gapResolvedBy: '', gapResolvedAt: '' };
+    }
+    return rest;
+  }
+
+  // SW-39: the Resolve act. The assessment is KEPT; this adds who resolved the gap and when, once every condition holds
+  // (gapResolveMissing). Recorded in the gate history like any other change.
+  async resolveGap(user: SessionUser, id: string, gateId: string, expectedVersion: number): Promise<ProjectEnvelope> {
+    await this.mutate(user, id, expectedVersion, 'gate.gap_resolved', async (tx, _row, project) => {
+      const existing = project.gates.find((g) => g.gateId === gateId);
+      if (!existing) throw new NotFoundException(`Gate ${gateId} not found on project ${id}`);
+      if (!isGateUnlocked(project, gateId)) {
+        throw new ForbiddenException(`Gate ${gateId} is not the gate currently open for work - correcting a passed gate requires a Backtrack`);
+      }
+      const missing = gapResolveMissing(existing);
+      if (missing.length > 0) throw new BadRequestException(listMessage('The gap cannot be resolved yet - it still needs:', missing));
+      const signedLanes = this.standingGateSignatures(project);
+      const next: Partial<GateRecord> = { gapResolvedBy: user.displayName, gapResolvedAt: new Date().toISOString() };
+      const changes = diffGateRecord(existing, next);
+      await tx.gateRecord.update({ where: { projectId_gateId: { projectId: id, gateId } }, data: this.gateWriteData(next) });
+      await this.assertSignedContentUnchanged(tx, id, signedLanes);
+      await this.audit.record(
+        {
+          actorId: user.id,
+          projectId: id,
+          entityType: GATE_ENTITY,
+          entityId: gateId,
+          action: 'gate.updated',
+          before: existing as unknown as Prisma.InputJsonValue,
+          after: { changes } as unknown as Prisma.InputJsonValue,
+        },
+        tx,
+      );
+      return { gateId, resolvedBy: user.displayName } as unknown as Prisma.InputJsonValue;
+    });
+    return this.envelope(await this.loadOrThrow(this.prisma, id));
+  }
+
   private gateWriteData(next: Partial<GateRecord>): Prisma.GateRecordUpdateInput {
     if ('status' in next) assertOneOf('Stage status', next.status, STAGE_STATUSES);
     if ('decision' in next) assertOneOf('Gate decision', next.decision, GATE_DECISIONS);
@@ -7228,6 +7275,9 @@ export class ProjectsService {
     for (const field of GAP_ASSESSMENT_FIELDS) {
       if (field in next) data[field] = (next[field] ?? '').trim() || null;
     }
+    // SW-39: only the server's Resolve act (or the reopening on status Gap) sets these.
+    if ('gapResolvedBy' in next) data.gapResolvedBy = (next.gapResolvedBy ?? '').trim() || null;
+    if ('gapResolvedAt' in next) data.gapResolvedAt = next.gapResolvedAt ? new Date(next.gapResolvedAt) : null;
     return data;
   }
 }
