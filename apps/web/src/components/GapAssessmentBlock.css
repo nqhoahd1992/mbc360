@@ -28,7 +28,7 @@
 
 .gap-fld { display: grid; gap: 6px; min-width: 0; }
 .gap-label { color: var(--c-text-2); font-size: 13px; }
-.gap-req { color: var(--c-bad); }
+.gap-req { color: #d48806; }
 .gap-fld .ant-select,
 .gap-fld .ant-picker,
 .gap-fld .ant-input,

@@ -118,10 +118,13 @@ export default function GapAssessmentBlock({
       </div>
 
       <div className="gap-body">
+          <p className="gap-note" style={{ margin: '0 0 12px' }}>
+            Nothing here stops you saving. The notes in orange say what a gap still needs before it can be <strong>carried</strong> (Assessor + Tracked Next Action, signed as Proceed with Conditions) or <strong>resolved</strong> (Assessor + Resolution + Evidence link, then Resolve) — you only need one of the two.
+          </p>
           <div className="gap-grid">
             <label className="gap-fld">
               <span className="gap-label">
-                Criticality{!graded && <span className="gap-req"> · required</span>}
+                Criticality{!graded && <span className="gap-req"> · not graded yet — the gate cannot proceed</span>}
               </span>
               <ChoiceSelect
                 allowClear
@@ -152,7 +155,7 @@ export default function GapAssessmentBlock({
 
             <div className="gap-fld">
               <span className="gap-label">
-                Assessor{needs('assessor') && <span className="gap-req"> · required</span>}
+                Assessor{(needs('assessor') || (graded && !resolved && !gate.gapAssessor)) && <span className="gap-req"> · needed to carry or resolve the gap</span>}
               </span>
               {/* C6: the assessor is whoever records the assessment. */}
               <div className="gap-assessor">
@@ -182,7 +185,7 @@ export default function GapAssessmentBlock({
 
             <div className="gap-fld gap-wide">
               <span className="gap-label">
-                Tracked Next Action{needs('Next Action') && <span className="gap-req"> · required</span>}
+                Tracked Next Action{needs('Next Action') && <span className="gap-req"> · needed to carry the gap under Proceed with Conditions</span>}
               </span>
               <NextActionSelect
                 disabled={locked}
@@ -208,7 +211,7 @@ export default function GapAssessmentBlock({
             {graded && (
               <label className="gap-fld gap-wide">
                 <span className="gap-label">
-                  Resolution{needs('resolution') && <span className="gap-req"> · required</span>}
+                  Resolution{graded && !resolved && !(gate.gapResolution ?? '').trim() && <span className="gap-req"> · needed to resolve the gap</span>}
                 </span>
                 <Input.TextArea
                   disabled={locked}
@@ -221,7 +224,7 @@ export default function GapAssessmentBlock({
             )}
 
             <label className="gap-fld">
-              <span className="gap-label">Evidence link{graded && !resolved && <span className="gap-req"> · needed to resolve</span>}</span>
+              <span className="gap-label">Evidence link{graded && !resolved && !(gate.gapEvidenceLink ?? '').trim() && <span className="gap-req"> · needed to resolve the gap</span>}</span>
               <Input
                 disabled={locked}
                 placeholder="Link to the evidence"
