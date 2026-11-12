@@ -26,6 +26,8 @@ The frontend started as a backend-less demo UI (state in localStorage) and still
 
 **Run `npm run verify:readiness` after touching gate-readiness config.** It catches the three failure modes that are invisible at runtime — a mistyped reference that makes a check unsatisfiable forever, a check vacuously satisfied on an empty register, and a `mode: 'fixed'` register whose seeded values decide the check (that last one shipped as the Gate 7 bug).
 
+**Work one SME question to completion before the next (2026-11-12, project owner).** Build every part the answer names, verify the whole of it (static checks and `npm run verify:e2e`), and only then commit and move on. A part may be left unbuilt only when it is genuinely blocked on the SME's confirmation in the next round: it then goes on that round's question list (an `R6-Qn` with its `[ASSUMPTION: R6-Qn]` tag) and is reported as not finished. Size, risk, test time or habit are not reasons to defer a piece, and the owner is not asked to choose between "commit what is done" and "continue" for work that can simply be done. The owner's words: only move to a new question when the current one has a problem that has to wait for the SME in the next round.
+
 **Never kill the dev server.** The user runs their own `npm run dev`; `npm run dev` (its `predev` runs `kill-port`) and any port-based kill both tear theirs down.
 
 ## Monorepo layout (npm workspaces)
