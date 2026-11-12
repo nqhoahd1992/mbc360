@@ -297,6 +297,8 @@ export default function GateSignOffPanel({
             <ClockCircleOutlined />
             <span>
               Before anyone can sign, complete the Phase Gate Flow above and <strong>save</strong> it: {flowTodo.join(' · ')}.
+              {project.gates.find((g) => g.gateId === gateId)?.status === 'Gap' &&
+                ' A gap on this gate does not stop it being signed: set Stage status to Complete — the gap assessment stays on the record and is carried by its Next Action or resolution.'}
             </span>
           </div>
         )

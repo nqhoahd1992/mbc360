@@ -73,7 +73,14 @@ export default function GapAssessmentBlock({
     ? { tone: 'gap-state-open', text: 'Not yet assessed — a qualified reviewer must record how critical this gap is. Until then the gate can only go to Hold or Backtrack.' }
     : criticality === 'Critical'
       ? { tone: 'gap-state-critical', text: `Assessed Critical — ${consequence.Critical}.` }
-      : { tone: '', text: `Assessed ${criticality} — ${consequence[criticality as RiskLevel]}.` };
+      : {
+          tone: '',
+          text: `Assessed ${criticality} — ${consequence[criticality as RiskLevel]}.${
+            gate.status === 'Gap'
+              ? ' A gate cannot be signed while its Stage status is Gap: to carry this gap, set Stage status to Complete (the assessment stays recorded), link the Next Action, then the approver signs Proceed with Conditions.'
+              : ''
+          }`,
+        };
 
   return (
     <section className="gap">

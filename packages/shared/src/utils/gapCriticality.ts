@@ -119,6 +119,10 @@ export function gapBlocksDecision(gate: GateRecord, decision: GateDecision, next
     return missing.length > 0 ? { reason: stillRecorded, allowed: ['Hold', 'Backtrack'], missing } : null;
   }
 
+  // NOTE (2026-11-12): everything below is reached only while the status is still Gap. A gate cannot be SIGNED with a passing decision in that
+  // state (the sign-off needs Stage status Complete, and B1 needs it to pass), so for the sign-off path a gap is carried by keeping the assessment
+  // and setting the status to Complete — the branch above. This branch still answers a direct decision check and the live Gate Flow guidance.
+
   // Not assessed. Deliberately refuses BOTH decisions, where the old behaviour let
   // Proceed with Conditions through: question 3 makes the grading a reviewer's act,
   // so "nobody has graded it" cannot be the state a gate passes in. This is the
