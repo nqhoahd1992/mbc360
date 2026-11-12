@@ -106,6 +106,8 @@ export default function GapAssessmentBlock({
   }
   const resolveChips = resolveMissing.map((m) => m.replace(/^a /, '').replace(/^the /, '').replace('how the gap was resolved', 'Resolution').replace('evidence link', 'Evidence link').replace('assessor', 'Assessor').replace('criticality assessment', 'Criticality').replace('Stage status other than Gap', 'Stage status other than Gap'));
   const chips = chosen === 'carry' ? carryMissing : resolveChips;
+  // Once a way is chosen, the fields it needs carry a red star like the gate's own required fields. The star means "needed for this way", not "Save is blocked".
+  const star = chosen && !resolved ? <span className="gap-star"> *</span> : null;
 
   return (
     <section className="gap">
@@ -167,7 +169,7 @@ export default function GapAssessmentBlock({
                 </label>
 
                 <div className="gap-fld">
-                  <span className="gap-label">Assessor</span>
+                  <span className="gap-label">Assessor{star}</span>
                   {/* C6: the assessor is whoever records the assessment. */}
                   <div className="gap-assessor">
                     <SelfAttestField value={gate.gapAssessor} disabled={locked} onChange={(v) => onChange({ gapAssessor: v })} />
@@ -218,10 +220,15 @@ export default function GapAssessmentBlock({
               <span className="gap-note">A Critical gap has one way forward: resolve it. Otherwise the gate goes to Hold or Backtrack, or the project is stopped.</span>
             )}
             {!resolved && !chosen && <span className="gap-note">Choose one to see what it needs.</span>}
+            {!resolved && chosen && (
+              <span className="gap-note">
+                <span className="gap-star">*</span> needed to {chosen === 'resolve' ? 'resolve' : 'carry'} this gap. Saving is never blocked.
+              </span>
+            )}
 
             {chosen === 'carry' && !resolved && (
               <div className="gap-fld">
-                <span className="gap-label">Tracked Next Action</span>
+                <span className="gap-label">Tracked Next Action{star}</span>
                 <NextActionSelect
                   disabled={locked}
                   value={gate.gapLinkedNextActionId || undefined}
@@ -247,7 +254,7 @@ export default function GapAssessmentBlock({
             {chosen === 'resolve' && (
               <div className="gap-grid">
                 <label className="gap-fld gap-wide">
-                  <span className="gap-label">Resolution</span>
+                  <span className="gap-label">Resolution{star}</span>
                   <Input.TextArea
                     disabled={locked}
                     autoSize={{ minRows: 2, maxRows: 6 }}
@@ -257,7 +264,7 @@ export default function GapAssessmentBlock({
                   />
                 </label>
                 <label className="gap-fld gap-wide">
-                  <span className="gap-label">Evidence link</span>
+                  <span className="gap-label">Evidence link{star}</span>
                   <Input
                     disabled={locked}
                     placeholder="Link to the evidence"
