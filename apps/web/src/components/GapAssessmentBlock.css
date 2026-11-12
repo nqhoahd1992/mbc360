@@ -39,3 +39,24 @@
 .gap-assessor .ant-btn { height: 32px; }
 
 .gap-note { color: var(--c-text-2); font-size: 12px; line-height: 1.5; }
+
+/* 2026-11-12 redesign: the grade is a tag in the header, the state line is one muted sentence, the body is two titled sections (Assess, Handle)
+   and a footer that shows what the chosen path still lacks as chips beside the one action. */
+.gap-head { align-items: center; justify-content: space-between; }
+.gap-titlebar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gap-state-critical, .gap-state-open { color: var(--c-text-2); }
+.gap-section { display: grid; gap: 12px; }
+.gap-section + .gap-section { padding-top: 16px; border-top: 1px solid var(--c-border-2); }
+.gap-section-title { font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--c-text-3); }
+.gap-choices.ant-radio-group { display: grid; gap: 8px; }
+.gap-choice.ant-radio-wrapper {
+  display: flex; align-items: flex-start; margin: 0; padding: 12px 14px; width: 100%;
+  border: 1px solid var(--c-border); border-radius: 8px; background: var(--c-surface);
+}
+.gap-choice.ant-radio-wrapper:hover { background: var(--c-surface-2); }
+.gap-choice.ant-radio-wrapper-checked { border-color: var(--c-primary); box-shadow: 0 0 0 2px var(--c-primary-light); }
+.gap-choice.ant-radio-wrapper > span:last-child { display: grid; gap: 2px; min-width: 0; }
+.gap-choice-title { font-size: 14px; font-weight: 500; color: var(--c-text); }
+.gap-choice-desc { font-size: 13px; color: var(--c-text-2); }
+.gap-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; border-top: 1px solid var(--c-border-2); }
+.gap-needs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }

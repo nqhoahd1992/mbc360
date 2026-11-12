@@ -7,7 +7,7 @@ import ChoiceSelect from './ChoiceSelect';
 import dayjs from 'dayjs';
 import type { GateRecord, NextAction, RiskLevel } from '@mbc360/shared/types';
 import { GAP_IMPACT_CATEGORIES, RISK_LEVELS } from '@mbc360/shared/types';
-import { gapBlocksDecision, gapResolveMissing, isGapResolved } from '@mbc360/shared/utils/gapCriticality';
+import { gapResolveMissing, isGapResolved } from '@mbc360/shared/utils/gapCriticality';
 import SelfAttestField from './SelfAttestField';
 import NextActionSelect from './NextActionSelect';
 import { controlledActionGaps } from '@mbc360/shared/utils/controlledActions';
@@ -80,228 +80,228 @@ export default function GapAssessmentBlock({
     }
   };
 
-  // Question 3's own words for what each grade does, shown next to the choice so
-  // the consequence is visible before someone picks it rather than after Save fails.
-  const consequence: Record<RiskLevel, string> = {
-    Critical: 'cannot be carried under any Proceed decision — the gate must go to Hold or Backtrack',
-    // Round 5 question 9: the action is a tracked Next Action, so owner and date live there. [ASSUMPTION: R6-Q15]
-    High: 'may be carried under Proceed with Conditions only, with the assessor recorded and a tracked Next Action that has an owner, a due date, completion criteria and an escalation trigger',
-    Medium: 'is either resolved before signing (record the resolution and its evidence) or carried under Proceed with Conditions by a tracked Next Action',
-    Low: 'is either resolved before signing (record the resolution and its evidence) or carried under Proceed with Conditions by a tracked Next Action',
+  // One line per grade, in the header: what the grade means for the gate (Round 4 question 3, Round 5 question 9). The detail lives in the path
+  // the person picks below, so it is not repeated here.
+  const gist: Record<RiskLevel, string> = {
+    Critical: 'Cannot be carried under any Proceed — resolve it, or the gate goes to Hold or Backtrack.',
+    High: 'Can only be carried under Proceed with Conditions, owned by a tracked Next Action.',
+    Medium: 'Resolve it now, or carry it under Proceed with Conditions with a tracked Next Action.',
+    Low: 'Resolve it now, or carry it under Proceed with Conditions with a tracked Next Action.',
   };
+  const gradeTone: Record<RiskLevel, string> = { Critical: 'c-tag-bad', High: 'c-tag-bad', Medium: 'c-tag-warn', Low: 'c-tag-ok' };
 
-  // Which fields still stand between this gap and a Proceed with Conditions, read
-  // from the SAME function the API guard uses rather than a second list here —
-  // the two cannot drift, and a field marked required on screen is exactly one
-  // the server would name. Empty for Critical, which no Proceed can carry at all.
+  // The tracked Next Actions of this project: the carry path links one, and the gap shows its owner and date instead of keeping copies.
   const nextActions = project?.nextActions ?? NO_ACTIONS;
-  const missing = graded ? (gapBlocksDecision(gate, 'Proceed with Conditions', nextActions)?.missing ?? []) : [];
-  const needs = (label: string) => missing.some((m) => m.includes(label));
   const linked = nextActions.find((a) => a.id === (gate.gapLinkedNextActionId ?? ''));
   const linkedGaps = linked ? controlledActionGaps(linked) : [];
   const hasLegacy = (gate.gapRequiredAction ?? '').trim() !== '' || (gate.gapActionOwner ?? '').trim() !== '';
 
-  const state = !graded
-    ? { tone: 'gap-state-open', text: 'Not yet assessed — a qualified reviewer must record how critical this gap is. Until then the gate can only go to Hold or Backtrack.' }
-    : criticality === 'Critical'
-      ? { tone: 'gap-state-critical', text: `Assessed Critical — ${consequence.Critical}.` }
-      : {
-          tone: '',
-          text: `Assessed ${criticality} — ${consequence[criticality as RiskLevel]}.${
-            gate.status === 'Gap'
-              ? ' A gate cannot be signed while its Stage status is Gap: to carry this gap, set Stage status to Complete (the assessment stays recorded), link the Next Action, then the approver signs Proceed with Conditions.'
-              : ''
-          }`,
-        };
+  // What the chosen path still lacks, read from the SAVED record (what the server checks). A chip per missing piece, not a sentence.
+  const carryMissing: string[] = [];
+  if (savedGate) {
+    if (!(savedGate.gapAssessor ?? '').trim()) carryMissing.push('Assessor');
+    const savedLinked = nextActions.find((a) => a.id === (savedGate.gapLinkedNextActionId ?? ''));
+    if (!savedLinked) carryMissing.push('Tracked Next Action');
+    else if (controlledActionGaps(savedLinked).length > 0) carryMissing.push('Next Action details');
+  }
+  const resolveChips = resolveMissing.map((m) => m.replace(/^a /, '').replace(/^the /, '').replace('how the gap was resolved', 'Resolution').replace('evidence link', 'Evidence link').replace('assessor', 'Assessor').replace('criticality assessment', 'Criticality').replace('Stage status other than Gap', 'Stage status other than Gap'));
+  const chips = chosen === 'carry' ? carryMissing : resolveChips;
 
   return (
     <section className="gap">
       <div className="gap-head">
         <div className="gap-head-main">
-          <span className="gap-title">Gap assessment</span>
-          <span className={`gap-state ${state.tone}`}>
-            {state.text}
-            {criticality === 'Critical' && ' If the project cannot go on, it can be stopped instead (final).'}
+          <div className="gap-titlebar">
+            <span className="gap-title">Gap assessment</span>
+            {graded ? (
+              <span className={`c-tag c-tag-dot ${gradeTone[criticality as RiskLevel]}`}>{criticality}</span>
+            ) : (
+              <span className="c-tag c-tag-dot c-tag-warn">Not assessed</span>
+            )}
+            {resolved && <span className="c-tag c-tag-dot c-tag-ok">Resolved</span>}
+          </div>
+          <span className="gap-state">
+            {graded
+              ? gist[criticality as RiskLevel]
+              : 'Grade how critical this gap is. Until then the gate can only go to Hold or Backtrack.'}
           </span>
-          {/* SW-31: a Critical gap is the one condition under which the project may be stopped. Only the project Lead or
-              an administrator sees the button; it is disabled until the Critical grade is saved. */}
-          {criticality === 'Critical' && project && <StopProjectAction project={project} unsaved={savedGrade !== 'Critical'} />}
         </div>
+        {/* SW-31: a Critical gap is the one condition under which the project may be stopped. Only the project Lead or an administrator
+            sees the button; it is disabled until the Critical grade is saved. */}
+        {criticality === 'Critical' && project && <StopProjectAction project={project} unsaved={savedGrade !== 'Critical'} />}
       </div>
 
       <div className="gap-body">
-        <p className="gap-note" style={{ margin: '0 0 12px' }}>
-          Nothing here stops you saving. Grade the gap first; then say how it will be handled and only the fields for that way appear.
-        </p>
-        <div className="gap-grid">
-          <label className="gap-fld">
-            <span className="gap-label">
-              Criticality{!graded && <span className="gap-req"> · step 1 — grade the gap, or the gate cannot proceed</span>}
-            </span>
-            <ChoiceSelect
-              allowClear
-              disabled={locked}
-              status={graded ? undefined : 'error'}
-              placeholder="Select a level"
-              value={gate.gapCriticality}
-              options={[...RISK_LEVELS]}
-              // Cleared as '' rather than undefined: undefined is dropped by
-              // JSON.stringify, so a cleared grade never reached the server and
-              // came back on reload. The API stores '' as NULL.
-              onChange={(v) => onChange({ gapCriticality: (v ?? '') as RiskLevel })}
-              maxButtons={0}
-            />
-          </label>
+        <div className="gap-section">
+          <span className="gap-section-title">Assess</span>
+          <div className="gap-grid">
+            <label className="gap-fld">
+              <span className="gap-label">Criticality</span>
+              <ChoiceSelect
+                allowClear
+                disabled={locked}
+                status={graded ? undefined : 'error'}
+                placeholder="Select a level"
+                value={gate.gapCriticality}
+                options={[...RISK_LEVELS]}
+                // Cleared as '' rather than undefined: undefined is dropped by
+                // JSON.stringify, so a cleared grade never reached the server and
+                // came back on reload. The API stores '' as NULL.
+                onChange={(v) => onChange({ gapCriticality: (v ?? '') as RiskLevel })}
+                maxButtons={0}
+              />
+            </label>
 
-          {graded && (
-            <>
-              <label className="gap-fld">
-                <span className="gap-label">Impact category</span>
-                <Select
-                  allowClear
-                  disabled={locked}
-                  placeholder="Select a category"
-                  value={gate.gapImpactCategory || undefined}
-                  options={GAP_IMPACT_CATEGORIES.map((o) => ({ value: o, label: o }))}
-                  onChange={(v?: string) => onChange({ gapImpactCategory: v ?? '' })}
-                />
-              </label>
-
-              <div className="gap-fld">
-                <span className="gap-label">
-                  Assessor{!resolved && !gate.gapAssessor && <span className="gap-req"> · needed to carry or resolve the gap</span>}
-                </span>
-                {/* C6: the assessor is whoever records the assessment. */}
-                <div className="gap-assessor">
-                  <SelfAttestField value={gate.gapAssessor} disabled={locked} onChange={(v) => onChange({ gapAssessor: v })} />
-                </div>
-              </div>
-
-              <label className="gap-fld">
-                <span className="gap-label">Assessment date</span>
-                <DatePicker
-                  disabled={locked}
-                  value={gate.gapAssessmentDate ? dayjs(gate.gapAssessmentDate) : null}
-                  onChange={(d) => onChange({ gapAssessmentDate: d ? d.format('YYYY-MM-DD') : '' })}
-                />
-              </label>
-
-              <label className="gap-fld gap-wide">
-                <span className="gap-label">Rationale</span>
-                <Input.TextArea
-                  disabled={locked}
-                  autoSize={{ minRows: 3, maxRows: 8 }}
-                  placeholder="Why this gap carries the criticality recorded above"
-                  value={gate.gapRationale}
-                  onChange={(e) => onChange({ gapRationale: e.target.value })}
-                />
-              </label>
-
-              {!resolved && (
-                <div className="gap-fld gap-wide">
-                  <span className="gap-label">Step 2 — how will this gap be handled?</span>
-                  <Radio.Group
-                    disabled={lockedByGate}
-                    value={chosen}
-                    onChange={(e) => setPath(e.target.value)}
-                    style={{ display: 'grid', gap: 8 }}
-                  >
-                    <Radio value="resolve">
-                      <strong>Resolve it now</strong> — the gap is already fixed. Record how and the evidence, then press Resolve; the gate can go on as a normal Proceed.
-                    </Radio>
-                    <Tooltip title={criticality === 'Critical' ? 'A Critical gap cannot be carried under any Proceed decision' : ''}>
-                      <span>
-                        <Radio value="carry" disabled={criticality === 'Critical'}>
-                          <strong>Carry it</strong> — fix it later. A tracked Next Action owns the fix; the gate is signed as Proceed with Conditions.
-                        </Radio>
-                      </span>
-                    </Tooltip>
-                  </Radio.Group>
-                  {criticality === 'Critical' && (
-                    <span className="gap-note">A Critical gap has one way forward: resolve it (or Hold / Backtrack / stop the project).</span>
-                  )}
-                  {!chosen && <span className="gap-note">Choose one to see what it needs.</span>}
-                </div>
-              )}
-
-              {chosen === 'carry' && !resolved && (
-                <div className="gap-fld gap-wide">
-                  <span className="gap-label">
-                    Tracked Next Action{needs('Next Action') && <span className="gap-req"> · needed to carry the gap</span>}
-                  </span>
-                  <NextActionSelect
+            {graded && (
+              <>
+                <label className="gap-fld">
+                  <span className="gap-label">Impact category</span>
+                  <Select
+                    allowClear
                     disabled={locked}
-                    value={gate.gapLinkedNextActionId || undefined}
-                    onChange={(v) => onChange({ gapLinkedNextActionId: v ?? '' })}
+                    placeholder="Select a category"
+                    value={gate.gapImpactCategory || undefined}
+                    options={GAP_IMPACT_CATEGORIES.map((o) => ({ value: o, label: o }))}
+                    onChange={(v?: string) => onChange({ gapImpactCategory: v ?? '' })}
                   />
-                  {/* The gap shows the action's owner and date instead of keeping its own copies (Round 5 question 9). */}
-                  {linked ? (
-                    <span className="gap-note">
-                      Owner {linked.owner || '—'} · due {linked.dueDate || '—'} · {linked.status}
-                      {linkedGaps.length > 0 && ` — still needs ${linkedGaps.join(', ')} (edit it in the Next Actions table below)`}
-                    </span>
-                  ) : (
-                    <span className="gap-note">Raise the action in the Next Actions table below, save it, then link it here. A date in free text does not count.</span>
-                  )}
-                  {hasLegacy && (
-                    <span className="gap-note">
-                      Recorded before actions were tracked: {gate.gapRequiredAction || '—'} (owner {gate.gapActionOwner || '—'}). It no longer counts.
-                    </span>
-                  )}
-                  <span className="gap-note">Next: set Stage status to Complete and save; the approver then signs Proceed with Conditions.</span>
-                </div>
-              )}
+                </label>
 
-              {chosen === 'resolve' && (
-                <>
-                  <label className="gap-fld gap-wide">
-                    <span className="gap-label">
-                      Resolution{!resolved && !(gate.gapResolution ?? '').trim() && <span className="gap-req"> · needed to resolve the gap</span>}
-                    </span>
-                    <Input.TextArea
-                      disabled={locked}
-                      autoSize={{ minRows: 2, maxRows: 6 }}
-                      placeholder="How this gap was resolved: what was done"
-                      value={gate.gapResolution}
-                      onChange={(e) => onChange({ gapResolution: e.target.value })}
-                    />
-                  </label>
-                  <label className="gap-fld">
-                    <span className="gap-label">
-                      Evidence link{!resolved && !(gate.gapEvidenceLink ?? '').trim() && <span className="gap-req"> · needed to resolve the gap</span>}
-                    </span>
-                    <Input
-                      disabled={locked}
-                      placeholder="Link to the evidence"
-                      value={gate.gapEvidenceLink}
-                      onChange={(e) => onChange({ gapEvidenceLink: e.target.value })}
-                    />
-                  </label>
-                </>
-              )}
-            </>
-          )}
+                <div className="gap-fld">
+                  <span className="gap-label">Assessor</span>
+                  {/* C6: the assessor is whoever records the assessment. */}
+                  <div className="gap-assessor">
+                    <SelfAttestField value={gate.gapAssessor} disabled={locked} onChange={(v) => onChange({ gapAssessor: v })} />
+                  </div>
+                </div>
+
+                <label className="gap-fld">
+                  <span className="gap-label">Assessment date</span>
+                  <DatePicker
+                    disabled={locked}
+                    value={gate.gapAssessmentDate ? dayjs(gate.gapAssessmentDate) : null}
+                    onChange={(d) => onChange({ gapAssessmentDate: d ? d.format('YYYY-MM-DD') : '' })}
+                  />
+                </label>
+
+                <label className="gap-fld gap-wide">
+                  <span className="gap-label">Rationale</span>
+                  <Input.TextArea
+                    disabled={locked}
+                    autoSize={{ minRows: 2, maxRows: 6 }}
+                    placeholder="Why this gap carries the criticality recorded above"
+                    value={gate.gapRationale}
+                    onChange={(e) => onChange({ gapRationale: e.target.value })}
+                  />
+                </label>
+              </>
+            )}
+          </div>
         </div>
-        {graded && chosen === 'resolve' && (
-          <div className="gap-resolve" style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+
+        {graded && (
+          <div className="gap-section">
+            <span className="gap-section-title">{resolved ? 'Resolution' : 'Handle'}</span>
+
+            {!resolved && criticality !== 'Critical' && (
+              <Radio.Group disabled={lockedByGate} value={chosen} onChange={(e) => setPath(e.target.value)} className="gap-choices">
+                <Radio value="resolve" className="gap-choice">
+                  <span className="gap-choice-title">Resolve it now</span>
+                  <span className="gap-choice-desc">Already fixed. Record how and the evidence, then press Resolve. The gate can go on as a normal Proceed.</span>
+                </Radio>
+                <Radio value="carry" className="gap-choice">
+                  <span className="gap-choice-title">Carry it</span>
+                  <span className="gap-choice-desc">Fix it later. A tracked Next Action owns the fix and the gate is signed as Proceed with Conditions.</span>
+                </Radio>
+              </Radio.Group>
+            )}
+            {!resolved && criticality === 'Critical' && (
+              <span className="gap-note">A Critical gap has one way forward: resolve it. Otherwise the gate goes to Hold or Backtrack, or the project is stopped.</span>
+            )}
+            {!resolved && !chosen && <span className="gap-note">Choose one to see what it needs.</span>}
+
+            {chosen === 'carry' && !resolved && (
+              <div className="gap-fld">
+                <span className="gap-label">Tracked Next Action</span>
+                <NextActionSelect
+                  disabled={locked}
+                  value={gate.gapLinkedNextActionId || undefined}
+                  onChange={(v) => onChange({ gapLinkedNextActionId: v ?? '' })}
+                />
+                {/* The gap shows the action's owner and date instead of keeping its own copies (Round 5 question 9). */}
+                {linked ? (
+                  <span className="gap-note">
+                    Owner {linked.owner || '—'} · due {linked.dueDate || '—'} · {linked.status}
+                    {linkedGaps.length > 0 && ` — still needs ${linkedGaps.join(', ')} (edit it in the Next Actions table below)`}
+                  </span>
+                ) : (
+                  <span className="gap-note">Raise the action in the Next Actions table below, save it, then link it here.</span>
+                )}
+                {hasLegacy && (
+                  <span className="gap-note">
+                    Recorded before actions were tracked: {gate.gapRequiredAction || '—'} (owner {gate.gapActionOwner || '—'}). It no longer counts.
+                  </span>
+                )}
+              </div>
+            )}
+
+            {chosen === 'resolve' && (
+              <div className="gap-grid">
+                <label className="gap-fld gap-wide">
+                  <span className="gap-label">Resolution</span>
+                  <Input.TextArea
+                    disabled={locked}
+                    autoSize={{ minRows: 2, maxRows: 6 }}
+                    placeholder="What was done to resolve this gap"
+                    value={gate.gapResolution}
+                    onChange={(e) => onChange({ gapResolution: e.target.value })}
+                  />
+                </label>
+                <label className="gap-fld gap-wide">
+                  <span className="gap-label">Evidence link</span>
+                  <Input
+                    disabled={locked}
+                    placeholder="Link to the evidence"
+                    value={gate.gapEvidenceLink}
+                    onChange={(e) => onChange({ gapEvidenceLink: e.target.value })}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        )}
+
+        {graded && chosen && (
+          <div className="gap-footer">
             {resolved ? (
               <span className="gap-note">
-                Resolved by {savedGate?.gapResolvedBy ?? '—'}{savedGate?.gapResolvedAt ? ` · ${savedGate.gapResolvedAt.slice(0, 10)}` : ''} — the assessment stays on the record and no longer blocks this gate. Setting the Stage status back to Gap reopens it.
+                Resolved by {savedGate?.gapResolvedBy ?? '—'}
+                {savedGate?.gapResolvedAt ? ` · ${savedGate.gapResolvedAt.slice(0, 10)}` : ''}. The assessment stays on the record and no longer blocks this gate. Setting the Stage status back to Gap reopens it.
               </span>
             ) : (
               <>
-                <Tooltip title={resolveMissing.length > 0 ? `Still needed (saved record): ${resolveMissing.join(', ')}` : 'Record this gap as resolved'}>
-                  <span>
-                    <Button type="primary" disabled={lockedByGate || resolveMissing.length > 0} loading={resolving} onClick={onResolve}>
-                      Resolve
-                    </Button>
-                  </span>
-                </Tooltip>
-                <span className="gap-note">
-                  {resolveMissing.length > 0
-                    ? `Resolve unlocks once saved: ${resolveMissing.join(', ')}.`
-                    : 'Everything needed is saved — Resolve records who resolved it and when.'}
-                </span>
+                <div className="gap-needs">
+                  {chips.length === 0 ? (
+                    <span className="c-tag c-tag-dot c-tag-ok">{chosen === 'resolve' ? 'Ready to resolve' : 'Ready to carry'}</span>
+                  ) : (
+                    <>
+                      <span className="gap-note">Still needed (saved):</span>
+                      {chips.map((m) => (
+                        <span key={m} className="c-tag c-tag-warn">
+                          {m}
+                        </span>
+                      ))}
+                    </>
+                  )}
+                </div>
+                {chosen === 'resolve' && (
+                  <Tooltip title={resolveMissing.length > 0 ? `Still needed: ${resolveMissing.join(', ')}` : 'Record this gap as resolved'}>
+                    <span>
+                      <Button type="primary" disabled={lockedByGate || resolveMissing.length > 0} loading={resolving} onClick={onResolve}>
+                        Resolve
+                      </Button>
+                    </span>
+                  </Tooltip>
+                )}
               </>
             )}
           </div>
