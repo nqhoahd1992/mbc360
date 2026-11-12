@@ -14,6 +14,7 @@ const ROOT = resolve(__dirname, '..', '..', '..', '..');
 const { GATE_READINESS } = require(join(ROOT, 'packages/shared/dist/config/gateReadiness.js'));
 const { REGISTER_CONFIGS } = require(join(ROOT, 'packages/shared/dist/config/registers.js'));
 const gp = require(join(ROOT, 'packages/shared/dist/utils/gateProgress.js'));
+const { GATES } = require(join(ROOT, 'packages/shared/dist/config/gates.js'));
 const rc = require(join(ROOT, 'packages/shared/dist/utils/registerClosures.js'));
 const snap = require(join(ROOT, 'packages/shared/dist/utils/gateSnapshot.js'));
 const refSnap = require(join(ROOT, 'packages/shared/dist/utils/referenceSnapshot.js'));
@@ -2044,13 +2045,24 @@ export async function run(base: string, db: Client): Promise<number> {
 
   // ============================================================ Change Control: a material impact reopens the confirmed gates (Round 5 question 10)
   console.log('\n--- Change Control: a Material triage reopens the confirmed gates that stand passed, and keeps the earlier record');
+  const pjBeforeM = await project();
   {
+    const passedBeforeM = GATES.map((g: { id: string }) => g.id).filter((g: string) => gp.isGatePassed((pjBeforeM as any).project, g));
+    const holdsBefore = (await db.query(`SELECT count(*)::int AS n FROM audit_events WHERE "projectId" = $1 AND action = 'gate.held_by_change'`, [PROJECT])).rows[0].n;
     r = await api('admin', 'PUT', `/projects/${PROJECT}/changes`, {
       records: [...(await project()).project.changes, newChange('CHG-E2E-M', 'pif-any-change')],
       expectedVersion: await version(),
     });
     t('a change that will turn out material is recorded', r.status < 300, `${r.status} ${short(r.json)}`);
     pj = await project();
+    const wentOff = passedBeforeM.filter((g: string) => !gp.isGatePassed(pj.project, g));
+    const holdsAfter = (await db.query(`SELECT count(*)::int AS n FROM audit_events WHERE "projectId" = $1 AND action = 'gate.held_by_change'`, [PROJECT])).rows[0].n;
+    t('every gate that stopped counting as passed because of the change was recorded once', holdsAfter - holdsBefore === wentOff.length, `${holdsAfter - holdsBefore} vs ${short(wentOff)}`);
+    console.log(`   gates held by the change: ${wentOff.join(', ') || 'none (nothing had passed)'}`);
+    if (wentOff.length > 0) {
+      const entry = (pj.project.gateHoldLog ?? []).find((e: any) => e.gateId === wentOff[0]);
+      t('...and the envelope carries it with the change and what the gate now waits on', !!entry && entry.changeIds.includes('CHG-E2E-M') && entry.reasons.length > 0 && !!entry.changedBy, short(entry));
+    }
     const standing = ['SG12', 'SG11'].filter((g) => gp.isGatePassed(pj.project, g));
     const before = (await db.query(`SELECT count(*)::int AS n FROM backtrack_events WHERE "projectId" = $1`, [PROJECT])).rows[0].n;
     r = await triage('CHG-E2E-M', 'Material impact', ['SG11', 'SG12']);
@@ -2060,6 +2072,150 @@ export async function run(base: string, db: Client): Promise<number> {
     const after = (await db.query(`SELECT count(*)::int AS n, max(reason) AS reason FROM backtrack_events WHERE "projectId" = $1`, [PROJECT])).rows[0];
     t('...recorded as one event that keeps the earlier record and names the change', standing.length === 0 || (after.n === before + 1 && /CHG-E2E-M/.test(String(after.reason))), short(after));
   }
+
+  // ============================================================ the deferred parts of Round 5 questions 9-11, 2026-11-12
+  console.log('\n--- Round 5 questions 9-11: resolved gaps, per-market triage scope, linked review, revised triage, area assessments, baselines');
+  const changesNow = async () => (await project()).project.changes as any[];
+  const addChange = async (c: any) =>
+    api('admin', 'PUT', `/projects/${PROJECT}/changes`, { records: [...(await changesNow()), c], expectedVersion: await version() });
+  const holdFn = async (roleKey: string, userId: string | null) =>
+    api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey, userId }], expectedVersion: await version() });
+  const projMarkets: string[] = [...((await project()).project.identity.markets ?? [])];
+
+  // ---- question 7: a recorded triage is revised, never overwritten silently
+  {
+    await addChange({ ...newChange('CHG-E2E-R', 'pif-any-change'), impactAreas: [] });
+    r = await triage('CHG-E2E-R', 'No material impact');
+    r = await triage('CHG-E2E-R', 'Administrative correction');
+    t('a recorded triage can be revised by the holder, with a reason', r.status < 300, `${r.status} ${short(r.json)}`);
+    const rev = (await db.query(`SELECT before FROM audit_events WHERE "projectId" = $1 AND action = 'change.triage_revised' AND "entityId" = 'CHG-E2E-R' ORDER BY "occurredAt" DESC LIMIT 1`, [PROJECT])).rows[0];
+    t('...and the earlier assessment stays in the audit trail', !!rev && rev.before?.outcome === 'No material impact' && !!rev.before?.by, short(rev));
+  }
+
+  // ---- question 10: Gates 10-12 scope per market
+  {
+    r = await addChange({ ...newChange('CHG-E2E-PM', 'pif-any-change'), impactAreas: [] });
+    t('a change for the per-market scope test is recorded', r.status < 300, `${r.status} ${short(r.json)}`);
+    const m1 = projMarkets[0];
+    const m2 = projMarkets[1];
+    await db.query(`DELETE FROM gate_sign_offs WHERE id LIKE 'e2e-lane-%'`);
+    for (const [i, m] of [m1, m2].entries()) {
+      await db.query(
+        `INSERT INTO gate_sign_offs (id, "projectId", "gateId", market, role, name, "signedAt", decision, "updatedAt") VALUES ($1, $2, 'SG10', $3, 'Prepared by', 'e2e', now(), 'Proceed', now())`,
+        [`e2e-lane-${i}`, PROJECT, m],
+      );
+    }
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'quality-change-control', userId: sessions['admin'].id }], expectedVersion: await version() });
+    r = await api('admin', 'POST', `/projects/${PROJECT}/changes/CHG-E2E-PM/triage`, { outcome: 'Material impact', confirmedGates: ['SG10'], confirmedMarkets: ['Atlantis'], reason: 'e2e', expectedVersion: await version() });
+    t('a market that is not one of the project is refused (400)', r.status === 400 && /Atlantis/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await api('admin', 'POST', `/projects/${PROJECT}/changes/CHG-E2E-PM/triage`, { outcome: 'Material impact', confirmedGates: ['SG10'], confirmedMarkets: [m1], reason: 'e2e market scope', expectedVersion: await version() });
+    triageActs++;
+    await holdFn('quality-change-control', null);
+    t('a Material triage naming one market is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
+    const lanes = (await db.query(`SELECT market, "signedAt" FROM gate_sign_offs WHERE id LIKE 'e2e-lane-%'`)).rows;
+    t('...only the named market lane is reopened (its signature cleared)', lanes.find((l: any) => l.market === m1)?.signedAt === null, short(lanes));
+    t('...the other market keeps its signature', lanes.find((l: any) => l.market === m2)?.signedAt !== null, short(lanes));
+    const ev = (await db.query(`SELECT before, after FROM audit_events WHERE "projectId" = $1 AND action = 'gate.market_lanes_reopened' ORDER BY "occurredAt" DESC LIMIT 1`, [PROJECT])).rows[0];
+    t('...and the cleared signature is kept in the audit event', !!ev && (ev.before?.cleared ?? []).length >= 1 && (ev.before?.cleared ?? []).every((x: any) => x.market === m1) && ev.after?.markets?.[0] === m1, short(ev));
+    pj = await project();
+    t('...recorded on the change as its confirmed markets', (pj.project.changes.find((c: any) => c.changeId === 'CHG-E2E-PM')?.confirmedMarkets ?? [])[0] === m1);
+    await db.query(`DELETE FROM gate_sign_offs WHERE id LIKE 'e2e-lane-%'`);
+  }
+
+  // ---- question 10: a linked Gate 12 review per market, earlier reviews kept
+  {
+    const m1 = projMarkets[0];
+    r = await addChange({ ...newChange('CHG-E2E-L', 'pif-any-change'), impactAreas: [] });
+    const reviewsBefore = (await db.query(`SELECT count(*)::int AS n FROM post_launch_reviews WHERE "projectId" = $1 AND milestone NOT LIKE 'change:%'`, [PROJECT])).rows[0].n;
+    await holdFn('quality-change-control', sessions['admin'].id);
+    r = await api('admin', 'POST', `/projects/${PROJECT}/changes/CHG-E2E-L/triage`, { outcome: 'Material impact', confirmedGates: ['SG12'], confirmedMarkets: [m1], reason: 'e2e post-market', expectedVersion: await version() });
+    triageActs++;
+    await holdFn('quality-change-control', null);
+    t('a Material triage reaching Gate 12 is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
+    const linked = (await db.query(`SELECT market, "linkedChangeId", "formulaVersion", "completedDate" FROM post_launch_reviews WHERE "projectId" = $1 AND milestone = 'change:CHG-E2E-L'`, [PROJECT])).rows;
+    t('...it opens exactly one linked review, for the named market, open, with the change and the version', linked.length === 1 && linked[0].market === m1 && linked[0].linkedChangeId === 'CHG-E2E-L' && !!linked[0].formulaVersion && linked[0].completedDate === null, short(linked));
+    const reviewsAfter = (await db.query(`SELECT count(*)::int AS n FROM post_launch_reviews WHERE "projectId" = $1 AND milestone NOT LIKE 'change:%'`, [PROJECT])).rows[0].n;
+    t('...and no earlier review was deleted', reviewsAfter === reviewsBefore, `${reviewsBefore} -> ${reviewsAfter}`);
+    pj = await project();
+    t('...the review reaches the envelope with its link', (pj.project.postLaunchReviews ?? []).some((x: any) => x.milestone === 'change:CHG-E2E-L' && x.linkedChangeId === 'CHG-E2E-L'));
+  }
+
+  // ---- question 11: area assessments, and NP's approval does not stand in
+  {
+    r = await addChange({ ...newChange('CHG-E2E-A', 'pif-any-change'), impactAreas: ['Safety'] });
+    t('a change with a Safety impact area is recorded', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await triage('CHG-E2E-A', 'No material impact');
+    const A = async () => (await changesNow()).find((c: any) => c.changeId === 'CHG-E2E-A');
+    r = await putChanges((await changesNow()).map((c: any) => (c.changeId === 'CHG-E2E-A' ? { ...c, status: 'Approved - Implementation Pending' } : c)));
+    t('a triaged change cannot be approved while an impact area has no assessment (400)', r.status === 400 && /assessed Safety/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    const assess = (key: string, body: any) => api(key, 'POST', `/projects/${PROJECT}/changes/CHG-E2E-A/area-assessments`, body).then(async (x: any) => x);
+    r = await api('admin', 'POST', `/projects/${PROJECT}/changes/CHG-E2E-A/area-assessments`, { area: 'Safety', outcome: 'No concern', note: 'x', expectedVersion: await version() });
+    t('nobody holds the Safety function yet, so nobody can assess it (400)', r.status === 400 && /Nobody is assigned/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    await holdFn('safety-scientific', sessions[other].id);
+    r = await api('admin', 'POST', `/projects/${PROJECT}/changes/CHG-E2E-A/area-assessments`, { area: 'Safety', outcome: 'No concern', note: 'x', expectedVersion: await version() });
+    t('an administrator does not stand in for the function holder (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+    void assess;
+    r = await api(other, 'POST', `/projects/${PROJECT}/changes/CHG-E2E-A/area-assessments`, { area: 'Formula', outcome: 'No concern', note: 'x', expectedVersion: await version() });
+    t('an area the change does not name is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await api(other, 'POST', `/projects/${PROJECT}/changes/CHG-E2E-A/area-assessments`, { area: 'Safety', outcome: 'Fine', note: 'x', expectedVersion: await version() });
+    t('an outcome off the list is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await api(other, 'POST', `/projects/${PROJECT}/changes/CHG-E2E-A/area-assessments`, { area: 'Safety', outcome: 'No concern', note: ' ', expectedVersion: await version() });
+    t('an assessment with no note is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await api(other, 'POST', `/projects/${PROJECT}/changes/CHG-E2E-A/area-assessments`, { area: 'Safety', outcome: 'Action required', note: 'first look', expectedVersion: await version() });
+    t('the function holder records the assessment as themselves', r.status < 300, `${r.status} ${short(r.json)}`);
+    const rec = (await A())?.areaAssessments?.[0];
+    t('...with who, when and the outcome', rec?.area === 'Safety' && rec?.outcome === 'Action required' && !!rec?.assessedBy && !!rec?.assessedAt, short(rec));
+    r = await api(other, 'POST', `/projects/${PROJECT}/changes/CHG-E2E-A/area-assessments`, { area: 'Safety', outcome: 'No concern', note: 'second look', expectedVersion: await version() });
+    const earlier = (await db.query(`SELECT after FROM audit_events WHERE "projectId" = $1 AND action = 'change.area_assessed' ORDER BY "occurredAt" DESC LIMIT 1`, [PROJECT])).rows[0];
+    t('a later assessment replaces the current one and the earlier stays in the audit event', r.status < 300 && earlier?.after?.earlier?.outcome === 'Action required', `${r.status} ${short(earlier)}`);
+    t('...one assessment per area stays current', ((await A())?.areaAssessments ?? []).length === 1);
+    r = await putChanges((await changesNow()).map((c: any) => (c.changeId === 'CHG-E2E-A' ? { ...c, status: 'Approved - Implementation Pending', areaAssessments: [] } : c)));
+    t('once every area is assessed the change can be approved (a forged assessments list is ignored)', r.status < 300 && ((await A())?.areaAssessments ?? []).length === 1, `${r.status} ${short(r.json)}`);
+    await holdFn('safety-scientific', null);
+  }
+
+  // ---- question 11: controlled baselines
+  {
+    const m1 = projMarkets[0];
+    // the changes recorded so far name no impact area, so none of these baselines is covered yet
+    const trackRows = async () => (await project()).project.marketTracks.map((x: any) => ({ ...x }));
+    const saved = (await db.query(`SELECT id, "regulatoryStatus" FROM market_tracks WHERE "projectId" = $1 AND market = $2`, [PROJECT, m1])).rows;
+    await db.query(`UPDATE market_tracks SET "regulatoryStatus" = 'Approved' WHERE "projectId" = $1 AND market = $2`, [PROJECT, m1]);
+    const takeBack = async () => api('admin', 'PUT', `/projects/${PROJECT}/market-tracks`, { tracks: (await trackRows()).map((x: any) => (x.market === m1 ? { ...x, regulatoryStatus: 'Pending' } : x)), expectedVersion: await version() });
+    r = await takeBack();
+    t('taking back a market approval with no covering change is refused (400)', r.status === 400 && /controlled baseline/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await addChange({ ...newChange('CHG-E2E-B1', 'pif-any-change'), impactAreas: ['Regulatory'], markets: [projMarkets[1]] });
+    r = await takeBack();
+    t('...a Regulatory change for ANOTHER market does not cover it (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/changes`, { records: (await changesNow()).map((c: any) => (c.changeId === 'CHG-E2E-B1' ? { ...c, markets: [m1] } : c)), expectedVersion: await version() });
+    r = await takeBack();
+    t('...with an open Regulatory change for this market it is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
+    for (const row of saved) await db.query(`UPDATE market_tracks SET "regulatoryStatus" = $2 WHERE id = $1`, [row.id, row.regulatoryStatus]);
+
+    // a released label
+    const labels = async () => (await project()).project.registers.releasedLabelRegister ?? [];
+    const putLabels = async (rows: any[]) => api('admin', 'PUT', `/projects/${PROJECT}/registers/releasedLabelRegister`, { rows, expectedVersion: await version() });
+    await db.query(`UPDATE change_records SET "impactAreas" = array_remove(array_remove("impactAreas", 'Artwork'), 'Packaging') WHERE "projectId" = $1`, [PROJECT]);
+    const row0 = { productSku: 'e2e-label', newLabelReleased: 'Y', whatChanged: 'first wording' };
+    r = await putLabels([...(await labels()), row0]);
+    t('a new released label row can be recorded', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await putLabels((await labels()).map((x: any) => (x.productSku === 'e2e-label' ? { ...x, whatChanged: 'second wording' } : x)));
+    t('editing a released label with no Artwork or Packaging change is refused (400)', r.status === 400 && /controlled baseline/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await putLabels((await labels()).map((x: any) => (x.productSku === 'e2e-label' ? { ...x, notes: 'just a note' } : x)));
+    t('...notes stay free to edit', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await addChange({ ...newChange('CHG-E2E-B2', 'pif-any-change'), impactAreas: ['Artwork'] });
+    r = await putLabels((await labels()).map((x: any) => (x.productSku === 'e2e-label' ? { ...x, whatChanged: 'second wording' } : x)));
+    t('...with an open Artwork change the edit is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
+    await db.query(`DELETE FROM register_rows WHERE "projectId" = $1 AND "registerKey" = 'releasedLabelRegister' AND data->>'productSku' = 'e2e-label'`, [PROJECT]);
+
+    // An approved claim revision and an Ingredient Substitution row cannot be driven through the API on this project: the claims ledger carries a
+    // standing closing signature (SG03) and the substitution register's gate (04/07) has passed, and both locks answer first. Their rules are covered by
+    // npm run verify:change-baseline; the server calls the same functions.
+  }
+
+  // The Low/Medium resolution rule (question 9) is covered by npm run verify:gap-controls: on this project every gate that could carry the field is
+  // either signed, held by an open change or not current, so a gate save cannot reach gapBlocksDecision here.
+
 
   console.log(bad === 0 ? '\nall passed' : `\n${bad} FAILED`);
   return bad;
