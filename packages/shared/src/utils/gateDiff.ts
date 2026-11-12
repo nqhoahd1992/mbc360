@@ -32,6 +32,7 @@ export const GATE_RECORD_FIELDS: GateFieldChange['field'][] = [
   'gapRequiredAction',
   'gapActionOwner',
   'gapLinkedNextActionId',
+  'gapResolution',
 ];
 
 // Which of `next`'s fields actually differ from `existing`. Only keys PRESENT in

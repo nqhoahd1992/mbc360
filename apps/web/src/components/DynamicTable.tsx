@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import ChangeRefSelect from './ChangeRefSelect';
+import { changeRefPurposeFor } from '@mbc360/shared/utils/changeLinks';
 import { SAFETY_FINDINGS_REGISTER, canChooseSuperseded } from '@mbc360/shared/utils/safetyFindings';
 import { Alert, Button, Checkbox, DatePicker, Drawer, Grid, Input, InputNumber, Select, Tooltip } from 'antd';
 import { DeleteOutlined, DownOutlined, LockOutlined, PlusOutlined, RightOutlined, UpOutlined } from '@ant-design/icons';
@@ -428,7 +429,13 @@ export default function DynamicTable({
         return <ClaimSelect value={value as string | undefined} onChange={(v) => patch(index, column.key, v)} />;
       // Round 5 question 11(4): a reference to a change record is picked from the Change Control log, never typed.
       case 'changeRef':
-        return <ChangeRefSelect value={value as string | undefined} onChange={(v) => patch(index, column.key, v)} />;
+        return (
+          <ChangeRefSelect
+            value={value as string | undefined}
+            purpose={changeRefPurposeFor(config.key, column.key, row)}
+            onChange={(v) => patch(index, column.key, v)}
+          />
+        );
       // D3: a flagged watch-list row must link a REAL controlled Next Action.
       case 'nextActionRef':
         return <NextActionSelect value={value as string | undefined} onChange={(v) => patch(index, column.key, v)} />;

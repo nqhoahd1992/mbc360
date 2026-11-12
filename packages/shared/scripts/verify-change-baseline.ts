@@ -8,7 +8,8 @@ import type { BacktrackEvent, ChangeRecord, GateRecord, ProjectData, RegisterRow
 import { deriveRegisterRows } from '../src/utils/registerDerived';
 import { applyRulebookChanges, rulebookTriggerId } from '../src/utils/changeRulebooks';
 import { formulaChangeRequirement, formulaWasApproved, hasOpenFormulationChange } from '../src/utils/formulaBaseline';
-import { legacyChangeReferences, newChangeReferences } from '../src/utils/changeLinks';
+import { approvedClaimRevisionsWithoutChange, marketAuthorisationRequirement, releasedLabelEditsWithoutChange } from '../src/utils/controlledBaselines';
+import { changeRefPurposeFor, changeRefProblem, legacyChangeReferences, newChangeReferences } from '../src/utils/changeLinks';
 
 let bad = 0;
 const t = (name: string, ok: boolean, extra = '') => {
@@ -72,6 +73,32 @@ t('a new reference is checked, one the register already held is left alone', new
 t('a changed reference is checked', newChangeReferences(fam, [row('CHG-001')], [row('CHG-002')]).length === 1);
 const flagged = { ...withChanges(change({ aliasIds: ['FC-001'] })), registers: { ...base.registers, productFamilyRegister: [row('CHG-001'), row('FC-001'), row('FC-009'), row('typed long ago'), row('')] } };
 t('an unresolved reference is flagged, a CHG or alias is not, and blank is not', legacyChangeReferences(flagged).map((r) => r.value).join('|') === 'FC-009|typed long ago');
+
+// ---- what a reference is FOR (the implementation and closure purposes)
+const sub = (over: RegisterRow = {}): RegisterRow => ({ linkedChangeId: 'CHG-001', ...over });
+t('a substitution still being assessed links a change as an assessment', changeRefPurposeFor('ingredientSubstitution', 'linkedChangeId', sub({ decision: 'Needs Review' })) === 'assessment');
+t('...one decided to go ahead is an implementation', changeRefPurposeFor('ingredientSubstitution', 'linkedChangeId', sub({ decision: 'Approved' })) === 'implementation' && changeRefPurposeFor('ingredientSubstitution', 'linkedChangeId', sub({ decision: 'Conditional' })) === 'implementation');
+t('...and one marked Complete is a closure', changeRefPurposeFor('ingredientSubstitution', 'linkedChangeId', sub({ status: 'Complete', decision: 'Approved' })) === 'closure');
+t('the Product Family register only references a change', changeRefPurposeFor('productFamilyRegister', 'changeRegisterId', {}) === 'reference');
+t('the iteration log and the released-label register link a change as an assessment', changeRefPurposeFor('productDevelopmentIterations', 'linkedChangeId', {}) === 'assessment' && changeRefPurposeFor('releasedLabelRegister', 'artworkChangeRef', {}) === 'assessment');
+const underReview = withChanges(change());
+t('an Approved substitution cannot rest on a change still under review', !!changeRefProblem(underReview, 'ingredientSubstitution', 'linkedChangeId', sub({ decision: 'Approved' })));
+t('...but can once the change is approved to implement and its impact assessed', changeRefProblem(withChanges(change({ status: 'In Implementation', impactTriage: 'Material impact' })), 'ingredientSubstitution', 'linkedChangeId', sub({ decision: 'Approved' })) === undefined);
+t('a Complete substitution needs a Completed change with its final disposition', !!changeRefProblem(withChanges(change({ status: 'Completed' })), 'ingredientSubstitution', 'linkedChangeId', sub({ status: 'Complete' })));
+t('a blank reference raises no problem here (the after-lock requirement is checked separately)', changeRefProblem(underReview, 'ingredientSubstitution', 'linkedChangeId', sub({ linkedChangeId: '' })) === undefined);
+
+// ---- the other controlled baselines: market authorisation, released pack, released claim
+const track = { market: 'Vietnam', formulaVersion: 'F1.0', pifStatus: 'Approved', regulatoryStatus: 'Approved', claimsApproval: 'Approved', launchApproval: 'Approved' } as never;
+const trackBack = { ...(track as object), regulatoryStatus: 'Pending' } as never;
+t('taking back an approved market authorisation needs an open Regulatory change for that market', !!marketAuthorisationRequirement(base, track, trackBack) && marketAuthorisationRequirement(withChanges(change({ impactAreas: ['Regulatory'], markets: ['Vietnam'] })), track, trackBack) === undefined);
+t('...a change for another market does not cover it', !!marketAuthorisationRequirement(withChanges(change({ impactAreas: ['Regulatory'], markets: ['Thailand'] })), track, trackBack));
+t('...and a first approval is not a change to a baseline', marketAuthorisationRequirement(base, { ...(track as object), launchApproval: 'Pending' } as never, track) === undefined);
+const lbl = (over: RegisterRow = {}): RegisterRow => ({ recordId: 'L1', newLabelReleased: 'Y', whatChanged: 'a', ...over });
+t('editing a released label needs an open Artwork or Packaging change', releasedLabelEditsWithoutChange(base, [lbl()], [lbl({ whatChanged: 'b' })]).length === 1 && releasedLabelEditsWithoutChange(withChanges(change({ impactAreas: ['Artwork'] })), [lbl()], [lbl({ whatChanged: 'b' })]).length === 0);
+t('...owner and notes stay free, and an unreleased label is not a baseline', releasedLabelEditsWithoutChange(base, [lbl()], [lbl({ notes: 'x' })]).length === 0 && releasedLabelEditsWithoutChange(base, [lbl({ newLabelReleased: 'N' })], [lbl({ newLabelReleased: 'N', whatChanged: 'b' })]).length === 0);
+const clm = (over: RegisterRow = {}): RegisterRow => ({ claimId: 'C1', revision: 1, revisionApprovedBy: 'Sam', revisionApprovedDate: '2026-01-01', ...over });
+t('a new revision of an approved claim needs an open Claims change', approvedClaimRevisionsWithoutChange(base, [clm()], [clm({ revision: 2 })]).join() === 'C1' && approvedClaimRevisionsWithoutChange(withChanges(change({ impactAreas: ['Claims'] })), [clm()], [clm({ revision: 2 })]).length === 0);
+t('...an unapproved claim moves freely', approvedClaimRevisionsWithoutChange(base, [clm({ revisionApprovedBy: '' })], [clm({ revisionApprovedBy: '', revision: 2 })]).length === 0);
 
 if (bad) {
   console.error(`\n${bad} FAILED`);

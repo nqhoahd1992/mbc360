@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import UserSelect from '../components/UserSelect';
 import ChangeDispositionBlock from '../components/ChangeDispositionBlock';
 import ChangeTriageBlock, { triageSummary } from '../components/ChangeTriageBlock';
+import ChangeAreaAssessmentsBlock from '../components/ChangeAreaAssessmentsBlock';
 import Notice from '../components/Notice';
 import { isChangeDispositionRecorded, missingDispositionFields } from '@mbc360/shared/utils/changeImpact';
 import { AutoComplete, Button, DatePicker, Form, Input, Modal, Select, Switch, message, Tooltip } from 'antd';
@@ -439,7 +440,12 @@ export default function ChangeControl() {
                       key: 'impact',
                       label: 'Assessment',
                       dot: triageSummary(c).pending,
-                      children: <ChangeTriageBlock change={c} />,
+                      children: (
+                        <>
+                          <ChangeTriageBlock change={c} />
+                          <ChangeAreaAssessmentsBlock change={c} />
+                        </>
+                      ),
                     },
                     {
                       key: 'request',

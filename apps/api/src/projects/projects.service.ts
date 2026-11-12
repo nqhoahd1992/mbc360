@@ -112,7 +112,7 @@ import {
 } from '@mbc360/shared/utils/gateSnapshot';
 
 import { assessmentMarkets, changeControlAssessmentProblems, isPendingAnswer } from '@mbc360/shared/utils/changeControlAssessments';
-import { reviewCycleOptions } from '@mbc360/shared/utils/postLaunch';
+import { changeReviewMilestone, marketsForLinkedReview, reviewCycleOptions } from '@mbc360/shared/utils/postLaunch';
 import {
   checklistItemKey,
   expandChecklistOptions,
@@ -122,9 +122,11 @@ import {
   requirementRowKey,
 } from '@mbc360/shared/utils/marketRequirements';
 import { changeTriggerAvailability } from '@mbc360/shared/utils/changeAccess';
-import { newChangeReferences, resolveChangeRef, validChangeRefs } from '@mbc360/shared/utils/changeLinks';
+import { changeRefProblem, newChangeReferences, resolveChangeRef, validChangeRefs } from '@mbc360/shared/utils/changeLinks';
 import { baseColumnsOf, isFormulationChange } from '@mbc360/shared/utils/changeViews';
 import { formulaChangeRequirement, formulaWasApproved } from '@mbc360/shared/utils/formulaBaseline';
+import { areaAssessmentProblems, areasAwaitingAssessment, CHANGE_AREA_FUNCTIONS } from '@mbc360/shared/utils/changeAreaAssessments';
+import { approvedClaimRevisionsWithoutChange, marketAuthorisationRequirement, releasedLabelEditsWithoutChange } from '@mbc360/shared/utils/controlledBaselines';
 import {
   CHANGE_STATUSES_NEEDING_TRIAGE,
   CHANGE_TRIAGE_FUNCTION_KEYS,
@@ -235,6 +237,7 @@ import {
   PROJECT_INCLUDE,
   toChangeRecords,
   toGateChangeLog,
+  toGateHoldLog,
   toGateSignOffLog,
   toPhaseSignOffLog,
   toReadinessAckLog,
@@ -285,10 +288,11 @@ const GAP_ASSESSMENT_FIELDS = [
   'gapRequiredAction',
   'gapActionOwner',
   'gapLinkedNextActionId',
+  'gapResolution',
 ] as const satisfies readonly (keyof GateRecord)[];
 
 // Round 5 question 10: the triage fields are written by the triage act alone, so a save that omits or alters them is not an edit of them.
-const TRIAGE_SERVER_FIELDS: string[] = ['impactTriage', 'triageReason', 'triageBy', 'triageDate', 'confirmedGates', 'aliasIds'];
+const TRIAGE_SERVER_FIELDS: string[] = ['impactTriage', 'triageReason', 'triageBy', 'triageDate', 'confirmedGates', 'confirmedMarkets', 'areaAssessments', 'aliasIds'];
 
 // A value the engine compares exactly must be one of its list's values (SME rule
 // audit B13, 2026-10-04). A dropdown is only a dropdown in the browser: a direct
@@ -651,15 +655,24 @@ export class ProjectsService {
       include: { actor: { select: { displayName: true } } },
       orderBy: { occurredAt: 'asc' },
     });
-    return {
-      project: toProjectData(
+    // A passed gate that a change put on hold (Round 5 question 10), oldest first.
+    const holdEvents = await this.prisma.auditEvent.findMany({
+      where: { projectId: row.id, action: 'gate.held_by_change' },
+      include: { actor: { select: { displayName: true } } },
+      orderBy: { occurredAt: 'asc' },
+    });
+    const holdLog = toGateHoldLog(holdEvents);
+    const envelopeProject = toProjectData(
         row,
         toGateChangeLog(events),
         await this.loadReference(this.prisma),
         toGateSignOffLog(signEvents),
         toReadinessAckLog(ackEvents),
         toPhaseSignOffLog(phaseSignEvents),
-      ),
+      );
+    envelopeProject.gateHoldLog = holdLog;
+    return {
+      project: envelopeProject,
       version: row.version,
       changes: toChangeRecords(row) as ChangeRecord[],
     };
@@ -2974,7 +2987,23 @@ export class ProjectsService {
       // whole point of the rule is that an approved claim cannot be quietly
       // re-worded, and "the UI hides the field" is not that (BACKEND_PLAN §3
       // principle 7). Bumping the revision is the sanctioned route and passes.
+      if (registerKey === 'releasedLabelRegister') {
+        // Round 5 question 11(2): a pack that has been released to market is a controlled baseline.
+        const labelBaseline = releasedLabelEditsWithoutChange(project, project.registers[registerKey] ?? [], rows);
+        if (labelBaseline.length > 0) {
+          throw new BadRequestException(
+            listMessage('These released labels are a controlled baseline:', labelBaseline, 'Raise a change with the Artwork or Packaging impact area and keep it open before editing them.'),
+          );
+        }
+      }
       if (registerKey === 'claimEvidenceTraceability') {
+        // Round 5 question 11(2): moving an approved claim to a new revision changes a released claim, so it needs an open Claims change.
+        const claimBaseline = approvedClaimRevisionsWithoutChange(project, project.registers[registerKey] ?? [], rows);
+        if (claimBaseline.length > 0) {
+          throw new BadRequestException(
+            listMessage('These claims have an approved revision, a controlled baseline:', claimBaseline, 'Raise a change with the Claims impact area and keep it open before recording a new revision.'),
+          );
+        }
         // B21 (2026-10-04): a revision approval names the person who gave it, and
         // only someone with Regulatory or Gate 10 authority can give it.
         const committedClaims = project.registers[registerKey] ?? [];
@@ -3103,6 +3132,22 @@ export class ProjectsService {
               unresolved.map((r) => `row ${r.row + 1}, ${config.columns.find((c) => c.key === r.column)?.label ?? r.column}: "${r.value}"`),
             ),
           );
+        }
+        // The reference must also serve what the row uses it for: a substitution decided to go ahead needs an approved change, a completed one a
+        // Completed change with its final disposition (Round 5 question 11(4)). A value the register already held is left alone.
+        {
+          const newOnes = newChangeReferences(config, project.registers[registerKey] ?? [], rowsAfterSignatureGuard);
+          const unfit = newOnes
+            .map((r) => ({ r, why: changeRefProblem(project, registerKey, r.column, rowsAfterSignatureGuard[r.row]) }))
+            .filter((x) => x.why !== undefined);
+          if (unfit.length > 0) {
+            throw new BadRequestException(
+              listMessage(
+                'These change references cannot serve what the row uses them for:',
+                unfit.map(({ r, why }) => `row ${r.row + 1}, ${config.columns.find((c) => c.key === r.column)?.label ?? r.column} "${r.value}": ${why}`),
+              ),
+            );
+          }
         }
         // Ingredient Substitution Evidence: "link to the iteration before lock or CHG after lock". Once the formula has been approved, a substitution
         // saved (new or changed) names the change it belongs to. [ASSUMPTION: R6-Q17]
@@ -5050,6 +5095,10 @@ export class ProjectsService {
         const versionId = versionIdOf.get(next.formulaVersion) ?? currentVersion?.id;
         const prev = row.marketTracks.find((t) => t.market === next.market && t.formulaVersionId === versionId);
         if (!prev) continue;
+        // Round 5 question 11(2): taking back an approval a market already had is a change to a controlled baseline and needs a change record.
+        const storedTrack = project.marketTracks.find((t) => t.market === next.market && t.formulaVersion === next.formulaVersion);
+        const baselineWhy = storedTrack ? marketAuthorisationRequirement(project, storedTrack, next) : undefined;
+        if (baselineWhy) throw new BadRequestException(baselineWhy);
         // Round 5 question 1(d): while a Critical change to the company lists is being reviewed, the market it holds cannot take a
         // new step towards sale — its launch approval, or the record that it is on sale. [ASSUMPTION: R6-Q6]
         if (heldMarkets(project).includes(next.market)) {
@@ -5983,6 +6032,14 @@ export class ProjectsService {
       for (const c of records) {
         const old = before.get(c.changeId);
         const triaged = !!old && isTriageRecorded(old);
+        if (CHANGE_STATUSES_NEEDING_TRIAGE.includes(c.status) && old?.status !== c.status && old) {
+          // The commercial approval of NP is not a substitute for the technical, safety, regulatory or quality assessments: every technical
+          // impact area needs its own, recorded by the holder of its function (Round 5 question 11). [ASSUMPTION: R6-Q17]
+          const waiting = areasAwaitingAssessment(old);
+          if (waiting.length > 0) {
+            throw new BadRequestException(`${c.changeId}: it cannot be "${c.status}" until the accountable function has assessed ${waiting.join(', ')}`);
+          }
+        }
         if (CHANGE_STATUSES_NEEDING_TRIAGE.includes(c.status) && old?.status !== c.status && !triaged) {
           throw new BadRequestException(
             `${c.changeId}: its impact has not been assessed yet, so it cannot be "${c.status}" — Quality's change-control reviewer records the impact triage first`,
@@ -6056,6 +6113,8 @@ export class ProjectsService {
             triageBy: before.get(c.changeId)?.triageBy ?? null,
             triageDate: this.dateOrNull(before.get(c.changeId)?.triageDate),
             confirmedGates: before.get(c.changeId)?.confirmedGates ?? [],
+            confirmedMarkets: before.get(c.changeId)?.confirmedMarkets ?? [],
+            areaAssessments: (before.get(c.changeId)?.areaAssessments ?? []) as unknown as Prisma.InputJsonValue,
             aliasIds: before.get(c.changeId)?.aliasIds ?? [],
             // The base data every change-control view reads (Round 5 question 11).
             requestedBy: c.requestedBy || null,
@@ -6073,6 +6132,26 @@ export class ProjectsService {
         });
       }
       await this.syncFormulationOverlay(tx, id, records, user.id);
+      // Round 5 question 10: a gate that had passed and stops counting as passed because of this save is recorded, with the change(s) and what it now
+      // waits on, rather than silently changing state. [ASSUMPTION: R6-Q16]
+      const projectAfter: ProjectData = { ...project, changes: records };
+      for (const g of GATES) {
+        if (!isGatePassed(project, g.id) || isGatePassed(projectAfter, g.id)) continue;
+        const changeIds = records
+          .filter((c) => before.get(c.changeId)?.status !== c.status || !before.has(c.changeId) || edited.some((e) => e.changeId === c.changeId))
+          .map((c) => c.changeId);
+        await this.audit.record(
+          {
+            actorId: user.id,
+            projectId: id,
+            entityType: 'gate_hold',
+            entityId: g.id,
+            action: 'gate.held_by_change',
+            after: { gateId: g.id, changeIds, reasons: gateBlockers(projectAfter, g.id).map((b) => b.label) } as unknown as Prisma.InputJsonValue,
+          },
+          tx,
+        );
+      }
       return {
         records: records.length,
         added,
@@ -6164,11 +6243,43 @@ export class ProjectsService {
   // gate that stands passed — all of them, not only the earliest — as one recorded event that keeps the earlier decisions, reason, CHG id
   // and owner of the act; the gates then unlock strictly in order. An administrative correction or no material impact reopens nothing.
   // The act is written from the session: who and when are never a value the client sends. [ASSUMPTION: R6-Q16]
+  // Round 5 question 11: one area of a change is assessed by the holder of the function accountable for it, as themselves. A later assessment of the
+  // same area replaces the current one; the earlier stays in the audit event. [ASSUMPTION: R6-Q17]
+  async assessChangeArea(
+    user: SessionUser,
+    id: string,
+    changeId: string,
+    body: { area: string; outcome: string; note?: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'change.area_assessed', async (tx, _row, project) => {
+      const c = project.changes.find((x) => x.changeId === changeId);
+      if (!c) throw new BadRequestException(`${changeId} is not a change of this project`);
+      if (!isChangeOpen(c.status)) throw new BadRequestException(`${changeId} is closed (${c.status}) — it can no longer be assessed`);
+      const note = (body.note ?? '').trim();
+      const problems = areaAssessmentProblems(c, body.area, body.outcome, note);
+      if (problems.length > 0) throw new BadRequestException(listMessage('The assessment still needs:', problems));
+      await this.assertHoldsFunction(tx, id, user, CHANGE_AREA_FUNCTIONS[body.area], `assess the ${body.area} impact of ${changeId}`);
+      const current = c.areaAssessments ?? [];
+      const next = [
+        ...current.filter((a) => a.area !== body.area),
+        { area: body.area, outcome: body.outcome, note, assessedBy: user.displayName, assessedAt: new Date().toISOString() },
+      ];
+      await tx.changeRecord.update({ where: { changeId }, data: { areaAssessments: next as unknown as Prisma.InputJsonValue } });
+      return {
+        changeId,
+        area: body.area,
+        outcome: body.outcome,
+        earlier: current.find((a) => a.area === body.area) ?? null,
+      } as unknown as Prisma.InputJsonValue;
+    });
+  }
+
   async triageChange(
     user: SessionUser,
     id: string,
     changeId: string,
-    body: { outcome: string; confirmedGates?: string[]; reason?: string },
+    body: { outcome: string; confirmedGates?: string[]; confirmedMarkets?: string[]; reason?: string },
     expectedVersion: number,
     idempotencyKey?: string,
   ): Promise<ProjectEnvelope> {
@@ -6179,6 +6290,7 @@ export class ProjectsService {
     }
     const confirmedGates = [...new Set((body.confirmedGates ?? []).map((g) => String(g).trim()).filter(Boolean))];
     const reason = (body.reason ?? '').trim();
+    const confirmedMarkets = [...new Set((body.confirmedMarkets ?? []).map((m) => String(m).trim()).filter(Boolean))];
     const missing = triageProblems({ outcome: body.outcome, confirmedGates, reason });
     if (missing.length > 0) throw new BadRequestException(listMessage('The triage still needs:', missing));
 
@@ -6188,9 +6300,12 @@ export class ProjectsService {
       const c = project.changes.find((x) => x.changeId === changeId);
       if (!c) throw new BadRequestException(`${changeId} is not a change of this project`);
       if (!isChangeOpen(c.status)) throw new BadRequestException(`${changeId} is closed (${c.status}) — its impact can no longer be triaged`);
-      if (isTriageRecorded(c)) {
-        throw new BadRequestException(`${changeId} was already triaged as "${c.impactTriage}" by ${c.triageBy ?? 'unrecorded'} — a recorded triage is not changed`);
-      }
+      // A recorded triage can be REVISED by the same function holder with a reason: the earlier assessment is never overwritten silently, it
+      // stays in the audit event as `before`. Gates an earlier Material outcome already reopened stay reopened (they are decided again, not
+      // restored). [ASSUMPTION: R6-Q16]
+      const earlier = isTriageRecorded(c)
+        ? { outcome: c.impactTriage, reason: c.triageReason, by: c.triageBy, date: c.triageDate, confirmedGates: c.confirmedGates ?? [], confirmedMarkets: c.confirmedMarkets ?? [] }
+        : undefined;
       await this.assertHoldsFunction(tx, id, user, CHANGE_TRIAGE_FUNCTION_KEYS, `assess the impact of ${changeId}`);
 
       await tx.changeRecord.update({
@@ -6201,12 +6316,55 @@ export class ProjectsService {
           triageBy: user.displayName,
           triageDate: new Date(),
           confirmedGates: body.outcome === TRIAGE_MATERIAL ? confirmedGates : [],
+          confirmedMarkets: body.outcome === TRIAGE_MATERIAL ? confirmedMarkets : [],
         },
       });
 
+      const marketProblems = triageProblems({ outcome: body.outcome, confirmedGates, reason, confirmedMarkets, projectMarkets: project.identity.markets });
+      if (marketProblems.length > 0) throw new BadRequestException(listMessage('The triage still needs:', marketProblems));
       let reopenedIds: string[] = [];
       if (body.outcome === TRIAGE_MATERIAL) {
-        const standing = confirmedGates.filter((gid) => isGateRecordedPassed(project.gates.find((g) => g.gateId === gid)));
+        // Gates 10-12 are decided per market: when the scope names markets, only those markets lanes of those gates are reopened (their
+        // signatures cleared, the earlier ones kept in the audit trail); the gate stops counting as passed until the lanes are signed
+        // again, and the other markets keep theirs. Without markets the whole gate reopens as before. [ASSUMPTION: R6-Q16]
+        const marketScoped = confirmedMarkets.length > 0 ? confirmedGates.filter((gid) => isPerMarketGate(gid)) : [];
+        if (marketScoped.length > 0) {
+          const cleared = await this.clearGateSignOffs(tx, id, marketScoped, confirmedMarkets);
+          await this.audit.record(
+            {
+              actorId: user.id,
+              projectId: id,
+              entityType: 'gate_hold',
+              entityId: marketScoped[0],
+              action: 'gate.market_lanes_reopened',
+              before: { cleared } as unknown as Prisma.InputJsonValue,
+              after: { changeId, reason, gates: marketScoped, markets: confirmedMarkets } as unknown as Prisma.InputJsonValue,
+            },
+            tx,
+          );
+        }
+        // A change that reaches Gate 12 opens a linked post-market review for each market (and the current version); the earlier reviews stay.
+        if (confirmedGates.includes('SG12')) {
+          const reviewMarkets = marketsForLinkedReview(project, confirmedMarkets);
+          for (const market of reviewMarkets) {
+            await tx.postLaunchReview.upsert({
+              where: { projectId_market_milestone: { projectId: id, market, milestone: changeReviewMilestone(changeId) } },
+              create: {
+                projectId: id,
+                market,
+                milestone: changeReviewMilestone(changeId),
+                dueDate: new Date(),
+                linkedChangeId: changeId,
+                formulaVersion: project.formulaVersion,
+                notes: `Opened by change ${changeId}: ${reason}`,
+              },
+              update: {},
+            });
+          }
+        }
+        const standing = confirmedGates
+          .filter((gid) => !marketScoped.includes(gid))
+          .filter((gid) => isGateRecordedPassed(project.gates.find((g) => g.gateId === gid)));
         if (standing.length > 0) {
           const ordered = [...standing].sort((a, b) => gateIndex(a) - gateIndex(b));
           const reopened = await this.reopenGates(tx, id, row, project, ordered, {
@@ -6241,7 +6399,8 @@ export class ProjectsService {
           projectId: id,
           entityType: 'change_record',
           entityId: changeId,
-          action: 'change.triaged',
+          action: earlier ? 'change.triage_revised' : 'change.triaged',
+          before: earlier ? (earlier as unknown as Prisma.InputJsonValue) : undefined,
           after: { changeId, outcome: body.outcome, reason, confirmedGates, reopenedGateIds: reopenedIds } as unknown as Prisma.InputJsonValue,
         },
         tx,
@@ -6346,7 +6505,7 @@ export class ProjectsService {
   // same people re-sign), and returns what was cleared so the caller can put it on
   // the audit record — B4's "never deletes" for a signature means it stays
   // readable somewhere after it stops counting.
-  private async clearGateSignOffs(tx: Prisma.TransactionClient, projectId: string, gateIds: string[]): Promise<Prisma.JsonObject[]> {
+  private async clearGateSignOffs(tx: Prisma.TransactionClient, projectId: string, gateIds: string[], markets?: string[]): Promise<Prisma.JsonObject[]> {
     if (gateIds.length === 0) return [];
     // F4: an older formula version's per-market lanes are history for THAT
     // version — reopening gates on the current version must not touch them.
@@ -6356,6 +6515,7 @@ export class ProjectsService {
         projectId,
         gateId: { in: gateIds },
         signedAt: { not: null },
+        ...(markets && markets.length > 0 ? { market: { in: markets } } : {}),
         OR: [{ formulaVersionId: null }, { formulaVersionId: current }],
       },
     });

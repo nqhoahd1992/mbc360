@@ -58,6 +58,19 @@ t('controlledActionGaps names every missing field', controlledActionGaps(action(
 t('isLiveControlledAction is false for a cancelled complete action', !isLiveControlledAction(action({ status: 'Cancelled' })));
 t('...and true for a complete open one', isLiveControlledAction(action()));
 
+// Round 5 question 9: a Low or Medium gap resolved before signing records its resolution and evidence; one not resolved is carried by a tracked action.
+const done = (over: Partial<GateRecord> = {}) => gate({ status: 'Complete', gapCriticality: 'Medium', gapLinkedNextActionId: undefined, ...over });
+t('a Medium gap resolved before signing passes with its resolution and evidence, even a plain Proceed', verdict(done({ gapResolution: 'Re-tested, within limits', gapEvidenceLink: 'https://example.com/r' }), [], 'Proceed') === null);
+t('...and a Low one likewise', verdict(done({ gapCriticality: 'Low', gapResolution: 'Fixed', gapEvidenceLink: 'x' }), [], 'Proceed with Conditions') === null);
+t('a resolution with no evidence is not enough', verdict(done({ gapResolution: 'Re-tested' }), [])?.missing?.some((m) => m.includes('resolution')) === true);
+t('evidence with no resolution is not enough either', verdict(done({ gapEvidenceLink: 'x' }), [])?.missing?.some((m) => m.includes('resolution')) === true);
+t('a Medium gap that is neither resolved nor carried blocks both positive decisions', verdict(done(), [], 'Proceed') !== null && verdict(done(), [], 'Proceed with Conditions') !== null);
+t('...and says what would make it valid', (verdict(done(), [], 'Proceed')?.missing ?? []).length === 1);
+t('an unresolved one carried by a tracked action needs no resolution (Proceed with Conditions)', verdict(done({ gapLinkedNextActionId: 'NA-1' }), [action()]) === null);
+t('...but a plain Proceed is still refused while it is carried rather than resolved', verdict(done({ gapLinkedNextActionId: 'NA-1' }), [action()], 'Proceed') !== null);
+t('a gate that never had a gap grade is untouched', verdict(gate({ status: 'Complete', gapCriticality: undefined }), [], 'Proceed') === null);
+t('a High gap still needs its tracked action whatever is written as a resolution', verdict(done({ gapCriticality: 'High', gapResolution: 'x', gapEvidenceLink: 'y' }), [])?.missing?.some((m) => m.includes('tracked Next Action')) === true);
+
 if (bad) {
   console.error(`\n${bad} FAILED`);
   process.exit(1);

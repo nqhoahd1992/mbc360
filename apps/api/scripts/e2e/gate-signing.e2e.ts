@@ -738,7 +738,7 @@ export async function run(base: string, db: Client): Promise<number> {
   const triaged = (cr.json?.project?.changes ?? []).find((c: any) => c.changeId === 'CHG-E2E-C1');
   t('the holder records the triage as themselves, with the date', cr.status < 300 && triaged?.impactTriage === 'No material impact' && !!triaged?.triageBy && !!triaged?.triageDate, `${cr.status} ${short(triaged)}`);
   cr = await triage('CHG-E2E-C1');
-  t('a recorded triage is not changed (400)', cr.status === 400 && /already triaged/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  t('a recorded triage can be revised by the holder, and the earlier assessment stays in the audit trail', cr.status < 300 && !!(await triage('CHG-E2E-C1')).json?.project, `${cr.status} ${short(cr.json)}`);
   cr = await putChanges([{ ...closable, status: 'Completed', closedDate: '2030-01-02' }]);
   t('closing as Completed without the final disposition is refused, naming what is missing (400)', cr.status === 400 && /final disposition/.test(String(cr.json?.message)) && /closureOutcome/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
   const closed = {

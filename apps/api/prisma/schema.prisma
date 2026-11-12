@@ -346,6 +346,8 @@ model GateRecord {
   gapActionOwner     String?
   // Round 5 question 9: the tracked Next Action that carries this gap (a gap displays its owner and date rather than keeping its own).
   gapLinkedNextActionId String?
+  // Round 5 question 9: what was done about a Low or Medium gap that was resolved before signing.
+  gapResolution         String?
 
   updatedAt    DateTime  @updatedAt
 
@@ -486,6 +488,9 @@ model PostLaunchReview {
   outcome       String?
   evidenceLink  String?
   notes         String?
+  // Round 5 question 10: a post-market change opens its own linked review for the market and version (milestone "change:<CHG>").
+  linkedChangeId String?
+  formulaVersion String?
   updatedAt     DateTime  @updatedAt
 
   @@unique([projectId, market, milestone])
@@ -1249,6 +1254,8 @@ model ChangeRecord {
   triageBy              String?
   triageDate            DateTime? @db.Date
   confirmedGates        String[]  @default([])
+  confirmedMarkets      String[]  @default([])
+  areaAssessments       Json      @default("[]")
   restoreConfirmation   String?
   // Round 5 question 11: other numbers the same change is known by (FC- ids), so an old reference still resolves to this master record.
   aliasIds              String[]  @default([])

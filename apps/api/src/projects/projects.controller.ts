@@ -926,12 +926,22 @@ export class ProjectsController {
     return this.projects.reopenChange(user, id, changeId, body.reason, body.expectedVersion);
   }
 
+  @Post(':id/changes/:changeId/area-assessments')
+  assessChangeArea(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('changeId') changeId: string,
+    @Body() body: { area: string; outcome: string; note?: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.assessChangeArea(user, id, changeId, body, body.expectedVersion);
+  }
+
   @Post(':id/changes/:changeId/triage')
   triageChange(
     @CurrentUser() user: SessionUser,
     @Param('id') id: string,
     @Param('changeId') changeId: string,
-    @Body() body: { outcome: string; confirmedGates?: string[]; reason?: string; expectedVersion: number },
+    @Body() body: { outcome: string; confirmedGates?: string[]; confirmedMarkets?: string[]; reason?: string; expectedVersion: number },
   ): Promise<ProjectEnvelope> {
     return this.projects.triageChange(user, id, changeId, body, body.expectedVersion);
   }

@@ -92,6 +92,23 @@ export function gapBlocksDecision(gate: GateRecord, decision: GateDecision, next
   // how a gap gets closed is decided as SW-39: it becomes a Resolved state that keeps the assessment, not a clearing (not built yet). Medium and Low keep
   // their old status-bound treatment below.
   if (gate.status !== 'Gap') {
+    // Round 5 question 9: a Low or Medium gap that was RESOLVED before signing records its resolution and the evidence; one still unresolved is carried by a
+    // tracked Next Action instead. "It need not create an action solely to close it immediately." Either path satisfies the gate; neither blocks it.
+    if (criticality === 'Low' || criticality === 'Medium') {
+      const resolved = text(gate.gapResolution) !== '' && text(gate.gapEvidenceLink) !== '';
+      if (resolved) return null;
+      const stillNeeds = missingGapControls(gate, nextActions);
+      if (stillNeeds.length === 0) {
+        return decision === 'Proceed'
+          ? { reason: `the gap (assessed ${criticality}) is carried by a tracked action rather than resolved`, allowed: ['Proceed with Conditions', 'Hold', 'Backtrack'] }
+          : null;
+      }
+      return {
+        reason: `a ${criticality} gap is recorded on this gate, so it must either be resolved or carried`,
+        allowed: ['Hold', 'Backtrack'],
+        missing: ['its resolution and the evidence of it (or, if it is not resolved, a tracked Next Action with the assessor)'],
+      };
+    }
     if (criticality !== 'Critical' && criticality !== 'High') return null;
     const stillRecorded = `a ${criticality} gap assessment is still recorded on this gate although the status is no longer Gap — clear the gap assessment once the gap is resolved`;
     if (criticality === 'Critical') return { reason: stillRecorded, allowed: ['Hold', 'Backtrack'] };

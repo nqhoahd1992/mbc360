@@ -204,6 +204,7 @@ export function SnapshotBody({ snapshot }: { snapshot: GateEvidenceSnapshot }) {
     ['gapAssessor', 'Assessor'],
     ['gapAssessmentDate', 'Assessment date'],
     ['gapRationale', 'Rationale'],
+    ['gapResolution', 'Resolution'],
     ['gapEvidenceLink', 'Evidence link'],
     ['gapRequiredAction', 'Required action'],
     ['gapActionOwner', 'Action owner'],

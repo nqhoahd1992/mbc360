@@ -55,7 +55,7 @@ export function suggestedScopeGateIds(change: ChangeRecord): string[] {
 }
 
 // What a recorded triage must carry before it counts.
-export function triageProblems(input: { outcome: string; confirmedGates: string[]; reason: string }): string[] {
+export function triageProblems(input: { outcome: string; confirmedGates: string[]; reason: string; confirmedMarkets?: string[]; projectMarkets?: readonly string[] }): string[] {
   const problems: string[] = [];
   if (!(TRIAGE_OUTCOMES as readonly string[]).includes(input.outcome)) {
     problems.push(`the outcome must be one of ${TRIAGE_OUTCOMES.join(' / ')}`);
@@ -66,6 +66,10 @@ export function triageProblems(input: { outcome: string; confirmedGates: string[
   if (unknown.length > 0) problems.push(`known gates only (not ${unknown.join(', ')})`);
   if (input.outcome === TRIAGE_MATERIAL && input.confirmedGates.length === 0) {
     problems.push('the confirmed scope: which gates the change invalidates');
+  }
+  if (input.projectMarkets) {
+    const notOurs = (input.confirmedMarkets ?? []).filter((m) => !input.projectMarkets!.includes(m));
+    if (notOurs.length > 0) problems.push(`markets of this project only (not ${notOurs.join(', ')})`);
   }
   return problems;
 }

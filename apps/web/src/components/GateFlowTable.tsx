@@ -95,6 +95,7 @@ export default function GateFlowTable({
   const historyFieldChanges = historyFor
     ? [...project.gateChangeLog].filter((e) => e.gateId === historyFor).reverse()
     : [];
+  const historyHolds = historyFor ? [...(project.gateHoldLog ?? [])].filter((e) => e.gateId === historyFor).reverse() : [];
   const historyBacktracks = historyFor
     ? [...project.backtrackEvents]
         .filter((e) => e.fromGateId === historyFor || e.toGateId === historyFor || e.reopenedGateIds.includes(historyFor))
@@ -229,6 +230,7 @@ export default function GateFlowTable({
         // SW-24: a standing signature makes this gate's own record read-only (the server refuses the write).
         signedLocked: isGateSignedStanding(project, r.meta.id),
         historyCount:
+          (project.gateHoldLog ?? []).filter((e) => e.gateId === r.meta.id).length +
           project.gateChangeLog.filter((e) => e.gateId === r.meta.id).length +
           project.backtrackEvents.filter(
             (e) => e.fromGateId === r.meta.id || e.toGateId === r.meta.id || e.reopenedGateIds.includes(r.meta.id),
@@ -345,7 +347,7 @@ export default function GateFlowTable({
                   clearing it here is how the gap is closed — hiding the block would
                   leave the gate blocked with no field to fix it. */}
               {(r.draftRecord.status === 'Gap' ||
-                ['Critical', 'High'].includes(r.draftRecord.gapCriticality ?? '')) && (
+                ['Critical', 'High', 'Medium', 'Low'].includes(r.draftRecord.gapCriticality ?? '')) && (
                 <GapAssessmentBlock gate={r.draftRecord} locked={r.locked || r.signedLocked} onChange={(p) => patch(r.draftIndex, p)} />
               )}
               {r.openChanges.length > 0 && (
@@ -755,10 +757,26 @@ export default function GateFlowTable({
         footer={null}
         width={820}
       >
-        {historyBacktracks.length === 0 && historyFieldChanges.length === 0 ? (
+        {historyBacktracks.length === 0 && historyFieldChanges.length === 0 && historyHolds.length === 0 ? (
           <Empty description="No changes recorded yet" />
         ) : (
           <>
+            {historyHolds.length > 0 && (
+              <>
+                <Typography.Text strong>Held by a change</Typography.Text>
+                <div style={{ marginTop: 10, marginBottom: 20 }}>
+                  <HistoryTimeline
+                    items={historyHolds.map((e) => ({
+                      key: e.id,
+                      title: `Stopped counting as passed · ${e.changeIds.join(', ') || 'change record'}`,
+                      tone: 'warn' as const,
+                      meta: `${e.changedBy ?? '—'} · ${e.date}`,
+                      detail: e.reasons.join('\n'),
+                    }))}
+                  />
+                </div>
+              </>
+            )}
             {historyBacktracks.length > 0 && (
               <>
                 <Typography.Text strong>Backtrack events</Typography.Text>

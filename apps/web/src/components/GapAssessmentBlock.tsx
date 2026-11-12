@@ -54,8 +54,8 @@ export default function GapAssessmentBlock({
     Critical: 'cannot be carried under any Proceed decision — the gate must go to Hold or Backtrack',
     // Round 5 question 9: the action is a tracked Next Action, so owner and date live there. [ASSUMPTION: R6-Q15]
     High: 'may be carried under Proceed with Conditions only, with the assessor recorded and a tracked Next Action that has an owner, a due date, completion criteria and an escalation trigger',
-    Medium: 'blocks a plain Proceed; Proceed with Conditions carries it once the same tracked Next Action is linked',
-    Low: 'blocks a plain Proceed; Proceed with Conditions carries it once the same tracked Next Action is linked',
+    Medium: 'is either resolved before signing (record the resolution and its evidence) or carried under Proceed with Conditions by a tracked Next Action',
+    Low: 'is either resolved before signing (record the resolution and its evidence) or carried under Proceed with Conditions by a tracked Next Action',
   };
 
   // Which fields still stand between this gap and a Proceed with Conditions, read
@@ -177,8 +177,23 @@ export default function GapAssessmentBlock({
               )}
             </div>
 
+            {(criticality === 'Low' || criticality === 'Medium') && (
+              <label className="gap-fld gap-wide">
+                <span className="gap-label">
+                  Resolution{needs('resolution') && <span className="gap-req"> · required</span>}
+                </span>
+                <Input.TextArea
+                  disabled={locked}
+                  autoSize={{ minRows: 2, maxRows: 6 }}
+                  placeholder="If this gap was resolved before signing: what was done. If it is not resolved, link a tracked Next Action above instead."
+                  value={gate.gapResolution}
+                  onChange={(e) => onChange({ gapResolution: e.target.value })}
+                />
+              </label>
+            )}
+
             <label className="gap-fld">
-              <span className="gap-label">Evidence link</span>
+              <span className="gap-label">Evidence link{(criticality === 'Low' || criticality === 'Medium') && needs('resolution') && <span className="gap-req"> · required with the resolution</span>}</span>
               <Input
                 disabled={locked}
                 placeholder="Link to the evidence"

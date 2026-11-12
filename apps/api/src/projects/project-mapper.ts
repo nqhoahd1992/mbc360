@@ -31,6 +31,7 @@ import { SAFETY_MATRIX_KEY, refreshStoredSafetyMatrix } from '@mbc360/shared/uti
 import { REVIEW_ROLE_KEYS } from '@mbc360/shared/config/reviewers';
 import { sameReference } from '@mbc360/shared/utils/referenceSnapshot';
 import type {
+  GateHoldEntry,
   BacktrackEvent,
   BomLine,
   ChecklistItem,
@@ -207,6 +208,7 @@ function toGateRecord(g: ProjectWithAll['gates'][number]): GateRecord {
     gapRequiredAction: opt(g.gapRequiredAction),
     gapActionOwner: opt(g.gapActionOwner),
     gapLinkedNextActionId: opt(g.gapLinkedNextActionId),
+    gapResolution: opt(g.gapResolution),
   };
 }
 
@@ -266,6 +268,23 @@ export function toGateChangeLog(
     });
   }
   return entries;
+}
+
+// A passed gate that a change put on hold is audited as gate.held_by_change; the hold log is derived from those rows (Round 5 question 10).
+export function toGateHoldLog(
+  events: { id: string; entityId: string; occurredAt: Date; after: Prisma.JsonValue; actor: { displayName: string } | null }[],
+): GateHoldEntry[] {
+  return events.map((e) => {
+    const after = (e.after ?? {}) as { changeIds?: string[]; reasons?: string[] };
+    return {
+      id: e.id,
+      gateId: e.entityId,
+      date: dateTime(e.occurredAt),
+      changedBy: e.actor?.displayName,
+      changeIds: after.changeIds ?? [],
+      reasons: after.reasons ?? [],
+    };
+  });
 }
 
 // Signing and withdrawing a gate signature are audited too (action gate_sign_off.signed / .withdrawn); the sign-off
@@ -406,6 +425,8 @@ export function toChangeRecords(p: ProjectWithAll) {
     triageBy: opt(c.triageBy),
     triageDate: dateOnly(c.triageDate),
     confirmedGates: c.confirmedGates,
+    confirmedMarkets: c.confirmedMarkets,
+    areaAssessments: (Array.isArray(c.areaAssessments) ? c.areaAssessments : []) as unknown as NonNullable<import('@mbc360/shared/types').ChangeRecord['areaAssessments']>,
     restoreConfirmation: opt(c.restoreConfirmation),
     aliasIds: c.aliasIds,
     requestedBy: opt(c.requestedBy),
@@ -823,6 +844,8 @@ function toProjectDataRaw(
       outcome: opt(r.outcome),
       evidenceLink: opt(r.evidenceLink),
       notes: opt(r.notes),
+      linkedChangeId: opt(r.linkedChangeId),
+      formulaVersion: opt(r.formulaVersion),
     })),
     supersessionDecisions: p.supersessionDecisions.map(toSupersessionDecision),
     scaleUpAssessments: p.scaleUpAssessments.map((a) => ({

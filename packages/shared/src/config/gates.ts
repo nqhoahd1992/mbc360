@@ -287,4 +287,5 @@ export const GATE_FIELD_LABELS: Record<GateFieldChange['field'], string> = {
   gapRequiredAction: 'Gap required action',
   gapActionOwner: 'Gap action owner',
   gapLinkedNextActionId: 'Gap linked Next Action',
+  gapResolution: 'Gap resolution',
 };

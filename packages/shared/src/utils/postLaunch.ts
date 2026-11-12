@@ -261,6 +261,8 @@ export function reviewMilestoneLabel(milestone: string): string {
   // A materially changed version's own early review: "F2.0:3m".
   const versioned = /^(.+):(1m|3m)$/.exec(milestone);
   if (versioned) return `${versioned[1]} — ${MILESTONE_LABELS[versioned[2]]}`;
+  const linked = /^change:(.+)$/.exec(milestone);
+  if (linked) return `Review linked to change ${linked[1]}`;
   const annual = /^annual-(\d+)$/.exec(milestone);
   if (annual) return `Annual review ${annual[1]}`;
   return milestone;
@@ -288,4 +290,15 @@ export function reviewCycleOptions(
 // without treating it as done.
 export function openReviews(project: ProjectData): PostLaunchReview[] {
   return project.postLaunchReviews.filter((r) => text(r.completedDate) === '');
+}
+
+// Round 5 question 10: "post-market change opens a linked Gate 12 review for the market/version and does not delete prior reviews". The markets
+// that get one: those the triage named, else every market that has launched and not withdrawn. [ASSUMPTION: R6-Q16]
+export const changeReviewMilestone = (changeId: string): string => `change:${changeId}`;
+export function marketsForLinkedReview(project: ProjectData, named: readonly string[]): string[] {
+  if (named.length > 0) return [...named];
+  return project.marketTracks
+    .filter((t) => text(t.actualLaunchDate) !== '' && text(t.withdrawnDate) === '')
+    .map((t) => t.market)
+    .filter((m, i, all) => all.indexOf(m) === i);
 }

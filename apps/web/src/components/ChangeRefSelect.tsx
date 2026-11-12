@@ -1,7 +1,7 @@
 import { Select, Tag } from 'antd';
 import { useParams } from 'react-router-dom';
 import type { ChangeRecord } from '@mbc360/shared/types';
-import { resolveChangeRef } from '@mbc360/shared/utils/changeLinks';
+import { changeLinkProblem, resolveChangeRef, type ChangeLinkPurpose } from '@mbc360/shared/utils/changeLinks';
 import { useAppStore } from '../store/useAppStore';
 
 // Picks a change record of this project from the Change Control log (Round 5 question 11(4)). A register used to hold a typed Change ID, so a typo or
@@ -16,21 +16,30 @@ export default function ChangeRefSelect({
   value,
   onChange,
   disabled,
+  purpose = 'reference',
 }: {
   value?: string;
   onChange: (value: string | undefined) => void;
   disabled?: boolean;
+  // What the reference is for: an option that cannot serve it is shown disabled, with the reason (Round 5 question 11(4)).
+  purpose?: ChangeLinkPurpose;
 }) {
   const { projectId } = useParams();
   const changes = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId)?.changes ?? NO_CHANGES);
   const current = String(value ?? '').trim();
   const resolved = current === '' ? undefined : resolveChangeRef(changes, current);
   const options = [
-    ...changes.map((c) => ({
-      value: c.changeId,
-      label: c.trigger ? `${c.changeId} — ${c.trigger}` : c.changeId,
-      status: c.status,
-    })),
+    ...changes.map((c) => {
+      const why = changeLinkProblem(c, purpose);
+      return {
+        value: c.changeId,
+        label: c.trigger ? `${c.changeId} — ${c.trigger}` : c.changeId,
+        status: c.status,
+        // The one already chosen stays selectable, so an old value can be seen and replaced.
+        disabled: !!why && c.changeId !== current,
+        title: why,
+      };
+    }),
     ...(current && !resolved ? [{ value: current, label: current, status: 'not in the Change Control log' }] : []),
   ];
   return (

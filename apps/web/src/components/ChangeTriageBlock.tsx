@@ -3,6 +3,7 @@ import { App, Button, Checkbox, Input, Select, message } from 'antd';
 import { useParams } from 'react-router-dom';
 import type { ChangeRecord } from '@mbc360/shared/types';
 import { GATES } from '@mbc360/shared/config/gates';
+import { PER_MARKET_GATES } from '@mbc360/shared/config/gateSignOff';
 import { isChangeOpen } from '@mbc360/shared/config/changeTriggers';
 import {
   TRIAGE_ADMINISTRATIVE,
@@ -42,6 +43,8 @@ export function triageSummary(change: ChangeRecord): { label: string; tone: stri
   return { label: 'Impact not assessed', tone: 'c-tag-warn', pending: true, holds: `Holds ${range} until assessed` };
 }
 
+const NO_MARKETS: string[] = [];
+
 export default function ChangeTriageBlock({ change }: { change: ChangeRecord }) {
   const { projectId } = useParams();
   const triageChange = useAppStore((s) => s.triageChange);
@@ -50,9 +53,13 @@ export default function ChangeTriageBlock({ change }: { change: ChangeRecord }) 
   const [outcome, setOutcome] = useState<string | undefined>();
   const [scope, setScope] = useState<string[]>(suggested);
   const [reason, setReason] = useState('');
+  const [markets, setMarkets] = useState<string[]>(change.markets ?? []);
+  const projectMarkets = useAppStore((st) => st.projects.find((x) => x.identity.id === projectId)?.identity.markets ?? NO_MARKETS);
+  const reachesMarketGates = scope.some((id) => PER_MARKET_GATES.includes(id));
   const [busy, setBusy] = useState(false);
+  const [revising, setRevising] = useState(false);
 
-  if (isTriageRecorded(change)) {
+  if (isTriageRecorded(change) && !revising) {
     const gates = (change.confirmedGates ?? []).map((id) => GATES.find((g) => g.id === id)?.number ?? id);
     return (
       <dl className="rt-dl">
@@ -68,7 +75,19 @@ export default function ChangeTriageBlock({ change }: { change: ChangeRecord }) 
         {gates.length > 0 && (
           <>
             <dt>Confirmed scope</dt>
-            <dd>Gates {gates.join(', ')}</dd>
+            <dd>
+              Gates {gates.join(', ')}
+              {(change.confirmedMarkets ?? []).length > 0 ? ` · markets ${(change.confirmedMarkets ?? []).join(', ')}` : ''}
+            </dd>
+          </>
+        )}
+        {isChangeOpen(change.status) && (
+          <>
+            <dt />
+            <dd>
+              <Button size="small" onClick={() => setRevising(true)}>Revise the assessment</Button>
+              <p className="rt-note">A revision is recorded with its reason; the earlier assessment stays in the history, and gates already reopened stay reopened.</p>
+            </dd>
           </>
         )}
       </dl>
@@ -78,14 +97,18 @@ export default function ChangeTriageBlock({ change }: { change: ChangeRecord }) 
     return <p className="rt-muted" style={{ margin: 0, fontSize: 13 }}>This change was closed without an impact assessment.</p>;
   }
 
-  const problems = triageProblems({ outcome: outcome ?? '', confirmedGates: outcome === TRIAGE_MATERIAL ? scope : [], reason });
+  const sentMarkets = outcome === TRIAGE_MATERIAL && reachesMarketGates ? markets : [];
+  const problems = triageProblems({ outcome: outcome ?? '', confirmedGates: outcome === TRIAGE_MATERIAL ? scope : [], reason, confirmedMarkets: sentMarkets, projectMarkets });
 
   const record = async () => {
     if (!projectId || !outcome) return;
     setBusy(true);
     try {
-      const ok = await triageChange(projectId, change.changeId, { outcome, confirmedGates: outcome === TRIAGE_MATERIAL ? scope : [], reason: reason.trim() });
-      if (ok) message.success(`${change.changeId}: impact recorded as "${outcome}"`);
+      const ok = await triageChange(projectId, change.changeId, { outcome, confirmedGates: outcome === TRIAGE_MATERIAL ? scope : [], confirmedMarkets: sentMarkets, reason: reason.trim() });
+      if (ok) {
+        message.success(`${change.changeId}: impact recorded as "${outcome}"`);
+        setRevising(false);
+      }
     } finally {
       setBusy(false);
     }
@@ -133,6 +156,19 @@ export default function ChangeTriageBlock({ change }: { change: ChangeRecord }) 
               ))}
             </div>
             <p className="rt-note">The trigger suggests a minimum; widen it where the change reaches further. Gates that have not passed yet are unaffected.</p>
+          </RecordField>
+        )}
+        {outcome === TRIAGE_MATERIAL && reachesMarketGates && (
+          <RecordField label="Markets reached (Gates 10-12 are decided market by market)" wide>
+            <Select
+              mode="multiple"
+              style={{ width: '100%' }}
+              placeholder="Leave empty to reopen every market"
+              value={markets}
+              options={projectMarkets.map((m) => ({ value: m, label: m }))}
+              onChange={setMarkets}
+            />
+            <p className="rt-note">Only these markets' sign-offs at Gates 10-12 are reopened; the other markets keep theirs.</p>
           </RecordField>
         )}
         <RecordField label="Reason" wide>

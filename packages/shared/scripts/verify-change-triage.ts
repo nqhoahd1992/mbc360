@@ -83,6 +83,7 @@ t('a trigger that names every gate holds from Gate 1', (() => {
 
 t('a Material triage needs a confirmed scope', triageProblems({ outcome: TRIAGE_MATERIAL, confirmedGates: [], reason: 'r' }).some((x) => x.includes('scope')));
 t('every triage needs a reason', triageProblems({ outcome: TRIAGE_NOT_MATERIAL, confirmedGates: [], reason: ' ' }).some((x) => x.includes('reason')));
+t('a triage names only markets of the project', triageProblems({ outcome: TRIAGE_MATERIAL, confirmedGates: ['SG10'], reason: 'r', confirmedMarkets: ['Atlantis'], projectMarkets: ['Vietnam'] }).some((x) => x.includes('Atlantis')) && triageProblems({ outcome: TRIAGE_MATERIAL, confirmedGates: ['SG10'], reason: 'r', confirmedMarkets: ['Vietnam'], projectMarkets: ['Vietnam'] }).length === 0);
 t('an unknown outcome is refused', triageProblems({ outcome: 'Maybe', confirmedGates: [], reason: 'r' }).length > 0);
 t('an unknown gate is refused', triageProblems({ outcome: TRIAGE_MATERIAL, confirmedGates: ['SG99'], reason: 'r' }).length > 0);
 t('a complete Material triage has no problems', triageProblems({ outcome: TRIAGE_MATERIAL, confirmedGates: scope, reason: 'r' }).length === 0);

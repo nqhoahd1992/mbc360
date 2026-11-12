@@ -624,10 +624,16 @@ export const reopenChange = (id: string, changeId: string, reason: string, v: nu
     body: JSON.stringify({ reason, expectedVersion: v }),
   });
 
+export const assessChangeArea = (id: string, changeId: string, body: { area: string; outcome: string; note: string }, v: number) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/changes/${encodeURIComponent(changeId)}/area-assessments`, {
+    method: 'POST',
+    body: JSON.stringify({ ...body, expectedVersion: v }),
+  });
+
 export const triageChange = (
   id: string,
   changeId: string,
-  body: { outcome: string; confirmedGates: string[]; reason: string },
+  body: { outcome: string; confirmedGates: string[]; confirmedMarkets?: string[]; reason: string },
   v: number,
 ) =>
   request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/changes/${encodeURIComponent(changeId)}/triage`, {

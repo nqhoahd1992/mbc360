@@ -109,3 +109,25 @@ export function newChangeReferences(config: RegisterConfig, committed: readonly 
   }
   return out;
 }
+
+// What a change reference in a register row is FOR (Round 5 question 11(4)): "an assessment can link an open CHG, implementation needs an approved CHG,
+// and closure needs verified final disposition". Most columns only point at the change for context ('reference') or for an assessment. On Ingredient
+// Substitution Evidence the row says which: a decision to proceed with the substitution is an implementation and needs a change that is approved and
+// whose impact has been assessed; a row marked Complete is a closure and needs a Completed change with its final disposition. [ASSUMPTION: R6-Q17]
+export function changeRefPurposeFor(registerKey: string, column: string, row: RegisterRow): ChangeLinkPurpose {
+  if (registerKey === 'ingredientSubstitution' && column === 'linkedChangeId') {
+    if (text(row.status) === 'Complete') return 'closure';
+    if (text(row.decision) === 'Approved' || text(row.decision) === 'Conditional') return 'implementation';
+    return 'assessment';
+  }
+  if (registerKey === 'productDevelopmentIterations' || registerKey === 'releasedLabelRegister') return 'assessment';
+  return 'reference';
+}
+
+// Why a reference in a row cannot serve its purpose, or undefined when it can (also undefined for a blank value).
+export function changeRefProblem(project: ProjectData, registerKey: string, column: string, row: RegisterRow): string | undefined {
+  const value = text(row[column]);
+  if (value === '') return undefined;
+  const purpose = changeRefPurposeFor(registerKey, column, row);
+  return changeLinkProblem(resolveChangeRef(project.changes, value), purpose);
+}

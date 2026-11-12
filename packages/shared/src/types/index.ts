@@ -324,6 +324,9 @@ export interface GateRecord {
   gapRequiredAction?: string;
   gapActionOwner?: string;
   gapLinkedNextActionId?: string;
+  // Round 5 question 9: "A Low/Medium gap resolved before signing needs its resolution/evidence recorded" — what was done about it. The evidence is
+  // `gapEvidenceLink`. A gap that is NOT resolved is carried by a tracked Next Action instead (`gapLinkedNextActionId`).
+  gapResolution?: string;
 }
 
 // Audit trail for ordinary Phase Gate Flow edits (status/decision/owner/due
@@ -332,6 +335,18 @@ export interface GateRecord {
 // separate from BacktrackEvent: a backtrack is its own richer, specialized
 // event (reopened range + snapshots + invalidated sign-offs) and is not
 // duplicated here.
+// Round 5 question 10: "Gates 11-12 follow the same recorded-history principle". A gate that had passed and stopped counting as passed because a change
+// was raised or edited is recorded here — which gate, which change, what it now waits on, and who made the save — instead of simply changing state. Derived
+// from the append-only audit trail (action gate.held_by_change), like the gate change log.
+export interface GateHoldEntry {
+  id: string;
+  gateId: string;
+  date: string;
+  changedBy?: string;
+  changeIds: string[];
+  reasons: string[];
+}
+
 export interface GateFieldChange {
   field: keyof Omit<GateRecord, 'gateId'>;
   from?: string;
@@ -1378,6 +1393,9 @@ export interface PostLaunchReview {
   outcome?: string;
   evidenceLink?: string;
   notes?: string;
+  // The change that opened this review and the formula version it is about (Round 5 question 10); absent on scheduled reviews.
+  linkedChangeId?: string;
+  formulaVersion?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -1483,6 +1501,11 @@ export interface ChangeRecord {
   triageBy?: string;
   triageDate?: string;
   confirmedGates?: string[];
+  // Gates 10-12 are decided market by market, so a Material outcome can name the markets it reaches; only those markets lanes of the
+  // per-market gates in the scope are reopened. Empty = every market. [ASSUMPTION: R6-Q16]
+  confirmedMarkets?: string[];
+  // Area-specific assessments of this change, each recorded by the holder of the accountable function (Round 5 question 11). Server-written.
+  areaAssessments?: { area: string; outcome: string; note?: string; assessedBy: string; assessedAt: string }[];
   // "Rejected/Cancelled changes need recorded confirmation that no controlled implementation occurred and no residual impact
   // remains" — or, if implementation did occur, that its reversal or correction was verified.
   restoreConfirmation?: string;
@@ -1666,6 +1689,7 @@ export interface ProjectData {
   changes: ChangeRecord[];
   backtrackEvents: BacktrackEvent[]; // immutable backtrack audit log (rule B4)
   gateChangeLog: GateChangeLogEntry[]; // immutable log of ordinary Phase Gate Flow field edits
+  gateHoldLog?: GateHoldEntry[]; // a passed gate that a change put on hold, recorded when it happened (Round 5 question 10)
   gateSignOffLog: GateSignOffEvent[]; // immutable log of gate sign-off signatures and withdrawals
   marketTracks: MarketTrack[]; // per-market Gate 10-12 tracking (rules A1/C5)
   studyApprovals: StudyApproval[]; // dedicated study approval workflow (rule C2)
