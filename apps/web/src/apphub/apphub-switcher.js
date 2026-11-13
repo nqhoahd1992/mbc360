@@ -19,6 +19,8 @@
  * Menu không tải được (hub sập, bị chặn nhúng) → sau 8 giây gỡ khung, mở AppHub ở tab mới; trang app con không bị khoá.
  * Màu nút: CSS --apphub-accent trên thẻ (mặc định xanh AppHub). Nút riêng: window.AppHubSwitcher.open().
  * App giữ phiên bằng token (Bearer) thay cookie: window.AppHubSwitcher.setAuth(() => 'Bearer ' + token) để data-apps gửi kèm.
+ * The menu's close (X) button is drawn exactly over the button that opened it: its position goes to the menu as ?anchor=
+ * on first open and in the apphub:open message after that (an older copy of this file sends none: X stays in the rail).
  */
 (function () {
   'use strict';
@@ -129,9 +131,26 @@
     }
   }
 
+  /**
+   * Where the Apps button sits on screen, "x,y,width,height" in CSS pixels of the viewport. The menu draws its close (X)
+   * button exactly there, so X replaces the button the person just pressed. The iframe covers the viewport (inset:0), so
+   * these coordinates are the iframe's too. Null when opened without a button (AppHubSwitcher.open()).
+   */
+  function anchorOf(element) {
+    if (!element || typeof element.getBoundingClientRect !== 'function') return null;
+    var rect = element.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    return [rect.left, rect.top, rect.width, rect.height]
+      .map(function (n) {
+        return Math.round(n * 10) / 10;
+      })
+      .join(',');
+  }
+
   function open(app, focusBack) {
     if (isOpen) return;
     isOpen = true;
+    var anchor = anchorOf(focusBack);
     lastFocus = focusBack || document.activeElement;
     savedOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = 'hidden';
@@ -141,6 +160,7 @@
       url.searchParams.set('from', window.location.origin);
       if (app) url.searchParams.set('app', app);
       if (APPS) url.searchParams.set('list', 'app'); // menu xin danh sách từ trang này thay vì dùng cookie hub
+      if (anchor) url.searchParams.set('anchor', anchor); // menu đặt nút X đúng chỗ nút này
       ready = false;
       frame = document.createElement('iframe');
       frame.title = 'Switch app';
@@ -157,7 +177,8 @@
       document.body.appendChild(frame);
     } else {
       frame.style.display = 'block';
-      frame.contentWindow.postMessage({ type: 'apphub:open' }, HUB);
+      // The button may have moved since the last open (scroll, resize, another button): send where it is now.
+      frame.contentWindow.postMessage({ type: 'apphub:open', anchor: anchor }, HUB);
     }
     frame.focus();
   }

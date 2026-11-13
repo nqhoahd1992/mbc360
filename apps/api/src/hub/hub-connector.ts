@@ -9,8 +9,10 @@
 //    GET  {APP}/hub-login        trình duyệt mang ?code=…&next=… → tạo phiên của app → chuyển về `next`
 //                                (mã hỏng/hết hạn → trang login ?hub_error=expired; user không còn/bị tắt → ?hub_error=no_account)
 //    POST {APP}/api/hub/revoke   AppHub gọi, có ký, {email, at} → vô hiệu mọi phiên của email cấp trước `at`
+//    POST {APP}/api/hub/access   AppHub calls, signed, {emails: [...]} → {access: {"<email>": true|false}} (docs/01 7c)
 //  Và 2 hàm dựng URL: hubLaunchUrl() (app hết phiên → về hub) và hubLogoutUrl() (Sign out ở app → về hub).
 //  Menu "Apps" (tuỳ chọn): listHubApps() — server app hỏi hub danh sách app của người đang đăng nhập (docs/07).
+//  Optional: notifyHubAccessChanged() — after granting / removing someone's access, so the Apps menu updates at once.
 //
 //  Đừng sửa cách tính chữ ký — phải khớp server/src/apps/hub-signer.ts của AppHub.
 // =====================================================================
@@ -110,6 +112,8 @@ export interface HubAppEntry {
   category: string | null;
   lastResult: string | null;
   lastOpenedAt: string | null;
+  /** Can this person open the app (hub's access cache, docs/01 7c): true / false, null = unknown. Display only. */
+  access: boolean | null;
 }
 
 /** 403: người này không có tài khoản hub đang bật. 502: mọi lỗi khác — `reason` để ghi log, đừng trả ra trình duyệt. */
@@ -138,6 +142,7 @@ export function readHubApps(body: unknown): HubAppEntry[] | null {
         category: text(app.category, 60),
         lastResult: text(app.lastResult, 20),
         lastOpenedAt: opened && !Number.isNaN(Date.parse(opened)) ? opened : null,
+        access: typeof app.access === 'boolean' ? app.access : null,
       },
     ];
   });
@@ -245,6 +250,43 @@ export async function listHubApps(input: {
   return apps ? { ok: true, apps } : { ok: false, status: 502, reason: 'BAD_RESPONSE' };
 }
 
+/**
+ * Tell the hub that `email`'s access to this app changed (granted, removed, account switched on/off) — POST
+ * {HUB}/api/hub/access-changed, docs/01 section 7c. Optional: without it the hub's Apps menu catches up within
+ * ACCESS_REFRESH_MINUTES. The hub does not trust a value here; it re-asks this app's POST /api/hub/access.
+ * Fire and forget: never throws, a failure only delays the menu update. Call it AFTER the change is saved.
+ */
+export async function notifyHubAccessChanged(input: {
+  hubUrl: string;
+  app: string;
+  secret: string;
+  email: string;
+  apiUrl?: string | null;
+  lanRewrite?: string | null;
+  timeoutMs?: number;
+}): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const email = asEmail(input.email);
+  if (!email) return { ok: false, reason: 'NO_EMAIL' };
+  const body = JSON.stringify({ app: input.app, email });
+  const timestamp = Math.floor(Date.now() / 1000);
+  try {
+    const base = (input.apiUrl?.trim() || new URL('/api', input.hubUrl).toString()).replace(/\/+$/, '');
+    const res = await postJson(
+      `${base}/hub/access-changed`,
+      { 'Content-Type': 'application/json', 'X-Hub-Timestamp': String(timestamp), 'X-Hub-Signature': hubSignature(input.secret, timestamp, body) },
+      body,
+      input.timeoutMs ?? 5000,
+      input.lanRewrite,
+    );
+    return res.status === 200 ? { ok: true } : { ok: false, reason: `HTTP_${res.status}` };
+  } catch (error) {
+    return { ok: false, reason: `UNREACHABLE: ${(error as Error).message}` };
+  }
+}
+
+/** Most emails AppHub sends in one POST /api/hub/access (matches ACCESS_BATCH_MAX in the hub). */
+export const ACCESS_BATCH_MAX = 200;
+
 /** Một mã dùng 1 lần. `hubTime`: X-Hub-Timestamp của request SSO đã cấp mã (Unix giây, đồng hồ của hub). */
 export interface HubCode {
   email: string;
@@ -317,6 +359,11 @@ export interface HubConnectorOptions<U, Req extends HubHttpRequest = HubHttpRequ
   noAccessToLoginPage?: boolean;
   /** User còn được vào không. Mặc định: `user.isActive !== false`. */
   isActive?(user: U): boolean;
+  /**
+   * Optional, for POST /api/hub/access: look up many emails in one query (emails already lower case). Return the users
+   * found, each with its email; missing ones count as "no access". Without it the connector calls findUserByEmail per email.
+   */
+  findUsersByEmails?(emails: string[]): Promise<Array<{ email: string; user: U }>> | Array<{ email: string; user: U }>;
   /** Tạo phiên của app (cookie HttpOnly, hết hạn khi không hoạt động — docs/01 mục 6). Lưu `info.issuedAt` vào phiên để so với revoke. */
   createSession(user: U, req: Req, res: Res, info: HubSessionInfo): Promise<void> | void;
   /** Vô hiệu mọi phiên của email này có `issuedAt` (giờ hub) trước `at`, ở mọi thiết bị. Không truyền → POST /api/hub/revoke trả 404. */
@@ -388,6 +435,44 @@ export function createHubConnector<U, Req extends HubHttpRequest = HubHttpReques
     return { status: 200, body: { ok: true } };
   }
 
+  /**
+   * POST /api/hub/access, framework-free (docs/01 section 7c). `{emails: [...]}` → `{access: {"<email>": boolean}}`, one
+   * entry per email as sent. Same rule as SSO: true = the user exists and is active. `noAccessToLoginPage` does not apply
+   * here — this answers the real access, so the hub can dim the app for people without an account.
+   */
+  async function handleAccess(rawBody: string | Buffer, headers: HeaderBag): Promise<HandlerResult> {
+    if (!enabled) return notEnabled;
+    const verified = verifyHubRequest({ secrets, headers, rawBody, maxSkewSeconds: maxSkew });
+    if (!verified.ok) {
+      log(`rejected request: ${verified.error}`);
+      return { status: verified.error === 'BAD_BODY' ? 400 : 401, body: { error: verified.error } };
+    }
+    const sent = verified.body.emails;
+    if (!Array.isArray(sent) || sent.length > ACCESS_BATCH_MAX || sent.some((email) => typeof email !== 'string')) return { status: 400, body: { error: 'BAD_BODY' } };
+
+    const keys = [...new Set(sent as string[])];
+    const lookups = keys.map((key) => ({ key, email: asEmail(key) }));
+    const wanted = [...new Set(lookups.flatMap(({ email }) => (email ? [email] : [])))];
+    const found = new Map<string, U>();
+    if (options.findUsersByEmails) {
+      for (const row of await options.findUsersByEmails(wanted)) {
+        const email = asEmail(row.email);
+        if (email) found.set(email, row.user);
+      }
+    } else {
+      for (const email of wanted) {
+        const user = await options.findUserByEmail(email);
+        if (user) found.set(email, user);
+      }
+    }
+    const access: Record<string, boolean> = {};
+    for (const { key, email } of lookups) {
+      const user = email ? found.get(email) : undefined;
+      access[key] = !!user && isActive(user);
+    }
+    return { status: 200, body: { access } };
+  }
+
   /** Đổi mã lấy user (mã chỉ dùng 1 lần). Kiểm tra lại user vì có thể vừa bị khoá. */
   async function redeemCode(code: string): Promise<{ user: U; info: HubSessionInfo } | 'expired' | 'no_account'> {
     const saved = code ? await store.takeCode(code) : null;
@@ -428,11 +513,14 @@ export function createHubConnector<U, Req extends HubHttpRequest = HubHttpReques
   return {
     handleSso,
     handleRevoke,
+    handleAccess,
     consumeCode,
     /** Handler Express / NestJS cho POST /api/hub/sso. */
     sso: (req: Req, res: Res) => respond(req, res, handleSso),
     /** Handler Express / NestJS cho POST /api/hub/revoke. */
     revoke: (req: Req, res: Res) => respond(req, res, handleRevoke),
+    /** Express / NestJS handler for POST /api/hub/access (docs/01 section 7c). */
+    access: (req: Req, res: Res) => respond(req, res, handleAccess),
     login,
   };
 }

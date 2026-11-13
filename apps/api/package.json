@@ -12,6 +12,7 @@
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
+    "test:hub": "tsx --test src/hub/*.test.ts",
     "db:wipe-projects": "tsx scripts/wipe-projects.ts",
     "db:seed-gate-project": "tsx scripts/seed-gate-project.ts",
     "db:seed-full-project": "tsx scripts/seed-full-project.ts",

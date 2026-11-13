@@ -18,6 +18,7 @@ import { PermissionsService } from '../rbac/permissions.service';
 import { ADMIN_ROLE, SSO_ROLES } from '@mbc360/shared/config/roles';
 import { TotpService } from '../verification/totp.service';
 import { isPinnedAdmin } from '../auth/pinned-admins';
+import { notifyHubAccess } from '../hub/hub-notify';
 
 const SSO_ROLE_KEYS = new Set(SSO_ROLES.map((r) => r.key));
 
@@ -162,6 +163,8 @@ export class AdminUsersController {
       return record;
     });
 
+    // With a role the new account can come in (AppHub stops dimming MBc360 for them). Not awaited, never throws.
+    if (created.roles.length > 0) void notifyHubAccess(created.email);
     return this.toUserResponse(created);
   }
 
@@ -236,6 +239,8 @@ export class AdminUsersController {
       return record;
     });
 
+    // "No role, no entry": only going from no role to some (or back) changes the way in. Not awaited, never throws.
+    if ((before.length === 0) !== (updated.roles.length === 0)) void notifyHubAccess(updated.email);
     return this.toUserResponse(updated);
   }
 
@@ -285,6 +290,7 @@ export class AdminUsersController {
       return record;
     });
 
+    if (target.active !== updated.active) void notifyHubAccess(updated.email); // not awaited, never throws
     return this.toUserResponse(updated);
   }
 
@@ -365,6 +371,7 @@ export class AdminUsersController {
       );
     });
 
+    void notifyHubAccess(target.email); // they can no longer come in — not awaited, never throws
     return { ok: true };
   }
 

@@ -13,6 +13,8 @@ import { createHubConnector } from './hub-connector';
 //                        that email issued before `at` is refused (users.sessionsValidAfter, auth/session-auth.guard.ts)
 //   GET  /api/hub/menu   browser → {hub, app} for the AppHub "Apps" menu button (apps/web/src/apphub/AppsMenuButton.tsx);
 //                        the menu's app list comes from GET /api/hub-apps (hub-apps.controller.ts). AppHub docs/07-apps-menu.md
+//   POST /api/hub/access AppHub server → signed {emails: [...]} → {access: {"<email>": true|false}} (AppHub docs/01 7c):
+//                        true = active and holding a role (the entry rule below). Display only; /sso still decides.
 // MBc360's own access rule still decides who enters (2026-10-02: active account holding a role):
 //  - email unknown here → no account is created; the sign-in screen says so (?hub_error=no_account) and
 //    "Sign in with Microsoft 365" creates the account for an administrator to give a role, as before;
@@ -31,6 +33,16 @@ export class HubController {
       this.prisma.user.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, select: { id: true, email: true } }),
     // Role and active state are checked in redirectAfterLogin, so the person gets MBc360's own notice.
     isActive: () => true,
+    // POST /api/hub/access (dims the app in AppHub's Apps menu): the SAME rule as entry — AuthService.loginRefusal, an
+    // active account holding at least one role — in one query for the batch (≤ 200 emails, lower case). Only rows that
+    // pass come back, because isActive above lets everyone through to that later check.
+    findUsersByEmails: async (emails) =>
+      (
+        await this.prisma.user.findMany({
+          where: { email: { in: emails, mode: 'insensitive' }, active: true, roles: { some: {} } },
+          select: { id: true, email: true },
+        })
+      ).map((user) => ({ email: user.email, user })),
     noAccessToLoginPage: true,
     createSession: (_user, _req, res, info) => {
       res.locals.hubIssuedAt = info.issuedAt;
@@ -72,6 +84,11 @@ export class HubController {
   @Post('revoke')
   revoke(@Req() req: Request, @Res() res: Response) {
     return this.hub.revoke(req, res);
+  }
+
+  @Post('access')
+  access(@Req() req: Request, @Res() res: Response) {
+    return this.hub.access(req, res);
   }
 
   // Public and holds no secret: where AppHub is and this app's slug there. 404 while AppHub is not set up (no HUB_URL,
