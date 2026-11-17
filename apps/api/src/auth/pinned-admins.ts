@@ -14,8 +14,8 @@ import { PrismaService } from '../prisma/prisma.service';
 //
 // On every API start (which is every deploy) each pinned address is made sure
 // to exist, be active and hold the admin role. A missing account is created
-// with no Entra id; the first SSO sign-in links it by email
-// (AuthService.upsertSsoUser). Because the list is re-applied on every start,
+// with no Entra id; a sign-in from AppHub (Microsoft 365) finds it by email
+// (hub/hub.controller.ts). Because the list is re-applied on every start,
 // the Users page refuses to take admin away from, deactivate or delete a pinned
 // account — otherwise the change would silently come back at the next deploy.
 // To retire one, remove it from PINNED_ADMINS first.
@@ -71,8 +71,8 @@ export class PinnedAdminsService implements OnApplicationBootstrap {
           const user =
             existing ??
             (await tx.user.create({
-              // Display name is a placeholder until the first SSO sign-in
-              // replaces it with the name from Microsoft 365.
+              // Display name is a placeholder (nothing syncs it from Microsoft
+              // since sign-in moved to AppHub, 2026-11-17).
               data: { email, displayName: email.split('@')[0] },
               include: { roles: true },
             }));

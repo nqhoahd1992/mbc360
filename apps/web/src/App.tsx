@@ -169,7 +169,33 @@ function Shell() {
     if (session.user) void loadProjects();
   }, [session.user, loadProjects]);
 
-  // Microsoft 365 SSO is the only sign-in method — no session (never signed
+  // The session ends while the app is open (expired, or revoked by an AppHub
+  // sign-out): every /api call then gets 401. Re-check the session on the first
+  // one — gone → the Login screen below, at this same page, which goes straight
+  // on to AppHub with ?next=<this page> and so comes back here (2026-11-17,
+  // AppHub repo docs/11-ai-remove-password-login.md). /api/auth/* is left to
+  // useSession itself. Installed here only: Shell is the one place rendering Login.
+  const signedIn = !!session.user;
+  const refreshSession = session.refresh;
+  useEffect(() => {
+    if (!signedIn) return;
+    const original = window.fetch;
+    window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+      const res = await original.call(window, input, init);
+      if (res.status === 401) {
+        const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url, window.location.href);
+        if (url.origin === window.location.origin && url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/auth/')) {
+          void refreshSession();
+        }
+      }
+      return res;
+    };
+    return () => {
+      window.fetch = original;
+    };
+  }, [signedIn, refreshSession]);
+
+  // Microsoft 365 SSO (through AppHub) is the only sign-in method — no session (never signed
   // in, signed out, or the session expired) means the Login screen, full
   // stop; nothing in the app is reachable while unauthenticated.
   if (session.loading) {

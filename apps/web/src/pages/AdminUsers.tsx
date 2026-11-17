@@ -105,10 +105,10 @@ export default function AdminUsers() {
 
   const replaceUser = (updated: AdminUser) => setUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
 
-  // Pre-provision somebody before their first sign-in, so they arrive with a
-  // role instead of being refused for having none. It creates no way in: the
-  // person still signs in with Microsoft 365, which links to this record by
-  // email — so the address has to be their real company one.
+  // Add somebody before they sign in (2026-11-17: the only way an account is
+  // created besides PINNED_ADMINS — signing in no longer creates one). The
+  // person signs in with Microsoft 365 through AppHub, which finds this record
+  // by email — so the address has to be their real Microsoft one.
   const createUser = async (values: NewUser) => {
     setSaving(true);
     try {
@@ -287,7 +287,7 @@ export default function AdminUsers() {
         )}
         <p className="au-desc">
           A role is granted only here — never inferred from Microsoft Entra ID or department data. A user with no role
-          cannot enter the app — signing in with Microsoft 365 only proves they belong to the company. Edit what each role can do under{' '}
+          cannot enter the app — signing in with Microsoft 365 only proves who they are, and someone not listed here cannot enter at all. Edit what each role can do under{' '}
           <Link to="/admin/roles">Roles</Link>.
         </p>
       </header>
@@ -335,7 +335,7 @@ export default function AdminUsers() {
               <div className="au-empty">
                 <UserOutlined className="au-empty-icon" />
                 <div className="au-empty-title">{query ? `No user matches “${query}”` : 'No users here'}</div>
-                <p>People appear here after they sign in with Microsoft 365 once, or when you add them.</p>
+                <p>People appear here when you add them — signing in does not create an account.</p>
                 {query && <Button onClick={() => setQuery('')}>Clear search</Button>}
               </div>
             ) : (
@@ -399,8 +399,7 @@ export default function AdminUsers() {
         destroyOnHidden
       >
         <p className="au-add-note">
-          Use their company Microsoft 365 address — that is what links this record to their account when they first sign
-          in. The name and department are replaced with the real ones at that point.
+          Use their exact Microsoft 365 address (as they sign in to AppHub) — that is how their sign-in finds this record.
         </p>
         <Form form={addForm} layout="vertical" requiredMark={false} onFinish={(v) => void createUser(v)}>
           <Form.Item
@@ -413,13 +412,13 @@ export default function AdminUsers() {
           >
             <Input placeholder="name@maxbiocare.com" autoComplete="off" />
           </Form.Item>
-          <Form.Item name="displayName" label="Full name" extra="Optional — Microsoft 365 supplies it at first sign-in.">
+          <Form.Item name="displayName" label="Full name" extra="Optional — defaults to the part of the address before @.">
             <Input placeholder="Nguyen Van A" autoComplete="off" />
           </Form.Item>
           <Form.Item
             name="roleKeys"
             label="Roles"
-            extra="A user may hold several. Without any, they can sign in with Microsoft but cannot enter the app."
+            extra="A user may hold several. Without any, they cannot enter the app."
           >
             <Select
               mode="multiple"

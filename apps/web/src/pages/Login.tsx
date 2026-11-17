@@ -1,34 +1,44 @@
-import { useState } from 'react';
-import { Button } from 'antd';
+import { useEffect, useState } from 'react';
+import { Button, Spin } from 'antd';
 import type { AccessDenial } from '../auth/useSession';
 import Notice from '../components/Notice';
 import '../styles/concept.css';
 import './Login.css';
 
-// The only entry point when there is no usable session. Microsoft 365 is the
-// single sign-in method (dev-login stays a raw endpoint for local testing).
+// The only entry point when there is no usable session — rendered in place, at
+// whatever page was being opened (App.tsx). Microsoft 365 through AppHub is the
+// single sign-in method (dev-login stays a raw endpoint for local testing);
+// MBc360 has never had a password sign-in.
+//
+// Since 2026-11-17 (AppHub repo docs/11-ai-remove-password-login.md) this
+// screen does not wait for a click: it sends the browser straight to
+// /api/auth/login?next=<this page>, which the server redirects to AppHub
+// (/launch/{HUB_APP}?next=); AppHub signs in with Microsoft (or still has a
+// session) and opens MBc360 through the signed hub handshake, back on that same
+// page. It STOPS — notice + "Sign in with Microsoft 365" button — only where
+// going on would loop or cannot work:
+//  - an answer to explain: ?hub_error= (from AppHub's handshake),
+//    ?auth_error=no_role|inactive or a 403 session (`denied`) — AppHub's
+//    session is still alive, so sending the browser back would land here again;
+//  - AppHub not configured on the server (GET /api/auth/options → microsoft:
+//    false, or the call failed).
+// ?signed_out=1 does not stop it: AppHub decides (still signed in → straight
+// back in; otherwise Microsoft first).
 //
 // Access rule (project owner, 2026-10-02): signing in with Microsoft 365 only
-// proves the person belongs to the company tenant. Entering the app needs an
-// active account with a role, granted by an administrator — the server refuses
-// otherwise, both at sign-in (`?auth_error=no_role|inactive|tenant`) and on
-// every request (a 403 the session hook turns into `denied`).
+// proves who the person is. Entering the app needs an active account with a
+// role, granted by an administrator — the server refuses otherwise, both at
+// sign-in (`?auth_error=no_role|inactive`) and on every request (a 403 the
+// session hook turns into `denied`). An email MBc360 does not know gets
+// `?hub_error=no_account`. The first administrator is added on the server
+// (PINNED_ADMINS).
 //
 // 2026-10-02 redesign (wireframe option A): one flat card; any notice sits
-// ABOVE the button, so it is read before acting; the button shows a redirect
-// state so it cannot be pressed twice.
+// ABOVE the button, so it is read before acting.
 
-// Also from AppHub (server hub/hub.controller.ts): ?hub_error=no_account (email unknown here — nothing is created
-// until the person signs in with Microsoft 365) or ?hub_error=expired; and ?signed_out=1 after AppHub or another
-// app signed this person out.
-type Reason = 'error' | 'no_role' | 'inactive' | 'tenant' | 'no_account' | 'hub_expired' | 'signed_out';
+type Reason = 'no_role' | 'inactive' | 'no_account' | 'hub_expired' | 'hub_failed';
 
 const MESSAGES: Record<Reason, { tone: 'warn' | 'bad'; title: string; body: (email?: string) => React.ReactNode }> = {
-  error: {
-    tone: 'bad',
-    title: "Sign-in didn't complete",
-    body: () => 'Something went wrong while signing in with Microsoft. Try again — if it keeps failing, contact your administrator.',
-  },
   no_role: {
     tone: 'warn',
     title: "Your account doesn't have access yet",
@@ -54,28 +64,34 @@ const MESSAGES: Record<Reason, { tone: 'warn' | 'bad'; title: string; body: (ema
       </>
     ),
   },
-  tenant: {
-    tone: 'bad',
-    title: 'Use your company account',
-    body: () => 'That Microsoft account belongs to another organisation. Sign in with your company Microsoft 365 account.',
-  },
   no_account: {
     tone: 'warn',
-    title: "You don't have an MBc360 account yet",
-    body: () =>
-      'Sign in with Microsoft 365 below to create it — an administrator then assigns your role, and you can open MBc360 from AppHub.',
+    title: "You don't have access to MBc360 yet",
+    body: () => 'Ask an MBc360 Admin to add your Microsoft email.',
   },
   hub_expired: {
     tone: 'warn',
-    title: 'That AppHub link has expired',
-    body: () => 'Open MBc360 from AppHub again, or sign in with Microsoft 365 below.',
+    title: 'That AppHub sign-in link has expired',
+    body: () => 'It has expired or was already used. Try again.',
   },
-  signed_out: {
-    tone: 'warn',
-    title: 'You were signed out',
-    body: () => 'You signed out from AppHub or another app. Sign in again to continue.',
+  hub_failed: {
+    tone: 'bad',
+    title: 'Sign-in through AppHub failed',
+    body: () => 'Try again.',
   },
 };
+
+// Query parameters that are answers to THIS screen, never part of the page to come back to.
+const LOGIN_PARAMS = ['auth_error', 'hub_error', 'as', 'signed_out'];
+
+/** The page being opened (path + query, without this screen's own parameters), or null for the home page. */
+function nextPath(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  for (const key of LOGIN_PARAMS) params.delete(key);
+  const query = params.toString();
+  const path = `${window.location.pathname}${query ? `?${query}` : ''}`;
+  return path === '/' ? null : path;
+}
 
 function MicrosoftLogo() {
   return (
@@ -90,36 +106,55 @@ function MicrosoftLogo() {
 
 export default function Login({ denied }: { denied?: AccessDenial | null }) {
   const [redirecting, setRedirecting] = useState(false);
+  // null while asking the server whether AppHub is configured.
+  const [microsoft, setMicrosoft] = useState<boolean | null>(null);
   const params = new URLSearchParams(window.location.search);
   const queryError = params.get('auth_error');
   const hubError = params.get('hub_error');
   const reason: Reason | undefined = denied
     ? denied.reason
-    : queryError === 'no_role' || queryError === 'inactive' || queryError === 'tenant'
+    : queryError === 'no_role' || queryError === 'inactive'
       ? queryError
-      : queryError
-        ? 'error'
-        : hubError === 'no_account'
-          ? 'no_account'
+      : hubError === 'no_account'
+        ? 'no_account'
+        : hubError === 'expired'
+          ? 'hub_expired'
           : hubError
-            ? 'hub_expired'
-            : params.get('signed_out')
-              ? 'signed_out'
-              : undefined;
+            ? 'hub_failed'
+            : undefined;
   const email = denied?.email ?? params.get('as') ?? undefined;
-  // Refused for WHO they are, not for a glitch: Microsoft's own session is
-  // still alive, so a plain retry would silently sign the same account in
-  // again. Offer the account picker instead.
-  const switchAccount = reason === 'no_role' || reason === 'inactive' || reason === 'tenant';
+  // Refused for WHO they are: AppHub's (and Microsoft's) session is still
+  // alive, so a plain retry signs the same account in again.
+  const refused = reason === 'no_role' || reason === 'inactive';
   const message = reason ? MESSAGES[reason] : undefined;
+  const next = nextPath();
+  // Full-page navigation: the server redirects to AppHub (api auth/auth.controller.ts login).
+  const signInUrl = `/api/auth/login${next ? `?${new URLSearchParams({ next })}` : ''}`;
+
+  useEffect(() => {
+    fetch('/api/auth/options')
+      .then((res) => (res.ok ? (res.json() as Promise<{ microsoft?: boolean }>) : undefined))
+      .then((options) => {
+        const on = options?.microsoft === true;
+        setMicrosoft(on);
+        // Nothing to explain → straight on to AppHub; replace() keeps this screen out of the Back history.
+        if (on && !reason) window.location.replace(signInUrl);
+      })
+      .catch(() => setMicrosoft(false));
+    // Once per mount: the URL (and so reason / signInUrl) does not change while this screen is shown.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const signIn = async () => {
     setRedirecting(true);
     // A session that exists but may not enter (its role was removed) is
     // ended first, so the next sign-in starts clean.
     if (denied) await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
-    window.location.href = switchAccount ? '/api/auth/login?prompt=select_account' : '/api/auth/login';
+    window.location.href = signInUrl;
   };
+
+  // On the way to AppHub (or still asking whether it is configured).
+  const goingOn = !reason && microsoft !== false;
 
   return (
     <div className="concept-tokens ln">
@@ -136,22 +171,38 @@ export default function Login({ denied }: { denied?: AccessDenial | null }) {
 
         <h1 className="ln-title">Sign in</h1>
 
+        {goingOn && (
+          <div className="ln-foot" role="status" aria-live="polite">
+            <Spin size="small" /> &nbsp;Taking you to AppHub…
+          </div>
+        )}
+
         {message && (
           <Notice tone={message.tone} title={message.title}>
             {message.body(email)}
           </Notice>
         )}
 
-        <Button block size="large" className="ln-btn" loading={redirecting} onClick={() => void signIn()}>
-          {!redirecting && <MicrosoftLogo />}
-          {redirecting ? 'Redirecting to Microsoft…' : switchAccount ? 'Sign in with a different account' : 'Sign in with Microsoft 365'}
-        </Button>
+        {microsoft === false && (
+          <Notice tone="bad" title="Sign-in isn't available">
+            AppHub is not configured on this server (HUB_URL, HUB_APP). Contact your administrator.
+          </Notice>
+        )}
 
-        <p className="ln-foot">
-          {switchAccount
-            ? 'Signed in to Microsoft as the wrong person? The button above lets you choose another account.'
-            : 'Use your company Microsoft 365 account. Access is granted by an administrator — signing in only confirms you belong to the company.'}
-        </p>
+        {reason && microsoft && (
+          <Button block size="large" className="ln-btn" loading={redirecting} onClick={() => void signIn()}>
+            {!redirecting && <MicrosoftLogo />}
+            {redirecting ? 'Redirecting to AppHub…' : 'Sign in with Microsoft 365'}
+          </Button>
+        )}
+
+        {reason && microsoft && (
+          <p className="ln-foot">
+            {refused
+              ? 'Signed in as the wrong person? Sign out of AppHub, then sign in again with the right account.'
+              : 'Use your company Microsoft 365 account. An administrator must add you to MBc360 and assign a role first.'}
+          </p>
+        )}
       </main>
     </div>
   );

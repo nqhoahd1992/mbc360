@@ -16,8 +16,10 @@ import { createHubConnector } from './hub-connector';
 //   POST /api/hub/access AppHub server → signed {emails: [...]} → {access: {"<email>": true|false}} (AppHub docs/01 7c):
 //                        true = active and holding a role (the entry rule below). Display only; /sso still decides.
 // MBc360's own access rule still decides who enters (2026-10-02: active account holding a role):
-//  - email unknown here → no account is created; the sign-in screen says so (?hub_error=no_account) and
-//    "Sign in with Microsoft 365" creates the account for an administrator to give a role, as before;
+//  - email unknown here → no account is created; the sign-in screen says so (?hub_error=no_account): an administrator
+//    adds the person in Users & Roles first (2026-11-17 — "Sign in with Microsoft 365" goes through AppHub too, see
+//    auth/auth.controller.ts login, and no longer creates the account). The first Admin of a deployment comes from
+//    PINNED_ADMINS (auth/pinned-admins.ts);
 //  - known but no role / deactivated → the usual ?auth_error=no_role|inactive notice, no session.
 // Sign out goes to {HUB_URL}/logout?app={HUB_APP} (auth.service.ts logout): AppHub signs the person out of every app,
 // of AppHub itself and of Microsoft (when AppHub has ENTRA_SIGN_OUT on); signing in there again comes back here.

@@ -1418,8 +1418,8 @@ export interface PowerAppsSettings {
 }
 
 // Tenant/client identity is NOT recorded here: the app registration used for
-// Graph calls is the same one already configured server-side for Entra ID
-// sign-in (AUTH_TENANT_ID / AUTH_CLIENT_ID in apps/api/.env, see auth.service.ts)
+// Graph calls is the same one already configured server-side (AUTH_TENANT_ID /
+// AUTH_CLIENT_ID in apps/api/.env, see apps/api/src/mailer/mailer-config.ts)
 // — extended with Graph scopes (e.g. Sites.Read.All) when this sync is built,
 // not a second app entered per-browser-session. Only non-identity, per-sync
 // settings live here.

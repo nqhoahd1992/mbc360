@@ -30,7 +30,7 @@ interface GraphTokenResponse {
 //
 // Sends the signature step-up verification code via Microsoft Graph's
 // application-permission sendMail (Mail.Send) — the OAuth2 client-credentials
-// grant against the SAME Entra ID app registration used for SSO, sending
+// grant against the Entra ID app registration in AUTH_TENANT_ID/…, sending
 // from a real M365 mailbox (mailer-config.ts). The access token is cached
 // in memory for its ~1h lifetime and only re-acquired near expiry; there is
 // no DB row for it (unlike CosmetriConnection) since it's stateless and

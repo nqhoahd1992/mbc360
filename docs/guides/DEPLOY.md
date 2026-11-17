@@ -32,10 +32,11 @@ Trên server:
   dig +short mbc360.mbcstaging.com       # phải trả về đúng IP đó
   ```
 
-Trên Azure (Entra ID app registration — đã có sẵn, chỉ cần bổ sung cho môi trường mới):
+Đăng nhập (từ 17/11/2026): **"Sign in with Microsoft 365" đi qua AppHub** — MBc360 không còn đăng nhập Microsoft riêng, nên **không cần Redirect URI nào cho MBc360** trên Azure. Cần trong `.env`: `HUB_URL` (địa chỉ trang AppHub, không phải API) + `HUB_APP` (slug trong AppHub → Manage apps) + `HUB_SECRET`; thiếu `HUB_URL` hoặc `HUB_APP` thì trang đăng nhập không hiện nút Microsoft. Người mới: Admin thêm user (đúng email Microsoft) ở trang Users trước, đăng nhập không tự tạo tài khoản.
 
-- Thêm **Web redirect URI**: `https://<domain>/api/auth/callback` (phải khớp từng ký tự với `AUTH_REDIRECT_URI` trong `.env`).
-- Có sẵn một **client secret còn hạn**. Khi tạo secret, copy cột **Value** (chuỗi dài, chỉ hiện một lần lúc tạo) — **không phải cột "Secret ID"** (UUID). Dán nhầm Secret ID sẽ lỗi `AADSTS7000215: Invalid client secret` lúc đăng nhập.
+Trên Azure (Entra ID app registration) — **chỉ khi dùng mailer Graph** (`AUTH_TENANT_ID` / `AUTH_CLIENT_ID` / `AUTH_CLIENT_SECRET` + `MAIL_SENDER`):
+
+- Có sẵn một **client secret còn hạn**. Khi tạo secret, copy cột **Value** (chuỗi dài, chỉ hiện một lần lúc tạo) — **không phải cột "Secret ID"** (UUID). Dán nhầm Secret ID sẽ lỗi `AADSTS7000215: Invalid client secret` lúc mailer lấy token.
 
 ## 3. Clone code và tạo `.env`
 
@@ -46,11 +47,11 @@ cp .env.example .env
 nano .env
 ```
 
-Điền theo chú thích trong [`.env.example`](../../.env.example). Ba bẫy đã gặp thật, đừng lặp lại:
+Điền theo chú thích trong [`.env.example`](../../.env.example). Ba bẫy cần tránh, đừng lặp lại:
 
 1. **Giá trị chứa `$` bị Compose cắt mất**: Compose nội suy `$xyz` trong `.env` thành biến (thường rỗng) và chỉ in một dòng `WARN ... variable is not set` dễ bỏ qua — mật khẩu thực tế đưa vào container khác với cái bạn gõ. Sinh secret bằng `openssl rand -hex 32` (hex không bao giờ có ký tự đặc biệt), hoặc escape `$` thành `$$`.
-2. **`AUTH_CLIENT_SECRET` phải là secret Value, không phải Secret ID** (xem mục 2).
-3. **`AUTH_REDIRECT_URI` viết URL đầy đủ** — file `.env` của Compose không tự nội suy `${APP_BASE_URL}` lồng trong giá trị khác.
+2. **`AUTH_CLIENT_SECRET` (nếu dùng mailer) phải là secret Value, không phải Secret ID** (xem mục 2).
+3. **`HUB_URL` là địa chỉ trang AppHub** (vd. `https://apphub.maxbiocare.com`), không phải `/api`; `HUB_APP` đúng slug trong AppHub.
 
 Soát lại trước khi chạy — lệnh sau phải in ra config **không kèm dòng WARN nào**:
 
@@ -161,7 +162,9 @@ Không còn bước migrate riêng: service `migrate` chạy trong chính lệnh
 | Port bind fail / `ss` thấy port đã LISTEN | VPS dùng chung, 8080 và 3000–3003 đã bị project khác chiếm | Chọn port khác, sửa đồng bộ `.env` + block nginx |
 | `nginx -t` báo `Permission denied` đọc `fullchain.pem` của domain khác | Chạy `nginx -t` không có `sudo` | `sudo nginx -t` |
 | certbot: `Invalid response ... 404`, `unauthorized` | DNS của subdomain chưa trỏ về VPS | Thêm/sửa A record, chờ lan truyền (`dig +short` ra đúng IP) rồi chạy lại |
-| Đăng nhập lỗi, log api: `AADSTS7000215: Invalid client secret` | Dán Secret **ID** thay vì secret **Value** vào `AUTH_CLIENT_SECRET` | Tạo secret mới trên Entra, copy cột Value, cập nhật `.env`, `up -d api` |
+| Mailer Graph lỗi, log api: `AADSTS7000215: Invalid client secret` | Dán Secret **ID** thay vì secret **Value** vào `AUTH_CLIENT_SECRET` | Tạo secret mới trên Entra, copy cột Value, cập nhật `.env`, `up -d api` |
+| Trang đăng nhập không có nút "Sign in with Microsoft 365" | Thiếu `HUB_URL` hoặc `HUB_APP` trong `.env` | Điền cả hai, `up -d api` |
+| Bấm "Sign in with Microsoft 365" xong về trang đăng nhập báo "You don't have access to MBc360 yet" | Email Microsoft chưa có user trong MBc360 (đăng nhập không tự tạo tài khoản) | Admin thêm user đúng email Microsoft ở trang Users, gán role |
 | Log api lặp lại `The table ... does not exist` (P2021) hoặc `The column ... does not exist` (P2022) | DB chưa migrate — code mới chạy trên schema cũ | Không còn xảy ra khi dựng stack bằng `up -d --build` (service `migrate` chặn api). Nếu đang gặp: chạy `docker compose -f docker-compose.prod.yml up -d --build` rồi kiểm tra `logs migrate`. Migration lỗi dở dang (`P3009`) phải xử lý tay bằng `prisma migrate resolve` |
 | Seed lỗi `Cannot find module '../src/generated/prisma/client'` | Prisma client chưa generate (thư mục gitignored, không có trong bản clone) | Lệnh Seed ở mục 5 đã gồm `prisma generate`; đừng bỏ bước đó |
 | Đăng nhập M365 xong báo "không có quyền truy cập" dù email nằm trong `PINNED_ADMINS` | Biến chưa tới container api, hoặc email viết sai | `docker compose -f docker-compose.prod.yml exec api printenv PINNED_ADMINS`; sửa `.env` rồi `up -d api` — log khởi động phải có dòng `PINNED_ADMINS: <email> — …` |

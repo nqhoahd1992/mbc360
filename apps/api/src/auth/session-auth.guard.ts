@@ -53,7 +53,7 @@ export class SessionAuthGuard implements CanActivate {
     const issuedAt = payload.hiat ?? payload.iat ?? 0;
     if (user.sessionsValidAfter && issuedAt * 1000 < user.sessionsValidAfter.getTime()) throw new UnauthorizedException('Signed out');
     // Access rule (project owner, 2026-10-02): signing in with Microsoft 365
-    // only proves the person belongs to the company tenant; being let IN
+    // (through AppHub since 2026-11-17) only proves who the person is; being let IN
     // needs an active account holding at least one role, granted by an
     // administrator in Users & Roles. Checked on every request, not only at
     // sign-in, so deactivating someone or removing their last role takes

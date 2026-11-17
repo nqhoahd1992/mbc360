@@ -13,6 +13,7 @@
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
     "test:hub": "tsx --test src/hub/*.test.ts",
+    "test:auth": "tsx --test src/auth/*.test.ts",
     "db:wipe-projects": "tsx scripts/wipe-projects.ts",
     "db:seed-gate-project": "tsx scripts/seed-gate-project.ts",
     "db:seed-full-project": "tsx scripts/seed-full-project.ts",
@@ -29,7 +30,6 @@
     "@prisma/client": "^7.8.0",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
-    "openid-client": "^6.8.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },

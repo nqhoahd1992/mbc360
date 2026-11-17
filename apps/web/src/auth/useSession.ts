@@ -15,7 +15,7 @@ export interface SessionUser {
 }
 
 // Why a signed-in account is not let in (2026-10-02 access rule: Microsoft 365
-// proves tenant membership; entering needs an active account with a role).
+// proves who the person is; entering needs an active account with a role).
 export interface AccessDenial {
   reason: 'no_role' | 'inactive';
   email?: string;
@@ -49,12 +49,10 @@ export function useSession() {
     void refresh();
   }, [refresh]);
 
-  // Ends the local session, then (for a real Entra sign-in) sends the
-  // browser to Microsoft's RP-Initiated Logout so the SSO session ends too —
-  // otherwise signing back in would silently re-authenticate with no
-  // credential prompt. Entra redirects back to the app's base URL after.
-  // Connected to AppHub, the server answers {HUB_URL}/logout?app= instead:
-  // AppHub signs the person out of every app, of itself and of Microsoft.
+  // Ends the local session, then sends the browser where the server says.
+  // Connected to AppHub, that is {HUB_URL}/logout?app=: AppHub signs the
+  // person out of every app, of itself and of Microsoft. Otherwise (dev) the
+  // app's own base URL.
   const logout = useCallback(async () => {
     setUser(null);
     const res = await fetch('/api/auth/logout', { method: 'POST' });

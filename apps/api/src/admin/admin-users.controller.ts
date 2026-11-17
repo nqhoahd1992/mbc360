@@ -22,14 +22,14 @@ import { notifyHubAccess } from '../hub/hub-notify';
 
 const SSO_ROLE_KEYS = new Set(SSO_ROLES.map((r) => r.key));
 
-// Same shape PINNED_ADMINS accepts, for the same reason: the address is what
-// links this record to the person's Microsoft 365 account on their first
-// sign-in, so anything that is not an address is a record nobody can ever use.
+// Same shape PINNED_ADMINS accepts, for the same reason: the address is how a
+// sign-in from AppHub (Microsoft 365) finds this record, so anything that is
+// not an address is a record nobody can ever use.
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 // User & role management (the user's role is a decision made INSIDE MBc360,
-// never inferred from Graph/AD attributes — an SSO login only creates the
-// user record with no role; an admin assigns it here). Admin-only: every
+// never inferred from Graph/AD attributes; since 2026-11-17 signing in creates
+// no user record at all — an admin adds the person and assigns roles here). Admin-only: every
 // handler checks PermissionsService.isAdmin before touching data.
 @Controller('admin')
 export class AdminUsersController {
@@ -98,17 +98,14 @@ export class AdminUsersController {
     return users.map((u) => this.toUserResponse(u));
   }
 
-  // Pre-provision a colleague before their first sign-in. Nothing here grants
-  // a way IN: the person still signs in with Microsoft 365, and
-  // AuthService.upsertSsoUser links that login to this record by email
-  // (case-insensitively), exactly as it does for a PINNED_ADMINS account. What
-  // it buys is the order: without it a new starter must sign in, be refused for
-  // having no role, and only then appear in this list to be given one.
+  // Add a colleague before they sign in — since 2026-11-17 the only way an
+  // account comes into being besides PINNED_ADMINS: "Sign in with Microsoft 365"
+  // goes through AppHub, which only finds an existing account by email
+  // (case-insensitively, hub/hub.controller.ts) and creates nothing; an unknown
+  // email lands on the sign-in screen with ?hub_error=no_account.
   //
-  // `oid` is deliberately left empty — the Entra object id is the person's to
-  // present, not an administrator's to type — and so is the department, which
-  // is synced from Microsoft Graph at that first sign-in. The display name is a
-  // placeholder until then, same as PINNED_ADMINS.
+  // `oid` and the department stay empty (nothing syncs them from Microsoft any
+  // more), and the display name defaults to the part of the address before @.
   @Post('users')
   async createUser(
     @CurrentUser() currentUser: SessionUser,

@@ -1,11 +1,10 @@
 // Mailer configuration (signature step-up codes), via Microsoft Graph's
-// application-permission sendMail. Reuses the SAME Entra ID app registration
-// already used for SSO (AUTH_TENANT_ID/AUTH_CLIENT_ID/AUTH_CLIENT_SECRET,
-// see apps/api/src/auth/auth-config.ts) rather than a second app
-// registration — that app just needs an added Mail.Send APPLICATION
-// permission (admin-consented once in Entra, outside code; a DIFFERENT
-// grant from the delegated User.Read used for sign-in), plus a real,
-// licensed M365 mailbox to send from (MAIL_SENDER).
+// application-permission sendMail. Uses the Entra ID app registration in
+// AUTH_TENANT_ID/AUTH_CLIENT_ID/AUTH_CLIENT_SECRET — formerly MBc360's own
+// Microsoft sign-in too; since 2026-11-17 sign-in goes through AppHub and
+// only this mailer reads those variables. That app needs a Mail.Send
+// APPLICATION permission (admin-consented once in Entra, outside code), plus
+// a real, licensed M365 mailbox to send from (MAIL_SENDER).
 //
 // Optional and off by default: when any value below is unset (e.g. in dev,
 // or before the Mail.Send grant lands), codes are only logged to the API

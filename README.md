@@ -29,6 +29,13 @@ npm run build      # build shared -> api -> web
 npm run lint       # oxlint across the whole repo
 ```
 
+## Sign-in
+
+- **Microsoft only, through AppHub** — there is no password sign-in. Opening MBc360 without a session goes straight to `{HUB_URL}/launch/{HUB_APP}` (`GET /api/auth/login?next=<page>`), and AppHub brings the person back to that page. Needs `HUB_URL`, `HUB_APP`, `HUB_SECRET` on the API; without them the sign-in screen says AppHub is not configured.
+- **An administrator adds people** in Users & Roles by their exact Microsoft email (+ a role). An email MBc360 does not know is refused (`?hub_error=no_account`); nothing is created. `PINNED_ADMINS` still makes sure the listed emails are administrators on every start.
+- **First Admin**: add it on the server with `PINNED_ADMINS`; everyone after that is added by an administrator.
+- **Dev**: run AppHub locally and add the seeded emails as users there (or set `PINNED_ADMINS` to your own email); `POST /api/auth/dev-login` (dev mode only, never in production) issues a session for an existing user without AppHub.
+
 ## Production (self-hosted, Docker)
 
 Images are built from the repo root (`apps/api/Dockerfile`, `apps/web/Dockerfile`) and orchestrated with `docker-compose.prod.yml`. The host nginx terminates TLS and routes `/` to the web container and `/api` to the api container (host ports default to 8080/3000, overridable via `WEB_HOST_PORT`/`API_HOST_PORT`). Secrets live in an untracked `.env` next to the compose file — start from `.env.example` at the repo root.

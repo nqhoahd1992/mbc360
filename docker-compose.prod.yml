@@ -17,21 +17,20 @@
 #                              match whatever the host nginx proxies to)
 #   SESSION_SECRET=...        (required — signs session cookies; api refuses
 #                              to start in production without it)
-#   AUTH_TENANT_ID=...        (required for real Entra sign-in)
-#   AUTH_CLIENT_ID=...        (required for real Entra sign-in)
-#   AUTH_CLIENT_SECRET=...    (required for real Entra sign-in)
+#   AUTH_TENANT_ID / AUTH_CLIENT_ID / AUTH_CLIENT_SECRET (optional — only the
+#                              Microsoft Graph mailer reads them; NOT sign-in)
 #   APP_BASE_URL=...          (e.g. https://mbc360.example.com — where the
 #                              browser lands after sign-in/sign-out)
-#   AUTH_REDIRECT_URI=...     (must exactly match the Entra app registration's
-#                              redirect URI; defaults to
-#                              ${APP_BASE_URL}/api/auth/callback if unset)
 #   HUB_SECRET=...            (optional — sign-in from AppHub; AppHub → Manage apps
 #                              → MBc360 shows it once. Empty = AppHub sign-in off)
 #   HUB_SECRET_NEXT=...       (only during a 2-step secret change in AppHub)
-#   HUB_URL=... / HUB_APP=... (optional — AppHub address + this app's slug there,
-#                              e.g. https://apphub.maxbiocare.com / mbc360. Set →
-#                              Sign out goes to {HUB_URL}/logout: every app,
-#                              AppHub and Microsoft sign out. With HUB_SECRET
+#   HUB_URL=... / HUB_APP=... (required for real sign-in — AppHub address + this
+#                              app's slug there, e.g. https://apphub.maxbiocare.com
+#                              / mbc360. Set → "Sign in with Microsoft 365" goes
+#                              to {HUB_URL}/launch/{HUB_APP} (AppHub signs in
+#                              with Microsoft), and Sign out goes to
+#                              {HUB_URL}/logout: every app, AppHub and
+#                              Microsoft sign out. With HUB_SECRET
 #                              also shows the AppHub "Apps" menu button)
 #   HUB_API_URL=...           (optional — AppHub API when not {HUB_URL}/api)
 #   HUB_LAN_REWRITE=...       (optional — <public IP>=<LAN IP of HTTPS nginx>,
@@ -90,11 +89,10 @@ services:
       PORT: '3000'
       DATABASE_URL: postgresql://mbc360:${POSTGRES_PASSWORD}@postgres:5432/mbc360
       SESSION_SECRET: ${SESSION_SECRET}
-      AUTH_TENANT_ID: ${AUTH_TENANT_ID}
-      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID}
-      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
+      AUTH_TENANT_ID: ${AUTH_TENANT_ID:-}
+      AUTH_CLIENT_ID: ${AUTH_CLIENT_ID:-}
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET:-}
       APP_BASE_URL: ${APP_BASE_URL}
-      AUTH_REDIRECT_URI: ${AUTH_REDIRECT_URI}
       PINNED_ADMINS: ${PINNED_ADMINS:-}
       HUB_SECRET: ${HUB_SECRET:-}
       HUB_SECRET_NEXT: ${HUB_SECRET_NEXT:-}
