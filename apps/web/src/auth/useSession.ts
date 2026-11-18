@@ -53,11 +53,16 @@ export function useSession() {
   // Connected to AppHub, that is {HUB_URL}/logout?app=: AppHub signs the
   // person out of every app, of itself and of Microsoft. Otherwise (dev) the
   // app's own base URL.
+  // Ask the server first, then leave for AppHub WITHOUT clearing the user: clearing it renders the login screen, whose
+  // auto-redirect to AppHub sign-in would cancel this sign-out (AppHub docs/13). replace(): Back can't return here.
   const logout = useCallback(async () => {
+    const res = await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
+    const body = res?.ok ? ((await res.json()) as { redirectUrl?: string }) : undefined;
+    if (body?.redirectUrl) {
+      window.location.replace(body.redirectUrl);
+      return;
+    }
     setUser(null);
-    const res = await fetch('/api/auth/logout', { method: 'POST' });
-    const body = res.ok ? ((await res.json()) as { redirectUrl?: string }) : undefined;
-    if (body?.redirectUrl) window.location.href = body.redirectUrl;
   }, []);
 
   return {
