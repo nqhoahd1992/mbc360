@@ -151,6 +151,7 @@ import {
   closureSignersAreNominated,
   registerClosureGateIds,
   registerClosureRoles,
+  closureSignerConflict,
   registerLockViolations,
   registerReviewSpec,
 } from '@mbc360/shared/utils/registerClosures';
@@ -3617,8 +3618,17 @@ export class ProjectsService {
     gateId: string,
     role: string,
   ): Promise<void> {
-    if (!registerClosureRoles(config).includes(role)) {
-      throw new BadRequestException(`"${role}" is not a signing role of "${config.key}" (it asks for: ${registerClosureRoles(config).join(', ')})`);
+    if (!registerClosureRoles(config, gateId).includes(role)) {
+      throw new BadRequestException(`"${role}" is not a signing role of "${config.key}" at ${gateId} (it asks for: ${registerClosureRoles(config, gateId).join(', ')})`);
+    }
+    // Round 5 question 13(c): "one person signing twice is one person. Where independent review is required, block closure until a distinct
+    // qualified reviewer is assigned." [ASSUMPTION: R6-Q19]
+    const people = Object.fromEntries((await db.projectReviewer.findMany({ where: { projectId } })).map((r) => [r.roleKey, r.name]));
+    const same = closureSignerConflict(config, gateId, people);
+    if (same) {
+      throw new BadRequestException(
+        `"${config.key}" needs an independent reviewer at ${gateId}, but its Review owner and its Co-sign are both ${same} — the project's Lead assigns a different person to one of them first`,
+      );
     }
     if (closureSignersAreNominated(config)) {
       const closure = await db.registerClosure.findUnique({
@@ -3704,7 +3714,7 @@ export class ProjectsService {
       update: {},
       create: { projectId, registerKey, gateId },
     });
-    for (const role of registerClosureRoles(config)) {
+    for (const role of registerClosureRoles(config, gateId)) {
       await tx.registerClosureSignOff.upsert({
         where: { closureId_role: { closureId: closure.id, role } },
         update: {},

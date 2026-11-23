@@ -510,3 +510,132 @@ Các bạn đã nói thị trường thêm sau Gate 1 có track Gate 10–12 ri�
 **(f)** Đánh giá đã ghi có được sửa lại không?
 
 **(g)** Có đúng là chỉ Regulatory nêu các thị trường khác mà một phát hiện chạm tới, và với các thị trường đó ta mở lại chữ ký Gate 10 và 11 và chỉ mở review Gate 12 cho thị trường đã bán không?
+
+## Câu 19 — Đóng một sổ: ta đọc các chi tiết câu trả lời để ngỏ thế nào?
+
+*Ở đâu trong ứng dụng:* **khối đóng sổ** ở cuối trang một sổ chứng cứ ("closing for Gate N"), mục của sổ trong **Gate Rules & Sheet Map**, và dòng "Registers that must be closed for Gate N" trong danh sách readiness của gate.
+
+Các bạn đã bảo không bắt hai chữ ký mới trên cả 70 sổ: chỉ cần một bước rà soát có kiểm soát cho bằng chứng dùng trong quyết định gate, dùng phê duyệt sẵn có của sổ nếu có; danh sách tham chiếu, ghi chú làm việc và view dẫn xuất không cần nghi thức đóng; chủ bằng chứng cộng một người rà soát độc lập đủ năng lực ký cho một đánh giá thực chất; một người ký hai lần vẫn là một người, nên chặn đóng cho tới khi gán người rà soát khác, và với bản ghi rủi ro thấp thì bỏ chữ ký thứ hai thay vì cảnh báo. Chúng tôi đã xây. Ở chỗ câu trả lời để ngỏ, chúng tôi đọc như sau:
+
+- **"Bằng chứng dùng trong quyết định gate"** là sổ mà danh sách readiness của một gate đọc. Sổ được đóng ở gate đọc nó, hoặc khi chưa có gì của nó được chốt ở gate đó thì ở gate đầu tiên sau đó trong danh sách gate của chính nó có chốt gì đó (Final Safety Sign-off được đọc ở Gate 7 nhưng chốt ở Gate 10). **Sổ không gate nào đọc thì không có bước đóng.** Nó vẫn bị khoá khi mọi gate nó gắn với đã passed.
+- **Người rà soát độc lập bắt buộc ở bảy gate critical** trong câu trả lời câu 23 (3, 4, 7, 8, 9, 10, 11); ở các gate khác (2, 5, 6) chỉ chủ sổ đóng.
+- **Người rà soát độc lập** là người được gán vào vùng Co-sign của sổ trên dự án. Chúng tôi không kiểm gì thêm về việc họ có "đủ năng lực" không.
+- **Sổ đã có phê duyệt riêng** (workflow 12 trạng thái của Publication Approval Register, chuỗi duyệt ba vai của Study Protocol Setup, chữ ký Final Approver của Formulation Change Register) không bị đóng lần hai. Trang có sẵn khối Prepared / Reviewed / Approved của workbook giữ khối đó làm chữ ký đóng. Sổ đóng cùng trang của nó thì không ký riêng.
+- **"Phê duyệt chuyên môn bổ sung khi cần thẩm quyền Safety, Regulatory, Quality hay NP"**: chúng tôi đọc là đã được đáp ứng bởi vùng review-owner của chính sổ (vùng Safety, Regulatory hay Quality sở hữu sổ) và, với NP, bởi đường chữ ký Final Approver ở trên. Chúng tôi không thêm chữ ký nào nữa.
+- **Một người giữ cả hai vai** chặn việc đóng ở gate critical, và khối đóng cho biết cần đổi ai. Không chặn ở gate mà chỉ chủ sổ ký.
+
+Hiện 78 sổ phân thế này. Xin đánh dấu sổ nào sai.
+
+**Closed by its owner and an independent reviewer (owner alone where marked) (20)**
+
+| Register | Gate(s) |  |
+|---|---|---|
+| Ingredient-Level Safety Matrix | 10 |  |
+| Critical Safety Findings | 07 |  |
+| Final Safety Sign-off | 10 |  |
+| Supplier & Raw Material Evidence | 04, 07 |  |
+| Prohibited Ingredient Watch-list | 04, 07 |  |
+| General Restricted & Caution Assessment | 07 |  |
+| Pregnancy / Breastfeeding Caution Limits | 04, 07 |  |
+| Stability, Compatibility & Release Evidence | 09, 11 |  |
+| Packaging Specs & Artwork Evidence | 06 (owner only), 10 |  |
+| Regulatory Checklist Status (per market) | 10 |  |
+| ASEAN PIF Checklist (Closure) | 10 |  |
+| SKU Claims / PIF Register | 10 |  |
+| Development Brief | 02 (owner only) |  |
+| Vulnerable-User Assessment | 02 (owner only) |  |
+| GMP Links | 11 |  |
+| Released Label vs Current Artwork Register | 11 |  |
+| Competitor Product Register — Identity, Claims & IP | 03 |  |
+| Prospective Evidence Plan | 05 (owner only) |  |
+| Detailed Test Protocol | 08 |  |
+| Claim -> Evidence Traceability | 03, 10 |  |
+
+**Closed by the page's own sign-off block (2)**
+
+| Register | Gate(s) |  |
+|---|---|---|
+| Needs — Executive Brief | 02 |  |
+| Target Product Profile (TPP) | 05 |  |
+
+**Has its own approval route, so it is not closed a second time (3)**
+
+| Register | Gate(s) | Route |
+|---|---|---|
+| Protocol Setup | — | The three-role study approval trail (rule C2) |
+| Publication Approval Register | — | Its own 12-state approval workflow with Technical and Regulatory reviewers (F11) |
+| Formulation Change Register (Final Approver Controlled) | — | The Final Approver's authenticated signature on each row |
+
+**Closed together with its page (10)**
+
+| Register | Gate(s) | Page |
+|---|---|---|
+| Development Iteration Log | — | Signed with Product Development Report |
+| Team Feedback & Competitor Benchmark Notes | — | Signed with Product Development Report |
+| Framed Scientific Research Questions | — | Signed with Needs & Scientific Basis |
+| Literature-Search Method | — | Signed with Needs & Scientific Basis |
+| Anatomy, Physiology, Exposure Science & Contradictory / Null Evidence | — | Signed with Needs & Scientific Basis |
+| Needs -> Technology Traceability Matrix | — | Signed with Needs & Scientific Basis |
+| Comparative Testing Protocol | — | Signed with Competitor Landscape |
+| Current Solutions & Standard of Care | — | Signed with Competitor Landscape |
+| Landscape Decision Summary | — | Signed with Competitor Landscape |
+| Backbone / Platform Technology | — | Signed with Target Product & Tech Platform |
+
+**No close-out: no gate reads it (43)**
+
+| Register | Gate(s) |  |
+|---|---|---|
+| Product Safety Profile | — |  |
+| Publication / Deployment Record | — |  |
+| Ingredient Substitution Evidence | — |  |
+| Eye Safety Evidence | — |  |
+| Fragrance Workflow | — |  |
+| Fragrance / Allergen Log | — |  |
+| Microbiology & PET Evidence | — |  |
+| Potency & Process Control Evidence | — |  |
+| Mechanism & Claims Evidence Map | — |  |
+| Twinkle 5 Claims Map | — |  |
+| Efficacy Assurance Control | — |  |
+| Functional Efficacy Evidence | — |  |
+| Clinical / Human Evidence | — |  |
+| Participant / Sample Log | — |  |
+| Efficacy Study Plan | — |  |
+| Test Report Index | — |  |
+| Artwork / Label Review Checklist | — |  |
+| Artwork Change Control | — |  |
+| Formula Change Control | — |  |
+| ASEAN PIF / Dossier Map | — |  |
+| PIF Evidence Export | — |  |
+| PIF Evidence Closure (Workflow) | — |  |
+| Publication Rules | — |  |
+| Safety / Medical Summary | — |  |
+| Ready-to-Answer Pack | — |  |
+| HCP / Distributor Efficacy Answer | — |  |
+| HCP Test Report Pack | — |  |
+| Batch Formula Trace | — |  |
+| Product Family & Version Register | — |  |
+| Change Templates / Forms | — |  |
+| Social Media & Marketing Campaign Register | — |  |
+| Product / Project Identification | — |  |
+| Platform / Channel Rollout & Stock Confirmation | — |  |
+| Shipment Label & Batch Verification | — |  |
+| Evidence Template Index | — |  |
+| System Requirements | — |  |
+| MBc360 Feedback | — |  |
+| Carrier / Emollient System Review | — |  |
+| Carrier Review — Summary | — |  |
+| Ingredient Monograph | — |  |
+| Evidence Hierarchy | — |  |
+| Transferability & Inference Rules | — |  |
+| Literature-Search & Referencing Standard | — |  |
+
+
+**(a)** "Sổ mà danh sách readiness của gate đọc" có đúng là nghĩa của "bằng chứng dùng trong quyết định gate" không, và danh sách trên có đúng không?
+
+**(b)** Người rà soát độc lập đúng ở bảy gate critical và không ở các gate khác chứ?
+
+**(c)** Vùng Co-sign có đúng là nguồn của "người rà soát độc lập đủ năng lực" không, và có nên không cho dự án tới gate critical khi chưa gán người đó?
+
+**(d)** Ba sổ có đường phê duyệt riêng có đúng không, và có sổ nào khác nên vào danh sách đó?
+
+**(e)** Vùng review-owner của sổ có thoả "phê duyệt chuyên môn bổ sung" không, hay nên thêm chữ ký Safety, Regulatory, Quality hoặc NP cho những sổ nhất định? Sổ nào?

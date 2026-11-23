@@ -26,8 +26,7 @@ export function sheetClosure(project: ProjectData, item: NavItem): SheetClosure 
   ];
   const closures = anchors.map((a) => {
     const gates = registerClosureGateIds(a);
-    const roles = registerClosureRoles(a);
-    const at = gates.filter((g) => isRegisterClosed(closureStateAt(project, a.key, g), roles));
+    const at = gates.filter((g) => isRegisterClosed(closureStateAt(project, a.key, g), registerClosureRoles(a, g)));
     const who = at.flatMap((g) => (closureStateAt(project, a.key, g)?.signOffs ?? []).filter((so) => isRegisterClosureSigned(so)).map((so) => so.name ?? ''));
     return { total: gates.length, closed: at.length, who };
   });

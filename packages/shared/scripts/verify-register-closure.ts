@@ -3,12 +3,18 @@
 // Run: npm run verify:register-closure
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
 import { REGISTER_CONFIGS, type RegisterConfig } from '../src/config/registers';
+import { registerClosureSignerRole } from '../src/config/reviewers';
+import { isRegisterClosed } from '../src/types';
 import { gateReadinessChecklist } from '../src/utils/gateProgress';
 import { registerClosureContent } from '../src/utils/registerClosureContent';
 import {
   closureColumns,
   closureKey,
+  closureNeedsIndependentReview,
+  closureSignerConflict,
   closureSignersAreNominated,
+  registerApprovalRequirement,
+  registerReviewSpec,
   isRegisterFullyClosed,
   registerClosureGateIds,
   registerClosureRoles,
@@ -16,6 +22,10 @@ import {
   registerLocks,
   requiredRegisterClosures,
 } from '../src/utils/registerClosures';
+
+// Closed at ONE gate (isRegisterFullyClosed asks for every gate the register is closed at).
+const isRegisterFullyClosedAt = (project: ReturnType<typeof createEmptyProject>, config: RegisterConfig, gate: string) =>
+  isRegisterClosed(project.registerClosures[closureKey(config.key, gate)], registerClosureRoles(config, gate));
 
 let bad = 0;
 const t = (name: string, ok: boolean, extra = '') => {
@@ -110,8 +120,8 @@ for (const gate of watchGates) sign(p4, 'prohibitedIngredients', gate);
 t('fully closed once every gate it belongs to has both signatures', isRegisterFullyClosed(p4, watch));
 
 // --- one signature for a whole page (RegisterConfig.closedWith) ---------------------------------------
-const anchor = cfg('productDevelopmentProfile');
-const members = ['productDevelopmentIterations', 'productDevelopmentFeedback'].map(cfg);
+const anchor = cfg('competitorLandscape');
+const members = ['competitorTestingProtocol', 'currentSolutionsStandardOfCare', 'competitorLandscapeSummary'].map(cfg);
 const groupGate = registerClosureGateIds(anchor)[0];
 t('the anchor of a page is closable', !!groupGate);
 t('a member has no closing block of its own', members.every((m) => registerClosureGateIds(m).length === 0));
@@ -126,7 +136,7 @@ sign(g1, anchor.key, groupGate);
 t('with both signatures the members read as closed', isRegisterFullyClosed(g1, members[0]));
 const before = JSON.stringify(registerClosureContent(make(), anchor.key, groupGate));
 const withRow = make();
-withRow.registers[members[0].key] = [{ iteration: '1' } as never];
+withRow.registers[members[0].key] = [{ ...(withRow.registers[members[0].key]?.[0] ?? {}), competitor: 'edited' } as never];
 t('what the signature attests to includes the members', JSON.stringify(registerClosureContent(withRow, anchor.key, groupGate)) !== before);
 t('an ordinary register carries no sections, so its hash is unchanged', registerClosureContent(make(), 'prohibitedIngredients', first)?.sections === undefined);
 
@@ -151,6 +161,47 @@ n1.registerClosures[closureKey(needsAnchor.key, nGate)] = { signOffs: [{ role: '
 t('the default pair of roles does NOT close a page that names its own', !isRegisterFullyClosed(n1, needsAnchor));
 n1.registerClosures[closureKey(needsAnchor.key, nGate)] = { signOffs: [{ role: needsRoles[0], ...signed }] } as never;
 t('one standing signature locks the whole Needs page, members included', ['needsResearchQuestions', 'needsLiteratureSearchMethod'].every((k) => registerLocks(n1, cfg(k)).columns.size > 0));
+
+// --- Round 5 question 13: which registers are closed, by whom, and one person is one person ----------------------------------------------
+// (a) evidence used in a gate decision is closed; a register no gate reads has no close-out ceremony
+const readByNoGate = REGISTER_CONFIGS.filter((c) => !c.closedWith && !c.closureRoles?.length && registerClosureGateIds(c).length === 0);
+t('a register no gate reads has no closing gate', readByNoGate.length > 0 && readByNoGate.every((c) => registerApprovalRequirement(c).kind !== 'closure'));
+t('...and no gate asks for its closure', REGISTER_CONFIGS.filter((c) => registerClosureGateIds(c).length === 0).every((c) => REGISTER_CONFIGS.length > 0 && ['SG01','SG02','SG03','SG04','SG05','SG06','SG07','SG08','SG09','SG10','SG11','SG12'].every((g) => !requiredRegisterClosures(g).some((r) => r.registerKey === c.key))));
+t('a reference sheet nothing reads is not closed', registerClosureGateIds(cfg('templateIndex')).length === 0 && registerApprovalRequirement(cfg('templateIndex')).kind === 'none');
+t('a derived view (the Formulation Change Register) is not closed twice', registerClosureGateIds(cfg('formulationChangeRegister')).length === 0);
+t('a register with its own approval route is not closed a second time', ['publishedInfoApproval', 'studyProtocolSetup', 'formulationChangeRegister'].every((k) => registerClosureGateIds(cfg(k)).length === 0 && registerApprovalRequirement(cfg(k)).kind === 'own-route'));
+t('the watch-lists, evidence read by a gate, are still closed', registerClosureGateIds(cfg('prohibitedIngredients')).length > 0 && registerApprovalRequirement(cfg('prohibitedIngredients')).kind === 'closure');
+t('a page with the workbook\'s own sign-off block keeps its closing', registerApprovalRequirement(cfg('needsExecutiveBrief')).kind === 'own-block' && registerClosureGateIds(cfg('needsExecutiveBrief')).length > 0);
+t('a member is closed with its page', registerApprovalRequirement(cfg('needsResearchQuestions')).kind === 'member');
+// (b) the owner plus an independent reviewer where independence is required, the owner alone elsewhere
+t('independence is required at the critical gates', ['SG03', 'SG04', 'SG07', 'SG08', 'SG09', 'SG10', 'SG11'].every(closureNeedsIndependentReview));
+t('...and not at the others', ['SG01', 'SG02', 'SG05', 'SG06', 'SG12'].every((g) => !closureNeedsIndependentReview(g)));
+t('at a critical gate a register is signed by the owner and the Co-sign', JSON.stringify(registerClosureRoles(watch, 'SG04')) === JSON.stringify(['Review owner', 'Co-sign']));
+t('at another gate the owner alone signs', JSON.stringify(registerClosureRoles(cfg('developmentBrief'), 'SG02')) === JSON.stringify(['Review owner']));
+const briefGate = registerClosureGateIds(cfg('developmentBrief'))[0];
+const b1 = make();
+sign(b1, 'developmentBrief', briefGate, false);
+t('...so the owner\'s signature alone closes it', isRegisterFullyClosed(b1, cfg('developmentBrief')));
+const w1 = make();
+sign(w1, 'prohibitedIngredients', 'SG04', false);
+t('...but at a critical gate the owner alone does not', !isRegisterFullyClosedAt(w1, cfg('prohibitedIngredients'), 'SG04'));
+// (c) one person signing twice is one person
+const watchSpec = registerReviewSpec(watch)!;
+const ownerKey = registerClosureSignerRole(watchSpec, 'Review owner');
+const coKey = registerClosureSignerRole(watchSpec, 'Co-sign');
+t('the watch-list has two different roles to resolve (so the test below means something)', ownerKey !== coKey, `${ownerKey} / ${coKey}`);
+const people = (owner: string, co: string) => ({ [ownerKey]: owner, [coKey]: co });
+const conflictAt = (gate: string, reviewers: Record<string, string>) => closureSignerConflict(watch, gate, reviewers);
+t('the owner and the Co-sign being one person is a conflict at a critical gate', conflictAt('SG04', people('Anna', 'Anna')) === 'Anna');
+t('...whatever the capitalisation', conflictAt('SG04', people('Anna', ' anna ')) === 'Anna');
+t('two different people are not', conflictAt('SG04', people('Anna', 'Binh')) === undefined);
+t('nobody assigned is not a conflict (it has its own message)', conflictAt('SG04', {}) === undefined);
+t('at a gate that needs no independence there is nothing to conflict', conflictAt('SG02', people('Anna', 'Anna')) === undefined);
+t('a page with its own nominated roles is not judged this way', closureSignerConflict(cfg('needsExecutiveBrief'), 'SG02', people('Anna', 'Anna')) === undefined);
+// the Sheet Map's wording
+const kinds = new Set(REGISTER_CONFIGS.map((c) => registerApprovalRequirement(c).kind));
+t('the Sheet Map can name every kind', ['closure', 'own-block', 'own-route', 'member', 'none'].every((k) => kinds.has(k as never)), [...kinds].join(','));
+console.log(`   ${REGISTER_CONFIGS.length} registers: ${['closure','own-block','own-route','member','none'].map((k) => `${k} ${REGISTER_CONFIGS.filter((c) => registerApprovalRequirement(c).kind === k).length}`).join(' · ')}`);
 
 console.log(bad === 0 ? '\nall passed' : `\n${bad} FAILED`);
 process.exit(bad === 0 ? 0 : 1);

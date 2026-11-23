@@ -751,7 +751,7 @@ async function closeRegisters(ctx: Ctx, adminId: string, gate: string): Promise<
       create: { projectId: ctx.id, registerKey: key, gateId: gate },
       update: {},
     });
-    for (const role of registerClosureRoles(REGISTER_CONFIGS.find((c) => c.key === key)!)) {
+    for (const role of registerClosureRoles(REGISTER_CONFIGS.find((c) => c.key === key)!, gate)) {
       const data = {
         name: ctx.adminName,
         signedByUserId: adminId,

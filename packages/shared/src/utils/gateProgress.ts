@@ -2787,7 +2787,7 @@ function unclosedRegistersBlocking(project: ProjectData, gateId: string): GateRe
     .filter((c): c is RegisterConfig => !!c);
   if (relevant.length === 0) return [];
   const closedOf = (key: string) =>
-    isRegisterClosed(closureStateAt(project, key, gateId), registerClosureRoles(REGISTER_CONFIGS.find((c) => c.key === key)!));
+    isRegisterClosed(closureStateAt(project, key, gateId), registerClosureRoles(REGISTER_CONFIGS.find((c) => c.key === key)!, gateId));
   const unclosed = relevant.filter((config) => !closedOf(config.key));
   // One row per register, in workbook order, each with the page that closes it.
   const list = {

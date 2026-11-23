@@ -63,8 +63,7 @@ export default function FormulationSafety() {
   const signedState = (config: RegisterConfig): 'signed' | 'unsigned' | undefined => {
     const gates = registerClosureGateIds(config);
     if (gates.length === 0) return undefined;
-    const roles = registerClosureRoles(config);
-    return gates.every((g) => isRegisterClosed(closureStateAt(project, config.key, g), roles)) ? 'signed' : 'unsigned';
+    return gates.every((g) => isRegisterClosed(closureStateAt(project, config.key, g), registerClosureRoles(config, g))) ? 'signed' : 'unsigned';
   };
   const closing = (config: RegisterConfig) => {
     const spec = registerReviewSpec(config);

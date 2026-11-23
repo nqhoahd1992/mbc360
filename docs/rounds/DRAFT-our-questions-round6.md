@@ -510,3 +510,132 @@ You told us that a market added after Gate 1 gets its own Gates 10-12 track and 
 **(f)** May a recorded assessment be revised?
 
 **(g)** Is it right that only Regulatory names the other markets a finding reaches, and that for those markets we reopen their Gate 10 and 11 sign-offs and open a Gate 12 review only for a market already on sale?
+
+## Question 19 — Closing a register: how should we read the details your answer leaves open?
+
+*Where in the application:* the **closing panel** at the foot of an evidence register page ("closing for Gate N"), the register's entry in **Gate Rules & Sheet Map**, and the line "Registers that must be closed for Gate N" in a gate's readiness list.
+
+You told us not to require two new signatures on all 70 registers: a controlled review is needed for evidence used in a gate decision, using the register's own approval where it has one; reference lists, working notes and derived views need no close-out ceremony; the evidence owner plus an independent qualified reviewer sign a substantive assessment; one person signing twice is one person, so closure is blocked until a distinct reviewer is assigned, and at low-risk records the second signature is removed rather than warned about. We have built it. Where your answer leaves a detail open we read it as follows:
+
+- **"Evidence used in a gate decision"** is a register whose entries a gate's readiness list reads. It is closed at the gate that reads it, or, when nothing of it is settled yet at that gate, at the first later gate of its own list that settles something (the Final Safety Sign-off is read at Gate 7 but settles at Gate 10). **A register no gate reads has no close-out.** It is still locked when every gate it is tied to has passed.
+- **The independent reviewer is required at the seven critical gates** of your answer to question 23 (3, 4, 7, 8, 9, 10, 11); at the other gates (2, 5, 6) the register owner alone closes it.
+- **The independent reviewer** is the person assigned to the register's Co-sign area on the project. We check nothing more about whether they are "qualified".
+- **Registers that already have their own approval** (the Publication Approval Register's twelve-state workflow, the Study Protocol Setup's three-role approval trail, the Formulation Change Register's Final Approver signature) are not closed a second time. A page that carries the workbook's own Prepared / Reviewed / Approved block keeps it as its closing. A register closed together with its page is not signed separately.
+- **"Additional specialist approval where Safety, Regulatory, Quality or NP authority is required"**: we read it as already given by the register's own review-owner area (a Safety, Regulatory or Quality area owns the register) and, for NP, by the Final Approver's signature route above. We add no further signature.
+- **One person in both roles** blocks the closing at a critical gate, and the panel says who to change. Nothing is blocked at a gate where the owner alone signs.
+
+Today the 78 registers fall as follows. Please mark any that is wrong.
+
+**Closed by its owner and an independent reviewer (owner alone where marked) (20)**
+
+| Register | Gate(s) |  |
+|---|---|---|
+| Ingredient-Level Safety Matrix | 10 |  |
+| Critical Safety Findings | 07 |  |
+| Final Safety Sign-off | 10 |  |
+| Supplier & Raw Material Evidence | 04, 07 |  |
+| Prohibited Ingredient Watch-list | 04, 07 |  |
+| General Restricted & Caution Assessment | 07 |  |
+| Pregnancy / Breastfeeding Caution Limits | 04, 07 |  |
+| Stability, Compatibility & Release Evidence | 09, 11 |  |
+| Packaging Specs & Artwork Evidence | 06 (owner only), 10 |  |
+| Regulatory Checklist Status (per market) | 10 |  |
+| ASEAN PIF Checklist (Closure) | 10 |  |
+| SKU Claims / PIF Register | 10 |  |
+| Development Brief | 02 (owner only) |  |
+| Vulnerable-User Assessment | 02 (owner only) |  |
+| GMP Links | 11 |  |
+| Released Label vs Current Artwork Register | 11 |  |
+| Competitor Product Register — Identity, Claims & IP | 03 |  |
+| Prospective Evidence Plan | 05 (owner only) |  |
+| Detailed Test Protocol | 08 |  |
+| Claim -> Evidence Traceability | 03, 10 |  |
+
+**Closed by the page's own sign-off block (2)**
+
+| Register | Gate(s) |  |
+|---|---|---|
+| Needs — Executive Brief | 02 |  |
+| Target Product Profile (TPP) | 05 |  |
+
+**Has its own approval route, so it is not closed a second time (3)**
+
+| Register | Gate(s) | Route |
+|---|---|---|
+| Protocol Setup | — | The three-role study approval trail (rule C2) |
+| Publication Approval Register | — | Its own 12-state approval workflow with Technical and Regulatory reviewers (F11) |
+| Formulation Change Register (Final Approver Controlled) | — | The Final Approver's authenticated signature on each row |
+
+**Closed together with its page (10)**
+
+| Register | Gate(s) | Page |
+|---|---|---|
+| Development Iteration Log | — | Signed with Product Development Report |
+| Team Feedback & Competitor Benchmark Notes | — | Signed with Product Development Report |
+| Framed Scientific Research Questions | — | Signed with Needs & Scientific Basis |
+| Literature-Search Method | — | Signed with Needs & Scientific Basis |
+| Anatomy, Physiology, Exposure Science & Contradictory / Null Evidence | — | Signed with Needs & Scientific Basis |
+| Needs -> Technology Traceability Matrix | — | Signed with Needs & Scientific Basis |
+| Comparative Testing Protocol | — | Signed with Competitor Landscape |
+| Current Solutions & Standard of Care | — | Signed with Competitor Landscape |
+| Landscape Decision Summary | — | Signed with Competitor Landscape |
+| Backbone / Platform Technology | — | Signed with Target Product & Tech Platform |
+
+**No close-out: no gate reads it (43)**
+
+| Register | Gate(s) |  |
+|---|---|---|
+| Product Safety Profile | — |  |
+| Publication / Deployment Record | — |  |
+| Ingredient Substitution Evidence | — |  |
+| Eye Safety Evidence | — |  |
+| Fragrance Workflow | — |  |
+| Fragrance / Allergen Log | — |  |
+| Microbiology & PET Evidence | — |  |
+| Potency & Process Control Evidence | — |  |
+| Mechanism & Claims Evidence Map | — |  |
+| Twinkle 5 Claims Map | — |  |
+| Efficacy Assurance Control | — |  |
+| Functional Efficacy Evidence | — |  |
+| Clinical / Human Evidence | — |  |
+| Participant / Sample Log | — |  |
+| Efficacy Study Plan | — |  |
+| Test Report Index | — |  |
+| Artwork / Label Review Checklist | — |  |
+| Artwork Change Control | — |  |
+| Formula Change Control | — |  |
+| ASEAN PIF / Dossier Map | — |  |
+| PIF Evidence Export | — |  |
+| PIF Evidence Closure (Workflow) | — |  |
+| Publication Rules | — |  |
+| Safety / Medical Summary | — |  |
+| Ready-to-Answer Pack | — |  |
+| HCP / Distributor Efficacy Answer | — |  |
+| HCP Test Report Pack | — |  |
+| Batch Formula Trace | — |  |
+| Product Family & Version Register | — |  |
+| Change Templates / Forms | — |  |
+| Social Media & Marketing Campaign Register | — |  |
+| Product / Project Identification | — |  |
+| Platform / Channel Rollout & Stock Confirmation | — |  |
+| Shipment Label & Batch Verification | — |  |
+| Evidence Template Index | — |  |
+| System Requirements | — |  |
+| MBc360 Feedback | — |  |
+| Carrier / Emollient System Review | — |  |
+| Carrier Review — Summary | — |  |
+| Ingredient Monograph | — |  |
+| Evidence Hierarchy | — |  |
+| Transferability & Inference Rules | — |  |
+| Literature-Search & Referencing Standard | — |  |
+
+
+**(a)** Is "a register that a gate's readiness list reads" the right meaning of "evidence used in a gate decision", and is the list above right?
+
+**(b)** Is the independent reviewer right at the seven critical gates and not at the others?
+
+**(c)** Is the Co-sign area the right source for the "distinct qualified reviewer", and should a project be unable to reach a critical gate until one is assigned?
+
+**(d)** Are the three registers with their own approval route right, and should any other register be on that list?
+
+**(e)** Does the register's own review-owner area satisfy "additional specialist approval", or should a Safety, Regulatory, Quality or NP signature be added for particular registers? Which?

@@ -1117,6 +1117,16 @@ Choose (3). Adding a market creates its own Gates 10-12 track and a mandatory Re
 
 For a Major formula change, reassessment of Gates 4-9 and the affected market release decisions stays. Do not automatically invalidate unrelated markets using an unchanged approved formula. Earlier Gate 12 reviews remain historical records; start the new affected review / monitoring cycle. Record the added market as an approved scope amendment to the Gate 1 baseline.
 
+### Question 13 — Closing a register
+
+**Verdict:** ✅ built (2026-11-13). It differs from what was built (every register tied to a gate was closed by two signatures, and one person in both roles only drew a warning). Our readings of the details are asked in Round 6, question 19.
+
+**(a)** Do not require two new signatures on all 70 registers. Require a controlled review for evidence used in a gate decision, using existing report/register approvals where available and the gate snapshot to identify accepted versions. Reference lists, working notes and automatically derived views do not each need a separate close-out ceremony. Mark register approval requirements in the Gate Rules & Sheet Map.
+
+**(b)** Use the assigned evidence owner plus an independent qualified reviewer for a substantive evidence assessment; use its existing Prepared/Reviewed/Approved block where it has one. The gate supplies the final progression decision. Additional specialist approval is needed where Safety, Regulatory, Quality or NP authority is required. Do not duplicate the same approval across a parent view and its supporting record.
+
+**(c)** One person signing twice is one person. Where independent review is required, block closure until a distinct qualified reviewer is assigned. At low-risk working/reference records, remove the unnecessary second signature rather than show a permanent warning. Apply the person rules in Question 23.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

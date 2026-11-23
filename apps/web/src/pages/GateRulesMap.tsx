@@ -39,6 +39,7 @@ import {
   gateState,
   isGateRefLocked,
 } from '@mbc360/shared/utils/gateProgress';
+import { registerApprovalRequirement } from '@mbc360/shared/utils/registerClosures';
 import { useAppStore } from '../store/useAppStore';
 import { useSession } from '../auth/useSession';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
@@ -567,6 +568,21 @@ export default function GateRulesMap() {
     });
   };
 
+  // Round 5 question 13(a): "mark register approval requirements in the Gate Rules & Sheet Map" — what each register needs before the gates that
+  // read it can pass: the owner and an independent reviewer, the owner alone, the page's own approval, or nothing.
+  const approvalTag = (registerKey: string | undefined) => {
+    const config = registerKey ? REGISTER_CONFIGS.find((c) => c.key === registerKey) : undefined;
+    if (!config) return null;
+    const need = registerApprovalRequirement(config);
+    const gates = need.gates.map((g) => `G${gateNumberOf(g.gateId)}`).join(', ');
+    return (
+      <span className={`c-tag ${need.kind === 'none' ? '' : 'c-tag-warn'}`} title={need.note ?? undefined}>
+        Close-out: {need.label}
+        {gates ? ` · ${gates}` : ''}
+      </span>
+    );
+  };
+
   const ownerLine = (entry: SheetEntry) =>
     entry.ownerRoles.length > 0
       ? entry.ownerRoles.map((role) => `${ownerName({ owner: { role } }, project.identity.reviewers)} (${reviewRoleLabel(role)})`).join(', ')
@@ -1071,6 +1087,7 @@ export default function GateRulesMap() {
                           {p.mode === 'page' ? 'Page' : p.mode === 'register' ? 'Register' : p.mode === 'form' ? 'Phase form' : 'Reference'}
                         </span>
                         {p.gate && <span className="c-tag">{formatGate(p.gate)}</span>}
+                        {approvalTag(p.registerKey)}
                         {p.mode === 'form' ? (
                           <span className="c-tag">
                             <LockFilled />

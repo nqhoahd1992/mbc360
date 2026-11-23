@@ -21,6 +21,7 @@ import {
   closureColumns,
   closureKey,
   closureMembers,
+  closureSignerConflict,
   closureSignersAreNominated,
   registerClosureGateIds,
   registerClosureRoles,
@@ -49,8 +50,7 @@ export default function RegisterClosurePanel({
   const config = getRegisterConfig(registerKey);
   if (!config) return null;
   const gates = registerClosureGateIds(config);
-  const roles = registerClosureRoles(config);
-  const isClosedAt = (g: string) => isRegisterClosed(closures[closureKey(registerKey, g)], roles);
+  const isClosedAt = (g: string) => isRegisterClosed(closures[closureKey(registerKey, g)], registerClosureRoles(config, g));
   const firstOpen = gates.findIndex((g) => !isClosedAt(g));
   const current = firstOpen === -1 ? gates.length - 1 : firstOpen;
   const blocks = (
@@ -125,7 +125,7 @@ function GateClosureCard({
   const { isAdmin } = usePermissionView();
   const config = getRegisterConfig(registerKey);
   // A page that carries the workbook's own sign-off block names its roles, and the project's Lead nominates a person for each.
-  const roles = config ? registerClosureRoles(config) : [];
+  const roles = config ? registerClosureRoles(config, gateId) : [];
   const nominated = !!config && closureSignersAreNominated(config);
   // Matched by displayName, as for the phase sign-off: that is what ProjectIdentity.projectLead stores, and the server checks the same.
   const isLead = !!me && (isAdmin || me.displayName.trim() === projectLead.trim());
@@ -174,17 +174,11 @@ function GateClosureCard({
   for (const r of signOffs) if (r.assignedToUserId) nomineeCounts.set(r.assignedToUserId, (nomineeCounts.get(r.assignedToUserId) ?? 0) + 1);
   const sharedNominee = signOffs.find((r) => r.assignedToUserId && (nomineeCounts.get(r.assignedToUserId) ?? 0) > 1);
 
-  // A register whose spec declares no distinct Co-sign (falls back to
-  // Project Manager per registerClosureSignerRole) AND whose owner already
-  // IS Project Manager needs the SAME PERSON to sign both rows — not a
-  // second independent signature. Not blocked (same "visible warning, not a
-  // block" precedent SignOffBlock already uses for its own D1 independence
-  // concern) — just flagged, since a silent 2-signature UI over 1 real
-  // signer would misrepresent what actually happened.
-  // [ASSUMPTION: R5-Q21](d) — whether this should instead get a distinct
-  // Co-sign role assigned is an open question, see
-  // docs/rules/F1_Per_Gate_Open_Questions.md.
-  const sameSignerForBothRoles = !nominated && roleKeyFor('Review owner') === roleKeyFor('Co-sign');
+  // Round 5 question 13(c): "one person signing twice is one person. Where independent review is required, block closure until a distinct
+  // qualified reviewer is assigned." At a gate that needs independent review, a Review owner and a Co-sign who are the same person block the
+  // closure (the server refuses it too); at a gate that does not, the closure has the owner alone, so there is no second signature to warn about.
+  // [ASSUMPTION: R6-Q19]
+  const sameSignerName = config ? closureSignerConflict(config, gateId, reviewers) : undefined;
 
   // One block per person. Someone who holds both roles reads once, with a line per role (each still its own signature). A row the Lead
   // can still nominate keeps its own block, since its signer is a picker and not yet a person.
@@ -211,6 +205,7 @@ function GateClosureCard({
       if (!assignedName) return `No one is assigned to "${row.role}" for this register yet`;
       if (!me || me.displayName.trim() !== assignedName.trim()) return `Assigned to ${assignedName}`;
     }
+    if (sameSignerName) return `Blocked: the Review owner and the Co-sign are both ${sameSignerName} — a different reviewer must be assigned first`;
     if (!hasSignature) return 'Save a signature in My Account first — closing attaches it';
     if (!totpEnrolled) return 'Set up an authenticator app in My Account first';
     return null;
@@ -277,13 +272,13 @@ function GateClosureCard({
             : `It attests to, and locks, these columns: ${columns}.`}
         </p>
       </details>
-      {sameSignerForBothRoles && (
+      {sameSignerName && (
         <Alert
-          type="warning"
+          type="error"
           showIcon
           style={{ marginBottom: 12 }}
-          title={`Both roles resolve to the same person (${nameFor('Review owner') ?? 'unassigned'})`}
-          description="This register's review-owner spec declares no distinct Co-sign, so closing it needs the same person to sign twice rather than a genuinely independent second signature."
+          title={`Closing is blocked: the Review owner and the Co-sign are both ${sameSignerName}`}
+          description={`${gateLabel} needs an independent reviewer. The project's Lead assigns a different person to the Review owner or the Co-sign of this area in Project team.`}
         />
       )}
       {standing && !closed && (

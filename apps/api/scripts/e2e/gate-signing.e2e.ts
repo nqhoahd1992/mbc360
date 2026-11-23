@@ -410,6 +410,26 @@ export async function run(base: string, db: Client): Promise<number> {
       r = await api(signer, 'POST', `${base}/sign`, { gateId, role: 'Review owner', stepUpToken: 'x' });
       t('a sign with no hash is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
 
+      // Round 5 question 13(c): at a critical gate, one person as both the Review owner and the Co-sign blocks the closing until a distinct
+      // reviewer is assigned. The Co-sign is set to the owner for the length of the check, then put back.
+      {
+        const regCfg = REGISTER_CONFIGS.find((c: any) => c.key === registerKey);
+        const regSpec = rc.registerReviewSpec(regCfg);
+        const coKey = registerClosureSignerRole(regSpec, 'Co-sign');
+        const ownerNow = nameOf(registerClosureSignerRole(regSpec, 'Review owner'));
+        const saved = (await db.query(`SELECT name, "userId" FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = $2`, [PROJECT, coKey])).rows[0];
+        if (saved && coKey !== registerClosureSignerRole(regSpec, 'Review owner')) {
+          await db.query(`UPDATE project_reviewers SET name = $3 WHERE "projectId" = $1 AND "roleKey" = $2`, [PROJECT, coKey, ownerNow]);
+          const blocked = await api(signer, 'POST', `${base}/step-up`, { gateId, role: 'Review owner', code: '000000', expectedHash: pv.hash });
+          t('the Review owner and the Co-sign being one person blocks the closing at a critical gate (400)', blocked.status === 400 && /independent reviewer/.test(String(blocked.json?.message)), `${blocked.status} ${short(blocked.json)}`);
+          await db.query(`UPDATE project_reviewers SET name = $3, "userId" = $4 WHERE "projectId" = $1 AND "roleKey" = $2`, [PROJECT, coKey, saved.name, saved.userId]);
+        }
+        // At a gate that needs no independent review the owner alone closes it, so there is no Co-sign role to sign.
+        const briefGate = rc.registerClosureGateIds(REGISTER_CONFIGS.find((c: any) => c.key === 'developmentBrief'))[0];
+        const coAtBrief = await api('admin', 'POST', `/projects/${PROJECT}/registers/developmentBrief/close/step-up`, { gateId: briefGate, role: 'Co-sign', code: '000000', expectedHash: 'f'.repeat(64) });
+        t('at a gate that needs no independent review there is no Co-sign role to sign (400)', coAtBrief.status === 400 && /not a signing role/.test(String(coAtBrief.json?.message)), `${coAtBrief.status} ${short(coAtBrief.json)}`);
+      }
+
       // A stale preview must be refused BEFORE the one-time code is spent, so the same code still works.
       const oneCode = await code(signer);
       r = await api(signer, 'POST', `${base}/step-up`, { gateId, role: 'Review owner', code: oneCode, expectedHash: 'f'.repeat(64) });

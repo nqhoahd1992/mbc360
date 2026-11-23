@@ -221,6 +221,10 @@ export interface RegisterConfig {
   // these roles instead of "Review owner" / "Co-sign", the project's Lead nominates a person for each, and only that person signs
   // (a real authenticated signature, like every other closing). Set on the anchor. Without it the roles are the review owner's.
   closureRoles?: string[];
+  // Round 5 question 13: a register that already has its OWN approval route (a workflow, a signature column, a dedicated approval card) is not
+  // closed a second time — "use existing report/register approvals where available", and "do not duplicate the same approval". The value says
+  // which route. [ASSUMPTION: R6-Q19]
+  approvalRoute?: string;
   // Round 5 question 11: this register is a VIEW of the Change Control log — its rows are master change records of one kind with an overlay of
   // this register's own fields; the `base` columns are read from the master record and never stored here. See utils/changeViews.ts.
   changeView?: ChangeViewConfig;
@@ -1473,6 +1477,7 @@ const clinicalHumanEvidence: RegisterConfig = {
 
 export const studyProtocolSetup: RegisterConfig = {
   key: 'studyProtocolSetup',
+  approvalRoute: 'The three-role study approval trail (rule C2)',
   title: 'Protocol Setup',
   sheetName: 'Study_Protocol',
   description: 'What the study is, how it is run and how it is measured. The approval route (study proposal, Head/HOD sign-off, independent reviewer) is on the Gate 08 tab of Phase 3.',
@@ -1976,6 +1981,7 @@ export const publicationRules: RegisterConfig = {
 
 export const publishedInfoApproval: RegisterConfig = {
   key: 'publishedInfoApproval',
+  approvalRoute: 'Its own 12-state approval workflow with Technical and Regulatory reviewers (F11)',
   title: 'Publication Approval Register',
   sheetName: 'Published_Info_Approval',
   description:
@@ -2220,6 +2226,7 @@ const productFamilyRegister: RegisterConfig = {
 
 const formulationChangeRegister: RegisterConfig = {
   key: 'formulationChangeRegister',
+  approvalRoute: "The Final Approver's authenticated signature on each row",
   title: 'Formulation Change Register (Final Approver Controlled)',
   sheetName: 'Formulation_Change_Register',
   description: 'Every formulation change (preservative system, active up/down, any ingredient change) must be recorded here BEFORE implementation. Manufacturing treating a change as a new code does NOT remove the need to control and communicate it. Note: formula changes require ~6 months re-registration for Vietnam (VN) - the Final Approver must be involved for commercial implications.',

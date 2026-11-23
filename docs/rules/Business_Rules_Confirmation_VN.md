@@ -1117,6 +1117,16 @@ Chọn (3). Thêm một thị trường tạo track Gate 10-12 riêng và một 
 
 Với thay đổi công thức Major, vẫn đánh giá lại Gate 4-9 và các quyết định release của thị trường bị ảnh hưởng. Không tự động vô hiệu các thị trường không liên quan dùng công thức đã duyệt không đổi. Các review Gate 12 trước đó vẫn là hồ sơ lịch sử; khởi động chu kỳ review / giám sát mới cho phần bị ảnh hưởng. Ghi thị trường mới thêm như một bản sửa phạm vi đã duyệt của baseline Gate 1.
 
+### Câu 13 — Đóng một sổ
+
+**Kết luận:** ✅ đã xây (13/11/2026). Khác với những gì đã xây (mọi sổ gắn với gate đều đóng bằng hai chữ ký, và một người giữ cả hai vai chỉ bị cảnh báo). Cách đọc các chi tiết của chúng tôi được hỏi ở Round 6, câu 19.
+
+**(a)** Không bắt hai chữ ký mới trên cả 70 sổ. Yêu cầu một bước rà soát có kiểm soát cho bằng chứng dùng trong quyết định gate, dùng phê duyệt báo cáo/sổ sẵn có nếu có và snapshot của gate để biết phiên bản nào đã được chấp nhận. Danh sách tham chiếu, ghi chú làm việc và view dẫn xuất tự động không cần mỗi cái một nghi thức đóng riêng. Đánh dấu yêu cầu phê duyệt của sổ trong Gate Rules & Sheet Map.
+
+**(b)** Dùng chủ bằng chứng được gán cộng một người rà soát độc lập đủ năng lực cho một đánh giá bằng chứng thực chất; dùng khối Prepared/Reviewed/Approved sẵn có nếu sổ có. Gate đưa ra quyết định cuối cùng. Cần phê duyệt chuyên môn bổ sung khi cần thẩm quyền Safety, Regulatory, Quality hoặc NP. Không nhân đôi cùng một phê duyệt giữa view cha và bản ghi hỗ trợ.
+
+**(c)** Một người ký hai lần là một người. Nơi cần rà soát độc lập, chặn việc đóng cho tới khi gán một người rà soát đủ năng lực khác. Ở bản ghi làm việc/tham chiếu rủi ro thấp, bỏ chữ ký thứ hai không cần thiết thay vì hiện cảnh báo vĩnh viễn. Áp dụng quy tắc về người ở Câu 23.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

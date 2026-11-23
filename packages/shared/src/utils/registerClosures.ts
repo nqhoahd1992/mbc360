@@ -11,11 +11,15 @@
 // Why "settled" and not "the columns the gate reads": the watch-lists' Product status is read by Gate 4 but is still updated until
 // Gate 7 (it is entered by Gate 7), so locking what a gate READS would wrongly freeze it at Gate 4.
 //
-// A gate needs a register closed when its readiness reads the register or when it is the last gate of the register's own list, and
-// something is settled by then. Pure and shared: the API refuses a write and the table greys the cell with the SAME answer.
+// A gate needs a register closed when its readiness READS the register — the evidence a gate decision rests on (Round 5 question 13(a): "require a
+// controlled review for evidence used in a gate decision ... reference lists, working notes and automatically derived views do not each need a
+// separate close-out ceremony") — and something is settled by then. A register no gate reads has no ceremony; it is still locked when every gate
+// it is tied to has passed (isGateRefLocked). The workbook's own sign-off block (`closureRoles`) keeps its gate too: it IS the existing approval.
+// [ASSUMPTION: R6-Q19] Pure and shared: the API refuses a write and the table greys the cell with the SAME answer.
 import { REGISTER_READS_BY_GATE } from '../config/registerColumnReads';
+import { CRITICAL_GATES } from '../config/gateSignOff';
 import { REGISTER_CONFIGS, findNavGroupForRegister, type RegisterConfig } from '../config/registers';
-import type { ReviewOwnerSpec } from '../config/reviewers';
+import { registerClosureSignerRole, type ReviewOwnerSpec } from '../config/reviewers';
 import type { ProjectData, RegisterClosureState, RegisterRow } from '../types';
 import { DEFAULT_REGISTER_CLOSURE_ROLES, hasStandingClosureSignature, isRegisterClosed } from '../types';
 import { gateOrder, gateRefGateIds } from './gateRefs';
@@ -29,8 +33,29 @@ export function closureMembers(anchorKey: string): RegisterConfig[] {
 
 // The roles that sign a register's closing: the workbook's own sign-off block where the page declares one (nominated by the
 // project's Lead), else the register's review owner and co-signer.
-export function registerClosureRoles(config: RegisterConfig): readonly string[] {
-  return config.closureRoles && config.closureRoles.length > 0 ? config.closureRoles : DEFAULT_REGISTER_CLOSURE_ROLES;
+export function registerClosureRoles(config: RegisterConfig, gateId?: string): readonly string[] {
+  if (config.closureRoles && config.closureRoles.length > 0) return config.closureRoles;
+  // Round 5 question 13(b)/(c): the evidence owner PLUS an independent qualified reviewer where independence is required — at the critical gates
+  // (question 23(a): 3, 4, 7, 8, 9, 10, 11) — and the owner alone elsewhere: "remove the unnecessary second signature rather than show a
+  // permanent warning". Without a gate the pair is returned, the stricter answer. [ASSUMPTION: R6-Q19]
+  if (gateId && !closureNeedsIndependentReview(gateId)) return OWNER_ONLY_CLOSURE_ROLES;
+  return DEFAULT_REGISTER_CLOSURE_ROLES;
+}
+
+const OWNER_ONLY_CLOSURE_ROLES: readonly string[] = ['Review owner'];
+
+// Independent review is required where the gate is one of the critical ones.
+export const closureNeedsIndependentReview = (gateId: string): boolean => CRITICAL_GATES.includes(gateId);
+
+// "One person signing twice is one person": at a gate that needs independent review, the Review owner and the Co-sign must resolve to two
+// different people. Returns the person both resolve to, or undefined when they differ or either is not assigned yet (that has its own message).
+export function closureSignerConflict(config: RegisterConfig, gateId: string, reviewers: Record<string, string> | undefined): string | undefined {
+  if (closureSignersAreNominated(config) || !closureNeedsIndependentReview(gateId)) return undefined;
+  const spec = registerReviewSpec(config);
+  if (!spec || !reviewers) return undefined;
+  const owner = (reviewers[registerClosureSignerRole(spec, 'Review owner')] ?? '').trim();
+  const coSign = (reviewers[registerClosureSignerRole(spec, 'Co-sign')] ?? '').trim();
+  return owner !== '' && owner.toLowerCase() === coSign.toLowerCase() ? owner : undefined;
 }
 
 // True when the signers of this register are nominated by the project's Lead rather than derived from the review owner.
@@ -69,9 +94,22 @@ export function registerClosureGateIds(config: RegisterConfig): string[] {
   if (config.closedWith) return [];
   const cached = gatesCache.get(config.key);
   if (cached) return cached;
+  // A register with its own approval route is not closed a second time (question 13(b)).
+  if (config.approvalRoute) {
+    gatesCache.set(config.key, []);
+    return [];
+  }
   const read = Object.keys(REGISTER_READS_BY_GATE).filter((gate) => config.key in (REGISTER_READS_BY_GATE[gate] ?? {}));
-  const last = lastGateOf(config);
-  const gates = [...new Set([...read, ...(last ? [last] : [])])]
+  const last = closureSignersAreNominated(config) ? lastGateOf(config) : undefined;
+  // A gate that reads a register before anything of it is settled (the Final Safety Sign-off is read at Gate 7 but its columns settle at Gate 10)
+  // is covered by the first later gate of the register's own list that settles something — never dropped, which would quietly narrow the rule.
+  const own = gateRefGateIds(config.gate).sort((a, b) => gateOrder(a) - gateOrder(b));
+  const settledFrom = (gate: string): string | undefined =>
+    closureColumns(config, gate).length > 0
+      ? gate
+      : own.find((o) => gateOrder(o) > gateOrder(gate) && closureColumns(config, o).length > 0);
+  const covered = read.map(settledFrom).filter((g): g is string => !!g);
+  const gates = [...new Set([...covered, ...(last ? [last] : [])])]
     // Nothing settled at a gate means there is nothing for its closure to attest to or lock.
     .filter((gate) => closureColumns(config, gate).length > 0)
     .sort((a, b) => gateOrder(a) - gateOrder(b))
@@ -92,7 +130,7 @@ export function registerClosureGateIds(config: RegisterConfig): string[] {
 export function isRegisterFullyClosed(project: ProjectData, configIn: RegisterConfig): boolean {
   const config = (configIn.closedWith && REGISTER_CONFIGS.find((c) => c.key === configIn.closedWith)) || configIn;
   const gates = registerClosureGateIds(config);
-  return gates.length > 0 && gates.every((gate) => isRegisterClosed(closureStateAt(project, config.key, gate), registerClosureRoles(config)));
+  return gates.length > 0 && gates.every((gate) => isRegisterClosed(closureStateAt(project, config.key, gate), registerClosureRoles(config, gate)));
 }
 
 // Every (register, gate) pair a gate needs closed. A register that cannot be closed at all (no reviewer spec) is left out, since
@@ -102,6 +140,26 @@ export function requiredRegisterClosures(gateId: string): { registerKey: string;
     registerKey: c.key,
     gateId,
   }));
+}
+
+// What a register needs, for the Gate Rules & Sheet Map (question 13(a): "mark register approval requirements in the Gate Rules & Sheet Map").
+export interface RegisterApprovalRequirement {
+  kind: 'own-block' | 'own-route' | 'closure' | 'member' | 'none';
+  label: string;
+  gates: { gateId: string; roles: readonly string[] }[];
+  note?: string;
+}
+export function registerApprovalRequirement(config: RegisterConfig): RegisterApprovalRequirement {
+  if (config.closedWith) {
+    const anchor = REGISTER_CONFIGS.find((c) => c.key === config.closedWith);
+    return { kind: 'member', label: 'Closed with its page', gates: [], note: `Signed with ${anchor?.closureTitle ?? anchor?.title ?? config.closedWith}` };
+  }
+  if (config.approvalRoute) return { kind: 'own-route', label: 'Own approval route', gates: [], note: config.approvalRoute };
+  const gates = registerClosureGateIds(config).map((gateId) => ({ gateId, roles: registerClosureRoles(config, gateId) }));
+  if (gates.length === 0) return { kind: 'none', label: 'No close-out', gates: [], note: 'No gate reads it: a working or reference record' };
+  if (closureSignersAreNominated(config)) return { kind: 'own-block', label: "The page's own sign-off block", gates };
+  const independent = gates.some((g) => g.roles.length > 1);
+  return { kind: 'closure', label: independent ? 'Owner + independent reviewer' : 'Owner', gates };
 }
 
 export interface RegisterLocks {
