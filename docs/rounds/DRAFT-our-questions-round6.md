@@ -661,3 +661,25 @@ You told us a Phase 2–4 requirement row may be marked not applicable, with a s
 **(d)** Is the list of rows that never accept N/A right: the three stability rows, the two dossier rows, the Gate 7 general restriction and caution screening, and the infant-use safety conclusion? Which rows are missing or should come off?
 
 **(e)** Which requirement row, if any, stands for "approved release controls"?
+
+## Question 21 — Deferring a Should or Could requirement: how should we read the details your answer leaves open?
+
+*Where in the application:* **Phase 1**, Gate 2: the table **Project Requirements & Exclusions** (the row's drawer) and the **Next Actions** of Gate 2; the Gate 2 readiness list.
+
+You told us that a deferred requirement is carried by a controlled Next Action linked to it (owner, due date, completion criteria, escalation), that Gate 2 cannot pass with conditions without it, that a Must cannot be deferred by relabelling it Should or Could, and that a changed requirement needs an approved scope change and an impact review. You also confirmed that every applicable row needs a Must / Should / Could priority. We have built it. Where your answer leaves a detail open we read it as follows:
+
+- **A requirement is deferred** when it applies (it is not N/A), is a Should or a Could, and is not Complete when Gate 2 is decided. A Must is never deferred: the gate waits for it.
+- **"Linked"** means the row names a Next Action of Gate 2. **"Controlled"** means that action has a description, an owner, a due date, completion criteria and an escalation trigger and has not been cancelled — the same test as for a gap carried through a gate. The row shows the action's owner, date and status instead of keeping copies.
+- **"Gate 2 cannot pass with conditions without it"**: Proceed with Conditions no longer carries a deferred requirement unless it has such an action; a plain Proceed still waits for the requirement to be completed.
+- **"Approved"** requirements are those of a project whose Gate 2 has passed, now or before a Backtrack reopened it. Before that the list is still being drafted and may be changed freely. After it, a **changed requirement** is a change of a row's priority, of what it says, or of whether it applies (moving a row to Complete is progress, not a change). It needs a **scope change**: a Change Control record approved to implement whose impact has been assessed by Quality. Relabelling a Must as a Should is such a change.
+- **Every Must lowered to Should or Could**, at any time, is recorded in the project history with who did it.
+
+**(a)** Is "a Should or Could that is not Complete when Gate 2 is decided" the right meaning of a deferred requirement?
+
+**(b)** Is the test of a controlled action — description, owner, due date, completion criteria, escalation trigger, not cancelled — right for a deferral?
+
+**(c)** Is "Gate 2 has passed, now or before a Backtrack" the right moment from which a requirement is approved and a change needs a scope change? Or should it be earlier, for example once the Gate 2 sign-off has been started?
+
+**(d)** Is "a change of priority, wording or applicability" the right list of what counts as a changed requirement?
+
+**(e)** Is "approved to implement and impact assessed by Quality" the right meaning of "approved scope change and impact review"?

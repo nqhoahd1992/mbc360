@@ -8,6 +8,7 @@ import { gateActionStates, gateEvidenceSnapshot, snapshotChanges } from './gateS
 import { gateRefGateIds } from './gateRefs';
 import { acknowledgementState, isCriticalForAcknowledgement, type AcknowledgementSlot } from './readinessAck';
 import { requirementNaAckSettled } from './requirementNaAck';
+import { untrackedDeferrals } from './requirementDeferral';
 import { assessmentMarkets, isPendingAnswer } from './changeControlAssessments';
 export { gateRefGateIds } from './gateRefs';
 import { isChangeOpen } from '../config/changeTriggers';
@@ -1558,6 +1559,9 @@ export function evaluateReadinessCheck(
     // Question 21's fifth condition. Everything the row above lets through that is
     // still open — a Should or Could not yet Completed — lands here, where
     // `clearedByConditions` lets Proceed with Conditions carry it.
+    // Round 5 question 15: a deferral is carried by a tracked Next Action linked to the row.
+    case 'requirementDeferralsTracked':
+      return { evaluable: true, satisfied: untrackedDeferrals(project, check.section).length === 0 };
     case 'requirementsNoOpenDeferrals': {
       const rows = project.requirements[check.section] ?? [];
       return {
@@ -1963,6 +1967,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'requirementSectionDispositioned':
     case 'requirementsDispositioned':
     case 'requirementsNoOpenDeferrals':
+    case 'requirementDeferralsTracked':
       return phaseSectionLink(gateId, `sec-requirement-${check.section}`);
     case 'gateCheckDone':
       return phaseSectionLink(gateId, gateCheckAnchor(check.gate, check.check));
@@ -2091,6 +2096,8 @@ function describeReadinessCheck(check: ReadinessCheck): string | undefined {
   switch (check.kind) {
     case 'scaleUpAssessed':
       return 'Record a scale-up assessment for each affected area, with none pending';
+    case 'requirementDeferralsTracked':
+      return 'Link a tracked Next Action (owner, due date, completion criteria, escalation trigger) to each deferred Should / Could requirement';
     case 'marketAdditionsAssessed':
       return 'Complete Regulatory\'s impact assessment for each market added after Gate 1';
     case 'gateCheckDone':
@@ -2195,6 +2202,7 @@ export function acknowledgementHome(check: ReadinessCheck): string | undefined {
     case 'requirementSectionDispositioned':
     case 'requirementsDispositioned':
     case 'requirementsNoOpenDeferrals':
+    case 'requirementDeferralsTracked':
       return `requirement:${check.section}`;
     case 'skincareForTwo':
       return 'requirement:skincareForTwo';

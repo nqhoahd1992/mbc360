@@ -428,6 +428,9 @@ export type ReadinessCheck =
   // open. Paired with `clearedByConditions`, because that is exactly the answer's
   // escape — "may be deferred only through Proceed with Conditions".
   | { kind: 'requirementsNoOpenDeferrals'; section: string }
+  // Round 5 question 15: every Should or Could requirement carried past the gate has a tracked Next Action (owner, due date, completion criteria,
+  // escalation trigger) linked to it. Vacuously true when nothing is deferred.
+  | { kind: 'requirementDeferralsTracked'; section: string }
   // Round 4 question 24: the Countries / Markets parameter, which stopped being
   // mandatory at project creation, is recorded before Gate 1 passes.
   | { kind: 'identityMarketsRecorded' }
@@ -961,16 +964,25 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // is the existing mechanism for exactly that (D4's conditional-acceptance
       // route), so this needs no new machinery in gateProgress.
       //
-      // What the answer also asks for and this does NOT capture is the deferral's
-      // own owner and due date. A requirement row has an Owner column but no due
-      // date, and whether a deferral is supposed to become a controlled Next
-      // Action (as question 33(c) requires for a safety action) or just a note on
-      // the row is not stated [ASSUMPTION: R5-Q23].
+      // The deferral's own owner and due date live on the tracked Next Action the row links to: Round 5 question 15 (answered, [ASSUMPTION: R5-Q23])
+      // asked for exactly that, and the item right after this one is what makes Proceed with Conditions need it.
       id: 'sg02-requirements-deferred',
       label: 'Should / Could requirements completed, or deferred under Proceed with Conditions',
       tier: 'Mandatory',
       clearedByConditions: true,
       check: { kind: 'requirementsNoOpenDeferrals', section: 'projectRequirements' },
+    },
+    {
+      // Round 5 question 15(a): "Create a controlled Next Action linked to the deferred requirement ... Gate 2 cannot pass conditionally without it."
+      // Deliberately NOT `clearedByConditions`: it is what Proceed with Conditions needs before it may carry the item above.
+      id: 'sg02-requirements-deferral-tracked',
+      label: 'Every deferred Should / Could requirement has a tracked Next Action',
+      tier: 'Mandatory',
+      source: 'f-series',
+      nonVacuousBecause:
+        'A project that defers nothing has no deferral to track, so the item is correctly satisfied; what it guards is a deferral carried without an action, which it reads directly.',
+      check: { kind: 'requirementDeferralsTracked', section: 'projectRequirements' },
+      assumption: 'R6-Q21',
     },
     // --- End of the 6 F1-named Gate 2 items (order matches the appendix
     // exactly, 2026-07-26, user-requested) — everything below is NOT one of

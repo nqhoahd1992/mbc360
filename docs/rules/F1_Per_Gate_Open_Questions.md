@@ -1406,7 +1406,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q52 | — (SW-53) | Phiên bản Major mở lại cả các dòng Gate 10–12 của dự án — đã quyết |
 | ✅ R5-Q21 · R6-Q19 | **13** (đã trả lời 05/11, xây 13/11/2026; R6-Q19 hỏi lại các chỗ ta đọc) | Đóng sổ hai chữ ký theo từng gate |
 | ✅ R5-Q22 · R6-Q20 | **14** (đã trả lời 05/11, xây 13/11/2026; R6-Q20 hỏi lại các chỗ ta đọc) | "N/A kèm lý do" ở Phase 2–4 |
-| R5-Q23 | **15** (và 9(b)) | Hoãn Should/Could: ai sở hữu, hạn khi nào, có bắt buộc priority không |
+| ✅ R5-Q23 · R6-Q21 | **15** (và 9(b)) (đã trả lời 05/11, xây 13/11/2026; R6-Q21 hỏi lại các chỗ ta đọc) | Hoãn Should/Could: ai sở hữu, hạn khi nào, có bắt buộc priority không |
 | R5-Q24 | **16** | Sổ General Restricted & Caution: hình dạng, có thuộc Gate 4 không |
 | R5-Q25 | **17(a)** | Danh sách Channel của bản ghi Publication / Deployment |
 | R5-Q38 | **17(b)** | "Được duyệt cho thị trường / kênh" đọc ở đâu |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q21 · Hoãn yêu cầu Should/Could: các chỗ ta đọc câu trả lời (Vòng 5 câu 15) 🟡
+
+**Lộ ra 13/11/2026, khi xây câu 15.** SME chọn Next Action có kiểm soát gắn với yêu cầu bị hoãn (owner, due date, tiêu chí hoàn thành, escalation), Gate 2 không qua có điều kiện nếu thiếu; Must không hoãn được bằng cách đổi nhãn; yêu cầu đã thay đổi cần thay đổi phạm vi đã duyệt và đánh giá tác động; priority bắt buộc cho mọi dòng áp dụng (đã xây từ trước). Không nói thế nào là "bị hoãn", "có kiểm soát", "đã duyệt", "thay đổi". Cách đọc của ta (`utils/requirementDeferral.ts`): (1) **bị hoãn** = dòng áp dụng, là Should/Could, chưa Complete lúc quyết định Gate 2; Must không bao giờ (gate chờ); (2) **gắn** = dòng nêu `deferralActionId` là một Next Action của Gate 2; **có kiểm soát** = `controlledActionGaps` rỗng và chưa Cancelled (cùng phép thử R6-Q15); mục readiness mới `sg02-requirements-deferral-tracked` **không** được Proceed with Conditions bỏ qua, nên Proceed with Conditions chỉ mang yêu cầu bị hoãn khi có action; Proceed thường vẫn chờ mục cũ; (3) **đã duyệt** = Gate 2 đã passed bây giờ hoặc trước khi Backtrack mở lại (`requirementsWereApproved`, như `formulaWasApproved`); trước đó danh sách tự do; (4) **yêu cầu đã thay đổi** = đổi priority, nội dung (`requirementText`) hoặc việc áp dụng (vào/ra N/A), không tính chuyển sang Complete; cần `scopeChangeId` = Change Control **được duyệt triển khai và đã triage** (cùng luật liên kết `implementation` của R6-Q17); server từ chối khi thiếu; (5) mọi Must bị hạ xuống Should/Could được ghi vào audit (`priorityLowered`) kèm người thực hiện, ở mọi thời điểm.
+
+**Câu hỏi:** (a) "bị hoãn" có đúng nghĩa; (b) phép thử action có kiểm soát; (c) "đã duyệt" từ lúc Gate 2 passed hay sớm hơn (ví dụ khi chữ ký Gate 2 bắt đầu); (d) danh sách những gì tính là thay đổi (priority, nội dung, áp dụng); (e) "duyệt triển khai và Quality đã đánh giá tác động" có đúng là "thay đổi phạm vi đã duyệt và đánh giá tác động".
+
+**Nếu trả lời khác:** `utils/requirementDeferral.ts` (`isOpenDeferral`, `deferralProblem`, `requirementsWereApproved`, `requirementChangeKinds`, `scopeChangeProblem`); mục `sg02-requirements-deferral-tracked` (`config/gateReadiness.ts`); `setRequirementSection` (`projects.service.ts`); `RequirementTable.tsx` [ASSUMPTION: R6-Q21].
 
 #### R6-Q20 · "Không áp dụng" trên dòng yêu cầu Phase 2–4: các chỗ ta đọc câu trả lời (Vòng 5 câu 14) 🟡
 
@@ -2113,7 +2121,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời "không" cho cả các section infant:** `packages/shared/src/config/phases.ts` (gỡ `allowNotApplicable` khỏi 6 section infant) · `gateReadiness.ts` (6 item đổi sang `requirementSectionComplete`) — và khi đó cần một cách khác để đóng những dòng SME tự gắn điều kiện.
 
-#### R5-Q23 · Hoãn một requirement Should/Could — ai sở hữu, hạn khi nào, và có bắt buộc priority không 🔴
+#### R5-Q23 · Hoãn một requirement Should/Could — ai sở hữu, hạn khi nào, và có bắt buộc priority không ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 15) và đã xây 13/11/2026 — phần dưới là lịch sử.** (a) Tạo một Next Action có kiểm soát gắn với yêu cầu bị hoãn, có owner, due date, tiêu chí hoàn thành và escalation; Gate 2 không thể qua có điều kiện nếu thiếu; Must không hoãn được bằng cách đổi nhãn thành Should/Could; yêu cầu đã thay đổi cần thay đổi phạm vi đã duyệt và đánh giá tác động. (b) Có: mọi yêu cầu áp dụng cần priority Must/Should/Could; dòng N/A cần lý do; priority để trống là chưa đủ. → **R6-Q21**. `npm run verify:requirement-deferral`.
 
 **Lộ ra khi build câu 21 (29/08/2026).** Câu trả lời viết: *"A Should or Could requirement may be deferred only through Proceed with Conditions, with an owner and due date."* Hai vế đầu đã build (`sg02-requirements-deferred`, `clearedByConditions`). Vế thứ ba thì không có chỗ ghi: dòng requirement có cột **Owner** nhưng **không có due date**, và Next Action — thứ duy nhất trong app có owner + due date + trạng thái đóng — không có gì nối tới dòng requirement nào cả.
 

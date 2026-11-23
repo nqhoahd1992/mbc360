@@ -523,6 +523,8 @@ function toProjectDataRaw(
       status: item.status as RequirementItem['status'],
       ...(item.naRationale ? { naRationale: item.naRationale } : {}),
       ...(Array.isArray(item.naAcknowledgements) && item.naAcknowledgements.length > 0 ? { naAcknowledgements: item.naAcknowledgements as unknown as NaAcknowledgement[] } : {}),
+      ...(item.deferralActionId ? { deferralActionId: item.deferralActionId } : {}),
+      ...(item.scopeChangeId ? { scopeChangeId: item.scopeChangeId } : {}),
       ...(item.ynna ? { ynna: item.ynna } : {}),
       evidenceLink: opt(item.evidenceLink),
       notes: opt(item.notes),

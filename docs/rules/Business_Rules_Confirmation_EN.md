@@ -1135,6 +1135,14 @@ Answer Yes, with a specific rationale and relevant reviewer acknowledgement for 
 
 Infant/baby rows can be N/A where their stated trigger genuinely does not apply, including justified test waivers. Once infant use/contact is in scope, the core infant safety conclusion cannot be waived. Record a justified N/A for an entire compartment when it is outside scope.
 
+### Question 15 — Deferring Should/Could requirements
+
+**Verdict:** ✅ built (2026-11-13). It differs from what was built (a deferral was carried by Proceed with Conditions alone, with no owner, due date or action behind it). Part (b) was already built. Our readings of the details are asked in Round 6, question 21.
+
+**(a)** Create a controlled Next Action linked to the deferred requirement, with owner, due date, completion criteria and escalation. Gate 2 cannot pass conditionally without it. Must requirements cannot be deferred by relabelling them Should/Could; a changed requirement needs an approved scope change and impact review.
+
+**(b)** Yes. Every applicable requirement needs Must/Should/Could priority. N/A rows require rationale. A blank priority is incomplete.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

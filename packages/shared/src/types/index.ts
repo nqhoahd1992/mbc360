@@ -466,6 +466,10 @@ export interface RequirementItem {
   // free-text field of its own rather than a convention inside `notes`, which
   // was already doing double duty once before (see `requirementText`).
   naRationale?: string;
+  // Round 5 question 15: a Should or Could requirement carried past the gate names the tracked Next Action that carries it (an action of the row's own
+  // gate), and once the requirements have been approved a changed requirement names the approved scope change (a Change Control id).
+  deferralActionId?: string;
+  scopeChangeId?: string;
   // Round 5 question 14: on a critical item an N/A a person entered counts once the holder of the relevant function has acknowledged THIS
   // rationale (utils/requirementNaAck.ts). Written by the server only; the client's copy is discarded.
   naAcknowledgements?: NaAcknowledgement[];

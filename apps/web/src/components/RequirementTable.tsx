@@ -6,6 +6,10 @@ import { COMPARTMENT_YNNA, REQUIREMENT_NOT_APPLICABLE, REQUIREMENT_PRIORITIES, W
 import { isDoneStatus } from '@mbc360/shared/utils/doneStatus';
 import { isMandatoryRequirementRow, requirementNeverNotApplicable, requirementRowSettled } from '@mbc360/shared/utils/gateProgress';
 import { requirementNaAckSlots } from '@mbc360/shared/utils/requirementNaAck';
+import { deferralProblem, isOpenDeferral, requirementChangeKinds, requirementsWereApproved, scopeChangeProblem } from '@mbc360/shared/utils/requirementDeferral';
+import NextActionSelect from './NextActionSelect';
+import ChangeRefSelect from './ChangeRefSelect';
+import './AssessmentsCard.css';
 import { useSession } from '../auth/useSession';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -66,6 +70,7 @@ export default function RequirementTable({
   const setSection = useAppStore((s) => s.setRequirementSection);
   const acknowledgeNa = useAppStore((s) => s.acknowledgeRequirementNa);
   const reviewers = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId)?.identity.reviewers);
+  const project = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId));
   const { user: me } = useSession();
   const { draft, dirty, update, markSaved, discard } = useDraft(items);
 
@@ -103,7 +108,8 @@ export default function RequirementTable({
       placeholder="Must / Should / Could"
       value={r.priority || undefined}
       options={REQUIREMENT_PRIORITIES.map((o) => ({ value: o, label: o }))}
-      onChange={(v?: string) => patch(at(r), { priority: v ?? '' })}
+      // A Must is never deferred, so choosing it drops any deferral the row carried (Round 5 question 15).
+      onChange={(v?: string) => patch(at(r), { priority: v ?? '', ...(v === 'Must' ? { deferralActionId: '' } : {}) })}
     />
   );
   const statusControl = (r: RequirementItem) => (
@@ -262,6 +268,37 @@ export default function RequirementTable({
                         })}
                         {!rationaleSaved && <span className="rt-note">Save the rationale first — the acknowledgement is of the words as saved.</span>}
                       </div>
+                    </RecordField>
+                  );
+                })()}
+                {shows('priority') && project && isOpenDeferral(r) && (() => {
+                  // Round 5 question 15: a Should / Could carried past the gate is carried by a tracked Next Action. [ASSUMPTION: R6-Q21]
+                  const linked = project.nextActions.find((a) => a.id === (r.deferralActionId ?? ''));
+                  const why = deferralProblem(project, r);
+                  return (
+                    <RecordField label={<>Tracked Next Action — carries this deferral<span className="as-req">{'\u00A0'}*</span></>} wide>
+                      <NextActionSelect disabled={locked} value={r.deferralActionId || undefined} onChange={(v) => patch(at(r), { deferralActionId: v })} />
+                      <p className="rt-note">
+                        {linked
+                          ? `Owner ${linked.owner || '—'} · due ${linked.dueDate || '—'} · ${linked.status}${why ? ` — ${why}` : ''}`
+                          : 'Raise the action in the Next Actions table of this gate, save it, then link it here. Gate 2 cannot pass with conditions while a deferred row has none.'}
+                      </p>
+                    </RecordField>
+                  );
+                })()}
+                {shows('priority') && project && requirementsWereApproved(project) && (() => {
+                  // Round 5 question 15: once the requirements are approved, a changed requirement needs an approved scope change with its impact assessed.
+                  const saved = items.find((x) => x.requirement === r.requirement && (x.market ?? '') === (r.market ?? ''));
+                  const changed = saved ? requirementChangeKinds(saved, r) : [];
+                  const why = changed.length > 0 ? scopeChangeProblem(project, r.scopeChangeId) : undefined;
+                  return (
+                    <RecordField label={<>Approved scope change{changed.length > 0 && <span className="as-req">{'\u00A0'}*</span>}</>} wide>
+                      <ChangeRefSelect disabled={locked} purpose="implementation" value={r.scopeChangeId} onChange={(v) => patch(at(r), { scopeChangeId: v ?? '' })} />
+                      <p className="rt-note">
+                        {changed.length > 0
+                          ? `This changes the requirement's ${changed.join(', ')}, and the requirements were approved at Gate 2. ${why ? `Not yet: ${why}.` : 'The change is approved and its impact assessed.'}`
+                          : 'The requirements were approved at Gate 2: changing a row\'s priority, wording or applicability needs a Change Control record that is approved to implement and whose impact has been assessed.'}
+                      </p>
                     </RecordField>
                   );
                 })()}

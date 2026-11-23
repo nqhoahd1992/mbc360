@@ -661,3 +661,25 @@ Các bạn đã nói một dòng yêu cầu Phase 2–4 có thể đánh không 
 **(d)** Danh sách dòng không bao giờ nhận N/A có đúng không: ba dòng stability, hai dòng dossier, sàng lọc hạn chế/thận trọng chung ở Gate 7 và infant-use safety conclusion? Thiếu hoặc nên bỏ dòng nào?
 
 **(e)** Dòng yêu cầu nào, nếu có, đại diện cho "kiểm soát phát hành đã duyệt"?
+
+## Câu 21 — Hoãn một yêu cầu Should hoặc Could: ta đọc các chi tiết câu trả lời để ngỏ thế nào?
+
+*Ở đâu trong ứng dụng:* **Phase 1**, Gate 2: bảng **Project Requirements & Exclusions** (drawer của dòng) và **Next Actions** của Gate 2; danh sách readiness của Gate 2.
+
+Các bạn đã nói một yêu cầu bị hoãn được mang bởi một Next Action có kiểm soát gắn với nó (owner, due date, tiêu chí hoàn thành, escalation), Gate 2 không thể qua có điều kiện nếu thiếu nó, một Must không được hoãn bằng cách đổi nhãn thành Should hay Could, và một yêu cầu đã thay đổi cần một thay đổi phạm vi đã duyệt cùng đánh giá tác động. Các bạn cũng đã xác nhận mỗi dòng áp dụng đều cần priority Must / Should / Could. Chúng tôi đã xây. Ở chỗ câu trả lời để ngỏ, chúng tôi đọc như sau:
+
+- **Một yêu cầu bị hoãn** khi nó áp dụng (không phải N/A), là Should hoặc Could, và chưa Complete lúc Gate 2 được quyết định. Một Must không bao giờ được hoãn: gate chờ nó.
+- **"Gắn"** nghĩa là dòng nêu một Next Action của Gate 2. **"Có kiểm soát"** nghĩa là action đó có mô tả, owner, due date, tiêu chí hoàn thành và escalation trigger và chưa bị huỷ — cùng phép thử như với một gap được mang qua gate. Dòng hiện owner, ngày và trạng thái của action thay vì giữ bản sao.
+- **"Gate 2 không thể qua có điều kiện nếu thiếu"**: Proceed with Conditions không còn mang một yêu cầu bị hoãn nếu nó không có action như vậy; Proceed thường vẫn chờ yêu cầu được hoàn thành.
+- **Yêu cầu "đã duyệt"** là của dự án có Gate 2 đã passed, bây giờ hoặc trước khi một Backtrack mở lại nó. Trước đó danh sách còn đang soạn và đổi tự do. Sau đó, **yêu cầu đã thay đổi** là thay đổi priority, nội dung hay việc dòng đó có áp dụng không (chuyển dòng sang Complete là tiến độ, không phải thay đổi). Nó cần một **thay đổi phạm vi**: một bản ghi Change Control được duyệt triển khai và đã được Quality đánh giá tác động. Đổi một Must thành Should là một thay đổi như vậy.
+- **Mọi Must bị hạ xuống Should hoặc Could**, vào bất cứ lúc nào, được ghi vào lịch sử dự án kèm người thực hiện.
+
+**(a)** "Một Should hoặc Could chưa Complete lúc Gate 2 được quyết định" có đúng là nghĩa của yêu cầu bị hoãn không?
+
+**(b)** Phép thử action có kiểm soát — mô tả, owner, due date, tiêu chí hoàn thành, escalation trigger, chưa huỷ — có đúng cho một deferral không?
+
+**(c)** "Gate 2 đã passed, bây giờ hoặc trước một Backtrack" có đúng là thời điểm từ đó yêu cầu được coi là đã duyệt và thay đổi cần thay đổi phạm vi không? Hay nên sớm hơn, ví dụ khi chữ ký Gate 2 bắt đầu?
+
+**(d)** "Thay đổi priority, nội dung hoặc việc có áp dụng" có đúng là danh sách những gì tính là yêu cầu đã thay đổi không?
+
+**(e)** "Được duyệt triển khai và Quality đã đánh giá tác động" có đúng là nghĩa của "thay đổi phạm vi đã duyệt và đánh giá tác động" không?

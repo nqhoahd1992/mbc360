@@ -988,6 +988,10 @@ model RequirementItem {
   // Round 5 question 14: the acknowledgements of that rationale by the holders of the relevant functions (NaAcknowledgement[]); written by the
   // server only.
   naAcknowledgements Json?
+  // Round 5 question 15: the tracked Next Action that carries a deferred Should/Could requirement, and the approved scope change behind a changed
+  // requirement (a Change Control id).
+  deferralActionId   String?
+  scopeChangeId      String?
   // The compartment tables' own Y/N/NA column (Phase 3); null on every other section.
   ynna               String?
   evidenceLink       String?

@@ -581,6 +581,7 @@ async function fix(ctx: Ctx, check: ReadinessCheck): Promise<boolean> {
     case 'requirementDone':
     case 'requirementsDispositioned':
     case 'requirementsNoOpenDeferrals':
+    case 'requirementDeferralsTracked':
     case 'requirementSectionDispositioned':
       return fixRequirements(ctx, check.section);
     case 'identityFieldFilled':

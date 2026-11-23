@@ -37,6 +37,7 @@ import {
 import { LEAD_ASSIGNABLE_ROLE_KEYS, REVIEW_ROLES, ownerName, registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import { acknowledgementBasis, holdsRole } from '@mbc360/shared/utils/readinessAck';
 import { requirementNaAckSlots } from '@mbc360/shared/utils/requirementNaAck';
+import { REQUIREMENTS_SECTION, requirementChangeKinds, requirementsWereApproved, scopeChangeProblem } from '@mbc360/shared/utils/requirementDeferral';
 import {
   DECISION_OPTIONS,
   NP_APPROVAL_APPROVED,
@@ -1198,6 +1199,42 @@ export class ProjectsService {
         }
         assertOneOf(`Requirement "${item.requirement}" priority`, item.priority, REQUIREMENT_PRIORITIES);
       }
+      // Round 5 question 15, on the Project Requirements table (the one that carries a priority): a deferred Should / Could names the tracked Next Action
+      // that carries it, a Must is never deferred, and once the requirements have been approved a changed requirement names its approved scope change.
+      // [ASSUMPTION: R6-Q21]
+      const isRequirements = section === REQUIREMENTS_SECTION;
+      const lowered: { requirement: string; from: string; to: string }[] = [];
+      if (isRequirements) {
+        const problems: string[] = [];
+        const approved = requirementsWereApproved(project);
+        for (const [position, item] of items.entries()) {
+          const stored = existing[position];
+          const link = (item.deferralActionId ?? '').trim();
+          if (link !== '') {
+            const action = project.nextActions.find((a) => a.id === link);
+            // A NEW link on a Must is refused; a link the row already held is simply dropped when it becomes a Must (below).
+            if (item.priority === 'Must') {
+              if (link !== (stored.deferralActionId ?? '')) problems.push(`"${item.requirement}" is a Must and cannot be deferred — it has to be completed`);
+            }
+            else if (!action) problems.push(`"${item.requirement}": the linked Next Action is not an action of this project`);
+            else if (action.gateId !== `SG${stored.gate}`) problems.push(`"${item.requirement}": the linked Next Action belongs to ${action.gateId}, not Gate ${stored.gate}`);
+          }
+          const scope = (item.scopeChangeId ?? '').trim();
+          if (scope !== '' && !resolveChangeRef(project.changes, scope)) problems.push(`"${item.requirement}": ${scope} is not a Change Control record on this project`);
+          if (approved && !isGateRefLocked(project, stored.gate)) {
+            const kinds = requirementChangeKinds(
+              { priority: stored.priority ?? undefined, requirementText: stored.requirementText ?? undefined, status: stored.status as never },
+              { priority: item.priority, requirementText: item.requirementText, status: item.status },
+            );
+            const why = kinds.length > 0 ? scopeChangeProblem(project, item.scopeChangeId) : undefined;
+            if (why) problems.push(`"${item.requirement}" is a changed requirement (${kinds.join(', ')}) and the requirements were approved at Gate 02 — ${why}`);
+          }
+          if (stored.priority === 'Must' && (item.priority ?? '') !== 'Must') {
+            lowered.push({ requirement: item.requirement, from: 'Must', to: item.priority || '(none)' });
+          }
+        }
+        if (problems.length > 0) throw new BadRequestException(listMessage('The requirements cannot be saved yet:', problems));
+      }
       let skipped = 0;
       for (const [index, item] of items.entries()) {
         const target = existing[index];
@@ -1218,6 +1255,14 @@ export class ProjectsService {
             // rationale can never outlive the disposition that required it and
             // read as evidence for a row that is now Completed.
             naRationale: item.status === 'N/A' && sectionConfig?.allowNotApplicable ? (item.naRationale ?? null) : null,
+            // Round 5 question 15: a Must carries no deferral (cleared), an empty value clears the link, an absent one leaves it.
+            ...(isRequirements
+              ? {
+                  deferralActionId:
+                    item.priority === 'Must' ? null : item.deferralActionId === undefined ? undefined : item.deferralActionId.trim() || null,
+                  scopeChangeId: item.scopeChangeId === undefined ? undefined : item.scopeChangeId.trim() || null,
+                }
+              : {}),
             // The acknowledgements are the server's alone (the client's copy is never read). A row that is no longer N/A has nothing left to
             // acknowledge; an edited rationale leaves them in place, and they stop counting because they are of the old words.
             ...(item.status === 'N/A' && sectionConfig?.allowNotApplicable ? {} : { naAcknowledgements: Prisma.DbNull }),
@@ -1233,7 +1278,8 @@ export class ProjectsService {
           },
         });
       }
-      return { section, rows: items.length, skippedLocked: skipped };
+      // A Must relabelled as a Should or a Could is recorded whoever does it and whenever: the audit event names the rows.
+      return { section, rows: items.length, skippedLocked: skipped, ...(lowered.length > 0 ? { priorityLowered: lowered } : {}) };
     });
   }
 

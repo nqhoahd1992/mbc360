@@ -1135,6 +1135,14 @@ Trả lời Có, kèm lý do cụ thể và xác nhận của người rà soát
 
 Các dòng infant/baby có thể N/A khi trigger nêu trong dòng thực sự không áp dụng, kể cả miễn test có lý do. Khi đã có sử dụng/tiếp xúc với trẻ, kết luận an toàn lõi cho trẻ không bỏ qua được. Ghi N/A có lý do cho cả compartment khi nằm ngoài phạm vi.
 
+### Câu 15 — Hoãn các yêu cầu Should/Could
+
+**Kết luận:** ✅ đã xây (13/11/2026). Khác với những gì đã xây (một yêu cầu bị hoãn chỉ được mang bởi Proceed with Conditions, không có owner, due date hay action phía sau). Phần (b) đã xây từ trước. Cách đọc các chi tiết của chúng tôi được hỏi ở Round 6, câu 21.
+
+**(a)** Tạo một Next Action có kiểm soát gắn với yêu cầu bị hoãn, có owner, due date, tiêu chí hoàn thành và escalation. Gate 2 không thể qua có điều kiện nếu thiếu. Các yêu cầu Must không được hoãn bằng cách đổi nhãn thành Should/Could; một yêu cầu đã thay đổi cần thay đổi phạm vi đã duyệt và đánh giá tác động.
+
+**(b)** Có. Mọi yêu cầu áp dụng cần priority Must/Should/Could. Dòng N/A cần lý do. Priority để trống là chưa đủ.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

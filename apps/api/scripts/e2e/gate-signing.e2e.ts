@@ -409,6 +409,67 @@ export async function run(base: string, db: Client): Promise<number> {
     await db.query(`UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = 'regulatory'`, [PROJECT, regRow.name, regRow.userId]);
   }
 
+  // ============================================================ Round 5 question 15: deferring a Should / Could requirement
+  console.log('\n--- Round 5 question 15: a deferred requirement is carried by a tracked Next Action, a Must is never deferred, a lowered Must is recorded');
+  {
+    const SECTION = 'projectRequirements';
+    const ROW = 'Sensory requirements';
+    const ACTION_ID = 'NA-E2E-DEFER';
+    const rows = async () => ((await project()).project.requirements[SECTION] ?? []) as any[];
+    const stored = async () => (await rows()).find((x) => x.requirement === ROW);
+    const putRows = async (change: (x: any) => any) =>
+      api('admin', 'PUT', `/projects/${PROJECT}/requirements/${SECTION}`, { items: (await rows()).map(change), expectedVersion: await version() });
+    const forRow = (patch: any) => (x: any) => (x.requirement === ROW ? { ...x, ...patch } : x);
+    const actionsAt02 = async () => ((await project()).project.nextActions as any[]).filter((a) => a.gateId === 'SG02');
+    const putActions = async (list: any[]) => api('admin', 'PUT', `/projects/${PROJECT}/next-actions`, { gateIds: ['SG02'], actions: list, expectedVersion: await version() });
+    const adminName = (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions['admin'].id])).rows[0].displayName as string;
+
+    let r: any = await putRows(forRow({ priority: 'Must', deferralActionId: ACTION_ID }));
+    t('a Must cannot be deferred (400)', r.status === 400 && /cannot be deferred/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await putRows(forRow({ priority: 'Should', deferralActionId: 'NA-NOPE' }));
+    t('a deferral names an action that does not exist (400)', r.status === 400 && /not an action of this project/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+
+    r = await putActions([
+      ...(await actionsAt02()),
+      { id: ACTION_ID, gateId: 'SG02', description: 'e2e: finish the sensory brief', owner: adminName, dueDate: '2030-01-01', status: 'Open', priority: 'Medium', completionCriteria: 'Brief signed', escalationTrigger: 'Two weeks overdue' },
+    ]);
+    t('a tracked Next Action is raised at Gate 2', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await putRows(forRow({ priority: 'Should', deferralActionId: ACTION_ID }));
+    t('a Should is linked to it', r.status < 300, `${r.status} ${short(r.json)}`);
+    t('...and the link is stored on the row', (await stored())?.deferralActionId === ACTION_ID, short(await stored()));
+
+    r = await putRows(forRow({ priority: 'Must' }));
+    t('the same row made a Must again drops the deferral', r.status < 300 && !(await stored())?.deferralActionId, `${r.status} ${short(await stored())}`);
+
+    // a Must lowered to a Should is recorded, who and which row
+    r = await putRows(forRow({ priority: 'Should' }));
+    const recorded = (await db.query(
+      `SELECT after FROM audit_events WHERE "projectId" = $1 AND action = 'requirement.updated' ORDER BY "occurredAt" DESC, id DESC LIMIT 1`,
+      [PROJECT],
+    )).rows[0]?.after;
+    t('a Must relabelled as a Should is recorded in the project history', r.status < 300 && JSON.stringify(recorded?.priorityLowered ?? []).includes(ROW), short(recorded));
+
+    // the requirements were approved once (a Backtrack that reopened a passed Gate 2): a changed requirement needs an approved scope change
+    const gates = (await project()).project.gates as any[];
+    const g2 = { ...gates.find((g) => g.gateId === 'SG02'), status: 'Complete', decision: 'Proceed' };
+    await db.query(
+      `INSERT INTO backtrack_events (id, "projectId", "initiatedBy", reason, "fromGateId", "toGateId", "reopenedGateIds", "previousGates", "previousSignOffs")
+         VALUES ('e2e-bt-req', $1, 'e2e', 'e2e: requirements approved once', 'SG03', 'SG02', ARRAY['SG02'], $2::jsonb, '{}'::jsonb)`,
+      [PROJECT, JSON.stringify([g2])],
+    );
+    r = await putRows(forRow({ priority: 'Could' }));
+    t('after the requirements were approved, a changed priority needs a scope change (400)', r.status === 400 && /changed requirement/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await putRows(forRow({ priority: 'Could', scopeChangeId: 'CHG-NOPE' }));
+    t('...a scope change that is not in the Change Control log does not serve (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await putRows(forRow({ status: 'In Progress' }));
+    t('...while moving a row along (progress) is not a changed requirement', r.status < 300, `${r.status} ${short(r.json)}`);
+    await db.query(`DELETE FROM backtrack_events WHERE id = 'e2e-bt-req'`);
+
+    // put the rows and the actions back as found
+    await putRows(forRow({ priority: '', status: 'Not Started', deferralActionId: '', scopeChangeId: '' }));
+    await putActions((await actionsAt02()).filter((a) => a.id !== ACTION_ID));
+  }
+
   // ============================================================ register closing: review before signing
   console.log('\n--- register closing: the closer reads the register first, and the signature is bound to what they read');
   {
