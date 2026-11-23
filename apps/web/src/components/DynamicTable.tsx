@@ -30,6 +30,23 @@ import ClaimSelect from './ClaimSelect';
 import { findClaim, useClaimRows } from '../hooks/claimRows';
 import NextActionSelect from './NextActionSelect';
 import ClaimsLibrarySelect from './ClaimsLibrarySelect';
+import RestrictedCautionSelect from './RestrictedCautionSelect';
+import { useRestrictedCautionEntries } from '../hooks/restrictedCautionEntries';
+import { useClaimsLibraryEntries, useMarketProfiles } from '../hooks/referenceData';
+import {
+  claimsLibraryInheritedCells,
+  claimsLibraryInheritedValue,
+  linkedClaimsLibraryEntry,
+  marketProfileFor,
+  marketProfileInheritedValue,
+} from '@mbc360/shared/utils/referenceInheritance';
+import { CLAIM_LIBRARY_LINK_OPTIONS } from '@mbc360/shared/config/referenceData';
+import {
+  findRestrictedCautionEntry,
+  restrictedCautionLinkOf,
+  restrictedCautionInheritedCells,
+  restrictedCautionInheritedValue,
+} from '@mbc360/shared/utils/restrictedCaution';
 import RowRefSelect from './RowRefSelect';
 import RegisterSignatureCell from './RegisterSignatureCell';
 import { columnOwnerGateIds, spansSeveralGates } from '@mbc360/shared/utils/registerColumnGates';
@@ -67,6 +84,7 @@ const DECISION_TYPES: ReadonlySet<RegisterColumn['type']> = new Set([
   'signature',
   'nextActionRef',
   'claimsLibraryRef',
+  'restrictedCautionRef',
   'rowRef',
 ]);
 const IDENTITY_MIN = 240; // the first column never gets narrower than this
@@ -195,6 +213,9 @@ export default function DynamicTable({
 }) {
   const isRegister = config.mode === 'register' && !readOnly;
   const claimRows = useClaimRows();
+  const listEntries = useRestrictedCautionEntries();
+  const libraryEntries = useClaimsLibraryEntries();
+  const marketProfiles = useMarketProfiles();
   // Only needed by `signature` columns, which address a row by its index in this
   // project — the same index the bulk save writes as `rowOrder`.
   const { projectId } = useParams();
@@ -371,6 +392,76 @@ export default function DynamicTable({
     const editable = column.editable !== false && !readOnly && !frozenGate && !access.cellBlocked(column.key, row);
     const value = row[column.key];
 
+    // A column marked `inheritFromEntry` is filled from the company restricted and caution list entry the row links (SW-59) and is read-only
+    // while that entry holds a value for it. Only a cell the entry holds nothing for (the markets of an entry that names none) is typed by hand.
+    // With no entry chosen yet the cell is locked and says what to do: an unlinked row restating the list is how the two copies drift apart.
+    if (column.inheritFromEntry) {
+      const link = restrictedCautionLinkOf(row);
+      // A row saved before the link existed still shows what it holds; it only needs its entry chosen.
+      if (link === '') {
+        return text(value) !== '' ? (
+          <Tooltip title="Choose the company list entry this row is about">
+            <span className="rt-static">{shownText(column, value)}</span>
+          </Tooltip>
+        ) : (
+          <span className="rt-muted">Choose a company list entry first</span>
+        );
+      }
+      const entry = findRestrictedCautionEntry(listEntries, link);
+      const fromEntry = entry ? restrictedCautionInheritedValue(column.inheritFromEntry, entry) : '';
+      if (entry && fromEntry !== '') {
+        return (
+          <Tooltip title="From the company restricted and caution list. Change it there.">
+            <span className="rt-static">{fromEntry}</span>
+          </Tooltip>
+        );
+      }
+      if (!entry) {
+        return (
+          <Tooltip title="The linked entry is no longer approved and current; this is what the row held when it was last saved.">
+            <span className="rt-static">{shownText(column, value) || '\u2014'}</span>
+          </Tooltip>
+        );
+      }
+    }
+
+    // A column marked `inheritFromLibrary` is filled from the Claims Library entry the claim links (SW-59) and read-only while that entry holds a
+    // value for it. A claim with no link is a new claim and is typed (Round 4 question 28(2)); a link to wording since withdrawn is shown as it was
+    // saved, read-only, until the claim is re-linked or unlinked.
+    if (column.inheritFromLibrary) {
+      const link = text(row.libraryEntryId);
+      if (link !== '') {
+        const entry = linkedClaimsLibraryEntry(libraryEntries, link);
+        const fromEntry = entry ? claimsLibraryInheritedValue(column.inheritFromLibrary, entry) : '';
+        if (entry && fromEntry !== '') {
+          return (
+            <Tooltip title="From the Claims Library entry. Change it there, or unlink the claim to write a new one.">
+              <span className="rt-static">{fromEntry}</span>
+            </Tooltip>
+          );
+        }
+        if (!entry) {
+          return (
+            <Tooltip title="The linked Claims Library entry is withdrawn or gone; this is what the claim held when it was last saved. Pick current wording, or unlink the claim.">
+              <span className="rt-static">{shownText(column, value) || '\u2014'}</span>
+            </Tooltip>
+          );
+        }
+      }
+    }
+    // A column marked `inheritFromMarketProfile` is the Regulatory market profile's value for the row's market, while that profile names one (SW-59).
+    if (column.inheritFromMarketProfile) {
+      const profile = marketProfileFor(marketProfiles, row.market);
+      const fromProfile = profile ? marketProfileInheritedValue(column.inheritFromMarketProfile, profile) : '';
+      if (fromProfile !== '') {
+        return (
+          <Tooltip title={`From the Regulatory market profile for ${text(row.market)}. Change it there.`}>
+            <span className="rt-static">{fromProfile}</span>
+          </Tooltip>
+        );
+      }
+    }
+
     // A column marked `inheritFromClaim` is not entered here at all: it shows
     // what the linked claim says, so a claim carries one classification wherever
     // it is used. With no claim linked it is disabled rather than free — an
@@ -410,6 +501,7 @@ export default function DynamicTable({
       if (column.type === 'checkbox') return <Checkbox checked={!!value} disabled />;
       // Read-only, a library link shows the entry's wording rather than its id.
       if (column.type === 'claimsLibraryRef') return <ClaimsLibrarySelect value={value as string | undefined} disabled onChange={() => {}} />;
+      if (column.type === 'restrictedCautionRef') return <RestrictedCautionSelect value={value as string | undefined} disabled onChange={() => {}} />;
       const shown = (
         <span className="rt-static" style={column.type === 'number' ? NUMERIC_CELL : undefined}>
           {isWebAddress(text(value)) ? <LinkValue value={text(value)} /> : shownText(column, value) || '—'}
@@ -448,12 +540,33 @@ export default function DynamicTable({
             onChange={(v) => patch(index, column.key, v)}
           />
         );
+      // SW-59: the company list entry is picked, and choosing it fills the row's entry-derived cells (the server copies them again on save).
+      case 'restrictedCautionRef':
+        return (
+          <RestrictedCautionSelect
+            value={value as string | undefined}
+            onChange={(v) => {
+              const entry = findRestrictedCautionEntry(listEntries, v);
+              update((prev) => patchArray(prev, index, { [column.key]: v, ...(entry ? restrictedCautionInheritedCells(config, entry) : {}) } as Partial<RegisterRow>));
+            }}
+          />
+        );
+      // SW-59: picking an entry fills the claim's wording, category, risk and "Linked" declaration from it; clearing the link drops the
+      // declaration so the person says "New claim" on purpose.
       case 'claimsLibraryRef':
         return (
           <ClaimsLibrarySelect
             value={value as string | undefined}
             status={claimLibraryLinkMismatch(row) ? 'warning' : undefined}
-            onChange={(v) => patch(index, column.key, v)}
+            onChange={(v) => {
+              const entry = linkedClaimsLibraryEntry(libraryEntries, v);
+              const filled = entry
+                ? claimsLibraryInheritedCells(config.columns, entry)
+                : v === '' && text(row.libraryStatus) === CLAIM_LIBRARY_LINK_OPTIONS[0]
+                  ? { libraryStatus: '' }
+                  : {};
+              update((prev) => patchArray(prev, index, { [column.key]: v, ...filled } as Partial<RegisterRow>));
+            }}
           />
         );
       // Several values from the column's own list, stored comma-joined (same

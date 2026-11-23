@@ -584,6 +584,9 @@ function sourcesOf(check: ReadinessCheck): EvidenceSource[] {
     case 'requirementDone':
     case 'requirementSectionComplete':
     case 'requirementsDispositioned':
+    case 'generalCautionScreened':
+    case 'restrictedCautionTakenUp':
+      return [registerSource('generalRestrictedCaution')];
     case 'requirementsNoOpenDeferrals':
     case 'requirementDeferralsTracked':
       return [{ label: `requirement section ${check.section}`, lockRef: requirementSectionGates(check.section), laterGateOwns: true }];

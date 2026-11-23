@@ -3,6 +3,7 @@ import {
   ApiOutlined,
   AppstoreOutlined,
   ExperimentOutlined,
+  SafetyCertificateOutlined,
   FileProtectOutlined,
   FolderOpenOutlined,
   GlobalOutlined,
@@ -68,41 +69,45 @@ export const GLOBAL_NAV: GlobalNavEntry[] = [
   // beside Users & Roles rather than in a project workspace — one list every
   // project reads and none of them can edit.
   //
-  // `adminOnly` controls only whether the LINK shows. The page itself is readable
-  // by anyone who reaches it and its Save is gated on the real
-  // `reference:market-profile|edit` capability, seeded to Regulatory — so an admin
-  // sees the link while Regulatory, who actually maintains the data, reaches it
-  // from search or a direct URL [ASSUMPTION: R5-Q15].
+  // Every Company Reference Data page is linked for every signed-in user (2026-11-23,
+  // user-requested: Regulatory, Safety and the others who maintain this data must
+  // find it in the menu, not only an administrator). Reading is open to anyone; each
+  // Save and approval is gated on its own capability, e.g.
+  // `reference:market-profile|edit`, seeded to Regulatory [ASSUMPTION: R5-Q15].
   {
     path: '/admin/market-profiles',
     title: 'Market profiles',
     icon: <GlobalOutlined />,
-    adminOnly: true,
     sidebar: { submenu: REFERENCE_DATA_SUBMENU },
     keywords: 'regulatory market profile adverse event pms dossier claim restriction reference data',
   },
-  // Round 4 question 17 (2026-08-24). Same shape and the same `adminOnly` caveat as
-  // Market profiles above: the link is admin-only, the Save is gated on
-  // `reference:rm-risk|edit` (Safety, R&I/Formulation, Regulatory)
+  // Round 4 question 17 (2026-08-24). Same shape as Market profiles above: the Save
+  // is gated on `reference:rm-risk|edit` (Safety, R&I/Formulation, Regulatory)
   // [ASSUMPTION: R5-Q15].
   {
     path: '/admin/rm-risk',
     title: 'Raw material risk',
     icon: <ExperimentOutlined />,
-    adminOnly: true,
     sidebar: { submenu: REFERENCE_DATA_SUBMENU },
     keywords:
       'raw material risk overlay allergen fragrance essential oil botanical protein residual solvent heavy metal microbiological impurity reference data cosmetri',
   },
+  // Round 5 question 16(a). The company's restricted and caution ingredient list, approved by Regulatory AND Safety. The
+  // writes are gated on `reference:restricted-caution|edit` and the two approval capabilities.
+  {
+    path: '/admin/restricted-caution',
+    title: 'Restricted & caution list',
+    icon: <SafetyCertificateOutlined />,
+    sidebar: { submenu: REFERENCE_DATA_SUBMENU },
+    keywords: 'restricted caution prohibited ingredient list regulatory safety approval source version effective date reference data',
+  },
   // Round 4 question 28 (2026-08-30). The third and last reference dataset, and
   // the only one with a workflow: entries need BOTH a Technical and a Regulatory
-  // approval before they count as Approved Library Wording. Same `adminOnly`
-  // caveat as its two siblings [ASSUMPTION: R5-Q15].
+  // approval before they count as Approved Library Wording [ASSUMPTION: R5-Q15].
   {
     path: '/admin/claims-library',
     title: 'Claims Library',
     icon: <FileProtectOutlined />,
-    adminOnly: true,
     sidebar: { submenu: REFERENCE_DATA_SUBMENU },
     keywords:
       'claims library approved wording company level technical regulatory approval propose withdraw applicability brand market channel reference data',
@@ -111,3 +116,7 @@ export const GLOBAL_NAV: GlobalNavEntry[] = [
 
 export const globalNavFor = (isAdmin: boolean): GlobalNavEntry[] =>
   GLOBAL_NAV.filter((entry) => !entry.adminOnly || isAdmin);
+
+/** True for a page of the Company Reference Data group, which has its own button on the sidebar rail (2026-11-23, user-requested). */
+export const isReferenceEntry = (entry: GlobalNavEntry): boolean =>
+  typeof entry.sidebar === 'object' && entry.sidebar !== null && entry.sidebar.submenu === REFERENCE_DATA_SUBMENU;

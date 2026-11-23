@@ -17,6 +17,8 @@ const assessment = (over: Partial<ImpactAssessmentRecord> = {}): ImpactAssessmen
   subject: 'RM-1',
   summary: 'x',
   critical: true,
+  // Round 5 question 6: a Critical change holds release at once only when it is urgent (otherwise it waits for a qualified function to confirm it).
+  urgent: true,
   dueDate: '2026-12-01',
   raisedBy: 'someone',
   raisedAt: '2026-11-06T00:00:00.000Z',

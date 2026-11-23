@@ -683,3 +683,55 @@ Các bạn đã nói một yêu cầu bị hoãn được mang bởi một Next 
 **(d)** "Thay đổi priority, nội dung hoặc việc có áp dụng" có đúng là danh sách những gì tính là yêu cầu đã thay đổi không?
 
 **(e)** "Được duyệt triển khai và Quality đã đánh giá tác động" có đúng là nghĩa của "thay đổi phạm vi đã duyệt và đánh giá tác động" không?
+
+## Câu 22 — Đánh giá hạn chế và thận trọng chung: ta đọc các chi tiết câu trả lời để ngỏ thế nào?
+
+*Ở đâu trong ứng dụng:* trang mới **Company Reference Data → Restricted & caution list**; sổ **General Restricted & Caution Assessment**; Key Gate Check "General restricted and caution ingredient assessment completed" ở Gate 7; danh sách readiness của Gate 4 và Gate 7.
+
+Các bạn đã nói Regulatory và Safety cung cấp và phê duyệt các nguồn được kiểm soát và overlay của công ty kèm phiên bản và ngày hiệu lực, và chỉ nạp danh sách công ty hiện hành đã duyệt; đánh giá này bắt buộc với mọi sản phẩm, có kết luận đã được rà soát rõ ràng — không có phát hiện nghĩa là Complete kèm bằng chứng, không bao giờ N/A; Gate 4 làm sàng lọc và xử lý ban đầu, Gate 7 đóng cho công thức cuối, có dấu vết người rà soát cho vấn đề bị gắn cờ; và ý nghĩa các outcome. Chúng tôi đã xây. Ở chỗ câu trả lời để ngỏ, chúng tôi đọc như sau:
+
+- **Danh sách công ty.** Một mục có thành phần (tên INCI), số CAS tuỳ chọn, là Prohibited, Restricted hay Caution, giới hạn hoặc điều kiện, các thị trường áp dụng (không có = mọi thị trường), nguồn được kiểm soát, phiên bản của nguồn, ngày hiệu lực từ và ngày hiệu lực đến tuỳ chọn. Regulatory và Safety mỗi bên phê duyệt riêng; mục chỉ Approved khi cả hai còn hiệu lực, và chỉ được nạp khi hôm nay cũng nằm trong thời gian hiệu lực. Sửa nội dung một mục đưa nó về Proposed, và một thay đổi với mục đã duyệt (duyệt, sửa, rút) mở đánh giá tác động trên các dự án dùng thành phần đó, như các danh sách công ty khác. Ứng dụng **không** kèm sẵn mục nào: hai danh sách 12 dòng của workbook vẫn chỉ là gợi ý sàng lọc.
+- **Dự án kiểm tra gì.** Một thành phần công thức khớp một mục khi trùng số CAS, nếu không thì trùng tên INCI, và mục áp dụng cho một thị trường của dự án. Mỗi khớp phải có một dòng trong đánh giá (Gate 4 và 7), nên thành phần có trong danh sách không lọt qua sàng lọc. Một dòng được liên kết với mục danh sách mà nó được đánh giá theo bằng cách chọn mục đó từ một dropdown (thành phần, cơ sở, nguồn, phiên bản nguồn và thị trường tự điền từ mục và không gõ đè được); không có lựa chọn "không thuộc danh sách", một thành phần danh sách chưa có thì được đề xuất vào danh sách trước; chính liên kết đó, không phải một tên gõ lại, mới tính là đã nhận một khớp. Nếu mục sau này đổi phiên bản, hoặc không còn được duyệt và hiệu lực, dòng bị gắn cờ cho đến khi được đánh giá lại.
+- **Kết luận.** Key Gate Check "General restricted and caution ingredient assessment completed" không bao giờ nhận N/A, và chỉ tính khi đã làm kèm tham chiếu bằng chứng và tên viết tắt của người kết luận. Sổ rỗng chấp nhận được khi đi cùng nó.
+- **Gate 4** cần mỗi dòng có outcome, và dòng bị gắn cờ (Needs Safety Review, Needs Regulatory Review, Further information required) có dấu vết người rà soát — đánh giá, người rà soát, ngày, lý do. **Gate 7** đóng chúng: "Restricted - reformulate" chặn cho tới khi đổi outcome, "Within limit" cần % công thức / mức phơi nhiễm, thị trường và liên kết bằng chứng, và dòng bị gắn cờ vẫn chặn trừ khi một người rà soát đủ năng lực đã chấp nhận như một hành động tồn dư không critical — đánh giá Non-critical, một Next Action có theo dõi đang sống mang nó, do người được nêu tên là người rà soát và giữ thẩm quyền Safety hoặc Regulatory ghi (một trong hai, với yêu cầu thêm thông tin).
+- **Gắn với phiên bản công thức:** một phiên bản công thức Major mở lại Gate 4–9 nên các dòng này được quyết định lại với công thức mới; chúng tôi không ghi phiên bản công thức trên chính dòng.
+
+**(a)** Đây có phải các trường đúng cho một mục của danh sách công ty, và "Regulatory và Safety cùng duyệt; chỉ mục đã duyệt đang hiệu lực mới tính" có đúng không?
+
+**(b)** Khớp theo số CAS, nếu không thì tên INCI, trong các thị trường của dự án có đúng là cách quyết định một thành phần công thức nằm trong danh sách không?
+
+**(c)** "Đã làm, kèm bằng chứng và tên viết tắt của người kết luận" có đúng là nghĩa của "kết luận đã được rà soát" không?
+
+**(d)** Ở Gate 4, "mỗi dòng có outcome và dòng bị gắn cờ có dấu vết người rà soát" có đúng là xử lý ban đầu không? Sổ rỗng ở Gate 4 có cần thêm một kết luận ghi nhận riêng không?
+
+**(e)** "Đánh giá Non-critical, một Next Action có theo dõi đang sống, do người rà soát được nêu tên giữ thẩm quyền Safety hoặc Regulatory ghi" có đúng là cách một người rà soát đủ năng lực chấp nhận hành động tồn dư không?
+
+**(f)** Mỗi dòng có nên ghi cả phiên bản công thức mà nó được đánh giá theo không?
+
+## Câu 23 — Claim liên kết Claims Library: wording, category và risk có nên lấy từ mục thư viện không?
+
+*Ở đâu trong ứng dụng:* sổ **Claim -> Evidence Traceability**, cột "Claims Library entry".
+
+Các bạn đã nói một claim dùng lại wording đã duyệt bằng cách liên kết một mục Claims Library, và một claim thực sự mới có thể được đề xuất không liên kết, khai "New claim — not yet in Claims Library", kích hoạt Regulatory và Technical review.
+
+Sổ claim nhắc lại ba thứ mà mục thư viện đã có — wording, claim category và claim risk — và cả ba gõ tay, nên claim và mục có thể lệch nhau. Chúng tôi đã đổi để **khi claim được liên kết, ba thứ đó lấy từ mục và không gõ đè được** (ô nào mục để trống thì vẫn gõ), và khai "Linked to Claims Library" đi theo liên kết. Một claim **không** liên kết là claim mới và vẫn gõ như trước. Bỏ liên kết thì bỏ khai "Linked", nên người dùng khai "New claim" có chủ đích. Khi wording của mục thư viện đổi sau đó, claim đã liên kết theo nó ở lần lưu sổ kế tiếp, và vì wording lúc đó khác wording đã review, điều kiện sẵn có "wording khác wording đã review" đưa claim về lại rà soát.
+
+**(a)** Có đúng là claim dùng lại wording đã duyệt thì chỉ đọc, và muốn đổi thì bỏ liên kết rồi khai claim mới không?
+
+**(b)** Có đúng là mục thư viện được sửa wording thì lan sang mọi claim đã liên kết và đưa chúng về review không?
+
+**(c)** "Evidence requirement" của mục có phải là "Preliminary evidence requirement" của claim không? Chúng tôi chưa điền ô nào từ ô kia.
+
+**(d)** Audience, thị trường và kênh của mục có nên được kiểm tra với nơi claim được dùng không?
+
+## Câu 24 — Regulatory Checklist Status có nên lấy dossier type từ hồ sơ thị trường không?
+
+*Ở đâu trong ứng dụng:* sổ **Regulatory Checklist Status (per market)**, cột "Required dossier type"; **Company Reference Data → Market profiles**.
+
+Hồ sơ thị trường đã có dossier type mà Regulatory đặt cho thị trường đó, còn Regulatory Checklist Status hỏi "Required dossier type" cho từng thị trường và để gõ tay. Chúng tôi đã đổi để **chọn thị trường thì dossier type được điền từ hồ sơ của thị trường đó, khi hồ sơ nêu một loại**, chỉ đọc, và thay đổi hồ sơ về sau thấy ngay; hồ sơ không nêu thì vẫn gõ ở sổ. Chúng tôi không điền "Checklist or evidence link" từ evidence link của hồ sơ, vì chưa chắc hai ô là một.
+
+**(a)** "Required dossier type" của sổ có đúng là dossier type của hồ sơ thị trường không?
+
+**(b)** "Checklist or evidence link" của sổ có nên lấy từ hồ sơ không?
+
+**(c)** Sổ này sinh ra cho các thị trường chưa có hồ sơ dossier trong MBc360. Khi hồ sơ của một thị trường đã nêu dossier type, thị trường đó có còn cần một dòng ở đây không?

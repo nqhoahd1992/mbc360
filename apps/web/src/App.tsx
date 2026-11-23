@@ -17,6 +17,7 @@ import AdminRoles from './pages/AdminRoles';
 import AdminMarketProfiles from './pages/AdminMarketProfiles';
 import AdminClaimsLibrary from './pages/AdminClaimsLibrary';
 import AdminRmRisk from './pages/AdminRmRisk';
+import AdminRestrictedCaution from './pages/AdminRestrictedCaution';
 import Dashboard from './pages/Dashboard';
 import ProjectList from './pages/ProjectList';
 import ProjectOverview from './pages/ProjectOverview';
@@ -434,6 +435,7 @@ function Shell() {
                 because it is company scope, not project scope. */}
             <Route path="/admin/market-profiles" element={<AdminMarketProfiles />} />
             <Route path="/admin/rm-risk" element={<AdminRmRisk />} />
+            <Route path="/admin/restricted-caution" element={<AdminRestrictedCaution />} />
             <Route path="/admin/claims-library" element={<AdminClaimsLibrary />} />
           </Routes>
           </ConfigProvider>

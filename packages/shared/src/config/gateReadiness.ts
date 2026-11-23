@@ -199,7 +199,15 @@ export type ReadinessCheck =
   // projects where it demonstrably applies. With this set, an active trigger
   // narrows the row to done+Y only; NA no longer counts.
   // `strict` (Round 5 question 14): a universally required assessment — the row never accepts N/A, whatever the project.
-  | { kind: 'gateCheckDone'; gate: string; check: string; naInvalidWhenTrigger?: ReadinessTrigger[]; strict?: boolean }
+  // `needsEvidence` (Round 5 question 16(b)): "Complete with evidence" — a done row also carries its evidence reference and initials.
+  | { kind: 'gateCheckDone'; gate: string; check: string; naInvalidWhenTrigger?: ReadinessTrigger[]; strict?: boolean; needsEvidence?: boolean }
+  // Round 5 question 16: every row of the General Restricted & Caution Assessment is dispositioned (Gate 4: an outcome and the reviewer trail on a
+  // flagged one) or closed (Gate 7: unresolved ones accepted by a qualified reviewer as a non-critical residual action). Vacuously true on an empty
+  // register, which is legitimate here — the Gate 7 Key Gate Check is the record that somebody looked (utils/generalCaution.ts).
+  | { kind: 'generalCautionScreened'; gate: 'SG04' | 'SG07' }
+  // Round 5 question 16(a): every ingredient of the formula that matches the company's approved, current restricted and caution list is taken up as a
+  // row of the General Restricted & Caution Assessment. Vacuously true while the company list holds nothing that matches (utils/restrictedCaution.ts).
+  | { kind: 'restrictedCautionTakenUp' }
   // Minimum-bar guard on a Phase checklist section (`ProjectData.checklists[section]`,
   // e.g. targetUsers/targetMarkets/targetArea): satisfied once at least one row
   // has `status === 'Y'` — i.e. the section has actually been engaged with, not
@@ -1519,6 +1527,22 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       },
     },
     {
+      // Round 5 question 16(c): "Use Gate 4 for initial screening/disposition and Gate 7 for final-formula closure, with reviewer trails for flagged
+      // issues." Every row of the general screen has an outcome here, and a flagged one its reviewer trail; closing them is Gate 7's. The register can
+      // legitimately be empty, so this reads as satisfied then — the record that somebody LOOKED is the Gate 7 Key Gate Check. [ASSUMPTION: R6-Q22]
+      id: 'sg04-general-caution',
+      label: 'General restricted and caution ingredient screening dispositioned',
+      tier: 'Mandatory',
+      source: 'f-series',
+      nonVacuousBecause:
+        'The register is legitimately empty when the formula contains nothing restricted, and the Gate 7 Key Gate Check (done with evidence, never N/A) is what stops an unscreened project passing; what this item guards is a finding left undispositioned, which it reads directly.',
+      check: {
+        kind: 'allOf',
+        checks: [{ kind: 'generalCautionScreened', gate: 'SG04' }, { kind: 'restrictedCautionTakenUp' }],
+      },
+      assumption: 'R6-Q22',
+    },
+    {
       id: 'sg04-pb-screen',
       label: 'Pregnancy/breastfeeding caution screen',
       tier: 'Conditional',
@@ -2081,16 +2105,13 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: {
         kind: 'allOf',
         checks: [
-          { kind: 'gateCheckDone', gate: '07', check: 'General restricted and caution ingredient assessment completed', strict: true },
-          {
-            kind: 'registerNoBadRows',
-            register: 'generalRestrictedCaution',
-            column: 'assessmentOutcome',
-            badValues: ['Restricted - reformulate', 'Needs Safety Review', 'Needs Regulatory Review'],
-          },
-          // A blank outcome is the unassessed state. `registerNoBadRows` compares against the listed
-          // values only, so a row added and left alone passed it; this leg is what makes it block.
-          { kind: 'registerColumnFilled', register: 'generalRestrictedCaution', column: 'assessmentOutcome' },
+          { kind: 'gateCheckDone', gate: '07', check: 'General restricted and caution ingredient assessment completed', strict: true, needsEvidence: true },
+          // Round 5 question 16: one leg for what the rows must say at the final formula — a blank outcome blocks, "Restricted - reformulate" blocks until
+          // corrected, "Within limit" carries its exposure, markets and evidence, and an unresolved review stays blocking unless a qualified reviewer
+          // accepted it as a non-critical residual action. [ASSUMPTION: R6-Q22]
+          { kind: 'generalCautionScreened', gate: 'SG07' },
+          // ...and every formula ingredient the company's approved current list names has a row, so a restricted one cannot slip past unlisted.
+          { kind: 'restrictedCautionTakenUp' },
         ],
       },
     },

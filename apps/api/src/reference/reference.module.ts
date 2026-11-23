@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MarketProfilesController } from './market-profiles.controller';
 import { ClaimsLibraryController } from './claims-library.controller';
 import { RmRiskController } from './rm-risk.controller';
+import { RestrictedCautionController } from './restricted-caution.controller';
 import { ReferenceDataService } from './reference-data.service';
 import { ProjectsModule } from '../projects/projects.module';
 
@@ -10,7 +11,7 @@ import { ProjectsModule } from '../projects/projects.module';
 // Library joins this module as its own controller, sharing ReferenceDataService.
 @Module({
   imports: [ProjectsModule],
-  controllers: [MarketProfilesController, RmRiskController, ClaimsLibraryController],
+  controllers: [MarketProfilesController, RmRiskController, ClaimsLibraryController, RestrictedCautionController],
   providers: [ReferenceDataService],
   exports: [ReferenceDataService],
 })

@@ -470,6 +470,70 @@ export async function run(base: string, db: Client): Promise<number> {
     await putActions((await actionsAt02()).filter((a) => a.id !== ACTION_ID));
   }
 
+  // ============================================================ Round 5 question 16: the general restricted and caution assessment
+  console.log('\n--- Round 5 question 16: the company restricted and caution list, and the rows of the general assessment');
+  {
+    const REG = 'generalRestrictedCaution';
+    const putRows = async (who: string, rows: any[]) => api(who, 'PUT', `/projects/${PROJECT}/registers/${REG}`, { rows, expectedVersion: await version() });
+    const adminName = (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions['admin'].id])).rows[0].displayName as string;
+
+    let r: any = await putRows('admin', [{ ingredientInci: 'Phenoxyethanol', assessmentOutcome: 'Within limit - evidence linked' }]);
+    t('"Within limit" without its exposure, markets and evidence cannot be saved (400)', r.status === 400 && /required/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await putRows('admin', [{ ingredientInci: 'Phenoxyethanol', assessmentOutcome: 'Needs Safety Review', reviewerAssessment: 'Non-critical', reviewer: 'Somebody Else', reviewDate: '2026-11-14', reviewRationale: 'x' }]);
+    t('the Reviewer of a finding can only be the person recording it (400)', r.status === 400 && /only be set to yourself/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await putRows('admin', [{ ingredientInci: 'Phenoxyethanol', assessmentOutcome: 'Needs Safety Review', reviewerAssessment: 'Non-critical', reviewer: adminName, reviewDate: '2026-11-14', reviewRationale: 'x' }]);
+    t('...nor by the named reviewer without Safety or Regulatory authority, an administrator included (403)', r.status === 403 && /authority/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await putRows('admin', [{ ingredientInci: 'Phenoxyethanol', assessmentOutcome: 'Needs Safety Review' }]);
+    t('raising a flagged finding (not accepting it) is open to anyone', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await putRows('admin', []);
+    t('the register can be emptied again', r.status < 300, `${r.status} ${short(r.json)}`);
+
+    // the company list
+    const list = async () => ((await api('admin', 'GET', '/reference/restricted-caution')).json ?? []) as any[];
+    const entryBody = { ingredient: 'E2E-Phenoxyethanol', kind: 'Restricted', condition: 'max 1% leave-on', markets: [], sourceReference: 'EU Annex V', version: '2026-A', effectiveFrom: '2026-01-01' };
+    r = await api('admin', 'PUT', '/reference/restricted-caution/new', { patch: { ...entryBody, sourceReference: '' } });
+    t('an entry without its controlled source is refused (400)', r.status === 400 && /source/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await api('admin', 'PUT', '/reference/restricted-caution/new', { patch: { ...entryBody, kind: 'Nonsense' } });
+    t('an unknown kind is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await api('admin', 'PUT', '/reference/restricted-caution/new', { patch: entryBody });
+    const created = (await list()).find((e) => e.ingredient === entryBody.ingredient);
+    t('a proposed entry is saved as Proposed', r.status < 300 && created?.status === 'Proposed', `${r.status} ${short(created)}`);
+    const id = created?.id as string;
+    r = await api('admin', 'POST', `/reference/restricted-caution/${id}/approve/bogus`, {});
+    t('an unknown approval side is refused (400)', r.status === 400, `${r.status}`);
+    r = await api('admin', 'POST', `/reference/restricted-caution/${id}/approve/regulatory`, {});
+    t('Regulatory approves: still Proposed', r.status < 300 && (await list()).find((e) => e.id === id)?.status === 'Proposed', `${r.status} ${short(r.json)}`);
+    r = await api('admin', 'POST', `/reference/restricted-caution/${id}/approve/regulatory`, {});
+    t('the same side cannot approve twice (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await api('admin', 'POST', `/reference/restricted-caution/${id}/approve/safety`, {});
+    t('Safety approves: now Approved', r.status < 300 && (await list()).find((e) => e.id === id)?.status === 'Approved', `${r.status} ${short(r.json)}`);
+    const reference = (await project()).project.reference;
+    t('a project reads the entry', (reference.restrictedCaution ?? []).some((e: any) => e.id === id && e.status === 'Approved'), short(reference.restrictedCaution));
+    // SW-59: a row names the list entry it was assessed against; the cells that restate the entry come from the entry.
+    r = await putRows('admin', [{ restrictedCautionId: 'not-an-entry', assessmentOutcome: 'No issue identified' }]);
+    t('a new link to an entry that is not on the approved list is refused (400)', r.status === 400 && /not available|not an approved/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    r = await putRows('admin', [{ restrictedCautionId: id, ingredientInci: 'forged name', restrictionBasis: 'forged basis', sourceReference: 'forged source', sourceVersion: 'forged', assessmentOutcome: 'No issue identified' }]);
+    const linkedRow = ((await project()).project.registers[REG] ?? [])[0];
+    t('a row linked to the entry takes its ingredient, basis, source and version from the entry, not from the request',
+      r.status < 300 && linkedRow?.ingredientInci === entryBody.ingredient && linkedRow?.restrictionBasis === 'Restricted: max 1% leave-on' && linkedRow?.sourceReference === 'EU Annex V' && linkedRow?.sourceVersion === '2026-A',
+      `${r.status} ${short(linkedRow)}`);
+    r = await putRows('admin', [{ restrictedCautionId: 'not-listed', ingredientInci: 'My own ingredient', assessmentOutcome: 'No issue identified' }]);
+    t('there is no "not on the company list" option: that value is refused too (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await putRows('admin', []);
+    t('the test rows are cleared again', r.status < 300, `${r.status}`);
+    r = await api('admin', 'PUT', `/reference/restricted-caution/${id}`, { patch: { condition: 'max 0.5% leave-on' } });
+    const edited = (await list()).find((e) => e.id === id);
+    t('editing what the entry says retracts both approvals', r.status < 300 && edited?.status === 'Proposed' && !edited?.approvedByRegulatory && !edited?.approvedBySafety, `${r.status} ${short(edited)}`);
+    r = await api('admin', 'POST', `/reference/restricted-caution/${id}/withdraw`, { reason: '  ' });
+    t('withdrawing needs its reason (400)', r.status === 400, `${r.status}`);
+    r = await api('admin', 'POST', `/reference/restricted-caution/${id}/withdraw`, { reason: 'e2e clean-up' });
+    t('...with a reason the entry is Withdrawn', r.status < 300 && (await list()).find((e) => e.id === id)?.status === 'Withdrawn', `${r.status} ${short(r.json)}`);
+    r = await api('admin', 'POST', `/reference/restricted-caution/${id}/approve/regulatory`, {});
+    t('a withdrawn entry cannot be approved (400)', r.status === 400, `${r.status}`);
+    await db.query(`DELETE FROM reference_revisions WHERE dataset = 'restricted-caution' AND "entryId" = $1`, [id]);
+    await db.query(`DELETE FROM restricted_caution_entries WHERE id = $1`, [id]);
+  }
+
   // ============================================================ register closing: review before signing
   console.log('\n--- register closing: the closer reads the register first, and the signature is bound to what they read');
   {
@@ -936,8 +1000,56 @@ export async function run(base: string, db: Client): Promise<number> {
   t('an ASEAN market is refused here — the ASEAN PIF checklist covers it (400)', cr.status === 400 && /ASEAN market/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
   cr = await putDossier([dossierRow(nonAsean)]);
   t('one row for a market is accepted', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+  // SW-59 (2026-11-23): the dossier type of a market is Regulatory's, from its market profile, derived on every read and save.
+  cr = await api('admin', 'PUT', `/reference/market-profiles/${nonAsean}`, { patch: { dossierType: 'ARTG listing' }, signal: { criticality: 'Low', dueDate: '2099-01-01' } });
+  t('a market profile naming the dossier type is saved', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+  const dossierOf = async () => ((await project()).project.registers.regulatoryChecklistStatus ?? []).find((x: any) => x.market === nonAsean)?.dossierType;
+  t('...and the register shows it at once, without anyone saving the row', (await dossierOf()) === 'ARTG listing', `${await dossierOf()}`);
+  cr = await putDossier([{ market: nonAsean, dossierType: 'forged by the request' }]);
+  t('a request that carries another dossier type is overruled by the profile', cr.status < 300 && (await dossierOf()) === 'ARTG listing', `${cr.status} ${await dossierOf()}`);
+  {
+    const profileId = (await db.query(`SELECT id FROM market_profiles WHERE market = $1`, [nonAsean])).rows[0]?.id as string | undefined;
+    if (profileId) {
+      await db.query(`DELETE FROM reference_signals WHERE dataset = 'market-profile' AND "entryId" = $1`, [profileId]);
+      await db.query(`DELETE FROM reference_revisions WHERE dataset = 'market-profile' AND "entryId" = $1`, [profileId]);
+      await db.query(`DELETE FROM market_profiles WHERE id = $1`, [profileId]);
+    }
+  }
+  t('...and when the profile is gone the last saved value stays on the row (typed from then on)', (await dossierOf()) === 'ARTG listing', `${await dossierOf()}`);
   cr = await putDossier([]);
   t('...and removed again so the run is left as it was', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+
+  // ---- SW-59 (2026-11-23): a claim linked to a Claims Library entry takes its wording, category and risk from the entry
+  console.log('\n--- A claim linked to the Claims Library takes its wording from the entry (SW-59)');
+  {
+    const claimsBefore = ((await project()).project.registers.claimEvidenceTraceability ?? []).map((x: any) => ({ ...x }));
+    cr = await api('admin', 'PUT', '/reference/claims-library/new', { patch: { wording: 'E2E library wording', claimCategory: 'Cosmetic', claimRisk: 'Low' } });
+    const lib = ((cr.json ?? []) as any[]).find((e) => e.wording === 'E2E library wording');
+    t('a library entry is proposed', cr.status < 300 && !!lib, `${cr.status} ${short(cr.json)}`);
+    const lastClaim = async () => {
+      const rows = ((await project()).project.registers.claimEvidenceTraceability ?? []) as any[];
+      return rows[rows.length - 1];
+    };
+    cr = await putClaims((rows) => [...rows, { approvedWording: 'forged wording', claimCategory: 'Cosmetic', claimRisk: 'High', libraryEntryId: lib?.id, libraryStatus: 'New claim — not yet in Claims Library' }]);
+    const linked = await lastClaim();
+    t('a claim linked to the entry takes its wording, category, risk and Linked declaration from the entry, not from the request',
+      cr.status < 300 && linked?.approvedWording === 'E2E library wording' && linked?.claimRisk === 'Low' && linked?.libraryStatus === 'Linked to Claims Library',
+      `${cr.status} ${short(linked)}`);
+    cr = await api('admin', 'PUT', `/reference/claims-library/${lib?.id}`, { patch: { wording: 'E2E library wording v2' } });
+    t('the entry is reworded', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+    cr = await putClaims((rows) => rows);
+    t('...and the claim follows it at the next save, an unrelated one (the link is unchanged)', cr.status < 300 && (await lastClaim())?.approvedWording === 'E2E library wording v2', `${cr.status} ${short(await lastClaim())}`);
+    cr = await putClaims((rows) => rows.map((x: any) => (x.claimId === linked?.claimId ? { ...x, libraryEntryId: '' } : x)));
+    const unlinked = await lastClaim();
+    t('unlinking the claim drops the Linked declaration (the person says "New claim" on purpose) and keeps the wording as it stood',
+      cr.status < 300 && unlinked?.libraryStatus === '' && unlinked?.approvedWording === 'E2E library wording v2', `${cr.status} ${short(unlinked)}`);
+    cr = await putClaims(() => claimsBefore);
+    t('the test claim is removed again so the run is left as it was', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+    if (lib?.id) {
+      await db.query(`DELETE FROM reference_revisions WHERE dataset = 'claims-library' AND "entryId" = $1`, [lib.id]);
+      await db.query(`DELETE FROM claim_library_entries WHERE id = $1`, [lib.id]);
+    }
+  }
 
   // ---- the Change Control assessment, listed per post-market finding (Round 4 question 8, R5-Q11)
   console.log('\n--- Change Control assessment: one entry per post-market finding');

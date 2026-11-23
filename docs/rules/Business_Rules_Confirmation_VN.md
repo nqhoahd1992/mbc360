@@ -1143,6 +1143,18 @@ Các dòng infant/baby có thể N/A khi trigger nêu trong dòng thực sự kh
 
 **(b)** Có. Mọi yêu cầu áp dụng cần priority Must/Should/Could. Dòng N/A cần lý do. Priority để trống là chưa đủ.
 
+### Câu 16 — Đánh giá hạn chế và thận trọng chung
+
+**Kết luận:** ✅ đã xây (14/11/2026). Khác với những gì đã xây (chưa có danh sách công ty, Key Gate Check tự do nhận N/A, không có xử lý ở Gate 4). Cách đọc các chi tiết của chúng tôi được hỏi ở Round 6, câu 22.
+
+**(a)** Regulatory và Safety cung cấp và phê duyệt các nguồn được kiểm soát và overlay của công ty, kèm phiên bản và ngày hiệu lực. Hai danh sách Excel 12 dòng là gợi ý sàng lọc, không phải bằng chứng của một sàng lọc hạn chế thị trường đầy đủ. Chỉ nạp danh sách công ty hiện hành đã được duyệt.
+
+**(b)** Giữ một kết luận đã rà soát rõ ràng rằng sàng lọc đã hoàn tất, kể cả "không phát hiện vấn đề hạn chế/thận trọng" khi có căn cứ. Với một sản phẩm, đánh giá chung này là bắt buộc: không có phát hiện nghĩa là Complete kèm bằng chứng, không phải N/A. Sổ phát hiện rỗng chỉ chấp nhận được khi đi cùng kết luận đó.
+
+**(c)** Có. Dùng Gate 4 cho sàng lọc/xử lý ban đầu và Gate 7 cho đóng công thức cuối, kèm dấu vết người rà soát cho vấn đề bị gắn cờ. Giữ các cập nhật gắn với phiên bản công thức, thị trường và nguồn.
+
+**(d)** Năm outcome dùng được. Thêm "Further information required" và "Considered - not selected" cho nhất quán với Câu 4. Ở Gate 7, yêu cầu rà soát/thông tin chưa giải quyết chặn việc đóng an toàn cuối, trừ khi người rà soát đủ năng lực chấp nhận rõ ràng một hành động tồn dư không critical theo Câu 8. "Restricted, reformulate" và việc dùng bị cấm chặn cho tới khi sửa. "Within limit" cần nồng độ/mức phơi nhiễm, cơ sở thị trường và bằng chứng, không chỉ một lựa chọn trạng thái.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

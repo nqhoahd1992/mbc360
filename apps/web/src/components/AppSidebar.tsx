@@ -11,6 +11,7 @@ import {
   SafetyOutlined,
   StarOutlined,
   ClockCircleOutlined,
+  DatabaseOutlined,
   DownOutlined,
 } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -26,7 +27,7 @@ import { ownerName, reviewRoleLabel } from '@mbc360/shared/config/reviewers';
 import { currentGateIndex, isGateRefLocked, phaseProgress } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { sheetClosure } from '../utils/sheetClosure';
-import { globalNavFor } from '../config/globalNav';
+import { globalNavFor, isReferenceEntry } from '../config/globalNav';
 import AppsMenuButton from '../apphub/AppsMenuButton';
 import SwitchOverlay from './SwitchOverlay';
 import './AppSidebar.css';
@@ -45,13 +46,16 @@ import './AppSidebar.css';
 // Project / Admin buttons can open a panel without navigating — so you can
 // browse the workspace from the Dashboard and only leave when you pick a page.
 
-type Section = 'project' | 'admin';
+type Section = 'project' | 'admin' | 'reference';
 
 const PROJECT_ROUTE = /^\/projects\/([^/]+)/;
 const ADMIN_ROUTE = /^\/(admin\/|integrations$)/;
 
+const REFERENCE_PATHS = new Set(globalNavFor(true).filter(isReferenceEntry).map((e) => e.path));
+
 function routeSection(pathname: string): Section | null {
   if (PROJECT_ROUTE.test(pathname)) return 'project';
+  if (REFERENCE_PATHS.has(pathname)) return 'reference';
   if (ADMIN_ROUTE.test(pathname)) return 'admin';
   return null;
 }
@@ -79,9 +83,10 @@ export default function AppSidebar({ isAdmin, narrow }: AppSidebarProps) {
 
   const railEntries = useMemo(() => globalNavFor(isAdmin).filter((e) => e.sidebar === 'rail'), [isAdmin]);
   const hasAdmin = useMemo(
-    () => globalNavFor(isAdmin).some((e) => typeof e.sidebar === 'object' && e.sidebar !== null),
+    () => globalNavFor(isAdmin).some((e) => typeof e.sidebar === 'object' && e.sidebar !== null && !isReferenceEntry(e)),
     [isAdmin],
   );
+  const hasReference = useMemo(() => globalNavFor(isAdmin).some(isReferenceEntry), [isAdmin]);
 
   const railButton = (key: Section, icon: ReactNode, label: string) => (
     <Tooltip title={narrow ? undefined : label} placement="right">
@@ -93,7 +98,7 @@ export default function AppSidebar({ isAdmin, narrow }: AppSidebarProps) {
         onClick={() => setOverride(key)}
       >
         {icon}
-        <span>{key === 'project' ? 'Project' : 'Admin'}</span>
+        <span>{key === 'project' ? 'Project' : key === 'reference' ? 'Reference' : 'Admin'}</span>
       </button>
     </Tooltip>
   );
@@ -126,10 +131,12 @@ export default function AppSidebar({ isAdmin, narrow }: AppSidebarProps) {
             </Tooltip>
           );
         })}
+        {hasReference && railButton('reference', <DatabaseOutlined />, 'Company Reference Data')}
         {hasAdmin && railButton('admin', <SafetyOutlined />, 'Administration')}
       </nav>
       {section === 'project' && <ProjectPanel />}
       {section === 'admin' && <AdminPanel isAdmin={isAdmin} />}
+      {section === 'reference' && <AdminPanel isAdmin={isAdmin} reference />}
     </div>
   );
 }
@@ -405,7 +412,8 @@ function ProjectPanel() {
   );
 }
 
-function AdminPanel({ isAdmin }: { isAdmin: boolean }) {
+// `reference` shows the Company Reference Data group on its own; otherwise everything else in Administration.
+function AdminPanel({ isAdmin, reference }: { isAdmin: boolean; reference?: boolean }) {
   const { pathname } = useLocation();
   const scrollRef = useScrollCurrentIntoView(pathname);
   // Grouped by each entry's own `submenu` label, in first-appearance order, so
@@ -415,6 +423,7 @@ function AdminPanel({ isAdmin }: { isAdmin: boolean }) {
     const by = new Map<string, ReturnType<typeof globalNavFor>>();
     for (const e of globalNavFor(isAdmin)) {
       if (typeof e.sidebar !== 'object' || e.sidebar === null) continue;
+      if (isReferenceEntry(e) !== !!reference) continue;
       const label = e.sidebar.submenu;
       if (!by.has(label)) {
         by.set(label, []);
@@ -423,11 +432,12 @@ function AdminPanel({ isAdmin }: { isAdmin: boolean }) {
       by.get(label)!.push(e);
     }
     return order.map((label) => ({ label, entries: by.get(label)! }));
-  }, [isAdmin]);
+  }, [isAdmin, reference]);
+  const title = reference ? 'Company Reference Data' : 'Administration';
 
   return (
-    <aside className="sb-panel" aria-label="Administration">
-      <div className="sb-panel-title">Administration</div>
+    <aside className="sb-panel" aria-label={title}>
+      <div className="sb-panel-title">{title}</div>
       <div className="sb-scroll" ref={scrollRef}>
         {groups.map((g) => (
           <div key={g.label}>

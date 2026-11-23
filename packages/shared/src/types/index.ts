@@ -264,7 +264,7 @@ export interface ImpactConclusionRecord {
 }
 export interface ImpactAssessmentRecord {
   id: string;
-  dataset: 'rm-risk' | 'market-profile' | 'claims-library';
+  dataset: 'rm-risk' | 'market-profile' | 'claims-library' | 'restricted-caution';
   subject: string;
   summary: string;
   // A Critical change puts the release of the markets below on hold until every function has concluded — once a qualified function has
@@ -287,6 +287,31 @@ export interface ImpactAssessmentRecord {
   concludedAt?: string;
 }
 
+// Round 5 question 16(a): the company's controlled restricted and caution ingredient list. "Regulatory and Safety supply and approve the controlled
+// sources and company overlays, with versions and effective dates ... Load only the approved current company list." The twelve-row workbook lists
+// are screening prompts, not this. An entry counts only while it is Approved (both functions have approved it) and its effective dates include today.
+export const RESTRICTED_CAUTION_KINDS = ['Prohibited', 'Restricted', 'Caution'] as const;
+export const RESTRICTED_CAUTION_STATUSES = ['Proposed', 'Approved', 'Withdrawn'] as const;
+export type RestrictedCautionStatus = (typeof RESTRICTED_CAUTION_STATUSES)[number];
+export interface RestrictedCautionEntry {
+  id: string;
+  ingredient: string; // INCI name
+  casNo?: string;
+  kind: string; // one of RESTRICTED_CAUTION_KINDS
+  condition?: string; // the limit or condition: "max 0.5% leave-on", "not in products for under-3s"
+  markets: string[]; // the markets the restriction applies to; empty = every market
+  sourceReference: string; // the controlled source it comes from (regulation, annex, SCCS opinion)
+  version: string; // the source's version label
+  effectiveFrom: string; // YYYY-MM-DD
+  effectiveTo?: string; // YYYY-MM-DD; absent = no end date
+  status: RestrictedCautionStatus; // derived on every write: Approved only with BOTH approvals standing
+  approvedByRegulatory?: string;
+  approvedBySafety?: string;
+  revision: number;
+  updatedBy?: string;
+  updatedAt?: string;
+}
+
 export interface ProjectReferenceData {
   marketProfiles: MarketProfile[];
   // The overlay. An rmCode the project uses that is ABSENT here has not been
@@ -294,6 +319,8 @@ export interface ProjectReferenceData {
   rmRisk: RawMaterialRisk[];
   // The Claims Library, read-only from a project's point of view (question 28(1)).
   claimsLibrary: ClaimLibraryEntry[];
+  // The company's restricted and caution list (Round 5 question 16(a)). Absent on a snapshot taken before it existed: read it as empty.
+  restrictedCaution?: RestrictedCautionEntry[];
 }
 
 export interface GateRecord {

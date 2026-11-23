@@ -26,6 +26,9 @@ const setCheck = (p: ProjectData, gate: string, check: string, patch: Record<str
   Object.assign(row, patch);
 };
 
+// An approved, current entry of the company restricted and caution list, which the general-caution rows below link to (SW-59).
+const LIST_ENTRY = { id: 'e1', ingredient: 'X', kind: 'Restricted', markets: [], sourceReference: 'S', version: 'v1', effectiveFrom: '2026-01-01', status: 'Approved', approvedByRegulatory: 'R', approvedBySafety: 'S', revision: 1 } as never;
+
 // --- the list of registers that MUST hold entries is a decision, not an accident -----------------------
 // A Mandatory, unconditional `registerHasRows` / `registerRowsComplete` / `registerSomeRow` forces a
 // register to have rows on every project. For a register that can legitimately be empty that only makes
@@ -94,16 +97,19 @@ const setCheck = (p: ProjectData, gate: string, check: string, patch: Record<str
 {
   const GC_CHECK = 'General restricted and caution ingredient assessment completed';
   const p = fresh();
+  p.reference = { ...p.reference, restrictedCaution: [LIST_ENTRY] };
   t('general caution: the item exists', satisfied(p, 'SG07', 'sg07-general-caution') !== undefined);
   t('general caution: empty register, nobody has looked (check not done) -> BLOCKS', satisfied(p, 'SG07', 'sg07-general-caution') === false);
   setCheck(p, '07', GC_CHECK, { ynna: 'Y', done: true });
-  t('general caution: empty register, assessment recorded as done -> passes (nothing restricted is a real answer)',
+  t('general caution: done but with no evidence and initials -> still blocks (Round 5 question 16(b): Complete with evidence)', satisfied(p, 'SG07', 'sg07-general-caution') === false);
+  setCheck(p, '07', GC_CHECK, { evidenceRef: 'Screening report v3', initials: 'SD' });
+  t('general caution: empty register, assessment recorded as done with evidence -> passes (nothing restricted is a real answer)',
     satisfied(p, 'SG07', 'sg07-general-caution') === true);
-  p.registers['generalRestrictedCaution'] = [{ ingredient: 'X', assessmentOutcome: '' }];
+  p.registers['generalRestrictedCaution'] = [{ ingredient: 'X', restrictedCautionId: 'e1', sourceVersion: 'v1', assessmentOutcome: '' }];
   t('general caution: a row left with a BLANK outcome -> blocks', satisfied(p, 'SG07', 'sg07-general-caution') === false);
-  p.registers['generalRestrictedCaution'] = [{ ingredient: 'X', assessmentOutcome: 'Needs Safety Review' }];
+  p.registers['generalRestrictedCaution'] = [{ ingredient: 'X', restrictedCautionId: 'e1', sourceVersion: 'v1', assessmentOutcome: 'Needs Safety Review' }];
   t('general caution: an unresolved outcome -> blocks', satisfied(p, 'SG07', 'sg07-general-caution') === false);
-  p.registers['generalRestrictedCaution'] = [{ ingredient: 'X', assessmentOutcome: 'No issue identified' }];
+  p.registers['generalRestrictedCaution'] = [{ ingredient: 'X', restrictedCautionId: 'e1', sourceVersion: 'v1', assessmentOutcome: 'No issue identified' }];
   t('general caution: a closed outcome -> passes', satisfied(p, 'SG07', 'sg07-general-caution') === true);
   setCheck(p, '07', GC_CHECK, { ynna: 'NA', done: false, notes: '' });
   t('general caution: N/A with no reason does not stand in for the assessment', satisfied(p, 'SG07', 'sg07-general-caution') === false);
@@ -114,13 +120,16 @@ const setCheck = (p: ProjectData, gate: string, check: string, patch: Record<str
   const GC_CHECK = 'General restricted and caution ingredient assessment completed';
   const partsOf = (p: ProjectData, gate: string, id: string) => gateReadinessChecklist(p, gate).find((i) => i.id === id)?.parts;
   const p = fresh();
+  p.reference = { ...p.reference, restrictedCaution: [LIST_ENTRY] };
   const empty = partsOf(p, 'SG07', 'sg07-general-caution');
   t('empty note: the item breaks into parts', !!empty && empty.length === 3);
-  t('empty note: with the register empty, the two "every row" parts are green AND carry a note',
-    !!empty && empty.filter((x) => x.satisfied && x.emptyNote).length === 2);
+  t('empty note: with the register empty, the "every row" part is green AND carries a note',
+    !!empty && empty.filter((x) => x.satisfied && x.emptyNote).length === 1);
+  t('empty note: the company-list part is green with nothing on the list, and says nothing about an empty register',
+    !!empty && empty.filter((x) => x.satisfied && !x.emptyNote).length === 1);
   t('empty note: the Key Gate Check part is open and carries no note', !!empty && empty.filter((x) => !x.satisfied && !x.emptyNote).length === 1);
   t('empty note: the note points at the Key Gate Check', !!empty && empty.every((x) => !x.emptyNote || x.emptyNote.includes('Key Gate Check')));
-  p.registers['generalRestrictedCaution'] = [{ ingredient: 'X', assessmentOutcome: 'No issue identified' }];
+  p.registers['generalRestrictedCaution'] = [{ ingredient: 'X', restrictedCautionId: 'e1', sourceVersion: 'v1', assessmentOutcome: 'No issue identified' }];
   const filled = partsOf(p, 'SG07', 'sg07-general-caution');
   t('empty note: once the register has a row, no part claims to be empty', !!filled && filled.every((x) => !x.emptyNote));
   const q = fresh();

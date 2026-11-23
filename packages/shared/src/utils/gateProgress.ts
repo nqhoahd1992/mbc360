@@ -9,6 +9,8 @@ import { gateRefGateIds } from './gateRefs';
 import { acknowledgementState, isCriticalForAcknowledgement, type AcknowledgementSlot } from './readinessAck';
 import { requirementNaAckSettled } from './requirementNaAck';
 import { untrackedDeferrals } from './requirementDeferral';
+import { GENERAL_CAUTION_REGISTER, generalCautionBlockers } from './generalCaution';
+import { restrictedCautionMatchesNotTakenUp } from './restrictedCaution';
 import { assessmentMarkets, isPendingAnswer } from './changeControlAssessments';
 export { gateRefGateIds } from './gateRefs';
 import { isChangeOpen } from '../config/changeTriggers';
@@ -1434,7 +1436,12 @@ export function evaluateReadinessCheck(
         !(check.naInvalidWhenTrigger ?? []).some((t) => evaluateTrigger(project, t) === 'applies');
       const satisfied =
         !!gateCheckExemption(project, check.gate, check.check) ||
-        (rows.length > 0 && rows.every((row) => (row.done && row.ynna === 'Y') || (naAllowed && row.ynna === 'NA' && !!row.notes?.trim())));
+        (rows.length > 0 &&
+          rows.every(
+            (row) =>
+              (row.done && row.ynna === 'Y' && (!check.needsEvidence || (!!row.evidenceRef?.trim() && !!row.initials?.trim()))) ||
+              (naAllowed && row.ynna === 'NA' && !!row.notes?.trim()),
+          ));
       return { evaluable: true, satisfied };
     }
     case 'checklistHasSelection': {
@@ -1559,6 +1566,11 @@ export function evaluateReadinessCheck(
     // Question 21's fifth condition. Everything the row above lets through that is
     // still open — a Should or Could not yet Completed — lands here, where
     // `clearedByConditions` lets Proceed with Conditions carry it.
+    // Round 5 question 16: the rows of the general restricted and caution screen are dispositioned (Gate 4) or closed (Gate 7).
+    case 'generalCautionScreened':
+      return { evaluable: true, satisfied: generalCautionBlockers(project, check.gate).length === 0 };
+    case 'restrictedCautionTakenUp':
+      return { evaluable: true, satisfied: restrictedCautionMatchesNotTakenUp(project).length === 0 };
     // Round 5 question 15: a deferral is carried by a tracked Next Action linked to the row.
     case 'requirementDeferralsTracked':
       return { evaluable: true, satisfied: untrackedDeferrals(project, check.section).length === 0 };
@@ -1984,6 +1996,9 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return { href: `/registers/reg/${check.register}` };
     case 'vulnerableGroupsCovered':
       return { href: '/registers/reg/vulnerableUserAssessment' };
+    case 'generalCautionScreened':
+    case 'restrictedCautionTakenUp':
+      return { href: `/registers/reg/${GENERAL_CAUTION_REGISTER}` };
     case 'rmEvidenceDispositioned':
     case 'rmEvidenceNoneConditional':
     case 'rmEvidenceHasUsable':
@@ -2096,12 +2111,18 @@ function describeReadinessCheck(check: ReadinessCheck): string | undefined {
   switch (check.kind) {
     case 'scaleUpAssessed':
       return 'Record a scale-up assessment for each affected area, with none pending';
+    case 'generalCautionScreened':
+      return check.gate === 'SG04'
+        ? 'Give every row of the General Restricted & Caution Assessment an outcome, and a reviewer trail where it is flagged'
+        : 'Close every row of the General Restricted & Caution Assessment (a Restricted row corrected, a flagged one accepted by a qualified reviewer)';
+    case 'restrictedCautionTakenUp':
+      return "Add a row to the General Restricted & Caution Assessment for each formula ingredient on the company's approved restricted and caution list";
     case 'requirementDeferralsTracked':
       return 'Link a tracked Next Action (owner, due date, completion criteria, escalation trigger) to each deferred Should / Could requirement';
     case 'marketAdditionsAssessed':
       return 'Complete Regulatory\'s impact assessment for each market added after Gate 1';
     case 'gateCheckDone':
-      return `Tick the Key Gate Check "${check.check}"`;
+      return check.needsEvidence ? `Tick the Key Gate Check "${check.check}" with its evidence reference and initials` : `Tick the Key Gate Check "${check.check}"`;
     case 'identityFieldFilled':
       return `Fill in "${IDENTITY_FIELD_LABELS[check.field] ?? check.field}"`;
     case 'identityMarketsRecorded':
@@ -2164,11 +2185,14 @@ function readinessParts(project: ProjectData, check: ReadinessCheck, gateId: str
     const part: GateReadinessPart = { label, satisfied, link: resolveCheckLink(gateId, leaf) };
     // Only the two "every row ..." kinds can be satisfied by an empty register. (registerRowsComplete
     // deliberately is not: it treats no rows as incomplete.)
-    if (
-      satisfied &&
-      (leaf.kind === 'registerColumnFilled' || leaf.kind === 'registerNoBadRows') &&
-      (project.registers[leaf.register] ?? []).length === 0
-    ) {
+    // The general restricted and caution screen (Round 5 question 16) is the same case: green on an empty register, with the Key Gate Check as the record.
+    const emptyRegister =
+      leaf.kind === 'registerColumnFilled' || leaf.kind === 'registerNoBadRows'
+        ? (project.registers[leaf.register] ?? []).length === 0
+        : leaf.kind === 'generalCautionScreened'
+          ? (project.registers[GENERAL_CAUTION_REGISTER] ?? []).length === 0
+          : false;
+    if (satisfied && emptyRegister) {
       part.emptyNote = leaves.some((l) => l.kind === 'gateCheckDone')
         ? 'No rows recorded, so there is nothing to check here. The Key Gate Check in this list is what records that it was reviewed.'
         : 'No rows recorded yet, so there is nothing to check here.';

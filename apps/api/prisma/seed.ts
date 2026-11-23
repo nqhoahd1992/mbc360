@@ -182,6 +182,18 @@ async function seedRbac(): Promise<void> {
       action: 'approve-regulatory',
       description: 'Record the Regulatory half of a Claims Library approval (Round 4, q28.3)',
     },
+    // Round 5 question 16(a): Regulatory and Safety BOTH approve an entry of the company's restricted and caution list — two capabilities because two
+    // functions must both act; proposing and editing stay on `reference:restricted-caution|edit`.
+    {
+      resource: 'restricted-caution',
+      action: 'approve-regulatory',
+      description: 'Record the Regulatory half of a restricted and caution list approval (Round 5, q16a)',
+    },
+    {
+      resource: 'restricted-caution',
+      action: 'approve-safety',
+      description: 'Record the Safety half of a restricted and caution list approval (Round 5, q16a)',
+    },
     // Round 4 question 30(e): the "No product claim or technical statement"
     // exemption "must be confirmed by a Technical or Regulatory reviewer before
     // release". One capability rather than two, because the answer names either
@@ -305,6 +317,15 @@ async function seedRbac(): Promise<void> {
     //   q28 — "Technical AND Regulatory must both approve an entry"; the grant is
     //         who may EDIT, while the two-party approval is workflow inside the
     //         dataset itself and is not built yet.
+    // Round 5 question 16(a): "Regulatory and Safety supply and approve" the restricted and caution list — each proposes, each gives its own approval.
+    if (role.key === 'sso-regulatory-reviewer') {
+      grantedIds.push(permissionId('reference:restricted-caution', 'edit'));
+      grantedIds.push(permissionId('restricted-caution', 'approve-regulatory'));
+    }
+    if (role.key === 'sso-safety-reviewer') {
+      grantedIds.push(permissionId('reference:restricted-caution', 'edit'));
+      grantedIds.push(permissionId('restricted-caution', 'approve-safety'));
+    }
     if (role.key === 'sso-regulatory-reviewer') {
       grantedIds.push(permissionId('reference:market-profile', 'edit'));
       grantedIds.push(permissionId('reference:rm-risk', 'edit'));

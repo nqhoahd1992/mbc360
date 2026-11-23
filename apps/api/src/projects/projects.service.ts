@@ -37,6 +37,14 @@ import {
 import { LEAD_ASSIGNABLE_ROLE_KEYS, REVIEW_ROLES, ownerName, registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import { acknowledgementBasis, holdsRole } from '@mbc360/shared/utils/readinessAck';
 import { requirementNaAckSlots } from '@mbc360/shared/utils/requirementNaAck';
+import {
+  GENERAL_CAUTION_REGISTER,
+  generalCautionAuthority,
+  generalCautionLabel,
+  newlyAcceptedGeneralCautionRows,
+} from '@mbc360/shared/utils/generalCaution';
+import { applyRestrictedCautionInheritance, newRestrictedCautionLinkProblems } from '@mbc360/shared/utils/restrictedCaution';
+import { applyClaimsLibraryInheritance } from '@mbc360/shared/utils/referenceInheritance';
 import { REQUIREMENTS_SECTION, requirementChangeKinds, requirementsWereApproved, scopeChangeProblem } from '@mbc360/shared/utils/requirementDeferral';
 import {
   DECISION_OPTIONS,
@@ -227,6 +235,7 @@ import type {
   ProjectData,
   ProjectReferenceData,
   ClaimLibraryEntry,
+  RestrictedCautionEntry,
   RawMaterialRisk,
   RegisterClosureSignOff,
   RegisterRow,
@@ -724,7 +733,29 @@ export class ProjectsService {
       orderBy: { wording: 'asc' },
       select: { id: true, wording: true, claimCategory: true, claimRisk: true, status: true, revision: true },
     });
+    // Round 5 question 16(a): the company's restricted and caution list. Every entry is read; which of them count (approved and effective today) is
+    // decided by the rules that use it, so a project sees the same list the admin page shows.
+    const restrictedCaution = await tx.restrictedCautionEntry.findMany({
+      orderBy: [{ ingredient: 'asc' }, { effectiveFrom: 'desc' }],
+      include: { updatedBy: { select: { displayName: true } } },
+    });
     return {
+      restrictedCaution: restrictedCaution.map((r) => ({
+        id: r.id,
+        ingredient: r.ingredient,
+        ...(r.casNo ? { casNo: r.casNo } : {}),
+        kind: r.kind,
+        ...(r.condition ? { condition: r.condition } : {}),
+        markets: r.markets,
+        sourceReference: r.sourceReference,
+        version: r.version,
+        effectiveFrom: r.effectiveFrom,
+        ...(r.effectiveTo ? { effectiveTo: r.effectiveTo } : {}),
+        status: r.status as RestrictedCautionEntry['status'],
+        ...(r.approvedByRegulatory ? { approvedByRegulatory: r.approvedByRegulatory } : {}),
+        ...(r.approvedBySafety ? { approvedBySafety: r.approvedBySafety } : {}),
+        revision: r.revision,
+      })),
       marketProfiles: marketProfiles.map((p) => ({
         id: p.id,
         market: p.market,
@@ -3003,6 +3034,20 @@ export class ProjectsService {
       // Round 4 question 19(c): inherited claim columns come from the claim, not
       // from the request.
       rows = applyClaimInheritance(config, rows, project.registers['claimEvidenceTraceability'] ?? []);
+      // SW-59: a claim linked to a Claims Library entry takes its wording, category and risk from the entry. A link a person has just made or
+      // changed is applied now, so the revision and baseline checks below see what it does to the claim; claims that kept their link follow the
+      // library after those checks (a later library change reaches the claim at the next save without refusing an unrelated edit). [ASSUMPTION: R6-Q23]
+      if (registerKey === 'claimEvidenceTraceability') {
+        rows = applyClaimsLibraryInheritance(config.columns, rows, project.reference?.claimsLibrary, project.registers[registerKey] ?? [], 'changed');
+      }
+      // SW-59: a register row that uses the company's restricted and caution list names the entry it was assessed against. A NEW link must name an
+      // approved, current entry, and the cells derived from the entry come from the entry, not from the request.
+      if (registerKey === GENERAL_CAUTION_REGISTER) {
+        const entries = project.reference?.restrictedCaution ?? [];
+        const badLinks = newRestrictedCautionLinkProblems(project.registers[registerKey] ?? [], rows, entries);
+        if (badLinks.length > 0) throw new BadRequestException(listMessage('These rows name a company list entry that is not available:', badLinks));
+        rows = applyRestrictedCautionInheritance(config, rows, entries);
+      }
       // C6: a column flagged `selfAttest` records an act ("confirmed by"), so a
       // new or changed value must be the signed-in person. Rows are matched by
       // their record id where they have one, otherwise by position.
@@ -3090,6 +3135,23 @@ export class ProjectsService {
           );
         }
       }
+      // Round 5 question 16(d): at Gate 7 an unresolved review or request for information stays blocking "unless a qualified reviewer explicitly
+      // accepts a non-critical residual action under Question 8". Accepting is done by the person named as the row's reviewer, who holds the
+      // authority the finding needs (no administrator short-cut, as for the watch-lists). [ASSUMPTION: R6-Q22]
+      if (registerKey === GENERAL_CAUTION_REGISTER) {
+        const notTheirs: string[] = [];
+        for (const row of newlyAcceptedGeneralCautionRows(project.registers[registerKey] ?? [], rows)) {
+          const needs = generalCautionAuthority(row);
+          if (String(row.reviewer ?? '').trim() !== user.displayName) {
+            notTheirs.push(`${generalCautionLabel(row)} — only its named reviewer records it (the Reviewer must be you)`);
+          } else if (!(await this.permissions.canAcceptWatchlistFinding(user, needs))) {
+            notTheirs.push(`${generalCautionLabel(row)} — you do not hold ${needs.map((a) => WATCHLIST_AUTHORITY_LABEL[a]).join(' or ')} authority (an administrator needs it too)`);
+          }
+        }
+        if (notTheirs.length > 0) {
+          throw new ForbiddenException(listMessage('Accepting a flagged finding as a non-critical residual action needs a qualified reviewer named on that row:', notTheirs));
+        }
+      }
       if (registerKey === 'publishedInfoApproval') {
         const contradictory = contradictoryClaimRows(rows);
         if (contradictory.length > 0) {
@@ -3175,6 +3237,8 @@ export class ProjectsService {
             listMessage('These claims were linked to wording the Claims Library has withdrawn:', toWithdrawn, 'Withdrawn wording is no longer used; pick current wording instead.'),
           );
         }
+        // The claims that kept their link follow the library (SW-59).
+        rows = applyClaimsLibraryInheritance(config.columns, rows, project.reference?.claimsLibrary, committedClaims, 'unchanged');
       }
       if (registerKey === RM_EVIDENCE_REGISTER) {
         const bad = rmEvidenceContradictions(rows);

@@ -11,7 +11,7 @@ import {
   getRegisterConfig,
   navItemHref,
 } from '@mbc360/shared/config/registers';
-import { GLOBAL_NAV } from '../config/globalNav';
+import { GLOBAL_NAV, REFERENCE_DATA_SUBMENU, isReferenceEntry } from '../config/globalNav';
 import { useAppStore } from '../store/useAppStore';
 import { useUnsavedCount } from '../hooks/unsavedRegistry';
 import { effectiveMarket, gateMarkets } from '../utils/gateMarket';
@@ -35,7 +35,7 @@ function useCrumbs(): Crumb[] {
   if (global) {
     // Administration is a sidebar section, not a page, so it carries no link.
     return typeof global.sidebar === 'object' && global.sidebar !== null
-      ? [{ label: 'Administration' }, { label: global.title }]
+      ? [{ label: isReferenceEntry(global) ? REFERENCE_DATA_SUBMENU : 'Administration' }, { label: global.title }]
       : [{ label: global.title }];
   }
 

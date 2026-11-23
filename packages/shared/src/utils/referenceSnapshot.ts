@@ -1,6 +1,7 @@
 import type { ProjectData, ProjectReferenceData } from '../types';
 import { CLAIM_LIBRARY_ENTRY_COLUMN } from '../config/referenceData';
 import { projectRmCodes } from './gateProgress';
+import { projectIngredientNames } from './restrictedCaution';
 
 // SW-52 / Round 5 question 1(d). A passed gate keeps the company lists as they stood when it passed (`ProjectData.gateReference`);
 // this says what has changed in them since, for the parts that touch THIS project. A notice, never a block: whether a change
@@ -24,11 +25,13 @@ export function canonicalJson(value: unknown): string {
   return JSON.stringify(walk(value));
 }
 
+// A snapshot taken before the restricted and caution list existed has no such key: it reads as empty, so it is not a change.
+const withDefaults = (r: ProjectReferenceData): ProjectReferenceData => ({ ...r, restrictedCaution: r.restrictedCaution ?? [] });
 export function sameReference(a: ProjectReferenceData, b: ProjectReferenceData): boolean {
-  return canonicalJson(a) === canonicalJson(b);
+  return canonicalJson(withDefaults(a)) === canonicalJson(withDefaults(b));
 }
 
-export type ReferenceDataset = 'Raw Material Risk Overlay' | 'Market profile' | 'Claims Library';
+export type ReferenceDataset = 'Raw Material Risk Overlay' | 'Market profile' | 'Claims Library' | 'Restricted & Caution List';
 
 export interface ReferenceChange {
   dataset: ReferenceDataset;
@@ -74,6 +77,8 @@ export function projectHasPassedGate(project: ProjectData): boolean {
 export function entryTouchesProject(project: ProjectData, dataset: ReferenceDataset, key: string): boolean {
   if (dataset === 'Raw Material Risk Overlay') return projectRmCodes(project).includes(key);
   if (dataset === 'Market profile') return project.identity.markets.includes(key);
+  // The restricted and caution list entry a project uses: an ingredient of its formula (by INCI name).
+  if (dataset === 'Restricted & Caution List') return projectIngredientNames(project).includes(key.trim().toLowerCase());
   return (project.registers['claimEvidenceTraceability'] ?? []).some((row) => String(row[CLAIM_LIBRARY_ENTRY_COLUMN] ?? '').trim() === key);
 }
 
@@ -91,6 +96,7 @@ export function referenceNotices(project: ProjectData): ReferenceNotice[] {
     const changes = [
       ...diffBy('Market profile', then.marketProfiles, now.marketProfiles, (p) => p.market, (p) => p.market, (k) => markets.has(k)),
       ...diffBy('Raw Material Risk Overlay', then.rmRisk, now.rmRisk, (r) => r.rmCode, (r) => r.displayName || r.rmCode, (k) => rmCodes.has(k)),
+      ...diffBy('Restricted & Caution List', then.restrictedCaution ?? [], now.restrictedCaution ?? [], (e) => e.id, (e) => e.ingredient, () => true),
       ...diffBy('Claims Library', then.claimsLibrary, now.claimsLibrary, (c) => c.id, (c) => c.wording, (k) => libraryIds.has(k)),
     ];
     if (changes.length > 0) notices.push({ gateId, changes });

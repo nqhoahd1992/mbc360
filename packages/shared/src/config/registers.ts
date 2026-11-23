@@ -21,9 +21,11 @@ import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 // would be eleven columns that always move together.
 // `claimsLibraryRef` (2026-10-02): an id in the company Claims Library, picked
 // rather than typed — the stored value is the entry id the Gate 3 rule reads.
+// `restrictedCautionRef` (2026-11-23, SW-59): the id of an entry of the company's restricted and caution list, picked rather than typed, or the
+// declaration that the row is not on that list. Its entry-derived cells (`inheritFromEntry`) are filled from the entry and read-only.
 // `rowRef` (2026-10-02): the identifying value of a row in ANOTHER register of
 // the same project (`refRegister` + `refColumn`), picked rather than typed.
-export type ColumnType = 'text' | 'textarea' | 'select' | 'multiSelect' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef' | 'changeRef' | 'nextActionRef' | 'claimsLibraryRef' | 'rowRef' | 'signature';
+export type ColumnType = 'text' | 'textarea' | 'select' | 'multiSelect' | 'date' | 'checkbox' | 'number' | 'user' | 'market' | 'markets' | 'claimRef' | 'changeRef' | 'nextActionRef' | 'claimsLibraryRef' | 'restrictedCautionRef' | 'rowRef' | 'signature';
 
 export interface RegisterColumn {
   key: string;
@@ -81,6 +83,16 @@ export interface RegisterColumn {
   // evidence status are inherited too, and their keys differ on the claim). The
   // API copies them on every save, so the inheritance is not only a display.
   inheritFromClaim?: true | string;
+  // Read from the company restricted and caution list entry the row's `restrictedCautionRef` column names (SW-59), instead of being typed:
+  // the API copies it on every save and the cell is read-only while the entry holds a value for it. Only a cell the entry holds
+  // nothing for (the markets of an entry that names none) is typed by hand; there is no "not on the list" option.
+  inheritFromEntry?: 'ingredient' | 'basis' | 'sourceReference' | 'version' | 'markets';
+  // Read from the company Claims Library entry the row's `claimsLibraryRef` column names (SW-59, 2026-11-23): filled when the entry is picked, read-only
+  // while it holds a value, copied again by the API. A claim with NO library link is a genuinely new claim (Round 4 question 28(2)) and is typed.
+  inheritFromLibrary?: 'wording' | 'claimCategory' | 'claimRisk' | 'linkStatus';
+  // Read from the Regulatory market profile of the row's `market` (SW-59): the profile is keyed by market, so choosing the market IS the link.
+  // Derived on every read and save; typed only while the profile holds nothing for it.
+  inheritFromMarketProfile?: 'dossierType';
   // For `type: 'rowRef'` only: which register this column points into, and the
   // column of that register whose value identifies a row (and is what is stored).
   refRegister?: string;
@@ -1122,15 +1134,21 @@ const generalRestrictedCaution: RegisterConfig = {
   description:
     'Every product, at Gate 7: restricted or caution ingredients in the final formula, and how each was closed. The maternal and infant screens are additional layers on top of this one.',
   mode: 'register',
-  gate: '07',
+  // Gate 4 does the initial screening and disposition, Gate 7 the closure of the final formula (Round 5 question 16(c)). [ASSUMPTION: R6-Q22]
+  gate: '04/07',
   // No `reviewOwner`: like the two watch-lists it sits beside, it takes the one
   // its nav group declares.
   columns: [
-    { key: 'ingredientInci', label: 'Ingredient / INCI', type: 'text', width: 180 },
-    { key: 'restrictionBasis', label: 'Restriction / caution basis', type: 'textarea', width: 220 },
-    { key: 'sourceReference', label: 'Source / reference', type: 'text', width: 170 },
-    { key: 'markets', label: 'Markets affected', type: 'markets', width: 170 },
-    { key: 'formulaExposure', label: 'Formula % / exposure', type: 'text', width: 130 },
+    // Read from the company list entry the row is linked to (SW-59); never typed (there is no "not on the list" option).
+    { key: 'ingredientInci', label: 'Ingredient / INCI', type: 'text', width: 180, inheritFromEntry: 'ingredient' },
+    { key: 'restrictedCautionId', label: 'Company list entry', type: 'restrictedCautionRef', width: 240 },
+    { key: 'restrictionBasis', label: 'Restriction / caution basis', type: 'textarea', width: 220, inheritFromEntry: 'basis' },
+    { key: 'sourceReference', label: 'Source / reference', type: 'text', width: 170, inheritFromEntry: 'sourceReference' },
+    // The version of the company list (or source) this row was assessed against (Round 5 question 16(c): "keep updates linked to formula, market and source versions").
+    { key: 'sourceVersion', label: 'Source / list version', type: 'text', width: 130, inheritFromEntry: 'version' },
+    { key: 'markets', label: 'Markets affected', type: 'markets', width: 170, inheritFromEntry: 'markets', requiredWhen: { column: 'assessmentOutcome', values: ['Within limit - evidence linked'] } },
+    // "Within limit" needs concentration / exposure, market basis and evidence, not only a status selection (Round 5 question 16(d)).
+    { key: 'formulaExposure', label: 'Formula % / exposure', type: 'text', width: 130, requiredWhen: { column: 'assessmentOutcome', values: ['Within limit - evidence linked'] } },
     {
       key: 'assessmentOutcome',
       label: 'Assessment outcome',
@@ -1145,15 +1163,19 @@ const generalRestrictedCaution: RegisterConfig = {
         'Restricted - reformulate',
         'Needs Safety Review',
         'Needs Regulatory Review',
+        // Added by Round 5 question 16(d), for consistency with question 4.
+        'Further information required',
+        'Considered - not selected',
       ],
     },
     { key: 'reviewerAssessment', label: 'Reviewer assessment', type: 'select', width: 190, options: WATCHLIST_ASSESSMENT_OPTIONS },
-    { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140 },
+    // Only the signed-in person may name themselves: a qualified reviewer's acceptance is theirs alone (Round 5 questions 8 and 16(d)).
+    { key: 'reviewer', label: 'Reviewer', type: 'user', width: 140, selfAttest: true },
     { key: 'reviewDate', label: 'Review date', type: 'date', width: 120 },
     { key: 'reviewRationale', label: 'Rationale', type: 'textarea', width: 220 },
     { key: 'linkedNextActionId', label: 'Linked Next Action', type: 'nextActionRef', width: 220 },
     { key: 'resolutionStatus', label: 'Resolution status', type: 'select', width: 130, options: WATCHLIST_RESOLUTION_OPTIONS },
-    { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140 },
+    { key: 'evidenceLink', label: 'Evidence link', type: 'text', width: 140, requiredWhen: { column: 'assessmentOutcome', values: ['Within limit - evidence linked'] } },
     { key: 'owner', label: 'Owner', type: 'user', width: 130 },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
   ],
@@ -1819,7 +1841,8 @@ const regulatoryChecklistStatus: RegisterConfig = {
     // One row per market (this sheet's own description, and what the Gate 10 rule reads: it takes the first row of a market, so
     // a second row would be ignored without a word). Whether a market may need several dossier rows is put to the review team.
     { key: 'market', label: 'Applicable market', type: 'market', width: 140, unique: true, marketScope: 'nonAsean' },
-    { key: 'dossierType', label: 'Required dossier type', type: 'text', width: 200 },
+    // From the Regulatory market profile of the market chosen above, while that profile names one (SW-59); typed otherwise.
+    { key: 'dossierType', label: 'Required dossier type', type: 'text', width: 200, inheritFromMarketProfile: 'dossierType' },
     { key: 'owner', label: 'Owner', type: 'user', width: 140 },
     { key: 'checklistLink', label: 'Checklist or evidence link', type: 'text', width: 200 },
     // 35(b): only meaningful when `market` is the catch-all option, but present
@@ -3412,9 +3435,11 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // the "not yet" answer ("Pending classification"), so requiring the column is
     // not requiring a premature judgement.
     { key: 'claimId', label: 'Claim ID', type: 'text', width: 100, gate: '03', unique: true },
-    { key: 'approvedWording', label: 'Approved claim wording', type: 'textarea', width: 240, gate: '03' },
-    { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS, gate: '03' },
-    { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS, gate: '03' },
+    // Wording, category and risk come from the Claims Library entry the claim is linked to (SW-59, 2026-11-23 — `inheritFromLibrary`); a claim with no
+    // link is a new claim and is typed. [ASSUMPTION: R6-Q23]
+    { key: 'approvedWording', label: 'Approved claim wording', type: 'textarea', width: 240, gate: '03', inheritFromLibrary: 'wording' },
+    { key: 'claimCategory', label: 'Claim category', type: 'select', width: 200, options: CLAIM_CATEGORY_OPTIONS, gate: '03', inheritFromLibrary: 'claimCategory' },
+    { key: 'claimRisk', label: 'Claim risk', type: 'select', width: 150, options: CLAIM_RISK_OPTIONS, gate: '03', inheritFromLibrary: 'claimRisk' },
     // Question 28(2), 2026-08-30: "A project claim links to a library entry where
     // it reuses approved wording. A genuinely new claim may be proposed WITHOUT a
     // library link but must be identified as 'New claim — not yet in Claims
@@ -3430,7 +3455,8 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // realistically be filled in, and a typo silently counted as "not in the
     // library".
     { key: 'libraryEntryId', label: 'Claims Library entry', type: 'claimsLibraryRef', width: 200, gate: '03' },
-    { key: 'libraryStatus', label: 'Claims Library status', type: 'select', width: 220, options: [...CLAIM_LIBRARY_LINK_OPTIONS], gate: '03' },
+    // Follows the link: "Linked to Claims Library" while an entry is picked (never typed then); the person declares "New claim" only on a claim with no link.
+    { key: 'libraryStatus', label: 'Claims Library status', type: 'select', width: 220, options: [...CLAIM_LIBRARY_LINK_OPTIONS], gate: '03', inheritFromLibrary: 'linkStatus' },
     // Question 27: the eleven structured claim-subject flags, replacing an
     // inference from free text. Eight of them are C1's seventh review condition,
     // which is what makes that condition evaluable at last.

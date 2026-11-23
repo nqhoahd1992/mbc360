@@ -21,7 +21,7 @@
 
 import type { RawMaterialRisk } from '../types';
 
-export const REFERENCE_DATASETS = ['market-profile', 'rm-risk', 'claims-library'] as const;
+export const REFERENCE_DATASETS = ['market-profile', 'rm-risk', 'claims-library', 'restricted-caution'] as const;
 export type ReferenceDataset = (typeof REFERENCE_DATASETS)[number];
 
 // Capability id per dataset, following the existing `${resource}|${action}` format
@@ -36,6 +36,7 @@ export const referenceEditCapability = (dataset: ReferenceDataset): string => `r
 // imports nothing. Re-exported here so a caller reading about reference data has
 // one module to import from.
 export type {
+  RestrictedCautionEntry,
   ClaimLibraryEntry,
   ClaimLibraryStatus,
   MarketProfile,
@@ -54,6 +55,11 @@ export { CLAIM_LIBRARY_AUDIENCES, CLAIM_LIBRARY_STATUSES, RM_RISK_FLAGS } from '
 // on the existing `reference:claims-library|edit`, which is what Marketing needs.
 export const CLAIMS_LIBRARY_TECHNICAL_APPROVAL = 'claims-library|approve-technical';
 export const CLAIMS_LIBRARY_REGULATORY_APPROVAL = 'claims-library|approve-regulatory';
+// Round 5 question 16(a): "Regulatory and Safety supply and approve" the restricted and caution list — two functions that must BOTH act, so two
+// capabilities, like the Claims Library's. Editing and proposing stay on `reference:restricted-caution|edit`.
+export const RESTRICTED_CAUTION_REGULATORY_APPROVAL = 'restricted-caution|approve-regulatory';
+export const RESTRICTED_CAUTION_SAFETY_APPROVAL = 'restricted-caution|approve-safety';
+
 export const CLAIMS_LIBRARY_APPROVAL_CAPABILITIES: readonly string[] = [
   CLAIMS_LIBRARY_TECHNICAL_APPROVAL,
   CLAIMS_LIBRARY_REGULATORY_APPROVAL,

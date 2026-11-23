@@ -75,6 +75,7 @@ model User {
   referenceRevisions ReferenceRevision[]
   marketProfiles     MarketProfile[]
   rawMaterialRisks   RawMaterialRisk[]
+  restrictedCautionEntries RestrictedCautionEntry[]
 
   @@map("users")
 }
@@ -1585,6 +1586,34 @@ model RawMaterialRisk {
   updatedAt    DateTime @updatedAt
 
   @@map("raw_material_risks")
+}
+
+// Round 5 question 16(a): the company's controlled restricted and caution ingredient list. Status is DERIVED: Approved only with BOTH approvals standing;
+// editing what an entry says retracts both. See RestrictedCautionEntry in packages/shared/src/types.
+model RestrictedCautionEntry {
+  id                     String    @id @default(cuid())
+  ingredient             String
+  casNo                  String?
+  kind                   String // Prohibited | Restricted | Caution
+  condition              String?
+  markets                String[]  @default([])
+  sourceReference        String
+  version                String
+  effectiveFrom          String // YYYY-MM-DD
+  effectiveTo            String?
+  status                 String    @default("Proposed") // Proposed | Approved | Withdrawn
+  approvedByRegulatory   String?
+  approvedByRegulatoryAt DateTime?
+  approvedBySafety       String?
+  approvedBySafetyAt     DateTime?
+  revision               Int       @default(1)
+  updatedBy              User?     @relation(fields: [updatedById], references: [id])
+  updatedById            String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([ingredient])
+  @@map("restricted_caution_entries")
 }
 
 model GateRequirement {

@@ -475,7 +475,8 @@ export function toProjectData(...args: Parameters<typeof toProjectDataRaw>): Pro
   // Both watch-lists follow the Formula BOM (Round 5 question 4(a)).
   // The Formulation Change Register is a view of the Change Control log (Round 5 question 11): its base columns are the master record's, applied here so
   // every reader of the committed rows — the Final Approver's signature content, the stale and lock checks — sees them, not only the screen.
-  for (const watchlist of ['prohibitedIngredients', 'pbCautionLimits', 'formulationChangeRegister']) {
+  // The Regulatory Checklist Status takes its dossier type from the market profile (SW-59), so every reader sees the profile's value.
+  for (const watchlist of ['prohibitedIngredients', 'pbCautionLimits', 'formulationChangeRegister', 'regulatoryChecklistStatus']) {
     if (project.registers[watchlist]) {
       project.registers[watchlist] = deriveRegisterRows(watchlist, project.registers[watchlist], project);
     }

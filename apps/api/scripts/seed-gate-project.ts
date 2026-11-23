@@ -580,6 +580,10 @@ async function fix(ctx: Ctx, check: ReadinessCheck): Promise<boolean> {
       return fixChecklist(ctx, check.section);
     case 'requirementDone':
     case 'requirementsDispositioned':
+    case 'generalCautionScreened':
+    case 'restrictedCautionTakenUp':
+      // An empty register is a valid answer here (the Key Gate Check is the record that somebody looked), so there is nothing to fix.
+      return false;
     case 'requirementsNoOpenDeferrals':
     case 'requirementDeferralsTracked':
     case 'requirementSectionDispositioned':

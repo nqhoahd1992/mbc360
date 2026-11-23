@@ -2,6 +2,8 @@ import type { ProjectData, RegisterRow } from '../types';
 import { RULEBOOK_CATEGORY, applyRulebookChanges } from './changeRulebooks';
 import { FORMULATION_CHANGE_VIEW, applyChangeView } from './changeViews';
 import { WATCH_LIST_VERSION, matchIngredientWatchLists, watchlistMatchLines } from './ingredientWatch';
+import { REGISTER_CONFIGS } from '../config/registers';
+import { applyMarketProfileInheritance } from './referenceInheritance';
 
 // Columns and blocks the workbook computes with formulas, computed here the same way. Applied on the server when a register is
 // saved (so a request cannot set a computed cell) and when it is shown (so the screen is never stale).
@@ -106,6 +108,11 @@ export function screenedProductStatus(current: string, matches: number, noMatch:
 }
 
 export function deriveRegisterRows(registerKey: string, rows: RegisterRow[], project: ProjectData): RegisterRow[] {
+  // The Required dossier type of a market is Regulatory's, from its market profile (SW-59): derived, so the register can never disagree with it.
+  if (registerKey === 'regulatoryChecklistStatus') {
+    const cfg = REGISTER_CONFIGS.find((c) => c.key === registerKey);
+    return cfg ? applyMarketProfileInheritance(cfg.columns, rows, project.reference?.marketProfiles) : rows;
+  }
   // The two rulebook sheets show the changes of each type, read from the Change Control log (Round 5 question 11).
   if (RULEBOOK_CATEGORY[registerKey]) return applyRulebookChanges(registerKey, rows, project);
   if (registerKey === 'formulationChangeRegister') {

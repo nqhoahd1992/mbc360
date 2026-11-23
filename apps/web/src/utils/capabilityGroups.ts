@@ -29,6 +29,9 @@ const CAP_LABELS: Record<string, { group: string; label: string }> = {
   'reference:market-profile|edit': { group: 'reference', label: 'Edit market profiles' },
   'reference:rm-risk|edit': { group: 'reference', label: 'Edit the raw-material risk overlay' },
   'reference:claims-library|edit': { group: 'reference', label: 'Edit and propose Claims Library entries' },
+  'reference:restricted-caution|edit': { group: 'reference', label: 'Edit and propose restricted and caution list entries' },
+  'restricted-caution|approve-regulatory': { group: 'reference', label: 'Approve a restricted and caution list entry — Regulatory' },
+  'restricted-caution|approve-safety': { group: 'reference', label: 'Approve a restricted and caution list entry — Safety' },
   'formulation-change|approve-commercial': { group: 'commercial', label: 'Sign the commercial (NP) approval on a formulation change' },
   // Deleting a project is deliberately NOT a capability: it is an isAdmin()
   // check in the API, so it cannot be handed to another role from here.

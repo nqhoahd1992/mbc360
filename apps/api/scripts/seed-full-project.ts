@@ -166,7 +166,9 @@ const RM = [
 
 // Regulatory Checklist Status takes one row per NON-ASEAN market (the ASEAN checklist is a different register).
 const NON_ASEAN_MARKETS = MARKETS.filter((m) => !ASEAN_MARKETS.includes(m));
-const ROW_COUNT: Record<string, number> = { supplierRmEvidence: RM.length, vulnerableUserAssessment: 1, regulatoryChecklistStatus: NON_ASEAN_MARKETS.length };
+// generalRestrictedCaution has none: every row must name an entry of the company restricted and caution list (SW-59), and a seeded project holds
+// no such list, so a row would be an invented finding. An empty register is a valid answer there.
+const ROW_COUNT: Record<string, number> = { supplierRmEvidence: RM.length, vulnerableUserAssessment: 1, regulatoryChecklistStatus: NON_ASEAN_MARKETS.length, generalRestrictedCaution: 0 };
 const OVERRIDES: Record<string, (row: number) => Record<string, unknown>> = {
   vulnerableUserAssessment: () => ({ vulnerableGroup: 'No vulnerable-user group identified' }),
   publishedInfoApproval: () => ({ workflowState: 'Draft' }),

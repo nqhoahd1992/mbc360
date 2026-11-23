@@ -683,3 +683,55 @@ You told us that a deferred requirement is carried by a controlled Next Action l
 **(d)** Is "a change of priority, wording or applicability" the right list of what counts as a changed requirement?
 
 **(e)** Is "approved to implement and impact assessed by Quality" the right meaning of "approved scope change and impact review"?
+
+## Question 22 — The general restricted-and-caution assessment: how should we read the details your answer leaves open?
+
+*Where in the application:* the new page **Company Reference Data → Restricted & caution list**; the register **General Restricted & Caution Assessment**; the Gate 7 Key Gate Check "General restricted and caution ingredient assessment completed"; the Gate 4 and Gate 7 readiness lists.
+
+You told us that Regulatory and Safety supply and approve the controlled sources and company overlays with versions and effective dates, and that only the approved current company list is loaded; that the assessment is mandatory for every product, with an explicit reviewed conclusion — no findings means Complete with evidence, never N/A; that Gate 4 does the initial screening and disposition and Gate 7 the closure of the final formula, with reviewer trails for flagged issues; and what the outcomes mean. We have built it. Where your answer leaves a detail open we read it as follows:
+
+- **The company list.** An entry has the ingredient (INCI name), an optional CAS number, whether it is Prohibited, Restricted or Caution, the limit or condition, the markets it applies to (none = every market), the controlled source, the source's version, and an effective-from date and an optional effective-to date. Regulatory and Safety each give their own approval; the entry is Approved only while both stand, and it is loaded only while it is also in effect today. Editing what an entry says puts it back to Proposed, and a change to an approved entry (approved, edited, withdrawn) opens an impact assessment on the projects that use the ingredient, like the other company lists. The application ships **no** entries: the two twelve-row workbook lists stay screening prompts.
+- **What a project checks.** A formula ingredient matches an entry when the CAS number is the same, else the INCI name, and the entry applies to one of the project's markets. Every match must have a row in the assessment (Gates 4 and 7), so a listed ingredient cannot slip past the screen. A row is linked to the list entry it was assessed against by choosing that entry from a drop-down (the ingredient, the basis, the source, the source's version and the markets then fill in from the entry and cannot be typed over),; there is no "not on the list" choice, an ingredient the list lacks is proposed on the list first; the link, not a retyped name, is what takes up a match. If the entry later changes version, or is no longer approved and current, the row is flagged until it is assessed again.
+- **The conclusion.** The Key Gate Check "General restricted and caution ingredient assessment completed" never accepts N/A, and counts only when it is done with its evidence reference and the initials of the person who concluded. An empty register is acceptable alongside it.
+- **Gate 4** needs every row to have an outcome, and a flagged one (Needs Safety Review, Needs Regulatory Review, Further information required) its reviewer trail — assessment, reviewer, date, rationale. **Gate 7** closes them: "Restricted - reformulate" blocks until the outcome is changed, "Within limit" needs the formula percentage / exposure, the markets and the evidence link, and a flagged row stays blocking unless a qualified reviewer has accepted it as a non-critical residual action — assessment Non-critical, a live tracked Next Action carrying it, recorded by the person named as reviewer who holds the Safety or Regulatory authority (either, for a request for further information).
+- **Linked to the formula version:** a Major formula version reopens Gates 4–9, so these rows are decided again with the new formula; we record no formula version on the row itself.
+
+**(a)** Are these the right fields for an entry of the company list, and is "Regulatory and Safety both approve; only an approved entry in effect counts" right?
+
+**(b)** Is matching by CAS number, else INCI name, within the project's markets the right way to decide that a formula ingredient is on the list?
+
+**(c)** Is "done, with evidence and the initials of the person who concluded" the right meaning of a "reviewed conclusion"?
+
+**(d)** At Gate 4, is "every row has an outcome, and a flagged row its reviewer trail" the right initial disposition? Should an empty register at Gate 4 also need a recorded conclusion of its own?
+
+**(e)** Is "assessment Non-critical, a live tracked Next Action, recorded by the named reviewer who holds Safety or Regulatory authority" the right way for a qualified reviewer to accept a residual action?
+
+**(f)** Should each row also carry the formula version it was assessed against?
+
+## Question 23 — A claim linked to the Claims Library: should its wording, category and risk come from the entry?
+
+*Where in the application:* register **Claim -> Evidence Traceability**, the "Claims Library entry" column.
+
+You told us that a claim reuses approved wording by linking a Claims Library entry, and that a genuinely new claim may be proposed without a link, declared as "New claim — not yet in Claims Library", which triggers Regulatory and Technical review.
+
+The claim register repeats three things the entry already holds — the wording, the claim category and the claim risk — and each was typed by hand, so the claim and the entry could disagree. We changed it so that **when a claim is linked, those three are filled from the entry and cannot be typed over** (a field the entry leaves empty is still typed), and the "Linked to Claims Library" declaration follows the link. A claim with **no** link is a new claim and is typed as before. Un-linking a claim drops the "Linked" declaration, so the person declares "New claim" on purpose. When the library entry's wording later changes, a linked claim follows it the next time the register is saved, and because its wording then differs from the wording that was reviewed, the existing "wording varies from what was reviewed" condition sends it back to review.
+
+**(a)** Is it right that a claim reusing approved wording is read-only, and that changing it means un-linking and declaring a new claim?
+
+**(b)** Is it right that a reworded library entry carries into every linked claim and sends it back to review?
+
+**(c)** Is the entry's "Evidence requirement" the same thing as the claim's "Preliminary evidence requirement"? We have not filled one from the other.
+
+**(d)** Should the entry's audience, markets and channels be checked against where the claim is used?
+
+## Question 24 — Should the Regulatory Checklist Status take its dossier type from the market profile?
+
+*Where in the application:* register **Regulatory Checklist Status (per market)**, the column "Required dossier type"; **Company Reference Data → Market profiles**.
+
+A market profile already holds the dossier type Regulatory sets for that market, and the Regulatory Checklist Status asks for a "Required dossier type" per market and had it typed by hand. We changed it so that **choosing the market fills the dossier type from that market's profile whenever the profile names one**, read-only, and shows a later change to the profile at once; where the profile names none, it is still typed in the register. We did not fill "Checklist or evidence link" from the profile's evidence link, because we are not sure they are the same thing.
+
+**(a)** Is the register's "Required dossier type" the same thing as the profile's dossier type?
+
+**(b)** Should the register's "Checklist or evidence link" come from the profile as well?
+
+**(c)** The register exists for markets that do not yet have a dossier profile in MBc360. Once a market's profile names a dossier type, does that market still need a row here?

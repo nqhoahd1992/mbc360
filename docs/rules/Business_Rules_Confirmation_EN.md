@@ -1143,6 +1143,18 @@ Infant/baby rows can be N/A where their stated trigger genuinely does not apply,
 
 **(b)** Yes. Every applicable requirement needs Must/Should/Could priority. N/A rows require rationale. A blank priority is incomplete.
 
+### Question 16 — General restricted and caution assessment
+
+**Verdict:** ✅ built (2026-11-14). It differs from what was built (no company list, a free Key Gate Check that accepted N/A, no Gate 4 disposition). Our readings of the details are asked in Round 6, question 22.
+
+**(a)** Regulatory and Safety supply and approve the controlled sources and company overlays, with versions and effective dates. The two twelve-row Excel lists are screening prompts, not proof of a complete market restriction screen. Load only the approved current company list.
+
+**(b)** Keep an explicit reviewed conclusion that screening was completed, including "no restricted/caution issue identified" where supported. For a product, this general assessment is mandatory: no findings means Complete with evidence, not N/A. An empty findings register is acceptable only alongside that conclusion.
+
+**(c)** Yes. Use Gate 4 for initial screening/disposition and Gate 7 for final-formula closure, with reviewer trails for flagged issues. Keep updates linked to formula, market and source versions.
+
+**(d)** The five outcomes are usable. Add "Further information required" and "Considered - not selected" for consistency with Question 4. At Gate 7, unresolved review/information requirements block final safety closure unless a qualified reviewer explicitly accepts a non-critical residual action under Question 8. "Restricted, reformulate" and prohibited use block until corrected. "Within limit" needs concentration/exposure, market basis and evidence, not only a status selection.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

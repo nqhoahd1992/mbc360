@@ -20,6 +20,8 @@ export const IMPACT_FUNCTIONS: Record<ImpactDataset, readonly string[]> = {
   // Claims wording: Regulatory records the market/legal impact, Technical the evidence impact, and Quality coordinates the action and
   // decides with them whether a Change Control is required (Round 5 question 6(b) and (c)).
   'claims-library': ['technical-claims-reviewer', 'regulatory', 'quality'],
+  // The restricted and caution list: Regulatory and Safety supply and approve it, so they judge what a change to it means for a project.
+  'restricted-caution': ['regulatory', 'safety-scientific'],
 };
 
 // Round 5 question 6(b): "Safety contributes where a safety issue is involved", and an urgent safety issue or mandatory restriction
@@ -35,6 +37,7 @@ export const IMPACT_DATASET_LABELS: Record<ImpactDataset, string> = {
   'rm-risk': 'Raw Material Risk Overlay',
   'market-profile': 'Market profile',
   'claims-library': 'Claims Library',
+  'restricted-caution': 'Restricted & Caution List',
 };
 
 // Does this assessment hold release? A Critical change, not yet concluded by every function, that is urgent (an urgent safety issue or
