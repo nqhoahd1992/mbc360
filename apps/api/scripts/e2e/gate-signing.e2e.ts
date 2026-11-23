@@ -2228,6 +2228,95 @@ export async function run(base: string, db: Client): Promise<number> {
     t('a client-supplied resolution stamp is discarded', !after39?.gapResolvedBy && !after39?.gapResolvedAt, `${r.status} ${short(after39)}`);
   }
 
+  // ============================================================ Round 5 question 12: a market added after Gate 1
+  console.log('\n--- Round 5 question 12: a market added after Gate 1 needs Regulatory\'s impact assessment before it can release');
+  {
+    const marketsNow = async () => [...((await project()).project.identity.markets ?? [])] as string[];
+    const putMarkets = async (markets: string[]) => api('admin', 'PUT', `/projects/${PROJECT}/markets`, { markets, expectedVersion: await version() });
+    const assess = async (who: string, market: string, body: any) =>
+      api(who, 'POST', `/projects/${PROJECT}/markets/${encodeURIComponent(market)}/addition-assessment`, { ...body, expectedVersion: await version() });
+    const added = 'E2E-Newland';
+    const existing = await marketsNow();
+    const gateStatus = async (g: string) => (await project()).project.gates.find((x: any) => x.gateId === g);
+    const gate1Passed = gp.isGatePassed((await project()).project, 'SG01');
+    console.log(`   Gate 1 passed on this project: ${gate1Passed}`);
+
+    const regUser = Object.keys(sessions).find((k) => k !== 'admin') as string;
+    const regName = (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions[regUser].id])).rows[0].displayName as string;
+    const savedReg = (await db.query(`SELECT name, "userId" FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'regulatory'`, [PROJECT])).rows[0];
+    await db.query(`UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = 'regulatory'`, [PROJECT, regName, sessions[regUser].id]);
+
+    r = await putMarkets([...existing, added]);
+    t('adding a market after Gate 1 is accepted without a Backtrack', r.status < 300, `${r.status} ${short(r.json)}`);
+    let ent = ((await project()).project.marketAdditionAssessments ?? []).find((a: any) => a.market === added);
+    t('...and opens a pending impact assessment for it, attributed to who added it', gate1Passed ? !!ent && !ent.assessedAt && !!ent.addedBy : !ent, short(ent));
+    if (gate1Passed) {
+      t('...this market is held until assessed', ((await project()).project.marketAdditionAssessments ?? []).some((a: any) => a.market === added && !a.assessedAt));
+      // The readiness items at Gates 10 and 11 are covered by npm run verify:market-additions: this harness runs a cut-down readiness list.
+      r = await assess('admin', added, { differences: ['Ingredient restriction / permitted level'], conclusion: 'x' });
+      t('an administrator is not the holder of Regulatory, so cannot record it (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+      r = await assess(regUser, added, { differences: [], noDifference: false, conclusion: '' });
+      t('an incomplete assessment is refused, naming what is missing (400)', r.status === 400 && /still needs/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+      r = await assess(regUser, added, { differences: ['Ingredient restriction / permitted level'], extraGates: ['SG02'], conclusion: 'x' });
+      t('a conditional review the difference does not allow is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+      r = await assess(regUser, added, { differences: ['Ingredient restriction / permitted level'], conclusion: 'x', affectedMarkets: ['Atlantis'] });
+      t('another market that is not in the project is refused (400)', r.status === 400 && /this project only/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+      r = await assess(regUser, added, { differences: ['Ingredient restriction / permitted level'], conclusion: 'x', affectedMarkets: [added] });
+      t('the added market cannot name itself as affected (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+      r = await assess(regUser, added, { noDifference: true, equivalenceConclusion: 'x', affectedMarkets: [existing[0]] });
+      t('"no substantive difference" with an affected market: the market is dropped, nothing else is reopened', r.status < 300 && ((await project()).project.marketAdditionAssessments.find((a: any) => a.market === added)?.affectedMarkets ?? []).length === 0, `${r.status} ${short(r.json)}`);
+      await db.query(`UPDATE market_addition_assessments SET "assessedAt" = NULL, "assessedBy" = NULL, "noDifference" = false, "equivalenceConclusion" = NULL WHERE "projectId" = $1 AND market = $2`, [PROJECT, added]);
+      r = await assess(regUser, 'No-Such-Market', { noDifference: true, equivalenceConclusion: 'x' });
+      t('a market that was not added after Gate 1 has no assessment (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+
+      // release is blocked for the market, not for the others
+      const tracks = (await project()).project.marketTracks as any[];
+      const newTrack = tracks.find((x: any) => x.market === added);
+      r = await api('admin', 'PUT', `/projects/${PROJECT}/market-tracks`, {
+        tracks: tracks.map((x: any) => (x.market === added ? { ...x, pifStatus: 'Approved', launchApproval: 'Approved' } : x)),
+        expectedVersion: await version(),
+      });
+      t('launch approval for the held market is refused (400)', !!newTrack && r.status === 400 && /impact assessment/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+
+      // record it: a difference reopens the gate that stands passed, nothing else
+      const sg04Before = await gateStatus('SG04');
+      const sg04WasPassed = gp.isGatePassed((await project()).project, 'SG04');
+      const backtracksBefore = (await db.query(`SELECT count(*)::int AS n FROM backtrack_events WHERE "projectId" = $1`, [PROJECT])).rows[0].n;
+      const sharedMarket = existing[0];
+      const signedLanes = async () => Number((await db.query(`SELECT count(*)::int AS n FROM gate_sign_offs WHERE "projectId" = $1 AND market = $2 AND "gateId" IN ('SG10','SG11') AND "signedAt" IS NOT NULL`, [PROJECT, sharedMarket])).rows[0].n);
+      const lanesBefore = await signedLanes();
+      r = await assess(regUser, added, { differences: ['Ingredient restriction / permitted level'], inputFrom: ['Quality'], conclusion: 'a preservative is capped at 0.3%', evidenceLink: 'https://e2e.example/assessment', affectedMarkets: [sharedMarket] });
+      t('the Regulatory holder records the assessment as themselves', r.status < 300, `${r.status} ${short(r.json)}`);
+      ent = ((await project()).project.marketAdditionAssessments ?? []).find((a: any) => a.market === added);
+      t('...with who and when, and the market is no longer held', !!ent?.assessedAt && ent.assessedBy === regName && ent.inputFrom.includes('Quality'), short(ent));
+      const backtracksAfter = (await db.query(`SELECT count(*)::int AS n FROM backtrack_events WHERE "projectId" = $1`, [PROJECT])).rows[0].n;
+      const sg04After = await gateStatus('SG04');
+      if (sg04WasPassed) {
+        t('a market named as affected keeps no signed Gate 10 / 11 lane, and the assessment records it', (await signedLanes()) === 0 && (ent?.affectedMarkets ?? []).includes(sharedMarket), `${lanesBefore} -> ${await signedLanes()} ${short(ent)}`);
+      const launched = ((await project()).project.marketTracks as any[]).some((x: any) => x.market === sharedMarket && !!x.actualLaunchDate && !x.withdrawnDate);
+      const linkedReviews = Number((await db.query(`SELECT count(*)::int AS n FROM post_launch_reviews WHERE "projectId" = $1 AND market = $2 AND milestone = $3`, [PROJECT, sharedMarket, `market-added:${added}`])).rows[0].n);
+      t('a market already on sale gets a linked Gate 12 review, one that is not does not', linkedReviews === (launched ? 1 : 0), `launched=${launched} reviews=${linkedReviews}`);
+      t('Gate 4 (an ingredient difference) was reopened, recorded as one event', sg04After?.status === 'Not Started' && backtracksAfter === backtracksBefore + 1, `${sg04After?.status} ${backtracksBefore}->${backtracksAfter}`);
+        t('...and the assessment names the gate it reopened', (ent?.reopenedGateIds ?? []).includes('SG04'), short(ent));
+      } else {
+        t('Gate 4 had not passed, so nothing was reopened', backtracksAfter === backtracksBefore && sg04After?.status === sg04Before?.status, `${sg04After?.status}`);
+      }
+
+      r = await assess(regUser, added, { noDifference: true, equivalenceConclusion: 'same rules as an existing market' });
+      t('a recorded assessment cannot be revised without a reason (400)', r.status === 400 && /needs a reason/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+      r = await assess(regUser, added, { noDifference: true, equivalenceConclusion: 'same rules as an existing market', revisionReason: 'e2e revision' });
+      t('...with a reason it is revised, and the earlier one stays in the audit trail', r.status < 300 && Number((await db.query(`SELECT count(*)::int AS n FROM audit_events WHERE "projectId" = $1 AND action = 'market_addition.revised' AND "entityId" = $2`, [PROJECT, added])).rows[0].n) === 1, `${r.status} ${short(r.json)}`);
+      r = await putMarkets(existing);
+      t('a market that Regulatory assessed cannot be removed once Gate 1 has passed (403, mark it Withdrawn)', r.status === 403 && /Withdrawn/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    }
+
+    // clean up: the market, its track, its rows and its assessment go; the reviewer is put back
+    await db.query(`DELETE FROM market_addition_assessments WHERE "projectId" = $1 AND market = $2`, [PROJECT, added]);
+    await db.query(`DELETE FROM market_tracks WHERE "projectId" = $1 AND market = $2`, [PROJECT, added]);
+    await db.query(`DELETE FROM project_markets WHERE "projectId" = $1 AND market = $2`, [PROJECT, added]);
+    await db.query(`UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = 'regulatory'`, [PROJECT, savedReg.name, savedReg.userId]);
+  }
+
   // The Low/Medium resolution rule (question 9) is covered by npm run verify:gap-controls: on this project every gate that could carry the field is
   // either signed, held by an open change or not current, so a gate save cannot reach gapBlocksDecision here.
 

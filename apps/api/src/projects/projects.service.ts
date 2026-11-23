@@ -80,6 +80,14 @@ import { SAFETY_FINDINGS_REGISTER, droppedSupersessionRecords } from '@mbc360/sh
 import { bulletList, listMessage, reasonsMessage } from '@mbc360/shared/utils/messageList';
 import { SCALE_UP_WAIVER_ROLES, isNewFormula, scaleUpAssessmentProblems } from '@mbc360/shared/utils/scaleUpAssessments';
 import {
+  AFFECTED_MARKET_LANE_GATES,
+  MARKET_ADDITION_FUNCTION_KEYS,
+  gatesToReopen,
+  marketAdditionProblems,
+  marketAdditionScope,
+  marketIsHeldByAssessment,
+} from '@mbc360/shared/utils/marketAdditions';
+import {
   VULNERABLE_REGISTER,
   targetUsersPinnedByAssessment,
   vulnerableSaveBlockers,
@@ -112,7 +120,7 @@ import {
 } from '@mbc360/shared/utils/gateSnapshot';
 
 import { assessmentMarkets, changeControlAssessmentProblems, isPendingAnswer } from '@mbc360/shared/utils/changeControlAssessments';
-import { changeReviewMilestone, marketsForLinkedReview, reviewCycleOptions } from '@mbc360/shared/utils/postLaunch';
+import { changeReviewMilestone, marketAdditionReviewMilestone, marketsForLinkedReview, reviewCycleOptions } from '@mbc360/shared/utils/postLaunch';
 import {
   checklistItemKey,
   expandChecklistOptions,
@@ -2112,6 +2120,13 @@ export class ProjectsService {
   ): Promise<ProjectEnvelope> {
     return this.mutate(user, id, null, 'gate_sign_off.signed', async (tx, _row, project) => {
       this.assertGateLane(project, gateId, market);
+      // Round 5 question 12: a market added after Gate 1 cannot release until Regulatory's impact assessment is complete, and signing its
+      // Gate 10-12 lane is a step towards release. The other markets' lanes are untouched. [ASSUMPTION: R6-Q18]
+      if (market && marketIsHeldByAssessment(project, market)) {
+        throw new BadRequestException(
+          `${market} was added after Gate 1 and Regulatory's impact assessment of it is not complete — its ${gateId} lane cannot be signed yet`,
+        );
+      }
       // B4 (SME rule audit, 2026-10-04): a sign-off is part of working the gate,
       // so it follows the same lock as every other gate edit — only the gate open
       // for work, and a passed gate is corrected through Backtrack.
@@ -4690,8 +4705,8 @@ export class ProjectsService {
       const added = wanted.filter((m) => !current.includes(m));
       // F4: "adding a market creates a new track" — so ADDING stays open after
       // Gate 1 (SME rule audit D, 2026-10-04); only removal is a Gate 1 decision.
-      // Whether an added market must re-open earlier gates ("may re-trigger
-      // earlier gates if that market differs") is not built [ASSUMPTION: R5-Q49].
+      // [ASSUMPTION: R5-Q49] answered. Round 5 question 12 (choice 3): once Gate 1 has passed, an added market is an approved scope amendment with a mandatory
+      // Regulatory impact assessment (assessMarketAddition) — no Backtrack, nothing reopens until that assessment finds a difference.
       if (removed.length > 0 && isGateRefLocked(project, '01')) {
         throw new ForbiddenException(
           'Removing a market belongs to gate 01, which has passed — mark the market Withdrawn on Market Regulatory & Launch Tracking instead.',
@@ -4742,6 +4757,17 @@ export class ProjectsService {
               .join('\n'),
           );
         }
+        // An assessment that was finished is a record of an approved scope amendment and stays; a market with one cannot be removed
+        // (it is marked Withdrawn instead). A pending one goes with the market it was opened for.
+        const assessed = project.marketAdditionAssessments.filter((a) => removed.includes(a.market) && a.assessedAt);
+        if (assessed.length > 0) {
+          throw new BadRequestException(
+            assessed
+              .map((a) => `Cannot remove "${a.market}": Regulatory assessed it as an added market — mark it Withdrawn with a reason on Market Regulatory & Launch Tracking instead`)
+              .join('\n'),
+          );
+        }
+        await tx.marketAdditionAssessment.deleteMany({ where: { projectId: id, market: { in: removed } } });
         await tx.marketTrack.deleteMany({ where: { projectId: id, market: { in: removed } } });
         await tx.projectMarket.deleteMany({ where: { projectId: id, market: { in: removed } } });
       }
@@ -4752,6 +4778,13 @@ export class ProjectsService {
           orderBy: { createdAt: 'desc' },
         });
         await tx.projectMarket.createMany({ data: added.map((market) => ({ projectId: id, market })) });
+        // The market is a scope amendment to the Gate 1 baseline once Gate 1 has been decided; until then it simply belongs to Gate 1.
+        if (isGateRecordedPassed(project.gates.find((g) => g.gateId === 'SG01'))) {
+          await tx.marketAdditionAssessment.createMany({
+            data: added.map((market) => ({ projectId: id, market, addedBy: user.displayName })),
+            skipDuplicates: true,
+          });
+        }
         await tx.marketTrack.createMany({
           data: added.map((market) => ({ projectId: id, market, formulaVersionId: version?.id })),
         });
@@ -4764,6 +4797,155 @@ export class ProjectsService {
       }
       return { added, removed };
     });
+  }
+
+  // Round 5 question 12: Regulatory's impact assessment of a market added after Gate 1. Only the holder of the Regulatory function on the
+  // project records it, as themselves (SW-57: an administrator does not stand in). A difference reopens the reviews the answer's table
+  // names — those that stand passed — through the same reopening a Backtrack and a material change use, so the earlier signed record is
+  // kept; "no substantive difference" records Regulatory's equivalence conclusion and reopens nothing. Other markets keep every decision.
+  // A finished assessment can be revised by the same holder with a reason (the earlier one stays in the audit event); gates an earlier
+  // version already reopened stay reopened. [ASSUMPTION: R6-Q18]
+  async assessMarketAddition(
+    user: SessionUser,
+    id: string,
+    market: string,
+    body: {
+      differences?: string[];
+      noDifference?: boolean;
+      extraGates?: string[];
+      affectedMarkets?: string[];
+      inputFrom?: string[];
+      conclusion?: string;
+      equivalenceConclusion?: string;
+      evidenceLink?: string;
+      revisionReason?: string;
+    },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    const list = (v: unknown): string[] => [...new Set((Array.isArray(v) ? v : []).map((x) => String(x).trim()).filter(Boolean))];
+    const noDifference = body.noDifference === true;
+    const clean = {
+      differences: noDifference ? [] : list(body.differences),
+      noDifference,
+      extraGates: noDifference ? [] : list(body.extraGates),
+      affectedMarkets: noDifference ? [] : list(body.affectedMarkets),
+      inputFrom: list(body.inputFrom),
+      conclusion: (body.conclusion ?? '').trim(),
+      equivalenceConclusion: (body.equivalenceConclusion ?? '').trim(),
+    };
+    const basic = marketAdditionProblems({ ...clean, market });
+    if (basic.length > 0) throw new BadRequestException(listMessage('The assessment still needs:', basic));
+
+    await this.prisma.$transaction(async (tx) => {
+      const row = await this.loadVersionLocked(tx, id, expectedVersion);
+      const project = toProjectData(row, [], await this.loadReference(tx));
+      const marketProblems = marketAdditionProblems({ ...clean, market, projectMarkets: project.identity.markets });
+      if (marketProblems.length > 0) throw new BadRequestException(listMessage('The assessment still needs:', marketProblems));
+      const stored = project.marketAdditionAssessments.find((a) => a.market === market);
+      if (!stored) throw new BadRequestException(`${market} was not added after Gate 1, so it has no impact assessment`);
+      await this.assertHoldsFunction(tx, id, user, MARKET_ADDITION_FUNCTION_KEYS, `assess the impact of adding ${market}`);
+      const revising = !!stored.assessedAt;
+      const reason = (body.revisionReason ?? '').trim();
+      if (revising && reason === '') {
+        throw new BadRequestException(`${market} was already assessed by ${stored.assessedBy} — revising it needs a reason`);
+      }
+      const toReopen = gatesToReopen(project, clean);
+      await tx.marketAdditionAssessment.update({
+        where: { projectId_market: { projectId: id, market } },
+        data: {
+          differences: clean.differences,
+          noDifference: clean.noDifference,
+          extraGates: clean.extraGates,
+          affectedMarkets: clean.affectedMarkets,
+          inputFrom: clean.inputFrom,
+          conclusion: clean.conclusion || null,
+          equivalenceConclusion: clean.equivalenceConclusion || null,
+          evidenceLink: (body.evidenceLink ?? '').trim() || null,
+          assessedBy: user.displayName,
+          assessedAt: new Date(),
+          reopenedGateIds: [...new Set([...stored.reopenedGateIds, ...toReopen])],
+        },
+      });
+      if (toReopen.length > 0) {
+        const ordered = [...toReopen].sort((a, b) => gateIndex(a) - gateIndex(b));
+        const scope = marketAdditionScope(clean);
+        const reopened = await this.reopenGates(tx, id, row, project, ordered, {
+          fromGateId: ordered[ordered.length - 1],
+          toGateId: ordered[0],
+          reason: `Market ${market} added after Gate 1 — Regulatory's impact assessment found: ${clean.differences.join('; ')}. ${clean.conclusion}`.trim(),
+          initiatedBy: user.displayName,
+        });
+        await this.audit.record(
+          {
+            actorId: user.id,
+            projectId: id,
+            entityType: 'backtrack_event',
+            entityId: reopened.event.id,
+            action: 'project.backtracked',
+            before: {
+              previousGates: reopened.previousGates,
+              previousSignOffs: reopened.previousSignOffs,
+              previousGateSignOffs: reopened.previousGateSignOffs,
+            } as unknown as Prisma.InputJsonValue,
+            after: { market, reopenedGateIds: reopened.affected.map((g) => g.gateId), marketGates: scope.marketGates } as unknown as Prisma.InputJsonValue,
+          },
+          tx,
+        );
+      }
+      // A shared issue: the release decisions of the other markets named (their Gate 10 and 11 lanes) are reopened — the signatures cleared, the
+      // earlier ones kept in the audit trail — and a market already on sale gets a linked Gate 12 review beside its earlier ones, which stay.
+      // Markets not named keep every decision. [ASSUMPTION: R6-Q18]
+      let lanesCleared: Prisma.JsonObject[] = [];
+      const reviewed: string[] = [];
+      if (clean.affectedMarkets.length > 0) {
+        lanesCleared = await this.clearGateSignOffs(tx, id, [...AFFECTED_MARKET_LANE_GATES], clean.affectedMarkets);
+        if (lanesCleared.length > 0) {
+          await this.audit.record(
+            {
+              actorId: user.id,
+              projectId: id,
+              entityType: 'gate_hold',
+              entityId: AFFECTED_MARKET_LANE_GATES[0],
+              action: 'gate.market_lanes_reopened',
+              before: { cleared: lanesCleared } as unknown as Prisma.InputJsonValue,
+              after: { addedMarket: market, reason: clean.conclusion, gates: [...AFFECTED_MARKET_LANE_GATES], markets: clean.affectedMarkets } as unknown as Prisma.InputJsonValue,
+            },
+            tx,
+          );
+        }
+        for (const m of marketsForLinkedReview(project, clean.affectedMarkets)) {
+          const track = project.marketTracks.find((t) => t.market === m && !!t.actualLaunchDate && !t.withdrawnDate);
+          if (!track) continue; // not on sale: its schedule starts from its own launch date
+          await tx.postLaunchReview.upsert({
+            where: { projectId_market_milestone: { projectId: id, market: m, milestone: marketAdditionReviewMilestone(market) } },
+            create: {
+              projectId: id,
+              market: m,
+              milestone: marketAdditionReviewMilestone(market),
+              dueDate: new Date(),
+              formulaVersion: project.formulaVersion,
+              notes: `Opened by Regulatory's assessment of ${market}, added after Gate 1: ${clean.conclusion}`,
+            },
+            update: {},
+          });
+          reviewed.push(m);
+        }
+      }
+      await this.bumpVersion(tx, id);
+      await this.audit.record(
+        {
+          actorId: user.id,
+          projectId: id,
+          entityType: 'market_addition_assessment',
+          entityId: market,
+          action: revising ? 'market_addition.revised' : 'market_addition.assessed',
+          before: revising ? (stored as unknown as Prisma.InputJsonValue) : undefined,
+          after: { market, ...clean, evidenceLink: body.evidenceLink, reopenedGateIds: toReopen, lanesReopened: lanesCleared.length, linkedReviews: reviewed, ...(revising ? { revisionReason: reason } : {}) } as unknown as Prisma.InputJsonValue,
+        },
+        tx,
+      );
+    });
+    return this.envelope(await this.loadOrThrow(this.prisma, id));
   }
 
   // Rows a requirement section makes per market (RequirementRowConfig.marketScope) for the project's markets as they now stand. Rows that
@@ -5107,6 +5289,16 @@ export class ProjectsService {
           if (newApproval || newLaunch) {
             throw new BadRequestException(
               `${next.market}: release is on hold pending an impact review of a Critical change to the company lists, so launch cannot be approved or recorded yet`,
+            );
+          }
+        }
+        // Round 5 question 12: the same for a market whose Regulatory impact assessment (it was added after Gate 1) is not complete.
+        if (marketIsHeldByAssessment(project, next.market)) {
+          const newApproval = next.launchApproval === 'Approved' && prev.launchApproval !== 'Approved';
+          const newLaunch = !!next.actualLaunchDate && !prev.actualLaunchDate;
+          if (newApproval || newLaunch) {
+            throw new BadRequestException(
+              `${next.market}: it was added after Gate 1 and Regulatory's impact assessment of it is not complete, so launch cannot be approved or recorded yet`,
             );
           }
         }

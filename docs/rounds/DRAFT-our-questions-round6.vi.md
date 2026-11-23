@@ -479,3 +479,34 @@ Các bạn đã nói có một bản ghi thay đổi chủ, là CHG, các sổ k
 **(e)** Cách chia này có đúng không? *Đọc từ bản ghi thay đổi:* tiêu đề, SKU, ai yêu cầu và khi nào, giải thích, lý do, ai thực hiện, thông báo thị trường và ai xác nhận, đã đóng chưa. *Lớp phủ riêng của sổ:* hành động của NPD, Regulatory, Manufacturing và Marketing & Sales, câu hỏi đăng ký lại, câu hỏi truyền thông bốn trạng thái, quyết định và chữ ký của Final Approver.
 
 **(f)** Những thay đổi nào thuộc view công thức? Chúng tôi lấy thay đổi có vùng ảnh hưởng *Formula / ingredient* hoặc *Formula version / pH / process*, hoặc có trigger thuộc nhóm Formula trong danh mục.
+
+
+## Câu 18 — Thêm thị trường sau Gate 1: ta đọc các chi tiết câu trả lời để ngỏ thế nào?
+
+*Ở đâu trong ứng dụng:* tab **Gate 10** và **Gate 11**, thẻ **Markets added after Gate 1**, phía trên **Market Regulatory & Launch Tracking**; thị trường được thêm ở form **New Project** và ở **Project Identification**.
+
+Các bạn đã nói thị trường thêm sau Gate 1 có track Gate 10–12 riêng và một đánh giá tác động bắt buộc của Regulatory, không release được cho tới khi đánh giá xong trong khi các thị trường khác tiếp tục, và mỗi loại khác biệt mở lại những review nào. Chúng tôi đã xây. Ở chỗ câu trả lời để ngỏ, chúng tôi đọc như sau:
+
+- **Đánh giá được mở khi thị trường được thêm sau khi Gate 1 đã passed.** Trước đó thị trường chỉ thuộc Gate 1. Bản ghi này là "bản sửa phạm vi đã duyệt của baseline Gate 1".
+- **Chỉ người giữ chức năng Regulatory của dự án ghi**, bằng chính mình; admin không thay. Đầu vào từ Safety, R&I hoặc Quality được đánh dấu trên bản ghi, không ký.
+- **Các review bảng của các bạn nêu thẳng tự mở lại** (ingredient: Gate 4; claim: Gate 3; pack: Gate 6; an toàn: Gate 4 và 7) nếu gate đó đang passed. **Các review có điều kiện** ("Gate 5 và 7 nếu công thức hay an toàn đổi", "Gate 9 nếu tương thích chức năng của pack đổi" …) **do Regulatory chọn** trong đánh giá, vì hệ thống không thể phán đoán điều kiện.
+- **"Gate 10–11 liên quan của thị trường"** ta đọc là làn của chính thị trường mới, vốn đã mở vì chưa có chữ ký; chỉ ghi lại.
+- **"Không khác biệt đáng kể"** cần kết luận tương đương của Regulatory và không mở lại gì.
+- **"Không release"** nghĩa là: không launch approval, không ngày launch thật cho thị trường đó, và không ký làn Gate 10–12 của nó. Gate 10, 11 và 12 cũng liệt kê đánh giá đang mở như một yêu cầu, vì hai gate này vốn đòi mọi thị trường sẵn sàng (xem câu 19).
+- **"Trừ khi xác định có vấn đề chung"**: Regulatory có thể nêu các thị trường khác của dự án mà cùng phát hiện đó chạm tới. Với các thị trường này, chữ ký Gate 10 và 11 được mở lại (chữ ký cũ giữ trong lịch sử) và thị trường đã bán có thêm một review Gate 12 liên kết bên cạnh các review cũ. Thị trường không được nêu giữ nguyên mọi quyết định.
+- **Thay đổi công thức Major** không bị chạm bởi việc này: nó áp cho công thức của cả dự án, và một phiên bản đã bán ở một thị trường giữ track và chữ ký riêng. Chúng tôi đọc câu "không tự động vô hiệu các thị trường không liên quan dùng công thức đã duyệt không đổi" là đã đúng sẵn.
+- **Đánh giá đã ghi có thể sửa** bởi cùng người, kèm lý do; bản cũ giữ trong lịch sử, gate đã mở vẫn mở. Thị trường đã đánh giá không xoá được, chỉ đánh dấu Withdrawn.
+
+**(a)** Người giữ chức năng Regulatory có phải người đúng để ghi đánh giá không?
+
+**(b)** Regulatory chọn các review có điều kiện có đúng không, hay một phần nên tự động?
+
+**(c)** "Gate 10–11 liên quan của thị trường" có phải làn của thị trường mới không?
+
+**(d)** "Không release" có đúng là ba điều ở trên không?
+
+**(e)** Việc đánh giá đang mở cũng giữ cả Gate 10 và 11 có chấp nhận được không, khi "các thị trường khác tiếp tục"?
+
+**(f)** Đánh giá đã ghi có được sửa lại không?
+
+**(g)** Có đúng là chỉ Regulatory nêu các thị trường khác mà một phát hiện chạm tới, và với các thị trường đó ta mở lại chữ ký Gate 10 và 11 và chỉ mở review Gate 12 cho thị trường đã bán không?

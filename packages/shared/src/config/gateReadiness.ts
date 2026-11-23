@@ -378,6 +378,8 @@ export type ReadinessCheck =
   | { kind: 'changeControlNoAdminImpact' }
   // Round 5 question 7: the Gate 9 scale-up assessment LIST is recorded — not empty, no entry Pending, every entry properly recorded.
   | { kind: 'scaleUpAssessed' }
+  // Round 5 question 12: every market added after Gate 1 has its Regulatory impact assessment complete — until then that market cannot release.
+  | { kind: 'marketAdditionsAssessed' }
   // Rule E2: every market with no built-in dossier profile has a complete
   // Regulatory Checklist Status row. Vacuous only when the project sells into
   // nothing but ASEAN, which is correct — those markets are covered by the
@@ -519,9 +521,11 @@ export const PER_MARKET_ITEM_IDS: ReadonlySet<string> = new Set([
   'sg10-artwork',
   'sg10-artwork-claims',
   'sg10-reg-approval',
+  'sg10-market-additions',
   'sg10-signoff',
   // Gate 11
   'sg11-gate10',
+  'sg11-market-additions',
   'sg11-gmp',
   'sg11-artwork',
   'sg11-published-approved',
@@ -534,6 +538,7 @@ export const PER_MARKET_ITEM_IDS: ReadonlySet<string> = new Set([
   'sg12-feedback-review',
   'sg12-pms-baseline',
   'sg12-change-links',
+  'sg12-market-additions',
   'sg12-signoff',
 ]);
 
@@ -2870,6 +2875,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Mandatory',
       check: { kind: 'everyMarket', field: 'regulatoryStatus' },
     },
+    // Round 5 question 12: a market added after Gate 1 needs Regulatory's impact assessment before it can release. [ASSUMPTION: R6-Q18]
+    {
+      id: 'sg10-market-additions',
+      label: 'Regulatory impact assessment complete for every market added after Gate 1',
+      tier: 'Mandatory',
+      check: { kind: 'marketAdditionsAssessed' },
+      nonVacuousBecause:
+        'A project with no market added after Gate 1 has nothing to assess, so the item is correctly satisfied; what it guards is an assessment left open, which it reads directly.',
+      assumption: 'R6-Q18',
+    },
     {
       // Added 2026-07-28 (see the note above GATE_READINESS).
       id: 'sg10-signoff',
@@ -2880,6 +2895,15 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
   ],
   // Gate 11 is a market-specific hard block.
   SG11: [
+    {
+      id: 'sg11-market-additions',
+      label: 'Regulatory impact assessment complete for every market added after Gate 1',
+      tier: 'Mandatory',
+      check: { kind: 'marketAdditionsAssessed' },
+      nonVacuousBecause:
+        'A project with no market added after Gate 1 has nothing to assess, so the item is correctly satisfied; what it guards is an assessment left open, which it reads directly.',
+      assumption: 'R6-Q18',
+    },
     // E3(a): Gate 10 complete for each market = that market's Gate 10 lane is
     // signed off (question 18). All active markets [ASSUMPTION: R5-Q44].
     {
@@ -3219,6 +3243,16 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // what it already was as Supporting.
       tier: 'Conditional',
       check: { kind: 'gateCheckDone', gate: '12', check: 'Loopback to NPD or change control recorded where needed' },
+    },
+    {
+      // Round 5 question 12: signing a market's Gate 12 lane is refused while its assessment is open, so the gate says why. [ASSUMPTION: R6-Q18]
+      id: 'sg12-market-additions',
+      label: 'Regulatory impact assessment complete for every market added after Gate 1',
+      tier: 'Mandatory',
+      check: { kind: 'marketAdditionsAssessed' },
+      nonVacuousBecause:
+        'A project with no market added after Gate 1 has nothing to assess, so the item is correctly satisfied; what it guards is an assessment left open, which it reads directly.',
+      assumption: 'R6-Q18',
     },
     {
       // Added 2026-07-28 (see the note above GATE_READINESS). Gate 12's own

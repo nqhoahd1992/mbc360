@@ -332,6 +332,7 @@ interface AppState {
   resolveGap: (projectId: string, gateId: string) => Promise<boolean>;
   assessChangeArea: (projectId: string, changeId: string, body: { area: string; outcome: string; note: string }) => Promise<boolean>;
   triageChange: (projectId: string, changeId: string, body: { outcome: string; confirmedGates: string[]; confirmedMarkets?: string[]; reason: string }) => Promise<boolean>;
+  assessMarketAddition: (projectId: string, market: string, body: Parameters<typeof projectsApi.assessMarketAddition>[2]) => Promise<boolean>;
 
 }
 
@@ -770,6 +771,8 @@ export const useAppStore = create<AppState>()(
           tryWriteSection(pid, (v) => projectsApi.assessChangeArea(pid, changeId, body, v)),
         triageChange: (pid, changeId, body) =>
           tryWriteSection(pid, (v) => projectsApi.triageChange(pid, changeId, body, v)),
+        assessMarketAddition: (pid, market, body) =>
+          tryWriteSection(pid, (v) => projectsApi.assessMarketAddition(pid, market, body, v)),
         addChange: (record) => {
           const pid = record.projectId;
           if (!pid || !get().projects.some((p) => p.identity.id === pid)) return Promise.resolve(false);

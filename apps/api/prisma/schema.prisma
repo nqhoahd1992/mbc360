@@ -236,7 +236,8 @@ model Project {
   impactAssessments  ImpactAssessment[]
   changeControlAssessments ChangeControlAssessment[]
   scaleUpAssessments       ScaleUpAssessment[]
-  reviewers        ProjectReviewer[]
+  marketAdditionAssessments MarketAdditionAssessment[]
+  reviewers       ProjectReviewer[]
   gates            GateRecord[]
   nextActions      NextAction[]
   phaseClosures    PhaseClosure[]
@@ -307,6 +308,34 @@ model ProjectReviewer {
   @@unique([projectId, roleKey])
   @@index([userId])
   @@map("project_reviewers")
+}
+
+// Round 5 question 12: the Regulatory impact assessment of a market added after Gate 1 — also the record of the approved scope
+// amendment to the Gate 1 baseline. One per market; "assessedAt" NULL = pending (the market cannot release). See
+// MarketAdditionAssessment in packages/shared/src/types.
+model MarketAdditionAssessment {
+  id                    String    @id @default(cuid())
+  project               Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId             String
+  market                String
+  addedBy               String?
+  addedAt               DateTime  @default(now())
+  differences           String[]
+  noDifference          Boolean   @default(false)
+  extraGates            String[]
+  affectedMarkets       String[]
+  inputFrom             String[]
+  conclusion            String?
+  equivalenceConclusion String?
+  evidenceLink          String?
+  assessedBy            String?
+  assessedAt            DateTime?
+  reopenedGateIds       String[]
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([projectId, market])
+  @@map("market_addition_assessments")
 }
 
 model ProjectMarket {

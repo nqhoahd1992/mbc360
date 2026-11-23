@@ -70,6 +70,7 @@ import { isDoneStatus } from './doneStatus';
 import { gate11ConditionalChanges, gate11HardBlockingChanges } from './changeImpact';
 import { listMessage } from './messageList';
 import { hasAffectedArea, isNoAffectedArea, isScaleUpPending, scaleUpListState } from './scaleUpAssessments';
+import { pendingMarketAdditions } from './marketAdditions';
 import { watchlistConclusionStale } from './registerDerived';
 import {
   ASEAN_CHECKLIST_REGISTER,
@@ -1351,6 +1352,9 @@ export function evaluateReadinessCheck(
     // not properly recorded (a Yes with no verification, a new formula's No with no waiver) is not an assessment yet.
     case 'scaleUpAssessed':
       return { evaluable: true, satisfied: scaleUpListState(project) === 'complete' };
+    // Round 5 question 12: no market added after Gate 1 is still waiting for Regulatory's impact assessment.
+    case 'marketAdditionsAssessed':
+      return { evaluable: true, satisfied: pendingMarketAdditions(project).length === 0 };
     case 'bomMatchesTakenUp':
       return { evaluable: true, satisfied: bomMatchesNotTakenUp(project, check.list, gateId).length === 0 };
     case 'everyMarket': {
@@ -1968,6 +1972,8 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
       return phaseSectionLink(gateId, 'sec-gate-checks');
     case 'scaleUpAssessed':
       return phaseSectionLink(gateId, 'sec-assessment-scaleUp');
+    case 'marketAdditionsAssessed':
+      return phaseSectionLink(gateId, 'sec-market-assessment');
     case 'everyMarket':
       return phaseSectionLink(gateId, 'sec-market-tracking');
     case 'everyMarketGateSignedOff':
@@ -2053,6 +2059,8 @@ function describeReadinessCheck(check: ReadinessCheck): string | undefined {
   switch (check.kind) {
     case 'scaleUpAssessed':
       return 'Record a scale-up assessment for each affected area, with none pending';
+    case 'marketAdditionsAssessed':
+      return 'Complete Regulatory\'s impact assessment for each market added after Gate 1';
     case 'gateCheckDone':
       return `Tick the Key Gate Check "${check.check}"`;
     case 'identityFieldFilled':

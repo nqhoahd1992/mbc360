@@ -110,6 +110,11 @@ export default function ProjectIdentificationCard({
         {editing && draft.length === 0 && (
           <div className="pic-markets-error">Add at least one market — required before Gate 1 can pass.</div>
         )}
+        {editing && locked && draft.some((m) => !identity.markets.includes(m)) && (
+          <div className="pic-markets-error" style={{ color: 'inherit' }}>
+            A market added after Gate 1 needs Regulatory's impact assessment before it can be approved for launch. It is recorded on the Gate 10, 11 and 12 tabs, under the market.
+          </div>
+        )}
       </div>
       {editing && dirty && (
         <div className="pic-footer">

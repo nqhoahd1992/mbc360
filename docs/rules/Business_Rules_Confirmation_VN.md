@@ -1101,6 +1101,22 @@ Quyết định lại bằng các lựa chọn thường: Proceed khi đã giả
 
 **(4)** Liên kết hợp lệ phải resolve về đúng dự án/sản phẩm và phạm vi liên quan, có trạng thái và owner xem xét được. Một dòng FC chỉ tính nếu resolve về CHG chủ; dòng FC đơn lẻ thì không. Trạng thái phụ thuộc mục đích: đánh giá có thể liên kết CHG đang mở, triển khai cần CHG đã duyệt, đóng cần final disposition đã xác minh. CHG đã hoàn tất trong quá khứ có thể là tham chiếu hợp lệ. Bản ghi bị rejected/cancelled không thể cấp phép triển khai. Giữ nguyên văn bản nhập vào và gắn cờ các tham chiếu cũ chưa resolve được thay vì bỏ đi.
 
+### Câu 12 — Thêm thị trường sau Gate 1
+
+**Kết luận:** ✅ đã xây (13/11/2026). Khác với những gì đã xây (trước đó thêm thị trường sau Gate 1 không mở lại gì và không có kiểm tra nào trước khi release). Cách đọc các chi tiết của chúng tôi được hỏi ở Round 6, câu 18.
+
+Chọn (3). Thêm một thị trường tạo track Gate 10-12 riêng và một đánh giá tác động bắt buộc của Regulatory, có đầu vào Safety / R&I / Quality khi cần. Cho tới khi đánh giá xong, thị trường mới không được release; các thị trường đang chạy tiếp tục trừ khi xác định có vấn đề chung.
+
+| Khác biệt xác định được | Review mở lại hoặc mở rộng |
+|---|---|
+| Hạn chế thành phần / mức cho phép | Gate 4 tuân thủ thành phần; Gate 5 và 7 nếu công thức hoặc an toàn đổi; Gate 8-9 nếu kiểm nghiệm hoặc sản xuất bị ảnh hưởng |
+| Claim / mục đích sử dụng / đối tượng | Gate 3 phạm vi claim; Gate 2 nếu đối tượng hoặc mức phơi nhiễm đổi; Gate 7-8 nếu an toàn hoặc bằng chứng phải đổi |
+| Pack, ngôn ngữ, cảnh báo hoặc khai báo | Gate 6 yêu cầu bao bì / nhãn và Gate 10-11 của thị trường liên quan; Gate 9 nếu tương thích chức năng của pack đổi |
+| Yêu cầu an toàn / phơi nhiễm mới | Gate 2 phơi nhiễm khi cần, Gate 4 và 7, và Gate 8-9 liên quan để kiểm chứng thêm |
+| Không có khác biệt đáng kể | Ghi kết luận tương đương có chữ ký của Regulatory và tái dùng bằng chứng đã duyệt; không Backtrack đại trà |
+
+Với thay đổi công thức Major, vẫn đánh giá lại Gate 4-9 và các quyết định release của thị trường bị ảnh hưởng. Không tự động vô hiệu các thị trường không liên quan dùng công thức đã duyệt không đổi. Các review Gate 12 trước đó vẫn là hồ sơ lịch sử; khởi động chu kỳ review / giám sát mới cho phần bị ảnh hưởng. Ghi thị trường mới thêm như một bản sửa phạm vi đã duyệt của baseline Gate 1.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

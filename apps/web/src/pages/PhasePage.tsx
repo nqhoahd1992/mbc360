@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { App, Button, Empty, Tooltip } from 'antd';
 import { ArrowDownOutlined, ArrowRightOutlined, CheckOutlined, LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -42,15 +42,14 @@ import SignOffBlock from '../components/SignOffBlock';
 import NextActionsCard from '../components/NextActionsCard';
 import { currentMarketTracks, legacyOnMarketTracks } from '@mbc360/shared/utils/postLaunch';
 import MarketTrackingCard from '../components/MarketTrackingCard';
+import { MarketAssessmentReopenedNotice } from '../components/MarketAdditionAssessments';
+import GateAssessments from '../components/GateAssessments';
+import { pendingMarketAdditions } from '@mbc360/shared/utils/marketAdditions';
 import PostLaunchReviewCard from '../components/PostLaunchReviewCard';
 import GeneratedNaAcks from '../components/GeneratedNaAcks';
 import SectionJumpButton from '../components/SectionJumpButton';
 import GateReadinessPanel from '../components/GateReadinessPanel';
-import AssessmentBlock from '../components/AssessmentBlock';
 import { isFamilyUseSelected } from '../components/assessmentStatus';
-import StudyApprovalCard from '../components/StudyApprovalCard';
-import ChangeControlAssessments from '../components/ChangeControlAssessments';
-import ScaleUpAssessments from '../components/ScaleUpAssessments';
 import MarketSwitch from '../components/MarketSwitch';
 import { effectiveMarket, gateMarkets } from '../utils/gateMarket';
 import { ASSESSMENT_HOMES, assessmentAnchor } from '@mbc360/shared/config/assessments';
@@ -724,7 +723,16 @@ export default function PhasePage() {
 
             {/* Phase Gate Flow comes right after Project Identification, as in the SME's workbook: its Stage
                 status is the gate's current state, so it is read and kept up to date first. */}
-            {market && <MarketSwitch lanes={gateLanes} value={market} blocking={laneBlocking} onChange={setMarket} />}
+            {market && (
+              <MarketSwitch
+                lanes={gateLanes}
+                value={market}
+                blocking={laneBlocking}
+                assessmentPending={pendingMarketAdditions(project).map((a) => a.market)}
+                onChange={setMarket}
+              />
+            )}
+            <MarketAssessmentReopenedNotice entries={project.marketAdditionAssessments ?? []} gateId={tab} gatePassed={isGatePassed(project, tab)} />
 
             <div id="sec-gate-flow">
               <GateFlowTable project={project} gateIds={[tab]} layout="card" hideReadiness part="flow" />
@@ -798,21 +806,8 @@ export default function PhasePage() {
               </div>
             ))}
 
-            {assessments.map((a) => (
-              a.key === 'foreseeableContact' ? null : a.key === 'changeControl' ? (
-                <ChangeControlAssessments key={a.key} project={project} market={market} />
-              ) : a.key === 'scaleUp' ? (
-                <ScaleUpAssessments key={a.key} project={project} />
-              ) : a.key === 'humanStudy' ? (
-                <Fragment key={a.key}>
-                  <AssessmentBlock project={project} which={a.key} />
-                  {/* The study approval workflow (rule C2): the route a human-participant study goes through. Not part of the workbook's sheet. */}
-                  {project.assessments.humanStudyPlanned !== 'No' && <StudyApprovalCard projectId={project.identity.id} approvals={project.studyApprovals} />}
-                </Fragment>
-              ) : (
-                <AssessmentBlock key={a.key} project={project} which={a.key} />
-              )
-            ))}
+            {/* Every assessment of this gate, in one card with a tab each when there is more than one. */}
+            <GateAssessments project={project} homes={assessments} market={market} />
 
             {keyChecks.length > 0 && (
               <div id="sec-gate-checks">

@@ -1027,6 +1027,27 @@ export interface ScaleUpAssessment {
   waiverRiBy?: string;
 }
 
+// Round 5 question 12: a market added after Gate 1 is an approved scope amendment to the Gate 1 baseline. It gets its own Gates 10-12
+// track AND a mandatory Regulatory impact assessment (Safety / R&I / Quality input as needed); until that is complete the new market
+// cannot release. What the assessment finds decides which earlier reviews reopen or extend (utils/marketAdditions.ts). One per market.
+export interface MarketAdditionAssessment {
+  id: string;
+  market: string;
+  addedBy?: string; // who added the market (the session, never the client)
+  addedAt?: string;
+  differences: string[]; // labels from MARKET_DIFFERENCE_KINDS; empty when Regulatory found no substantive difference
+  noDifference: boolean; // Regulatory's conclusion that the market's requirements do not differ from the project's other markets
+  extraGates: string[]; // the conditional reviews ("if the formula changes...") Regulatory confirms are needed
+  affectedMarkets: string[]; // "unless a shared issue is identified": other markets of the project the same finding reaches
+  inputFrom: string[]; // Safety / R&I / Quality, where their input was taken
+  conclusion?: string; // what differs and why the reviews were chosen
+  equivalenceConclusion?: string; // required with noDifference: Regulatory's equivalence reasoning, reusing the approved evidence
+  evidenceLink?: string;
+  assessedBy?: string; // the signed-in holder of the Regulatory function; absent while the assessment is pending
+  assessedAt?: string;
+  reopenedGateIds: string[]; // the gates this assessment actually reopened (those that stood passed)
+}
+
 export interface ProjectAssessments {
   // Question 8 — "Change Control required?" is NOT held here any more: it is a LIST, one entry per
   // post-market finding (`ProjectData.changeControlAssessments`), since 2026-10-13.
@@ -1715,6 +1736,8 @@ export interface ProjectData {
   changeControlAssessments: ChangeControlAssessment[];
   // Round 5 question 7, one per affected area — see ScaleUpAssessment.
   scaleUpAssessments: ScaleUpAssessment[];
+  // Round 5 question 12, one per market added after Gate 1 — see MarketAdditionAssessment.
+  marketAdditionAssessments: MarketAdditionAssessment[];
   // The edit history of those entries, read from the audit trail (never written by a store action).
   readinessAckLog: ReadinessAckEvent[];
   phaseSignOffLog: PhaseSignOffEvent[]; // immutable log of phase sign-off signatures and withdrawals

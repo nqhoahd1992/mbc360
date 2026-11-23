@@ -659,6 +659,8 @@ function sourcesOf(check: ReadinessCheck): EvidenceSource[] {
     case 'everyMarket':
     case 'postLaunchReviewsRecorded':
       return [{ label: 'market tracks', lockRef: 'NONE', note: 'setMarketTracks has no gate lock' }];
+    case 'marketAdditionsAssessed':
+      return [{ label: 'added-market assessments', lockRef: 'NONE', note: 'assessMarketAddition has no gate lock — an assessment is revisable by Regulatory with a reason (Round 5 question 12)' }];
     case 'changeControlNoHardImpact':
     case 'changeControlNoAdminImpact':
       return [{ label: 'Change Control (global)', lockRef: 'NONE', note: 'has its own soft-lock, not a freeze' }];

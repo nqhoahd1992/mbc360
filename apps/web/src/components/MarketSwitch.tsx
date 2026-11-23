@@ -17,12 +17,15 @@ export default function MarketSwitch({
   lanes,
   value,
   blocking,
+  assessmentPending = [],
   onChange,
 }: {
   lanes: string[];
   value: string;
   /** How many items hold each market's lane. */
   blocking: Record<string, number>;
+  /** Markets added after Gate 1 whose Regulatory impact assessment is still open (Round 5 question 12). */
+  assessmentPending?: string[];
   onChange: (market: string) => void;
 }) {
   const [pending, startTransition] = useTransition();
@@ -44,6 +47,7 @@ export default function MarketSwitch({
       <span className="ms-opt">
         {m}
         <span className={`ms-n ${n > 0 ? 'ms-bad' : 'ms-ok'}`}>{n > 0 ? `${n} blocking` : 'ready'}</span>
+        {assessmentPending.includes(m) && <span className="ms-n ms-bad"> · assessment pending</span>}
       </span>
     );
   };

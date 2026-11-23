@@ -479,3 +479,34 @@ You told us there is one master change record, the CHG, with the other books as 
 **(e)** Is this the right split? *Read from the change record:* title, SKU, who asked for the change and when, the explanation, the reasons, who made the change, the communication to the market and who acknowledged it, and whether it is closed. *The register's own overlay:* the actions of NPD, Regulatory, Manufacturing and Marketing & Sales, the re-registration question, the four-state market-communication question, and the Final Approver's decision and signature.
 
 **(f)** Which changes belong in the formulation view? We take those whose affected area is *Formula / ingredient* or *Formula version / pH / process*, or whose trigger is one the catalogue files under Formula.
+
+
+## Question 18 — A market added after Gate 1: how should we read the details your answer leaves open?
+
+*Where in the application:* the **Gate 10** and **Gate 11** tabs, in the card **Markets added after Gate 1**, above **Market Regulatory & Launch Tracking**; markets are added on the **New Project** form and in **Project Identification**.
+
+You told us that a market added after Gate 1 gets its own Gates 10-12 track and a mandatory Regulatory impact assessment, that it cannot release until the assessment is complete while the other markets carry on, and which reviews reopen for each kind of difference. We have built it. Where your answer leaves a detail open we read it as follows:
+
+- **The assessment is opened when the market is added after Gate 1 has passed.** Before that the market simply belongs to Gate 1. The record is the "approved scope amendment to the Gate 1 baseline".
+- **Only the person who holds the Regulatory function on the project records it**, as themselves; an administrator does not stand in. Input from Safety, R&I or Quality is ticked on the record, not signed.
+- **The reviews your table states outright reopen by themselves** (ingredient: Gate 4; claim: Gate 3; pack: Gate 6; safety: Gates 4 and 7) if that gate has passed. **The conditional ones** ("Gates 5 and 7 if the formula or safety changes", "Gate 9 if functional pack compatibility changes" …) **are chosen by Regulatory** in the assessment, because the system cannot judge the condition.
+- **"Relevant market Gates 10-11"** we read as the new market's own lane, which is open anyway because it has no signature yet; it is only recorded.
+- **"No substantive difference"** needs Regulatory's equivalence conclusion and reopens nothing.
+- **"Cannot release"** means: no launch approval and no actual launch date for that market, and no signing of its Gate 10-12 lane. Gates 10, 11 and 12 also list the open assessment as a requirement, because those gates already need every market to be ready (see question 19).
+- **"Unless a shared issue is identified"**: Regulatory may name other markets of the project that the same finding reaches. For those markets the Gate 10 and 11 sign-offs are reopened (the earlier signatures stay in the history) and a market already on sale gets a linked Gate 12 review beside its earlier ones. Markets not named keep every decision.
+- **A Major formula change** is not touched by this: it applies to the whole project's formula, and a version already on sale in a market keeps its own track and signatures. We read your "do not automatically invalidate unrelated markets using an unchanged approved formula" as already true.
+- **A recorded assessment can be revised** by the same person with a reason; the earlier one stays in the history and gates already reopened stay reopened. A market that has been assessed cannot be deleted, only marked Withdrawn.
+
+**(a)** Is the person who holds the Regulatory function the right one to record the assessment?
+
+**(b)** Is it right that Regulatory chooses the conditional reviews, or should some of them be automatic?
+
+**(c)** Is "relevant market Gates 10-11" the new market's own lane?
+
+**(d)** Does "cannot release" mean the three things above?
+
+**(e)** Is it acceptable that the open assessment also holds Gates 10 and 11 as a whole, given that "existing markets continue"?
+
+**(f)** May a recorded assessment be revised?
+
+**(g)** Is it right that only Regulatory names the other markets a finding reaches, and that for those markets we reopen their Gate 10 and 11 sign-offs and open a Gate 12 review only for a market already on sale?

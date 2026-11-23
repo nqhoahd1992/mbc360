@@ -1101,6 +1101,22 @@ Re-decide using the normal options: Proceed once fully resolved, Proceed with Co
 
 **(4)** A valid link resolves to the right project/product and relevant scope, with a reviewable status and owner. An FC row counts only if it resolves to the master CHG; an isolated FC row does not. Status depends on purpose: an assessment can link an open CHG, implementation needs an approved CHG, and closure needs verified final disposition. A historical completed CHG can be a valid reference. A rejected/cancelled record cannot authorise implementation. Preserve imported text and flag unresolved legacy references rather than discarding them.
 
+### Question 12 — Adding a market after Gate 1
+
+**Verdict:** ✅ built (2026-11-13). It differs from what was built (a market could be added after Gate 1 with nothing reopened and no check before it could release). Our readings of the details are asked in Round 6, question 18.
+
+Choose (3). Adding a market creates its own Gates 10-12 track and a mandatory Regulatory impact assessment, with Safety / R&I / Quality input as needed. Until the assessment is complete the new market cannot release; existing markets continue unless a shared issue is identified.
+
+| Difference identified | Reviews to reopen or extend |
+|---|---|
+| Ingredient restriction / permitted level | Gate 4 ingredient compliance; Gates 5 and 7 if formula or safety changes; Gates 8-9 if testing or manufacture is affected |
+| Claim / intended use / user population | Gate 3 claim scope; Gate 2 where users or exposure change; Gates 7-8 where safety or evidence must change |
+| Pack, language, warning or declaration | Gate 6 packaging / label requirements and the relevant market Gates 10-11; Gate 9 if functional pack compatibility changes |
+| New safety / exposure requirement | Gate 2 exposure as needed, Gates 4 and 7, and the relevant Gates 8-9 for additional verification |
+| No substantive difference | Record Regulatory's signed equivalence conclusion and reuse the approved evidence; no blanket backtrack |
+
+For a Major formula change, reassessment of Gates 4-9 and the affected market release decisions stays. Do not automatically invalidate unrelated markets using an unchanged approved formula. Earlier Gate 12 reviews remain historical records; start the new affected review / monitoring cycle. Record the added market as an approved scope amendment to the Gate 1 baseline.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

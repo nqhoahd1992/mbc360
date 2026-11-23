@@ -668,3 +668,25 @@ export function createFormulaVersion(
     body: JSON.stringify({ ...input, expectedVersion }),
   });
 }
+
+// Round 5 question 12: Regulatory's impact assessment of a market added after Gate 1.
+export const assessMarketAddition = (
+  id: string,
+  market: string,
+  body: {
+    differences: string[];
+    noDifference: boolean;
+    extraGates: string[];
+    affectedMarkets: string[];
+    inputFrom: string[];
+    conclusion?: string;
+    equivalenceConclusion?: string;
+    evidenceLink?: string;
+    revisionReason?: string;
+  },
+  v: number,
+) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/markets/${encodeURIComponent(market)}/addition-assessment`, {
+    method: 'POST',
+    body: JSON.stringify({ ...body, expectedVersion: v }),
+  });

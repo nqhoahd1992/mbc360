@@ -19,11 +19,14 @@ export default function DrawerTabs({
   tabs,
   activeKey,
   onChange,
+  forceRender,
 }: {
   tabs: DrawerTab[];
   // Controlled when given (a page can keep the tab while the drawer moves to the next record); otherwise the component keeps its own.
   activeKey?: string;
   onChange?: (key: string) => void;
+  // Draw every tab at once (hidden until chosen), so something inside an unopened tab can still be found and scrolled to.
+  forceRender?: boolean;
 }) {
   const [own, setOwn] = useState(tabs[0]?.key);
   const current = activeKey ?? own;
@@ -47,6 +50,7 @@ export default function DrawerTabs({
         ),
         // Each tab is its own spacing container. The drawers this replaced got their gap between sections from a wrapper
         // (a grid with a gap) that now sits outside the tabs, so the blocks inside a tab would otherwise touch.
+        forceRender,
         children: (
           <div className="dt-pane" style={{ display: 'grid', rowGap: 28 }}>
             {t.children}

@@ -1402,7 +1402,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q19 · R6-Q17 | **11 (1)(2)** (đã trả lời 05/11, xây phần lõi 11/11/2026; R6-Q17 hỏi lại các chỗ ta đọc và liệt kê phần chưa xây) (11(3) cũ đã quyết SW-43) | Chín nơi ghi thay đổi: một loại sổ hay nhiều; ranh giới; Major version có tạo Change Control không |
 | ✅ R5-Q18 · R6-Q17 | **11 (3)** (đã trả lời, chưa xây — xem R6-Q17) | Sổ do Final Approver kiểm soát (trước là "NP Controlled") là sổ riêng hay thẩm quyền trên sổ chung |
 | ✅ R5-Q27 · R6-Q17 | **11 (4)** (đã trả lời, đã xây) | "Một bản ghi Change Control hợp lệ" của câu 8 — sổ nào được tính |
-| R5-Q49 | **12(a)** | Thêm thị trường sau Gate 1 có mở lại gate trước không |
+| ✅ R5-Q49 · R6-Q18 | **12** (đã trả lời 05/11, xây 13/11/2026; R6-Q18 hỏi lại các chỗ ta đọc) | Thêm thị trường sau Gate 1 có mở lại gate trước không |
 | ✅ R5-Q52 | — (SW-53) | Phiên bản Major mở lại cả các dòng Gate 10–12 của dự án — đã quyết |
 | R5-Q21 | **13** | Đóng sổ hai chữ ký theo từng gate — đã build theo chủ dự án |
 | R5-Q22 | **14** | "N/A kèm lý do" ở Phase 2–4 (đã build 30/10) |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q18 · Thêm thị trường sau Gate 1: các chỗ ta đọc câu trả lời (Vòng 5 câu 12) 🟡
+
+**Lộ ra 13/11/2026, khi xây câu 12.** SME chọn đánh giá tác động bắt buộc của Regulatory và bảng "khác biệt → các review mở lại", nhưng có chữ "if" ở nhiều gate và không nói ai ghi đánh giá hay "release" cụ thể là gì. Cách đọc của ta: (1) **thêm thị trường sau khi Gate 1 đã passed** tạo một đánh giá chờ (`market_addition_assessments`, bản ghi bản sửa phạm vi Gate 1); thêm trước đó chỉ là thuộc Gate 1, không đánh giá; (2) **người ghi** là người giữ chức năng **Regulatory** của dự án (SW-57: admin hay area khác không thay), ghi bằng chính mình; "đầu vào Safety/R&I/Quality" là ô chọn ghi nhận, không phải đồng ký; (3) **các review nêu thẳng** (Ingredient → Gate 4; Claim → Gate 3; Pack → Gate 6; An toàn → Gate 4 và 7) tự mở lại nếu gate đó **đang passed**, còn các review có điều kiện ("Gates 5 and 7 if formula or safety changes"…) do Regulatory **chọn** trong đánh giá — hệ thống không tự đoán điều kiện; (4) "Gate 10–11 liên quan của thị trường" ta đọc là làn của **chính thị trường mới** (vốn chưa có chữ ký nên đã mở), chỉ ghi lại trong đánh giá; (5) "không khác biệt đáng kể" cần kết luận tương đương, **không mở lại gì**; (6) **"không release"** = chặn ghi nhận launch approval / ngày launch thật của thị trường đó và chặn ký làn Gate 10–12 của nó, cộng mục readiness bắt buộc ở Gate 10, 11 và 12 (vì Gate 10–11 hiện đòi mọi thị trường sẵn sàng — xem R5-Q44); (7) đánh giá đã ghi **sửa lại được** bởi cùng người giữ chức năng kèm lý do (bản cũ giữ trong audit), gate đã mở vẫn mở; (8) thị trường đã được đánh giá **không xoá được** (đánh dấu Withdrawn); (9) "thị trường khác không bị vô hiệu nếu công thức không đổi" — ta không tự mở lại thị trường khác; "trừ khi có vấn đề chung" là ô **Other markets also affected** do Regulatory điền: với các thị trường đó chữ ký Gate 10 và 11 được mở lại (giữ trong audit `gate.market_lanes_reopened`) và thị trường **đã bán** (có ngày launch thật, chưa withdrawn) có thêm review Gate 12 liên kết `market-added:<thị trường mới>` (không xoá review cũ); thị trường chưa bán thì lịch của nó bắt đầu từ ngày launch của chính nó; (10) **thay đổi công thức Major** không bị chạm: nó áp cho công thức cả dự án, phiên bản đã bán giữ track và chữ ký riêng (SW-53), nên câu "không tự động vô hiệu thị trường không liên quan" đã đúng sẵn.
+
+**Câu hỏi:** (a) ai ghi đánh giá — người giữ chức năng Regulatory của dự án có đúng không; (b) các review có điều kiện do Regulatory chọn như ta làm có đúng không, hay có mặc định khác; (c) "Gate 10–11 liên quan của thị trường" có phải làn của thị trường mới; (d) "không release" có đúng là chặn launch approval, ngày launch thật và ký làn Gate 10–12 của thị trường đó; (e) mục readiness ở Gate 10 và 11 chặn cả gate khi một thị trường còn chờ đánh giá có phù hợp "các thị trường khác tiếp tục"; (f) đánh giá đã ghi có được sửa lại không; (g) chỉ Regulatory nêu các thị trường khác bị chạm, mở lại Gate 10–11 của chúng và chỉ mở review Gate 12 cho thị trường đã bán có đúng không.
+
+**Nếu trả lời khác:** `utils/marketAdditions.ts` (`MARKET_DIFFERENCE_KINDS`, `MARKET_ADDITION_FUNCTION_KEYS`, `marketAdditionScope`); `setMarkets`, `assessMarketAddition` và các chốt chặn trong `setMarketTracks`/`signGateSignOff` (`projects.service.ts`); mục `sg10/11/12-market-additions` (`gateReadiness.ts`); `MarketAdditionAssessments.tsx` [ASSUMPTION: R6-Q18].
 
 #### R6-Q17 · Một bản ghi CHG chủ: các chỗ ta đọc câu trả lời và phần chưa xây (Vòng 5 câu 11) 🟡
 
@@ -2327,7 +2335,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — trigger `scaleUpRiskIdentified`.
 
-#### R5-Q49 · Thêm thị trường sau Gate 1 có phải mở lại các gate trước không 🔴
+#### R5-Q49 · Thêm thị trường sau Gate 1 có phải mở lại các gate trước không ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 12) và đã xây 13/11/2026 — phần dưới là lịch sử.** SME chọn (3): thị trường thêm sau Gate 1 có track Gate 10–12 riêng và một **đánh giá tác động của Regulatory bắt buộc** (có đầu vào Safety / R&I / Quality khi cần); tới khi xong, thị trường đó không được release, các thị trường đang chạy tiếp tục trừ khi có vấn đề chung. Khác biệt tìm thấy quyết định mở lại gì (Ingredient → Gate 4; Claim/mục đích/đối tượng → Gate 3; Pack/ngôn ngữ/cảnh báo → Gate 6 và Gate 10–11 của thị trường; An toàn/phơi nhiễm → Gate 4 và 7; kèm các gate có điều kiện), "không khác biệt đáng kể" thì ghi kết luận tương đương có chữ ký của Regulatory, tái dùng bằng chứng đã duyệt, không Backtrack. Thị trường thêm là một **bản sửa phạm vi đã duyệt** của baseline Gate 1. → **R6-Q18**. `npm run verify:market-additions`.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục Q24/F4).** F4: thêm thị trường tạo track mới, và *"may re-trigger earlier gates if that market differs"*. Giờ thêm thị trường được cả sau Gate 1, không cần Backtrack. Việc mở lại gate trước chưa làm. Bỏ thị trường đã có lịch sử thì phải đánh dấu Withdrawn, không xoá.
 

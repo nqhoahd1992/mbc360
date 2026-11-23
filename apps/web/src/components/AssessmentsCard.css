@@ -96,6 +96,13 @@
 .as-areas li { padding: 2px 0; break-inside: avoid; }
 @media (max-width: 640px) { .as-areas ul { columns: 1; } }
 
+/* Several assessments on one gate: one card, a tab each (GateAssessments.tsx). The assessments inside lose their own card chrome. */
+.as-tabs-card { overflow: hidden; }
+.as-tabs-card .dt-tabs .ant-tabs-nav { margin: 0; padding: 0 20px; }
+.as-tabs-card .dt-pane { row-gap: 0; }
+.as-tabs-card .as-card .as-kicker { display: none; }
+.as-tabs-card .c-card.as-card { border: 0; border-radius: 0; box-shadow: none; background: transparent; margin: 0; }
+
 /* Header: the title block, and on a locked answer the state tag at its far end. */
 .as-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }
 .as-head-text { min-width: 0; }

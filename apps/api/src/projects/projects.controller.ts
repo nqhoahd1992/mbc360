@@ -850,6 +850,29 @@ export class ProjectsController {
     return this.projects.setMarkets(user, id, body.markets, body.expectedVersion);
   }
 
+  // Round 5 question 12: Regulatory's impact assessment of a market added after Gate 1.
+  @Post(':id/markets/:market/addition-assessment')
+  assessMarketAddition(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('market') market: string,
+    @Body()
+    body: {
+      differences?: string[];
+      noDifference?: boolean;
+      extraGates?: string[];
+      affectedMarkets?: string[];
+      inputFrom?: string[];
+      conclusion?: string;
+      equivalenceConclusion?: string;
+      evidenceLink?: string;
+      revisionReason?: string;
+      expectedVersion: number;
+    },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.assessMarketAddition(user, id, market, body, body.expectedVersion);
+  }
+
   @Put(':id/next-actions')
   setNextActions(
     @CurrentUser() user: SessionUser,
