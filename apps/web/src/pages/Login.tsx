@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Button, Spin } from 'antd';
 import type { AccessDenial } from '../auth/useSession';
 import Notice from '../components/Notice';
+import { Logo } from '../components/Logo';
 import '../styles/concept.css';
 import './Login.css';
 
@@ -160,9 +161,7 @@ export default function Login({ denied }: { denied?: AccessDenial | null }) {
     <div className="concept-tokens ln">
       <main className="c-card ln-card">
         <div className="ln-brand">
-          <span className="ln-mark" aria-hidden>
-            M
-          </span>
+          <Logo style={{ fontSize: 13 }} />
           <div>
             <div className="ln-name">MBc360</div>
             <div className="ln-sub">Development &amp; Quality System</div>

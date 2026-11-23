@@ -401,7 +401,7 @@ export default function GateFlowTable({
                 )}
                 {!r.passed && !r.awaitingDecision && r.record.status !== 'Gap' && r.isCurrent && (
                   <Tooltip title="Current gate">
-                    <RightCircleFilled style={{ color: '#0958d9', marginRight: 6 }} />
+                    <RightCircleFilled style={{ color: '#ad203a', marginRight: 6 }} />
                   </Tooltip>
                 )}
                 {r.locked && (
@@ -425,7 +425,7 @@ export default function GateFlowTable({
                       .map((t) => t.market)
                       .join(', ')} — launch approval is hard-blocked per market until its PIF is Approved (see Market Tracking).`}
                   >
-                    <GlobalOutlined style={{ color: '#0958d9', marginLeft: 6 }} />
+                    <GlobalOutlined style={{ color: '#ad203a', marginLeft: 6 }} />
                   </Tooltip>
                 )}
               </span>

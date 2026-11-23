@@ -51,6 +51,7 @@ import IntegrationsPage from './pages/IntegrationsPage';
 import MyAccount from './pages/MyAccount';
 import Login from './pages/Login';
 import { HEADER_HEIGHT, TEXT } from './theme/tokens';
+import { Logo } from './components/Logo';
 
 const { Header, Content } = Layout;
 
@@ -216,6 +217,7 @@ function Shell() {
         }}
       >
         <div style={{ textAlign: 'center' }}>
+          <Logo style={{ fontSize: 30, marginBottom: 8 }} />
           <div style={{ fontWeight: 700, fontSize: 20, letterSpacing: 0.2 }}>MBc360</div>
           <div style={{ color: TEXT.secondary, fontSize: 13 }}>Development &amp; Quality System</div>
         </div>
@@ -446,14 +448,11 @@ function Shell() {
 }
 
 export default function App() {
-  // colorPrimary is #0958d9, not antd's default #1677ff (2026-10-02): white
-  // text on #1677ff is 4.1:1, under the 4.5:1 WCAG AA minimum for body text —
-  // the primary buttons and the selected sidebar item both carry white text on
-  // it. #0958d9 is antd's own next blue step (6.6:1). colorInfo and colorLink
-  // are set too: antd derives links from colorInfo, not colorPrimary, so they
-  // stayed #1677ff (4.1:1 on white). styles/concept.css --c-primary must match.
+  // Brand colour #ad203a (2026-11-23). colorInfo and colorLink are set too:
+  // antd derives links from colorInfo, not colorPrimary. styles/concept.css
+  // --c-primary must match.
   return (
-    <ConfigProvider theme={{ token: { colorPrimary: '#0958d9', colorInfo: '#0958d9', colorLink: '#0958d9', borderRadius: 6 } }}>
+    <ConfigProvider theme={{ token: { colorPrimary: '#ad203a', colorInfo: '#ad203a', colorLink: '#ad203a', borderRadius: 6 } }}>
       {/* antd's `App` component (2026-08-26, fixes "[antd: Modal] Static
           function can not consume context like dynamic theme"): the static
           Modal.confirm/message/notification functions render outside React's

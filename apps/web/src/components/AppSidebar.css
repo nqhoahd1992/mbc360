@@ -14,20 +14,23 @@
   width: 64px;
   flex-shrink: 0;
   padding: 12px 0;
-  background: #001529;
+  background: #2a171b;
   overflow-y: auto;
 }
 .sb-mark {
   display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
+  justify-items: center;
+  width: 100%;
   margin-bottom: 8px;
-  border-radius: 6px;
-  background: var(--c-primary);
+  padding: 4px 0;
+}
+.sb-mark-name {
+  margin-top: 6px;
   color: #fff;
-  font-weight: 700;
   font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  line-height: 1;
 }
 .sb-mark:hover,
 .sb-mark:focus-visible {

@@ -14,9 +14,9 @@
   --c-text-3: #6b6b6b;
   --c-border: #d9d9d9;
   --c-border-2: #f0f0f0;
-  --c-primary: #0958d9; /* = App.tsx colorPrimary */
-  --c-primary-light: #e6f4ff;
-  --c-link: #0958d9;
+  --c-primary: #ad203a; /* = App.tsx colorPrimary */
+  --c-primary-light: #faf0f2;
+  --c-link: #ad203a;
   --c-ok: #237804;
   --c-ok-dot: #52c41a;
   --c-ok-bg: #f6ffed;

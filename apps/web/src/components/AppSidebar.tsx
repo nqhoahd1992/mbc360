@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useTransition, type MouseEvent, type ReactNode } from 'react';
 import { Dropdown, Tooltip } from 'antd';
+import { Logo, SITE_NAME } from './Logo';
 import {
   AppstoreOutlined,
   CheckCircleOutlined,
@@ -104,7 +105,8 @@ export default function AppSidebar({ isAdmin, narrow }: AppSidebarProps) {
             the header instead (App.tsx). */}
         {!narrow && <AppsMenuButton divider="below" />}
         <Link to="/" className="sb-mark" aria-label="MBc360 — Dashboard" onClick={() => setOverride(null)}>
-          M
+          <Logo className="mbc-logo--on-dark" style={{ fontSize: 9 }} />
+          <span className="sb-mark-name">{SITE_NAME}</span>
         </Link>
         {railButton('project', <ProjectOutlined />, 'Project workspace')}
         {railEntries.map((e) => {

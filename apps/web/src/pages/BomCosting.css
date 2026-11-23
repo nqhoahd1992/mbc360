@@ -81,8 +81,8 @@
 .cc-margin { font-size: 26px; font-weight: 600; line-height: 1.2; }
 .cc-bar { display: flex; height: 20px; margin: 12px 0 6px; overflow: hidden; border-radius: 4px; background: var(--c-border-2); }
 .cc-seg { display: block; height: 100%; }
-.cc-seg-formula { background: #0958d9; }
-.cc-seg-packaging { background: #69b1ff; }
+.cc-seg-formula { background: #ad203a; }
+.cc-seg-packaging { background: #e0566c; }
 .cc-seg-labour { background: #13a8a8; }
 .cc-seg-freight { background: #d48806; }
 .cc-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; color: var(--c-text-2); font-size: 12px; }

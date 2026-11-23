@@ -1,0 +1,26 @@
+/* Company mark; all sizes in em so one font-size scales it. */
+.mbc-logo {
+  display: inline-block;
+  user-select: none;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  font-family: 'Segoe UI', -apple-system, 'SF Pro Text', Roboto, sans-serif;
+}
+.mbc-logo-line { display: block; white-space: nowrap; font-weight: 500; }
+.mbc-logo-brand { color: #ad203a; }
+.mbc-logo-grey { color: #666; }
+.mbc-logo-line2 { display: flex; align-items: baseline; }
+.mbc-logo-group { font-weight: 700; color: #666; }
+.mbc-logo-bar {
+  flex: 1;
+  height: 0.5em;
+  background: radial-gradient(circle at -0.245em center, transparent calc(0.35em - 0.5px), #ad203a calc(0.35em + 0.5px));
+}
+/* On the dark rail the grey words need to be light. */
+.mbc-logo--on-dark .mbc-logo-brand,
+.mbc-logo--on-dark .mbc-logo-bar { color: #e0566c; }
+.mbc-logo--on-dark .mbc-logo-grey,
+.mbc-logo--on-dark .mbc-logo-group { color: #fff; }
+.mbc-logo--on-dark .mbc-logo-bar {
+  background: radial-gradient(circle at -0.245em center, transparent calc(0.35em - 0.5px), #e0566c calc(0.35em + 0.5px));
+}

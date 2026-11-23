@@ -53,7 +53,7 @@
   height: 32px;
   border-radius: 6px;
   background: var(--intg-primary-light);
-  color: #0958d9;
+  color: #ad203a;
   font-size: 16px;
 }
 .intg-name-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

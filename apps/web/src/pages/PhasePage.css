@@ -92,5 +92,5 @@ tr.ph-flash > td { animation: ph-flash-cell 1s ease-out; }
 .ph-go-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
 .ph-go-kicker { font-size: 12px; opacity: 0.8; }
 .ph-go-title { font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
-.ph-signed-view { margin-left: auto; color: var(--c-link, #0958d9); }
+.ph-signed-view { margin-left: auto; color: var(--c-link, #ad203a); }
 .ph-signed-line:hover .ph-signed-view { text-decoration: underline; }
