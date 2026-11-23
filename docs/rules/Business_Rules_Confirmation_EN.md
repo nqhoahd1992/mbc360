@@ -1127,6 +1127,14 @@ For a Major formula change, reassessment of Gates 4-9 and the affected market re
 
 **(c)** One person signing twice is one person. Where independent review is required, block closure until a distinct qualified reviewer is assigned. At low-risk working/reference records, remove the unnecessary second signature rather than show a permanent warning. Apply the person rules in Question 23.
 
+### Question 14 — "Not applicable" in the Phase 2-4 requirements
+
+**Verdict:** ✅ built (2026-11-13). It differs from what was built (an N/A with a rationale settled any row, with nobody acknowledging it and nothing that could never be waived). Our readings of the details are asked in Round 6, question 20.
+
+Answer Yes, with a specific rationale and relevant reviewer acknowledgement for critical items. The list of universally required assessments must never be waived: project identity/use/market scope, formula identity and traceability, general ingredient restriction/caution screening, final safety conclusion, product-quality/stability/microbiological-risk assessment, applicable dossier/compliance closure, approved release controls and due post-market review. Individual tests or conditional compartments may be N/A within those assessments; the assessment itself remains required.
+
+Infant/baby rows can be N/A where their stated trigger genuinely does not apply, including justified test waivers. Once infant use/contact is in scope, the core infant safety conclusion cannot be waived. Record a justified N/A for an entire compartment when it is outside scope.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

@@ -1,10 +1,12 @@
-import { Input, Select } from 'antd';
+import { Button, Input, Select } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import type { RequirementItem, RequirementStatus } from '@mbc360/shared/types';
 import type { RequirementColumnKey } from '@mbc360/shared/config/phases';
 import { COMPARTMENT_YNNA, REQUIREMENT_NOT_APPLICABLE, REQUIREMENT_PRIORITIES, WORK_STATUSES } from '@mbc360/shared/config/gates';
 import { isDoneStatus } from '@mbc360/shared/utils/doneStatus';
-import { isMandatoryRequirementRow, requirementRowSettled } from '@mbc360/shared/utils/gateProgress';
+import { isMandatoryRequirementRow, requirementNeverNotApplicable, requirementRowSettled } from '@mbc360/shared/utils/gateProgress';
+import { requirementNaAckSlots } from '@mbc360/shared/utils/requirementNaAck';
+import { useSession } from '../auth/useSession';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import RequiredMark from './RequiredMark';
@@ -62,6 +64,9 @@ export default function RequirementTable({
   // on a section that declares its own columns it is the user's to fill in.
   const ownerEditable = !!visibleColumns;
   const setSection = useAppStore((s) => s.setRequirementSection);
+  const acknowledgeNa = useAppStore((s) => s.acknowledgeRequirementNa);
+  const reviewers = useAppStore((s) => s.projects.find((p) => p.identity.id === projectId)?.identity.reviewers);
+  const { user: me } = useSession();
   const { draft, dirty, update, markSaved, discard } = useDraft(items);
 
   // 'N/A' is offered only where the section declares it — the Phases 2-4
@@ -107,7 +112,8 @@ export default function RequirementTable({
       value={r.status}
       disabled={isRowLocked?.(r)}
       status={naMissing(r) ? 'error' : undefined}
-      options={statusOptions}
+      // A universally required assessment is never waived (Round 5 question 14): the list does not offer N/A for it.
+      options={requirementNeverNotApplicable(sectionKey, r.requirement) ? statusOptions.filter((o) => o.value !== REQUIREMENT_NOT_APPLICABLE) : statusOptions}
       popupMatchSelectWidth={false}
       onChange={(v: RequirementStatus) => setStatus(at(r), v)}
     />
@@ -221,6 +227,44 @@ export default function RequirementTable({
                     />
                   </RecordField>
                 )}
+                {shows('naRationale') && r.status === REQUIREMENT_NOT_APPLICABLE && (() => {
+                  // Round 5 question 14: on a critical item the relevant reviewer acknowledges the saved rationale. [ASSUMPTION: R6-Q20]
+                  const saved = items.find((x) => x.requirement === r.requirement && (x.market ?? '') === (r.market ?? ''));
+                  const slots = saved ? requirementNaAckSlots(sectionKey, saved) : undefined;
+                  if (!slots) return null;
+                  const rationaleSaved = (saved?.naRationale ?? '').trim() === (r.naRationale ?? '').trim() && saved?.status === r.status;
+                  return (
+                    <RecordField label="Reviewer acknowledgement" wide>
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {slots.map((slot) => {
+                          const holder = slot.functionKeys.map((k) => reviewers?.[k]).find((n) => !!n);
+                          const mine = !!me && !!holder && holder.trim().toLowerCase() === me.displayName.trim().toLowerCase();
+                          return (
+                            <div key={slot.functionKeys.join('|')} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                              {slot.state === 'acknowledged' ? (
+                                <span className="c-tag c-tag-dot c-tag-ok">Acknowledged by {slot.ack?.byName} as {slot.ack?.as}</span>
+                              ) : (
+                                <span className="c-tag c-tag-dot c-tag-warn">
+                                  {slot.state === 'stale' ? `The rationale changed after ${slot.ack?.byName} acknowledged it — ` : ''}
+                                  Waiting for {slot.label}{holder ? ` (${holder})` : ' — nobody is assigned yet'}
+                                </span>
+                              )}
+                              {slot.state !== 'acknowledged' && mine && rationaleSaved && !locked && (
+                                <Button
+                                  size="small"
+                                  onClick={() => acknowledgeNa(projectId, sectionKey, { requirement: r.requirement, ...(r.market ? { market: r.market } : {}), functionKey: slot.functionKeys.find((k) => reviewers?.[k]) ?? slot.functionKeys[0] })}
+                                >
+                                  Acknowledge this rationale
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {!rationaleSaved && <span className="rt-note">Save the rationale first — the acknowledgement is of the words as saved.</span>}
+                      </div>
+                    </RecordField>
+                  );
+                })()}
                 {shows('evidenceLink') && (
                   <RecordField label="Evidence link" wide>
                     <Input value={r.evidenceLink} placeholder="Link to the supporting record" disabled={locked} onChange={(e) => patch(at(r), { evidenceLink: e.target.value })} />

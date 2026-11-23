@@ -4,7 +4,7 @@ import type { InputRef } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import type { GateCheck, YNNA } from '@mbc360/shared/types';
-import { gateCheckAnchor, isMandatoryGateCheck } from '@mbc360/shared/utils/gateProgress';
+import { gateCheckAnchor, gateCheckNeverNotApplicable, isMandatoryGateCheck } from '@mbc360/shared/utils/gateProgress';
 import { useAppStore } from '../store/useAppStore';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import RequiredMark from './RequiredMark';
@@ -13,6 +13,8 @@ import RecordList, { RecordField } from './RecordList';
 
 // Stored as 'NA'; shown as the workbook's own "N/A".
 const YNNA_OPTIONS = ['Y', 'N', 'NA'].map((v) => ({ value: v, label: v === 'NA' ? 'N/A' : v }));
+// A universally required assessment is never waived (Round 5 question 14): the list does not offer N/A for it.
+const ynnaOptionsFor = (r: GateCheck) => (gateCheckNeverNotApplicable(r.gate, r.check) ? YNNA_OPTIONS.filter((o) => o.value !== 'NA') : YNNA_OPTIONS);
 
 // Key Gate Checks. Since 2026-10-02 laid out as a RecordList (compact rows +
 // detail drawer) instead of a 9-column table: Done and Y/N/NA stay on the row,
@@ -69,7 +71,8 @@ export default function GateChecksTable({
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [focusEvidence, setFocusEvidence] = useState(false);
   const toggleDone = (i: number, done: boolean) => {
-    patchShown(i, { done, ynna: done ? 'Y' : 'NA', date: done ? dayjs().format('YYYY-MM-DD') : undefined });
+    // Un-ticking used to set N/A; a check that never accepts N/A (the general restriction and caution screening) goes to N instead.
+    patchShown(i, { done, ynna: done ? 'Y' : gateCheckNeverNotApplicable(shown[i].gate, shown[i].check) ? 'N' : 'NA', date: done ? dayjs().format('YYYY-MM-DD') : undefined });
     if (done && !(shown[i].evidenceRef ?? '').trim() && openIndex !== i) {
       setOpenIndex(i);
       setFocusEvidence(true);
@@ -142,7 +145,7 @@ export default function GateChecksTable({
               style={{ width: 90 }}
               value={r.ynna}
               disabled={lockedRow(r)}
-              options={YNNA_OPTIONS}
+              options={ynnaOptionsFor(r)}
               onChange={(v: YNNA) => patchShown(i, { ynna: v })}
             />
           ),
@@ -159,7 +162,7 @@ export default function GateChecksTable({
                 </Checkbox>
               </RecordField>
               <RecordField label="Y/N/NA">
-                <Select style={{ width: '100%' }} value={r.ynna} disabled={locked} options={YNNA_OPTIONS} onChange={(v: YNNA) => patchShown(i, { ynna: v })} />
+                <Select style={{ width: '100%' }} value={r.ynna} disabled={locked} options={ynnaOptionsFor(r)} onChange={(v: YNNA) => patchShown(i, { ynna: v })} />
               </RecordField>
               <RecordField label="Date">
                 <DatePicker

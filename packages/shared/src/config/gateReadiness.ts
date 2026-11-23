@@ -198,7 +198,8 @@ export type ReadinessCheck =
   // But the app can evaluate the condition, and was letting NA satisfy the row on
   // projects where it demonstrably applies. With this set, an active trigger
   // narrows the row to done+Y only; NA no longer counts.
-  | { kind: 'gateCheckDone'; gate: string; check: string; naInvalidWhenTrigger?: ReadinessTrigger[] }
+  // `strict` (Round 5 question 14): a universally required assessment — the row never accepts N/A, whatever the project.
+  | { kind: 'gateCheckDone'; gate: string; check: string; naInvalidWhenTrigger?: ReadinessTrigger[]; strict?: boolean }
   // Minimum-bar guard on a Phase checklist section (`ProjectData.checklists[section]`,
   // e.g. targetUsers/targetMarkets/targetArea): satisfied once at least one row
   // has `status === 'Y'` — i.e. the section has actually been engaged with, not
@@ -367,7 +368,9 @@ export type ReadinessCheck =
   // `gate`, when set, narrows the check to the rows tagged for that gate: a
   // section that spans two gates (infantTesting: 08 and 09) must not make the
   // earlier gate demand the later gate's rows.
-  | { kind: 'requirementSectionDispositioned'; section: string; gate?: string }
+  // `strictRows` (Round 5 question 14): rows of the section that must be Completed — a universally required assessment is never waived, and
+  // neither is the core infant safety conclusion once infant use is in scope.
+  | { kind: 'requirementSectionDispositioned'; section: string; gate?: string; strictRows?: string[] }
   // Rule E3(b): no open Change Control at Gate 11 is launch-impacting, High risk,
   // impacting formula/artwork/claims/safety/regulatory/packaging/release, or
   // unclassified. Blocks Proceed with Conditions too.
@@ -2066,7 +2069,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       check: {
         kind: 'allOf',
         checks: [
-          { kind: 'gateCheckDone', gate: '07', check: 'General restricted and caution ingredient assessment completed' },
+          { kind: 'gateCheckDone', gate: '07', check: 'General restricted and caution ingredient assessment completed', strict: true },
           {
             kind: 'registerNoBadRows',
             register: 'generalRestrictedCaution',
@@ -2531,7 +2534,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'allOf',
         checks: [
           { kind: 'gateCheckDone', gate: '09', check: 'Stability, preservation/micro and pack compatibility program selected' },
-          { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Stability program selected' },
+          { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Stability program selected', strict: true },
           { kind: 'registerHasRows', register: 'stabilityRelease' },
         ],
       },
@@ -2548,7 +2551,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Conditional',
       // Same formula property as sg05-preservative — modelled once, read twice.
       trigger: 'microbiologicallySusceptible',
-      check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Preservation / microbiology checks selected' },
+      check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Preservation / microbiology checks selected', strict: true },
     },
     {
       // Merged 2026-07-27 (user-requested) from sg09-acceptance +
@@ -2611,7 +2614,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg09-conclusion',
       label: 'Release-readiness conclusion',
       tier: 'Mandatory',
-      check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Release readiness risks closed' },
+      check: { kind: 'requirementDone', section: 'stabilityRelease', requirement: 'Release readiness risks closed', strict: true },
     },
     {
       id: 'sg09-retest-pathway',
@@ -2730,7 +2733,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg10-dossier',
       label: 'PIF, CPSR, Product Master File or equivalent market dossier status',
       tier: 'Mandatory',
-      check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'PIF/CPSR export-ready' },
+      check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'PIF/CPSR export-ready', strict: true },
     },
     {
       id: 'sg10-pif-mapped',
@@ -2780,7 +2783,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       id: 'sg10-safety-evidence',
       label: 'Ingredient and product safety evidence attached',
       tier: 'Mandatory',
-      check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'Product Safety Summary' },
+      check: { kind: 'requirementDone', section: 'dossierEvidence', requirement: 'Product Safety Summary', strict: true },
     },
     {
       // Infant & Baby Safety pathway (Round 4 question 1, 2026-08-29). Compartment
@@ -2794,7 +2797,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       tier: 'Conditional',
       trigger: 'infantContact',
       source: 'f-series',
-      check: { kind: 'requirementSectionDispositioned', section: 'infantPif' },
+      check: { kind: 'requirementSectionDispositioned', section: 'infantPif', strictRows: ['Infant-use safety conclusion'] },
     },
     {
       // Wired 2026-08-12. The catalogue had this "waiting on B7"; B7 landed on

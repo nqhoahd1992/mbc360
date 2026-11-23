@@ -639,3 +639,25 @@ Today the 78 registers fall as follows. Please mark any that is wrong.
 **(d)** Are the three registers with their own approval route right, and should any other register be on that list?
 
 **(e)** Does the register's own review-owner area satisfy "additional specialist approval", or should a Safety, Regulatory, Quality or NP signature be added for particular registers? Which?
+
+## Question 20 — "Not applicable" on a requirement row: how should we read the details your answer leaves open?
+
+*Where in the application:* the requirement tables of **Phase 2, 3 and 4** (the row's Status and the "N/A rationale" in its drawer), and the readiness list of the gate that reads them.
+
+You told us a Phase 2–4 requirement row may be marked not applicable, with a specific rationale and the relevant reviewer's acknowledgement for critical items; that a list of universally required assessments is never waived (individual tests or conditional compartments inside them may be); and that the infant rows may be N/A where their trigger genuinely does not apply, but the core infant safety conclusion cannot be waived once infant use or contact is in scope. We have built it. Where your answer leaves a detail open we read it as follows:
+
+- **"Specific rationale"**: a rationale has to be written; we do not judge how specific it is (no minimum length, no wording check).
+- **"Critical items"**: for the infant tables and the Skincare-for-Two and human-study tables we use your own table of critical items from question 1; for the stability, dossier and change-control tables a row is critical when it sits on one of the seven critical gates of question 23 (3, 4, 7, 8, 9, 10, 11). The Gate 5 formulation-design and efficacy tables are not critical.
+- **"The relevant reviewer"** is the person holding the function your question 1 table names for the infant, Skincare-for-Two and human-study rows (both functions where it names two); for stability rows, Quality; for dossier rows, Regulatory; for change-control closure rows, the Quality / change-control reviewer. The acknowledgement is of the words: if the rationale is changed afterwards it no longer counts and the reviewer must look again. Nobody is substituted for a function that nobody holds, and an administrator is not the holder.
+- **The universally required assessments** that you listed are met in the application as follows. *Project identity, use and market scope*: the markets and target users are recorded on their own screens and cannot be marked N/A. *Formula identity and traceability*: the Formula BOM identity checks, which have no N/A. *General ingredient restriction and caution screening*: the Gate 7 Key Gate Check "General restricted and caution ingredient assessment completed" no longer accepts N/A. *Final safety conclusion*: the Final Safety Sign-off, which already accepted N/A only on the pregnancy / breastfeeding row. *Product-quality, stability and microbiological-risk assessment*: the rows "Stability program selected", "Preservation / microbiology checks selected" and "Release readiness risks closed" never accept N/A; the other stability rows (for example "Pack compatibility assessed") may be N/A. *Applicable dossier and compliance closure*: "Product Safety Summary" and "PIF/CPSR export-ready" never accept N/A; the other dossier rows may be. *Due post-market review*: the Gate 12 reviews have no N/A. *Approved release controls*: we found no requirement row that stands for it, so nothing is added.
+- **The core infant safety conclusion** is the row "Infant-use safety conclusion" of the Gate 10 infant table. A whole compartment outside scope is recorded as not applicable by its trigger (no infant use, no maternal user), with the reviewer's acknowledgement from question 1; there is no row-level N/A on the four compartment tables.
+
+**(a)** Should "specific" be checked in any way, for example a minimum length or a required field such as "what makes it not apply"?
+
+**(b)** Is "critical" right: your question 1 table for the infant, Skincare-for-Two and human-study tables, and the seven critical gates for the others?
+
+**(c)** Are Quality (stability), Regulatory (dossier) and the Quality / change-control reviewer (change-control closure) the right functions to acknowledge?
+
+**(d)** Is the list of rows that never accept N/A right: the three stability rows, the two dossier rows, the Gate 7 general restriction and caution screening, and the infant-use safety conclusion? Which rows are missing or should come off?
+
+**(e)** Which requirement row, if any, stands for "approved release controls"?

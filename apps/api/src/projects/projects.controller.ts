@@ -243,6 +243,17 @@ export class ProjectsController {
     return this.projects.setRequirementSection(user, id, section, body.items ?? [], body.expectedVersion);
   }
 
+  // Round 5 question 14: the relevant reviewer acknowledges a row's N/A rationale on a critical item.
+  @Post(':id/requirements/:section/na-acknowledgement')
+  acknowledgeRequirementNa(
+    @CurrentUser() user: SessionUser,
+    @Param('id') id: string,
+    @Param('section') section: string,
+    @Body() body: { requirement: string; market?: string; functionKey: string; expectedVersion: number },
+  ): Promise<ProjectEnvelope> {
+    return this.projects.acknowledgeRequirementNa(user, id, section, body, body.expectedVersion);
+  }
+
   @Put(':id/gate-checks')
   setGateChecks(
     @CurrentUser() user: SessionUser,

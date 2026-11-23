@@ -36,6 +36,7 @@ import {
 } from '@mbc360/shared/config/changeTriggers';
 import { LEAD_ASSIGNABLE_ROLE_KEYS, REVIEW_ROLES, ownerName, registerClosureSignerRole } from '@mbc360/shared/config/reviewers';
 import { acknowledgementBasis, holdsRole } from '@mbc360/shared/utils/readinessAck';
+import { requirementNaAckSlots } from '@mbc360/shared/utils/requirementNaAck';
 import {
   DECISION_OPTIONS,
   NP_APPROVAL_APPROVED,
@@ -199,6 +200,8 @@ import {
   PHASE_DATA_LOCKED_REASON,
   isPhaseDataLocked,
   gateCheckExemption,
+  requirementNeverNotApplicable,
+  gateCheckNeverNotApplicable,
 } from '@mbc360/shared/utils/gateProgress';
 import {
   ADMINISTRATIVE_ONLY_OPTIONS,
@@ -226,6 +229,7 @@ import type {
   RawMaterialRisk,
   RegisterClosureSignOff,
   RegisterRow,
+  NaAcknowledgement,
   RequirementItem,
   SignOff,
 } from '@mbc360/shared/types';
@@ -1182,8 +1186,13 @@ export class ProjectsService {
       const allowedStatuses: readonly string[] =
         sectionConfig?.statusOptions ??
         (sectionConfig?.allowNotApplicable ? [...WORK_STATUSES, REQUIREMENT_NOT_APPLICABLE] : WORK_STATUSES);
-      for (const item of items) {
+      for (const [position, item] of items.entries()) {
         assertOneOf(`Requirement "${item.requirement}" status`, item.status, allowedStatuses);
+        // Round 5 question 14: a universally required assessment is never waived — the Status list does not offer N/A for it, and the server
+        // refuses it too. A row that already stands as N/A is left alone, so an old value never blocks saving the rest of the section.
+        if (item.status === 'N/A' && existing[position]?.status !== 'N/A' && requirementNeverNotApplicable(section, item.requirement)) {
+          throw new BadRequestException(`"${item.requirement}" is a universally required assessment and cannot be marked not applicable`);
+        }
         if (sectionConfig?.showYnna && (item.ynna ?? '') !== '') {
           assertOneOf(`Requirement "${item.requirement}" Y/N/NA`, item.ynna, COMPARTMENT_YNNA);
         }
@@ -1209,6 +1218,9 @@ export class ProjectsService {
             // rationale can never outlive the disposition that required it and
             // read as evidence for a row that is now Completed.
             naRationale: item.status === 'N/A' && sectionConfig?.allowNotApplicable ? (item.naRationale ?? null) : null,
+            // The acknowledgements are the server's alone (the client's copy is never read). A row that is no longer N/A has nothing left to
+            // acknowledge; an edited rationale leaves them in place, and they stop counting because they are of the old words.
+            ...(item.status === 'N/A' && sectionConfig?.allowNotApplicable ? {} : { naAcknowledgements: Prisma.DbNull }),
             ynna: sectionConfig?.showYnna ? (item.ynna || null) : undefined,
             // Editable on any section declaring its own columns (Phase 1's B6
             // table); on Phases 2-4 it is config-set and rendered read-only, so
@@ -1222,6 +1234,63 @@ export class ProjectsService {
         });
       }
       return { section, rows: items.length, skippedLocked: skipped };
+    });
+  }
+
+  // Round 5 question 14: "N/A with a specific rationale and relevant reviewer acknowledgement for critical items". The holder of the relevant
+  // function on THIS project acknowledges the rationale as it stands now (an administrator, the Lead and the phase reviewer have no standing of
+  // their own here, as for question 1). The rationale is recorded verbatim: change it and the acknowledgement no longer counts. [ASSUMPTION: R6-Q20]
+  async acknowledgeRequirementNa(
+    user: SessionUser,
+    id: string,
+    section: string,
+    body: { requirement: string; market?: string; functionKey: string },
+    expectedVersion: number,
+  ): Promise<ProjectEnvelope> {
+    return this.mutate(user, id, expectedVersion, 'requirement_na.acknowledged', async (tx, row, project) => {
+      const target = row.requirementItems.find(
+        (i) => i.sectionKey === section && i.requirement === body.requirement && (i.market ?? '') === (body.market ?? ''),
+      );
+      if (!target) throw new BadRequestException(`"${body.requirement}" is not a row of "${section}"`);
+      if (target.status !== REQUIREMENT_NOT_APPLICABLE || !(target.naRationale ?? '').trim()) {
+        throw new BadRequestException(`"${body.requirement}" is not marked N/A with a rationale, so there is nothing to acknowledge`);
+      }
+      if (isGatePassed(project, `SG${target.gate}`)) {
+        throw new BadRequestException(`Gate ${target.gate} has already passed — its evidence is read-only. Backtrack to reopen it`);
+      }
+      const current = (project.requirements[section] ?? []).find(
+        (r) => r.requirement === body.requirement && (r.market ?? '') === (body.market ?? ''),
+      );
+      const slots = current ? requirementNaAckSlots(section, current) : undefined;
+      if (!slots) throw new BadRequestException(`"${body.requirement}" needs no acknowledgement — it is not a critical item`);
+      const slot = slots.find((s) => s.functionKeys.includes(body.functionKey));
+      if (!slot) throw new BadRequestException(`"${body.functionKey}" is not one of the functions that acknowledge "${body.requirement}"`);
+      const functionLabel = REVIEW_ROLES.find((r) => r.key === body.functionKey)?.label ?? body.functionKey;
+      const holder = await tx.projectReviewer.findUnique({ where: { projectId_roleKey: { projectId: id, roleKey: body.functionKey } } });
+      if (!holder) {
+        throw new BadRequestException(
+          `Nobody is assigned as ${functionLabel} on this project yet, so nobody can acknowledge this — the project's Lead assigns one in Project team`,
+        );
+      }
+      if (!holdsRole(holder, user)) {
+        throw new ForbiddenException(`Only ${holder.name}, who holds ${functionLabel} on this project, may acknowledge this as ${functionLabel}`);
+      }
+      const ack: NaAcknowledgement = {
+        functionKey: body.functionKey,
+        rationale: (target.naRationale ?? '').trim(),
+        byName: user.displayName,
+        byUserId: user.id,
+        as: functionLabel,
+        at: new Date().toISOString(),
+      };
+      const kept = (Array.isArray(target.naAcknowledgements) ? (target.naAcknowledgements as unknown as NaAcknowledgement[]) : []).filter(
+        (a) => a.functionKey !== body.functionKey,
+      );
+      await tx.requirementItem.update({
+        where: { id: target.id },
+        data: { naAcknowledgements: [...kept, ack] as unknown as Prisma.InputJsonValue },
+      });
+      return { section, requirement: body.requirement, functionKey: body.functionKey, by: user.displayName, rationale: ack.rationale };
     });
   }
 
@@ -1247,6 +1316,11 @@ export class ProjectsService {
           continue; // locked gate -> skip the row, same as the store did
         }
         const p = update.patch;
+        // Round 5 question 14: the general restriction and caution screening never accepts N/A. A row already at N/A is left alone, so an old
+        // value never blocks saving the rest of the table.
+        if (p.ynna === 'NA' && target.ynna !== 'NA' && gateCheckNeverNotApplicable(target.gate, target.check)) {
+          throw new BadRequestException(`"${target.check}" is a universally required assessment and cannot be marked not applicable`);
+        }
         await tx.gateCheck.update({
           where: { id: target.id },
           data: {

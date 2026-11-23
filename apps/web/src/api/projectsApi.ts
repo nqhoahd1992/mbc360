@@ -690,3 +690,10 @@ export const assessMarketAddition = (
     method: 'POST',
     body: JSON.stringify({ ...body, expectedVersion: v }),
   });
+
+// Round 5 question 14: the relevant reviewer acknowledges a row's N/A rationale on a critical item.
+export const acknowledgeRequirementNa = (id: string, section: string, body: { requirement: string; market?: string; functionKey: string }, v: number) =>
+  request<ProjectEnvelope>(`/projects/${encodeURIComponent(id)}/requirements/${encodeURIComponent(section)}/na-acknowledgement`, {
+    method: 'POST',
+    body: JSON.stringify({ ...body, expectedVersion: v }),
+  });

@@ -639,3 +639,25 @@ Hiện 78 sổ phân thế này. Xin đánh dấu sổ nào sai.
 **(d)** Ba sổ có đường phê duyệt riêng có đúng không, và có sổ nào khác nên vào danh sách đó?
 
 **(e)** Vùng review-owner của sổ có thoả "phê duyệt chuyên môn bổ sung" không, hay nên thêm chữ ký Safety, Regulatory, Quality hoặc NP cho những sổ nhất định? Sổ nào?
+
+## Câu 20 — "Không áp dụng" trên một dòng yêu cầu: ta đọc các chi tiết câu trả lời để ngỏ thế nào?
+
+*Ở đâu trong ứng dụng:* các bảng yêu cầu của **Phase 2, 3 và 4** (Status của dòng và "N/A rationale" trong drawer của nó), và danh sách readiness của gate đọc chúng.
+
+Các bạn đã nói một dòng yêu cầu Phase 2–4 có thể đánh không áp dụng, kèm lý do cụ thể và xác nhận của người rà soát liên quan với mục critical; danh sách các đánh giá bắt buộc phổ quát không bao giờ được bỏ qua (từng test riêng hay compartment có điều kiện bên trong thì được); và các dòng infant có thể N/A khi trigger thực sự không áp dụng, nhưng kết luận an toàn lõi cho trẻ sơ sinh không bỏ qua được khi đã có sử dụng hoặc tiếp xúc với trẻ. Chúng tôi đã xây. Ở chỗ câu trả lời để ngỏ, chúng tôi đọc như sau:
+
+- **"Lý do cụ thể"**: phải có lý do viết ra; chúng tôi không đánh giá nó cụ thể đến đâu (không có độ dài tối thiểu, không kiểm từ ngữ).
+- **"Mục critical"**: với các bảng infant, Skincare-for-Two và human-study ta dùng chính bảng mục critical của các bạn ở câu 1; với các bảng stability, dossier và change-control, một dòng là critical khi nằm ở một trong bảy gate critical của câu 23 (3, 4, 7, 8, 9, 10, 11). Các bảng formulation-design và efficacy ở Gate 5 không critical.
+- **"Người rà soát liên quan"** là người giữ chức năng mà bảng câu 1 gọi tên cho các dòng infant, Skincare-for-Two và human-study (cả hai chức năng nếu bảng nêu hai); với dòng stability là Quality; dòng dossier là Regulatory; dòng đóng change-control là Quality / change-control reviewer. Xác nhận là xác nhận **câu chữ**: nếu lý do bị sửa sau đó thì không còn tính và người rà soát phải xem lại. Không ai được thay cho một chức năng không có người giữ, và admin không phải người giữ.
+- **Các đánh giá bắt buộc phổ quát** mà các bạn liệt kê được đáp ứng trong ứng dụng như sau. *Định danh, mục đích sử dụng và phạm vi thị trường*: thị trường và đối tượng dùng được ghi ở màn hình riêng và không đánh N/A được. *Định danh và truy vết công thức*: các kiểm tra định danh của Formula BOM, không có N/A. *Sàng lọc hạn chế/thận trọng thành phần chung*: Key Gate Check Gate 7 "General restricted and caution ingredient assessment completed" không còn nhận N/A. *Kết luận an toàn cuối*: Final Safety Sign-off, vốn chỉ nhận N/A ở dòng pregnancy / breastfeeding. *Đánh giá chất lượng sản phẩm, ổn định và rủi ro vi sinh*: các dòng "Stability program selected", "Preservation / microbiology checks selected" và "Release readiness risks closed" không bao giờ nhận N/A; các dòng stability khác (ví dụ "Pack compatibility assessed") được N/A. *Đóng hồ sơ và tuân thủ áp dụng*: "Product Safety Summary" và "PIF/CPSR export-ready" không bao giờ nhận N/A; các dòng dossier khác thì được. *Review hậu mãi đến hạn*: các review Gate 12 không có N/A. *Kiểm soát phát hành đã duyệt*: chúng tôi không tìm thấy dòng yêu cầu nào đại diện cho nó nên không thêm gì.
+- **Kết luận an toàn lõi cho trẻ sơ sinh** là dòng "Infant-use safety conclusion" của bảng infant Gate 10. Một compartment nằm ngoài phạm vi được ghi N/A cho cả compartment bằng trigger của nó (không dùng cho trẻ, không có người dùng thai kỳ), kèm xác nhận của người rà soát theo câu 1; bốn bảng compartment không có N/A theo từng dòng.
+
+**(a)** Có nên kiểm "cụ thể" bằng cách nào đó không, ví dụ độ dài tối thiểu hay một trường bắt buộc như "điều gì khiến nó không áp dụng"?
+
+**(b)** "Critical" đọc vậy có đúng không: bảng câu 1 cho các bảng infant, Skincare-for-Two và human-study, và bảy gate critical cho các bảng còn lại?
+
+**(c)** Quality (stability), Regulatory (dossier) và Quality / change-control reviewer (đóng change-control) có phải đúng chức năng để xác nhận không?
+
+**(d)** Danh sách dòng không bao giờ nhận N/A có đúng không: ba dòng stability, hai dòng dossier, sàng lọc hạn chế/thận trọng chung ở Gate 7 và infant-use safety conclusion? Thiếu hoặc nên bỏ dòng nào?
+
+**(e)** Dòng yêu cầu nào, nếu có, đại diện cho "kiểm soát phát hành đã duyệt"?

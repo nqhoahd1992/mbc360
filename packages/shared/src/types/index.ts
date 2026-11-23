@@ -466,10 +466,23 @@ export interface RequirementItem {
   // free-text field of its own rather than a convention inside `notes`, which
   // was already doing double duty once before (see `requirementText`).
   naRationale?: string;
+  // Round 5 question 14: on a critical item an N/A a person entered counts once the holder of the relevant function has acknowledged THIS
+  // rationale (utils/requirementNaAck.ts). Written by the server only; the client's copy is discarded.
+  naAcknowledgements?: NaAcknowledgement[];
   // The compartment tables' own Y/N/NA column (Phase 3, v2 workbook); absent on every other section.
   ynna?: string;
   evidenceLink?: string;
   notes?: string;
+}
+
+// An acknowledgement of one row's N/A rationale, by the person holding one function on the project.
+export interface NaAcknowledgement {
+  functionKey: string; // the function acknowledged AS
+  rationale: string; // the rationale that was acknowledged, verbatim — it counts only while the row still carries exactly this
+  byName: string;
+  byUserId?: string;
+  as: string; // the function's label at the time
+  at: string; // ISO timestamp, server clock
 }
 
 export interface GateCheck {

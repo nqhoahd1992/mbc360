@@ -349,6 +349,66 @@ export async function run(base: string, db: Client): Promise<number> {
     t('a compartment table still refuses N/A (400)', r.status === 400, `${r.status} ${short(r.json)}`);
   }
 
+  // ============================================================ Round 5 question 14: N/A on a requirement row
+  console.log('\n--- Round 5 question 14: N/A on a Phase 2-4 requirement row needs the relevant reviewer on a critical item, and some rows never accept it');
+  {
+    const SECTION = 'dossierEvidence';
+    const EFFICACY = 'Efficacy evidence summary';
+    const SAFETY_SUMMARY = 'Product Safety Summary';
+    const rows = async () => ((await project()).project.requirements[SECTION] ?? []) as any[];
+    const putRows = async (change: (r: any) => any) =>
+      api('admin', 'PUT', `/projects/${PROJECT}/requirements/${SECTION}`, { items: (await rows()).map(change), expectedVersion: await version() });
+    const ackBody = { requirement: EFFICACY, functionKey: 'regulatory' };
+    const post = async (who: string, body: any) => api(who, 'POST', `/projects/${PROJECT}/requirements/${SECTION}/na-acknowledgement`, { ...body, expectedVersion: await version() });
+    const stored = async () => (await rows()).find((r) => r.requirement === EFFICACY);
+
+    // The rows that never accept N/A are read from the readiness lists, which this harness replaces with a cut-down copy, so the server's refusal of
+    // N/A on such a row is covered by npm run verify:requirement-na (the rule) and not here.
+    void SAFETY_SUMMARY;
+    let r: any = await putRows((x) => (x.requirement === EFFICACY ? { ...x, status: 'N/A', naRationale: 'No efficacy claim is made for this product' } : x));
+    t('another row of the same table can be marked N/A with a rationale', r.status < 300, `${r.status} ${short(r.json)}`);
+    r = await post('admin', ackBody);
+    t('nobody holds Regulatory for the acknowledgement yet, or an administrator is not the holder (400/403)', r.status === 400 || r.status === 403, `${r.status} ${short(r.json)}`);
+
+    const regRow = (await db.query(`SELECT name, "userId" FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'regulatory'`, [PROJECT])).rows[0];
+    const holderName = (await db.query(`SELECT "displayName" FROM users WHERE id = $1`, [sessions['tuan'].id])).rows[0].displayName as string;
+    await db.query(`UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = 'regulatory'`, [PROJECT, holderName, sessions['tuan'].id]);
+    r = await post('sekar', ackBody);
+    t('somebody who is not the Regulatory holder cannot acknowledge (403)', r.status === 403, `${r.status} ${short(r.json)}`);
+    r = await post('tuan', { ...ackBody, functionKey: 'quality' });
+    t('a function that does not acknowledge this row is refused (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+    r = await post('tuan', ackBody);
+    t('the Regulatory holder acknowledges the rationale as themselves', r.status < 300, `${r.status} ${short(r.json)}`);
+    let row = await stored();
+    t('...it is recorded with who, as which function, and the words acknowledged', row?.naAcknowledgements?.length === 1 && row.naAcknowledgements[0].byName === holderName && row.naAcknowledgements[0].rationale === 'No efficacy claim is made for this product', short(row?.naAcknowledgements));
+
+    // the client cannot write an acknowledgement
+    r = await putRows((x) => (x.requirement === EFFICACY ? { ...x, naAcknowledgements: [{ functionKey: 'regulatory', rationale: 'forged', byName: 'Forger', as: 'x', at: '2026-01-01T00:00:00Z' }] } : x));
+    row = await stored();
+    t('a forged acknowledgement sent with a save is discarded', r.status < 300 && row?.naAcknowledgements?.[0]?.byName === holderName, `${r.status} ${short(row?.naAcknowledgements)}`);
+
+    // a changed rationale no longer counts, a Completed row has nothing to acknowledge
+    r = await putRows((x) => (x.requirement === EFFICACY ? { ...x, naRationale: 'A different reason' } : x));
+    row = await stored();
+    t('the rationale is changed: the stored acknowledgement is of the old words', row?.naRationale === 'A different reason' && row?.naAcknowledgements?.[0]?.rationale === 'No efficacy claim is made for this product');
+    r = await putRows((x) => (x.requirement === EFFICACY ? { ...x, status: 'Complete' } : x));
+    row = await stored();
+    t('a row that is Completed again carries no acknowledgement', r.status < 300 && !row?.naAcknowledgements, `${r.status} ${short(row?.naAcknowledgements)}`);
+    r = await post('tuan', ackBody);
+    t('there is nothing to acknowledge on a row that is not N/A (400)', r.status === 400, `${r.status} ${short(r.json)}`);
+
+    // a row that is not a critical item needs none
+    const design = ((await project()).project.requirements['formulationDesign'] ?? []) as any[];
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/requirements/formulationDesign`, {
+      items: design.map((x) => (x.requirement === 'Compatibility / use-with constraints' ? { ...x, status: 'N/A', naRationale: 'Nothing to be used alongside' } : x)),
+      expectedVersion: await version(),
+    });
+    r = await api('tuan', 'POST', `/projects/${PROJECT}/requirements/formulationDesign/na-acknowledgement`, { requirement: 'Compatibility / use-with constraints', functionKey: 'regulatory', expectedVersion: await version() });
+    t('a row that is not a critical item needs no acknowledgement (400)', r.status === 400 && /not a critical item/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+
+    await db.query(`UPDATE project_reviewers SET name = $2, "userId" = $3 WHERE "projectId" = $1 AND "roleKey" = 'regulatory'`, [PROJECT, regRow.name, regRow.userId]);
+  }
+
   // ============================================================ register closing: review before signing
   console.log('\n--- register closing: the closer reads the register first, and the signature is bound to what they read');
   {

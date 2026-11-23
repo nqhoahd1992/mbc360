@@ -1127,6 +1127,14 @@ Với thay đổi công thức Major, vẫn đánh giá lại Gate 4-9 và các 
 
 **(c)** Một người ký hai lần là một người. Nơi cần rà soát độc lập, chặn việc đóng cho tới khi gán một người rà soát đủ năng lực khác. Ở bản ghi làm việc/tham chiếu rủi ro thấp, bỏ chữ ký thứ hai không cần thiết thay vì hiện cảnh báo vĩnh viễn. Áp dụng quy tắc về người ở Câu 23.
 
+### Câu 14 — "Không áp dụng" trong các yêu cầu Phase 2-4
+
+**Kết luận:** ✅ đã xây (13/11/2026). Khác với những gì đã xây (N/A kèm lý do làm xong mọi dòng, không ai xác nhận và không có gì không được bỏ qua). Cách đọc các chi tiết của chúng tôi được hỏi ở Round 6, câu 20.
+
+Trả lời Có, kèm lý do cụ thể và xác nhận của người rà soát liên quan với mục critical. Danh sách các đánh giá bắt buộc phổ quát không bao giờ được bỏ qua: định danh/mục đích/phạm vi thị trường, định danh và truy vết công thức, sàng lọc hạn chế/thận trọng thành phần chung, kết luận an toàn cuối, đánh giá chất lượng sản phẩm/ổn định/rủi ro vi sinh, đóng hồ sơ/tuân thủ áp dụng, kiểm soát phát hành đã duyệt và review hậu mãi đến hạn. Từng test riêng hay compartment có điều kiện bên trong các đánh giá đó được N/A; bản thân đánh giá vẫn bắt buộc.
+
+Các dòng infant/baby có thể N/A khi trigger nêu trong dòng thực sự không áp dụng, kể cả miễn test có lý do. Khi đã có sử dụng/tiếp xúc với trẻ, kết luận an toàn lõi cho trẻ không bỏ qua được. Ghi N/A có lý do cho cả compartment khi nằm ngoài phạm vi.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

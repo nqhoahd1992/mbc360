@@ -147,6 +147,7 @@ interface AppState {
 
   setChecklistSection: (id: string, section: string, items: ChecklistItem[]) => Promise<boolean>;
   setRequirementSection: (id: string, section: string, items: RequirementItem[]) => Promise<boolean>;
+  acknowledgeRequirementNa: (id: string, section: string, body: { requirement: string; market?: string; functionKey: string }) => Promise<boolean>;
   setGateChecksBulk: (id: string, updates: { index: number; patch: Partial<GateCheck> }[]) => Promise<boolean>;
   setAnglesBulk: (id: string, phase: number, angles: AngleRow[]) => Promise<boolean>;
   // D1: a signature is an act, so it is three actions, not a table write.
@@ -599,6 +600,8 @@ export const useAppStore = create<AppState>()(
           tryWriteSection(id, (v) => projectsApi.setChecklistSection(id, section, items, v)),
         setRequirementSection: (id, section, items) =>
           tryWriteSection(id, (v) => projectsApi.setRequirementSection(id, section, items, v)),
+        acknowledgeRequirementNa: (id, section, body) =>
+          tryWriteSection(id, (v) => projectsApi.acknowledgeRequirementNa(id, section, body, v)),
         // The store used to address gate checks by array index; the API uses the
         // row's real identity (gate, check), so the index is resolved here while
         // the caller's signature stays unchanged.

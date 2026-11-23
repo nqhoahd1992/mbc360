@@ -1,5 +1,5 @@
 import { assessmentAnchor, assessmentForTrigger } from '../config/assessments';
-import type { GateRecord, NextAction, ProjectData, RegisterRow, RequirementItem } from '../types';
+import type { GateRecord, NaAcknowledgement, NextAction, ProjectData, RegisterRow, RequirementItem } from '../types';
 import { GATE_SIGNOFF_ROLES, NEXT_ACTION_TERMINAL_STATUSES, UNSTRUCTURED_PMS_CONDITIONS, familyUseAgeGroupList, isRegisterClosed, isSignedOff } from '../types';
 import type { GateSignOffRole } from '../types';
 import { COSTING_STATUS_NOT_APPLICABLE, GATES, REQUIREMENT_NOT_APPLICABLE } from '../config/gates';
@@ -7,6 +7,7 @@ import { GATE_PASSING_DECISIONS, findGateSignOff, gateSignOffMarkets, isGateSign
 import { gateActionStates, gateEvidenceSnapshot, snapshotChanges } from './gateSnapshot';
 import { gateRefGateIds } from './gateRefs';
 import { acknowledgementState, isCriticalForAcknowledgement, type AcknowledgementSlot } from './readinessAck';
+import { requirementNaAckSettled } from './requirementNaAck';
 import { assessmentMarkets, isPendingAnswer } from './changeControlAssessments';
 export { gateRefGateIds } from './gateRefs';
 import { isChangeOpen } from '../config/changeTriggers';
@@ -1336,7 +1337,10 @@ export function evaluateReadinessCheck(
           rows.every(
             (r) =>
               isDoneStatus(r.status) ||
-              (r.status === REQUIREMENT_NOT_APPLICABLE && (r.naRationale ?? '').trim() !== ''),
+              (r.status === REQUIREMENT_NOT_APPLICABLE &&
+                (r.naRationale ?? '').trim() !== '' &&
+                !(check.strictRows ?? []).includes(r.requirement) &&
+                requirementNaAckSettled(check.section, r)),
           ),
       };
     }
@@ -1424,9 +1428,9 @@ export function evaluateReadinessCheck(
       // and refusing the user's N/A on that basis would assert the opposite. The
       // gate is not let off either — the item that OWNS that trigger blocks in its
       // own right, which is the correct place for "nobody has assessed this".
-      const naAllowed = !(check.naInvalidWhenTrigger ?? []).some(
-        (t) => evaluateTrigger(project, t) === 'applies',
-      );
+      const naAllowed =
+        !check.strict &&
+        !(check.naInvalidWhenTrigger ?? []).some((t) => evaluateTrigger(project, t) === 'applies');
       const satisfied =
         !!gateCheckExemption(project, check.gate, check.check) ||
         (rows.length > 0 && rows.every((row) => (row.done && row.ynna === 'Y') || (naAllowed && row.ynna === 'NA' && !!row.notes?.trim())));
@@ -1675,6 +1679,32 @@ const STRICT_REQUIREMENT_KEYS = new Set(
   ).map((c) => `${c.section}|${c.requirement}`),
 );
 
+// Round 5 question 14: rows that never accept N/A, whatever tier the item reading them has — a universally required assessment, and the core
+// infant safety conclusion. Read by the rule and by the Status dropdown, so the screen never offers what the rule would refuse.
+const NEVER_NA_KEYS = new Set(
+  Object.values(GATE_READINESS)
+    .flat()
+    .flatMap((r) => flattenChecks(r.check))
+    .flatMap((c) =>
+      c.kind === 'requirementDone' && c.strict
+        ? [`${c.section}|${c.requirement}`]
+        : c.kind === 'requirementSectionDispositioned'
+          ? (c.strictRows ?? []).map((row) => `${c.section}|${row}`)
+          : [],
+    ),
+);
+export const requirementNeverNotApplicable = (section: string, requirement: string): boolean => NEVER_NA_KEYS.has(`${section}|${requirement}`);
+
+// The same for a Key Gate Check: the general restriction and caution screening never accepts N/A (Round 5 question 14). The Y/N/NA list does not
+// offer N/A for it, the server refuses it, and neither the gate nor the phase counts one that is already there.
+const NEVER_NA_GATE_CHECKS = new Set(
+  Object.values(GATE_READINESS)
+    .flat()
+    .flatMap((r) => flattenChecks(r.check))
+    .flatMap((c) => (c.kind === 'gateCheckDone' && c.strict ? [`${c.gate}|${c.check}`] : [])),
+);
+export const gateCheckNeverNotApplicable = (gate: string, check: string): boolean => NEVER_NA_GATE_CHECKS.has(`${gate}|${check}`);
+
 function requirementSectionOffersNotApplicable(section: string): boolean {
   for (const phase of Object.values(PHASE_CONFIGS)) {
     const found = phase.requirementSections.find((s) => s.key === section);
@@ -1687,7 +1717,7 @@ function requirementSectionOffersNotApplicable(section: string): boolean {
 // strict — N/A with a rationale. The one predicate both the rule and the red-asterisk hint on the row read.
 export function requirementRowSettled(
   section: string,
-  row: { requirement?: string; status?: unknown; naRationale?: string } | undefined,
+  row: { requirement?: string; gate?: string; status?: unknown; naRationale?: string; naAcknowledgements?: NaAcknowledgement[] } | undefined,
   strict = row?.requirement !== undefined && STRICT_REQUIREMENT_KEYS.has(`${section}|${row.requirement}`),
 ): boolean {
   if (!row) return false;
@@ -1696,7 +1726,9 @@ export function requirementRowSettled(
     !strict &&
     requirementSectionOffersNotApplicable(section) &&
     row.status === REQUIREMENT_NOT_APPLICABLE &&
-    (row.naRationale ?? '').trim() !== ''
+    (row.naRationale ?? '').trim() !== '' &&
+    // Round 5 question 14: on a critical item the holder of the relevant function has acknowledged this rationale.
+    requirementNaAckSettled(section, { gate: row.gate ?? '', status: REQUIREMENT_NOT_APPLICABLE, naRationale: row.naRationale, naAcknowledgements: row.naAcknowledgements })
   );
 }
 
@@ -2969,7 +3001,10 @@ export function phaseCompletionChecklist(project: ProjectData, phase: number): P
     (c) => numbers.includes(c.gate) || (phase === 4 && c.gate === 'ALL'),
   );
   const keyChecksDone = checks.every(
-    (c) => (c.done && c.ynna === 'Y') || (c.ynna === 'NA' && !!c.notes?.trim()) || !!gateCheckExemption(project, c.gate, c.check),
+    (c) =>
+      (c.done && c.ynna === 'Y') ||
+      (c.ynna === 'NA' && !!c.notes?.trim() && !gateCheckNeverNotApplicable(c.gate, c.check)) ||
+      !!gateCheckExemption(project, c.gate, c.check),
   );
 
   const closure = project.phaseClosures[phase];
