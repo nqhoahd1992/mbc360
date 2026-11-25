@@ -1415,7 +1415,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q44 · R6-Q27 | **19(b)** (đã trả lời 05/11, xây 25/11/2026; R6-Q27 hỏi lại một chỗ ta đọc) | Gate 10–11 theo thị trường: dự án chỉ qua khi mọi thị trường sẵn sàng |
 | ✅ R5-Q31 · R6-Q28 | **20** (đã trả lời 05/11, xây 25/11/2026; R6-Q28 hỏi lại một chỗ ta đọc) | Gate 10: trạng thái checklist và approval nào tính là xong |
 | ✅ R5-Q32 · R6-Q29 | **21** (đã trả lời 05/11, xây 26/11/2026; R6-Q29 hỏi lại một chỗ ta đọc) | Dự án phụ thuộc thương mại: costing nào cho Proceed thường |
-| R5-Q30 · R5-Q45 | **22(a) · (b)** | Gate 12: bằng chứng đóng product-performance feedback · tín hiệu kéo review sớm |
+| ✅ R5-Q30 · R5-Q45 · R6-Q30 | **22(a) · (b)** (đã trả lời 05/11, xây 26/11/2026; R6-Q30 hỏi lại một chỗ ta đọc) | Gate 12: bằng chứng đóng product-performance feedback · tín hiệu kéo review sớm |
 | R5-Q56 · R5-Q39 · R5-Q42 · R5-Q2 | **23(a) · (b) · (c) · (d)** | Một người giữ hai vai: ba chữ ký gate · đóng action · xác nhận Major/Minor · chữ ký phase (một phần của Q2) |
 | R5-Q60 · R5-Q61 | **24(a) · (b)** | Action Critical mở chặn cả Proceed with Conditions · action Critical đã đóng/huỷ |
 | R5-Q40 | **25** | Thị trường đã bán có mở lại PIF mà giữ launch approval không |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q30 · Phản hồi hiệu năng và rà soát sớm sau ra mắt: các chỗ ta đọc câu trả lời (Vòng 5 câu 22) 🟡
+
+**Lộ ra 26/11/2026, khi xây câu 22.** SME nêu: (a) triage và giao việc chỉ đóng bước tiếp nhận, phát hiện hiệu năng cần đánh giá, kết luận, bằng chứng, tác động claim/chất lượng và quyết định CHG, việc khắc phục cần đóng đã xác minh hoặc hành động không Critical đang mở được chấp nhận kèm hạn, vấn đề Critical chưa giải quyết chặn đóng; (b) biến cố đáng kể, tín hiệu chất lượng trọng yếu, yêu cầu cơ quan quản lý, xu hướng có ý nghĩa kéo review sớm, ghi mức độ/ý nghĩa/người rà soát/quyết định leo thang, xu hướng ghi ở Post-Market Sources/CAPA không ngưỡng số, phân biệt năm loại báo cáo. Cách đọc của ta: (1) mỗi **bản ghi Post-Market / CAPA** có thêm triage: `category` (năm loại của SME), `significance` (Significant / Not significant), `reviewer`, `escalation` (Review brought forward / Urgent safety triage / Not escalated — handled in triage), cả bốn bắt buộc cho mọi bản ghi (`capaTriageGaps`, mục mới `sg12-signals-triaged`, theo làn thị trường); (2) **phát hiện hiệu năng** = bản ghi loại "Performance or efficacy question": đánh giá, kết luận, bằng chứng, tác động claim/chất lượng, quyết định Change Control (Change Control raised kèm bản ghi, hoặc No change needed) ngay trong bản ghi đó (`capaFindingGaps`, nằm trong `sg12-performance` cùng Key Gate Check tiếp nhận); việc khắc phục: Complete cần `verifiedBy` (người xác minh tự ghi, máy chủ ghi ngày), chưa xong thì chỉ mang được khi không Critical và có `acceptedOpenBy` + `acceptedOpenDue`; (3) mục **`sg12-critical-open`** (Mandatory, không do Proceed with Conditions xoá): không còn bản ghi Critical chưa Complete; (4) **xu hướng**: sổ mới **Post-Market Trends** với đủ trường SME liệt kê (mẫu số tuỳ chọn), kết luận Meaningful trend / Not a meaningful trend do người rà soát quyết, xu hướng có ý nghĩa cần hành động; không có ngưỡng số; (5) **kéo review sớm** (`postMarketSignalsBringingReviewForward`): bản ghi có quyết định leo thang "Review brought forward"/"Urgent safety triage", hoặc Significant ở loại an toàn/chất lượng/quy định/hiệu năng, hoặc xu hướng có ý nghĩa; tick nguồn Regulator và tick sự cố an toàn/biến cố vẫn kéo (không thể biết là nhẹ); **tick "Quality issue" không còn tự kéo**, và **"Claim or communication question" bỏ khỏi trigger hiệu năng** (chỉ câu hỏi loại Performance or efficacy mới tính); một câu hỏi thông tin chung không đẩy lịch.
+
+**Câu hỏi:** (a) "đáng kể" của một biến cố bất lợi hay tín hiệu chất lượng do ai và theo cách nào quyết: người rà soát tự đánh giá khi triage (như đã xây), hay theo tiêu chí công ty đặt.
+
+**Nếu trả lời khác:** `config/postMarketReview.ts`; `utils/postMarketReview.ts` (`capaTriageGaps`, `capaFindingGaps`, `openCriticalCapa`, `trendRowGaps`, `postMarketSignalsBringingReviewForward`); `utils/gateProgress.ts` (`postLaunchReviewDue`, `productPerformanceFeedback`, `EARLY_REVIEW_ISSUE_TYPES`); `config/gateReadiness.ts` (`sg12-performance`, `sg12-signals-triaged`, `sg12-critical-open`); `projects.service.ts` (`setCapa`); `PostMarketCapa.tsx`; sổ `postMarketTrends` [ASSUMPTION: R6-Q30].
 
 #### R6-Q29 · Costing ở Gate 5 của dự án phụ thuộc thương mại: các chỗ ta đọc câu trả lời (Vòng 5 câu 21) 🟡
 
@@ -2269,7 +2277,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — `withNaInvalidWhen` trong `gateReadinessChecklist`.
 
-#### R5-Q30 · "Product-performance feedback" ở Gate 12 đọc bằng chứng nào 🔴
+#### R5-Q30 · "Product-performance feedback" ở Gate 12 đọc bằng chứng nào ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 22(a)) và đã xây 26/11/2026 — phần dưới là lịch sử.** Triage và giao việc chỉ đóng bước tiếp nhận; phát hiện về hiệu năng còn cần đánh giá, kết luận, bằng chứng, tác động lên claim/chất lượng và quyết định CHG; việc khắc phục cần đóng đã xác minh, hoặc một hành động không Critical đang mở được chấp nhận rõ ràng kèm hạn trong lần rà soát hiện tại; không cần báo cáo hiệu năng trùng nếu các trường nằm trong cùng bản ghi Post-Market/CAPA; vấn đề Critical chưa giải quyết chặn việc đóng. → **R6-Q30**.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục B9).** Câu 15 nêu 5 điều kiện kích hoạt nhưng không nói bằng chứng nào cho thấy đã xử lý. Trước đây mục tự đạt nhờ chính ô tích kích hoạt nó. Giờ mục đọc dòng Key Gate Check "Complaints/issues triaged and CAPA/improvement actions assigned".
 
@@ -2413,7 +2423,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg10-reg-approval`, `sg11-gate10`, `sg11-launch`; và mô hình gate theo thị trường (F4).
 
-#### R5-Q45 · Tín hiệu nào kéo review hậu mãi sớm hơn, và claim question nào là "hiệu năng" 🔴
+#### R5-Q45 · Tín hiệu nào kéo review hậu mãi sớm hơn, và claim question nào là "hiệu năng" ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 22(b)) và đã xây 26/11/2026 — phần dưới là lịch sử.** Biến cố bất lợi đáng kể, tín hiệu chất lượng trọng yếu, yêu cầu của cơ quan quản lý hay xu hướng khiếu nại có ý nghĩa kéo review sớm; báo cáo khác ghi để triage; ghi mức độ, ý nghĩa, người rà soát, quyết định leo thang; triage an toàn khẩn không chờ mốc; xu hướng ghi ở Post-Market Sources/CAPA với đủ các trường, không đặt ngưỡng số chung; phân biệt hiệu năng/hiệu quả, an toàn/biến cố, chất lượng/bao bì, quy định, thông tin chung. → **R6-Q30**.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục Q10/Q13/Q15).** Q13: review sớm hơn khi có *adverse event, complaint trend, regulatory request hoặc quality signal*. Đang đọc: loại vấn đề 'Safety or adverse event' hoặc 'Quality issue', hoặc nguồn 'Regulator'. 'Complaint trend' chưa có dữ liệu. Q10 chỉ tính claim question *liên quan hiệu năng thật*, nhưng dữ liệu không phân biệt được, nên mọi claim question đều được tính.
 

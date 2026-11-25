@@ -1347,6 +1347,22 @@ model CapaRecord {
   investigationLink String?
   capaLink          String?
   pifPmfImpact      String?
+  // Round 5 question 22: triage (category, significance, reviewer, escalation), the assessment of a performance finding made in this same record,
+  // and how the corrective work was closed. verifiedBy/verifiedAt are server-written.
+  category          String?
+  significance      String?
+  reviewer          String?
+  escalation        String?
+  assessment        String?
+  conclusion        String?
+  evidenceLink      String?
+  impactNote        String?
+  changeDecision    String?
+  changeId          String?
+  verifiedBy        String?
+  verifiedAt        DateTime? @db.Date
+  acceptedOpenBy    String?
+  acceptedOpenDue   DateTime? @db.Date
 
   @@map("capa_records")
 }

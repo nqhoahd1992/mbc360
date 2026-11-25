@@ -1041,6 +1041,40 @@ export async function run(base: string, db: Client): Promise<number> {
     t('the test costing status and the Commercial Approver assignment are put back', cr.status < 300 && !(await costingNow()).feasibilityStatus, `${cr.status} ${short(cr.json)}`);
   }
 
+  // ---- Round 5 question 22: a post-market record carries its triage and the assessment of a performance finding; verification is the person's own act
+  console.log('--- Post-market record: triage, assessment and verified closure (question 22)');
+  {
+    const meNameP = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
+    const capaBefore = ((await project()).project.capa ?? []).map((x: any) => ({ ...x }));
+    const capaMarket = (capaBefore[0]?.market as string) ?? ((await project()).project.identity.markets[0] as string);
+    const rec = (over: Record<string, unknown> = {}) => ({ id: 'PM-E2E', market: capaMarket, eventType: 'Complaint', summary: 'e2e', severity: 'Medium', status: 'In Progress', owner: meNameP, ...over });
+    const putCapa = async (records: unknown[]) => api('admin', 'PUT', `/projects/${PROJECT}/capa`, { records, expectedVersion: await version() });
+    const capaNow = async () => ((await project()).project.capa ?? []).find((x: any) => x.id === 'PM-E2E');
+    cr = await putCapa([...capaBefore, rec({ category: 'Smoke signals' })]);
+    t('a kind of report that is not on the answer\'s list is refused (400)', cr.status === 400, `${cr.status} ${short(cr.json)}`);
+    cr = await putCapa([...capaBefore, rec({ category: 'Performance or efficacy question', significance: 'Significant', reviewer: meNameP, escalation: 'Review brought forward', assessment: 'Looked at the batch', conclusion: 'Within spec', evidenceLink: 'https://x/e', impactNote: 'No claim affected', changeDecision: 'Change Control raised', changeId: 'CHG-DOES-NOT-EXIST' })]);
+    t('a Change Control decision that points at a record the project does not have is refused (400)', cr.status === 400, `${cr.status} ${short(cr.json)}`);
+    cr = await putCapa([...capaBefore, rec({ category: 'Performance or efficacy question', significance: 'Significant', reviewer: meNameP, escalation: 'Review brought forward', assessment: 'Looked at the batch', conclusion: 'Within spec', evidenceLink: 'https://x/e', impactNote: 'No claim affected', changeDecision: 'No change needed' })]);
+    {
+      const c = await capaNow();
+      t('triage and the assessment of a performance finding are saved in the same record', cr.status < 300 && c?.category === 'Performance or efficacy question' && c?.assessment === 'Looked at the batch' && c?.escalation === 'Review brought forward', `${cr.status} ${short(c)}`);
+    }
+    cr = await putCapa([...capaBefore, rec({ category: 'Performance or efficacy question', status: 'Complete', verifiedBy: 'Somebody Else' })]);
+    t('the verification of closed corrective work is the signed-in person\'s own: another name is refused (403)', cr.status === 403, `${cr.status} ${short(cr.json)}`);
+    cr = await putCapa([...capaBefore, rec({ category: 'Performance or efficacy question', acceptedOpenBy: 'Somebody Else', acceptedOpenDue: '2026-12-31' })]);
+    t('...and so is the acceptance of an open action (403)', cr.status === 403, `${cr.status} ${short(cr.json)}`);
+    cr = await putCapa([...capaBefore, rec({ category: 'Performance or efficacy question', status: 'Complete', verifiedBy: meNameP, verifiedAt: '1999-01-01' })]);
+    {
+      const c = await capaNow();
+      t('the person records their own verification, and the date is the server\'s, not the request\'s', cr.status < 300 && c?.verifiedBy === meNameP && !!c?.verifiedAt && c?.verifiedAt !== '1999-01-01', `${cr.status} ${short(c)}`);
+    }
+    cr = await putCapa([...capaBefore, rec({ category: 'Performance or efficacy question', status: 'Complete', verifiedBy: meNameP, summary: 'edited later' })]);
+    t('a verification already on the record is kept as it was when the record is saved again', cr.status < 300 && (await capaNow())?.verifiedAt !== undefined, `${cr.status} ${short(await capaNow())}`);
+    // Leave the run as it was.
+    cr = await putCapa(capaBefore);
+    t('the test record is removed again', cr.status < 300 && !(await capaNow()), `${cr.status} ${short(cr.json)}`);
+  }
+
   // SW-59 (2026-11-23): the dossier type of a market is Regulatory's, from its market profile, derived on every read and save.
   cr = await api('admin', 'PUT', `/reference/market-profiles/${nonAsean}`, { patch: { dossierType: 'ARTG listing' }, signal: { criticality: 'Low', dueDate: '2099-01-01' } });
   t('a market profile naming the dossier type is saved', cr.status < 300, `${cr.status} ${short(cr.json)}`);

@@ -1,6 +1,7 @@
 import { RISK_LEVELS, type RegisterRow } from '../types';
 import { FORMULATION_CHANGE_VIEW, type ChangeViewConfig } from '../utils/changeViews';
 import { CLAIM_REVIEW_OUTCOMES, CLAIM_SCOPE_EXCLUDED, CLAIM_SCOPE_OPTIONS, CLAIM_SUBJECT_FLAGS } from './claimReview';
+import { TREND_CONCLUSIONS } from './postMarketReview';
 import { CLAIM_LIBRARY_LINK_OPTIONS } from './referenceData';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
@@ -3761,6 +3762,38 @@ export const evidenceSearchStandard: RegisterConfig = {
 // Registry + categories
 // ---------------------------------------------------------------------------
 
+// Round 5 question 22(b)(ii): "Record trends in Post-Market Sources/CAPA: source records, period, market, product/version/batches, number of reports,
+// denominator where available, comparison period, interpretation, reviewer/date and action. Do not require an arbitrary universal numerical threshold."
+// One row is one trend. Whether it is a meaningful trend is the reviewer's interpretation, never a count compared with a number: a meaningful one brings
+// the post-launch review forward (utils/postMarketReview.ts). [ASSUMPTION: R6-Q30]
+const postMarketTrends: RegisterConfig = {
+  key: 'postMarketTrends',
+  title: 'Post-Market Trends',
+  sheetName: 'PostMarket_CAPA',
+  description:
+    'Complaint and signal trends, recorded beside the post-market records they are drawn from. A trend the reviewer concludes is meaningful brings the post-launch review forward; there is no numerical threshold.',
+  mode: 'register',
+  gate: '12',
+  reviewOwner: REVIEW_SPECS.supplyChain,
+  columns: [
+    { key: 'trendId', label: 'Trend ID', type: 'text', width: 100 },
+    { key: 'market', label: 'Market', type: 'market', width: 120 },
+    { key: 'periodStart', label: 'Period from', type: 'date', width: 130 },
+    { key: 'periodEnd', label: 'Period to', type: 'date', width: 130 },
+    { key: 'sourceRecords', label: 'Source records', type: 'textarea', width: 220 },
+    { key: 'productVersionBatches', label: 'Product, version and batches', type: 'text', width: 220 },
+    { key: 'reportCount', label: 'Number of reports', type: 'number', width: 120 },
+    { key: 'denominator', label: 'Denominator (where available)', type: 'number', width: 150 },
+    { key: 'comparisonPeriod', label: 'Comparison period', type: 'text', width: 180 },
+    { key: 'interpretation', label: 'Interpretation', type: 'textarea', width: 240 },
+    { key: 'conclusion', label: 'Conclusion', type: 'select', width: 190, options: [...TREND_CONCLUSIONS] },
+    { key: 'reviewer', label: 'Reviewer', type: 'user', width: 150, selfAttest: true },
+    { key: 'reviewDate', label: 'Review date', type: 'date', width: 130 },
+    { key: 'actionId', label: 'Action taken (Next Action)', type: 'nextActionRef', width: 220 },
+    { key: 'action', label: 'Action taken (other)', type: 'textarea', width: 200 },
+  ],
+};
+
 export const REGISTER_CONFIGS: RegisterConfig[] = [
   formulationSafetyProfile,
   formulationSafetyMatrix,
@@ -3770,6 +3803,7 @@ export const REGISTER_CONFIGS: RegisterConfig[] = [
   supplierRmEvidence,
   prohibitedIngredients,
   generalRestrictedCaution,
+  postMarketTrends,
   pbCautionLimits,
   ingredientSubstitution,
   eyeSafetyEvidence,
@@ -3862,6 +3896,7 @@ const AUTO_ROW_IDS: Record<string, { column: string; prefix: string }> = {
   skuClaimsPifRegister: { column: 'useId', prefix: 'CU' },
   criticalSafetyFindings: { column: 'findingId', prefix: 'SF' },
   regulatoryChecklistStatus: { column: 'componentId', prefix: 'RC' },
+  postMarketTrends: { column: 'trendId', prefix: 'MT' },
   studyParticipantLog: { column: 'participantId', prefix: 'P' },
   batchFormulaTrace: { column: 'traceId', prefix: 'BT' },
 };
@@ -4569,6 +4604,7 @@ const DEPARTMENTS: RawDept[] = [
     items: [
       { title: 'Costing Calculator', sheetName: 'Costing_Calc', workbookTab: 'Hannah-Costing_Calc', page: 'bom/costing', gate: '05' },
       { title: 'Post-Market / CAPA', sheetName: 'PostMarket_CAPA', workbookTab: 'Hannah-PostMarket_CAPA', page: 'post-market', gate: '12' },
+      'postMarketTrends',
     ],
   },
   {

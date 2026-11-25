@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import DrawerTabs from '../components/DrawerTabs';
-import { Button, Drawer, Empty, Form, Grid, Input, Select, message } from 'antd';
+import { Button, DatePicker, Drawer, Empty, Form, Grid, Input, Select, message } from 'antd';
+import dayjs from 'dayjs';
 import ChoiceSelect from '../components/ChoiceSelect';
 import { InboxOutlined, PlusOutlined, RightOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
@@ -10,6 +11,16 @@ import { isDoneStatus } from '@mbc360/shared/utils/doneStatus';
 import { RISK_LEVELS } from '@mbc360/shared/types';
 import { CAPA_STATUSES } from '@mbc360/shared/config/gates';
 import UserSelect from '../components/UserSelect';
+import ChangeRefSelect from '../components/ChangeRefSelect';
+import SelfAttestField from '../components/SelfAttestField';
+import {
+  CHANGE_DECISIONS,
+  CHANGE_DECISION_RAISED,
+  ESCALATION_DECISIONS,
+  POST_MARKET_CATEGORIES,
+  POST_MARKET_SIGNIFICANCE,
+} from '@mbc360/shared/config/postMarketReview';
+import { capaFindingGaps, capaTriageGaps, isPerformanceFinding } from '@mbc360/shared/utils/postMarketReview';
 import { patchArray, useDraft } from '../hooks/useDraft';
 import { useExclusiveDrawer } from '../hooks/exclusiveDrawer';
 import DrawerSaveFooter from '../components/DrawerSaveFooter';
@@ -273,6 +284,129 @@ export default function PostMarketCapa() {
                 <dd>{severityTag(open.severity)}</dd>
               </div>
             </dl>
+                    </div>
+                  ),
+                },
+                {
+                  // Round 5 question 22: "Record severity, significance, reviewer and escalation decision" for every report logged for triage.
+                  key: 'triage',
+                  label: 'Triage',
+                  dot: capaTriageGaps(open).length > 0,
+                  children: (
+                    <div className="pm-detail">
+                      <div className="pm-fields">
+                        <label className="au-field">
+                          <span className="au-field-label">Kind of report<span className="as-req">&nbsp;*</span></span>
+                          <Select
+                            value={open.category || undefined}
+                            placeholder="Choose"
+                            options={POST_MARKET_CATEGORIES.map((v) => ({ value: v, label: v }))}
+                            onChange={(v?: string) => patch(openIndex, { category: v ?? '' })}
+                          />
+                        </label>
+                        <label className="au-field">
+                          <span className="au-field-label">Significance<span className="as-req">&nbsp;*</span></span>
+                          <Select
+                            value={open.significance || undefined}
+                            placeholder="Choose"
+                            options={POST_MARKET_SIGNIFICANCE.map((v) => ({ value: v, label: v }))}
+                            onChange={(v?: string) => patch(openIndex, { significance: v ?? '' })}
+                          />
+                        </label>
+                        <label className="au-field">
+                          <span className="au-field-label">Reviewer<span className="as-req">&nbsp;*</span></span>
+                          <UserSelect value={open.reviewer} onChange={(v) => patch(openIndex, { reviewer: v ?? '' })} />
+                        </label>
+                        <label className="au-field">
+                          <span className="au-field-label">Escalation decision<span className="as-req">&nbsp;*</span></span>
+                          <Select
+                            value={open.escalation || undefined}
+                            placeholder="Choose"
+                            options={ESCALATION_DECISIONS.map((v) => ({ value: v, label: v }))}
+                            onChange={(v?: string) => patch(openIndex, { escalation: v ?? '' })}
+                          />
+                        </label>
+                      </div>
+                      <p className="rt-note">
+                        A significant adverse event, material quality signal, regulator request or meaningful trend brings the post-launch review forward; a minor
+                        query is logged here and handled without starting a full review. Urgent safety triage does not wait for a scheduled milestone.
+                      </p>
+                    </div>
+                  ),
+                },
+                {
+                  // "The performance finding also needs a recorded assessment, conclusion, evidence, impact on claims/quality and CHG decision" — in this same record.
+                  key: 'assessment',
+                  label: 'Assessment',
+                  dot: capaFindingGaps(open).length > 0,
+                  children: !isPerformanceFinding(open) ? (
+                    <p className="rt-note">
+                      A performance or efficacy question is assessed here. Set the kind of report to “Performance or efficacy question” on the Triage tab to record
+                      its assessment, conclusion, evidence, impact on claims and quality, and its Change Control decision.
+                    </p>
+                  ) : (
+                    <div className="pm-detail">
+                      <div className="pm-fields">
+                        <label className="au-field pm-wide">
+                          <span className="au-field-label">Assessment<span className="as-req">&nbsp;*</span></span>
+                          <Input.TextArea autoSize={{ minRows: 2 }} value={open.assessment} onChange={(e) => patch(openIndex, { assessment: e.target.value })} />
+                        </label>
+                        <label className="au-field pm-wide">
+                          <span className="au-field-label">Conclusion<span className="as-req">&nbsp;*</span></span>
+                          <Input.TextArea autoSize={{ minRows: 2 }} value={open.conclusion} onChange={(e) => patch(openIndex, { conclusion: e.target.value })} />
+                        </label>
+                        <label className="au-field pm-wide">
+                          <span className="au-field-label">Evidence<span className="as-req">&nbsp;*</span></span>
+                          <Input value={open.evidenceLink} placeholder="link" onChange={(e) => patch(openIndex, { evidenceLink: e.target.value })} />
+                        </label>
+                        <label className="au-field pm-wide">
+                          <span className="au-field-label">Impact on claims and quality<span className="as-req">&nbsp;*</span></span>
+                          <Input.TextArea autoSize={{ minRows: 2 }} value={open.impactNote} onChange={(e) => patch(openIndex, { impactNote: e.target.value })} />
+                        </label>
+                        <label className="au-field">
+                          <span className="au-field-label">Change Control decision<span className="as-req">&nbsp;*</span></span>
+                          <Select
+                            value={open.changeDecision || undefined}
+                            placeholder="Choose"
+                            options={CHANGE_DECISIONS.map((v) => ({ value: v, label: v }))}
+                            onChange={(v?: string) => patch(openIndex, { changeDecision: v ?? '' })}
+                          />
+                        </label>
+                        {open.changeDecision === CHANGE_DECISION_RAISED && (
+                          <label className="au-field">
+                            <span className="au-field-label">Change Control record<span className="as-req">&nbsp;*</span></span>
+                            <ChangeRefSelect purpose="reference" value={open.changeId || undefined} onChange={(v) => patch(openIndex, { changeId: v ?? '' })} />
+                          </label>
+                        )}
+                        {isDoneStatus(open.status) ? (
+                          <label className="au-field pm-wide">
+                            <span className="au-field-label">Corrective work verified by<span className="as-req">&nbsp;*</span></span>
+                            <SelfAttestField value={open.verifiedBy} onChange={(v) => patch(openIndex, { verifiedBy: v })} />
+                            {open.verifiedAt && <span className="au-meta">verified {open.verifiedAt}</span>}
+                          </label>
+                        ) : open.severity === 'Critical' ? (
+                          <p className="rt-note pm-wide">A Critical issue cannot stay open: it blocks closing Gate 12. Close the corrective work and verify it.</p>
+                        ) : (
+                          <>
+                            <label className="au-field">
+                              <span className="au-field-label">Open action accepted by<span className="as-req">&nbsp;*</span></span>
+                              <SelfAttestField value={open.acceptedOpenBy} onChange={(v) => patch(openIndex, { acceptedOpenBy: v })} />
+                            </label>
+                            <label className="au-field">
+                              <span className="au-field-label">Due in the current review<span className="as-req">&nbsp;*</span></span>
+                              <DatePicker
+                                style={{ width: '100%' }}
+                                value={open.acceptedOpenDue ? dayjs(open.acceptedOpenDue) : null}
+                                onChange={(d) => patch(openIndex, { acceptedOpenDue: d ? d.format('YYYY-MM-DD') : undefined })}
+                              />
+                            </label>
+                            <p className="rt-note pm-wide">
+                              Corrective work still open can be carried only when verified closure is not yet possible: a non-critical action, explicitly accepted, with its
+                              due date in the current review.
+                            </p>
+                          </>
+                        )}
+                      </div>
                     </div>
                   ),
                 },

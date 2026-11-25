@@ -67,6 +67,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG12: {
+    postMarketTrends: ['action', 'actionId', 'comparisonPeriod', 'conclusion', 'interpretation', 'market', 'periodEnd', 'periodStart', 'productVersionBatches', 'reportCount', 'reviewDate', 'reviewer', 'sourceRecords'],
     vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };

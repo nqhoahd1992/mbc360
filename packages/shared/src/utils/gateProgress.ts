@@ -71,6 +71,15 @@ import {
 } from './watchlistReview';
 import { conditionalSafetyFindings, hardBlockingSafetyFindings } from './safetyFindings';
 import { activeMarketTracks, currentMarketTracks, onMarketTracks, overdueReviews } from './postLaunch';
+import {
+  POST_MARKET_TRENDS_REGISTER,
+  capaFindingGaps,
+  capaTriageGaps,
+  isPerformanceFinding,
+  openCriticalCapa,
+  postMarketSignalsBringingReviewForward,
+  trendRowGaps,
+} from './postMarketReview';
 import { impactHolds } from './impactAssessments';
 import { PHASE_CONFIGS, PRODUCT_FORM_UNDER_EVALUATION } from '../config/phases';
 import { artworkClaimBlockers, unconfirmedExemptionRows } from './claimEvidence';
@@ -194,12 +203,13 @@ const ENHANCED_PMS_TARGET_AREAS = ['Eyes'];
 // question 10 says only a claim question "concerning actual performance" counts —
 // nothing records what a claim question concerns, so the broad reading is kept
 // rather than missing a performance one [ASSUMPTION: R5-Q45].
+// Round 5 question 22(b)(iii) removed 'Claim or communication question' from this list: "a routine wording query can be handled without advancing the whole
+// review schedule" — a question about actual performance is a post-market record of the kind Performance or efficacy question, which does fire it below.
 const PERFORMANCE_ISSUE_TYPES = [
   'Product performance',
   'Packaging issue',
   'Formula issue',
   'Quality issue',
-  'Claim or communication question',
   'Product optimisation opportunity',
 ];
 
@@ -207,7 +217,11 @@ const PERFORMANCE_ISSUE_TYPES = [
 // complaint trend, regulatory request or quality signal arises." Read as: an
 // adverse-event or quality issue, or feedback from a regulator. A complaint TREND
 // has no record to read yet [ASSUMPTION: R5-Q45].
-const EARLY_REVIEW_ISSUE_TYPES = ['Safety or adverse event', 'Quality issue'];
+// Round 5 question 22(b)(i): only a SIGNIFICANT event, a MATERIAL quality signal, a regulator request or a MEANINGFUL trend brings it forward, and "every
+// minor query need not start a full review". So a ticked Quality issue no longer does by itself — a quality signal counts through a post-market record that
+// is significant or escalated (postMarketSignalsBringingReviewForward). A ticked safety or adverse-event issue still does: nothing in a tick says it is
+// minor, and urgent safety triage must not wait [ASSUMPTION: R6-Q30].
+const EARLY_REVIEW_ISSUE_TYPES = ['Safety or adverse event'];
 const EARLY_REVIEW_SOURCES = ['Regulator'];
 
 // Today, as 'YYYY-MM-DD'. The one place the engine reads a clock — the review
@@ -701,6 +715,7 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
       const issues = selectedChecklistLabels(project, 'postMarketIssueType');
       const sources = selectedChecklistLabels(project, 'postMarketSources');
       if (issues.some((i) => EARLY_REVIEW_ISSUE_TYPES.includes(i))) return 'applies';
+      if (postMarketSignalsBringingReviewForward(project).length > 0) return 'applies';
       if (sources.some((src) => EARLY_REVIEW_SOURCES.includes(src))) return 'applies';
       // The 1-month milestone exists only for an enhanced-surveillance product; this
       // passed `enhanced: false`, so that milestone never made the trigger fire
@@ -734,6 +749,7 @@ export function evaluateTrigger(project: ProjectData, trigger: ReadinessTrigger)
       const issues = selectedChecklistLabels(project, 'postMarketIssueType');
       const actions = selectedChecklistLabels(project, 'postMarketAction');
       if (issues.some((i) => PERFORMANCE_ISSUE_TYPES.includes(i))) return 'applies';
+      if (project.capa.some(isPerformanceFinding)) return 'applies';
       if (actions.includes('Product optimisation')) return 'applies';
       if (onMarketTracks(project).length === 0) return 'doesNotApply';
       // The 1-month milestone exists only for an enhanced-surveillance product; this
@@ -1360,6 +1376,22 @@ export function evaluateReadinessCheck(
       return { evaluable: true, satisfied: marketsWithoutChecklist(project).length === 0 };
     case 'marketLaunchHoldsClear':
       return { evaluable: true, satisfied: marketLaunchHolds(project).length === 0 };
+    // Round 5 question 22: every post-market record is triaged (kind, significance, reviewer, escalation decision) and every recorded trend is complete.
+    // An empty list is a legitimate answer (nothing was reported), so this is satisfied then; the Gate 12 Key Gate Check is the record that somebody looked.
+    case 'postMarketRecordsTriaged':
+      return {
+        evaluable: true,
+        satisfied:
+          project.capa.every((c) => capaTriageGaps(c).length === 0) &&
+          rowsOfMarket(POST_MARKET_TRENDS_REGISTER, project.registers[POST_MARKET_TRENDS_REGISTER] ?? [], market).every((r) => trendRowGaps(r).length === 0),
+      };
+    // "The performance finding also needs a recorded assessment, conclusion, evidence, impact on claims/quality and CHG decision. Corrective work requires
+    // verified closure, or an explicitly accepted non-critical open action with a due date in the current review."
+    case 'postMarketFindingsDealtWith':
+      return { evaluable: true, satisfied: project.capa.every((c) => capaFindingGaps(c).length === 0) };
+    // "A Critical unresolved issue blocks closure."
+    case 'noOpenCriticalCapa':
+      return { evaluable: true, satisfied: openCriticalCapa(project).length === 0 };
     case 'aseanChecklistComplete':
       return { evaluable: true, satisfied: !aseanChecklistIncomplete(project) };
     case 'finalSafetySignOffComplete':
@@ -2036,6 +2068,10 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'marketChecklistRecorded':
     case 'marketLaunchHoldsClear':
       return { href: `/registers/reg/${MARKET_DOSSIER_REGISTER}` };
+    case 'postMarketRecordsTriaged':
+    case 'postMarketFindingsDealtWith':
+    case 'noOpenCriticalCapa':
+      return { href: '/post-market' };
     case 'aseanChecklistComplete':
       return { href: `/registers/reg/${ASEAN_CHECKLIST_REGISTER}` };
     case 'finalSafetySignOffComplete':

@@ -1195,6 +1195,18 @@ Các dòng infant/baby có thể N/A khi trigger nêu trong dòng thực sự kh
 
 Cả "Feasible with Conditions" lẫn "In Progress" đều không chứng minh việc đạt vô điều kiện một mục tiêu chi phí Must; cả hai đều không cho phép Proceed thường. Feasible with Conditions có thể dùng Proceed with Conditions với chấp thuận thương mại và các hành động được theo dõi. In Progress cần đủ costing đã đánh giá để chặn rủi ro còn lại, nếu không thì Hold. Not Feasible thường nghĩa là Hold hoặc một điều chỉnh có thẩm quyền, rõ ràng đối với yêu cầu thương mại/quyết định kinh doanh; chữ ký có điều kiện một mình không thể tuyên bố một yêu cầu Must thất bại là đã đạt. N/A cần một quyết định phạm vi có lý do, không phải thiếu costing.
 
+### Câu 22 — Phản hồi hiệu năng và rà soát sớm sau ra mắt
+
+**Kết luận:** ✅ đã xây (26/11/2026). Một chi tiết chúng tôi đọc được hỏi lại ở Vòng 6, câu 30.
+
+**(a)** Triage và giao việc chỉ đóng bước tiếp nhận. Phát hiện về hiệu năng còn cần đánh giá, kết luận, bằng chứng, tác động lên claim/chất lượng và quyết định CHG đã ghi lại. Việc khắc phục cần đóng đã xác minh, hoặc một hành động không Critical đang mở được chấp nhận rõ ràng kèm hạn trong lần rà soát hiện tại. Không cần báo cáo hiệu năng trùng lặp nếu các trường này nằm trong cùng bản rà soát Post-Market/CAPA. Một vấn đề Critical chưa giải quyết chặn việc đóng.
+
+**(b)(i)** Một biến cố bất lợi đáng kể, tín hiệu chất lượng trọng yếu, yêu cầu của cơ quan quản lý hay xu hướng khiếu nại có ý nghĩa sẽ kéo rà soát lên sớm. Các báo cáo khác ghi lại để triage; không phải mọi câu hỏi nhỏ đều khởi động một rà soát đầy đủ. Ghi mức độ nghiêm trọng, ý nghĩa, người rà soát và quyết định leo thang. Triage an toàn khẩn không được chờ mốc đã lên lịch.
+
+**(b)(ii)** Ghi xu hướng ở Post-Market Sources/CAPA: bản ghi nguồn, giai đoạn, thị trường, sản phẩm/phiên bản/lô, số báo cáo, mẫu số nếu có, giai đoạn so sánh, diễn giải, người rà soát/ngày và hành động. Không đặt một ngưỡng số chung tuỳ ý.
+
+**(b)(iii)** Có. Phân biệt câu hỏi về hiệu năng/hiệu quả, an toàn/biến cố bất lợi, chất lượng/bao bì, quy định và thông tin chung. Một thách thức về hiệu năng kích hoạt rà soát kỹ thuật theo mức độ đáng kể; một câu hỏi thường về câu chữ có thể được xử lý mà không đẩy cả lịch rà soát lên.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

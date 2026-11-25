@@ -399,6 +399,11 @@ export type ReadinessCheck =
   // Round 5 question 20: after Gate 10 a market is released only once a condition of its regulatory approval that is required before launch is met
   // and an external notification it requires has been made.
   | { kind: 'marketLaunchHoldsClear' }
+  // Round 5 question 22: post-market records are triaged and trends complete; a performance finding is assessed and its corrective work closed or
+  // accepted; no Critical issue is left open.
+  | { kind: 'postMarketRecordsTriaged' }
+  | { kind: 'postMarketFindingsDealtWith' }
+  | { kind: 'noOpenCriticalCapa' }
   // Rule E2: the built-in ASEAN PIF checklist is complete. Conditional on an
   // ASEAN market being selected.
   | { kind: 'aseanChecklistComplete' }
@@ -556,6 +561,8 @@ export const PER_MARKET_ITEM_IDS: ReadonlySet<string> = new Set([
   // Gate 12
   'sg12-feedback',
   'sg12-feedback-review',
+  'sg12-signals-triaged',
+  'sg12-critical-open',
   'sg12-pms-baseline',
   'sg12-change-links',
   'sg12-market-additions',
@@ -3266,7 +3273,37 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // triage row: the feedback has been triaged and actions assigned. Which
       // Key Gate Check row stands for "product-performance feedback reviewed" is
       // our choice [ASSUMPTION: R5-Q30].
-      check: { kind: 'gateCheckDone', gate: '12', check: 'Complaints/issues triaged and CAPA/improvement actions assigned' },
+      // Round 5 question 22(a): "Triage and assignment alone close the intake step" — that is this Key Gate Check, and it is no longer enough. The finding
+      // also needs its assessment, conclusion, evidence, impact on claims and quality and Change Control decision, and corrective work verified or an open
+      // action explicitly accepted, in the same post-market record. [ASSUMPTION: R6-Q30]
+      check: {
+        kind: 'allOf',
+        checks: [
+          { kind: 'postMarketFindingsDealtWith' },
+          { kind: 'gateCheckDone', gate: '12', check: 'Complaints/issues triaged and CAPA/improvement actions assigned' },
+        ],
+      },
+    },
+    {
+      // Round 5 question 22(b)(i): "Log other reports for triage ... Record severity, significance, reviewer and escalation decision", and the trends of
+      // 22(b)(ii) are recorded in full. Empty is a real answer: nothing was reported.
+      id: 'sg12-signals-triaged',
+      label: 'Post-market reports triaged (kind, significance, reviewer, escalation decision) and trends interpreted',
+      tier: 'Mandatory',
+      check: { kind: 'postMarketRecordsTriaged' },
+      nonVacuousBecause:
+        'A product with nothing reported has nothing to triage, so the item is correctly satisfied; what it guards is a record logged but not triaged, which it reads directly.',
+      assumption: 'R6-Q30',
+    },
+    {
+      // "A Critical unresolved issue blocks closure." Not cleared by Proceed with Conditions: it is a closure condition, not a deferral.
+      id: 'sg12-critical-open',
+      label: 'No Critical post-market issue left unresolved',
+      tier: 'Mandatory',
+      check: { kind: 'noOpenCriticalCapa' },
+      nonVacuousBecause:
+        'A product with no Critical issue open has nothing to resolve, so the item is correctly satisfied; what it guards is a Critical record still open, which it reads directly.',
+      assumption: 'R6-Q30',
     },
     {
       id: 'sg12-capa',

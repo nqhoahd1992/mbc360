@@ -144,6 +144,7 @@ import { changeRefProblem, newChangeReferences, resolveChangeRef, validChangeRef
 import { baseColumnsOf, isFormulationChange } from '@mbc360/shared/utils/changeViews';
 import { formulaChangeRequirement, formulaWasApproved } from '@mbc360/shared/utils/formulaBaseline';
 import { areaAssessmentProblems, areasAwaitingAssessment, CHANGE_AREA_FUNCTIONS } from '@mbc360/shared/utils/changeAreaAssessments';
+import { CHANGE_DECISIONS, ESCALATION_DECISIONS, POST_MARKET_CATEGORIES, POST_MARKET_SIGNIFICANCE } from '@mbc360/shared/config/postMarketReview';
 import { approvedClaimRevisionsWithoutChange, marketAuthorisationRequirement, marketRegulatoryApprovalsTakenBack, releasedLabelEditsWithoutChange } from '@mbc360/shared/utils/controlledBaselines';
 import {
   CHANGE_STATUSES_NEEDING_TRIAGE,
@@ -6032,7 +6033,31 @@ export class ProjectsService {
     expectedVersion: number,
   ): Promise<ProjectEnvelope> {
     for (const c of records) assertOneOf(`${c.id}: status`, c.status, CAPA_STATUSES);
-    return this.mutate(user, id, expectedVersion, 'capa.updated', async (tx) => {
+    return this.mutate(user, id, expectedVersion, 'capa.updated', async (tx, _row, project) => {
+      // Round 5 question 22: the controlled lists, the link to a real Change Control record, and the two acts a record carries — the verification of
+      // closed corrective work and the explicit acceptance of an open action — which are the signed-in person's own (the server writes who verified and when,
+      // never the client). A verification already on the record is kept as it was.
+      const stored = new Map(project.capa.map((c) => [c.id, c]));
+      const today = new Date().toISOString().slice(0, 10);
+      const me = user.displayName.trim();
+      for (const c of records) {
+        if (c.category) assertOneOf(`${c.id}: category`, c.category, POST_MARKET_CATEGORIES);
+        if (c.significance) assertOneOf(`${c.id}: significance`, c.significance, POST_MARKET_SIGNIFICANCE);
+        if (c.escalation) assertOneOf(`${c.id}: escalation decision`, c.escalation, ESCALATION_DECISIONS);
+        if (c.changeDecision) assertOneOf(`${c.id}: Change Control decision`, c.changeDecision, CHANGE_DECISIONS);
+        if (c.changeId && !project.changes.some((x) => x.changeId === c.changeId)) {
+          throw new BadRequestException(`${c.id}: "${c.changeId}" is not a Change Control record of this project`);
+        }
+        const before = stored.get(c.id);
+        for (const field of ['verifiedBy', 'acceptedOpenBy'] as const) {
+          const named = (c[field] ?? '').trim();
+          if (named !== '' && named !== (before?.[field] ?? '').trim() && named.toLowerCase() !== me.toLowerCase()) {
+            throw new ForbiddenException(`${c.id}: ${field === 'verifiedBy' ? 'the verification' : 'the acceptance of an open action'} is recorded by the person who gives it, as themselves`);
+          }
+        }
+        const verifiedNow = (c.verifiedBy ?? '').trim();
+        c.verifiedAt = verifiedNow === '' ? undefined : verifiedNow === (before?.verifiedBy ?? '').trim() ? before?.verifiedAt : today;
+      }
       // `code` is globally unique, so deletes are scoped to this project and the
       // rows are recreated from the submitted list.
       await tx.capaRecord.deleteMany({ where: { projectId: id } });
@@ -6052,6 +6077,20 @@ export class ProjectsService {
             investigationLink: c.investigationLink ?? null,
             capaLink: c.capaLink ?? null,
             pifPmfImpact: c.pifPmfImpact ?? null,
+            category: c.category || null,
+            significance: c.significance || null,
+            reviewer: c.reviewer || null,
+            escalation: c.escalation || null,
+            assessment: c.assessment || null,
+            conclusion: c.conclusion || null,
+            evidenceLink: c.evidenceLink || null,
+            impactNote: c.impactNote || null,
+            changeDecision: c.changeDecision || null,
+            changeId: c.changeId || null,
+            verifiedBy: c.verifiedBy || null,
+            verifiedAt: c.verifiedAt ? new Date(c.verifiedAt) : null,
+            acceptedOpenBy: c.acceptedOpenBy || null,
+            acceptedOpenDue: c.acceptedOpenDue ? new Date(c.acceptedOpenDue) : null,
           })),
         });
       }

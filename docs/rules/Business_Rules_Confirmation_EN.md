@@ -1195,6 +1195,18 @@ Infant/baby rows can be N/A where their stated trigger genuinely does not apply,
 
 Neither "Feasible with Conditions" nor "In Progress" demonstrates unconditional achievement of a Must cost target; neither permits plain Proceed. Feasible with Conditions can use Proceed with Conditions with commercial acceptance and tracked actions. In Progress needs enough assessed costing to bound the outstanding risk, otherwise Hold. Not Feasible normally means Hold or an explicit authorised revision of the commercial requirement/business decision; a conditional signature alone cannot declare a failed Must requirement met. N/A requires a justified scope decision, not missing costing.
 
+### Question 22 — Performance feedback and early post-launch review
+
+**Verdict:** ✅ built (2026-11-26). Our reading of one detail is asked in Round 6, question 30.
+
+**(a)** Triage and assignment alone close the intake step. The performance finding also needs a recorded assessment, conclusion, evidence, impact on claims/quality and CHG decision. Corrective work requires verified closure, or an explicitly accepted non-critical open action with a due date in the current review. No separate duplicate performance report is needed if these fields are in the same Post-Market/CAPA review. A Critical unresolved issue blocks closure.
+
+**(b)(i)** A significant adverse event, material quality signal, regulator request or meaningful complaint trend brings review forward. Log other reports for triage; every minor query need not start a full review. Record severity, significance, reviewer and escalation decision. Urgent safety triage must not wait for a scheduled milestone.
+
+**(b)(ii)** Record trends in Post-Market Sources/CAPA: source records, period, market, product/version/batches, number of reports, denominator where available, comparison period, interpretation, reviewer/date and action. Do not require an arbitrary universal numerical threshold.
+
+**(b)(iii)** Yes. Distinguish performance/efficacy questions, safety/adverse events, quality/packaging, regulatory and general information. A performance challenge triggers technical review according to significance; a routine wording query can be handled without advancing the whole review schedule.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

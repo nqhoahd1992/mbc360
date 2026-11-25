@@ -654,6 +654,11 @@ function sourcesOf(check: ReadinessCheck): EvidenceSource[] {
     case 'marketChecklistRecorded':
     case 'marketLaunchHoldsClear':
       return [registerSource(MARKET_DOSSIER_REGISTER)];
+    case 'postMarketRecordsTriaged':
+      return [registerSource('postMarketTrends'), { label: 'post-market records', lockRef: 'NONE', note: 'setCapa has no gate lock' }];
+    case 'postMarketFindingsDealtWith':
+    case 'noOpenCriticalCapa':
+      return [{ label: 'post-market records', lockRef: 'NONE', note: 'setCapa has no gate lock' }];
     case 'aseanChecklistComplete':
       return [registerSource(ASEAN_CHECKLIST_REGISTER)];
     case 'gateFieldFilled':
