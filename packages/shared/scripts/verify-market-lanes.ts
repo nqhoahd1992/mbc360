@@ -23,6 +23,16 @@ const item = (p: ProjectData, gate: string, id: string, market?: string) =>
   gateReadinessChecklist(p, gate, undefined, market).find((i) => i.id === id);
 const ok = (p: ProjectData, gate: string, id: string, market?: string) => item(p, gate, id, market)?.satisfied === true;
 const track = (p: ProjectData, market: string) => p.marketTracks.find((x) => x.market === market)!;
+// A market's regulatory approval is derived from its dossier components (Round 5 question 20), so a market is "approved" when it has a done one.
+const dossier = (p: ProjectData, market: string, approved: boolean) => {
+  const rows = (p.registers['regulatoryChecklistStatus'] ?? []).filter((r) => r.market !== market);
+  rows.push(
+    approved
+      ? { componentId: 'RC-001', market, dossierType: 'x', component: 'c', componentVersion: 'v1', owner: 'o', checklistLink: 'l', status: 'Complete', regulatoryApproval: 'Approved', externalAuthorisation: 'Not required' }
+      : { market, regulatoryApproval: 'Pending' },
+  );
+  p.registers['regulatoryChecklistStatus'] = rows;
+};
 const finding = (over: Partial<ChangeControlAssessment>): ChangeControlAssessment => ({
   id: `f${Math.random()}`,
   finding: 'Rising complaints',
@@ -57,12 +67,12 @@ const finding = (over: Partial<ChangeControlAssessment>): ChangeControlAssessmen
 // --- "every market" items: a market's own approval ---------------------------------------------------------------------------
 {
   const p = fresh();
-  track(p, VN).regulatoryStatus = 'Approved';
-  track(p, SG).regulatoryStatus = 'Pending';
+  dossier(p, VN, true);
+  dossier(p, SG, false);
   t('Gate 10 regulatory approval: Vietnam is approved, so its lane is clear', ok(p, 'SG10', 'sg10-reg-approval', VN));
   t('...Singapore is not, so its lane is held', !ok(p, 'SG10', 'sg10-reg-approval', SG));
   t('...and the whole project is held until both are', !ok(p, 'SG10', 'sg10-reg-approval'));
-  track(p, SG).regulatoryStatus = 'Approved';
+  dossier(p, SG, true);
   t('both approved: the project is clear, as before', ok(p, 'SG10', 'sg10-reg-approval'));
 }
 
@@ -208,8 +218,8 @@ const finding = (over: Partial<ChangeControlAssessment>): ChangeControlAssessmen
 // --- a project passes exactly when all its lanes do ------------------------------------------------------------------------------
 {
   const p = fresh();
-  track(p, VN).regulatoryStatus = 'Approved';
-  track(p, SG).regulatoryStatus = 'Approved';
+  dossier(p, VN, true);
+  dossier(p, SG, true);
   track(p, VN).launchApproval = 'Approved';
   track(p, SG).launchApproval = 'Pending';
   p.changeControlAssessments = [finding({ markets: VN }), finding({ markets: SG, finding: 'b' })];

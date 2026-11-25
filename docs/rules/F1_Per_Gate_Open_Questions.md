@@ -1413,7 +1413,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q35 · R5-Q36 · R5-Q37 · R6-Q26 | **18(a) · (b) · (c)** (đã trả lời 05/11, xây 25/11/2026; R6-Q26 hỏi lại một chỗ ta đọc) | Claim "Not Approved" ở Gate 3 · Technical review · ai ghi nhận duyệt revision |
 | ✅ R5-Q28 · R6-Q27 | **19(a)** (đã trả lời 05/11, xây 25/11/2026; R6-Q27 hỏi lại một chỗ ta đọc) | Thị trường đã rút còn cần làn ký Gate 12 không |
 | ✅ R5-Q44 · R6-Q27 | **19(b)** (đã trả lời 05/11, xây 25/11/2026; R6-Q27 hỏi lại một chỗ ta đọc) | Gate 10–11 theo thị trường: dự án chỉ qua khi mọi thị trường sẵn sàng |
-| R5-Q31 | **20** | Gate 10: trạng thái checklist và approval nào tính là xong |
+| ✅ R5-Q31 · R6-Q28 | **20** (đã trả lời 05/11, xây 25/11/2026; R6-Q28 hỏi lại một chỗ ta đọc) | Gate 10: trạng thái checklist và approval nào tính là xong |
 | R5-Q32 | **21** | Dự án phụ thuộc thương mại: costing nào cho Proceed thường |
 | R5-Q30 · R5-Q45 | **22(a) · (b)** | Gate 12: bằng chứng đóng product-performance feedback · tín hiệu kéo review sớm |
 | R5-Q56 · R5-Q39 · R5-Q42 · R5-Q2 | **23(a) · (b) · (c) · (d)** | Một người giữ hai vai: ba chữ ký gate · đóng action · xác nhận Major/Minor · chữ ký phase (một phần của Q2) |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q28 · Hồ sơ quy định theo thành phần ở Gate 10: các chỗ ta đọc câu trả lời (Vòng 5 câu 20) 🟡
+
+**Lộ ra 25/11/2026, khi xây câu 20.** SME nêu: giá trị đạt (checklist Complete hoặc N/A có thẩm quyền; Approved hoặc Approved with Conditions chỉ khi điều kiện được ghi, được phép ở giai đoạn đó và gắn hành động có kiểm soát; điều kiện trước ra mắt chặn Gate 11); nhiều thành phần mỗi thị trường với loại, phiên bản, ID riêng, đánh giá mọi thành phần, một tóm tắt dẫn xuất; ASEAN PIF dùng chung nhưng mỗi thị trường cần kết luận riêng; tách phê duyệt nội bộ khỏi bằng chứng thông báo/ủy quyền bên ngoài. Cách đọc của ta: (1) **mỗi thị trường còn theo đuổi** (kể cả thị trường ASEAN — trước đây chỉ ngoài ASEAN) cần ≥1 dòng thành phần ở sổ Regulatory Checklist Status, mỗi dòng có ID sinh (`RC-001`), `component`, `componentVersion`; `market` không còn duy nhất; mọi dòng của thị trường phải xong (`marketsWithoutChecklist`); (2) **Approved with Conditions** qua Gate 10 khi có `approvalConditions`, `conditionTiming` (Before launch / After launch (permitted by the decision) — "được phép ở giai đoạn đó" ta đọc là quyết định nêu rõ thời điểm) và `conditionActionId` trỏ tới Next Action có kiểm soát (`controlledActionGaps`, không Cancelled); (3) mục mới **`sg11-reg-conditions`** (Mandatory, theo làn thị trường, `marketLaunchHolds`): điều kiện "Before launch" chặn Gate 11 cho đến khi hành động mang nó **Closed**; (4) **ngoài**: cột `externalAuthorisation` (Not required / Required — not yet notified / Notified / submitted / Authorised / accepted) + `externalEvidenceLink`, tách khỏi phê duyệt nội bộ; phải nêu trạng thái ở Gate 10, bản ghi "đã thông báo/ủy quyền" cần link bằng chứng, còn "cần mà chưa thông báo" **không chặn Gate 10 nhưng chặn Gate 11**; (5) **tóm tắt dẫn xuất**: Regulatory status của thẻ theo dõi thị trường là `marketRegulatorySummary` (không dòng = Not Started; có dòng bị từ chối/Blocked/On Hold/Withdrawn = Blocked; mọi dòng xong = Approved; tất cả N/A = N/A; còn lại In Progress), áp ở `toProjectData` và ở `everyMarket`, thẻ chỉ hiển thị không cho gõ.
+
+**Câu hỏi:** (a) thông báo hoặc ủy quyền bên ngoài mà thị trường yêu cầu phải có trước Gate 10, hay chỉ cần trước khi ra mắt (Gate 11).
+
+**Nếu trả lời khác:** `utils/marketDossier.ts` (`marketsNeedingDossier`, `checklistRowGap`, `marketLaunchHolds`, `marketRegulatorySummary`); `config/registers.ts` (`regulatoryChecklistStatus`, `CONDITION_*`, `EXTERNAL_*`); `config/gateReadiness.ts` (`sg10-checklist`, `sg11-reg-conditions`); `utils/gateProgress.ts` (`marketLaunchHoldsClear`, `everyMarket`); `project-mapper.ts`; `MarketTrackingCard.tsx` [ASSUMPTION: R6-Q28].
 
 #### R6-Q27 · Gate 10-12 theo từng thị trường và nghĩa vụ Gate 12 của thị trường đã rút: các chỗ ta đọc câu trả lời (Vòng 5 câu 19) 🟡
 
@@ -2261,7 +2269,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/config/gateReadiness.ts` — `sg12-performance`.
 
-#### R5-Q31 · Những trạng thái nào của checklist thị trường được coi là xong ở Gate 10 🔴
+#### R5-Q31 · Những trạng thái nào của checklist thị trường được coi là xong ở Gate 10 ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 20) và đã xây 25/11/2026 — phần dưới là lịch sử.** Checklist phải Complete (hoặc N/A có thẩm quyền cho thành phần thật sự không áp dụng); Approved with Conditions chỉ qua Gate 10 khi điều kiện được ghi lại, được phép ở giai đoạn đó và gắn với hành động có kiểm soát; điều kiện cần có trước khi ra mắt chặn Gate 11 cho đến khi đạt; Pending, Not Approved, On Hold/Blocked, Withdrawn không cho phép phát hành; tách phê duyệt tuân thủ nội bộ khỏi bằng chứng thông báo/ủy quyền bên ngoài; cho nhiều thành phần hồ sơ mỗi thị trường (loại, phiên bản, ID riêng), đánh giá mọi thành phần, giữ một tóm tắt thị trường dẫn xuất, ASEAN PIF là bằng chứng dùng chung nhưng mỗi thị trường vẫn cần kết luận riêng. → **R6-Q28**.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục B10).** Câu 35(a) đưa hai danh sách giá trị nhưng không nói giá trị nào là đạt. Đang chọn: checklist = Complete (hoặc N/A có lý do + người duyệt); Regulatory approval = Approved, Approved with Conditions (hoặc N/A). "Not Approved", "Blocked", "Pending"… đều chặn.
 

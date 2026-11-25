@@ -1181,6 +1181,14 @@ Infant/baby rows can be N/A where their stated trigger genuinely does not apply,
 
 **(b)** Choose (ii). Gates 10-12 open, sign and pass per market, after the shared Gates 1-9 prerequisites. Vietnam can release when its own Gate 10 and Gate 11 are satisfied while Australia remains pending. The project overview shows each market and a derived "some/all markets ready" summary. Shared formula/safety issues still affect every relevant market; one market's dossier delay does not block the rest.
 
+### Question 20 — Gate 10: which checklist and approval values count as done
+
+**Verdict:** ✅ built (2026-11-25). Our readings of the details are asked in Round 6, question 28.
+
+**Passing values.** Require checklist Complete, or a properly authorised N/A for a genuinely inapplicable component. Regulatory decision Approved with Conditions can pass Gate 10 only where the conditions are documented, permitted at that stage, and linked to controlled actions. A condition required before launch blocks Gate 11 until met. Pending, Not Approved, On Hold/Blocked and Withdrawn do not authorise release. Separate internal Regulatory compliance approval from any external notification/authorisation evidence; they are not interchangeable.
+
+**Multiple rows.** Allow several dossier/compliance components per market, each with a component/dossier type, version and unique ID; assess all applicable components. Keep one derived market summary. ASEAN PIF mapping/checklist can be shared evidence, but each market still needs a country-specific regulatory/readiness conclusion and any additional local requirements. Synchronise summary values from the same underlying decisions; do not maintain contradictory approval fields.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

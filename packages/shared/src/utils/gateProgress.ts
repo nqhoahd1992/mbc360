@@ -83,6 +83,8 @@ import {
   ASEAN_CHECKLIST_REGISTER,
   MARKET_DOSSIER_REGISTER,
   aseanChecklistIncomplete,
+  marketLaunchHolds,
+  marketRegulatorySummary,
   marketsWithoutChecklist,
   projectHasAseanMarket,
 } from './marketDossier';
@@ -1355,6 +1357,8 @@ export function evaluateReadinessCheck(
     }
     case 'marketChecklistRecorded':
       return { evaluable: true, satisfied: marketsWithoutChecklist(project).length === 0 };
+    case 'marketLaunchHoldsClear':
+      return { evaluable: true, satisfied: marketLaunchHolds(project).length === 0 };
     case 'aseanChecklistComplete':
       return { evaluable: true, satisfied: !aseanChecklistIncomplete(project) };
     case 'finalSafetySignOffComplete':
@@ -1375,7 +1379,9 @@ export function evaluateReadinessCheck(
       const tracks = activeMarketTracks(project);
       return {
         evaluable: true,
-        satisfied: tracks.length > 0 && tracks.every((t) => ['Approved', 'N/A'].includes(t[check.field])),
+        // Round 5 question 20: the regulatory status of a market is DERIVED from its dossier components, so it is read from them here too —
+        // whatever a track happens to hold, the rule never has two approval values to disagree.
+        satisfied: tracks.length > 0 && tracks.every((t) => ['Approved', 'N/A'].includes(check.field === 'regulatoryStatus' ? marketRegulatorySummary(project, t.market) : t[check.field])),
       };
     }
     case 'everyMarketGateSignedOff':
@@ -2024,6 +2030,7 @@ function resolveCheckLink(gateId: string, check: ReadinessCheck): GateBlockerLin
     case 'noOpenMediumSafetyFinding':
       return { href: '/formulation-safety' };
     case 'marketChecklistRecorded':
+    case 'marketLaunchHoldsClear':
       return { href: `/registers/reg/${MARKET_DOSSIER_REGISTER}` };
     case 'aseanChecklistComplete':
       return { href: `/registers/reg/${ASEAN_CHECKLIST_REGISTER}` };

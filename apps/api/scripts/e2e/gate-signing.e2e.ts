@@ -986,19 +986,27 @@ export async function run(base: string, db: Client): Promise<number> {
   // A change id belongs to ONE project; this run has a single project, so the cross-project half is covered by the
   // same message in the unit above.
 
-  // ---- the per-market regulatory checklist holds ONE row per market: Gate 10 reads the first row of a market, so a
-  // second one would be ignored without a word
-  console.log('\n--- Regulatory Checklist Status: one row per market');
+  // ---- Round 5 question 20: a market's regulatory dossier is several components; the market's regulatory status is derived from them
+  console.log('\n--- Regulatory Checklist Status: several components per market, one derived summary (question 20)');
   const nonAsean = 'Australia';
-  const dossierRow = (market: string) => ({ market, dossierType: 'e2e dossier' });
+  const dossierRow = (market: string, over: Record<string, unknown> = {}) => ({ market, dossierType: 'e2e dossier', ...over });
   const putDossier = async (rows: unknown[]) =>
     api('admin', 'PUT', `/projects/${PROJECT}/registers/regulatoryChecklistStatus`, { rows, expectedVersion: await version() });
-  cr = await putDossier([dossierRow(nonAsean), dossierRow(nonAsean)]);
-  t('two rows for the same market are refused (400), naming the market and the rows', cr.status === 400 && /Applicable market/.test(String(cr.json?.message)) && /rows 1, 2/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
-  cr = await putDossier([dossierRow(nonAsean), dossierRow(nonAsean.toUpperCase())]);
-  t('...whatever the capitalisation (400)', cr.status === 400, `${cr.status} ${short(cr.json)}`);
-  cr = await putDossier([dossierRow('Vietnam')]);
-  t('an ASEAN market is refused here — the ASEAN PIF checklist covers it (400)', cr.status === 400 && /ASEAN market/.test(String(cr.json?.message)), `${cr.status} ${short(cr.json)}`);
+  const dossierRows = async () => ((await project()).project.registers.regulatoryChecklistStatus ?? []) as any[];
+  cr = await putDossier([dossierRow(nonAsean, { component: 'Product compliance record' }), dossierRow(nonAsean, { component: 'AICIS status' })]);
+  t('a market may have several dossier components: two rows for the same market are accepted', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+  {
+    const ids = (await dossierRows()).map((r) => r.componentId);
+    t('...each with its own generated component ID', ids.length === 2 && new Set(ids).size === 2 && ids.every((id: string) => /^RC-\d{3}$/.test(id)), short(ids));
+  }
+  cr = await putDossier([dossierRow(nonAsean), dossierRow('Vietnam')]);
+  t('an ASEAN market has its own dossier rows too: the ASEAN PIF checklist is shared evidence, not its country conclusion', cr.status < 300, `${cr.status} ${short(cr.json)}`);
+  {
+    const tracks = (await project()).project.marketTracks.map((x: any) => ({ ...x, regulatoryStatus: 'Approved' }));
+    cr = await api('admin', 'PUT', `/projects/${PROJECT}/market-tracks`, { tracks, expectedVersion: await version() });
+    const regStatus = (await project()).project.marketTracks.find((x: any) => x.market === nonAsean)?.regulatoryStatus;
+    t('the regulatory status of a market is derived from its components: a typed Approved on the tracking card does not stand (still In Progress)', cr.status < 300 && regStatus === 'In Progress', `${cr.status} ${regStatus}`);
+  }
   cr = await putDossier([dossierRow(nonAsean)]);
   t('one row for a market is accepted', cr.status < 300, `${cr.status} ${short(cr.json)}`);
   // SW-59 (2026-11-23): the dossier type of a market is Regulatory's, from its market profile, derived on every read and save.
@@ -2640,19 +2648,15 @@ export async function run(base: string, db: Client): Promise<number> {
   {
     const m1 = projMarkets[0];
     // the changes recorded so far name no impact area, so none of these baselines is covered yet
-    const trackRows = async () => (await project()).project.marketTracks.map((x: any) => ({ ...x }));
-    const saved = (await db.query(`SELECT id, "regulatoryStatus" FROM market_tracks WHERE "projectId" = $1 AND market = $2`, [PROJECT, m1])).rows;
-    await db.query(`UPDATE market_tracks SET "regulatoryStatus" = 'Approved' WHERE "projectId" = $1 AND market = $2`, [PROJECT, m1]);
-    const takeBack = async () => api('admin', 'PUT', `/projects/${PROJECT}/market-tracks`, { tracks: (await trackRows()).map((x: any) => (x.market === m1 ? { ...x, regulatoryStatus: 'Pending' } : x)), expectedVersion: await version() });
-    r = await takeBack();
-    t('taking back a market approval with no covering change is refused (400)', r.status === 400 && /controlled baseline/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    // A market's regulatory approval is derived from its dossier components (question 20), so taking it back means editing a component. At this
+    // point Gate 10's register is closed and its signatures stand, which refuses the edit outright (stronger than the controlled-baseline rule,
+    // which applies once a Backtrack has reopened the register and is covered by verify:market-dossier).
+    const doneComponent = { market: m1, dossierType: 'e2e', component: 'Product compliance record', componentVersion: 'v1', owner: 'e2e', checklistLink: 'https://x/d', status: 'Complete', regulatoryApproval: 'Not Approved', externalAuthorisation: 'Not required' };
+    r = await api('admin', 'PUT', `/projects/${PROJECT}/registers/regulatoryChecklistStatus`, { rows: [doneComponent], expectedVersion: await version() });
+    t('the dossier of a market whose Gate 10 is closed cannot be edited to take its approval back (403)', r.status === 403 && /Closed for SG10/.test(String(r.json?.message)), `${r.status} ${short(r.json)}`);
+    // the Regulatory change the next steps rely on, scoped to the first market
     r = await addChange({ ...newChange('CHG-E2E-B1', 'pif-any-change'), impactAreas: ['Regulatory'], markets: [projMarkets[1]] });
-    r = await takeBack();
-    t('...a Regulatory change for ANOTHER market does not cover it (400)', r.status === 400, `${r.status} ${short(r.json)}`);
     r = await api('admin', 'PUT', `/projects/${PROJECT}/changes`, { records: (await changesNow()).map((c: any) => (c.changeId === 'CHG-E2E-B1' ? { ...c, markets: [m1] } : c)), expectedVersion: await version() });
-    r = await takeBack();
-    t('...with an open Regulatory change for this market it is accepted', r.status < 300, `${r.status} ${short(r.json)}`);
-    for (const row of saved) await db.query(`UPDATE market_tracks SET "regulatoryStatus" = $2 WHERE id = $1`, [row.id, row.regulatoryStatus]);
 
     // a released label
     const labels = async () => (await project()).project.registers.releasedLabelRegister ?? [];

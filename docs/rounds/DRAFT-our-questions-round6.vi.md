@@ -734,8 +734,6 @@ Hồ sơ thị trường đã có dossier type mà Regulatory đặt cho thị t
 
 **(b)** "Checklist or evidence link" của sổ có nên lấy từ hồ sơ không?
 
-**(c)** Sổ này sinh ra cho các thị trường chưa có hồ sơ dossier trong MBc360. Khi hồ sơ của một thị trường đã nêu dossier type, thị trường đó có còn cần một dòng ở đây không?
-
 ## Câu 25 — Kênh, sự kiện xuất bản và quyết định dùng claim: chúng tôi đọc câu trả lời có đúng không?
 
 *Ở đâu trong ứng dụng:* sổ **Publication / Deployment Record** và **SKU Claims / PIF Register**; duyệt artwork ở **Packaging Specs & Artwork**; cột **Channel** của **Published Information Approval**.
@@ -771,3 +769,13 @@ Các bạn chọn một gate cho mỗi thị trường và, với thị trườn
 Chúng tôi đã xây như sau. Làn của một thị trường ở Gate 10, 11 hay 12 qua khi mọi điều gate đó cần ở thị trường ấy đạt và ba chữ ký còn hiệu lực với quyết định Proceed của người duyệt; các mục chung (công thức, an toàn, claim, thay đổi đang giữ gate) vẫn chặn mọi thị trường. Làn của một thị trường mở khi Gate 1–9 xong và thị trường đó đã qua gate trước, nên Việt Nam làm Gate 11 trong khi Úc còn ở Gate 10. Dòng gate của dự án vẫn là tổng hợp, qua khi mọi thị trường đã qua. Overview hiện từng thị trường đang ở đâu và "Không thị trường nào / Một số / Mọi thị trường sẵn sàng", trong đó "sẵn sàng" là thị trường đã qua Gate 11. Một thị trường đã rút chỉ giữ nghĩa vụ Gate 10–11 đến lúc rút, nhưng giữ chữ ký Gate 12 chừng nào còn một **đóng** đang mở: sản phẩm đã bán ở đó mà chưa ai xác nhận đóng. Đóng gồm hai việc do người vai Regulatory hoặc Quality của dự án làm, dưới tên mình: đặt tiêu chí (tồn kho, ngày cung cấp cuối và hết hạn, nghĩa vụ liên quan) và ngày hết thời gian đóng, rồi xác nhận khi thời gian đã hết và không còn khiếu nại, biến cố hay CAPA nào của thị trường đó chưa đóng. Thị trường sản phẩm chưa từng ra mắt không có chữ ký Gate 12 để giữ; lý do ghi lúc rút là lý do đóng. Nếu chỗ nào chưa đúng ý các bạn, xin cho chúng tôi biết.
 
 **(a)** Việc đặt và xác nhận đóng do Regulatory hoặc Quality (một trong hai) làm là đủ, hay cả hai phải xác nhận?
+
+## Câu 28 — Hồ sơ quy định theo thành phần ở Gate 10: chúng tôi đọc câu trả lời có đúng không?
+
+*Ở đâu trong ứng dụng:* sổ **Regulatory Checklist Status (per market)**; thẻ **Market Regulatory & Launch Tracking**; danh sách sẵn sàng của Gate 10 và Gate 11.
+
+Các bạn nói hồ sơ của một thị trường gồm nhiều thành phần, phê duyệt có điều kiện chỉ qua Gate 10 khi điều kiện được ghi lại và gắn với hành động có kiểm soát, điều kiện bắt buộc trước ra mắt chặn Gate 11, và phê duyệt Regulatory nội bộ với thông báo hay ủy quyền bên ngoài không thay thế nhau.
+
+Chúng tôi đã xây như sau. **Mọi thị trường sản phẩm còn theo đuổi đều có dòng riêng trong Regulatory Checklist Status, kể cả thị trường ASEAN** (checklist ASEAN PIF là bằng chứng dùng chung, không phải kết luận của chính thị trường). Một dòng là một **thành phần**, có ID sinh tự động, tên, phiên bản, link checklist hay bằng chứng, người phụ trách, trạng thái checklist và phê duyệt Regulatory; mọi thành phần của một thị trường phải xong. Thành phần **Approved with Conditions** ghi các điều kiện, nói rõ phải đạt trước ra mắt hay được làm sau (quyết định cho phép), và Next Action có kiểm soát đang mang chúng. Điều kiện bắt buộc **trước ra mắt** chặn Gate 11 cho đến khi hành động của nó Closed. **Thông báo hay ủy quyền bên ngoài** là một trường riêng cạnh phê duyệt nội bộ — Not required, Required and not yet notified, Notified, Authorised — và bản đã thực hiện cần link bằng chứng. **Regulatory status** của thị trường trên thẻ theo dõi không còn gõ tay: nó được suy ra từ các thành phần (chưa có, đang làm, bị chặn, đã duyệt, không áp dụng). Nếu chỗ nào chưa đúng ý các bạn, xin cho chúng tôi biết.
+
+**(a)** Thông báo hay ủy quyền bên ngoài mà thị trường yêu cầu phải có trước Gate 10, hay chỉ cần trước khi ra mắt (Gate 11)? Hiện chúng tôi chặn Gate 11 vì nó, không chặn Gate 10.

@@ -144,7 +144,7 @@ import { changeRefProblem, newChangeReferences, resolveChangeRef, validChangeRef
 import { baseColumnsOf, isFormulationChange } from '@mbc360/shared/utils/changeViews';
 import { formulaChangeRequirement, formulaWasApproved } from '@mbc360/shared/utils/formulaBaseline';
 import { areaAssessmentProblems, areasAwaitingAssessment, CHANGE_AREA_FUNCTIONS } from '@mbc360/shared/utils/changeAreaAssessments';
-import { approvedClaimRevisionsWithoutChange, marketAuthorisationRequirement, releasedLabelEditsWithoutChange } from '@mbc360/shared/utils/controlledBaselines';
+import { approvedClaimRevisionsWithoutChange, marketAuthorisationRequirement, marketRegulatoryApprovalsTakenBack, releasedLabelEditsWithoutChange } from '@mbc360/shared/utils/controlledBaselines';
 import {
   CHANGE_STATUSES_NEEDING_TRIAGE,
   CHANGE_TRIAGE_FUNCTION_KEYS,
@@ -3223,6 +3223,11 @@ export class ProjectsService {
       // whole point of the rule is that an approved claim cannot be quietly
       // re-worded, and "the UI hides the field" is not that (BACKEND_PLAN §3
       // principle 7). Bumping the revision is the sanctioned route and passes.
+      if (registerKey === 'regulatoryChecklistStatus') {
+        // Round 5 question 11(2) with question 20: the market's regulatory approval is derived from these rows, so taking it back is done here.
+        const taken = marketRegulatoryApprovalsTakenBack(project, rows);
+        if (taken.length > 0) throw new BadRequestException(listMessage('A market authorisation is a controlled baseline:', taken, 'Raise a change with the Regulatory impact area for the market and keep it open before taking its approval back.'));
+      }
       if (registerKey === 'releasedLabelRegister') {
         // Round 5 question 11(2): a pack that has been released to market is a controlled baseline.
         const labelBaseline = releasedLabelEditsWithoutChange(project, project.registers[registerKey] ?? [], rows);

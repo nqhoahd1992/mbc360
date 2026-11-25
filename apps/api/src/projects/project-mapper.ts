@@ -25,6 +25,7 @@ import {
 import { registerContentHashOf, registerRowContentHashOf } from './content-hash';
 import { closureKey } from '@mbc360/shared/utils/registerClosures';
 import { deriveRegisterRows } from '@mbc360/shared/utils/registerDerived';
+import { marketRegulatorySummary } from '@mbc360/shared/utils/marketDossier';
 import { FORMULATION_CHANGE_VIEW, applyChangeView } from '@mbc360/shared/utils/changeViews';
 import { derivedVersionState } from '@mbc360/shared/utils/formulaLifecycle';
 import { SAFETY_MATRIX_KEY, refreshStoredSafetyMatrix } from '@mbc360/shared/utils/safetyMatrixSync';
@@ -481,6 +482,9 @@ export function toProjectData(...args: Parameters<typeof toProjectDataRaw>): Pro
       project.registers[watchlist] = deriveRegisterRows(watchlist, project.registers[watchlist], project);
     }
   }
+  // Round 5 question 20: a market's regulatory status is ONE summary derived from its dossier components, never a second value typed beside
+  // them ("do not maintain contradictory approval fields"): whatever the track holds, every reader sees the derived one.
+  project.marketTracks = project.marketTracks.map((t) => ({ ...t, regulatoryStatus: marketRegulatorySummary(project, t.market) }));
   const matrix = SAFETY_MATRIX_KEY;
   if (project.registers[matrix]) project.registers[matrix] = refreshStoredSafetyMatrix(project.bom, project.registers[matrix]);
   return project;

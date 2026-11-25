@@ -54,16 +54,20 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     packagingSpecsArtwork: ['approval', 'claimIds', 'market'],
     pifChecklistAsean: ['status'],
     publishedInfoApproval: ['noProductClaim', 'noProductClaimConfirmedBy', 'workflowState'],
-    regulatoryChecklistStatus: ['checklistLink', 'dossierType', 'market', 'naRationale', 'naReviewer', 'owner', 'regulatoryApproval', 'status'],
+    regulatoryChecklistStatus: ['approvalConditions', 'checklistLink', 'component', 'componentId', 'componentVersion', 'conditionActionId', 'conditionTiming', 'dossierType', 'externalAuthorisation', 'externalEvidenceLink', 'market', 'naRationale', 'naReviewer', 'owner', 'regulatoryApproval', 'status'],
     skuClaimsPifRegister: ['claimId', 'evidenceLink', 'intendedChannel', 'market', 'pifLink'],
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
   SG11: {
     gmpLinks: ['link'],
     publishedInfoApproval: ['workflowState'],
+    regulatoryChecklistStatus: ['component', 'componentId', 'conditionActionId', 'conditionTiming', 'externalAuthorisation', 'market', 'regulatoryApproval'],
     releasedLabelRegister: ['newArtworkFile', 'newLabelVersion'],
     stabilityRelease: ['releaseDecision'],
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
+  },
+  SG12: {
+    vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };
 
@@ -80,6 +84,9 @@ export const TRIGGER_READS_BY_GATE: Record<string, Record<string, string[]>> = {
   },
   SG10: {
     claimEvidenceTraceability: ['claimCategory', 'evidenceBasisRequired'],
+  },
+  SG12: {
+    vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };
 

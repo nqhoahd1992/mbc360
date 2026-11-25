@@ -651,6 +651,21 @@ export const REGULATORY_APPROVAL_STATUSES = [
 // 35(c). Named once so the two columns cannot drift apart on the spelling.
 export const CHECKLIST_NOT_APPLICABLE = 'N/A — rationale required';
 
+// Round 5 question 20: "Regulatory decision Approved with Conditions can pass Gate 10 only where the conditions are documented, permitted at that
+// stage, and linked to controlled actions. A condition required before launch blocks Gate 11 until met." So an approval with conditions records
+// the conditions, when they must be met (before launch, or after it where the decision permits), and the controlled Next Action that carries them.
+export const REGULATORY_APPROVAL_WITH_CONDITIONS = 'Approved with Conditions';
+export const CONDITION_BEFORE_LAUNCH = 'Before launch';
+export const CONDITION_AFTER_LAUNCH = 'After launch (permitted by the decision)';
+export const CONDITION_TIMING_OPTIONS = [CONDITION_BEFORE_LAUNCH, CONDITION_AFTER_LAUNCH] as const;
+// "Separate internal Regulatory compliance approval from any external notification/authorisation evidence; they are not interchangeable." The
+// internal approval is the row's Regulatory approval; the market's own notification or authorisation is recorded beside it, never instead of it.
+export const EXTERNAL_NOT_REQUIRED = 'Not required';
+export const EXTERNAL_REQUIRED_PENDING = 'Required — not yet notified';
+export const EXTERNAL_NOTIFIED = 'Notified / submitted';
+export const EXTERNAL_AUTHORISED = 'Authorised / accepted';
+export const EXTERNAL_AUTHORISATION_OPTIONS = [EXTERNAL_NOT_REQUIRED, EXTERNAL_REQUIRED_PENDING, EXTERNAL_NOTIFIED, EXTERNAL_AUTHORISED] as const;
+
 // 35(b): the Target Markets option that is not a market. A row on it is incomplete
 // until the real country or jurisdiction is named.
 export const OTHER_MARKET_OPTION = 'Other - specify';
@@ -1862,12 +1877,21 @@ const regulatoryChecklistStatus: RegisterConfig = {
     'One row per market that has no built-in dossier profile in MBc360 yet (rule E2). Regulatory may point at an approved external checklist here; Gate 10 will not pass while a non-ASEAN market on this project has no row, or has one that is incomplete. Markets covered by the ASEAN PIF checklist below do not need a row.',
   mode: 'register',
   gate: '10',
+  // Gate 11 only READS it: the conditions a component carries must be met, and a required external notification made, before launch.
+  referenceGates: '11',
   columns: [
-    // One row per market (this sheet's own description, and what the Gate 10 rule reads: it takes the first row of a market, so
-    // a second row would be ignored without a word). Whether a market may need several dossier rows is put to the review team.
-    { key: 'market', label: 'Applicable market', type: 'market', width: 140, unique: true, marketScope: 'nonAsean' },
-    // From the Regulatory market profile of the market chosen above, while that profile names one (SW-59); typed otherwise.
+    // Round 5 question 20: "Allow several dossier/compliance components per market, each with a component/dossier type, version and unique ID;
+    // assess all applicable components. Keep one derived market summary." So a market has one row per component (the generated ID is the
+    // row's own), every one of them is assessed, and the market's regulatory status on the tracking card is derived from them
+    // (utils/marketDossier.ts) — there is no second approval field to contradict them. Every market of the project, ASEAN ones included,
+    // needs its own country-specific conclusion: the ASEAN PIF checklist is shared evidence, not that conclusion. [ASSUMPTION: R6-Q28]
+    { key: 'componentId', label: 'Component ID', type: 'text', width: 110 },
+    { key: 'market', label: 'Applicable market', type: 'market', width: 140 },
+    // The market's own dossier type, from its Regulatory market profile while that profile names one (SW-59); typed otherwise.
     { key: 'dossierType', label: 'Required dossier type', type: 'text', width: 200, inheritFromMarketProfile: 'dossierType' },
+    // The component this row assesses (a product compliance record, an AICIS status, a labelling and claim review, a Product Master File...).
+    { key: 'component', label: 'Dossier component', type: 'text', width: 200 },
+    { key: 'componentVersion', label: 'Component version', type: 'text', width: 130 },
     { key: 'owner', label: 'Owner', type: 'user', width: 140 },
     { key: 'checklistLink', label: 'Checklist or evidence link', type: 'text', width: 200 },
     // 35(b): only meaningful when `market` is the catch-all option, but present
@@ -1876,12 +1900,25 @@ const regulatoryChecklistStatus: RegisterConfig = {
     { key: 'otherMarketName', label: 'Actual country / jurisdiction', type: 'text', width: 190 },
     { key: 'status', label: 'Status', type: 'select', width: 160, options: [...CHECKLIST_WORK_STATUSES] },
     { key: 'regulatoryApproval', label: 'Regulatory approval', type: 'select', width: 180, options: [...REGULATORY_APPROVAL_STATUSES] },
+    // Round 5 question 20: an approval with conditions is documented, says when its conditions must be met, and is carried by a controlled action.
+    { key: 'approvalConditions', label: 'Conditions of the approval', type: 'textarea', width: 240, requiredWhen: { column: 'regulatoryApproval', values: [REGULATORY_APPROVAL_WITH_CONDITIONS] }, shownWhen: { column: 'regulatoryApproval', values: [REGULATORY_APPROVAL_WITH_CONDITIONS] } },
+    { key: 'conditionTiming', label: 'Conditions must be met', type: 'select', width: 200, options: [...CONDITION_TIMING_OPTIONS], requiredWhen: { column: 'regulatoryApproval', values: [REGULATORY_APPROVAL_WITH_CONDITIONS] }, shownWhen: { column: 'regulatoryApproval', values: [REGULATORY_APPROVAL_WITH_CONDITIONS] } },
+    { key: 'conditionActionId', label: 'Controlled action carrying the conditions', type: 'nextActionRef', width: 220, requiredWhen: { column: 'regulatoryApproval', values: [REGULATORY_APPROVAL_WITH_CONDITIONS] }, shownWhen: { column: 'regulatoryApproval', values: [REGULATORY_APPROVAL_WITH_CONDITIONS] } },
     // "Where N/A is used, the rationale and authorised reviewer must also be
     // recorded" (35(c)) — one pair covering both N/A values above, because the
     // reviewer authorising an N/A is authorising the row, not one of its columns.
     { key: 'naRationale', label: 'N/A rationale', type: 'textarea', width: 220 },
     { key: 'naReviewer', label: 'N/A authorised by', type: 'user', width: 150 },
+    // Kept apart from the approval above: the authority's own notification or authorisation, with its own evidence.
+    { key: 'externalAuthorisation', label: 'External notification / authorisation', type: 'select', width: 220, options: [...EXTERNAL_AUTHORISATION_OPTIONS] },
+    { key: 'externalEvidenceLink', label: 'External evidence link', type: 'text', width: 200, shownWhen: { column: 'externalAuthorisation', values: [EXTERNAL_NOTIFIED, EXTERNAL_AUTHORISED] } },
     { key: 'notes', label: 'Notes', type: 'textarea', width: 180 },
+  ],
+  drawerSections: [
+    { title: 'Dossier component', columns: ['componentId', 'market', 'dossierType', 'component', 'componentVersion', 'owner', 'checklistLink', 'otherMarketName'] },
+    { title: 'Internal regulatory decision', columns: ['status', 'regulatoryApproval', 'approvalConditions', 'conditionTiming', 'conditionActionId', 'naRationale', 'naReviewer'] },
+    { title: 'External notification / authorisation', columns: ['externalAuthorisation', 'externalEvidenceLink'] },
+    { title: 'Notes', columns: ['notes'] },
   ],
 };
 
@@ -3824,6 +3861,7 @@ const AUTO_ROW_IDS: Record<string, { column: string; prefix: string }> = {
   claimEvidenceTraceability: { column: 'claimId', prefix: 'CLM' },
   skuClaimsPifRegister: { column: 'useId', prefix: 'CU' },
   criticalSafetyFindings: { column: 'findingId', prefix: 'SF' },
+  regulatoryChecklistStatus: { column: 'componentId', prefix: 'RC' },
   studyParticipantLog: { column: 'participantId', prefix: 'P' },
   batchFormulaTrace: { column: 'traceId', prefix: 'BT' },
 };

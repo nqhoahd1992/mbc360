@@ -396,6 +396,9 @@ export type ReadinessCheck =
   // nothing but ASEAN, which is correct — those markets are covered by the
   // checklist below instead.
   | { kind: 'marketChecklistRecorded' }
+  // Round 5 question 20: after Gate 10 a market is released only once a condition of its regulatory approval that is required before launch is met
+  // and an external notification it requires has been made.
+  | { kind: 'marketLaunchHoldsClear' }
   // Rule E2: the built-in ASEAN PIF checklist is complete. Conditional on an
   // ASEAN market being selected.
   | { kind: 'aseanChecklistComplete' }
@@ -546,6 +549,7 @@ export const PER_MARKET_ITEM_IDS: ReadonlySet<string> = new Set([
   'sg11-changes-blocking',
   'sg11-changes-admin',
   'sg11-launch',
+  'sg11-reg-conditions',
   'sg11-signoff',
   // Gate 12
   'sg12-feedback',
@@ -2677,7 +2681,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       // answer is to enforce it PER MARKET: "The absence of a built-in country
       // template should not mean the item is unenforced."
       id: 'sg10-checklist',
-      label: 'Applicable regulatory checklist recorded for every market without a built-in profile',
+      label: 'Regulatory dossier components recorded and done for every market (each component assessed)',
       tier: 'Mandatory',
       source: 'f-series',
       check: { kind: 'marketChecklistRecorded' },
@@ -3130,6 +3134,19 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
       label: 'Launch approval in every active market',
       tier: 'Mandatory',
       check: { kind: 'everyMarket', field: 'launchApproval' },
+    },
+    {
+      // Round 5 question 20: "Approved with Conditions can pass Gate 10 only where the conditions are documented, permitted at that stage, and
+      // linked to controlled actions. A condition required before launch blocks Gate 11 until met." Also the external notification or
+      // authorisation, kept apart from the internal approval ("they are not interchangeable"): one that is required and not yet made holds
+      // the launch. [ASSUMPTION: R6-Q28]
+      id: 'sg11-reg-conditions',
+      label: 'Regulatory conditions required before launch are met, and any external notification required is made',
+      tier: 'Mandatory',
+      check: { kind: 'marketLaunchHoldsClear' },
+      nonVacuousBecause:
+        'A market with no conditional approval and no pending external notification has nothing to hold it, so the item is correctly satisfied; what it guards is a condition or notification left open, which it reads directly from the dossier rows.',
+      assumption: 'R6-Q28',
     },
     {
       // Added 2026-07-28 (see the note above GATE_READINESS).

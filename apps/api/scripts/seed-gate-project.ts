@@ -256,6 +256,31 @@ async function fixRegister(
   return true;
 }
 
+// Round 5 question 20: every market still pursued has at least one dossier component, each done, with an approval and the external status
+// said. The market's regulatory status on the tracking card is derived from these rows.
+async function fixDossier(ctx: Ctx): Promise<boolean> {
+  const key = 'regulatoryChecklistStatus';
+  const withdrawn = new Set(project.marketTracks.filter((t) => t.withdrawnDate).map((t) => t.market));
+  const markets = project.identity.markets.filter((m) => m.trim() !== '' && !withdrawn.has(m));
+  const rows: RegisterRow[] = (project.registers[key] ?? []).map((r) => ({ ...r }));
+  for (const m of markets) if (!rows.some((r) => String(r.market ?? '') === m)) rows.push({ ...createEmptyRegisterRow(key), market: m });
+  const done = {
+    component: `${SEED} dossier component`, componentVersion: 'v1', owner: ctx.adminName, checklistLink: 'https://seed.example/dossier',
+    status: 'Complete', regulatoryApproval: 'Approved', externalAuthorisation: 'Not required',
+  };
+  let changed = JSON.stringify(rows) !== JSON.stringify(project.registers[key] ?? []);
+  for (const row of rows) {
+    for (const [col, value] of Object.entries(done)) {
+      if (String(row[col] ?? '').trim() !== '') continue;
+      row[col] = value as never;
+      changed = true;
+    }
+  }
+  if (!changed) return false;
+  take(await api('PUT', `/projects/${ctx.id}/registers/${key}`, { rows, expectedVersion: version }));
+  return true;
+}
+
 const RM_EVIDENCE = 'supplierRmEvidence';
 
 // Open next actions block a plain Proceed. The seeder is the one bypass, so it closes them straight in the database
@@ -624,6 +649,8 @@ async function fix(ctx: Ctx, check: ReadinessCheck): Promise<boolean> {
       return fixStudyApprovals(ctx);
     case 'artworkClaimsSupported':
       return fixArtworkClaims(ctx);
+    case 'marketChecklistRecorded':
+      return fixDossier(ctx);
     case 'everyMarket':
       return fixMarketTracks(ctx, check.field);
     case 'aseanChecklistComplete':

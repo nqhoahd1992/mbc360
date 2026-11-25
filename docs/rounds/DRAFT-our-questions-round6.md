@@ -734,7 +734,6 @@ A market profile already holds the dossier type Regulatory sets for that market,
 
 **(b)** Should the register's "Checklist or evidence link" come from the profile as well?
 
-**(c)** The register exists for markets that do not yet have a dossier profile in MBc360. Once a market's profile names a dossier type, does that market still need a row here?
 
 ## Question 25 — Channels, publication events and the claim-use decision: have we read your answer correctly?
 
@@ -771,3 +770,13 @@ You chose one gate per market and, for a withdrawn market, a closure period set 
 We built it as follows. A market's lane at Gate 10, 11 or 12 passes when everything that gate asks of that market is met and its three signatures stand with the approver's Proceed; the shared items (formula, safety, claims, changes holding the gate) still block every market. A market's lane opens once Gates 1–9 are done and that market passed the gate before it, so Vietnam can work Gate 11 while Australia is still at Gate 10. The project's gate row stays a roll-up that passes when every market has. The Overview shows where each market stands and "No market ready / Some markets ready / All markets ready", where "ready" means the market passed Gate 11. A withdrawn market keeps its Gate 10–11 obligations only until the withdrawal, but keeps its Gate 12 sign-off while a **closure** is open: when the product was sold there and nobody has confirmed the closure. Closing takes two acts by the project's Regulatory or Quality person, in their own name: set the criteria (remaining stock, last supply and expiry, applicable obligations) and the end of the period, then confirm once the period has ended and no complaint, adverse event or CAPA of that market is still open. A market the product never launched in has no Gate 12 sign-off to keep; the reason recorded with its withdrawal is the closing reason. If any of this is not what you meant, please tell us.
 
 **(a)** May the closure be set and confirmed by either Regulatory or Quality, or must both confirm it?
+
+## Question 28 — Gate 10 regulatory dossier by component: have we read your answer correctly?
+
+*Where in the application:* register **Regulatory Checklist Status (per market)**; the **Market Regulatory & Launch Tracking** card; the Gate 10 and Gate 11 readiness lists.
+
+You said a market's dossier is several components, that an approval with conditions passes Gate 10 only with the conditions documented and linked to controlled actions, that a condition required before launch blocks Gate 11, and that the internal Regulatory approval and the external notification or authorisation are not interchangeable.
+
+We built it as follows. **Every market the product is still pursued in has its own rows in the Regulatory Checklist Status, ASEAN markets included** (the ASEAN PIF checklist is shared evidence, not the market's own conclusion). One row is one **component**, with its generated ID, its name, its version, its checklist or evidence link, its owner, its checklist status and its Regulatory approval; every component of a market has to be done. An **Approved with Conditions** component records the conditions, whether they must be met before launch or may follow it (the decision permits it), and the controlled Next Action that carries them. A condition required **before launch** holds Gate 11 until its action is Closed. The **external notification or authorisation** is its own field beside the internal approval — Not required, Required and not yet notified, Notified, Authorised — and one that was made needs its evidence link. The market's **regulatory status** on the tracking card is no longer typed: it is derived from its components (none recorded, in progress, blocked, approved, not applicable). If any of this is not what you meant, please tell us.
+
+**(a)** Must an external notification or authorisation that a market requires be on record before Gate 10, or only before launch (Gate 11)? We stop Gate 11 on it and not Gate 10.

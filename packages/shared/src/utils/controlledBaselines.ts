@@ -9,6 +9,7 @@
 //   - a released claim: a claim whose current revision has been approved is being moved to a new revision.
 import type { ChangeRecord, MarketTrack, ProjectData, RegisterRow } from '../types';
 import { CHANGE_IMPACT_LAUNCH, isChangeOpen } from '../config/changeTriggers';
+import { marketRegulatorySummary } from './marketDossier';
 
 const text = (value: unknown): string => (typeof value === 'string' ? value.trim() : String(value ?? '').trim());
 
@@ -31,6 +32,27 @@ export function marketAuthorisationRequirement(project: ProjectData, prev: Marke
   if (reverted.length === 0) return undefined;
   if (openChangesFor(project, MARKET_AREAS, next.market).length > 0) return undefined;
   return `${next.market}: ${reverted.join(', ')} already stood at Approved, so the market authorisation is a controlled baseline — raise a change with the Regulatory (or Launch) impact area for this market and keep it open before taking an approval back`;
+}
+
+// Round 5 question 20: a market's regulatory status is DERIVED from its dossier components, so taking its regulatory approval back no longer happens
+// on the tracking card — it happens by editing a component of the Regulatory Checklist Status. The same controlled-baseline rule applies there:
+// when the save moves a market's derived regulatory status off Approved, the market authorisation is being taken back and needs an open Regulatory
+// (or Launch) change for that market. Empty when no market is.
+export function marketRegulatoryApprovalsTakenBack(project: ProjectData, afterRows: readonly RegisterRow[]): string[] {
+  const after: ProjectData = { ...project, registers: { ...project.registers, regulatoryChecklistStatus: [...afterRows] } };
+  const out: string[] = [];
+  for (const track of project.marketTracks.filter((t) => t.formulaVersion === project.formulaVersion)) {
+    const before = marketRegulatorySummary(project, track.market);
+    const now = marketRegulatorySummary(after, track.market);
+    const reason = marketAuthorisationRequirement(
+      project,
+      { ...track, regulatoryStatus: before },
+      { ...track, regulatoryStatus: now },
+    );
+    // Only the regulatory part is this save's doing: the other approvals of the track are not touched by it.
+    if (reason && before === 'Approved' && now !== 'Approved') out.push(reason);
+  }
+  return out;
 }
 
 const LABEL_AREAS = ['Artwork', 'Packaging'] as const;

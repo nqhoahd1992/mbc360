@@ -652,6 +652,7 @@ function sourcesOf(check: ReadinessCheck): EvidenceSource[] {
         })),
       ];
     case 'marketChecklistRecorded':
+    case 'marketLaunchHoldsClear':
       return [registerSource(MARKET_DOSSIER_REGISTER)];
     case 'aseanChecklistComplete':
       return [registerSource(ASEAN_CHECKLIST_REGISTER)];

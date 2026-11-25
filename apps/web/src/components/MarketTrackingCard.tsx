@@ -7,6 +7,7 @@ import { usePermissionView } from '../auth/previewMode';
 import { roleLabel } from '../utils/roles';
 import OpenChangesNotice from './OpenChangesNotice';
 import WithdrawalClosureBlock from './WithdrawalClosureBlock';
+import ReferenceSource from './ReferenceSource';
 import { canChangeMarketTracks, MARKET_TRACKS_REASON } from '@mbc360/shared/utils/projectAuthority';
 import { useSession } from '../auth/useSession';
 import { patchArray, useDraft } from '../hooks/useDraft';
@@ -77,7 +78,8 @@ export default function MarketTrackingCard({
     <Select
       style={{ width: block ? '100%' : 120 }}
       value={track[field]}
-      disabled={!canEdit || isLegacy(track)}
+      // Round 5 question 20: the market's regulatory status is derived from its dossier components, so it is shown here, not set.
+      disabled={!canEdit || isLegacy(track) || field === 'regulatoryStatus'}
       options={STATUS_OPTIONS.map((s) => ({
         value: s,
         label: <Tag color={STATUS_COLORS[s]}>{s}</Tag>,
@@ -177,6 +179,7 @@ export default function MarketTrackingCard({
       <label>
         <span className="mt-label">Regulatory status</span>
         {statusSelect(t, i, 'regulatoryStatus', true)}
+        <ReferenceSource text="Derived from this market's rows in Regulatory Checklist Status (per market)" />
       </label>
       <label>
         <span className="mt-label">Claims approval</span>
@@ -311,7 +314,7 @@ export default function MarketTrackingCard({
               ),
           },
           { title: 'PIF status', width: 140, render: (_, t, i) => statusSelect(t, i, 'pifStatus') },
-          { title: 'Regulatory status', width: 140, render: (_, t, i) => statusSelect(t, i, 'regulatoryStatus') },
+          { title: 'Regulatory status (from the dossier)', width: 140, render: (_, t, i) => statusSelect(t, i, 'regulatoryStatus') },
           { title: 'Claims approval', width: 140, render: (_, t, i) => statusSelect(t, i, 'claimsApproval') },
           { title: 'Launch approval', width: 170, render: (_, t, i) => launchApprovalSelect(t, i) },
           {

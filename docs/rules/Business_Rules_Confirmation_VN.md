@@ -1181,6 +1181,14 @@ Các dòng infant/baby có thể N/A khi trigger nêu trong dòng thực sự kh
 
 **(b)** Chọn (ii). Gate 10-12 mở, ký và qua theo từng thị trường, sau các điều kiện chung của Gate 1-9. Việt Nam có thể phát hành khi Gate 10 và Gate 11 của riêng nó đạt trong khi Úc còn chờ. Tổng quan dự án hiện từng thị trường và một tóm tắt dẫn xuất "một số/mọi thị trường sẵn sàng". Vấn đề chung về công thức/an toàn vẫn ảnh hưởng mọi thị trường liên quan; một thị trường chậm hồ sơ không chặn các thị trường còn lại.
 
+### Câu 20 — Gate 10: giá trị checklist và approval nào được coi là xong
+
+**Kết luận:** ✅ đã xây (25/11/2026). Những chỗ chúng tôi đọc câu trả lời được hỏi lại ở Vòng 6, câu 28.
+
+**Giá trị đạt.** Checklist phải Complete, hoặc N/A có thẩm quyền cho thành phần thật sự không áp dụng. Quyết định Regulatory Approved with Conditions chỉ qua Gate 10 khi điều kiện được ghi lại, được phép ở giai đoạn đó và gắn với hành động có kiểm soát. Điều kiện bắt buộc trước ra mắt chặn Gate 11 cho đến khi đạt. Pending, Not Approved, On Hold/Blocked và Withdrawn không cho phép phát hành. Tách phê duyệt tuân thủ Regulatory nội bộ khỏi bằng chứng thông báo/ủy quyền bên ngoài; hai thứ không thay thế nhau.
+
+**Nhiều dòng.** Cho phép nhiều thành phần hồ sơ/tuân thủ mỗi thị trường, mỗi thành phần có loại, phiên bản và ID duy nhất; đánh giá mọi thành phần áp dụng. Giữ một tóm tắt thị trường dẫn xuất. Ánh xạ/checklist ASEAN PIF có thể là bằng chứng dùng chung, nhưng mỗi thị trường vẫn cần kết luận quy định/sẵn sàng riêng của quốc gia và các yêu cầu địa phương bổ sung. Đồng bộ các giá trị tóm tắt từ cùng một quyết định gốc; không duy trì các trường phê duyệt mâu thuẫn nhau.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*
