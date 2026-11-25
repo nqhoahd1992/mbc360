@@ -749,3 +749,15 @@ We read "as required" as: a Regulatory approval when Regulatory review is requir
 **(a)** Does a claim-use decision stay valid when the formula changes (for example a Major version), or when its review date passes, or must it be decided again? We only void it when the claim's revision changes.
 
 **(b)** Who confirms that the conditions of an "Approved with Conditions" decision have been met?
+
+## Question 26 — The claim review at Gate 3 and who approves a revision: have we read your answer correctly?
+
+*Where in the application:* **Evidence Plan & Claim Support** page, table **Claim -> Evidence Traceability**; the Gate 3 readiness list; the SKU Claims / PIF Register.
+
+You said a Not Approved claim may stay as a clearly excluded concept but not in the active Gate 3 scope, that Further Information Required also stops a claim, that Approved with Conditions needs the evidence plan and accepted conditions, that a library approval is reused only for the exact wording and context with the library revision recorded and the fit checked, and that the Regulatory and Technical reviewers approve a revision while Gate 10 only confirms.
+
+We built it as follows. Each claim has a **scope**: "In scope" or "Excluded — rejected concept" (with the reason); an excluded claim stays on the list but is not reviewed, does not count towards Gate 3 completeness, cannot be chosen for a new use and authorises no use. **Approved with Conditions**, from either review, needs the claim's preliminary evidence requirement, the conditions themselves and a person who accepts them. A claim linked to an **Approved library entry** is spared the Technical review only while the system has recorded the entry's current revision on the claim and a person has recorded that the entry fits this product, evidence, market and channel; otherwise it needs the Technical review like a new claim (and the Technical approval of a use). The **Regulatory approval of a revision** is recorded by the person who holds Regulatory Claims on the project, the **Technical approval** by the person who holds Technical Claims, each in their own name; being able to decide Gate 10, or being an administrator, grants neither. Either approval freezes the exact words of that revision. If any of this is not what you meant, please tell us.
+
+**(a)** Who accepts the conditions of an "Approved with Conditions" review: the owner of the claim, the person who holds the function, or the reviewer who gave the review?
+
+**(b)** Must the Technical approval of a revision be on record before Gate 10 can pass, and when is it "where required"? We do not block Gate 10 on it today.

@@ -1,6 +1,6 @@
 import { RISK_LEVELS, type RegisterRow } from '../types';
 import { FORMULATION_CHANGE_VIEW, type ChangeViewConfig } from '../utils/changeViews';
-import { CLAIM_REVIEW_OUTCOMES, CLAIM_SUBJECT_FLAGS } from './claimReview';
+import { CLAIM_REVIEW_OUTCOMES, CLAIM_SCOPE_EXCLUDED, CLAIM_SCOPE_OPTIONS, CLAIM_SUBJECT_FLAGS } from './claimReview';
 import { CLAIM_LIBRARY_LINK_OPTIONS } from './referenceData';
 import { REVIEW_SPECS, type ReviewOwnerSpec } from './reviewers';
 
@@ -3428,7 +3428,7 @@ export const claimEvidenceTraceability: RegisterConfig = {
   key: 'claimEvidenceTraceability',
   title: 'Claim -> Evidence Traceability',
   sheetName: '4. Evidence & Claim Support',
-  description: 'Permanent claim IDs. No claim may appear on artwork, HCP material or sales material unless it has a Claim ID here with status \'Supported\'.',
+  description: 'Permanent claim IDs. No claim may appear on artwork, HCP material or sales material unless it has a Claim ID here with status \'Supported\'. A Gate 3 review approves the concept, not publication: a use needs its own claim-use decision (SKU Claims / PIF Register).',
   mode: 'register',
   // ⚠️ The NPD Front-End Roadmap gives this whole sheet "Sign-off gate SG05 /
   // SG08", and its two sibling registers match exactly (evidencePlanProspective
@@ -3477,6 +3477,10 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // the "not yet" answer ("Pending classification"), so requiring the column is
     // not requiring a premature judgement.
     { key: 'claimId', label: 'Claim ID', type: 'text', width: 100, gate: '03', unique: true },
+    // Round 5 question 18(a): a claim reviewed as Not Approved (or still needing information) either leaves the active Gate 3 scope as a
+    // rejected concept or is reworded and re-reviewed. Excluding keeps the record and its reason; blank reads as In scope. [ASSUMPTION: R6-Q26]
+    { key: 'claimScope', label: 'Claim scope', type: 'select', width: 190, options: [...CLAIM_SCOPE_OPTIONS], gate: '03' },
+    { key: 'scopeExclusionReason', label: 'Why it is excluded', type: 'textarea', width: 220, gate: '03', requiredWhen: { column: 'claimScope', values: [CLAIM_SCOPE_EXCLUDED] } },
     // Wording, category and risk come from the Claims Library entry the claim is linked to (SW-59, 2026-11-23 — `inheritFromLibrary`); a claim with no
     // link is a new claim and is typed. [ASSUMPTION: R6-Q23]
     { key: 'approvedWording', label: 'Approved claim wording', type: 'textarea', width: 240, gate: '03', inheritFromLibrary: 'wording' },
@@ -3498,6 +3502,11 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // library".
     { key: 'libraryEntryId', label: 'Claims Library entry', type: 'claimsLibraryRef', width: 200, gate: '03' },
     // Follows the link: "Linked to Claims Library" while an entry is picked (never typed then); the person declares "New claim" only on a claim with no link.
+    // Question 18(b): reusing a library entry's technical substantiation is allowed only for its exact wording and covered context. The
+    // revision of the entry reused is written by the server; the fit to THIS product, evidence, market and channel is verified by a person.
+    { key: 'libraryRevision', label: 'Library revision reused', type: 'text', width: 120, gate: '03', editable: false },
+    { key: 'libraryFitVerification', label: 'Library fit: product, evidence, market, channel', type: 'textarea', width: 240, gate: '03' },
+    { key: 'libraryFitVerifiedBy', label: 'Library fit verified by', type: 'user', width: 150, gate: '03', selfAttest: true },
     { key: 'libraryStatus', label: 'Claims Library status', type: 'select', width: 220, options: [...CLAIM_LIBRARY_LINK_OPTIONS], gate: '03', inheritFromLibrary: 'linkStatus' },
     // Question 27: the eleven structured claim-subject flags, replacing an
     // inference from free text. Eight of them are C1's seventh review condition,
@@ -3519,8 +3528,12 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // change either bumps this or mints a new Claim ID — the reviewer decides
     // which, and records it in `revisionRoute` below.
     { key: 'revision', label: 'Revision', type: 'number', width: 90, gate: '03' },
-    { key: 'revisionApprovedBy', label: 'Revision approved by', type: 'user', width: 150, gate: '10' },
-    { key: 'revisionApprovedDate', label: 'Revision approved', type: 'date', width: 130, gate: '10' },
+    // Question 18(c): the Regulatory reviewer approves market/wording compliance, the Technical reviewer substantiation where required; each is
+    // recorded by the holder of that function in their own name, and Gate 10 only confirms.
+    { key: 'revisionApprovedBy', label: 'Revision approved by (Regulatory)', type: 'user', width: 170, gate: '10', selfAttest: true },
+    { key: 'revisionApprovedDate', label: 'Regulatory approval date', type: 'date', width: 140, gate: '10' },
+    { key: 'revisionTechnicalApprovedBy', label: 'Revision approved by (Technical)', type: 'user', width: 170, gate: '10', selfAttest: true },
+    { key: 'revisionTechnicalApprovedDate', label: 'Technical approval date', type: 'date', width: 140, gate: '10' },
     { key: 'revisionRoute', label: 'Change route (reviewer decision)', type: 'select', width: 220, options: CLAIM_REVISION_ROUTES, gate: '10' },
     // The mechanism comes from the Target Product & Technology work (sheet 3),
     // which the NPD roadmap places at Gate 3 heading into formula lock at Gate 5.
@@ -3556,6 +3569,9 @@ export const claimEvidenceTraceability: RegisterConfig = {
     { key: 'technicalReviewDate', label: 'Technical review date', type: 'date', width: 130, gate: '03' },
     { key: 'technicalReviewRationale', label: 'Technical review rationale', type: 'textarea', width: 220, gate: '03' },
     { key: 'technicalReviewEvidence', label: 'Technical review evidence link', type: 'text', width: 160, gate: '03' },
+    // Question 18(a): "Approved with Conditions requires the recorded evidence plan and accepted conditions" — for either review.
+    { key: 'reviewConditions', label: 'Conditions of the review', type: 'textarea', width: 240, gate: '03' },
+    { key: 'reviewConditionsAcceptedBy', label: 'Conditions accepted by', type: 'user', width: 150, gate: '03', selfAttest: true },
     // Gate 10 — release: "Supported" is what publishedInfoViolations() reads before
     // anything may be published, and the approval is the act of releasing it.
     // Question 30(c) names five states an artwork-linked claim may not be in;

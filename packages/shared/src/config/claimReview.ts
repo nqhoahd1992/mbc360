@@ -120,6 +120,58 @@ export const CLAIM_TECHNICAL_REVIEW_COLUMNS = [
 
 export const CLAIM_REVIEW_OUTCOMES_PASSING: readonly string[] = ['Approved', 'Approved with Conditions'];
 
+// Round 5 question 18(a): "A Not Approved claim may remain as a clearly excluded historical/rejected concept, but cannot be in the active
+// Gate 3 claim scope. Further Information Required also prevents that claim from advancing. Remove it from active scope or resolve/reword
+// and re-review it." So a claim has a scope: blank or "In scope" is the active scope; "Excluded — rejected concept" keeps the record and
+// takes it out of everything that reads the active claims (review, Gate 3 completeness, use decisions, pickers). The exclusion carries its reason.
+export const CLAIM_SCOPE_COLUMN = 'claimScope';
+export const CLAIM_SCOPE_IN = 'In scope';
+export const CLAIM_SCOPE_EXCLUDED = 'Excluded — rejected concept';
+export const CLAIM_SCOPE_OPTIONS = [CLAIM_SCOPE_IN, CLAIM_SCOPE_EXCLUDED] as const;
+export const claimIsExcluded = (row: { [key: string]: unknown }): boolean =>
+  String(row[CLAIM_SCOPE_COLUMN] ?? '').trim() === CLAIM_SCOPE_EXCLUDED;
+
+// 18(a): "Approved with Conditions requires the recorded evidence plan and accepted conditions". Either review (Regulatory or Technical) may
+// carry the outcome; the conditions are written once, for the claim, and accepted by the person who takes them on (an act, so selfAttest).
+// What counts as "the recorded evidence plan" is the claim's own Gate 3 preliminary evidence requirement, and who accepts is ours
+// [ASSUMPTION: R6-Q26].
+export const CLAIM_OUTCOME_WITH_CONDITIONS = 'Approved with Conditions';
+export function claimReviewHasConditions(row: { [key: string]: unknown }): boolean {
+  return (
+    String(row.regulatoryReviewOutcome ?? '').trim() === CLAIM_OUTCOME_WITH_CONDITIONS ||
+    String(row.technicalReviewOutcome ?? '').trim() === CLAIM_OUTCOME_WITH_CONDITIONS
+  );
+}
+export function claimConditionsGaps(row: { [key: string]: unknown }): string[] {
+  if (!claimReviewHasConditions(row)) return [];
+  const gaps: string[] = [];
+  if (String(row.preliminaryEvidenceRequirement ?? '').trim() === '') gaps.push('the evidence plan (Preliminary evidence requirement)');
+  if (String(row.reviewConditions ?? '').trim() === '') gaps.push('the conditions of the review');
+  if (String(row.reviewConditionsAcceptedBy ?? '').trim() === '') gaps.push('who accepts the conditions');
+  return gaps;
+}
+
+// 18(b): a current Claims Library approval "may be reused only for the exact wording and covered context; record the library revision and
+// verify product, evidence, market and channel fit. A new formula/application cannot inherit technical substantiation solely from matching
+// library wording." So a link to an Approved entry spares the Technical review only while (1) the entry's revision is the one recorded on the
+// claim (the server writes it, `libraryRevision`), and (2) a person has recorded that the entry fits THIS product, evidence, market and
+// channel (`libraryFitVerification`, `libraryFitVerifiedBy`). Otherwise the Technical review is needed as for a new claim [ASSUMPTION: R6-Q26].
+export function claimLibraryReuseHolds(
+  row: { [key: string]: unknown },
+  library: readonly { id: string; status: string; revision?: number }[],
+): boolean {
+  const linked = String(row.libraryEntryId ?? '').trim();
+  if (linked === '') return false;
+  const entry = library.find((e) => e.id === linked && e.status === 'Approved');
+  if (!entry) return false;
+  return (
+    String(row.libraryFitVerification ?? '').trim() !== '' &&
+    String(row.libraryFitVerifiedBy ?? '').trim() !== '' &&
+    entry.revision !== undefined &&
+    String(row.libraryRevision ?? '').trim() === String(entry.revision)
+  );
+}
+
 // C1's "the claim varies from previously approved wording", made checkable
 // 2026-08-11 (project owner: at first declaration there IS no previous wording —
 // so this condition must be about change over time, not about the moment a claim

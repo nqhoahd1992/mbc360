@@ -1163,6 +1163,16 @@ Infant/baby rows can be N/A where their stated trigger genuinely does not apply,
 
 **(b)** "Complete" is a work status, not approval. Add an explicit claim-use decision: Pending; Approved; Approved with Conditions; Not Approved; Withdrawn. Record the approved claim revision/wording, SKU/formula, market, channel, Technical/Regulatory approvals as required, decision date, restrictions and review date. Conditions must be met for the intended use. Artwork/publication reads that decision and the matching revision; a Complete row alone cannot authorise a claim.
 
+### Question 18 — The claim review at Gate 3, and who approves a revision
+
+**Verdict:** ✅ built (2026-11-25). Our readings of the details are asked in Round 6, question 26.
+
+**(a)** A "Not Approved" claim may remain as a clearly excluded historical or rejected concept, but cannot be in the active Gate 3 claim scope. "Further information required" also prevents that claim from advancing: remove it from the active scope, or resolve or reword it and review it again. "Approved with Conditions" requires the recorded evidence plan and accepted conditions. Gate 3 approval is concept approval, not permission to publish.
+
+**(b)** Yes, use outcome, qualified reviewer, date, rationale and evidence link. A current Claims Library approval may be reused only for the exact wording and covered context; record the library revision and verify product, evidence, market and channel fit. A new formula or application cannot inherit technical substantiation solely from matching library wording.
+
+**(c)** The authorised Regulatory reviewer approves market/wording compliance and the authorised Technical reviewer approves substantiation where required. Gate 10 confirms those decisions; being a gate approver does not itself grant Regulatory authority. Freeze the exact approved revision; amendments create a new revision and the necessary re-review. Sign only in the reviewer's own identity.
+
 ## Notes
 
 - Group A (data architecture) should be confirmed **first**, since it directly affects database design — getting the initial direction wrong is costly to fix later. *(All Group A follow-ups answered as of 2026-07-21 — F4, F5, F6, F14 confirmed; F12 remains an external dependency.)*

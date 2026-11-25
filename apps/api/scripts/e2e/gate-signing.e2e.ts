@@ -1122,6 +1122,51 @@ export async function run(base: string, db: Client): Promise<number> {
     await db.query(`DELETE FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'technical-claims'`, [PROJECT]);
   }
 
+  // ---- Round 5 question 18: excluded claims, conditions, library reuse and who approves a claim revision
+  console.log('\n--- Claim review: scope, conditions, library revision and revision approvals (question 18)');
+  {
+    const claimsBefore = ((await project()).project.registers.claimEvidenceTraceability ?? []).map((x: any) => ({ ...x }));
+    const meName = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
+    const claimRows = async () => ((await project()).project.registers.claimEvidenceTraceability ?? []) as any[];
+    let q: any = await putClaims((rows) => [...rows, { approvedWording: 'Q18 claim wording', claimCategory: 'Cosmetic' }]);
+    const claimId = (await claimRows()).at(-1)?.claimId as string;
+    t('a claim to review is declared', q.status < 300 && !!claimId, `${q.status} ${short(q.json)}`);
+    const edit = (over: Record<string, unknown>) => putClaims((rows) => rows.map((x: any) => (x.claimId === claimId ? { ...x, ...over } : x)));
+
+    q = await edit({ claimScope: 'Excluded — rejected concept' });
+    t('excluding a claim from the active scope needs its reason (400)', q.status === 400 && /excluded/i.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await edit({ claimScope: 'Excluded — rejected concept', scopeExclusionReason: 'Reviewed Not Approved; kept as a record' });
+    t('...with the reason it is saved, and the claim stays on the list', q.status < 300 && (await claimRows()).some((x) => x.claimId === claimId && x.claimScope === 'Excluded — rejected concept'), `${q.status} ${short(q.json)}`);
+    q = await edit({ claimScope: 'In scope', scopeExclusionReason: '' });
+    t('...and can come back into scope', q.status < 300, `${q.status} ${short(q.json)}`);
+
+    q = await edit({ libraryRevision: '99' });
+    t('the library revision a claim reuses is written by the server (a typed value is discarded)', q.status < 300 && String((await claimRows()).find((x) => x.claimId === claimId)?.libraryRevision ?? '') === '', short((await claimRows()).find((x) => x.claimId === claimId)));
+
+    // Who approves a revision: the holder of Regulatory Claims (Regulatory) and Technical Claims (Technical); the right to decide Gate 10 grants neither.
+    q = await edit({ revisionApprovedBy: meName, revisionApprovedDate: '2026-11-25' });
+    t('a Regulatory approval of a revision needs the holder of Regulatory Claims: the administrator is not that person (403)', q.status === 403 && /Regulatory Claims/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'regulatory-claims', userId: sessions['admin'].id }], expectedVersion: await version() });
+    t('the administrator is assigned Regulatory Claims on the project', q.status < 300, `${q.status} ${short(q.json)}`);
+    q = await edit({ revisionApprovedBy: 'Somebody Else', revisionApprovedDate: '2026-11-25' });
+    t('...an approval recorded in a different person\'s name is refused (400)', q.status === 400, `${q.status} ${short(q.json)}`);
+    q = await edit({ revisionTechnicalApprovedBy: meName, revisionTechnicalApprovedDate: '2026-11-25' });
+    t('a Technical approval needs the holder of Technical Claims, which the Regulatory holder is not (403)', q.status === 403 && /Technical Claims/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await edit({ revisionApprovedBy: meName, revisionApprovedDate: '2026-11-25' });
+    t('the holder of Regulatory Claims records the Regulatory approval in their own name', q.status < 300 && (await claimRows()).find((x) => x.claimId === claimId)?.revisionApprovedBy === meName, `${q.status} ${short(q.json)}`);
+    q = await edit({ approvedWording: 'Q18 claim wording, changed' });
+    t('the approved revision is now read-only (400)', q.status === 400 && /read-only/.test(String(q.json?.message)), `${q.status} ${short(q.json)}`);
+    q = await api('admin', 'PUT', `/projects/${PROJECT}/function-assignees`, { assignments: [{ roleKey: 'technical-claims', userId: sessions['admin'].id }], expectedVersion: await version() });
+    t('the administrator is also assigned Technical Claims', q.status < 300, `${q.status} ${short(q.json)}`);
+    q = await putClaims((rows) => rows.map((x: any) => (x.claimId === claimId ? { ...x, revisionTechnicalApprovedBy: meName, revisionTechnicalApprovedDate: '2026-11-25' } : x)));
+    t('...and the Technical approval is then recorded', q.status < 300 && (await claimRows()).find((x) => x.claimId === claimId)?.revisionTechnicalApprovedBy === meName, `${q.status} ${short(q.json)}`);
+
+    // Leave the run as it was.
+    q = await putClaims(() => claimsBefore);
+    t('the test claim is removed again', q.status < 300, `${q.status} ${short(q.json)}`);
+    await db.query(`DELETE FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = ANY($2)`, [PROJECT, ['regulatory-claims', 'technical-claims']]);
+  }
+
   // ---- the Change Control assessment, listed per post-market finding (Round 4 question 8, R5-Q11)
   console.log('\n--- Change Control assessment: one entry per post-market finding');
   const me = (await api('admin', 'GET', '/auth/me')).json?.displayName as string;
@@ -1928,7 +1973,7 @@ export async function run(base: string, db: Client): Promise<number> {
   t('a role cannot be emptied: assigning nobody is refused (400) and the person stays', r.status === 400 && /cannot be left empty/.test(String(r.json?.message)) && (await fnRow('technical-claims'))?.userId === someone.id, `${r.status} ${short(r.json)}`);
   await db.query(`DELETE FROM project_reviewers WHERE "projectId" = $1 AND "roleKey" = 'technical-claims'`, [PROJECT]);
   const fnAudit = (await db.query(`SELECT count(*)::int AS n FROM audit_events WHERE "projectId" = $1 AND action = 'project.function_assignees_updated'`, [PROJECT])).rows[0];
-  t('each assignment left an audit row (one for each triage act plus five others; a role can no longer be emptied through the API, so no clearing is audited)', fnAudit.n === 5 + triageActs, short(fnAudit));
+  t('each assignment left an audit row (one for each triage act plus seven others; a role can no longer be emptied through the API, so no clearing is audited)', fnAudit.n === 7 + triageActs, short(fnAudit));
   r = await putFn('admin', [{ roleKey: 'project-owner', userId: someone.id }]);
   t('the Project owner can be named after the project exists (a project created before the field has none)', r.status < 300, `${r.status} ${short(r.json)}`);
   pj = await project();

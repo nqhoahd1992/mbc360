@@ -749,3 +749,15 @@ Chúng tôi đọc "khi cần" là: phê duyệt Regulatory khi cần Regulatory
 **(a)** Một quyết định dùng claim còn hiệu lực khi công thức đổi (ví dụ phiên bản Major), hoặc khi ngày rà soát qua đi, hay phải quyết định lại? Chúng tôi chỉ cho nó hết hiệu lực khi revision của claim đổi.
 
 **(b)** Ai xác nhận điều kiện của quyết định "Approved with Conditions" đã được đáp ứng?
+
+## Câu 26 — Rà soát claim ở Gate 3 và ai duyệt một revision: chúng tôi đọc câu trả lời có đúng không?
+
+*Ở đâu trong ứng dụng:* trang **Evidence Plan & Claim Support**, bảng **Claim -> Evidence Traceability**; danh sách sẵn sàng của Gate 3; sổ SKU Claims / PIF Register.
+
+Các bạn nói claim Not Approved có thể ở lại như một khái niệm bị loại rõ ràng nhưng không nằm trong phạm vi Gate 3 đang hoạt động, Further Information Required cũng chặn claim, Approved with Conditions cần kế hoạch bằng chứng và điều kiện được chấp nhận, phê duyệt thư viện chỉ dùng lại cho đúng câu chữ và bối cảnh với revision thư viện được ghi và sự phù hợp được kiểm, và reviewer Regulatory và Technical duyệt revision còn Gate 10 chỉ xác nhận.
+
+Chúng tôi đã xây như sau. Mỗi claim có **phạm vi**: "In scope" hoặc "Excluded — rejected concept" (kèm lý do); claim bị loại vẫn ở trong danh sách nhưng không được rà soát, không tính vào mức hoàn chỉnh của Gate 3, không chọn được cho một lần dùng mới và không cho phép dùng gì. **Approved with Conditions**, ở một trong hai rà soát, cần "Preliminary evidence requirement" của claim, chính các điều kiện và một người chấp nhận chúng. Claim gắn với **mục thư viện đã Approved** chỉ được miễn Technical review khi hệ thống đã ghi revision hiện tại của mục vào claim và một người đã ghi rằng mục đó phù hợp sản phẩm, bằng chứng, thị trường và kênh này; nếu không thì cần Technical review như claim mới (và phê duyệt Technical của một lần dùng). **Phê duyệt Regulatory của một revision** do người giữ chức năng Regulatory Claims của dự án ghi, **phê duyệt Technical** do người giữ Technical Claims ghi, mỗi người dưới tên mình; có quyền quyết Gate 10 hay là administrator đều không thay thế. Một trong hai phê duyệt là đủ để đóng băng đúng câu chữ của revision đó. Nếu chỗ nào chưa đúng ý các bạn, xin cho chúng tôi biết.
+
+**(a)** Ai chấp nhận điều kiện của một rà soát "Approved with Conditions": chủ claim, người giữ chức năng, hay chính reviewer đã đưa ra rà soát?
+
+**(b)** Phê duyệt Technical của một revision có phải được ghi trước khi Gate 10 qua không, và khi nào là "khi cần"? Hiện chúng tôi chưa chặn Gate 10 vì điều này.

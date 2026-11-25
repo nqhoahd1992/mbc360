@@ -38,7 +38,10 @@ import {
   CLAIM_TECHNICAL_REVIEW_COLUMNS,
   CLAIM_RISKS_NEEDING_REVIEW,
   CLAIM_WORDING_COLUMN,
+  claimConditionsGaps,
   claimHasReviewableSubject,
+  claimIsExcluded,
+  claimLibraryReuseHolds,
   marketRestrictsClaims,
 } from '../config/claimReview';
 import {
@@ -923,6 +926,8 @@ export function projectRmCodes(project: ProjectData): string[] {
 // A claim C1 makes reviewable: borderline/therapeutic category, high risk, or
 // still unclassified (the last is our reading — see CLAIM_RISKS_NEEDING_REVIEW).
 function claimNeedsReview(row: RegisterRow): boolean {
+  // Round 5 question 18(a): a claim excluded as a rejected concept is out of the active scope, so nothing about it is reviewed.
+  if (claimIsExcluded(row)) return false;
   const category = String(row.claimCategory ?? '').trim();
   const risk = String(row.claimRisk ?? '').trim();
   return (
@@ -943,6 +948,7 @@ function claimNeedsReview(row: RegisterRow): boolean {
 // project's markets restricts claims (question 4's market profile). The latter is a
 // property of the markets, so it makes every declared claim reviewable.
 function claimReviewableInProject(row: RegisterRow, project: ProjectData): boolean {
+  if (claimIsExcluded(row)) return false; // Round 5 question 18(a)
   const claimId = String(row.claimId ?? '').trim();
   return (
     claimNeedsReview(row) ||
@@ -1505,9 +1511,12 @@ export function evaluateReadinessCheck(
         satisfied: reviewable.every(
           (row) =>
             passed(row, CLAIM_REVIEW_COLUMNS, 'regulatoryReviewOutcome') &&
-            // Question 28(2): a new claim also needs the Technical review.
-            (claimCoveredByLibrary(row, project.reference.claimsLibrary) ||
+            // Question 28(2): a new claim also needs the Technical review. Question 18(b): a link to an Approved library entry spares it
+            // only while the reuse is recorded as fitting this product, evidence, market and channel at the entry's current revision.
+            (claimLibraryReuseHolds(row, project.reference.claimsLibrary) ||
               passed(row, CLAIM_TECHNICAL_REVIEW_COLUMNS, 'technicalReviewOutcome')) &&
+            // Question 18(a): Approved with Conditions needs the evidence plan, the conditions and their acceptance on record.
+            claimConditionsGaps(row).length === 0 &&
             !claimWordingChangedSinceReview(row),
         ),
       };

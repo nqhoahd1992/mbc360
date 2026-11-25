@@ -1,6 +1,7 @@
 import { Select, Tag } from 'antd';
 import { useClaimRows } from '../hooks/claimRows';
 import ReferenceSource from './ReferenceSource';
+import { claimIsExcluded } from '@mbc360/shared/config/claimReview';
 
 // Picks a Claim ID from this project's Claim -> Evidence Traceability ledger,
 // which as of 2026-08-11 is the ONE place a claim is declared. Before that a
@@ -23,15 +24,17 @@ export default function ClaimSelect({
   disabled?: boolean;
 }) {
   const claims = useClaimRows();
+  const current = String(value ?? '').trim();
   const declared = claims
     .map((c) => ({
       id: String(c.claimId ?? '').trim(),
       wording: String(c.approvedWording ?? '').trim(),
       status: String(c.status ?? '').trim(),
+      excluded: claimIsExcluded(c),
     }))
-    .filter((c) => c.id !== '');
+    // A claim excluded as a rejected concept (question 18(a)) is not offered for a new link; one already chosen stays visible.
+    .filter((c) => c.id !== '' && (!c.excluded || c.id === current));
 
-  const current = String(value ?? '').trim();
   const known = declared.some((c) => c.id === current);
   const options = [
     ...declared.map((c) => ({

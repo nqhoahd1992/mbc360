@@ -90,10 +90,10 @@ const base = (): ProjectData => createEmptyProject({ id: 'T-1', productCode: 'T'
   t('an approving decision on a claim outside the library needs the Technical approval', claimUseRowProblems(p, [decidedRow({ regulatoryReviewRequired: 'N' })]).length === 1);
   t('...and the Regulatory approval too where Regulatory review is required', claimUseRowProblems(p, [decidedRow({ regulatoryReviewRequired: 'Y' })]).length === 2);
   t('...with both named it is complete', claimUseRowProblems(p, [decidedRow({ regulatoryReviewRequired: 'Y', useRegulatoryApprover: 'R', useTechnicalApprover: 'T' })]).length === 0);
-  t('a claim covered by an Approved library entry needs no Technical approval',
+  t('a claim that reuses an Approved library entry, with its revision and fit recorded (question 18(b)), needs no Technical approval',
     (() => {
       const q = base();
-      q.registers['claimEvidenceTraceability'] = [claim({ libraryEntryId: 'L1' })];
+      q.registers['claimEvidenceTraceability'] = [claim({ libraryEntryId: 'L1', libraryRevision: '1', libraryFitVerification: 'fits', libraryFitVerifiedBy: 'V' })];
       q.reference = { ...q.reference, claimsLibrary: [{ id: 'L1', wording: 'x', status: 'Approved', revision: 1 } as never] };
       return claimUseRowProblems(q, [decidedRow({ regulatoryReviewRequired: 'N' })]).length === 0;
     })());

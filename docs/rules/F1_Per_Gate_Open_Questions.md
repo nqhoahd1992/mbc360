@@ -1410,7 +1410,7 @@ Lọt lưới vì sweep **S4** chỉ soi item `source: 'dev-decision'` đang **c
 | ✅ R5-Q24 · R6-Q22 | **16** (đã trả lời 05/11, xây 14/11/2026; R6-Q22 hỏi lại các chỗ ta đọc) | Sổ General Restricted & Caution: hình dạng, có thuộc Gate 4 không |
 | ✅ R5-Q25 · R6-Q25 | **17(a)** (đã trả lời 05/11, xây 25/11/2026; R6-Q25 hỏi lại các chỗ ta đọc) | Danh sách Channel của bản ghi Publication / Deployment |
 | ✅ R5-Q38 · R6-Q25 | **17(b)** (đã trả lời 05/11, xây 25/11/2026; R6-Q25 hỏi lại các chỗ ta đọc) | "Được duyệt cho thị trường / kênh" đọc ở đâu |
-| R5-Q35 · R5-Q36 · R5-Q37 | **18(a) · (b) · (c)** | Claim "Not Approved" ở Gate 3 · Technical review · ai ghi nhận duyệt revision |
+| ✅ R5-Q35 · R5-Q36 · R5-Q37 · R6-Q26 | **18(a) · (b) · (c)** (đã trả lời 05/11, xây 25/11/2026; R6-Q26 hỏi lại một chỗ ta đọc) | Claim "Not Approved" ở Gate 3 · Technical review · ai ghi nhận duyệt revision |
 | R5-Q28 | **19(a)** | Thị trường đã rút còn cần làn ký Gate 12 không |
 | R5-Q44 | **19(b)** | Gate 10–11 theo thị trường: dự án chỉ qua khi mọi thị trường sẵn sàng |
 | R5-Q31 | **20** | Gate 10: trạng thái checklist và approval nào tính là xong |
@@ -1747,6 +1747,14 @@ Cách 1 sạch hơn về mô hình (máy tìm ra, người phán định — hai
 **Câu hỏi:** (a) một lựa chọn cho cả finding là đủ, hay phải xác nhận từng action khi có nhiều; (b) "validly cancelled" chỉ cần action ở trạng thái Cancelled hay cần thêm lý do/người duyệt hủy; (c) người cho phép và người xác minh có phải hai người khác nhau không; (d) có cần giá trị "No outstanding action" không.
 
 **Nếu trả lời khác:** `SUPERSESSION_ACTION_OPTIONS` (`config/registers.ts`) và `supersessionRecordIncomplete` (`utils/safetyFindings.ts`) [ASSUMPTION: R6-Q9].
+
+#### R6-Q26 · Rà soát claim ở Gate 3: phạm vi, điều kiện, tái dùng thư viện và duyệt revision: các chỗ ta đọc câu trả lời (Vòng 5 câu 18) 🟡
+
+**Lộ ra 25/11/2026, khi xây câu 18.** SME nêu: (a) claim Not Approved có thể ở lại như khái niệm bị loại nhưng không nằm trong phạm vi Gate 3; Further Information Required cũng chặn; Approved with Conditions cần kế hoạch bằng chứng và điều kiện được chấp nhận; (b) Technical review dùng đúng 5 trường; phê duyệt thư viện chỉ tái dùng cho đúng câu chữ và bối cảnh, ghi revision thư viện và xác nhận hợp sản phẩm/bằng chứng/thị trường/kênh; (c) Regulatory duyệt tuân thủ thị trường/câu chữ, Technical duyệt chứng minh khi cần, Gate 10 xác nhận, người duyệt gate không tự có thẩm quyền Regulatory, đóng băng revision. Cách đọc của ta: (1) **phạm vi**: cột `claimScope` (In scope / "Excluded — rejected concept", trống = In scope) cùng lý do bắt buộc; claim bị loại giữ nguyên bản ghi nhưng không được rà soát (`claimReviewableInProject`), không tính vào các mục hoàn chỉnh Gate 3 (`when` trên `sg03-classification`, `sg03-evidence-basis`), không cho dùng (`claimUseRowRefusal`) và không được chọn cho liên kết mới (`ClaimSelect`); (2) **Approved with Conditions** (Regulatory hoặc Technical): cần kế hoạch bằng chứng (chính là "Preliminary evidence requirement"), `reviewConditions` và người chấp nhận (`reviewConditionsAcceptedBy`, tự ghi) — `claimConditionsGaps`, đọc trong `claimsRegulatoryReviewed`; (3) **tái dùng thư viện**: link tới mục Approved chỉ miễn Technical review khi server ghi `libraryRevision` bằng đúng revision hiện tại của mục và có `libraryFitVerification` + `libraryFitVerifiedBy` (`claimLibraryReuseHolds`), cùng điều kiện cho phê duyệt Technical của một lần dùng (câu 17); (4) **duyệt revision**: phê duyệt Regulatory (`revisionApprovedBy`) do người giữ chức năng Regulatory Claims ghi, phê duyệt Technical (`revisionTechnicalApprovedBy`) do người giữ Technical Claims ghi, bằng tên mình; quyền quyết Gate 10 và quyền admin không thay; một trong hai phê duyệt là đủ để đóng băng revision (`REVISION_APPROVAL_FUNCTIONS`, `isRevisionApproved`). "Gate 10 xác nhận" chưa có mục chặn riêng: phê duyệt Technical của revision không bị chặn ở Gate 10.
+
+**Câu hỏi:** (a) ai chấp nhận điều kiện của một rà soát "Approved with Conditions" (chủ claim, người giữ chức năng, hay người rà soát); (b) phê duyệt Technical của một revision có bắt buộc trước khi Gate 10 qua không, và khi nào là "khi cần".
+
+**Nếu trả lời khác:** `config/claimReview.ts` (`CLAIM_SCOPE_*`, `claimConditionsGaps`, `claimLibraryReuseHolds`); `utils/claimEvidence.ts` (`REVISION_APPROVAL_FUNCTIONS`, `newRevisionApprovals`, `isRevisionApproved`, `claimUseRowRefusal`); `utils/gateProgress.ts` (`claimReviewableInProject`, `claimsRegulatoryReviewed`); cột của `claimEvidenceTraceability` (`config/registers.ts`); khối `claimEvidenceTraceability` trong `setRegisterRows` (`projects.service.ts`) [ASSUMPTION: R6-Q26].
 
 #### R6-Q25 · Kênh, sự kiện xuất bản và quyết định dùng claim: các chỗ ta đọc câu trả lời (Vòng 5 câu 17) 🟡
 
@@ -2279,7 +2287,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/utils/gateProgress.ts` — `bomMatchesNotTakenUp`; `gateReadiness.ts` — `sg07-bom-matches-*`.
 
-#### R5-Q35 · Kết quả rà soát claim "Not Approved" ở Gate 3 🔴
+#### R5-Q35 · Kết quả rà soát claim "Not Approved" ở Gate 3 ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 18(a)) và đã xây 25/11/2026 — phần dưới là lịch sử.** Claim "Not Approved" có thể ở lại như một khái niệm bị loại, nhưng không nằm trong phạm vi Gate 3 đang hoạt động; "Further Information Required" cũng không cho claim đi tiếp; hoặc loại khỏi phạm vi, hoặc sửa/giải quyết rồi rà soát lại. "Approved with Conditions" cần kế hoạch bằng chứng và điều kiện đã được chấp nhận; duyệt ở Gate 3 là duyệt khái niệm, không phải quyền công bố. → **R6-Q26**.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục B19).** Câu 27 chấp nhận 4 kết quả nhưng không nói kết quả nào cho claim đi tiếp. Đang chọn: chỉ Approved / Approved with Conditions; "Not Approved" và "Further Information Required" chặn Gate 3 cho tới khi claim được sửa câu chữ (rà soát lại) hoặc bỏ đi.
 
@@ -2287,7 +2297,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/config/claimReview.ts` — `CLAIM_REVIEW_OUTCOMES_PASSING`.
 
-#### R5-Q36 · Technical review cho claim mới ghi bằng những trường nào 🔴
+#### R5-Q36 · Technical review cho claim mới ghi bằng những trường nào ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 18(b)) và đã xây 25/11/2026 — phần dưới là lịch sử.** Đúng: kết quả, người rà soát đủ thẩm quyền, ngày, lý do, link bằng chứng. Phê duyệt thư viện hiện hành chỉ dùng lại cho đúng câu chữ và bối cảnh được bao phủ; ghi revision thư viện và xác nhận hợp sản phẩm, bằng chứng, thị trường, kênh; công thức/ứng dụng mới không thừa hưởng chứng minh kỹ thuật chỉ vì câu chữ thư viện khớp. → **R6-Q26**.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục B20).** Câu 28(2): claim mới (chưa có trong Claims Library) kích hoạt rà soát Regulatory **và** Technical. Chưa có trường nào cho Technical. Đã thêm 5 trường giống hệt bộ Regulatory của câu 27 (kết quả, người rà soát, ngày, lý do, link bằng chứng).
 
@@ -2295,7 +2307,9 @@ Nếu cách đọc này đúng thì gộp ba sổ là sai lầm nặng, và câu
 
 **Nếu trả lời khác:** `packages/shared/src/config/registers.ts` — cột `technicalReview*`; `claimReview.ts` — `CLAIM_TECHNICAL_REVIEW_COLUMNS`.
 
-#### R5-Q37 · Ai được ghi nhận "đã duyệt revision" của một claim 🔴
+#### R5-Q37 · Ai được ghi nhận "đã duyệt revision" của một claim ✅
+
+**Đã trả lời 05/11/2026 (Vòng 5 câu 18(c)) và đã xây 25/11/2026 — phần dưới là lịch sử.** Reviewer Regulatory được ủy quyền duyệt tuân thủ thị trường/câu chữ; reviewer Technical được ủy quyền duyệt chứng minh khi cần; Gate 10 xác nhận các quyết định đó, người duyệt gate không tự có thẩm quyền Regulatory; đóng băng đúng revision đã duyệt, sửa đổi tạo revision mới và rà soát lại; chỉ ký bằng danh tính của reviewer. → **R6-Q26**.
 
 **Lộ ra khi rà soát luật SME (04/10/2026, mục B21).** Câu 26: revision bị khoá khi "nhận Regulatory hoặc Gate 10 approval". Đang chọn: người đại diện Regulatory, hoặc người có quyền quyết Gate 10; và chỉ được ghi tên chính mình.
 

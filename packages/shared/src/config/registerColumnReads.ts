@@ -16,7 +16,7 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     vulnerableUserAssessment: ['additionalAssessments', 'responsibleReviewer', 'safetyPathway', 'vulnerableGroup'],
   },
   SG03: {
-    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimId', 'claimRisk', 'claimSubjects', 'evidenceBasisRequired', 'libraryEntryId', 'preliminaryEvidenceRequirement', 'regulatoryReviewDate', 'regulatoryReviewEvidence', 'regulatoryReviewOutcome', 'regulatoryReviewRationale', 'regulatoryReviewer', 'reviewedWording', 'technicalReviewDate', 'technicalReviewEvidence', 'technicalReviewOutcome', 'technicalReviewRationale', 'technicalReviewer'],
+    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimId', 'claimRisk', 'claimScope', 'claimSubjects', 'evidenceBasisRequired', 'libraryEntryId', 'preliminaryEvidenceRequirement', 'regulatoryReviewDate', 'regulatoryReviewEvidence', 'regulatoryReviewOutcome', 'regulatoryReviewRationale', 'regulatoryReviewer', 'reviewConditions', 'reviewConditionsAcceptedBy', 'reviewedWording', 'technicalReviewDate', 'technicalReviewEvidence', 'technicalReviewOutcome', 'technicalReviewRationale', 'technicalReviewer'],
     competitorLandscape: [],
     skuClaimsPifRegister: ['claimId', 'regulatoryReviewRequired'],
     targetProductProfile: ['target'],
@@ -65,14 +65,11 @@ export const REGISTER_READS_BY_GATE: Record<string, Record<string, string[]>> = 
     stabilityRelease: ['releaseDecision'],
     supplierRmEvidence: ['approvedForUse', 'evidenceStatus', 'rmCode'],
   },
-  SG12: {
-    vulnerableUserAssessment: ['vulnerableGroup'],
-  },
 };
 
 export const TRIGGER_READS_BY_GATE: Record<string, Record<string, string[]>> = {
   SG03: {
-    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimId', 'claimRisk', 'claimSubjects', 'libraryEntryId', 'reviewedWording'],
+    claimEvidenceTraceability: ['approvedWording', 'claimCategory', 'claimId', 'claimRisk', 'claimScope', 'claimSubjects', 'libraryEntryId', 'reviewedWording'],
     skuClaimsPifRegister: ['claimId', 'regulatoryReviewRequired'],
   },
   SG04: {
@@ -83,9 +80,6 @@ export const TRIGGER_READS_BY_GATE: Record<string, Record<string, string[]>> = {
   },
   SG10: {
     claimEvidenceTraceability: ['claimCategory', 'evidenceBasisRequired'],
-  },
-  SG12: {
-    vulnerableUserAssessment: ['vulnerableGroup'],
   },
 };
 

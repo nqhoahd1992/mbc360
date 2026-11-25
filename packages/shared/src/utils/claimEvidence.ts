@@ -44,7 +44,7 @@
 //       withdrawal or supersession date). For printed packaging the equivalent
 //       event is Release to Print, which is a channel value there.
 import type { ProjectData, RegisterRow } from '../types';
-import { claimCoveredByLibrary } from '../config/referenceData';
+import { claimIsExcluded, claimLibraryReuseHolds } from '../config/claimReview';
 import {
   CLAIM_STATUSES_BLOCKING_ARTWORK,
   CLAIM_USE_APPROVING,
@@ -184,14 +184,21 @@ export const REVISION_CONTROLLED_COLUMNS = [
 
 // Who approved the revision, and when. Frozen with the revision (see below), and
 // on the server only ever recorded as the signed-in person (`revisionApprovalForgeries`).
-export const REVISION_APPROVAL_COLUMNS = ['revisionApprovedBy', 'revisionApprovedDate'] as const;
+export const REVISION_APPROVAL_COLUMNS = ['revisionApprovedBy', 'revisionApprovedDate', 'revisionTechnicalApprovedBy', 'revisionTechnicalApprovedDate'] as const;
 
-// Question 26: a revision is frozen once it "receives Regulatory or Gate 10
-// approval". Who may record that approval is our reading of those two words —
-// a Regulatory representative (the capability below), or someone who may decide Gate 10 on this project
-// (its nominated Approved-by signer, the Lead or an administrator: `canDecideGate` in projectAuthority.ts)
-// [ASSUMPTION: R5-Q37].
-export const REVISION_APPROVAL_CAPABILITIES = ['gate-signoff|represent-regulatory'] as const;
+// Round 5 question 18(c): "The authorised Regulatory reviewer approves market/wording compliance and the authorised Technical reviewer approves
+// substantiation where required. Gate 10 confirms those decisions; being a gate approver does not itself grant Regulatory authority."
+// So the Regulatory approval of a revision (`revisionApprovedBy`) is recorded by the holder of Regulatory Claims on the project and the
+// Technical one (`revisionTechnicalApprovedBy`) by the holder of Technical Claims, each in their own name; the right to decide Gate 10 and the
+// administrator role grant neither. Our reading of who is "authorised" is the function holders named when the project is created [ASSUMPTION: R6-Q26].
+export const REVISION_APPROVAL_FUNCTIONS = {
+  revisionApprovedBy: { functionKey: 'regulatory-claims', label: 'Regulatory Claims' },
+  revisionTechnicalApprovedBy: { functionKey: 'technical-claims', label: 'Technical Claims' },
+} as const;
+
+// Question 26: a revision is frozen once it "receives Regulatory or Gate 10 approval" (first reading: a Regulatory representative or someone who
+// may decide Gate 10 — [ASSUMPTION: R5-Q37]). Round 5 question 18(c) replaced that: the Regulatory and Technical reviewers approve, Gate 10 only
+// confirms, and the right to decide a gate grants neither authority. See REVISION_APPROVAL_FUNCTIONS below.
 
 // Rows whose "Revision approved by" is newly set or changed in this save to
 // anyone other than `actorName`. An approval names the person who gave it; a
@@ -199,28 +206,43 @@ export const REVISION_APPROVAL_CAPABILITIES = ['gate-signoff|represent-regulator
 // signature D1 rejected, in a different column.
 export function revisionApprovalForgeries(before: RegisterRow[], after: RegisterRow[], actorName: string): string[] {
   const previous = new Map(before.filter((r) => text(r.claimId) !== '').map((r) => [text(r.claimId), r]));
-  return after
-    .filter((row) => {
-      const by = text(row.revisionApprovedBy);
-      if (by === '') return false;
+  const out: string[] = [];
+  for (const row of after) {
+    for (const column of Object.keys(REVISION_APPROVAL_FUNCTIONS) as (keyof typeof REVISION_APPROVAL_FUNCTIONS)[]) {
+      const by = text(row[column]);
+      if (by === '') continue;
       const old = previous.get(text(row.claimId));
-      if (old && text(old.revisionApprovedBy) === by) return false;
-      return by !== actorName;
-    })
-    .map((row) => text(row.claimId) || '(no Claim ID)');
+      if (old && text(old[column]) === by) continue;
+      if (by !== actorName) out.push(`${text(row.claimId) || '(no Claim ID)'} (${REVISION_APPROVAL_FUNCTIONS[column].label})`);
+    }
+  }
+  return out;
 }
 
-// Rows that newly carry a revision approval in this save — the act that needs
-// REVISION_APPROVAL_CAPABILITIES.
-export function newRevisionApprovals(before: RegisterRow[], after: RegisterRow[]): string[] {
+// The approvals newly recorded in this save, each with the function whose holder alone may record it (REVISION_APPROVAL_FUNCTIONS).
+export function newRevisionApprovals(
+  before: RegisterRow[],
+  after: RegisterRow[],
+): { claimId: string; column: keyof typeof REVISION_APPROVAL_FUNCTIONS }[] {
   const previous = new Map(before.filter((r) => text(r.claimId) !== '').map((r) => [text(r.claimId), r]));
-  return after
-    .filter((row) => text(row.revisionApprovedBy) !== '' && text(previous.get(text(row.claimId))?.revisionApprovedBy) !== text(row.revisionApprovedBy))
-    .map((row) => text(row.claimId) || '(no Claim ID)');
+  const out: { claimId: string; column: keyof typeof REVISION_APPROVAL_FUNCTIONS }[] = [];
+  for (const row of after) {
+    for (const column of Object.keys(REVISION_APPROVAL_FUNCTIONS) as (keyof typeof REVISION_APPROVAL_FUNCTIONS)[]) {
+      if (text(row[column]) !== '' && text(previous.get(text(row.claimId))?.[column]) !== text(row[column])) {
+        out.push({ claimId: text(row.claimId) || '(no Claim ID)', column });
+      }
+    }
+  }
+  return out;
 }
 
+// A revision is approved once the Regulatory reviewer or the Technical reviewer has approved it (with the date): either approval stands for the
+// exact words, so either one freezes them (question 18(c): "freeze the exact approved revision").
 export function isRevisionApproved(row: RegisterRow): boolean {
-  return text(row.revisionApprovedBy) !== '' && text(row.revisionApprovedDate) !== '';
+  return (
+    (text(row.revisionApprovedBy) !== '' && text(row.revisionApprovedDate) !== '') ||
+    (text(row.revisionTechnicalApprovedBy) !== '' && text(row.revisionTechnicalApprovedDate) !== '')
+  );
 }
 
 // Changes made to an approved revision without bumping it. Empty when every edit
@@ -253,7 +275,9 @@ export function frozenRevisionEdits(
     // not, so two saves walked straight round the rule: the first cleared
     // "Revision approved by", which made the revision unapproved, and the second
     // re-worded it freely. An approval is withdrawn by moving to a new revision.
-    if (REVISION_APPROVAL_COLUMNS.some((k) => cell(row[k]) !== cell(old[k]))) changed.push('Revision approval');
+    // Question 18(c): the Regulatory and the Technical approval are two acts, so the second may be ADDED to an approved revision; what is
+    // already recorded cannot be changed or cleared.
+    if (REVISION_APPROVAL_COLUMNS.some((k) => cell(old[k]) !== '' && cell(row[k]) !== cell(old[k]))) changed.push('Revision approval');
     if (changed.length > 0) out.push({ claimId: id, changed });
   }
   return out;
@@ -282,6 +306,8 @@ export const claimUseDecisionOf = (row: RegisterRow): string => text(row.claimUs
 
 // Why one claim-use row does NOT authorise its claim, or undefined when it does.
 export function claimUseRowRefusal(row: RegisterRow, claim: RegisterRow): string | undefined {
+  // Round 5 question 18(a): an excluded (rejected) concept is outside the active scope and authorises no use whatever the row says.
+  if (claimIsExcluded(claim)) return 'the claim is excluded from the active scope as a rejected concept';
   const decision = claimUseDecisionOf(row);
   if (decision === 'Pending') return 'the claim-use decision is still Pending (a Complete work status is not an approval)';
   if (decision === 'Not Approved' || decision === 'Withdrawn') return `the claim-use decision is "${decision}"`;
@@ -336,8 +362,8 @@ export function claimUseRowProblems(project: ProjectData, rows: RegisterRow[]): 
     if (text(row.regulatoryReviewRequired) === 'Y' && text(row.useRegulatoryApprover) === '') {
       out.push(`${label} — Regulatory approval is needed (Regulatory review required is Y)`);
     }
-    if (!claimCoveredByLibrary(claim, project.reference?.claimsLibrary ?? []) && text(row.useTechnicalApprover) === '') {
-      out.push(`${label} — Technical approval is needed (the claim is not covered by an Approved Claims Library entry)`);
+    if (!claimLibraryReuseHolds(claim, project.reference?.claimsLibrary ?? []) && text(row.useTechnicalApprover) === '') {
+      out.push(`${label} — Technical approval is needed (the claim does not reuse a current Approved Claims Library entry with its fit recorded)`);
     }
   });
   return out;

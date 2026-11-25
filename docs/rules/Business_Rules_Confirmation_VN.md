@@ -1163,6 +1163,16 @@ Các dòng infant/baby có thể N/A khi trigger nêu trong dòng thực sự kh
 
 **(b)** "Complete" là trạng thái công việc, không phải phê duyệt. Thêm một quyết định dùng claim rõ ràng: Pending; Approved; Approved with Conditions; Not Approved; Withdrawn. Ghi revision/wording claim được duyệt, SKU/công thức, thị trường, kênh, phê duyệt Technical/Regulatory khi cần, ngày quyết định, hạn chế và ngày rà soát. Điều kiện phải được đáp ứng cho mục đích dùng. Artwork/publication đọc quyết định đó và revision khớp; một dòng Complete không thể tự cho phép một claim.
 
+### Câu 18 — Rà soát claim ở Gate 3 và ai duyệt một revision
+
+**Kết luận:** ✅ đã xây (25/11/2026). Những chỗ chúng tôi đọc câu trả lời được hỏi lại ở Vòng 6, câu 26.
+
+**(a)** Một claim "Not Approved" có thể ở lại như một khái niệm lịch sử hoặc bị bác bỏ được đánh dấu loại rõ ràng, nhưng không được nằm trong phạm vi claim Gate 3 đang hoạt động. "Further information required" cũng ngăn claim đó đi tiếp: loại khỏi phạm vi đang hoạt động, hoặc giải quyết hay sửa câu chữ rồi rà soát lại. "Approved with Conditions" cần kế hoạch bằng chứng đã ghi và điều kiện đã được chấp nhận. Duyệt ở Gate 3 là duyệt khái niệm, không phải quyền công bố.
+
+**(b)** Đúng, dùng kết quả, người rà soát đủ thẩm quyền, ngày, lý do và link bằng chứng. Phê duyệt hiện hành của Claims Library chỉ được dùng lại cho đúng câu chữ và bối cảnh được bao phủ; ghi revision của thư viện và xác nhận sự phù hợp về sản phẩm, bằng chứng, thị trường và kênh. Một công thức hay ứng dụng mới không được thừa hưởng chứng minh kỹ thuật chỉ vì câu chữ thư viện khớp.
+
+**(c)** Reviewer Regulatory được ủy quyền duyệt tính tuân thủ về thị trường và câu chữ, reviewer Technical được ủy quyền duyệt chứng minh khi cần. Gate 10 xác nhận các quyết định đó; là người duyệt gate không tự có thẩm quyền Regulatory. Đóng băng đúng revision đã duyệt; sửa đổi tạo revision mới và rà soát lại cần thiết. Chỉ ký bằng danh tính của chính reviewer.
+
 ## Ghi chú
 
 - Nhóm A (kiến trúc dữ liệu) nên được xác nhận **trước tiên** vì ảnh hưởng trực tiếp tới thiết kế database — trả lời sai hướng ban đầu sẽ tốn công sửa lại sau. *(Tất cả follow-up nhóm A đã trả lời tính đến 21/07/2026 — F4, F5, F6, F14 đã chốt; F12 còn là phụ thuộc bên ngoài.)*

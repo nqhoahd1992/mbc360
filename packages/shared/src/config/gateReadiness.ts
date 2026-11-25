@@ -1146,6 +1146,8 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
             kind: 'registerRowsComplete',
             register: 'claimEvidenceTraceability',
             columns: ['claimId', 'approvedWording', 'claimCategory', 'claimRisk', 'preliminaryEvidenceRequirement'],
+            // Round 5 question 18(a): a claim excluded as a rejected concept is outside the active Gate 3 scope.
+            when: { column: 'claimScope', notIn: ['Excluded — rejected concept'] },
           },
         ],
       },
@@ -1165,7 +1167,7 @@ export const GATE_READINESS: Record<string, ReadinessRequirement[]> = {
         kind: 'anyOf',
         checks: [
           { kind: 'noClaimsDeclared' },
-          { kind: 'registerRowsComplete', register: 'claimEvidenceTraceability', columns: ['evidenceBasisRequired'] },
+          { kind: 'registerRowsComplete', register: 'claimEvidenceTraceability', columns: ['evidenceBasisRequired'], when: { column: 'claimScope', notIn: ['Excluded — rejected concept'] } },
         ],
       },
     },

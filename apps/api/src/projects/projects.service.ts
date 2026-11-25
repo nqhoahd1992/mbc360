@@ -180,7 +180,7 @@ import {
 } from '@mbc360/shared/utils/formulaLifecycle';
 import {
   CLAIM_EXEMPTION_CAPABILITY,
-  REVISION_APPROVAL_CAPABILITIES,
+  REVISION_APPROVAL_FUNCTIONS,
   frozenRevisionEdits,
   newLinksToWithdrawnWording,
   newRevisionApprovals,
@@ -3242,15 +3242,25 @@ export class ProjectsService {
             `"Revision approved by" can only record your own approval: ${forged.join(', ')}`,
           );
         }
-        if (
-          newRevisionApprovals(committedClaims, rows).length > 0 &&
-          !(await this.holdsAnyCapability(user, [...REVISION_APPROVAL_CAPABILITIES])) &&
-          !canDecideGateInProject(project, 'SG10', { displayName: user.displayName, isAdmin: this.permissions.isAdmin(user) })
-        ) {
-          throw new ForbiddenException(
-            'Approving a claim revision needs Regulatory authority or the right to decide Gate 10',
-          );
+        // Round 5 question 18(c): the Regulatory approval of a revision is the Regulatory Claims holder's, the Technical approval the Technical
+        // Claims holder's; deciding Gate 10 (or being an administrator) grants neither. [ASSUMPTION: R6-Q26]
+        const notAuthorised = newRevisionApprovals(committedClaims, rows)
+          .map(({ claimId, column }) => {
+            const { functionKey, label } = REVISION_APPROVAL_FUNCTIONS[column];
+            const holder = (project.identity.reviewers[functionKey] ?? '').trim();
+            if (holder === '') return `${claimId}: nobody holds ${label} on this project yet (the project's Lead assigns one in Project team)`;
+            return holder.toLowerCase() === user.displayName.trim().toLowerCase() ? undefined : `${claimId}: only ${holder}, who holds ${label} on this project, records this approval`;
+          })
+          .filter((m): m is string => !!m);
+        if (notAuthorised.length > 0) {
+          throw new ForbiddenException(listMessage('Approving a claim revision needs the person who holds that function on this project:', notAuthorised));
         }
+        // Round 5 question 18(b): the library revision a claim reuses is written by the server from the entry it is linked to, never typed.
+        rows = rows.map((row) => {
+          const linked = String(row.libraryEntryId ?? '').trim();
+          const entry = linked === '' ? undefined : (project.reference?.claimsLibrary ?? []).find((e) => e.id === linked);
+          return { ...row, libraryRevision: entry ? String(entry.revision) : '' };
+        });
         const frozen = frozenRevisionEdits(project.registers[registerKey] ?? [], rows);
         if (frozen.length > 0) {
           throw new BadRequestException(
