@@ -55,6 +55,18 @@ t('the library revision reused is written by the server, not typed', col('librar
 t('the fit to product, evidence, market and channel is verified by the person themselves', !!col('libraryFitVerification') && col('libraryFitVerifiedBy').selfAttest === true);
 t('the Regulatory and the Technical approval of a revision are separate columns, each the approver\'s own act', col('revisionApprovedBy').selfAttest === true && col('revisionTechnicalApprovedBy').selfAttest === true && !!col('revisionTechnicalApprovedDate'));
 
+// --- the claim drawer is grouped, and a field that cannot apply stays out of sight
+{
+  const cfg = REGISTER_CONFIGS.find((c) => c.key === 'claimEvidenceTraceability')!;
+  const named = new Set((cfg.drawerSections ?? []).flatMap((s) => s.columns));
+  t('the claim drawer is drawn as tabs, one concern each', cfg.drawerTabs === true && (cfg.drawerSections ?? []).length >= 4);
+  t('...every column of the register is in one of them (no catch-all "Other" tab)', cfg.columns.every((c) => named.has(c.key)), cfg.columns.filter((c) => !named.has(c.key)).map((c) => c.key).join(','));
+  t('...and no column is named twice', (cfg.drawerSections ?? []).flatMap((s) => s.columns).length === named.size);
+  t('the exclusion reason is shown only on an excluded claim', col('scopeExclusionReason').shownWhen?.values?.includes(CLAIM_SCOPE_EXCLUDED) === true);
+  t('the library fit fields and revision are shown only once a library entry is linked', ['libraryRevision', 'libraryFitVerification', 'libraryFitVerifiedBy'].every((k) => col(k).shownWhen?.column === 'libraryEntryId'));
+  t('the conditions are shown only when a review is Approved with Conditions (either one)', col('reviewConditions').shownWhen?.values?.includes('Approved with Conditions') === true && col('reviewConditions').shownWhen?.or?.column === 'technicalReviewOutcome');
+}
+
 // --- 18(a) a Not Approved claim ------------------------------------------------------------------------------------------------------------------
 {
   const notApproved = reviewed({ regulatoryReviewOutcome: 'Not Approved' });

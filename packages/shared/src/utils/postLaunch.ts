@@ -75,7 +75,8 @@ export function legacyOnMarketTracks(project: ProjectData): MarketTrack[] {
 // the anchor to the replacement's launch.
 function reviewTracksByMarket(project: ProjectData): MarketTrack[] {
   const byMarket = new Map<string, MarketTrack>();
-  for (const t of project.marketTracks.filter((x) => isMarketLaunched(x) && !isMarketWithdrawn(x))) {
+  // Round 5 question 19(a): surveillance continues after a withdrawal while the closure is open, so that market keeps its schedule too.
+  for (const t of project.marketTracks.filter((x) => isMarketLaunched(x) && (!isMarketWithdrawn(x) || withdrawalClosureOpen(x)))) {
     const seen = byMarket.get(t.market);
     if (!seen || text(t.actualLaunchDate) < text(seen.actualLaunchDate)) byMarket.set(t.market, t);
   }

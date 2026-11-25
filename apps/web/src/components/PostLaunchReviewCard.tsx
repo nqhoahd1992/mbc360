@@ -3,7 +3,7 @@ import { Alert, Card, DatePicker, Input, Table, Tag, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import type { PostLaunchReview, ProjectData } from '@mbc360/shared/types';
 import {
-  onMarketTracks,
+  reviewScheduleTracks,
   overdueReviews,
   projectLaunchStatus,
   reviewMilestoneLabel,
@@ -84,7 +84,7 @@ export default function PostLaunchReviewCard({
         </span>
       }
     >
-      {onMarketTracks(project).length === 0 ? (
+      {reviewScheduleTracks(project).length === 0 ? (
         <Alert
           type="info"
           showIcon

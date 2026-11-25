@@ -46,6 +46,7 @@ import { MarketAssessmentReopenedNotice } from '../components/MarketAdditionAsse
 import GateAssessments from '../components/GateAssessments';
 import { pendingMarketAdditions } from '@mbc360/shared/utils/marketAdditions';
 import PostLaunchReviewCard from '../components/PostLaunchReviewCard';
+import WithdrawnMarketsCard from '../components/WithdrawnMarketsCard';
 import GeneratedNaAcks from '../components/GeneratedNaAcks';
 import SectionJumpButton from '../components/SectionJumpButton';
 import GateReadinessPanel from '../components/GateReadinessPanel';
@@ -844,6 +845,12 @@ export default function PhasePage() {
               <div id="sec-post-launch">
                 <GeneratedNaAcks home="postLaunch" gateId={tab} />
                 <PostLaunchReviewCard project={project} enhanced={evaluateTrigger(project, 'pvPmsRequired') === 'applies'} market={market} />
+              </div>
+            )}
+            {/* Round 5 question 19(a): a withdrawn market is closed out here — it is no lane of Gates 10-11, so the tracking card cannot hold it. */}
+            {phase === 4 && tab === 'SG12' && (
+              <div id="sec-withdrawn-markets">
+                <WithdrawnMarketsCard project={project} />
               </div>
             )}
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Button, DatePicker, Input } from 'antd';
+import { Button, DatePicker, Input } from 'antd';
 import dayjs from 'dayjs';
 import type { MarketTrack, ProjectData } from '@mbc360/shared/types';
 import { isMarketLaunched, withdrawalClosureGaps } from '@mbc360/shared/utils/postLaunch';
@@ -26,26 +26,21 @@ export default function WithdrawalClosureBlock({ project, track }: { project: Pr
   const today = dayjs().format('YYYY-MM-DD');
 
   if (!isMarketLaunched(track)) {
+    // A neutral note, not an alert: nothing is wrong and nothing is asked of anyone.
     return (
-      <Alert
-        style={{ marginTop: 14 }}
-        type="info"
-        showIcon
-        title={`${track.market} was never launched, so it has no Gate 12 sign-off to keep`}
-        description={`The reason recorded with the withdrawal closes it: ${track.withdrawnReason || '(no reason recorded yet)'}.`}
-      />
+      <p className="rt-note" style={{ marginTop: 10 }}>
+        <b>{track.market}</b> was never launched, so it has no Gate 12 sign-off to keep. The reason recorded with the withdrawal closes it:{' '}
+        {track.withdrawnReason || '(no reason recorded yet)'}.
+      </p>
     );
   }
 
   if (track.withdrawalClosedAt) {
     return (
-      <Alert
-        style={{ marginTop: 14 }}
-        type="success"
-        showIcon
-        title={`${track.market}'s Gate 12 obligations were closed on ${track.withdrawalClosedAt}`}
-        description={`Confirmed by ${track.withdrawalClosedBy ?? '—'}. Criteria: ${track.withdrawalClosureCriteria ?? '—'}. Period ended ${track.withdrawalClosureUntil ?? '—'}.`}
-      />
+      <p className="rt-note" style={{ marginTop: 10 }}>
+        Gate 12 obligations closed on {track.withdrawalClosedAt}, confirmed by {track.withdrawalClosedBy ?? '—'}. Criteria: {track.withdrawalClosureCriteria ?? '—'}. Period ended{' '}
+        {track.withdrawalClosureUntil ?? '—'}.
+      </p>
     );
   }
 

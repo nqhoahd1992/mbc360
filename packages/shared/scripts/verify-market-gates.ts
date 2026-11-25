@@ -3,6 +3,7 @@
 import { createEmptyProject } from '../../../apps/web/src/store/factory';
 import { PER_MARKET_GATES, gateSignOffMarkets } from '../src/config/gateSignOff';
 import {
+  reviewScheduleTracks,
   gate12Markets,
   withdrawalClosureGaps,
   withdrawalClosureOpen,
@@ -47,6 +48,9 @@ const project = (tracks: MarketTrack[], markets = tracks.map((x) => x.market)): 
     JSON.stringify(gate12Markets(p)) === JSON.stringify(['Vietnam', 'Singapore']) && JSON.stringify(gateSignOffMarkets(p, 'SG12')) === JSON.stringify(['Vietnam', 'Singapore']), JSON.stringify(gateSignOffMarkets(p, 'SG12')));
   t('Gates 10 and 11 end with the withdrawal for both withdrawn markets',
     JSON.stringify(gateSignOffMarkets(p, 'SG10')) === JSON.stringify(['Singapore']) && JSON.stringify(gateSignOffMarkets(p, 'SG11')) === JSON.stringify(['Singapore']));
+  t('the post-launch review schedule keeps a withdrawn market while its closure is open (surveillance continues), and drops it once closed or when it never launched',
+    JSON.stringify(reviewScheduleTracks(p).map((x) => x.market).sort()) === JSON.stringify(['Singapore', 'Vietnam']) &&
+      JSON.stringify(reviewScheduleTracks(project([{ ...sold, withdrawalClosedAt: '2026-09-01' }, never])).map((x) => x.market)) === JSON.stringify([]));
   t('a closure confirmed removes the market from the Gate 12 lanes', JSON.stringify(gate12Markets(project([{ ...sold, withdrawalClosedAt: '2026-09-01' }, selling]))) === JSON.stringify(['Singapore']));
   t('a closure cannot be confirmed with nothing recorded', withdrawalClosureGaps(p, sold, '2026-07-01').length === 2);
   t('...nor before its period ends, and the gap names the date', withdrawalClosureGaps(p, { ...sold, withdrawalClosureCriteria: 'x', withdrawalClosureUntil: '2026-12-01' }, '2026-07-01').some((g) => /2026-12-01/.test(g)));

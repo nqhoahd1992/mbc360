@@ -54,7 +54,9 @@
 /* Status strip (one line of chips replacing four stacked notices) and the gate
    summary above the evidence; the decision itself sits at the end of the stack. */
 .ph-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; border: 1px solid var(--c-border-2); border-radius: 8px; background: var(--c-surface); }
-.ph-strip-item { display: inline-flex; align-items: center; }
+.ph-strip-item { display: inline-flex; align-items: center; min-width: 0; max-width: 100%; }
+/* A status tag in the strip says a whole sentence (what is waiting, on whom); on a narrow screen it wraps instead of widening the page. */
+.ph-strip-item .c-tag { height: auto; min-height: 22px; padding-block: 2px; white-space: normal; text-align: left; }
 .ph-strip .ant-btn-link { padding: 0; height: auto; }
 .ph-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding: 12px 20px; }
 .ph-summary-k { color: var(--c-text-3); font-size: 12px; }

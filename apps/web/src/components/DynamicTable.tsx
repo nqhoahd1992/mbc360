@@ -14,6 +14,7 @@ import type { RegisterColumn, RegisterConfig } from '@mbc360/shared/config/regis
 import { isOwnerFunctionColumn, ownerFunctionWithPeople } from '@mbc360/shared/config/reviewers';
 import { ASEAN_MARKETS, duplicateValueProblems, isColumnRequiredFor, marketScopeProblems, isRegisterRowBlank, missingRequiredProblems, previewAutoIds } from '@mbc360/shared/config/registers';
 import RequiredMark from './RequiredMark';
+import DrawerTabs from './DrawerTabs';
 import { referenceSourceOf } from '../utils/referenceSource';
 import ReferenceSource from './ReferenceSource';
 import { claimLibraryLinkMismatch } from '@mbc360/shared/config/referenceData';
@@ -751,15 +752,27 @@ export default function DynamicTable({
     return source ? <ReferenceSource text={source} /> : null;
   };
 
-  const drawerSection = (section: DrawerSection, row: RegisterRow, index: number) => {
-    const inputs = section.cols.filter((c) => editable.includes(c));
-    const full = fullWidthOf(section.cols);
+  // A field that can only apply while another column says so stays out of sight until it does — or until it already holds a value.
+  const isShown = (col: RegisterColumn, row: RegisterRow) => {
+    const rule = col.shownWhen;
+    if (!rule) return true;
+    const met = (r: { column: string; values?: readonly string[] }) => {
+      const v = text(row[r.column]).trim();
+      return r.values ? r.values.includes(v) : v !== '';
+    };
+    return met(rule) || (!!rule.or && met(rule.or)) || text(row[col.key]).trim() !== '';
+  };
+
+  const drawerSection = (section: DrawerSection, row: RegisterRow, index: number, inTab = false) => {
+    const cols = section.cols.filter((c) => isShown(c, row));
+    const inputs = cols.filter((c) => editable.includes(c));
+    const full = fullWidthOf(cols);
     return (
       <section key={section.title}>
-        <div className="rt-sec-title">{section.title}</div>
+        {!inTab && <div className="rt-sec-title">{section.title}</div>}
         {section.hint && <p className="rt-sec-hint">{section.hint}</p>}
         <div className={section.rail ? 'rt-grid rt-grid-one' : 'rt-grid'}>
-          {section.cols.map((col, ci) =>
+          {cols.map((col, ci) =>
             inputs.includes(col) ? (
               <label key={col.key} className={full.has(ci) ? 'rt-span-2' : undefined}>
                 <span className="rt-label">
@@ -1127,7 +1140,22 @@ export default function DynamicTable({
                   ))}
                 </div>
               )}
-              {drawerSections.filter((s) => !s.rail).map((s) => drawerSection(s, openRow, openIndex))}
+              {config.drawerTabs ? (
+                <DrawerTabs
+                  forceRender
+                  tabs={drawerSections
+                    .filter((s) => !s.rail)
+                    .map((s) => ({
+                      key: s.title,
+                      label: s.title,
+                      // A tab that still has a required field empty says so without being opened.
+                      dot: s.cols.some((c) => isShown(c, openRow) && isColumnRequiredFor(c, openRow) && text(openRow[c.key]).trim() === ''),
+                      children: drawerSection(s, openRow, openIndex, true),
+                    }))}
+                />
+              ) : (
+                drawerSections.filter((s) => !s.rail).map((s) => drawerSection(s, openRow, openIndex))
+              )}
             </div>
             {hasRail && <aside className="rt-rail">{drawerSections.filter((s) => s.rail).map((s) => drawerSection(s, openRow, openIndex))}</aside>}
           </div>

@@ -72,6 +72,11 @@ export interface RegisterColumn {
   gateLink?: true;
   // `and` adds a second condition that must hold too (e.g. Closed AND High/Critical severity).
   requiredWhen?: { column: string; values: readonly string[]; and?: { column: string; values: readonly string[] } };
+  // Shown in the row's drawer (a register with `drawerSections`) only while another column of the SAME row says so: `values` given = that
+  // column holds one of them, omitted = it holds anything; `or` adds a second column that also switches it on. A field that already holds a
+  // value is shown whatever the condition, so recorded data never disappears. Nothing is validated differently: this only keeps a field out
+  // of sight while it cannot apply (a reason for an exclusion on a claim that is not excluded).
+  shownWhen?: { column: string; values?: readonly string[]; or?: { column: string; values?: readonly string[] } };
   // Read from the linked claim (Claim -> Evidence Traceability) instead of being
   // entered here, once the row's `claimRef` column names one — added 2026-08-11 so a
   // claim is classified ONCE, where it is declared, and every later use inherits.
@@ -202,6 +207,9 @@ export interface RegisterConfig {
   // widens the drawer — for the part of a row that is a status to follow (an approval), not a form to fill. A column no section
   // names is still shown, after the last one, so a field added to `columns` is never hidden.
   drawerSections?: { title: string; hint?: string; columns: string[]; rail?: true }[];
+  // Draw the (non-rail) drawer sections as tabs, one concern per tab, instead of stacking them: for a register whose row has too many fields to
+  // scroll through (the shared DrawerTabs, the app's rule for a drawer of mixed kinds). A tab that still has a required field empty gets a dot.
+  drawerTabs?: true;
   // The owner-NEUTRAL sheet name, and the only one the app displays. The V18
   // workbook prefixes its tabs with a person (`Tuan-Formula_BOM`) because a
   // spreadsheet has nowhere else to record who looks after a tab; digitised,
@@ -3459,6 +3467,23 @@ export const claimEvidenceTraceability: RegisterConfig = {
   gate: '03/05/08/10',
   referenceGates: '12',
   reviewOwner: REVIEW_SPECS.npdEvidence,
+  // One claim row has ~35 fields over five concerns; as one list it was 2,700px of scrolling. Each concern is its own tab (Round 5 question 18's
+  // review, library and approval fields joined an already long list).
+  drawerTabs: true,
+  drawerSections: [
+    { title: 'Claim', columns: ['claimId', 'claimScope', 'scopeExclusionReason', 'approvedWording', 'claimCategory', 'claimRisk', 'claimSubjects', 'evidenceBasisRequired', 'preliminaryMechanism', 'preliminaryEvidenceRequirement'] },
+    { title: 'Library', columns: ['libraryEntryId', 'libraryStatus', 'libraryRevision', 'libraryFitVerification', 'libraryFitVerifiedBy'] },
+    {
+      title: 'Review',
+      columns: [
+        'regulatoryReviewOutcome', 'regulatoryReviewer', 'regulatoryReviewDate', 'regulatoryReviewRationale', 'regulatoryReviewEvidence', 'reviewedWording',
+        'technicalReviewOutcome', 'technicalReviewer', 'technicalReviewDate', 'technicalReviewRationale', 'technicalReviewEvidence',
+        'reviewConditions', 'reviewConditionsAcceptedBy',
+      ],
+    },
+    { title: 'Revision', columns: ['revision', 'revisionRoute', 'revisionApprovedBy', 'revisionApprovedDate', 'revisionTechnicalApprovedBy', 'revisionTechnicalApprovedDate'] },
+    { title: 'Evidence and release', columns: ['mechanism', 'evidenceGrade', 'supportingEvidence', 'status', 'approvedByDate'] },
+  ],
   columns: [
     // Per-column gates (2026-08-11). A claim row is filled in over three gates, so
     // requiring the whole row at Gate 3 would block on evidence that cannot exist
@@ -3480,7 +3505,7 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // Round 5 question 18(a): a claim reviewed as Not Approved (or still needing information) either leaves the active Gate 3 scope as a
     // rejected concept or is reworded and re-reviewed. Excluding keeps the record and its reason; blank reads as In scope. [ASSUMPTION: R6-Q26]
     { key: 'claimScope', label: 'Claim scope', type: 'select', width: 190, options: [...CLAIM_SCOPE_OPTIONS], gate: '03' },
-    { key: 'scopeExclusionReason', label: 'Why it is excluded', type: 'textarea', width: 220, gate: '03', requiredWhen: { column: 'claimScope', values: [CLAIM_SCOPE_EXCLUDED] } },
+    { key: 'scopeExclusionReason', label: 'Why it is excluded', type: 'textarea', width: 220, gate: '03', requiredWhen: { column: 'claimScope', values: [CLAIM_SCOPE_EXCLUDED] }, shownWhen: { column: 'claimScope', values: [CLAIM_SCOPE_EXCLUDED] } },
     // Wording, category and risk come from the Claims Library entry the claim is linked to (SW-59, 2026-11-23 — `inheritFromLibrary`); a claim with no
     // link is a new claim and is typed. [ASSUMPTION: R6-Q23]
     { key: 'approvedWording', label: 'Approved claim wording', type: 'textarea', width: 240, gate: '03', inheritFromLibrary: 'wording' },
@@ -3504,9 +3529,9 @@ export const claimEvidenceTraceability: RegisterConfig = {
     // Follows the link: "Linked to Claims Library" while an entry is picked (never typed then); the person declares "New claim" only on a claim with no link.
     // Question 18(b): reusing a library entry's technical substantiation is allowed only for its exact wording and covered context. The
     // revision of the entry reused is written by the server; the fit to THIS product, evidence, market and channel is verified by a person.
-    { key: 'libraryRevision', label: 'Library revision reused', type: 'text', width: 120, gate: '03', editable: false },
-    { key: 'libraryFitVerification', label: 'Library fit: product, evidence, market, channel', type: 'textarea', width: 240, gate: '03' },
-    { key: 'libraryFitVerifiedBy', label: 'Library fit verified by', type: 'user', width: 150, gate: '03', selfAttest: true },
+    { key: 'libraryRevision', label: 'Library revision reused', type: 'text', width: 120, gate: '03', editable: false, shownWhen: { column: 'libraryEntryId' } },
+    { key: 'libraryFitVerification', label: 'Library fit: product, evidence, market, channel', type: 'textarea', width: 240, gate: '03', shownWhen: { column: 'libraryEntryId' } },
+    { key: 'libraryFitVerifiedBy', label: 'Library fit verified by', type: 'user', width: 150, gate: '03', selfAttest: true, shownWhen: { column: 'libraryEntryId' } },
     { key: 'libraryStatus', label: 'Claims Library status', type: 'select', width: 220, options: [...CLAIM_LIBRARY_LINK_OPTIONS], gate: '03', inheritFromLibrary: 'linkStatus' },
     // Question 27: the eleven structured claim-subject flags, replacing an
     // inference from free text. Eight of them are C1's seventh review condition,
@@ -3570,8 +3595,8 @@ export const claimEvidenceTraceability: RegisterConfig = {
     { key: 'technicalReviewRationale', label: 'Technical review rationale', type: 'textarea', width: 220, gate: '03' },
     { key: 'technicalReviewEvidence', label: 'Technical review evidence link', type: 'text', width: 160, gate: '03' },
     // Question 18(a): "Approved with Conditions requires the recorded evidence plan and accepted conditions" — for either review.
-    { key: 'reviewConditions', label: 'Conditions of the review', type: 'textarea', width: 240, gate: '03' },
-    { key: 'reviewConditionsAcceptedBy', label: 'Conditions accepted by', type: 'user', width: 150, gate: '03', selfAttest: true },
+    { key: 'reviewConditions', label: 'Conditions of the review', type: 'textarea', width: 240, gate: '03', shownWhen: { column: 'regulatoryReviewOutcome', values: ['Approved with Conditions'], or: { column: 'technicalReviewOutcome', values: ['Approved with Conditions'] } } },
+    { key: 'reviewConditionsAcceptedBy', label: 'Conditions accepted by', type: 'user', width: 150, gate: '03', selfAttest: true, shownWhen: { column: 'regulatoryReviewOutcome', values: ['Approved with Conditions'], or: { column: 'technicalReviewOutcome', values: ['Approved with Conditions'] } } },
     // Gate 10 — release: "Supported" is what publishedInfoViolations() reads before
     // anything may be published, and the approval is the act of releasing it.
     // Question 30(c) names five states an artwork-linked claim may not be in;
